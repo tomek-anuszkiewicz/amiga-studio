@@ -34,6 +34,11 @@ JavaScript. Working book data is picked up by the render queue. Stop a foregroun
 `serve` process with Ctrl+C before using the controller on the same port. The
 controller is a background process, not an automatically started Windows service.
 
+Working updates refresh changed chapters while retaining unchanged elements and
+their expanded details. Images and document styles are reused by content hash
+across Working and Accepted. Source text is cached by recipe and source-page
+version; changes to a source page invalidate the affected text.
+
 ### Starting a new review
 
 Install the local review dependencies once:
@@ -48,7 +53,15 @@ instead, run `python -m playwright install chromium` and pass `--channel ""`
 to `book_review.py`.
 
 Prepare the selected PDF pages through Stage 08 and check that Stages 02, 06, 07
-and 08 succeeded. Then start a fresh review:
+and 08 succeeded.
+
+Import selects each page's latest available JSON in this order: Stage 08, 07, 05,
+04, then 03. Stages 04, 05, 07 and 08 contain only changed pages; an empty directory
+does not mean that preparation failed. An empty `segments` list in the latest
+page JSON excludes that page. Import keeps physical-page order and uses all
+retained pages, regardless of the last invocation's page range.
+
+Then start a fresh review:
 
 ```powershell
 $Book = "tools/bootstrap/books/test-book-example-4567/78e52f075e17"
@@ -113,6 +126,17 @@ for plain book text. Confirm each proposed occurrence against the PDF before
 applying it. **Show source differences** marks source-backed corrections in
 yellow, accepted text without a source address in blue, and pending plain text
 in purple. These colors are review aids, not proof of transcription quality.
+
+Use **Book Actions → List unmatched book text** for a read-only list of all
+text without a PDF source reference, including accepted literals, chapter
+titles and hidden elements. Each fragment includes its PDF page, element and
+context. HTML tags and math command names are omitted; words and numbers
+inside formulas remain. The list does not apply matches or change either book
+version. Statistics count all fragments and show how many contain at least
+three letters. Only that latter group is listed; digits and punctuation do not
+count toward the letter threshold.
+Use **Go to Book** beside a fragment to navigate to its element and highlight
+the text. Navigation also reveals a hidden element when necessary.
 
 Use **Book Actions → Rename Chapters** to edit Working chapter titles and Markdown
 filenames together. The generated table of contents has its own entry. Chapter
@@ -257,7 +281,7 @@ Formatting around references remains literal Markdown or HTML.
 `resolved_md_text` is derived display text, not authored recipe content.
 The [element vocabulary](elements.md) lists supported types and roles.
 
-Import aligns Stage 08 text with Stage 02 PDF text, but OCR and repeated
+Import aligns the latest prepared page text with Stage 02 PDF text, but OCR and repeated
 phrases can produce uncertain or incorrect source attribution. The reviewer
 must check the actual PDF. The recipe stores reviewed decisions so later
 reconstruction can avoid repeating model inference through `import-book`.

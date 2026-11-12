@@ -4,6 +4,8 @@ pipeline.py: Master CLI for PDF page preparation, table transcription and graphi
 """
 
 import argparse
+from contextlib import contextmanager
+import ctypes
 import json
 import os
 import re
@@ -20,12 +22,35 @@ from conversion.cache import DEFAULT_CACHE
 from common.pdf_artifacts import read_json, write_json, prepared_pdf_path
 from common.pdf_selection import selected_pages
 
+
+@contextmanager
+def prevent_windows_sleep():
+    """Hold a Windows system execution request for the conversion lifetime."""
+    if sys.platform != "win32":
+        yield
+        return
+    continuous = 0x80000000
+    system_required = 0x00000001
+    set_state = ctypes.WinDLL("kernel32").SetThreadExecutionState
+    set_state.argtypes = [ctypes.c_uint32]
+    set_state.restype = ctypes.c_uint32
+    previous = set_state(continuous | system_required)
+    if not previous:
+        raise OSError("Unable to prevent Windows automatic sleep")
+    try:
+        print("[power] Windows automatic sleep blocked; display may turn off", flush=True)
+        yield
+    finally:
+        if not set_state(previous | continuous):
+            raise OSError("Unable to restore Windows execution state")
+
+
 STAGE_REGISTRY: List[Dict[str, Any]] = [
     {
         "id": "01",
         "dir": "01_text_layer",
         "script": "prepare_text_layer.py",
-        "desc": "Prepare a shared full-source OCR PDF, or reuse the existing file",
+        "desc": "Restore or prepare a cached full-source OCR PDF",
         "targets": ["01_text_layer"],
     },
     {
@@ -385,17 +410,18 @@ def main():
             if input_id not in selected_ids and input_id not in retained_ids:
                 raise ValueError(f"Missing successful predecessor Stage {input_id} for Stage {stage['id']}")
 
-    workspace.mkdir(parents=True, exist_ok=True)
-    if not config_path.exists():
-        shutil.copyfile(skill_dir / "config.yaml", config_path)
-    # Persist invalidation before any cleanup can fail or be interrupted.
-    invalidate_status(status_file, invalid)
-    clean_downstream_stages(workspace, start, status_file, pages=pages)
-    page_ranges = ",".join(map(str, pages)) if pages is not None else None
-    print(f"[*] PDF source: {pdf.name}; selected pages: {pages}; stages: {[stage['id'] for stage in selected]}")
-    for stage in selected:
-        if not run_stage(stage, skill_dir, workspace, pdf, config_path, page_ranges):
-            raise RuntimeError(f"Pipeline halted at Stage {stage['id']}")
+    with prevent_windows_sleep():
+        workspace.mkdir(parents=True, exist_ok=True)
+        if not config_path.exists():
+            shutil.copyfile(skill_dir / "config.yaml", config_path)
+        # Persist invalidation before any cleanup can fail or be interrupted.
+        invalidate_status(status_file, invalid)
+        clean_downstream_stages(workspace, start, status_file, pages=pages)
+        page_ranges = ",".join(map(str, pages)) if pages is not None else None
+        print(f"[*] PDF source: {pdf.name}; selected pages: {pages}; stages: {[stage['id'] for stage in selected]}")
+        for stage in selected:
+            if not run_stage(stage, skill_dir, workspace, pdf, config_path, page_ranges):
+                raise RuntimeError(f"Pipeline halted at Stage {stage['id']}")
     print("[+] Selected PDF pipeline stages completed.")
 
 

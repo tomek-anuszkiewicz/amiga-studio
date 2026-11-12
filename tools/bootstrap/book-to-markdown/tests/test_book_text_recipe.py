@@ -9,7 +9,7 @@ import tempfile
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / 'tools/bootstrap/book-to-markdown'))
-from review.text_recipe import REFERENCE, compile_region_template, edit_template, join_adjacent_references, slice_template, preserve_bold, resolve_template, source_differences, source_reference, source_span_with_spacing
+from review.text_recipe import REFERENCE, accepted_literal, compile_region_template, edit_template, escape_literal, join_adjacent_references, slice_template, preserve_bold, resolve_template, source_differences, source_reference, source_span_with_spacing
 
 
 from review.markdown import callout_plugin
@@ -31,6 +31,99 @@ class ReorderedReferenceTests(unittest.TestCase):
         self.assertIn('{{text page=1 block=1 chars=0:3}}', result)
         self.assertIn('{{text page=1 block=0 chars=0:3}}', result)
 from common.pdf_geometry import text_blocks
+
+
+class UnmatchedTextTests(unittest.TestCase):
+    def test_code_span_mapping_keeps_identical_math_and_code_cells_distinct(self):
+        from review.markdown import PARSER, code_source_spans, html_tag_spans
+        from review.unmatched_text import inventory
+        text = '| $`<p>Word</p>`$ | `<p>Word</p>` |\n|---|---|'
+        self.assertEqual(code_source_spans(text, PARSER.parse(text)), [(20, 33)])
+        self.assertEqual(list(html_tag_spans(text)), [])
+        book = {'chapters': [{'id': 'c', 'title': '', 'elements': [{
+            'id': 'e', 'type': 'prose', 'md_text': escape_literal(text)}]}]}
+        self.assertTrue(any('<p>Word</p>' in item['literal'] for item in inventory(book, Path('.'))))
+
+    def test_inventory_respects_escaped_backtick_delimiters(self):
+        from review.markdown import PARSER, code_source_spans
+        from review.unmatched_text import inventory
+        for text, expected, spans in ((r'\`$x$\`', ['x'], []),
+                                      (r'\`<p>Word</p>\`', ['Word'], []),
+                                      (r'\``$x$`', ['$x$'], [(2, 7)]),
+                                      (r'\```$x$``', ['$x$'], [(2, 9)]),
+                                      (r'\\`$x$`', ['$x$'], [(2, 7)]),
+                                      (r'`$x$\`', ['$x$'], [(0, 6)]),
+                                      ('A `\n\n$x$\n\nAnother `', ['A ', 'x', 'Another '], [])):
+            with self.subTest(text=text):
+                self.assertEqual(code_source_spans(text, PARSER.parse(text)), spans)
+                book = {'chapters': [{'id': 'c', 'title': '', 'elements': [{
+                    'id': 'e', 'type': 'prose', 'md_text': escape_literal(text)}]}]}
+                findings = [item['literal'].strip('`\\') for item in inventory(book, Path('.'))]
+                self.assertEqual(findings, expected)
+
+    def test_inventory_retains_angle_expressions_inside_math(self):
+        from review.unmatched_text import inventory
+        book = {'chapters': [{'id': 'c', 'title': '', 'elements': [{
+            'id': 'e', 'type': 'prose', 'md_text': '$x<y>z$'}]}]}
+        self.assertEqual([item['literal'] for item in inventory(book, Path('.'))],
+                         ['x<y>z'])
+
+    def test_inventory_maps_multiline_math_through_quote_and_list_prefixes(self):
+        from review.unmatched_text import inventory
+        for text in [r'> $\frac{alpha}{' + '\n> beta}$',
+                     r'- $\frac{alpha}{' + '\n  beta}$',
+                     '| Value |\n| --- |\n| ' + r'$\frac{alpha}{\|beta\|}$ |',
+                     '> $a\n> +b$', '- $a\n  +b$']:
+            with self.subTest(text=text):
+                book = {'chapters': [{'id': 'c', 'title': '', 'elements': [{
+                    'id': 'e', 'type': 'prose', 'md_text': escape_literal(text)}]}]}
+                report = '\n'.join(item['literal'] for item in inventory(book, Path('.')))
+                self.assertNotIn('frac', report)
+                for word in (['alpha', 'beta'] if 'frac' in text else ['a', 'b']):
+                    self.assertIn(word, report)
+
+    def test_inventory_omits_supported_html_structure(self):
+        from review.unmatched_text import inventory
+        text = ('<details><summary>Title</summary>Body</details><h2>Heading</h2><hr>'
+                '<mark>highlight</mark><small>note</small>')
+        book = {'chapters': [{'id': 'c', 'title': '', 'elements': [{
+            'id': 'e', 'type': 'prose', 'md_text': escape_literal(text)}]}]}
+        self.assertEqual([item['literal'] for item in inventory(book, Path('.'))],
+                         ['Title', 'Body', 'Heading', 'highlight', 'note'])
+
+    def test_inventory_keeps_code_and_formula_text_without_counting_markup(self):
+        from copy import deepcopy
+        from review.unmatched_text import inventory
+        with tempfile.TemporaryDirectory() as temporary:
+            workspace = Path(temporary)
+            write_json(workspace / '02_preprocess/page_0001.json',
+                       {'blocks': [{'block_id': 0, 'text': 'Original'}]})
+            text = ('<p title="Attribute">Raw {{accepted text="Accepted"}} '
+                    '{{text page=1 block=0 chars=0:8 replace=0:8 with="Corrected"}}</p>\n\n'
+                    + escape_literal(r'$\frac{\text{ordinary words}}{')
+                    + accepted_literal('3') + escape_literal(r'} + \sqrt{other}$')
+                    + '\n\n`<CSI>`\n\n```c\nif (x<<2) value = <idlist>;\n```')
+            book = {'toc': {'title': 'Contents'}, 'chapters': [{
+                'id': 'chapter', 'title': 'Book title', 'elements': [{
+                    'id': 'hidden', 'type': 'prose', 'visible': False,
+                    'pdf_regions': [{'page': 1, 'bbox': [0, 0, 10, 10]}], 'md_text': text}]}]}
+            original = deepcopy(book)
+            findings = inventory(book, workspace)
+            self.assertEqual(book, original)
+            self.assertEqual([(i['field'], i['literal']) for i in findings[:2]],
+                             [('title', 'Contents'), ('title', 'Book title')])
+            rows = [i for i in findings if i['element_id'] == 'hidden']
+            self.assertEqual([i['literal'] for i in rows if i['status'] == 'accepted'],
+                             ['Accepted', '3'])
+            pending = [i['literal'] for i in rows if i['status'] == 'pending']
+            self.assertEqual(pending[:3], ['Raw', 'ordinary words', 'other'])
+            self.assertIn('<CSI>', '\n'.join(pending))
+            self.assertIn('if (x<<2) value = <idlist>;', pending)
+            self.assertFalse(any(i['visible'] for i in rows))
+            self.assertTrue(all(i['pages'] == [1] for i in rows))
+            report = '\n'.join(i['literal'] for i in rows)
+            for syntax in ('Attribute', 'frac', 'sqrt', '<p', '</p>', 'Corrected', '```c'):
+                self.assertNotIn(syntax, report)
 
 
 class TextRecipeTest(unittest.TestCase):
@@ -315,6 +408,63 @@ class TextRecipeTest(unittest.TestCase):
             heading = load_input(root / 'working')[0]['chapters'][0]['elements'][0]
             self.assertEqual((heading['type'], heading['heading_level']), ('heading', 3))
 
+
+    def test_import_resolves_changed_pages_without_losing_unchanged_or_restoring_filtered_pages(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            workspace = root / 'pdf-to-markdown'
+            write_json(workspace / 'stage_status.json',
+                       {stage: {'status': 'success', 'page_ranges': '5'}
+                        for stage in ('02', '04', '05', '06', '07', '08')})
+            for number, text in enumerate(('One', 'Two', 'Three', 'Four', 'Five', 'Header'), 1):
+                page_id = f'page_{number:04d}'
+                source = 'NOTE Four' if number == 4 else text
+                write_json(workspace / '02_preprocess' / f'{page_id}.json',
+                           {'page': number, 'page_id': page_id,
+                            'raster': {'display_to_pixels': [1, 0, 0, 1, 0, 0]},
+                            'blocks': [{'block_id': 0, 'text': source, 'bbox': [0, 0, 100, 10],
+                                        'char_bboxes': [[0, 0, 100, 10]] * len(source)}]})
+                segment = {'segment_id': f'{page_id}_seg_001', 'type': 'prose', 'role': None,
+                           'bbox': [0, 0, 100, 10], 'md_text': text}
+                segments = [segment]
+                if number == 2:
+                    segments.insert(0, {**segment, 'segment_id': f'{page_id}_header', 'type': 'header'})
+                elif number == 4:
+                    segments = [{**segment, 'type': 'callout', 'md_text': 'NOTE'},
+                                {**segment, 'segment_id': f'{page_id}_seg_002', 'type': 'callout_text'}]
+                elif number == 6:
+                    segment['type'] = 'header'
+                page = {'page': number, 'segments': segments}
+                write_json(workspace / '03_page_conversion' / f'{page_id}_segments.json', page)
+                if number == 3:
+                    write_json(workspace / '05_transform_page_tables' / f'{page_id}_segments.json',
+                               {**page, 'segments': [{**segment, 'md_text': '**Three**'}]})
+            stages = Path(__file__).resolve().parents[4] / 'tools/bootstrap/pdf-to-markdown/stages'
+            for name, script, operation in (
+                    ('04_filter_page_content', 'filter_page_content.py', 'filter_page_content'),
+                    ('07_repair_callouts', 'repair_callouts.py', 'repair_callouts')):
+                spec = importlib.util.spec_from_file_location(operation, stages / name / script)
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)
+                getattr(module, operation)(workspace)
+            self.assertEqual({path.name for path in (workspace / '04_filter_page_content').glob('*.json')},
+                             {'page_0002_segments.json', 'page_0006_segments.json'})
+            self.assertEqual(read_json(workspace / '04_filter_page_content/page_0006_segments.json')['segments'], [])
+            self.assertEqual({path.name for path in (workspace / '07_repair_callouts').glob('*.json')},
+                             {'page_0004_segments.json'})
+            # Newer replacements must win over every older version of this page.
+            page = read_json(workspace / '03_page_conversion/page_0005_segments.json')
+            for stage_name, text in (('04_filter_page_content', '*Five*'),
+                                     ('05_transform_page_tables', '**Five**'),
+                                     ('07_repair_callouts', '`Five`'),
+                                     ('08_proofreading', '_Five_')):
+                write_json(workspace / stage_name / 'page_0005_segments.json',
+                           {**page, 'segments': [{**page['segments'][0], 'md_text': text}]})
+            imported = import_book(root)['chapters'][0]['elements']
+            self.assertEqual([element['id'] for element in imported],
+                             [f'page_{number:04d}_seg_001' for number in range(1, 6)])
+            self.assertEqual([element['resolved_md_text'] for element in imported],
+                             ['One', 'Two', '**Three**', '> [!NOTE] NOTE\n>\n> Four', '_Five_'])
 
     def test_import_preserves_prepared_markdown_without_literal_transcription(self):
         prepared = ['**Operation:** Source + Dest ination',

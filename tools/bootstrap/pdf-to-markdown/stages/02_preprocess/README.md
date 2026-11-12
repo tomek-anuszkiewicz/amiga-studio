@@ -6,6 +6,10 @@ including blank pages. Render using shared `rendering.dpi` from the
 [pipeline configuration](../../config.yaml), default 300 DPI; no OCR or model
 request is made.
 
+The [preparation cache](../../README.md#preparation-cache) restores each selected
+page's PNG/JSON pair before rendering or extraction. A missing pair is computed
+and cached independently, so an interrupted run retains completed cached pages.
+
 JSON records the source page number, page geometry, actual PNG dimensions,
 extracted text blocks and the transform between text and raster coordinates.
 Text boxes use PDF points in the displayed-page frame; later object boxes use

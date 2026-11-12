@@ -160,7 +160,7 @@ def new_chapter(elements, chapter_id, existing_files=(TOC_DEFAULTS['markdown_fil
 
 
 def import_book(root):
-    """Replace book outputs with final Stage 08 objects and Stage 06 assets."""
+    """Replace book outputs with the latest page objects through Stage 08 and Stage 06 assets."""
     working = root / "working"
     workspace = root / "pdf-to-markdown"
     status = read_json(workspace / "stage_status.json")
@@ -267,6 +267,8 @@ class InputCache:
         self.files = {}
         self.snapshots = {}
         self.dependencies = {}
+        self.text = {}
+        self.text_keys = set()
 
     @staticmethod
     def signature(path):
@@ -290,13 +292,30 @@ class InputCache:
         if book is None and cached and all(self.signature(path) == signature for path, signature in cached[1].items()):
             return cached[0]
         self.dependencies = {}
-        result = load_input(working, book, cache=self)
-        if book is None:
-            dependencies = dict(self.dependencies)
-            if any(self.signature(path) != signature for path, signature in dependencies.items()):
-                raise ValueError('Input changed during loading; retry')
-            self.snapshots[working] = result, dependencies
-        return result
+        self.text_keys = set()
+        try:
+            result = load_input(working, book, cache=self)
+            if book is None:
+                dependencies = dict(self.dependencies)
+                if any(self.signature(path) != signature for path, signature in dependencies.items()):
+                    raise ValueError('Input changed during loading; retry')
+                self.snapshots[working] = result, dependencies, frozenset(self.text_keys)
+            return result
+        finally:
+            retained = set().union(*(entry[2] for entry in self.snapshots.values()))
+            self.text = {key: value for key, value in self.text.items() if key in retained}
+
+    def resolve_text(self, template, pages, block_index, source_signatures):
+        """Reuse derived text only while its template and source-page versions match."""
+        referenced = sorted({int(match[1]) for match in REFERENCE.finditer(template)})
+        key = template, tuple((page, source_signatures[page]) for page in referenced)
+        self.text_keys.add(key)
+        if key not in self.text:
+            resolved = resolve_template(template, pages, block_index=block_index)
+            differences = source_differences(template, pages, block_index=block_index)
+            self.text[key] = resolved, differences
+        resolved, differences = self.text[key]
+        return resolved, deepcopy(differences)
 
 
 def load_input(working, book=None, *, cache=None):
@@ -326,17 +345,27 @@ def load_input(working, book=None, *, cache=None):
     templates += [chapter[field] for chapter in book["chapters"] for field in ("title", "markdown_file")]
     templates += [book['toc'][field] for field in TOC_DEFAULTS if field in book['toc']]
     referenced_pages = {int(match[1]) for template in templates for match in REFERENCE.finditer(template)}
-    text_pages = {}
+    text_pages, source_signatures = {}, {}
     for page in sorted(referenced_pages):
-        blocks = read_source(working.parent / "pdf-to-markdown" / "02_preprocess" / f"page_{page:04d}.json")["blocks"]
+        path = working.parent / "pdf-to-markdown" / "02_preprocess" / f"page_{page:04d}.json"
+        blocks = read_source(path)["blocks"]
         text_pages[page] = blocks
+        if cache:
+            source_signatures[page] = path, cache.dependencies[path]
     block_index = {page: {b['block_id']: b['text'] for b in entries} for page, entries in text_pages.items()}
-    resolve = lambda template: resolve_template(template, text_pages, block_index=block_index)
+    def resolve(template):
+        if cache:
+            return cache.resolve_text(template, text_pages, block_index, source_signatures)[0]
+        return resolve_template(template, text_pages, block_index=block_index)
     for element in elements(book):
         if "md_text" in element:
-            element["resolved_md_text"] = resolve(element["md_text"])
-            element["source_differences"] = source_differences(
-                element["md_text"], text_pages, block_index=block_index)
+            if cache:
+                element["resolved_md_text"], element["source_differences"] = cache.resolve_text(
+                    element["md_text"], text_pages, block_index, source_signatures)
+            else:
+                element["resolved_md_text"] = resolve(element["md_text"])
+                element["source_differences"] = source_differences(
+                    element["md_text"], text_pages, block_index=block_index)
     for field in TOC_DEFAULTS:
         if field in book['toc']:
             if not isinstance(book['toc'][field], str) or not book['toc'][field].strip():

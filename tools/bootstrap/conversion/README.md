@@ -19,10 +19,20 @@ Failures stop conversion without switching model, effort or provider.
 An `imageView` event is accepted only when its resolved path matches an image
 attached to that request. The transport logs the repeated view and continues
 waiting for the final response. Other image paths and tool items are rejected.
-Rate, usage-budget and server-capacity error notifications close the affected
-transport immediately, including notifications for which the runtime proposes
-a retry. The converter does not retry those requests. PDF parallel workers own
-separate transports so a timeout cannot close another worker's connection.
+HTTP 429/503, `rateLimitExceeded` and `serverOverloaded` errors close the affected
+transport and retry the same request through a fresh transport after 60 seconds.
+Consecutive retryable failures double the wait: 60, 120, 240 seconds and so on,
+without a retry limit. After a successful response, the next retryable failure
+starts again at 60 seconds.
+Each attempt has its own request timeout; backoff waits are outside that timeout.
+Waits are printed even without tracing and can be interrupted with Ctrl+C.
+Other failures, including usage and session-budget limits, still stop conversion.
+Runtime retries for capacity notifications are stopped
+immediately so the converter owns backoff. PDF parallel workers own
+separate transports and independent backoff sequences.
+In parallel PDF stages, coordinator interruption or a worker failure signals
+all clients to cancel active transports and interrupt request delays and retry
+waits before the coordinator drains its workers.
 `llm.post_request_delay_seconds` optionally delays a new request to the same
 client until the specified time has elapsed since the previous model response.
 Response generation time does not count toward the delay; cache hits do not

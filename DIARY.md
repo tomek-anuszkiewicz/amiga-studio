@@ -437,6 +437,126 @@ Every authorized repository commit adds a concise entry here. Logging and compac
 
 ---
 
+### [2026-11-10 21:37 CET] — Cache PDF preparation and retry temporary conversion failures
+- **Affected Subsystems**:
+  - `tools/bootstrap/conversion`
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/books`
+  - `.gitignore`
+- **What Was Changed (The Concrete Reality)**:
+  - Cache completed full-source prepared PDFs and per-page PNG/text bundles by input identity and output hashes
+  - Retry temporary Codex capacity failures with fresh transports and exponential backoff while preserving terminal budget errors
+  - Prevent automatic Windows system sleep during selected pipeline stages and restore the previous execution state on exit
+  - Use high reasoning effort for PDF conversion and table transcription defaults
+  - Record current A500/A2000 prepared PDF provenance and ignore local conversion logs
+  - Document cache identities and retry behavior and correct the transport test location
+  - Forward coordinator cancellation to parallel clients so interruption and failures stop active requests and retry waits
+  - Add five user-approved programming terms to the English vocabulary
+- **Architectural Rationale & Trade-Offs**:
+  - Reuse matching preparation across attempts without trusting output existence alone
+  - Keep long conversions running through temporary capacity failures while retaining source identity and failure reporting
+- **Verification & Test Results**:
+  - PASS: shared conversion contracts - 48 tests
+  - PASS: HTML conversion contracts - 2 tests
+  - PASS: PDF conversion contracts - 48 tests
+  - PASS: Book Review contracts - 192 tests
+  - PASS: verification CLI contracts and full English scan after vocabulary approval
+  - PASS: parallel interruption regression after reproducing an extra request before the fix
+  - Initial commit profile failed only on five vocabulary terms subsequently approved by the user
+  - PASS: current source and prepared PDF SHA-256 match source-ocr.json and the preparation cache
+  - Scoped specification review selected Testing Strategy and Quality Assurance by tracked_paths and found no required specification changes
+  - NOT RUN: a new book conversion or milestone profile
+---
+
+### [2026-11-11 10:40 CET] — Save changed PDF pages and cache graphic crops
+- **Affected Subsystems**:
+  - `tools/bootstrap/pdf-to-markdown`
+  - `tools/bootstrap/book-to-markdown`
+- **What Was Changed (The Concrete Reality)**:
+  - Save Stage 04 and Stage 07 and Stage 08 page JSON only when page data changes
+  - Resolve pages through Stage 08 using the latest available replacement from Stages 07 and 05 and 04 and 03
+  - Preserve empty filtered pages as explicit replacements so excluded content does not return
+  - Reuse the shared preparation cache for Stage 06 crops keyed by source PNG and bounding box and runtime
+  - Update pipeline and book import documentation and focused regression coverage
+- **Architectural Rationale & Trade-Offs**:
+  - Avoid duplicate page JSON and repeated crop extraction while preserving retained page order and filtered exclusions
+  - Reuse existing cache integrity checks without changing source books or running inference
+- **Verification & Test Results**:
+  - PASS: PDF execution and cache contracts - 31 tests
+  - PASS: proofreading contracts - 6 tests
+  - PASS: parallel table contracts - 2 tests
+  - PASS: focused book import contracts - 4 tests
+  - PASS: git diff --check
+  - Scoped specification review selected Testing Strategy and Quality Assurance by tracked_paths and found no required specification changes
+  - NOT RUN: real book conversion or import and milestone profile
+---
+
+### [2026-11-11 23:41 CET] — Record A500/A2000 book recipe and hardware manual OCR provenance
+- **Affected Subsystems**:
+  - `tools/bootstrap/books`
+- **What Was Changed (The Concrete Reality)**:
+  - Track the A500/A2000 variant-root recipe matching the local Accepted and Working copies
+  - Track Hardware Reference Manual OCR preparation provenance
+- **Architectural Rationale & Trade-Offs**:
+  - Preserve the existing book recipe and preparation identity without committing local PDFs or generated review bundles
+- **Verification & Test Results**:
+  - PASS: both source PDF hashes match their source.json records
+  - PASS: hardware manual source and prepared PDF hashes match source-ocr.json
+  - PASS: recipe matches Accepted and Working with 2000 elements
+  - PASS: all 60164 audited source references resolve and no private absolute paths were found
+  - LIMIT: optional strict source audit reports 112 fields with literal content or unsupported math commands
+  - Scoped compliance review found no matching design tracked_paths and no required changes to the book recipe or OCR provenance contracts
+  - NOT RUN: conversion or reconstruction or milestone profile
+---
+
+### [2026-11-12 01:45 CET] — Amend accepted technical manual recipe
+- **Affected Subsystems**:
+  - `tools/bootstrap/books`
+- **What Was Changed (The Concrete Reality)**:
+  - Include the current accepted A500/A2000 recipe in the previous book artifact commit
+  - Replace literal text with source references and explicit accepted text in 30 existing element fields
+- **Architectural Rationale & Trade-Offs**:
+  - Preserve the accepted recipe together with its original provenance commit
+  - After reviewing the reported attribution errors the user approved amending the current recipe without corrections
+  - This commit accepts known source occurrence mismatches on pages 149 and 150 and 183 and 242 as a specific exception; the general source attribution requirement remains unchanged
+- **Verification & Test Results**:
+  - PASS: recipe matches Accepted and Working with 2000 elements
+  - PASS: source PDF hash matches source.json
+  - PASS: all 60546 source references resolve using the committed implementation and no private absolute paths were found
+  - LIMIT: optional strict source audit reports 107 fields with literal content or unsupported math commands
+  - Scoped compliance review found no matching design tracked_paths and no required contract changes
+  - NOT RUN: conversion or reconstruction or milestone profile
+---
+
+### [2026-11-12 02:03 CET] — Improve book review updates and list unmatched source text
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown`
+- **What Was Changed (The Concrete Reality)**:
+  - Add a read-only unmatched text inventory with source context and navigation
+  - Preserve code text and numbered content during source alignment and cleanup
+  - Match local hyphenated word continuations without including a fused OCR glyph
+  - Cache resolved text by recipe and source-page version while checking bundle replacement races
+  - Reuse unchanged viewer content and resources and reading geometry
+  - Document inventory behavior and incremental refresh
+  - Add user-approved API vocabulary and file-specific regex and test data exceptions
+  - Preserve source offsets through multiline math continuation prefixes and recognize supported HTML independently of the optional source audit
+- **Architectural Rationale & Trade-Offs**:
+  - Keep source review explicit while reducing repeated text resolution and document replacement
+  - Preserve current Working and Accepted revision checks during acceptance and discard
+- **Verification & Test Results**:
+  - PASS: input cache contracts - 7 tests
+  - PASS: incremental browser update contracts - 6 tests
+  - PASS: source alignment contracts - 31 tests
+  - PASS: text recipe contracts - 37 tests
+  - PASS: restarted the existing book review server and checked HTTP 200 at root and status with no pending rendering or error
+  - PASS: git diff --check
+  - Scoped specification review selected Testing Strategy and Quality Assurance through tracked_paths and found no required specification changes
+  - Initial commit profile passed all checks except English vocabulary; the user approved the reported exceptions
+  - Reproduced review findings and a formula-angle regression before correcting math offsets and HTML structure masking with regression coverage including escaped table pipes
+  - NOT RUN: conversion or reconstruction or milestone profile
+
+---
+
 ### [2026-11-12 09:33 CET] — Consolidate diary history and SDLC workflow narrative
 - **Affected Subsystems**:
   - `DIARY.md`
@@ -478,3 +598,26 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Formatting passed
   - Ordinary Rust workspace tests passed
   - The required commit profile and independent review follow on the final intended source
+---
+
+### [2026-11-12 09:59 CET] — Merge bootstrap-codex-api and reconcile the shared integration point
+- **Affected Subsystems**:
+  - `tools/bootstrap/`
+  - `tools/verification/checks/`
+  - `DIARY.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Integrate bootstrap-codex-api using an explicit merge commit
+  - Resolve the diary conflict by retaining the consolidated master chapters and all five bootstrap entries in chronological Rolling Changelog order
+  - Review the union of 61 changed Markdown paths and retain both branches workflow and specification contracts
+  - Share parser-owned code span positions between HTML masking and unmatched text inventory with correct delimiter escapes and inline container boundaries; map all containers in source order to distinguish repeated table text
+  - Decode recipe escapes before HTML masking while preserving cleanup offsets
+  - Preserve the existing book recipe and its recorded source attribution exception
+- **Architectural Rationale & Trade-Offs**:
+  - Join both development histories without losing documentation or branch ancestry
+  - Repair the reproduced escaped delimiter failure identified by independent review so valid Markdown remains usable after integration
+- **Verification & Test Results**:
+  - Reproduced formula exceptions from escaped delimiters and markers in separate inline containers and the HTML masking error before repair
+  - Focused source alignment contracts passed with 33 tests
+  - Focused text recipe contracts passed with 39 tests
+  - Diary structure and timestamp order passed
+  - The required final source commit profile and independent review follow

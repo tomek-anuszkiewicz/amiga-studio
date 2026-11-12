@@ -5,6 +5,7 @@ addr
 alloc
 argparse
 args
+argtypes
 argv
 asdict
 asm
@@ -14,12 +15,14 @@ attrib
 attrs
 autocomplete
 autojunk
+backoff
 basename
 bboxes
 bool
 booleans
 busfn
 byref
+bytearray
 bytecode
 casefold
 cfg
@@ -241,7 +244,9 @@ removesuffix
 repr
 rept
 res
+restype
 resultclass
+retryable
 returncode
 rfc
 rfile
@@ -310,12 +315,14 @@ txt
 typeof
 ui
 uif
+uint
 ul
 ulong
 uncheck
 unescape
 unicodedata
 unittest
+unroute
 unshift
 urlparse
 urlsplit

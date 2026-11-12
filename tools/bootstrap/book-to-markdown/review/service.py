@@ -47,13 +47,13 @@ def read_snapshot(directory):
     return json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
 
 
-def render_accepted(root, renderer):
+def render_accepted(root, renderer, *, input_cache=None):
     """Update presentation settings from Accepted's own authored model."""
     accepted = root / "accepted"
     previous = read_snapshot(accepted)
     if not previous:
         return previous
-    book, assets, fingerprint = load_input(accepted)
+    book, assets, fingerprint = (input_cache or InputCache()).load(accepted)
     if previous["settings"] == renderer.settings and previous["input_fingerprint"] == fingerprint:
         return previous
     snapshot = renderer.render(accepted, book, assets, fingerprint, previous)
@@ -63,29 +63,42 @@ def render_accepted(root, renderer):
     return snapshot
 
 
-def replace_bundle(root, snapshot, source_name, target_name, expected_working, publish_book=False):
+def replace_bundle(root, snapshot, source_name, target_name, expected_working, publish_book=False,
+                   *, input_cache=None):
     """Prepare a coherent bundle before replacement; roll back a failed rename."""
     prepared = root / f".{target_name}-prepare-{uuid.uuid4().hex}"
     prepared_book = root / f".book-prepare-{uuid.uuid4().hex}.json" if publish_book else None
     backup = root / f".{target_name}-backup"
     target = root / target_name
     source = root / source_name
+    input_cache = input_cache or InputCache()
+    _, assets, fingerprint = input_cache.load(source)
+    if fingerprint != snapshot["input_fingerprint"]:
+        raise ValueError("Source changed during bundle preparation; reload and retry")
     prepared.mkdir()
     try:
         book = {k: deepcopy(snapshot[k]) for k in ("toc", "chapters")}
         if 'source_cleanup_exceptions' in snapshot:
             book['source_cleanup_exceptions'] = deepcopy(snapshot['source_cleanup_exceptions'])
         write_json(prepared / "book.json", book)
+        book_path = prepared / "book.json"
+        signature = input_cache.signature(book_path)
+        book_bytes = book_path.read_bytes()
+        if input_cache.signature(book_path) != signature:
+            raise ValueError("Prepared book changed during loading; retry")
+        prepared_inputs = {target / "book.json": (signature, book_bytes)}
         write_json(prepared / "rendered.json", snapshot)
         export_markdown(book, prepared)
         revision = snapshot["revision"]
         shutil.copytree(source / "renders" / revision, prepared / "renders" / revision)
-        source_assets = source / "renders" / revision / "assets"
-        if source_assets.exists():
-            shutil.copytree(source_assets, prepared / "assets")
-        if load_input(source)[2] != snapshot["input_fingerprint"]:
+        for relative, data in assets.items():
+            path = confined(prepared, relative)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(data)
+            prepared_inputs[target / relative] = input_cache.signature(path), data
+        if input_cache.load(source)[2] != snapshot["input_fingerprint"]:
             raise ValueError("Source changed during bundle preparation; reload and retry")
-        if load_input(root / "working")[2] != expected_working:
+        if input_cache.load(root / "working")[2] != expected_working:
             raise ValueError("Working changed during bundle preparation; reload and retry")
         if backup.exists():
             raise RuntimeError("Previous bundle recovery is required before replacement")
@@ -115,6 +128,9 @@ def replace_bundle(root, snapshot, source_name, target_name, expected_working, p
             if backup.exists():
                 backup.rename(target)
             raise
+        # Keep pre-publication signatures so later external edits invalidate these bytes.
+        input_cache.files.update(prepared_inputs)
+        input_cache.snapshots.pop(target, None)
     finally:
         if prepared.exists():
             shutil.rmtree(prepared)
@@ -128,8 +144,9 @@ def replace_bundle(root, snapshot, source_name, target_name, expected_working, p
             log(f"[{target_name} backup cleanup] {error}")
 
 
-def replace_accepted(root, snapshot, publish_book=False):
-    replace_bundle(root, snapshot, "working", "accepted", snapshot["input_fingerprint"], publish_book)
+def replace_accepted(root, snapshot, publish_book=False, *, input_cache=None):
+    replace_bundle(root, snapshot, "working", "accepted", snapshot["input_fingerprint"], publish_book,
+                   input_cache=input_cache)
 
 
 class ReviewState:
@@ -207,9 +224,8 @@ class ReviewState:
         renderer = None
         try:
             renderer = Renderer(self.width, self.channel)
-            refreshed_accepted = render_accepted(self.root, renderer)
-            # Startup presentation refresh must not overwrite later acceptance.
             with self.lock:
+                refreshed_accepted = render_accepted(self.root, renderer, input_cache=self.input_cache)
                 if refreshed_accepted:
                     self.accepted = refreshed_accepted
             while not self.stopping.is_set():
@@ -239,7 +255,7 @@ class ReviewState:
                             self.working = snapshot
                             self.pending = self.input_cache.load(self.root / "working")[2] != fingerprint
                             if self.accepted is None and not self.pending:
-                                replace_accepted(self.root, snapshot)
+                                replace_accepted(self.root, snapshot, input_cache=self.input_cache)
                                 self.accepted = read_snapshot(self.root / "accepted")
                             self.failed_fingerprint, self.error = None, None
                             self.announce()
@@ -409,6 +425,14 @@ class ReviewState:
             if revision != command.get('expected_revision'):
                 raise ValueError('Stale source cleanup preview; reload Working')
             return {'revision': revision, 'findings': preview(book, self.root / 'pdf-to-markdown')}
+
+    def list_unmatched_text(self, command):
+        from .unmatched_text import inventory
+        with self.lock:
+            book, _, revision = self.input_cache.load(self.root / 'working')
+            if revision != command.get('expected_revision'):
+                raise ValueError('Stale text inventory; reload Working')
+            return {'revision': revision, 'findings': inventory(book, self.root / 'pdf-to-markdown')}
 
     def apply_source_cleanup(self, command):
         from .source_cleanup import apply, preview
@@ -774,7 +798,7 @@ class ReviewState:
             status = self.status()
             if not status["can_accept"] or self.working["revision"] != command["revision"]:
                 raise ValueError("Acceptance requires the newest complete Working revision")
-            replace_accepted(self.root, self.working, publish_book=True)
+            replace_accepted(self.root, self.working, publish_book=True, input_cache=self.input_cache)
             self.accepted = read_snapshot(self.root / "accepted")
             self.announce()
 
@@ -784,7 +808,8 @@ class ReviewState:
             if (not status["can_discard"] or status["authored_revision"] != command["expected_revision"]
                     or self.accepted["revision"] != command["accepted_revision"]):
                 raise ValueError("Discard requires the current Working and Accepted revisions")
-            replace_bundle(self.root, self.accepted, "accepted", "working", command["expected_revision"])
+            replace_bundle(self.root, self.accepted, "accepted", "working", command["expected_revision"],
+                           input_cache=self.input_cache)
             self.working = read_snapshot(self.root / "working")
             self.pending, self.error, self.failed_fingerprint = False, None, None
             self.announce()
@@ -881,6 +906,8 @@ class Handler(BaseHTTPRequestHandler):
                 result.update(self.state.codex(command))
             elif self.path == "/api/source-cleanup/preview":
                 result.update(self.state.preview_source_cleanup(command))
+            elif self.path == "/api/unmatched-text":
+                result.update(self.state.list_unmatched_text(command))
             elif self.path == "/api/source-cleanup/apply":
                 self.state.apply_source_cleanup(command)
             elif self.path == "/api/source-cleanup/exception":

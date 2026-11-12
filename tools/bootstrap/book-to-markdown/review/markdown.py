@@ -7,6 +7,7 @@ import re
 from markdown_it import MarkdownIt
 from markdown_it.rules_block.table import escapedSplit
 from markdown_it.rules_inline import newline
+from markdown_it.rules_inline.backticks import backtick
 from markdown_it.token import Token
 from mdit_py_plugins.dollarmath import dollarmath_plugin
 
@@ -19,9 +20,81 @@ def source_newline(state, silent):
     return matched
 
 
+def source_backtick(state, silent):
+    position, count = state.pos, len(state.tokens)
+    matched = backtick(state, silent)
+    if matched and not silent and len(state.tokens) > count and state.tokens[-1].type == 'code_inline':
+        state.tokens[-1].meta['source_span'] = (position, state.pos)
+    return matched
+
+
 PARSER = MarkdownIt("commonmark", {"html": True}).enable("table").enable("strikethrough")
 PARSER.use(dollarmath_plugin, allow_labels=False)
 PARSER.inline.ruler.at("newline", source_newline)
+PARSER.inline.ruler.at('backticks', source_backtick)
+
+
+def _source_positions(text, expression, start, end, code=()):
+    """Map inline source through continuation prefixes and table pipe escapes."""
+    text = text.replace('\0', '\ufffd')
+    pattern = ''.join(r'(\r?\n)[ \t>]*' if char == '\n' else
+                      r'(\\?\|)' if char == '|' else '(' + re.escape(char) + ')'
+                      for char in expression)
+    match = next((match for match in re.finditer(pattern, text[start:end])
+                  if not any(left <= start + match.start() and start + match.end() <= right
+                             for left, right in code)), None)
+    if match is None:
+        raise ValueError('Cannot locate a parsed expression in the source text')
+    return [start + match.end(group) - 1 for group in range(1, len(expression) + 1)]
+
+
+def math_source_positions(text, tokens, code):
+    """Map parsed math through continuation prefixes and table pipe escapes."""
+    def expressions(entries):
+        for token in entries:
+            if token.type.startswith('math_'):
+                yield token.markup + token.content + token.markup
+            if token.children:
+                yield from expressions(token.children)
+
+    cursor = 0
+    for expression in expressions(tokens):
+        positions = _source_positions(text, expression, cursor, len(text), code)
+        cursor = positions[-1] + 1
+        yield expression, positions
+
+
+def code_source_spans(text, tokens):
+    """Map parser-recognized code without crossing inline container boundaries."""
+    offsets = [0]
+    for line in text.splitlines(keepends=True):
+        offsets.append(offsets[-1] + len(line))
+    code = [(offsets[token.map[0]], offsets[token.map[1]])
+            for token in tokens
+            if token.type in {'fence', 'code_block'} and token.map]
+    cursor = 0
+    for token in tokens:
+        if token.type != 'inline' or not token.content:
+            continue
+        positions = _source_positions(text, token.content,
+                                      max(cursor, offsets[token.map[0]]), offsets[token.map[1]])
+        spans = [child.meta['source_span'] for child in token.children or []
+                 if child.type == 'code_inline']
+        code.extend((positions[start], positions[end - 1] + 1) for start, end in spans)
+        cursor = positions[-1] + 1
+    return code
+
+
+def html_tag_spans(text):
+    """Locate HTML markup outside Markdown code and math, keeping offsets."""
+    tokens = PARSER.parse(text)
+    code = code_source_spans(text, tokens)
+    protected = code + [(positions[0], positions[-1] + 1)
+                        for _, positions in math_source_positions(text, tokens, code)]
+    pattern = r'<!--[\s\S]*?-->|</?([A-Za-z][A-Za-z0-9:_-]*)(?:\s+(?:[^<>\"\x27]|\"[^\"]*\"|\x27[^\x27]*\x27)*)?\s*/?>'
+    for match in re.finditer(pattern, text):
+        if not any(start <= match.start() < end for start, end in protected):
+            yield match.span()
 
 
 def callout_plugin(md):

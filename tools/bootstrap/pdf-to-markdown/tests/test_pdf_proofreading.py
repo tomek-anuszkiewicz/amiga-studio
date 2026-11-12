@@ -26,17 +26,18 @@ class ProofreadingTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             workspace = Path(directory)
             (workspace / "02_preprocess").mkdir()
-            (workspace / "07_repair_callouts").mkdir()
             pages = [
                 (1, "Earlier context", "page_0001_seg_001"),
                 (2, "HARDW ARE and AUDOVOL", "page_0002_seg_001"),
                 (3, "Later context", "page_0003_seg_001"),
             ]
-            for number, content, identifier in pages:
+            for (number, content, identifier), source_stage in zip(
+                    pages, ("03_page_conversion", "05_transform_page_tables", "07_repair_callouts")):
+                (workspace / source_stage).mkdir()
                 page_id = f"page_{number:04d}"
                 write_json(workspace / "02_preprocess" / f"{page_id}.json",
                            {"page": number, "page_id": page_id})
-                write_json(workspace / "07_repair_callouts" / f"{page_id}_segments.json",
+                write_json(workspace / source_stage / f"{page_id}_segments.json",
                            {"page": number, "source": {"unchanged": True},
                             "segments": [{"segment_id": identifier, "type": "prose", "role": None,
                                           "bbox": [1, 2, 3, 4], "md_text": content}]})
@@ -93,7 +94,7 @@ class ProofreadingTests(unittest.TestCase):
             output = workspace / "08_proofreading"
             self.assertEqual({path.name for path in output.iterdir()},
                              {"page_0002_segments.json"})
-            original = read_json(workspace / "07_repair_callouts/page_0002_segments.json")
+            original = read_json(workspace / "05_transform_page_tables/page_0002_segments.json")
             corrected = read_json(output / "page_0002_segments.json")
             self.assertEqual(corrected["source"], original["source"])
             self.assertEqual(corrected["segments"][0]["bbox"], original["segments"][0]["bbox"])
@@ -150,16 +151,17 @@ class ProofreadingTests(unittest.TestCase):
                     if image_path is not None:
                         raise AssertionError("Unexpected image request")
                     self.call_count += 1
-                    return {"changes": [], "unresolved": []}
+                    return {"changes": [{"segment_id": "page_0001_seg_001", "md_text": "Original"}],
+                            "unresolved": []}
 
             with redirect_stdout(io.StringIO()):
                 stage.proofread(workspace, {"llm": {"concurrency": 1}}, client_factory=Client)
             output = workspace / "08_proofreading"
-            self.assertTrue((output / "page_0001_segments.json").is_file())
+            self.assertFalse((output / "page_0001_segments.json").exists())
             self.assertFalse((output / "page_0001_proofreading.json").exists())
             self.assertFalse((output / "proofreading_summary.md").exists())
 
-    def test_unchanged_page_is_written(self):
+    def test_unchanged_page_after_image_review_is_not_written(self):
         with tempfile.TemporaryDirectory() as directory:
             workspace = Path(directory)
             (workspace / "02_preprocess").mkdir()
@@ -198,7 +200,7 @@ class ProofreadingTests(unittest.TestCase):
             self.assertIn("[proofreading] page_0001: image response received; calls=1, cache_hits=0", output.buffer.getvalue().decode("cp1252"))
             self.assertIn("[proofreading] page_0001: done", output.buffer.getvalue().decode("cp1252"))
             output.close()
-            self.assertEqual(read_json(workspace / "08_proofreading/page_0001_segments.json"), page)
+            self.assertFalse((workspace / "08_proofreading/page_0001_segments.json").exists())
             self.assertFalse((workspace / "08_proofreading/proofreading_summary.md").exists())
 
 

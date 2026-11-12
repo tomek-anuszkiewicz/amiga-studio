@@ -8,7 +8,7 @@ import re
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from common.pdf_artifacts import read_json, write_json
+from common.pdf_artifacts import write_json
 from common.pdf_config import load_config
 from common.pdf_page_conversion import read_conversion
 from common.pdf_selection import selected_pages
@@ -66,17 +66,15 @@ def repair_callouts(workspace, pages=None):
     output = workspace / STAGE
     output.mkdir(parents=True, exist_ok=True)
     fixed = saved = warning_count = 0
-    for entry, page in read_conversion(workspace, "04_filter_page_content", pages=pages):
-        replacement = workspace / "05_transform_page_tables" / f"{entry['page_id']}_segments.json"
-        if replacement.exists():
-            page = read_json(replacement)
+    for entry, page in read_conversion(workspace, "05_transform_page_tables", pages=pages):
         count, warnings = repair_page(page)
         fixed += count
         warning_count += len(warnings)
         for warning in warnings:
             print(f"[callout warning] {warning}", flush=True)
-        write_json(output / f"{entry['page_id']}_segments.json", page)
-        saved += 1
+        if count:
+            write_json(output / f"{entry['page_id']}_segments.json", page)
+            saved += 1
     print(f"[callouts] saved {saved} pages; fixed {fixed} pairs; warnings {warning_count}", flush=True)
 
 

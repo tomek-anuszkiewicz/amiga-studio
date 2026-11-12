@@ -4,6 +4,11 @@ let state = null, selected = null, hovered = null, leader = "working", changeInd
 let pointerX = 0, loading = false, requested = false, resizing = false;
 const collapsed = new Set(), suppressed = new Map();
 let nodes = {pdf: [], accepted: [], working: []};
+const snapshotIndexes = new WeakMap(), snapshotOrders = new WeakMap();
+const nodeIndexes = {}, geometry = {}, headingIndexes = {};
+const chapterViews={accepted:new Map(),working:new Map()}, resourcePaths=new WeakMap();
+const imageResources=new Map(), documentStyles=new Map();
+let highlightedSelection=null, highlightedHover=null;
 let lastLogical = null, publishing = false;
 
 
@@ -30,6 +35,7 @@ const markdownText = document.getElementById("markdown-text");
 const markdownSecond = document.getElementById("markdown-second");
 const codexDialog = document.getElementById("codex-dialog");
 const sourceCleanupDialog = document.getElementById("source-cleanup-dialog");
+const unmatchedTextDialog = document.getElementById("unmatched-text-dialog");
 let sourceCleanupReport=null;
 const renameChaptersDialog = document.getElementById("rename-chapters-dialog");
 let renameChaptersRevision=null, renameChaptersEntries=[], renameTocEntry=null;
@@ -340,12 +346,13 @@ document.getElementById("menu-merge").onclick=()=>{
   closeMenu(true);editMarkdown(element,false,next);
 };
 showHidden.onchange=()=>{
-  const logical=anchor(leader);closeMenu();hovered=null;highlight();
+  const logical=anchor(leader);closeMenu();hovered=null;updatePresentation();highlight();
   positionTypeLabels();
   if(logical)position(leader,logical);sync(leader);
 };
 showTypes.onchange=()=>{
   document.body.classList.toggle("show-types",showTypes.checked);
+  invalidateGeometry("pdf");
   if(showTypes.checked) positionTypeLabels();
 };
 showTypes.onchange();
@@ -400,11 +407,48 @@ pdfSplitter.addEventListener("keydown", event => {
 });
 
 function elementIndex(snapshot) {
+  if(!snapshot)return new Map();
+  if(snapshotIndexes.has(snapshot))return snapshotIndexes.get(snapshot);
   const result = new Map();
   for (const chapter of snapshot?.chapters || []) for (const element of chapter.elements) {
     result.set(element.id, {element, chapter});
   }
+  snapshotIndexes.set(snapshot,result);
   return result;
+}
+function elementOrder(snapshot) {
+  if(!snapshot)return [];
+  if(!snapshotOrders.has(snapshot))snapshotOrders.set(snapshot,[...elementIndex(snapshot).keys()]);
+  return snapshotOrders.get(snapshot);
+}
+function indexNodes(pane) {
+  const index=new Map();
+  for(const entry of nodes[pane]) {
+    if(!index.has(entry.id))index.set(entry.id,[]);
+    index.get(entry.id).push(entry);
+  }
+  nodeIndexes[pane]=index;
+  if(pane !== "pdf") {
+    const paths=new Map();
+    for(const chapter of state[pane]?.chapters || []) {
+      const path=[];
+      for(const element of chapter.elements) {
+        if(element.visible !== false && state.heading_types.includes(element.type)) {
+          const level=element.heading_level || 1;
+          while(path.length && path[path.length-1].level>=level)path.pop();
+          const title=index.get(element.id)?.[0].node.textContent.replace(/\s+/g," ").trim();
+          if(title)path.push({level,title});
+        }
+        paths.set(element.id,[...path]);
+      }
+    }
+    headingIndexes[pane]=paths;
+  }
+  invalidateGeometry(pane);
+}
+function invalidateGeometry(pane) {
+  if(pane)delete geometry[pane];
+  else for(const name of Object.keys(panes))delete geometry[name];
 }
 function boxStyle(node, bbox, width, height) {
   const [x0,y0,x1,y1] = bbox;
@@ -560,7 +604,7 @@ async function loadSourceFindings() {
   if(!showSourceDifferences.checked || state?.authored_revision!==revision)return;
   for(const item of report.findings) {
     if(item.token?.startsWith("{{accepted text="))continue;
-    const node=nodes.working.find(entry=>entry.id===item.element_id)?.node;
+    const node=nodeIndexes.working?.get(item.element_id)?.[0].node;
     if(node)wrapDifference(node,differenceOffset(node,item),item.literal,"pending",
                            `Direct book text pending source cleanup: ${item.literal}`);
   }
@@ -576,7 +620,7 @@ async function buildMarkdown(version, snapshot) {
   const stage = document.createElement("div"); stage.className = "render-stage";
   stage.style.width = `${panes[version].clientWidth}px`;
   document.body.append(stage);
-  const ready = [], styles = [];
+  const ready = [], styles = [], views = [], retained = [];
   const waitFor = promise => {
     // A later chapter fetch may still be pending when an earlier asset fails.
     promise.catch(()=>{}); ready.push(promise);
@@ -584,11 +628,20 @@ async function buildMarkdown(version, snapshot) {
   try {
   for (const layout of snapshot?.render?.chapters || []) {
     if (!layout.document) throw new Error("Preparing the HTML presentation; waiting for a completed revision");
+    const url=new URL(`/files/${version}/${layout.document}`,location.href).href;
+    const previous=chapterViews[version].get(layout.id);
+    if(layout.key && previous?.key === layout.key) {
+      const view={...previous,url,entries:previous.entries.map(entry=>({...entry,element:index.get(entry.id)?.element}))};
+      views.push(view);entries.push(...view.entries);styles.push(...view.styles);
+      continue;
+    }
     const response = await fetch(`/files/${version}/${layout.document}`);
     if (!response.ok) throw new Error(`Cannot load ${version} chapter ${layout.id}`);
     const markup = await response.text();
     const chapter = snapshot.chapters.find(c => c.id === layout.id);
     const section = document.createElement("div"); section.dataset.chapter = layout.id;
+    const view={section,url:response.url,key:layout.key,entries:[],styles:[]};
+    views.push(view);
     const content = document.createElement("div"); content.className = "chapter-content";
     if(version === "working")content.classList.toggle("show-source-differences",showSourceDifferences.checked);
     if (chapter) {
@@ -610,23 +663,42 @@ async function buildMarkdown(version, snapshot) {
         .source-diff-focus { background: #ffb45d !important; outline: 2px solid #c85a00; }`;
       shadow.append(style);
     }
-    for (const url of [new URL("document.css", response.url).href, "/katex/katex.min.css"]) {
-      const link = document.createElement("link"); link.rel = "stylesheet"; link.href = url;
-      waitFor(new Promise((resolve,reject) => {
-        link.onload = resolve; link.onerror = () => reject(new Error(`Cannot load document styles: ${url}`));
-      }));
-      styles.push(link);shadow.append(link);
+    const styleUrl=new URL("document.css",response.url).href;
+    view.styleKey=snapshot.settings?.style || styleUrl;
+    if(!documentStyles.has(view.styleKey)) {
+      const style=fetch(styleUrl).then(response=>{
+        if(!response.ok)throw new Error(`Cannot load document styles: ${styleUrl}`);
+        return response.text();
+      });
+      documentStyles.set(view.styleKey,style);
+      style.catch(()=>documentStyles.delete(view.styleKey));
     }
+    const style=document.createElement("style");style.textContent=await documentStyles.get(view.styleKey);
+    shadow.append(style);
+    const link=document.createElement("link");link.rel="stylesheet";link.href="/katex/katex.min.css";
+    waitFor(new Promise((resolve,reject)=>{
+      link.onload=resolve;link.onerror=()=>reject(new Error(`Cannot load document styles: ${link.href}`));
+    }));
+    styles.push(link);view.styles.push(link);shadow.append(link);
     const documentRoot = document.createElement("div"); documentRoot.className = "document";
-    documentRoot.innerHTML = markup;
-    for (const image of documentRoot.querySelectorAll("img")) {
-      image.src = new URL(image.getAttribute("src"),response.url).href;
-      waitFor(image.decode());
+    // Keep relative image URLs inert until they have a revision URL or cached blob.
+    const template=document.createElement("template");template.innerHTML=markup;
+    const originalMarkup=new Map([...template.content.querySelectorAll("[data-element]")].map(node=>[node,node.innerHTML]));
+    for(const image of template.content.querySelectorAll("img")) {
+      resourcePaths.set(image,{src:image.getAttribute("src")});
+      image.removeAttribute("src");
     }
+    documentRoot.append(template.content);
+    for(const image of documentRoot.querySelectorAll("img"))
+      waitFor(loadImage(image,resourcePaths.get(image).src,response.url,snapshot));
     for (const node of documentRoot.querySelectorAll("[data-element]")) {
       const id = node.dataset.element;
       if (index.has(id) || id === "generated-toc") {
-        bindElement(node,id,version); entries.push({id,node,source:null,element:index.get(id)?.element});
+        const entry={id,node,source:null,element:index.get(id)?.element,markup:originalMarkup.get(node)};
+        bindElement(node,id,version); entries.push(entry);view.entries.push(entry);
+        const old=nodeIndexes[version]?.get(id)?.[0];
+        if(old?.markup === entry.markup && JSON.stringify(old.element?.source_differences) ===
+            JSON.stringify(entry.element?.source_differences))retained.push({entry,old});
         if(version === "working")annotateSourceDifferences(node,index.get(id)?.element);
       }
     }
@@ -638,15 +710,17 @@ async function buildMarkdown(version, snapshot) {
       } else if (href.startsWith("#")) {
         link.addEventListener("click",event => {
           event.preventDefault();
-          const targetNode = shadow.getElementById(href.slice(1));
+          const targetNode = link.getRootNode().getElementById(href.slice(1));
           targetNode?.scrollIntoView({block:"center"});
         });
       } else {
+        resourcePaths.set(link,{href});
         link.href = new URL(href,response.url).href; link.target = "_blank"; link.rel = "noopener";
       }
     }
     documentRoot.addEventListener("toggle",()=>{
       if(!panes[version].contains(content))return;
+      invalidateGeometry(version);
       leader=version;sync(version);
     },true);
     shadow.append(documentRoot);
@@ -654,12 +728,67 @@ async function buildMarkdown(version, snapshot) {
   }
   await Promise.all(ready);
   await document.fonts.ready;
-  return {stage,entries,styles};
+  return {stage,entries,styles,views,retained};
   } catch(error) {stage.remove();throw error;}
+}
+async function loadImage(image,path,url,snapshot) {
+  const hash=snapshot.asset_hashes?.[path];
+  let source=new URL(path,url).href;
+  if(hash) {
+    if(!imageResources.has(hash)) {
+      const resource=fetch(source).then(response=>{
+        if(!response.ok)throw new Error(`Cannot load document image: ${source}`);
+        return response.blob();
+      }).then(blob=>URL.createObjectURL(blob));
+      imageResources.set(hash,resource);
+      resource.catch(()=>imageResources.delete(hash));
+    }
+    source=await imageResources.get(hash);
+  }
+  if(image.src!==source)image.src=source;
+  await image.decode();
+}
+function releaseResources() {
+  // Accepted may still display an image that Working has replaced.
+  const hashes=new Set([state?.accepted,state?.working].flatMap(snapshot=>Object.values(snapshot?.asset_hashes || {})));
+  for(const [hash,resource] of imageResources)if(!hashes.has(hash)) {
+    imageResources.delete(hash);resource.then(url=>URL.revokeObjectURL(url),()=>{});
+  }
+  const styles=new Set(Object.values(chapterViews).flatMap(views=>[...views.values()].map(view=>view.styleKey)));
+  for(const key of documentStyles.keys())if(!styles.has(key))documentStyles.delete(key);
+}
+function publishMarkdown(item) {
+  const ready=[];
+  for(const {entry,old} of item.retained) {
+    const previous=[...old.node.querySelectorAll("img,a")], fresh=[...entry.node.querySelectorAll("img,a")];
+    fresh.forEach((node,i)=>{if(resourcePaths.has(node))resourcePaths.set(previous[i],resourcePaths.get(node));});
+    entry.node.replaceWith(old.node);entry.node=old.node;
+  }
+  const pane=panes[item.version];
+  let next=pane.firstElementChild;
+  for(const view of item.views) {
+    if(view.section !== next)pane.insertBefore(view.section,next);
+    next=view.section.nextElementSibling;
+    for(const node of [...view.styles,...view.section.querySelector(".chapter-content").shadowRoot.querySelectorAll("img,a")]) {
+      for(const [attribute,path] of Object.entries(resourcePaths.get(node) || {})) {
+        if(attribute === "src") {ready.push(loadImage(node,path,view.url,state[item.version]));continue;}
+        const url=new URL(path,view.url).href;
+        if(node.getAttribute(attribute)!==url)node.setAttribute(attribute,url);
+      }
+    }
+    const chapter=state[item.version]?.chapters.find(chapter=>chapter.id === view.section.dataset.chapter);
+    const toggle=view.section.querySelector(".chapter-toggle");
+    if(toggle && chapter)toggle.textContent=`${collapsed.has(chapter.id) ? "\u25b8" : "\u25be"} ${chapterTitle(chapter)}`;
+  }
+  while(next) {const old=next;next=next.nextElementSibling;old.remove();}
+  chapterViews[item.version]=new Map(item.views.map(view=>[view.section.dataset.chapter,view]));
+  nodes[item.version]=item.entries;
+  indexNodes(item.version);
+  return Promise.all(ready);
 }
 function buildPdf() {
   const fragment = document.createDocumentFragment();
-  const mappings = [];
+  const mappings = new Map();
   const visibleWorkingPages = new Set();
   for (const {element} of elementIndex(state.working).values()) {
     for (const region of element.pdf_regions) {
@@ -667,9 +796,11 @@ function buildPdf() {
     }
   }
   for (const version of ["working","accepted"]) for (const {element} of elementIndex(state[version]).values()) {
-    element.pdf_regions.forEach((region,i) => mappings.push({element,region,i,version}));
+    element.pdf_regions.forEach((region,i) => {
+      if(!mappings.has(region.page))mappings.set(region.page,[]);
+      mappings.get(region.page).push({element,region,i,version});
+    });
   }
-  mappings.sort((a,b) => Number(a.version !== "working")-Number(b.version !== "working"));
   for (const page of state.pdf_pages) {
     const holder = imageHolder(`/files/${page.image}`,page.width,page.height,"page");
     holder.dataset.page = page.page;
@@ -690,7 +821,7 @@ function buildPdf() {
     holder.dataset.allHidden = String(!visibleWorkingPages.has(page.page));
     holder.hidden=holder.dataset.allHidden === "true" && !showHidden.checked;
     const seen = new Set();
-    for (const item of mappings.filter(m => m.region.page === page.page)) {
+    for (const item of mappings.get(page.page) || []) {
       const key = `${item.element.id}:${JSON.stringify(item.region.bbox)}`;
       if (seen.has(key)) continue; seen.add(key);
       overlay(holder,item.element.id,item.region.bbox,page.width,page.height,"pdf",item);
@@ -698,17 +829,21 @@ function buildPdf() {
     fragment.append(holder);
   }
   panes.pdf.replaceChildren(fragment);
+  indexNodes("pdf");
   positionTypeLabels();
 }
 function applyCollapse(id) {
+  let changed=false;
   for (const version of ["accepted","working"]) {
     for (const section of panes[version].querySelectorAll("[data-chapter]")) {
       if (section.dataset.chapter !== id || id === "toc") continue;
-      section.querySelector(".chapter-content").hidden = collapsed.has(id);
+      const content=section.querySelector(".chapter-content"), hidden=collapsed.has(id);
+      if(content.hidden!==hidden) {content.hidden=hidden;changed=true;}
       const chapter = state[version]?.chapters.find(c => c.id === id);
       section.querySelector("button").textContent = `${collapsed.has(id) ? "▸" : "▾"} ${chapterTitle(chapter)}`;
     }
   }
+  if(changed)invalidateGeometry();
 }
 function expand(id) {
   for (const version of ["working","accepted"]) {
@@ -717,9 +852,10 @@ function expand(id) {
   }
 }
 function visibleNodes(pane, id = null) {
-  return nodes[pane].filter(entry => (!id || entry.id === id) && entry.node.getClientRects().length && getComputedStyle(entry.node).visibility !== "hidden");
+  return (id ? nodeIndexes[pane]?.get(id) || [] : nodes[pane]).filter(entry =>
+    entry.node.getClientRects().length && getComputedStyle(entry.node).visibility !== "hidden");
 }
-function highlight() {
+function updatePresentation() {
   const changed = new Set((state?.changes || []).map(c => c.id));
   const changedChapters = new Set((state?.changes || []).flatMap(c=>c.chapter_ids || []));
   for(const version of ["accepted","working"]) {
@@ -733,32 +869,76 @@ function highlight() {
     entry.node.classList.toggle("hidden-element",hidden);
     if(entry.source) entry.node.style.visibility=hidden && !showHidden.checked ? "hidden" : "visible";
     else entry.node.hidden=hidden && !showHidden.checked;
+    entry.node.classList.toggle("changed",changed.has(entry.id));
     entry.node.classList.toggle("selected",entry.id === selected);
     entry.node.classList.toggle("hover",entry.id === hovered);
-    entry.node.classList.toggle("changed",changed.has(entry.id));
   }
   for (const page of panes.pdf.querySelectorAll(".page")) {
     page.hidden=page.dataset.allHidden === "true" && !showHidden.checked;
   }
-  updateChangeNavigation();
+  highlightedSelection=selected;highlightedHover=hovered;
+  invalidateGeometry();
+}
+function highlight() {
+  const selectionChanged=highlightedSelection!==selected;
+  for(const [name,previous,current] of [["selected",highlightedSelection,selected],["hover",highlightedHover,hovered]]) {
+    if(previous === current)continue;
+    for(const index of Object.values(nodeIndexes)) {
+      for(const entry of index.get(previous) || [])entry.node.classList.remove(name);
+      for(const entry of index.get(current) || [])entry.node.classList.add(name);
+    }
+  }
+  highlightedSelection=selected;highlightedHover=hovered;
+  if(selectionChanged)updateChangeNavigation();
+}
+function paneGeometry(pane) {
+  if(geometry[pane])return geometry[pane];
+  const container=panes[pane], viewport=container.getBoundingClientRect();
+  const entries=visibleNodes(pane).map((entry,order)=>{
+    const rect=entry.node.getBoundingClientRect();
+    return {entry,order,top:rect.top-viewport.top+container.scrollTop,
+      bottom:rect.bottom-viewport.top+container.scrollTop,
+      left:rect.left-viewport.left+container.scrollLeft,right:rect.right-viewport.left+container.scrollLeft};
+  }).sort((a,b)=>a.top-b.top || a.order-b.order);
+  // Prefix bounds keep the nearest search valid for overlapping PDF regions.
+  let bottom=-Infinity;
+  for(const item of entries) {bottom=Math.max(bottom,item.bottom);item.maxBottom=bottom;}
+  geometry[pane]=entries;
+  return entries;
+}
+function nearestGeometry(entries,line,predicate=()=>true) {
+  let low=0,high=entries.length;
+  while(low<high) {
+    const middle=(low+high)>>>1;
+    if(entries[middle].top<=line)low=middle+1;else high=middle;
+  }
+  let best=null,distance=Infinity;
+  const consider=item=>{
+    if(!predicate(item))return;
+    const next=Math.max(item.top-line,line-item.bottom,0);
+    const priority=Number(item.entry.source?.version !== "working");
+    const previous=Number(best?.entry.source?.version !== "working");
+    if(next<distance || next===distance && (priority<previous || priority===previous && item.order<best.order)) {
+      best=item;distance=next;
+    }
+  };
+  for(let i=low-1;i>=0 && entries[i].maxBottom>=line-distance;i--)consider(entries[i]);
+  for(let i=low;i<entries.length && entries[i].top<=line+distance;i++)consider(entries[i]);
+  return best;
 }
 function anchor(pane) {
-  const viewport = panes[pane].getBoundingClientRect(), line = viewport.top + .25*panes[pane].clientHeight;
-  let candidates = visibleNodes(pane);
-  if (pane === "pdf") {
-    candidates = candidates.filter(e => showHidden.checked || e.source.element.visible !== false);
-    const horizontal = candidates.filter(e => {const r=e.node.getBoundingClientRect();return pointerX >= r.left && pointerX <= r.right;});
-    if (horizontal.length) candidates = horizontal;
+  const container=panes[pane], line=container.scrollTop+.25*container.clientHeight;
+  const entries=paneGeometry(pane);
+  let match=null;
+  if(pane === "pdf") {
+    const x=pointerX-container.getBoundingClientRect().left+container.scrollLeft;
+    match=nearestGeometry(entries,line,item=>x>=item.left && x<=item.right);
   }
-  const distance = entry => {
-    const r=entry.node.getBoundingClientRect(); return line < r.top ? r.top-line : line > r.bottom ? line-r.bottom : 0;
-  };
-  candidates.sort((a,b) => distance(a)-distance(b) || Number(a.source?.version !== "working")-Number(b.source?.version !== "working"));
-  const entry = candidates[0];
-  if (!entry) return null;
-  const rect = entry.node.getBoundingClientRect();
-  const local = Math.max(0,Math.min(1,(line-rect.top)/Math.max(1,rect.height)));
-  const order=[...elementIndex(state[pane] || state.working).keys()];
+  match ||= nearestGeometry(entries,line);
+  if(!match)return null;
+  const entry=match.entry;
+  const local=Math.max(0,Math.min(1,(line-match.top)/Math.max(1,match.bottom-match.top)));
+  const order=elementOrder(state[pane] || state.working);
   if (pane !== "pdf") return {id: entry.id, progress: local, order};
   const regions = entry.source.element.pdf_regions;
   const heights = regions.map(r => Math.max(0,r.bbox[3]-r.bbox[1]));
@@ -767,19 +947,7 @@ function anchor(pane) {
 }
 function headingPath(version, id, depth) {
   if(id === "generated-toc")return "Table of contents";
-  const chapter=elementIndex(state[version]).get(id)?.chapter;
-  if(!chapter)return "";
-  const entries=new Map(nodes[version].map(entry=>[entry.id,entry.node]));
-  const path=[];
-  for(const element of chapter.elements) {
-    if(element.visible !== false && state.heading_types.includes(element.type)) {
-      const level=element.heading_level || 1;
-      while(path.length && path[path.length-1].level>=level)path.pop();
-      const title=entries.get(element.id)?.textContent.replace(/\s+/g," ").trim();
-      if(title)path.push({level,title});
-    }
-    if(element.id === id)break;
-  }
+  const path=headingIndexes[version]?.get(id) || [];
   return path.filter(heading=>heading.level<=depth).map(heading=>heading.title).join(" › ");
 }
 let locationFrame=null;
@@ -789,20 +957,27 @@ function scheduleLocations() {
     locationFrame=null;
     if(!state)return;
     const viewport=panes.pdf.getBoundingClientRect(), line=viewport.top+.25*panes.pdf.clientHeight;
-    const pages=[...panes.pdf.querySelectorAll(".page")].filter(page=>!page.hidden);
-    const distance=page=>{
-      const rect=page.getBoundingClientRect();return Math.max(rect.top-line,line-rect.bottom,0);
-    };
-    pages.sort((a,b)=>distance(a)-distance(b));
-    document.getElementById("pdf-location").textContent=pages.length ? `Page ${pages[0].dataset.page}` : "";
-    if(pdfPageRestored && pages.length) {
-      try { localStorage.setItem(pdfPageKey,pages[0].dataset.page); }
+    const pages=[...panes.pdf.children].filter(page=>!page.hidden);
+    // PDF pages are ordered and do not overlap; only adjacent pages can be nearest.
+    let low=0,high=pages.length;
+    while(low<high) {
+      const middle=(low+high)>>>1;
+      if(pages[middle].getBoundingClientRect().bottom<line)low=middle+1;else high=middle;
+    }
+    const candidates=pages.slice(Math.max(0,low-1),low+1);
+    const distance=page=>{const rect=page.getBoundingClientRect();return Math.max(rect.top-line,line-rect.bottom,0);};
+    const page=candidates.reduce((best,item)=>!best || distance(item)<distance(best) ? item : best,null);
+    const pdfLocation=document.getElementById("pdf-location"), pdfLabel=page ? `Page ${page.dataset.page}` : "";
+    if(pdfLocation.textContent!==pdfLabel)pdfLocation.textContent=pdfLabel;
+    if(pdfPageRestored && page) {
+      try { localStorage.setItem(pdfPageKey,page.dataset.page); }
       catch (_) { /* Keep navigation usable when browser storage is unavailable. */ }
     }
     const depth=Number(document.getElementById("toc-depth").value);
     for(const version of ["accepted","working"]) {
       const logical=anchor(version);
-      document.getElementById(`${version}-location`).textContent=logical ? headingPath(version,logical.id,depth) : "";
+      const location=document.getElementById(`${version}-location`), label=logical ? headingPath(version,logical.id,depth) : "";
+      if(location.textContent!==label)location.textContent=label;
     }
   });
 }
@@ -825,7 +1000,7 @@ function position(pane, logical, fallback = true) {
   let counterparts = visibleNodes(pane,logical.id), progress = logical.progress;
   if (!counterparts.length && fallback) {
     const snapshot = state[leader] || state.working;
-    const order = logical.order || [...elementIndex(snapshot).keys()], index=order.indexOf(logical.id);
+    const order = logical.order || elementOrder(snapshot), index=order.indexOf(logical.id);
     for(const candidate of [...order.slice(index+1),...order.slice(0,index).reverse()]) {
       // Prefer the following content when the reading anchor was hidden.
       if(candidate && elementIndex(state.working).has(candidate) && elementIndex(state.accepted).has(candidate)) {
@@ -863,7 +1038,7 @@ function navigate(id, preferred="working") {
   expand(id); selected=id; highlight();
   leader=visibleNodes(preferred,id).length ? preferred : visibleNodes("accepted",id).length ? "accepted" : "pdf";
   const snapshot=elementIndex(state.working).has(id) ? state.working : state.accepted;
-  const logical={id,progress:0,order:[...elementIndex(snapshot).keys()]};
+  const logical={id,progress:0,order:elementOrder(snapshot)};
   for(const pane of Object.keys(panes)) position(pane,logical);
   lastLogical=logical;
   scheduleLocations();
@@ -936,11 +1111,12 @@ async function refresh() {
       const response=await fetch("/api/status"); if(!response.ok) throw new Error("Cannot load review state");
       const next=await response.json();
       const versions=["accepted","working"].filter(version=>!state || next[version]?.revision!==state[version]?.revision);
+      if(state)for(const version of ["accepted","working"])if(!versions.includes(version))next[version]=state[version];
       const changed=versions.length>0;
       const pdfView=value=>[value.pdf_pages,...["working","accepted"].map(version=>
         [...elementIndex(value[version]).values()].map(({element:e})=>
           [e.id,e.visible!==false,e.pdf_regions,e.type,e.heading_level,e.role]))];
-      const pdfChanged=!state || JSON.stringify(pdfView(state))!==JSON.stringify(pdfView(next));
+      const pdfChanged=changed && (!state || JSON.stringify(pdfView(state))!==JSON.stringify(pdfView(next)));
       let prepared = [], logical = null;
       if(changed) {
         logical=state ? anchor(leader) : null;
@@ -952,10 +1128,7 @@ async function refresh() {
           for(const version of versions)prepared.push({version,...await buildMarkdown(version,next[version])});
           publishing=true;
           state=next;
-          for(const item of prepared) {
-            nodes[item.version]=item.entries;
-            panes[item.version].replaceChildren(...item.stage.children);
-          }
+          const resources=Promise.all(prepared.map(publishMarkdown));resources.catch(()=>{});
           for(const id of collapsed)applyCollapse(id);
           // Moving Shadow DOM between containers reloads linked stylesheets.
           // Restore geometry only after the mounted documents have their styles.
@@ -965,6 +1138,7 @@ async function refresh() {
               link.addEventListener("error",()=>reject(new Error(`Cannot load document styles: ${link.href}`)),{once:true});
             })));
           await document.fonts.ready;
+          await resources;
           if(pdfChanged){nodes.pdf=[];buildPdf();}
           else {
             const indexes={working:elementIndex(state.working),accepted:elementIndex(state.accepted)};
@@ -972,8 +1146,11 @@ async function refresh() {
               entry.source.element=indexes[entry.source.version].get(entry.id).element;
             }
           }
-          highlight();
+          updatePresentation();highlight();
           if(versions.includes("working"))sourceFindingsRevision=null;
+          if(versions.includes("working"))for(const entry of nodes.working) {
+            for(const marker of entry.node.querySelectorAll(".source-diff-pending"))marker.replaceWith(...marker.childNodes);
+          }
           if(showSourceDifferences.checked)loadSourceFindings().catch(error=>showError(error.message));
           if(!pdfPageRestored)restorePdfPage();
         } finally {publishing=false;for(const item of prepared) item.stage.remove();}
@@ -989,6 +1166,7 @@ async function refresh() {
       bookActionsButton.disabled=!state.authored_revision;
       if(bookActionsButton.disabled)closeBookMenu();
       updateCodexStatus();
+      updateChangeNavigation();
       document.getElementById("toc-depth").value=state.working?.toc.depth ?? 2;
       const status=document.getElementById("status");status.classList.toggle("error",Boolean(state.error));
       status.textContent=state.error || (state.pending ? "Rendering pending…" : `${state.changes.length} ${state.changes.length===1 ? "change" : "changes"}`);
@@ -1006,7 +1184,7 @@ async function refresh() {
         } finally {publishing=false;}
       }
     }
-  } catch(error) {showError(error.message);} finally {loading=false;scheduleLocations();}
+  } catch(error) {showError(error.message);} finally {releaseResources();loading=false;scheduleLocations();}
 }
 for(const [name,pane] of Object.entries(panes)) {
   pane.addEventListener("pointermove",event=>{pointerX=event.clientX;});
@@ -1030,8 +1208,10 @@ document.getElementById("chapter").addEventListener("change",event=>{
 function updateChangeNavigation() {
   const changes=state?.changes || [];
   changeIndex=changes.findIndex(change=>change.id===selected);
-  document.getElementById("previous").disabled=!changes.length || changeIndex<=0;
-  document.getElementById("next").disabled=!changes.length || changeIndex===changes.length-1;
+  const previous=document.getElementById("previous"), next=document.getElementById("next");
+  const disablePrevious=!changes.length || changeIndex<=0, disableNext=!changes.length || changeIndex===changes.length-1;
+  if(previous.disabled!==disablePrevious)previous.disabled=disablePrevious;
+  if(next.disabled!==disableNext)next.disabled=disableNext;
 }
 function nextChange(delta) {
   if(!state?.changes.length)return;
@@ -1253,6 +1433,7 @@ for(const [id,task] of [["menu-describe-image","describe_images"],["menu-describ
 function openBookAction(task=null) {
   closeBookMenu(true);
   if(task === "source_cleanup") {openSourceCleanup();return;}
+  if(task === "unmatched_text") {openUnmatchedText();return;}
   if(task === "rename_chapters") {openRenameChapters();return;}
   openCodex("working",selected && elementIndex(state.working).has(selected) ? selected : null);
   if(task){
@@ -1260,6 +1441,51 @@ function openBookAction(task=null) {
     preset.value=task;preset.dispatchEvent(new Event("change"));
   }
 }
+async function openUnmatchedText() {
+  const summary=document.getElementById("unmatched-text-summary");
+  const output=document.getElementById("unmatched-text-report");
+  const error=document.getElementById("unmatched-text-error");
+  output.replaceChildren();error.hidden=true;
+  summary.textContent="Reading book text...";
+  unmatchedTextDialog.showModal();
+  try {
+    const report=await post("/api/unmatched-text",{expected_revision:state.authored_revision});
+    const accepted=report.findings.filter(item=>item.status === "accepted").length;
+    const listed=report.findings.filter(item=>(item.literal.match(/\p{L}/gu)?.length ?? 0) >= 3);
+    summary.textContent=`${report.findings.length} fragments: ${accepted} accepted; `+
+      `${report.findings.length-accepted} pending. ${listed.length} with at least 3 letters (shown).`;
+    for(const item of listed) {
+      const row=document.createElement("section");row.className="unmatched-text-row";
+      const status=item.status === "accepted" ? "Accepted" : "Pending";
+      const pages=item.pages.length ? `PDF page ${item.pages.join(", ")}` : "No PDF page";
+      const owner=item.element_id || `${item.chapter_id} title`;
+      const heading=document.createElement("strong");
+      heading.textContent=`${status} | ${pages} | ${owner}${item.visible ? "" : " | Hidden"}`;
+      const text=document.createElement("pre");text.textContent=item.literal;
+      const context=document.createElement("small");context.textContent=`Context: ${item.context}`;
+      row.append(heading,text,context);
+      const targetId=item.element_id || state.working.chapters.find(chapter=>chapter.id===item.chapter_id)?.elements[0]?.id;
+      if(targetId) {
+        const link=document.createElement("a");link.href="#";link.textContent="Go to Book";
+        link.onclick=event=>{
+          event.preventDefault();unmatchedTextDialog.close();
+          if(item.visible === false && !showHidden.checked){showHidden.checked=true;showHidden.onchange();}
+          navigate(targetId);
+          const target=nodes.working.find(entry=>entry.id===targetId)?.node;
+          if(target) {
+            const marker=wrapDifference(target,differenceOffset(target,item),item.literal,"focus",item.literal);
+            (marker || target).scrollIntoView({block:"center"});
+          }
+        };
+        row.append(link);
+      }
+      output.append(row);
+    }
+    if(!listed.length)output.textContent="No unmatched fragments with at least 3 letters.";
+  } catch(failure) {summary.textContent="Inventory failed.";error.textContent=failure.message;error.hidden=false;}
+}
+document.getElementById("unmatched-text-close").onclick=()=>unmatchedTextDialog.close();
+
 function openRenameChapters() {
   const list=document.getElementById("rename-chapters-list");
   const error=document.getElementById("rename-chapters-error");
@@ -1536,7 +1762,9 @@ document.getElementById("run-codex").onclick=async()=>{
     progress.hidden=true;error.textContent=failure.message;error.hidden=false;
   } finally {codexRunning=false;cancel.disabled=false;if(codexScope === "element") {button.disabled=false;field.disabled=false;} else updateCodexStatus();}
 };
-const events=new EventSource("/api/events");events.onmessage=refresh;events.onopen=refresh;
+const events=new EventSource("/api/events");
+events.onmessage=event=>{if(event.data!==String(state?.sequence))refresh();};
+events.onopen=refresh;
 events.onerror=()=>showError("Connection interrupted; reconnecting…");
 const sizes=new Map();
 const resizeObserver=new ResizeObserver(entries=>{
@@ -1545,6 +1773,7 @@ const resizeObserver=new ResizeObserver(entries=>{
     const size=`${entry.contentRect.width}:${entry.contentRect.height}`;
     if(sizes.get(entry.target)!==size) {sizes.set(entry.target,size);changed=true;}
   }
+  if(changed)invalidateGeometry();
   if(!state || !changed || resizing || publishing)return;
   resizing=true;
   requestAnimationFrame(()=>{

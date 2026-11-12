@@ -4,16 +4,18 @@ import json
 import math
 import os
 from pathlib import Path
+import sys
 import time
 
 from .cache import ResponseCache, identity
 from .config import selection
-from .transport import CodexTransport
+from .transport import CodexRetryableError, CodexTransport
 from .metrics import record
 from .trace import trace
 
 
 _REQUEST_TIMEOUT_SECONDS = 180
+_RETRY_BACKOFF_SECONDS = 60
 
 
 class CodexClient:
@@ -55,30 +57,49 @@ class CodexClient:
             self.cached_call_count += 1
             cached = True
         else:
-            self.call_count += 1
             if self._previous_request_finished is not None:
                 remaining = self.post_request_delay_seconds - (
                     time.monotonic() - self._previous_request_finished)
                 if remaining > 0:
                     trace("request.wait", stage=self.selected.stage, seconds=f"{remaining:.1f}")
-                    time.sleep(remaining)
-            started = time.monotonic()
-            try:
-                options = {"images": images, "timeout": self.timeout}
-                if self.cancelled is not None:
-                    options["cancelled"] = self.cancelled
-                result = self.transport.run(self.selected, prompt, **options)
-                self._previous_request_finished = time.monotonic()
-                checked(result)
+                    if self.cancelled is None:
+                        time.sleep(remaining)
+                    elif self.cancelled.wait(remaining):
+                        raise RuntimeError("Codex task was stopped")
+            delay = _RETRY_BACKOFF_SECONDS
+            while True:
                 if self.cancelled is not None and self.cancelled.is_set():
                     raise RuntimeError("Codex task was stopped")
-            except Exception as error:
-                trace("request.failed", stage=self.selected.stage, error=type(error).__name__)
-                self._record({"stage": self.selected.stage, "model": self.selected.model,
-                                     "reasoning_effort": self.selected.reasoning_effort, "cached": False,
-                                     "status": "failed", "error_type": type(error).__name__,
-                                     "duration_seconds": time.monotonic() - started})
-                raise
+                self.call_count += 1
+                started = time.monotonic()
+                try:
+                    options = {"images": images, "timeout": self.timeout}
+                    if self.cancelled is not None:
+                        options["cancelled"] = self.cancelled
+                    result = self.transport.run(self.selected, prompt, **options)
+                    self._previous_request_finished = time.monotonic()
+                    checked(result)
+                    if self.cancelled is not None and self.cancelled.is_set():
+                        raise RuntimeError("Codex task was stopped")
+                except Exception as error:
+                    trace("request.failed", stage=self.selected.stage, error=type(error).__name__)
+                    self._record({"stage": self.selected.stage, "model": self.selected.model,
+                                         "reasoning_effort": self.selected.reasoning_effort, "cached": False,
+                                         "status": "failed", "error_type": type(error).__name__,
+                                         "duration_seconds": time.monotonic() - started})
+                    if not isinstance(error, CodexRetryableError):
+                        raise
+                    self.transport.close()
+                    print(f"[conversion] stage={self.selected.stage} {error}; "
+                          f"retrying the same request in {delay} seconds", file=sys.stderr, flush=True)
+                    if self.cancelled is None:
+                        time.sleep(delay)
+                    elif self.cancelled.wait(delay):
+                        raise RuntimeError("Codex task was stopped")
+                    self.transport = type(self.transport)()
+                    delay *= 2
+                    continue
+                break
             self.cache.save(request, result)
             cached = False
             trace("request.completed", stage=self.selected.stage,
