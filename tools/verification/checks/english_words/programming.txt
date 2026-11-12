@@ -22,6 +22,7 @@ bool
 booleans
 busfn
 byref
+bytearray
 bytecode
 casefold
 cfg
@@ -319,6 +320,7 @@ uncheck
 unescape
 unicodedata
 unittest
+unroute
 unshift
 urlparse
 urlsplit

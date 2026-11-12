@@ -5,6 +5,7 @@ import json
 import re
 
 from .model import HEADING_TYPES, read_json, toc_label
+from .markdown import html_tag_spans
 from .source_alignment import align_template_literals
 from .source_validation import validate_book
 from .text_recipe import (ACCEPTED, REFERENCE, accepted_literal,
@@ -12,7 +13,6 @@ from .text_recipe import (ACCEPTED, REFERENCE, accepted_literal,
 
 
 WORDS = re.compile(r'(?u)[^\W_]+(?:[ \t]+[^\W_]+)*[.,:;!?]*')
-TAG = re.compile(r'<[^>]*>')
 
 
 def _literal_spans(template):
@@ -23,8 +23,8 @@ def _literal_spans(template):
     accepted = list(ACCEPTED.finditer(template))
     for match in accepted:
         masked[match.start():match.end()] = '\0' * len(match[0])
-    for match in TAG.finditer(template):
-        masked[match.start():match.end()] = '\0' * len(match[0])
+    for start, end in html_tag_spans(''.join(masked)):
+        masked[start:end] = '\0' * (end - start)
     yield from ((match.start(), match.end(), match[0], match[0])
                 for match in WORDS.finditer(''.join(masked)))
 

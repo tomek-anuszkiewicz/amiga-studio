@@ -20,6 +20,57 @@ def page(*texts):
 
 
 class PageAlignmentTest(unittest.TestCase):
+    def test_math_with_escaped_table_pipes_retains_source_mapping(self):
+        from review.source_cleanup import _literal_spans
+        target = '| Meaning | Value |\n| --- | --- |\n| norm | ' + r'$\|x\|$ |'
+        source = page('Meaning Value norm x')
+        recipe = compile_page_template(1, source, [0, 0, 100, 10], target)
+        self.assertEqual(resolve_template(recipe, {1: source['blocks']}), target)
+        self.assertNotIn('{{accepted', recipe)
+        self.assertEqual(list(_literal_spans(recipe)), [])
+
+    def test_angle_expressions_inside_math_are_aligned_as_text(self):
+        from review.source_cleanup import _literal_spans
+        target = '$x<y>z$'
+        source = page('x<y>z')
+        recipe = compile_page_template(1, source, [0, 0, 100, 10], target)
+        self.assertEqual(resolve_template(recipe, {1: source['blocks']}), target)
+        self.assertNotIn('{{accepted', recipe)
+        self.assertTrue(any('y' in literal for _, _, literal, _ in _literal_spans(target)))
+        self.assertEqual(list(_literal_spans(recipe)), [])
+
+    def test_supported_html_structure_is_preserved_in_alignment_and_cleanup(self):
+        from review.source_cleanup import _literal_spans
+        target = ('<details><summary>Title</summary>Body</details><h2>Heading</h2><hr>'
+                  '<mark>highlight</mark><small>note</small>')
+        source = page('Title Body Heading highlight note')
+        recipe = compile_page_template(1, source, [0, 0, 100, 10], target)
+        self.assertEqual(resolve_template(recipe, {1: source['blocks']}), target)
+        self.assertNotIn('{{accepted', recipe)
+        self.assertEqual([literal for _, _, literal, _ in _literal_spans(target)],
+                         ['Title', 'Body', 'Heading', 'highlight', 'note'])
+
+    def test_code_angles_do_not_hide_words_from_alignment_or_cleanup(self):
+        from review.source_cleanup import _literal_spans
+        from review.source_validation import validate_book
+        from review.model import write_json
+        import tempfile
+        body = 'flags = (1<<0);\n/* retained words, pc -> amiga */\n<td>literal</td>'
+        source = page(body)
+        target = '```c\n' + body + '\n```\n\n`<CSI>`'
+        source['blocks'].append({'block_id': 1, 'text': 'CSI', 'bbox': [0, 20, 100, 30]})
+        recipe = compile_page_template(1, source, [0, 0, 100, 30], target)
+        self.assertEqual(resolve_template(recipe, {1: source['blocks']}), target)
+        book = {'chapters': [{'id': 'c', 'title': '', 'elements': [
+            {'id': 'e', 'type': 'code_block', 'md_text': recipe}]}]}
+        with tempfile.TemporaryDirectory() as temporary:
+            workspace = Path(temporary)
+            write_json(workspace / '02_preprocess/page_0001.json', source)
+            self.assertFalse(validate_book(book, workspace)['issues'])
+        literals = [literal for _, _, literal, _ in _literal_spans(target)]
+        self.assertIn('retained words,', literals)
+        self.assertIn('CSI', literals)
+
     def test_line_break_and_inline_math_keep_exact_visible_markdown(self):
         source = page("The cal\u00ad\nculation gives 31,469.\n")
         target = "The calculation gives $31{,}469$."
@@ -52,6 +103,21 @@ class PageAlignmentTest(unittest.TestCase):
         recipe = compile_page_template(4, source, [0, 0, 100, 10], target)
         self.assertEqual(resolve_template(recipe, {4: source["blocks"]}), target)
         self.assertIn('{{accepted text="Gamma"}}', recipe)
+
+    def test_numbered_content_is_referenced_or_accepted_without_changing_markdown(self):
+        source = page("1. Alpha\n2. Beta\n306. cylinders\n")
+        target = ("```text\n1. Alpha\n2. Beta\n```\n\n"
+                  "Note: 1. Alpha\n2. Beta\n\n"
+                  "| Value | Label |\n| --- | --- |\n"
+                  "| 306. | cylinders |\n| 999. | absent |")
+        recipe = compile_page_template(4, source, [0, 0, 100, 10], target)
+        pages = {4: source["blocks"]}
+        self.assertEqual(resolve_template(recipe, pages), target)
+        referenced = [resolve_template(match[0], pages)
+                      for match in REFERENCE.finditer(recipe)]
+        self.assertEqual([text for text in referenced if text.isdecimal()],
+                         ["1", "2", "1", "2", "306"])
+        self.assertIn('{{accepted text="999"}}', recipe)
 
     def test_formula_can_reference_words_out_of_pdf_extraction_order(self):
         source = page("sample interval\nclock constant\nPeriod value\n"
@@ -152,6 +218,22 @@ class PageAlignmentTest(unittest.TestCase):
         self.assertIn('block=0 chars=9:14', recipe)
         self.assertIn('block=1 chars=0:6', recipe)
         self.assertNotIn('{{accepted text="information"}}', recipe)
+
+    def test_hyphenated_word_can_end_before_a_fused_ocr_glyph(self):
+        source = page('expansion.library and ask for the current buildings (GetCurrent- \n',
+                      'BindingO). In this structure will be the head of a singly linked list\n')
+        recipe = compile_page_template(55, source, [0, 0, 100, 30], 'GetCurrentBinding')
+        self.assertEqual(resolve_template(recipe, {55: source['blocks']}), 'GetCurrentBinding')
+        self.assertNotIn('{{accepted', recipe)
+        self.assertEqual([int(ref[2]) for ref in REFERENCE.finditer(recipe)], [0, 1])
+        self.assertIn('block=1 chars=0:7', recipe)
+
+    def test_fused_continuation_requires_a_local_hyphenated_boundary(self):
+        from review.source_alignment import _split_page_word
+        for first, near in [('GetCurrent\n', {0, 1}), ('GetCurrent-\n', {0})]:
+            source = page(first, 'BindingO).')
+            nearby = {id(block) for index, block in enumerate(source['blocks']) if index in near}
+            self.assertIsNone(_split_page_word('GetCurrentBinding', source['blocks'], nearby))
 
     def test_repeated_long_ocr_word_can_anchor_to_one_occurrence(self):
         source = page("AUDOLC\nAUDOLC\n")

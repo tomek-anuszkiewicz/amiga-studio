@@ -1041,3 +1041,31 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - LIMIT: optional strict source audit reports 107 fields with literal content or unsupported math commands
   - Scoped compliance review found no matching design tracked_paths and no required contract changes
   - NOT RUN: conversion or reconstruction or milestone profile
+---
+
+### [2026-11-12 02:03 CET] — Improve book review updates and list unmatched source text
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown`
+- **What Was Changed (The Concrete Reality)**:
+  - Add a read-only unmatched text inventory with source context and navigation
+  - Preserve code text and numbered content during source alignment and cleanup
+  - Match local hyphenated word continuations without including a fused OCR glyph
+  - Cache resolved text by recipe and source-page version while checking bundle replacement races
+  - Reuse unchanged viewer content and resources and reading geometry
+  - Document inventory behavior and incremental refresh
+  - Add user-approved API vocabulary and file-specific regex and test data exceptions
+  - Preserve source offsets through multiline math continuation prefixes and recognize supported HTML independently of the optional source audit
+- **Architectural Rationale & Trade-Offs**:
+  - Keep source review explicit while reducing repeated text resolution and document replacement
+  - Preserve current Working and Accepted revision checks during acceptance and discard
+- **Verification & Test Results**:
+  - PASS: input cache contracts - 7 tests
+  - PASS: incremental browser update contracts - 6 tests
+  - PASS: source alignment contracts - 31 tests
+  - PASS: text recipe contracts - 37 tests
+  - PASS: restarted the existing book review server and checked HTTP 200 at root and status with no pending rendering or error
+  - PASS: git diff --check
+  - Scoped specification review selected Testing Strategy and Quality Assurance through tracked_paths and found no required specification changes
+  - Initial commit profile passed all checks except English vocabulary; the user approved the reported exceptions
+  - Reproduced review findings and a formula-angle regression before correcting math offsets and HTML structure masking with regression coverage including escaped table pipes
+  - NOT RUN: conversion or reconstruction or milestone profile

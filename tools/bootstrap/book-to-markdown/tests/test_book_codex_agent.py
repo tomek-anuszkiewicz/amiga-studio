@@ -62,6 +62,17 @@ class WorkingAgentTests(unittest.TestCase):
                 return action
         return Client
 
+    def test_unmatched_text_inventory_is_revision_checked_and_read_only(self):
+        paths = [self.root / version / 'book.json' for version in ('working', 'accepted')]
+        before = [path.read_bytes() for path in paths]
+        report = self.state.list_unmatched_text({'expected_revision': self.revision})
+        self.assertEqual(report['revision'], self.revision)
+        self.assertEqual([item['literal'] for item in report['findings']],
+                         ['Example', 'First part', 'continues.'])
+        self.assertEqual([path.read_bytes() for path in paths], before)
+        with self.assertRaisesRegex(ValueError, 'Stale text inventory'):
+            self.state.list_unmatched_text({'expected_revision': 'old'})
+
     def test_agent_requests_context_and_merges_into_working(self):
         accepted = (self.root / 'accepted/book.json').read_bytes()
         actions = [
@@ -1209,8 +1220,32 @@ class WorkingAgentTests(unittest.TestCase):
                     page.locator('#book-actions').click()
                     self.assertEqual(page.locator('#book-menu button').all_text_contents(),
                                      ['Codex...', 'Describe images',
-                                      'Describe tables', 'Clean direct book text',
+                                      'Describe tables', 'Clean direct book text', 'List unmatched book text',
                                       'Rename Chapters'])
+                    book_before = (self.root / 'working/book.json').read_bytes()
+                    page.locator('[data-book-task="unmatched_text"]').click()
+                    page.wait_for_selector('#unmatched-text-report .unmatched-text-row')
+                    self.assertEqual(page.locator('#unmatched-text-report pre').nth(1).inner_text(), 'First part')
+                    self.assertEqual((self.root / 'working/book.json').read_bytes(), book_before)
+                    page.locator('#unmatched-text-report .unmatched-text-row').nth(1).get_by_text('Go to Book').click()
+                    self.assertFalse(page.locator('#unmatched-text-dialog').evaluate('(dialog) => dialog.open'))
+                    self.assertEqual(page.locator('#working .source-diff-focus').inner_text(), 'First part')
+                    findings = [
+                        {'status': 'accepted', 'literal': literal, 'pages': [1],
+                         'element_id': 'first', 'visible': True, 'context': literal}
+                        for literal in ['A', 'ab12!', '12345', 'a-b-c', '\u03b1\u03b2\u03b3']]
+                    page.route('**/api/unmatched-text',
+                               lambda route: route.fulfill(json={'findings': findings}))
+                    page.locator('#book-actions').click()
+                    page.locator('[data-book-task="unmatched_text"]').click()
+                    page.wait_for_function('document.getElementById("unmatched-text-summary").textContent.includes("2 with at least 3 letters")')
+                    self.assertEqual(page.locator('#unmatched-text-summary').inner_text(),
+                                     '5 fragments: 5 accepted; 0 pending. 2 with at least 3 letters (shown).')
+                    self.assertEqual(page.locator('#unmatched-text-report pre').all_text_contents(),
+                                     ['a-b-c', '\u03b1\u03b2\u03b3'])
+                    page.unroute('**/api/unmatched-text')
+                    page.locator('#unmatched-text-close').click()
+                    page.locator('#book-actions').click()
                     for task in ['describe_images', 'describe_tables']:
                         page.locator(f'[data-book-task="{task}"]').click()
                         self.assertEqual(page.locator('#codex-preset').input_value(), task)

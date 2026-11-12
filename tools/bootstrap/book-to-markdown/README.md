@@ -34,6 +34,11 @@ JavaScript. Working book data is picked up by the render queue. Stop a foregroun
 `serve` process with Ctrl+C before using the controller on the same port. The
 controller is a background process, not an automatically started Windows service.
 
+Working updates refresh changed chapters while retaining unchanged elements and
+their expanded details. Images and document styles are reused by content hash
+across Working and Accepted. Source text is cached by recipe and source-page
+version; changes to a source page invalidate the affected text.
+
 ### Starting a new review
 
 Install the local review dependencies once:
@@ -121,6 +126,17 @@ for plain book text. Confirm each proposed occurrence against the PDF before
 applying it. **Show source differences** marks source-backed corrections in
 yellow, accepted text without a source address in blue, and pending plain text
 in purple. These colors are review aids, not proof of transcription quality.
+
+Use **Book Actions → List unmatched book text** for a read-only list of all
+text without a PDF source reference, including accepted literals, chapter
+titles and hidden elements. Each fragment includes its PDF page, element and
+context. HTML tags and math command names are omitted; words and numbers
+inside formulas remain. The list does not apply matches or change either book
+version. Statistics count all fragments and show how many contain at least
+three letters. Only that latter group is listed; digits and punctuation do not
+count toward the letter threshold.
+Use **Go to Book** beside a fragment to navigate to its element and highlight
+the text. Navigation also reveals a hidden element when necessary.
 
 Use **Book Actions → Rename Chapters** to edit Working chapter titles and Markdown
 filenames together. The generated table of contents has its own entry. Chapter

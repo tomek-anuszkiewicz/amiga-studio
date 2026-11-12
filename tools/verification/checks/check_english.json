@@ -162,8 +162,10 @@
       "abc",
       "addo",
       "comm",
+      "csi",
       "ecooo",
       "hcooo",
+      "idlist",
       "ination",
       "infonnation",
       "ooo",
@@ -227,9 +229,16 @@
     "tools/bootstrap/book-to-markdown/review/source_alignment.py": [
       "za"
     ],
+    "tools/bootstrap/book-to-markdown/review/unmatched_text.py": [
+      "za"
+    ],
+    "tools/bootstrap/book-to-markdown/review/viewer.js": [
+      "gu"
+    ],
     "tools/bootstrap/book-to-markdown/tests/test_book_codex_agent.py": [
       "addo",
-      "cdq"
+      "cdq",
+      "\u03b1\u03b2\u03b3"
     ],
     "tools/bootstrap/book-to-markdown/tests/test_book_source_alignment.py": [
       "adflfnctnjnfo",
@@ -238,6 +247,7 @@
       "audolc",
       "bo",
       "brar",
+      "csi",
       "ecooo",
       "execjnterrupts",
       "infor",

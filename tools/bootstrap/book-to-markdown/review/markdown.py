@@ -24,6 +24,53 @@ PARSER.use(dollarmath_plugin, allow_labels=False)
 PARSER.inline.ruler.at("newline", source_newline)
 
 
+def math_source_positions(text, tokens, code):
+    """Map parsed math through continuation prefixes and table pipe escapes."""
+    # The Markdown parser replaces null masks without changing their offsets.
+    text = text.replace('\0', '\ufffd')
+
+    def expressions(entries):
+        for token in entries:
+            if token.type.startswith('math_'):
+                yield token.markup + token.content + token.markup
+            if token.children:
+                yield from expressions(token.children)
+
+    cursor = 0
+    for expression in expressions(tokens):
+        pattern = ''.join(r'(\r?\n)[ \t>]*' if char == '\n' else
+                          r'(\\?\|)' if char == '|' else '(' + re.escape(char) + ')'
+                          for char in expression)
+        match = next((match for match in re.finditer(pattern, text[cursor:])
+                      if not any(left <= cursor + match.start() and cursor + match.end() <= right
+                                 for left, right in code)), None)
+        if match is None:
+            raise ValueError('Cannot locate a mathematical expression in the source text')
+        positions = [cursor + match.end(group) - 1 for group in range(1, len(expression) + 1)]
+        cursor += match.end()
+        yield expression, positions
+
+
+def html_tag_spans(text):
+    """Locate HTML markup outside Markdown code and math, keeping offsets."""
+    offsets = [0]
+    for line in text.splitlines(keepends=True):
+        offsets.append(offsets[-1] + len(line))
+    tokens = PARSER.parse(text)
+    code = [(offsets[token.map[0]], offsets[token.map[1]])
+            for token in tokens
+            if token.type in {'fence', 'code_block'} and token.map]
+    for match in re.finditer(r'(?<!`)(`+)(?!`)([\s\S]*?)(?<!`)\1(?!`)', text):
+        if not any(start <= match.start() < end for start, end in code):
+            code.append(match.span())
+    protected = code + [(positions[0], positions[-1] + 1)
+                        for _, positions in math_source_positions(text, tokens, code)]
+    pattern = r'<!--[\s\S]*?-->|</?([A-Za-z][A-Za-z0-9:_-]*)(?:\s+(?:[^<>\"\x27]|\"[^\"]*\"|\x27[^\x27]*\x27)*)?\s*/?>'
+    for match in re.finditer(pattern, text):
+        if not any(start <= match.start() < end for start, end in protected):
+            yield match.span()
+
+
 def callout_plugin(md):
     """Render Markdown callout markers as titled advisory blockquotes."""
     def transform(state):

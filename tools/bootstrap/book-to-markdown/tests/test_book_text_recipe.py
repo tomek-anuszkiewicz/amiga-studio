@@ -9,7 +9,7 @@ import tempfile
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / 'tools/bootstrap/book-to-markdown'))
-from review.text_recipe import REFERENCE, compile_region_template, edit_template, join_adjacent_references, slice_template, preserve_bold, resolve_template, source_differences, source_reference, source_span_with_spacing
+from review.text_recipe import REFERENCE, accepted_literal, compile_region_template, edit_template, escape_literal, join_adjacent_references, slice_template, preserve_bold, resolve_template, source_differences, source_reference, source_span_with_spacing
 
 
 from review.markdown import callout_plugin
@@ -31,6 +31,72 @@ class ReorderedReferenceTests(unittest.TestCase):
         self.assertIn('{{text page=1 block=1 chars=0:3}}', result)
         self.assertIn('{{text page=1 block=0 chars=0:3}}', result)
 from common.pdf_geometry import text_blocks
+
+
+class UnmatchedTextTests(unittest.TestCase):
+    def test_inventory_retains_angle_expressions_inside_math(self):
+        from review.unmatched_text import inventory
+        book = {'chapters': [{'id': 'c', 'title': '', 'elements': [{
+            'id': 'e', 'type': 'prose', 'md_text': '$x<y>z$'}]}]}
+        self.assertEqual([item['literal'] for item in inventory(book, Path('.'))],
+                         ['x<y>z'])
+
+    def test_inventory_maps_multiline_math_through_quote_and_list_prefixes(self):
+        from review.unmatched_text import inventory
+        for text in [r'> $\frac{alpha}{' + '\n> beta}$',
+                     r'- $\frac{alpha}{' + '\n  beta}$',
+                     '| Value |\n| --- |\n| ' + r'$\frac{alpha}{\|beta\|}$ |',
+                     '> $a\n> +b$', '- $a\n  +b$']:
+            with self.subTest(text=text):
+                book = {'chapters': [{'id': 'c', 'title': '', 'elements': [{
+                    'id': 'e', 'type': 'prose', 'md_text': escape_literal(text)}]}]}
+                report = '\n'.join(item['literal'] for item in inventory(book, Path('.')))
+                self.assertNotIn('frac', report)
+                for word in (['alpha', 'beta'] if 'frac' in text else ['a', 'b']):
+                    self.assertIn(word, report)
+
+    def test_inventory_omits_supported_html_structure(self):
+        from review.unmatched_text import inventory
+        text = ('<details><summary>Title</summary>Body</details><h2>Heading</h2><hr>'
+                '<mark>highlight</mark><small>note</small>')
+        book = {'chapters': [{'id': 'c', 'title': '', 'elements': [{
+            'id': 'e', 'type': 'prose', 'md_text': escape_literal(text)}]}]}
+        self.assertEqual([item['literal'] for item in inventory(book, Path('.'))],
+                         ['Title', 'Body', 'Heading', 'highlight', 'note'])
+
+    def test_inventory_keeps_code_and_formula_text_without_counting_markup(self):
+        from copy import deepcopy
+        from review.unmatched_text import inventory
+        with tempfile.TemporaryDirectory() as temporary:
+            workspace = Path(temporary)
+            write_json(workspace / '02_preprocess/page_0001.json',
+                       {'blocks': [{'block_id': 0, 'text': 'Original'}]})
+            text = ('<p title="Attribute">Raw {{accepted text="Accepted"}} '
+                    '{{text page=1 block=0 chars=0:8 replace=0:8 with="Corrected"}}</p>\n\n'
+                    + escape_literal(r'$\frac{\text{ordinary words}}{')
+                    + accepted_literal('3') + escape_literal(r'} + \sqrt{other}$')
+                    + '\n\n`<CSI>`\n\n```c\nif (x<<2) value = <idlist>;\n```')
+            book = {'toc': {'title': 'Contents'}, 'chapters': [{
+                'id': 'chapter', 'title': 'Book title', 'elements': [{
+                    'id': 'hidden', 'type': 'prose', 'visible': False,
+                    'pdf_regions': [{'page': 1, 'bbox': [0, 0, 10, 10]}], 'md_text': text}]}]}
+            original = deepcopy(book)
+            findings = inventory(book, workspace)
+            self.assertEqual(book, original)
+            self.assertEqual([(i['field'], i['literal']) for i in findings[:2]],
+                             [('title', 'Contents'), ('title', 'Book title')])
+            rows = [i for i in findings if i['element_id'] == 'hidden']
+            self.assertEqual([i['literal'] for i in rows if i['status'] == 'accepted'],
+                             ['Accepted', '3'])
+            pending = [i['literal'] for i in rows if i['status'] == 'pending']
+            self.assertEqual(pending[:3], ['Raw', 'ordinary words', 'other'])
+            self.assertIn('<CSI>', '\n'.join(pending))
+            self.assertIn('if (x<<2) value = <idlist>;', pending)
+            self.assertFalse(any(i['visible'] for i in rows))
+            self.assertTrue(all(i['pages'] == [1] for i in rows))
+            report = '\n'.join(i['literal'] for i in rows)
+            for syntax in ('Attribute', 'frac', 'sqrt', '<p', '</p>', 'Corrected', '```c'):
+                self.assertNotIn(syntax, report)
 
 
 class TextRecipeTest(unittest.TestCase):

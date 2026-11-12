@@ -1,7 +1,10 @@
 """Page-local alignment of visible prepared Markdown with positioned PDF text."""
 
 from difflib import SequenceMatcher
+from bisect import bisect_left
 import re
+
+from .markdown import html_tag_spans
 
 from .text_recipe import (ACCEPTED, REFERENCE, accepted_literal, escape_literal,
                           region_blocks, resolve_template, source_span_with_spacing)
@@ -9,7 +12,6 @@ from .text_recipe import (ACCEPTED, REFERENCE, accepted_literal, escape_literal,
 
 WORD = re.compile(r"(?u)[^\W_]+")
 TEX_COMMAND = re.compile(r"\\[A-Za-z]+|\\.")
-HTML_TAG = re.compile(r"<!--.*?-->|<[^>]*>", re.DOTALL)
 ENTITY = re.compile(r"&(?:#[0-9]+|#x[0-9A-Fa-f]+|[A-Za-z]+);")
 FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
 TABLE_RULE = re.compile(r"^\s*\|?\s*:?-{3,}:?(?:\s*\|\s*:?-{3,}:?)*\s*\|?\s*$")
@@ -34,12 +36,16 @@ def visible_positions(markdown):
             for index in range(cursor, cursor + len(body)):
                 keep[index] = False
         elif fence is None:
-            prefix = re.match(r"^\s*(?:#{1,6}\s+|>\s+|[-+*]\s+|\d+[.)]\s+)", body)
+            # Numbered prefixes can be table cells or code lines after splitting;
+            # their digits still need a PDF reference or explicit acceptance.
+            prefix = re.match(r"^\s*(?:#{1,6}\s+|>\s+|[-+*]\s+)", body)
             if prefix:
                 for index in range(cursor, cursor + prefix.end()):
                     keep[index] = False
         cursor += len(line)
-    for pattern in (HTML_TAG, ENTITY, TEX_COMMAND):
+    for start, end in html_tag_spans(markdown):
+        keep[start:end] = [False] * (end - start)
+    for pattern in (ENTITY, TEX_COMMAND):
         for match in pattern.finditer(markdown):
             for index in range(match.start(), match.end()):
                 keep[index] = False
@@ -232,17 +238,27 @@ def _split_page_word(word, blocks, near):
             continue
         first_word = first_words[-1]
         first_text, second_text = first_word[0], second_word[0]
-        if (len(first_text) + len(second_text) != len(word) or
-                (first_text + second_text).casefold() != word.casefold()):
-            continue
-        exact = first_text + second_text == word
         nearby = id(first) in near and id(second) in near
-        matches.append((not exact, not nearby, first["block_id"],
+        continuation = word[len(first_text):]
+        # OCR can fuse a punctuation glyph onto the continuation. An explicit
+        # local line-end hyphen lets us select just the matching prefix, keeping
+        # both source ranges exact instead of replacing an entire OCR token.
+        extended = (nearby and len(first_text) >= 2 and len(continuation) >= 2 and
+                    re.fullmatch(r'[-\u00ad]\s*', first['text'][first_word.end():]) is not None and
+                    word[:len(first_text)].casefold() == first_text.casefold() and
+                    len(second_text) == len(continuation) + 1 and
+                    second_text[:len(continuation)].casefold() == continuation.casefold())
+        if not extended and (len(first_text) + len(second_text) != len(word) or
+                             (first_text + second_text).casefold() != word.casefold()):
+            continue
+        second_end = second_word.start() + len(continuation) if extended else second_word.end()
+        exact = first_text + second['text'][second_word.start():second_end] == word
+        matches.append((extended, not exact, not nearby, first["block_id"],
                         first, first_word.start(), first_word.end(),
-                        second, second_word.start(), second_word.end(), len(first_text)))
-    if not matches:
+                        second, second_word.start(), second_end, len(first_text)))
+    if not matches or len(matches) > 1 and all(match[0] for match in matches):
         return None
-    _, _, _, first, a, b, second, c, d, split = min(matches)
+    _, _, _, _, first, a, b, second, c, d, split = min(matches)
     return first, a, b, second, c, d, split
 
 
@@ -306,8 +322,7 @@ def _embedded_uppercase_word(word, blocks, near):
     return block, start, end
 
 
-def _align_fragment(page, page_data, bbox, markdown):
-    visible, offsets = visible_positions(markdown)
+def _align_fragment(page, page_data, bbox, markdown, visible, offsets):
     compact_target = "".join(char.casefold() for char in visible if char.isalnum())
     if not compact_target:
         return escape_literal(markdown)
@@ -423,9 +438,24 @@ def compile_page_template(page, page_data, bbox, markdown):
     """Produce an exact visible recipe; unresolved words become accepted text."""
     # A table row or HTML cell can be independent of adjacent PDF text blocks.
     # Splitting the search query retains all original delimiters in the recipe.
-    fragments = re.split(r"(<[^>]*>|\||\n)", markdown)
-    template = "".join(_align_fragment(page, page_data, bbox, fragment)
-                       for fragment in fragments if fragment)
+    visible, offsets = visible_positions(markdown)
+    fragments, cursor = [], 0
+    for start, end in [*html_tag_spans(markdown), (len(markdown), len(markdown))]:
+        position = cursor
+        for separator in re.finditer(r'\||\n', markdown[cursor:start]):
+            boundary = cursor + separator.start()
+            fragments.extend(((position, boundary), (boundary, boundary + 1)))
+            position = boundary + 1
+        fragments.extend(((position, start), (start, end)))
+        cursor = end
+    parts = []
+    for start, end in fragments:
+        if start == end:
+            continue
+        first, last = bisect_left(offsets, start), bisect_left(offsets, end)
+        parts.append(_align_fragment(page, page_data, bbox, markdown[start:end],
+                                     visible[first:last], [offset - start for offset in offsets[first:last]]))
+    template = ''.join(parts)
     resolved = resolve_template(template, {page: page_data["blocks"]})
     if resolved != markdown:
         mismatch = next((index for index, (left, right) in enumerate(zip(resolved, markdown))

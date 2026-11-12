@@ -16,6 +16,7 @@
 <button data-book-task="describe_images" role="menuitem">Describe images</button>
 <button data-book-task="describe_tables" role="menuitem">Describe tables</button>
 <button data-book-task="source_cleanup" role="menuitem">Clean direct book text</button>
+<button data-book-task="unmatched_text" role="menuitem">List unmatched book text</button>
 <button data-book-task="rename_chapters" role="menuitem">Rename Chapters</button>
 </div>
 <div id="element-menu" role="menu" aria-label="Element actions" hidden>
@@ -105,6 +106,14 @@
 <div id="source-cleanup-findings"></div>
 <p id="source-cleanup-error" role="alert" hidden></p>
 <div class="dialog-actions"><button type="button" id="source-cleanup-select-all">Select All</button><button type="button" id="source-cleanup-close">Close</button><button type="button" id="source-cleanup-apply">Apply selected</button></div>
+</dialog>
+<dialog id="unmatched-text-dialog"><h3>List unmatched book text</h3>
+<p>Accepted and pending text without a PDF source reference, including hidden elements. HTML tags and math formatting commands are omitted; words and numbers inside formulas remain.</p>
+<p>Only fragments with at least three letters are listed. Totals include shorter fragments; digits and punctuation do not count as letters.</p>
+<p id="unmatched-text-summary" role="status"></p>
+<div id="unmatched-text-report" aria-label="Unmatched book text"></div>
+<p id="unmatched-text-error" role="alert" hidden></p>
+<div class="dialog-actions"><button type="button" id="unmatched-text-close">Close</button></div>
 </dialog>
 <dialog id="rename-chapters-dialog"><h3>Rename Chapters</h3>
 <p>Edit titles and Markdown filenames in Working. Chapter titles are matched against PDF text when saved; check direct text with Clean direct book text.</p>
