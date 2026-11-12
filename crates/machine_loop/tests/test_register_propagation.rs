@@ -23,24 +23,24 @@ fn test_cross_chip_bplcon0_broadcast_latencies() {
 
     // Cycle T: write is dispatched directly into Denise & Agnus mutation pipelines
     assert_eq!(machine.denise.bplcon0, 0);
-    assert_eq!(machine.agnus.bplcon0, 0);
+    assert_eq!(machine.agnus.dma.bplcon0, 0);
 
     // Step 1 CCK (Cycle T+1):
     // - Denise mutation matures and commits!
     // - Agnus ticks: 3 CCKs remaining
     machine.step_cck();
     assert_eq!(machine.denise.bplcon0, 0x8200);
-    assert_eq!(machine.agnus.bplcon0, 0);
+    assert_eq!(machine.agnus.dma.bplcon0, 0);
 
     // Step 2 CCKs (Cycle T+2, T+3): Agnus still in flight
     machine.step_cck();
-    assert_eq!(machine.agnus.bplcon0, 0);
+    assert_eq!(machine.agnus.dma.bplcon0, 0);
     machine.step_cck();
-    assert_eq!(machine.agnus.bplcon0, 0);
+    assert_eq!(machine.agnus.dma.bplcon0, 0);
 
     // Step 4th CCK (Cycle T+4): Agnus mutation matures and commits!
     machine.step_cck();
-    assert_eq!(machine.agnus.bplcon0, 0x8200);
+    assert_eq!(machine.agnus.dma.bplcon0, 0x8200);
 }
 
 #[test]
@@ -58,12 +58,12 @@ fn test_cross_chip_dmacon_broadcast_to_agnus_and_paula() {
 
     // Step 1 CCK: in flight (remaining = 1)
     machine.step_cck();
-    assert_eq!(machine.agnus.dmacon & 0x0200, 0);
+    assert_eq!(machine.agnus.dma.dmacon & 0x0200, 0);
     assert_eq!(machine.paula.dma_enables & 0x0011, 0);
 
     // Step 2 CCKs: commits to both Agnus and Paula!
     machine.step_cck();
-    assert_eq!(machine.agnus.dmacon & 0x0200, 0x0200);
+    assert_eq!(machine.agnus.dma.dmacon & 0x0200, 0x0200);
     assert_eq!(machine.paula.dma_enables & 0x0011, 0x0011);
 }
 
@@ -208,7 +208,7 @@ fn test_dmacon_write_propagation_delay() {
     let mut machine = A500Machine::new(A500Config::bare_512k(VideoStandard::Pal));
 
     // Initially DMACON is 0
-    assert_eq!(machine.agnus.dmacon, 0);
+    assert_eq!(machine.agnus.dma.dmacon, 0);
 
     // Write DMACON = SET DMAEN (bit 9) + SPREN (bit 5) + BPLEN (bit 8) -> 0x8320
     machine
@@ -217,19 +217,19 @@ fn test_dmacon_write_propagation_delay() {
 
     // After 1 CCK: in-flight in mutation pipeline, not yet committed in Agnus (2 CCKs delay)
     machine.step_cck();
-    assert_eq!(machine.agnus.dmacon, 0);
+    assert_eq!(machine.agnus.dma.dmacon, 0);
 
     // After 2 CCKs: matured and committed in Agnus
     machine.step_cck();
-    assert_eq!(machine.agnus.dmacon, 0x0320);
+    assert_eq!(machine.agnus.dma.dmacon, 0x0320);
 
     // Clear SPREN (bit 5)
     machine
         .memory_bus()
         .write_custom_word(custom_reg::agnus::REGISTER_DMACON, 0x0020);
     machine.step_cck();
-    assert_eq!(machine.agnus.dmacon, 0x0320);
+    assert_eq!(machine.agnus.dma.dmacon, 0x0320);
 
     machine.step_cck();
-    assert_eq!(machine.agnus.dmacon, 0x0300);
+    assert_eq!(machine.agnus.dma.dmacon, 0x0300);
 }

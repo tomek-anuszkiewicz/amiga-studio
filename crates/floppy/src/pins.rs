@@ -17,7 +17,7 @@ pub struct FloppyPins {
     pub incoming: Option<FloppyInputs>,
     /// Delivered CIA-B control levels, released high.
     pub control_input: u8,
-    /// Raw connector disk data and active-low write gate, separate from legacy media.
+    /// Raw connector disk data and active-low write gate, independent of host image buffers.
     pub read_data_high: bool,
     pub write_data_high: bool,
     pub write_enable_high: bool,
@@ -44,7 +44,7 @@ impl FloppyController {
         let Some(input) = self.pins.incoming.take() else {
             return;
         };
-        self.receive_control_pins(input.control);
+        self.pins.control_input = input.control;
         self.pins.write_data_high = input.write_data_high;
         self.pins.write_enable_high = input.write_enable_high;
     }

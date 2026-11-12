@@ -97,21 +97,21 @@ flowchart TD
 
 ## 3. Subsystem Mapping Matrix
 
-When auditing a subsystem, inspect its corresponding Rust crate and Obsidian design specification:
+When auditing a subsystem, inspect its corresponding Rust crate or internal module and Obsidian design specification:
 
-| Subsystem Domain | Primary Rust Crates | Authoritative Design Spec |
+| Subsystem Domain | Primary Rust Sources | Authoritative Design Spec |
 | :--- | :--- | :--- |
-| **Interrupts** | `crates/interrupts` | `Obsidian/Amiga/Design/Interrupts.md` |
+| **Interrupts** | `crates/paula/src/interrupts.rs` | `Obsidian/Amiga/Design/Interrupts.md` |
 | **Paula Coordinator** | `crates/paula` | `Obsidian/Amiga/Design/Paula.md` |
-| **Audio Engine** | `crates/audio` | `Obsidian/Amiga/Design/Audio.md` |
+| **Audio Engine** | `crates/paula/src/audio.rs` | `Obsidian/Amiga/Design/Audio.md` |
 | **Floppy Controller** | `crates/floppy` | `Obsidian/Amiga/Design/Floppy.md` |
 | **Serial Port** | `crates/paula` (`src/serial.rs`) | `Obsidian/Amiga/Design/Paula.md` |
 | **Agnus Coordinator** | `crates/agnus` | `Obsidian/Amiga/Design/Agnus.md` |
-| **Copper Coprocessor**| `crates/copper` | `Obsidian/Amiga/Design/Copper.md` |
-| **Blitter Engine** | `crates/blitter` | `Obsidian/Amiga/Design/Blitter.md` |
-| **DMA Controller** | `crates/dma` | `Obsidian/Amiga/Design/DMA.md` |
+| **Copper Coprocessor**| `crates/agnus/src/copper.rs` | `Obsidian/Amiga/Design/Copper.md` |
+| **Blitter Engine** | `crates/agnus/src/blitter.rs` | `Obsidian/Amiga/Design/Blitter.md` |
+| **DMA Controller** | `crates/agnus/src/dma.rs` | `Obsidian/Amiga/Design/DMA.md` |
 | **Denise Display** | `crates/denise` | `Obsidian/Amiga/Design/Denise.md` |
-| **Hardware Sprites** | `crates/sprites` | `Obsidian/Amiga/Design/Sprites.md` |
+| **Hardware Sprites** | `crates/denise/src/sprites.rs` | `Obsidian/Amiga/Design/Sprites.md` |
 | **Frame Buffer** | `crates/frame_builder` | `Obsidian/Amiga/Design/Frame Buffer.md` |
 | **Memory Bus & Gary** | `crates/memory_bus` | `Obsidian/Amiga/Design/MemoryBus.md` |
 | **CIA Timers & Ports**| `crates/cia` | `Obsidian/Amiga/Design/CIA.md` |

@@ -89,13 +89,13 @@ flowchart TD
 4. **`MachineLoop` as Motherboard PCB Simulator:**
    - The top-level `A500Machine` resolves wiring after producer work. Each recipient owns incoming inputs and samples them at the explicit [Machine Loop phases](Machine%20Loop.md#connections-advanced-within-the-step).
    - CIA IRQ, Agnus INT3, TOD, connector controls/status and RGA synchronization pass through that boundary. The receiver owns edge detection or input sampling; motherboard delivery does not substitute a register write for a physical pin.
-   - Granted RGA/data words use the existing MemoryBus and register queues, retaining an output until acceptance. Legacy decoded disk/audio bridges remain separately identified until engine reconstruction. No chip notifies or mutates a peer directly.
+   - Granted RGA/data words use the existing MemoryBus and register queues, retaining an output until acceptance. Disk and audio requests pass through DMAL, with register data accepted by the target chip. No chip notifies or mutates a peer directly.
 
 ---
 
 ## 2. Workspace Crate Architecture & Dependencies
 
-The codebase is organized as a Cargo workspace with decoupled, single-responsibility crates located under crates/:
+The codebase is organized as a Cargo workspace with chip and peripheral crates located under `crates/`. Contained engines use Rust modules inside their owner; a detailed design chapter does not imply a separate Cargo package.
 
 Direct dependencies between workspace crates must follow the explicit rules in
 [`APPROVED_CRATE_DEPENDENCIES`](../../../tools/verification/checks/check_architecture.py).
@@ -134,25 +134,25 @@ graph TD
 
     subgraph CustomChips["Custom Chip Coordinators & Coprocessors"]
         AGNUS["agnus<br/><code>crates/agnus</code>"]:::chip
-        COP["copper<br/><code>crates/copper</code>"]:::subchip
-        BLT["blitter<br/><code>crates/blitter</code>"]:::subchip
-        DMA["dma<br/><code>crates/dma</code>"]:::subchip
+        COP["agnus::copper module<br/><code>crates/agnus/src/copper.rs</code>"]:::subchip
+        BLT["agnus::blitter module<br/><code>crates/agnus/src/blitter.rs</code>"]:::subchip
+        DMA["agnus::dma module<br/><code>crates/agnus/src/dma.rs</code>"]:::subchip
 
         DENISE["denise<br/><code>crates/denise</code>"]:::chip
-        SPR["sprites<br/><code>crates/sprites</code>"]:::subchip
+        SPR["denise::sprites module<br/><code>crates/denise/src/sprites.rs</code>"]:::subchip
         FB["frame_builder<br/><code>crates/frame_builder</code>"]:::subchip
 
         PAULA["paula<br/><code>crates/paula</code>"]:::chip
-        AUD["audio<br/><code>crates/audio</code>"]:::subchip
-        INTR["interrupts<br/><code>crates/interrupts</code>"]:::subchip
+        AUD["paula::audio module<br/><code>crates/paula/src/audio.rs</code>"]:::subchip
+        INTR["paula::interrupts module<br/><code>crates/paula/src/interrupts.rs</code>"]:::subchip
 
         CIA["cia (A & B)<br/><code>crates/cia</code>"]:::chip
     end
 
     subgraph Peripherals["Peripherals & Input Devices"]
         GP["game_ports<br/><code>crates/game_ports</code>"]:::periph
-        MOU["mouse<br/><code>crates/mouse</code>"]:::subchip
-        JOY["joystick<br/><code>crates/joystick</code>"]:::subchip
+        MOU["game_ports::mouse module<br/><code>crates/game_ports/src/mouse.rs</code>"]:::subchip
+        JOY["game_ports::joystick module<br/><code>crates/game_ports/src/joystick.rs</code>"]:::subchip
         FLP["floppy<br/><code>crates/floppy</code>"]:::periph
         KBD["keyboard<br/><code>crates/keyboard</code>"]:::periph
     end
@@ -181,7 +181,7 @@ graph TD
     ML --> GP
     ML --> RTC
 
-    %% Logical Containment / Re-exports
+    %% Contained modules and the retained frame_builder crate
     AGNUS --> COP
     AGNUS --> BLT
     AGNUS --> DMA
@@ -198,7 +198,7 @@ graph TD
     %% Memory & Bus Connections
     PMEM --> CFG
     FLP --> CFG
-    INTR --> CFG
+    PAULA --> CFG
     PMEM --> RTC
     MBUS --> PMEM
     CPU --> PMEM
@@ -213,36 +213,37 @@ graph TD
     TR --> DIS
 ```
 
+The diagram shows ownership and selected connections. Internal module nodes are not Cargo packages. The table below lists direct workspace dependencies; development-only dependencies are marked explicitly.
+
 ### Crate Descriptions & Responsibilities
 
 | Crate | Path | Responsibility | Workspace Dependencies |
 | :--- | :--- | :--- | :--- |
 | **config** | [crates/config](../../../crates/config) | Encapsulated, read-only hardware presets (Bare512k, Standard1Mb, ExpandedPowerUser), chip models, RtcModel, video timings. | *None* |
-| **copper** | [crates/copper](../../../crates/copper) | Agnus Copper coprocessor (MOVE, WAIT, SKIP, CDANG danger mode). | serde |
-| **blitter** | [crates/blitter](../../../crates/blitter) | Agnus 4-channel DMA Blitter, minterm ALU, barrel shifters, and line drawer. | serde |
-| **dma** | [crates/dma](../../../crates/dma) | Agnus DMA slot scheduler (227.5 CCK horizontal schedule), channel gating (`DMACON`), and Chip RAM contention. | serde |
-| **agnus** | [crates/agnus](../../../crates/agnus) | Agnus (MOS 8370/8371) chip coordinator and beam counters (`VHPOSR`, `VPOSR`). | config, serde |
-| **sprites** | [crates/sprites](../../../crates/sprites) | Denise 8 hardware sprite engines, coordinate comparators, attached pairs, multiplexing. | serde |
-| **frame_builder** | [crates/frame_builder](../../../crates/frame_builder) | Denise raster scanline compositor, display window clipping, and 32-bit ARGB frame buffer generation. | serde |
-| **mouse** | [crates/mouse](../../../crates/mouse) | Amiga 2/3-button quadrature mouse and `JOY0DAT` encoding. | serde |
-| **joystick** | [crates/joystick](../../../crates/joystick) | Digital Atari 9-pin standard joystick and `JOYxDAT` direction switch XOR encoding. | serde |
-| **game_ports** | [crates/game_ports](../../../crates/game_ports) | Amiga dual 9-pin controller ports (Port 1 & Port 2), pluggable device slots (`Mouse`, `Joystick`), Denise/Paula/CIA-A decoders. | mouse, joystick, serde |
-| **denise** | [crates/denise](../../../crates/denise) | Denise (MOS 8362) video processor, bitplanes, palette (`COLOR00`–`COLOR31`), and collision registers. | config, serde |
-| **audio** | [crates/audio](../../../crates/audio) | Paula 4-channel 8-bit DMA audio engine, volume scaling (0..64), and stereo panning. | config, serde |
-| **floppy** | [crates/floppy](../../../crates/floppy) | 3.5" DD floppy drive mechanics (80 cylinders, 2 heads) and Paula MFM DMA controller. | config, serde |
-| **interrupts** | [crates/interrupts](../../../crates/interrupts) | Central 14-source interrupt priority controller (`INTENA`, `INTREQ`), IPL 1..6 encoder, and atomic SET/CLR bit 15 logic. | config, serde |
-| **paula** | [crates/paula](../../../crates/paula) | Paula (MOS 8364) chip coordinator, serial UART transceiver, and audio/interrupt staging. | audio, config, interrupts, serde |
-| **keyboard** | [crates/keyboard](../../../crates/keyboard) | MOS 6500/1 keyboard microcontroller, scancode matrix, serial stream, and Ctrl-Amiga-Amiga reset. | serde |
-| **cia** | [crates/cia](../../../crates/cia) | MOS 8520 Complex Interface Adapter (Timers A & B, Ports A & B / parallel Centronics lines, TOD, SDR, ICR). | serde |
-| **rtc** | [crates/rtc](../../../crates/rtc) | OKI MSM6242B Real-Time Clock & Calendar emulation, BCD latches, civil calendar arithmetic. | config, serde |
+| **agnus** | [crates/agnus](../../../crates/agnus) | Beam counters, DMA arbitration and address generation; internal Copper and Blitter engines. | config |
+| **frame_builder** | [crates/frame_builder](../../../crates/frame_builder) | Storage of final ARGB pixels, field assembly and frame availability for host display. | config |
+| **game_ports** | [crates/game_ports](../../../crates/game_ports) | Controller sockets and internal mouse/joystick device models; external connector levels and host input routing. | config |
+| **denise** | [crates/denise](../../../crates/denise) | Bitplane and sprite serialization, palette, collisions, JOY counters and final pixel composition. | config, frame_builder |
+| **floppy** | [crates/floppy](../../../crates/floppy) | Drive mechanics, connector controls and sense lines, inserted media buffers; disk registers remain in Paula. | config |
+| **paula** | [crates/paula](../../../crates/paula) | Audio channels, disk data engine, UART, interrupt controller and shared DMAL request framing. | config |
+| **keyboard** | [crates/keyboard](../../../crates/keyboard) | MOS 6500/1 keyboard microcontroller, scancode matrix, serial stream, and Ctrl-Amiga-Amiga reset. | *None* |
+| **cia** | [crates/cia](../../../crates/cia) | MOS 8520 Complex Interface Adapter (Timers A & B, Ports A & B / parallel Centronics lines, TOD, SDR, ICR). | config |
+| **rtc** | [crates/rtc](../../../crates/rtc) | OKI MSM6242B Real-Time Clock & Calendar emulation, BCD latches, civil calendar arithmetic. | config |
 | **physical_memory** | [crates/physical_memory](../../../crates/physical_memory) | 24-bit physical address space, 256-entry 64KB bank table (`addr >> 16`), 2-phase CCK arbitration, open bus emulation. | config, rtc |
-| **memory_bus** | [crates/memory_bus](../../../crates/memory_bus) | Motherboard address router (`MemoryBus<'a>`), dispatching 24-bit address space live to physical storage, custom chips, and peripherals. | agnus, audio, blitter, cia, copper, denise, dma, floppy, frame_builder, paula, physical_memory, rtc, sprites |
+| **memory_bus** | [crates/memory_bus](../../../crates/memory_bus) | Routes CPU memory and register access through the actual chips and physical memory. | agnus, cia, config, denise, paula, physical_memory, rtc |
 | **m68000** | [crates/cpu](../../../crates/cpu) | Cycle-exact Motorola 68000 CPU core, 65,536-entry compile-time static dispatch table, registers, ALU, prefetch queue. | physical_memory |
-| **machine_loop** | [crates/machine_loop](../../../crates/machine_loop) | Tier 0 top-level machine facade owning CPU, memory bus router, monotonic `u64` CCK counter, custom chips, coprocessors, and devices in a flat structure with parameter-based cycle stepping. | agnus, audio, blitter, cia, config, copper, denise, dma, floppy, frame_builder, game_ports, joystick, keyboard, m68000, memory_bus, mouse, paula, physical_memory, rtc, sprites, serde |
+| **machine_loop** | [crates/machine_loop](../../../crates/machine_loop) | Owns chips and peripherals, advances the master CCK and routes motherboard signals and shared-bus transfers. | agnus, cia, config, cpu, denise, floppy, game_ports, keyboard, memory_bus, paula, physical_memory, rtc |
 | **disassembler** | [crates/disassembler](../../../crates/disassembler) | Cycle-exact M68000 instruction disassembler. | *None* |
-| **debugger** | [crates/debugger](../../../crates/debugger) | Headless inspection and debugging subsystem, temporal time-travel engine, breakpoints, and watchpoints. | m68000, physical_memory, disassembler |
-| **test_runner** | [crates/test_runner](../../../crates/test_runner) | Aggregate SingleStep verification with shared reporting helpers, automated validation against Tom Harte SingleStepTests, and whole-program CPU performance testing. | agnus, cia, cpu, denise, disassembler, flate2, memory_bus, paula, physical_memory, rtc, serde, serde_json, sha2 (development dependencies) |
-| **gui** | [crates/gui](../../../crates/gui) | Immediate-mode Developer Studio & Standalone GUI (egui/eframe), live CPU/memory inspection, temporal time-travel scrubber. | m68000, physical_memory, debugger, config, rtc |
+| **debugger** | [crates/debugger](../../../crates/debugger) | Headless inspection and debugging subsystem, temporal time-travel engine, breakpoints, and watchpoints. | config, cpu, disassembler, machine_loop, physical_memory, save_state |
+| **save_state** | [crates/save_state](../../../crates/save_state) | Versioned file envelope, JSON persistence and PNG previews around the pure machine snapshot. | machine_loop; dev: config |
+| **test_runner** | [crates/test_runner](../../../crates/test_runner) | Aggregate SingleStep verification with shared reporting helpers, automated validation against Tom Harte SingleStepTests, and whole-program CPU performance testing. | *None*; dev: agnus, cia, cpu, denise, disassembler, memory_bus, paula, physical_memory, rtc |
+| **gui** | [crates/gui](../../../crates/gui) | Immediate-mode Developer Studio & Standalone GUI (egui/eframe), live CPU/memory inspection, temporal time-travel scrubber. | config, cpu, debugger, physical_memory, rtc |
+
+### Chipset design chapters
+
+[Agnus](Agnus.md) owns the [DMA](DMA.md), [Copper](Copper.md) and [Blitter](Blitter.md) chapters. [Denise](Denise.md) owns [Sprites](Sprites.md) and uses the separate [Frame Buffer](Frame%20Buffer.md) component. [Paula](Paula.md) owns [Audio](Audio.md) and [Interrupts](Interrupts.md). [Game Ports](Game%20Ports.md) owns [Mouse](Mouse.md) and [Joystick](Joystick.md). These chapters retain their hardware contracts and references, while their `tracked_paths` point to the owning crate's files and tests.
+
+Source files stay flat within each crate. Multi-file engines prefix supporting filenames, for example `blitter_area.rs` and `audio_channel.rs`; public module paths remain `agnus::blitter` and `paula::audio`. The machine facade exposes the owning chips and peripherals. `floppy` and `frame_builder` remain separate packages.
 
 ---
 

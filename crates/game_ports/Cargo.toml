@@ -10,8 +10,6 @@ path = "src/game_ports.rs"
 [dependencies]
 serde = { workspace = true, features = ["derive"] }
 config = { workspace = true }
-mouse = { workspace = true }
-joystick = { workspace = true }
 
 [dev-dependencies]
 serde_json = { workspace = true }

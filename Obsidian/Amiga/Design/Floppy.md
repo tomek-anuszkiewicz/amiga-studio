@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "floppy"
 status: "active"
 created: 2026-09-06
-updated: 2026-11-11
+updated: 2026-11-12
 related: ["[CIA.md](CIA.md)", "[Paula.md](Paula.md)", "[Agnus.md](Agnus.md)", "[DMA.md](DMA.md)", "[MemoryBus.md](MemoryBus.md)", "[Machine Loop.md](Machine%20Loop.md)"]
 tracked_paths:
   - "crates/floppy"
@@ -45,18 +45,19 @@ transfer path; [CIA](CIA.md) describes the drive-control and status pins.
 
 The serializable `FloppyPins` state in [pins.rs](../../../crates/floppy/src/pins.rs)
 is exposed as `floppy.pins`. It groups the raw data, write gate and INDEX
-levels separately from drive mechanics and the retained media bridge.
+levels separately from drive mechanics and host-supplied image buffers.
 
 CIA-B committed PB7/SEL3-0/PB2/PB1/PB0 drive motor, selection, side, direction
-and STEP. The motherboard captures effective pins (`PRB | !DDRB`) and
+and STEP. The motherboard captures effective pins, including timer PB6/PB7 overrides, and
 stores them in `pins.incoming`. The controller samples that state into
 `pins.control_input` before engine work, so
 an input-configured bit releases high. The controller's retained previous pin
 levels distinguish a selection/step edge from a held level. Drive ready,
 track-zero, write-protect and change sense return on CIA-A PA5-PA2, separately
-from data bytes and DMA. Exact motor/step mechanics in the old algorithm are
-not reconstructed or certified here. Control delivery and the resulting status
-return are separate captured hops. HRM Chapter 8 Table 8-5 requires MOTOR to be
+from data bytes and DMA. MOTOR latches the established level on selection,
+STEP falling edges move a selected head in the delivered direction, and SIDE
+selects its surface. Selected sense outputs resolve low dominant. Control
+delivery and the resulting status return are separate captured hops. HRM Chapter 8 Table 8-5 requires MOTOR to be
 established before the selection edge that latches it, using separate writes;
 the transport regressions preserve that setup sequence.
 
@@ -72,9 +73,12 @@ establish the buffering/polarity; electrical rise times remain unknown.
 The controller serializes sampled connector levels and its own incoming inputs.
 Reset cancels pending edges and releases the write gate. Deterministic tests
 drive status, INDEX and data/gate levels without inserting a disk. Their
-success does not certify PLL/MFM decoding, FIFO behavior, drive rotation,
-media writes, or round-trip image preservation. The old media bridge remains
-for later reconstruction, under the explicit roadmap execution boundary.
+success does not certify drive rotation, media writes or round-trip image
+preservation. The old decoded-word/media bridge has been removed. Image buffers
+and pure sector encoding utilities remain available, but no runtime image stream
+is generated. [Paula](Paula.md#reconstructed-disk-engine-contract) owns the reconstructed
+data separator, FIFO, synchronization and write serializer. Media/flux generation
+remains in the [native disk verification track](../../../ROADMAP.md#native-disk-verification).
 
 ## References
 

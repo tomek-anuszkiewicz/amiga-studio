@@ -18,7 +18,7 @@ fn print_usage() {
     eprintln!(
         "Usage: gui-inspector [OPTIONS]\n\
          Options:\n\
-           --scenario <NAME>       Scenario: baseline, hover_splitter, hover_scrollbar, hover_register, hover_ccr, hover_memory, game_mode, workbench_theme, edit_register, edit_disasm, small_window (default: baseline)\n\
+           --scenario <NAME>       Scenario: baseline, live_display, live_display_studio, hover_splitter, hover_scrollbar, hover_register, hover_ccr, hover_memory, game_mode, workbench_theme, edit_register, edit_disasm, small_window (default: baseline)\n\
            --width <PIXELS>        Viewport width in points/pixels (default: 1280)\n\
            --height <PIXELS>       Viewport height in points/pixels (default: 720)\n\
            --output <PATH>         Target PNG output file path (default: target/gui_captures/baseline.png)\n\
@@ -117,7 +117,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         scenario, width, height
     );
 
-    let app = if scenario == "clean_startup" {
+    let app = if matches!(scenario.as_str(), "live_display" | "live_display_studio") {
+        let mut app = EmulatorApp::default();
+        app.session.load_binary(
+            debugger::DEFAULT_TARGET_ADDRESS,
+            include_bytes!("../../../machine_loop/tests/programs/display/live_stripes/program.bin"),
+            true,
+        );
+        if scenario == "live_display" {
+            app.view_mode = gui::ViewMode::ScreenOnly;
+        }
+        app.session.toggle_run();
+        app
+    } else if scenario == "clean_startup" {
         EmulatorApp::default()
     } else {
         create_primed_app()
@@ -140,6 +152,35 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Apply scenario-specific interactions
     match scenario.as_str() {
+        "live_display" | "live_display_studio" => {
+            for _ in 0..32 {
+                if harness
+                    .state()
+                    .session
+                    .machine
+                    .denise
+                    .frame_builder
+                    .frame_number
+                    >= 2
+                {
+                    break;
+                }
+                harness.step();
+            }
+            if harness
+                .state()
+                .session
+                .machine
+                .denise
+                .frame_builder
+                .frame_number
+                < 2
+            {
+                return Err("Display program did not produce two completed fields".into());
+            }
+            harness.state_mut().session.is_running = false;
+            harness.step();
+        }
         "baseline" | "clean_startup" => {
             // Settle layout with another step
             harness.step();

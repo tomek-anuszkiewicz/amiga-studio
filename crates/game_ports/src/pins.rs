@@ -23,7 +23,7 @@ pub struct GamePortsPins {
     pub pot_output_mask: u16,
     pub pot_output_high: u16,
     /// Connector direction/quadrature outputs, low nibble = pins 1..4.
-    /// Device waveform generation is reconstructed in 2.4, outside the router.
+    /// Device waveforms advance before the current receiver input phase.
     pub direction_pins: [u8; 2],
 }
 

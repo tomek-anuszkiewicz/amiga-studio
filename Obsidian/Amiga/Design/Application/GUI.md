@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "gui"
 status: "active"
 created: 2026-09-05
-updated: 2026-11-11
+updated: 2026-11-12
 related: ["[egui Guidelines.md](../egui%20Guidelines.md)", "[Debugger.md](Debugger.md)", "[General Architecture.md](../General%20Architecture.md)", "[Keyboard.md](../Keyboard.md)", "[Mouse.md](../Mouse.md)", "[Audio.md](../Audio.md)", "[Denise.md](../Denise.md)"]
 tracked_paths:
   - "crates/gui"
@@ -39,9 +39,9 @@ The execution trace and the optional snapshot history serve different purposes: 
 
 The intended input path maps host keyboard events to the [Amiga keyboard](../Keyboard.md) and host mouse movement and buttons to the emulated [mouse and game port](../Mouse.md). Host gamepad or keyboard controls can likewise represent an emulated [joystick](../Joystick.md). These mappings belong at the frontend boundary; the emulated devices and chips decide their hardware effects.
 
-For video, [Denise](../Denise.md) builds a rendered frame in the [frame buffer](../Frame%20Buffer.md). The GUI is intended to display that frame, preserve the intended screen proportions as the window changes, and optionally add a CRT-style presentation. For sound, the GUI is intended to deliver samples produced by the [audio subsystem](../Audio.md) to the host playback device. Emulated audio generation remains in the core.
+For video, [Denise](../Denise.md) builds a rendered frame in the [frame buffer](../Frame%20Buffer.md). After each bounded execution slice, the GUI uploads the current ARGB buffer into an egui texture and draws it in the existing 4:3 viewport with nearest-neighbor sampling. A paused machine keeps its partially drawn field visible; snapshot restoration replaces the displayed pixels on the next UI frame. Texture allocation and upload belong to the host frontend. For sound, the GUI is intended to deliver samples produced by the [audio subsystem](../Audio.md) to the host playback device. Emulated audio generation remains in the core.
 
-Live frame output remains incomplete; see [chipset reconstruction](../../../../ROADMAP.md#chipset-reconstruction). Host audio/input remain incomplete; see [native test prerequisites](../../../../ROADMAP.md#native-disk-verification).
+The shared `live_stripes` guest fixture supplies the live-frame smoke check without firmware. Full guest display acceptance remains [guest verification](../../../../ROADMAP.md#cpu-memory-gary-verification) work. Host audio/input remain incomplete; see [native test prerequisites](../../../../ROADMAP.md#native-disk-verification).
 
 ## Scaling and appearance
 

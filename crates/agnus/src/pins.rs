@@ -4,7 +4,7 @@ use crate::{Agnus, AgnusModel};
 use config::custom_reg::denise as sync;
 use serde::{Deserialize, Serialize};
 
-use dma::{REFRESH_FIRST, REFRESH_SECOND};
+use crate::dma::{REFRESH_FIRST, REFRESH_SECOND};
 const NTSC_EQUALIZATION_LINES: u16 = 10;
 const PAL_EQUALIZATION_LINES: u16 = 8;
 const NTSC_BLANK_LINES: u16 = 21;

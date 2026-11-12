@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "config"
 status: "active"
 created: 2026-09-05
-updated: 2026-11-11
+updated: 2026-11-12
 related: ["[General Architecture.md](General%20Architecture.md)", "[Physical Memory.md](Physical%20Memory.md)", "[MemoryBus.md](MemoryBus.md)", "[RTC.md](RTC.md)", "[Machine Loop.md](Machine%20Loop.md)"]
 tracked_paths:
   - "crates/config"
@@ -77,7 +77,7 @@ The master configuration is encapsulated in [`A500Config`](../../../crates/confi
 ## 3. ROM & Image Injection Interfaces
 
 Because the emulator core is system-agnostic and decoupled from the host filesystem, all ROMs and disk images are injected strictly as external byte slices (`&[u8]`):
-- **Kickstart ROM Injection**: The top-level machine constructor accepts `kickstart_rom: &[u8]`, validating exact length (256 KB or 512 KB) before loading into `MemoryBus` and executing initial cold reset.
+- **Kickstart ROM Injection**: All presets support exactly 256 KiB (262144 bytes), matching the factory Kickstart 1.2/1.3 configuration. ROM injection through `PhysicalMemory::write_bytes_debug()` rejects every other image length before changing memory. The debugger and GUI propagate this error; larger upgraded ROMs are outside the supported configuration.
 - **Floppy ADF Injection**: Disk drives accept ADF images as raw byte slices `&[u8]`, enabling seamless operation in both desktop environments and WebAssembly canvas contexts.
 - **Zero Host I/O in Core**: No `std::fs` operations exist inside the core emulation engine.
 

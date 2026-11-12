@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "cia"
 status: "active"
 created: 2026-09-06
-updated: 2026-11-11
+updated: 2026-11-12
 related: ["[Machine Loop.md](Machine%20Loop.md)", "[MemoryBus.md](MemoryBus.md)", "[Keyboard.md](Keyboard.md)", "[Floppy.md](Floppy.md)", "[Paula.md](Paula.md)"]
 tracked_paths:
   - "crates/cia"
@@ -101,6 +101,31 @@ The timer addresses read the running counter and write a separate reload latch. 
 | `$BFDE00` | `CRA` control bits | `CRA` control and `LOAD` strobe | RW | Timer A, PB6, serial mode | Unknown | Timer A mode and source; `LOAD` bit reads as zero. |
 | `$BFDF00` | `CRB` control bits | `CRB` control and `LOAD` strobe | RW | Timer B, PB7, TOD | Unknown | Timer B mode; bit 7 selects TOD time or alarm writes. |
 
+## Reconstructed engine contract
+
+HRM Appendix F's timer, SDR, port and TOD descriptions govern both instances.
+Timer A selects E or positive CNT edges; Timer B selects E, CNT, Timer A
+underflow, or Timer A underflow while CNT is high. Counters reload on underflow;
+one-shot clears START. Force-load and high-byte write effects remain at the
+existing falling-E commitment phase. PB6/PB7 override direction when PBON is
+set. Toggle mode starts high and toggles on underflow; pulse mode emits one
+positive E-cycle pulse. Source edge capture and engine advancement remain
+separate, with no direct SDR assignment from the keyboard.
+
+Input SDR shifts MSB first on rising CNT and publishes only after eight bits.
+Output SDR has a holding byte and a distinct shift byte. Timer A underflows
+alternate CNT low/high; falling CNT establishes SP and rising CNT completes
+one bit. The eighth rising edge requests ICR.SDR; a queued byte continues,
+otherwise CNT stays high and SP retains the last bit. Switching serial direction
+cancels partial transfer state. Input releases both drivers; output initializes
+CNT high and SP low, allowing the keyboard acknowledgment without a timer
+transfer. This direction-transition model follows the replacement CIA serial
+reset and vAmiga CRA handling, not a calibrated silicon edge measurement. Port B accesses schedule
+PC low on the third following E cycle for one cycle; debug reads are neutral.
+FLAG counts falling edges only. Timer outputs and pulled-up inputs determine
+resolved port readback. TOD retains 24-bit binary wrapping, alarm matching and
+the established capture-phase read latch and write halt/restart behavior.
+
 ## Named interfaces, fields and functional limits
 
 Both supported PAL/NTSC OCS machines use this same pair of 8520 interfaces.
@@ -112,8 +137,9 @@ the CIA instance and calls those methods. The queue stores the selector
 `0..15`, not a motherboard address. Every connected write uses `OverwritePending` mode until the next falling-E capture boundary described below. A later write to the same selector replaces only its pending operation, including ICR masks and LOAD actions; captured effects are not undone. Selector B
 reads `$FF` and ignores writes without a synchronization or capture event.
 
-Debug reads reuse the ordinary readers without side effects for ports, directions,
-timers, SDR and controls. ICR uses `icr_debug`, and TOD uses
+Debug reads reuse the ordinary readers without side effects for PRA, directions,
+timers, SDR and controls. PRB uses `prb_debug` to avoid starting PC;
+ICR uses `icr_debug`, and TOD uses
 `todlo_debug/todmid_debug/todhi_debug`: they inspect the live time counter,
 without acquiring/releasing or consulting the held TOD read snapshot. Live
 TOD readers use the held value while latched; live high/low reads schedule
@@ -131,23 +157,23 @@ CRA/CRB bits 0–4 select start, timer output on PB6/PB7, toggle/pulse,
 one-shot/continuous and force-load. CRA bit 5 selects the count input, bit 6
 selects serial direction and bit 7 is unused. CRB bits 6–5 select E, CNT,
 Timer A underflow, or underflow gated by CNT; bit 7 selects time/alarm writes.
-LOAD is an action with no stored readable bit. The port-B `PC` handshake
-interval in the tables is a documented hardware interval, not the configured
-queue delay or an implemented handshake claim.
+LOAD is an action with no stored readable bit. Port-B `PC` pulses follow
+accepted live reads or committed writes; their three-E-cycle scheduling is
+separate from the register capture delay. There is no attached parallel endpoint.
 
 Port reads merge the committed output latch on output-configured bits with
 delivered external levels on input-configured bits. External sampling updates
 `pins.port_a_input`/`port_b_input`, not PRA/PRB's output latches; changing a
 direction therefore exposes the retained output byte rather than a value
-overwritten by the attached device. Timer overrides and finer electrical pin
-behavior remain [chipset reconstruction work](../../../ROADMAP.md#chipset-reconstruction).
+overwritten by the attached device. PB6/PB7 select the timer waveform when PBON is set, overriding DDRB.
+Finer electrical drive strength is not modeled.
 All thirty connected addresses retain their named access/capture paths.
 
 ## Motherboard pin boundary
 
 [`pins.rs`](../../../crates/cia/src/pins.rs) separates SP/CNT input levels,
 released/driven output levels, PC, FLAG and the last delivered TOD clock level
-from the unfinished serial engine.
+from the serial shift and timer state.
 The [machine input phase](Machine%20Loop.md#captured-connector-transport-and-pending-bus-words)
 asks each CIA to sample its retained `pins.incoming` before engines step.
 CIA-A SP/CNT connect to keyboard KDAT/KCLK. On the physical board its PC and
@@ -155,8 +181,8 @@ FLAG connect to parallel strobe and ACK; the emulator currently has no parallel
 connector model. CIA-A PB and FLAG and CIA-B external PA0..5 stay released high;
 the serial connector is also unconnected, leaving CTS/DSR/CD inactive,
 while PRA/PRB, direction registers and output drivers remain available.
-Complete chip-side port, PC strobe and FLAG interrupt logic with these
-disconnected inputs belongs to [2.4](../../../ROADMAP.md#chipset-reconstruction).
+Chip-side port, PC strobe and FLAG interrupt logic runs with these
+disconnected inputs.
 An attached device's ACK/status responses and full serial/parallel exchanges
 remain deferred to [12.4](../../../ROADMAP.md#serial-parallel-device-support).
 CIA-B FLAG receives disk INDEX, not serial carrier detect. CIA-B PA0/PA1 also
@@ -180,9 +206,9 @@ current CCK input phase, after the retained inputs arrive. Both paths remain
 independent of PRA and DDRA; direct FIRE sampling preserves the captured drive
 status on PA5-PA2 and does not change CIA bus synchronization or register timing.
 
-PC/serial output generation, eight-bit reception, acknowledgment and timer/CNT
-reaction are 2.4 receiver/engine work. Tests can drive those chip outputs
-deterministically to verify wiring without bypassing the recipient pins. The
+PC/serial output generation, eight-bit reception and timer/CNT reactions
+run in the CIA engine. Component tests cover these mechanisms; transport tests
+can also drive outputs deterministically to isolate recipient delivery. The
 [catalog's E-clock section](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md#cpu-gary-and-cia-the-synchronous-e-clock-transaction)
 also distinguishes actual VPA/VMA wiring from the bus wait calculation below.
 
@@ -200,7 +226,7 @@ The current CCK model separates bus synchronization from register capture:
 
 | Divider phase | Modeled E-clock work |
 | --- | --- |
-| `0` | Rising edge; existing timer engines count here. |
+| `0` | Rising edge; E-clock timer sources count here. |
 | `1` | A synchronized CPU transfer can return `Ready`; a write enters its receiver's queue. |
 | `2` | Falling edge; pending register writes and TOD latch acquire/release take effect. |
 | `3`, `4` | Remaining low portion of E. |
@@ -242,8 +268,8 @@ not an additional arbitrary E-clock delay assigned to every register.
 
 Writes to ports, directions, timer latches, time/alarm, SDR, ICR masks and
 controls all use that capture path. Port-B output notifications apply
-`PRB | !DDRB`, so an input releases its control line high instead of driving
-the stored latch value. Direction changes use the same committed output path. Timer high-byte writes load stopped timers and load/start one-shot timers
+`PRB | !DDRB` followed by enabled timer overrides, so an ordinary input
+releases its control line high instead of driving the stored latch value. Direction changes use the same committed output path. Timer high-byte writes load stopped timers and load/start one-shot timers
 regardless of START; force-load strobes apply the reload value and do not become
 readable stored bits. CRA also discards its documented unused bit 7. Time writes to the middle/high bytes halt TOD until the low byte
 is written. Enabling a mask for an already pending ICR source asserts the master
@@ -264,12 +290,11 @@ The shared staging helper rejects overflow without immediate application.
 
 The serialized CIA value contains its divider phase, pending bus countdown,
 chip-local register selectors `0..15`, write values/countdowns/modes, active
-registers, TOD latch operation/value, and unconsumed port-output changes.
+registers, TOD latch operation/value, unconsumed port-output changes,
+serial holding/shift state, captured CNT edges, timer waveforms and PC pipeline.
 [Snapshots](Application/SaveState.md) store this encoding directly. Reset cancels pending
 work. Restore preserves these values and resumes effects at their original
-phase rather than polling outputs during loading. Electrical propagation,
-complete timer/serial state-machine reconstruction and silicon calibration
-remain separate work; the register-map table's unknown delays remain unknown.
+phase rather than polling outputs during loading. Silicon edge calibration remains separate work; the register-map table's unknown delays remain unknown.
 
 ## Reference documentation and source
 

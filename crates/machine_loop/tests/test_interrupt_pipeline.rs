@@ -65,8 +65,8 @@ fn test_end_to_end_audio_interrupt_to_cpu_isr_and_rte() {
     machine.paula.step_cck();
     assert_eq!(machine.paula.interrupts.intena & 0x4080, 0x4080);
 
-    // 5. Trigger Paula Audio Channel 0 buffer finish (AUD0DSR)
-    machine.paula.audio.channels[0].restart_strobe = true;
+    // 5. Trigger the audio channel interrupt output (AUD0IR)
+    machine.paula.audio.channels[0].irq_pending = true;
 
     // Step machine Color Clocks until CPU completes NOP and enters the ISR at $002000
     let mut cck_count = 0;
@@ -252,7 +252,7 @@ fn test_master_intena_masking_suppresses_cpu_interrupt() {
     machine.paula.step_cck();
 
     // Assert Paula Audio Channel 0 request
-    machine.paula.audio.channels[0].restart_strobe = true;
+    machine.paula.audio.channels[0].irq_pending = true;
 
     // Step machine
     for _ in 0..20 {

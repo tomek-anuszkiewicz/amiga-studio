@@ -1,4 +1,4 @@
-//! Amiga 500 register addresses and custom chip bitfield masks
+//! Amiga 500 register addresses and fields shared across chip boundaries
 //!
 //! Custom chip offsets follow the Commodore-Amiga Hardware Reference Manual (HRM),
 //! Appendix A. CIA byte addresses follow Appendices D and F.
@@ -14,32 +14,10 @@ pub const SPRITE_POINTER_STRIDE: u16 = 4;
 pub const SPRITE_REGISTER_STRIDE: u16 = 8;
 pub const BIT_POINTER_LOW_REGISTER: u16 = 2;
 
+/// Vertical display-window encoding shared by Agnus and frame composition.
 pub mod display_window {
-    pub const HIRES_FETCH_PERIOD_CCK: u16 = 4;
-    pub const LORES_FETCH_PERIOD_CCK: u16 = 8;
     pub const BIT_VSTOP_EXTENSION_SOURCE: u16 = 0x8000;
     pub const BIT_VSTOP_EXTENSION: u16 = 0x0100;
-    pub const MASK_DDF_POSITION: u16 = 0x00FC;
-}
-
-pub mod blitter_fields {
-    pub const BIT_SHIFT: u16 = 12;
-    pub const MASK_SHIFT_VALUE: u16 = 0xF;
-    pub const MASK_CONTROL_PRESERVE: u16 = 0x0FFF;
-    pub const MASK_FILL: u16 = 0x0018;
-    pub const BIT_FILL_CARRY_IN: u16 = 0x0004;
-    pub const BIT_LINE_SINGLE_DOT: u16 = 0x0002;
-    pub const BIT_LINE_SUD: u16 = 0x0010;
-    pub const BIT_LINE_SUL: u16 = 0x0008;
-    pub const BIT_LINE_AUL: u16 = 0x0004;
-    pub const BIT_LINE_SIGN: u16 = 0x0040;
-}
-
-pub mod audio_disk_control {
-    pub const BIT_SET_CLR: u16 = 0x8000;
-    pub const MASK_WRITE: u16 = 0x7FFF;
-    pub const BIT_VOLUME_MODULATION_FIRST: u16 = 1;
-    pub const BIT_PERIOD_MODULATION_FIRST: u16 = 1 << 4;
 }
 
 /// Custom chip register offsets in the $DFF000 - $DFFFFE range.
@@ -435,8 +413,14 @@ pub mod custom_reg {
         pub const REGISTER_SERPER: u16 = 0x032;
         /// Potentiometer port data write and start
         pub const REGISTER_POTGO: u16 = 0x034;
+        /// Horizontal sync with vertical blank and equalization strobe
+        pub const REGISTER_STREQU: u16 = 0x038;
+        /// Horizontal sync with vertical blank strobe
+        pub const REGISTER_STRVBL: u16 = 0x03A;
         /// Horizontal sync strobe shared with Denise
         pub const REGISTER_STRHOR: u16 = 0x03C;
+        /// Long horizontal line identification strobe
+        pub const REGISTER_STRLONG: u16 = 0x03E;
         /// Disk sync pattern register
         pub const REGISTER_DSKSYNC: u16 = 0x07E;
         /// DMA control write (set/clear bits for DMA channels)
@@ -556,18 +540,8 @@ pub mod cia_reg {
     }
 }
 
-/// Bitfield masks for custom chip control and status registers
+/// Bitfields decoded by multiple chips or motherboard routing.
 pub mod mask {
-    /// Shared disk byte/status register encoding ($01A).
-    pub mod dskbytr {
-        pub const BIT_DSKBYTR_DSKBYT: u16 = 0x8000;
-        pub const BIT_DSKBYTR_DMAON: u16 = 0x4000;
-        pub const BIT_DSKBYTR_DISKWRITE: u16 = 0x2000;
-        pub const BIT_DSKBYTR_WORDEQUAL: u16 = 0x1000;
-        pub const MASK_DSKBYTR_DATA_BYTE: u16 = 0x00FF;
-        pub const MASK_DSKBYTR_DATA: u16 = 0x90FF;
-    }
-
     /// Shared digital game-port encodings used by receivers and motherboard routing.
     pub mod game_port {
         /// Connector direction/quadrature contacts 1 through 4.
@@ -614,66 +588,6 @@ pub mod mask {
         pub const MASK_AUD_ALL: u16 = BIT_AUD0EN | BIT_AUD1EN | BIT_AUD2EN | BIT_AUD3EN;
     }
 
-    /// Bit masks for INTENA ($09A), INTENAR ($01C), INTREQ ($09C), INTREQR ($01E)
-    pub mod intreq {
-        /// Bit 15: Set/Clear control bit
-        pub const BIT_SET_CLR: u16 = 0x8000;
-        /// Bit 14: Master interrupt enable (INTEN)
-        pub const BIT_INTEN: u16 = 0x4000;
-        /// Bit 13: External interrupt (Level 6)
-        pub const BIT_EXTER: u16 = 0x2000;
-        /// Bit 12: Disk sync match (Level 5)
-        pub const BIT_DSKSYN: u16 = 0x1000;
-        /// Bit 11: Serial receive buffer full (Level 5)
-        pub const BIT_RBF: u16 = 0x0800;
-        /// Bit 10: Audio channel 3 finished (Level 4)
-        pub const BIT_AUD3: u16 = 0x0400;
-        /// Bit 9: Audio channel 2 finished (Level 4)
-        pub const BIT_AUD2: u16 = 0x0200;
-        /// Bit 8: Audio channel 1 finished (Level 4)
-        pub const BIT_AUD1: u16 = 0x0100;
-        /// Bit 7: Audio channel 0 finished (Level 4)
-        pub const BIT_AUD0: u16 = 0x0080;
-        /// Bit 6: Blitter finished (Level 3)
-        pub const BIT_BLIT: u16 = 0x0040;
-        /// Bit 5: Vertical blank interval start (Level 3)
-        pub const BIT_VERTB: u16 = 0x0020;
-        /// Bit 4: Copper instruction finished / trap (Level 3)
-        pub const BIT_COPER: u16 = 0x0010;
-        /// Bit 3: I/O Ports and timers (CIA-A, Level 2)
-        pub const BIT_PORTS: u16 = 0x0008;
-        /// Bit 2: Software interrupt (Level 1)
-        pub const BIT_SOFT: u16 = 0x0004;
-        /// Bit 1: Disk block transfer finished (Level 1)
-        pub const BIT_DSKBLK: u16 = 0x0002;
-        /// Bit 0: Serial transmit buffer empty (Level 1)
-        pub const BIT_TBE: u16 = 0x0001;
-    }
-
-    /// Bit masks for COPCON ($02E)
-    pub mod copcon {
-        /// Bit 1: Copper Danger bit (allows Copper to write registers below $080, e.g. Blitter)
-        pub const BIT_CDANG: u16 = 0x0002;
-    }
-
-    /// Bit masks for VPOSR ($004)
-    pub mod vposr {
-        /// Bit 15: Long Frame toggle bit (0 = short field, 1 = long field in interlace)
-        pub const BIT_LOF: u16 = 0x8000;
-        /// Bits 14..8: Agnus chip revision ID
-        pub const MASK_CHIP_ID: u16 = 0x7F00;
-        /// OCS NTSC 8370 chip ID value
-        pub const CHIP_ID_NTSC_8370: u16 = 0x1000;
-        /// OCS PAL 8371 chip ID value
-        pub const CHIP_ID_PAL_8371: u16 = 0x0000;
-        /// Bit 7: Long Line bit (ECS LOL)
-        pub const BIT_LOL: u16 = 0x0080;
-        /// Bits 2..0: Vertical position high bits (V10..V8)
-        pub const MASK_VPOS_HI: u16 = 0x0007;
-        /// Bit 0: Vertical position bit 8 (V8)
-        pub const BIT_V8: u16 = 0x0001;
-    }
-
     /// Bit masks for BPLCON0 ($100)
     pub mod bplcon0 {
         /// Bit 15: High resolution mode (640 pixels per scanline)
@@ -696,31 +610,5 @@ pub mod mask {
         pub const BIT_LACE: u16 = 0x0004;
         /// Bit 1: External resync enable
         pub const BIT_ERSY: u16 = 0x0002;
-    }
-
-    /// Bit masks for BLTCON0 ($040) and BLTCON1 ($042)
-    pub mod bltcon {
-        /// BLTCON0 Bit 11: Channel A DMA enable
-        pub const BIT_USEA: u16 = 0x0800;
-        /// BLTCON0 Bit 10: Channel B DMA enable
-        pub const BIT_USEB: u16 = 0x0400;
-        /// BLTCON0 Bit 9: Channel C DMA enable
-        pub const BIT_USEC: u16 = 0x0200;
-        /// BLTCON0 Bit 8: Channel D DMA enable
-        pub const BIT_USED: u16 = 0x0100;
-        /// BLTCON0 Bits 7..0: 8-bit minterm logical operation code
-        pub const MASK_MINTERM: u16 = 0x00FF;
-        /// BLTCON1 Bit 0: Line mode enable (0 = area fill/copy, 1 = line draw)
-        pub const BIT_LINE: u16 = 0x0001;
-        /// BLTCON1 Bit 1: Descending addressing mode (decrement pointers)
-        pub const BIT_DESC: u16 = 0x0002;
-        /// BLTCON1 Bit 2: Single-bit fill mode
-        pub const BIT_SING: u16 = 0x0004;
-        /// BLTCON1 Bit 3: Exclusive-OR fill mode
-        pub const BIT_EFE: u16 = 0x0008;
-        /// BLTCON1 Bit 4: Inclusive-OR fill mode
-        pub const BIT_IFE: u16 = 0x0010;
-        /// BLTCON1 Bit 7: Disable channel D output
-        pub const BIT_DOFF: u16 = 0x0080;
     }
 }

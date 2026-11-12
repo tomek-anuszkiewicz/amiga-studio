@@ -9,7 +9,7 @@ path = "src/frame_builder.rs"
 
 [dependencies]
 config = { workspace = true }
-serde = { workspace = true, features = ["derive"] }
+serde = { workspace = true, features = ["derive", "alloc"] }
 
 [lints]
 workspace = true

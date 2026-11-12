@@ -17,8 +17,7 @@ LINE_COUNT_EXCEPTIONS = (
 )
 CORE_EMULATION_CRATES = (
     "cpu", "physical_memory", "memory_bus", "config", "rtc", "disassembler",
-    "debugger", "copper", "blitter", "dma", "agnus", "sprites", "frame_builder",
-    "mouse", "joystick", "denise", "audio", "floppy", "interrupts", "paula",
+    "debugger", "agnus", "frame_builder", "denise", "floppy", "paula",
     "keyboard", "game_ports", "cia", "machine_loop",
 )
 MAX_RULE_FILE_BYTES = 23_000
@@ -32,36 +31,28 @@ REQUIRED_MULTI_MODULE_TESTS = {
 # Direct workspace dependencies only; omitted kinds allow no dependencies.
 # Keep new permissions explicit rather than deriving them from the manifests.
 APPROVED_CRATE_DEPENDENCIES = {
-    "agnus": {"normal": {"blitter", "config", "copper", "dma"}},
-    "audio": {"normal": {"config"}},
+    "agnus": {"normal": {"config"}},
     "blep_generator": {},
-    "blitter": {"normal": {"config"}},
     "cia": {"normal": {"config"}},
     "config": {},
-    "copper": {"normal": {"config"}},
     "cpu": {"normal": {"physical_memory"}},
     "debugger": {"normal": {"config", "cpu", "disassembler", "machine_loop", "physical_memory", "save_state"}},
-    "denise": {"normal": {"config", "frame_builder", "sprites"}},
+    "denise": {"normal": {"config", "frame_builder"}},
     "disassembler": {},
-    "dma": {"normal": {"config"}},
     "floppy": {"normal": {"config"}},
     "frame_builder": {"normal": {"config"}},
-    "game_ports": {"normal": {"config", "joystick", "mouse"}},
+    "game_ports": {"normal": {"config"}},
     "gui": {"normal": {"config", "cpu", "debugger", "physical_memory", "rtc"}},
-    "interrupts": {"normal": {"config"}},
-    "joystick": {},
     "keyboard": {},
     "machine_loop": {"normal": {
         "agnus", "cia", "config", "cpu", "denise", "floppy", "game_ports",
-        "joystick", "keyboard", "memory_bus", "mouse", "paula", "physical_memory", "rtc",
+        "keyboard", "memory_bus", "paula", "physical_memory", "rtc",
     }},
     "memory_bus": {"normal": {"agnus", "cia", "config", "denise", "paula", "physical_memory", "rtc"}},
-    "mouse": {},
-    "paula": {"normal": {"audio", "config", "interrupts"}},
+    "paula": {"normal": {"config"}},
     "physical_memory": {"normal": {"config", "rtc"}},
     "rtc": {"normal": {"config"}},
     "save_state": {"normal": {"machine_loop"}, "dev": {"config"}},
-    "sprites": {"normal": {"config"}},
     "test_runner": {"dev": {
         "agnus", "cia", "cpu", "denise", "disassembler", "memory_bus", "paula", "physical_memory", "rtc",
     }},

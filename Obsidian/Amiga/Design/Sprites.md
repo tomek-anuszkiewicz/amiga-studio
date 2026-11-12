@@ -3,19 +3,20 @@ title: "Hardware Sprites"
 aliases: ["Sprites", "Sprite Engine"]
 tags: ["amiga", "design", "sprites", "denise", "video"]
 category: "Design"
-subsystem: "sprites"
+subsystem: "denise"
 status: "active"
 created: 2026-09-19
-updated: 2026-10-12
+updated: 2026-11-12
 related: ["[Denise.md](Denise.md)", "[Agnus.md](Agnus.md)", "[DMA.md](DMA.md)"]
 tracked_paths:
-  - "crates/sprites"
+  - "crates/denise/src/sprites.rs"
+  - "crates/denise/tests/test_sprites_output.rs"
 ---
 # Hardware Sprites
 
 Hardware sprites are independently positioned graphics objects that appear in the video image. The Amiga 500 has eight sprite channels. Their display circuitry is part of [Denise](Denise.md); [Agnus](Agnus.md) supplies sprite data through [DMA](DMA.md).
 
-In the emulator, the [`sprites` crate](../../../crates/sprites/src/sprites.rs) models these channels. It is included by the [`denise` crate](../../../crates/denise/src/denise.rs), which owns the sprite subsystem.
+The internal [`denise::sprites` module](../../../crates/denise/src/sprites.rs) models these channels. This document is the sprite chapter of the [Denise specification](Denise.md); sprite component tests live under `crates/denise/tests/`.
 
 ## One sprite across the display
 
@@ -32,6 +33,29 @@ same channel later in the field. Sprite channels can therefore be reused
 instead of representing permanently fixed screen objects. The display
 priority circuit combines their pixels with the playfield; it decides which
 visible pixel wins when objects overlap.
+
+## Serial output and manual operation
+
+The reconstructed output follows HRM 4, Manual Mode and the SPRxDATA/CTL
+register descriptions. DATA arms the horizontal comparator; CTL disarms it.
+A horizontal match loads both data latches into sixteen-pixel shifters.
+The same armed data can repeat on subsequent lines, including outside the
+programmed vertical DMA window. Agnus owns VSTART/VSTOP DMA comparisons;
+Denise does not use them to suppress manually loaded output. The user approved
+correcting the previous contrary test criterion on 2026-11-12.
+
+Position/data/control commits remain visible during a line. A new horizontal
+match can restart serialization later in that same line. Sprite output always
+uses low-resolution pixel periods, including over high-resolution playfields.
+The odd channel's ATTACH combines its two color bits above the even channel's
+two bits. Independent channels use their pair palette group; the lowest
+nontransparent channel/pair has display priority.
+
+Collision participation differs from visual priority. Each even sprite always
+participates; CLXCON explicitly enables its odd partner. Attachment does not
+replace that enable. All six pair/pair collision bits accumulate independently
+of the winning color; Denise combines pair presence with the bitplane match
+conditions from HRM 7, Tables 7-3 and 7-4.
 
 ## References
 

@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "testing"
 status: "active"
 created: 2026-09-14
-updated: 2026-11-11
+updated: 2026-11-12
 related: ["[General Architecture.md](../General%20Architecture.md)", "[CPU SingleStepTests.md](CPU%20SingleStepTests.md)", "[CPU Instruction Benchmarking.md](../Performance/CPU%20Instruction%20Benchmarking.md)", "[Machine Loop.md](../Machine%20Loop.md)", "[Platform Quirks and Invariants Catalog.md](../Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
 tracked_paths:
   - "crates/test_runner/tests"
@@ -118,8 +118,9 @@ is tested separately. See [CPU wait coverage](CPU%20SingleStepTests.md#8-ordinar
 Custom-chip and peripheral tests should check register behavior, algorithms,
 and boundary conditions against HRM-derived expectations in isolated fixtures.
 Production-machine integration tests check the cross-chip interactions they
-assert, but do not establish those isolated behaviors. [chipset reconstruction](../../../../ROADMAP.md#chipset-reconstruction)
-plans the subsystem coverage.
+assert, but do not establish those isolated behaviors. The remaining
+[guest verification](../../../../ROADMAP.md#cpu-memory-gary-verification)
+extends component coverage to independently expected machine outputs.
 
 The [BLEP generator tests](../../../../tools/blep_generator/tests/) cover its
 numerical helpers and regenerate all four PAL curves in an isolated directory.

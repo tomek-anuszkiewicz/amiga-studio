@@ -1,4 +1,4 @@
-//! Amiga 500 Floppy Disk Subsystem & MFM Controller
+//! Amiga 500 floppy drive controls, sense lines and host-owned image buffers.
 //!
 //! Models the 3.5-inch Double Density drive mechanics (80 cylinders, 2 heads,
 //! Chinon FB-354 / Sony MPF-110), track geometry, and multi-chip hardware coordination
@@ -7,15 +7,12 @@
 pub mod mfm;
 pub use mfm::*;
 
-use config::mask::dskbytr::{BIT_DSKBYTR_DSKBYT, BIT_DSKBYTR_WORDEQUAL, MASK_DSKBYTR_DATA};
 use serde::{Deserialize, Serialize};
 
 mod pins;
 pub use pins::{FloppyInputs, FloppyPins};
 
 const CONTROL_RELEASED: u8 = u8::MAX;
-
-const BIT_ADKCON_WORD_SYNC: u16 = 0x0400;
 
 const DRIVE_COUNT: usize = 4;
 const BIT_CONTROL_MOTOR: u8 = 0x80;
@@ -90,12 +87,6 @@ impl FloppyDrive {
         self.disk_data = None;
     }
 
-    /// Action method: sets motor power on/off
-    #[inline]
-    pub fn set_motor(&mut self, on: bool) {
-        self.motor_on = on;
-    }
-
     /// Action method: sets head side (0 = lower head, 1 = upper head)
     #[inline]
     fn set_side(&mut self, side: u8) {
@@ -104,7 +95,7 @@ impl FloppyDrive {
 
     /// Action method: steps the head one cylinder inward or outward.
     /// If a disk is inserted, receiving a step pulse clears the `_CHNG` flip-flop.
-    pub fn step_pulse(&mut self, inward: bool) {
+    fn step_pulse(&mut self, inward: bool) {
         if inward {
             if self.cylinder < CYLINDERS_PER_DISK - 1 {
                 self.cylinder += 1;
@@ -134,27 +125,6 @@ impl FloppyDrive {
         self.disk_change_flip_flop = true;
     }
 
-    /// Returns the current physical track index (0..159)
-    #[inline]
-    fn current_track_index(&self) -> usize {
-        (self.cylinder as usize) * HEADS_PER_DISK as usize + (self.side as usize)
-    }
-
-    /// Returns a slice to the unencoded 5632-byte track data if a disk is inserted
-    #[inline]
-    fn current_track_data(&self) -> Option<&[u8]> {
-        let track_idx = self.current_track_index();
-        let start = track_idx * (SECTORS_PER_TRACK * SECTOR_DATA_BYTES);
-        let end = start + (SECTORS_PER_TRACK * SECTOR_DATA_BYTES);
-        self.disk_data.as_deref().and_then(|d| {
-            if end <= d.len() {
-                Some(&d[start..end])
-            } else {
-                None
-            }
-        })
-    }
-
     /// Returns true if the drive head is at Track 0 (cylinder 0)
     #[inline]
     pub fn is_track0(&self) -> bool {
@@ -180,299 +150,73 @@ impl FloppyDrive {
     }
 }
 
-/// Floppy disk MFM DMA controller & Multi-Chip Bridge (Paula, CIA-A, CIA-B)
+/// Four drives and the captured connector boundary; disk registers live in Paula.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FloppyController {
-    /// Motherboard-facing signal state.
     pub pins: FloppyPins,
-    /// 4 floppy drive units (DF0..DF3)
     pub drives: [FloppyDrive; DRIVE_COUNT],
-    /// Previously latched CIA-B Port B state (to detect falling edges of _SEL0..3 and _STEP)
+    /// Last applied controls, for motor-selection and step edge detection.
     pub prev_ciab_prb: u8,
-    /// Disk DMA data holding register (DSKDAT)
-    pub dskdat: u16,
-    /// Disk byte and sync status register (DSKBYTR)
-    pub dskbytr: u16,
-    /// Disk block DMA completion interrupt strobe (DSKBLK, Level 1, bit 1)
-    pub dskblk_irq: bool,
-    /// Disk sync pattern match interrupt strobe (DSKSYN, Level 5, bit 12)
-    pub dsksyn_irq: bool,
-    /// Active raw MFM track buffer for streaming
-    #[serde(skip)]
-    pub mfm_track_buffer: Vec<u8>,
-    /// Byte offset within the MFM track stream
-    pub mfm_track_pos: usize,
-    /// True when sync word has been matched during read
-    pub wordsync_matched: bool,
-    /// Color Clock accumulator tracking head movement across the MFM bitstream (114 CCK per word)
-    pub cck_accum: u16,
-    /// True when a newly deserialized MFM word is ready in DSKDAT for DMA transfer
-    pub dma_word_ready: bool,
 }
-
-/// Double Density MFM word timing: 16 bits * 2.0 µs = 32 µs = ~114 Color Clocks in PAL
-pub const CCK_PER_MFM_WORD: u16 = 114;
 
 impl Default for FloppyController {
     fn default() -> Self {
         Self {
             pins: FloppyPins::default(),
-            drives: [
-                FloppyDrive::default(),
-                FloppyDrive::default(),
-                FloppyDrive::default(),
-                FloppyDrive::default(),
-            ],
-            prev_ciab_prb: CONTROL_RELEASED, // All signals initially deasserted high
-            dskdat: 0,
-            dskbytr: 0,
-            dskblk_irq: false,
-            dsksyn_irq: false,
-            mfm_track_buffer: Vec::new(),
-            mfm_track_pos: 0,
-            wordsync_matched: false,
-            cck_accum: 0,
-            dma_word_ready: false,
+            drives: core::array::from_fn(|_| FloppyDrive::default()),
+            prev_ciab_prb: CONTROL_RELEASED,
         }
     }
 }
 
 impl FloppyController {
-    /// Creates a new floppy controller with standard sync pattern
     pub fn new() -> Self {
         Self::default()
     }
 
-    /// Resets floppy controller registers and drive units
     pub fn reset(&mut self) {
-        self.pins = FloppyPins::default();
-        self.prev_ciab_prb = CONTROL_RELEASED;
-        self.dskdat = 0;
-        self.dskbytr = 0;
-        self.dskblk_irq = false;
-        self.dsksyn_irq = false;
-        self.mfm_track_buffer.clear();
-        self.mfm_track_pos = 0;
-        self.wordsync_matched = false;
-        self.cck_accum = 0;
-        self.dma_word_ready = false;
-        for drive in &mut self.drives {
-            drive.reset();
-        }
+        *self = Self::default();
     }
 
-    /// Receives propagated CIA-B control levels at the drive connector.
-    ///
-    /// Drives motor latching on `_SELx` falling edge, side selection,
-    /// and head stepping pulses across drives DF0: through DF3:.
-    pub fn receive_control_pins(&mut self, prb: u8) {
-        if self.pins.control_input == prb {
+    /// Advances control edges delivered before this CCK; no image data is streamed.
+    pub fn step_cck(&mut self) {
+        let current = self.pins.control_input;
+        let previous = self.prev_ciab_prb;
+        if current == previous {
             return;
         }
-        self.pins.control_input = prb;
-        let falling_edges = self.prev_ciab_prb & !prb;
-        let mtr_on = (prb & BIT_CONTROL_MOTOR) == 0; // Bit 7: _MTR active low (0 = ON)
-        let side = if (prb & BIT_CONTROL_SIDE) != 0 {
-            LOWER_SIDE
-        } else {
-            UPPER_SIDE
-        }; // Bit 2: _SIDE (1 = Side 0, 0 = Side 1)
-        let step_falling = (falling_edges & BIT_CONTROL_STEP) != 0; // Bit 0: _STEP active low pulse
-        let inward = (prb & BIT_CONTROL_DIRECTION) == 0; // Bit 1: _DIR (0 = inward, 1 = outward)
-
-        for i in 0..DRIVE_COUNT {
-            let sel_bit = BIT_CONTROL_SELECT_FIRST << i; // Bits 3..6: _SEL0.._SEL3 (active low)
-            let is_selected = (prb & sel_bit) == 0;
-            let sel_falling = (falling_edges & sel_bit) != 0;
-
-            // Physical latching quirk: drive samples _MTR on the falling edge of its _SEL line
-            if sel_falling {
-                self.drives[i].set_motor(mtr_on);
+        for (index, drive) in self.drives.iter_mut().enumerate() {
+            let select = BIT_CONTROL_SELECT_FIRST << index;
+            drive.selected = current & select == 0;
+            if drive.selected && previous & select != 0 {
+                // MOTOR must already be established before the select edge.
+                drive.motor_on = previous & BIT_CONTROL_MOTOR == 0;
             }
-            self.drives[i].selected = is_selected;
-
-            if is_selected {
-                self.drives[i].set_side(side);
-                if step_falling {
-                    self.drives[i].step_pulse(inward);
+            if drive.selected {
+                drive.set_side(if current & BIT_CONTROL_SIDE == 0 {
+                    UPPER_SIDE
+                } else {
+                    LOWER_SIDE
+                });
+                if previous & BIT_CONTROL_STEP != 0 && current & BIT_CONTROL_STEP == 0 {
+                    drive.step_pulse(current & BIT_CONTROL_DIRECTION == 0);
                 }
             }
         }
-
-        self.prev_ciab_prb = prb;
+        self.prev_ciab_prb = current;
     }
 
-    /// Action method: samples input status bits for CIA-A Port A ($BFE001).
-    ///
-    /// Returns bits 2..5 (`_CHNG`, `_WPROT`, `_TK0`, `_RDY`) for whichever drive
-    /// is currently selected, or all bits high (`$3C`) if no drive is selected.
+    /// All selected open-collector sense outputs resolve together, low dominant.
     pub fn sample_ciaa_port_a_inputs(&self) -> u8 {
-        // Find the selected drive (if multiple selected, physical bus behaves as wired-AND / lowest index)
-        for drive in &self.drives {
-            if drive.selected {
-                let rdy = if drive.is_ready() { 0 } else { 1 }; // Bit 5: _RDY (0 = ready)
-                let tk0 = if drive.is_track0() { 0 } else { 1 }; // Bit 4: _TK0 (0 = track 0)
-                let wprot = if drive.is_write_protected() { 0 } else { 1 }; // Bit 3: _WPROT (0 = protected)
-                let chng = if drive.is_disk_changed() { 0 } else { 1 }; // Bit 2: _CHNG (0 = changed)
-
-                return (rdy << BIT_STATUS_READY_SHIFT)
-                    | (tk0 << BIT_STATUS_TRACK_ZERO_SHIFT)
-                    | (wprot << BIT_STATUS_WRITE_PROTECT_SHIFT)
-                    | (chng << BIT_STATUS_CHANGED_SHIFT);
-            }
-        }
-
-        // Open collector pull-up: all sensing lines float high (1) when no drive is selected
-        STATUS_RELEASED
-    }
-
-    /// Returns the live 8-bit deserialized MFM data byte and composite status flags (DMAON, DISKWRITE),
-    /// atomically clearing bit 15 (`DSKBYT`) per Clear-on-Read hardware semantics.
-    #[inline]
-    pub fn read_dskbytr(&mut self) -> u16 {
-        let val = self.dskbytr & MASK_DSKBYTR_DATA;
-        self.dskbytr &= !BIT_DSKBYTR_DSKBYT;
-        val
-    }
-
-    /// Peeks composite DSKBYTR without clearing bit 15 (for debuggers and UI)
-    #[inline]
-    pub fn peek_dskbytr(&self) -> u16 {
-        self.dskbytr & MASK_DSKBYTR_DATA
-    }
-
-    /// Polls pending deserialized MFM byte and sync status if a new byte has matured,
-    /// atomically acknowledging (clearing) the byte ready flag.
-    #[inline]
-    pub fn poll_pending_dskbytr(&mut self) -> Option<u16> {
-        if (self.dskbytr & BIT_DSKBYTR_DSKBYT) != 0 {
-            let data = self.dskbytr & MASK_DSKBYTR_DATA;
-            self.dskbytr &= !BIT_DSKBYTR_DSKBYT;
-            Some(data)
-        } else {
-            None
-        }
-    }
-
-    /// Reads live DSKBYTR with clear-on-read side effect
-    #[inline(always)]
-    pub fn dskbytr(&mut self) -> u16 {
-        self.read_dskbytr()
-    }
-
-    /// Encodes the current track of the selected drive into raw MFM format
-    fn load_current_track_mfm(&mut self) {
-        for drive in &self.drives {
-            if drive.selected {
-                if let Some(track_data) = drive.current_track_data() {
-                    let track_idx = drive.current_track_index() as u8;
-                    self.mfm_track_buffer = encode_amiga_track(track_idx, track_data);
-                    return;
-                }
-            }
-        }
-        // Fallback: raw stream with standard clock pattern
-        self.mfm_track_buffer = vec![mfm::MFM_GAP_BYTE; RAW_MFM_TRACK_BYTES];
-    }
-
-    /// Advances floppy drive rotation and MFM bit deserialization by 1 Color Clock (~280 ns).
-    ///
-    /// Double Density floppy drives stream 16-bit MFM words every 32 µs (~114 CCKs in PAL).
-    /// When WORDSYNC is enabled in ADKCON (bit 10), data is suppressed until the sync word
-    /// (typically $4489 in DSKSYN) matches the head bitstream.
-    pub fn step_cck(&mut self, adkcon: u16, dsksyn: u16) {
-        let mut drive_ready = false;
-        for drive in &self.drives {
-            if drive.selected && drive.is_ready() {
-                drive_ready = true;
-                break;
-            }
-        }
-        if !drive_ready {
-            self.cck_accum = 0;
-            return;
-        }
-
-        self.cck_accum += 1;
-        if self.cck_accum < CCK_PER_MFM_WORD {
-            return;
-        }
-        self.cck_accum = 0;
-
-        if self.mfm_track_buffer.is_empty() {
-            self.load_current_track_mfm();
-            self.mfm_track_pos = 0;
-            self.wordsync_matched = false;
-        }
-        if self.mfm_track_buffer.is_empty() {
-            return;
-        }
-
-        if self.mfm_track_pos + 1 >= self.mfm_track_buffer.len() {
-            self.mfm_track_pos = 0;
-        }
-        let word = u16::from_be_bytes([
-            self.mfm_track_buffer[self.mfm_track_pos],
-            self.mfm_track_buffer[self.mfm_track_pos + 1],
-        ]);
-        self.mfm_track_pos += 2;
-
-        let wordsync = (adkcon & BIT_ADKCON_WORD_SYNC) != 0;
-
-        if wordsync && !self.wordsync_matched {
-            if word == dsksyn {
-                self.wordsync_matched = true;
-                self.dsksyn_irq = true;
-                self.dskbytr |= BIT_DSKBYTR_WORDEQUAL; // Bit 12: DSKSYN matched
-                self.dskdat = word;
-                self.dma_word_ready = true;
-            }
-        } else {
-            self.dskdat = word;
-            self.dma_word_ready = true;
-            // DSKBYTR: bit 15 (DSKBYT) = 1, bit 12 (DSKSYN) retained, byte 7..0 = low byte of MFM word
-            self.dskbytr = BIT_DSKBYTR_DSKBYT
-                | (self.dskbytr & BIT_DSKBYTR_WORDEQUAL)
-                | ((word & 0x00FF) as u16);
-        }
-    }
-
-    /// Returns true if a newly deserialized MFM word is waiting in DSKDAT for DMA transfer
-    #[inline]
-    pub fn has_dma_word(&self) -> bool {
-        self.dma_word_ready
-    }
-
-    /// Consumes and returns the waiting deserialized MFM word from DSKDAT
-    #[inline]
-    pub fn consume_dma_word(&mut self) -> Option<u16> {
-        if self.dma_word_ready {
-            self.dma_word_ready = false;
-            Some(self.dskdat)
-        } else {
-            None
-        }
-    }
-
-    /// Notifies the floppy controller that the active DMA block transfer has completed
-    pub fn notify_dskblk_done(&mut self) {
-        self.dskblk_irq = true;
-        self.wordsync_matched = false;
-    }
-
-    /// Polls and clears the disk block DMA completion interrupt strobe
-    #[inline]
-    pub fn poll_dskblk_irq(&mut self) -> bool {
-        let pending = self.dskblk_irq;
-        self.dskblk_irq = false;
-        pending
-    }
-
-    /// Polls and clears the disk sync pattern match interrupt strobe
-    #[inline]
-    pub fn poll_dsksyn_irq(&mut self) -> bool {
-        let pending = self.dsksyn_irq;
-        self.dsksyn_irq = false;
-        pending
+        self.drives
+            .iter()
+            .filter(|drive| drive.selected)
+            .fold(STATUS_RELEASED, |levels, drive| {
+                let asserted = (u8::from(drive.is_ready()) << BIT_STATUS_READY_SHIFT)
+                    | (u8::from(drive.is_track0()) << BIT_STATUS_TRACK_ZERO_SHIFT)
+                    | (u8::from(drive.is_write_protected()) << BIT_STATUS_WRITE_PROTECT_SHIFT)
+                    | (u8::from(drive.is_disk_changed()) << BIT_STATUS_CHANGED_SHIFT);
+                levels & !asserted
+            })
     }
 }

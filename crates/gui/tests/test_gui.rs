@@ -165,10 +165,8 @@ fn test_disassembly_instruction_editing_and_size_invariance() {
 #[test]
 fn test_left_dock_registers_and_microcode_rendering() {
     let ctx = egui::Context::default();
-    let mut app = gui::EmulatorApp {
-        show_microcode: true,
-        ..Default::default()
-    };
+    let mut app = gui::EmulatorApp::default();
+    app.show_microcode = true;
 
     // Run frame in Developer mode
     let output = ctx.run(egui::RawInput::default(), |ctx| app.update_ui(ctx));

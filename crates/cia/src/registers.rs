@@ -4,6 +4,9 @@ use crate::{Cia, CCK_PER_ECLOCK, E_WRITE_CAPTURE_PHASE};
 use config::{stage_mutation, MutationMode};
 
 pub const BIT_CONTROL_START: u8 = 0x01;
+pub const BIT_CONTROL_PORT_OUTPUT: u8 = 0x02;
+pub const BIT_CONTROL_TOGGLE: u8 = 0x04;
+pub const BIT_CRA_COUNT_CNT: u8 = 0x20;
 pub const BIT_CONTROL_ONE_SHOT: u8 = 0x08;
 const BIT_CONTROL_LOAD: u8 = 0x10;
 const BIT_CRA_UNUSED: u8 = 0x80;
@@ -20,6 +23,7 @@ const BIT_CRB_ALARM_WRITE: u8 = 0x80;
 pub const BIT_ICR_TIMER_A: u8 = 0x01;
 pub const BIT_ICR_TIMER_B: u8 = 0x02;
 pub const BIT_ICR_ALARM: u8 = 0x04;
+pub const BIT_ICR_SERIAL: u8 = 0x08;
 pub const BIT_ICR_FLAG: u8 = 0x10;
 pub const MASK_ICR_SOURCE: u8 = 0x1F;
 pub const BIT_ICR_PENDING: u8 = 0x80;
@@ -55,8 +59,15 @@ impl Cia {
 
     /// Returns the visible PRB value.
     #[inline]
-    pub fn prb(&self) -> u8 {
-        (self.prb & self.ddrb) | (self.pins.port_b_input & !self.ddrb)
+    pub fn prb(&mut self) -> u8 {
+        self.schedule_port_handshake();
+        self.prb_debug()
+    }
+
+    /// Inspects Port B without starting a PC handshake.
+    pub fn prb_debug(&self) -> u8 {
+        let port = (self.prb & self.ddrb) | (self.pins.port_b_input & !self.ddrb);
+        self.timer_port_outputs(port)
     }
 
     /// Returns the visible DDRA value.
@@ -211,6 +222,7 @@ impl Cia {
         self.prev_prb = self.prb;
         self.prb = val;
         self.prb_mutated = true;
+        self.schedule_port_handshake();
     }
 
     /// Queues DDRA; returns false when capacity is exhausted.
@@ -257,6 +269,9 @@ impl Cia {
             self.ta_counter = self.ta_latch;
         }
         if (self.cra & BIT_CONTROL_ONE_SHOT) != 0 {
+            if self.cra & BIT_CONTROL_START == 0 {
+                self.start_timer_a_output();
+            }
             self.cra |= BIT_CONTROL_START;
         }
     }
@@ -283,6 +298,9 @@ impl Cia {
             self.tb_counter = self.tb_latch;
         }
         if (self.crb & BIT_CONTROL_ONE_SHOT) != 0 {
+            if self.crb & BIT_CONTROL_START == 0 {
+                self.start_timer_b_output();
+            }
             self.crb |= BIT_CONTROL_START;
         }
     }
@@ -340,7 +358,10 @@ impl Cia {
     }
 
     fn apply_sdr(&mut self, val: u8) {
-        self.sdr = val
+        self.sdr = val;
+        if self.is_sdr_output() {
+            self.serial.pending = true;
+        }
     }
 
     /// Queues ICR; returns false when capacity is exhausted.
@@ -368,7 +389,15 @@ impl Cia {
     }
 
     fn apply_cra(&mut self, val: u8) {
+        let previous = self.cra;
         self.cra = val & !MASK_CRA_WRITE_ONLY;
+        if (previous ^ self.cra) & BIT_CRA_SERIAL_OUTPUT != 0 {
+            self.reset_serial_transfer();
+        }
+        if previous & BIT_CONTROL_START == 0 && self.cra & BIT_CONTROL_START != 0 {
+            self.start_timer_a_output();
+        }
+        self.prb_mutated = true;
         if (val & BIT_CONTROL_LOAD) != 0 {
             self.ta_counter = self.ta_latch; // Force load
         }
@@ -381,7 +410,12 @@ impl Cia {
     }
 
     fn apply_crb(&mut self, val: u8) {
+        let previous = self.crb;
         self.crb = val & !BIT_CONTROL_LOAD;
+        if previous & BIT_CONTROL_START == 0 && self.crb & BIT_CONTROL_START != 0 {
+            self.start_timer_b_output();
+        }
+        self.prb_mutated = true;
         if (val & BIT_CONTROL_LOAD) != 0 {
             self.tb_counter = self.tb_latch; // Force load
         }

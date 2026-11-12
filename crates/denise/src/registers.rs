@@ -19,25 +19,25 @@ impl Denise {
     /// Applies STREQU at accepted selection.
     #[inline]
     pub fn strobe_strequ(&mut self) {
-        self.sync.receive_strobe(reg::REGISTER_STREQU);
+        self.receive_sync_strobe(reg::REGISTER_STREQU);
     }
 
     /// Applies STRVBL at accepted selection.
     #[inline]
     pub fn strobe_strvbl(&mut self) {
-        self.sync.receive_strobe(reg::REGISTER_STRVBL);
+        self.receive_sync_strobe(reg::REGISTER_STRVBL);
     }
 
     /// Applies STRLONG at accepted selection.
     #[inline]
     pub fn strobe_strlong(&mut self) {
-        self.sync.receive_strobe(reg::REGISTER_STRLONG);
+        self.receive_sync_strobe(reg::REGISTER_STRLONG);
     }
 
     /// Applies STRHOR at accepted selection.
     #[inline]
     pub fn strobe_strhor(&mut self) {
-        self.sync.receive_strobe(reg::REGISTER_STRHOR);
+        self.receive_sync_strobe(reg::REGISTER_STRHOR);
     }
 
     /// Queues BPLCON0; active state changes only when due.
@@ -332,8 +332,8 @@ impl Denise {
             reg::REGISTER_STREQU
             | reg::REGISTER_STRVBL
             | reg::REGISTER_STRHOR
-            | reg::REGISTER_STRLONG => self.sync.receive_strobe(offset),
-            reg::REGISTER_JOYTEST => {}
+            | reg::REGISTER_STRLONG => self.receive_sync_strobe(offset),
+            reg::REGISTER_JOYTEST => self.apply_joytest(val),
             _ => {}
         }
     }
@@ -347,6 +347,7 @@ impl Denise {
             self.bpldat[plane] = val;
             if plane == 0 {
                 self.bpldat_pipe = self.bpldat;
+                self.shifters = self.bpldat_pipe;
                 self.bpl_armed = true;
             }
         }

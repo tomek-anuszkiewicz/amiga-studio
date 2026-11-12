@@ -6,6 +6,7 @@
 pub mod address_map;
 pub mod big_array;
 pub mod chip_ram;
+pub mod dmal;
 pub mod mutation;
 pub mod registers;
 
@@ -40,6 +41,18 @@ pub enum VideoStandard {
     Pal,
     /// NTSC (60 Hz refresh, ~3.579545 MHz Color Clock)
     Ntsc,
+}
+
+impl VideoStandard {
+    /// Nominal motherboard color-clock frequency, rounded to whole hertz.
+    pub const fn color_clock_hz(self) -> u32 {
+        const PAL_CCK_HZ: u32 = 3_546_895;
+        const NTSC_CCK_HZ: u32 = 3_579_545;
+        match self {
+            Self::Pal => PAL_CCK_HZ,
+            Self::Ntsc => NTSC_CCK_HZ,
+        }
+    }
 }
 
 /// Real-Time Clock hardware model

@@ -6,8 +6,10 @@
 //! Paula (`POT0DAT`, `POT1DAT`, `POTGOR`), and CIA-A (`PRA` bits 6 & 7),
 //! as well as host input event routing.
 
-pub use joystick::{self, Joystick};
-pub use mouse::{self, Mouse};
+pub mod joystick;
+pub use joystick::Joystick;
+pub mod mouse;
+pub use mouse::Mouse;
 
 use serde::{Deserialize, Serialize};
 
@@ -49,13 +51,12 @@ impl PortDevice {
         }
     }
 
-    /// Returns the 16-bit JOYxDAT register value for Denise
-    #[inline]
-    pub fn joy_dat(&self) -> u16 {
+    /// Advances device outputs, returning the four direction/quadrature pins.
+    fn step_direction_pins(&mut self) -> u8 {
         match self {
-            PortDevice::None => 0x0000,
-            PortDevice::Mouse(ref m) => m.joy_dat(),
-            PortDevice::Joystick(ref j) => j.joy_dat(),
+            Self::None => config::mask::game_port::MASK_DIRECTION_INPUTS,
+            Self::Mouse(mouse) => mouse.step_cck(),
+            Self::Joystick(joystick) => joystick.direction_pins(),
         }
     }
 
@@ -174,18 +175,12 @@ impl GamePorts {
         &mut self.state.port2
     }
 
-    // --- Denise Chipset Decoders ---
-
-    /// Returns 16-bit JOY0DAT ($DFF00A) register value for Denise (Port 1)
-    #[inline]
-    pub fn joy0dat(&self) -> u16 {
-        self.state.port1.joy_dat()
-    }
-
-    /// Returns 16-bit JOY1DAT ($DFF00C) register value for Denise (Port 2)
-    #[inline]
-    pub fn joy1dat(&self) -> u16 {
-        self.state.port2.joy_dat()
+    /// Advances external device waveforms before the current input sampling phase.
+    pub fn step_cck(&mut self) {
+        self.pins.direction_pins = [
+            self.state.port1.step_direction_pins(),
+            self.state.port2.step_direction_pins(),
+        ];
     }
 
     // --- Paula Chipset Decoders ---
@@ -202,46 +197,21 @@ impl GamePorts {
         self.state.pot1dat
     }
 
-    /// Computes the 16-bit POTGOR ($DFF016) read register value
-    ///
-    /// Combines the Paula POTGO write latch ($DFF034) with active controller pull-downs:
-    /// - Bit 14: Port 2 Pin 9 (Right mouse / Fire 2). Active low (0 = pressed, 1 = released).
-    /// - Bit 12: Port 2 Pin 5 (Middle mouse). Active low (0 = pressed, 1 = released).
-    /// - Bit 10: Port 1 Pin 9 (Right mouse / Fire 2). Active low (0 = pressed, 1 = released).
-    /// - Bit 8:  Port 1 Pin 5 (Middle mouse). Active low (0 = pressed, 1 = released).
-    #[inline]
-    pub fn potgor(&self, potgo_latch: u16) -> u16 {
-        let mut val = potgo_latch | config::mask::game_port::MASK_POT_DATA;
-
-        // Port 2 pin 9 (Bit 14)
-        if self.state.port2.is_fire2_pressed() {
-            val &= !(BIT_POT1_FIRE2);
-        } else {
-            val |= BIT_POT1_FIRE2;
+    /// Resolves all four digital POT lines from delivered drivers and buttons.
+    pub fn potgor(&self) -> u16 {
+        use config::mask::game_port::MASK_POT_DATA;
+        let mut levels = (self.pins.pot_output_high | !self.pins.pot_output_mask) & MASK_POT_DATA;
+        for (pressed, bit) in [
+            (self.state.port1.is_middle_button_pressed(), BIT_POT0_FIRE3),
+            (self.state.port1.is_fire2_pressed(), BIT_POT0_FIRE2),
+            (self.state.port2.is_middle_button_pressed(), BIT_POT1_FIRE3),
+            (self.state.port2.is_fire2_pressed(), BIT_POT1_FIRE2),
+        ] {
+            if pressed {
+                levels &= !bit;
+            }
         }
-
-        // Port 2 pin 5 (Bit 12)
-        if self.state.port2.is_middle_button_pressed() {
-            val &= !(BIT_POT1_FIRE3);
-        } else {
-            val |= BIT_POT1_FIRE3;
-        }
-
-        // Port 1 pin 9 (Bit 10)
-        if self.state.port1.is_fire2_pressed() {
-            val &= !(BIT_POT0_FIRE2);
-        } else {
-            val |= BIT_POT0_FIRE2;
-        }
-
-        // Port 1 pin 5 (Bit 8)
-        if self.state.port1.is_middle_button_pressed() {
-            val &= !(BIT_POT0_FIRE3);
-        } else {
-            val |= BIT_POT0_FIRE3;
-        }
-
-        val
+        levels
     }
 
     // --- CIA-A Primary Fire Decoders ---
@@ -268,7 +238,8 @@ impl GamePorts {
     /// Bit 7 = /FIR1 (Port 2 joystick fire 1, 0 = pressed, 1 = released)
     #[inline]
     pub fn sample_ciaa_port_a_inputs(&self) -> u8 {
-        let mut fire_pins = MASK_CIAA_PRA_FIRE;
+        let mut fire_pins =
+            (self.pins.fire_output_high | !self.pins.fire_output_mask) & MASK_CIAA_PRA_FIRE;
         if self.fire1_port1() {
             fire_pins &= !BIT_CIAA_PRA_FIR0;
         }

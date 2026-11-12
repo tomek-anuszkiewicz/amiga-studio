@@ -1,17 +1,18 @@
 //! Paula register reads, queued writes and private due-event application.
 
-use super::{Paula, BIT_DSKLEN_WRITE_FLAG};
-use config::custom_reg::paula as reg;
-use config::mask::dskbytr::{
+use super::{audio, Paula, BIT_DSKLEN_WRITE_FLAG};
+use crate::register_bits::audio_disk_control as adkcon;
+use crate::register_bits::dskbytr::{
     BIT_DSKBYTR_DISKWRITE, BIT_DSKBYTR_DMAON, BIT_DSKBYTR_DSKBYT, MASK_DSKBYTR_DATA,
 };
-use config::{audio_disk_control as adkcon, mask::dmacon};
+use crate::register_bits::intreq;
+use config::custom_reg::paula as reg;
+use config::mask::dmacon;
 use config::{
     stage_mutation, MutationMode, DMACON_WRITE_DELAY_CCK, PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
 };
 
 const MASK_PAULA_DMA: u16 = dmacon::BIT_DSKEN | dmacon::MASK_AUD_ALL;
-const BIT_DSKLEN_DMA_ENABLE: u16 = 0x8000;
 
 impl Paula {
     /// Capacity preflight for an atomic transfer with multiple receivers.
@@ -31,10 +32,12 @@ impl Paula {
             && stage_mutation(&mut self.mutations, offset, value, delay, mode)
     }
 
-    /// Applies STRHOR at accepted selection.
+    /// Applies a CPU-selected RGA sync address without using the data-write queue.
     #[inline]
-    pub fn strobe_strhor(&mut self) {
-        self.sync.cck_since_horizontal = 0;
+    pub fn strobe_sync(&mut self, address: u16) {
+        if self.receive_sync_strobe(address) {
+            self.set_interrupt_request(intreq::BIT_VERTB);
+        }
     }
 
     /// Queues DMACON; active state changes only when due.
@@ -238,8 +241,8 @@ impl Paula {
             reg::REGISTER_SERDAT => self.serial_port.write_serdat(val),
             reg::REGISTER_SERPER => self.serial_port.write_serper(val),
             reg::REGISTER_POTGO => self.potgo = val,
-            reg::REGISTER_DSKLEN => self.apply_dsklen(val),
-            reg::REGISTER_DSKDAT => self.dskdat = val,
+            reg::REGISTER_DSKLEN => self.apply_disk_length(val),
+            reg::REGISTER_DSKDAT => self.apply_disk_data(val),
             reg::REGISTER_DSKSYNC => self.dsksync = val,
 
             reg::REGISTER_AUD0LEN => self.audio.set_len(0, val),
@@ -247,30 +250,49 @@ impl Paula {
             reg::REGISTER_AUD0VOL => self
                 .audio
                 .set_vol(0, (val & audio::MASK_VOLUME_REGISTER) as u8),
-            reg::REGISTER_AUD0DAT => self.audio.set_dat(0, val),
+            reg::REGISTER_AUD0DAT => self.audio.set_dat(
+                0,
+                val,
+                self.interrupts.intreq & (intreq::BIT_AUD0 << 0) != 0,
+            ),
 
             reg::REGISTER_AUD1LEN => self.audio.set_len(1, val),
             reg::REGISTER_AUD1PER => self.audio.set_per(1, val),
             reg::REGISTER_AUD1VOL => self
                 .audio
                 .set_vol(1, (val & audio::MASK_VOLUME_REGISTER) as u8),
-            reg::REGISTER_AUD1DAT => self.audio.set_dat(1, val),
+            reg::REGISTER_AUD1DAT => self.audio.set_dat(
+                1,
+                val,
+                self.interrupts.intreq & (intreq::BIT_AUD0 << 1) != 0,
+            ),
 
             reg::REGISTER_AUD2LEN => self.audio.set_len(2, val),
             reg::REGISTER_AUD2PER => self.audio.set_per(2, val),
             reg::REGISTER_AUD2VOL => self
                 .audio
                 .set_vol(2, (val & audio::MASK_VOLUME_REGISTER) as u8),
-            reg::REGISTER_AUD2DAT => self.audio.set_dat(2, val),
+            reg::REGISTER_AUD2DAT => self.audio.set_dat(
+                2,
+                val,
+                self.interrupts.intreq & (intreq::BIT_AUD0 << 2) != 0,
+            ),
 
             reg::REGISTER_AUD3LEN => self.audio.set_len(3, val),
             reg::REGISTER_AUD3PER => self.audio.set_per(3, val),
             reg::REGISTER_AUD3VOL => self
                 .audio
                 .set_vol(3, (val & audio::MASK_VOLUME_REGISTER) as u8),
-            reg::REGISTER_AUD3DAT => self.audio.set_dat(3, val),
+            reg::REGISTER_AUD3DAT => self.audio.set_dat(
+                3,
+                val,
+                self.interrupts.intreq & (intreq::BIT_AUD0 << 3) != 0,
+            ),
 
-            reg::REGISTER_STRHOR => self.sync.cck_since_horizontal = 0,
+            reg::REGISTER_STREQU
+            | reg::REGISTER_STRVBL
+            | reg::REGISTER_STRHOR
+            | reg::REGISTER_STRLONG => self.strobe_sync(offset),
             _ => {}
         }
     }
@@ -284,7 +306,7 @@ impl Paula {
             reg::REGISTER_POT0DAT => self.pot0dat,
             reg::REGISTER_POT1DAT => self.pot1dat,
             reg::REGISTER_POTGOR => self.potgor,
-            reg::REGISTER_SERDATR => self.serial_port.serdatr,
+            reg::REGISTER_SERDATR => self.serdatr(),
             reg::REGISTER_DSKBYTR => self.peek_dskbytr(),
             reg::REGISTER_INTENAR => self.interrupts.read_intenar(),
             reg::REGISTER_INTREQR => self.interrupts.read_intreqr(),
@@ -292,24 +314,10 @@ impl Paula {
         }
     }
 
-    /// Action method: writes DSKLEN register following the 2-write arming sequence
-    fn apply_dsklen(&mut self, val: u16) {
-        self.dsklen = val;
-        let dmaen = (val & BIT_DSKLEN_DMA_ENABLE) != 0;
-        if !dmaen {
-            self.dma_armed = false;
-            self.dma_active = false;
-        } else if !self.dma_armed {
-            self.dma_armed = true;
-        } else {
-            self.dma_active = true;
-        }
-    }
-
     /// Returns composite DSKBYTR status with live flags without side effects (for debuggers and peek inspection)
     #[inline]
     pub fn peek_dskbytr(&self) -> u16 {
-        self.assemble_dskbytr(self.dskbytr)
+        self.assemble_dskbytr()
     }
 
     /// Reads composite live DSKBYTR with Clear-on-Read hardware side-effects (clears bit 15 DSKBYT)
@@ -322,8 +330,8 @@ impl Paula {
 
     /// Assembles composite live DSKBYTR status from raw read word, DSKLEN, and Paula DMA enables.
     #[inline]
-    pub fn assemble_dskbytr(&self, floppy_dskbytr: u16) -> u16 {
-        let dmaon = if self.dma_master && (self.dma_enables & dmacon::BIT_DSKEN) != 0 {
+    fn assemble_dskbytr(&self) -> u16 {
+        let dmaon = if self.disk_dma_enabled() {
             BIT_DSKBYTR_DMAON
         } else {
             0
@@ -333,7 +341,7 @@ impl Paula {
         } else {
             0
         };
-        (floppy_dskbytr & MASK_DSKBYTR_DATA) | dmaon | diskwrite
+        (self.dskbytr & MASK_DSKBYTR_DATA) | dmaon | diskwrite
     }
 
     /// Writes INTENA register following SET/CLR bit 15 logic
@@ -346,6 +354,9 @@ impl Paula {
     #[inline]
     fn apply_intreq(&mut self, val: u16) {
         self.interrupts.write_intreq(val);
+        if val & intreq::BIT_SET_CLR == 0 && val & intreq::BIT_RBF != 0 {
+            self.serial_port.acknowledge_receive();
+        }
     }
 
     /// Reads Audio/Disk Control register (ADKCONR at $DFF010)
@@ -399,13 +410,15 @@ impl Paula {
     /// Reads Serial port data and status register (SERDATR at $DFF018)
     #[inline(always)]
     pub fn serdatr(&self) -> u16 {
-        self.serial_port.serdatr
+        self.serial_port
+            .read_status(self.interrupts.intreq & intreq::BIT_RBF != 0)
     }
 
     /// Reads Serial port data and status register without side-effects for debugging
     #[inline(always)]
     pub fn serdatr_debug(&self) -> u16 {
-        self.serial_port.serdatr
+        self.serial_port
+            .read_status(self.interrupts.intreq & intreq::BIT_RBF != 0)
     }
 
     /// Reads Interrupt enable register (INTENAR at $DFF01C)

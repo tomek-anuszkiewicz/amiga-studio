@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "machine_loop"
 status: "active"
 created: 2026-08-31
-updated: 2026-11-11
+updated: 2026-11-12
 related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[DMA.md](DMA.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)"]
 tracked_paths:
   - "crates/machine_loop"
@@ -86,10 +86,12 @@ next source level, then performs a warm reset before CPU execution if asserted.
 There is no second sampled field or delay queue for this one-CCK connection.
 The CPU owns its delivered IPL input; there is no second board copy.
 Reset cancels pending inputs; loading a snapshot neither samples an input nor
-replays an edge. The decoded vertical-blank event remains explicitly a model
-bridge, captured and delivered without inventing a VERTB motherboard pin.
-Existing decoded media/audio bridges remain unreconstructed engine interfaces;
-they are not electrical wires or proof of complete disk/audio exchange.
+replays an edge. Paula derives VERTB locally from the captured RGA sync address;
+there is no decoded vertical-blank event or separate VERTB motherboard pin.
+The decoded disk status/request and audio restart bridges are also removed. Paula
+encodes requests on DMAL, Agnus owns grants and addresses, and the common bus
+delivers audio/disk write words. For disk reads the coordinator completes a
+granted DSKDATR word from Paula into RAM before advancing the disk pointer.
 
 ## Captured connector transport and pending bus words
 
@@ -110,8 +112,8 @@ There is no shared PendingPins frame or per-frame countdown.
 The coordinator owns the pending keyboard reset and OVL phase. LED brightness
 and filter enable can be derived from CIA-A PRA/DDRA when needed; they have no
 cached machine fields. Chips own interrupt/TOD input history, disk inputs, game-port drive
-inputs and RGA events. Legacy decoded POT counters and the vertical event remain
-explicit local bridges, not additional electrical pins. No parallel connector
+inputs and RGA events. Legacy decoded POT counters remain an explicit model
+bridge, not additional electrical pins. No parallel connector
 or attached parallel device is implemented. CIA-A PB inputs and FLAG and CIA-B
 external parallel status inputs use released levels. CIA-B PA0/SP and PA1/CNT
 remain connected on the motherboard: committed Port A and enabled serial drivers
@@ -139,9 +141,9 @@ resolution. CIA-B FLAG detects an INDEX falling edge once; a held low does
 not retrigger after ICR acknowledgment. The serial connector is unconnected,
 with no serial pin state or transport: Paula retains idle-high RXD in SERDATR
 and CIA-B receives inactive CTS/DSR/CD. UART registers and CIA-B port logic
-remain available. Missing keyboard/CIA/UART and quadrature reactions
-belong to [2.4](../../../ROADMAP.md#chipset-reconstruction), including complete
-UART and CIA parallel port/strobe/FLAG logic with disconnected inputs.
+remain available. Keyboard, CIA, UART and quadrature engines consume these
+inputs locally; their full guest exchanges remain in
+[guest verification](../../../ROADMAP.md#cpu-memory-gary-verification).
 Attached serial/parallel devices, connector transport and full communication
 verification remain deferred to [12.4](../../../ROADMAP.md#serial-parallel-device-support).
 
@@ -172,13 +174,15 @@ Denise and Paula do not receive a position structure. Agnus exposes an RGA strob
 in its first refresh slot; a long-line marker can occupy the second slot.
 The motherboard captures that event after producers step and delivers it
 before the next receiver step, preserving the existing provisional CCK phase.
-STREQU/STRVBL/STRHOR reach Denise; STRLONG is a separate event. The documented
-STRHOR recipient also includes Paula. These are address-triggered events,
+All four sync addresses reach Denise and Paula. The approved
+[Paula model](Paula.md#rga-synchronization-and-vertb) extends the manual's explicit
+STRHOR recipient listing; STRLONG leaves Paula's line phase unchanged. These are address-triggered events,
 not four persistent register values or a dedicated horizontal-sync wire.
 
-Each receiver owns its synchronization state. A minimal local cursor preserves
-the existing rendering boundary; full equalization, field and pixel timing
-remain chipset reconstruction work. CPU writes use named strobe interfaces
+Each receiver owns its synchronization state. [Denise](Denise.md#delivered-timing-and-controller-inputs)
+tracks its display phase; Paula tracks the horizontal phase and equalization
+entry used for DMAL and VERTB. Exact silicon edge calibration remains open.
+CPU writes use the receiving chip's strobe interface
 and apply the same receiver synchronization operations at accepted selection,
 without a register queue entry.
 There is no second automatic beam-counter projection. The source output, captured

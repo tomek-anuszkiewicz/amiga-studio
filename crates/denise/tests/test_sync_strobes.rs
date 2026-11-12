@@ -22,3 +22,47 @@ fn repeated_address_strobes_update_receiver_state_immediately() {
     denise.reset();
     assert!(!denise.sync.synchronized);
 }
+
+#[test]
+fn field_boundaries_follow_received_strobes_for_both_standards_and_interlace() {
+    for base_lines in [262u16, 312] {
+        for interlaced in [false, true] {
+            let mut denise = Denise::new(DeniseModel::Ocs8362);
+            denise.bplcon0 = if interlaced { 4 } else { 0 };
+            // Joining a field in progress must not publish a short frame.
+            for _ in 0..20 {
+                denise.strobe_strhor();
+            }
+            denise.strobe_strequ();
+            assert_eq!(denise.frame_builder.frame_number, 0);
+            for field in 0..4 {
+                let odd = interlaced && field % 2 != 0;
+                let lines = base_lines + u16::from(odd);
+                for line in 1..lines {
+                    if line < 8 {
+                        denise.strobe_strequ();
+                    } else if line < 26 {
+                        denise.strobe_strvbl();
+                    } else {
+                        denise.strobe_strhor();
+                    }
+                    assert_eq!(denise.sync.vpos, line);
+                    assert_eq!(denise.sync.field_odd, odd);
+                    denise.strobe_strlong();
+                    assert_eq!(denise.sync.vpos, line);
+                }
+                denise.strobe_strequ();
+                assert_eq!(denise.sync.vpos, 0);
+                assert_eq!(denise.sync.field_lines, lines);
+                assert_eq!(denise.frame_builder.frame_number, field + 1);
+                assert_eq!(
+                    denise.frame_builder.height,
+                    u32::from(base_lines + 1) * if interlaced { 2 } else { 1 }
+                );
+            }
+            denise.reset();
+            assert!(!denise.sync.field_locked);
+            assert_eq!(denise.frame_builder.frame_number, 0);
+        }
+    }
+}

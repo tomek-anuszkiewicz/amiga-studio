@@ -1,4 +1,4 @@
-//! Delivered connector levels, separate from the unfinished serial engine.
+//! Delivered connector levels and chip output drivers.
 
 use crate::Cia;
 use serde::{Deserialize, Serialize};
@@ -64,8 +64,9 @@ impl Cia {
         self.pins.tod_high = high;
     }
 
-    /// Drives SP/CNT together. Serial shifting belongs to the CIA engine in 2.4.
+    /// Captures SP/CNT together; the engine consumes a positive CNT edge once.
     pub fn receive_serial_pins(&mut self, sp_high: bool, cnt_high: bool) {
+        self.cnt_rising |= !self.pins.cnt_input_high && cnt_high;
         self.pins.sp_input_high = sp_high;
         self.pins.cnt_input_high = cnt_high;
     }
@@ -100,7 +101,7 @@ impl Cia {
     pub fn poll_prb_output(&mut self) -> Option<u8> {
         if self.prb_mutated {
             self.prb_mutated = false;
-            Some(self.prb | !self.ddrb)
+            Some(self.port_b_output_pins())
         } else {
             None
         }

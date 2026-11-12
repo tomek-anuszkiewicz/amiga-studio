@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "memory_bus"
 status: "active"
 created: 2026-08-31
-updated: 2026-11-11
+updated: 2026-11-12
 related: ["[General Architecture.md](General%20Architecture.md)", "[Physical Memory.md](Physical%20Memory.md)", "[Machine Loop.md](Machine%20Loop.md)", "[DMA.md](DMA.md)", "[Agnus.md](Agnus.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)", "[CIA.md](CIA.md)", "[RTC.md](RTC.md)", "[Custom Chip Register Ownership and Access Matrix.md](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md)", "[Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
 tracked_paths:
   - "crates/memory_bus"
@@ -29,6 +29,18 @@ The CPU knows the `AddressBus` interface, whose accesses return `BusResult::Read
 
 `A500Machine::step_cck()` increments its CCK counter and advances other subsystems before stepping the CPU. In that subsystem step, Agnus advances against Chip RAM, and the machine copies `agnus.chip_ram_blocked` into `physical_memory.chip_ram_blocked`. The machine then constructs `MemoryBus` from mutable references to physical memory, Agnus, Denise, Paula, CIA-A, CIA-B, and RTC and passes it to `cpu.step_cck()`. Thus an attempted CPU Chip/Slow RAM access sees the contention state for that step. A `WaitState` keeps the CPU bus micro-step pending; the rest of the machine still advances on subsequent CCKs. The [Machine Loop](Machine%20Loop.md) describes the complete step order, while [DMA](DMA.md) owns the Agnus slot schedule.
 
+The production CPU path records a shared-bus wait in Agnus when a Chip/Slow
+RAM or custom-register access is refused. The first refusal starts the denial
+count; Agnus counts subsequent CCKs while that request remains pending. A
+successful access releases it. Internal CPU work and private RAM/ROM do not
+create requests or force Blitter yields. Custom-register CPU accesses check bus
+availability before any live-read effect or register insertion; the common
+Copper/DMA register issue methods retain their separate already-granted path.
+The CPU retains the refused operation in its existing micro-step, without a
+second copy of its address or write data in the chipset. See [DMA](DMA.md) for
+priority. These are functional request and retry semantics; sub-CCK Gary/CPU
+edge calibration remains outside reconstruction acceptance.
+
 On an A500 motherboard, Gary decodes the CPU address to select RAM, ROM, or a device and controls the connection between the CPU data bus and the shared Chip RAM data bus. [Agnus](Agnus.md) schedules access to that shared bus and generates the DRAM addresses and timing. When Agnus needs the bus, it requests it from Gary. Gary then delays the CPU's transfer acknowledgment until the bus is available, leaving the CPU access pending. This is the hardware reason for the Chip/Slow RAM wait state described above; Gary does not choose which DMA channel runs.
 
 A bidirectional, tri-state data latch sits between the CPU and shared data buses. While enabled, a latch passes the input word; when closed, it retains the last sampled word. Its outputs can also be disconnected electrically. Gary controls this path so a granted CPU transfer can move data in the required direction, while an Agnus DMA transfer leaves the CPU side isolated from the shared bus. "Buffer" here means a small, temporary holding and isolation stage, not a second RAM store or a cache. It is also distinct from the holding registers in Denise and Paula, which capture DMA data for display or audio after Agnus selects their register. The emulator models the resulting address routing and CPU wait state; it has no separate Gary chip or motherboard latch state.
@@ -49,7 +61,7 @@ physical bank table provides placeholders, not live chip access.
 | `$C00000-$C7FFFF` | Optional 512 KB Slow RAM in standard and expanded presets. |
 | `$DC0000-$DC003F` | RTC byte interface; its device implementation accepts odd addresses when a clock is installed. Other addresses in bank `$DC` return the fixed `$FF` placeholder on reads and ignore writes. |
 | `$DE0000-$DFFFFF` | Custom-register routing, using the low register-offset bits. These addresses alias the same 512-byte register window in the current router. |
-| `$F80000-$FFFFFF` | Kickstart ROM. A 256 KB image repeats across this 512 KB range; a 512 KB image fills it. CPU ROM writes are ignored. |
+| `$F80000-$FFFFFF` | Kickstart ROM. The fixed 256 KiB image repeats across this 512 KiB range. CPU ROM writes are ignored. |
 
 The preset table and installed storage are built in [`presets.rs`](../../../crates/physical_memory/src/presets.rs) and `PhysicalMemory::from_config()`. Unmapped physical-memory reads return the fixed `OPEN_BUS_BYTE` placeholder (`$FF`); word reads return `OPEN_BUS_WORD` (`$FFFF`). CIA inactive lanes and absent RTC responses use the same placeholder. See the [open-bus quirk](Platform%20Quirks%20and%20Invariants%20Catalog.md#open-bus-and-opposite-direction-register-access). The map above describes implemented dispatch rather than every address reserved by Amiga hardware.
 
@@ -140,8 +152,8 @@ catalog is required. Agnus's queue is the owning interface for Copper and
 Blitter register requests. A returned due `(offset, value)` proves that the
 owner consumed its event; functional correctness needs engine observations.
 
-Some register and receiver effects remain incomplete; see the
-[chipset reconstruction work](../../../ROADMAP.md#chipset-reconstruction).
+Complete guest observation of reconstructed register and receiver effects
+remains in [guest verification](../../../ROADMAP.md#cpu-memory-gary-verification).
 
 All pending custom events live in serializable chip state, along with retained
 Copper/bitplane outputs that have not yet entered a destination queue. Reset

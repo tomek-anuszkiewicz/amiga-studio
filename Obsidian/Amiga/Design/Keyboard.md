@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "cia"
 status: "active"
 created: 2026-09-02
-updated: 2026-11-11
+updated: 2026-11-12
 related: ["[CIA.md](CIA.md)", "[Machine Loop.md](Machine%20Loop.md)", "[General Architecture.md](General%20Architecture.md)"]
 tracked_paths:
   - "crates/keyboard"
@@ -35,7 +35,7 @@ open-drain lines are high. [Machine Loop](Machine%20Loop.md#captured-connector-t
 resolves keyboard and enabled CIA drive levels, captures them after chip work
 and delivers them before the next receiver step. The resolved return is also
 retained as `pins.host_data_high` on the keyboard. That input, rather than a direct
-read of CRA or an SDR assignment, is the future controller's handshake input.
+read of CRA or an SDR assignment, is the controller's handshake input.
 The keyboard retains the routed return in `pins.incoming_host_data_high` until
 the next input phase; current `host_data_high` changes only when sampled.
 Reset remains a separate line and does not wait for serial acknowledgment.
@@ -56,15 +56,23 @@ setup/low/recovery portions and the 143-millisecond timeout are device protocol
 requirements, not the coordinator's one-CCK transport choice. Power-up requires
 resynchronization, self-test and the `$FD/$FE` held-key stream. Timeout recovery
 sends release-like resync bits and reports lost synchronization. These state
-machines and the response to blocked/slow acknowledgment belong to
-[2.4](../../../ROADMAP.md#chipset-reconstruction), with complete guest exchanges
-in 2.5.
+machines run in [`protocol.rs`](../../../crates/keyboard/src/protocol.rs).
+Microsecond intervals are rounded up to whole CCKs for the selected PAL/NTSC
+clock. The successful self-test path sends `$FD`, the keys held at initial
+synchronization and `$FE`; no physical controller fault is simulated. A
+recognized low holds transmission until the host releases KDAT. The receiver
+waits two CCKs after releasing its own data driver before examining the return,
+so its own previously captured low cannot acknowledge a byte.
 
-The old controller's queue/encoding helpers remain from the earlier attempt;
-their presence does not certify that protocol. Machine Loop no longer invokes
-its whole-byte shortcut into CIA SDR. Current pin tests use deterministic
-outputs and explicitly do not claim working key transmission or host keyboard
-translation. The frontend key adapter remains 6.2 work.
+The controller has a ten-keycode type-ahead ring. Full input retains queued
+codes and reports `$FA` after draining them. Key state suppresses duplicate
+physical transitions; software owns repeat. Caps Lock produces alternating
+press/release codes on presses only. A500 reset directly asserts the separate
+line and never queues the A1000/A2000 reset-warning protocol. The old whole-byte
+step/acknowledgment shortcut is removed. Current state includes partial wire
+phases, timeout/acknowledgment counters, queued and retransmitted codes, and
+startup progress. Complete guest exchanges belong to 2.5; the frontend key
+adapter remains 6.2 work.
 
 ## Power LED and audio filter
 

@@ -80,6 +80,170 @@ struct TestMotherboard {
     rtc: RtcMsm6242b,
 }
 
+#[test]
+fn shared_bus_refusal_retains_live_read_and_custom_write_effects_until_acceptance() {
+    let mut mb = TestMotherboard::new();
+    mb.mem.chip_ram_blocked = true;
+    mb.denise.clxdat = 0x0042;
+    for _ in 0..3 {
+        assert_eq!(mb.router().read_word(0xdff00e), BusResult::WaitState);
+        assert_eq!(mb.router().read_byte(0xde000f), BusResult::WaitState);
+        assert_eq!(
+            mb.router().write_word(0xdff180, 0x0abc),
+            BusResult::WaitState
+        );
+        assert_eq!(mb.router().write_byte(0xde0180, 0xab), BusResult::WaitState);
+        assert_eq!(
+            mb.router().write_tas_byte(0xdff180, 0xab),
+            BusResult::WaitState
+        );
+        assert_eq!(mb.denise.clxdat, 0x0042);
+        assert!(mb.denise.mutations.iter().all(Option::is_none));
+        assert!(mb.agnus.dma.cpu_request_pending);
+        assert_eq!(mb.agnus.dma.cpu_starvation_counter, 1);
+    }
+    mb.mem.chip_ram_blocked = false;
+    assert_eq!(mb.router().read_word(0xdff00e), BusResult::Ready(0x0042));
+    assert_eq!(mb.denise.clxdat, 0);
+    assert!(!mb.agnus.dma.cpu_request_pending);
+    assert_eq!(
+        mb.router().write_word(0xdff180, 0x0abc),
+        BusResult::Ready(())
+    );
+    assert_eq!(mb.denise.mutations.iter().flatten().count(), 1);
+    mb.denise.step_cck();
+    assert_eq!(mb.denise.color[0], 0x0abc);
+}
+
+#[test]
+fn ram_handlers_retain_blocked_byte_word_and_tas_transfers() {
+    let mut mb = TestMotherboard::new();
+    for addr in [0x001000, 0xc01000] {
+        assert_eq!(mb.router().write_word(addr, 0x1234), BusResult::Ready(()));
+        mb.mem.chip_ram_blocked = true;
+        assert_eq!(mb.router().read_byte(addr), BusResult::WaitState);
+        assert!(mb.agnus.dma.cpu_request_pending);
+        assert_eq!(mb.router().read_word(addr), BusResult::WaitState);
+        assert_eq!(mb.router().write_byte(addr, 0x56), BusResult::WaitState);
+        assert_eq!(mb.router().write_word(addr, 0x789a), BusResult::WaitState);
+        assert_eq!(mb.router().write_tas_byte(addr, 0xff), BusResult::WaitState);
+        assert_eq!(mb.mem.read_word_debug(addr), 0x1234);
+        assert_eq!(mb.agnus.dma.cpu_starvation_counter, 1);
+
+        mb.mem.chip_ram_blocked = false;
+        assert_eq!(mb.router().write_tas_byte(addr, 0xff), BusResult::Ready(()));
+        assert!(!mb.agnus.dma.cpu_request_pending);
+        assert_eq!(mb.agnus.dma.cpu_starvation_counter, 0);
+        assert_eq!(mb.router().read_word(addr), BusResult::Ready(0x1234));
+        assert_eq!(mb.router().write_byte(addr, 0x56), BusResult::Ready(()));
+        assert_eq!(mb.router().read_byte(addr), BusResult::Ready(0x56));
+        assert_eq!(mb.router().write_word(addr, 0x789a), BusResult::Ready(()));
+        assert_eq!(mb.router().read_word(addr), BusResult::Ready(0x789a));
+    }
+}
+
+#[test]
+fn kickstart_overlay_uses_rom_access_rules_while_chip_bus_is_blocked() {
+    let mut mb = TestMotherboard::new();
+    mb.mem.write_bytes_debug(0xf80000, &[0xab, 0xcd]);
+    mb.mem.chip_ram_blocked = true;
+    assert_eq!(mb.router().read_word(0), BusResult::WaitState);
+    assert!(mb.agnus.dma.cpu_request_pending);
+
+    mb.mem.map_kickstart_to_low_memory();
+    for addr in [0, 0xf80000] {
+        assert_eq!(mb.router().read_byte(addr), BusResult::Ready(0xab));
+        assert!(!mb.agnus.dma.cpu_request_pending);
+        assert_eq!(mb.agnus.dma.cpu_starvation_counter, 0);
+        assert_eq!(mb.router().read_word(addr), BusResult::Ready(0xabcd));
+        assert_eq!(mb.router().write_byte(addr, 0x56), BusResult::Ready(()));
+        assert_eq!(mb.router().write_word(addr, 0x789a), BusResult::Ready(()));
+        assert_eq!(mb.router().write_tas_byte(addr, 0xff), BusResult::Ready(()));
+        assert_eq!(mb.router().read_word(addr), BusResult::Ready(0xabcd));
+    }
+    mb.mem.map_chip_ram_to_low_memory();
+    assert_eq!(mb.router().read_word(0), BusResult::WaitState);
+    assert!(mb.agnus.dma.cpu_request_pending);
+}
+
+#[test]
+fn cia_and_rtc_accesses_do_not_wait_for_the_chip_bus() {
+    let mut mb = TestMotherboard::new();
+    mb.mem.chip_ram_blocked = true;
+    assert_eq!(mb.router().read_word(0), BusResult::WaitState);
+    assert!(mb.agnus.dma.cpu_request_pending);
+
+    // CIA still waits for E-clock acceptance, without requesting an Agnus slot.
+    assert_eq!(mb.router().read_byte(0xbfec01), BusResult::WaitState);
+    assert!(!mb.agnus.dma.cpu_request_pending);
+    assert_eq!(mb.agnus.dma.cpu_starvation_counter, 0);
+    assert_eq!(
+        sync_read_byte(&mut mb.router(), 0xbfec01),
+        BusResult::Ready(0)
+    );
+    assert_eq!(
+        sync_write_byte(&mut mb.router(), 0xbfec01, 0x5a),
+        BusResult::Ready(())
+    );
+    assert_eq!(
+        sync_read_byte(&mut mb.router(), 0xbfec01),
+        BusResult::Ready(0x5a)
+    );
+    assert!(!mb.agnus.dma.cpu_request_pending);
+
+    assert_eq!(mb.router().write_byte(0xdc003d, 0x05), BusResult::Ready(()));
+    assert_eq!(mb.router().read_byte(0xdc003d), BusResult::Ready(0x05));
+    assert_eq!(
+        mb.router().write_word(0xdc003c, 0x0004),
+        BusResult::Ready(())
+    );
+    assert_eq!(mb.router().read_word(0xdc003c), BusResult::Ready(0xff04));
+    assert!(!mb.agnus.dma.cpu_request_pending);
+    assert!(mb.mem.chip_ram_blocked);
+}
+
+#[test]
+fn granted_custom_dma_write_does_not_use_cpu_contention_guard() {
+    let mut mb = TestMotherboard::new();
+    mb.mem.chip_ram_blocked = true;
+    assert_eq!(
+        mb.router().write_word(0xdff180, 0x0abc),
+        BusResult::WaitState
+    );
+    assert!(mb.agnus.dma.cpu_request_pending);
+    assert!(mb
+        .router()
+        .write_custom_word(custom_reg::denise::REGISTER_COLOR00, 0x0abc));
+    assert!(mb.agnus.dma.cpu_request_pending);
+    assert_eq!(mb.denise.mutations.iter().flatten().count(), 1);
+    mb.denise.step_cck();
+    assert_eq!(mb.denise.color[0], 0x0abc);
+}
+
+#[test]
+fn private_access_and_debug_reads_do_not_create_shared_bus_requests() {
+    let mut mb = TestMotherboard::with_config(A500Config::from_preset(
+        config::A500Preset::ExpandedPowerUser,
+        VideoStandard::Pal,
+    ));
+    mb.mem.chip_ram_blocked = true;
+    assert!(matches!(
+        mb.router().read_word(0x200000),
+        BusResult::Ready(_)
+    ));
+    assert!(matches!(
+        mb.router().read_word(0xf80000),
+        BusResult::Ready(_)
+    ));
+    mb.denise.clxdat = 0x1234;
+    assert_eq!(mb.router().read_word_debug(0xdff00e), 0x1234);
+    assert_eq!(mb.denise.clxdat, 0x1234);
+    assert!(!mb.agnus.dma.cpu_request_pending);
+    assert_eq!(mb.agnus.dma.cpu_starvation_counter, 0);
+    assert_eq!(mb.router().read_word(0xc00000), BusResult::WaitState);
+    assert!(mb.agnus.dma.cpu_request_pending);
+}
+
 impl TestMotherboard {
     fn new() -> Self {
         Self::with_config(A500Config::standard_1mb(VideoStandard::Pal))
@@ -344,6 +508,11 @@ fn test_cia_address_decoding() {
 #[test]
 fn test_all_cia_addresses_select_their_registers() {
     let mut mb = TestMotherboard::new();
+    // The CIA-B selector pattern enables timer PB6. Establish its high toggle
+    // output before populating the address-decoder fixture below.
+    assert!(mb.cia_b.set_cra(0x07));
+    mb.cia_b.step_cck();
+    mb.cia_b.step_cck();
     for (cia, base) in [(&mut mb.cia_a, 0x20u8), (&mut mb.cia_b, 0x40u8)] {
         cia.pra = base;
         cia.prb = base + 1;
@@ -741,18 +910,18 @@ fn gary_custom_de_bank_shares_live_debug_and_delayed_paths() {
             A500Preset::ExpandedPowerUser,
         ] {
             let mut mb = TestMotherboard::with_config(A500Config::from_preset(preset, standard));
-            mb.agnus.dmacon = 0x0211;
+            mb.agnus.dma.dmacon = 0x0211;
             assert_eq!(mb.router().read_word(0x01de_f202), BusResult::Ready(0x2211));
             assert_eq!(mb.router().read_word_debug(0xde0002), 0x2211);
             assert_eq!(
                 mb.router().write_word(0xde_f096, 0x8002),
                 BusResult::Ready(())
             );
-            assert_eq!(mb.agnus.dmacon, 0x0211);
+            assert_eq!(mb.agnus.dma.dmacon, 0x0211);
             let _ = mb.agnus.step_cck();
-            assert_eq!(mb.agnus.dmacon, 0x0211);
+            assert_eq!(mb.agnus.dma.dmacon, 0x0211);
             let _ = mb.agnus.step_cck();
-            assert_eq!(mb.agnus.dmacon, 0x0213);
+            assert_eq!(mb.agnus.dma.dmacon, 0x0213);
             mb.denise.clxdat = 0x1234;
             assert_eq!(mb.router().read_word_debug(0xde000e), 0x1234);
             assert_eq!(mb.router().read_byte(0xde000f), BusResult::Ready(0x34));
@@ -880,6 +1049,8 @@ fn gary_custom_alias_byte_duplication_and_shared_queue_capacity_checks() {
         mb.router().write_word(0xde0096, 0x8211),
         BusResult::WaitState
     );
+    assert!(!mb.agnus.dma.cpu_request_pending);
+    assert_eq!(mb.agnus.dma.cpu_starvation_counter, 0);
     assert!(mb.agnus.mutations.iter().all(Option::is_none));
     assert_eq!(mb.paula.mutations.iter().flatten().count(), 32);
     let _ = mb.paula.step_cck();

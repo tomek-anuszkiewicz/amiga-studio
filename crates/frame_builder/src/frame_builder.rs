@@ -1,7 +1,7 @@
-//! Denise Video Frame Builder & Raster Compositor
+//! Video frame storage and field assembly for Denise's completed pixels.
 //!
-//! Assembles scanline pixel data, applies display window clipping,
-//! and generates 32-bit ARGB frame buffers for host display frontends.
+//! Stores 32-bit ARGB pixels, combines interlaced fields and exposes the buffer
+//! to host display frontends. Denise owns pixel composition and display gating.
 
 use serde::{Deserialize, Serialize};
 
@@ -18,7 +18,9 @@ pub const BIT_HSTOP_EXTENSION: u16 = 0x100;
 /// Maximum overscan width in high-resolution pixels (4 pixels per CCK across 228 CCKs)
 pub const MAX_FRAME_WIDTH: usize = 912;
 /// Maximum overscan height in PAL scanlines
-pub const MAX_FRAME_HEIGHT: usize = 576;
+pub const PAL_FIELD_HEIGHT: usize = 313;
+pub const NTSC_FIELD_HEIGHT: usize = 263;
+pub const MAX_FRAME_HEIGHT: usize = PAL_FIELD_HEIGHT * 2;
 /// Total pixel count of the uncompressed frame buffer
 pub const FRAME_BUFFER_PIXELS: usize = MAX_FRAME_WIDTH * MAX_FRAME_HEIGHT;
 
@@ -61,7 +63,7 @@ pub fn is_in_display_window(hcoord: u16, vcoord: u16, diwstrt: u16, diwstop: u16
 }
 
 /// Raster video frame builder and display buffer
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FrameBuilder {
     /// Active display width in pixels
     pub width: u32,
@@ -74,13 +76,10 @@ pub struct FrameBuilder {
     /// True when a complete video frame has been rasterized (VBlank reached)
     pub frame_ready: bool,
     /// Full 32-bit ARGB pixel buffer (0xAARRGGBB)
-    #[serde(default = "default_frame_buffer", skip)]
     buffer: Vec<u32>,
-}
-
-#[inline]
-fn default_frame_buffer() -> Vec<u32> {
-    vec![OPAQUE_BLACK; FRAME_BUFFER_PIXELS]
+    pub frame_number: u64,
+    pub interlaced: bool,
+    pub field_odd: bool,
 }
 
 impl Default for FrameBuilder {
@@ -89,28 +88,19 @@ impl Default for FrameBuilder {
     }
 }
 
-impl PartialEq for FrameBuilder {
-    fn eq(&self, other: &Self) -> bool {
-        self.width == other.width
-            && self.height == other.height
-            && self.vpos == other.vpos
-            && self.hpos == other.hpos
-            && self.frame_ready == other.frame_ready
-    }
-}
-
-impl Eq for FrameBuilder {}
-
 impl FrameBuilder {
     /// Creates a new frame builder with a pre-allocated fixed frame buffer
     pub fn new() -> Self {
         Self {
             width: MAX_FRAME_WIDTH as u32,
-            height: MAX_FRAME_HEIGHT as u32,
+            height: PAL_FIELD_HEIGHT as u32,
             vpos: 0,
             hpos: 0,
             frame_ready: false,
             buffer: vec![OPAQUE_BLACK; FRAME_BUFFER_PIXELS],
+            frame_number: 0,
+            interlaced: false,
+            field_odd: false,
         }
     }
 
@@ -120,6 +110,10 @@ impl FrameBuilder {
         self.hpos = 0;
         self.frame_ready = false;
         self.buffer.fill(OPAQUE_BLACK);
+        self.frame_number = 0;
+        self.interlaced = false;
+        self.field_odd = false;
+        self.height = PAL_FIELD_HEIGHT as u32;
     }
 
     /// Advances frame builder by 1 Color Clock observing current beam coordinates
@@ -127,17 +121,18 @@ impl FrameBuilder {
     pub fn step_cck(&mut self, hpos: u16, vpos: u16) {
         self.hpos = hpos;
         self.vpos = vpos;
-        if hpos == 0 && vpos == 0 {
-            self.frame_ready = true;
-        }
     }
 
     /// Sets an individual pixel color (0xAARRGGBB) with boundary checking
     #[inline]
     pub fn set_pixel(&mut self, x: usize, y: usize, argb: u32) {
-        if x < MAX_FRAME_WIDTH && y < MAX_FRAME_HEIGHT {
-            let idx = y * MAX_FRAME_WIDTH + x;
-            self.buffer[idx] = argb;
+        let row = if self.interlaced {
+            y * 2 + usize::from(self.field_odd)
+        } else {
+            y
+        };
+        if x < MAX_FRAME_WIDTH && row < MAX_FRAME_HEIGHT {
+            self.buffer[row * MAX_FRAME_WIDTH + x] = argb;
         }
     }
 
@@ -164,31 +159,22 @@ impl FrameBuilder {
         &mut self.buffer
     }
 
-    /// Marks the start of a new video frame
-    #[inline]
-    pub fn begin_frame(&mut self) {
-        self.frame_ready = false;
-        self.vpos = 0;
-        self.hpos = 0;
-    }
-
-    /// Sets 4 consecutive pixels corresponding to 1 Color Clock (CCK) on scanline `vpos`
-    #[inline(always)]
-    pub fn set_cck_pixels(&mut self, hpos: u16, vpos: u16, argb: u32) {
-        let y = vpos as usize;
-        let x_base = (hpos as usize) * PIXELS_PER_CCK;
-        if y < MAX_FRAME_HEIGHT && x_base + 3 < MAX_FRAME_WIDTH {
-            let idx = y * MAX_FRAME_WIDTH + x_base;
-            self.buffer[idx] = argb;
-            self.buffer[idx + 1] = argb;
-            self.buffer[idx + 2] = argb;
-            self.buffer[idx + 3] = argb;
+    /// Receiver-derived field geometry; the opposite interlaced field is retained.
+    pub fn begin_field(&mut self, interlaced: bool, odd: bool, lines: u16, completed: bool) {
+        if interlaced != self.interlaced {
+            self.buffer.fill(OPAQUE_BLACK);
         }
-    }
-
-    /// Signals VBlank and marks the current frame as ready for presentation
-    #[inline]
-    pub fn end_frame(&mut self) {
-        self.frame_ready = true;
+        self.interlaced = interlaced;
+        self.field_odd = odd;
+        let height = if usize::from(lines) <= NTSC_FIELD_HEIGHT {
+            NTSC_FIELD_HEIGHT
+        } else {
+            PAL_FIELD_HEIGHT
+        };
+        self.height = (height * if interlaced { 2 } else { 1 }) as u32;
+        if completed {
+            self.frame_number = self.frame_number.wrapping_add(1);
+            self.frame_ready = true;
+        }
     }
 }

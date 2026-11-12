@@ -26,7 +26,7 @@ Activate this skill whenever:
 
 1. **800-Line Ceiling and Registered Exceptions:** Apply the limit and recognized instruction/table exceptions in [file-size-and-cohesion.md](../../rules/file-size-and-cohesion.md). Do not split flat instruction files into subdirectories. Remove an exception when the refactor makes it unnecessary.
 2. **Flat Instruction Hierarchy:** Under `crates/cpu/src/instructions/`, maintain a flat 1:1 opcode-to-file mapping with zero subdirectories.
-3. **3-Tier Re-Export Preservation:** External callers must not experience breaking API changes. Re-export public types from the crate root (`src/<crate>.rs`) via `pub use submodule::TypeName;`.
+3. **3-Tier Re-Export Preservation:** Expose public types from the owning crate root (`src/<crate>.rs`) via `pub use submodule::TypeName;`. When a user-approved internal refactor changes module ownership, update every consumer to its canonical path in the same task; do not retain obsolete namespace aliases.
 4. **Disjoint Borrowing & Zero Allocations:** Ensure split submodules preserve independent field borrowing without requiring `Rc<RefCell<...>>` or heap allocations in hot paths.
 5. **Zero Backward-Compatibility Shims (Atomic Refactoring):** Do not create dummy wrapper modules (`pub mod former { pub use new::*; }`) or import aliases (`use new as old;`) to delay updating callers. Update all consumers across the workspace directly to the new canonical path in the same task.
 

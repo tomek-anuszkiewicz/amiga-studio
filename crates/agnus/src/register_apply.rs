@@ -1,6 +1,7 @@
 //! Applies matured Agnus writes to active latches and owned engines.
 
 use super::Agnus;
+use crate::register_bits::display_fetch;
 use config::chip_ram::{MASK_OCS_DMA_ADDRESS, MASK_OCS_DMA_HIGH, MASK_OCS_DMA_LOW};
 use config::custom_reg::agnus as reg;
 use config::mask::dmacon;
@@ -20,13 +21,11 @@ impl Agnus {
     /// Commits a register write directly into active Agnus silicon state
     pub(super) fn apply_register_write(&mut self, offset: u16, val: u16) {
         match offset & MASK_CUSTOM_REG_OFFSET {
+            reg::REGISTER_VPOSW => self.apply_vposw(val),
+            reg::REGISTER_VHPOSW => self.apply_vhposw(val),
+            // HA: dummy Copper fetch identifier; DRAM test refresh has no row-decay model.
+            reg::REGISTER_COPINS | reg::REGISTER_REFPTR => {}
             reg::REGISTER_DMACON => {
-                // DMACON SET/CLR logic
-                if (val & dmacon::BIT_SET_CLR) != 0 {
-                    self.dmacon |= val & dmacon::MASK_WRITE;
-                } else {
-                    self.dmacon &= !(val & dmacon::MASK_WRITE);
-                }
                 self.dma.write_dmacon(val);
                 let dma_en = self.is_dma_enabled(dmacon::BIT_BLTEN);
                 self.blitter.set_dma_enabled(dma_en);
@@ -64,16 +63,12 @@ impl Agnus {
                 self.dma.set_vstop(vstop);
             }
             reg::REGISTER_DDFSTRT => {
-                self.ddfstrt = val & display_window::MASK_DDF_POSITION;
-                self.dma
-                    .set_ddfstrt(val & display_window::MASK_DDF_POSITION);
+                self.dma.set_ddfstrt(val & display_fetch::MASK_DDF_POSITION);
             }
             reg::REGISTER_DDFSTOP => {
-                self.ddfstop = val & display_window::MASK_DDF_POSITION;
-                self.dma
-                    .set_ddfstop(val & display_window::MASK_DDF_POSITION);
+                self.dma.set_ddfstop(val & display_fetch::MASK_DDF_POSITION);
             }
-            reg::REGISTER_BPLCON0 => self.apply_bplcon0(val),
+            reg::REGISTER_BPLCON0 => self.dma.set_bplcon0(val),
             reg::REGISTER_BPL1MOD => self.bpl1mod = val as i16,
             reg::REGISTER_BPL2MOD => self.bpl2mod = val as i16,
 
@@ -112,7 +107,7 @@ impl Agnus {
             reg::REGISTER_BLTAMOD => self.blitter.bltamod = val as i16,
             reg::REGISTER_BLTDMOD => self.blitter.bltdmod = val as i16,
             reg::REGISTER_BLTCDAT => self.blitter.bltcdat = val,
-            reg::REGISTER_BLTBDAT => self.blitter.bltbdat = val,
+            reg::REGISTER_BLTBDAT => self.blitter.write_bltbdat(val),
             reg::REGISTER_BLTADAT => self.blitter.bltadat = val,
 
             // Bitplane pointers
@@ -216,18 +211,13 @@ impl Agnus {
                     } else {
                         self.audlc[ch] = Self::write_dma_pointer_low(self.audlc[ch], val);
                     }
-                    self.audpt[ch] = self.audlc[ch];
+                    if !self.is_dma_enabled(dmacon::BIT_AUD0EN << ch) {
+                        self.audpt[ch] = self.audlc[ch];
+                    }
                 }
             }
 
             _ => {}
         }
-    }
-
-    /// Action method: sets BPLCON0 and synchronizes Agnus DMA scheduler
-    #[inline]
-    fn apply_bplcon0(&mut self, val: u16) {
-        self.bplcon0 = val;
-        self.dma.set_bplcon0(val);
     }
 }

@@ -34,19 +34,14 @@ CRATES_DIR = REPO_ROOT / "crates"
 
 CUSTOM_CHIPS = {
     "agnus": {"forbidden_peers": ["denise", "paula", "cia"]},
-    "copper": {"forbidden_peers": ["denise", "paula", "cia"]},
-    "blitter": {"forbidden_peers": ["denise", "paula", "cia"]},
     "denise": {"forbidden_peers": ["agnus", "paula", "cia", "copper", "blitter"]},
     "paula": {"forbidden_peers": ["agnus", "denise", "cia", "copper", "blitter"]},
-    "audio": {"forbidden_peers": ["agnus", "denise", "cia"]},
-    "interrupts": {"forbidden_peers": ["agnus", "denise", "cia", "copper", "blitter"]},
     "floppy": {"forbidden_peers": ["agnus", "denise", "cia"]},
     "cia": {"forbidden_peers": ["agnus", "denise", "paula"]},
 }
 
 MANDATORY_POLL_METHODS = {
-    "agnus": ["poll_vblank_irq", "poll_copper_write", "poll_bpl_dma"],
-    "floppy": ["poll_dskblk_irq", "poll_dsksyn_irq"],
+    "agnus": ["poll_copper_write", "poll_bpl_dma"],
     "cia": ["irq_pending", "poll_pra_output"],
 }
 
@@ -76,8 +71,13 @@ def check_bus_topology():
                     continue
 
                 for peer in forbidden:
-                    # Check for direct crate import (e.g. `use denise::` or `crate::...`)
-                    if f"use {peer}::" in trimmed or f"::{peer}::" in trimmed:
+                    # Shared register constants name recipients, not peer dependencies.
+                    dependency_line = re.sub(
+                        rf"(?<![\w:])(?:config::)?custom_reg::{peer}::REGISTER_[A-Z0-9_]+\b",
+                        "",
+                        trimmed,
+                    )
+                    if re.search(rf"\b{peer}::", dependency_line):
                         issues.append({
                             "type": "inter_chip_import",
                             "file": str(rel_path),

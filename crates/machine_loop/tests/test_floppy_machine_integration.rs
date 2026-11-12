@@ -2,7 +2,8 @@
 
 //! Floppy DMA & Whole-Machine Integration Tests
 //!
-//! Tests multi-chip coordination during floppy MFM track DMA:
+//! Tests multi-chip coordination with an ADF-derived raw pulse fixture.
+//! Autonomous drive rotation and media streaming are outside this test.
 //! 1. CIA-B motor latching and drive selection (DF0:).
 //! 2. Paula ADKCON wordsync configuration and DSKSYNC pattern match.
 //! 3. Agnus 8-tier DMA slot scheduling (HPOS 7, 9, 11).
@@ -34,6 +35,7 @@ fn test_floppy_dma_stream_into_chip_ram_and_interrupt() {
 
     // 2. Select DF0: with motor ON via CIA-B PRB ($BFD100) write
     // _SEL0 = bit 3 (0), _MTR = bit 7 (0) -> 0b0111_0111 = 0x77
+    common::cia::write_byte(&mut harness.machine, 0xBFD100, 0x7f);
     common::cia::write_byte(&mut harness.machine, 0xBFD100, 0x77);
     harness.machine.step_cck(); // Propagate CIA-B PRB to Floppy
     assert!(harness.machine.floppy.drives[0].selected);
@@ -96,18 +98,26 @@ fn test_floppy_dma_stream_into_chip_ram_and_interrupt() {
         .write_custom_word(custom_reg::paula::REGISTER_DSKLEN, dsklen_val);
     harness.machine.step_cck();
     harness.machine.step_cck();
-    assert!(harness.machine.paula.is_dsk_dma_active());
+    assert!(harness.machine.paula.dma_active);
 
-    // 9. Step machine loop until DMA completes
+    // 9. Present the existing sector encoder's output at the drive-data boundary.
+    // The fixture supplies flux; all register, FIFO, DMAL and RAM work is production.
+    let sector_data: &[u8; SECTOR_DATA_BYTES] = adf_image[..SECTOR_DATA_BYTES].try_into().unwrap();
+    let raw = floppy::mfm::encode_amiga_sector(0, 0, sector_data);
     let mut steps = 0;
-    while harness.machine.paula.is_dsk_dma_active() && steps < 100_000 {
+    while harness.machine.paula.dma_active && steps < 100_000 {
+        let bit = (steps / 7) % (raw.len() * 8);
+        let transition = raw[bit / 8] & (0x80 >> (bit % 8)) != 0;
+        harness.machine.floppy.pins.read_data_high = !(steps % 7 == 0 && transition);
         harness.machine.step_cck();
         steps += 1;
     }
 
+    harness.machine.floppy.pins.read_data_high = true;
+
     // DMA must have completed
     assert!(
-        !harness.machine.paula.is_dsk_dma_active(),
+        !harness.machine.paula.dma_active,
         "Disk DMA did not complete within limit"
     );
 

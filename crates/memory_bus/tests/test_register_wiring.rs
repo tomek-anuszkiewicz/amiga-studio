@@ -220,15 +220,15 @@ fn test_dskbytr_composite_assembly_and_clear_on_read() {
     // 5. Peek DSKBYTR without clearing bit 15:
     // Should have:
     // - Bit 15: DSKBYT (0x8000)
-    // - Bit 14: DMAON (0x4000)
+    // - Bit 14: DMAON is clear because DSKLEN has not been armed twice
     // - Bit 13: DISKWRITE (0x2000)
     // - Bit 12: WORDEQUAL (0x1000)
     // - Bits 7..0: DATA (0xA5)
-    // Expected: 0xF0A5
+    // Expected: 0xB0A5
     let peeked = mb
         .router()
         .read_custom_word_debug(custom_reg::paula::REGISTER_DSKBYTR);
-    assert_eq!(peeked, 0xF0A5);
+    assert_eq!(peeked, 0xB0A5);
     // Ensure bit 15 was NOT cleared by peek
     assert_eq!(mb.paula.dskbytr & 0x8000, 0x8000);
 
@@ -236,20 +236,27 @@ fn test_dskbytr_composite_assembly_and_clear_on_read() {
     let read_val = mb
         .router()
         .read_custom_word(custom_reg::paula::REGISTER_DSKBYTR);
-    assert_eq!(read_val, 0xF0A5);
+    assert_eq!(read_val, 0xB0A5);
 
-    // 7. Subsequent peek should show bit 15 cleared (now 0x70A5)
+    // 7. Subsequent peek should show bit 15 cleared (now 0x30A5)
     let peeked_again = mb
         .router()
         .read_custom_word_debug(custom_reg::paula::REGISTER_DSKBYTR);
-    assert_eq!(peeked_again, 0x70A5);
+    assert_eq!(peeked_again, 0x30A5);
     assert_eq!(mb.paula.dskbytr & 0x8000, 0);
+    // Only the two-write enable sequence makes DMAON true.
+    assert!(mb.paula.set_dsklen(0xc001));
+    mb.paula.step_cck();
+    assert_eq!(mb.paula.peek_dskbytr(), 0x30a5);
+    assert!(mb.paula.set_dsklen(0xc001));
+    mb.paula.step_cck();
+    assert_eq!(mb.paula.peek_dskbytr(), 0x70a5);
 }
 
 #[test]
 fn custom_live_and_debug_reads_select_the_owner_or_explicit_fallback() {
     let mut mb = TestMotherboard::new();
-    mb.agnus.dmacon = 0x0123;
+    mb.agnus.dma.dmacon = 0x0123;
     mb.agnus.lof = true;
     mb.agnus.step_cck();
     mb.denise.joy0dat = 0x2345;
@@ -534,7 +541,7 @@ fn test_dmacon_routing_to_agnus_and_paula() {
     let _ = mb.paula.step_cck();
 
     // Verify Agnus received and committed DMACON bits
-    assert_eq!(mb.agnus.dmacon & 0x0211, 0x0211);
+    assert_eq!(mb.agnus.dma.dmacon & 0x0211, 0x0211);
     // Verify Paula received and committed DMACON bits
     assert_eq!(mb.paula.dma_enables & 0x0011, 0x0011);
     assert!(mb.paula.dma_master);
@@ -550,9 +557,6 @@ fn test_memory_bus_canonical_constants() {
     assert_eq!(memory_bus::MemoryBus::RTC_START, 0xDC0000);
     assert_eq!(memory_bus::MemoryBus::RTC_END, 0xDC003F);
     assert_eq!(config::MASK_CUSTOM_REG_OFFSET, 0x01FE);
-    assert_eq!(config::mask::dskbytr::BIT_DSKBYTR_DMAON, 0x4000);
-    assert_eq!(config::mask::dskbytr::BIT_DSKBYTR_DISKWRITE, 0x2000);
-    assert_eq!(config::mask::dskbytr::MASK_DSKBYTR_DATA, 0x90FF);
     assert_eq!(paula::BIT_DSKLEN_WRITE_FLAG, 0x4000);
 }
 
@@ -673,7 +677,7 @@ fn test_chip_namespaced_custom_register_dispatch() {
     let _ = mb.agnus.step_cck();
     let _ = mb.paula.step_cck();
     let _ = mb.paula.step_cck();
-    assert_eq!(mb.agnus.dmacon & 0x0201, 0x0201);
+    assert_eq!(mb.agnus.dma.dmacon & 0x0201, 0x0201);
     assert_eq!(mb.paula.dma_enables & 0x0001, 0x0001);
 
     // 2. Denise-specific write: COLOR00
@@ -697,6 +701,8 @@ fn test_chip_namespaced_custom_register_dispatch() {
 
     // 5. Denise-specific read: JOY0DAT
     mb.denise.joy0dat = 0x4321;
+    // Keep the pin-derived phase bits stable while the later COLOR write matures.
+    mb.denise.receive_game_port_pins([0x09, 0x0f]);
     assert_eq!(
         mb.router()
             .read_custom_word(custom_reg::denise::REGISTER_JOY0DAT),
@@ -801,12 +807,12 @@ fn successive_set_clear_writes_preserve_each_accepted_custom_operation() {
             assert!(mb.router().write_custom_word(offset, value));
         }
     }
-    assert_eq!(mb.agnus.dmacon, 0);
+    assert_eq!(mb.agnus.dma.dmacon, 0);
     assert_eq!(mb.paula.adkcon, 0);
     mb.agnus.step_cck();
     mb.paula.step_cck();
     assert_eq!(
-        mb.agnus.dmacon, 0,
+        mb.agnus.dma.dmacon, 0,
         "DMACON retains its two-CCK reference delay"
     );
     assert_eq!(
@@ -815,7 +821,7 @@ fn successive_set_clear_writes_preserve_each_accepted_custom_operation() {
     );
     mb.agnus.step_cck();
     mb.paula.step_cck();
-    assert_eq!(mb.agnus.dmacon & 0x300, 0x300);
+    assert_eq!(mb.agnus.dma.dmacon & 0x300, 0x300);
     assert!(mb.paula.dma_master);
     // This is a synthetic accepted-access test of the chosen model policy.
 }
@@ -839,11 +845,18 @@ fn address_strobes_do_not_wait_for_full_data_queues() {
         assert_eq!(mb.agnus.copper.cop_pc, expected);
     }
     for offset in [0x038, 0x03a, 0x03e, 0x03c] {
+        mb.paula.sync.cck_since_horizontal = 20;
         assert!(mb.router().write_custom_word(offset, 0xffff));
+        assert_eq!(
+            mb.paula.sync.cck_since_horizontal,
+            if offset == 0x03e { 20 } else { 0 }
+        );
+        assert_eq!(mb.paula.intreqr() & 0x0020, 0x0020);
     }
     assert!(mb.denise.sync.synchronized);
     assert!(!mb.denise.sync.vertical_blank);
     assert_eq!(mb.paula.sync.cck_since_horizontal, 0);
+    assert!(!mb.paula.sync.equalization);
     assert_eq!(
         mb.agnus.mutations.iter().flatten().count(),
         Agnus::MUTATION_CAPACITY

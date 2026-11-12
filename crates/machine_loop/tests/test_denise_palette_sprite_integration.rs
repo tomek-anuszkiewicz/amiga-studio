@@ -39,7 +39,7 @@ fn test_denise_full_32_color_palette_batch_mutation() {
 }
 
 #[test]
-fn test_sprite_channel_vertical_window_and_data_arming() {
+fn test_manual_sprite_repeats_outside_dma_vertical_window() {
     let mut harness = MachineHarness::new();
 
     // Sprite 0: VSTART = 40, VSTOP = 55, HSTART = 120 ($78)
@@ -78,26 +78,17 @@ fn test_sprite_channel_vertical_window_and_data_arming() {
     assert_eq!(harness.machine.denise.sprites.channels[0].data_a, 0xCCCC);
     assert_eq!(harness.machine.denise.sprites.channels[0].data_b, 0x3333);
 
-    // Step scanlines to line 30: before vertical start, is_active_line must be false
-    harness.step_until_vpos(30, 8000);
-    assert!(
-        !harness.machine.denise.sprites.channels[0].is_active_line,
-        "Sprite channel should be inactive before VSTART"
-    );
-
-    // Step scanlines into the vertical window: line 45
-    harness.step_until_vpos(45, 8000);
-    assert!(
-        harness.machine.denise.sprites.channels[0].is_active_line,
-        "Sprite channel should be active within [VSTART..VSTOP)"
-    );
-
-    // Step scanlines past vertical stop: line 60
-    harness.step_until_vpos(60, 8000);
-    assert!(
-        !harness.machine.denise.sprites.channels[0].is_active_line,
-        "Sprite channel should be inactive after VSTOP"
-    );
+    // HRM 4, Manual Mode: DATA arms output on every line, independently of VSTART/VSTOP.
+    // Agnus DMA owns the vertical comparisons; this test supplies data manually.
+    for vertical in [30, 45, 60] {
+        harness.step_until_vpos(vertical, 8000);
+        let denise = &mut harness.machine.denise;
+        let pixel = denise
+            .sprites
+            .evaluate_pixel(240, denise.clxcon, &mut denise.clxdat);
+        assert_eq!(pixel.map(|value| value.color_index), Some(17));
+        assert!(denise.sprites.channels[0].is_armed);
+    }
 }
 
 #[test]

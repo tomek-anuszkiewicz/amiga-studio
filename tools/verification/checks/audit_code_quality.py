@@ -71,6 +71,9 @@ HOST_IO_AND_SPEC_SYMBOLS = {
     "write_data", "read_data",
     # Host Floppy Disk Drive Insertion
     "insert_disk", "eject_disk", "FORMATTED_DISK_BYTES", "decode_amiga_sector",
+    "encode_amiga_sector",
+    # Read-only disk FIFO and chip-side UART output observations
+    "buffered_words", "serial_tx_high",
     # Host Debugger Controls & Breakpoints
     "DEFAULT_TARGET_ADDRESS", "toggle_pc_breakpoint", "has_pc_breakpoint", "check_watchpoint",
     "total_count", "save_state_to_json", "load_state_from_json", "run_until_breakpoint",

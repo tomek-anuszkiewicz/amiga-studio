@@ -9,7 +9,45 @@ pub(crate) const SCREEN_ASPECT_WIDTH: f32 = 4.0;
 pub(crate) const SCREEN_ASPECT_HEIGHT: f32 = 3.0;
 const SCREEN_ASPECT_RATIO: f32 = SCREEN_ASPECT_WIDTH / SCREEN_ASPECT_HEIGHT;
 
-pub(crate) fn render_amiga_screen(ui: &mut egui::Ui, show_floating_debug_btn: bool) -> bool {
+/// Host texture refreshed from the machine after each bounded execution slice.
+#[derive(Default)]
+pub(crate) struct ScreenTexture(Option<egui::TextureHandle>);
+
+impl std::fmt::Debug for ScreenTexture {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("ScreenTexture").field(&self.id()).finish()
+    }
+}
+
+impl ScreenTexture {
+    pub(crate) fn update(&mut self, ctx: &egui::Context, session: &debugger::DebuggerSession) {
+        let frame = &session.machine.denise.frame_builder;
+        let size = [frame.width as usize, frame.height as usize];
+        let pixels = frame.frame_buffer()[..size[0] * size[1]]
+            .iter()
+            .map(|pixel| {
+                let [alpha, red, green, blue] = pixel.to_be_bytes();
+                Color32::from_rgba_unmultiplied(red, green, blue, alpha)
+            })
+            .collect();
+        let image = egui::ColorImage { size, pixels };
+        if let Some(texture) = self.0.as_mut() {
+            texture.set(image, egui::TextureOptions::NEAREST);
+        } else {
+            self.0 = Some(ctx.load_texture("Amiga display", image, egui::TextureOptions::NEAREST));
+        }
+    }
+
+    pub(crate) fn id(&self) -> Option<egui::TextureId> {
+        self.0.as_ref().map(egui::TextureHandle::id)
+    }
+}
+
+pub(crate) fn render_amiga_screen(
+    ui: &mut egui::Ui,
+    texture: Option<egui::TextureId>,
+    show_floating_debug_btn: bool,
+) -> bool {
     let available = ui.available_size();
     if available.x < 50.0 || available.y < 50.0 {
         return false;
@@ -51,34 +89,12 @@ pub(crate) fn render_amiga_screen(ui: &mut egui::Ui, show_floating_debug_btn: bo
         egui::StrokeKind::Inside,
     );
 
-    // Standby Text / CRT Test Pattern
-    let center = screen_rect.center();
-    let text_color = Color32::from_rgb(80, 160, 220);
-    let subtext_color = Color32::from_rgb(120, 130, 150);
-
-    painter.text(
-        pos2(center.x, center.y - 14.0),
-        egui::Align2::CENTER_CENTER,
-        "Commodore Amiga 500",
-        egui::FontId::proportional(18.0),
-        text_color,
-    );
-
-    painter.text(
-        pos2(center.x, center.y + 10.0),
-        egui::Align2::CENTER_CENTER,
-        "PAL — 50 Hz (320 × 256)",
-        egui::FontId::monospace(12.0),
-        subtext_color,
-    );
-
-    if show_floating_debug_btn {
-        painter.text(
-            pos2(center.x, center.y + 30.0),
-            egui::Align2::CENTER_CENTER,
-            "Press F12 for Developer Studio",
-            egui::FontId::monospace(11.0),
-            Color32::from_rgb(100, 180, 220),
+    if let Some(texture) = texture {
+        painter.image(
+            texture,
+            screen_rect,
+            Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
+            Color32::WHITE,
         );
     }
 

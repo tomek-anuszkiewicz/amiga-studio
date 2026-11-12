@@ -144,6 +144,8 @@ fn address_strobes_act_immediately_without_register_queue_entries() {
 #[test]
 fn full_receiver_rejects_shared_transfer_atomically_without_blocking_unrelated_chip() {
     let mut machine = idle_machine();
+    // Keep register-delivery assertions outside reserved refresh slots.
+    machine.agnus.hpos = 0x3f;
     for value in 0..agnus::Agnus::MUTATION_CAPACITY as u16 {
         assert!(machine.agnus.set_bltadat(value));
     }
@@ -154,7 +156,7 @@ fn full_receiver_rejects_shared_transfer_atomically_without_blocking_unrelated_c
             BusResult::WaitState
         );
         assert!(machine.paula.mutations.iter().all(Option::is_none));
-        assert_eq!(machine.agnus.dmacon, 0);
+        assert_eq!(machine.agnus.dma.dmacon, 0);
     }
     assert_eq!(
         machine.memory_bus().write_byte(0xdff181, 0x33),
@@ -171,7 +173,7 @@ fn full_receiver_rejects_shared_transfer_atomically_without_blocking_unrelated_c
     assert_eq!(machine.agnus.mutations.iter().flatten().count(), 1);
     assert_eq!(machine.paula.mutations.iter().flatten().count(), 1);
     machine.step_cycles(2);
-    assert_eq!(machine.agnus.dmacon, 0x200);
+    assert_eq!(machine.agnus.dma.dmacon, 0x200);
     assert!(machine.paula.dma_master);
     assert!(machine.agnus.mutations.iter().all(Option::is_none));
     assert!(machine.paula.mutations.iter().all(Option::is_none));
@@ -200,10 +202,10 @@ fn full_capacity_register_replay_does_not_block_interrupt_pins() {
     assert_eq!(machine.denise.bpldat[0], 63);
     assert_eq!(machine.denise.bpldat_pipe[0], 63);
     assert!(machine.denise.bpl_armed);
-    // One CPU clear plus data events fill all register-write capacity.
+    // Period writes fill the queue without starting a manual audio interrupt.
     assert!(machine.paula.set_intreq(0x2008));
     for value in 0..paula::Paula::MUTATION_CAPACITY as u16 - 1 {
-        assert!(machine.paula.set_auddat(0, value));
+        assert!(machine.paula.set_audper(0, value));
     }
     assert!(!machine.paula.set_serdat(0x1234));
     machine.paula.pins.int2_high = false;
@@ -286,7 +288,7 @@ fn copper_and_cpu_shared_writes_start_from_the_same_receiver_boundary() {
         }
     }
     assert!(issued, "authored Copper MOVE was not issued");
-    assert_eq!(copper.agnus.bplcon0, 0);
+    assert_eq!(copper.agnus.dma.bplcon0, 0);
     assert_eq!(copper.denise.bplcon0, 0);
     let mut cpu_bus = idle_machine();
     assert!(cpu_bus
@@ -296,7 +298,7 @@ fn copper_and_cpu_shared_writes_start_from_the_same_receiver_boundary() {
         copper.step_cck();
         cpu_bus.step_cck();
         assert_eq!(
-            copper.agnus.bplcon0, cpu_bus.agnus.bplcon0,
+            copper.agnus.dma.bplcon0, cpu_bus.agnus.dma.bplcon0,
             "Agnus step {step}"
         );
         assert_eq!(
@@ -304,7 +306,7 @@ fn copper_and_cpu_shared_writes_start_from_the_same_receiver_boundary() {
             "Denise step {step}"
         );
         assert_eq!(copper.denise.bplcon0, 0x1000);
-        assert_eq!(copper.agnus.bplcon0, if step == 4 { 0x1000 } else { 0 });
+        assert_eq!(copper.agnus.dma.bplcon0, if step == 4 { 0x1000 } else { 0 });
     }
 }
 
@@ -426,9 +428,9 @@ fn dma_disable_retains_accepted_bitplane_word_and_enable_restores_fetches() {
         machine.denise.bpldat[0], 0xabcd,
         "accepted data survives a pending DMA disable"
     );
-    assert_eq!(machine.agnus.dmacon & 0x100, 0x100);
+    assert_eq!(machine.agnus.dma.dmacon & 0x100, 0x100);
     machine.step_cck();
-    assert_eq!(machine.agnus.dmacon & 0x100, 0);
+    assert_eq!(machine.agnus.dma.dmacon & 0x100, 0);
     machine.agnus.hpos = 0x3e;
     machine.step_cck();
     assert_eq!(machine.agnus.bplpt[0], 0x2002);

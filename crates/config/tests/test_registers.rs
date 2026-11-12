@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use config::custom_reg::{self, agnus, denise, paula};
-use config::mask::*;
+use config::mask::dmacon;
 
 #[test]
 fn test_register_offsets_uniqueness_and_alignment() {
@@ -149,24 +149,13 @@ fn test_register_offsets_uniqueness_and_alignment() {
 }
 
 #[test]
-fn test_dmacon_and_intreq_masks() {
+fn test_dmacon_masks() {
     assert_eq!(dmacon::BIT_SET_CLR, 0x8000);
     assert_eq!(dmacon::BIT_DMAEN, 0x0200);
     assert_eq!(dmacon::BIT_COPEN, 0x0080);
     assert_eq!(dmacon::BIT_BLTEN, 0x0040);
     assert_eq!(dmacon::BIT_BBUSY, 0x4000);
     assert_eq!(dmacon::BIT_BZERO, 0x2000);
-
-    assert_eq!(intreq::BIT_SET_CLR, 0x8000);
-    assert_eq!(intreq::BIT_INTEN, 0x4000);
-    assert_eq!(intreq::BIT_BLIT, 0x0040);
-    assert_eq!(intreq::BIT_VERTB, 0x0020);
-    assert_eq!(intreq::BIT_COPER, 0x0010);
-}
-
-#[test]
-fn test_copcon_cdang_mask() {
-    assert_eq!(copcon::BIT_CDANG, 0x0002);
 }
 
 #[test]

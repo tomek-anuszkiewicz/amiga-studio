@@ -3,13 +3,14 @@
 //! 4-channel DMA audio, floppy disk MFM controller, serial UART transceiver,
 //! and central interrupt multiplexer (INTENA, INTREQ -> IPL 1..6).
 
-pub use audio;
-pub use interrupts;
+pub mod audio;
+pub use audio::Audio;
+pub mod interrupts;
 pub use interrupts::InterruptController;
 pub mod serial;
 pub use serial::SerialPort;
 
-use config::mask::dskbytr::{BIT_DSKBYTR_DSKBYT, BIT_DSKBYTR_WORDEQUAL, MASK_DSKBYTR_DATA};
+use crate::register_bits::intreq;
 use config::{tick_mutations, DelayedMutation};
 use serde::{Deserialize, Serialize};
 
@@ -20,6 +21,10 @@ const DSKSYNC_RESET: u16 = 0x4489;
 const MASK_DSKLEN_LENGTH: u16 = 0x3FFF;
 const MASK_DSKLEN_CONTROL: u16 = 0xC000;
 
+mod disk;
+mod dmal;
+pub use disk::DiskEngine;
+mod register_bits;
 mod registers;
 
 /// Paula custom chip coordinator
@@ -49,6 +54,7 @@ pub struct Paula {
     pub dsklen: u16,
     pub dskdat: u16,
     pub dsksync: u16,
+    pub disk: DiskEngine,
     /// True if DSKLEN write 1 has armed the disk DMA sequence
     pub dma_armed: bool,
     /// True if DSKLEN write 2 has activated the disk DMA transfer
@@ -93,6 +99,7 @@ impl Paula {
             dsklen: 0,
             dskdat: 0,
             dsksync: DSKSYNC_RESET,
+            disk: DiskEngine::default(),
             dma_armed: false,
             dma_active: false,
             dma_enables: 0,
@@ -117,6 +124,7 @@ impl Paula {
         self.dsklen = 0;
         self.dskdat = 0;
         self.dsksync = DSKSYNC_RESET;
+        self.disk = DiskEngine::default();
         self.dma_armed = false;
         self.dma_active = false;
         self.dma_enables = 0;
@@ -128,17 +136,18 @@ impl Paula {
     /// Returns any register writes that matured and committed on this exact cycle.
     pub fn step_cck(&mut self) -> [Option<(u16, u16)>; Self::MUTATION_CAPACITY] {
         self.sync.cck_since_horizontal = self.sync.cck_since_horizontal.wrapping_add(1);
-        if self.pins.rga_strobe.take() == Some(config::custom_reg::paula::REGISTER_STRHOR) {
-            self.sync.cck_since_horizontal = 0;
-        }
-        self.audio.step_cck();
-        for ch in 0..config::AUDIO_CHANNEL_COUNT {
-            if self.audio.poll_channel_irq(ch) {
-                // Level 4 audio interrupt: bits 7..10 in INTREQ
-                self.set_interrupt_request(config::mask::intreq::BIT_AUD0 << ch);
-            }
-        }
-        self.serial_port.step_cck();
+        let vertical_blank = self
+            .pins
+            .rga_strobe
+            .take()
+            .is_some_and(|address| self.receive_sync_strobe(address));
+        self.audio
+            .step_cck((self.interrupts.intreq >> intreq::BIT_AUD0.trailing_zeros()) as u8);
+        self.step_disk();
+        self.drive_dmal();
+        let serial_irq = self
+            .serial_port
+            .step_cck(true, self.interrupts.intreq & intreq::BIT_RBF != 0);
         let mut due = [None; Self::MUTATION_CAPACITY];
         let mut due_count = 0;
         tick_mutations(&mut self.mutations, |reg, val| {
@@ -150,14 +159,19 @@ impl Paula {
         for item in due.iter().flatten() {
             self.apply_register_write(item.0, item.1);
         }
+        if vertical_blank {
+            self.set_interrupt_request(intreq::BIT_VERTB);
+        }
+        for ch in 0..config::AUDIO_CHANNEL_COUNT {
+            if self.audio.poll_channel_irq(ch) {
+                // Level 4 audio interrupt: bits 7..10 in INTREQ
+                self.set_interrupt_request(intreq::BIT_AUD0 << ch);
+            }
+        }
+        self.interrupts
+            .request(serial_irq | core::mem::take(&mut self.disk.irq_pending));
         self.sample_interrupt_pins();
         due
-    }
-
-    /// Returns true if disk DMA is active in DSKLEN
-    #[inline]
-    pub fn is_dsk_dma_active(&self) -> bool {
-        self.dma_active
     }
 
     /// Returns true if DSKLEN is configured for write to disk (bit 14 set)
@@ -166,48 +180,10 @@ impl Paula {
         (self.dsklen & BIT_DSKLEN_WRITE_FLAG) != 0
     }
 
-    /// Decrements DSKLEN word count after a DMA transfer slot, terminating DMA and returning true if finished
-    pub fn decrement_dsklen(&mut self) -> bool {
-        let len_words = self.dsklen & MASK_DSKLEN_LENGTH;
-        if len_words > 1 {
-            self.dsklen = (self.dsklen & MASK_DSKLEN_CONTROL) | (len_words - 1);
-            false
-        } else {
-            self.dsklen &= MASK_DSKLEN_CONTROL;
-            self.dma_active = false;
-            self.interrupts.request(config::mask::intreq::BIT_DSKBLK);
-            true
-        }
-    }
-
-    /// Latches newly deserialized MFM data from the floppy drive into DSKBYTR,
-    /// preserving Paula's internal DMAON and DISKWRITE status bits.
-    #[inline]
-    pub fn latch_floppy_dskbytr(&mut self, floppy_bits: u16) {
-        self.dskbytr = (self.dskbytr & !MASK_DSKBYTR_DATA) | (floppy_bits & MASK_DSKBYTR_DATA);
-    }
-
-    /// Action method: latches a new deserialized MFM byte from the floppy drive bitstream
-    #[inline]
-    pub fn set_disk_byte(&mut self, byte: u8, sync_matched: bool) {
-        let sync_bit = if sync_matched {
-            BIT_DSKBYTR_WORDEQUAL
-        } else {
-            0
-        };
-        self.dskbytr = BIT_DSKBYTR_DSKBYT | sync_bit | (byte as u16);
-    }
-
     /// Asserts interrupt request bits immediately
     #[inline]
     pub fn set_interrupt_request(&mut self, mask: u16) {
         self.interrupts.request(mask);
-    }
-
-    /// Polls and clears the audio DMA restart strobe (`AUDxDSR`) for channel `ch`
-    #[inline]
-    pub fn poll_audio_restart(&mut self, ch: usize) -> bool {
-        self.audio.poll_restart_strobe(ch)
     }
 
     /// Evaluates pending, enabled interrupt sources and returns the highest active IPL (0..6)

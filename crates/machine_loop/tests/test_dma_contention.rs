@@ -2,7 +2,7 @@
 
 use config::A500Config;
 use machine_loop::A500Machine;
-use physical_memory::BusResult;
+use physical_memory::{AddressBus, BusResult};
 
 #[test]
 fn test_fixed_dma_slot_cpu_wait_states() {
@@ -182,18 +182,42 @@ fn test_blitter_nasty_cpu_lockout_integration() {
         .agnus
         .dma
         .write_dmacon(0x8000 | 0x0200 | 0x0400 | 0x0040);
-    machine.agnus.blitter.is_busy = true;
-
-    // Across 10 consecutive cycles at idle HPOS 50, Chip RAM remains continuously blocked
-    for _ in 0..10 {
-        machine.agnus.hpos = 50;
+    // HRM 6, Table 6-2: D-only alternates writes with internal work.
+    // BLTPRI gives priority to memory requests; it does not create transfers.
+    machine.agnus.blitter.bltcon0 = 0x01FF;
+    machine.agnus.blitter.bltdpt = 0x2000;
+    machine.agnus.blitter.set_dma_enabled(true);
+    machine.agnus.blitter.trigger_blit(0x0048);
+    machine.agnus.hpos = 0x3F;
+    let mut transferred_words = 0;
+    let mut free_cycles_while_busy = 0;
+    for _ in 0..64 {
+        let before = machine.agnus.blitter.bltdpt;
         machine.step_subsystems_cck();
-        assert!(machine.physical_memory.chip_ram_blocked);
-        assert_eq!(
-            machine.physical_memory.read_word(0x001000),
-            BusResult::WaitState
-        );
+        let transferred = machine.agnus.blitter.bltdpt != before;
+        if transferred {
+            transferred_words += 1;
+            assert_eq!(machine.physical_memory.read_chip_word(before), 0xFFFF);
+            assert!(machine.physical_memory.chip_ram_blocked);
+            assert_eq!(
+                machine.physical_memory.read_word(0x1000),
+                BusResult::WaitState
+            );
+        } else {
+            assert!(!machine.physical_memory.chip_ram_blocked);
+            assert!(matches!(
+                machine.physical_memory.read_word(0x1000),
+                BusResult::Ready(_)
+            ));
+            free_cycles_while_busy += usize::from(machine.agnus.blitter.is_busy);
+        }
+        if !machine.agnus.blitter.is_busy {
+            break;
+        }
     }
+    assert!(!machine.agnus.blitter.is_busy);
+    assert_eq!(transferred_words, 8);
+    assert!(free_cycles_while_busy > 0);
 }
 
 #[test]
@@ -204,18 +228,22 @@ fn test_cpu_three_cycle_starvation_yield_integration() {
 
     // Enable DMA + Normal Blitter (BLTPRI == 0): DMAEN (bit 9) | BLTEN (bit 6)
     machine.agnus.dma.write_dmacon(0x8000 | 0x0200 | 0x0040);
-    machine.agnus.blitter.is_busy = true;
+    // Three real source reads per word keep a pending request across CPU yield.
+    machine.agnus.blitter.bltcon0 = 0x0E00;
+    machine.agnus.blitter.set_dma_enabled(true);
+    machine.agnus.blitter.trigger_blit(0x0048);
+    machine.agnus.blitter.step_cck();
     machine.agnus.hpos = 50;
 
     // Cycles 1..3: Blitter takes the bus, starving the CPU
     for i in 1..=3 {
         machine.step_subsystems_cck();
         assert!(machine.physical_memory.chip_ram_blocked);
-        assert_eq!(machine.agnus.dma.cpu_starvation_counter, i);
         assert_eq!(
-            machine.physical_memory.read_word(0x001000),
+            machine.memory_bus().read_word(0x001000),
             BusResult::WaitState
         );
+        assert_eq!(machine.agnus.dma.cpu_starvation_counter, i);
     }
 
     // Cycle 4: Agnus 3-cycle CPU Starvation Yield!
@@ -224,7 +252,33 @@ fn test_cpu_three_cycle_starvation_yield_integration() {
     assert!(!machine.physical_memory.chip_ram_blocked);
     assert_eq!(machine.agnus.dma.cpu_starvation_counter, 0);
     assert!(matches!(
-        machine.physical_memory.read_word(0x001000),
+        machine.memory_bus().read_word(0x001000),
         BusResult::Ready(_)
     ));
+}
+
+#[test]
+fn blitter_does_not_yield_for_stopped_cpu_or_private_memory_traffic() {
+    let mut machine = A500Machine::new(A500Config::expanded_power_user(config::VideoStandard::Pal));
+    machine.cpu.state.set_stopped(true);
+    machine.physical_memory.map_chip_ram_to_low_memory();
+    machine.agnus.hpos = 0x3f;
+    machine.agnus.dma.write_dmacon(0x8240);
+    machine.agnus.blitter.bltcon0 = 0x0e00;
+    machine.agnus.blitter.set_dma_enabled(true);
+    machine.agnus.blitter.trigger_blit(0x0048);
+    machine.agnus.blitter.step_cck();
+    for _ in 0..12 {
+        machine.step_cck();
+        assert!(machine.physical_memory.chip_ram_blocked);
+        assert!(matches!(
+            machine.memory_bus().read_word(0x200000),
+            BusResult::Ready(_)
+        ));
+        assert!(!machine.agnus.dma.cpu_request_pending);
+        assert_eq!(machine.agnus.dma.cpu_starvation_counter, 0);
+    }
+    assert_eq!(machine.agnus.blitter.bltapt, 8);
+    assert_eq!(machine.agnus.blitter.bltbpt, 8);
+    assert_eq!(machine.agnus.blitter.bltcpt, 8);
 }

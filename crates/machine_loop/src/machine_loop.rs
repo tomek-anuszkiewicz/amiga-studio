@@ -3,19 +3,17 @@
 //! Tier 0 top-level machine chassis that owns and coordinates all peer subsystems,
 //! custom chips, coprocessors, and peripheral devices in a flat, decoupled structure.
 
-pub use agnus::{self, blitter, copper, dma};
+pub use agnus;
 pub use cia;
 pub use config;
 pub use cpu;
-pub use denise::{self, frame_builder, sprites};
+pub use denise;
 pub use floppy;
 pub use game_ports;
-pub use joystick;
 pub use keyboard;
 pub use memory_bus;
 pub use memory_bus::MemoryBus;
-pub use mouse;
-pub use paula::{self, audio};
+pub use paula;
 pub use physical_memory;
 pub use physical_memory::{AddressBus, BusResult, PhysicalMemory};
 pub use rtc;
@@ -92,7 +90,7 @@ impl A500Machine {
         let rtc = rtc::RtcMsm6242b::new(config.rtc());
 
         let floppy = floppy::FloppyController::new();
-        let keyboard = keyboard::Keyboard::new();
+        let keyboard = keyboard::Keyboard::new(config.video_standard().color_clock_hz());
         let game_ports = game_ports::GamePorts::new();
 
         let mut machine = Self {
@@ -175,15 +173,10 @@ impl A500Machine {
         self.sample_signal_pins_start_cck();
         // 1. Advance Agnus (steps copper, blitter, dma, raster beam counters, and mutation pipeline)
         self.agnus.step_cck_ram(&mut self.physical_memory.chip_ram);
-        if let Some(dskpt) = self.agnus.poll_dsk_dma_slot() {
-            let is_write = self.paula.is_dsk_write();
-            if !is_write {
-                if let Some(word) = self.floppy.consume_dma_word() {
-                    self.physical_memory.write_chip_word(dskpt, word);
-                    if self.paula.decrement_dsklen() {
-                        self.floppy.notify_dskblk_done();
-                    }
-                }
+        if let Some(address) = self.agnus.pending_dsk_dma_slot.take() {
+            if let Some(word) = self.paula.take_disk_dma_word() {
+                self.physical_memory.write_chip_word(address, word);
+                self.agnus.complete_disk_read();
             }
         }
         self.physical_memory.chip_ram_blocked = self.agnus.chip_ram_blocked;
@@ -206,11 +199,11 @@ impl A500Machine {
         }
         self.deliver_dma_register();
 
-        // 4. Step the retained decoded floppy engine.
-        self.floppy.step_cck(self.paula.adkcon, self.paula.dsksync);
+        // 4. Step drive mechanics using captured connector control levels.
+        self.floppy.step_cck();
 
-        // Keyboard KCLK/KDAT reach CIA pins through the captured delivery.
-        // A queued key is not an SDR write; device/receiver engines belong to 2.4.
+        // Keyboard and CIA communicate only through captured KCLK/KDAT levels.
+        self.keyboard.step_cck();
 
         // 5. Step CIAs
         self.cia_a.step_cck();

@@ -11,7 +11,7 @@ use crate::layout::left_dock::disassembly::{render_disassembly, DisasmEditState}
 use crate::layout::left_dock::engine_status::render_engine_status;
 use crate::layout::left_dock::microcode::render_microcode;
 use crate::layout::left_dock::registers::{render_registers, EditRegister};
-use crate::layout::main_viewport::amiga_screen::render_amiga_screen;
+use crate::layout::main_viewport::amiga_screen::{render_amiga_screen, ScreenTexture};
 use crate::layout::main_viewport::temporal_bar::render_temporal_bar;
 use crate::layout::right_dock::breakpoints_panel::{render_breakpoints_panel, BreakpointFormState};
 use crate::layout::right_dock::memory_hex::render_memory_hex;
@@ -105,6 +105,7 @@ impl Default for UserPreferences {
 pub struct EmulatorApp {
     /// Headless machine execution controller & model
     pub session: Box<DebuggerSession>,
+    screen_texture: ScreenTexture,
 
     // UI Configuration & Themes
     pub theme: AppTheme,
@@ -155,6 +156,7 @@ impl Default for EmulatorApp {
 
         Self {
             session: Box::new(DebuggerSession::new()),
+            screen_texture: ScreenTexture::default(),
             theme: AppTheme::Dark,
             view_mode,
             active_reg_edit: None,
@@ -360,11 +362,14 @@ impl EmulatorApp {
             }
         }
 
+        self.screen_texture.update(ctx, &self.session);
+        let screen_texture = self.screen_texture.id();
+
         // --- RENDER BASED ON ACTIVE VIEW MODE ---
         if self.view_mode == ViewMode::ScreenOnly {
             // Mode A: Clean Standalone Screen / Game View (no floating buttons)
             egui::CentralPanel::default().show(ctx, |ui| {
-                render_amiga_screen(ui, false);
+                render_amiga_screen(ui, screen_texture, false);
             });
         } else {
             // Mode B: Full Developer Studio GUI (Responsive Multi-Tier Architecture)
@@ -637,7 +642,7 @@ impl EmulatorApp {
                                                     egui::vec2(avail_w, screen_h),
                                                     egui::Layout::top_down(egui::Align::Center),
                                                     |ui| {
-                                                        render_amiga_screen(ui, false);
+                                                        render_amiga_screen(ui, screen_texture, false);
                                                     },
                                                 );
 
@@ -690,7 +695,7 @@ impl EmulatorApp {
                                 egui::vec2(ui.available_width(), screen_h),
                                 egui::Layout::top_down(egui::Align::Center),
                                 |ui| {
-                                    render_amiga_screen(ui, false);
+                                    render_amiga_screen(ui, screen_texture, false);
                                 },
                             );
 

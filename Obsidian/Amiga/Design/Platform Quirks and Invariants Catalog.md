@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "general"
 status: "active"
 created: 2026-09-12
-updated: 2026-11-11
+updated: 2026-11-12
 related: ["[General Architecture.md](General%20Architecture.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md)", "[MemoryBus.md](MemoryBus.md)", "[Physical Memory.md](Physical%20Memory.md)", "[Custom Chip Register Ownership and Access Matrix.md](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md)"]
 ---
 
@@ -45,9 +45,9 @@ Instruction semantics are checked against the [SingleStep contract](Verification
 
 ### CPU writes to refresh sync strobes
 
-`STREQU`, `STRVBL`, `STRHOR`, and `STRLONG` are address strobes that Agnus normally presents during refresh slots to synchronize Denise; `STRHOR` also reaches Paula. The [register matrix](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md) records their documented function and the prohibition on Copper writes. A CPU write can address the same offsets through [MemoryBus](MemoryBus.md), so treating them as ordinary unused storage would discard a possible synchronization effect. The [Hardware Reference Manual, Appendix A](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md#strequ-strhor-strlong-strvbl) establishes the refresh-time strobes, but the precise effect of an extra CPU-initiated strobe on Denise or Paula has not been verified here.
+`STREQU`, `STRVBL`, `STRHOR`, and `STRLONG` are address strobes that Agnus normally presents during refresh slots to synchronize Denise; the manual also lists Paula for `STRHOR`. The [register matrix](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md) records their documented function and the prohibition on Copper writes. A CPU write can address the same offsets through [MemoryBus](MemoryBus.md), so treating them as ordinary unused storage would discard a possible synchronization effect. The [Hardware Reference Manual, Appendix A](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md#strequ-strhor-strlong-strvbl) establishes the refresh-time strobes, but the precise effect of an extra CPU-initiated strobe on Denise or Paula has not been verified here.
 
-The current router calls named immediate strobe methods in [Denise](../../../crates/denise/src/registers.rs) and, for `STRHOR`, [Paula](../../../crates/paula/src/registers.rs). They act at accepted selection under the model policy described in [MemoryBus](MemoryBus.md#custom-registers-and-specialized-chips). Receiver reactions remain incomplete; see the [chipset reconstruction work](../../../ROADMAP.md#chipset-reconstruction).
+The current router delivers all four addresses to [Denise](../../../crates/denise/src/registers.rs) and [Paula](../../../crates/paula/src/registers.rs). Paula uses `strobe_sync(address)` under its approved [receiver model](Paula.md#rga-synchronization-and-vertb): the three line markers capture DMAL, entry into STREQU requests VERTB, and STRLONG leaves its state unchanged. CPU selections act immediately without a queue entry, even when data queues are full. These tested model effects do not establish the physical consequences or exact edge timing of an extra CPU strobe.
 
 ### Open bus and opposite-direction register access
 

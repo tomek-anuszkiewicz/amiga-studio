@@ -233,8 +233,8 @@ fn test_machine_loop_agnus_bpl_dma_routed_to_denise() {
         .write_custom_word(custom_reg::denise::REGISTER_BPLCON0, 0x1200);
     harness.step_cck(4);
 
-    harness.machine.agnus.ddfstrt = 0x38;
-    harness.machine.agnus.ddfstop = 0xD0;
+    harness.machine.agnus.dma.ddfstrt = 0x38;
+    harness.machine.agnus.dma.ddfstop = 0xD0;
     harness.machine.agnus.hpos = 0x3E;
     harness.machine.agnus.vpos = 50;
 

@@ -99,13 +99,14 @@ fn test_machine_game_ports_routing() {
     // Host input events routed directly to game_ports
     machine.game_ports.set_mouse_buttons(true, false, true);
     assert!(machine.game_ports.fire1_port1());
-    assert_eq!(machine.game_ports.potgor(0x0000) & (1 << 8), 0); // Middle button pulled low
+    assert_eq!(machine.game_ports.potgor() & (1 << 8), 0); // Middle button pulled low
 
     machine
         .game_ports
         .set_joystick(true, false, false, false, true, false);
     assert!(machine.game_ports.fire1_port2());
-    assert_eq!(machine.game_ports.joy1dat(), 0x0100); // Up direction set in bit 8
+    machine.step_subsystems_cck();
+    assert_eq!(machine.denise.joy1dat(), 0x0100); // Up direction set in bit 8
 
     // Reset restores defaults
     machine.reset();

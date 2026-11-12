@@ -16,7 +16,7 @@ fn test_dmacon_bitwise_set_and_clear_across_subsystems() {
     let mut harness = MachineHarness::new();
 
     // 1. Initially all DMA channels are disabled
-    assert_eq!(harness.machine.agnus.dmacon, 0);
+    assert_eq!(harness.machine.agnus.dma.dmacon, 0);
     assert!(!harness.machine.agnus.copper.dma_enabled);
     assert!(!harness.machine.agnus.blitter.dma_enabled);
     assert!(!harness
@@ -32,7 +32,7 @@ fn test_dmacon_bitwise_set_and_clear_across_subsystems() {
         .write_custom_word(custom_reg::agnus::REGISTER_DMACON, 0x82E0);
     harness.step_cck(2); // Physical propagation delay
 
-    assert_eq!(harness.machine.agnus.dmacon & 0x02E0, 0x02E0);
+    assert_eq!(harness.machine.agnus.dma.dmacon & 0x02E0, 0x02E0);
     assert!(harness.machine.agnus.copper.dma_enabled);
     assert!(harness.machine.agnus.blitter.dma_enabled);
     assert!(harness
@@ -47,7 +47,7 @@ fn test_dmacon_bitwise_set_and_clear_across_subsystems() {
         .write_custom_word(custom_reg::agnus::REGISTER_DMACON, 0x0080);
     harness.step_cck(2);
 
-    assert_eq!(harness.machine.agnus.dmacon & 0x0080, 0);
+    assert_eq!(harness.machine.agnus.dma.dmacon & 0x0080, 0);
     assert!(!harness.machine.agnus.copper.dma_enabled);
     // Other channels must remain enabled
     assert!(harness.machine.agnus.blitter.dma_enabled);
@@ -64,7 +64,7 @@ fn test_dmacon_bitwise_set_and_clear_across_subsystems() {
     harness.step_cck(2);
 
     // Master DMA disabled: all individual channel activities must cease
-    assert_eq!(harness.machine.agnus.dmacon & 0x0200, 0);
+    assert_eq!(harness.machine.agnus.dma.dmacon & 0x0200, 0);
     assert!(!harness.machine.agnus.is_dma_enabled(0x0040));
     assert!(!harness.machine.agnus.is_dma_enabled(0x0020));
     assert!(!harness.machine.agnus.blitter.dma_enabled);

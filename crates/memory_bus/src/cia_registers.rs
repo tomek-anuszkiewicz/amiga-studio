@@ -154,7 +154,7 @@ impl MemoryBus<'_> {
     fn read_cia_register_debug(&self, canonical: u32) -> u8 {
         match canonical {
             cia_reg::cia_a::REGISTER_PRA => self.cia_a.pra(),
-            cia_reg::cia_a::REGISTER_PRB => self.cia_a.prb(),
+            cia_reg::cia_a::REGISTER_PRB => self.cia_a.prb_debug(),
             cia_reg::cia_a::REGISTER_DDRA => self.cia_a.ddra(),
             cia_reg::cia_a::REGISTER_DDRB => self.cia_a.ddrb(),
             cia_reg::cia_a::REGISTER_TALO => self.cia_a.talo(),
@@ -169,7 +169,7 @@ impl MemoryBus<'_> {
             cia_reg::cia_a::REGISTER_CRA => self.cia_a.cra(),
             cia_reg::cia_a::REGISTER_CRB => self.cia_a.crb(),
             cia_reg::cia_b::REGISTER_PRA => self.cia_b.pra(),
-            cia_reg::cia_b::REGISTER_PRB => self.cia_b.prb(),
+            cia_reg::cia_b::REGISTER_PRB => self.cia_b.prb_debug(),
             cia_reg::cia_b::REGISTER_DDRA => self.cia_b.ddra(),
             cia_reg::cia_b::REGISTER_DDRB => self.cia_b.ddrb(),
             cia_reg::cia_b::REGISTER_TALO => self.cia_b.talo(),

@@ -51,38 +51,58 @@ impl<'a> AddressBus for MemoryBus<'a> {
     fn read_byte(&mut self, addr: u32) -> BusResult<u8> {
         let addr = addr & physical_memory::MASK_PHYSICAL_ADDRESS;
         let bank = (addr >> 16) as u8;
-        match bank {
+        let (result, shared_bus_wait) = match bank {
             CUSTOM_BANK_FIRST..=CUSTOM_BANK_LAST => {
-                let word =
-                    self.read_custom_word((addr & config::MASK_CUSTOM_REG_OFFSET as u32) as u16);
-                let byte = if (addr & 1) == 0 {
-                    (word >> 8) as u8
+                if self.mem.chip_ram_blocked {
+                    (BusResult::WaitState, true)
                 } else {
-                    (word & 0xFF) as u8
-                };
-                BusResult::Ready(byte)
-            }
-            CIA_BANK_FIRST..=CIA_BANK_LAST => self.read_cia_byte(addr),
-            Self::BANK_RTC => {
-                if (Self::RTC_START..=Self::RTC_END).contains(&addr) {
-                    BusResult::Ready(self.rtc.read_byte(addr))
-                } else {
-                    BusResult::Ready(OPEN_BUS_BYTE)
+                    let word = self
+                        .read_custom_word((addr & config::MASK_CUSTOM_REG_OFFSET as u32) as u16);
+                    let byte = if (addr & 1) == 0 {
+                        (word >> 8) as u8
+                    } else {
+                        (word & 0xFF) as u8
+                    };
+                    (BusResult::Ready(byte), false)
                 }
             }
-            _ => self.mem.read_byte(addr),
-        }
+            CIA_BANK_FIRST..=CIA_BANK_LAST => (self.read_cia_byte(addr), false),
+            Self::BANK_RTC => {
+                let byte = if (Self::RTC_START..=Self::RTC_END).contains(&addr) {
+                    self.rtc.read_byte(addr)
+                } else {
+                    OPEN_BUS_BYTE
+                };
+                (BusResult::Ready(byte), false)
+            }
+            _ => {
+                // Storage handlers enforce contention only for Chip/Slow RAM.
+                let result = self.mem.read_byte(addr);
+                (result, result.is_wait())
+            }
+        };
+        self.agnus.dma.receive_cpu_bus_wait(shared_bus_wait);
+        result
     }
 
     #[inline(always)]
     fn read_word(&mut self, addr: u32) -> BusResult<u16> {
         let addr = addr & physical_memory::MASK_PHYSICAL_ADDRESS;
         let bank = (addr >> 16) as u8;
-        match bank {
-            CUSTOM_BANK_FIRST..=CUSTOM_BANK_LAST => BusResult::Ready(
-                self.read_custom_word((addr & config::MASK_CUSTOM_REG_OFFSET as u32) as u16),
-            ),
-            CIA_BANK_FIRST..=CIA_BANK_LAST => self.read_cia_word(addr),
+        let (result, shared_bus_wait) = match bank {
+            CUSTOM_BANK_FIRST..=CUSTOM_BANK_LAST => {
+                if self.mem.chip_ram_blocked {
+                    (BusResult::WaitState, true)
+                } else {
+                    (
+                        BusResult::Ready(self.read_custom_word(
+                            (addr & config::MASK_CUSTOM_REG_OFFSET as u32) as u16,
+                        )),
+                        false,
+                    )
+                }
+            }
+            CIA_BANK_FIRST..=CIA_BANK_LAST => (self.read_cia_word(addr), false),
             Self::BANK_RTC => {
                 let b0 = if (Self::RTC_START..=Self::RTC_END).contains(&addr) {
                     self.rtc.read_byte(addr)
@@ -95,33 +115,46 @@ impl<'a> AddressBus for MemoryBus<'a> {
                 } else {
                     OPEN_BUS_BYTE
                 };
-                BusResult::Ready(u16::from_be_bytes([b0, b1]))
+                (BusResult::Ready(u16::from_be_bytes([b0, b1])), false)
             }
-            _ => self.mem.read_word(addr),
-        }
+            _ => {
+                let result = self.mem.read_word(addr);
+                (result, result.is_wait())
+            }
+        };
+        self.agnus.dma.receive_cpu_bus_wait(shared_bus_wait);
+        result
     }
 
     #[inline(always)]
     fn write_byte(&mut self, addr: u32, val: u8) -> BusResult<()> {
         let addr = addr & physical_memory::MASK_PHYSICAL_ADDRESS;
         let bank = (addr >> 16) as u8;
-        match bank {
+        let (result, shared_bus_wait) = match bank {
             CUSTOM_BANK_FIRST..=CUSTOM_BANK_LAST => {
-                if self.write_custom_byte(addr, val) {
-                    BusResult::Ready(())
-                } else {
+                let waiting = self.mem.chip_ram_blocked;
+                // Queue backpressure stalls the CPU without requesting an Agnus slot.
+                let result = if waiting || !self.write_custom_byte(addr, val) {
                     BusResult::WaitState
-                }
+                } else {
+                    BusResult::Ready(())
+                };
+                (result, waiting)
             }
-            CIA_BANK_FIRST..=CIA_BANK_LAST => self.write_cia_byte(addr, val),
+            CIA_BANK_FIRST..=CIA_BANK_LAST => (self.write_cia_byte(addr, val), false),
             Self::BANK_RTC => {
                 if (Self::RTC_START..=Self::RTC_END).contains(&addr) {
                     self.rtc.write_byte(addr, val);
                 }
-                BusResult::Ready(())
+                (BusResult::Ready(()), false)
             }
-            _ => self.mem.write_byte(addr, val),
-        }
+            _ => {
+                let result = self.mem.write_byte(addr, val);
+                (result, result.is_wait())
+            }
+        };
+        self.agnus.dma.receive_cpu_bus_wait(shared_bus_wait);
+        result
     }
 
     #[inline]
@@ -129,7 +162,9 @@ impl<'a> AddressBus for MemoryBus<'a> {
         let addr = addr & physical_memory::MASK_PHYSICAL_ADDRESS;
         let bank = self.mem.bank_map[(addr >> 16) as usize].bank;
         if matches!(bank, MemoryBank::ChipRam | MemoryBank::SlowRam) {
-            if self.mem.chip_ram_blocked {
+            let waiting = self.mem.chip_ram_blocked;
+            self.agnus.dma.receive_cpu_bus_wait(waiting);
+            if waiting {
                 BusResult::WaitState
             } else {
                 BusResult::Ready(())
@@ -143,16 +178,18 @@ impl<'a> AddressBus for MemoryBus<'a> {
     fn write_word(&mut self, addr: u32, val: u16) -> BusResult<()> {
         let addr = addr & physical_memory::MASK_PHYSICAL_ADDRESS;
         let bank = (addr >> 16) as u8;
-        match bank {
+        let (result, shared_bus_wait) = match bank {
             CUSTOM_BANK_FIRST..=CUSTOM_BANK_LAST => {
                 let offset = (addr & config::MASK_CUSTOM_REG_OFFSET as u32) as u16;
-                if self.write_custom_word(offset, val) {
-                    BusResult::Ready(())
-                } else {
+                let waiting = self.mem.chip_ram_blocked;
+                let result = if waiting || !self.write_custom_word(offset, val) {
                     BusResult::WaitState
-                }
+                } else {
+                    BusResult::Ready(())
+                };
+                (result, waiting)
             }
-            CIA_BANK_FIRST..=CIA_BANK_LAST => self.write_cia_word(addr, val),
+            CIA_BANK_FIRST..=CIA_BANK_LAST => (self.write_cia_word(addr, val), false),
             Self::BANK_RTC => {
                 let bytes = val.to_be_bytes();
                 if (Self::RTC_START..=Self::RTC_END).contains(&addr) {
@@ -162,10 +199,15 @@ impl<'a> AddressBus for MemoryBus<'a> {
                 if (Self::RTC_START..=Self::RTC_END).contains(&next_addr) {
                     self.rtc.write_byte(next_addr, bytes[1]);
                 }
-                BusResult::Ready(())
+                (BusResult::Ready(()), false)
             }
-            _ => self.mem.write_word(addr, val),
-        }
+            _ => {
+                let result = self.mem.write_word(addr, val);
+                (result, result.is_wait())
+            }
+        };
+        self.agnus.dma.receive_cpu_bus_wait(shared_bus_wait);
+        result
     }
 
     #[inline(always)]

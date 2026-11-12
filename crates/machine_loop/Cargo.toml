@@ -14,12 +14,10 @@ config = { workspace = true }
 denise = { workspace = true }
 floppy = { workspace = true }
 game_ports = { workspace = true }
-joystick = { workspace = true }
 keyboard = { workspace = true }
 cpu = { workspace = true }
 physical_memory = { workspace = true }
 memory_bus = { workspace = true }
-mouse = { workspace = true }
 paula = { workspace = true }
 rtc = { workspace = true }
 serde = { workspace = true, features = ["derive"] }

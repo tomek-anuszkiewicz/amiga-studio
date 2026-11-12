@@ -31,11 +31,13 @@ Tier 3: Contained Sub-Components (rtc, copper, blitter, audio_dacs)
   - Any bus coordination is handled via transient contexts (e.g., `BusContext`) in the top-level machine loop.
 
 ### Tier 3: Contained Sub-Components (`rtc`, `copper`, `blitter`, `audio`)
-- Dedicated crates that physically or logically belong to a single parent subsystem:
+- Internal modules and retained child crates belong to a single parent subsystem:
   - `rtc` belongs to `memory_bus` (passive peripheral at `$DC0000`).
-  - `copper` and `blitter` belong to `agnus` (Agnus coprocessors).
-  - `audio_channel` belongs to `paula`.
-- **Rule**: The parent peer **must** re-export the child crate:
+  - `copper`, `blitter` and `dma` are modules inside `agnus`. Their supporting source files are flat and prefixed (`blitter_area.rs`, `dma_audio.rs`).
+  - `audio` and `interrupts` are modules inside `paula`; `audio_channel.rs` supports the audio module.
+  - `sprites` is a module inside `denise`; `frame_builder` remains a separate child crate.
+  - `mouse` and `joystick` are modules inside `game_ports`.
+- **Rule**: The parent exposes its internal subsystem module and useful primary types. A retained child crate is re-exported explicitly:
   ```rust
   // In crates/memory_bus/src/memory_bus.rs
   pub use rtc;                   // Module namespace: memory_bus::rtc::*

@@ -379,3 +379,6 @@ reqdma
 sof
 spi
 ttl
+fci
+uartbrk
+msbsync

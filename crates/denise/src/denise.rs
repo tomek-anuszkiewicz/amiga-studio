@@ -4,33 +4,28 @@
 //! 32-color palette (COLOR00..COLOR31), hardware sprites, and game port counters.
 
 pub use frame_builder;
-pub use sprites;
+pub mod sprites;
+pub use sprites::Sprites;
 
 pub use config::DeniseModel;
 use config::{tick_mutations, DelayedMutation};
 use serde::{Deserialize, Serialize};
 
+mod game_ports;
 mod pins;
 pub use pins::{DeniseInputs, DenisePins, DeniseSync};
 
 mod registers;
+mod render;
 
 const MASK_HORIZONTAL_CURSOR: u16 = 0xff;
 
 pub mod decode;
 pub use decode::{decode_dual_playfield, decode_ehb, decode_ham6};
 
-use config::display_window::{HIRES_FETCH_PERIOD_CCK, LORES_FETCH_PERIOD_CCK};
-
 const PIPELINE_PIXELS: usize = 2;
-const HBLANK_START_CCK: u16 = 18;
-const HBLANK_STOP_CCK: u16 = 35;
-const BIT_DIW_HORIZONTAL_LOW: u16 = 1;
-const DIW_COUNTS_PER_CCK: u16 = 2;
-const DIW_FIRST_COUNT_LEAD: u16 = 2;
-const DIW_SECOND_COUNT_LEAD: u16 = 3;
-const LAST_RENDER_CCK: u16 = 226;
-const TAIL_RENDER_CCK: u16 = 227;
+const MASK_SCROLL_AMOUNT: u16 = 0x000f;
+const BIT_EVEN_SCROLL_SHIFT: u16 = 4;
 const BIT_BITPLANE_SERIAL: u16 = 0x8000;
 const MASK_ALL_PLANE_PIXEL: u8 = 0x3F;
 const BIT_PF2_PRIORITY: u16 = 0x0040;
@@ -46,7 +41,7 @@ pub struct Denise {
     pub model: DeniseModel,
     /// Denise 8 hardware sprite engines
     pub sprites: sprites::Sprites,
-    /// Denise raster scanline pixel compositor & frame buffer
+    /// Storage and field assembly for the pixels produced by Denise.
     pub frame_builder: frame_builder::FrameBuilder,
 
     // --- Active Latched Registers (Read is NOW) ---
@@ -89,6 +84,8 @@ pub struct Denise {
     pub bpldat_pipe: [u16; config::OCS_BITPLANE_COUNT],
     /// Active parallel bitplane shift registers
     pub shifters: [u16; config::OCS_BITPLANE_COUNT],
+    /// Pixel delay history for the odd/even BPLCON1 scroll controls.
+    pub scroll_history: [u16; config::OCS_BITPLANE_COUNT],
     /// True when BPL1DAT has been written on the active scanline, arming bitplane serialization
     pub bpl_armed: bool,
     /// Last held color for HAM6 mode
@@ -136,6 +133,7 @@ impl Denise {
             bpldat: [0; config::OCS_BITPLANE_COUNT],
             bpldat_pipe: [0; config::OCS_BITPLANE_COUNT],
             shifters: [0; config::OCS_BITPLANE_COUNT],
+            scroll_history: [0; config::OCS_BITPLANE_COUNT],
             bpl_armed: false,
             last_ham_rgb: 0,
             pipeline_pixels: [0; PIPELINE_PIXELS],
@@ -169,6 +167,7 @@ impl Denise {
         self.bpldat.fill(0);
         self.bpldat_pipe.fill(0);
         self.shifters.fill(0);
+        self.scroll_history.fill(0);
         self.bpl_armed = false;
         self.last_ham_rgb = 0;
         self.pipeline_pixels = [0; PIPELINE_PIXELS];
@@ -181,226 +180,13 @@ impl Denise {
     /// Returns any register writes that matured and committed on this exact cycle.
     pub fn step_cck(&mut self) -> [Option<(u16, u16)>; Self::MUTATION_CAPACITY] {
         if let Some(address) = self.pins.rga_strobe.take() {
-            self.sync.receive_strobe(address);
+            self.receive_sync_strobe(address);
         }
+        self.step_game_ports();
         let hpos = self.sync.hpos;
         let vpos = self.sync.vpos;
         self.sync.hpos = self.sync.hpos.wrapping_add(1) & MASK_HORIZONTAL_CURSOR;
-        if hpos == 0 {
-            self.last_ham_rgb = self.color[0];
-            self.bpl_armed = false;
-            self.shifters = [0; config::OCS_BITPLANE_COUNT];
-            self.pipeline_pixels = [0; PIPELINE_PIXELS];
-            self.pipeline_pixels_valid = [false; PIPELINE_PIXELS];
-        }
-
-        self.sprites.step_cck(hpos, vpos);
-        self.frame_builder.step_cck(hpos, vpos);
-
-        // Check vertical and horizontal blanking
-        // PAL: scanlines 0..25 and >= 311 are vertical blanking
-        let in_vblank = self.sync.vertical_blank;
-        // Horizontal blanking occupies CCKs 0x12..0x23 (18..35)
-        let in_hblank = hpos >= HBLANK_START_CCK && hpos <= HBLANK_STOP_CCK;
-
-        // Denise decodes the horizontal DIW bits; Agnus gates bitplane DMA by line.
-        let hstrt = (self.diwstrt & 0xFF) | BIT_DIW_HORIZONTAL_LOW;
-        let hstop =
-            (self.diwstop & 0xFF) | BIT_DIW_HORIZONTAL_LOW | frame_builder::BIT_HSTOP_EXTENSION;
-
-        let c0 = hpos * DIW_COUNTS_PER_CCK + DIW_FIRST_COUNT_LEAD;
-        if c0 == hstrt {
-            self.hflop = true;
-        }
-        let in_diw0 = self.hflop;
-        if c0 == hstop {
-            self.hflop = false;
-        }
-
-        let c1 = hpos * DIW_COUNTS_PER_CCK + DIW_SECOND_COUNT_LEAD;
-        if c1 == hstrt {
-            self.hflop = true;
-        }
-        let in_diw1 = self.hflop;
-        if c1 == hstop {
-            self.hflop = false;
-        }
-
-        if self.bitplane_count() > 0 && self.bpl_armed {
-            let period = if self.is_hires() {
-                HIRES_FETCH_PERIOD_CCK
-            } else {
-                LORES_FETCH_PERIOD_CCK
-            };
-            if hpos % period == 0 {
-                self.shifters = self.bpldat_pipe;
-            }
-        }
-
-        if in_vblank || in_hblank {
-            // Analog video output DACs are pulled to blanking level (pure black)
-            self.frame_builder
-                .set_cck_pixels(hpos, vpos, frame_builder::OPAQUE_BLACK);
-            if hpos == LAST_RENDER_CCK {
-                self.frame_builder.set_cck_pixels(
-                    TAIL_RENDER_CCK,
-                    vpos,
-                    frame_builder::OPAQUE_BLACK,
-                );
-            }
-        } else {
-            let plane_count = self.bitplane_count();
-            let backdrop = frame_builder::rgb444_to_argb32(self.color[0]);
-            let y = vpos as usize;
-            let cck_base_x = (hpos as usize) * frame_builder::PIXELS_PER_CCK;
-
-            if plane_count > 0 && self.bpl_armed {
-                let hires = self.is_hires();
-                if hires {
-                    let p0 = self.shift_pixel();
-                    let p1 = self.shift_pixel();
-                    let p2 = self.shift_pixel();
-                    let p3 = self.shift_pixel();
-
-                    let px0 = if self.pipeline_pixels_valid[0] {
-                        self.pipeline_pixels[0]
-                    } else {
-                        backdrop
-                    };
-                    let px1 = if self.pipeline_pixels_valid[1] {
-                        self.pipeline_pixels[1]
-                    } else {
-                        backdrop
-                    };
-
-                    let rgb0 = if in_diw0 { self.decode_pixel(p0) } else { 0 };
-                    let px2 = if in_diw0 && p0 != 0 {
-                        frame_builder::rgb444_to_argb32(rgb0)
-                    } else {
-                        backdrop
-                    };
-
-                    let rgb1 = if in_diw0 { self.decode_pixel(p1) } else { 0 };
-                    let px3 = if in_diw0 && p1 != 0 {
-                        frame_builder::rgb444_to_argb32(rgb1)
-                    } else {
-                        backdrop
-                    };
-
-                    self.frame_builder.set_pixel(cck_base_x, y, px0);
-                    self.frame_builder.set_pixel(cck_base_x + 1, y, px1);
-                    self.frame_builder.set_pixel(cck_base_x + 2, y, px2);
-                    self.frame_builder.set_pixel(cck_base_x + 3, y, px3);
-
-                    let rgb2 = if in_diw1 { self.decode_pixel(p2) } else { 0 };
-                    if in_diw1 && p2 != 0 {
-                        self.pipeline_pixels[0] = frame_builder::rgb444_to_argb32(rgb2);
-                        self.pipeline_pixels_valid[0] = true;
-                    } else {
-                        self.pipeline_pixels_valid[0] = false;
-                    }
-
-                    let rgb3 = if in_diw1 { self.decode_pixel(p3) } else { 0 };
-                    if in_diw1 && p3 != 0 {
-                        self.pipeline_pixels[1] = frame_builder::rgb444_to_argb32(rgb3);
-                        self.pipeline_pixels_valid[1] = true;
-                    } else {
-                        self.pipeline_pixels_valid[1] = false;
-                    }
-                } else {
-                    // Low-res: 2 pixels per CCK, each spanning 2 frame buffer pixels
-                    let p0 = self.shift_pixel();
-                    let p1 = self.shift_pixel();
-
-                    let px0 = if self.pipeline_pixels_valid[0] {
-                        self.pipeline_pixels[0]
-                    } else {
-                        backdrop
-                    };
-                    let px1 = if self.pipeline_pixels_valid[1] {
-                        self.pipeline_pixels[1]
-                    } else {
-                        backdrop
-                    };
-
-                    let rgb0 = if in_diw0 { self.decode_pixel(p0) } else { 0 };
-                    let px2 = if in_diw0 && p0 != 0 {
-                        frame_builder::rgb444_to_argb32(rgb0)
-                    } else {
-                        backdrop
-                    };
-                    let px3 = px2;
-
-                    self.frame_builder.set_pixel(cck_base_x, y, px0);
-                    self.frame_builder.set_pixel(cck_base_x + 1, y, px1);
-                    self.frame_builder.set_pixel(cck_base_x + 2, y, px2);
-                    self.frame_builder.set_pixel(cck_base_x + 3, y, px3);
-
-                    let rgb1 = if in_diw1 { self.decode_pixel(p1) } else { 0 };
-                    if in_diw1 && p1 != 0 {
-                        let argb = frame_builder::rgb444_to_argb32(rgb1);
-                        self.pipeline_pixels[0] = argb;
-                        self.pipeline_pixels[1] = argb;
-                        self.pipeline_pixels_valid = [true, true];
-                    } else {
-                        self.pipeline_pixels_valid = [false, false];
-                    }
-                }
-
-                if hpos == LAST_RENDER_CCK {
-                    let px4 = if self.pipeline_pixels_valid[0] {
-                        self.pipeline_pixels[0]
-                    } else {
-                        backdrop
-                    };
-                    let px5 = if self.pipeline_pixels_valid[1] {
-                        self.pipeline_pixels[1]
-                    } else {
-                        backdrop
-                    };
-                    self.frame_builder.set_pixel(cck_base_x + 4, y, px4);
-                    self.frame_builder.set_pixel(cck_base_x + 5, y, px5);
-
-                    let (px6, px7) = if self.hflop {
-                        if hires {
-                            let p4 = self.shift_pixel();
-                            let p5 = self.shift_pixel();
-                            let px6 = if p4 != 0 {
-                                frame_builder::rgb444_to_argb32(self.decode_pixel(p4))
-                            } else {
-                                backdrop
-                            };
-                            let px7 = if p5 != 0 {
-                                frame_builder::rgb444_to_argb32(self.decode_pixel(p5))
-                            } else {
-                                backdrop
-                            };
-                            (px6, px7)
-                        } else {
-                            let p2 = self.shift_pixel();
-                            if p2 != 0 {
-                                let argb = frame_builder::rgb444_to_argb32(self.decode_pixel(p2));
-                                (argb, argb)
-                            } else {
-                                (backdrop, backdrop)
-                            }
-                        }
-                    } else {
-                        (backdrop, backdrop)
-                    };
-                    self.frame_builder.set_pixel(cck_base_x + 6, y, px6);
-                    self.frame_builder.set_pixel(cck_base_x + 7, y, px7);
-                    self.pipeline_pixels_valid = [false, false];
-                }
-            } else {
-                self.pipeline_pixels_valid = [false, false];
-                self.frame_builder.set_cck_pixels(hpos, vpos, backdrop);
-                if hpos == LAST_RENDER_CCK {
-                    self.frame_builder
-                        .set_cck_pixels(TAIL_RENDER_CCK, vpos, backdrop);
-                }
-            }
-        }
+        self.render_cck(hpos, vpos);
 
         let mut committed = [None; Self::MUTATION_CAPACITY];
         let mut committed_count = 0;
@@ -420,14 +206,19 @@ impl Denise {
     /// Shifts out 1 pixel (MSB first) across all 6 bitplanes
     #[inline]
     pub fn shift_pixel(&mut self) -> u8 {
-        let mut val = 0u8;
-        for (i, shifter) in self.shifters.iter_mut().enumerate() {
-            if (*shifter & BIT_BITPLANE_SERIAL) != 0 {
-                val |= 1 << i;
-            }
+        let mut pixel = 0;
+        for (plane, shifter) in self.shifters.iter_mut().enumerate() {
+            let bit = u16::from(*shifter & BIT_BITPLANE_SERIAL != 0);
             *shifter <<= 1;
+            self.scroll_history[plane] = (self.scroll_history[plane] << 1) | bit;
+            let scroll = if plane % 2 == 0 {
+                self.bplcon1 & MASK_SCROLL_AMOUNT
+            } else {
+                (self.bplcon1 >> BIT_EVEN_SCROLL_SHIFT) & MASK_SCROLL_AMOUNT
+            };
+            pixel |= (((self.scroll_history[plane] >> scroll) & 1) as u8) << plane;
         }
-        val
+        pixel
     }
 
     /// Decodes a 6-bit pixel into 12-bit RGB444 based on active display mode
@@ -444,7 +235,7 @@ impl Denise {
         };
         let data = planes_data & mask;
 
-        if self.is_ham() && plane_count == config::OCS_BITPLANE_COUNT as u8 {
+        if self.is_ham() && !self.is_hires() && plane_count == config::OCS_BITPLANE_COUNT as u8 {
             decode_ham6(data, &self.color, &mut self.last_ham_rgb)
         } else if self.is_dual_playfield() {
             let pf2_priority = (self.bplcon2 & BIT_PF2_PRIORITY) != 0;

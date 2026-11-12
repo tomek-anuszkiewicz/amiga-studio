@@ -437,6 +437,20 @@ The later editorial decision was to use that changelog as a buffer for work awai
 
 ---
 
+## 15. Book-Derived Custom Chipset Reconstruction
+
+On November 12-13, 2026, CHIPSET-BOOK-REBUILD-20261111 replaced the chipset engines under the established register, signal and CCK interfaces. The work retained the CPU, storage boundary, delayed register queues and captured connector transport. Agnus owns Copper, Blitter and DMA as internal modules; Denise owns sprites; Paula owns audio and interrupts; game_ports owns mouse and joystick logic. Eight separate child crates were removed together with their old imports and verification selections. Explicitly approved checker changes moved protection to the owning crates without adding dependency permissions.
+
+The reconstruction made arbitration drive actual transfers. Agnus retains requests and granted data until their recipients accept them, advances the owning pointers, and reports shared-bus refusal without advancing the CPU transaction. Copper fetches and Blitter area/line operations progress under those grants. Audio separates programmed reload values, active sample state and memory addresses; disk words pass through Paula's input decoder, FIFO and serializer instead of a decoded drive-status bridge. The approved Paula model receives all four RGA synchronization addresses, preserves STRLONG phase, and derives VERTB from entry into STREQU. It replaces the old decoded vertical event while preserving receiver-owned state.
+
+Denise reconstructs bitplane, palette, sprite and collision behavior and assembles PAL/NTSC fields, including alternating interlaced rows. The existing GUI uploads that frame buffer. The directly loaded live_stripes ASM/BIN fixture produced recognizable red/green stripes in a fresh headless GUI capture after two completed fields. CIA timers, TOD, serial and port handshakes, the keyboard protocol, digital game ports, JOYTEST and disconnected UART behavior have component coverage and current-format continuation checks. Analog inputs, attached external devices and host audio/input routing retain later owners.
+
+Snapshot format 4 removes duplicate outer Agnus DMA registers and preserves active engine state, pending delivery and rendered pixels. The user approved replacing the old format without migration or deleting saved files. Completion cleanup removed unused helpers, corrected Clippy visibility findings and stale JOYTEST documentation, and added six approved dictionary terms. Three approved quality exceptions retain the sector encoder used to prepare DMA test input and read-only disk FIFO/UART output observations used by behavior and continuation tests. The isolated closure check initially found two unused GUI parameters on WASM. Target-specific parameter use restored the build without altering native file dialogs.
+
+The closure review ran the commit and milestone profiles, native/WASM compilation, the live GUI capture and an independent extended review. The current SingleStep run completed 128 groups and 1,002,737 vectors. Static semantic checks covered 196 register offsets, twelve memory boundaries and nineteen crate mappings; they did not establish functional signal coverage. Component and production-path regressions establish the modeled transitions, not complete guest acceptance or measured silicon edge timing. BOOK-GUEST-PROGRAM-TESTS-20261111 retains the full register/engine inventory and independent guest/output checks in Roadmap 2.5. Firmware, media, external suites and physical timing calibration remain separate work.
+
+---
+
 ## Rolling Changelog
 
 This final, unnumbered section holds work awaiting resolution or integration into the numbered chapters. Historical results belong to their recorded source and scope. Settled history through November 12, 2026 has been integrated above; no unfinished investigation entries remain from that set.
@@ -446,19 +460,24 @@ This final, unnumbered section holds work awaiting resolution or integration int
 Every authorized repository commit adds a concise entry here. Logging and compaction follow [diary-maintenance.md](.agents/rules/diary-maintenance.md) and [compact-diary](.agents/skills/compact-diary/SKILL.md). Record the timestamp, affected components, delivered change, rationale and actual verification, including failures and unrun checks. At compaction, retain lasting decisions and evidence in the owning chapter and leave routine details in Git.
 ---
 
-### [2026-11-12 14:39 CET] — Integrate settled bootstrap history into the engineering diary
+### [2026-11-13 00:08 CET] — Complete book-derived chipset reconstruction
 - **Affected Subsystems**:
-  - `DIARY.md`
+  - `chipset`
+  - `peripherals`
+  - `machine loop`
+  - `GUI`
+  - `save state`
+  - `verification`
+  - `design specifications`
 - **What Was Changed (The Concrete Reality)**:
-  - Extend Chapter 10 with preparation caching and cancellation and sparse page resolution
-  - Preserve accepted manual recipe provenance and the specific source attribution exception
-  - Record parser source mapping repairs and their historical verification
-  - Remove eight settled rolling entries while preserving all fourteen chapters
+  - Close CHIPSET-BOOK-REBUILD-20261111 and Roadmap 2.4
+  - Consolidate the completed stage in Chapter 15 and retain guest acceptance in 2.5
+  - Repair the isolated WASM build
 - **Architectural Rationale & Trade-Offs**:
-  - Keep durable decisions and evidence in the owning narrative and routine merge or compaction details in Git
-  - Distinguish tooling delivery and valid source addresses from transcription quality or milestone completion
+  - Preserve register transport
+  - hardware ownership and independent verification while replacing engines
 - **Verification & Test Results**:
-  - Diary structure and chronology passed
-  - Focused English scan passed after the user approved simpler wording
-  - Six local Markdown destinations resolved and whitespace checks passed
-  - No implementation milestone is closed
+  - Previous final-source commit and milestone profiles passed, including 128 SingleStep groups and 1002737 current vectors
+  - The isolated WASM check initially failed on two unused GUI parameters and passed after the repair
+  - Prior live GUI inspection and extended source review passed
+  - Renewed final-source profile and review outcomes are recorded in the closing commit

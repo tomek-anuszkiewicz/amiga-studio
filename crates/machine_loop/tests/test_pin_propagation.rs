@@ -39,12 +39,12 @@ fn blitter_completion_waits_for_delivery_before_requesting_paula() {
     machine.agnus.blitter.blit_irq = true;
     machine.step_cck();
     assert_eq!(
-        machine.paula.intreqr() & config::mask::intreq::BIT_BLIT,
+        machine.paula.intreqr() & 0x0040,
         0,
         "an Agnus output is not an immediate Paula register mutation"
     );
     machine.step_cck();
-    assert_ne!(machine.paula.intreqr() & config::mask::intreq::BIT_BLIT, 0);
+    assert_ne!(machine.paula.intreqr() & 0x0040, 0);
 }
 
 #[test]

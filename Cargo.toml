@@ -2,18 +2,10 @@
 resolver = "2"
 members = [
     "crates/config",
-    "crates/copper",
-    "crates/blitter",
-    "crates/dma",
     "crates/agnus",
-    "crates/sprites",
     "crates/frame_builder",
-    "crates/mouse",
-    "crates/joystick",
     "crates/denise",
-    "crates/audio",
     "crates/floppy",
-    "crates/interrupts",
     "crates/paula",
     "crates/keyboard",
     "crates/cia",
@@ -46,18 +38,10 @@ flate2 = "1.0"
 sha2 = "0.10"
 image = { version = "0.25", default-features = false, features = ["png"] }
 config = { path = "crates/config" }
-copper = { path = "crates/copper" }
-blitter = { path = "crates/blitter" }
-dma = { path = "crates/dma" }
 agnus = { path = "crates/agnus" }
-sprites = { path = "crates/sprites" }
 frame_builder = { path = "crates/frame_builder" }
-mouse = { path = "crates/mouse" }
-joystick = { path = "crates/joystick" }
 denise = { path = "crates/denise" }
-audio = { path = "crates/audio" }
 floppy = { path = "crates/floppy" }
-interrupts = { path = "crates/interrupts" }
 paula = { path = "crates/paula" }
 keyboard = { path = "crates/keyboard" }
 cia = { path = "crates/cia" }

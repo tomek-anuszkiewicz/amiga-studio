@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct KeyboardPins {
     pub incoming_host_data_high: Option<bool>,
-    /// Released/high KCLK and KDAT outputs; the 2.4 controller will drive them.
+    /// Open-drain KCLK and KDAT outputs; true releases the line high.
     pub clock_high: bool,
     pub data_high: bool,
     /// Resolved open-drain KDAT sampled from the motherboard.

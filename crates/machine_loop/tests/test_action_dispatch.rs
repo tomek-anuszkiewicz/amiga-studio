@@ -240,6 +240,13 @@ fn test_end_to_end_floppy_bus_control_and_sensor_readback() {
     assert_eq!(machine.floppy.drives[0].cylinder, 0);
     assert!(machine.floppy.drives[0].disk_inserted);
 
+    // HRM Table 8-5: establish MOTOR before the selection edge latches it.
+    assert_eq!(
+        common::cia::write_byte(&mut machine, 0xBFD100, 0x7f),
+        BusResult::Ready(())
+    );
+    machine.step_cck();
+
     // Step 1: Select DF0, Motor ON, Direction OUT (towards higher cylinders), STEP inactive (high)
     // CIA-B Port B: bit 7 = _MTR (0=on), bit 6 = _SEL3 (1), bit 5 = _SEL2 (1), bit 4 = _SEL1 (1),
     //               bit 3 = _SEL0 (0=active), bit 2 = _SIDE (1=lower), bit 1 = _DIR (0=towards higher), bit 0 = _STEP (1=inactive)
@@ -313,7 +320,7 @@ fn test_end_to_end_floppy_bus_control_and_sensor_readback() {
 
     // First write does not activate DMA yet (armed only)
     assert!(machine.paula.dma_armed);
-    assert!(!machine.paula.is_dsk_dma_active());
+    assert!(!machine.paula.dma_active);
 
     // Second write: DSKLEN = 0x9000
     assert_eq!(
@@ -327,7 +334,7 @@ fn test_end_to_end_floppy_bus_control_and_sensor_readback() {
     machine.step_cck();
 
     // Second consecutive write with bit 15 sets dma_active
-    assert!(machine.paula.is_dsk_dma_active());
+    assert!(machine.paula.dma_active);
 }
 
 #[test]
@@ -372,6 +379,9 @@ fn test_blitter_finish_asserts_blitint_and_escalates_ipl() {
 #[test]
 fn test_audio_restart_reloads_audpt_and_asserts_level4_ipl() {
     let mut machine = A500Machine::new(A500Config::bare_512k(VideoStandard::Pal));
+    // Keep register-delivery assertions outside reserved refresh slots.
+    machine.agnus.hpos = 0x3f;
+    machine.agnus.vpos = 100; // STRHOR anchors the request frame outside blanking.
 
     // Enable master INTEN (bit 14) and Audio Channel 0 interrupt (bit 7): 0xC080
     assert_eq!(
@@ -407,12 +417,30 @@ fn test_audio_restart_reloads_audpt_and_asserts_level4_ipl() {
     // Simulate DMA playback advancing the pointer past the buffer
     machine.agnus.audpt[0] = 0x0002_5100;
 
-    // Paula audio channel 0 finishes sample buffer and requests loop restart (AUD0DSR)
-    machine.paula.audio.channels[0].restart_strobe = true;
-
-    // Step 1 CCK: Agnus reloads audpt[0] from audlc[0], Paula asserts INTREQ bit 7, CPU IPL -> 4
-    machine.step_cck();
-    assert_eq!(machine.agnus.audpt[0], 0x0002_5000);
+    // A request must traverse DMAL; it cannot reload a pointer in the coordinator.
+    machine.cpu.state.set_stopped(true);
+    machine.physical_memory.map_chip_ram_to_low_memory();
+    machine
+        .physical_memory
+        .write_word_debug(0x0002_5000, 0x1234);
+    machine
+        .physical_memory
+        .write_word_debug(0x0002_5100, 0x5678);
+    machine.paula.audio.set_len(0, 1);
+    machine.paula.audio.set_per(0, 200);
+    assert!(machine
+        .memory_bus()
+        .write_custom_word(custom_reg::agnus::REGISTER_DMACON, 0x8201));
+    machine.step_cycles(3);
+    assert_eq!(machine.agnus.audpt[0], 0x0002_5100);
+    for _ in 0..600 {
+        machine.step_cck();
+        if machine.paula.audio.channels[0].dat == 0x1234 {
+            break;
+        }
+    }
+    assert_eq!(machine.paula.audio.channels[0].dat, 0x1234);
+    assert_eq!(machine.agnus.audpt[0], 0x0002_5002);
     assert_eq!(machine.paula.interrupts.intreq & 0x0080, 0x0080);
     assert_eq!(machine.cpu.state.ipl(), 4);
 }
@@ -456,23 +484,21 @@ fn test_floppy_ciab_prb_polling_and_dskbytr_paula_latching() {
     assert_eq!(machine.floppy.pins.control_input, 0x75);
     assert!(machine.floppy.drives[0].motor_on);
 
-    // Simulate floppy controller shifting in MFM byte 0x42 with sync match (bit 12) and byte ready (bit 15)
-    machine.floppy.dskbytr = config::mask::dskbytr::BIT_DSKBYTR_DSKBYT
-        | config::mask::dskbytr::BIT_DSKBYTR_WORDEQUAL
-        | 0x42;
-
-    // Step machine: the retained decoded disk-status bridge transfers a byte into Paula and clears bit 15 in floppy
-    machine.step_cck();
-    assert_eq!(
-        machine.floppy.dskbytr & config::mask::dskbytr::BIT_DSKBYTR_DSKBYT,
-        0
-    );
-    assert_eq!(
-        machine.paula.dskbytr & config::mask::dskbytr::MASK_DSKBYTR_DATA,
-        config::mask::dskbytr::BIT_DSKBYTR_DSKBYT
-            | config::mask::dskbytr::BIT_DSKBYTR_WORDEQUAL
-            | 0x42
-    );
+    // Deterministic raw input, with repeated sync aligning the byte stream.
+    assert!(machine.paula.set_adkcon(0x8500));
+    assert!(machine.paula.set_dsksync(0x5a42));
+    machine.step_cycles(2);
+    for _ in 0..2 {
+        for bit in (0..16).rev() {
+            machine.floppy.pins.read_data_high = 0x5a42 & (1 << bit) == 0;
+            machine.step_cck();
+            machine.floppy.pins.read_data_high = true;
+            machine.step_cycles(6);
+        }
+    }
+    // Byte availability belongs to Paula; no DMA was armed in this fixture.
+    assert_eq!(machine.paula.disk.buffered_words(), 0);
+    assert_eq!(machine.paula.dskbytr & 0x90FF, 0x8000 | 0x1000 | 0x42);
 
     // CPU reads DSKBYTR from Paula via memory bus
     let val = match machine
@@ -482,18 +508,10 @@ fn test_floppy_ciab_prb_polling_and_dskbytr_paula_latching() {
         BusResult::Ready(v) => v,
         _ => panic!("Expected Ready"),
     };
-    assert_eq!(
-        val & config::mask::dskbytr::MASK_DSKBYTR_DATA,
-        config::mask::dskbytr::BIT_DSKBYTR_DSKBYT
-            | config::mask::dskbytr::BIT_DSKBYTR_WORDEQUAL
-            | 0x42
-    );
+    assert_eq!(val & 0x90FF, 0x8000 | 0x1000 | 0x42);
 
     // Paula bit 15 is cleared on read
-    assert_eq!(
-        machine.paula.dskbytr & config::mask::dskbytr::BIT_DSKBYTR_DSKBYT,
-        0
-    );
+    assert_eq!(machine.paula.dskbytr & 0x8000, 0);
 }
 
 #[test]

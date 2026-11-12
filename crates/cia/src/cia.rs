@@ -4,14 +4,16 @@
 //! bidirectional 8-bit Ports A & B, 24-bit TOD clock, SDR, and ICR.
 
 mod pins;
+mod ports;
 mod registers;
+mod serial;
+mod timers;
 pub use pins::{CiaInputs, CiaPins};
 use registers::{
-    BIT_CONTROL_ONE_SHOT, BIT_CONTROL_START, BIT_CRA_SERIAL_OUTPUT, BIT_CRB_INPUT_MODE_SHIFT,
-    BIT_ICR_ALARM, BIT_ICR_FLAG, BIT_ICR_PENDING, BIT_ICR_TIMER_A, BIT_ICR_TIMER_B, CRB_COUNT_CNT,
-    CRB_COUNT_ECLOCK, CRB_COUNT_TA_UNDERFLOW, CRB_COUNT_TA_UNDERFLOW_CNT_HIGH, MASK_CRB_INPUT_MODE,
-    MASK_ICR_SOURCE, MASK_TOD_COUNTER,
+    BIT_CRA_SERIAL_OUTPUT, BIT_ICR_ALARM, BIT_ICR_FLAG, BIT_ICR_PENDING, MASK_ICR_SOURCE,
+    MASK_TOD_COUNTER,
 };
+use serial::SerialState;
 
 use config::{tick_mutations, DelayedMutation};
 use serde::{Deserialize, Serialize};
@@ -90,6 +92,16 @@ pub struct Cia {
     /// Captured value for a pending TOD high-byte read.
     pub tod_read_value: u32,
 
+    /// Captured positive CNT transition, consumed by the engine once.
+    cnt_rising: bool,
+    serial: SerialState,
+    timer_a_output: bool,
+    timer_b_output: bool,
+    timer_a_pulse: u8,
+    timer_b_pulse: u8,
+    /// Port B access pulses scheduled for the third following E cycle.
+    pc_pipeline: u8,
+
     /// Fixed inline in-flight register mutation buffer for CIA
     pub mutations: [Option<DelayedMutation>; CIA_REGISTER_COUNT],
 }
@@ -132,8 +144,14 @@ impl Cia {
                 }
             }
         }
-        if self.eclock_phase == E_TIMER_TICK_PHASE {
-            self.step_eclock();
+        let e_rising = self.eclock_phase == E_TIMER_TICK_PHASE;
+        let cnt_rising = core::mem::take(&mut self.cnt_rising);
+        self.step_timers(e_rising, cnt_rising);
+        if cnt_rising && !self.is_sdr_output() {
+            self.shift_serial_input();
+        }
+        if e_rising {
+            self.step_port_handshake();
         }
     }
 
@@ -165,46 +183,6 @@ impl Cia {
         self.bus_wait_cck = None;
     }
 
-    /// Ticks the existing timer engines on the rising E edge.
-    fn step_eclock(&mut self) {
-        // 2. Timer A down-count (if CRA bit 0 is set)
-        let mut ta_underflow = false;
-        if (self.cra & BIT_CONTROL_START) != 0 {
-            if self.ta_counter == 0 {
-                self.ta_counter = self.ta_latch;
-                self.trigger_icr(BIT_ICR_TIMER_A); // Bit 0: Timer A underflow
-                ta_underflow = true;
-                if (self.cra & BIT_CONTROL_ONE_SHOT) != 0 {
-                    self.cra &= !BIT_CONTROL_START; // One-shot mode: stop timer
-                }
-            } else {
-                self.ta_counter = self.ta_counter.wrapping_sub(1);
-            }
-        }
-
-        // 3. Timer B down-count (if CRB bit 0 is set)
-        if (self.crb & BIT_CONTROL_START) != 0 {
-            let inmode = (self.crb >> BIT_CRB_INPUT_MODE_SHIFT) & MASK_CRB_INPUT_MODE;
-            let tb_decrement = match inmode {
-                CRB_COUNT_ECLOCK => true, // Counts E-Clock pulses
-                CRB_COUNT_TA_UNDERFLOW | CRB_COUNT_TA_UNDERFLOW_CNT_HIGH => ta_underflow, // Cascaded 32-bit counting: Timer A underflow pulses
-                _ => false, // 0x01: Counts CNT pin pulses (handled via step_cnt)
-            };
-
-            if tb_decrement {
-                if self.tb_counter == 0 {
-                    self.tb_counter = self.tb_latch;
-                    self.trigger_icr(BIT_ICR_TIMER_B); // Bit 1: Timer B underflow
-                    if (self.crb & BIT_CONTROL_ONE_SHOT) != 0 {
-                        self.crb &= !BIT_CONTROL_START; // One-shot mode: stop timer
-                    }
-                } else {
-                    self.tb_counter = self.tb_counter.wrapping_sub(1);
-                }
-            }
-        }
-    }
-
     /// Sets ICR request bit and updates master IRQ flag
     pub fn trigger_icr(&mut self, bit: u8) {
         self.icr_data |= bit & MASK_ICR_SOURCE;
@@ -230,24 +208,6 @@ impl Cia {
             self.tod = (self.tod.wrapping_add(1)) & MASK_TOD_COUNTER;
             if self.tod == (self.tod_alarm & MASK_TOD_COUNTER) {
                 self.trigger_icr(BIT_ICR_ALARM); // Bit 2: TOD alarm match
-            }
-        }
-    }
-
-    /// Clocks an external transition on the CNT pin.
-    /// If Timer B is in CNT count mode (CRB bits 6..5 == %01), decrements Timer B.
-    pub fn step_cnt(&mut self) {
-        if (self.crb & BIT_CONTROL_START) != 0
-            && ((self.crb >> BIT_CRB_INPUT_MODE_SHIFT) & MASK_CRB_INPUT_MODE) == CRB_COUNT_CNT
-        {
-            if self.tb_counter == 0 {
-                self.tb_counter = self.tb_latch;
-                self.trigger_icr(BIT_ICR_TIMER_B); // Bit 1: Timer B underflow
-                if (self.crb & BIT_CONTROL_ONE_SHOT) != 0 {
-                    self.crb &= !BIT_CONTROL_START; // One-shot mode: stop timer
-                }
-            } else {
-                self.tb_counter = self.tb_counter.wrapping_sub(1);
             }
         }
     }

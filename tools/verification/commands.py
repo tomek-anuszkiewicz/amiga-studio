@@ -74,9 +74,8 @@ def select_quality_commands(mode):
 
 
 TIER1_UNIT_CRATES = [
-    "agnus", "audio", "blitter", "cia", "config", "copper", "denise",
-    "disassembler", "dma", "floppy", "frame_builder", "game_ports", "interrupts",
-    "joystick", "keyboard", "cpu", "mouse", "paula", "physical_memory", "rtc", "sprites",
+    "agnus", "cia", "config", "denise", "disassembler", "floppy", "frame_builder",
+    "game_ports", "keyboard", "cpu", "paula", "physical_memory", "rtc",
 ]
 
 TIER2_INTEGRATION_CRATES = ['memory_bus', 'machine_loop', 'debugger', 'gui']

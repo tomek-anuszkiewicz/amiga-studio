@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "denise"
 status: "active"
 created: 2026-09-06
-updated: 2026-11-11
+updated: 2026-11-12
 related: ["[Sprites.md](Sprites.md)", "[Frame Buffer.md](Frame%20Buffer.md)", "[Agnus.md](Agnus.md)", "[Game Ports.md](Game%20Ports.md)"]
 tracked_paths:
   - "crates/denise"
@@ -53,19 +53,45 @@ overview stays within the behavior supported by that source.
 
 ## Components
 
-The implementation spans three workspace crates:
+The Denise crate owns its sprite engine as an internal module. The frame builder remains a separate crate:
 
 | Crate | Role |
 | --- | --- |
-| [`denise`](../../../crates/denise) | Coordinates video generation, bitplane decoding, display controls, palette, and collision state. It contains and re-exports the other two crates. |
-| [`sprites`](../../../crates/sprites) | Models the hardware sprite channels and produces sprite pixels. See [Sprites](Sprites.md). |
+| [`denise`](../../../crates/denise) | Coordinates video generation, bitplane decoding, display controls, palette, and collision state. `render.rs` selects the final pixel color. |
+| [`denise::sprites`](../../../crates/denise/src/sprites.rs) | Models the hardware sprite channels and produces sprite pixels. See [Sprites](Sprites.md), the detailed chapter owned by Denise. |
 | [`frame_builder`](../../../crates/frame_builder) | Collects raster pixels into a frame buffer for the host display. See [Frame Buffer](Frame%20Buffer.md). |
+
+## Reconstructed pixel processing
+
+HRM Appendix A BPLxDAT defines BPL1DAT as the parallel-to-serial trigger.
+Its committed write captures all six data latches into shifters; another word
+is not invented by periodically reloading unchanged latches. High resolution
+shifts four bits per CCK; low resolution shifts two and doubles each host pixel.
+BPLCON1 delays odd/even plane streams independently by 0-15 pixel periods,
+retaining history across adjacent words. The local line boundary resets
+serialization and HAM's held color; it does not defer mid-line register commits.
+
+Palette, dual-playfield, HAM6 and Extra Half-Brite decoding applies to the current
+pixel and current committed mode. HAM modifies one component of the preceding
+color; EHB halves each four-bit component separately. Sprites advance once per
+low-resolution pixel regardless of bitplane resolution. The existing horizontal
+window comparisons, blanking region and two-high-resolution-pixel output delay
+are retained model timing, without a claim of calibrated silicon edge offsets.
+
+HRM 7 Tables 7-1/7-2 place the two playfields among sprite pairs. A normal
+playfield uses PF2P; in dual mode, each nontransparent playfield supplies its own
+priority condition and PF2PRI chooses between their colors. Collision logic
+uses all participating sprite pairs and serialized plane bits after BPU masks
+inactive planes, before visual priority selection. CLXCON enables and match polarities govern odd/even groups
+independently of display mode; excluding every plane always satisfies its
+match. CLXDAT accumulates all documented pair and plane collisions until a live
+read clears it. Debug reads remain neutral.
 
 ## Register propagation
 
 Concrete queued setters in [registers.rs](../../../crates/denise/src/registers.rs) handle controls, palette, bitplane data and sprite latches with **1 CCK Pipeline** delivery. Address strobes act immediately at accepted selection without a queue entry. Both CPU and DMA BPLxDAT writes reach the same private latch application; committing BPL1DAT transfers the holding latches and arms serialization. [MemoryBus](MemoryBus.md#custom-registers-and-specialized-chips) specifies the common issue boundary. The fixed 64-entry queue exceeds CPU/Copper plus one bitplane DMA word per CCK over its one-CCK delay; every due event is applied once. Engine shifter movement and sampled port inputs remain separate operations.
 
-JOYTEST and sync reactions remain incomplete; see the [chipset reconstruction work](../../../ROADMAP.md#chipset-reconstruction).
+JOYTEST updates both counter pairs as described under [Digital controller counters](#digital-controller-counters).
 Live `CLXDAT` reads clear collision state; `clxdat_debug` inspects it without
 acknowledgment or queue advancement.
 
@@ -84,11 +110,14 @@ captured RGA address before receiver work; no Agnus counter snapshot is passed.
 long-line marker and whether synchronization has begun. CPU sync writes use
 the same local operations immediately at accepted selection, without a queue entry.
 
-The cursor is a minimal boundary for the retained rendering code. Full field,
-half-line, equalization and pixel response reconstruction remain 2.4 work;
-these counters are not certified hardware internals or a reconstruction of
-Agnus's absolute vertical position. Repeated identical strobes remain distinct
-events. Snapshot restoration preserves the cursor and unconsumed input.
+A transition into equalization begins a field; successive line strobes advance
+the local vertical cursor. The first partial field is discarded for geometry
+measurement. Subsequent complete fields determine PAL/NTSC height and alternate
+interlaced buffer rows. STRLONG marks the current long line without adding a
+line. Repeated identical strobes remain distinct events. Snapshot restoration
+preserves the cursor, unconsumed input, pixel pipeline and partially drawn
+buffer. These receiver counters and retained edge offsets are a functional
+model, not measured silicon phase or copies of Agnus's absolute beam position.
 
 `pins.game_port_inputs` holds the delivered raw direction/quadrature levels for both
 [game ports](Game%20Ports.md#connector-delivery). The motherboard no longer
@@ -98,6 +127,16 @@ the same named queued setters as bus writes, retain the source on refusal,
 and begin receiver delay after the common issue phase. Distinct endpoint words
 prove latch delivery without claiming that the old sprite scheduler or pixel
 pipeline is correct.
+
+## Digital controller counters
+
+[`game_ports.rs`](../../../crates/denise/src/game_ports.rs) advances both JOY
+registers from the current connector levels. Each axis uses the pin-derived
+binary phase for its low two bits and wraps its eight-bit count on forward or
+backward quadrature transitions. A simultaneous ambiguous two-phase jump
+updates the visible pin bits without inventing a direction. JOYTEST writes
+`$FCFC` on both registers and preserves the four input-derived low bits,
+following HRM Appendix A. No device-side position is copied into a JOY register.
 
 ## References
 

@@ -25,7 +25,6 @@ const PAYLOAD_LONGWORDS: usize = SECTOR_DATA_BYTES / 4;
 const PAYLOAD_MFM_LONGWORDS: usize = PAYLOAD_LONGWORDS * 2;
 const TRAILING_GAP_BYTES: usize = 4;
 const ENCODED_SECTOR_BODY_BYTES: usize = 1080;
-const TRACK_LEADING_GAP_BYTES: usize = 500;
 
 /// Standard Amiga sync mark word ($4489)
 const MFM_SYNC_WORD: u16 = 0x4489;
@@ -35,11 +34,6 @@ pub const RAW_MFM_SECTOR_BYTES: usize = 1088;
 
 /// Standard Amiga unencoded sector payload size in bytes
 use super::{SECTORS_PER_TRACK, SECTOR_DATA_BYTES};
-
-/// Standard number of sectors per track in Double Density disks
-
-/// Standard raw MFM track size in bytes (11 sectors + inter-sector gaps)
-pub(crate) const RAW_MFM_TRACK_BYTES: usize = 12668;
 
 /// Errors that can occur during MFM decoding
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -250,30 +244,4 @@ pub fn decode_amiga_sector(raw: &[u8]) -> Result<(u8, u8, [u8; SECTOR_DATA_BYTES
     }
 
     Ok((track, sector, payload))
-}
-
-/// Encodes an entire 5632-byte unencoded track into a standard raw MFM track buffer
-pub(crate) fn encode_amiga_track(track: u8, track_data: &[u8]) -> Vec<u8> {
-    let mut out = Vec::with_capacity(RAW_MFM_TRACK_BYTES);
-
-    // Pre-track gap preamble (approx 500 bytes of MFM clock pattern $AAAA)
-    out.extend_from_slice(&[MFM_GAP_BYTE; TRACK_LEADING_GAP_BYTES]);
-
-    for sector in 0..SECTORS_PER_TRACK {
-        let start = sector * SECTOR_DATA_BYTES;
-        let end = start + SECTOR_DATA_BYTES;
-        let mut sector_data = [0u8; SECTOR_DATA_BYTES];
-        if end <= track_data.len() {
-            sector_data.copy_from_slice(&track_data[start..end]);
-        }
-        let mfm_sector = encode_amiga_sector(track, sector as u8, &sector_data);
-        out.extend_from_slice(&mfm_sector);
-    }
-
-    // Trailing gap to fill standard track length
-    if out.len() < RAW_MFM_TRACK_BYTES {
-        out.resize(RAW_MFM_TRACK_BYTES, MFM_GAP_BYTE);
-    }
-
-    out
 }

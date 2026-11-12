@@ -7,7 +7,7 @@ use machine_loop::A500Machine;
 fn keyboard_serial_pins_and_host_acknowledgment_cross_the_motherboard() {
     let mut machine = A500Machine::new(A500Config::default());
     machine.cpu.state.set_stopped(true);
-    // Deterministic endpoints: this proves wiring, not the unreconstructed engines.
+    // Deterministic endpoints: this test isolates motherboard wiring.
     machine.keyboard.pins.clock_high = false;
     machine.keyboard.pins.data_high = false;
     machine.step_cck();
@@ -19,8 +19,10 @@ fn keyboard_serial_pins_and_host_acknowledgment_cross_the_motherboard() {
 
     machine.keyboard.pins.clock_high = true;
     machine.keyboard.pins.data_high = true;
-    machine.cia_a.pins.sp_output_high = false;
     assert!(machine.cia_a.set_cra(0x40));
+    // Direction changes reset the active serial shifter before the test drives SP.
+    machine.step_cycles(6);
+    machine.cia_a.pins.sp_output_high = false;
     machine.step_cycles(6);
     assert!(!machine.keyboard.pins.host_data_high);
     assert!(!machine.cia_a.pins.sp_input_high);

@@ -34,13 +34,13 @@ impl Default for DenisePins {
 }
 
 impl Denise {
-    /// Input capture only; quadrature counting belongs to the 2.4 receiver.
+    /// Captures current levels; the local engine advances quadrature counters.
     pub fn receive_game_port_pins(&mut self, pins: [u8; 2]) {
         self.pins.game_port_inputs = pins.map(|value| value & MASK_DIRECTION_INPUTS);
     }
 }
 
-/// Local receiver cursor; full field/equalization reconstruction remains 2.4 work.
+/// Local receiver cursor and field state derived from received RGA strobes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DeniseSync {
     pub hpos: u16,
@@ -49,6 +49,9 @@ pub struct DeniseSync {
     pub equalization: bool,
     pub long_line: bool,
     pub synchronized: bool,
+    pub field_locked: bool,
+    pub field_odd: bool,
+    pub field_lines: u16,
 }
 
 impl Default for DeniseSync {
@@ -60,29 +63,59 @@ impl Default for DeniseSync {
             equalization: false,
             long_line: false,
             synchronized: false,
+            field_locked: false,
+            field_odd: false,
+            field_lines: frame_builder::PAL_FIELD_HEIGHT as u16,
         }
     }
 }
 
 impl DeniseSync {
-    pub(super) fn receive_strobe(&mut self, address: u16) {
-        match address {
-            sync::REGISTER_STREQU | sync::REGISTER_STRVBL | sync::REGISTER_STRHOR => {
-                let equalization = address == sync::REGISTER_STREQU;
-                self.vpos = if !self.synchronized || (equalization && !self.equalization) {
-                    0
-                } else {
-                    self.vpos.wrapping_add(1) & MASK_VERTICAL_CURSOR
-                };
-                self.hpos = 0;
-                self.equalization = equalization;
-                self.vertical_blank = address != sync::REGISTER_STRHOR;
-                self.long_line = false;
-                self.synchronized = true;
-            }
-            sync::REGISTER_STRLONG => self.long_line = true,
-            _ => {}
+    fn receive_strobe(&mut self, address: u16, interlaced: bool) -> bool {
+        if address == sync::REGISTER_STRLONG {
+            self.long_line = true;
+            return false;
         }
+        if !matches!(
+            address,
+            sync::REGISTER_STREQU | sync::REGISTER_STRVBL | sync::REGISTER_STRHOR
+        ) {
+            return false;
+        }
+        let equalization = address == sync::REGISTER_STREQU;
+        let field_start = equalization && !self.equalization;
+        let completed = field_start && self.field_locked;
+        if completed {
+            self.field_lines = self.vpos.wrapping_add(1);
+            self.field_odd = interlaced && !self.field_odd;
+        }
+        if field_start || !self.synchronized {
+            self.vpos = 0;
+        } else {
+            self.vpos = self.vpos.wrapping_add(1) & MASK_VERTICAL_CURSOR;
+        }
+        if field_start {
+            self.field_locked = true;
+        }
+        self.hpos = 0;
+        self.equalization = equalization;
+        self.vertical_blank = address != sync::REGISTER_STRHOR;
+        self.long_line = false;
+        self.synchronized = true;
+        completed
+    }
+}
+
+impl Denise {
+    pub(super) fn receive_sync_strobe(&mut self, address: u16) {
+        let interlaced = self.bplcon0 & config::mask::bplcon0::BIT_LACE != 0;
+        let completed = self.sync.receive_strobe(address, interlaced);
+        self.frame_builder.begin_field(
+            interlaced,
+            self.sync.field_odd,
+            self.sync.field_lines,
+            completed,
+        );
     }
 }
 

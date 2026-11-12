@@ -11,30 +11,10 @@ impl A500Machine {
     /// Routes same-CCK outputs and captures pins for sampling at the next CCK start.
     /// Also initializes incoming inputs during construction and reset.
     pub(super) fn route_signal_pins_end_cck(&mut self) {
-        // Legacy decoded events follow Paula's step and precede same-CCK CPU IPL.
-        // CIA and RTC work does not consume these events or the reloaded audio pointers.
-        if self.floppy.poll_dsksyn_irq() {
-            self.paula
-                .set_interrupt_request(config::mask::intreq::BIT_DSKSYN);
-        }
-        if self.floppy.poll_dskblk_irq() {
-            self.paula
-                .set_interrupt_request(config::mask::intreq::BIT_DSKBLK);
-        }
-        // Retained decoded audio bridge, not a separate motherboard wire.
-        for ch in 0..self.paula.audio.channels.len() {
-            if self.paula.poll_audio_restart(ch) {
-                self.agnus.reload_audio_ptr(ch);
-                self.paula
-                    .set_interrupt_request(paula::interrupts::irq_aud(ch));
-            }
-        }
-
         // Committed PA0 reaches OVL in this CCK, before CPU bus access.
         if self.cia_a.poll_pra_output().is_some() {
             MemoryBus::update_ciaa_overlay(&mut self.physical_memory, &self.cia_a);
         }
-        self.poll_legacy_disk_status();
 
         let host_drives = self.cia_a.is_sdr_output();
         let host_data_high =
@@ -76,16 +56,10 @@ impl A500Machine {
             disk_read_high: self.floppy.pins.read_data_high,
             pot0dat: self.game_ports.pot0dat(),
             pot1dat: self.game_ports.pot1dat(),
-            // Retained decoded event and POT counters, not extra physical pins.
-            legacy_vblank_event: self.agnus.poll_vblank_irq(),
-            rga_strobe: self
-                .agnus
-                .pins
-                .rga_strobe
-                .filter(|&address| address == config::custom_reg::paula::REGISTER_STRHOR),
+            rga_strobe: self.agnus.pins.rga_strobe,
         });
         self.floppy.pins.incoming = Some(floppy::FloppyInputs {
-            control: self.cia_b.prb | !self.cia_b.ddrb,
+            control: self.cia_b.port_b_output_pins(),
             write_data_high: self.paula.pins.disk_write_high,
             // Gary/U36 buffering yields an active-low connector write gate.
             write_enable_high: !self.paula.pins.disk_write_enable,
@@ -116,6 +90,7 @@ impl A500Machine {
         self.floppy.sample_input_pins();
         self.keyboard.sample_input_pins();
         self.game_ports.sample_input_pins();
+        self.game_ports.step_cck();
 
         // Independent external levels already denote arrival at receiver pins.
         self.cia_a.set_input_pins_a(
@@ -124,20 +99,7 @@ impl A500Machine {
         );
         self.denise
             .receive_game_port_pins(self.game_ports.pins.direction_pins);
-        self.paula
-            .receive_pot_inputs(self.game_ports.potgor(self.game_ports.pins.pot_output_high));
-
-        // Legacy decoded request must reach Agnus before this CCK's arbitration.
-        // This is not a physical DSKREQ wire; DMAL retains its captured input path.
-        let dsk_req = self.paula.is_dsk_dma_active() && self.floppy.has_dma_word();
-        self.agnus.set_dsk_dma_req(dsk_req);
-    }
-
-    /// Retained decoded media status bridge; raw disk pins use captured delivery.
-    fn poll_legacy_disk_status(&mut self) {
-        if let Some(floppy_byte) = self.floppy.poll_pending_dskbytr() {
-            self.paula.latch_floppy_dskbytr(floppy_byte);
-        }
+        self.paula.receive_pot_inputs(self.game_ports.potgor());
     }
 
     /// Delivers Paula IPL before CPU sampling in the same CCK.

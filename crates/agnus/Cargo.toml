@@ -9,9 +9,6 @@ path = "src/agnus.rs"
 
 [dependencies]
 config = { workspace = true }
-blitter = { workspace = true }
-copper = { workspace = true }
-dma = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 
 [lints]

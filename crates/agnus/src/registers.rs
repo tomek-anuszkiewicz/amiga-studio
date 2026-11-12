@@ -1,6 +1,7 @@
 //! Agnus register reads and queued control and DMA pointer writes.
 
 use super::{Agnus, AgnusModel};
+use crate::register_bits::vposr;
 use config::custom_reg::agnus as reg;
 use config::mask::dmacon;
 use config::{
@@ -295,20 +296,8 @@ impl Agnus {
     /// Returns the pipelined (H, V) beam position as seen by CPU register reads (5 CCKs ahead of display beam).
     #[inline]
     fn pipelined_beam_readout(&self) -> (u16, u16) {
-        let max_lines = match self.model {
-            AgnusModel::OcsNtsc8370 => Self::NTSC_FRAME_LINES,
-            _ => Self::PAL_FRAME_LINES,
-        };
-        let line_ccks = match self.model {
-            AgnusModel::OcsNtsc8370 => {
-                if self.lol {
-                    Self::NTSC_LONG_LINE_CCKS
-                } else {
-                    Self::NTSC_SHORT_LINE_CCKS
-                }
-            }
-            _ => Self::PAL_LINE_CCKS,
-        };
+        let max_lines = self.field_lines();
+        let line_ccks = self.line_ccks();
 
         let mut h = self.hpos + Self::VHPOSR_PIPELINE_LEAD_CCKS;
         let mut v = self.vpos;
@@ -343,22 +332,22 @@ impl Agnus {
     pub fn vposr(&self) -> u16 {
         let mut val = 0u16;
         if self.lof {
-            val |= config::mask::vposr::BIT_LOF;
+            val |= vposr::BIT_LOF;
         }
         match self.model {
-            AgnusModel::OcsNtsc8370 => val |= config::mask::vposr::CHIP_ID_NTSC_8370,
+            AgnusModel::OcsNtsc8370 => val |= vposr::CHIP_ID_NTSC_8370,
             AgnusModel::OcsPal8371 => {}
         }
 
         let (_h, effective_v) = self.pipelined_beam_readout();
-        val |= (effective_v >> 8) & config::mask::vposr::MASK_VPOS_HI;
+        val |= (effective_v >> 8) & vposr::MASK_VPOS_HI;
         val
     }
 
     /// Reads DMA Control and Blitter status (DMACONR at $DFF002)
     #[inline]
     pub fn read_dmaconr(&self) -> u16 {
-        let mut val = self.dmacon & dmacon::MASK_READ_CONTROL;
+        let mut val = self.dma.dmacon & dmacon::MASK_READ_CONTROL;
         if self.blitter.is_busy {
             val |= dmacon::BIT_BBUSY;
         }

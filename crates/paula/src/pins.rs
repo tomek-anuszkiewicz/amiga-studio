@@ -1,6 +1,8 @@
 //! Motherboard-facing signal state for Paula.
 
+use crate::register_bits::{audio_disk_control, intreq};
 use crate::Paula;
+use config::custom_reg::paula as reg;
 use serde::{Deserialize, Serialize};
 
 /// Incoming values retained until the next input sampling phase.
@@ -11,7 +13,6 @@ pub struct PaulaInputs {
     pub int6_high: bool,
     pub pot0dat: u16,
     pub pot1dat: u16,
-    pub legacy_vblank_event: bool,
     pub disk_read_high: bool,
     pub rga_strobe: Option<u16>,
 }
@@ -32,7 +33,7 @@ pub struct PaulaPins {
     pub disk_write_enable: bool,
     /// Active-high serialized DMAL output; the 2.4 engine supplies its bits.
     pub dmal_output_high: bool,
-    /// Unconsumed STRHOR RGA event, independent of CPU register queue capture.
+    /// Unconsumed RGA sync event, independent of CPU register queue capture.
     pub rga_strobe: Option<u16>,
 }
 
@@ -54,8 +55,14 @@ impl Default for PaulaPins {
 }
 
 impl Paula {
+    /// Chip-side TXD observation; no serial connector or attached device exists.
+    pub fn serial_tx_high(&self) -> bool {
+        self.serial_port
+            .transmit_high(self.adkcon & audio_disk_control::BIT_UART_BREAK != 0)
+    }
+
     /// Samples current digital POT levels without another transport delay.
-    /// Proportional conversion and digital pin behavior are reconstructed in 2.4.
+    /// GamePorts resolves digital drivers/buttons; proportional conversion is deferred.
     pub fn receive_pot_inputs(&mut self, pins: u16) {
         self.pins.pot_input_high = pins;
         self.potgor = pins;
@@ -73,27 +80,46 @@ impl Paula {
         let mask = if self.pins.int2_high {
             0
         } else {
-            config::mask::intreq::BIT_PORTS
+            intreq::BIT_PORTS
         } | if self.pins.int3_high {
             0
         } else {
-            config::mask::intreq::BIT_BLIT
+            intreq::BIT_BLIT
         } | if self.pins.int6_high {
             0
         } else {
-            config::mask::intreq::BIT_EXTER
+            intreq::BIT_EXTER
         };
         self.interrupts.request(mask);
     }
 }
 
-/// Receiver-owned phase anchor; request framing and serial shifting remain 2.4.
+/// Receiver-owned horizontal phase anchor and captured disk/audio request frame.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PaulaSync {
     pub cck_since_horizontal: u16,
+    pub dmal_frame: u16,
+    pub equalization: bool,
 }
 
 impl Paula {
+    /// Approved reference model: only entry into STREQU requests VERTB.
+    /// STRLONG leaves both the line phase and the equalization latch unchanged.
+    pub(super) fn receive_sync_strobe(&mut self, address: u16) -> bool {
+        if !matches!(
+            address,
+            reg::REGISTER_STREQU | reg::REGISTER_STRVBL | reg::REGISTER_STRHOR
+        ) {
+            return false;
+        }
+        let equalization = address == reg::REGISTER_STREQU;
+        let vertical_blank = equalization && !self.sync.equalization;
+        self.sync.equalization = equalization;
+        self.sync.cck_since_horizontal = 0;
+        self.capture_dma_requests();
+        vertical_blank
+    }
+
     /// Samples retained inputs before engine work; source changes cannot alter them.
     pub fn sample_input_pins(&mut self) {
         let Some(input) = self.pins.incoming.take() else {
@@ -102,9 +128,6 @@ impl Paula {
         self.receive_interrupt_pins(input.int2_high, input.int3_high, input.int6_high);
         self.pot0dat = input.pot0dat;
         self.pot1dat = input.pot1dat;
-        if input.legacy_vblank_event {
-            self.set_interrupt_request(config::mask::intreq::BIT_VERTB);
-        }
         self.pins.disk_read_high = input.disk_read_high;
         self.pins.rga_strobe = input.rga_strobe;
     }

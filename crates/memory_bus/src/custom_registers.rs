@@ -69,19 +69,22 @@ impl MemoryBus<'_> {
         match offset {
             custom_reg::denise::REGISTER_STREQU => {
                 self.denise.strobe_strequ();
+                self.paula.strobe_sync(offset);
                 true
             }
             custom_reg::denise::REGISTER_STRVBL => {
                 self.denise.strobe_strvbl();
+                self.paula.strobe_sync(offset);
                 true
             }
             custom_reg::denise::REGISTER_STRLONG => {
                 self.denise.strobe_strlong();
+                self.paula.strobe_sync(offset);
                 true
             }
             custom_reg::denise::REGISTER_STRHOR => {
                 self.denise.strobe_strhor();
-                self.paula.strobe_strhor();
+                self.paula.strobe_sync(offset);
                 true
             }
             custom_reg::agnus::REGISTER_DMACON => {

@@ -9,61 +9,78 @@ fn idle(standard: VideoStandard) -> A500Machine {
     machine
 }
 
-#[test]
-fn legacy_disk_request_reaches_the_current_dma_slot() {
-    for standard in [VideoStandard::Pal, VideoStandard::Ntsc] {
-        let mut machine = idle(standard);
-        machine.agnus.hpos = 6;
-        machine.agnus.dskpt = 0x2000;
-        machine.agnus.dma.write_dmacon(0x8210);
-        machine.paula.dma_active = true;
-        machine.paula.dsklen = 0x8001;
-        machine.floppy.dskdat = 0x5a42;
-        machine.floppy.dma_word_ready = true;
-        assert!(machine.paula.set_intena(0xc002));
-
-        // The retained decoded request must arrive before Agnus grants HPOS 7.
-        machine.step_subsystems_cck();
-        assert_eq!(machine.agnus.hpos, 7);
-        assert!(machine.agnus.dsk_dma_req);
-        assert_eq!(machine.agnus.dskpt, 0x2002);
-        assert_eq!(machine.physical_memory.read_chip_word(0x2000), 0x5a42);
-        assert!(!machine.floppy.has_dma_word());
-        assert!(!machine.paula.is_dsk_dma_active());
-        assert!(!machine.floppy.dskblk_irq);
-        assert_eq!(machine.cpu.state.ipl(), 1);
-
-        machine.step_subsystems_cck();
-        assert!(!machine.agnus.dsk_dma_req);
-        assert_eq!(machine.agnus.dskpt, 0x2002);
+fn disk_word(machine: &mut A500Machine, word: u16) {
+    for bit in (0..16).rev() {
+        machine.floppy.pins.read_data_high = word & (1 << bit) == 0;
+        machine.step_cck();
+        machine.floppy.pins.read_data_high = true;
+        machine.step_cycles(6);
     }
 }
 
 #[test]
-fn legacy_disk_and_audio_events_reach_cpu_ipl_in_the_same_cck_once() {
+fn disk_request_crosses_dmal_before_the_granted_ram_transfer() {
+    for standard in [VideoStandard::Pal, VideoStandard::Ntsc] {
+        for start_line in [0, 12, 100] {
+            let mut machine = idle(standard);
+            machine.agnus.hpos = 40;
+            machine.agnus.vpos = start_line;
+            machine.agnus.dskpt = 0x2000;
+            machine.agnus.dma.write_dmacon(0x8210);
+            assert!(machine.paula.set_dmacon(0x8210));
+            assert!(machine.paula.set_adkcon(0x8500));
+            assert!(machine.paula.set_dsklen(0x8001));
+            assert!(machine.paula.set_intena(0xc002));
+            machine.step_cycles(3);
+            assert!(machine.paula.set_dsklen(0x8001));
+            machine.step_cck();
+            disk_word(&mut machine, 0x4489);
+            disk_word(&mut machine, 0x5a42);
+            assert_eq!(machine.paula.disk.buffered_words(), 1);
+            while machine.agnus.hpos != 10 {
+                machine.step_cck();
+            }
+            assert_eq!(machine.agnus.disk_dma_requests, [false, false, true]);
+            assert_eq!(machine.agnus.dskpt, 0x2000);
+            machine.step_cck();
+            assert_eq!(machine.agnus.hpos, 11);
+            assert_eq!(machine.agnus.dskpt, 0x2002);
+            assert_eq!(machine.physical_memory.read_chip_word(0x2000), 0x5a42);
+            assert_eq!(machine.paula.disk.buffered_words(), 0);
+            assert!(!machine.paula.dma_active);
+            assert_eq!(machine.paula.disk.irq_pending & 2, 0);
+            assert_eq!(machine.cpu.state.ipl(), 1);
+            machine.step_cck();
+            assert!(machine
+                .agnus
+                .disk_dma_requests
+                .iter()
+                .all(|request| !request));
+            assert_eq!(machine.agnus.dskpt, 0x2002);
+        }
+    }
+}
+
+#[test]
+fn disk_and_audio_interrupt_events_reach_cpu_ipl_in_the_same_cck_once() {
     for standard in [VideoStandard::Pal, VideoStandard::Ntsc] {
         let mut machine = idle(standard);
-        let mask = config::mask::intreq::BIT_DSKSYN
-            | config::mask::intreq::BIT_DSKBLK
-            | (0..4).fold(0, |mask, ch| mask | paula::interrupts::irq_aud(ch));
+        let mask = 0x1000 | 0x0002 | 0x0780;
         assert!(machine.paula.set_intena(0xc000 | mask));
         assert!(machine.paula.set_intreq(mask));
-        machine.floppy.dsksyn_irq = true;
-        machine.floppy.dskblk_irq = true;
+        machine.paula.disk.irq_pending = 0x1000 | 0x0002;
         for ch in 0..4 {
-            machine.agnus.audlc[ch] = 0x3000 + ch as u32 * 0x100;
-            machine.paula.audio.channels[ch].restart_strobe = true;
+            machine.paula.audio.channels[ch].irq_pending = true;
         }
 
-        // Decoded events follow Paula's due clear and precede this CCK's IPL delivery.
+        // Internal source pulses follow the due clear and precede IPL delivery.
         machine.step_subsystems_cck();
         assert_eq!(machine.paula.interrupts.intreq & mask, mask);
         assert_eq!(machine.cpu.state.ipl(), 5);
-        assert_eq!(machine.agnus.audpt, machine.agnus.audlc);
-        assert!(!machine.floppy.dsksyn_irq);
-        assert!(!machine.floppy.dskblk_irq);
+        assert_eq!(machine.paula.disk.irq_pending & 0x1000, 0);
+        assert_eq!(machine.paula.disk.irq_pending & 0x0002, 0);
         for channel in &machine.paula.audio.channels {
-            assert!(!channel.restart_strobe);
+            assert!(!channel.irq_pending);
         }
 
         assert!(machine.paula.set_intreq(mask));
@@ -87,16 +104,17 @@ fn disconnected_serial_port_preserves_uart_and_ciab_register_logic() {
         assert_eq!(machine.paula.serial_port.serper, 0x802a);
         assert_eq!(
             machine.paula.serdatr(),
-            0x1800,
-            "SERDAT clears TBE, RXD stays high"
+            0x2800,
+            "The holding word moved to the active shifter; TBE and idle RXD are high"
         );
+        assert_eq!(machine.paula.interrupts.intreq & 1, 1);
         assert_eq!(machine.cia_b.pra() & 0xf8, 0xb8);
         assert!(machine.cia_b.set_pra(0x40));
         machine.step_cycles(6);
         assert_eq!(machine.cia_b.pra() & 0xf8, 0x78);
         assert_eq!(
             machine.paula.serdatr(),
-            0x1800,
+            0x2800,
             "RTS/DTR do not feed back into RXD"
         );
 
@@ -183,8 +201,12 @@ fn current_game_port_levels_and_captured_signals_resume_at_their_input_phases() 
         let mut machine = idle(standard);
         machine.keyboard.pins.data_high = false;
         machine.keyboard.pins.clock_high = false;
-        machine.game_ports.pins.direction_pins = [0x09, 0x06];
-        machine.paula.pins.dmal_output_high = true;
+        machine.game_ports.apply_mouse_delta(1, -1);
+        machine
+            .game_ports
+            .set_joystick(true, false, false, true, false, false);
+        // Supply the bit that the active producer emits before the capture phase.
+        machine.paula.sync.dmal_frame = 1 << 3;
         machine.floppy.drives[0].selected = true;
         machine.floppy.pins.index_high = false;
         machine.step_cck();
@@ -210,8 +232,11 @@ fn current_game_port_levels_and_captured_signals_resume_at_their_input_phases() 
         for target in [&mut machine, &mut restored] {
             // Change the source after capture. The pending delivery must retain its values.
             target.keyboard.pins.data_high = true;
-            target.paula.pins.dmal_output_high = false;
-            target.game_ports.pins.direction_pins = [0xfa, 0xf5];
+            target.paula.sync.dmal_frame = 0;
+            target.game_ports.apply_mouse_delta(-1, -1);
+            target
+                .game_ports
+                .set_joystick(false, true, false, true, false, false);
             target.floppy.drives[0].selected = false;
             target.floppy.pins.index_high = true;
             target.step_cck();
@@ -437,7 +462,7 @@ fn disk_data_gate_and_controller_output_direction_reach_connector_inputs() {
         assert_eq!(machine.game_ports.pins.fire_output_mask, 0xc0);
         assert_eq!(machine.game_ports.pins.fire_output_high, 0x40);
         assert!(!machine.floppy.drives[0].disk_inserted);
-        assert!(!machine.floppy.has_dma_word());
+        assert_eq!(machine.paula.disk.buffered_words(), 0);
         machine.paula.pins.disk_write_enable = false;
         machine.step_cycles(2);
         assert!(machine.floppy.pins.write_enable_high);

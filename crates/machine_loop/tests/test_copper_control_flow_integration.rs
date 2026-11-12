@@ -109,7 +109,7 @@ fn test_copper_cdang_danger_mode_protection() {
         .write_custom_word(custom_reg::agnus::REGISTER_DMACON, 0x8280);
 
     // Case 1: CDANG is 0 (default COPCON = 0)
-    assert!(!harness.machine.agnus.copper.cdang);
+    assert!(!harness.machine.agnus.copper.is_danger_enabled());
     harness
         .machine
         .memory_bus()
@@ -127,7 +127,7 @@ fn test_copper_cdang_danger_mode_protection() {
         .memory_bus()
         .write_custom_word(custom_reg::agnus::REGISTER_COPCON, 0x0002);
     harness.step_cck(2);
-    assert!(harness.machine.agnus.copper.cdang);
+    assert!(harness.machine.agnus.copper.is_danger_enabled());
 
     // Restart list with CDANG active
     harness

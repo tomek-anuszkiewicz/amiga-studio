@@ -260,6 +260,8 @@ pub(crate) fn quick_load_slot(app: &mut EmulatorApp, slot: usize) {
 
 /// Opens native file chooser dialog to save an A500 state file
 pub(crate) fn open_save_state_dialog(app: &mut EmulatorApp) {
+    #[cfg(target_arch = "wasm32")]
+    let _ = app;
     #[cfg(not(target_arch = "wasm32"))]
     {
         let file = rfd::FileDialog::new()
@@ -280,6 +282,8 @@ pub(crate) fn open_save_state_dialog(app: &mut EmulatorApp) {
 
 /// Opens native file chooser dialog to load an A500 state file
 pub(crate) fn open_load_state_dialog(app: &mut EmulatorApp) {
+    #[cfg(target_arch = "wasm32")]
+    let _ = app;
     #[cfg(not(target_arch = "wasm32"))]
     {
         let file = rfd::FileDialog::new()

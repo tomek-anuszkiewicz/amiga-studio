@@ -364,3 +364,5 @@ loopback
 makefile
 retrigger
 rtl
+signum
+backpressure
