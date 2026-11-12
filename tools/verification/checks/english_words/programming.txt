@@ -255,6 +255,7 @@ rsplit
 rstrip
 rw
 scriptblock
+sdlc
 seq
 serde
 serializer
