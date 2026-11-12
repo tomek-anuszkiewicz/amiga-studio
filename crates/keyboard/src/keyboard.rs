@@ -8,6 +8,10 @@ use serde::{Deserialize, Serialize};
 mod pins;
 pub use pins::KeyboardPins;
 
+const BIT_SCANCODE_SHIFT: u8 = 1;
+const MASK_SCANCODE: u8 = 0xFE;
+const BIT_KEY_RELEASE: u8 = 0x01;
+
 /// Maximum capacity of the physical keyboard type-ahead FIFO queue
 pub const KEYBOARD_BUFFER_CAPACITY: usize = 16;
 
@@ -140,9 +144,9 @@ impl Keyboard {
                 // When toggled on: transmits $62 (bit 7 = 0)
                 // When toggled off: transmits $E2 (bit 7 = 1)
                 let code = if self.caps_lock_active {
-                    (SCANCODE_CAPS_LOCK << 1) & 0xFE
+                    (SCANCODE_CAPS_LOCK << BIT_SCANCODE_SHIFT) & MASK_SCANCODE
                 } else {
-                    ((SCANCODE_CAPS_LOCK << 1) & 0xFE) | 0x01
+                    ((SCANCODE_CAPS_LOCK << BIT_SCANCODE_SHIFT) & MASK_SCANCODE) | BIT_KEY_RELEASE
                 };
                 self.current_scancode = Some(code);
                 self.enqueue_scancode(code);
@@ -153,12 +157,12 @@ impl Keyboard {
 
         if self.ctrl_pressed && self.l_amiga_pressed && self.r_amiga_pressed {
             self.pins.reset_line_asserted = true;
-            let warn = (SCANCODE_RESET_WARNING << 1) & 0xFE;
+            let warn = (SCANCODE_RESET_WARNING << BIT_SCANCODE_SHIFT) & MASK_SCANCODE;
             self.enqueue_scancode(warn);
         }
 
-        // Amiga scancode transmission format: (raw_code << 1) | 0
-        let encoded = (raw_code << 1) & 0xFE;
+        // Amiga scancode transmission format: (raw_code << BIT_SCANCODE_SHIFT) | 0
+        let encoded = (raw_code << BIT_SCANCODE_SHIFT) & MASK_SCANCODE;
         self.current_scancode = Some(encoded);
         self.enqueue_scancode(encoded);
     }
@@ -176,8 +180,8 @@ impl Keyboard {
             _ => {}
         }
 
-        // Key release bit is set: (raw_code << 1) | 1
-        let encoded = ((raw_code << 1) & 0xFE) | 0x01;
+        // Key release bit is set: (raw_code << BIT_SCANCODE_SHIFT) | 1
+        let encoded = ((raw_code << BIT_SCANCODE_SHIFT) & MASK_SCANCODE) | BIT_KEY_RELEASE;
         self.current_scancode = Some(encoded);
         self.enqueue_scancode(encoded);
     }
@@ -223,7 +227,7 @@ impl Keyboard {
     pub fn queue_powerup_stream(&mut self, held_keys: &[u8]) {
         self.enqueue_scancode(SCANCODE_POWERUP_STREAM_START);
         for &k in held_keys {
-            self.enqueue_scancode((k << 1) & 0xFE);
+            self.enqueue_scancode((k << BIT_SCANCODE_SHIFT) & MASK_SCANCODE);
         }
         self.enqueue_scancode(SCANCODE_POWERUP_STREAM_END);
     }

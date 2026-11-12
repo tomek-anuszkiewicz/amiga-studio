@@ -24,9 +24,12 @@ pub fn inject_binary(
 
     if auto_prime {
         // If stack pointer is zero, set default SP to top of 512KB Chip RAM ($080000)
-        if cpu.state.a_long(7) == 0 {
-            cpu.state.set_a_long(7, 0x080000);
-            cpu.state.set_ssp(0x080000);
+        if cpu.state.a_long(cpu::state::REGISTER_STACK_POINTER) == 0 {
+            cpu.state.set_a_long(
+                cpu::state::REGISTER_STACK_POINTER,
+                physical_memory::DEFAULT_BOOT_SSP,
+            );
+            cpu.state.set_ssp(physical_memory::DEFAULT_BOOT_SSP);
         }
         cpu.set_pc_and_prime_prefetch(target_addr, bus);
     }

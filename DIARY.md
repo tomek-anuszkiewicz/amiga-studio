@@ -1157,3 +1157,29 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - Focused English scan passed for all five changed instruction files
   - Git diff whitespace check passed
   - Runtime refactoring is isolated for the next commit and no roadmap stage is closed
+---
+
+### [2026-11-12 01:18 CET] — Apply semantic numeric constants across the emulator
+- **Affected Subsystems**:
+  - `CPU and configuration`
+  - `Chipset and peripherals`
+  - `Memory bus`
+  - `Debugger and GUI`
+  - `Semantic audit`
+- **What Was Changed (The Concrete Reality)**:
+  - Replace unnamed domain encodings with named constants and migrate register and flag references to REGISTER_ BIT_ and MASK_ prefixes
+  - Reuse shared disk and interrupt flags through the explicitly approved floppy to config and interrupts to config dependencies
+  - Update architecture documentation and the two approved dependency permissions
+  - Adapt the semantic audit with the four explicitly approved parser and source-selection changes
+  - Split the user-approved channel combination and sub word and look back identifier members without extending the English vocabulary
+- **Architectural Rationale & Trade-Offs**:
+  - Make hardware encodings traceable to their meaning and owning definitions while preserving runtime behavior
+  - Keep the implementation separate from the preceding policy commit as requested
+- **Verification & Test Results**:
+  - Restored implementation matched the isolated pre-split snapshot before the approved identifier corrections
+  - Static audit passed for 196 register table rows and 12 memory boundaries and 27 crate names
+  - The same audit matched no signal methods or quirk sentinels so those counts provide no semantic coverage
+  - Vault audit passed for 35 design notes and 998 links
+  - The initial commit profile passed every check except English vocabulary and the focused English recheck passed after the approved identifier corrections
+  - Git diff whitespace check passed
+  - Full SingleStep was not run and no roadmap stage is closed

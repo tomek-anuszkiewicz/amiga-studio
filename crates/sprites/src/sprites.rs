@@ -5,6 +5,28 @@
 
 use serde::{Deserialize, Serialize};
 
+const BIT_COLLISION_PAIR01_PAIR23: u16 = 1 << 9;
+const BIT_COLLISION_PAIR01_PAIR45: u16 = 1 << 10;
+const BIT_COLLISION_PAIR01_PAIR67: u16 = 1 << 11;
+const BIT_COLLISION_PAIR23_PAIR45: u16 = 1 << 12;
+const BIT_COLLISION_PAIR23_PAIR67: u16 = 1 << 13;
+const BIT_COLLISION_PAIR45_PAIR67: u16 = 1 << 14;
+
+const BIT_VSTART_HIGH_SHIFT: u16 = 2;
+const BIT_VSTOP_HIGH_SHIFT: u16 = 1;
+const BIT_POSITION_HIGH: u16 = 1;
+const BIT_HPOS_LOW_SHIFT: u16 = 1;
+const BIT_ATTACH: u16 = 0x0080;
+const SPRITE_WORD_PIXELS: u8 = 16;
+const BIT_SERIAL_PIXEL_SHIFT: u16 = 15;
+const BIT_PIXEL_B_SHIFT: u8 = 1;
+const SPRITE_PAIRS: usize = config::SPRITE_COUNT / 2;
+const COLLISION_CONTROL_RESET: u16 = 0xF000;
+const BIT_COLLISION_ODD_ENABLE_FIRST: u16 = 1 << 12;
+const BIT_ATTACHED_ODD_SHIFT: u8 = 2;
+const SPRITE_PALETTE_BASE: usize = 16;
+const COLORS_PER_PAIR: usize = 4;
+
 /// Output pixel from the sprite mixer
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SpritePixel {
@@ -44,7 +66,7 @@ impl SpriteChannel {
     #[inline]
     pub fn vstart(&self) -> u16 {
         let low = (self.pos >> 8) & 0xFF;
-        let high = (self.ctl >> 2) & 0x01;
+        let high = (self.ctl >> BIT_VSTART_HIGH_SHIFT) & BIT_POSITION_HIGH;
         (high << 8) | low
     }
 
@@ -52,7 +74,7 @@ impl SpriteChannel {
     #[inline]
     pub fn vstop(&self) -> u16 {
         let low = (self.ctl >> 8) & 0xFF;
-        let high = (self.ctl >> 1) & 0x01;
+        let high = (self.ctl >> BIT_VSTOP_HIGH_SHIFT) & BIT_POSITION_HIGH;
         (high << 8) | low
     }
 
@@ -60,14 +82,14 @@ impl SpriteChannel {
     #[inline]
     pub fn hstart(&self) -> u16 {
         let low = self.pos & 0xFF;
-        let high = self.ctl & 0x01;
-        (low << 1) | high
+        let high = self.ctl & BIT_POSITION_HIGH;
+        (low << BIT_HPOS_LOW_SHIFT) | high
     }
 
     /// Returns true if this odd sprite channel is attached to its even partner
     #[inline]
     pub fn is_attached(&self) -> bool {
-        (self.ctl & 0x0080) != 0
+        (self.ctl & BIT_ATTACH) != 0
     }
 
     /// Evaluates vertical comparator at line start
@@ -85,7 +107,7 @@ impl SpriteChannel {
         if self.is_active_line && self.is_armed && hpos_pixel == self.hstart() {
             self.shift_a = self.data_a;
             self.shift_b = self.data_b;
-            self.pixel_counter = 16;
+            self.pixel_counter = SPRITE_WORD_PIXELS;
         }
     }
 
@@ -93,12 +115,12 @@ impl SpriteChannel {
     #[inline]
     pub fn shift_pixel(&mut self) -> u8 {
         if self.pixel_counter > 0 {
-            let bit_a = ((self.shift_a >> 15) & 1) as u8;
-            let bit_b = ((self.shift_b >> 15) & 1) as u8;
+            let bit_a = ((self.shift_a >> BIT_SERIAL_PIXEL_SHIFT) & 1) as u8;
+            let bit_b = ((self.shift_b >> BIT_SERIAL_PIXEL_SHIFT) & 1) as u8;
             self.shift_a <<= 1;
             self.shift_b <<= 1;
             self.pixel_counter -= 1;
-            (bit_b << 1) | bit_a
+            (bit_b << BIT_PIXEL_B_SHIFT) | bit_a
         } else {
             0
         }
@@ -109,7 +131,7 @@ impl SpriteChannel {
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct Sprites {
     /// 8 independent hardware sprite channels (Sprites 0 to 7)
-    pub channels: [SpriteChannel; 8],
+    pub channels: [SpriteChannel; config::SPRITE_COUNT],
     /// Collision control mask (CLXCON: bits 15..12 enable odd sprites in collisions)
     pub clxcon: u16,
 }
@@ -118,9 +140,9 @@ impl Sprites {
     /// Creates a new uninitialized sprites subsystem
     pub fn new() -> Self {
         Self {
-            channels: [SpriteChannel::default(); 8],
+            channels: [SpriteChannel::default(); config::SPRITE_COUNT],
             // By default on OCS, odd sprites participate if enabled in CLXCON
-            clxcon: 0xF000,
+            clxcon: COLLISION_CONTROL_RESET,
         }
     }
 
@@ -129,7 +151,7 @@ impl Sprites {
         for ch in &mut self.channels {
             *ch = SpriteChannel::default();
         }
-        self.clxcon = 0xF000;
+        self.clxcon = COLLISION_CONTROL_RESET;
     }
 
     /// Advances Sprite engine state by 1 Color Clock observing beam coordinates
@@ -145,7 +167,7 @@ impl Sprites {
     /// Evaluates all 8 sprites for a given pixel coordinate on scanline `vpos`.
     /// Returns the highest-priority non-transparent sprite pixel (if any) and updates CLXDAT.
     pub fn evaluate_pixel(&mut self, hpos_pixel: u16, clxdat: &mut u16) -> Option<SpritePixel> {
-        let mut pixels = [0u8; 8];
+        let mut pixels = [0u8; config::SPRITE_COUNT];
 
         for (i, ch) in self.channels.iter_mut().enumerate() {
             ch.check_hstart(hpos_pixel);
@@ -154,14 +176,14 @@ impl Sprites {
 
         // Determine active sprite pairs for collision detection
         // Pairs: 0=(0,1), 1=(2,3), 2=(4,5), 3=(6,7)
-        let mut pair_active = [false; 4];
-        for pair in 0..4 {
+        let mut pair_active = [false; SPRITE_PAIRS];
+        for pair in 0..SPRITE_PAIRS {
             let ch_even = pair * 2;
             let ch_odd = ch_even + 1;
             let even_has = pixels[ch_even] != 0;
             // Odd sprite participates if attached or enabled via CLXCON bit (12 + pair)
-            let odd_en =
-                self.channels[ch_odd].is_attached() || ((self.clxcon & (1 << (12 + pair))) != 0);
+            let odd_en = self.channels[ch_odd].is_attached()
+                || ((self.clxcon & (BIT_COLLISION_ODD_ENABLE_FIRST << pair)) != 0);
             let odd_has = odd_en && (pixels[ch_odd] != 0);
             pair_active[pair] = even_has || odd_has;
         }
@@ -174,26 +196,26 @@ impl Sprites {
         // Bit 13: Pair 1 to Pair 3
         // Bit 14: Pair 2 to Pair 3
         if pair_active[0] && pair_active[1] {
-            *clxdat |= 1 << 9;
+            *clxdat |= BIT_COLLISION_PAIR01_PAIR23;
         }
         if pair_active[0] && pair_active[2] {
-            *clxdat |= 1 << 10;
+            *clxdat |= BIT_COLLISION_PAIR01_PAIR45;
         }
         if pair_active[0] && pair_active[3] {
-            *clxdat |= 1 << 11;
+            *clxdat |= BIT_COLLISION_PAIR01_PAIR67;
         }
         if pair_active[1] && pair_active[2] {
-            *clxdat |= 1 << 12;
+            *clxdat |= BIT_COLLISION_PAIR23_PAIR45;
         }
         if pair_active[1] && pair_active[3] {
-            *clxdat |= 1 << 13;
+            *clxdat |= BIT_COLLISION_PAIR23_PAIR67;
         }
         if pair_active[2] && pair_active[3] {
-            *clxdat |= 1 << 14;
+            *clxdat |= BIT_COLLISION_PAIR45_PAIR67;
         }
 
         // Output priority mixer: evaluate pairs 0..3 (Sprite 0 is highest priority)
-        for pair in 0..4 {
+        for pair in 0..SPRITE_PAIRS {
             let ch_even = pair * 2;
             let ch_odd = ch_even + 1;
 
@@ -201,10 +223,10 @@ impl Sprites {
                 // Attached 15-color sprite mode
                 let p_even = pixels[ch_even];
                 let p_odd = pixels[ch_odd];
-                let combined = (p_odd << 2) | p_even;
+                let combined = (p_odd << BIT_ATTACHED_ODD_SHIFT) | p_even;
                 if combined != 0 {
                     return Some(SpritePixel {
-                        color_index: 16 + combined as usize,
+                        color_index: SPRITE_PALETTE_BASE + combined as usize,
                         sprite_pair: pair,
                     });
                 }
@@ -212,13 +234,17 @@ impl Sprites {
                 // Independent 3-color sprites (even has priority over odd partner)
                 if pixels[ch_even] != 0 {
                     return Some(SpritePixel {
-                        color_index: 16 + pair * 4 + pixels[ch_even] as usize,
+                        color_index: SPRITE_PALETTE_BASE
+                            + pair * COLORS_PER_PAIR
+                            + pixels[ch_even] as usize,
                         sprite_pair: pair,
                     });
                 }
                 if pixels[ch_odd] != 0 {
                     return Some(SpritePixel {
-                        color_index: 16 + pair * 4 + pixels[ch_odd] as usize,
+                        color_index: SPRITE_PALETTE_BASE
+                            + pair * COLORS_PER_PAIR
+                            + pixels[ch_odd] as usize,
                         sprite_pair: pair,
                     });
                 }

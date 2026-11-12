@@ -43,8 +43,8 @@ fn legacy_disk_request_reaches_the_current_dma_slot() {
 fn legacy_disk_and_audio_events_reach_cpu_ipl_in_the_same_cck_once() {
     for standard in [VideoStandard::Pal, VideoStandard::Ntsc] {
         let mut machine = idle(standard);
-        let mask = paula::interrupts::IRQ_DSKSYN
-            | paula::interrupts::IRQ_DSKBLK
+        let mask = config::mask::intreq::BIT_DSKSYN
+            | config::mask::intreq::BIT_DSKBLK
             | (0..4).fold(0, |mask, ch| mask | paula::interrupts::irq_aud(ch));
         assert!(machine.paula.set_intena(0xc000 | mask));
         assert!(machine.paula.set_intreq(mask));
@@ -288,7 +288,7 @@ fn granted_audio_and_sprite_bus_words_use_receiver_queues_once() {
         // Deterministic granted RGA/data outputs, not reconstructed DMA scheduling.
         for channel in 0..4 {
             for word in [0x1234, 0x6789] {
-                let reg = custom_reg::paula::AUD0DAT + channel as u16 * 16;
+                let reg = custom_reg::paula::REGISTER_AUD0DAT + channel as u16 * 16;
                 machine.agnus.pending_dma_write = Some((reg, word));
                 let before = machine.paula.audio.channels[channel].dat;
                 machine.step_cck();
@@ -301,7 +301,7 @@ fn granted_audio_and_sprite_bus_words_use_receiver_queues_once() {
         }
         for sprite in 0..8 {
             for (offset, value) in [(4, 0x1357), (6, 0x2468)] {
-                let reg = custom_reg::denise::SPR0POS + sprite as u16 * 8 + offset;
+                let reg = custom_reg::denise::REGISTER_SPR0POS + sprite as u16 * 8 + offset;
                 machine.agnus.pending_dma_write = Some((reg, value));
                 machine.step_cck();
                 machine.step_cck();
@@ -329,7 +329,7 @@ fn refused_dma_output_survives_a_snapshot_until_capacity_returns() {
     for mutation in machine.paula.mutations.iter_mut().flatten() {
         mutation.remaining_cck = 5;
     }
-    let output = Some((custom_reg::paula::AUD1DAT, 0x4567));
+    let output = Some((custom_reg::paula::REGISTER_AUD1DAT, 0x4567));
     machine.agnus.pending_dma_write = output;
     machine.step_cck();
     assert_eq!(machine.agnus.pending_dma_write, output);
@@ -368,7 +368,7 @@ fn rga_events_arrive_at_receiver_phase_without_copying_agnus_counters() {
         machine.step_cck(); // Source HPOS 1: first refresh strobe.
         assert_eq!(
             machine.agnus.pins.rga_strobe,
-            Some(custom_reg::denise::STRHOR)
+            Some(custom_reg::denise::REGISTER_STRHOR)
         );
         assert_eq!(machine.denise.sync.vpos, 7);
         assert_eq!(machine.denise.sync.hpos, 41);
@@ -391,7 +391,7 @@ fn reset_cancels_pending_connector_and_bus_deliveries() {
     machine.floppy.pins.index_high = false;
     machine.step_cck();
     assert!(machine.keyboard_reset_asserted);
-    machine.agnus.pending_dma_write = Some((custom_reg::paula::AUD0DAT, 0xffff));
+    machine.agnus.pending_dma_write = Some((custom_reg::paula::REGISTER_AUD0DAT, 0xffff));
     machine.reset_warm();
     assert!(!machine.keyboard_reset_asserted);
     machine.cpu.state.set_stopped(true);

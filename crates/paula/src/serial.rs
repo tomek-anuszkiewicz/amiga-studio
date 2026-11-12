@@ -5,9 +5,9 @@
 
 use serde::{Deserialize, Serialize};
 
-const SERDATR_TBE: u16 = 0x2000;
-const SERDATR_TSRE: u16 = 0x1000;
-const SERDATR_RXD: u16 = 0x0800;
+const BIT_SERDATR_TBE: u16 = 0x2000;
+const BIT_SERDATR_TSRE: u16 = 0x1000;
+const BIT_SERDATR_RXD: u16 = 0x0800;
 
 /// RS-232 Serial Port transceiver and interface
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -27,7 +27,7 @@ impl SerialPort {
         // Bit 13: TBE (Transmitter Buffer Empty) defaults asserted
         // Bit 12: TSRE (Transmitter Shift Register Empty) defaults asserted
         // Bit 11: RXD remains idle high with no attached device.
-        port.serdatr = SERDATR_TBE | SERDATR_TSRE | SERDATR_RXD;
+        port.serdatr = BIT_SERDATR_TBE | BIT_SERDATR_TSRE | BIT_SERDATR_RXD;
         port
     }
 
@@ -41,7 +41,7 @@ impl SerialPort {
     pub fn write_serdat(&mut self, val: u16) {
         self.serdat = val;
         // Transmitter buffer is now loaded (clear TBE bit 13)
-        self.serdatr &= !SERDATR_TBE;
+        self.serdatr &= !BIT_SERDATR_TBE;
     }
 
     /// Writes to SERPER register

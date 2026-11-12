@@ -9,6 +9,7 @@
 //! Condition Codes: Strictly unaffected.
 
 use crate::micro::common;
+use crate::micro::encoding::condition;
 use crate::micro::types::MicroStep;
 use crate::state::CpuState;
 use crate::Cpu;
@@ -56,7 +57,7 @@ impl Cpu {
 }
 
 pub fn alu_dbcc(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let cond = ((state.ir() >> 8) & 0x0F) as u8;
+    let cond = ((state.ir() >> condition::BIT_SHIFT) & condition::MASK_CONDITION as u16) as u8;
     if state.eval_condition(cond) {
         state.micro_mut().ea_addr = state.pc();
         state.micro_mut().current_steps = &STEPS_DBCC_COND_TRUE;

@@ -35,7 +35,7 @@ three bits from the high word and 15 bits from the low word; the low byte-addres
 bit is always zero. In the emulator these locations are represented as even
 byte addresses from `$000000` through `$07FFFE`. Writing either register half
 discards its unused bits, and subsequent pointer arithmetic wraps within this
-range. The shared [`OCS_DMA_ADDRESS_MASK`](../../../crates/config/src/chip_ram.rs)
+range. The shared [`MASK_OCS_DMA_ADDRESS`](../../../crates/config/src/chip_ram.rs)
 also bounds Chip RAM DMA accesses. This rule applies to Agnus DMA pointers,
 not to every custom-chip register; in Blitter line mode, `BLTAPT` is used as
 an error accumulator after loading.

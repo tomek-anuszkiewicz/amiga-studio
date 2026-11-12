@@ -3,7 +3,8 @@
 //! Implements hardware vector line drawing, octant direction selection,
 //! slope error accumulator calculation, and single-point mode.
 
-use config::chip_ram::OCS_DMA_ADDRESS_MASK;
+use config::chip_ram::MASK_OCS_DMA_ADDRESS;
+use config::{blitter_fields as field, mask::bltcon};
 use serde::{Deserialize, Serialize};
 
 /// Bresenham Line Drawer state machine
@@ -44,13 +45,13 @@ impl LineDrawer {
         bltcmod: i16,
         bltcpt: &mut u32,
     ) {
-        let sud = (*bltcon1 & 0x0010) != 0;
-        let sul = (*bltcon1 & 0x0008) != 0;
-        let aul = (*bltcon1 & 0x0004) != 0;
-        let sign = (*bltcon1 & 0x0040) != 0;
-        let use_a = (*bltcon0 & 0x0800) != 0;
+        let sud = (*bltcon1 & field::BIT_LINE_SUD) != 0;
+        let sul = (*bltcon1 & field::BIT_LINE_SUL) != 0;
+        let aul = (*bltcon1 & field::BIT_LINE_AUL) != 0;
+        let sign = (*bltcon1 & field::BIT_LINE_SIGN) != 0;
+        let use_a = (*bltcon0 & bltcon::BIT_USEA) != 0;
 
-        let mut ash = (*bltcon0 >> 12) & 0xF;
+        let mut ash = (*bltcon0 >> field::BIT_SHIFT) & field::MASK_SHIFT_VALUE;
 
         self.first_pixel_on_line = false;
 
@@ -67,13 +68,13 @@ impl LineDrawer {
             } else {
                 if sul {
                     if ash == 0 {
-                        ash = 15;
+                        ash = field::MASK_SHIFT_VALUE;
                         *bltcpt = bltcpt.wrapping_sub(2);
                     } else {
                         ash -= 1;
                     }
                 } else {
-                    if ash == 15 {
+                    if ash == field::MASK_SHIFT_VALUE {
                         ash = 0;
                         *bltcpt = bltcpt.wrapping_add(2);
                     } else {
@@ -87,13 +88,13 @@ impl LineDrawer {
         if sud {
             if aul {
                 if ash == 0 {
-                    ash = 15;
+                    ash = field::MASK_SHIFT_VALUE;
                     *bltcpt = bltcpt.wrapping_sub(2);
                 } else {
                     ash -= 1;
                 }
             } else {
-                if ash == 15 {
+                if ash == field::MASK_SHIFT_VALUE {
                     ash = 0;
                     *bltcpt = bltcpt.wrapping_add(2);
                 } else {
@@ -110,7 +111,7 @@ impl LineDrawer {
             }
         }
 
-        *bltcpt &= OCS_DMA_ADDRESS_MASK;
+        *bltcpt &= MASK_OCS_DMA_ADDRESS;
 
         // Error accumulator step
         if use_a {
@@ -124,12 +125,12 @@ impl LineDrawer {
         // Update sign bit 6 in BLTCON1
         let new_sign = (*bltapt as i16) < 0;
         if new_sign {
-            *bltcon1 |= 0x0040;
+            *bltcon1 |= field::BIT_LINE_SIGN;
         } else {
-            *bltcon1 &= !0x0040;
+            *bltcon1 &= !field::BIT_LINE_SIGN;
         }
 
         // Write updated ash back into BLTCON0
-        *bltcon0 = (*bltcon0 & 0x0FFF) | (ash << 12);
+        *bltcon0 = (*bltcon0 & field::MASK_CONTROL_PRESERVE) | (ash << field::BIT_SHIFT);
     }
 }

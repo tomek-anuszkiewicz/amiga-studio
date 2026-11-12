@@ -9,11 +9,16 @@ pub use interrupts::InterruptController;
 pub mod serial;
 pub use serial::SerialPort;
 
+use config::mask::dskbytr::{BIT_DSKBYTR_DSKBYT, BIT_DSKBYTR_WORDEQUAL, MASK_DSKBYTR_DATA};
 use config::{tick_mutations, DelayedMutation};
 use serde::{Deserialize, Serialize};
 
 mod pins;
 pub use pins::{PaulaInputs, PaulaPins, PaulaSync};
+
+const DSKSYNC_RESET: u16 = 0x4489;
+const MASK_DSKLEN_LENGTH: u16 = 0x3FFF;
+const MASK_DSKLEN_CONTROL: u16 = 0xC000;
 
 mod registers;
 
@@ -59,14 +64,7 @@ pub struct Paula {
     pub mutations: [Option<DelayedMutation>; Paula::MUTATION_CAPACITY],
 }
 
-pub const DSKBYTR_DSKBYT: u16 = 0x8000;
-pub const DSKBYTR_DMAON: u16 = 0x4000;
-pub const DSKBYTR_DISKWRITE: u16 = 0x2000;
-pub const DSKBYTR_WORDEQUAL: u16 = 0x1000;
-pub const DSKBYTR_DATA_BYTE: u16 = 0x00FF;
-pub const DSKBYTR_DATA_MASK: u16 = 0x90FF;
-pub const DSKLEN_WRITE_FLAG: u16 = 0x4000;
-pub const DSKBYTR_DSKEN: u16 = 0x0010;
+pub const BIT_DSKLEN_WRITE_FLAG: u16 = 0x4000;
 
 impl Default for Paula {
     fn default() -> Self {
@@ -89,12 +87,12 @@ impl Paula {
             adkcon: 0,
             pot0dat: 0,
             pot1dat: 0,
-            potgor: config::mask::game_port::POT_DATA,
+            potgor: config::mask::game_port::MASK_POT_DATA,
             potgo: 0,
             dskbytr: 0,
             dsklen: 0,
             dskdat: 0,
-            dsksync: 0x4489,
+            dsksync: DSKSYNC_RESET,
             dma_armed: false,
             dma_active: false,
             dma_enables: 0,
@@ -113,12 +111,12 @@ impl Paula {
         self.adkcon = 0;
         self.pot0dat = 0;
         self.pot1dat = 0;
-        self.potgor = config::mask::game_port::POT_DATA;
+        self.potgor = config::mask::game_port::MASK_POT_DATA;
         self.potgo = 0;
         self.dskbytr = 0;
         self.dsklen = 0;
         self.dskdat = 0;
-        self.dsksync = 0x4489;
+        self.dsksync = DSKSYNC_RESET;
         self.dma_armed = false;
         self.dma_active = false;
         self.dma_enables = 0;
@@ -130,14 +128,14 @@ impl Paula {
     /// Returns any register writes that matured and committed on this exact cycle.
     pub fn step_cck(&mut self) -> [Option<(u16, u16)>; Self::MUTATION_CAPACITY] {
         self.sync.cck_since_horizontal = self.sync.cck_since_horizontal.wrapping_add(1);
-        if self.pins.rga_strobe.take() == Some(config::custom_reg::paula::STRHOR) {
+        if self.pins.rga_strobe.take() == Some(config::custom_reg::paula::REGISTER_STRHOR) {
             self.sync.cck_since_horizontal = 0;
         }
         self.audio.step_cck();
-        for ch in 0..4 {
+        for ch in 0..config::AUDIO_CHANNEL_COUNT {
             if self.audio.poll_channel_irq(ch) {
                 // Level 4 audio interrupt: bits 7..10 in INTREQ
-                self.set_interrupt_request(1 << (7 + ch));
+                self.set_interrupt_request(config::mask::intreq::BIT_AUD0 << ch);
             }
         }
         self.serial_port.step_cck();
@@ -165,19 +163,19 @@ impl Paula {
     /// Returns true if DSKLEN is configured for write to disk (bit 14 set)
     #[inline]
     pub fn is_dsk_write(&self) -> bool {
-        (self.dsklen & DSKLEN_WRITE_FLAG) != 0
+        (self.dsklen & BIT_DSKLEN_WRITE_FLAG) != 0
     }
 
     /// Decrements DSKLEN word count after a DMA transfer slot, terminating DMA and returning true if finished
     pub fn decrement_dsklen(&mut self) -> bool {
-        let len_words = self.dsklen & 0x3FFF;
+        let len_words = self.dsklen & MASK_DSKLEN_LENGTH;
         if len_words > 1 {
-            self.dsklen = (self.dsklen & 0xC000) | (len_words - 1);
+            self.dsklen = (self.dsklen & MASK_DSKLEN_CONTROL) | (len_words - 1);
             false
         } else {
-            self.dsklen &= 0xC000;
+            self.dsklen &= MASK_DSKLEN_CONTROL;
             self.dma_active = false;
-            self.interrupts.request(interrupts::IRQ_DSKBLK);
+            self.interrupts.request(config::mask::intreq::BIT_DSKBLK);
             true
         }
     }
@@ -186,14 +184,18 @@ impl Paula {
     /// preserving Paula's internal DMAON and DISKWRITE status bits.
     #[inline]
     pub fn latch_floppy_dskbytr(&mut self, floppy_bits: u16) {
-        self.dskbytr = (self.dskbytr & !DSKBYTR_DATA_MASK) | (floppy_bits & DSKBYTR_DATA_MASK);
+        self.dskbytr = (self.dskbytr & !MASK_DSKBYTR_DATA) | (floppy_bits & MASK_DSKBYTR_DATA);
     }
 
     /// Action method: latches a new deserialized MFM byte from the floppy drive bitstream
     #[inline]
     pub fn set_disk_byte(&mut self, byte: u8, sync_matched: bool) {
-        let sync_bit = if sync_matched { DSKBYTR_WORDEQUAL } else { 0 };
-        self.dskbytr = DSKBYTR_DSKBYT | sync_bit | (byte as u16);
+        let sync_bit = if sync_matched {
+            BIT_DSKBYTR_WORDEQUAL
+        } else {
+            0
+        };
+        self.dskbytr = BIT_DSKBYTR_DSKBYT | sync_bit | (byte as u16);
     }
 
     /// Asserts interrupt request bits immediately

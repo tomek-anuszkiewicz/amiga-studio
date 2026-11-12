@@ -1326,6 +1326,7 @@ dependencies = [
 name = "floppy"
 version = "0.1.0"
 dependencies = [
+ "config",
  "serde",
 ]
 
@@ -1887,6 +1888,7 @@ dependencies = [
 name = "interrupts"
 version = "0.1.0"
 dependencies = [
+ "config",
  "serde",
 ]
 

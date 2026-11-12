@@ -15,7 +15,7 @@ fn palette_write_waits_for_next_custom_chip_step() {
     machine.cpu.state.set_stopped(true);
     machine
         .memory_bus()
-        .write_custom_word(custom_reg::denise::COLOR00, 0x0abc);
+        .write_custom_word(custom_reg::denise::REGISTER_COLOR00, 0x0abc);
     assert_eq!(
         machine.denise.color[0], 0,
         "pending palette must remain invisible"
@@ -29,15 +29,15 @@ fn every_simultaneously_matured_paula_write_is_applied() {
     let mut machine = A500Machine::new(A500Config::bare_512k(VideoStandard::Pal));
     machine.cpu.state.set_stopped(true);
     for (offset, value) in [
-        (custom_reg::paula::AUD0LEN, 10),
-        (custom_reg::paula::AUD0PER, 100),
-        (custom_reg::paula::AUD0VOL, 20),
-        (custom_reg::paula::AUD1LEN, 11),
-        (custom_reg::paula::AUD1PER, 101),
-        (custom_reg::paula::AUD1VOL, 21),
-        (custom_reg::paula::AUD2LEN, 12),
-        (custom_reg::paula::AUD2PER, 102),
-        (custom_reg::paula::POTGO, 0xabcd),
+        (custom_reg::paula::REGISTER_AUD0LEN, 10),
+        (custom_reg::paula::REGISTER_AUD0PER, 100),
+        (custom_reg::paula::REGISTER_AUD0VOL, 20),
+        (custom_reg::paula::REGISTER_AUD1LEN, 11),
+        (custom_reg::paula::REGISTER_AUD1PER, 101),
+        (custom_reg::paula::REGISTER_AUD1VOL, 21),
+        (custom_reg::paula::REGISTER_AUD2LEN, 12),
+        (custom_reg::paula::REGISTER_AUD2PER, 102),
+        (custom_reg::paula::REGISTER_POTGO, 0xabcd),
     ] {
         machine.memory_bus().write_custom_word(offset, value);
     }
@@ -58,20 +58,20 @@ fn concrete_setters_delay_controls_and_reads_do_not_flush_pending_changes() {
         assert_eq!(
             machine
                 .memory_bus()
-                .read_custom_word(custom_reg::agnus::DMACONR)
+                .read_custom_word(custom_reg::agnus::REGISTER_DMACONR)
                 & 0x200,
             0
         );
         assert_eq!(
             machine
                 .memory_bus()
-                .read_custom_word(custom_reg::paula::INTENAR),
+                .read_custom_word(custom_reg::paula::REGISTER_INTENAR),
             0
         );
         assert_eq!(
             machine
                 .memory_bus()
-                .read_custom_word(custom_reg::denise::BPLCON0),
+                .read_custom_word(custom_reg::denise::REGISTER_BPLCON0),
             0xffff
         );
     }
@@ -81,13 +81,13 @@ fn concrete_setters_delay_controls_and_reads_do_not_flush_pending_changes() {
     assert_eq!(
         machine
             .memory_bus()
-            .read_custom_word(custom_reg::paula::INTENAR),
+            .read_custom_word(custom_reg::paula::REGISTER_INTENAR),
         0x4020
     );
     assert_eq!(
         machine
             .memory_bus()
-            .read_custom_word(custom_reg::agnus::DMACONR)
+            .read_custom_word(custom_reg::agnus::REGISTER_DMACONR)
             & 0x200,
         0
     );
@@ -95,14 +95,14 @@ fn concrete_setters_delay_controls_and_reads_do_not_flush_pending_changes() {
     assert_eq!(
         machine
             .memory_bus()
-            .read_custom_word(custom_reg::agnus::DMACONR)
+            .read_custom_word(custom_reg::agnus::REGISTER_DMACONR)
             & 0x200,
         0x200
     );
     assert_eq!(
         machine
             .memory_bus()
-            .read_custom_word(custom_reg::denise::BPLCON0),
+            .read_custom_word(custom_reg::denise::REGISTER_BPLCON0),
         0xffff
     );
 }
@@ -114,22 +114,22 @@ fn address_strobes_act_immediately_without_register_queue_entries() {
     machine.agnus.copper.cop2lc = 0x3000;
     assert!(machine
         .memory_bus()
-        .write_custom_word(custom_reg::agnus::COPJMP1, 0xffff));
+        .write_custom_word(custom_reg::agnus::REGISTER_COPJMP1, 0xffff));
     assert_eq!(machine.agnus.copper.cop_pc, 0x2000);
     assert_eq!(
         machine
             .memory_bus()
-            .read_custom_word(custom_reg::agnus::COPJMP2),
+            .read_custom_word(custom_reg::agnus::REGISTER_COPJMP2),
         0xffff
     );
     assert_eq!(machine.agnus.copper.cop_pc, 0x3000);
     assert!(machine.agnus.mutations.iter().all(Option::is_none));
 
     for offset in [
-        custom_reg::denise::STREQU,
-        custom_reg::denise::STRVBL,
-        custom_reg::denise::STRHOR,
-        custom_reg::denise::STRLONG,
+        custom_reg::denise::REGISTER_STREQU,
+        custom_reg::denise::REGISTER_STRVBL,
+        custom_reg::denise::REGISTER_STRHOR,
+        custom_reg::denise::REGISTER_STRLONG,
     ] {
         assert!(machine.memory_bus().write_custom_word(offset, 0x1234));
     }
@@ -195,7 +195,7 @@ fn full_capacity_register_replay_does_not_block_interrupt_pins() {
         denise::Denise::MUTATION_CAPACITY
     );
     for (value, entry) in agnus_due.into_iter().flatten().enumerate() {
-        assert_eq!(entry, (custom_reg::agnus::BLTADAT, value as u16));
+        assert_eq!(entry, (custom_reg::agnus::REGISTER_BLTADAT, value as u16));
     }
     assert_eq!(machine.denise.bpldat[0], 63);
     assert_eq!(machine.denise.bpldat_pipe[0], 63);
@@ -268,7 +268,7 @@ fn copper_and_cpu_shared_writes_start_from_the_same_receiver_boundary() {
     assert!(copper.agnus.set_cop1lcl(0x2000));
     assert!(copper
         .memory_bus()
-        .write_custom_word(custom_reg::agnus::DMACON, 0x8280));
+        .write_custom_word(custom_reg::agnus::REGISTER_DMACON, 0x8280));
     copper.step_cycles(2);
     copper.agnus.strobe_copjmp1();
     let mut issued = false;
@@ -279,7 +279,7 @@ fn copper_and_cpu_shared_writes_start_from_the_same_receiver_boundary() {
             .mutations
             .iter()
             .flatten()
-            .any(|m| m.reg_offset == custom_reg::agnus::BPLCON0)
+            .any(|m| m.reg_offset == custom_reg::agnus::REGISTER_BPLCON0)
         {
             issued = true;
             break;
@@ -291,7 +291,7 @@ fn copper_and_cpu_shared_writes_start_from_the_same_receiver_boundary() {
     let mut cpu_bus = idle_machine();
     assert!(cpu_bus
         .memory_bus()
-        .write_custom_word(custom_reg::agnus::BPLCON0, 0x1000));
+        .write_custom_word(custom_reg::agnus::REGISTER_BPLCON0, 0x1000));
     for step in 1..=4 {
         copper.step_cck();
         cpu_bus.step_cck();
@@ -313,14 +313,14 @@ fn pending_registers_and_unconsumed_bus_outputs_resume_after_serialization() {
     let mut machine = idle_machine();
     assert!(machine
         .memory_bus()
-        .write_custom_word(custom_reg::agnus::BPLCON0, 0x1000));
+        .write_custom_word(custom_reg::agnus::REGISTER_BPLCON0, 0x1000));
     assert!(machine
         .memory_bus()
-        .write_custom_word(custom_reg::agnus::DMACON, 0x8200));
+        .write_custom_word(custom_reg::agnus::REGISTER_DMACON, 0x8200));
     assert!(machine.denise.set_color(2, 0x0abc));
     assert!(machine.paula.set_adkcon(0x8001));
     machine.paula.pins.int2_high = false;
-    machine.agnus.pending_copper_write = Some((custom_reg::denise::COLOR03, 0x123));
+    machine.agnus.pending_copper_write = Some((custom_reg::denise::REGISTER_COLOR03, 0x123));
     machine.agnus.pending_bpl_dma = Some((0, 0x4567));
     let json = serde_json::to_string(&machine.save_state()).unwrap();
     let state = serde_json::from_str::<A500State>(&json).unwrap();
@@ -359,10 +359,10 @@ fn authored_cpu_byte_write_propagates_once_while_dma_competes_for_chip_ram() {
         machine.cpu.state.set_stopped(true);
         assert!(machine
             .memory_bus()
-            .write_custom_word(custom_reg::agnus::DMACON, 0x8300));
+            .write_custom_word(custom_reg::agnus::REGISTER_DMACON, 0x8300));
         assert!(machine
             .memory_bus()
-            .write_custom_word(custom_reg::agnus::BPLCON0, 0x6000));
+            .write_custom_word(custom_reg::agnus::REGISTER_BPLCON0, 0x6000));
         machine.step_cycles(4);
         machine.agnus.hpos = 0x36;
         machine.agnus.vpos = 100;
@@ -379,7 +379,7 @@ fn authored_cpu_byte_write_propagates_once_while_dma_competes_for_chip_ram() {
                 .mutations
                 .iter()
                 .flatten()
-                .any(|m| m.reg_offset == custom_reg::denise::COLOR00)
+                .any(|m| m.reg_offset == custom_reg::denise::REGISTER_COLOR00)
             {
                 accepted += 1;
                 assert_eq!(machine.denise.color[0], 0);
@@ -404,10 +404,10 @@ fn dma_disable_retains_accepted_bitplane_word_and_enable_restores_fetches() {
     machine.physical_memory.map_chip_ram_to_low_memory();
     assert!(machine
         .memory_bus()
-        .write_custom_word(custom_reg::agnus::BPLCON0, 0x1000));
+        .write_custom_word(custom_reg::agnus::REGISTER_BPLCON0, 0x1000));
     assert!(machine
         .memory_bus()
-        .write_custom_word(custom_reg::agnus::DMACON, 0x8300));
+        .write_custom_word(custom_reg::agnus::REGISTER_DMACON, 0x8300));
     machine.step_cycles(4);
     machine.physical_memory.write_word_debug(0x2000, 0xabcd);
     machine.physical_memory.write_word_debug(0x2002, 0x5678);
@@ -420,7 +420,7 @@ fn dma_disable_retains_accepted_bitplane_word_and_enable_restores_fetches() {
     assert_eq!(machine.denise.bpldat[0], 0);
     assert!(machine
         .memory_bus()
-        .write_custom_word(custom_reg::agnus::DMACON, 0x0100));
+        .write_custom_word(custom_reg::agnus::REGISTER_DMACON, 0x0100));
     machine.step_cck();
     assert_eq!(
         machine.denise.bpldat[0], 0xabcd,
@@ -435,7 +435,7 @@ fn dma_disable_retains_accepted_bitplane_word_and_enable_restores_fetches() {
     assert!(!machine.physical_memory.chip_ram_blocked);
     assert!(machine
         .memory_bus()
-        .write_custom_word(custom_reg::agnus::DMACON, 0x8100));
+        .write_custom_word(custom_reg::agnus::REGISTER_DMACON, 0x8100));
     machine.step_cycles(2);
     machine.agnus.hpos = 0x3e;
     machine.step_cck();

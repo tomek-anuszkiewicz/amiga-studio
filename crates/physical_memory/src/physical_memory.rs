@@ -25,9 +25,15 @@ pub use rtc::RtcMsm6242b;
 
 use serde::{Deserialize, Serialize};
 
+pub const MASK_WORD_ADDRESS: u32 = MASK_PHYSICAL_ADDRESS & !1;
+
+pub const MASK_PHYSICAL_ADDRESS: u32 = 0x00FF_FFFF;
+
+const KICKSTART_SIZE_512K: usize = 512 * 1024;
+
 /// Maximum size of physical memory regions
 const CHIP_RAM_SIZE_512K: usize = 512 * 1024;
-const DEFAULT_BOOT_SSP: u32 = CHIP_RAM_SIZE_512K as u32;
+pub const DEFAULT_BOOT_SSP: u32 = CHIP_RAM_SIZE_512K as u32;
 const SLOW_RAM_SIZE: usize = 512 * 1024;
 pub const MAX_FAST_RAM_SIZE: usize = 4 * 1024 * 1024; // 4MB Fast RAM (Auto-Config expansion at $200000..$5FFFFF)
 const KICKSTART_SIZE_256K: usize = 256 * 1024;
@@ -40,7 +46,7 @@ pub struct PhysicalMemory {
 
     /// 256-entry direct bank dispatch table (function pointers to read/write handlers)
     #[serde(with = "config::big_array")]
-    pub bank_map: [BankHandler; 256],
+    pub bank_map: [BankHandler; config::address_map::MEMORY_BANK_COUNT],
 
     /// Physical Chip RAM buffer (512 KB)
     pub chip_ram: Vec<u8>,
@@ -112,16 +118,16 @@ impl PhysicalMemory {
     /// Engages low-memory boot overlay (_OVL), routing $000000-$07FFFF accesses to Kickstart ROM
     pub fn map_kickstart_to_low_memory(&mut self) {
         self.low_memory_overlay = true;
-        for b in 0x00..=0x07 {
-            self.bank_map[b] = map::KICKSTART_ROM_HANDLER;
+        for b in config::address_map::CHIP_BANK_FIRST..=config::address_map::CHIP_BANK_LAST {
+            self.bank_map[b as usize] = map::KICKSTART_ROM_HANDLER;
         }
     }
 
     /// Disengages low-memory boot overlay (_OVL), restoring physical Chip RAM at $000000-$07FFFF
     pub fn map_chip_ram_to_low_memory(&mut self) {
         self.low_memory_overlay = false;
-        for b in 0x00..=0x07 {
-            self.bank_map[b] = map::CHIP_RAM_HANDLER;
+        for b in config::address_map::CHIP_BANK_FIRST..=config::address_map::CHIP_BANK_LAST {
+            self.bank_map[b as usize] = map::CHIP_RAM_HANDLER;
         }
     }
 

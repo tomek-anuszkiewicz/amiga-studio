@@ -5,10 +5,12 @@
 //!
 //! Execution timing:
 //! - 38-70 clocks (DN), data-dependent based on sign/bit changes in source operand:
-//!   Internal idle cycles = 34 + 2 * popcount(((src << 1) ^ src) & 0xFFFF)
+//!   Internal idle cycles = MULTIPLY_BASE_CLOCKS + MULTIPLY_CLOCKS_PER_BIT * popcount(((src << 1) ^ src) & 0xFFFF)
 
+use super::{MULTIPLY_BASE_CLOCKS, MULTIPLY_CLOCKS_PER_BIT};
 use crate::micro::common;
 use crate::micro::ea;
+use crate::micro::encoding::{extended_mode, mode};
 use crate::micro::types::MicroStep;
 use crate::state::CpuState;
 use crate::Cpu;
@@ -31,7 +33,7 @@ const FETCH_EXT_FINISH: MicroStep = common::FETCH_EXT_FINISH;
 #[inline(always)]
 pub fn calc_muls_internal_clocks(src: u16) -> u16 {
     let d = ((src << 1) ^ src) & 0xFFFF;
-    34 + 2 * (d.count_ones() as u16)
+    MULTIPLY_BASE_CLOCKS + MULTIPLY_CLOCKS_PER_BIT * (d.count_ones() as u16)
 }
 
 // ============================================================================
@@ -70,7 +72,7 @@ pub static STEPS_MULS_AI: [MicroStep; 5] = [
     MicroStep {
         bus_fn: Some(Cpu::step_bus_read_src_word),
         alu_fn: Some(ea::ea_calc_src_ai),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     BUS_READ_IDLE,
     PREFETCH_NEXT_READ,
@@ -82,7 +84,7 @@ pub static STEPS_MULS_PI: [MicroStep; 5] = [
     MicroStep {
         bus_fn: Some(Cpu::step_bus_read_src_word),
         alu_fn: Some(ea::ea_calc_src_pi_w),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     BUS_READ_IDLE,
     PREFETCH_NEXT_READ,
@@ -94,7 +96,7 @@ pub static STEPS_MULS_PD: [MicroStep; 6] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(ea::ea_calc_src_pd_w),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     READ_SRC_WORD,
     BUS_READ_IDLE,
@@ -107,7 +109,7 @@ pub static STEPS_MULS_D16_AN: [MicroStep; 7] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_src_d16_an),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     FETCH_EXT_FINISH,
     READ_SRC_WORD,
@@ -121,7 +123,7 @@ pub static STEPS_MULS_IDX_AN: [MicroStep; 8] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(ea::ea_calc_src_idx_an),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     FETCH_EXT_READ,
     FETCH_EXT_FINISH,
@@ -136,7 +138,7 @@ pub static STEPS_MULS_ABSW: [MicroStep; 7] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absw),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     FETCH_EXT_FINISH,
     READ_SRC_WORD,
@@ -150,13 +152,13 @@ pub static STEPS_MULS_ABSL: [MicroStep; 9] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absl_hi),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     FETCH_EXT_FINISH,
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absl_lo),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     FETCH_EXT_FINISH,
     READ_SRC_WORD,
@@ -170,7 +172,7 @@ pub static STEPS_MULS_D16_PC: [MicroStep; 7] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_d16_pc),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     FETCH_EXT_FINISH,
     READ_SRC_WORD,
@@ -184,7 +186,7 @@ pub static STEPS_MULS_IDX_PC: [MicroStep; 8] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(ea::ea_calc_idx_pc),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     FETCH_EXT_READ,
     FETCH_EXT_FINISH,
@@ -199,7 +201,7 @@ pub static STEPS_MULS_IMM: [MicroStep; 5] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_imm_w),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     FETCH_EXT_FINISH,
     PREFETCH_NEXT_READ,
@@ -227,18 +229,18 @@ static MULS_LOOKUP: [&[MicroStep]; 11] = [
 
 pub const fn decode_muls_steps(mode: u8, reg: u8) -> Option<&'static [MicroStep]> {
     match mode {
-        0 => Some(MULS_LOOKUP[0]),
-        2 => Some(MULS_LOOKUP[1]),
-        3 => Some(MULS_LOOKUP[2]),
-        4 => Some(MULS_LOOKUP[3]),
-        5 => Some(MULS_LOOKUP[4]),
-        6 => Some(MULS_LOOKUP[5]),
-        7 => match reg {
-            0 => Some(MULS_LOOKUP[6]),
-            1 => Some(MULS_LOOKUP[7]),
-            2 => Some(MULS_LOOKUP[8]),
-            3 => Some(MULS_LOOKUP[9]),
-            4 => Some(MULS_LOOKUP[10]),
+        mode::DATA_REGISTER => Some(MULS_LOOKUP[0]),
+        mode::INDIRECT => Some(MULS_LOOKUP[1]),
+        mode::POSTINCREMENT => Some(MULS_LOOKUP[2]),
+        mode::PREDECREMENT => Some(MULS_LOOKUP[3]),
+        mode::DISPLACEMENT => Some(MULS_LOOKUP[4]),
+        mode::INDEXED => Some(MULS_LOOKUP[5]),
+        mode::EXTENDED => match reg {
+            extended_mode::ABSOLUTE_WORD => Some(MULS_LOOKUP[6]),
+            extended_mode::ABSOLUTE_LONG => Some(MULS_LOOKUP[7]),
+            extended_mode::PC_DISPLACEMENT => Some(MULS_LOOKUP[8]),
+            extended_mode::PC_INDEXED => Some(MULS_LOOKUP[9]),
+            extended_mode::IMMEDIATE => Some(MULS_LOOKUP[10]),
             _ => None,
         },
         _ => None,

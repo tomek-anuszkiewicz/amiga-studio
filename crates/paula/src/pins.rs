@@ -43,7 +43,7 @@ impl Default for PaulaPins {
             int2_high: true,
             int3_high: true,
             int6_high: true,
-            pot_input_high: config::mask::game_port::POT_DATA,
+            pot_input_high: config::mask::game_port::MASK_POT_DATA,
             disk_read_high: true,
             disk_write_high: true,
             disk_write_enable: false,
@@ -73,15 +73,15 @@ impl Paula {
         let mask = if self.pins.int2_high {
             0
         } else {
-            crate::interrupts::IRQ_PORTS
+            config::mask::intreq::BIT_PORTS
         } | if self.pins.int3_high {
             0
         } else {
-            crate::interrupts::IRQ_BLIT
+            config::mask::intreq::BIT_BLIT
         } | if self.pins.int6_high {
             0
         } else {
-            crate::interrupts::IRQ_EXTER
+            config::mask::intreq::BIT_EXTER
         };
         self.interrupts.request(mask);
     }
@@ -103,7 +103,7 @@ impl Paula {
         self.pot0dat = input.pot0dat;
         self.pot1dat = input.pot1dat;
         if input.legacy_vblank_event {
-            self.set_interrupt_request(crate::interrupts::IRQ_VERTB);
+            self.set_interrupt_request(config::mask::intreq::BIT_VERTB);
         }
         self.pins.disk_read_high = input.disk_read_high;
         self.pins.rga_strobe = input.rga_strobe;

@@ -3,6 +3,49 @@
 use crate::{Cia, CCK_PER_ECLOCK, E_WRITE_CAPTURE_PHASE};
 use config::{stage_mutation, MutationMode};
 
+pub const BIT_CONTROL_START: u8 = 0x01;
+pub const BIT_CONTROL_ONE_SHOT: u8 = 0x08;
+const BIT_CONTROL_LOAD: u8 = 0x10;
+const BIT_CRA_UNUSED: u8 = 0x80;
+const MASK_CRA_WRITE_ONLY: u8 = BIT_CRA_UNUSED | BIT_CONTROL_LOAD;
+pub const BIT_CRA_SERIAL_OUTPUT: u8 = 0x40;
+pub const BIT_CRB_INPUT_MODE_SHIFT: u8 = 5;
+pub const MASK_CRB_INPUT_MODE: u8 = 0x03;
+pub const CRB_COUNT_ECLOCK: u8 = 0;
+pub const CRB_COUNT_CNT: u8 = 1;
+pub const CRB_COUNT_TA_UNDERFLOW: u8 = 2;
+pub const CRB_COUNT_TA_UNDERFLOW_CNT_HIGH: u8 = 3;
+const BIT_CRB_ALARM_WRITE: u8 = 0x80;
+
+pub const BIT_ICR_TIMER_A: u8 = 0x01;
+pub const BIT_ICR_TIMER_B: u8 = 0x02;
+pub const BIT_ICR_ALARM: u8 = 0x04;
+pub const BIT_ICR_FLAG: u8 = 0x10;
+pub const MASK_ICR_SOURCE: u8 = 0x1F;
+pub const BIT_ICR_PENDING: u8 = 0x80;
+const BIT_ICR_SET: u8 = 0x80;
+
+pub const MASK_TOD_COUNTER: u32 = 0x00FF_FFFF;
+const MASK_TOD_LOW_WRITE_PRESERVE: u32 = 0xFFFF00;
+const MASK_TOD_MIDDLE_WRITE_PRESERVE: u32 = 0xFF00FF;
+const MASK_TOD_HIGH_WRITE_PRESERVE: u32 = 0x00FFFF;
+
+const REGISTER_PRA: u16 = 0;
+const REGISTER_PRB: u16 = 1;
+const REGISTER_DDRA: u16 = 2;
+const REGISTER_DDRB: u16 = 3;
+const REGISTER_TALO: u16 = 4;
+const REGISTER_TAHI: u16 = 5;
+const REGISTER_TBLO: u16 = 6;
+const REGISTER_TBHI: u16 = 7;
+const REGISTER_TODLO: u16 = 8;
+const REGISTER_TODMID: u16 = 9;
+const REGISTER_TODHI: u16 = 10;
+const REGISTER_SDR: u16 = 12;
+const REGISTER_ICR: u16 = 13;
+const REGISTER_CRA: u16 = 14;
+const REGISTER_CRB: u16 = 15;
+
 impl Cia {
     /// Returns the visible PRA value.
     #[inline]
@@ -61,13 +104,13 @@ impl Cia {
     /// Returns the visible CRA value.
     #[inline]
     pub fn cra(&self) -> u8 {
-        self.cra & !0x90
+        self.cra & !MASK_CRA_WRITE_ONLY
     }
 
     /// Returns the visible CRB value.
     #[inline]
     pub fn crb(&self) -> u8 {
-        self.crb & !0x10
+        self.crb & !BIT_CONTROL_LOAD
     }
 
     /// Returns and acknowledges pending interrupt status at the accepted read phase.
@@ -149,7 +192,7 @@ impl Cia {
     /// Queues PRA; returns false when capacity is exhausted.
     #[inline]
     pub fn set_pra(&mut self, value: u8) -> bool {
-        self.schedule_register(0, value)
+        self.schedule_register(REGISTER_PRA, value)
     }
 
     fn apply_pra(&mut self, val: u8) {
@@ -161,7 +204,7 @@ impl Cia {
     /// Queues PRB; returns false when capacity is exhausted.
     #[inline]
     pub fn set_prb(&mut self, value: u8) -> bool {
-        self.schedule_register(1, value)
+        self.schedule_register(REGISTER_PRB, value)
     }
 
     fn apply_prb(&mut self, val: u8) {
@@ -173,7 +216,7 @@ impl Cia {
     /// Queues DDRA; returns false when capacity is exhausted.
     #[inline]
     pub fn set_ddra(&mut self, value: u8) -> bool {
-        self.schedule_register(2, value)
+        self.schedule_register(REGISTER_DDRA, value)
     }
 
     fn apply_ddra(&mut self, val: u8) {
@@ -184,7 +227,7 @@ impl Cia {
     /// Queues DDRB; returns false when capacity is exhausted.
     #[inline]
     pub fn set_ddrb(&mut self, value: u8) -> bool {
-        self.schedule_register(3, value)
+        self.schedule_register(REGISTER_DDRB, value)
     }
 
     fn apply_ddrb(&mut self, val: u8) {
@@ -195,7 +238,7 @@ impl Cia {
     /// Queues TALO; returns false when capacity is exhausted.
     #[inline]
     pub fn set_talo(&mut self, value: u8) -> bool {
-        self.schedule_register(4, value)
+        self.schedule_register(REGISTER_TALO, value)
     }
 
     fn apply_talo(&mut self, val: u8) {
@@ -205,23 +248,23 @@ impl Cia {
     /// Queues TAHI; returns false when capacity is exhausted.
     #[inline]
     pub fn set_tahi(&mut self, value: u8) -> bool {
-        self.schedule_register(5, value)
+        self.schedule_register(REGISTER_TAHI, value)
     }
 
     fn apply_tahi(&mut self, val: u8) {
         self.ta_latch = (self.ta_latch & 0x00FF) | ((val as u16) << 8);
-        if (self.cra & 0x01) == 0 || (self.cra & 0x08) != 0 {
+        if (self.cra & BIT_CONTROL_START) == 0 || (self.cra & BIT_CONTROL_ONE_SHOT) != 0 {
             self.ta_counter = self.ta_latch;
         }
-        if (self.cra & 0x08) != 0 {
-            self.cra |= 0x01;
+        if (self.cra & BIT_CONTROL_ONE_SHOT) != 0 {
+            self.cra |= BIT_CONTROL_START;
         }
     }
 
     /// Queues TBLO; returns false when capacity is exhausted.
     #[inline]
     pub fn set_tblo(&mut self, value: u8) -> bool {
-        self.schedule_register(6, value)
+        self.schedule_register(REGISTER_TBLO, value)
     }
 
     fn apply_tblo(&mut self, val: u8) {
@@ -231,30 +274,30 @@ impl Cia {
     /// Queues TBHI; returns false when capacity is exhausted.
     #[inline]
     pub fn set_tbhi(&mut self, value: u8) -> bool {
-        self.schedule_register(7, value)
+        self.schedule_register(REGISTER_TBHI, value)
     }
 
     fn apply_tbhi(&mut self, val: u8) {
         self.tb_latch = (self.tb_latch & 0x00FF) | ((val as u16) << 8);
-        if (self.crb & 0x01) == 0 || (self.crb & 0x08) != 0 {
+        if (self.crb & BIT_CONTROL_START) == 0 || (self.crb & BIT_CONTROL_ONE_SHOT) != 0 {
             self.tb_counter = self.tb_latch;
         }
-        if (self.crb & 0x08) != 0 {
-            self.crb |= 0x01;
+        if (self.crb & BIT_CONTROL_ONE_SHOT) != 0 {
+            self.crb |= BIT_CONTROL_START;
         }
     }
 
     /// Queues TODLO; returns false when capacity is exhausted.
     #[inline]
     pub fn set_todlo(&mut self, value: u8) -> bool {
-        self.schedule_register(8, value)
+        self.schedule_register(REGISTER_TODLO, value)
     }
 
     fn apply_todlo(&mut self, val: u8) {
-        if (self.crb & 0x80) != 0 {
-            self.tod_alarm = (self.tod_alarm & 0xFFFF00) | (val as u32);
+        if (self.crb & BIT_CRB_ALARM_WRITE) != 0 {
+            self.tod_alarm = (self.tod_alarm & MASK_TOD_LOW_WRITE_PRESERVE) | (val as u32);
         } else {
-            self.tod = (self.tod & 0xFFFF00) | (val as u32);
+            self.tod = (self.tod & MASK_TOD_LOW_WRITE_PRESERVE) | (val as u32);
             self.tod_halted = false; // Writing TODLO restarts counter
         }
     }
@@ -262,14 +305,15 @@ impl Cia {
     /// Queues TODMID; returns false when capacity is exhausted.
     #[inline]
     pub fn set_todmid(&mut self, value: u8) -> bool {
-        self.schedule_register(9, value)
+        self.schedule_register(REGISTER_TODMID, value)
     }
 
     fn apply_todmid(&mut self, val: u8) {
-        if (self.crb & 0x80) != 0 {
-            self.tod_alarm = (self.tod_alarm & 0xFF00FF) | ((val as u32) << 8);
+        if (self.crb & BIT_CRB_ALARM_WRITE) != 0 {
+            self.tod_alarm =
+                (self.tod_alarm & MASK_TOD_MIDDLE_WRITE_PRESERVE) | ((val as u32) << 8);
         } else {
-            self.tod = (self.tod & 0xFF00FF) | ((val as u32) << 8);
+            self.tod = (self.tod & MASK_TOD_MIDDLE_WRITE_PRESERVE) | ((val as u32) << 8);
             self.tod_halted = true;
         }
     }
@@ -277,14 +321,14 @@ impl Cia {
     /// Queues TODHI; returns false when capacity is exhausted.
     #[inline]
     pub fn set_todhi(&mut self, value: u8) -> bool {
-        self.schedule_register(10, value)
+        self.schedule_register(REGISTER_TODHI, value)
     }
 
     fn apply_todhi(&mut self, val: u8) {
-        if (self.crb & 0x80) != 0 {
-            self.tod_alarm = (self.tod_alarm & 0x00FFFF) | ((val as u32) << 16);
+        if (self.crb & BIT_CRB_ALARM_WRITE) != 0 {
+            self.tod_alarm = (self.tod_alarm & MASK_TOD_HIGH_WRITE_PRESERVE) | ((val as u32) << 16);
         } else {
-            self.tod = (self.tod & 0x00FFFF) | ((val as u32) << 16);
+            self.tod = (self.tod & MASK_TOD_HIGH_WRITE_PRESERVE) | ((val as u32) << 16);
             self.tod_halted = true; // Writing TODHI halts counter until TODLO is written
         }
     }
@@ -292,7 +336,7 @@ impl Cia {
     /// Queues SDR; returns false when capacity is exhausted.
     #[inline]
     pub fn set_sdr(&mut self, value: u8) -> bool {
-        self.schedule_register(12, value)
+        self.schedule_register(REGISTER_SDR, value)
     }
 
     fn apply_sdr(&mut self, val: u8) {
@@ -302,30 +346,30 @@ impl Cia {
     /// Queues ICR; returns false when capacity is exhausted.
     #[inline]
     pub fn set_icr(&mut self, value: u8) -> bool {
-        self.schedule_register(13, value)
+        self.schedule_register(REGISTER_ICR, value)
     }
 
     fn apply_icr(&mut self, val: u8) {
         // SET/CLR bit 7 logic for ICR mask
-        if (val & 0x80) != 0 {
-            self.icr_mask |= val & 0x1F;
+        if (val & BIT_ICR_SET) != 0 {
+            self.icr_mask |= val & MASK_ICR_SOURCE;
         } else {
-            self.icr_mask &= !(val & 0x1F);
+            self.icr_mask &= !(val & MASK_ICR_SOURCE);
         }
-        if self.icr_data & self.icr_mask & 0x1f != 0 {
-            self.icr_data |= 0x80;
+        if self.icr_data & self.icr_mask & MASK_ICR_SOURCE != 0 {
+            self.icr_data |= BIT_ICR_PENDING;
         }
     }
 
     /// Queues CRA; returns false when capacity is exhausted.
     #[inline]
     pub fn set_cra(&mut self, value: u8) -> bool {
-        self.schedule_register(14, value)
+        self.schedule_register(REGISTER_CRA, value)
     }
 
     fn apply_cra(&mut self, val: u8) {
-        self.cra = val & !0x90;
-        if (val & 0x10) != 0 {
+        self.cra = val & !MASK_CRA_WRITE_ONLY;
+        if (val & BIT_CONTROL_LOAD) != 0 {
             self.ta_counter = self.ta_latch; // Force load
         }
     }
@@ -333,33 +377,33 @@ impl Cia {
     /// Queues CRB; returns false when capacity is exhausted.
     #[inline]
     pub fn set_crb(&mut self, value: u8) -> bool {
-        self.schedule_register(15, value)
+        self.schedule_register(REGISTER_CRB, value)
     }
 
     fn apply_crb(&mut self, val: u8) {
-        self.crb = val & !0x10;
-        if (val & 0x10) != 0 {
+        self.crb = val & !BIT_CONTROL_LOAD;
+        if (val & BIT_CONTROL_LOAD) != 0 {
             self.tb_counter = self.tb_latch; // Force load
         }
     }
 
     pub(super) fn apply_register(&mut self, selector: u16, value: u8) {
         match selector {
-            0 => self.apply_pra(value),
-            1 => self.apply_prb(value),
-            2 => self.apply_ddra(value),
-            3 => self.apply_ddrb(value),
-            4 => self.apply_talo(value),
-            5 => self.apply_tahi(value),
-            6 => self.apply_tblo(value),
-            7 => self.apply_tbhi(value),
-            8 => self.apply_todlo(value),
-            9 => self.apply_todmid(value),
-            10 => self.apply_todhi(value),
-            12 => self.apply_sdr(value),
-            13 => self.apply_icr(value),
-            14 => self.apply_cra(value),
-            15 => self.apply_crb(value),
+            REGISTER_PRA => self.apply_pra(value),
+            REGISTER_PRB => self.apply_prb(value),
+            REGISTER_DDRA => self.apply_ddra(value),
+            REGISTER_DDRB => self.apply_ddrb(value),
+            REGISTER_TALO => self.apply_talo(value),
+            REGISTER_TAHI => self.apply_tahi(value),
+            REGISTER_TBLO => self.apply_tblo(value),
+            REGISTER_TBHI => self.apply_tbhi(value),
+            REGISTER_TODLO => self.apply_todlo(value),
+            REGISTER_TODMID => self.apply_todmid(value),
+            REGISTER_TODHI => self.apply_todhi(value),
+            REGISTER_SDR => self.apply_sdr(value),
+            REGISTER_ICR => self.apply_icr(value),
+            REGISTER_CRA => self.apply_cra(value),
+            REGISTER_CRB => self.apply_crb(value),
             _ => {}
         }
     }

@@ -132,7 +132,7 @@ fn test_physical_memory_passthrough() {
 fn cia_acceptance_tracks_each_eclock_phase_without_duplicate_writes() {
     // Even CPU-phase entries of vAmiga Agnus::syncWithEClock, in CCK units.
     for (phase, expected_wait) in [(0, 6), (1, 5), (2, 4), (3, 3), (4, 7)] {
-        for addr in [cia_reg::cia_a::SDR, cia_reg::cia_b::SDR] {
+        for addr in [cia_reg::cia_a::REGISTER_SDR, cia_reg::cia_b::REGISTER_SDR] {
             let mut motherboard = TestMotherboard::new();
             let mut bus = motherboard.router();
             for _ in 0..phase {
@@ -178,36 +178,36 @@ fn cia_acceptance_tracks_each_eclock_phase_without_duplicate_writes() {
 fn each_canonical_cia_write_selects_one_receiver_and_one_capture() {
     // The independent hardware register list includes both chip instances and all halves.
     let rows = [
-        (cia_reg::cia_a::PRA, 0x5a),
-        (cia_reg::cia_a::PRB, 0x5a),
-        (cia_reg::cia_a::DDRA, 0x5a),
-        (cia_reg::cia_a::DDRB, 0x5a),
-        (cia_reg::cia_a::TALO, 0xff),
-        (cia_reg::cia_a::TAHI, 0x5a),
-        (cia_reg::cia_a::TBLO, 0xff),
-        (cia_reg::cia_a::TBHI, 0x5a),
-        (cia_reg::cia_a::TODLO, 0x5a),
-        (cia_reg::cia_a::TODMID, 0x5a),
-        (cia_reg::cia_a::TODHI, 0x5a),
-        (cia_reg::cia_a::SDR, 0x5a),
-        (cia_reg::cia_a::ICR, 0),
-        (cia_reg::cia_a::CRA, 0x4a),
-        (cia_reg::cia_a::CRB, 0x4a),
-        (cia_reg::cia_b::PRA, 0x5a),
-        (cia_reg::cia_b::PRB, 0x5a),
-        (cia_reg::cia_b::DDRA, 0x5a),
-        (cia_reg::cia_b::DDRB, 0x5a),
-        (cia_reg::cia_b::TALO, 0xff),
-        (cia_reg::cia_b::TAHI, 0x5a),
-        (cia_reg::cia_b::TBLO, 0xff),
-        (cia_reg::cia_b::TBHI, 0x5a),
-        (cia_reg::cia_b::TODLO, 0x5a),
-        (cia_reg::cia_b::TODMID, 0x5a),
-        (cia_reg::cia_b::TODHI, 0x5a),
-        (cia_reg::cia_b::SDR, 0x5a),
-        (cia_reg::cia_b::ICR, 0),
-        (cia_reg::cia_b::CRA, 0x4a),
-        (cia_reg::cia_b::CRB, 0x4a),
+        (cia_reg::cia_a::REGISTER_PRA, 0x5a),
+        (cia_reg::cia_a::REGISTER_PRB, 0x5a),
+        (cia_reg::cia_a::REGISTER_DDRA, 0x5a),
+        (cia_reg::cia_a::REGISTER_DDRB, 0x5a),
+        (cia_reg::cia_a::REGISTER_TALO, 0xff),
+        (cia_reg::cia_a::REGISTER_TAHI, 0x5a),
+        (cia_reg::cia_a::REGISTER_TBLO, 0xff),
+        (cia_reg::cia_a::REGISTER_TBHI, 0x5a),
+        (cia_reg::cia_a::REGISTER_TODLO, 0x5a),
+        (cia_reg::cia_a::REGISTER_TODMID, 0x5a),
+        (cia_reg::cia_a::REGISTER_TODHI, 0x5a),
+        (cia_reg::cia_a::REGISTER_SDR, 0x5a),
+        (cia_reg::cia_a::REGISTER_ICR, 0),
+        (cia_reg::cia_a::REGISTER_CRA, 0x4a),
+        (cia_reg::cia_a::REGISTER_CRB, 0x4a),
+        (cia_reg::cia_b::REGISTER_PRA, 0x5a),
+        (cia_reg::cia_b::REGISTER_PRB, 0x5a),
+        (cia_reg::cia_b::REGISTER_DDRA, 0x5a),
+        (cia_reg::cia_b::REGISTER_DDRB, 0x5a),
+        (cia_reg::cia_b::REGISTER_TALO, 0xff),
+        (cia_reg::cia_b::REGISTER_TAHI, 0x5a),
+        (cia_reg::cia_b::REGISTER_TBLO, 0xff),
+        (cia_reg::cia_b::REGISTER_TBHI, 0x5a),
+        (cia_reg::cia_b::REGISTER_TODLO, 0x5a),
+        (cia_reg::cia_b::REGISTER_TODMID, 0x5a),
+        (cia_reg::cia_b::REGISTER_TODHI, 0x5a),
+        (cia_reg::cia_b::REGISTER_SDR, 0x5a),
+        (cia_reg::cia_b::REGISTER_ICR, 0),
+        (cia_reg::cia_b::REGISTER_CRA, 0x4a),
+        (cia_reg::cia_b::REGISTER_CRB, 0x4a),
     ];
     for (addr, expected) in rows {
         let mut motherboard = TestMotherboard::new();
@@ -263,19 +263,31 @@ fn refused_live_icr_reads_have_no_acknowledgment_effect() {
     let mut motherboard = TestMotherboard::new();
     motherboard.cia_a.icr_data = 0x81;
     let mut bus = motherboard.router();
-    assert_eq!(bus.read_byte(cia_reg::cia_a::ICR), BusResult::WaitState);
+    assert_eq!(
+        bus.read_byte(cia_reg::cia_a::REGISTER_ICR),
+        BusResult::WaitState
+    );
     for _ in 0..5 {
         clock_cias(&mut bus);
         let before_debug = bus.cia_a.clone();
-        assert_eq!(read_byte_debug(&bus, cia_reg::cia_a::ICR), 0x81);
+        assert_eq!(read_byte_debug(&bus, cia_reg::cia_a::REGISTER_ICR), 0x81);
         assert_eq!(*bus.cia_a, before_debug);
-        assert_eq!(bus.read_byte(cia_reg::cia_a::ICR), BusResult::WaitState);
+        assert_eq!(
+            bus.read_byte(cia_reg::cia_a::REGISTER_ICR),
+            BusResult::WaitState
+        );
         assert_eq!(bus.cia_a.icr_debug(), 0x81);
     }
     clock_cias(&mut bus);
-    assert_eq!(bus.read_byte(cia_reg::cia_a::ICR), BusResult::Ready(0x81));
+    assert_eq!(
+        bus.read_byte(cia_reg::cia_a::REGISTER_ICR),
+        BusResult::Ready(0x81)
+    );
     assert_eq!(bus.cia_a.icr_debug(), 0);
-    assert_eq!(bus.read_byte(cia_reg::cia_a::ICR), BusResult::WaitState);
+    assert_eq!(
+        bus.read_byte(cia_reg::cia_a::REGISTER_ICR),
+        BusResult::WaitState
+    );
 }
 
 #[test]
@@ -284,7 +296,10 @@ fn test_custom_register_broadcast_and_routing() {
     {
         let mut bus = mb.router();
         // Write DMACON ($DFF096): set master DMA enable and Copper DMA enable ($8280)
-        let _ = bus.write_word(0xDFF000 + u32::from(custom_reg::agnus::DMACON), 0x8280);
+        let _ = bus.write_word(
+            0xDFF000 + u32::from(custom_reg::agnus::REGISTER_DMACON),
+            0x8280,
+        );
     }
     // Check that Agnus staged DMACON mutation with physical propagation delay
     let agnus_staged = mb
@@ -292,7 +307,7 @@ fn test_custom_register_broadcast_and_routing() {
         .mutations
         .iter()
         .flatten()
-        .any(|m| m.reg_offset == custom_reg::agnus::DMACON && m.value == 0x8280);
+        .any(|m| m.reg_offset == custom_reg::agnus::REGISTER_DMACON && m.value == 0x8280);
     assert!(
         agnus_staged,
         "Agnus must stage DMACON write in mutation pipeline"
@@ -347,36 +362,36 @@ fn test_all_cia_addresses_select_their_registers() {
 
     let bus = mb.router();
     for (addr, expected) in [
-        (cia_reg::cia_a::PRA, 0x20),
-        (cia_reg::cia_a::PRB, 0x21),
-        (cia_reg::cia_a::DDRA, 0x22),
-        (cia_reg::cia_a::DDRB, 0x23),
-        (cia_reg::cia_a::TALO, 0x24),
-        (cia_reg::cia_a::TAHI, 0x25),
-        (cia_reg::cia_a::TBLO, 0x26),
-        (cia_reg::cia_a::TBHI, 0x27),
-        (cia_reg::cia_a::TODLO, 0x28),
-        (cia_reg::cia_a::TODMID, 0x29),
-        (cia_reg::cia_a::TODHI, 0x2A),
-        (cia_reg::cia_a::SDR, 0x2C),
-        (cia_reg::cia_a::ICR, 0x2D),
-        (cia_reg::cia_a::CRA, 0x2E),
-        (cia_reg::cia_a::CRB, 0x2F),
-        (cia_reg::cia_b::PRA, 0x40),
-        (cia_reg::cia_b::PRB, 0x41),
-        (cia_reg::cia_b::DDRA, 0x42),
-        (cia_reg::cia_b::DDRB, 0x43),
-        (cia_reg::cia_b::TALO, 0x44),
-        (cia_reg::cia_b::TAHI, 0x45),
-        (cia_reg::cia_b::TBLO, 0x46),
-        (cia_reg::cia_b::TBHI, 0x47),
-        (cia_reg::cia_b::TODLO, 0x48),
-        (cia_reg::cia_b::TODMID, 0x49),
-        (cia_reg::cia_b::TODHI, 0x4A),
-        (cia_reg::cia_b::SDR, 0x4C),
-        (cia_reg::cia_b::ICR, 0x4D),
-        (cia_reg::cia_b::CRA, 0x4E),
-        (cia_reg::cia_b::CRB, 0x4F),
+        (cia_reg::cia_a::REGISTER_PRA, 0x20),
+        (cia_reg::cia_a::REGISTER_PRB, 0x21),
+        (cia_reg::cia_a::REGISTER_DDRA, 0x22),
+        (cia_reg::cia_a::REGISTER_DDRB, 0x23),
+        (cia_reg::cia_a::REGISTER_TALO, 0x24),
+        (cia_reg::cia_a::REGISTER_TAHI, 0x25),
+        (cia_reg::cia_a::REGISTER_TBLO, 0x26),
+        (cia_reg::cia_a::REGISTER_TBHI, 0x27),
+        (cia_reg::cia_a::REGISTER_TODLO, 0x28),
+        (cia_reg::cia_a::REGISTER_TODMID, 0x29),
+        (cia_reg::cia_a::REGISTER_TODHI, 0x2A),
+        (cia_reg::cia_a::REGISTER_SDR, 0x2C),
+        (cia_reg::cia_a::REGISTER_ICR, 0x2D),
+        (cia_reg::cia_a::REGISTER_CRA, 0x2E),
+        (cia_reg::cia_a::REGISTER_CRB, 0x2F),
+        (cia_reg::cia_b::REGISTER_PRA, 0x40),
+        (cia_reg::cia_b::REGISTER_PRB, 0x41),
+        (cia_reg::cia_b::REGISTER_DDRA, 0x42),
+        (cia_reg::cia_b::REGISTER_DDRB, 0x43),
+        (cia_reg::cia_b::REGISTER_TALO, 0x44),
+        (cia_reg::cia_b::REGISTER_TAHI, 0x45),
+        (cia_reg::cia_b::REGISTER_TBLO, 0x46),
+        (cia_reg::cia_b::REGISTER_TBHI, 0x47),
+        (cia_reg::cia_b::REGISTER_TODLO, 0x48),
+        (cia_reg::cia_b::REGISTER_TODMID, 0x49),
+        (cia_reg::cia_b::REGISTER_TODHI, 0x4A),
+        (cia_reg::cia_b::REGISTER_SDR, 0x4C),
+        (cia_reg::cia_b::REGISTER_ICR, 0x4D),
+        (cia_reg::cia_b::REGISTER_CRA, 0x4E),
+        (cia_reg::cia_b::REGISTER_CRB, 0x4F),
     ] {
         assert_eq!(read_byte_debug(&bus, addr), expected, "address {addr:06X}");
     }
@@ -387,29 +402,35 @@ fn test_cia_register_addresses_mirror_on_unused_low_bits() {
     let mut mb = TestMotherboard::new();
     let mut bus = mb.router();
 
-    let _ = sync_write_byte(&mut bus, cia_reg::cia_a::CRA, 0x55);
-    let _ = sync_write_byte(&mut bus, cia_reg::cia_b::CRA, 0x2A);
+    let _ = sync_write_byte(&mut bus, cia_reg::cia_a::REGISTER_CRA, 0x55);
+    let _ = sync_write_byte(&mut bus, cia_reg::cia_b::REGISTER_CRA, 0x2A);
 
     // A7..A1 do not participate in CIA register selection.
     assert_eq!(
-        sync_read_byte(&mut bus, cia_reg::cia_a::CRA + 2),
+        sync_read_byte(&mut bus, cia_reg::cia_a::REGISTER_CRA + 2),
         BusResult::Ready(0x45)
     );
     assert_eq!(
-        sync_read_byte(&mut bus, cia_reg::cia_b::CRA + 2),
+        sync_read_byte(&mut bus, cia_reg::cia_b::REGISTER_CRA + 2),
         BusResult::Ready(0x2A)
     );
-    assert_eq!(read_byte_debug(&bus, cia_reg::cia_a::CRA + 2), 0x45);
-    assert_eq!(read_byte_debug(&bus, cia_reg::cia_b::CRA + 2), 0x2A);
-
-    let _ = sync_write_byte(&mut bus, cia_reg::cia_a::CRA + 2, 0x11);
-    let _ = sync_write_byte(&mut bus, cia_reg::cia_b::CRA + 2, 0x12);
     assert_eq!(
-        sync_read_byte(&mut bus, cia_reg::cia_a::CRA),
+        read_byte_debug(&bus, cia_reg::cia_a::REGISTER_CRA + 2),
+        0x45
+    );
+    assert_eq!(
+        read_byte_debug(&bus, cia_reg::cia_b::REGISTER_CRA + 2),
+        0x2A
+    );
+
+    let _ = sync_write_byte(&mut bus, cia_reg::cia_a::REGISTER_CRA + 2, 0x11);
+    let _ = sync_write_byte(&mut bus, cia_reg::cia_b::REGISTER_CRA + 2, 0x12);
+    assert_eq!(
+        sync_read_byte(&mut bus, cia_reg::cia_a::REGISTER_CRA),
         BusResult::Ready(0x01)
     );
     assert_eq!(
-        sync_read_byte(&mut bus, cia_reg::cia_b::CRA),
+        sync_read_byte(&mut bus, cia_reg::cia_b::REGISTER_CRA),
         BusResult::Ready(0x02)
     );
 
@@ -431,33 +452,33 @@ fn test_ciaa_port_a_overlay_toggle() {
 
     // An input PA0 is pulled high even when its PRA latch contains zero.
     assert_eq!(
-        sync_write_byte(&mut bus, cia_reg::cia_a::PRA, 0),
+        sync_write_byte(&mut bus, cia_reg::cia_a::REGISTER_PRA, 0),
         BusResult::Ready(())
     );
     assert_eq!(bus.read_word(0), BusResult::Ready(0x1122));
 
     // Driving the zero latch onto PA0 removes ROM immediately after the DDRA write.
     assert_eq!(
-        sync_write_byte(&mut bus, cia_reg::cia_a::DDRA, 1),
+        sync_write_byte(&mut bus, cia_reg::cia_a::REGISTER_DDRA, 1),
         BusResult::Ready(())
     );
     assert_eq!(bus.read_word(0x000000), BusResult::Ready(0x0000));
 
     // OVL high selects ROM; OVL low selects Chip RAM.
     assert_eq!(
-        sync_write_byte(&mut bus, cia_reg::cia_a::PRA, 1),
+        sync_write_byte(&mut bus, cia_reg::cia_a::REGISTER_PRA, 1),
         BusResult::Ready(())
     );
     assert_eq!(bus.read_word(0), BusResult::Ready(0x1122));
     assert_eq!(
-        sync_write_byte(&mut bus, cia_reg::cia_a::PRA, 0),
+        sync_write_byte(&mut bus, cia_reg::cia_a::REGISTER_PRA, 0),
         BusResult::Ready(())
     );
     assert_eq!(bus.read_word(0), BusResult::Ready(0x0000));
 
     // Returning PA0 to input releases it to the pull-up and restores ROM.
     assert_eq!(
-        sync_write_byte(&mut bus, cia_reg::cia_a::DDRA, 0),
+        sync_write_byte(&mut bus, cia_reg::cia_a::REGISTER_DDRA, 0),
         BusResult::Ready(())
     );
     assert_eq!(bus.read_word(0), BusResult::Ready(0x1122));
@@ -470,14 +491,18 @@ fn test_ciaa_overlay_word_mirrors_and_ciab_isolation() {
 
     // A mirrored CIA-A word write uses its odd lane to drive PA0 low.
     assert_eq!(
-        sync_write_word(&mut mb.router(), (cia_reg::cia_a::DDRA & !1) | 0xFE, 0xFF01),
+        sync_write_word(
+            &mut mb.router(),
+            (cia_reg::cia_a::REGISTER_DDRA & !1) | 0xFE,
+            0xFF01
+        ),
         BusResult::Ready(())
     );
     assert!(!mb.mem.is_low_memory_overlay_active());
 
     // Neither CIA-B's direction nor its output latch controls the overlay.
     for value in [0x00, 0xFF] {
-        for reg in [cia_reg::cia_b::PRA, cia_reg::cia_b::DDRA] {
+        for reg in [cia_reg::cia_b::REGISTER_PRA, cia_reg::cia_b::REGISTER_DDRA] {
             assert_eq!(
                 sync_write_byte(&mut mb.router(), reg, value),
                 BusResult::Ready(())
@@ -487,7 +512,11 @@ fn test_ciaa_overlay_word_mirrors_and_ciab_isolation() {
     }
 
     assert_eq!(
-        sync_write_word(&mut mb.router(), (cia_reg::cia_a::PRA & !1) | 0xFE, 0x0001),
+        sync_write_word(
+            &mut mb.router(),
+            (cia_reg::cia_a::REGISTER_PRA & !1) | 0xFE,
+            0x0001
+        ),
         BusResult::Ready(())
     );
     assert!(mb.mem.is_low_memory_overlay_active());
@@ -512,13 +541,25 @@ fn test_direct_custom_and_cia_register_writes() {
     {
         let mut bus = mb.router();
         // Denise: COLOR00 ($DFF180)
-        let _ = bus.write_word(0xDFF000 + u32::from(custom_reg::denise::COLOR00), 0x0F00);
+        let _ = bus.write_word(
+            0xDFF000 + u32::from(custom_reg::denise::REGISTER_COLOR00),
+            0x0F00,
+        );
         // Paula: INTENA ($DFF09A) - set bit 15 (SET) | bit 14 (INTEN) | bit 0 (TBE) = 0xC001
-        let _ = bus.write_word(0xDFF000 + u32::from(custom_reg::paula::INTENA), 0xC001);
+        let _ = bus.write_word(
+            0xDFF000 + u32::from(custom_reg::paula::REGISTER_INTENA),
+            0xC001,
+        );
         // Agnus: BLTCON0 ($DFF040)
-        let _ = bus.write_word(0xDFF000 + u32::from(custom_reg::agnus::BLTCON0), 0x09F0);
+        let _ = bus.write_word(
+            0xDFF000 + u32::from(custom_reg::agnus::REGISTER_BLTCON0),
+            0x09F0,
+        );
         // Shared: BPLCON0 ($DFF100)
-        let _ = bus.write_word(0xDFF000 + u32::from(custom_reg::denise::BPLCON0), 0x1200);
+        let _ = bus.write_word(
+            0xDFF000 + u32::from(custom_reg::denise::REGISTER_BPLCON0),
+            0x1200,
+        );
         // CIA-A: CRA ($BFEE01)
         let _ = sync_write_byte(&mut bus, 0xBFEE01, 0x55);
         // CIA-B: CRB ($BFDF00)
@@ -578,22 +619,22 @@ fn test_open_bus_across_unmapped_banks_and_device_lanes() {
 
     // Early DMA addresses and write-only registers do not return their stored data.
     for offset in [
-        custom_reg::agnus::BLTDDAT,
-        custom_reg::paula::DSKDATR,
-        custom_reg::agnus::BLTCON0,
-        custom_reg::denise::COLOR00,
-        custom_reg::paula::AUD0LEN,
+        custom_reg::agnus::REGISTER_BLTDDAT,
+        custom_reg::paula::REGISTER_DSKDATR,
+        custom_reg::agnus::REGISTER_BLTCON0,
+        custom_reg::denise::REGISTER_COLOR00,
+        custom_reg::paula::REGISTER_AUD0LEN,
     ] {
         let addr = 0xDFF000 + u32::from(offset);
         assert_eq!(bus.read_word(addr), BusResult::Ready(0xFFFF), "{addr:06X}");
         assert_eq!(bus.read_byte(addr), BusResult::Ready(0xFF), "{addr:06X}");
     }
     assert_eq!(
-        bus.read_word(0xDFF000 + u32::from(custom_reg::agnus::COPJMP1)),
+        bus.read_word(0xDFF000 + u32::from(custom_reg::agnus::REGISTER_COPJMP1)),
         BusResult::Ready(0xFFFF)
     );
     assert_eq!(
-        bus.read_word(0xDFF000 + u32::from(custom_reg::agnus::COPJMP2)),
+        bus.read_word(0xDFF000 + u32::from(custom_reg::agnus::REGISTER_COPJMP2)),
         BusResult::Ready(0xFFFF)
     );
 

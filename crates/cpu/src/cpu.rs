@@ -8,6 +8,7 @@ pub mod micro {
     pub mod common;
     pub mod dispatch_table;
     pub mod ea;
+    pub mod encoding;
     pub mod engine;
     pub mod step_control;
     pub mod step_execution;
@@ -26,13 +27,18 @@ pub use micro::{
     OPCODE_DESCRIPTOR_TABLE,
 };
 pub use state::{
-    function_code, vector, CpuState, CCR_ALL, CCR_C, CCR_N, CCR_V, CCR_X, CCR_Z, SR_I_MASK,
-    SR_MASK, SR_RESET_DEFAULT, SR_S, SR_T,
+    function_code, vector, CpuState, BIT_CCR_C, BIT_CCR_N, BIT_CCR_V, BIT_CCR_X, BIT_CCR_Z,
+    BIT_SR_S, BIT_SR_T, MASK_CCR_ALL, MASK_SR, MASK_SR_I, SR_RESET_DEFAULT,
 };
 
 use crate::micro::types;
 use physical_memory::{AddressBus, BusResult};
 use serde::{Deserialize, Serialize};
+
+const BIT_ADDRESS_ERROR_READ: u16 = 0x10;
+const ADDRESS_ERROR_WRITE: u16 = 0x00;
+const MASK_ADDRESS_ERROR_IR: u16 = 0xFFE0;
+const MASK_ADDRESS_ERROR_FC: u16 = 0x07;
 
 /// Motorola 68000 CPU Core
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -172,7 +178,7 @@ impl Cpu {
     #[inline(always)]
     fn step_cck_internal(&mut self, bus: &mut dyn AddressBus) -> bool {
         // Every active CCK phase step advances global and instruction clocks by 2 CPU clocks (1 CCK)
-        self.advance_clocks(2);
+        self.advance_clocks(MicroStep::CCK_CLOCKS as u32);
 
         // Execute via cycle-exact Micro-Step State Machine:
         while (self.state.micro().micro_step as usize) < self.state.micro().current_steps.len() {
@@ -234,8 +240,11 @@ impl Cpu {
             match bus_res {
                 BusResult::WaitState => return false,
                 BusResult::Ready(()) => {
-                    self.state.micro_mut().clocks_remaining =
-                        self.state.micro().clocks_remaining.saturating_sub(2);
+                    self.state.micro_mut().clocks_remaining = self
+                        .state
+                        .micro()
+                        .clocks_remaining
+                        .saturating_sub(MicroStep::CCK_CLOCKS as u16);
 
                     let step_has_work = step.has_work();
                     let step_clocks_exhausted = self.state.micro().clocks_remaining == 0;
@@ -358,8 +367,14 @@ impl Cpu {
         } else {
             types::data_fc(&self.state)
         };
-        let rw_bit = if is_read { 0x10 } else { 0x00 };
-        let info_word = (self.state.ir() & 0xFFE0) | rw_bit | ((fc as u16) & 0x07);
+        let rw_bit = if is_read {
+            BIT_ADDRESS_ERROR_READ
+        } else {
+            ADDRESS_ERROR_WRITE
+        };
+        let info_word = (self.state.ir() & MASK_ADDRESS_ERROR_IR)
+            | rw_bit
+            | ((fc as u16) & MASK_ADDRESS_ERROR_FC);
 
         self.state.micro_mut().source = if is_program_space {
             self.state.instruction_pc()
@@ -409,10 +424,11 @@ impl Cpu {
         self.state.set_instruction_pc(target_pc);
         self.state.set_pc(target_pc);
         self.state
-            .set_ir(bus.read_word_debug(self.state.pc() & 0x00FF_FFFF));
+            .set_ir(bus.read_word_debug(self.state.pc() & physical_memory::MASK_PHYSICAL_ADDRESS));
         self.state.set_pc(self.state.pc().wrapping_add(2));
-        self.state
-            .set_prefetch(bus.read_word_debug(self.state.pc() & 0x00FF_FFFF));
+        self.state.set_prefetch(
+            bus.read_word_debug(self.state.pc() & physical_memory::MASK_PHYSICAL_ADDRESS),
+        );
         self.state.set_pc(self.state.pc().wrapping_add(2));
         self.state.micro_mut().reset();
         self.initiate_current_instruction();

@@ -58,12 +58,13 @@ pub(crate) fn render_engine_status(
                         ui.end_row();
 
                         // 4. Interrupt Priority Level (IPL)
-                        let ipl_mask = (sr >> 8) & 0x07;
+                        let ipl_mask = (sr >> cpu::state::BIT_SR_INTERRUPT_SHIFT)
+                            & cpu::state::MASK_SR_INTERRUPT_LEVEL;
                         ui.label(
                             RichText::new("Interrupt Mask (IPL):").color(tokens.text_secondary),
                         )
                         .on_hover_text("Current CPU interrupt priority mask (0-7)");
-                        let ipl_color = if ipl_mask == 7 {
+                        let ipl_color = if ipl_mask == cpu::state::MASK_SR_INTERRUPT_LEVEL {
                             tokens.accent_warning // Mask 7 disables maskable interrupts
                         } else {
                             tokens.accent_pc
@@ -74,7 +75,7 @@ pub(crate) fn render_engine_status(
                         ui.end_row();
 
                         // 5. Privilege State
-                        let is_sup = (sr & 0x2000) != 0;
+                        let is_sup = (sr & cpu::BIT_SR_S) != 0;
                         ui.label(RichText::new("Privilege Mode:").color(tokens.text_secondary));
                         if is_sup {
                             ui.colored_label(tokens.accent_warning, "Supervisor Mode (SSP)");

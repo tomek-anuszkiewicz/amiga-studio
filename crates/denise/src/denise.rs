@@ -15,10 +15,25 @@ pub use pins::{DeniseInputs, DenisePins, DeniseSync};
 
 mod registers;
 
-const HORIZONTAL_CURSOR_MASK: u16 = 0xff;
+const MASK_HORIZONTAL_CURSOR: u16 = 0xff;
 
 pub mod decode;
 pub use decode::{decode_dual_playfield, decode_ehb, decode_ham6};
+
+use config::display_window::{HIRES_FETCH_PERIOD_CCK, LORES_FETCH_PERIOD_CCK};
+
+const PIPELINE_PIXELS: usize = 2;
+const HBLANK_START_CCK: u16 = 18;
+const HBLANK_STOP_CCK: u16 = 35;
+const BIT_DIW_HORIZONTAL_LOW: u16 = 1;
+const DIW_COUNTS_PER_CCK: u16 = 2;
+const DIW_FIRST_COUNT_LEAD: u16 = 2;
+const DIW_SECOND_COUNT_LEAD: u16 = 3;
+const LAST_RENDER_CCK: u16 = 226;
+const TAIL_RENDER_CCK: u16 = 227;
+const BIT_BITPLANE_SERIAL: u16 = 0x8000;
+const MASK_ALL_PLANE_PIXEL: u8 = 0x3F;
+const BIT_PF2_PRIORITY: u16 = 0x0040;
 
 /// Denise video display processor state
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -69,18 +84,18 @@ pub struct Denise {
     pub joy1dat: u16,
 
     /// Bitplane data latches ($110-$11A)
-    pub bpldat: [u16; 6],
+    pub bpldat: [u16; config::OCS_BITPLANE_COUNT],
     /// Bitplane pipeline holding registers feeding the shifters
-    pub bpldat_pipe: [u16; 6],
+    pub bpldat_pipe: [u16; config::OCS_BITPLANE_COUNT],
     /// Active parallel bitplane shift registers
-    pub shifters: [u16; 6],
+    pub shifters: [u16; config::OCS_BITPLANE_COUNT],
     /// True when BPL1DAT has been written on the active scanline, arming bitplane serialization
     pub bpl_armed: bool,
     /// Last held color for HAM6 mode
     pub last_ham_rgb: u16,
     /// Pipeline delayed pixels (2 hires pixels hardware latency)
-    pub pipeline_pixels: [u32; 2],
-    pub pipeline_pixels_valid: [bool; 2],
+    pub pipeline_pixels: [u32; PIPELINE_PIXELS],
+    pub pipeline_pixels_valid: [bool; PIPELINE_PIXELS],
 
     /// Fixed inline in-flight mutation buffer (Zero-allocation)
     #[serde(with = "config::big_array")]
@@ -118,13 +133,13 @@ impl Denise {
             potgo: 0,
             joy0dat: 0,
             joy1dat: 0,
-            bpldat: [0; 6],
-            bpldat_pipe: [0; 6],
-            shifters: [0; 6],
+            bpldat: [0; config::OCS_BITPLANE_COUNT],
+            bpldat_pipe: [0; config::OCS_BITPLANE_COUNT],
+            shifters: [0; config::OCS_BITPLANE_COUNT],
             bpl_armed: false,
             last_ham_rgb: 0,
-            pipeline_pixels: [0; 2],
-            pipeline_pixels_valid: [false; 2],
+            pipeline_pixels: [0; PIPELINE_PIXELS],
+            pipeline_pixels_valid: [false; PIPELINE_PIXELS],
             mutations: [None; Self::MUTATION_CAPACITY],
         }
     }
@@ -156,8 +171,8 @@ impl Denise {
         self.shifters.fill(0);
         self.bpl_armed = false;
         self.last_ham_rgb = 0;
-        self.pipeline_pixels = [0; 2];
-        self.pipeline_pixels_valid = [false; 2];
+        self.pipeline_pixels = [0; PIPELINE_PIXELS];
+        self.pipeline_pixels_valid = [false; PIPELINE_PIXELS];
         self.mutations = [None; Self::MUTATION_CAPACITY];
     }
 
@@ -170,13 +185,13 @@ impl Denise {
         }
         let hpos = self.sync.hpos;
         let vpos = self.sync.vpos;
-        self.sync.hpos = self.sync.hpos.wrapping_add(1) & HORIZONTAL_CURSOR_MASK;
+        self.sync.hpos = self.sync.hpos.wrapping_add(1) & MASK_HORIZONTAL_CURSOR;
         if hpos == 0 {
             self.last_ham_rgb = self.color[0];
             self.bpl_armed = false;
-            self.shifters = [0; 6];
-            self.pipeline_pixels = [0; 2];
-            self.pipeline_pixels_valid = [false; 2];
+            self.shifters = [0; config::OCS_BITPLANE_COUNT];
+            self.pipeline_pixels = [0; PIPELINE_PIXELS];
+            self.pipeline_pixels_valid = [false; PIPELINE_PIXELS];
         }
 
         self.sprites.step_cck(hpos, vpos);
@@ -186,13 +201,14 @@ impl Denise {
         // PAL: scanlines 0..25 and >= 311 are vertical blanking
         let in_vblank = self.sync.vertical_blank;
         // Horizontal blanking occupies CCKs 0x12..0x23 (18..35)
-        let in_hblank = hpos >= 18 && hpos <= 35;
+        let in_hblank = hpos >= HBLANK_START_CCK && hpos <= HBLANK_STOP_CCK;
 
         // Denise decodes the horizontal DIW bits; Agnus gates bitplane DMA by line.
-        let hstrt = (self.diwstrt & 0xFF) | 1;
-        let hstop = (self.diwstop & 0xFF) | 1 | 0x100;
+        let hstrt = (self.diwstrt & 0xFF) | BIT_DIW_HORIZONTAL_LOW;
+        let hstop =
+            (self.diwstop & 0xFF) | BIT_DIW_HORIZONTAL_LOW | frame_builder::BIT_HSTOP_EXTENSION;
 
-        let c0 = hpos * 2 + 2;
+        let c0 = hpos * DIW_COUNTS_PER_CCK + DIW_FIRST_COUNT_LEAD;
         if c0 == hstrt {
             self.hflop = true;
         }
@@ -201,7 +217,7 @@ impl Denise {
             self.hflop = false;
         }
 
-        let c1 = hpos * 2 + 3;
+        let c1 = hpos * DIW_COUNTS_PER_CCK + DIW_SECOND_COUNT_LEAD;
         if c1 == hstrt {
             self.hflop = true;
         }
@@ -211,7 +227,11 @@ impl Denise {
         }
 
         if self.bitplane_count() > 0 && self.bpl_armed {
-            let period = if self.is_hires() { 4 } else { 8 };
+            let period = if self.is_hires() {
+                HIRES_FETCH_PERIOD_CCK
+            } else {
+                LORES_FETCH_PERIOD_CCK
+            };
             if hpos % period == 0 {
                 self.shifters = self.bpldat_pipe;
             }
@@ -219,15 +239,20 @@ impl Denise {
 
         if in_vblank || in_hblank {
             // Analog video output DACs are pulled to blanking level (pure black)
-            self.frame_builder.set_cck_pixels(hpos, vpos, 0xFF00_0000);
-            if hpos == 226 {
-                self.frame_builder.set_cck_pixels(227, vpos, 0xFF00_0000);
+            self.frame_builder
+                .set_cck_pixels(hpos, vpos, frame_builder::OPAQUE_BLACK);
+            if hpos == LAST_RENDER_CCK {
+                self.frame_builder.set_cck_pixels(
+                    TAIL_RENDER_CCK,
+                    vpos,
+                    frame_builder::OPAQUE_BLACK,
+                );
             }
         } else {
             let plane_count = self.bitplane_count();
             let backdrop = frame_builder::rgb444_to_argb32(self.color[0]);
             let y = vpos as usize;
-            let cck_base_x = (hpos as usize) * 4;
+            let cck_base_x = (hpos as usize) * frame_builder::PIXELS_PER_CCK;
 
             if plane_count > 0 && self.bpl_armed {
                 let hires = self.is_hires();
@@ -322,7 +347,7 @@ impl Denise {
                     }
                 }
 
-                if hpos == 226 {
+                if hpos == LAST_RENDER_CCK {
                     let px4 = if self.pipeline_pixels_valid[0] {
                         self.pipeline_pixels[0]
                     } else {
@@ -370,8 +395,9 @@ impl Denise {
             } else {
                 self.pipeline_pixels_valid = [false, false];
                 self.frame_builder.set_cck_pixels(hpos, vpos, backdrop);
-                if hpos == 226 {
-                    self.frame_builder.set_cck_pixels(227, vpos, backdrop);
+                if hpos == LAST_RENDER_CCK {
+                    self.frame_builder
+                        .set_cck_pixels(TAIL_RENDER_CCK, vpos, backdrop);
                 }
             }
         }
@@ -396,7 +422,7 @@ impl Denise {
     pub fn shift_pixel(&mut self) -> u8 {
         let mut val = 0u8;
         for (i, shifter) in self.shifters.iter_mut().enumerate() {
-            if (*shifter & 0x8000) != 0 {
+            if (*shifter & BIT_BITPLANE_SERIAL) != 0 {
                 val |= 1 << i;
             }
             *shifter <<= 1;
@@ -411,22 +437,22 @@ impl Denise {
             return self.color[0];
         }
 
-        let mask = if plane_count >= 6 {
-            0x3F
+        let mask = if plane_count >= config::OCS_BITPLANE_COUNT as u8 {
+            MASK_ALL_PLANE_PIXEL
         } else {
             (1 << plane_count) - 1
         };
         let data = planes_data & mask;
 
-        if self.is_ham() && plane_count == 6 {
+        if self.is_ham() && plane_count == config::OCS_BITPLANE_COUNT as u8 {
             decode_ham6(data, &self.color, &mut self.last_ham_rgb)
         } else if self.is_dual_playfield() {
-            let pf2_priority = (self.bplcon2 & 0x0040) != 0;
+            let pf2_priority = (self.bplcon2 & BIT_PF2_PRIORITY) != 0;
             decode_dual_playfield(data, &self.color, pf2_priority)
-        } else if plane_count == 6 && !self.is_hires() {
+        } else if plane_count == config::OCS_BITPLANE_COUNT as u8 && !self.is_hires() {
             decode_ehb(data, &self.color)
         } else {
-            let idx = (data & 0x1F) as usize;
+            let idx = (data & decode::MASK_PALETTE_INDEX) as usize;
             self.color[idx]
         }
     }
@@ -434,24 +460,26 @@ impl Denise {
     /// Returns the active number of bitplanes (0..6)
     #[inline]
     pub fn bitplane_count(&self) -> u8 {
-        ((self.bplcon0 >> 12) & 0x07) as u8
+        ((self.bplcon0 >> config::mask::bplcon0::BIT_BPU_SHIFT)
+            & (config::mask::bplcon0::MASK_BPU >> config::mask::bplcon0::BIT_BPU_SHIFT))
+            as u8
     }
 
     /// Returns true if High-Resolution (640-pixel) mode is enabled
     #[inline]
     pub fn is_hires(&self) -> bool {
-        (self.bplcon0 & 0x8000) != 0
+        (self.bplcon0 & config::mask::bplcon0::BIT_HIRES) != 0
     }
 
     /// Returns true if Hold-And-Modify (HAM) mode is enabled
     #[inline]
     fn is_ham(&self) -> bool {
-        (self.bplcon0 & 0x0800) != 0
+        (self.bplcon0 & config::mask::bplcon0::BIT_HOMOD) != 0
     }
 
     /// Returns true if Dual Playfield mode is enabled
     #[inline]
     fn is_dual_playfield(&self) -> bool {
-        (self.bplcon0 & 0x0400) != 0
+        (self.bplcon0 & config::mask::bplcon0::BIT_DBLPF) != 0
     }
 }

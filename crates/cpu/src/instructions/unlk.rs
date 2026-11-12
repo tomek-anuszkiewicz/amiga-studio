@@ -22,7 +22,7 @@ pub fn alu_unlk_setup(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     let sp = state.a_long(an as usize);
     state.micro_mut().ea_addr = sp;
     if (sp & 1) == 0 {
-        state.set_a_long(7, sp);
+        state.set_a_long(crate::state::REGISTER_STACK_POINTER, sp);
     }
 }
 
@@ -30,7 +30,7 @@ pub fn alu_unlk_finish(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     let an = reg_dst;
     let sp = state.micro().ea_addr;
     let data = state.micro().source;
-    state.set_a_long(7, sp.wrapping_add(4));
+    state.set_a_long(crate::state::REGISTER_STACK_POINTER, sp.wrapping_add(4));
     state.set_a_long(an as usize, data);
 }
 
@@ -42,7 +42,7 @@ pub static STEPS_UNLK: [MicroStep; 6] = [
     MicroStep {
         bus_fn: Some(Cpu::step_bus_read_src_long_high),
         alu_fn: Some(alu_unlk_setup),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::BUS_READ_IDLE,
     common::READ_SRC_LONG_LOW,
@@ -50,7 +50,7 @@ pub static STEPS_UNLK: [MicroStep; 6] = [
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_unlk_finish),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::BUS_READ_IDLE,
 ];

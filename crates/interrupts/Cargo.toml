@@ -8,6 +8,7 @@ license.workspace = true
 path = "src/interrupts.rs"
 
 [dependencies]
+config = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 
 [lints]

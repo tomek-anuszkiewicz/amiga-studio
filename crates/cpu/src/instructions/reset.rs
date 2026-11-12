@@ -6,6 +6,7 @@
 //!
 //! Timing: 132 CPU clocks (66 CCKs).
 
+const RESET_ASSERT_CLOCKS: u8 = 124;
 use crate::micro::common;
 use crate::micro::types::MicroStep;
 use crate::state::CpuState;
@@ -40,7 +41,7 @@ pub fn alu_release_reset(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 pub static RESET_ASSERT_IDLE: MicroStep = MicroStep {
     bus_fn: None,
     alu_fn: Some(alu_assert_reset),
-    base_clocks: 124,
+    base_clocks: RESET_ASSERT_CLOCKS,
 };
 
 pub static STEPS_RESET: [MicroStep; 5] = [
@@ -50,7 +51,7 @@ pub static STEPS_RESET: [MicroStep; 5] = [
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_release_reset),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::BUS_READ_IDLE,
 ];

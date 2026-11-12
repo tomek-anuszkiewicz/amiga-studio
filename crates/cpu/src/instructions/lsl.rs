@@ -3,8 +3,13 @@
 //! Shifts bits to the left, shifting 0 into LSB and the MSB into C and X flags.
 //! Overflow (V) flag is always cleared to 0.
 
+use super::{
+    BIT_BYTE_SIGN, BIT_LONG_SIGN, BIT_WORD_SIGN, SHIFT_BYTE_WORD_BASE_CLOCKS, SHIFT_CLOCKS_PER_BIT,
+    SHIFT_LONG_BASE_CLOCKS,
+};
 use crate::micro::common;
 use crate::micro::ea;
+use crate::micro::encoding::{extended_mode, mode, operand_size};
 use crate::micro::types::MicroStep;
 use crate::state::CpuState;
 use crate::Cpu;
@@ -15,7 +20,7 @@ use crate::Cpu;
 
 #[inline(always)]
 pub fn lsl_b(state: &mut CpuState, count: u32, val: u8) -> u8 {
-    let msb = (val & 0x80) != 0;
+    let msb = (val & BIT_BYTE_SIGN) != 0;
     if count == 0 {
         state.set_ccr_nz_clear_vc(msb, val == 0);
         return val;
@@ -23,17 +28,17 @@ pub fn lsl_b(state: &mut CpuState, count: u32, val: u8) -> u8 {
     let mut v = val;
     let mut last_out = false;
     for _ in 0..count {
-        last_out = (v & 0x80) != 0;
+        last_out = (v & BIT_BYTE_SIGN) != 0;
         v <<= 1;
     }
-    let new_msb = (v & 0x80) != 0;
+    let new_msb = (v & BIT_BYTE_SIGN) != 0;
     state.set_ccr_xnzvc(last_out, new_msb, v == 0, false, last_out);
     v
 }
 
 #[inline(always)]
 pub fn lsl_w(state: &mut CpuState, count: u32, val: u16) -> u16 {
-    let msb = (val & 0x8000) != 0;
+    let msb = (val & BIT_WORD_SIGN) != 0;
     if count == 0 {
         state.set_ccr_nz_clear_vc(msb, val == 0);
         return val;
@@ -41,17 +46,17 @@ pub fn lsl_w(state: &mut CpuState, count: u32, val: u16) -> u16 {
     let mut v = val;
     let mut last_out = false;
     for _ in 0..count {
-        last_out = (v & 0x8000) != 0;
+        last_out = (v & BIT_WORD_SIGN) != 0;
         v <<= 1;
     }
-    let new_msb = (v & 0x8000) != 0;
+    let new_msb = (v & BIT_WORD_SIGN) != 0;
     state.set_ccr_xnzvc(last_out, new_msb, v == 0, false, last_out);
     v
 }
 
 #[inline(always)]
 pub fn lsl_l(state: &mut CpuState, count: u32, val: u32) -> u32 {
-    let msb = (val & 0x8000_0000) != 0;
+    let msb = (val & BIT_LONG_SIGN) != 0;
     if count == 0 {
         state.set_ccr_nz_clear_vc(msb, val == 0);
         return val;
@@ -59,10 +64,10 @@ pub fn lsl_l(state: &mut CpuState, count: u32, val: u32) -> u32 {
     let mut v = val;
     let mut last_out = false;
     for _ in 0..count {
-        last_out = (v & 0x8000_0000) != 0;
+        last_out = (v & BIT_LONG_SIGN) != 0;
         v <<= 1;
     }
-    let new_msb = (v & 0x8000_0000) != 0;
+    let new_msb = (v & BIT_LONG_SIGN) != 0;
     state.set_ccr_xnzvc(last_out, new_msb, v == 0, false, last_out);
     v
 }
@@ -76,7 +81,7 @@ pub fn alu_lsl_b_imm_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
     let val = state.d_byte(reg_dst as usize);
     let res = lsl_b(state, count, val);
     state.set_d_byte(reg_dst as usize, res);
-    let duration = 2 + (2 * count);
+    let duration = SHIFT_BYTE_WORD_BASE_CLOCKS + (SHIFT_CLOCKS_PER_BIT * count);
     state.micro_mut().clocks_remaining = duration as u16;
 }
 
@@ -85,7 +90,7 @@ pub fn alu_lsl_w_imm_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
     let val = state.d_word(reg_dst as usize);
     let res = lsl_w(state, count, val);
     state.set_d_word(reg_dst as usize, res);
-    let duration = 2 + (2 * count);
+    let duration = SHIFT_BYTE_WORD_BASE_CLOCKS + (SHIFT_CLOCKS_PER_BIT * count);
     state.micro_mut().clocks_remaining = duration as u16;
 }
 
@@ -94,34 +99,34 @@ pub fn alu_lsl_l_imm_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
     let val = state.d_long(reg_dst as usize);
     let res = lsl_l(state, count, val);
     state.set_d_long(reg_dst as usize, res);
-    let duration = 4 + (2 * count);
+    let duration = SHIFT_LONG_BASE_CLOCKS + (SHIFT_CLOCKS_PER_BIT * count);
     state.micro_mut().clocks_remaining = duration as u16;
 }
 
 pub fn alu_lsl_b_reg_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
-    let count = state.d_long(reg_src as usize) & 63;
+    let count = state.d_long(reg_src as usize) & crate::micro::encoding::shift::MASK_REGISTER_COUNT;
     let val = state.d_byte(reg_dst as usize);
     let res = lsl_b(state, count, val);
     state.set_d_byte(reg_dst as usize, res);
-    let duration = 2 + (2 * count);
+    let duration = SHIFT_BYTE_WORD_BASE_CLOCKS + (SHIFT_CLOCKS_PER_BIT * count);
     state.micro_mut().clocks_remaining = duration as u16;
 }
 
 pub fn alu_lsl_w_reg_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
-    let count = state.d_long(reg_src as usize) & 63;
+    let count = state.d_long(reg_src as usize) & crate::micro::encoding::shift::MASK_REGISTER_COUNT;
     let val = state.d_word(reg_dst as usize);
     let res = lsl_w(state, count, val);
     state.set_d_word(reg_dst as usize, res);
-    let duration = 2 + (2 * count);
+    let duration = SHIFT_BYTE_WORD_BASE_CLOCKS + (SHIFT_CLOCKS_PER_BIT * count);
     state.micro_mut().clocks_remaining = duration as u16;
 }
 
 pub fn alu_lsl_l_reg_dn(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
-    let count = state.d_long(reg_src as usize) & 63;
+    let count = state.d_long(reg_src as usize) & crate::micro::encoding::shift::MASK_REGISTER_COUNT;
     let val = state.d_long(reg_dst as usize);
     let res = lsl_l(state, count, val);
     state.set_d_long(reg_dst as usize, res);
-    let duration = 4 + (2 * count);
+    let duration = SHIFT_LONG_BASE_CLOCKS + (SHIFT_CLOCKS_PER_BIT * count);
     state.micro_mut().clocks_remaining = duration as u16;
 }
 
@@ -175,13 +180,13 @@ pub static STEPS_LSL_W_AI: [MicroStep; 6] = [
     MicroStep {
         bus_fn: Some(Cpu::step_bus_read_dst_word),
         alu_fn: Some(ea::ea_calc_dst_ai),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::BUS_READ_IDLE,
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_lsl_w_mem),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
@@ -191,13 +196,13 @@ pub static STEPS_LSL_W_PI: [MicroStep; 6] = [
     MicroStep {
         bus_fn: Some(Cpu::step_bus_read_dst_word),
         alu_fn: Some(ea::ea_calc_dst_pi_w),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::BUS_READ_IDLE,
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_lsl_w_mem),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
@@ -207,14 +212,14 @@ pub static STEPS_LSL_W_PD: [MicroStep; 7] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(ea::ea_calc_dst_pd_w),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::READ_DST_WORD,
     common::BUS_READ_IDLE,
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_lsl_w_mem),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
@@ -224,7 +229,7 @@ pub static STEPS_LSL_W_D16_AN: [MicroStep; 8] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_dst_d16_an),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_FINISH,
     common::READ_DST_WORD,
@@ -232,7 +237,7 @@ pub static STEPS_LSL_W_D16_AN: [MicroStep; 8] = [
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_lsl_w_mem),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
@@ -242,7 +247,7 @@ pub static STEPS_LSL_W_IDX_AN: [MicroStep; 9] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(ea::ea_calc_dst_idx_an),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_READ,
     common::FETCH_EXT_FINISH,
@@ -251,7 +256,7 @@ pub static STEPS_LSL_W_IDX_AN: [MicroStep; 9] = [
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_lsl_w_mem),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
@@ -261,7 +266,7 @@ pub static STEPS_LSL_W_ABSW: [MicroStep; 8] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absw),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_FINISH,
     common::READ_DST_WORD,
@@ -269,7 +274,7 @@ pub static STEPS_LSL_W_ABSW: [MicroStep; 8] = [
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_lsl_w_mem),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
@@ -279,13 +284,13 @@ pub static STEPS_LSL_W_ABSL: [MicroStep; 10] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absl_hi),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_FINISH,
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absl_lo),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_FINISH,
     common::READ_DST_WORD,
@@ -293,7 +298,7 @@ pub static STEPS_LSL_W_ABSL: [MicroStep; 10] = [
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_lsl_w_mem),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
@@ -308,16 +313,16 @@ pub static STEPS_LSL_W_ABSL: [MicroStep; 10] = [
 pub const fn decode_lsl_reg_steps(is_reg_count: bool, size: u8) -> Option<&'static [MicroStep]> {
     if is_reg_count {
         match size {
-            0 => Some(&STEPS_LSL_B_REG),
-            1 => Some(&STEPS_LSL_W_REG),
-            2 => Some(&STEPS_LSL_L_REG),
+            operand_size::BYTE => Some(&STEPS_LSL_B_REG),
+            operand_size::WORD => Some(&STEPS_LSL_W_REG),
+            operand_size::LONG => Some(&STEPS_LSL_L_REG),
             _ => None,
         }
     } else {
         match size {
-            0 => Some(&STEPS_LSL_B_IMM),
-            1 => Some(&STEPS_LSL_W_IMM),
-            2 => Some(&STEPS_LSL_L_IMM),
+            operand_size::BYTE => Some(&STEPS_LSL_B_IMM),
+            operand_size::WORD => Some(&STEPS_LSL_W_IMM),
+            operand_size::LONG => Some(&STEPS_LSL_L_IMM),
             _ => None,
         }
     }
@@ -326,14 +331,14 @@ pub const fn decode_lsl_reg_steps(is_reg_count: bool, size: u8) -> Option<&'stat
 /// Decodes the micro-step sequence for LSL memory shift (Word only, Count = 1)
 pub const fn decode_lsl_mem_steps(mode: u8, reg: u8) -> Option<&'static [MicroStep]> {
     match mode {
-        2 => Some(&STEPS_LSL_W_AI),
-        3 => Some(&STEPS_LSL_W_PI),
-        4 => Some(&STEPS_LSL_W_PD),
-        5 => Some(&STEPS_LSL_W_D16_AN),
-        6 => Some(&STEPS_LSL_W_IDX_AN),
-        7 => match reg {
-            0 => Some(&STEPS_LSL_W_ABSW),
-            1 => Some(&STEPS_LSL_W_ABSL),
+        mode::INDIRECT => Some(&STEPS_LSL_W_AI),
+        mode::POSTINCREMENT => Some(&STEPS_LSL_W_PI),
+        mode::PREDECREMENT => Some(&STEPS_LSL_W_PD),
+        mode::DISPLACEMENT => Some(&STEPS_LSL_W_D16_AN),
+        mode::INDEXED => Some(&STEPS_LSL_W_IDX_AN),
+        mode::EXTENDED => match reg {
+            extended_mode::ABSOLUTE_WORD => Some(&STEPS_LSL_W_ABSW),
+            extended_mode::ABSOLUTE_LONG => Some(&STEPS_LSL_W_ABSL),
             _ => None,
         },
         _ => None,

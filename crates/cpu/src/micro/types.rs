@@ -74,6 +74,8 @@ impl PartialEq for MicroStep {
 impl Eq for MicroStep {}
 
 impl MicroStep {
+    pub const CCK_CLOCKS: u8 = 2;
+
     /// Creates an instantaneous ALU micro-step (0 base clocks, no bus cycle)
     #[inline(always)]
     pub const fn alu(alu_fn: AluFn) -> Self {
@@ -90,7 +92,7 @@ impl MicroStep {
         Self {
             bus_fn: Some(bus_fn),
             alu_fn: None,
-            base_clocks: 2,
+            base_clocks: MicroStep::CCK_CLOCKS,
         }
     }
 
@@ -100,7 +102,7 @@ impl MicroStep {
         Self {
             bus_fn: None,
             alu_fn: None,
-            base_clocks: 2,
+            base_clocks: MicroStep::CCK_CLOCKS,
         }
     }
 

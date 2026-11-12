@@ -31,7 +31,7 @@ def check_semantic_registers():
             current_mod = "Denise"
         elif line.startswith("pub mod paula"):
             current_mod = "Paula"
-        m = re.search(r"pub\s+const\s+([A-Z0-9_]+)\s*:\s*u16\s*=\s*(0x[0-9A-Fa-f]+);", line)
+        m = re.search(r"pub\s+const\s+REGISTER_([A-Z0-9_]+)\s*:\s*u16\s*=\s*(0x[0-9A-Fa-f]+);", line)
         if m and current_mod:
             name = m.group(1)
             offset = int(m.group(2), 16)
@@ -109,7 +109,7 @@ def check_semantic_memory_map():
     registers_text = registers_path.read_text(encoding="utf-8")
 
     code_constants = {}
-    for line in (code_text + banks_path.read_text(encoding="utf-8")).splitlines():
+    for line in (code_text + banks_path.read_text(encoding="utf-8") + registers_text).splitlines():
         line = line.strip()
         m = re.search(r"pub\s+const\s+([A-Z0-9_]+)\s*:\s*u\d+\s*=\s*(0x[0-9A-Fa-f]+);", line)
         if m:
@@ -119,7 +119,7 @@ def check_semantic_memory_map():
         module = re.search(rf"pub mod {chip}\s*\{{(.*?)\n    \}}", registers_text, re.DOTALL)
         if module:
             for register, suffix in (("PRA", "START"), ("CRB", "END")):
-                match = re.search(rf"pub const {register}: u32 = (0x[0-9A-Fa-f]+);", module.group(1))
+                match = re.search(rf"pub const REGISTER_{register}: u32 = (0x[0-9A-Fa-f]+);", module.group(1))
                 if match:
                     code_constants[f"{prefix}_{suffix}"] = int(match.group(1), 16)
 
@@ -135,7 +135,7 @@ def check_semantic_memory_map():
         (r"\$DC", "BANK_RTC", 0xDC),
         (r"\$DE-\$DF", "CUSTOM_BANK_FIRST", 0xDE),
         (r"\$DE-\$DF", "CUSTOM_BANK_LAST", 0xDF),
-        (r"\$DE0000\s*-\s*\$DFFFFF", "CUSTOM_REG_OFFSET_MASK", 0x01FE),
+        (r"\$DE0000\s*-\s*\$DFFFFF", "MASK_CUSTOM_REG_OFFSET", 0x01FE),
     ]
 
     issues = []

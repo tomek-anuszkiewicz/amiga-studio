@@ -7,9 +7,12 @@
 
 use crate::micro::common;
 use crate::micro::ea;
+use crate::micro::encoding::{extended_mode, mode};
 use crate::micro::types::MicroStep;
 use crate::state::CpuState;
 use crate::Cpu;
+
+const STATUS_WRITE_CLOCKS: u8 = 4;
 
 // ============================================================================
 // Privilege and Setup ALU Callbacks
@@ -46,7 +49,7 @@ pub fn alu_set_ccr(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 pub static ALU_SET_CCR_4CLK: MicroStep = MicroStep {
     bus_fn: None,
     alu_fn: Some(alu_set_ccr),
-    base_clocks: 4,
+    base_clocks: STATUS_WRITE_CLOCKS,
 };
 
 pub fn alu_set_sr(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
@@ -56,7 +59,7 @@ pub fn alu_set_sr(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 pub static ALU_SET_SR_4CLK: MicroStep = MicroStep {
     bus_fn: None,
     alu_fn: Some(alu_set_sr),
-    base_clocks: 4,
+    base_clocks: STATUS_WRITE_CLOCKS,
 };
 
 // ============================================================================
@@ -76,7 +79,7 @@ pub static STEPS_MOVE_TO_CCR_AI: [MicroStep; 7] = [
     MicroStep {
         bus_fn: Some(Cpu::step_bus_read_src_word),
         alu_fn: Some(ea::ea_calc_src_ai),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::BUS_READ_IDLE,
     ALU_SET_CCR_4CLK,
@@ -90,7 +93,7 @@ pub static STEPS_MOVE_TO_CCR_PI: [MicroStep; 7] = [
     MicroStep {
         bus_fn: Some(Cpu::step_bus_read_src_word),
         alu_fn: Some(ea::ea_calc_src_pi_w),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::BUS_READ_IDLE,
     ALU_SET_CCR_4CLK,
@@ -104,7 +107,7 @@ pub static STEPS_MOVE_TO_CCR_PD: [MicroStep; 8] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(ea::ea_calc_src_pd_w),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::READ_SRC_WORD,
     common::BUS_READ_IDLE,
@@ -119,7 +122,7 @@ pub static STEPS_MOVE_TO_CCR_D16: [MicroStep; 9] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_src_d16_an),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_FINISH,
     common::READ_SRC_WORD,
@@ -135,7 +138,7 @@ pub static STEPS_MOVE_TO_CCR_IDX: [MicroStep; 10] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(ea::ea_calc_src_idx_an),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_READ,
     common::FETCH_EXT_FINISH,
@@ -152,7 +155,7 @@ pub static STEPS_MOVE_TO_CCR_AW: [MicroStep; 9] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absw),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_FINISH,
     common::READ_SRC_WORD,
@@ -168,13 +171,13 @@ pub static STEPS_MOVE_TO_CCR_AL: [MicroStep; 11] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absl_hi),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_FINISH,
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absl_lo),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_FINISH,
     common::READ_SRC_WORD,
@@ -190,7 +193,7 @@ pub static STEPS_MOVE_TO_CCR_PC_D16: [MicroStep; 9] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_d16_pc),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_FINISH,
     common::READ_SRC_WORD,
@@ -206,7 +209,7 @@ pub static STEPS_MOVE_TO_CCR_PC_IDX: [MicroStep; 10] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(ea::ea_calc_idx_pc),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_READ,
     common::FETCH_EXT_FINISH,
@@ -223,7 +226,7 @@ pub static STEPS_MOVE_TO_CCR_IMM: [MicroStep; 7] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_imm_w),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_FINISH,
     ALU_SET_CCR_4CLK,
@@ -252,7 +255,7 @@ pub static STEPS_MOVE_TO_SR_AI: [MicroStep; 8] = [
     MicroStep {
         bus_fn: Some(Cpu::step_bus_read_src_word),
         alu_fn: Some(ea::ea_calc_src_ai),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::BUS_READ_IDLE,
     ALU_SET_SR_4CLK,
@@ -267,7 +270,7 @@ pub static STEPS_MOVE_TO_SR_PI: [MicroStep; 8] = [
     MicroStep {
         bus_fn: Some(Cpu::step_bus_read_src_word),
         alu_fn: Some(ea::ea_calc_src_pi_w),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::BUS_READ_IDLE,
     ALU_SET_SR_4CLK,
@@ -282,7 +285,7 @@ pub static STEPS_MOVE_TO_SR_PD: [MicroStep; 9] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(ea::ea_calc_src_pd_w),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::READ_SRC_WORD,
     common::BUS_READ_IDLE,
@@ -298,7 +301,7 @@ pub static STEPS_MOVE_TO_SR_D16: [MicroStep; 10] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_src_d16_an),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_FINISH,
     common::READ_SRC_WORD,
@@ -315,7 +318,7 @@ pub static STEPS_MOVE_TO_SR_IDX: [MicroStep; 11] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(ea::ea_calc_src_idx_an),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_READ,
     common::FETCH_EXT_FINISH,
@@ -333,7 +336,7 @@ pub static STEPS_MOVE_TO_SR_AW: [MicroStep; 10] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absw),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_FINISH,
     common::READ_SRC_WORD,
@@ -350,13 +353,13 @@ pub static STEPS_MOVE_TO_SR_AL: [MicroStep; 12] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absl_hi),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_FINISH,
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absl_lo),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_FINISH,
     common::READ_SRC_WORD,
@@ -373,7 +376,7 @@ pub static STEPS_MOVE_TO_SR_PC_D16: [MicroStep; 10] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_d16_pc),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_FINISH,
     common::READ_SRC_WORD,
@@ -390,7 +393,7 @@ pub static STEPS_MOVE_TO_SR_PC_IDX: [MicroStep; 11] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(ea::ea_calc_idx_pc),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_READ,
     common::FETCH_EXT_FINISH,
@@ -408,7 +411,7 @@ pub static STEPS_MOVE_TO_SR_IMM: [MicroStep; 8] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_imm_w),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_FINISH,
     ALU_SET_SR_4CLK,
@@ -430,7 +433,7 @@ pub fn alu_move_from_sr_dn(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 pub static ALU_MOVE_FROM_SR_DN: MicroStep = MicroStep {
     bus_fn: None,
     alu_fn: Some(alu_move_from_sr_dn),
-    base_clocks: 2,
+    base_clocks: MicroStep::CCK_CLOCKS,
 };
 
 pub static STEPS_MOVE_FROM_SR_DN: [MicroStep; 3] = [
@@ -447,13 +450,13 @@ pub static STEPS_MOVE_FROM_SR_AI: [MicroStep; 6] = [
     MicroStep {
         bus_fn: Some(Cpu::step_bus_read_dst_word),
         alu_fn: Some(ea::ea_calc_dst_ai),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::BUS_READ_IDLE,
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_move_from_sr_init),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
@@ -464,13 +467,13 @@ pub static STEPS_MOVE_FROM_SR_PI: [MicroStep; 6] = [
     MicroStep {
         bus_fn: Some(Cpu::step_bus_read_dst_word),
         alu_fn: Some(ea::ea_calc_dst_pi_w),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::BUS_READ_IDLE,
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_move_from_sr_init),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
@@ -481,14 +484,14 @@ pub static STEPS_MOVE_FROM_SR_PD: [MicroStep; 7] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(ea::ea_calc_dst_pd_w),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::READ_DST_WORD,
     common::BUS_READ_IDLE,
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_move_from_sr_init),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
@@ -499,7 +502,7 @@ pub static STEPS_MOVE_FROM_SR_D16: [MicroStep; 8] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_dst_d16_an),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_FINISH,
     common::READ_DST_WORD,
@@ -507,7 +510,7 @@ pub static STEPS_MOVE_FROM_SR_D16: [MicroStep; 8] = [
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_move_from_sr_init),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
@@ -518,7 +521,7 @@ pub static STEPS_MOVE_FROM_SR_IDX: [MicroStep; 9] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(ea::ea_calc_dst_idx_an),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_READ,
     common::FETCH_EXT_FINISH,
@@ -527,7 +530,7 @@ pub static STEPS_MOVE_FROM_SR_IDX: [MicroStep; 9] = [
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_move_from_sr_init),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
@@ -538,7 +541,7 @@ pub static STEPS_MOVE_FROM_SR_AW: [MicroStep; 8] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absw),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_FINISH,
     common::READ_DST_WORD,
@@ -546,7 +549,7 @@ pub static STEPS_MOVE_FROM_SR_AW: [MicroStep; 8] = [
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_move_from_sr_init),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
@@ -557,13 +560,13 @@ pub static STEPS_MOVE_FROM_SR_AL: [MicroStep; 10] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absl_hi),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_FINISH,
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absl_lo),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_FINISH,
     common::READ_DST_WORD,
@@ -571,7 +574,7 @@ pub static STEPS_MOVE_FROM_SR_AL: [MicroStep; 10] = [
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_move_from_sr_init),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
@@ -584,18 +587,18 @@ pub static STEPS_MOVE_FROM_SR_AL: [MicroStep; 10] = [
 
 pub const fn decode_move_to_ccr_steps(mode: u8, reg: u8) -> Option<&'static [MicroStep]> {
     match mode {
-        0 => Some(&STEPS_MOVE_TO_CCR_DN),
-        2 => Some(&STEPS_MOVE_TO_CCR_AI),
-        3 => Some(&STEPS_MOVE_TO_CCR_PI),
-        4 => Some(&STEPS_MOVE_TO_CCR_PD),
-        5 => Some(&STEPS_MOVE_TO_CCR_D16),
-        6 => Some(&STEPS_MOVE_TO_CCR_IDX),
-        7 => match reg {
-            0 => Some(&STEPS_MOVE_TO_CCR_AW),
-            1 => Some(&STEPS_MOVE_TO_CCR_AL),
-            2 => Some(&STEPS_MOVE_TO_CCR_PC_D16),
-            3 => Some(&STEPS_MOVE_TO_CCR_PC_IDX),
-            4 => Some(&STEPS_MOVE_TO_CCR_IMM),
+        mode::DATA_REGISTER => Some(&STEPS_MOVE_TO_CCR_DN),
+        mode::INDIRECT => Some(&STEPS_MOVE_TO_CCR_AI),
+        mode::POSTINCREMENT => Some(&STEPS_MOVE_TO_CCR_PI),
+        mode::PREDECREMENT => Some(&STEPS_MOVE_TO_CCR_PD),
+        mode::DISPLACEMENT => Some(&STEPS_MOVE_TO_CCR_D16),
+        mode::INDEXED => Some(&STEPS_MOVE_TO_CCR_IDX),
+        mode::EXTENDED => match reg {
+            extended_mode::ABSOLUTE_WORD => Some(&STEPS_MOVE_TO_CCR_AW),
+            extended_mode::ABSOLUTE_LONG => Some(&STEPS_MOVE_TO_CCR_AL),
+            extended_mode::PC_DISPLACEMENT => Some(&STEPS_MOVE_TO_CCR_PC_D16),
+            extended_mode::PC_INDEXED => Some(&STEPS_MOVE_TO_CCR_PC_IDX),
+            extended_mode::IMMEDIATE => Some(&STEPS_MOVE_TO_CCR_IMM),
             _ => None,
         },
         _ => None,
@@ -604,18 +607,18 @@ pub const fn decode_move_to_ccr_steps(mode: u8, reg: u8) -> Option<&'static [Mic
 
 pub const fn decode_move_to_sr_steps(mode: u8, reg: u8) -> Option<&'static [MicroStep]> {
     match mode {
-        0 => Some(&STEPS_MOVE_TO_SR_DN),
-        2 => Some(&STEPS_MOVE_TO_SR_AI),
-        3 => Some(&STEPS_MOVE_TO_SR_PI),
-        4 => Some(&STEPS_MOVE_TO_SR_PD),
-        5 => Some(&STEPS_MOVE_TO_SR_D16),
-        6 => Some(&STEPS_MOVE_TO_SR_IDX),
-        7 => match reg {
-            0 => Some(&STEPS_MOVE_TO_SR_AW),
-            1 => Some(&STEPS_MOVE_TO_SR_AL),
-            2 => Some(&STEPS_MOVE_TO_SR_PC_D16),
-            3 => Some(&STEPS_MOVE_TO_SR_PC_IDX),
-            4 => Some(&STEPS_MOVE_TO_SR_IMM),
+        mode::DATA_REGISTER => Some(&STEPS_MOVE_TO_SR_DN),
+        mode::INDIRECT => Some(&STEPS_MOVE_TO_SR_AI),
+        mode::POSTINCREMENT => Some(&STEPS_MOVE_TO_SR_PI),
+        mode::PREDECREMENT => Some(&STEPS_MOVE_TO_SR_PD),
+        mode::DISPLACEMENT => Some(&STEPS_MOVE_TO_SR_D16),
+        mode::INDEXED => Some(&STEPS_MOVE_TO_SR_IDX),
+        mode::EXTENDED => match reg {
+            extended_mode::ABSOLUTE_WORD => Some(&STEPS_MOVE_TO_SR_AW),
+            extended_mode::ABSOLUTE_LONG => Some(&STEPS_MOVE_TO_SR_AL),
+            extended_mode::PC_DISPLACEMENT => Some(&STEPS_MOVE_TO_SR_PC_D16),
+            extended_mode::PC_INDEXED => Some(&STEPS_MOVE_TO_SR_PC_IDX),
+            extended_mode::IMMEDIATE => Some(&STEPS_MOVE_TO_SR_IMM),
             _ => None,
         },
         _ => None,
@@ -624,15 +627,15 @@ pub const fn decode_move_to_sr_steps(mode: u8, reg: u8) -> Option<&'static [Micr
 
 pub const fn decode_move_from_sr_steps(mode: u8, reg: u8) -> Option<&'static [MicroStep]> {
     match mode {
-        0 => Some(&STEPS_MOVE_FROM_SR_DN),
-        2 => Some(&STEPS_MOVE_FROM_SR_AI),
-        3 => Some(&STEPS_MOVE_FROM_SR_PI),
-        4 => Some(&STEPS_MOVE_FROM_SR_PD),
-        5 => Some(&STEPS_MOVE_FROM_SR_D16),
-        6 => Some(&STEPS_MOVE_FROM_SR_IDX),
-        7 => match reg {
-            0 => Some(&STEPS_MOVE_FROM_SR_AW),
-            1 => Some(&STEPS_MOVE_FROM_SR_AL),
+        mode::DATA_REGISTER => Some(&STEPS_MOVE_FROM_SR_DN),
+        mode::INDIRECT => Some(&STEPS_MOVE_FROM_SR_AI),
+        mode::POSTINCREMENT => Some(&STEPS_MOVE_FROM_SR_PI),
+        mode::PREDECREMENT => Some(&STEPS_MOVE_FROM_SR_PD),
+        mode::DISPLACEMENT => Some(&STEPS_MOVE_FROM_SR_D16),
+        mode::INDEXED => Some(&STEPS_MOVE_FROM_SR_IDX),
+        mode::EXTENDED => match reg {
+            extended_mode::ABSOLUTE_WORD => Some(&STEPS_MOVE_FROM_SR_AW),
+            extended_mode::ABSOLUTE_LONG => Some(&STEPS_MOVE_FROM_SR_AL),
             _ => None,
         },
         _ => None,

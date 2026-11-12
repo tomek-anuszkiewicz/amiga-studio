@@ -1,13 +1,17 @@
 //! Paula register reads, queued writes and private due-event application.
 
-use super::{
-    Paula, DSKBYTR_DATA_MASK, DSKBYTR_DISKWRITE, DSKBYTR_DMAON, DSKBYTR_DSKBYT, DSKBYTR_DSKEN,
-    DSKLEN_WRITE_FLAG,
-};
+use super::{Paula, BIT_DSKLEN_WRITE_FLAG};
 use config::custom_reg::paula as reg;
+use config::mask::dskbytr::{
+    BIT_DSKBYTR_DISKWRITE, BIT_DSKBYTR_DMAON, BIT_DSKBYTR_DSKBYT, MASK_DSKBYTR_DATA,
+};
+use config::{audio_disk_control as adkcon, mask::dmacon};
 use config::{
     stage_mutation, MutationMode, DMACON_WRITE_DELAY_CCK, PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
 };
+
+const MASK_PAULA_DMA: u16 = dmacon::BIT_DSKEN | dmacon::MASK_AUD_ALL;
+const BIT_DSKLEN_DMA_ENABLE: u16 = 0x8000;
 
 impl Paula {
     /// Capacity preflight for an atomic transfer with multiple receivers.
@@ -37,7 +41,7 @@ impl Paula {
     #[inline]
     pub fn set_dmacon(&mut self, val: u16) -> bool {
         self.schedule_register(
-            reg::DMACON,
+            reg::REGISTER_DMACON,
             val,
             DMACON_WRITE_DELAY_CCK,
             MutationMode::Pipeline,
@@ -48,7 +52,7 @@ impl Paula {
     #[inline]
     pub fn set_intena(&mut self, val: u16) -> bool {
         self.schedule_register(
-            reg::INTENA,
+            reg::REGISTER_INTENA,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
             MutationMode::Pipeline,
@@ -59,7 +63,7 @@ impl Paula {
     #[inline]
     pub fn set_intreq(&mut self, val: u16) -> bool {
         self.schedule_register(
-            reg::INTREQ,
+            reg::REGISTER_INTREQ,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
             MutationMode::Pipeline,
@@ -70,7 +74,7 @@ impl Paula {
     #[inline]
     pub fn set_adkcon(&mut self, val: u16) -> bool {
         self.schedule_register(
-            reg::ADKCON,
+            reg::REGISTER_ADKCON,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
             MutationMode::Pipeline,
@@ -81,7 +85,7 @@ impl Paula {
     #[inline]
     pub fn set_dskdat(&mut self, val: u16) -> bool {
         self.schedule_register(
-            reg::DSKDAT,
+            reg::REGISTER_DSKDAT,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
             MutationMode::Pipeline,
@@ -92,7 +96,7 @@ impl Paula {
     #[inline]
     pub fn set_dsklen(&mut self, val: u16) -> bool {
         self.schedule_register(
-            reg::DSKLEN,
+            reg::REGISTER_DSKLEN,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
             MutationMode::Pipeline,
@@ -103,7 +107,7 @@ impl Paula {
     #[inline]
     pub fn set_dsksync(&mut self, val: u16) -> bool {
         self.schedule_register(
-            reg::DSKSYNC,
+            reg::REGISTER_DSKSYNC,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
             MutationMode::Pipeline,
@@ -114,7 +118,7 @@ impl Paula {
     #[inline]
     pub fn set_serdat(&mut self, val: u16) -> bool {
         self.schedule_register(
-            reg::SERDAT,
+            reg::REGISTER_SERDAT,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
             MutationMode::Pipeline,
@@ -125,7 +129,7 @@ impl Paula {
     #[inline]
     pub fn set_serper(&mut self, val: u16) -> bool {
         self.schedule_register(
-            reg::SERPER,
+            reg::REGISTER_SERPER,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
             MutationMode::Pipeline,
@@ -136,7 +140,7 @@ impl Paula {
     #[inline]
     pub fn set_potgo(&mut self, val: u16) -> bool {
         self.schedule_register(
-            reg::POTGO,
+            reg::REGISTER_POTGO,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
             MutationMode::Pipeline,
@@ -146,11 +150,11 @@ impl Paula {
     /// Queues the audlen family; active state changes only when due.
     #[inline]
     pub fn set_audlen(&mut self, index: usize, val: u16) -> bool {
-        if index >= 4 {
+        if index >= config::AUDIO_CHANNEL_COUNT {
             return false;
         }
         self.schedule_register(
-            reg::AUD0LEN + (index as u16) * 16,
+            reg::REGISTER_AUD0LEN + (index as u16) * config::AUDIO_REGISTER_STRIDE,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
             MutationMode::Pipeline,
@@ -160,11 +164,11 @@ impl Paula {
     /// Queues the audper family; active state changes only when due.
     #[inline]
     pub fn set_audper(&mut self, index: usize, val: u16) -> bool {
-        if index >= 4 {
+        if index >= config::AUDIO_CHANNEL_COUNT {
             return false;
         }
         self.schedule_register(
-            reg::AUD0PER + (index as u16) * 16,
+            reg::REGISTER_AUD0PER + (index as u16) * config::AUDIO_REGISTER_STRIDE,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
             MutationMode::Pipeline,
@@ -174,11 +178,11 @@ impl Paula {
     /// Queues the audvol family; active state changes only when due.
     #[inline]
     pub fn set_audvol(&mut self, index: usize, val: u16) -> bool {
-        if index >= 4 {
+        if index >= config::AUDIO_CHANNEL_COUNT {
             return false;
         }
         self.schedule_register(
-            reg::AUD0VOL + (index as u16) * 16,
+            reg::REGISTER_AUD0VOL + (index as u16) * config::AUDIO_REGISTER_STRIDE,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
             MutationMode::Pipeline,
@@ -188,11 +192,11 @@ impl Paula {
     /// Queues the auddat family; active state changes only when due.
     #[inline]
     pub fn set_auddat(&mut self, index: usize, val: u16) -> bool {
-        if index >= 4 {
+        if index >= config::AUDIO_CHANNEL_COUNT {
             return false;
         }
         self.schedule_register(
-            reg::AUD0DAT + (index as u16) * 16,
+            reg::REGISTER_AUD0DAT + (index as u16) * config::AUDIO_REGISTER_STRIDE,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
             MutationMode::Pipeline,
@@ -201,62 +205,72 @@ impl Paula {
 
     /// Commits a register write directly into active Paula silicon state
     pub(super) fn apply_register_write(&mut self, offset: u16, val: u16) {
-        match offset & 0x1FE {
-            reg::INTENA => self.apply_intena(val),
-            reg::INTREQ => self.apply_intreq(val),
-            reg::ADKCON => {
+        match offset & config::MASK_CUSTOM_REG_OFFSET {
+            reg::REGISTER_INTENA => self.apply_intena(val),
+            reg::REGISTER_INTREQ => self.apply_intreq(val),
+            reg::REGISTER_ADKCON => {
                 // ADKCON SET/CLR logic
-                if (val & 0x8000) != 0 {
-                    self.adkcon |= val & 0x7FFF;
+                if (val & adkcon::BIT_SET_CLR) != 0 {
+                    self.adkcon |= val & adkcon::MASK_WRITE;
                 } else {
-                    self.adkcon &= !(val & 0x7FFF);
+                    self.adkcon &= !(val & adkcon::MASK_WRITE);
                 }
                 self.audio.set_adkcon(self.adkcon);
             }
-            reg::DMACON => {
+            reg::REGISTER_DMACON => {
                 // DMACON broadcast: update Paula's local channel enables (AUD0..3EN, DSKEN, DMAEN)
-                if (val & 0x8000) != 0 {
-                    if (val & 0x0200) != 0 {
+                if (val & dmacon::BIT_SET_CLR) != 0 {
+                    if (val & dmacon::BIT_DMAEN) != 0 {
                         self.dma_master = true;
                     }
-                    self.dma_enables |= val & 0x001F;
+                    self.dma_enables |= val & MASK_PAULA_DMA;
                 } else {
-                    if (val & 0x0200) != 0 {
+                    if (val & dmacon::BIT_DMAEN) != 0 {
                         self.dma_master = false;
                     }
-                    self.dma_enables &= !(val & 0x001F);
+                    self.dma_enables &= !(val & MASK_PAULA_DMA);
                 }
-                self.audio
-                    .set_dma_enables((self.dma_enables & 0x000F) as u8, self.dma_master);
+                self.audio.set_dma_enables(
+                    (self.dma_enables & dmacon::MASK_AUD_ALL) as u8,
+                    self.dma_master,
+                );
             }
-            reg::SERDAT => self.serial_port.write_serdat(val),
-            reg::SERPER => self.serial_port.write_serper(val),
-            reg::POTGO => self.potgo = val,
-            reg::DSKLEN => self.apply_dsklen(val),
-            reg::DSKDAT => self.dskdat = val,
-            reg::DSKSYNC => self.dsksync = val,
+            reg::REGISTER_SERDAT => self.serial_port.write_serdat(val),
+            reg::REGISTER_SERPER => self.serial_port.write_serper(val),
+            reg::REGISTER_POTGO => self.potgo = val,
+            reg::REGISTER_DSKLEN => self.apply_dsklen(val),
+            reg::REGISTER_DSKDAT => self.dskdat = val,
+            reg::REGISTER_DSKSYNC => self.dsksync = val,
 
-            reg::AUD0LEN => self.audio.set_len(0, val),
-            reg::AUD0PER => self.audio.set_per(0, val),
-            reg::AUD0VOL => self.audio.set_vol(0, (val & 0x007F) as u8),
-            reg::AUD0DAT => self.audio.set_dat(0, val),
+            reg::REGISTER_AUD0LEN => self.audio.set_len(0, val),
+            reg::REGISTER_AUD0PER => self.audio.set_per(0, val),
+            reg::REGISTER_AUD0VOL => self
+                .audio
+                .set_vol(0, (val & audio::MASK_VOLUME_REGISTER) as u8),
+            reg::REGISTER_AUD0DAT => self.audio.set_dat(0, val),
 
-            reg::AUD1LEN => self.audio.set_len(1, val),
-            reg::AUD1PER => self.audio.set_per(1, val),
-            reg::AUD1VOL => self.audio.set_vol(1, (val & 0x007F) as u8),
-            reg::AUD1DAT => self.audio.set_dat(1, val),
+            reg::REGISTER_AUD1LEN => self.audio.set_len(1, val),
+            reg::REGISTER_AUD1PER => self.audio.set_per(1, val),
+            reg::REGISTER_AUD1VOL => self
+                .audio
+                .set_vol(1, (val & audio::MASK_VOLUME_REGISTER) as u8),
+            reg::REGISTER_AUD1DAT => self.audio.set_dat(1, val),
 
-            reg::AUD2LEN => self.audio.set_len(2, val),
-            reg::AUD2PER => self.audio.set_per(2, val),
-            reg::AUD2VOL => self.audio.set_vol(2, (val & 0x007F) as u8),
-            reg::AUD2DAT => self.audio.set_dat(2, val),
+            reg::REGISTER_AUD2LEN => self.audio.set_len(2, val),
+            reg::REGISTER_AUD2PER => self.audio.set_per(2, val),
+            reg::REGISTER_AUD2VOL => self
+                .audio
+                .set_vol(2, (val & audio::MASK_VOLUME_REGISTER) as u8),
+            reg::REGISTER_AUD2DAT => self.audio.set_dat(2, val),
 
-            reg::AUD3LEN => self.audio.set_len(3, val),
-            reg::AUD3PER => self.audio.set_per(3, val),
-            reg::AUD3VOL => self.audio.set_vol(3, (val & 0x007F) as u8),
-            reg::AUD3DAT => self.audio.set_dat(3, val),
+            reg::REGISTER_AUD3LEN => self.audio.set_len(3, val),
+            reg::REGISTER_AUD3PER => self.audio.set_per(3, val),
+            reg::REGISTER_AUD3VOL => self
+                .audio
+                .set_vol(3, (val & audio::MASK_VOLUME_REGISTER) as u8),
+            reg::REGISTER_AUD3DAT => self.audio.set_dat(3, val),
 
-            reg::STRHOR => self.sync.cck_since_horizontal = 0,
+            reg::REGISTER_STRHOR => self.sync.cck_since_horizontal = 0,
             _ => {}
         }
     }
@@ -265,15 +279,15 @@ impl Paula {
     /// Write-only registers return floating open bus $FFFF.
     #[inline]
     pub fn read_register(&self, offset: u16) -> u16 {
-        match offset & 0x1FE {
-            reg::ADKCONR => self.adkcon,
-            reg::POT0DAT => self.pot0dat,
-            reg::POT1DAT => self.pot1dat,
-            reg::POTGOR => self.potgor,
-            reg::SERDATR => self.serial_port.serdatr,
-            reg::DSKBYTR => self.peek_dskbytr(),
-            reg::INTENAR => self.interrupts.read_intenar(),
-            reg::INTREQR => self.interrupts.read_intreqr(),
+        match offset & config::MASK_CUSTOM_REG_OFFSET {
+            reg::REGISTER_ADKCONR => self.adkcon,
+            reg::REGISTER_POT0DAT => self.pot0dat,
+            reg::REGISTER_POT1DAT => self.pot1dat,
+            reg::REGISTER_POTGOR => self.potgor,
+            reg::REGISTER_SERDATR => self.serial_port.serdatr,
+            reg::REGISTER_DSKBYTR => self.peek_dskbytr(),
+            reg::REGISTER_INTENAR => self.interrupts.read_intenar(),
+            reg::REGISTER_INTREQR => self.interrupts.read_intreqr(),
             _ => config::OPEN_BUS_WORD,
         }
     }
@@ -281,7 +295,7 @@ impl Paula {
     /// Action method: writes DSKLEN register following the 2-write arming sequence
     fn apply_dsklen(&mut self, val: u16) {
         self.dsklen = val;
-        let dmaen = (val & 0x8000) != 0;
+        let dmaen = (val & BIT_DSKLEN_DMA_ENABLE) != 0;
         if !dmaen {
             self.dma_armed = false;
             self.dma_active = false;
@@ -302,24 +316,24 @@ impl Paula {
     #[inline]
     pub fn read_dskbytr(&mut self) -> u16 {
         let val = self.peek_dskbytr();
-        self.dskbytr &= !DSKBYTR_DSKBYT;
+        self.dskbytr &= !BIT_DSKBYTR_DSKBYT;
         val
     }
 
     /// Assembles composite live DSKBYTR status from raw read word, DSKLEN, and Paula DMA enables.
     #[inline]
     pub fn assemble_dskbytr(&self, floppy_dskbytr: u16) -> u16 {
-        let dmaon = if self.dma_master && (self.dma_enables & DSKBYTR_DSKEN) != 0 {
-            DSKBYTR_DMAON
+        let dmaon = if self.dma_master && (self.dma_enables & dmacon::BIT_DSKEN) != 0 {
+            BIT_DSKBYTR_DMAON
         } else {
             0
         };
-        let diskwrite = if (self.dsklen & DSKLEN_WRITE_FLAG) != 0 {
-            DSKBYTR_DISKWRITE
+        let diskwrite = if (self.dsklen & BIT_DSKLEN_WRITE_FLAG) != 0 {
+            BIT_DSKBYTR_DISKWRITE
         } else {
             0
         };
-        (floppy_dskbytr & DSKBYTR_DATA_MASK) | dmaon | diskwrite
+        (floppy_dskbytr & MASK_DSKBYTR_DATA) | dmaon | diskwrite
     }
 
     /// Writes INTENA register following SET/CLR bit 15 logic

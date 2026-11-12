@@ -23,8 +23,8 @@ pub fn write_byte(machine: &mut A500Machine, addr: u32, value: u8) -> BusResult<
 
 /// Starts with released control lines, then enables CIA-B port B output drivers.
 pub fn configure_drive_control_outputs(machine: &mut A500Machine) {
-    write_byte(machine, config::cia_reg::cia_b::PRB, 0xff);
-    write_byte(machine, config::cia_reg::cia_b::DDRB, 0xff);
+    write_byte(machine, config::cia_reg::cia_b::REGISTER_PRB, 0xff);
+    write_byte(machine, config::cia_reg::cia_b::REGISTER_DDRB, 0xff);
 }
 
 /// Retries a stable live read; a refused access must have no read side effects.

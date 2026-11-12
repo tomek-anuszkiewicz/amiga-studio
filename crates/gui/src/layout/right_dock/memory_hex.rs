@@ -9,6 +9,49 @@ use debugger::{BreakpointManager, WatchAccess};
 use egui::{Color32, RichText, Ui};
 use physical_memory::PhysicalMemory;
 
+const CHIP_RAM_LAST_PAGE: u32 = CHIP_RAM_LAST & !(PAGE_BYTES - 1);
+const LOW_RAM_SHORTCUT: u32 = 0x001000;
+const SCREEN_RAM_SHORTCUT: u32 = 0x070000;
+
+const ROW_BYTES: usize = 16;
+const MASK_ROW_BYTE: u32 = ROW_BYTES as u32 - 1;
+const ROW_HEIGHT: f32 = 18.0;
+const MIN_NAV_ROWS: f32 = 6.0;
+const MAX_NAV_ROWS: f32 = 48.0;
+const PAGE_BYTES: u32 = 256;
+const CONTROL_PAGE_BYTES: u32 = 1024;
+const FAST_SCROLL_ROWS: u32 = 256;
+const CONTROL_SCROLL_ROWS: u32 = 64;
+const SHIFT_SCROLL_ROWS: u32 = 16;
+const ALT_SCROLL_ROWS: u32 = 4;
+const DEFAULT_SCROLL_ROWS: u32 = 1;
+const CHIP_RAM_FIRST: u32 = 0x000000;
+const CHIP_RAM_LAST: u32 = 0x07FFFF;
+const CHIP_HALF_TO_ONE_MB_FIRST: u32 = 0x080000;
+const CHIP_HALF_TO_ONE_MB_LAST: u32 = 0x0FFFFF;
+const CHIP_ONE_TO_TWO_MB_FIRST: u32 = 0x100000;
+const CHIP_ONE_TO_TWO_MB_LAST: u32 = 0x1FFFFF;
+const FAST_EXPANSION_FIRST: u32 = 0x200000;
+const FAST_EXPANSION_LAST: u32 = 0x9FFFFF;
+const CIA_EXPANSION_FIRST: u32 = 0xA00000;
+const CIA_EXPANSION_LAST: u32 = 0xBFFFFF;
+const SLOW_RAM_FIRST: u32 = 0xC00000;
+const SLOW_RAM_LAST: u32 = 0xC7FFFF;
+const RESERVED_RTC_FIRST: u32 = 0xC80000;
+const RESERVED_RTC_LAST: u32 = 0xDDF000;
+const CUSTOM_REGISTERS_FIRST: u32 = 0xDFF000;
+const CUSTOM_REGISTERS_LAST: u32 = 0xDFFFFF;
+const CDTV_ROM_FIRST: u32 = 0xE00000;
+const CDTV_ROM_LAST: u32 = 0xE7FFFF;
+const AUTOCONFIG_IO_FIRST: u32 = 0xE80000;
+const AUTOCONFIG_IO_LAST: u32 = 0xEFFFFF;
+const CARTRIDGE_ROM_FIRST: u32 = 0xF00000;
+const CARTRIDGE_ROM_LAST: u32 = 0xFBFFFF;
+const KICKSTART_ROM_FIRST: u32 = 0xFC0000;
+const KICKSTART_ROM_LAST: u32 = 0xFFFFFF;
+
+pub const MASK_ROW_ADDRESS: u32 = physical_memory::MASK_PHYSICAL_ADDRESS & !MASK_ROW_BYTE;
+
 pub(crate) fn render_memory_hex(
     ui: &mut Ui,
     bus: &mut PhysicalMemory,
@@ -16,11 +59,10 @@ pub(crate) fn render_memory_hex(
     base_addr: &mut u32,
     selected_addr: &mut Option<u32>,
     edit_buffer: &mut (u32, String),
-    prev_memory: Option<(&[u8; 256], u32)>,
+    prev_memory: Option<(&[u8; debugger::session::MEMORY_DIFF_BYTES], u32)>,
     tokens: &ColorTokens,
 ) {
-    const ROW_BYTES: usize = 16;
-    let row_height = 18.0;
+    let row_height = ROW_HEIGHT;
     let start_pos = ui.cursor().min;
     let mem_hex_rect_id = egui::Id::new("mem_hex_rect");
     let prev_rect: Option<egui::Rect> = ui.data(|d| d.get_temp(mem_hex_rect_id));
@@ -29,7 +71,7 @@ pub(crate) fn render_memory_hex(
     // Calculate approximate visible rows for keyboard navigation bounds
     let nav_num_rows = ((ui.available_height() - 90.0) / row_height)
         .floor()
-        .clamp(6.0, 48.0) as usize;
+        .clamp(MIN_NAV_ROWS, MAX_NAV_ROWS) as usize;
     let nav_visible_bytes = (nav_num_rows * ROW_BYTES) as u32;
 
     // 0. Mouse Wheel Infinite Scroll & Keyboard Navigation Handling
@@ -44,28 +86,29 @@ pub(crate) fn render_memory_hex(
             } = event
             {
                 let multiplier: u32 = if modifiers.ctrl && modifiers.shift {
-                    256 // 4 KB per notch
+                    FAST_SCROLL_ROWS // 4 KB per notch
                 } else if modifiers.ctrl || modifiers.command {
-                    64 // 1 KB per notch
+                    CONTROL_SCROLL_ROWS // 1 KB per notch
                 } else if modifiers.shift {
-                    16 // 256 bytes (1 full page) per notch
+                    SHIFT_SCROLL_ROWS // 256 bytes (1 full page) per notch
                 } else if modifiers.alt {
-                    4 // 64 bytes per notch
+                    ALT_SCROLL_ROWS // 64 bytes per notch
                 } else {
-                    1 // 1 row (16 bytes) per notch
+                    DEFAULT_SCROLL_ROWS // 1 row (16 bytes) per notch
                 };
 
                 match unit {
                     egui::MouseWheelUnit::Line => {
                         let clicks = (-delta.y.round()) as i32;
                         if clicks > 0 {
-                            *base_addr = base_addr.wrapping_add((clicks as u32) * multiplier * 16)
-                                & 0x00FF_FFF0;
+                            *base_addr = base_addr
+                                .wrapping_add((clicks as u32) * multiplier * ROW_BYTES as u32)
+                                & MASK_ROW_ADDRESS;
                             scrolled = true;
                         } else if clicks < 0 {
                             *base_addr = base_addr
-                                .wrapping_sub(((-clicks) as u32) * multiplier * 16)
-                                & 0x00FF_FFF0;
+                                .wrapping_sub(((-clicks) as u32) * multiplier * ROW_BYTES as u32)
+                                & MASK_ROW_ADDRESS;
                             scrolled = true;
                         }
                     }
@@ -73,18 +116,20 @@ pub(crate) fn render_memory_hex(
                         let accum_id = ui.id().with("hex_scroll_accum");
                         let mut accum: f32 = ui.data(|d| d.get_temp(accum_id)).unwrap_or(0.0);
                         accum += delta.y;
-                        const POINTS_PER_ROW: f32 = 18.0;
+                        const POINTS_PER_ROW: f32 = ROW_HEIGHT;
                         if accum <= -POINTS_PER_ROW {
                             let rows = (-accum / POINTS_PER_ROW) as u32;
                             accum += (rows as f32) * POINTS_PER_ROW;
-                            *base_addr =
-                                base_addr.wrapping_add(rows * multiplier * 16) & 0x00FF_FFF0;
+                            *base_addr = base_addr
+                                .wrapping_add(rows * multiplier * ROW_BYTES as u32)
+                                & MASK_ROW_ADDRESS;
                             scrolled = true;
                         } else if accum >= POINTS_PER_ROW {
                             let rows = (accum / POINTS_PER_ROW) as u32;
                             accum -= (rows as f32) * POINTS_PER_ROW;
-                            *base_addr =
-                                base_addr.wrapping_sub(rows * multiplier * 16) & 0x00FF_FFF0;
+                            *base_addr = base_addr
+                                .wrapping_sub(rows * multiplier * ROW_BYTES as u32)
+                                & MASK_ROW_ADDRESS;
                             scrolled = true;
                         }
                         ui.data_mut(|d| d.insert_temp(accum_id, accum));
@@ -105,57 +150,61 @@ pub(crate) fn render_memory_hex(
             let ctrl = ui.input(|i| i.modifiers.ctrl || i.modifiers.command);
 
             if let Some(sel) = *selected_addr {
-                let visible_end = base_addr.wrapping_add(nav_visible_bytes) & 0x00FF_FFFF;
+                let visible_end = base_addr.wrapping_add(nav_visible_bytes)
+                    & physical_memory::MASK_PHYSICAL_ADDRESS;
 
                 if ui.input(|i| i.key_pressed(egui::Key::ArrowLeft)) {
-                    let new_sel = sel.wrapping_sub(1) & 0x00FF_FFFF;
+                    let new_sel = sel.wrapping_sub(1) & physical_memory::MASK_PHYSICAL_ADDRESS;
                     *selected_addr = Some(new_sel);
                     if new_sel < *base_addr || new_sel >= visible_end {
-                        *base_addr = new_sel & 0x00FF_FFF0;
+                        *base_addr = new_sel & MASK_ROW_ADDRESS;
                     }
                 } else if ui.input(|i| i.key_pressed(egui::Key::ArrowRight)) {
-                    let new_sel = sel.wrapping_add(1) & 0x00FF_FFFF;
+                    let new_sel = sel.wrapping_add(1) & physical_memory::MASK_PHYSICAL_ADDRESS;
                     *selected_addr = Some(new_sel);
                     if new_sel >= visible_end || new_sel < *base_addr {
-                        *base_addr = new_sel.wrapping_sub(nav_visible_bytes.saturating_sub(16))
-                            & 0x00FF_FFF0;
+                        *base_addr = new_sel
+                            .wrapping_sub(nav_visible_bytes.saturating_sub(ROW_BYTES as u32))
+                            & MASK_ROW_ADDRESS;
                     }
                 } else if ui.input(|i| i.key_pressed(egui::Key::ArrowUp)) {
-                    let new_sel = sel.wrapping_sub(16) & 0x00FF_FFFF;
+                    let new_sel =
+                        sel.wrapping_sub(ROW_BYTES as u32) & physical_memory::MASK_PHYSICAL_ADDRESS;
                     *selected_addr = Some(new_sel);
                     if new_sel < *base_addr || new_sel >= visible_end {
-                        *base_addr = new_sel & 0x00FF_FFF0;
+                        *base_addr = new_sel & MASK_ROW_ADDRESS;
                     }
                 } else if ui.input(|i| i.key_pressed(egui::Key::ArrowDown)) {
-                    let new_sel = sel.wrapping_add(16) & 0x00FF_FFFF;
+                    let new_sel =
+                        sel.wrapping_add(ROW_BYTES as u32) & physical_memory::MASK_PHYSICAL_ADDRESS;
                     *selected_addr = Some(new_sel);
                     if new_sel >= visible_end || new_sel < *base_addr {
-                        *base_addr = base_addr.wrapping_add(16) & 0x00FF_FFF0;
+                        *base_addr = base_addr.wrapping_add(ROW_BYTES as u32) & MASK_ROW_ADDRESS;
                     }
                 } else if ui.input(|i| i.key_pressed(egui::Key::Home)) {
-                    let new_sel = sel & !0x0F;
+                    let new_sel = sel & !MASK_ROW_BYTE;
                     *selected_addr = Some(new_sel);
                 } else if ui.input(|i| i.key_pressed(egui::Key::End)) {
-                    let new_sel = (sel & !0x0F) | 0x0F;
+                    let new_sel = (sel & !MASK_ROW_BYTE) | MASK_ROW_BYTE;
                     *selected_addr = Some(new_sel);
                 } else if ui.input(|i| i.key_pressed(egui::Key::PageUp)) {
                     let step = if ctrl {
-                        1024
+                        CONTROL_PAGE_BYTES
                     } else {
-                        nav_visible_bytes.max(256)
+                        nav_visible_bytes.max(PAGE_BYTES)
                     };
-                    let new_sel = sel.wrapping_sub(step) & 0x00FF_FFFF;
+                    let new_sel = sel.wrapping_sub(step) & physical_memory::MASK_PHYSICAL_ADDRESS;
                     *selected_addr = Some(new_sel);
-                    *base_addr = base_addr.wrapping_sub(step) & 0x00FF_FFF0;
+                    *base_addr = base_addr.wrapping_sub(step) & MASK_ROW_ADDRESS;
                 } else if ui.input(|i| i.key_pressed(egui::Key::PageDown)) {
                     let step = if ctrl {
-                        1024
+                        CONTROL_PAGE_BYTES
                     } else {
-                        nav_visible_bytes.max(256)
+                        nav_visible_bytes.max(PAGE_BYTES)
                     };
-                    let new_sel = sel.wrapping_add(step) & 0x00FF_FFFF;
+                    let new_sel = sel.wrapping_add(step) & physical_memory::MASK_PHYSICAL_ADDRESS;
                     *selected_addr = Some(new_sel);
-                    *base_addr = base_addr.wrapping_add(step) & 0x00FF_FFF0;
+                    *base_addr = base_addr.wrapping_add(step) & MASK_ROW_ADDRESS;
                 } else if ui.input(|i| i.key_pressed(egui::Key::Enter)) {
                     let val = bus.read_byte_debug(sel);
                     edit_buffer.0 = sel;
@@ -167,19 +216,19 @@ pub(crate) fn render_memory_hex(
                 }
             } else {
                 if ui.input(|i| i.key_pressed(egui::Key::PageDown)) {
-                    let step = if ctrl { 1024 } else { 256 };
-                    *base_addr = base_addr.wrapping_add(step) & 0x00FF_FFF0;
+                    let step = if ctrl { CONTROL_PAGE_BYTES } else { PAGE_BYTES };
+                    *base_addr = base_addr.wrapping_add(step) & MASK_ROW_ADDRESS;
                 } else if ui.input(|i| i.key_pressed(egui::Key::PageUp)) {
-                    let step = if ctrl { 1024 } else { 256 };
-                    *base_addr = base_addr.wrapping_sub(step) & 0x00FF_FFF0;
+                    let step = if ctrl { CONTROL_PAGE_BYTES } else { PAGE_BYTES };
+                    *base_addr = base_addr.wrapping_sub(step) & MASK_ROW_ADDRESS;
                 } else if ui.input(|i| i.key_pressed(egui::Key::ArrowDown)) {
-                    *base_addr = base_addr.wrapping_add(16) & 0x00FF_FFF0;
+                    *base_addr = base_addr.wrapping_add(ROW_BYTES as u32) & MASK_ROW_ADDRESS;
                 } else if ui.input(|i| i.key_pressed(egui::Key::ArrowUp)) {
-                    *base_addr = base_addr.wrapping_sub(16) & 0x00FF_FFF0;
+                    *base_addr = base_addr.wrapping_sub(ROW_BYTES as u32) & MASK_ROW_ADDRESS;
                 } else if ui.input(|i| i.key_pressed(egui::Key::Home)) {
-                    *base_addr = 0x000000;
+                    *base_addr = cpu::vector::addr(cpu::vector::RESET_SSP);
                 } else if ui.input(|i| i.key_pressed(egui::Key::End)) {
-                    *base_addr = 0x07FF00;
+                    *base_addr = CHIP_RAM_LAST_PAGE;
                 }
             }
         }
@@ -190,18 +239,18 @@ pub(crate) fn render_memory_hex(
     // 1. Fast Chunk Quick-Jump Buttons
     ui.horizontal_wrapped(|ui| {
         let chunks = [
-            ("Vectors $000000", 0x000000),
-            ("Low RAM $001000", 0x001000),
-            ("Screen $070000", 0x070000),
-            ("Slow RAM $C00000", 0xC00000),
-            ("Kickstart $FC0000", 0xFC0000),
-            ("Custom $DFF000", 0xDFF000),
-            ("CIA-A $BFE001", 0xBFE001),
+            ("Vectors $000000", cpu::vector::addr(cpu::vector::RESET_SSP)),
+            ("Low RAM $001000", LOW_RAM_SHORTCUT),
+            ("Screen $070000", SCREEN_RAM_SHORTCUT),
+            ("Slow RAM $C00000", SLOW_RAM_FIRST),
+            ("Kickstart $FC0000", KICKSTART_ROM_FIRST),
+            ("Custom $DFF000", CUSTOM_REGISTERS_FIRST),
+            ("CIA-A $BFE001", config::cia_reg::cia_a::REGISTER_PRA),
         ];
 
         for (label, addr) in chunks {
             if ui.button(label).clicked() {
-                *base_addr = addr & 0x00FF_FFF0;
+                *base_addr = addr & MASK_ROW_ADDRESS;
             }
         }
     });
@@ -216,7 +265,7 @@ pub(crate) fn render_memory_hex(
         {
             let clean = addr_str.trim().trim_start_matches('$');
             if let Ok(addr) = u32::from_str_radix(clean, 16) {
-                *base_addr = addr & 0x00FF_FFF0;
+                *base_addr = addr & MASK_ROW_ADDRESS;
             }
         }
     });
@@ -245,7 +294,7 @@ pub(crate) fn render_memory_hex(
                     ui.spacing_mut().item_spacing.y = 1.0;
                     for row in 0..num_rows {
                         let row_addr =
-                            base_addr.wrapping_add((row * ROW_BYTES) as u32) & 0x00FF_FFFF;
+                            base_addr.wrapping_add((row * ROW_BYTES) as u32) & physical_memory::MASK_PHYSICAL_ADDRESS;
 
                         ui.horizontal(|ui| {
                             ui.spacing_mut().item_spacing.x = 2.0;
@@ -259,7 +308,7 @@ pub(crate) fn render_memory_hex(
 
                             // 16 Hex Bytes (each allocated with exact size so active editing can NEVER shift columns)
                             for col in 0..ROW_BYTES {
-                                let byte_addr = row_addr.wrapping_add(col as u32) & 0x00FF_FFFF;
+                                let byte_addr = row_addr.wrapping_add(col as u32) & physical_memory::MASK_PHYSICAL_ADDRESS;
                                 let byte_val = bus.read_byte_debug(byte_addr);
                                 let active_wp = breakpoints.find_watchpoint_at(byte_addr).cloned();
                                 let is_selected = *selected_addr == Some(byte_addr);
@@ -318,7 +367,7 @@ pub(crate) fn render_memory_hex(
                                                             || i.key_pressed(egui::Key::Enter)
                                                     }) {
                                                         next_edit_target = Some(
-                                                            byte_addr.wrapping_add(1) & 0x00FF_FFFF,
+                                                            byte_addr.wrapping_add(1) & physical_memory::MASK_PHYSICAL_ADDRESS,
                                                         );
                                                     }
                                                 }
@@ -449,7 +498,7 @@ pub(crate) fn render_memory_hex(
                                         {
                                             breakpoints.add_watchpoint(
                                                 byte_addr,
-                                                byte_addr.wrapping_add(1) & 0x00FF_FFFF,
+                                                byte_addr.wrapping_add(1) & physical_memory::MASK_PHYSICAL_ADDRESS,
                                                 WatchAccess::Write,
                                             );
                                             ui.close_menu();
@@ -460,7 +509,7 @@ pub(crate) fn render_memory_hex(
                                         {
                                             breakpoints.add_watchpoint(
                                                 byte_addr,
-                                                byte_addr.wrapping_add(3) & 0x00FF_FFFF,
+                                                byte_addr.wrapping_add(3) & physical_memory::MASK_PHYSICAL_ADDRESS,
                                                 WatchAccess::Write,
                                             );
                                             ui.close_menu();
@@ -492,7 +541,7 @@ pub(crate) fn render_memory_hex(
                                     }
                                 }
 
-                                if col == 7 {
+                                if col == ROW_BYTES / 2 - 1 {
                                     ui.add_space(5.0); // Space between 8-byte halves
                                 }
                             }
@@ -504,7 +553,7 @@ pub(crate) fn render_memory_hex(
                             // ASCII representation with watchpoint and selection highlights
                             let mut job = egui::text::LayoutJob::default();
                             for col in 0..ROW_BYTES {
-                                let byte_addr = row_addr.wrapping_add(col as u32) & 0x00FF_FFFF;
+                                let byte_addr = row_addr.wrapping_add(col as u32) & physical_memory::MASK_PHYSICAL_ADDRESS;
                                 let byte_val = bus.read_byte_debug(byte_addr);
                                 let is_wp = breakpoints.find_watchpoint_at(byte_addr).is_some();
                                 let is_selected = *selected_addr == Some(byte_addr);
@@ -580,7 +629,7 @@ fn render_vertical_scrollbar(
     track_height: f32,
     tokens: &ColorTokens,
 ) {
-    const MAX_ADDR: f32 = 0x00FF_FFF0 as f32;
+    const MAX_ADDR: f32 = MASK_ROW_ADDRESS as f32;
     const SCROLLBAR_WIDTH: f32 = 10.0;
 
     let (track_rect, track_response) = ui.allocate_exact_size(
@@ -605,14 +654,14 @@ fn render_vertical_scrollbar(
         if let Some(ptr) = ui.input(|i| i.pointer.latest_pos()) {
             let rel_y = (ptr.y - track_rect.top() - thumb_height / 2.0).clamp(0.0, travel);
             let frac = rel_y / travel;
-            *base_addr = ((frac * MAX_ADDR) as u32) & 0x00FF_FFF0;
+            *base_addr = ((frac * MAX_ADDR) as u32) & MASK_ROW_ADDRESS;
         }
     } else if track_response.clicked() {
         if let Some(click_pos) = track_response.interact_pointer_pos() {
             if click_pos.y < thumb_rect.top() {
-                *base_addr = base_addr.wrapping_sub(256) & 0x00FF_FFF0;
+                *base_addr = base_addr.wrapping_sub(PAGE_BYTES) & MASK_ROW_ADDRESS;
             } else if click_pos.y > thumb_rect.bottom() {
-                *base_addr = base_addr.wrapping_add(256) & 0x00FF_FFF0;
+                *base_addr = base_addr.wrapping_add(PAGE_BYTES) & MASK_ROW_ADDRESS;
             }
         }
     }
@@ -638,19 +687,19 @@ fn render_vertical_scrollbar(
 
 /// Helper mapping 24-bit addresses to descriptive Amiga hardware memory regions
 fn memory_region_name(addr: u32) -> &'static str {
-    match addr & 0x00FF_FFFF {
-        0x000000..=0x07FFFF => "Chip RAM (512 KB)",
-        0x080000..=0x0FFFFF => "Extended Chip RAM (0.5-1 MB)",
-        0x100000..=0x1FFFFF => "Extended Chip RAM (1-2 MB)",
-        0x200000..=0x9FFFFF => "Auto-Config Fast RAM (8 MB)",
-        0xA00000..=0xBFFFFF => "CIA / Expansion / Reserved",
-        0xC00000..=0xC7FFFF => "Slow / Pseudo-Fast RAM (512 KB)",
-        0xC80000..=0xDDF000 => "Reserved / Real-Time Clock",
-        0xDFF000..=0xDFFFFF => "Custom Chip Registers",
-        0xE00000..=0xE7FFFF => "Reserved / CDTV ROM",
-        0xE80000..=0xEFFFFF => "Auto-Config I/O Boards",
-        0xF00000..=0xFBFFFF => "Reserved / Cartridge ROM",
-        0xFC0000..=0xFFFFFF => "Kickstart ROM (256 KB)",
+    match addr & physical_memory::MASK_PHYSICAL_ADDRESS {
+        CHIP_RAM_FIRST..=CHIP_RAM_LAST => "Chip RAM (512 KB)",
+        CHIP_HALF_TO_ONE_MB_FIRST..=CHIP_HALF_TO_ONE_MB_LAST => "Extended Chip RAM (0.5-1 MB)",
+        CHIP_ONE_TO_TWO_MB_FIRST..=CHIP_ONE_TO_TWO_MB_LAST => "Extended Chip RAM (1-2 MB)",
+        FAST_EXPANSION_FIRST..=FAST_EXPANSION_LAST => "Auto-Config Fast RAM (8 MB)",
+        CIA_EXPANSION_FIRST..=CIA_EXPANSION_LAST => "CIA / Expansion / Reserved",
+        SLOW_RAM_FIRST..=SLOW_RAM_LAST => "Slow / Pseudo-Fast RAM (512 KB)",
+        RESERVED_RTC_FIRST..=RESERVED_RTC_LAST => "Reserved / Real-Time Clock",
+        CUSTOM_REGISTERS_FIRST..=CUSTOM_REGISTERS_LAST => "Custom Chip Registers",
+        CDTV_ROM_FIRST..=CDTV_ROM_LAST => "Reserved / CDTV ROM",
+        AUTOCONFIG_IO_FIRST..=AUTOCONFIG_IO_LAST => "Auto-Config I/O Boards",
+        CARTRIDGE_ROM_FIRST..=CARTRIDGE_ROM_LAST => "Reserved / Cartridge ROM",
+        KICKSTART_ROM_FIRST..=KICKSTART_ROM_LAST => "Kickstart ROM (256 KB)",
         _ => "Unmapped Space",
     }
 }

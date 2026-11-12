@@ -1,7 +1,7 @@
 //! Motherboard-facing signal state for GamePorts.
 
-use crate::{GamePorts, CIAA_PRA_FIRE_MASK};
-use config::mask::game_port::DIRECTION_INPUTS;
+use crate::{GamePorts, MASK_CIAA_PRA_FIRE};
+use config::mask::game_port::MASK_DIRECTION_INPUTS;
 use serde::{Deserialize, Serialize};
 
 /// Incoming values retained until the next input sampling phase.
@@ -32,10 +32,10 @@ impl Default for GamePortsPins {
         Self {
             incoming: None,
             fire_output_mask: 0,
-            fire_output_high: CIAA_PRA_FIRE_MASK,
+            fire_output_high: MASK_CIAA_PRA_FIRE,
             pot_output_mask: 0,
             pot_output_high: 0,
-            direction_pins: [DIRECTION_INPUTS; 2],
+            direction_pins: [MASK_DIRECTION_INPUTS; 2],
         }
     }
 }

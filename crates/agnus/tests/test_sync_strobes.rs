@@ -6,7 +6,11 @@ fn refresh_slots_drive_address_strobes_instead_of_stored_register_values() {
     // HRM Appendix A: a first-slot STREQU/STRVBL/STRHOR code and optional second-slot LONG.
     for model in [AgnusModel::OcsPal8371, AgnusModel::OcsNtsc8370] {
         let mut agnus = Agnus::new(model);
-        for (line, address) in [(0, reg::STREQU), (20, reg::STRVBL), (100, reg::STRHOR)] {
+        for (line, address) in [
+            (0, reg::REGISTER_STREQU),
+            (20, reg::REGISTER_STRVBL),
+            (100, reg::REGISTER_STRHOR),
+        ] {
             agnus.vpos = line;
             agnus.hpos = 0;
             agnus.step_cck();
@@ -20,7 +24,7 @@ fn refresh_slots_drive_address_strobes_instead_of_stored_register_values() {
         assert_eq!(
             agnus.pins.rga_strobe,
             if model == AgnusModel::OcsNtsc8370 {
-                Some(reg::STRLONG)
+                Some(reg::REGISTER_STRLONG)
             } else {
                 None
             }

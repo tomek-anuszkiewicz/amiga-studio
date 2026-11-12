@@ -22,7 +22,7 @@ fn restoration_does_not_consume_unrouted_cia_output() {
     let mut machine = A500Machine::new(A500Config::default());
     machine.cpu.state.set_stopped(true);
     common::cia::configure_drive_control_outputs(&mut machine);
-    common::cia::write_byte(&mut machine, cia_reg::cia_b::PRB, 0x7f);
+    common::cia::write_byte(&mut machine, cia_reg::cia_b::REGISTER_PRB, 0x7f);
     machine.step_cck();
     assert_eq!(machine.floppy.pins.control_input, 0x7f);
     assert!(machine.cia_b.set_prb(0x75));
@@ -149,7 +149,9 @@ fn reset_cancels_pending_capture_and_bus_synchronization() {
     machine.cpu.state.set_stopped(true);
     assert!(machine.cia_a.set_ddra(1));
     assert_eq!(
-        machine.memory_bus().write_byte(cia_reg::cia_b::PRA, 0),
+        machine
+            .memory_bus()
+            .write_byte(cia_reg::cia_b::REGISTER_PRA, 0),
         BusResult::WaitState
     );
     assert!(machine.cia_b.bus_wait_cck.is_some());
@@ -169,7 +171,7 @@ fn input_port_b_releases_drive_control_without_selecting_or_starting_drives() {
     // The reset output latch is zero, but it does not drive an input pin.
     assert_eq!(machine.cia_b.prb, 0);
     assert_eq!(machine.cia_b.ddrb(), 0);
-    common::cia::write_byte(&mut machine, cia_reg::cia_b::DDRB, 0);
+    common::cia::write_byte(&mut machine, cia_reg::cia_b::REGISTER_DDRB, 0);
     for (index, drive) in machine.floppy.drives.iter().enumerate() {
         assert!(!drive.selected, "DF{index} selected by an input pin");
         assert!(!drive.motor_on, "DF{index} motor started by an input pin");

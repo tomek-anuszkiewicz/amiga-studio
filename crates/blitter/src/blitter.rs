@@ -9,12 +9,17 @@ pub mod phase;
 
 mod registers;
 
+use config::{blitter_fields as field, mask::bltcon};
 pub use line::*;
 pub use minterm::*;
 pub use phase::*;
 
-use config::chip_ram::OCS_DMA_ADDRESS_MASK;
+use config::chip_ram::MASK_OCS_DMA_ADDRESS;
 use serde::{Deserialize, Serialize};
+
+const RESET_AB_DATA: u16 = 0xAAAA;
+const RESET_C_DATA: u16 = 0x5555;
+const BIT_LINE_TEXTURE: u16 = 1;
 
 /// Agnus 4-channel DMA Blitter state and registers
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -127,16 +132,16 @@ impl Blitter {
         self.bltbmod = 0;
         self.bltcmod = 0;
         self.bltdmod = 0;
-        self.bltadat = 0xAAAA;
-        self.bltbdat = 0xAAAA;
-        self.bltcdat = 0x5555;
+        self.bltadat = RESET_AB_DATA;
+        self.bltbdat = RESET_AB_DATA;
+        self.bltcdat = RESET_C_DATA;
         self.aold = 0;
         self.bold = 0;
-        self.anew = 0xAAAA;
-        self.bnew = 0xAAAA;
-        self.ahold = 0xAAAA;
-        self.bhold = 0xAAAA;
-        self.chold = 0x5555;
+        self.anew = RESET_AB_DATA;
+        self.bnew = RESET_AB_DATA;
+        self.ahold = RESET_AB_DATA;
+        self.bhold = RESET_AB_DATA;
+        self.chold = RESET_C_DATA;
         self.dhold = 0;
         self.fill_carry = false;
         self.is_busy = false;
@@ -202,7 +207,7 @@ impl Blitter {
             return;
         }
 
-        if (self.bltcon1 & 0x0001) != 0 {
+        if (self.bltcon1 & bltcon::BIT_LINE) != 0 {
             // Line mode pixel step
             self.step_line_cycle(chip_ram);
         } else {
@@ -213,12 +218,12 @@ impl Blitter {
 
     /// Returns the active micro-phase sequence for a word in Area Mode according to HRM Table 6.2
     #[inline]
-    fn active_word_phases(&self) -> ([BlitterPhase; 4], u8) {
-        let use_a = (self.bltcon0 & 0x0800) != 0;
-        let use_b = (self.bltcon0 & 0x0400) != 0;
-        let use_c = (self.bltcon0 & 0x0200) != 0;
-        let use_d = (self.bltcon0 & 0x0100) != 0;
-        let fill = (self.bltcon1 & 0x0018) != 0;
+    fn active_word_phases(&self) -> ([BlitterPhase; phase::MAX_WORD_PHASES], u8) {
+        let use_a = (self.bltcon0 & bltcon::BIT_USEA) != 0;
+        let use_b = (self.bltcon0 & bltcon::BIT_USEB) != 0;
+        let use_c = (self.bltcon0 & bltcon::BIT_USEC) != 0;
+        let use_d = (self.bltcon0 & bltcon::BIT_USED) != 0;
+        let fill = (self.bltcon1 & field::MASK_FILL) != 0;
         word_phases(use_a, use_b, use_c, use_d, fill)
     }
 
@@ -251,8 +256,8 @@ impl Blitter {
             self.chold = self.bltcdat;
         }
 
-        let ash = (self.bltcon0 >> 12) & 0xF;
-        let bsh = (self.bltcon1 >> 12) & 0xF;
+        let ash = (self.bltcon0 >> field::BIT_SHIFT) & field::MASK_SHIFT_VALUE;
+        let bsh = (self.bltcon1 >> field::BIT_SHIFT) & field::MASK_SHIFT_VALUE;
 
         self.ahold = barrel_shift(self.anew & mask, self.aold, ash, desc);
         self.aold = self.anew & mask;
@@ -264,11 +269,11 @@ impl Blitter {
             self.bhold = self.bnew;
         }
 
-        let minterm = (self.bltcon0 & 0xFF) as u8;
+        let minterm = (self.bltcon0 & bltcon::MASK_MINTERM) as u8;
         self.dhold = eval_minterm(self.ahold, self.bhold, self.chold, minterm);
 
-        if (self.bltcon1 & 0x0018) != 0 {
-            let exclusive = (self.bltcon1 & 0x0010) != 0;
+        if (self.bltcon1 & field::MASK_FILL) != 0 {
+            let exclusive = (self.bltcon1 & bltcon::BIT_IFE) != 0;
             self.dhold = apply_fill(self.dhold, &mut self.fill_carry, exclusive);
         }
 
@@ -278,7 +283,7 @@ impl Blitter {
 
         if use_d {
             config::chip_ram::write_u16(chip_ram, self.bltdpt, self.dhold);
-            self.bltdpt = self.bltdpt.wrapping_add(step as u32) & OCS_DMA_ADDRESS_MASK;
+            self.bltdpt = self.bltdpt.wrapping_add(step as u32) & MASK_OCS_DMA_ADDRESS;
         }
     }
 
@@ -288,12 +293,12 @@ impl Blitter {
         let phase = phases[(self.phase_index as usize).min(count as usize - 1)];
         self.active_phase = phase;
 
-        let use_a = (self.bltcon0 & 0x0800) != 0;
-        let use_b = (self.bltcon0 & 0x0400) != 0;
-        let use_c = (self.bltcon0 & 0x0200) != 0;
-        let use_d = (self.bltcon0 & 0x0100) != 0;
+        let use_a = (self.bltcon0 & bltcon::BIT_USEA) != 0;
+        let use_b = (self.bltcon0 & bltcon::BIT_USEB) != 0;
+        let use_c = (self.bltcon0 & bltcon::BIT_USEC) != 0;
+        let use_d = (self.bltcon0 & bltcon::BIT_USED) != 0;
 
-        let desc = (self.bltcon1 & 0x0002) != 0;
+        let desc = (self.bltcon1 & bltcon::BIT_DESC) != 0;
         let step: i32 = if desc { -2 } else { 2 };
         let amod: i32 = if desc {
             -(self.bltamod as i32)
@@ -320,19 +325,19 @@ impl Blitter {
             BlitterPhase::FetchA => {
                 if use_a {
                     self.anew = config::chip_ram::read_u16(chip_ram, self.bltapt);
-                    self.bltapt = self.bltapt.wrapping_add(step as u32) & OCS_DMA_ADDRESS_MASK;
+                    self.bltapt = self.bltapt.wrapping_add(step as u32) & MASK_OCS_DMA_ADDRESS;
                 }
             }
             BlitterPhase::FetchB => {
                 if use_b {
                     self.bnew = config::chip_ram::read_u16(chip_ram, self.bltbpt);
-                    self.bltbpt = self.bltbpt.wrapping_add(step as u32) & OCS_DMA_ADDRESS_MASK;
+                    self.bltbpt = self.bltbpt.wrapping_add(step as u32) & MASK_OCS_DMA_ADDRESS;
                 }
             }
             BlitterPhase::FetchC => {
                 if use_c {
                     self.chold = config::chip_ram::read_u16(chip_ram, self.bltcpt);
-                    self.bltcpt = self.bltcpt.wrapping_add(step as u32) & OCS_DMA_ADDRESS_MASK;
+                    self.bltcpt = self.bltcpt.wrapping_add(step as u32) & MASK_OCS_DMA_ADDRESS;
                 }
             }
             BlitterPhase::WriteD => {
@@ -357,22 +362,22 @@ impl Blitter {
             self.cur_col += 1;
             if self.cur_col >= self.total_cols {
                 if use_a {
-                    self.bltapt = self.bltapt.wrapping_add(amod as u32) & OCS_DMA_ADDRESS_MASK;
+                    self.bltapt = self.bltapt.wrapping_add(amod as u32) & MASK_OCS_DMA_ADDRESS;
                 }
                 if use_b {
-                    self.bltbpt = self.bltbpt.wrapping_add(bmod as u32) & OCS_DMA_ADDRESS_MASK;
+                    self.bltbpt = self.bltbpt.wrapping_add(bmod as u32) & MASK_OCS_DMA_ADDRESS;
                 }
                 if use_c {
-                    self.bltcpt = self.bltcpt.wrapping_add(cmod as u32) & OCS_DMA_ADDRESS_MASK;
+                    self.bltcpt = self.bltcpt.wrapping_add(cmod as u32) & MASK_OCS_DMA_ADDRESS;
                 }
                 if use_d {
-                    self.bltdpt = self.bltdpt.wrapping_add(dmod as u32) & OCS_DMA_ADDRESS_MASK;
+                    self.bltdpt = self.bltdpt.wrapping_add(dmod as u32) & MASK_OCS_DMA_ADDRESS;
                 }
 
                 self.cur_col = 0;
                 self.cur_row += 1;
-                if (self.bltcon1 & 0x0018) != 0 {
-                    self.fill_carry = (self.bltcon1 & 0x0004) != 0;
+                if (self.bltcon1 & field::MASK_FILL) != 0 {
+                    self.fill_carry = (self.bltcon1 & field::BIT_FILL_CARRY_IN) != 0;
                 }
                 if self.cur_row >= self.total_rows {
                     self.finish_blit();
@@ -383,31 +388,35 @@ impl Blitter {
 
     /// Steps a single pixel in Line mode
     fn step_line_cycle(&mut self, chip_ram: &mut [u8]) {
-        let use_b = (self.bltcon0 & 0x0400) != 0;
-        let use_c = (self.bltcon0 & 0x0200) != 0;
-        let sing = (self.bltcon1 & 0x0002) != 0;
-        let minterm = (self.bltcon0 & 0xFF) as u8;
+        let use_b = (self.bltcon0 & bltcon::BIT_USEB) != 0;
+        let use_c = (self.bltcon0 & bltcon::BIT_USEC) != 0;
+        let sing = (self.bltcon1 & field::BIT_LINE_SINGLE_DOT) != 0;
+        let minterm = (self.bltcon0 & bltcon::MASK_MINTERM) as u8;
 
         if use_b {
             self.bnew = config::chip_ram::read_u16(chip_ram, self.bltbpt);
             self.bltbpt =
-                self.bltbpt.wrapping_add(self.bltbmod as i32 as u32) & OCS_DMA_ADDRESS_MASK;
+                self.bltbpt.wrapping_add(self.bltbmod as i32 as u32) & MASK_OCS_DMA_ADDRESS;
         }
 
         if use_c {
             self.chold = config::chip_ram::read_u16(chip_ram, self.bltcpt);
         }
 
-        let ash = (self.bltcon0 >> 12) & 0xF;
-        let mut bsh = (self.bltcon1 >> 12) & 0xF;
+        let ash = (self.bltcon0 >> field::BIT_SHIFT) & field::MASK_SHIFT_VALUE;
+        let mut bsh = (self.bltcon1 >> field::BIT_SHIFT) & field::MASK_SHIFT_VALUE;
 
         self.ahold = (self.anew & self.bltafwm) >> ash;
 
         let b_rot = ((((self.bnew as u32) << 16) | (self.bnew as u32)) >> bsh) as u16;
-        let texture_mask = if (b_rot & 1) != 0 { 0xFFFF } else { 0x0000 };
+        let texture_mask = if (b_rot & BIT_LINE_TEXTURE) != 0 {
+            u16::MAX
+        } else {
+            0
+        };
 
-        bsh = bsh.wrapping_sub(1) & 0xF;
-        self.bltcon1 = (self.bltcon1 & 0x0FFF) | (bsh << 12);
+        bsh = bsh.wrapping_sub(1) & field::MASK_SHIFT_VALUE;
+        self.bltcon1 = (self.bltcon1 & field::MASK_CONTROL_PRESERVE) | (bsh << field::BIT_SHIFT);
 
         self.dhold = eval_minterm(self.ahold, texture_mask, self.chold, minterm);
 
@@ -449,7 +458,7 @@ impl Blitter {
             }
             self.trigger_blit(self.bltsize);
         }
-        let line_mode = (self.bltcon1 & 0x0001) != 0;
+        let line_mode = (self.bltcon1 & bltcon::BIT_LINE) != 0;
         while self.is_busy {
             if line_mode {
                 self.step_line_cycle(chip_ram);

@@ -5,6 +5,11 @@
 
 use serde::{Deserialize, Serialize};
 
+const BIT_JOY_LEFT: u16 = 1 << 9;
+const BIT_JOY_UP_XOR_LEFT: u16 = 1 << 8;
+const BIT_JOY_RIGHT: u16 = 1 << 1;
+const BIT_JOY_DOWN_XOR_RIGHT: u16 = 1 << 0;
+
 /// Digital Joystick state and directional switch matrix
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct Joystick {
@@ -68,16 +73,16 @@ impl Joystick {
     pub fn joy_dat(&self) -> u16 {
         let mut val = 0u16;
         if self.left {
-            val |= 1 << 9;
+            val |= BIT_JOY_LEFT;
         }
         if self.up ^ self.left {
-            val |= 1 << 8;
+            val |= BIT_JOY_UP_XOR_LEFT;
         }
         if self.right {
-            val |= 1 << 1;
+            val |= BIT_JOY_RIGHT;
         }
         if self.down ^ self.right {
-            val |= 1 << 0;
+            val |= BIT_JOY_DOWN_XOR_RIGHT;
         }
         val
     }

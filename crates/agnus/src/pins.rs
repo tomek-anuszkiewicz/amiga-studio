@@ -4,8 +4,7 @@ use crate::{Agnus, AgnusModel};
 use config::custom_reg::denise as sync;
 use serde::{Deserialize, Serialize};
 
-const FIRST_REFRESH_CCK: u16 = 1;
-const SECOND_REFRESH_CCK: u16 = 3;
+use dma::{REFRESH_FIRST, REFRESH_SECOND};
 const NTSC_EQUALIZATION_LINES: u16 = 10;
 const PAL_EQUALIZATION_LINES: u16 = 8;
 const NTSC_BLANK_LINES: u16 = 21;
@@ -62,10 +61,10 @@ impl Agnus {
             PAL_BLANK_LINES
         };
         self.pins.rga_strobe = match self.hpos {
-            FIRST_REFRESH_CCK if self.vpos < equalization_lines => Some(sync::STREQU),
-            FIRST_REFRESH_CCK if self.vpos < blank_lines => Some(sync::STRVBL),
-            FIRST_REFRESH_CCK => Some(sync::STRHOR),
-            SECOND_REFRESH_CCK if ntsc && self.lol => Some(sync::STRLONG),
+            REFRESH_FIRST if self.vpos < equalization_lines => Some(sync::REGISTER_STREQU),
+            REFRESH_FIRST if self.vpos < blank_lines => Some(sync::REGISTER_STRVBL),
+            REFRESH_FIRST => Some(sync::REGISTER_STRHOR),
+            REFRESH_SECOND if ntsc && self.lol => Some(sync::REGISTER_STRLONG),
             _ => None,
         };
     }

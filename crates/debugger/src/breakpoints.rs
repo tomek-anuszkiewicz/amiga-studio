@@ -30,7 +30,9 @@ impl ConditionRegister {
         match *self {
             ConditionRegister::D(idx) => state.d_long(idx as usize),
             ConditionRegister::A(idx) => state.a_long(idx as usize),
-            ConditionRegister::PC => state.instruction_pc() & 0x00FF_FFFF,
+            ConditionRegister::PC => {
+                state.instruction_pc() & physical_memory::MASK_PHYSICAL_ADDRESS
+            }
             ConditionRegister::SR => state.sr() as u32,
             ConditionRegister::CCR => state.ccr() as u32,
         }
@@ -146,7 +148,7 @@ impl BreakpointManager {
 
     /// Adds a PC execution breakpoint
     pub fn add_pc_breakpoint(&mut self, addr: u32) {
-        let addr = addr & 0x00FF_FFFF;
+        let addr = addr & physical_memory::MASK_PHYSICAL_ADDRESS;
         if let Some(bp) = self.pc_breakpoints.iter_mut().find(|b| b.addr == addr) {
             bp.enabled = true;
         } else {
@@ -160,7 +162,7 @@ impl BreakpointManager {
 
     /// Adds a PC execution breakpoint with a conditional expression
     pub fn add_conditional_breakpoint(&mut self, addr: u32, condition: BreakpointCondition) {
-        let addr = addr & 0x00FF_FFFF;
+        let addr = addr & physical_memory::MASK_PHYSICAL_ADDRESS;
         if let Some(bp) = self.pc_breakpoints.iter_mut().find(|b| b.addr == addr) {
             bp.enabled = true;
             bp.condition = Some(condition);
@@ -175,13 +177,13 @@ impl BreakpointManager {
 
     /// Removes a PC execution breakpoint
     pub fn remove_pc_breakpoint(&mut self, addr: u32) {
-        let addr = addr & 0x00FF_FFFF;
+        let addr = addr & physical_memory::MASK_PHYSICAL_ADDRESS;
         self.pc_breakpoints.retain(|b| b.addr != addr);
     }
 
     /// Toggles a PC execution breakpoint on/off
     pub fn toggle_pc_breakpoint(&mut self, addr: u32) {
-        let addr = addr & 0x00FF_FFFF;
+        let addr = addr & physical_memory::MASK_PHYSICAL_ADDRESS;
         if let Some(pos) = self.pc_breakpoints.iter().position(|b| b.addr == addr) {
             self.pc_breakpoints.remove(pos);
         } else {
@@ -192,7 +194,7 @@ impl BreakpointManager {
     /// Checks if a PC breakpoint exists and is active for the specified address
     #[inline]
     pub fn has_pc_breakpoint(&self, addr: u32) -> bool {
-        let addr = addr & 0x00FF_FFFF;
+        let addr = addr & physical_memory::MASK_PHYSICAL_ADDRESS;
         self.pc_breakpoints
             .iter()
             .any(|b| b.addr == addr && b.enabled)
@@ -201,7 +203,7 @@ impl BreakpointManager {
     /// Checks if a PC breakpoint is hit at the given address, evaluating any conditions against `state`
     #[inline]
     pub fn check_pc_with_state(&self, pc: u32, state: &CpuState) -> bool {
-        let pc = pc & 0x00FF_FFFF;
+        let pc = pc & physical_memory::MASK_PHYSICAL_ADDRESS;
         for bp in &self.pc_breakpoints {
             if bp.enabled && bp.addr == pc {
                 if let Some(ref cond) = bp.condition {
@@ -219,7 +221,7 @@ impl BreakpointManager {
     /// Checks if an unconditional PC breakpoint is hit at the given address
     #[inline]
     pub fn check_pc(&self, pc: u32) -> bool {
-        let pc = pc & 0x00FF_FFFF;
+        let pc = pc & physical_memory::MASK_PHYSICAL_ADDRESS;
         self.pc_breakpoints
             .iter()
             .any(|b| b.addr == pc && b.enabled && b.condition.is_none())
@@ -227,8 +229,8 @@ impl BreakpointManager {
 
     /// Adds a memory watchpoint
     pub fn add_watchpoint(&mut self, start: u32, end: u32, access: WatchAccess) {
-        let start = start & 0x00FF_FFFF;
-        let end = end & 0x00FF_FFFF;
+        let start = start & physical_memory::MASK_PHYSICAL_ADDRESS;
+        let end = end & physical_memory::MASK_PHYSICAL_ADDRESS;
         self.watchpoints.push(MemoryWatchpoint {
             start,
             end,
@@ -246,7 +248,7 @@ impl BreakpointManager {
 
     /// Checks if a memory access triggers a watchpoint
     pub fn check_watchpoint(&self, addr: u32, is_write: bool) -> bool {
-        let addr = addr & 0x00FF_FFFF;
+        let addr = addr & physical_memory::MASK_PHYSICAL_ADDRESS;
         for wp in &self.watchpoints {
             if wp.enabled && addr >= wp.start && addr <= wp.end {
                 match wp.access {
@@ -262,7 +264,7 @@ impl BreakpointManager {
 
     /// Finds any active watchpoint covering the specified address
     pub fn find_watchpoint_at(&self, addr: u32) -> Option<&MemoryWatchpoint> {
-        let addr = addr & 0x00FF_FFFF;
+        let addr = addr & physical_memory::MASK_PHYSICAL_ADDRESS;
         self.watchpoints
             .iter()
             .find(|wp| wp.enabled && addr >= wp.start && addr <= wp.end)
@@ -270,7 +272,7 @@ impl BreakpointManager {
 
     /// Toggles a 1-byte watchpoint for the given address and access mode
     pub fn toggle_byte_watchpoint(&mut self, addr: u32, access: WatchAccess) {
-        let addr = addr & 0x00FF_FFFF;
+        let addr = addr & physical_memory::MASK_PHYSICAL_ADDRESS;
         if let Some(pos) = self
             .watchpoints
             .iter()
@@ -284,7 +286,7 @@ impl BreakpointManager {
 
     /// Removes all watchpoints that intersect or cover the given address
     pub fn remove_watchpoints_at(&mut self, addr: u32) {
-        let addr = addr & 0x00FF_FFFF;
+        let addr = addr & physical_memory::MASK_PHYSICAL_ADDRESS;
         self.watchpoints
             .retain(|wp| addr < wp.start || addr > wp.end);
     }

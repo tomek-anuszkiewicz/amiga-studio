@@ -115,7 +115,7 @@ fn file_roundtrip_resumes_an_undelivered_rga_event() {
     machine.step_cck();
     assert_eq!(
         machine.denise.pins.incoming.as_ref().unwrap().rga_strobe,
-        Some(config::custom_reg::denise::STRHOR)
+        Some(config::custom_reg::denise::REGISTER_STRHOR)
     );
     let saved = SaveState::from_json(&SaveState::capture(&machine).to_json().unwrap()).unwrap();
     let mut restored = A500Machine::new(A500Config::default());

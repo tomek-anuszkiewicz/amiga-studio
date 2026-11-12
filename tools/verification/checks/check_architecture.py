@@ -44,11 +44,11 @@ APPROVED_CRATE_DEPENDENCIES = {
     "denise": {"normal": {"config", "frame_builder", "sprites"}},
     "disassembler": {},
     "dma": {"normal": {"config"}},
-    "floppy": {},
+    "floppy": {"normal": {"config"}},
     "frame_builder": {"normal": {"config"}},
     "game_ports": {"normal": {"config", "joystick", "mouse"}},
     "gui": {"normal": {"config", "cpu", "debugger", "physical_memory", "rtc"}},
-    "interrupts": {},
+    "interrupts": {"normal": {"config"}},
     "joystick": {},
     "keyboard": {},
     "machine_loop": {"normal": {

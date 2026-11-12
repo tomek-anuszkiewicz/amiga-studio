@@ -1,5 +1,7 @@
 //! Built-in zero-dependency Motorola 68000 opcode disassembler and stream alignment engine
 
+mod encoding;
+
 pub mod align;
 pub mod alu;
 pub mod branch;
@@ -16,7 +18,7 @@ pub use types::Disassembly;
 
 /// Disassembles one instruction starting at `pc` using a side-effect-free word reader function
 pub fn disassemble(pc: u32, read_word: impl Fn(u32) -> u16) -> (Disassembly, u32) {
-    let mut words = [0u16; 5];
+    let mut words = [0u16; crate::types::MAX_INSTRUCTION_WORDS];
     let mut offset = 0u32;
 
     let op = read_word(pc);
@@ -26,7 +28,7 @@ pub fn disassemble(pc: u32, read_word: impl Fn(u32) -> u16) -> (Disassembly, u32
 
     let mut next_word = || {
         let w = read_word(pc.wrapping_add(offset));
-        if word_count < 5 {
+        if word_count < crate::types::MAX_INSTRUCTION_WORDS {
             words[word_count] = w;
             word_count += 1;
         }

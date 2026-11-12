@@ -7,6 +7,15 @@ use super::types::MicroStep;
 use crate::state::{vector, CpuState};
 use crate::Cpu;
 
+const SHORT_INTERNAL_IDLE_CLOCKS: u8 = 4;
+const LONG_INTERNAL_IDLE_CLOCKS: u8 = 8;
+
+const A500_INTERRUPT_MIN: u8 = 1;
+const A500_INTERRUPT_MAX: u8 = 6;
+const BIT_OPCODE_LINE_SHIFT: u16 = 12;
+const OPCODE_LINE_1010: u16 = 0xA;
+const OPCODE_LINE_1111: u16 = 0xF;
+
 // ============================================================================
 // 2-Clock Micro-Step Building Blocks (1 CCK = 2 CPU Clocks)
 // ============================================================================
@@ -222,7 +231,7 @@ pub fn alu_aerr_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     state.set_supervisor(true);
     state.clear_trace();
 
-    let ssp = state.a_long(7);
+    let ssp = state.a_long(crate::state::REGISTER_STACK_POINTER);
     if (ssp & 1) != 0 {
         state.set_halted(true);
     }
@@ -235,7 +244,7 @@ pub fn alu_aerr_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 pub static ALU_AERR_INIT: MicroStep = MicroStep {
     bus_fn: None,
     alu_fn: Some(alu_aerr_init),
-    base_clocks: 2,
+    base_clocks: MicroStep::CCK_CLOCKS,
 };
 
 /// CCK1: Address Error stack push low word of return PC setup to SSP - 2
@@ -319,14 +328,14 @@ pub static STEPS_ADDRESS_ERROR: [MicroStep; 25] = [
 pub const ALU_IDLE_4CLK: MicroStep = MicroStep {
     bus_fn: None,
     alu_fn: None,
-    base_clocks: 4,
+    base_clocks: SHORT_INTERNAL_IDLE_CLOCKS,
 };
 
 /// 8-clock internal idle sequence (4 CCKs)
 pub const ALU_IDLE_8CLK: MicroStep = MicroStep {
     bus_fn: None,
     alu_fn: None,
-    base_clocks: 8,
+    base_clocks: LONG_INTERNAL_IDLE_CLOCKS,
 };
 
 // ============================================================================
@@ -378,7 +387,7 @@ pub fn alu_privilege_violation_init(state: &mut CpuState, _reg_src: u8, _reg_dst
 pub static ALU_PRIVILEGE_VIOLATION_INIT: MicroStep = MicroStep {
     bus_fn: None,
     alu_fn: Some(alu_privilege_violation_init),
-    base_clocks: 2,
+    base_clocks: MicroStep::CCK_CLOCKS,
 };
 
 /// Microcode pipeline for Privilege Violation exception (Vector 8, 34 CPU clocks / 17 CCKs)
@@ -428,7 +437,7 @@ pub static STEPS_DIV_ZERO: [MicroStep; 16] = [
 #[inline(never)]
 pub fn trigger_divide_by_zero(state: &mut CpuState) {
     let old_sr = state.sr();
-    let updated_sr = old_sr & !0x000F;
+    let updated_sr = old_sr & !crate::state::MASK_CCR_NZVC;
     state.set_sr(updated_sr);
     state.set_supervisor(true);
     state.clear_trace();
@@ -453,7 +462,10 @@ pub fn trigger_divide_by_zero(state: &mut CpuState) {
 /// - Computes autovector address: `vector::addr(vector::AUTOVECTOR_BASE + level as u32)`.
 /// - Clears stopped flag.
 pub fn alu_interrupt_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let level = state.micro().reg_src.clamp(1, 6);
+    let level = state
+        .micro()
+        .reg_src
+        .clamp(A500_INTERRUPT_MIN, A500_INTERRUPT_MAX);
     let vector_addr = vector::addr(vector::AUTOVECTOR_BASE + level as u32);
     let return_pc = if state.is_stopped() {
         state.pc()
@@ -475,7 +487,7 @@ pub fn alu_interrupt_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 pub static ALU_INTERRUPT_INIT: MicroStep = MicroStep {
     bus_fn: None,
     alu_fn: Some(alu_interrupt_init),
-    base_clocks: 2,
+    base_clocks: MicroStep::CCK_CLOCKS,
 };
 
 /// Microcode pipeline for Autovector Interrupt exception (Vectors 25..31, 44 CPU clocks / 22 CCKs)
@@ -504,9 +516,9 @@ pub static STEPS_INTERRUPT: [MicroStep; 19] = [
 /// Decode exceptions save the rejected opcode PC; the shared frame/refill follows.
 pub fn alu_decode_exception_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     alu_privilege_violation_init(state, 0, 0);
-    let number = match state.ir() >> 12 {
-        0xa => vector::LINE_1010,
-        0xf => vector::LINE_1111,
+    let number = match state.ir() >> BIT_OPCODE_LINE_SHIFT {
+        OPCODE_LINE_1010 => vector::LINE_1010,
+        OPCODE_LINE_1111 => vector::LINE_1111,
         _ => vector::ILLEGAL_INSTRUCTION,
     };
     state.micro_mut().ea_addr = vector::addr(number);
@@ -517,7 +529,7 @@ pub static STEPS_DECODE_EXCEPTION: [MicroStep; 17] = {
     steps[0] = MicroStep {
         bus_fn: None,
         alu_fn: Some(alu_decode_exception_init),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     };
     steps
 };
@@ -537,7 +549,7 @@ pub static STEPS_TRACE: [MicroStep; 17] = {
     steps[0] = MicroStep {
         bus_fn: None,
         alu_fn: Some(alu_trace_init),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     };
     steps
 };

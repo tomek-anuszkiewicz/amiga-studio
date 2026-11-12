@@ -1,8 +1,34 @@
 //! Data movement, stack operations, unaries, and single-operand disassembler module
 
+use crate::encoding::opcode;
+const PEA_PATTERN: u16 = 0x4840;
+const EXT_WORD_PATTERN: u16 = 0x4880;
+const QUICK_LINE: u16 = 0x5000;
+const BIT_QUICK_SUBTRACT: u16 = 0x0100;
+const MOVEQ_PATTERN: u16 = 0x7000;
+const MASK_MOVEM: u16 = 0xFB80;
+const MOVEM_PATTERN: u16 = 0x4880;
+const BIT_MOVEM_LOAD: u16 = 0x0400;
+const BIT_MOVEM_LONG: u16 = 0x0040;
+const NEGX_GROUP: u16 = 0x0040;
+const LEA_PATTERN: u16 = 0x41C0;
+const CHK_PATTERN: u16 = 0x4180;
+const NBCD_PATTERN: u16 = 0x4800;
+const SWAP_PATTERN: u16 = 0x4840;
+const EXT_LONG_PATTERN: u16 = 0x48C0;
+const MOVE_TO_USP_PATTERN: u16 = 0x4E60;
+const MOVE_FROM_USP_PATTERN: u16 = 0x4E68;
+const MOVE_FROM_SR_PATTERN: u16 = 0x40C0;
+const MOVE_TO_CCR_PATTERN: u16 = 0x44C0;
+const MOVE_TO_SR_PATTERN: u16 = 0x46C0;
+const CLR_GROUP: u16 = 0x0042;
+const NEG_GROUP: u16 = 0x0044;
+const NOT_GROUP: u16 = 0x0046;
+const TST_GROUP: u16 = 0x004A;
 use crate::ea::{
     format_ea, format_movem_reg_list, is_control_ea, is_data_alterable_ea, is_data_ea,
 };
+use crate::encoding::{extended_mode, field, mode, move_size, size};
 
 /// Attempts to disassemble data movement, register transfer, and unary arithmetic instructions.
 ///
@@ -12,21 +38,27 @@ pub(crate) fn try_disassemble_data(
     mut next_word: impl FnMut() -> u16,
 ) -> Option<(&'static str, String)> {
     // 1. ADDQ / SUBQ ($5000..$5FFF)
-    if (op & 0xF000) == 0x5000 {
-        let size_bits = (op >> 6) & 0x03;
-        if size_bits < 3 {
-            let mode = ((op >> 3) & 7) as u8;
-            let reg = (op & 7) as u8;
-            if !(is_data_alterable_ea(mode, reg) || (mode == 1 && size_bits != 0)) {
+    if (op & opcode::MASK_OPCODE_LINE) == QUICK_LINE {
+        let size_bits = (op >> field::BIT_SIZE_SHIFT) & field::MASK_SIZE;
+        if size_bits < size::SPECIAL {
+            let mode = ((op >> field::BIT_EA_MODE_SHIFT) & field::MASK_EA_MODE) as u8;
+            let reg = (op & field::MASK_REGISTER) as u8;
+            if !(is_data_alterable_ea(mode, reg)
+                || (mode == mode::ADDRESS_REGISTER && size_bits != size::BYTE))
+            {
                 return None;
             }
-            let is_subq = (op & 0x0100) != 0;
-            let raw = ((op >> 9) & 7) as u8;
-            let data = if raw == 0 { 8 } else { raw };
+            let is_subq = (op & BIT_QUICK_SUBTRACT) != 0;
+            let raw = ((op >> field::BIT_REGISTER_SHIFT) & field::MASK_REGISTER) as u8;
+            let data = if raw == 0 {
+                field::QUICK_ZERO_VALUE
+            } else {
+                raw
+            };
             let sz = match size_bits {
-                0 => ".B",
-                1 => ".W",
-                2 => ".L",
+                size::BYTE => ".B",
+                size::WORD => ".W",
+                size::LONG => ".L",
                 _ => "",
             };
             let mnem = if is_subq {
@@ -50,28 +82,29 @@ pub(crate) fn try_disassemble_data(
     }
 
     // 2. MOVE / MOVEA ($1000..$3FFF)
-    let top2 = (op >> 14) & 0x03;
-    if top2 == 0 {
-        let size_bits = (op >> 12) & 0x03;
-        if size_bits != 0 {
-            let mnem = match size_bits {
-                1 => "MOVE.B",
-                3 => "MOVE.W",
-                2 => "MOVE.L",
+    let top2 = (op >> field::BIT_MOVE_CLASS_SHIFT) & field::MASK_MOVE_CLASS;
+    if top2 == field::MOVE_CLASS {
+        let move_size_bits = (op >> field::BIT_MOVE_SIZE_SHIFT) & field::MASK_SIZE;
+        if move_size_bits != move_size::INVALID {
+            let mnem = match move_size_bits {
+                move_size::BYTE => "MOVE.B",
+                move_size::WORD => "MOVE.W",
+                move_size::LONG => "MOVE.L",
                 _ => "MOVE",
             };
-            let dst_reg = ((op >> 9) & 7) as u8;
-            let dst_mode = ((op >> 6) & 7) as u8;
-            let src_mode = ((op >> 3) & 7) as u8;
-            let src_reg = (op & 7) as u8;
-            if !(is_data_ea(src_mode, src_reg) || (size_bits != 1 && src_mode == 1))
-                || (size_bits == 1 && dst_mode == 1)
-                || (dst_mode != 1 && !is_data_alterable_ea(dst_mode, dst_reg))
+            let dst_reg = ((op >> field::BIT_REGISTER_SHIFT) & field::MASK_REGISTER) as u8;
+            let dst_mode = ((op >> field::BIT_MOVE_DEST_MODE_SHIFT) & field::MASK_EA_MODE) as u8;
+            let src_mode = ((op >> field::BIT_EA_MODE_SHIFT) & field::MASK_EA_MODE) as u8;
+            let src_reg = (op & field::MASK_REGISTER) as u8;
+            if !(is_data_ea(src_mode, src_reg)
+                || (move_size_bits != move_size::BYTE && src_mode == mode::ADDRESS_REGISTER))
+                || (move_size_bits == move_size::BYTE && dst_mode == mode::ADDRESS_REGISTER)
+                || (dst_mode != mode::ADDRESS_REGISTER && !is_data_alterable_ea(dst_mode, dst_reg))
             {
                 return None;
             }
-            let mnem = if dst_mode == 1 {
-                if size_bits == 3 {
+            let mnem = if dst_mode == mode::ADDRESS_REGISTER {
+                if move_size_bits == move_size::WORD {
                     "MOVEA.W"
                 } else {
                     "MOVEA.L"
@@ -86,33 +119,39 @@ pub(crate) fn try_disassemble_data(
     }
 
     // 3. MOVEQ ($7000..$7FFF)
-    if (op & 0xF100) == 0x7000 {
-        let reg = ((op >> 9) & 7) as u8;
+    if (op & opcode::MASK_REGISTER_LINE) == MOVEQ_PATTERN {
+        let reg = ((op >> field::BIT_REGISTER_SHIFT) & field::MASK_REGISTER) as u8;
         let data = (op & 0xFF) as i8;
         return Some(("MOVEQ", format!("#{}, D{}", data, reg)));
     }
 
     // 4. MOVEM ($4880..$48BF, $48C0..$48FF, $4C80..$4CBF, $4CC0..$4CFF)
-    let movem_ea_mode = ((op >> 3) & 7) as u8;
-    if (op & 0xFB80) == 0x4880 && movem_ea_mode >= 2 {
-        let is_load = (op & 0x0400) != 0;
-        let ea_reg = (op & 7) as u8;
+    let movem_ea_mode = ((op >> field::BIT_EA_MODE_SHIFT) & field::MASK_EA_MODE) as u8;
+    if (op & MASK_MOVEM) == MOVEM_PATTERN && movem_ea_mode >= mode::INDIRECT {
+        let is_load = (op & BIT_MOVEM_LOAD) != 0;
+        let ea_reg = (op & field::MASK_REGISTER) as u8;
         let valid_ea = if is_load {
-            matches!(movem_ea_mode, 2 | 3 | 5 | 6) || (movem_ea_mode == 7 && ea_reg <= 3)
+            matches!(
+                movem_ea_mode,
+                mode::INDIRECT | mode::POSTINCREMENT | mode::DISPLACEMENT | mode::INDEXED
+            ) || (movem_ea_mode == mode::EXTENDED && ea_reg <= extended_mode::PC_INDEXED)
         } else {
-            matches!(movem_ea_mode, 2 | 4 | 5 | 6) || (movem_ea_mode == 7 && ea_reg <= 1)
+            matches!(
+                movem_ea_mode,
+                mode::INDIRECT | mode::PREDECREMENT | mode::DISPLACEMENT | mode::INDEXED
+            ) || (movem_ea_mode == mode::EXTENDED && ea_reg <= extended_mode::ABSOLUTE_LONG)
         };
         if !valid_ea {
             return None;
         }
-        let sz = if (op & 0x0040) != 0 {
+        let sz = if (op & BIT_MOVEM_LONG) != 0 {
             "MOVEM.L"
         } else {
             "MOVEM.W"
         };
         let mask = next_word();
         let ea_str = format_ea(movem_ea_mode, ea_reg, &mut next_word);
-        let reg_list = format_movem_reg_list(mask, movem_ea_mode == 4);
+        let reg_list = format_movem_reg_list(mask, movem_ea_mode == mode::PREDECREMENT);
         let ops = if is_load {
             format!("{}, {}", ea_str, reg_list)
         } else {
@@ -122,129 +161,152 @@ pub(crate) fn try_disassemble_data(
     }
 
     // 5. LEA & CHK ($41C0, $4180)
-    if (op & 0xF1C0) == 0x41C0 {
-        let mode = ((op >> 3) & 7) as u8;
-        let reg = (op & 7) as u8;
+    if (op & opcode::MASK_REGISTER_EA_OPCODE) == LEA_PATTERN {
+        let mode = ((op >> field::BIT_EA_MODE_SHIFT) & field::MASK_EA_MODE) as u8;
+        let reg = (op & field::MASK_REGISTER) as u8;
         if !is_control_ea(mode, reg) {
             return None;
         }
-        let an = ((op >> 9) & 7) as u8;
+        let an = ((op >> field::BIT_REGISTER_SHIFT) & field::MASK_REGISTER) as u8;
         let ea_str = format_ea(mode, reg, &mut next_word);
         return Some(("LEA", format!("{}, A{}", ea_str, an)));
     }
-    if (op & 0xF1C0) == 0x4180 {
-        let mode = ((op >> 3) & 7) as u8;
-        let reg = (op & 7) as u8;
+    if (op & opcode::MASK_REGISTER_EA_OPCODE) == CHK_PATTERN {
+        let mode = ((op >> field::BIT_EA_MODE_SHIFT) & field::MASK_EA_MODE) as u8;
+        let reg = (op & field::MASK_REGISTER) as u8;
         if !is_data_ea(mode, reg) {
             return None;
         }
-        let dn = ((op >> 9) & 7) as u8;
+        let dn = ((op >> field::BIT_REGISTER_SHIFT) & field::MASK_REGISTER) as u8;
         let ea_str = format_ea(mode, reg, &mut next_word);
         return Some(("CHK.W", format!("{}, D{}", ea_str, dn)));
     }
 
     // 6. PEA, SWAP, EXT ($4840, $4880, $48C0)
-    if (op & 0xFFC0) == 0x4800 {
-        let mode = ((op >> 3) & 7) as u8;
-        let reg = (op & 7) as u8;
+    if (op & opcode::MASK_EA_OPCODE) == NBCD_PATTERN {
+        let mode = ((op >> field::BIT_EA_MODE_SHIFT) & field::MASK_EA_MODE) as u8;
+        let reg = (op & field::MASK_REGISTER) as u8;
         if !is_data_alterable_ea(mode, reg) {
             return None;
         }
         return Some(("NBCD", format_ea(mode, reg, &mut next_word)));
     }
-    if (op & 0xFFF8) == 0x4840 {
-        let dn = (op & 7) as u8;
+    if (op & opcode::MASK_REGISTER_OPCODE) == SWAP_PATTERN {
+        let dn = (op & field::MASK_REGISTER) as u8;
         return Some(("SWAP", format!("D{}", dn)));
     }
-    if (op & 0xFFC0) == 0x4840 {
-        let mode = ((op >> 3) & 7) as u8;
-        let reg = (op & 7) as u8;
+    if (op & opcode::MASK_EA_OPCODE) == PEA_PATTERN {
+        let mode = ((op >> field::BIT_EA_MODE_SHIFT) & field::MASK_EA_MODE) as u8;
+        let reg = (op & field::MASK_REGISTER) as u8;
         if !is_control_ea(mode, reg) {
             return None;
         }
         let ea_str = format_ea(mode, reg, &mut next_word);
         return Some(("PEA", ea_str));
     }
-    if (op & 0xFFF8) == 0x4880 {
-        let dn = (op & 7) as u8;
+    if (op & opcode::MASK_REGISTER_OPCODE) == EXT_WORD_PATTERN {
+        let dn = (op & field::MASK_REGISTER) as u8;
         return Some(("EXT.W", format!("D{}", dn)));
     }
-    if (op & 0xFFF8) == 0x48C0 {
-        let dn = (op & 7) as u8;
+    if (op & opcode::MASK_REGISTER_OPCODE) == EXT_LONG_PATTERN {
+        let dn = (op & field::MASK_REGISTER) as u8;
         return Some(("EXT.L", format!("D{}", dn)));
     }
 
     // 7. MOVE to/from USP ($4E60, $4E68)
-    if (op & 0xFFF8) == 0x4E60 {
-        let an = (op & 0x07) as u8;
+    if (op & opcode::MASK_REGISTER_OPCODE) == MOVE_TO_USP_PATTERN {
+        let an = (op & field::MASK_REGISTER) as u8;
         return Some(("MOVE", format!("A{}, USP", an)));
     }
-    if (op & 0xFFF8) == 0x4E68 {
-        let an = (op & 0x07) as u8;
+    if (op & opcode::MASK_REGISTER_OPCODE) == MOVE_FROM_USP_PATTERN {
+        let an = (op & field::MASK_REGISTER) as u8;
         return Some(("MOVE", format!("USP, A{}", an)));
     }
 
     // 8. SR & CCR transfers ($40C0, $44C0, $46C0)
-    if (op & 0xFFC0) == 0x40C0 {
-        let mode = ((op >> 3) & 7) as u8;
-        let reg = (op & 7) as u8;
+    if (op & opcode::MASK_EA_OPCODE) == MOVE_FROM_SR_PATTERN {
+        let mode = ((op >> field::BIT_EA_MODE_SHIFT) & field::MASK_EA_MODE) as u8;
+        let reg = (op & field::MASK_REGISTER) as u8;
         if !is_data_alterable_ea(mode, reg) {
             return None;
         }
-        let ea_str = format_ea(((op >> 3) & 7) as u8, (op & 7) as u8, &mut next_word);
+        let ea_str = format_ea(
+            ((op >> field::BIT_EA_MODE_SHIFT) & field::MASK_EA_MODE) as u8,
+            (op & field::MASK_REGISTER) as u8,
+            &mut next_word,
+        );
         return Some(("MOVE.W", format!("SR, {}", ea_str)));
     }
-    if (op & 0xFFC0) == 0x44C0 {
-        let mode = ((op >> 3) & 7) as u8;
-        let reg = (op & 7) as u8;
+    if (op & opcode::MASK_EA_OPCODE) == MOVE_TO_CCR_PATTERN {
+        let mode = ((op >> field::BIT_EA_MODE_SHIFT) & field::MASK_EA_MODE) as u8;
+        let reg = (op & field::MASK_REGISTER) as u8;
         if !is_data_ea(mode, reg) {
             return None;
         }
-        let ea_str = format_ea(((op >> 3) & 7) as u8, (op & 7) as u8, &mut next_word);
+        let ea_str = format_ea(
+            ((op >> field::BIT_EA_MODE_SHIFT) & field::MASK_EA_MODE) as u8,
+            (op & field::MASK_REGISTER) as u8,
+            &mut next_word,
+        );
         return Some(("MOVE.W", format!("{}, CCR", ea_str)));
     }
-    if (op & 0xFFC0) == 0x46C0 {
-        let mode = ((op >> 3) & 7) as u8;
-        let reg = (op & 7) as u8;
+    if (op & opcode::MASK_EA_OPCODE) == MOVE_TO_SR_PATTERN {
+        let mode = ((op >> field::BIT_EA_MODE_SHIFT) & field::MASK_EA_MODE) as u8;
+        let reg = (op & field::MASK_REGISTER) as u8;
         if !is_data_ea(mode, reg) {
             return None;
         }
-        let ea_str = format_ea(((op >> 3) & 7) as u8, (op & 7) as u8, &mut next_word);
+        let ea_str = format_ea(
+            ((op >> field::BIT_EA_MODE_SHIFT) & field::MASK_EA_MODE) as u8,
+            (op & field::MASK_REGISTER) as u8,
+            &mut next_word,
+        );
         return Some(("MOVE.W", format!("{}, SR", ea_str)));
     }
 
     // 9. CLR, NEG, NEGX, NOT, TST ($4000..$4AFF)
-    let group_4 = (op >> 8) & 0xFF;
-    if matches!(group_4, 0x40 | 0x42 | 0x44 | 0x46 | 0x4A) {
-        let mode = ((op >> 3) & 7) as u8;
-        let reg = (op & 7) as u8;
+    let group_4 = (op >> field::BIT_OPCODE_HIGH_BYTE_SHIFT) & 0xFF;
+    if matches!(
+        group_4,
+        NEGX_GROUP | CLR_GROUP | NEG_GROUP | NOT_GROUP | TST_GROUP
+    ) {
+        let mode = ((op >> field::BIT_EA_MODE_SHIFT) & field::MASK_EA_MODE) as u8;
+        let reg = (op & field::MASK_REGISTER) as u8;
         if !is_data_alterable_ea(mode, reg) {
             return None;
         }
-        let size_bits = (op >> 6) & 0x03;
-        if size_bits < 3 {
+        let size_bits = (op >> field::BIT_SIZE_SHIFT) & field::MASK_SIZE;
+        if size_bits < size::SPECIAL {
             let mnem = match (group_4, size_bits) {
-                (0x40, 0) => "NEGX.B",
-                (0x40, 1) => "NEGX.W",
-                (0x40, 2) => "NEGX.L",
-                (0x42, 0) => "CLR.B",
-                (0x42, 1) => "CLR.W",
-                (0x42, 2) => "CLR.L",
-                (0x44, 0) => "NEG.B",
-                (0x44, 1) => "NEG.W",
-                (0x44, 2) => "NEG.L",
-                (0x46, 0) => "NOT.B",
-                (0x46, 1) => "NOT.W",
-                (0x46, 2) => "NOT.L",
-                (0x4A, 0) => "TST.B",
-                (0x4A, 1) => "TST.W",
-                (0x4A, 2) => "TST.L",
+                (NEGX_GROUP, size::BYTE) => "NEGX.B",
+                (NEGX_GROUP, size::WORD) => "NEGX.W",
+                (NEGX_GROUP, size::LONG) => "NEGX.L",
+                (CLR_GROUP, size::BYTE) => "CLR.B",
+                (CLR_GROUP, size::WORD) => "CLR.W",
+                (CLR_GROUP, size::LONG) => "CLR.L",
+                (NEG_GROUP, size::BYTE) => "NEG.B",
+                (NEG_GROUP, size::WORD) => "NEG.W",
+                (NEG_GROUP, size::LONG) => "NEG.L",
+                (NOT_GROUP, size::BYTE) => "NOT.B",
+                (NOT_GROUP, size::WORD) => "NOT.W",
+                (NOT_GROUP, size::LONG) => "NOT.L",
+                (TST_GROUP, size::BYTE) => "TST.B",
+                (TST_GROUP, size::WORD) => "TST.W",
+                (TST_GROUP, size::LONG) => "TST.L",
                 _ => "OP",
             };
-            let ea_str = format_ea(((op >> 3) & 7) as u8, (op & 7) as u8, &mut next_word);
+            let ea_str = format_ea(
+                ((op >> field::BIT_EA_MODE_SHIFT) & field::MASK_EA_MODE) as u8,
+                (op & field::MASK_REGISTER) as u8,
+                &mut next_word,
+            );
             return Some((mnem, ea_str));
-        } else if group_4 == 0x4A && size_bits == 3 {
-            let ea_str = format_ea(((op >> 3) & 7) as u8, (op & 7) as u8, &mut next_word);
+        } else if group_4 == TST_GROUP && size_bits == size::SPECIAL {
+            let ea_str = format_ea(
+                ((op >> field::BIT_EA_MODE_SHIFT) & field::MASK_EA_MODE) as u8,
+                (op & field::MASK_REGISTER) as u8,
+                &mut next_word,
+            );
             return Some(("TAS", ea_str));
         }
     }

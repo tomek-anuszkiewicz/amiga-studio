@@ -10,7 +10,7 @@ impl Agnus {
     pub fn set_copcon(&mut self, val: u16) -> bool {
         stage_mutation(
             &mut self.mutations,
-            reg::COPCON,
+            reg::REGISTER_COPCON,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
             MutationMode::Pipeline,
@@ -22,7 +22,7 @@ impl Agnus {
     pub fn set_cop1lch(&mut self, val: u16) -> bool {
         stage_mutation(
             &mut self.mutations,
-            reg::COP1LCH,
+            reg::REGISTER_COP1LCH,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
             MutationMode::Pipeline,
@@ -34,7 +34,7 @@ impl Agnus {
     pub fn set_cop1lcl(&mut self, val: u16) -> bool {
         stage_mutation(
             &mut self.mutations,
-            reg::COP1LCL,
+            reg::REGISTER_COP1LCL,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
             MutationMode::Pipeline,
@@ -46,7 +46,7 @@ impl Agnus {
     pub fn set_cop2lch(&mut self, val: u16) -> bool {
         stage_mutation(
             &mut self.mutations,
-            reg::COP2LCH,
+            reg::REGISTER_COP2LCH,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
             MutationMode::Pipeline,
@@ -58,7 +58,7 @@ impl Agnus {
     pub fn set_cop2lcl(&mut self, val: u16) -> bool {
         stage_mutation(
             &mut self.mutations,
-            reg::COP2LCL,
+            reg::REGISTER_COP2LCL,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
             MutationMode::Pipeline,
@@ -70,7 +70,7 @@ impl Agnus {
     pub fn set_copins(&mut self, val: u16) -> bool {
         stage_mutation(
             &mut self.mutations,
-            reg::COPINS,
+            reg::REGISTER_COPINS,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
             MutationMode::Pipeline,

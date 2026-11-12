@@ -2,10 +2,10 @@
 
 use crate::Denise;
 use config::custom_reg::denise as sync;
-use config::mask::game_port::DIRECTION_INPUTS;
+use config::mask::game_port::MASK_DIRECTION_INPUTS;
 use serde::{Deserialize, Serialize};
 
-const VERTICAL_CURSOR_MASK: u16 = 0x1ff;
+const MASK_VERTICAL_CURSOR: u16 = 0x1ff;
 
 /// Incoming values retained until the next input sampling phase.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -27,7 +27,7 @@ impl Default for DenisePins {
     fn default() -> Self {
         Self {
             incoming: None,
-            game_port_inputs: [DIRECTION_INPUTS; 2],
+            game_port_inputs: [MASK_DIRECTION_INPUTS; 2],
             rga_strobe: None,
         }
     }
@@ -36,7 +36,7 @@ impl Default for DenisePins {
 impl Denise {
     /// Input capture only; quadrature counting belongs to the 2.4 receiver.
     pub fn receive_game_port_pins(&mut self, pins: [u8; 2]) {
-        self.pins.game_port_inputs = pins.map(|value| value & DIRECTION_INPUTS);
+        self.pins.game_port_inputs = pins.map(|value| value & MASK_DIRECTION_INPUTS);
     }
 }
 
@@ -67,20 +67,20 @@ impl Default for DeniseSync {
 impl DeniseSync {
     pub(super) fn receive_strobe(&mut self, address: u16) {
         match address {
-            sync::STREQU | sync::STRVBL | sync::STRHOR => {
-                let equalization = address == sync::STREQU;
+            sync::REGISTER_STREQU | sync::REGISTER_STRVBL | sync::REGISTER_STRHOR => {
+                let equalization = address == sync::REGISTER_STREQU;
                 self.vpos = if !self.synchronized || (equalization && !self.equalization) {
                     0
                 } else {
-                    self.vpos.wrapping_add(1) & VERTICAL_CURSOR_MASK
+                    self.vpos.wrapping_add(1) & MASK_VERTICAL_CURSOR
                 };
                 self.hpos = 0;
                 self.equalization = equalization;
-                self.vertical_blank = address != sync::STRHOR;
+                self.vertical_blank = address != sync::REGISTER_STRHOR;
                 self.long_line = false;
                 self.synchronized = true;
             }
-            sync::STRLONG => self.long_line = true,
+            sync::REGISTER_STRLONG => self.long_line = true,
             _ => {}
         }
     }

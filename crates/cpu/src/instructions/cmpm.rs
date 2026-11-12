@@ -4,8 +4,10 @@
 //! Evaluates ((Ax) - (Ay)) and updates N, Z, V, and C flags.
 //! Neither memory location is modified. Extend (X) flag is unaffected.
 
+use super::{BIT_BYTE_SIGN, BIT_LONG_SIGN, BIT_WORD_SIGN};
 use crate::micro::common;
 use crate::micro::ea;
+use crate::micro::encoding::operand_size;
 use crate::micro::types::MicroStep;
 use crate::state::CpuState;
 use crate::Cpu;
@@ -17,8 +19,8 @@ use crate::Cpu;
 #[inline(always)]
 pub fn cmp_b(state: &mut CpuState, s: u8, d: u8) {
     let (res, c) = d.overflowing_sub(s);
-    let v = (((s ^ d) & (d ^ res)) & 0x80) != 0;
-    let n = (res & 0x80) != 0;
+    let v = (((s ^ d) & (d ^ res)) & BIT_BYTE_SIGN) != 0;
+    let n = (res & BIT_BYTE_SIGN) != 0;
     let z = res == 0;
     state.set_ccr_nzvc(n, z, v, c);
 }
@@ -26,8 +28,8 @@ pub fn cmp_b(state: &mut CpuState, s: u8, d: u8) {
 #[inline(always)]
 pub fn cmp_w(state: &mut CpuState, s: u16, d: u16) {
     let (res, c) = d.overflowing_sub(s);
-    let v = (((s ^ d) & (d ^ res)) & 0x8000) != 0;
-    let n = (res & 0x8000) != 0;
+    let v = (((s ^ d) & (d ^ res)) & BIT_WORD_SIGN) != 0;
+    let n = (res & BIT_WORD_SIGN) != 0;
     let z = res == 0;
     state.set_ccr_nzvc(n, z, v, c);
 }
@@ -35,8 +37,8 @@ pub fn cmp_w(state: &mut CpuState, s: u16, d: u16) {
 #[inline(always)]
 pub fn cmp_l(state: &mut CpuState, s: u32, d: u32) {
     let (res, c) = d.overflowing_sub(s);
-    let v = (((s ^ d) & (d ^ res)) & 0x8000_0000) != 0;
-    let n = (res & 0x8000_0000) != 0;
+    let v = (((s ^ d) & (d ^ res)) & BIT_LONG_SIGN) != 0;
+    let n = (res & BIT_LONG_SIGN) != 0;
     let z = res == 0;
     state.set_ccr_nzvc(n, z, v, c);
 }
@@ -74,7 +76,7 @@ pub static STEPS_CMPM_B: [MicroStep; 6] = [
     MicroStep {
         bus_fn: Some(Cpu::step_bus_read_addr1_byte),
         alu_fn: Some(ea::ea_calc_dual_pi_b),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::BUS_READ_IDLE,
     common::READ_ADDR2_BYTE,
@@ -82,7 +84,7 @@ pub static STEPS_CMPM_B: [MicroStep; 6] = [
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_cmpm_b),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::BUS_READ_IDLE,
 ];
@@ -91,19 +93,19 @@ pub static STEPS_CMPM_W: [MicroStep; 6] = [
     MicroStep {
         bus_fn: Some(Cpu::step_bus_read_addr1_word),
         alu_fn: Some(ea::ea_calc_src_pi_w),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::BUS_READ_IDLE,
     MicroStep {
         bus_fn: Some(Cpu::step_bus_read_addr2_word),
         alu_fn: Some(ea::ea_calc_dst_pi_w),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::BUS_READ_IDLE,
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_cmpm_w),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::BUS_READ_IDLE,
 ];
@@ -112,7 +114,7 @@ pub static STEPS_CMPM_L: [MicroStep; 10] = [
     MicroStep {
         bus_fn: Some(Cpu::step_bus_read_addr1_long_high),
         alu_fn: Some(ea::ea_calc_src_pi_l),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::BUS_READ_IDLE,
     common::READ_ADDR1_LONG_LOW,
@@ -120,7 +122,7 @@ pub static STEPS_CMPM_L: [MicroStep; 10] = [
     MicroStep {
         bus_fn: Some(Cpu::step_bus_read_addr2_long_high),
         alu_fn: Some(ea::ea_calc_dst_pi_l),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::BUS_READ_IDLE,
     common::READ_ADDR2_LONG_LOW,
@@ -128,7 +130,7 @@ pub static STEPS_CMPM_L: [MicroStep; 10] = [
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_cmpm_l),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::BUS_READ_IDLE,
 ];
@@ -136,9 +138,9 @@ pub static STEPS_CMPM_L: [MicroStep; 10] = [
 /// Decodes the micro-step sequence for CMPM based on size (0 = Byte, 1 = Word, 2 = Long)
 pub const fn decode_cmpm_steps(size: u8) -> Option<&'static [MicroStep]> {
     match size {
-        0 => Some(&STEPS_CMPM_B),
-        1 => Some(&STEPS_CMPM_W),
-        2 => Some(&STEPS_CMPM_L),
+        operand_size::BYTE => Some(&STEPS_CMPM_B),
+        operand_size::WORD => Some(&STEPS_CMPM_W),
+        operand_size::LONG => Some(&STEPS_CMPM_L),
         _ => None,
     }
 }

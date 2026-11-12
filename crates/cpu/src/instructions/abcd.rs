@@ -10,6 +10,11 @@
 //! - V = undefined in Motorola PRM; on 68000 silicon matches internal decimal overflow
 //! - C = decimal carry
 
+use super::{BCD_DIGIT_CORRECTION, BCD_HIGH_CORRECTION, MASK_BCD_HIGH_DIGIT, MASK_BCD_LOW_DIGIT};
+const BCD_DIGIT_MAX: u16 = 9;
+const MASK_BCD_HIGH_CARRY: u16 = 0x3F0;
+const BCD_HIGH_MAX: u16 = 0x90;
+use super::BIT_BYTE_SIGN;
 use crate::micro::common;
 use crate::micro::ea;
 use crate::micro::types::MicroStep;
@@ -23,24 +28,25 @@ use crate::Cpu;
 #[inline(always)]
 pub fn abcd_b(state: &mut CpuState, src: u8, dst: u8) -> u8 {
     let x_in = if state.is_x() { 1_u16 } else { 0_u16 };
-    let lo1 = (src & 0x0F) as u16;
-    let hi1 = (src & 0xF0) as u16;
-    let lo2 = (dst & 0x0F) as u16;
-    let hi2 = (dst & 0xF0) as u16;
+    let lo1 = (src & MASK_BCD_LOW_DIGIT as u8) as u16;
+    let hi1 = (src & MASK_BCD_HIGH_DIGIT as u8) as u16;
+    let lo2 = (dst & MASK_BCD_LOW_DIGIT as u8) as u16;
+    let hi2 = (dst & MASK_BCD_HIGH_DIGIT as u8) as u16;
     let newv_lo = lo1 + lo2 + x_in;
     let newv_hi = hi1 + hi2;
     let tmp_newv = newv_hi + newv_lo;
     let mut newv = tmp_newv;
-    if newv_lo > 9 {
-        newv += 6;
+    if newv_lo > BCD_DIGIT_MAX {
+        newv += BCD_DIGIT_CORRECTION as u16;
     }
-    let cflg = (newv & 0x3F0) > 0x90;
+    let cflg = (newv & MASK_BCD_HIGH_CARRY) > BCD_HIGH_MAX;
     if cflg {
-        newv += 0x60;
+        newv += BCD_HIGH_CORRECTION as u16;
     }
     let res = (newv & 0xFF) as u8;
-    let vflg = ((tmp_newv & 0x80) == 0) && ((newv & 0x80) != 0);
-    let nflg = (res & 0x80) != 0;
+    let vflg =
+        ((tmp_newv & u16::from(BIT_BYTE_SIGN)) == 0) && ((newv & u16::from(BIT_BYTE_SIGN)) != 0);
+    let nflg = (res & BIT_BYTE_SIGN) != 0;
     let zflg = if res != 0 { false } else { state.is_z() };
     state.set_ccr_xnzvc(cflg, nflg, zflg, vflg, cflg);
     res
@@ -73,7 +79,7 @@ pub static STEPS_ABCD_DN_DN: [MicroStep; 3] = [
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_abcd_dn_dn),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::BUS_READ_IDLE,
     common::ALU_IDLE,
@@ -83,7 +89,7 @@ pub static STEPS_ABCD_PD_PD: [MicroStep; 9] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(ea::ea_calc_dual_pd_b),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::READ_ADDR1_BYTE,
     common::BUS_READ_IDLE,
@@ -92,7 +98,7 @@ pub static STEPS_ABCD_PD_PD: [MicroStep; 9] = [
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_abcd_mem),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,

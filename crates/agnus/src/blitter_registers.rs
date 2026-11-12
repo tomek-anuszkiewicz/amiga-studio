@@ -10,7 +10,7 @@ impl Agnus {
     pub fn set_bltcon0(&mut self, val: u16) -> bool {
         stage_mutation(
             &mut self.mutations,
-            reg::BLTCON0,
+            reg::REGISTER_BLTCON0,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
             MutationMode::Pipeline,
@@ -22,7 +22,7 @@ impl Agnus {
     pub fn set_bltcon1(&mut self, val: u16) -> bool {
         stage_mutation(
             &mut self.mutations,
-            reg::BLTCON1,
+            reg::REGISTER_BLTCON1,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
             MutationMode::Pipeline,
@@ -34,7 +34,7 @@ impl Agnus {
     pub fn set_bltafwm(&mut self, val: u16) -> bool {
         stage_mutation(
             &mut self.mutations,
-            reg::BLTAFWM,
+            reg::REGISTER_BLTAFWM,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
             MutationMode::Pipeline,
@@ -46,7 +46,7 @@ impl Agnus {
     pub fn set_bltalwm(&mut self, val: u16) -> bool {
         stage_mutation(
             &mut self.mutations,
-            reg::BLTALWM,
+            reg::REGISTER_BLTALWM,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
             MutationMode::Pipeline,
@@ -58,7 +58,7 @@ impl Agnus {
     pub fn set_bltcpth(&mut self, val: u16) -> bool {
         stage_mutation(
             &mut self.mutations,
-            reg::BLTCPTH,
+            reg::REGISTER_BLTCPTH,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
             MutationMode::Pipeline,
@@ -70,7 +70,7 @@ impl Agnus {
     pub fn set_bltcptl(&mut self, val: u16) -> bool {
         stage_mutation(
             &mut self.mutations,
-            reg::BLTCPTL,
+            reg::REGISTER_BLTCPTL,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
             MutationMode::Pipeline,
@@ -82,7 +82,7 @@ impl Agnus {
     pub fn set_bltbpth(&mut self, val: u16) -> bool {
         stage_mutation(
             &mut self.mutations,
-            reg::BLTBPTH,
+            reg::REGISTER_BLTBPTH,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
             MutationMode::Pipeline,
@@ -94,7 +94,7 @@ impl Agnus {
     pub fn set_bltbptl(&mut self, val: u16) -> bool {
         stage_mutation(
             &mut self.mutations,
-            reg::BLTBPTL,
+            reg::REGISTER_BLTBPTL,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
             MutationMode::Pipeline,
@@ -106,7 +106,7 @@ impl Agnus {
     pub fn set_bltapth(&mut self, val: u16) -> bool {
         stage_mutation(
             &mut self.mutations,
-            reg::BLTAPTH,
+            reg::REGISTER_BLTAPTH,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
             MutationMode::Pipeline,
@@ -118,7 +118,7 @@ impl Agnus {
     pub fn set_bltaptl(&mut self, val: u16) -> bool {
         stage_mutation(
             &mut self.mutations,
-            reg::BLTAPTL,
+            reg::REGISTER_BLTAPTL,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
             MutationMode::Pipeline,
@@ -130,7 +130,7 @@ impl Agnus {
     pub fn set_bltdpth(&mut self, val: u16) -> bool {
         stage_mutation(
             &mut self.mutations,
-            reg::BLTDPTH,
+            reg::REGISTER_BLTDPTH,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
             MutationMode::Pipeline,
@@ -142,7 +142,7 @@ impl Agnus {
     pub fn set_bltdptl(&mut self, val: u16) -> bool {
         stage_mutation(
             &mut self.mutations,
-            reg::BLTDPTL,
+            reg::REGISTER_BLTDPTL,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
             MutationMode::Pipeline,
@@ -154,7 +154,7 @@ impl Agnus {
     pub fn set_bltsize(&mut self, val: u16) -> bool {
         stage_mutation(
             &mut self.mutations,
-            reg::BLTSIZE,
+            reg::REGISTER_BLTSIZE,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
             MutationMode::Pipeline,
@@ -166,7 +166,7 @@ impl Agnus {
     pub fn set_bltcmod(&mut self, val: u16) -> bool {
         stage_mutation(
             &mut self.mutations,
-            reg::BLTCMOD,
+            reg::REGISTER_BLTCMOD,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
             MutationMode::Pipeline,
@@ -178,7 +178,7 @@ impl Agnus {
     pub fn set_bltbmod(&mut self, val: u16) -> bool {
         stage_mutation(
             &mut self.mutations,
-            reg::BLTBMOD,
+            reg::REGISTER_BLTBMOD,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
             MutationMode::Pipeline,
@@ -190,7 +190,7 @@ impl Agnus {
     pub fn set_bltamod(&mut self, val: u16) -> bool {
         stage_mutation(
             &mut self.mutations,
-            reg::BLTAMOD,
+            reg::REGISTER_BLTAMOD,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
             MutationMode::Pipeline,
@@ -202,7 +202,7 @@ impl Agnus {
     pub fn set_bltdmod(&mut self, val: u16) -> bool {
         stage_mutation(
             &mut self.mutations,
-            reg::BLTDMOD,
+            reg::REGISTER_BLTDMOD,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
             MutationMode::Pipeline,
@@ -214,7 +214,7 @@ impl Agnus {
     pub fn set_bltcdat(&mut self, val: u16) -> bool {
         stage_mutation(
             &mut self.mutations,
-            reg::BLTCDAT,
+            reg::REGISTER_BLTCDAT,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
             MutationMode::Pipeline,
@@ -226,7 +226,7 @@ impl Agnus {
     pub fn set_bltbdat(&mut self, val: u16) -> bool {
         stage_mutation(
             &mut self.mutations,
-            reg::BLTBDAT,
+            reg::REGISTER_BLTBDAT,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
             MutationMode::Pipeline,
@@ -238,7 +238,7 @@ impl Agnus {
     pub fn set_bltadat(&mut self, val: u16) -> bool {
         stage_mutation(
             &mut self.mutations,
-            reg::BLTADAT,
+            reg::REGISTER_BLTADAT,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
             MutationMode::Pipeline,

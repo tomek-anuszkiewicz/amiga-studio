@@ -31,16 +31,13 @@ pub struct MemoryBus<'a> {
 }
 
 impl<'a> MemoryBus<'a> {
-    const PHYSICAL_ADDRESS_MASK: u32 = 0x00FF_FFFF;
-
     /// Physical memory map constants decoded by Gary logic
     pub const BANK_RTC: u8 = 0xDC;
 
     pub const RTC_START: u32 = 0xDC0000;
     pub const RTC_END: u32 = 0xDC003F;
 
-    pub const CUSTOM_REG_OFFSET_MASK: u16 = 0x01FE;
-    const CIAA_PA_OVL: u8 = 0x01;
+    const BIT_CIAA_PA_OVL: u8 = 0x01;
 
     /// Writes an arbitrary byte slice directly to physical memory for debugger/test injection
     #[inline(always)]
@@ -52,12 +49,12 @@ impl<'a> MemoryBus<'a> {
 impl<'a> AddressBus for MemoryBus<'a> {
     #[inline(always)]
     fn read_byte(&mut self, addr: u32) -> BusResult<u8> {
-        let addr = addr & Self::PHYSICAL_ADDRESS_MASK;
+        let addr = addr & physical_memory::MASK_PHYSICAL_ADDRESS;
         let bank = (addr >> 16) as u8;
         match bank {
             CUSTOM_BANK_FIRST..=CUSTOM_BANK_LAST => {
                 let word =
-                    self.read_custom_word((addr & Self::CUSTOM_REG_OFFSET_MASK as u32) as u16);
+                    self.read_custom_word((addr & config::MASK_CUSTOM_REG_OFFSET as u32) as u16);
                 let byte = if (addr & 1) == 0 {
                     (word >> 8) as u8
                 } else {
@@ -79,11 +76,11 @@ impl<'a> AddressBus for MemoryBus<'a> {
 
     #[inline(always)]
     fn read_word(&mut self, addr: u32) -> BusResult<u16> {
-        let addr = addr & Self::PHYSICAL_ADDRESS_MASK;
+        let addr = addr & physical_memory::MASK_PHYSICAL_ADDRESS;
         let bank = (addr >> 16) as u8;
         match bank {
             CUSTOM_BANK_FIRST..=CUSTOM_BANK_LAST => BusResult::Ready(
-                self.read_custom_word((addr & Self::CUSTOM_REG_OFFSET_MASK as u32) as u16),
+                self.read_custom_word((addr & config::MASK_CUSTOM_REG_OFFSET as u32) as u16),
             ),
             CIA_BANK_FIRST..=CIA_BANK_LAST => self.read_cia_word(addr),
             Self::BANK_RTC => {
@@ -106,7 +103,7 @@ impl<'a> AddressBus for MemoryBus<'a> {
 
     #[inline(always)]
     fn write_byte(&mut self, addr: u32, val: u8) -> BusResult<()> {
-        let addr = addr & Self::PHYSICAL_ADDRESS_MASK;
+        let addr = addr & physical_memory::MASK_PHYSICAL_ADDRESS;
         let bank = (addr >> 16) as u8;
         match bank {
             CUSTOM_BANK_FIRST..=CUSTOM_BANK_LAST => {
@@ -129,7 +126,7 @@ impl<'a> AddressBus for MemoryBus<'a> {
 
     #[inline]
     fn write_tas_byte(&mut self, addr: u32, val: u8) -> BusResult<()> {
-        let addr = addr & Self::PHYSICAL_ADDRESS_MASK;
+        let addr = addr & physical_memory::MASK_PHYSICAL_ADDRESS;
         let bank = self.mem.bank_map[(addr >> 16) as usize].bank;
         if matches!(bank, MemoryBank::ChipRam | MemoryBank::SlowRam) {
             if self.mem.chip_ram_blocked {
@@ -144,11 +141,11 @@ impl<'a> AddressBus for MemoryBus<'a> {
 
     #[inline(always)]
     fn write_word(&mut self, addr: u32, val: u16) -> BusResult<()> {
-        let addr = addr & Self::PHYSICAL_ADDRESS_MASK;
+        let addr = addr & physical_memory::MASK_PHYSICAL_ADDRESS;
         let bank = (addr >> 16) as u8;
         match bank {
             CUSTOM_BANK_FIRST..=CUSTOM_BANK_LAST => {
-                let offset = (addr & Self::CUSTOM_REG_OFFSET_MASK as u32) as u16;
+                let offset = (addr & config::MASK_CUSTOM_REG_OFFSET as u32) as u16;
                 if self.write_custom_word(offset, val) {
                     BusResult::Ready(())
                 } else {
@@ -173,11 +170,11 @@ impl<'a> AddressBus for MemoryBus<'a> {
 
     #[inline(always)]
     fn read_word_debug(&self, addr: u32) -> u16 {
-        let addr = addr & Self::PHYSICAL_ADDRESS_MASK;
+        let addr = addr & physical_memory::MASK_PHYSICAL_ADDRESS;
         let bank = (addr >> 16) as u8;
         match bank {
             CUSTOM_BANK_FIRST..=CUSTOM_BANK_LAST => {
-                self.read_custom_word_debug((addr & Self::CUSTOM_REG_OFFSET_MASK as u32) as u16)
+                self.read_custom_word_debug((addr & config::MASK_CUSTOM_REG_OFFSET as u32) as u16)
             }
             CIA_BANK_FIRST..=CIA_BANK_LAST => self.read_cia_word_debug(addr),
             Self::BANK_RTC => {

@@ -8,7 +8,7 @@ fn main() -> eframe::Result<()> {
     let args: Vec<String> = std::env::args().collect();
     let mut force_mode: Option<ViewMode> = None;
     let mut load_file: Option<String> = None;
-    let mut load_addr: u32 = 0x001000;
+    let mut load_addr: u32 = debugger::DEFAULT_TARGET_ADDRESS;
 
     let mut i = 1;
     while i < args.len() {
@@ -58,7 +58,8 @@ fn main() -> eframe::Result<()> {
             if let Some(path_str) = load_file {
                 if let Ok(data) = std::fs::read(&path_str) {
                     app.session.load_binary(load_addr, &data, true);
-                    app.hex_base_addr = load_addr & 0x00FF_FFF0;
+                    app.hex_base_addr =
+                        load_addr & gui::layout::right_dock::memory_hex::MASK_ROW_ADDRESS;
                 }
             }
             Ok(Box::new(app))

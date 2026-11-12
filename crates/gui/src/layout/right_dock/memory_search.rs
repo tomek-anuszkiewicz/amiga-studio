@@ -5,6 +5,8 @@
 use egui::{Color32, RichText, Ui};
 use physical_memory::PhysicalMemory;
 
+const SEARCH_LIMIT_BYTES: usize = 512 * 1024;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum SearchMode {
     #[default]
@@ -113,15 +115,17 @@ fn find_next(bus: &PhysicalMemory, base_addr: &mut u32, state: &mut MemorySearch
         }
     };
 
-    let start = base_addr.wrapping_add(1) & 0x00FF_FFFF;
-    let search_limit = 512 * 1024; // Scan up to 512 KB
+    let start = base_addr.wrapping_add(1) & physical_memory::MASK_PHYSICAL_ADDRESS;
+    let search_limit = SEARCH_LIMIT_BYTES; // Scan up to 512 KB
 
     for offset in 0..search_limit {
-        let candidate_addr = start.wrapping_add(offset as u32) & 0x00FF_FFFF;
+        let candidate_addr =
+            start.wrapping_add(offset as u32) & physical_memory::MASK_PHYSICAL_ADDRESS;
         let mut matched = true;
 
         for (i, &expected_byte) in pattern.iter().enumerate() {
-            let addr = candidate_addr.wrapping_add(i as u32) & 0x00FF_FFFF;
+            let addr =
+                candidate_addr.wrapping_add(i as u32) & physical_memory::MASK_PHYSICAL_ADDRESS;
             if bus.read_byte_debug(addr) != expected_byte {
                 matched = false;
                 break;
@@ -129,7 +133,7 @@ fn find_next(bus: &PhysicalMemory, base_addr: &mut u32, state: &mut MemorySearch
         }
 
         if matched {
-            *base_addr = candidate_addr & 0x00FF_FFF0;
+            *base_addr = candidate_addr & crate::layout::right_dock::memory_hex::MASK_ROW_ADDRESS;
             state.status_message = Some((format!("Match found at ${:06X}", candidate_addr), false));
             return;
         }

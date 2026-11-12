@@ -37,7 +37,8 @@ fn create_primed_app() -> EmulatorApp {
         0x30, 0x3C, 0x12, 0x34, // MOVE.W #$1234, D0
         0x4E, 0x75, // RTS
     ];
-    app.session.load_binary(0x001000, &code, true);
+    app.session
+        .load_binary(debugger::DEFAULT_TARGET_ADDRESS, &code, true);
 
     // Seed realistic register and debugger state
     app.session.machine.cpu.state.set_d_long(0, 0xCAFE_BABE);
@@ -203,7 +204,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "edit_disasm" => {
             // Trigger inline edit on disassembly at $1000
             harness.state_mut().active_disasm_edit = Some(DisasmEditState {
-                addr: 0x001000,
+                addr: debugger::DEFAULT_TARGET_ADDRESS,
                 text: "MOVE.W D0, D1".to_string(),
                 error: None,
             });

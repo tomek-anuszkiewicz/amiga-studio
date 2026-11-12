@@ -7,10 +7,13 @@ pub use blitter;
 pub use copper;
 pub use dma;
 
-use config::chip_ram::OCS_DMA_ADDRESS_MASK;
+use config::chip_ram::MASK_OCS_DMA_ADDRESS;
 use config::mask::dmacon;
 pub use config::AgnusModel;
-use config::{tick_mutations, DelayedMutation};
+use config::{
+    tick_mutations, DelayedMutation, AUDIO_CHANNEL_COUNT, OCS_BITPLANE_COUNT, SPRITE_COUNT,
+};
+use dma::{DDFSTOP_DEFAULT, DDFSTRT_DEFAULT};
 use serde::{Deserialize, Serialize};
 
 mod pins;
@@ -68,17 +71,17 @@ pub struct Agnus {
     /// Bitplane Modulo 2 ($10A, even bitplanes)
     pub bpl2mod: i16,
     /// Bitplane DMA pointers 1..6 ($0E0-$0F6)
-    pub bplpt: [u32; 6],
+    pub bplpt: [u32; OCS_BITPLANE_COUNT],
     /// Sprite DMA pointers 0..7 ($120-$13E)
-    pub sprpt: [u32; 8],
+    pub sprpt: [u32; SPRITE_COUNT],
     /// Sprite position registers 0..7 ($140-$178)
-    pub sprpos: [u16; 8],
+    pub sprpos: [u16; SPRITE_COUNT],
     /// Sprite control registers 0..7 ($142-$17A)
-    pub sprctl: [u16; 8],
+    pub sprctl: [u16; SPRITE_COUNT],
     /// Audio DMA pointers 0..3 ($0A0, $0B0, $0C0, $0D0)
-    pub audpt: [u32; 4],
+    pub audpt: [u32; AUDIO_CHANNEL_COUNT],
     /// Audio DMA start/loop locations 0..3 (AUDxLCH/AUDxLCL)
-    pub audlc: [u32; 4],
+    pub audlc: [u32; AUDIO_CHANNEL_COUNT],
     /// Floppy Disk DMA pointer ($020-$022)
     pub dskpt: u32,
     /// Disk DMA request line asserted by Paula/Floppy (_DSKREQ pin)
@@ -137,17 +140,17 @@ impl Agnus {
             dmacon: 0,
             diwstrt: 0,
             diwstop: 0,
-            ddfstrt: 0x0038,
-            ddfstop: 0x00D0,
+            ddfstrt: DDFSTRT_DEFAULT,
+            ddfstop: DDFSTOP_DEFAULT,
             bplcon0: 0,
             bpl1mod: 0,
             bpl2mod: 0,
-            bplpt: [0; 6],
-            sprpt: [0; 8],
-            sprpos: [0; 8],
-            sprctl: [0; 8],
-            audpt: [0; 4],
-            audlc: [0; 4],
+            bplpt: [0; OCS_BITPLANE_COUNT],
+            sprpt: [0; SPRITE_COUNT],
+            sprpos: [0; SPRITE_COUNT],
+            sprctl: [0; SPRITE_COUNT],
+            audpt: [0; AUDIO_CHANNEL_COUNT],
+            audlc: [0; AUDIO_CHANNEL_COUNT],
             dskpt: 0,
             mutations: [None; Self::MUTATION_CAPACITY],
         }
@@ -171,8 +174,8 @@ impl Agnus {
         self.dmacon = 0;
         self.diwstrt = 0;
         self.diwstop = 0;
-        self.ddfstrt = 0x0038;
-        self.ddfstop = 0x00D0;
+        self.ddfstrt = DDFSTRT_DEFAULT;
+        self.ddfstop = DDFSTOP_DEFAULT;
         self.bplcon0 = 0;
         self.bpl1mod = 0;
         self.bpl2mod = 0;
@@ -256,11 +259,12 @@ impl Agnus {
             }
             dma::DmaChannel::Disk => {
                 self.pending_dsk_dma_slot = Some(self.dskpt);
-                self.dskpt = self.dskpt.wrapping_add(2) & OCS_DMA_ADDRESS_MASK;
+                self.dskpt = self.dskpt.wrapping_add(2) & MASK_OCS_DMA_ADDRESS;
             }
             dma::DmaChannel::Bitplane(plane) => {
                 let p = plane as usize;
-                if p < 6 && !chip_ram.is_empty() && self.pending_bpl_dma.is_none() {
+                if p < OCS_BITPLANE_COUNT && !chip_ram.is_empty() && self.pending_bpl_dma.is_none()
+                {
                     let word = config::chip_ram::read_u16(chip_ram, self.bplpt[p]);
                     self.pending_bpl_dma = Some((plane, word));
                     let mod_inc = if self.dma.is_last_bpl_block(self.hpos) {
@@ -273,26 +277,26 @@ impl Agnus {
                         0
                     };
                     self.bplpt[p] = self.bplpt[p].wrapping_add(2).wrapping_add(mod_inc as u32)
-                        & OCS_DMA_ADDRESS_MASK;
+                        & MASK_OCS_DMA_ADDRESS;
                 }
             }
             dma::DmaChannel::Sprite(sprite) => {
                 let s = sprite as usize;
-                if s < 8 && !chip_ram.is_empty() {
-                    let addr = (self.sprpt[s] & OCS_DMA_ADDRESS_MASK) as usize
+                if s < SPRITE_COUNT && !chip_ram.is_empty() {
+                    let addr = (self.sprpt[s] & MASK_OCS_DMA_ADDRESS) as usize
                         & chip_ram.len().wrapping_sub(1);
                     if addr + 1 < chip_ram.len() {
-                        self.sprpt[s] = self.sprpt[s].wrapping_add(2) & OCS_DMA_ADDRESS_MASK;
+                        self.sprpt[s] = self.sprpt[s].wrapping_add(2) & MASK_OCS_DMA_ADDRESS;
                     }
                 }
             }
             dma::DmaChannel::Audio(ch) => {
                 let c = ch as usize;
-                if c < 4 && !chip_ram.is_empty() {
-                    let addr = (self.audpt[c] & OCS_DMA_ADDRESS_MASK) as usize
+                if c < AUDIO_CHANNEL_COUNT && !chip_ram.is_empty() {
+                    let addr = (self.audpt[c] & MASK_OCS_DMA_ADDRESS) as usize
                         & chip_ram.len().wrapping_sub(1);
                     if addr + 1 < chip_ram.len() {
-                        self.audpt[c] = self.audpt[c].wrapping_add(2) & OCS_DMA_ADDRESS_MASK;
+                        self.audpt[c] = self.audpt[c].wrapping_add(2) & MASK_OCS_DMA_ADDRESS;
                     }
                 }
             }
@@ -356,7 +360,7 @@ impl Agnus {
     /// Reloads audio DMA pointer from latched start address (AUDxLC) for channel `channel` (0..3)
     #[inline]
     pub fn reload_audio_ptr(&mut self, channel: usize) {
-        if channel < 4 {
+        if channel < AUDIO_CHANNEL_COUNT {
             self.audpt[channel] = self.audlc[channel];
         }
     }
@@ -372,7 +376,7 @@ impl Agnus {
     /// Queries whether a specific DMA channel is enabled in DMACON
     #[inline]
     pub fn is_dma_enabled(&self, mask: u16) -> bool {
-        let master_enabled = (self.dmacon & dmacon::DMAEN) != 0;
+        let master_enabled = (self.dmacon & dmacon::BIT_DMAEN) != 0;
         let channel_enabled = (self.dmacon & mask) != 0;
         master_enabled && channel_enabled
     }
@@ -380,6 +384,6 @@ impl Agnus {
     /// Returns true if Blitter Nasty (BLTPRI, bit 10) is enabled
     #[inline]
     pub fn is_blitter_nasty(&self) -> bool {
-        (self.dmacon & dmacon::BLTPRI) != 0
+        (self.dmacon & dmacon::BIT_BLTPRI) != 0
     }
 }

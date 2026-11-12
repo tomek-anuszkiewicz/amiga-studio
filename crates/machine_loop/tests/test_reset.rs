@@ -666,11 +666,11 @@ fn test_reset_overlay_kickstart_vs_synthetic() {
 
     // Disengage overlay via CIA-A Port A bit 0
     assert_eq!(
-        common::cia::write_byte(&mut machine, cia_reg::cia_a::PRA, 0x00),
+        common::cia::write_byte(&mut machine, cia_reg::cia_a::REGISTER_PRA, 0x00),
         machine_loop::BusResult::Ready(())
     );
     assert_eq!(
-        common::cia::write_byte(&mut machine, cia_reg::cia_a::DDRA, 0x01),
+        common::cia::write_byte(&mut machine, cia_reg::cia_a::REGISTER_DDRA, 0x01),
         machine_loop::BusResult::Ready(())
     );
     assert!(

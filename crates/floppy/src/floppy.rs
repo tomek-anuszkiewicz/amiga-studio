@@ -7,10 +7,29 @@
 pub mod mfm;
 pub use mfm::*;
 
+use config::mask::dskbytr::{BIT_DSKBYTR_DSKBYT, BIT_DSKBYTR_WORDEQUAL, MASK_DSKBYTR_DATA};
 use serde::{Deserialize, Serialize};
 
 mod pins;
 pub use pins::{FloppyInputs, FloppyPins};
+
+const CONTROL_RELEASED: u8 = u8::MAX;
+
+const BIT_ADKCON_WORD_SYNC: u16 = 0x0400;
+
+const DRIVE_COUNT: usize = 4;
+const BIT_CONTROL_MOTOR: u8 = 0x80;
+const BIT_CONTROL_SIDE: u8 = 0x04;
+const BIT_CONTROL_STEP: u8 = 0x01;
+const BIT_CONTROL_DIRECTION: u8 = 0x02;
+const BIT_CONTROL_SELECT_FIRST: u8 = 1 << 3;
+const LOWER_SIDE: u8 = 0;
+const UPPER_SIDE: u8 = 1;
+const BIT_STATUS_READY_SHIFT: u8 = 5;
+const BIT_STATUS_TRACK_ZERO_SHIFT: u8 = 4;
+const BIT_STATUS_WRITE_PROTECT_SHIFT: u8 = 3;
+const BIT_STATUS_CHANGED_SHIFT: u8 = 2;
+const STATUS_RELEASED: u8 = 0x3C;
 
 /// Standard Double Density disk geometry constants
 const CYLINDERS_PER_DISK: u8 = 80;
@@ -19,12 +38,6 @@ const TRACKS_PER_DISK: usize = (CYLINDERS_PER_DISK as usize) * (HEADS_PER_DISK a
 pub const SECTORS_PER_TRACK: usize = 11;
 pub const SECTOR_DATA_BYTES: usize = 512;
 pub const FORMATTED_DISK_BYTES: usize = TRACKS_PER_DISK * SECTORS_PER_TRACK * SECTOR_DATA_BYTES; // 901,120 bytes (880 KB)
-pub const DSKBYTR_DSKBYT: u16 = 0x8000;
-pub const DSKBYTR_DMAON: u16 = 0x4000;
-pub const DSKBYTR_DISKWRITE: u16 = 0x2000;
-pub const DSKBYTR_WORDEQUAL: u16 = 0x1000;
-pub const DSKBYTR_DATA_BYTE: u16 = 0x00FF;
-pub const DSKBYTR_DATA_MASK: u16 = 0x90FF;
 
 /// Individual 3.5-inch floppy disk drive (DF0: to DF3:)
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -53,7 +66,7 @@ impl Default for FloppyDrive {
     fn default() -> Self {
         Self {
             cylinder: 0,
-            side: 0,
+            side: LOWER_SIDE,
             motor_on: false,
             selected: false,
             disk_inserted: false,
@@ -68,7 +81,7 @@ impl FloppyDrive {
     /// Resets drive state to power-on default
     pub fn reset(&mut self) {
         self.cylinder = 0;
-        self.side = 0;
+        self.side = LOWER_SIDE;
         self.motor_on = false;
         self.selected = false;
         self.disk_inserted = false;
@@ -86,7 +99,7 @@ impl FloppyDrive {
     /// Action method: sets head side (0 = lower head, 1 = upper head)
     #[inline]
     fn set_side(&mut self, side: u8) {
-        self.side = side.min(1);
+        self.side = side.min(HEADS_PER_DISK - 1);
     }
 
     /// Action method: steps the head one cylinder inward or outward.
@@ -124,7 +137,7 @@ impl FloppyDrive {
     /// Returns the current physical track index (0..159)
     #[inline]
     fn current_track_index(&self) -> usize {
-        (self.cylinder as usize) * 2 + (self.side as usize)
+        (self.cylinder as usize) * HEADS_PER_DISK as usize + (self.side as usize)
     }
 
     /// Returns a slice to the unencoded 5632-byte track data if a disk is inserted
@@ -173,7 +186,7 @@ pub struct FloppyController {
     /// Motherboard-facing signal state.
     pub pins: FloppyPins,
     /// 4 floppy drive units (DF0..DF3)
-    pub drives: [FloppyDrive; 4],
+    pub drives: [FloppyDrive; DRIVE_COUNT],
     /// Previously latched CIA-B Port B state (to detect falling edges of _SEL0..3 and _STEP)
     pub prev_ciab_prb: u8,
     /// Disk DMA data holding register (DSKDAT)
@@ -210,7 +223,7 @@ impl Default for FloppyController {
                 FloppyDrive::default(),
                 FloppyDrive::default(),
             ],
-            prev_ciab_prb: 0xFF, // All signals initially deasserted high
+            prev_ciab_prb: CONTROL_RELEASED, // All signals initially deasserted high
             dskdat: 0,
             dskbytr: 0,
             dskblk_irq: false,
@@ -233,7 +246,7 @@ impl FloppyController {
     /// Resets floppy controller registers and drive units
     pub fn reset(&mut self) {
         self.pins = FloppyPins::default();
-        self.prev_ciab_prb = 0xFF;
+        self.prev_ciab_prb = CONTROL_RELEASED;
         self.dskdat = 0;
         self.dskbytr = 0;
         self.dskblk_irq = false;
@@ -258,13 +271,17 @@ impl FloppyController {
         }
         self.pins.control_input = prb;
         let falling_edges = self.prev_ciab_prb & !prb;
-        let mtr_on = (prb & 0x80) == 0; // Bit 7: _MTR active low (0 = ON)
-        let side = if (prb & 0x04) != 0 { 0 } else { 1 }; // Bit 2: _SIDE (1 = Side 0, 0 = Side 1)
-        let step_falling = (falling_edges & 0x01) != 0; // Bit 0: _STEP active low pulse
-        let inward = (prb & 0x02) == 0; // Bit 1: _DIR (0 = inward, 1 = outward)
+        let mtr_on = (prb & BIT_CONTROL_MOTOR) == 0; // Bit 7: _MTR active low (0 = ON)
+        let side = if (prb & BIT_CONTROL_SIDE) != 0 {
+            LOWER_SIDE
+        } else {
+            UPPER_SIDE
+        }; // Bit 2: _SIDE (1 = Side 0, 0 = Side 1)
+        let step_falling = (falling_edges & BIT_CONTROL_STEP) != 0; // Bit 0: _STEP active low pulse
+        let inward = (prb & BIT_CONTROL_DIRECTION) == 0; // Bit 1: _DIR (0 = inward, 1 = outward)
 
-        for i in 0..4 {
-            let sel_bit = 1 << (3 + i); // Bits 3..6: _SEL0.._SEL3 (active low)
+        for i in 0..DRIVE_COUNT {
+            let sel_bit = BIT_CONTROL_SELECT_FIRST << i; // Bits 3..6: _SEL0.._SEL3 (active low)
             let is_selected = (prb & sel_bit) == 0;
             let sel_falling = (falling_edges & sel_bit) != 0;
 
@@ -298,36 +315,39 @@ impl FloppyController {
                 let wprot = if drive.is_write_protected() { 0 } else { 1 }; // Bit 3: _WPROT (0 = protected)
                 let chng = if drive.is_disk_changed() { 0 } else { 1 }; // Bit 2: _CHNG (0 = changed)
 
-                return (rdy << 5) | (tk0 << 4) | (wprot << 3) | (chng << 2);
+                return (rdy << BIT_STATUS_READY_SHIFT)
+                    | (tk0 << BIT_STATUS_TRACK_ZERO_SHIFT)
+                    | (wprot << BIT_STATUS_WRITE_PROTECT_SHIFT)
+                    | (chng << BIT_STATUS_CHANGED_SHIFT);
             }
         }
 
         // Open collector pull-up: all sensing lines float high (1) when no drive is selected
-        0x3C
+        STATUS_RELEASED
     }
 
     /// Returns the live 8-bit deserialized MFM data byte and composite status flags (DMAON, DISKWRITE),
     /// atomically clearing bit 15 (`DSKBYT`) per Clear-on-Read hardware semantics.
     #[inline]
     pub fn read_dskbytr(&mut self) -> u16 {
-        let val = self.dskbytr & DSKBYTR_DATA_MASK;
-        self.dskbytr &= !DSKBYTR_DSKBYT;
+        let val = self.dskbytr & MASK_DSKBYTR_DATA;
+        self.dskbytr &= !BIT_DSKBYTR_DSKBYT;
         val
     }
 
     /// Peeks composite DSKBYTR without clearing bit 15 (for debuggers and UI)
     #[inline]
     pub fn peek_dskbytr(&self) -> u16 {
-        self.dskbytr & DSKBYTR_DATA_MASK
+        self.dskbytr & MASK_DSKBYTR_DATA
     }
 
     /// Polls pending deserialized MFM byte and sync status if a new byte has matured,
     /// atomically acknowledging (clearing) the byte ready flag.
     #[inline]
     pub fn poll_pending_dskbytr(&mut self) -> Option<u16> {
-        if (self.dskbytr & DSKBYTR_DSKBYT) != 0 {
-            let data = self.dskbytr & DSKBYTR_DATA_MASK;
-            self.dskbytr &= !DSKBYTR_DSKBYT;
+        if (self.dskbytr & BIT_DSKBYTR_DSKBYT) != 0 {
+            let data = self.dskbytr & MASK_DSKBYTR_DATA;
+            self.dskbytr &= !BIT_DSKBYTR_DSKBYT;
             Some(data)
         } else {
             None
@@ -352,7 +372,7 @@ impl FloppyController {
             }
         }
         // Fallback: raw stream with standard clock pattern
-        self.mfm_track_buffer = vec![0xAA; RAW_MFM_TRACK_BYTES];
+        self.mfm_track_buffer = vec![mfm::MFM_GAP_BYTE; RAW_MFM_TRACK_BYTES];
     }
 
     /// Advances floppy drive rotation and MFM bit deserialization by 1 Color Clock (~280 ns).
@@ -397,13 +417,13 @@ impl FloppyController {
         ]);
         self.mfm_track_pos += 2;
 
-        let wordsync = (adkcon & 0x0400) != 0;
+        let wordsync = (adkcon & BIT_ADKCON_WORD_SYNC) != 0;
 
         if wordsync && !self.wordsync_matched {
             if word == dsksyn {
                 self.wordsync_matched = true;
                 self.dsksyn_irq = true;
-                self.dskbytr |= 0x1000; // Bit 12: DSKSYN matched
+                self.dskbytr |= BIT_DSKBYTR_WORDEQUAL; // Bit 12: DSKSYN matched
                 self.dskdat = word;
                 self.dma_word_ready = true;
             }
@@ -411,7 +431,9 @@ impl FloppyController {
             self.dskdat = word;
             self.dma_word_ready = true;
             // DSKBYTR: bit 15 (DSKBYT) = 1, bit 12 (DSKSYN) retained, byte 7..0 = low byte of MFM word
-            self.dskbytr = 0x8000 | (self.dskbytr & 0x1000) | ((word & 0x00FF) as u16);
+            self.dskbytr = BIT_DSKBYTR_DSKBYT
+                | (self.dskbytr & BIT_DSKBYTR_WORDEQUAL)
+                | ((word & 0x00FF) as u16);
         }
     }
 

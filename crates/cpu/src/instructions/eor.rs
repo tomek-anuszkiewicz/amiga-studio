@@ -3,8 +3,10 @@
 //! Performs bitwise Exclusive-OR between a source data register and a destination data register or alterable memory location.
 //! CCR flags: N = MSB(res), Z = (res == 0), V = 0, C = 0, X unaffected.
 
+use super::{BIT_BYTE_SIGN, BIT_LONG_SIGN, BIT_WORD_SIGN};
 use crate::micro::common;
 use crate::micro::ea;
+use crate::micro::encoding::{extended_mode, mode, operand_size};
 use crate::micro::types::MicroStep;
 use crate::state::CpuState;
 use crate::Cpu;
@@ -16,21 +18,21 @@ use crate::Cpu;
 #[inline(always)]
 pub fn eor_b(state: &mut CpuState, s: u8, d: u8) -> u8 {
     let res = d ^ s;
-    state.set_ccr_nz_clear_vc((res & 0x80) != 0, res == 0);
+    state.set_ccr_nz_clear_vc((res & BIT_BYTE_SIGN) != 0, res == 0);
     res
 }
 
 #[inline(always)]
 pub fn eor_w(state: &mut CpuState, s: u16, d: u16) -> u16 {
     let res = d ^ s;
-    state.set_ccr_nz_clear_vc((res & 0x8000) != 0, res == 0);
+    state.set_ccr_nz_clear_vc((res & BIT_WORD_SIGN) != 0, res == 0);
     res
 }
 
 #[inline(always)]
 pub fn eor_l(state: &mut CpuState, s: u32, d: u32) -> u32 {
     let res = d ^ s;
-    state.set_ccr_nz_clear_vc((res & 0x8000_0000) != 0, res == 0);
+    state.set_ccr_nz_clear_vc((res & BIT_LONG_SIGN) != 0, res == 0);
     res
 }
 
@@ -90,7 +92,7 @@ pub static STEPS_EOR_B_DN_DN: [MicroStep; 2] = [
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_eor_b_dn_dn),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::BUS_READ_IDLE,
 ];
@@ -99,13 +101,13 @@ pub static STEPS_EOR_B_DN_AI: [MicroStep; 6] = [
     MicroStep {
         bus_fn: Some(Cpu::step_bus_read_dst_byte),
         alu_fn: Some(ea::ea_calc_dst_ai),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::BUS_READ_IDLE,
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_eor_b_dn_mem),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
@@ -116,13 +118,13 @@ pub static STEPS_EOR_B_DN_PI: [MicroStep; 6] = [
     MicroStep {
         bus_fn: Some(Cpu::step_bus_read_dst_byte),
         alu_fn: Some(ea::ea_calc_dst_pi_b),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::BUS_READ_IDLE,
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_eor_b_dn_mem),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
@@ -133,14 +135,14 @@ pub static STEPS_EOR_B_DN_PD: [MicroStep; 7] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(ea::ea_calc_dst_pd_b),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::READ_DST_BYTE,
     common::BUS_READ_IDLE,
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_eor_b_dn_mem),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
@@ -151,7 +153,7 @@ pub static STEPS_EOR_B_DN_D16_AN: [MicroStep; 8] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_dst_d16_an),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_FINISH,
     common::READ_DST_BYTE,
@@ -159,7 +161,7 @@ pub static STEPS_EOR_B_DN_D16_AN: [MicroStep; 8] = [
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_eor_b_dn_mem),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
@@ -170,7 +172,7 @@ pub static STEPS_EOR_B_DN_IDX_AN: [MicroStep; 9] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(ea::ea_calc_dst_idx_an),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_READ,
     common::FETCH_EXT_FINISH,
@@ -179,7 +181,7 @@ pub static STEPS_EOR_B_DN_IDX_AN: [MicroStep; 9] = [
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_eor_b_dn_mem),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
@@ -190,7 +192,7 @@ pub static STEPS_EOR_B_DN_ABSW: [MicroStep; 8] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absw),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_FINISH,
     common::READ_DST_BYTE,
@@ -198,7 +200,7 @@ pub static STEPS_EOR_B_DN_ABSW: [MicroStep; 8] = [
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_eor_b_dn_mem),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
@@ -209,13 +211,13 @@ pub static STEPS_EOR_B_DN_ABSL: [MicroStep; 10] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absl_hi),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_FINISH,
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absl_lo),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_FINISH,
     common::READ_DST_BYTE,
@@ -223,7 +225,7 @@ pub static STEPS_EOR_B_DN_ABSL: [MicroStep; 10] = [
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_eor_b_dn_mem),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
@@ -238,7 +240,7 @@ pub static STEPS_EOR_W_DN_DN: [MicroStep; 2] = [
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_eor_w_dn_dn),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::BUS_READ_IDLE,
 ];
@@ -247,13 +249,13 @@ pub static STEPS_EOR_W_DN_AI: [MicroStep; 6] = [
     MicroStep {
         bus_fn: Some(Cpu::step_bus_read_dst_word),
         alu_fn: Some(ea::ea_calc_dst_ai),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::BUS_READ_IDLE,
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_eor_w_dn_mem),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
@@ -264,13 +266,13 @@ pub static STEPS_EOR_W_DN_PI: [MicroStep; 6] = [
     MicroStep {
         bus_fn: Some(Cpu::step_bus_read_dst_word),
         alu_fn: Some(ea::ea_calc_dst_pi_w),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::BUS_READ_IDLE,
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_eor_w_dn_mem),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
@@ -281,14 +283,14 @@ pub static STEPS_EOR_W_DN_PD: [MicroStep; 7] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(ea::ea_calc_dst_pd_w),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::READ_DST_WORD,
     common::BUS_READ_IDLE,
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_eor_w_dn_mem),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
@@ -299,7 +301,7 @@ pub static STEPS_EOR_W_DN_D16_AN: [MicroStep; 8] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_dst_d16_an),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_FINISH,
     common::READ_DST_WORD,
@@ -307,7 +309,7 @@ pub static STEPS_EOR_W_DN_D16_AN: [MicroStep; 8] = [
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_eor_w_dn_mem),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
@@ -318,7 +320,7 @@ pub static STEPS_EOR_W_DN_IDX_AN: [MicroStep; 9] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(ea::ea_calc_dst_idx_an),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_READ,
     common::FETCH_EXT_FINISH,
@@ -327,7 +329,7 @@ pub static STEPS_EOR_W_DN_IDX_AN: [MicroStep; 9] = [
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_eor_w_dn_mem),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
@@ -338,7 +340,7 @@ pub static STEPS_EOR_W_DN_ABSW: [MicroStep; 8] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absw),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_FINISH,
     common::READ_DST_WORD,
@@ -346,7 +348,7 @@ pub static STEPS_EOR_W_DN_ABSW: [MicroStep; 8] = [
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_eor_w_dn_mem),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
@@ -357,13 +359,13 @@ pub static STEPS_EOR_W_DN_ABSL: [MicroStep; 10] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absl_hi),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_FINISH,
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absl_lo),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_FINISH,
     common::READ_DST_WORD,
@@ -371,7 +373,7 @@ pub static STEPS_EOR_W_DN_ABSL: [MicroStep; 10] = [
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_eor_w_dn_mem),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
@@ -386,7 +388,7 @@ pub static STEPS_EOR_L_DN_DN: [MicroStep; 3] = [
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_eor_l_dn_dn),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::BUS_READ_IDLE,
     common::ALU_IDLE_4CLK,
@@ -396,7 +398,7 @@ pub static STEPS_EOR_L_DN_AI: [MicroStep; 10] = [
     MicroStep {
         bus_fn: Some(Cpu::step_bus_read_dst_long_high),
         alu_fn: Some(ea::ea_calc_dst_ai),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::BUS_READ_IDLE,
     common::READ_DST_LONG_LOW,
@@ -404,7 +406,7 @@ pub static STEPS_EOR_L_DN_AI: [MicroStep; 10] = [
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_eor_l_dn_mem),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
@@ -417,7 +419,7 @@ pub static STEPS_EOR_L_DN_PI: [MicroStep; 10] = [
     MicroStep {
         bus_fn: Some(Cpu::step_bus_read_dst_long_high),
         alu_fn: Some(ea::ea_calc_dst_pi_l),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::BUS_READ_IDLE,
     common::READ_DST_LONG_LOW,
@@ -425,7 +427,7 @@ pub static STEPS_EOR_L_DN_PI: [MicroStep; 10] = [
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_eor_l_dn_mem),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
@@ -438,7 +440,7 @@ pub static STEPS_EOR_L_DN_PD: [MicroStep; 11] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(ea::ea_calc_dst_pd_l),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::READ_DST_LONG_HIGH,
     common::BUS_READ_IDLE,
@@ -447,7 +449,7 @@ pub static STEPS_EOR_L_DN_PD: [MicroStep; 11] = [
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_eor_l_dn_mem),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
@@ -460,7 +462,7 @@ pub static STEPS_EOR_L_DN_D16_AN: [MicroStep; 12] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_dst_d16_an),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_FINISH,
     common::READ_DST_LONG_HIGH,
@@ -470,7 +472,7 @@ pub static STEPS_EOR_L_DN_D16_AN: [MicroStep; 12] = [
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_eor_l_dn_mem),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
@@ -483,7 +485,7 @@ pub static STEPS_EOR_L_DN_IDX_AN: [MicroStep; 13] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(ea::ea_calc_dst_idx_an),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_READ,
     common::FETCH_EXT_FINISH,
@@ -494,7 +496,7 @@ pub static STEPS_EOR_L_DN_IDX_AN: [MicroStep; 13] = [
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_eor_l_dn_mem),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
@@ -507,7 +509,7 @@ pub static STEPS_EOR_L_DN_ABSW: [MicroStep; 12] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absw),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_FINISH,
     common::READ_DST_LONG_HIGH,
@@ -517,7 +519,7 @@ pub static STEPS_EOR_L_DN_ABSW: [MicroStep; 12] = [
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_eor_l_dn_mem),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
@@ -530,13 +532,13 @@ pub static STEPS_EOR_L_DN_ABSL: [MicroStep; 14] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absl_hi),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_FINISH,
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absl_lo),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_FINISH,
     common::READ_DST_LONG_HIGH,
@@ -546,7 +548,7 @@ pub static STEPS_EOR_L_DN_ABSL: [MicroStep; 14] = [
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_eor_l_dn_mem),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
@@ -561,44 +563,44 @@ pub static STEPS_EOR_L_DN_ABSL: [MicroStep; 14] = [
 
 pub const fn decode_eor_steps(size: u8, mode: u8, reg: u8) -> Option<&'static [MicroStep]> {
     match size {
-        0 => match mode {
-            0 => Some(&STEPS_EOR_B_DN_DN),
-            2 => Some(&STEPS_EOR_B_DN_AI),
-            3 => Some(&STEPS_EOR_B_DN_PI),
-            4 => Some(&STEPS_EOR_B_DN_PD),
-            5 => Some(&STEPS_EOR_B_DN_D16_AN),
-            6 => Some(&STEPS_EOR_B_DN_IDX_AN),
-            7 => match reg {
-                0 => Some(&STEPS_EOR_B_DN_ABSW),
-                1 => Some(&STEPS_EOR_B_DN_ABSL),
+        operand_size::BYTE => match mode {
+            mode::DATA_REGISTER => Some(&STEPS_EOR_B_DN_DN),
+            mode::INDIRECT => Some(&STEPS_EOR_B_DN_AI),
+            mode::POSTINCREMENT => Some(&STEPS_EOR_B_DN_PI),
+            mode::PREDECREMENT => Some(&STEPS_EOR_B_DN_PD),
+            mode::DISPLACEMENT => Some(&STEPS_EOR_B_DN_D16_AN),
+            mode::INDEXED => Some(&STEPS_EOR_B_DN_IDX_AN),
+            mode::EXTENDED => match reg {
+                extended_mode::ABSOLUTE_WORD => Some(&STEPS_EOR_B_DN_ABSW),
+                extended_mode::ABSOLUTE_LONG => Some(&STEPS_EOR_B_DN_ABSL),
                 _ => None,
             },
             _ => None,
         },
-        1 => match mode {
-            0 => Some(&STEPS_EOR_W_DN_DN),
-            2 => Some(&STEPS_EOR_W_DN_AI),
-            3 => Some(&STEPS_EOR_W_DN_PI),
-            4 => Some(&STEPS_EOR_W_DN_PD),
-            5 => Some(&STEPS_EOR_W_DN_D16_AN),
-            6 => Some(&STEPS_EOR_W_DN_IDX_AN),
-            7 => match reg {
-                0 => Some(&STEPS_EOR_W_DN_ABSW),
-                1 => Some(&STEPS_EOR_W_DN_ABSL),
+        operand_size::WORD => match mode {
+            mode::DATA_REGISTER => Some(&STEPS_EOR_W_DN_DN),
+            mode::INDIRECT => Some(&STEPS_EOR_W_DN_AI),
+            mode::POSTINCREMENT => Some(&STEPS_EOR_W_DN_PI),
+            mode::PREDECREMENT => Some(&STEPS_EOR_W_DN_PD),
+            mode::DISPLACEMENT => Some(&STEPS_EOR_W_DN_D16_AN),
+            mode::INDEXED => Some(&STEPS_EOR_W_DN_IDX_AN),
+            mode::EXTENDED => match reg {
+                extended_mode::ABSOLUTE_WORD => Some(&STEPS_EOR_W_DN_ABSW),
+                extended_mode::ABSOLUTE_LONG => Some(&STEPS_EOR_W_DN_ABSL),
                 _ => None,
             },
             _ => None,
         },
-        2 => match mode {
-            0 => Some(&STEPS_EOR_L_DN_DN),
-            2 => Some(&STEPS_EOR_L_DN_AI),
-            3 => Some(&STEPS_EOR_L_DN_PI),
-            4 => Some(&STEPS_EOR_L_DN_PD),
-            5 => Some(&STEPS_EOR_L_DN_D16_AN),
-            6 => Some(&STEPS_EOR_L_DN_IDX_AN),
-            7 => match reg {
-                0 => Some(&STEPS_EOR_L_DN_ABSW),
-                1 => Some(&STEPS_EOR_L_DN_ABSL),
+        operand_size::LONG => match mode {
+            mode::DATA_REGISTER => Some(&STEPS_EOR_L_DN_DN),
+            mode::INDIRECT => Some(&STEPS_EOR_L_DN_AI),
+            mode::POSTINCREMENT => Some(&STEPS_EOR_L_DN_PI),
+            mode::PREDECREMENT => Some(&STEPS_EOR_L_DN_PD),
+            mode::DISPLACEMENT => Some(&STEPS_EOR_L_DN_D16_AN),
+            mode::INDEXED => Some(&STEPS_EOR_L_DN_IDX_AN),
+            mode::EXTENDED => match reg {
+                extended_mode::ABSOLUTE_WORD => Some(&STEPS_EOR_L_DN_ABSW),
+                extended_mode::ABSOLUTE_LONG => Some(&STEPS_EOR_L_DN_ABSL),
                 _ => None,
             },
             _ => None,

@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "general"
 status: "active"
 created: 2026-08-31
-updated: 2026-11-11
+updated: 2026-11-12
 related: ["[Machine Loop.md](Machine%20Loop.md)", "[Game Ports.md](Game%20Ports.md)", "[MemoryBus.md](MemoryBus.md)", "[Physical Memory.md](Physical%20Memory.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md)", "[Agnus.md](Agnus.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)", "[Interrupts.md](Interrupts.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)", "[Custom Chip Register Ownership and Access Matrix.md](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md)", "[Testing Strategy and Quality Assurance.md](Verification/Testing%20Strategy%20and%20Quality%20Assurance.md)"]
 ---
 
@@ -197,6 +197,8 @@ graph TD
 
     %% Memory & Bus Connections
     PMEM --> CFG
+    FLP --> CFG
+    INTR --> CFG
     PMEM --> RTC
     MBUS --> PMEM
     CPU --> PMEM
@@ -227,8 +229,8 @@ graph TD
 | **game_ports** | [crates/game_ports](../../../crates/game_ports) | Amiga dual 9-pin controller ports (Port 1 & Port 2), pluggable device slots (`Mouse`, `Joystick`), Denise/Paula/CIA-A decoders. | mouse, joystick, serde |
 | **denise** | [crates/denise](../../../crates/denise) | Denise (MOS 8362) video processor, bitplanes, palette (`COLOR00`–`COLOR31`), and collision registers. | config, serde |
 | **audio** | [crates/audio](../../../crates/audio) | Paula 4-channel 8-bit DMA audio engine, volume scaling (0..64), and stereo panning. | config, serde |
-| **floppy** | [crates/floppy](../../../crates/floppy) | 3.5" DD floppy drive mechanics (80 cylinders, 2 heads) and Paula MFM DMA controller. | serde |
-| **interrupts** | [crates/interrupts](../../../crates/interrupts) | Central 14-source interrupt priority controller (`INTENA`, `INTREQ`), IPL 1..6 encoder, and atomic SET/CLR bit 15 logic. | serde |
+| **floppy** | [crates/floppy](../../../crates/floppy) | 3.5" DD floppy drive mechanics (80 cylinders, 2 heads) and Paula MFM DMA controller. | config, serde |
+| **interrupts** | [crates/interrupts](../../../crates/interrupts) | Central 14-source interrupt priority controller (`INTENA`, `INTREQ`), IPL 1..6 encoder, and atomic SET/CLR bit 15 logic. | config, serde |
 | **paula** | [crates/paula](../../../crates/paula) | Paula (MOS 8364) chip coordinator, serial UART transceiver, and audio/interrupt staging. | audio, config, interrupts, serde |
 | **keyboard** | [crates/keyboard](../../../crates/keyboard) | MOS 6500/1 keyboard microcontroller, scancode matrix, serial stream, and Ctrl-Amiga-Amiga reset. | serde |
 | **cia** | [crates/cia](../../../crates/cia) | MOS 8520 Complex Interface Adapter (Timers A & B, Ports A & B / parallel Centronics lines, TOD, SDR, ICR). | serde |

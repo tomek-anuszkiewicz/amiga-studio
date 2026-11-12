@@ -2,6 +2,19 @@
 
 use crate::disassemble;
 
+const BOUNDARY_LOOK_BACK_BYTES: u32 = 32;
+const BOUNDARY_EXTRA_INSTRUCTIONS: usize = 2;
+const ESTIMATED_INSTRUCTION_BYTES: usize = 8;
+const SEARCH_EXTRA_BYTES: usize = 4;
+const MAX_LOOK_BACK_BYTES: usize = 36;
+const SEARCH_EXTRA_INSTRUCTIONS: usize = 3;
+const INVALID_INSTRUCTION_PENALTY: i32 = 1000;
+const EMPTY_ORI_OPCODE: u16 = 0x0000;
+const EMPTY_ORI_PENALTY: i32 = 60;
+const VALID_INSTRUCTION_REWARD: i32 = 30;
+const DESIRED_DISTANCE_REWARD: i32 = 40;
+const DISTANCE_PENALTY: i32 = 10;
+
 /// Heuristic anchor finder for backward disassembly alignment.
 ///
 /// In variable-length CISC architectures like Motorola 68000 (instruction lengths 2, 4, 6, 8, 10 bytes),
@@ -24,7 +37,7 @@ pub fn find_aligned_disassembly_start<F>(
 where
     F: Fn(u32) -> u16,
 {
-    let target_pc = target_pc & 0x00FF_FFFE;
+    let target_pc = target_pc & crate::encoding::MASK_WORD_ADDRESS;
     if desired_prior_instructions == 0 || target_pc == 0 {
         return target_pc;
     }
@@ -34,12 +47,14 @@ where
     // that is verified ground truth from hardware execution.
     let mut best_history_anchor: Option<u32> = None;
     for &boundary in known_boundaries.iter().rev() {
-        let b = boundary & 0x00FF_FFFE;
-        if b < target_pc && target_pc.saturating_sub(b) <= 32 {
+        let b = boundary & crate::encoding::MASK_WORD_ADDRESS;
+        if b < target_pc && target_pc.saturating_sub(b) <= BOUNDARY_LOOK_BACK_BYTES {
             let mut curr = b;
             let mut count = 0;
             let mut matched = false;
-            while curr < target_pc && count <= desired_prior_instructions + 2 {
+            while curr < target_pc
+                && count <= desired_prior_instructions + BOUNDARY_EXTRA_INSTRUCTIONS
+            {
                 let (_, byte_len) = disassemble(curr, &read_word);
                 curr = curr.wrapping_add(byte_len);
                 count += 1;
@@ -69,7 +84,9 @@ where
         score: i32,
     }
 
-    let max_back_bytes = (desired_prior_instructions * 8 + 4).min(36) as u32;
+    let max_back_bytes = (desired_prior_instructions * ESTIMATED_INSTRUCTION_BYTES
+        + SEARCH_EXTRA_BYTES)
+        .min(MAX_LOOK_BACK_BYTES) as u32;
     let mut candidates: Vec<Candidate> = Vec::new();
 
     let mut delta = 2u32;
@@ -77,7 +94,7 @@ where
         if target_pc < delta {
             break;
         }
-        let candidate_addr = (target_pc - delta) & 0x00FF_FFFE;
+        let candidate_addr = (target_pc - delta) & crate::encoding::MASK_WORD_ADDRESS;
 
         let mut curr = candidate_addr;
         let mut count = 0;
@@ -85,7 +102,7 @@ where
         let mut first_len = 0u32;
         let mut reached_target = false;
 
-        while curr < target_pc && count <= desired_prior_instructions + 3 {
+        while curr < target_pc && count <= desired_prior_instructions + SEARCH_EXTRA_INSTRUCTIONS {
             let (disasm, byte_len) = disassemble(curr, &read_word);
             if count == 0 {
                 first_len = byte_len;
@@ -94,12 +111,12 @@ where
             count += 1;
 
             if disasm.mnemonic == "DATA.W" {
-                score -= 1000;
-            } else if disasm.mnemonic == "ORI.B" && disasm.words[0] == 0x0000 {
+                score -= INVALID_INSTRUCTION_PENALTY;
+            } else if disasm.mnemonic == "ORI.B" && disasm.words[0] == EMPTY_ORI_OPCODE {
                 // $0000 in memory is uninitialized RAM or padding
-                score -= 60;
+                score -= EMPTY_ORI_PENALTY;
             } else {
-                score += 30;
+                score += VALID_INSTRUCTION_REWARD;
             }
 
             if curr == target_pc {
@@ -110,7 +127,7 @@ where
 
         if reached_target && curr == target_pc && score > 0 {
             let dist_from_desired = (count as isize - desired_prior_instructions as isize).abs();
-            score += 40 - (dist_from_desired as i32 * 10);
+            score += DESIRED_DISTANCE_REWARD - (dist_from_desired as i32 * DISTANCE_PENALTY);
             candidates.push(Candidate {
                 addr: candidate_addr,
                 first_inst_len: first_len,

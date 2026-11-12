@@ -9,6 +9,11 @@ use debugger::{assemble_instruction, disassemble, find_aligned_disassembly_start
 use egui::{RichText, Ui};
 use physical_memory::PhysicalMemory;
 
+const BOUNDARY_HISTORY_LIMIT: usize = 32;
+const MAX_SCROLL_INSTRUCTIONS: usize = 50;
+const HISTORY_PASSES_LIMIT: usize = 10;
+const SCROLLBAR_PAGE_BYTES: u32 = 256;
+
 /// State for inline instruction editing in disassembly table
 #[derive(Debug, Clone)]
 pub struct DisasmEditState {
@@ -36,7 +41,7 @@ pub(crate) fn render_disassembly(
 
     ui.heading("Disassembly");
 
-    let current_pc = cpu.state.instruction_pc() & 0x00FF_FFFF;
+    let current_pc = cpu.state.instruction_pc() & physical_memory::MASK_PHYSICAL_ADDRESS;
 
     // 1. Navigation & Jump Bar
     ui.horizontal(|ui| {
@@ -52,7 +57,7 @@ pub(crate) fn render_disassembly(
         if should_jump {
             let clean = goto_addr_str.trim().trim_start_matches('$');
             if let Ok(addr) = u32::from_str_radix(clean, 16) {
-                let target = addr & 0x00FF_FFFF;
+                let target = addr & physical_memory::MASK_PHYSICAL_ADDRESS;
                 cpu.set_pc_and_prime_prefetch(target, bus);
                 *view_addr = None;
                 *selected_addr = Some(target);
@@ -73,15 +78,15 @@ pub(crate) fn render_disassembly(
     ui.separator();
 
     // 2. Disassembly Table (Smart aligned stream with CISC boundary preservation)
-    let mut known_boundaries: Vec<u32> = Vec::with_capacity(32);
+    let mut known_boundaries: Vec<u32> = Vec::with_capacity(BOUNDARY_HISTORY_LIMIT);
     let temp_len = temporal.len();
-    for i in 0..temp_len.min(32) {
+    for i in 0..temp_len.min(BOUNDARY_HISTORY_LIMIT) {
         if let Some(frame) = temporal.get_chronological(temp_len - 1 - i) {
             known_boundaries.push(frame.pc);
         }
     }
     let trace_len = debugger.trace.len();
-    for i in 0..trace_len.min(32) {
+    for i in 0..trace_len.min(BOUNDARY_HISTORY_LIMIT) {
         if let Some(entry) = debugger.trace.get(trace_len - 1 - i) {
             if !known_boundaries.contains(&entry.pc) {
                 known_boundaries.push(entry.pc);
@@ -115,15 +120,16 @@ pub(crate) fn render_disassembly(
                 let steps = (clicks.unsigned_abs() as usize) * multiplier;
                 if clicks > 0 {
                     let mut curr = view_addr.unwrap_or(default_start);
-                    for _ in 0..steps.min(50) {
+                    for _ in 0..steps.min(MAX_SCROLL_INSTRUCTIONS) {
                         let (_, len) = disassemble(curr, |a| bus.read_word_debug(a));
-                        curr = curr.wrapping_add(len.max(2)) & 0x00FF_FFFF;
+                        curr =
+                            curr.wrapping_add(len.max(2)) & physical_memory::MASK_PHYSICAL_ADDRESS;
                     }
                     *view_addr = Some(curr);
                     scrolled = true;
                 } else if clicks < 0 {
                     let mut curr = view_addr.unwrap_or(default_start);
-                    for _ in 0..steps.min(50) {
+                    for _ in 0..steps.min(MAX_SCROLL_INSTRUCTIONS) {
                         let prev = find_aligned_disassembly_start(
                             curr,
                             1,
@@ -131,7 +137,7 @@ pub(crate) fn render_disassembly(
                             &known_boundaries,
                         );
                         if prev >= curr {
-                            curr = curr.wrapping_sub(2) & 0x00FF_FFFE;
+                            curr = curr.wrapping_sub(2) & physical_memory::MASK_WORD_ADDRESS;
                         } else {
                             curr = prev;
                         }
@@ -154,7 +160,8 @@ pub(crate) fn render_disassembly(
             if let Some(sel) = *selected_addr {
                 if ui.input(|i| i.key_pressed(egui::Key::ArrowDown)) {
                     let (_, len) = disassemble(sel, |a| bus.read_word_debug(a));
-                    *selected_addr = Some(sel.wrapping_add(len.max(2)) & 0x00FF_FFFF);
+                    *selected_addr =
+                        Some(sel.wrapping_add(len.max(2)) & physical_memory::MASK_PHYSICAL_ADDRESS);
                 } else if ui.input(|i| i.key_pressed(egui::Key::ArrowUp)) {
                     let prev = find_aligned_disassembly_start(
                         sel,
@@ -163,7 +170,7 @@ pub(crate) fn render_disassembly(
                         &known_boundaries,
                     );
                     let next_sel = if prev >= sel {
-                        sel.wrapping_sub(2) & 0x00FF_FFFE
+                        sel.wrapping_sub(2) & physical_memory::MASK_WORD_ADDRESS
                     } else {
                         prev
                     };
@@ -187,7 +194,7 @@ pub(crate) fn render_disassembly(
         }
     }
 
-    let anchor_addr = view_addr.unwrap_or(default_start) & 0x00FF_FFFF;
+    let anchor_addr = view_addr.unwrap_or(default_start) & physical_memory::MASK_PHYSICAL_ADDRESS;
     let mut cur_addr = anchor_addr;
 
     let total_avail_h = ui.available_height();
@@ -395,7 +402,7 @@ pub(crate) fn render_disassembly(
                             }
 
                             // Quick Loop Rewind button
-                            let historical_passes = temporal.find_matches_by_pc(cur_addr, 10);
+                            let historical_passes = temporal.find_matches_by_pc(cur_addr, HISTORY_PASSES_LIMIT);
                             if !historical_passes.is_empty() {
                                 if ui
                                     .button(
@@ -470,7 +477,7 @@ pub(crate) fn render_disassembly(
                     }
                 });
 
-                    cur_addr = (cur_addr.wrapping_add(byte_len.max(2))) & 0x00FF_FFFF;
+                    cur_addr = (cur_addr.wrapping_add(byte_len.max(2))) & physical_memory::MASK_PHYSICAL_ADDRESS;
                 }
             },
         );
@@ -497,7 +504,7 @@ fn render_disasm_scrollbar(
     track_height: f32,
     tokens: &ColorTokens,
 ) {
-    const MAX_ADDR: f32 = 0x00FF_FFFE as f32;
+    const MAX_ADDR: f32 = physical_memory::MASK_WORD_ADDRESS as f32;
     const SCROLLBAR_WIDTH: f32 = 8.0;
 
     let (track_rect, track_response) = ui.allocate_exact_size(
@@ -533,16 +540,20 @@ fn render_disasm_scrollbar(
         if let Some(ptr) = ui.input(|i| i.pointer.latest_pos()) {
             let rel_y = (ptr.y - track_rect.top() - thumb_height / 2.0).clamp(0.0, travel);
             let frac = rel_y / travel;
-            *view_addr = Some(((frac * MAX_ADDR) as u32) & 0x00FF_FFFE);
+            *view_addr = Some(((frac * MAX_ADDR) as u32) & physical_memory::MASK_WORD_ADDRESS);
         }
     } else if track_response.clicked() {
         if let Some(click_pos) = track_response.interact_pointer_pos() {
             if click_pos.y < thumb_rect.top() {
                 let curr = view_addr.unwrap_or(current_addr);
-                *view_addr = Some(curr.wrapping_sub(256) & 0x00FF_FFFE);
+                *view_addr = Some(
+                    curr.wrapping_sub(SCROLLBAR_PAGE_BYTES) & physical_memory::MASK_WORD_ADDRESS,
+                );
             } else if click_pos.y > thumb_rect.bottom() {
                 let curr = view_addr.unwrap_or(current_addr);
-                *view_addr = Some(curr.wrapping_add(256) & 0x00FF_FFFE);
+                *view_addr = Some(
+                    curr.wrapping_add(SCROLLBAR_PAGE_BYTES) & physical_memory::MASK_WORD_ADDRESS,
+                );
             }
         }
     }
