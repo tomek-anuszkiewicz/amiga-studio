@@ -95,13 +95,15 @@ fn hardware_resets_execute_boot_beyond_the_initial_queue() {
 fn keyboard_reset_replaces_stopped_and_partial_instruction_state() {
     for stopped in [false, true] {
         let mut machine = rom_machine(BOOT_CODE);
-        machine.physical_memory.write_bytes_debug(
-            0xF82000,
-            &[
-                0x4E, 0x72, 0x27, 0x00, // STOP #$2700
-                0x23, 0xC2, 0x00, 0x04, 0x10, 0x00, // MOVE.L D2,$41000.L
-            ],
-        );
+        // Patch STOP #$2700 followed by MOVE.L D2,$41000.L into the loaded ROM.
+        for (index, word) in [0x4E72, 0x2700, 0x23C2, 0x0004, 0x1000]
+            .into_iter()
+            .enumerate()
+        {
+            machine
+                .physical_memory
+                .write_word_debug(0xF82000 + index as u32 * 2, word);
+        }
         machine.set_pc_and_prime_prefetch(if stopped { 0xF82000 } else { 0xF82004 });
         machine.cpu.state.set_d_long(2, 0xDEADBEEF);
         if stopped {
@@ -394,7 +396,10 @@ fn test_cpu_reset_instruction_external_propagation() {
     // so execution can seamlessly continue when RESET re-engages the Gary boot overlay.
     let mut rom = vec![0xFF; 262144];
     rom[0x1000..0x1006].copy_from_slice(&[0x4E, 0x70, 0x4E, 0x71, 0x70, 0x2A]);
-    machine.physical_memory.write_bytes_debug(0xF80000, &rom);
+    machine
+        .physical_memory
+        .write_bytes_debug(0xF80000, &rom)
+        .unwrap();
 
     // Disengage overlay to simulate post-boot state running from Chip RAM
     machine.physical_memory.map_chip_ram_to_low_memory();
@@ -645,7 +650,10 @@ fn test_reset_overlay_kickstart_vs_synthetic() {
     rom[0..4].copy_from_slice(&0x00080000u32.to_be_bytes());
     // Initial PC at $000004: $00FC0002
     rom[4..8].copy_from_slice(&0x00FC0002u32.to_be_bytes());
-    machine.physical_memory.write_bytes_debug(0xF80000, &rom);
+    machine
+        .physical_memory
+        .write_bytes_debug(0xF80000, &rom)
+        .unwrap();
 
     // Cold reset engages overlay and loads vectors
     machine.reset();

@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "physical_memory"
 status: "active"
 created: 2026-10-12
-updated: 2026-11-11
+updated: 2026-11-12
 related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[Configuration.md](Configuration.md)", "[Machine Loop.md](Machine%20Loop.md)", "[DMA.md](DMA.md)", "[RTC.md](RTC.md)", "[Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
 tracked_paths:
   - "crates/physical_memory"
@@ -32,9 +32,9 @@ The 16 MB CPU address space is classified by a 256-entry table of 64 KB banks. [
 | `$DD0000-$DDFFFF` | Open bus. |
 | `$DE0000-$DFFFFF` | Custom-chip classification; `MemoryBus` routes the live register bank. |
 | `$E00000-$F7FFFF` | Open bus; expansion and diagnostic ROM regions are not installed by these presets. |
-| `$F80000-$FFFFFF` | Kickstart ROM. A 256 KB image repeats across this 512 KB window; a 512 KB image occupies it once. CPU writes do not modify ROM. |
+| `$F80000-$FFFFFF` | Kickstart ROM. The fixed 256 KiB image repeats across this 512 KiB window. CPU writes do not modify ROM. |
 
-This table describes the emulator's installed handlers, not a promise that every hardware-reserved address is usable RAM. The [Hardware Reference Manual's system map](../Reference/Hardware%20Reference%20Manual/12%20-%20Appendix%20D%20-%20System%20Memory%20Map.md) identifies an 8 MB primary Auto-config area (`$200000-$9FFFFF`) and locates a 256 KB system ROM at `$FC0000-$FFFFFF`. The current expanded preset populates only the first 4 MB of that expansion area; the emulator also decodes Kickstart from `$F80000` to support its 256/512 KB image window. The manual's map is a hardware address-space guide, not the layout of allocations made by AmigaOS.
+This table describes the emulator's installed handlers, not a promise that every hardware-reserved address is usable RAM. The [Hardware Reference Manual's system map](../Reference/Hardware%20Reference%20Manual/12%20-%20Appendix%20D%20-%20System%20Memory%20Map.md) identifies an 8 MB primary Auto-config area (`$200000-$9FFFFF`) and locates a 256 KB system ROM at `$FC0000-$FFFFFF`. The current expanded preset populates only the first 4 MB of that expansion area; the emulator also decodes Kickstart from `$F80000` as a mirror of the same 256 KiB image. The manual's map is a hardware address-space guide, not the layout of allocations made by AmigaOS.
 
 ## Boot overlay and reset
 
@@ -48,7 +48,7 @@ Chip RAM and installed Slow RAM handlers return `BusResult::WaitState` while `ch
 
 RAM word handlers store the high byte at the lower address and the low byte at the next address. Unmapped reads return the fixed `OPEN_BUS_BYTE` placeholder (`$FF`); word reads return `OPEN_BUS_WORD` (`$FFFF`). See the [open-bus quirk](Platform%20Quirks%20and%20Invariants%20Catalog.md#open-bus-and-opposite-direction-register-access) for the hardware limitation. Unmapped writes complete without storage. ROM writes through the normal CPU path likewise complete without modifying the image.
 
-The debug byte/word handlers bypass contention and device side effects. `write_bytes_debug()` uses them for memory injection, including ROM loading; unlike CPU ROM writes, debug writes to the ROM address range can update the ROM buffer. A direct debug access to `$A0-$BF`, `$DC`, or `$DE-$DF` sees the physical bank's placeholder behavior, not live peripheral registers. Use the [router's debug interface](MemoryBus.md) when inspection needs device-aware decoding.
+The debug byte/word handlers bypass contention and device side effects. `write_bytes_debug()` uses them for memory injection, including ROM loading. A block targeting or crossing into the high ROM window must contain exactly 262144 bytes; other sizes return an error before any write. Unlike CPU ROM writes, individual debug byte/word writes can patch the image, but never resize it. Every ROM access uses the fixed `$3FFFF` mask, including the low-memory overlay. The private ROM buffer retains its fixed length, and deserialization rejects snapshots containing any other ROM size. A direct debug access to `$A0-$BF`, `$DC`, or `$DE-$DF` sees the physical bank's placeholder behavior, not live peripheral registers. Use the [router's debug interface](MemoryBus.md) when inspection needs device-aware decoding.
 
 ## Reference Documentation & Upstream Ground Truth
 

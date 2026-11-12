@@ -56,11 +56,7 @@ fn main() -> eframe::Result<()> {
                 app.view_mode = mode;
             }
             if let Some(path_str) = load_file {
-                if let Ok(data) = std::fs::read(&path_str) {
-                    app.session.load_binary(load_addr, &data, true);
-                    app.hex_base_addr =
-                        load_addr & gui::layout::right_dock::memory_hex::MASK_ROW_ADDRESS;
-                }
+                app.load_binary_file(std::path::Path::new(&path_str), load_addr, true);
             }
             Ok(Box::new(app))
         }),

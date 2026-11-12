@@ -38,7 +38,7 @@ fn loaded_guest_updates_texture_and_pause_preserves_it_at_all_viewport_sizes() {
     let program =
         include_bytes!("../../machine_loop/tests/programs/display/live_stripes/program.bin");
     assert_eq!(
-        app.session.load_binary(0x1000, program, true),
+        app.session.load_binary(0x1000, program, true).unwrap(),
         program.len()
     );
     app.session.toggle_run();

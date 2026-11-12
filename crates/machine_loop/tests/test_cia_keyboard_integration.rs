@@ -60,10 +60,11 @@ fn test_cia_a_tod_vblank_ticking_and_cia_b_tod_hsync_ticking() {
 fn test_keyboard_ctrl_amiga_amiga_warm_reset_in_machine_loop() {
     let mut machine = A500Machine::new(A500Config::default());
     machine.reset();
-    let dummy_rom = [0x55; 512 * 1024];
+    let dummy_rom = vec![0x55; 256 * 1024];
     machine
         .physical_memory
-        .write_bytes_debug(0xF80000, &dummy_rom);
+        .write_bytes_debug(0xF80000, &dummy_rom)
+        .unwrap();
 
     // Disengage overlay (PRA bit 0 = 1)
     machine.cia_a.set_pra(0x01);

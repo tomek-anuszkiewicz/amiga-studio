@@ -85,6 +85,8 @@ and proposed format are collected in the
 ## 4. File loading and restoration
 
 The save_state crate decodes the envelope and rejects an unsupported version.
+Physical-memory deserialization also rejects any Kickstart buffer whose length
+is not exactly 256 KiB (262144 bytes), before restoring the machine.
 The frontend then passes its pure `state` value to `A500Machine::load_state`.
 Restoration adopts the saved configuration, RAM/ROM, CPU micro-execution state,
 chip values, receiver-owned incoming inputs and board reset state. It performs no routing during

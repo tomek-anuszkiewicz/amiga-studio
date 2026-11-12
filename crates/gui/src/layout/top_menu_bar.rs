@@ -7,7 +7,7 @@ use crate::theme::AppTheme;
 
 const ZOOM_SELECTION_TOLERANCE: f32 = 0.01;
 
-const TOAST_DURATION_FRAMES: usize = 180;
+pub(super) const TOAST_DURATION_FRAMES: usize = 180;
 
 pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
     egui::TopBottomPanel::top("top_menu_bar")
@@ -292,13 +292,7 @@ pub(crate) fn open_load_state_dialog(app: &mut EmulatorApp) {
             .pick_file();
 
         if let Some(path) = file {
-            if let Ok(()) = app.session.load_state_from_file(&path) {
-                app.disassembly_view_addr = None;
-                app.toast_message = Some((
-                    format!("State loaded from {}", path.display()),
-                    TOAST_DURATION_FRAMES,
-                ));
-            }
+            app.load_state_file(&path);
         }
     }
 }

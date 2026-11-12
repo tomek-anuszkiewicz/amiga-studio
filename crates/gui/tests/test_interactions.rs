@@ -53,7 +53,7 @@ fn test_simulated_run_and_step_shortcuts() {
 
     // Load binary code: NOP, NOP, BRA *-0 (infinite loop at $1004)
     let code = [0x4E, 0x71, 0x4E, 0x71, 0x60, 0xFE];
-    app.session.load_binary(0x001000, &code, true);
+    app.session.load_binary(0x001000, &code, true).unwrap();
 
     // 1. Press F10 -> Step 1 instruction
     assert_eq!(app.session.instructions_executed, 0);
@@ -206,7 +206,7 @@ fn test_simulated_disassembly_inline_patching() {
 
     // Set up NOP ($4E71) at $001000
     let code = [0x4E, 0x71, 0x4E, 0x75]; // NOP, RTS
-    app.session.load_binary(0x001000, &code, true);
+    app.session.load_binary(0x001000, &code, true).unwrap();
 
     // Initial instruction at $1000 is NOP
     assert_eq!(
@@ -295,7 +295,7 @@ fn test_simulated_breakpoint_form_and_trigger() {
 
     // Code: NOP ($1000), NOP ($1002), RTS ($1004)
     let code = [0x4E, 0x71, 0x4E, 0x71, 0x4E, 0x75];
-    app.session.load_binary(0x001000, &code, true);
+    app.session.load_binary(0x001000, &code, true).unwrap();
 
     // Add breakpoint at $001002
     app.session.debugger.breakpoints.add_pc_breakpoint(0x001002);
@@ -319,7 +319,7 @@ fn test_simulated_temporal_time_travel_navigation() {
 
     // Code: NOP, NOP, RTS
     let code = [0x4E, 0x71, 0x4E, 0x71, 0x4E, 0x75];
-    app.session.load_binary(0x001000, &code, true);
+    app.session.load_binary(0x001000, &code, true).unwrap();
 
     // Enable temporal for time-travel navigation test
     app.session.temporal.set_recording(true);
@@ -371,7 +371,7 @@ fn test_full_frame_rendering_invariance() {
 
     // Inject code so registers, memory, disassembly, and trace buffers all have live data
     let code = [0x4E, 0x71, 0x32, 0x00, 0x4E, 0x75];
-    app.session.load_binary(0x001000, &code, true);
+    app.session.load_binary(0x001000, &code, true).unwrap();
     app.session.temporal.set_recording(true);
     app.session.step_instruction();
 
@@ -474,7 +474,7 @@ fn test_register_edit_focus_and_dismissal_lifecycle() {
 fn test_pc_instruction_address_normalization() {
     let mut app = EmulatorApp::default();
     let code = [0x4E, 0x71, 0x4E, 0x71];
-    app.session.load_binary(0x001000, &code, true);
+    app.session.load_binary(0x001000, &code, true).unwrap();
 
     // Hardware prefetch advances PC bus register to $001004
     assert_eq!(app.session.machine.cpu.state.pc(), 0x001004);
@@ -495,7 +495,7 @@ fn test_disassembly_instruction_decoding_fibonacci() {
         0x30, 0xC1, // MOVE.W D1, (A0)+
         0x51, 0xCB, 0xFF, 0xF4, // DBRA D3, $1014
     ];
-    app.session.load_binary(0x001000, &code, true);
+    app.session.load_binary(0x001000, &code, true).unwrap();
 
     let (dis0, len0) = debugger::disassemble(0x001000, |a| {
         app.session.machine.physical_memory.read_word_debug(a)
@@ -528,7 +528,7 @@ fn test_temporal_inactive_default_and_loop_rewind() {
     // Enable recording and run code
     app.session.temporal.set_recording(true);
     let code = [0x4E, 0x71, 0x4E, 0x71, 0x4E, 0x75];
-    app.session.load_binary(0x001000, &code, true);
+    app.session.load_binary(0x001000, &code, true).unwrap();
 
     app.session.step_instruction();
     app.session.step_instruction();
@@ -609,7 +609,7 @@ fn test_microcode_toggle_and_clock_metrics() {
 
     // Load code and step CCK to verify micro-step clock metrics
     let code = [0x32, 0x00, 0x4E, 0x75]; // MOVE.W D0, D1
-    app.session.load_binary(0x001000, &code, true);
+    app.session.load_binary(0x001000, &code, true).unwrap();
 
     // Before stepping, ensure instruction is initiated or step 1 CCK
     app.session.step_cck();
@@ -985,7 +985,9 @@ fn test_disassembly_stepping_multi_word_invariance() {
         0x42, 0x40, // CLR.W D0
         0x32, 0x3C, 0x00, 0x01, // MOVE.W #1, D1
     ];
-    app.session.load_binary(0x001000, &fibonacci_code, true);
+    app.session
+        .load_binary(0x001000, &fibonacci_code, true)
+        .unwrap();
 
     // 1. Initial instruction PC must be exactly $001000
     assert_eq!(app.session.machine.cpu.state.instruction_pc(), 0x001000);
@@ -1086,7 +1088,7 @@ fn test_disassembly_active_line_highlight_and_column_alignment() {
 
     // Load instructions: LEA ($2000).L, A0 ($1000), CLR.W D0 ($1006)
     let code = [0x41, 0xF9, 0x00, 0x00, 0x20, 0x00, 0x42, 0x40];
-    app.session.load_binary(0x001000, &code, true);
+    app.session.load_binary(0x001000, &code, true).unwrap();
 
     // Initial render at $001000: active line must produce frame highlight shapes
     let output_step0 = ctx.run(RawInput::default(), |ctx| app.update_ui(ctx));
@@ -1182,7 +1184,7 @@ fn test_disassembly_inline_patch_focus_cancel_and_commit() {
 
     // Inject NOP ($4E71) at $001000
     let code = [0x4E, 0x71, 0x4E, 0x75];
-    app.session.load_binary(0x001000, &code, true);
+    app.session.load_binary(0x001000, &code, true).unwrap();
     assert_eq!(
         app.session
             .machine
@@ -1251,7 +1253,7 @@ fn test_three_column_layout_stability_and_bounds_invariance() {
 
     // Prime with code and CPU registers
     let code = [0x4E, 0x71, 0x30, 0x3C, 0x12, 0x34, 0x4E, 0x75];
-    app.session.load_binary(0x001000, &code, true);
+    app.session.load_binary(0x001000, &code, true).unwrap();
     app.session.step_instruction();
 
     // 1. Standard HD resolution (1280x720)
@@ -1460,7 +1462,7 @@ fn test_disassembly_infinite_scroll_and_pc_snap() {
 
     // Load instructions: NOP, NOP, NOP, BRA *-0
     let code = [0x4E, 0x71, 0x4E, 0x71, 0x4E, 0x71, 0x60, 0xFE];
-    app.session.load_binary(0x001000, &code, true);
+    app.session.load_binary(0x001000, &code, true).unwrap();
 
     // Initial state: disassembly_view_addr is None (following current PC)
     assert_eq!(app.disassembly_view_addr, None);

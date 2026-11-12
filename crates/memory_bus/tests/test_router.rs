@@ -145,7 +145,7 @@ fn ram_handlers_retain_blocked_byte_word_and_tas_transfers() {
 #[test]
 fn kickstart_overlay_uses_rom_access_rules_while_chip_bus_is_blocked() {
     let mut mb = TestMotherboard::new();
-    mb.mem.write_bytes_debug(0xf80000, &[0xab, 0xcd]);
+    mb.mem.write_word_debug(0xf80000, 0xabcd);
     mb.mem.chip_ram_blocked = true;
     assert_eq!(mb.router().read_word(0), BusResult::WaitState);
     assert!(mb.agnus.dma.cpu_request_pending);
@@ -611,8 +611,8 @@ fn test_cia_register_addresses_mirror_on_unused_low_bits() {
 #[test]
 fn test_ciaa_port_a_overlay_toggle() {
     let mut mb = TestMotherboard::new();
-    mb.mem
-        .write_bytes_debug(0xF80000, &[0x11, 0x22, 0x33, 0x44]);
+    mb.mem.write_word_debug(0xF80000, 0x1122);
+    mb.mem.write_word_debug(0xF80002, 0x3344);
     mb.mem.map_kickstart_to_low_memory();
 
     let mut bus = mb.router();

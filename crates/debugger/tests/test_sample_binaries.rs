@@ -41,7 +41,7 @@ fn test_all_sample_binaries_execution_and_generation() {
     fs::write(out_dir.join("fibonacci.bin"), &fib_bytes).expect("write fibonacci.bin");
 
     let mut session = DebuggerSession::new();
-    session.load_binary(0x001000, &fib_bytes, true);
+    session.load_binary(0x001000, &fib_bytes, true).unwrap();
     session.debugger.breakpoints.add_pc_breakpoint(0x001022); // halt
     session.debugger.run_until_breakpoint(
         &mut session.machine.cpu,
@@ -106,7 +106,9 @@ fn test_all_sample_binaries_execution_and_generation() {
     fs::write(out_dir.join("bubble_sort.bin"), &sort_bytes).expect("write bubble_sort.bin");
 
     let mut sort_session = DebuggerSession::new();
-    sort_session.load_binary(0x001000, &sort_bytes, true);
+    sort_session
+        .load_binary(0x001000, &sort_bytes, true)
+        .unwrap();
     sort_session
         .debugger
         .breakpoints
@@ -203,7 +205,9 @@ fn test_all_sample_binaries_execution_and_generation() {
     fs::write(out_dir.join("sieve_primes.bin"), &sieve_bytes).expect("write sieve_primes.bin");
 
     let mut sieve_session = DebuggerSession::new();
-    sieve_session.load_binary(0x001000, &sieve_bytes, true);
+    sieve_session
+        .load_binary(0x001000, &sieve_bytes, true)
+        .unwrap();
     sieve_session
         .debugger
         .breakpoints
@@ -298,7 +302,9 @@ fn test_all_sample_binaries_execution_and_generation() {
     fs::write(out_dir.join("string_reverse.bin"), &string_bytes).expect("write string_reverse.bin");
 
     let mut str_session = DebuggerSession::new();
-    str_session.load_binary(0x001000, &string_bytes, true);
+    str_session
+        .load_binary(0x001000, &string_bytes, true)
+        .unwrap();
     str_session.debugger.breakpoints.add_pc_breakpoint(0x00103E); // halt
     str_session.debugger.run_until_breakpoint(
         &mut str_session.machine.cpu,
@@ -375,7 +381,9 @@ fn test_all_sample_binaries_execution_and_generation() {
     fs::write(out_dir.join("factorial.bin"), &fact_bytes).expect("write factorial.bin");
 
     let mut fact_session = DebuggerSession::new();
-    fact_session.load_binary(0x001000, &fact_bytes, true);
+    fact_session
+        .load_binary(0x001000, &fact_bytes, true)
+        .unwrap();
     fact_session
         .debugger
         .breakpoints

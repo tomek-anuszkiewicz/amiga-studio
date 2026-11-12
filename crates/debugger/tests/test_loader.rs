@@ -5,6 +5,26 @@ use debugger::loader::{inject_binary, DEFAULT_TARGET_ADDRESS};
 use physical_memory::PhysicalMemory;
 
 #[test]
+fn rejected_rom_load_preserves_cpu_memory_and_overlay() {
+    let mut session = debugger::DebuggerSession::new();
+    for overlay in [true, false] {
+        if !overlay {
+            session.machine.physical_memory.map_chip_ram_to_low_memory();
+        }
+        let before = session.save_state();
+        let error = session
+            .load_binary(0xFC0000, &vec![0x55; 524288], true)
+            .unwrap_err();
+        assert_eq!(error.actual, 524288);
+        assert_eq!(
+            error.to_string(),
+            "Kickstart ROM must be exactly 256 KiB (262144 bytes); received 524288 bytes."
+        );
+        assert_eq!(session.save_state(), before);
+    }
+}
+
+#[test]
 fn test_inject_binary_with_auto_prime() {
     let mut bus = PhysicalMemory::new();
     let mut cpu = Cpu::new();
@@ -14,7 +34,7 @@ fn test_inject_binary_with_auto_prime() {
 
     // Code: NOP ($4E71), RTS ($4E75)
     let code: [u8; 4] = [0x4E, 0x71, 0x4E, 0x75];
-    let written = inject_binary(&mut cpu, &mut bus, DEFAULT_TARGET_ADDRESS, &code, true);
+    let written = inject_binary(&mut cpu, &mut bus, DEFAULT_TARGET_ADDRESS, &code, true).unwrap();
     assert_eq!(written, 4);
 
     // Verify written memory
@@ -32,7 +52,7 @@ fn test_inject_binary_with_auto_prime() {
 
     // If SP is already non-zero, auto-prime should preserve existing a_long(7)
     cpu.state.set_a_long(7, 0x070000);
-    let _ = inject_binary(&mut cpu, &mut bus, DEFAULT_TARGET_ADDRESS, &code, true);
+    let _ = inject_binary(&mut cpu, &mut bus, DEFAULT_TARGET_ADDRESS, &code, true).unwrap();
     assert_eq!(cpu.state.a_long(7), 0x070000);
 }
 
@@ -45,7 +65,7 @@ fn test_inject_binary_without_auto_prime_preserves_cpu() {
     cpu.state.set_a_long(7, 0x004000);
 
     let code: [u8; 2] = [0x4E, 0x71];
-    let written = inject_binary(&mut cpu, &mut bus, 0x002000, &code, false);
+    let written = inject_binary(&mut cpu, &mut bus, 0x002000, &code, false).unwrap();
     assert_eq!(written, 2);
 
     // Memory was updated

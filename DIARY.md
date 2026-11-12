@@ -511,3 +511,23 @@ Every authorized repository commit adds a concise entry here. Logging and compac
 - **Verification & Test Results**:
   - The user reported testing and review complete
   - No tests or audits were rerun under the explicit commit-only instruction
+---
+
+### [2026-11-13 00:20 CET] — Require fixed 256 KiB Kickstart images
+- **Affected Subsystems**:
+  - `physical memory`
+  - `debugger`
+  - `GUI`
+  - `save state`
+  - `design specifications`
+- **What Was Changed (The Concrete Reality)**:
+  - Keep the ROM buffer private and fixed at 256 KiB with mirrored addressing
+  - Reject invalid ROM loads and snapshot buffers while preserving the active machine
+  - Propagate load failures and keep visible GUI feedback
+  - Update callers and regression fixtures
+  - Record that snapshot backward compatibility is not required before the first release
+- **Architectural Rationale & Trade-Offs**:
+  - Enforce the selected A500 ROM capacity at loading and restoration boundaries
+- **Verification & Test Results**:
+  - The user reported testing and review complete
+  - No tests or audits were rerun under the explicit commit-only instruction

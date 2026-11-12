@@ -10,7 +10,7 @@ fn test_boot_overlay_and_cia_control() {
     let mut rom = vec![0x00; 256 * 1024];
     rom[0] = 0x12;
     rom[1] = 0x34;
-    bus.write_bytes_debug(0xF80000, &rom);
+    bus.write_bytes_debug(0xF80000, &rom).unwrap();
 
     // Initial state: low-memory overlay active -> $000000 reads from Kickstart
     assert!(bus.is_low_memory_overlay_active());
@@ -114,7 +114,7 @@ fn test_physical_memory_reset_and_kickstart_direct_access() {
     rom[1] = 0x34;
     rom[2] = 0x56;
     rom[3] = 0x78;
-    bus.write_bytes_debug(0xF80000, &rom);
+    bus.write_bytes_debug(0xF80000, &rom).unwrap();
 
     // Verify kickstart read handlers via public bus interface
     assert_eq!(bus.read_byte(0xF80000), BusResult::Ready(0x12));
@@ -142,7 +142,7 @@ fn test_write_bytes_across_all_memory_regions() {
 
     // 1. Write to Chip RAM
     let chip_data = [0xAA, 0xBB, 0xCC, 0xDD];
-    let written = bus.write_bytes_debug(0x001000, &chip_data);
+    let written = bus.write_bytes_debug(0x001000, &chip_data).unwrap();
     assert_eq!(written, 4);
     assert_eq!(bus.read_word_debug(0x001000), 0xAABB);
     assert_eq!(bus.read_word_debug(0x001002), 0xCCDD);
@@ -153,32 +153,38 @@ fn test_write_bytes_across_all_memory_regions() {
         config::VideoStandard::Pal,
     ));
     let fast_data = [0x11, 0x22, 0x33, 0x44];
-    let written_fast = expanded_bus.write_bytes_debug(0x200000, &fast_data);
+    let written_fast = expanded_bus
+        .write_bytes_debug(0x200000, &fast_data)
+        .unwrap();
     assert_eq!(written_fast, 4);
     assert_eq!(expanded_bus.read_word_debug(0x200000), 0x1122);
     assert_eq!(expanded_bus.read_word_debug(0x200002), 0x3344);
 
     // 3. Write to Slow RAM
     let slow_data = [0x55, 0x66, 0x77, 0x88];
-    let written_slow = bus.write_bytes_debug(0xC00000, &slow_data);
+    let written_slow = bus.write_bytes_debug(0xC00000, &slow_data).unwrap();
     assert_eq!(written_slow, 4);
     assert_eq!(bus.read_word_debug(0xC00000), 0x5566);
     assert_eq!(bus.read_word_debug(0xC00002), 0x7788);
 
     // 4. Write to Kickstart ROM space ($F80000)
-    let rom_data = [0xDE, 0xAD, 0xBE, 0xEF];
-    let written_rom = bus.write_bytes_debug(0xF80000, &rom_data);
-    assert_eq!(written_rom, 4);
+    let mut rom_data = vec![0; 256 * 1024];
+    rom_data[..4].copy_from_slice(&[0xDE, 0xAD, 0xBE, 0xEF]);
+    let written_rom = bus.write_bytes_debug(0xF80000, &rom_data).unwrap();
+    assert_eq!(written_rom, 256 * 1024);
     assert_eq!(bus.read_word_debug(0xF80000), 0xDEAD);
     assert_eq!(bus.read_word_debug(0xF80002), 0xBEEF);
 
     // 5. Empty slice returns 0
-    assert_eq!(bus.write_bytes_debug(0x001000, &[]), 0);
+    assert_eq!(bus.write_bytes_debug(0x001000, &[]).unwrap(), 0);
 
     // 6. Verification that write_bytes_debug operates in debug mode, bypassing chip_ram_blocked
     bus.chip_ram_blocked = true;
     let blocked_chip_data = [0x12, 0x34];
-    assert_eq!(bus.write_bytes_debug(0x002000, &blocked_chip_data), 2);
+    assert_eq!(
+        bus.write_bytes_debug(0x002000, &blocked_chip_data).unwrap(),
+        2
+    );
     assert_eq!(bus.read_word_debug(0x002000), 0x1234);
     bus.chip_ram_blocked = false;
 
@@ -188,11 +194,11 @@ fn test_write_bytes_across_all_memory_regions() {
     bus.write_byte_debug(0xF80012, 0x42);
     assert_eq!(bus.read_byte_debug(0xF80012), 0x42);
 
-    // 8. Verification of byte-by-byte write and dynamic expansion into upper 512KB ROM
-    let upper_rom_data = [0xCA, 0xFE];
-    bus.write_bytes_debug(0xFC0000, &upper_rom_data);
+    // 8. Both high-ROM windows patch the same fixed 256 KiB image
+    bus.write_word_debug(0xFC0000, 0xCAFE);
     assert_eq!(bus.read_word_debug(0xFC0000), 0xCAFE);
-    assert_eq!(bus.kickstart_rom.len(), 512 * 1024);
+    assert_eq!(bus.kickstart_rom().len(), 256 * 1024);
+    assert_eq!(bus.read_word_debug(0xF80000), 0xCAFE);
 }
 
 #[test]

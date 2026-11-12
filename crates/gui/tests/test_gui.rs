@@ -54,7 +54,7 @@ fn test_binary_loader_and_prefetch_priming() {
 
     // NOP (0x4E71), NOP (0x4E71), RTS (0x4E75)
     let code: [u8; 6] = [0x4E, 0x71, 0x4E, 0x71, 0x4E, 0x75];
-    let written = inject_binary(&mut cpu, &mut bus, 0x002000, &code, true);
+    let written = inject_binary(&mut cpu, &mut bus, 0x002000, &code, true).unwrap();
 
     assert_eq!(written, 6);
     assert_eq!(bus.read_word_debug(0x002000), 0x4E71);
@@ -75,7 +75,7 @@ fn test_debugger_stepping_and_trace_recording() {
 
     // Load NOP at $001000
     let code = [0x4E, 0x71, 0x4E, 0x71];
-    inject_binary(&mut cpu, &mut bus, 0x001000, &code, true);
+    inject_binary(&mut cpu, &mut bus, 0x001000, &code, true).unwrap();
 
     assert_eq!(dbg.trace.len(), 0);
 
@@ -114,7 +114,7 @@ fn test_view_mode_and_arbitrary_binary_loading() {
     // Verify injecting into high custom screen address $070000
     let custom_addr = 0x070000;
     let code = [0x4E, 0x71, 0x32, 0x00]; // NOP, MOVE.W D0, D1
-    let written = inject_binary(&mut cpu, &mut bus, custom_addr, &code, true);
+    let written = inject_binary(&mut cpu, &mut bus, custom_addr, &code, true).unwrap();
 
     assert_eq!(written, 4);
     assert_eq!(bus.read_word_debug(custom_addr), 0x4E71);
@@ -137,7 +137,7 @@ fn test_disassembly_instruction_editing_and_size_invariance() {
 
     // Injected at $001000: MOVE.W D0, D1 (0x3200, 2 bytes)
     let code = [0x32, 0x00];
-    inject_binary(&mut cpu, &mut bus, 0x001000, &code, true);
+    inject_binary(&mut cpu, &mut bus, 0x001000, &code, true).unwrap();
 
     let (orig_disasm, byte_len) = debugger::disassemble(0x001000, |a| bus.read_word_debug(a));
     let orig_len = orig_disasm.word_count * 2;

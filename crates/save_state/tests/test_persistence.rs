@@ -5,6 +5,24 @@ use machine_loop::A500Machine;
 use save_state::{SaveState, SaveStateError, SAVE_STATE_VERSION};
 
 #[test]
+fn snapshot_rejects_kickstart_buffers_of_other_sizes() {
+    let machine = A500Machine::new(A500Config::default());
+    let mut value = serde_json::to_value(SaveState::capture(&machine)).unwrap();
+    for size in [0, 262143, 524288] {
+        value["state"]["physical_memory"]["kickstart_rom"] = serde_json::json!(vec![0u8; size]);
+        let bytes = serde_json::to_vec(&value).unwrap();
+        let error = SaveState::from_bytes(&bytes).unwrap_err();
+        assert!(matches!(error, SaveStateError::DeserializationFailed(_)));
+        assert!(error
+            .to_string()
+            .contains("Kickstart ROM must be exactly 256 KiB (262144 bytes)"));
+        assert!(error
+            .to_string()
+            .contains(&format!("received {size} bytes")));
+    }
+}
+
+#[test]
 fn test_save_state_metadata_and_header() {
     let machine = A500Machine::new(A500Config::from_preset(
         A500Preset::Standard1Mb,

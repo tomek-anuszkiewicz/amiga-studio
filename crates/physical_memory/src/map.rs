@@ -387,7 +387,7 @@ fn write_slow_ram_word(bus: &mut PhysicalMemory, addr: u32, val: u16) -> BusResu
 
 #[inline]
 fn read_kickstart_rom_internal(bus: &PhysicalMemory, addr: u32) -> u8 {
-    let mask = bus.kickstart_rom.len() - 1;
+    let mask = super::MASK_KICKSTART_ADDRESS;
     let idx = (addr as usize) & mask;
     bus.kickstart_rom[idx]
 }
@@ -399,13 +399,9 @@ fn read_kickstart_rom_debug(bus: &PhysicalMemory, addr: u32) -> u8 {
 
 #[inline]
 fn read_kickstart_rom_word_internal(bus: &PhysicalMemory, addr: u32) -> u16 {
-    let mask = bus.kickstart_rom.len() - 1;
+    let mask = super::MASK_KICKSTART_ADDRESS;
     let idx = (addr as usize) & mask;
-    if idx + 1 < bus.kickstart_rom.len() {
-        u16::from_be_bytes([bus.kickstart_rom[idx], bus.kickstart_rom[idx + 1]])
-    } else {
-        u16::from_be_bytes([bus.kickstart_rom[idx], bus.kickstart_rom[0]])
-    }
+    u16::from_be_bytes([bus.kickstart_rom[idx], bus.kickstart_rom[(idx + 1) & mask]])
 }
 
 #[inline]
@@ -416,12 +412,7 @@ fn read_kickstart_rom_word_debug(bus: &PhysicalMemory, addr: u32) -> u16 {
 #[inline]
 fn write_kickstart_rom_internal(bus: &mut PhysicalMemory, addr: u32, val: u8) {
     if addr >= config::address_map::KICKSTART_BASE {
-        let offset = (addr - config::address_map::KICKSTART_BASE) as usize;
-        if offset >= bus.kickstart_rom.len() && bus.kickstart_rom.len() < super::KICKSTART_SIZE_512K
-        {
-            bus.kickstart_rom.resize(super::KICKSTART_SIZE_512K, 0xFF);
-        }
-        let mask = bus.kickstart_rom.len().wrapping_sub(1);
+        let mask = super::MASK_KICKSTART_ADDRESS;
         let idx = (addr as usize) & mask;
         bus.kickstart_rom[idx] = val;
     }
@@ -435,13 +426,7 @@ fn write_kickstart_rom_debug(bus: &mut PhysicalMemory, addr: u32, val: u8) {
 #[inline]
 fn write_kickstart_rom_word_internal(bus: &mut PhysicalMemory, addr: u32, val: u16) {
     if addr >= config::address_map::KICKSTART_BASE {
-        let offset = (addr - config::address_map::KICKSTART_BASE) as usize;
-        if offset + 1 >= bus.kickstart_rom.len()
-            && bus.kickstart_rom.len() < super::KICKSTART_SIZE_512K
-        {
-            bus.kickstart_rom.resize(super::KICKSTART_SIZE_512K, 0xFF);
-        }
-        let mask = bus.kickstart_rom.len().wrapping_sub(1);
+        let mask = super::MASK_KICKSTART_ADDRESS;
         let idx = (addr as usize) & mask;
         let bytes = val.to_be_bytes();
         bus.kickstart_rom[idx] = bytes[0];

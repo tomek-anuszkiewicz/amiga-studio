@@ -68,7 +68,7 @@ pub const fn build_preset_bank_map(
         b += 1;
     }
 
-    // 7. Kickstart ROM: 512 KB occupies banks 0xF8..=0xFF (8 banks of 64 KB)
+    // 7. Kickstart ROM: 256 KiB mirrored across the 512 KiB window in banks 0xF8..=0xFF (8 banks of 64 KB)
     let mut b = config::address_map::KICKSTART_BANK_FIRST as usize;
     while b <= config::address_map::KICKSTART_BANK_LAST as usize {
         map[b] = KICKSTART_ROM_HANDLER;

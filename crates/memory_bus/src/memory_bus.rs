@@ -41,7 +41,11 @@ impl<'a> MemoryBus<'a> {
 
     /// Writes an arbitrary byte slice directly to physical memory for debugger/test injection
     #[inline(always)]
-    pub fn write_bytes_debug(&mut self, addr: u32, data: &[u8]) -> usize {
+    pub fn write_bytes_debug(
+        &mut self,
+        addr: u32,
+        data: &[u8],
+    ) -> Result<usize, physical_memory::KickstartSizeError> {
         self.mem.write_bytes_debug(addr, data)
     }
 }

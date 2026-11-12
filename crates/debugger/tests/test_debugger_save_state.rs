@@ -150,15 +150,19 @@ fn test_debugger_session_save_state_preserves_kickstart_rom() {
     session
         .machine
         .physical_memory
-        .write_bytes_debug(0xF80000, &dummy_rom);
+        .write_bytes_debug(0xF80000, &dummy_rom)
+        .unwrap();
 
     let saved = session.save_state();
-    assert_eq!(saved.physical_memory.kickstart_rom, dummy_rom);
+    assert_eq!(saved.physical_memory.kickstart_rom(), dummy_rom);
 
     let mut new_session = DebuggerSession::from_config(A500Config::from_preset(
         A500Preset::Bare512k,
         VideoStandard::Pal,
     ));
     new_session.load_state(&saved);
-    assert_eq!(new_session.machine.physical_memory.kickstart_rom, dummy_rom);
+    assert_eq!(
+        new_session.machine.physical_memory.kickstart_rom(),
+        dummy_rom
+    );
 }

@@ -215,7 +215,7 @@ fn test_debugger_session_controller() {
 
     // Load NOPs at $001000
     let code = [0x4E, 0x71, 0x4E, 0x71, 0x4E, 0x75]; // NOP, NOP, RTS
-    session.load_binary(0x001000, &code, true);
+    session.load_binary(0x001000, &code, true).unwrap();
 
     assert_eq!(session.machine.cpu.state.pc(), 0x001004); // Prefetch primed to 0x1004
     assert_eq!(session.machine.cpu.state.ir(), 0x4E71);

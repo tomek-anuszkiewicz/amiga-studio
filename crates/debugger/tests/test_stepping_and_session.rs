@@ -35,7 +35,7 @@ fn test_debugger_session_full_lifecycle() {
 
     // Load binary code: NOP, NOP, RTS
     let code: [u8; 6] = [0x4E, 0x71, 0x4E, 0x71, 0x4E, 0x75];
-    let written = session.load_binary(0x001000, &code, true);
+    let written = session.load_binary(0x001000, &code, true).unwrap();
     assert_eq!(written, 6);
 
     assert!(!session.temporal.is_recording());
@@ -106,9 +106,9 @@ fn test_debugger_session_reset_and_overlay_lifecycle() {
         .physical_memory
         .is_low_memory_overlay_active());
 
-    // Loading binary via inject_binary() disengages boot overlay for synthetic test execution
+    // Loading binary via inject_binary().unwrap() disengages boot overlay for synthetic test execution
     let code: [u8; 4] = [0x4E, 0x71, 0x4E, 0x71]; // NOP, NOP
-    session.load_binary(0x001000, &code, true);
+    session.load_binary(0x001000, &code, true).unwrap();
     assert!(!session
         .machine
         .physical_memory
@@ -122,7 +122,7 @@ fn test_debugger_session_reset_and_overlay_lifecycle() {
         .is_low_memory_overlay_active());
 
     // Loading another binary disengages overlay again
-    session.load_binary(0x001000, &code, true);
+    session.load_binary(0x001000, &code, true).unwrap();
     assert!(!session
         .machine
         .physical_memory
@@ -143,7 +143,7 @@ fn test_lea_step_instruction() {
         0x41, 0xF9, 0x00, 0x00, 0x20, 0x00, // LEA ($002000).L, A0
         0x42, 0x40, // CLR.W D0
     ];
-    session.load_binary(0x001000, &code, true);
+    session.load_binary(0x001000, &code, true).unwrap();
 
     println!(
         "Initial: pc={:06X}, instruction_pc={:06X}, ir={:04X}",
@@ -171,7 +171,7 @@ fn test_lea_step_instruction_call() {
         0x41, 0xF9, 0x00, 0x00, 0x20, 0x00, // LEA ($002000).L, A0
         0x42, 0x40, // CLR.W D0
     ];
-    session.load_binary(0x001000, &code, true);
+    session.load_binary(0x001000, &code, true).unwrap();
     session.step_instruction();
     println!(
         "After step_instruction: pc={:06X}, instruction_pc={:06X}, a0={:08X}",

@@ -280,7 +280,12 @@ impl DebuggerSession {
     }
 
     /// Loads binary data into memory and optionally sets PC & primes prefetch
-    pub fn load_binary(&mut self, target_addr: u32, data: &[u8], auto_prime: bool) -> usize {
+    pub fn load_binary(
+        &mut self,
+        target_addr: u32,
+        data: &[u8],
+        auto_prime: bool,
+    ) -> Result<usize, physical_memory::KickstartSizeError> {
         inject_binary(
             &mut self.machine.cpu,
             &mut self.machine.physical_memory,

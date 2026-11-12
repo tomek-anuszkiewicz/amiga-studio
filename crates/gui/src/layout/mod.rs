@@ -1,5 +1,6 @@
 //! Layout Submodules strictly mapping 1:1 to visible UI screen panels
 
+pub mod file_dialogs;
 pub mod left_dock;
 pub mod main_viewport;
 pub mod right_dock;

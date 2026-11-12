@@ -172,7 +172,7 @@ fn trace_program<F>(
 
     let bytes = fs::read(bin_path).expect("Failed to read binary file");
     let mut session = DebuggerSession::new();
-    session.load_binary(entry_addr, &bytes, true);
+    session.load_binary(entry_addr, &bytes, true).unwrap();
 
     let mut step_count = 0;
     let mut printed_instructions = 0;

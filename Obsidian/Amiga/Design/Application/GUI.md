@@ -35,6 +35,8 @@ The Developer Studio has a top bar and three main areas: a left dock for CPU sta
 
 The execution trace and the optional snapshot history serve different purposes: the trace lists recent instructions, while the history bar browses recorded CPU states. History recording starts disabled, and browsing a snapshot does not rewind memory or the rest of the machine. Watchpoint stops remain incomplete; see the [debugger work](../../../../ROADMAP.md#debugger-execution-control). See [Debugger](Debugger.md) for these behavior limits and the [Debugger Guide](../../../../docs/debugger.md) for user-facing shortcuts.
 
+Binary loading into the Kickstart address window accepts only a 256 KiB image. A rejected load leaves the machine unchanged and keeps the load dialog available for correction. File and snapshot loading errors remain visible until dismissed, including the expected and actual ROM byte counts for an invalid image.
+
 ## Input and output
 
 The intended input path maps host keyboard events to the [Amiga keyboard](../Keyboard.md) and host mouse movement and buttons to the emulated [mouse and game port](../Mouse.md). Host gamepad or keyboard controls can likewise represent an emulated [joystick](../Joystick.md). These mappings belong at the frontend boundary; the emulated devices and chips decide their hardware effects.

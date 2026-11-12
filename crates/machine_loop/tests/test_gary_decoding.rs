@@ -91,9 +91,7 @@ fn every_cia_a_bank_alias_routes_only_committed_pa0_to_overlay() {
         ] {
             let mut machine = A500Machine::new(A500Config::from_preset(preset, standard));
             machine.cpu.state.set_stopped(true);
-            machine
-                .physical_memory
-                .write_bytes_debug(0xf80000, &[0x12, 0x34]);
+            machine.physical_memory.write_word_debug(0xf80000, 0x1234);
             machine.physical_memory.write_chip_word(0, 0x5678);
             for bank in 0xa0..=0xbf {
                 let base = bank << 16;

@@ -144,7 +144,10 @@ fn test_save_state_deterministic_stepping_roundtrip() {
 
     let code = [0x4E, 0x71, 0x60, 0xFE]; // NOP; BRA *-0
     machine.physical_memory.map_chip_ram_to_low_memory();
-    machine.physical_memory.write_bytes_debug(0x001000, &code);
+    machine
+        .physical_memory
+        .write_bytes_debug(0x001000, &code)
+        .unwrap();
     machine
         .cpu
         .set_pc_and_prime_prefetch(0x001000, &mut machine.physical_memory);
@@ -218,21 +221,22 @@ fn test_save_state_restores_kickstart_rom_unconditionally() {
     let dummy_rom = vec![0x42; 256 * 1024];
     machine
         .physical_memory
-        .write_bytes_debug(0xF80000, &dummy_rom);
+        .write_bytes_debug(0xF80000, &dummy_rom)
+        .unwrap();
 
     let state = machine.save_state();
-    assert_eq!(state.physical_memory.kickstart_rom.len(), 256 * 1024);
+    assert_eq!(state.physical_memory.kickstart_rom().len(), 256 * 1024);
 
     let mut target_machine = A500Machine::new(A500Config::from_preset(
         A500Preset::Bare512k,
         VideoStandard::Pal,
     ));
-    assert!(target_machine.physical_memory.kickstart_rom[8..]
+    assert!(target_machine.physical_memory.kickstart_rom()[8..]
         .iter()
         .all(|&b| b == 0xFF));
 
     target_machine.load_state(&state);
-    assert_eq!(target_machine.physical_memory.kickstart_rom, dummy_rom);
+    assert_eq!(target_machine.physical_memory.kickstart_rom(), dummy_rom);
 }
 
 #[test]

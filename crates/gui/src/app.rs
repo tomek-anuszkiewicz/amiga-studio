@@ -140,6 +140,7 @@ pub struct EmulatorApp {
     pub pending_binary_path: Option<PathBuf>,
     pub load_target_addr_str: String,
     pub load_auto_prime: bool,
+    pub file_error: Option<String>,
     pub toast_message: Option<(String, usize)>,
 }
 
@@ -179,6 +180,7 @@ impl Default for EmulatorApp {
             pending_binary_path: None,
             load_target_addr_str: "001000".to_string(),
             load_auto_prime: true,
+            file_error: None,
             toast_message: None,
         }
     }
@@ -232,6 +234,7 @@ impl EmulatorApp {
                 .pick_file();
 
             if let Some(path) = file {
+                self.file_error = None;
                 self.pending_binary_path = Some(path);
                 self.load_binary_modal_open = true;
             }
@@ -349,6 +352,7 @@ impl EmulatorApp {
         let dropped_files = ctx.input(|i| i.raw.dropped_files.clone());
         for file in dropped_files {
             if let Some(path) = file.path {
+                self.file_error = None;
                 self.pending_binary_path = Some(path);
                 self.load_binary_modal_open = true;
             }
@@ -720,56 +724,7 @@ impl EmulatorApp {
                 });
         }
 
-        // --- Modal Dialog: Load Binary into Memory ---
-        if self.load_binary_modal_open {
-            egui::Window::new("Load Binary into Memory")
-                .collapsible(false)
-                .resizable(false)
-                .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
-                .show(ctx, |ui| {
-                    if let Some(path) = &self.pending_binary_path {
-                        ui.label(format!("File: {}", path.display()));
-                    }
-
-                    ui.horizontal(|ui| {
-                        ui.label("Target RAM Address:");
-                        ui.add(
-                            egui::TextEdit::singleline(&mut self.load_target_addr_str)
-                                .desired_width(80.0),
-                        );
-                    });
-
-                    ui.checkbox(&mut self.load_auto_prime, "Auto-set PC & prime prefetch");
-
-                    ui.separator();
-
-                    ui.horizontal(|ui| {
-                        if ui.button("Inject into RAM").clicked() {
-                            #[cfg(not(target_arch = "wasm32"))]
-                            if let Some(path) = &self.pending_binary_path {
-                                if let Ok(data) = std::fs::read(path) {
-                                    let clean =
-                                        self.load_target_addr_str.trim().trim_start_matches('$');
-                                    let target_addr = u32::from_str_radix(clean, 16)
-                                        .unwrap_or(debugger::DEFAULT_TARGET_ADDRESS);
-                                    self.session.load_binary(
-                                        target_addr,
-                                        &data,
-                                        self.load_auto_prime,
-                                    );
-                                    self.hex_base_addr = target_addr
-                                        & crate::layout::right_dock::memory_hex::MASK_ROW_ADDRESS;
-                                }
-                            }
-                            self.load_binary_modal_open = false;
-                        }
-
-                        if ui.button("Cancel").clicked() {
-                            self.load_binary_modal_open = false;
-                        }
-                    });
-                });
-        }
+        crate::layout::file_dialogs::render(self, ctx);
     }
 }
 

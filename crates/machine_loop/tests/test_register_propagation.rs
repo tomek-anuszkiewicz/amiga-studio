@@ -71,9 +71,7 @@ fn test_cross_chip_dmacon_broadcast_to_agnus_and_paula() {
 fn test_cia_a_overlay_follows_committed_port_level() {
     let mut machine = A500Machine::new(A500Config::bare_512k(VideoStandard::Pal));
     machine.cpu.state.set_stopped(true);
-    machine
-        .physical_memory
-        .write_bytes_debug(0xf80000, &[0x12, 0x34]);
+    machine.physical_memory.write_word_debug(0xf80000, 0x1234);
     for (addr, value, expected_overlay) in [
         (cia_reg::cia_a::REGISTER_DDRA, 1, false),
         (cia_reg::cia_a::REGISTER_PRA, 1, true),

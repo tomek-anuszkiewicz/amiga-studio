@@ -31,7 +31,10 @@ pub fn rom_machine(code: &[u16]) -> A500Machine {
     for (index, word) in code.iter().enumerate() {
         rom[0x1000 + index * 2..0x1002 + index * 2].copy_from_slice(&word.to_be_bytes());
     }
-    machine.physical_memory.write_bytes_debug(0xF80000, &rom);
+    machine
+        .physical_memory
+        .write_bytes_debug(0xF80000, &rom)
+        .unwrap();
     machine.reset();
     machine
 }

@@ -18,7 +18,7 @@ fn print_usage() {
     eprintln!(
         "Usage: gui-inspector [OPTIONS]\n\
          Options:\n\
-           --scenario <NAME>       Scenario: baseline, live_display, live_display_studio, hover_splitter, hover_scrollbar, hover_register, hover_ccr, hover_memory, game_mode, workbench_theme, edit_register, edit_disasm, small_window (default: baseline)\n\
+           --scenario <NAME>       Scenario: baseline, clean_startup, live_display, live_display_studio, hover_splitter, hover_scrollbar, hover_register, hover_ccr, hover_memory, game_mode, workbench_theme, edit_register, edit_disasm, small_window (default: baseline)\n\
            --width <PIXELS>        Viewport width in points/pixels (default: 1280)\n\
            --height <PIXELS>       Viewport height in points/pixels (default: 720)\n\
            --output <PATH>         Target PNG output file path (default: target/gui_captures/baseline.png)\n\
@@ -27,7 +27,7 @@ fn print_usage() {
     );
 }
 
-fn create_primed_app() -> EmulatorApp {
+fn create_primed_app() -> Result<EmulatorApp, physical_memory::KickstartSizeError> {
     let mut app = EmulatorApp::default();
 
     // Load sample assembly program: NOP, NOP, MOVE.W #$1234, D0, RTS
@@ -38,7 +38,7 @@ fn create_primed_app() -> EmulatorApp {
         0x4E, 0x75, // RTS
     ];
     app.session
-        .load_binary(debugger::DEFAULT_TARGET_ADDRESS, &code, true);
+        .load_binary(debugger::DEFAULT_TARGET_ADDRESS, &code, true)?;
 
     // Seed realistic register and debugger state
     app.session.machine.cpu.state.set_d_long(0, 0xCAFE_BABE);
@@ -49,7 +49,7 @@ fn create_primed_app() -> EmulatorApp {
     // Step one instruction so trace log has entries and PC moves to $1002
     app.session.step_instruction();
 
-    app
+    Ok(app)
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -123,7 +123,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             debugger::DEFAULT_TARGET_ADDRESS,
             include_bytes!("../../../machine_loop/tests/programs/display/live_stripes/program.bin"),
             true,
-        );
+        )?;
         if scenario == "live_display" {
             app.view_mode = gui::ViewMode::ScreenOnly;
         }
@@ -132,7 +132,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     } else if scenario == "clean_startup" {
         EmulatorApp::default()
     } else {
-        create_primed_app()
+        create_primed_app()?
     };
 
     // Prepare harness with wgpu offscreen renderer

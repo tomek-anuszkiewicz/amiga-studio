@@ -29,14 +29,49 @@ pub const MASK_WORD_ADDRESS: u32 = MASK_PHYSICAL_ADDRESS & !1;
 
 pub const MASK_PHYSICAL_ADDRESS: u32 = 0x00FF_FFFF;
 
-const KICKSTART_SIZE_512K: usize = 512 * 1024;
+/// Fixed factory A500 Kickstart capacity, in bytes.
+const KICKSTART_ROM_SIZE: usize = 256 * 1024;
+const MASK_KICKSTART_ADDRESS: usize = KICKSTART_ROM_SIZE - 1;
 
 /// Maximum size of physical memory regions
 const CHIP_RAM_SIZE_512K: usize = 512 * 1024;
 pub const DEFAULT_BOOT_SSP: u32 = CHIP_RAM_SIZE_512K as u32;
 const SLOW_RAM_SIZE: usize = 512 * 1024;
 pub const MAX_FAST_RAM_SIZE: usize = 4 * 1024 * 1024; // 4MB Fast RAM (Auto-Config expansion at $200000..$5FFFFF)
-const KICKSTART_SIZE_256K: usize = 256 * 1024;
+
+/// A ROM image or saved ROM buffer has an unsupported length.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct KickstartSizeError {
+    pub actual: usize,
+}
+
+impl core::fmt::Display for KickstartSizeError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(
+            f,
+            "Kickstart ROM must be exactly 256 KiB ({KICKSTART_ROM_SIZE} bytes); received {} bytes.",
+            self.actual
+        )
+    }
+}
+
+impl std::error::Error for KickstartSizeError {}
+
+fn validate_kickstart_size(actual: usize) -> Result<(), KickstartSizeError> {
+    if actual != KICKSTART_ROM_SIZE {
+        return Err(KickstartSizeError { actual });
+    }
+    Ok(())
+}
+
+fn deserialize_kickstart_rom<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let rom = Vec::<u8>::deserialize(deserializer)?;
+    validate_kickstart_size(rom.len()).map_err(serde::de::Error::custom)?;
+    Ok(rom)
+}
 
 /// Cycle-exact Amiga 500 PhysicalMemory
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -58,7 +93,8 @@ pub struct PhysicalMemory {
     pub fast_ram: Option<Vec<u8>>,
 
     /// Physical Kickstart ROM buffer (256 KB)
-    pub kickstart_rom: Vec<u8>,
+    #[serde(deserialize_with = "deserialize_kickstart_rom")]
+    kickstart_rom: Vec<u8>,
 
     /// Flag indicating whether Agnus/DMA currently blocks the Chip RAM bus
     pub chip_ram_blocked: bool,
@@ -94,7 +130,7 @@ impl PhysicalMemory {
         };
         let bank_map = presets::build_bank_map(&config);
 
-        let mut kickstart_rom = vec![0xFF; KICKSTART_SIZE_256K];
+        let mut kickstart_rom = vec![0xFF; KICKSTART_ROM_SIZE];
         // Synthetic default boot vectors for unpopulated Kickstart ROM mode (headless testing / developer startup):
         // Vector 0 ($000000): Default SSP = $00080000 (top of standard 512KB Chip RAM)
         kickstart_rom[0..4].copy_from_slice(&DEFAULT_BOOT_SSP.to_be_bytes());
@@ -177,12 +213,28 @@ impl PhysicalMemory {
 
     /// Direct debug/injection byte block writer into physical memory.
     /// Bypasses bus arbitration locks (such as Chip RAM contention) and side-effects.
-    /// Returns the number of bytes written.
-    pub fn write_bytes_debug(&mut self, addr: u32, data: &[u8]) -> usize {
+    /// ROM images must contain exactly 256 KiB; rejection leaves memory unchanged.
+    pub fn write_bytes_debug(
+        &mut self,
+        addr: u32,
+        data: &[u8],
+    ) -> Result<usize, KickstartSizeError> {
+        let addr = addr & MASK_PHYSICAL_ADDRESS;
+        if addr >= config::address_map::KICKSTART_BASE
+            || (addr as usize).saturating_add(data.len())
+                > config::address_map::KICKSTART_BASE as usize
+        {
+            validate_kickstart_size(data.len())?;
+        }
         for (i, &b) in data.iter().enumerate() {
             self.write_byte_debug(addr.wrapping_add(i as u32), b);
         }
-        data.len()
+        Ok(data.len())
+    }
+
+    /// Read-only view of the fixed-size Kickstart image.
+    pub fn kickstart_rom(&self) -> &[u8] {
+        &self.kickstart_rom
     }
 
     /// Side-effect-free byte read for debugger inspection and test result assertions
