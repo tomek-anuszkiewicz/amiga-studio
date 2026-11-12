@@ -317,6 +317,10 @@ PDF-ORDER-2.46 was closed by user request without certifying all reading-order o
 
 Compact JSON omitted defaults, but equivalent field values alone did not guarantee a cache hit: prompt bytes, serialization order, schema, model, effort and images all contributed to identity. Replacement fields therefore retained contract order. Temporary aliases were limited to verified equivalent requests and then removed; changed page-54 geometry was retained as a legitimate miss. A historical audit found 138 Stage 02.42 hits with no misses, followed by 81 Stage 02.44 hits and that one legitimate miss. Source-hash variants kept source identity separate from response reuse. The October 28 relocation (`e35239e`) preserved 6,694 files, including 4,775 cache entries, without changing response identities or running a new conversion/import.
 
+November 10-11 changes `47580a8` and `d8c9e33` extended reuse to completed PDF preparation, per-page PNG/text bundles and graphic crops. Cache entries bound source bytes, effective settings and runtime identity to output hashes; file existence alone was insufficient. Crop identity included the source PNG and bounding box. Stages 04, 05, 07 and 08 stored only changed pages, while readers selected the latest replacement over Stage 03. An explicit empty filtered page prevented excluded objects from returning. These changes reduced repeated preparation without certifying transcription quality.
+
+Temporary capacity failures moved to fresh transports with exponential backoff that could be interrupted; budget failures remained terminal. Coordinator cancellation interrupted worker requests, delays and retry waits after a regression reproduced an unwanted extra request. On Windows, a system execution request prevented idle sleep during selected pipeline stages and restored the previous state on exit. PDF conversion and table defaults used high reasoning effort. Historical checks passed 48 shared, two HTML, 48 PDF and 192 Book Review tests; the initial commit profile failed only on five vocabulary terms, then passed after explicit user approval. Sparse-page follow-up checks covered 31 PDF execution/cache, six proofreading, two parallel-table and four import tests. No new book conversion or import was run for those deliveries.
+
 ### Working, Accepted and the Test Book Decisions
 
 The editor made Working the edit surface and Accepted an explicit author decision, with guarded Codex edits, source selection, merge controls and chapter organization. On October 23-25 the selected source became the 308-page A500/A2000 OCR PDF; other manuals remained local references. The initial one-chapter recipe was later replaced by a fourteen-chapter, 975-element Accepted model. The user closed then-Roadmap 1.1 while description, proofreading and standalone reconstruction remained separate. Its 102 passing editor contracts and matching recipe hashes did not certify source attribution: a later audit found 319 invalid fields. Commit and milestone checks still had English/PDF failures.
@@ -325,11 +329,17 @@ October 26-27 work recorded the rebuilt PDF identity `78e52f075e17`, a 999-eleme
 
 On October 27, `570d578` replaced import matching with page-local source alignment and published the current Accepted recipe. The user accepted chapter formatting and short edited fragments while retaining authored source references, closing then-Roadmap 1.3/1.4 by direction. The 160 passing Book Review tests and matching root/Accepted and PDF hashes did not establish semantic attribution or standalone reconstruction: source audit still found 56 fields requiring attention among 940 fields/26,360 references; commit/milestone English checks and five semantic checks failed. Standalone extraction and the four manual recipes remained pending. Chapter/contents renaming, scoped image/table descriptions and active-request cancellation followed in `ac53f5e`, with 182 Book Review and 44 shared conversion tests passing; no new conversion/import ran for that delivery.
 
+On November 12, `783bb8a` added a read-only inventory of unmatched text with source context and navigation. Source alignment retained code and numbered content, joined local hyphenated continuations without absorbing a fused OCR glyph, and preserved offsets through multiline math and HTML. Resolved text was cached by recipe and source-page version with replacement-race checks; incremental viewer updates retained unchanged chapters, resources and reading geometry. Working revision checks still guarded acceptance and discard. Initial English findings were resolved through approved API vocabulary and file-specific test/regex exceptions before the full commit profile and independent review passed. Focused cache, browser, alignment and recipe suites passed 7, 6, 31 and 37 tests respectively; server availability was checked separately from content quality.
+
+Integration in `45f9094` exposed a further source-mapping defect: raw backtick matching confused escaped delimiters, joined markers across separate inline containers and selected repeated text from the wrong table cell. The repair used parser-owned code spans, mapped every inline container in source order and decoded recipe escapes while retaining cleanup offsets. Alignment, cleanup and unmatched-text inventory shared the corrected boundaries. Historical final checks passed 33 alignment and 39 recipe tests, all 222 Book Review contracts and the full commit profile, with independent extended approval. Those results did not run a new conversion or reconstruction, full SingleStep or a milestone profile.
+
 ### Portable Reconstruction and the Remaining Manual Recipes
 
 The accepted recipe became the portable handoff between clones. Reconstruction rebuilds the editor's local page and asset workspace from the identified source while retaining the authored recipe. Working remains the edit surface, and acceptance remains an explicit author decision. Bulk description tasks were limited to visible Working elements rather than hidden content. Publication and RAG indexing remained a downstream user workflow. The same delivery added a structural frontmatter gate for local reference Markdown; that gate checks metadata, not source fidelity.
 
 The recorded Test Book replay completed PDF stages 01-08 with 545 cache hits and zero new model calls, then imported 993 elements. Source validation still reported 56 invalid fields in that raw import. The user retained the fresh import without treating successful execution as source acceptance. The closing commit records a passing commit profile, 35 design specifications with 691 resolving links, diary/roadmap checks and valid frontmatter in 104 local Markdown files. These are historical results for that delivery, not checks rerun during diary compaction.
+
+November 11-12 artifact commit `3d54d55` recorded the A500/A2000 accepted recipe and Hardware Reference Manual OCR provenance without tracking local PDFs or generated review bundles. The 2,000-element recipe matched Working and Accepted, and source/prepared hashes matched their identity records. An initial audit resolved 60,164 references but reported 112 literal-content or unsupported-math fields. Thirty edited fields raised the resolved-reference count to 60,546, with 107 such fields remaining. The user explicitly accepted known source-occurrence mismatches on pages 149, 150, 183 and 242 for this artifact; the general attribution requirement was unchanged. The commit profile and independent review passed with that exception. Valid addresses and matching hashes did not establish correct printed occurrences, transcription quality or clean reconstruction.
 
 The roadmap pilot was removed by user direction, rather than verified as complete: the fresh Test Book had no Accepted bundle or demonstrated clean reconstruction gate. The remaining repository deliverable was four accepted manual recipes with matching source identities, now owned by [Roadmap 11.1](ROADMAP.md#step-11-four-manual-pdf-to-book-json-conversion). Full-book quality, downstream publication and RAG ingestion were not established by the tooling delivery. These unresolved limits remain attached to the narrative; they do not make every settled converter change an active rolling entry.
 
@@ -434,190 +444,21 @@ This final, unnumbered section holds work awaiting resolution or integration int
 ### Entry Format
 
 Every authorized repository commit adds a concise entry here. Logging and compaction follow [diary-maintenance.md](.agents/rules/diary-maintenance.md) and [compact-diary](.agents/skills/compact-diary/SKILL.md). Record the timestamp, affected components, delivered change, rationale and actual verification, including failures and unrun checks. At compaction, retain lasting decisions and evidence in the owning chapter and leave routine details in Git.
-
 ---
 
-### [2026-11-10 21:37 CET] — Cache PDF preparation and retry temporary conversion failures
-- **Affected Subsystems**:
-  - `tools/bootstrap/conversion`
-  - `tools/bootstrap/pdf-to-markdown`
-  - `tools/bootstrap/books`
-  - `.gitignore`
-- **What Was Changed (The Concrete Reality)**:
-  - Cache completed full-source prepared PDFs and per-page PNG/text bundles by input identity and output hashes
-  - Retry temporary Codex capacity failures with fresh transports and exponential backoff while preserving terminal budget errors
-  - Prevent automatic Windows system sleep during selected pipeline stages and restore the previous execution state on exit
-  - Use high reasoning effort for PDF conversion and table transcription defaults
-  - Record current A500/A2000 prepared PDF provenance and ignore local conversion logs
-  - Document cache identities and retry behavior and correct the transport test location
-  - Forward coordinator cancellation to parallel clients so interruption and failures stop active requests and retry waits
-  - Add five user-approved programming terms to the English vocabulary
-- **Architectural Rationale & Trade-Offs**:
-  - Reuse matching preparation across attempts without trusting output existence alone
-  - Keep long conversions running through temporary capacity failures while retaining source identity and failure reporting
-- **Verification & Test Results**:
-  - PASS: shared conversion contracts - 48 tests
-  - PASS: HTML conversion contracts - 2 tests
-  - PASS: PDF conversion contracts - 48 tests
-  - PASS: Book Review contracts - 192 tests
-  - PASS: verification CLI contracts and full English scan after vocabulary approval
-  - PASS: parallel interruption regression after reproducing an extra request before the fix
-  - Initial commit profile failed only on five vocabulary terms subsequently approved by the user
-  - PASS: current source and prepared PDF SHA-256 match source-ocr.json and the preparation cache
-  - Scoped specification review selected Testing Strategy and Quality Assurance by tracked_paths and found no required specification changes
-  - NOT RUN: a new book conversion or milestone profile
----
-
-### [2026-11-11 10:40 CET] — Save changed PDF pages and cache graphic crops
-- **Affected Subsystems**:
-  - `tools/bootstrap/pdf-to-markdown`
-  - `tools/bootstrap/book-to-markdown`
-- **What Was Changed (The Concrete Reality)**:
-  - Save Stage 04 and Stage 07 and Stage 08 page JSON only when page data changes
-  - Resolve pages through Stage 08 using the latest available replacement from Stages 07 and 05 and 04 and 03
-  - Preserve empty filtered pages as explicit replacements so excluded content does not return
-  - Reuse the shared preparation cache for Stage 06 crops keyed by source PNG and bounding box and runtime
-  - Update pipeline and book import documentation and focused regression coverage
-- **Architectural Rationale & Trade-Offs**:
-  - Avoid duplicate page JSON and repeated crop extraction while preserving retained page order and filtered exclusions
-  - Reuse existing cache integrity checks without changing source books or running inference
-- **Verification & Test Results**:
-  - PASS: PDF execution and cache contracts - 31 tests
-  - PASS: proofreading contracts - 6 tests
-  - PASS: parallel table contracts - 2 tests
-  - PASS: focused book import contracts - 4 tests
-  - PASS: git diff --check
-  - Scoped specification review selected Testing Strategy and Quality Assurance by tracked_paths and found no required specification changes
-  - NOT RUN: real book conversion or import and milestone profile
----
-
-### [2026-11-11 23:41 CET] — Record A500/A2000 book recipe and hardware manual OCR provenance
-- **Affected Subsystems**:
-  - `tools/bootstrap/books`
-- **What Was Changed (The Concrete Reality)**:
-  - Track the A500/A2000 variant-root recipe matching the local Accepted and Working copies
-  - Track Hardware Reference Manual OCR preparation provenance
-- **Architectural Rationale & Trade-Offs**:
-  - Preserve the existing book recipe and preparation identity without committing local PDFs or generated review bundles
-- **Verification & Test Results**:
-  - PASS: both source PDF hashes match their source.json records
-  - PASS: hardware manual source and prepared PDF hashes match source-ocr.json
-  - PASS: recipe matches Accepted and Working with 2000 elements
-  - PASS: all 60164 audited source references resolve and no private absolute paths were found
-  - LIMIT: optional strict source audit reports 112 fields with literal content or unsupported math commands
-  - Scoped compliance review found no matching design tracked_paths and no required changes to the book recipe or OCR provenance contracts
-  - NOT RUN: conversion or reconstruction or milestone profile
----
-
-### [2026-11-12 01:45 CET] — Amend accepted technical manual recipe
-- **Affected Subsystems**:
-  - `tools/bootstrap/books`
-- **What Was Changed (The Concrete Reality)**:
-  - Include the current accepted A500/A2000 recipe in the previous book artifact commit
-  - Replace literal text with source references and explicit accepted text in 30 existing element fields
-- **Architectural Rationale & Trade-Offs**:
-  - Preserve the accepted recipe together with its original provenance commit
-  - After reviewing the reported attribution errors the user approved amending the current recipe without corrections
-  - This commit accepts known source occurrence mismatches on pages 149 and 150 and 183 and 242 as a specific exception; the general source attribution requirement remains unchanged
-- **Verification & Test Results**:
-  - PASS: recipe matches Accepted and Working with 2000 elements
-  - PASS: source PDF hash matches source.json
-  - PASS: all 60546 source references resolve using the committed implementation and no private absolute paths were found
-  - LIMIT: optional strict source audit reports 107 fields with literal content or unsupported math commands
-  - Scoped compliance review found no matching design tracked_paths and no required contract changes
-  - NOT RUN: conversion or reconstruction or milestone profile
----
-
-### [2026-11-12 02:03 CET] — Improve book review updates and list unmatched source text
-- **Affected Subsystems**:
-  - `tools/bootstrap/book-to-markdown`
-- **What Was Changed (The Concrete Reality)**:
-  - Add a read-only unmatched text inventory with source context and navigation
-  - Preserve code text and numbered content during source alignment and cleanup
-  - Match local hyphenated word continuations without including a fused OCR glyph
-  - Cache resolved text by recipe and source-page version while checking bundle replacement races
-  - Reuse unchanged viewer content and resources and reading geometry
-  - Document inventory behavior and incremental refresh
-  - Add user-approved API vocabulary and file-specific regex and test data exceptions
-  - Preserve source offsets through multiline math continuation prefixes and recognize supported HTML independently of the optional source audit
-- **Architectural Rationale & Trade-Offs**:
-  - Keep source review explicit while reducing repeated text resolution and document replacement
-  - Preserve current Working and Accepted revision checks during acceptance and discard
-- **Verification & Test Results**:
-  - PASS: input cache contracts - 7 tests
-  - PASS: incremental browser update contracts - 6 tests
-  - PASS: source alignment contracts - 31 tests
-  - PASS: text recipe contracts - 37 tests
-  - PASS: restarted the existing book review server and checked HTTP 200 at root and status with no pending rendering or error
-  - PASS: git diff --check
-  - Scoped specification review selected Testing Strategy and Quality Assurance through tracked_paths and found no required specification changes
-  - Initial commit profile passed all checks except English vocabulary; the user approved the reported exceptions
-  - Reproduced review findings and a formula-angle regression before correcting math offsets and HTML structure masking with regression coverage including escaped table pipes
-  - NOT RUN: conversion or reconstruction or milestone profile
-
----
-
-### [2026-11-12 09:33 CET] — Consolidate diary history and SDLC workflow narrative
+### [2026-11-12 14:39 CET] — Integrate settled bootstrap history into the engineering diary
 - **Affected Subsystems**:
   - `DIARY.md`
-  - `diary maintenance rules`
-  - `compact-diary skill`
-  - `English vocabulary`
 - **What Was Changed (The Concrete Reality)**:
-  - Integrate 48 settled rolling entries into thematic chapters or leave routine details in Git
-  - add Chapter 14 from diary and Git history for agent workflows environment harness and protected BLEP references
-  - clarify software-generated CPU evidence and reconstruction verification decisions
-  - define rolling entries as a buffer for unresolved work or narrative integration
-  - add the user-approved sdlc vocabulary term
+  - Extend Chapter 10 with preparation caching and cancellation and sparse page resolution
+  - Preserve accepted manual recipe provenance and the specific source attribution exception
+  - Record parser source mapping repairs and their historical verification
+  - Remove eight settled rolling entries while preserving all fourteen chapters
 - **Architectural Rationale & Trade-Offs**:
-  - Preserve durable decisions and verification limits without maintaining a second archive of routine changes
+  - Keep durable decisions and evidence in the owning narrative and routine merge or compaction details in Git
+  - Distinguish tooling delivery and valid source addresses from transcription quality or milestone completion
 - **Verification & Test Results**:
-  - PASS diary structure and chronology
-  - PASS skill validation
-  - PASS focused English scan
-  - PASS fourteen local Markdown links and anchors
-  - PASS whitespace
-  - scoped specification review found the testing strategy accurate and no invalid tracked paths
-  - no implementation milestone is closed
----
-
-### [2026-11-12 09:44 CET] — Merge vamigats into master with an explicit merge commit
-- **Affected Subsystems**:
-  - `crates/`
-  - `Obsidian/Amiga/Design/`
-  - `.agents/`
-  - `tools/verification/`
-  - `tools/amiga-rag-mcp-server/`
-- **What Was Changed (The Concrete Reality)**:
-  - Integrate vamigats history without conflicts using an explicit merge commit
-  - Review all 51 changed Markdown paths including specifications and workflow instructions
-  - Preserve the source branch implementation and its consolidated engineering history
-- **Architectural Rationale & Trade-Offs**:
-  - Bring emulator and workflow changes into the shared integration point while preserving branch ancestry
-- **Verification & Test Results**:
-  - Formatting passed
-  - Ordinary Rust workspace tests passed
-  - The required commit profile and independent review follow on the final intended source
----
-
-### [2026-11-12 09:59 CET] — Merge bootstrap-codex-api and reconcile the shared integration point
-- **Affected Subsystems**:
-  - `tools/bootstrap/`
-  - `tools/verification/checks/`
-  - `DIARY.md`
-- **What Was Changed (The Concrete Reality)**:
-  - Integrate bootstrap-codex-api using an explicit merge commit
-  - Resolve the diary conflict by retaining the consolidated master chapters and all five bootstrap entries in chronological Rolling Changelog order
-  - Review the union of 61 changed Markdown paths and retain both branches workflow and specification contracts
-  - Share parser-owned code span positions between HTML masking and unmatched text inventory with correct delimiter escapes and inline container boundaries; map all containers in source order to distinguish repeated table text
-  - Decode recipe escapes before HTML masking while preserving cleanup offsets
-  - Preserve the existing book recipe and its recorded source attribution exception
-- **Architectural Rationale & Trade-Offs**:
-  - Join both development histories without losing documentation or branch ancestry
-  - Repair the reproduced escaped delimiter failure identified by independent review so valid Markdown remains usable after integration
-- **Verification & Test Results**:
-  - Reproduced formula exceptions from escaped delimiters and markers in separate inline containers and the HTML masking error before repair
-  - Focused source alignment contracts passed with 33 tests
-  - Focused text recipe contracts passed with 39 tests
-  - Diary structure and timestamp order passed
-  - The required final source commit profile and independent review follow
+  - Diary structure and chronology passed
+  - Focused English scan passed after the user approved simpler wording
+  - Six local Markdown destinations resolved and whitespace checks passed
+  - No implementation milestone is closed
