@@ -225,9 +225,10 @@ The RAG CLI and shared index state file are configured in the
 
    ```powershell
    $env:RAG_INDEX_JSON = "<shared-rag-index-state-file>"
-   rag_qdrant docs --source amiga --index-json $env:RAG_INDEX_JSON
-   rag_qdrant "Obsidian/Amiga/Design" --source amiga --index-json $env:RAG_INDEX_JSON
-   rag_qdrant "Obsidian/Amiga/Reference" --source amiga --index-json $env:RAG_INDEX_JSON
+   $RepoRoot = (Get-Location).Path
+   rag_qdrant (Join-Path $RepoRoot "docs") --repo-root $RepoRoot --source amiga --index-json $env:RAG_INDEX_JSON
+   rag_qdrant (Join-Path $RepoRoot "Obsidian/Amiga/Design") --repo-root $RepoRoot --source amiga --index-json $env:RAG_INDEX_JSON
+   rag_qdrant (Join-Path $RepoRoot "Obsidian/Amiga/Reference") --repo-root $RepoRoot --source amiga --index-json $env:RAG_INDEX_JSON
    ```
 
 5. Check the index status and search for distinctive chapter text, table

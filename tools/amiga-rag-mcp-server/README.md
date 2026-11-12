@@ -5,13 +5,18 @@ This project-specific FastMCP server exposes Amiga documentation retrieval and h
 `rag_search_reference` searches the shared `amiga` tag, then returns only hits
 whose resolved file paths are under `Obsidian/Amiga/Reference/`. It scans at
 most the first 100 ranked Amiga hits and reports when none are in scope.
-The reference directory may belong to another checkout recorded in the shared
-index; it need not be under the running server's repository root.
+New results use repository-relative paths, resolved against this checkout for
+reference filtering. Existing absolute-path results may still identify another
+checkout in the shared index until that index is explicitly rebuilt.
 
 It does not import Qdrant, its cache, or the indexer. It invokes the standalone
 `rag_qdrant` command from `PATH` for query execution and status inspection, so the CLI and its dependencies must be installed independently.
 The adapter decodes CLI output as UTF-8, matching the CLI's output encoding
 regardless of the host's default locale.
+
+Source and file counts come from actual Qdrant points, independently of the
+incremental JSON cache. The listing omits sources with no points. Indexing dates
+are `N/A` for old points without stored timestamps.
 
 ## Installation
 
@@ -78,7 +83,10 @@ Documentation indexing is a heavy batch process handled strictly outside the MCP
 - `Obsidian/Amiga/Design`
 - `Obsidian/Amiga/Reference`
 
-The CLI uses the `amiga` source tag and passes `RAG_INDEX_JSON` only to indexing invocations. It hashes every Markdown file on each run and processes only modified or added files.
+The CLI uses the `amiga` source tag, an explicit `--repo-root`, and the absolute
+directory to scan. `RAG_INDEX_JSON` is needed only for indexing invocations.
+It hashes every Markdown file on each run and processes only modified or added
+repository-relative documents. Follow the [indexing procedure](../../.agents/skills/index-amiga-rag/SKILL.md).
 
 When the MCP `rag_search` tool receives multiple source tags, it passes the
 deduplicated tags as the CLI's supported comma-separated `--source` value.

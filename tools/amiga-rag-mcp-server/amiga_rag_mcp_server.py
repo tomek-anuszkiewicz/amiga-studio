@@ -126,7 +126,7 @@ def rag_search_reference(query: str, limit: int = 5) -> str:
 
 @mcp.tool()
 def rag_list_sources() -> str:
-    """List source tags with cached file and vector counts."""
+    """List source tags with actual unique file and point counts from Qdrant."""
     try:
         sources = run_rag_qdrant_json(["--list-sources", "--json"])
     except RagQdrantCommandError as error:
@@ -143,7 +143,7 @@ def rag_list_sources() -> str:
 
     lines = [
         "### Indexed Knowledge Sources in RAG Database\n",
-        "| Source Tag | Files Indexed | Chunks/Vectors | Last Updated |",
+        "| Source Tag | Files Indexed | Chunks/Vectors | Last Indexed |",
         "| :--- | :---: | :---: | :--- |",
     ]
     for source in sources:
@@ -173,7 +173,7 @@ def rag_status() -> str:
         f"- Collection: `{status.get('collection', 'projects_docs')}`\n"
         f"- Health Status: `{status.get('health_status', 'unknown')}`\n"
         f"- Total Stored Vectors: `{status.get('total_vectors', 0)}\n"
-        f"- Total Tracked Files: `{status.get('total_files', 0)} across "
+        f"- Total Indexed Files: `{status.get('total_files', 0)} across "
         f"{status.get('source_count', 0)} source(s)."
     )
 

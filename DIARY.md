@@ -495,3 +495,19 @@ Every authorized repository commit adds a concise entry here. Logging and compac
 - **Verification & Test Results**:
   - The user reported testing and review complete
   - No tests or audits were rerun under the explicit commit-only instruction
+---
+
+### [2026-11-13 00:20 CET] — Align Amiga RAG commands with repository-relative indexing
+- **Affected Subsystems**:
+  - `RAG adapter`
+  - `bootstrap`
+  - `indexing guidance`
+- **What Was Changed (The Concrete Reality)**:
+  - Pass an explicit repository root for all three Amiga indexing scopes
+  - Update bootstrap contract expectations and command examples
+  - Describe actual Qdrant counts and shared worktree document identity
+- **Architectural Rationale & Trade-Offs**:
+  - Keep indexing paths stable across checkouts and distinguish stored points from cached state
+- **Verification & Test Results**:
+  - The user reported testing and review complete
+  - No tests or audits were rerun under the explicit commit-only instruction

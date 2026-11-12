@@ -3,8 +3,8 @@
     Bootstrap the Amiga documentation RAG scopes through the rag_qdrant CLI.
 
 .DESCRIPTION
-    This compatibility entry point delegates directly to rag_qdrant. It indexes
-    repository docs plus the explicit Obsidian/Amiga/Design and
+    This compatibility entry point passes the repository root to rag_qdrant and
+    scans docs plus the explicit Obsidian/Amiga/Design and
     Obsidian/Amiga/Reference Markdown scopes. The
     CLI requires RAG_INDEX_JSON to identify its shared incremental state file.
 
@@ -51,9 +51,9 @@ $RepositoryDocumentationRoot = Join-Path $RepoRoot "docs"
 $DesignDocumentationRoot = Join-Path $RepoRoot "Obsidian\Amiga\Design"
 $ReferenceDocumentationRoot = Join-Path $RepoRoot "Obsidian\Amiga\Reference"
 $IndexCommands = @(
-    @($RepositoryDocumentationRoot, "--source", "amiga", "--index-json", $RagIndexJson),
-    @($DesignDocumentationRoot, "--source", "amiga", "--index-json", $RagIndexJson),
-    @($ReferenceDocumentationRoot, "--source", "amiga", "--index-json", $RagIndexJson)
+    @($RepositoryDocumentationRoot, "--repo-root", $RepoRoot, "--source", "amiga", "--index-json", $RagIndexJson),
+    @($DesignDocumentationRoot, "--repo-root", $RepoRoot, "--source", "amiga", "--index-json", $RagIndexJson),
+    @($ReferenceDocumentationRoot, "--repo-root", $RepoRoot, "--source", "amiga", "--index-json", $RagIndexJson)
 )
 
 foreach ($IndexArguments in $IndexCommands) {

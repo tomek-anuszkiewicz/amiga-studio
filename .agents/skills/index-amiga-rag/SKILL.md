@@ -30,19 +30,27 @@ This skill defines the Amiga project workflow for indexing technical Markdown th
 
 ### Step 1: Incrementally Index the Supported Scopes
 Set `RAG_INDEX_JSON` to the shared state file, then run all three commands from
-the repository root. The CLI recursively scans Markdown and processes only
-files whose SHA-256 hash changed. Index the Design and Reference roots
+the repository root. The CLI recursively scans Markdown and processes changed
+files or unchanged nonempty documents with no fragment in Qdrant. One remaining
+fragment is enough to skip an unchanged document; this is not a completeness
+check. Index the Design and Reference roots
 explicitly; do not index the `Obsidian/Amiga` parent directory.
 
 ```powershell
 $env:RAG_INDEX_JSON = "<shared-rag-index-state-file>"
-rag_qdrant docs --source amiga --index-json $env:RAG_INDEX_JSON
-rag_qdrant "Obsidian/Amiga/Design" --source amiga --index-json $env:RAG_INDEX_JSON
-rag_qdrant "Obsidian/Amiga/Reference" --source amiga --index-json $env:RAG_INDEX_JSON
+$RepoRoot = (Get-Location).Path
+rag_qdrant (Join-Path $RepoRoot "docs") --repo-root $RepoRoot --source amiga --index-json $env:RAG_INDEX_JSON
+rag_qdrant (Join-Path $RepoRoot "Obsidian/Amiga/Design") --repo-root $RepoRoot --source amiga --index-json $env:RAG_INDEX_JSON
+rag_qdrant (Join-Path $RepoRoot "Obsidian/Amiga/Reference") --repo-root $RepoRoot --source amiga --index-json $env:RAG_INDEX_JSON
 ```
 
 There is no forced-reindex mode; changed files replace their old vectors and
-files removed below an indexed root are removed from the collection.
+files removed below the selected scan directory are removed from the collection.
+Both directory arguments are absolute. Cache keys and result paths are relative
+to the repository root, so worktrees sharing `amiga` share one document version.
+The last successfully indexed content replaces that document across worktrees.
+Old absolute-path state requires a separately authorized rebuild; do not clear
+the shared collection or state as part of an ordinary indexing command.
 
 ### Step 2: Verify Index Health and Retrieval
 
@@ -59,6 +67,6 @@ Conclude with the standardized summary report:
 ### 📚 Amiga RAG Ingestion Report
 - **Target Knowledge Source:** `amiga` (Commodore HRM, M68000 PRM, Obsidian specs)
 - **Files Re-indexed / Modified:** <count> files
-- **Unchanged Files Skipped:** <count> files (SHA256 cache)
+- **Unchanged Files Skipped:** <count> files (matching SHA-256 and a stored fragment, or an intentionally empty document)
 - **Qdrant Collection Status:** [HEALTHY | <points_count> vectors]
 ```

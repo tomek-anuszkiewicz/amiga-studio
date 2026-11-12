@@ -292,9 +292,10 @@ Generates one Abstract Syntax Tree (AST) code graph connecting project sources a
   ```powershell
   # Set the shared CLI state file, then index each project Markdown scope.
   $env:RAG_INDEX_JSON = "<shared-rag-index-state-file>"
-  rag_qdrant docs --source amiga --index-json $env:RAG_INDEX_JSON
-  rag_qdrant "Obsidian/Amiga/Design" --source amiga --index-json $env:RAG_INDEX_JSON
-  rag_qdrant "Obsidian/Amiga/Reference" --source amiga --index-json $env:RAG_INDEX_JSON
+  $RepoRoot = (Get-Location).Path
+  rag_qdrant (Join-Path $RepoRoot "docs") --repo-root $RepoRoot --source amiga --index-json $env:RAG_INDEX_JSON
+  rag_qdrant (Join-Path $RepoRoot "Obsidian/Amiga/Design") --repo-root $RepoRoot --source amiga --index-json $env:RAG_INDEX_JSON
+  rag_qdrant (Join-Path $RepoRoot "Obsidian/Amiga/Reference") --repo-root $RepoRoot --source amiga --index-json $env:RAG_INDEX_JSON
   ```
 - **Query Tools & FastMCP:**
    - Query via MCP tool: `rag_search(query="<topic>", sources=["amiga", "devnotes"])`. The Amiga project only retrieves `devnotes`; its owning project indexes it.
