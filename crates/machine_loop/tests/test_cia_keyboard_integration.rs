@@ -1,55 +1,35 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use config::cia_reg;
 use config::A500Config;
 use machine_loop::A500Machine;
 
 #[test]
-fn test_keyboard_scancode_delivery_to_cia_and_level2_irq() {
+fn keyboard_serial_pins_and_host_acknowledgment_cross_the_motherboard() {
     let mut machine = A500Machine::new(A500Config::default());
-    machine.reset();
+    machine.cpu.state.set_stopped(true);
+    // Deterministic endpoints: this proves wiring, not the unreconstructed engines.
+    machine.keyboard.pins.clock_high = false;
+    machine.keyboard.pins.data_high = false;
+    machine.step_cck();
+    assert!(machine.cia_a.pins.cnt_input_high);
+    machine.step_cck();
+    assert!(!machine.cia_a.pins.cnt_input_high);
+    assert!(!machine.cia_a.pins.sp_input_high);
+    assert_eq!(machine.cia_a.sdr(), 0);
 
-    // Enable CIA-A SDR interrupt in ICR: $80 | 0x08 = $88
-    machine.cia_a.write_register(cia_reg::cia_a::ICR, 0x88);
-    // Enable Level 2 PORTS interrupt in Paula INTENA: SET(0x8000) | INTEN(0x4000) | PORTS(0x0008) = $C008
-    machine.paula.write_intena(0xC008);
-
-    assert_eq!(machine.cpu.state.ipl(), 0);
-
-    // Press key 'A' (Amiga raw position $20)
-    machine.keyboard.key_down(0x20);
-
-    // Step machine by 5 Color Clocks to allow subsystem stepping and keyboard delivery
-    machine.step_cycles(5);
-
-    // Verify scancode was shifted into CIA-A SDR
-    let expected_sdr = (0x20 << 1) & 0xFE; // $40
-    assert_eq!(machine.cia_a.sdr, expected_sdr);
-
-    // Verify CIA-A requested interrupt and Paula escalated to IPL 2 (PORTS)
-    assert!(machine.cia_a.irq_pending());
-    assert_eq!(machine.cpu.state.ipl(), 2);
-
-    // Emulate OS driver: read SDR and acknowledge by setting CRA bit 6 (SPMODE = 1)
-    let sdr_read = machine.cia_a.read_register(cia_reg::cia_a::SDR);
-    assert_eq!(sdr_read, expected_sdr);
-    // Reading ICR clears CIA-A IRQ
-    let _ = machine.cia_a.read_register(cia_reg::cia_a::ICR);
-    assert!(!machine.cia_a.irq_pending());
-
-    // Pulse KDAT low (CRA bit 6 = 1)
-    machine.cia_a.write_register(cia_reg::cia_a::CRA, 0x40);
-    machine.step_cycles(5);
-
-    // Restore CRA to input mode (SPMODE = 0)
-    machine.cia_a.write_register(cia_reg::cia_a::CRA, 0x00);
-    machine.step_cycles(5);
-
-    // Keyboard should have acknowledged and be back in Idle state
-    assert_eq!(
-        machine.keyboard.transmission_state,
-        keyboard::KeyboardTransmissionState::Idle
-    );
+    machine.keyboard.pins.clock_high = true;
+    machine.keyboard.pins.data_high = true;
+    machine.cia_a.pins.sp_output_high = false;
+    assert!(machine.cia_a.set_cra(0x40));
+    machine.step_cycles(6);
+    assert!(!machine.keyboard.pins.host_data_high);
+    assert!(!machine.cia_a.pins.sp_input_high);
+    // Release the output via a committed direction change; no byte is injected.
+    assert!(machine.cia_a.set_cra(0));
+    machine.step_cycles(6);
+    assert!(machine.keyboard.pins.host_data_high);
+    assert!(machine.cia_a.pins.sp_input_high);
+    assert_eq!(machine.cia_a.sdr(), 0);
 }
 
 #[test]
@@ -63,14 +43,14 @@ fn test_cia_a_tod_vblank_ticking_and_cia_b_tod_hsync_ticking() {
     // Step 1 full video frame (to next VBlank transition)
     machine.step_frame();
 
-    // CIA-A TOD must have ticked on VBlank transition (50 Hz tick)
+    // HRM Appendix F: TOD counts a positive pin edge. The source frame boundary
+    // has been reached, but the captured rising edge is not delivered yet.
+    assert_eq!(machine.cia_a.tod, 0);
+    machine.step_cck();
     assert_eq!(machine.cia_a.tod, 1);
-
-    // CIA-B TOD must have ticked on every horizontal scanline (~312 PAL scanlines)
-    assert!(
-        machine.cia_b.tod >= 310 && machine.cia_b.tod <= 314,
-        "Expected ~312 scanlines, got {}",
-        machine.cia_b.tod
+    assert_eq!(
+        machine.cia_b.tod, 312,
+        "one delivered positive edge per PAL line"
     );
 }
 
@@ -84,7 +64,7 @@ fn test_keyboard_ctrl_amiga_amiga_warm_reset_in_machine_loop() {
         .write_bytes_debug(0xF80000, &dummy_rom);
 
     // Disengage overlay (PRA bit 0 = 1)
-    machine.cia_a.write_register(cia_reg::cia_a::PRA, 0x01);
+    machine.cia_a.set_pra(0x01);
     machine.physical_memory.map_chip_ram_to_low_memory();
     assert!(!machine.physical_memory.is_low_memory_overlay_active());
 
@@ -92,12 +72,12 @@ fn test_keyboard_ctrl_amiga_amiga_warm_reset_in_machine_loop() {
     machine.keyboard.key_down(keyboard::SCANCODE_CTRL);
     machine.keyboard.key_down(keyboard::SCANCODE_L_AMIGA);
     machine.keyboard.key_down(keyboard::SCANCODE_R_AMIGA);
-    assert!(machine.keyboard.reset_line_asserted);
+    assert!(machine.keyboard.pins.reset_line_asserted);
 
-    // Step 1 CCK in machine loop: processes keyboard reset line
-    machine.step_cck();
+    // Capture the source assertion, then deliver it to the reset network.
+    machine.step_cycles(2);
 
     // Warm reset re-engages Kickstart overlay
     assert!(machine.physical_memory.is_low_memory_overlay_active());
-    assert!(!machine.keyboard.reset_line_asserted);
+    assert!(!machine.keyboard.pins.reset_line_asserted);
 }

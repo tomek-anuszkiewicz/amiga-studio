@@ -37,6 +37,56 @@ class ArchitectureContracts(unittest.TestCase):
         if detail:
             self.assertIn(detail, result.failures[0][1])
 
+    def dependency_workspace(self):
+        self.write("Cargo.toml", '''[workspace]
+resolver = "2"
+members = ["crates/agnus", "crates/config", "crates/denise"]
+[workspace.dependencies]
+foundation = { package = "config", path = "crates/config" }
+''')
+        for name in ("agnus", "config", "denise"):
+            self.write(f"crates/{name}/Cargo.toml", f'''[package]
+name = "{name}"
+version = "0.1.0"
+edition = "2021"
+''')
+            self.write(f"crates/{name}/src/lib.rs", "")
+
+    def test_workspace_dependency_rules_cover_aliases_kinds_and_inactive_targets(self):
+        name = "test_workspace_crate_dependencies_follow_approved_rules"
+        self.dependency_workspace()
+        manifest = (self.root / "crates/agnus/Cargo.toml").read_text(encoding="utf-8")
+        peer = '{ package = "denise", path = "../denise" }'
+        optional_peer = '{ package = "denise", path = "../denise", optional = true }'
+        rules = {"agnus": {"normal": {"config"}, "dev": {"denise"}}, "config": {}, "denise": {}}
+        cases = (
+            ("no dependencies", "", True, ""),
+            ("inherited alias", "[dependencies]\nfoundation.workspace = true\n", True, ""),
+            ("allowed test alias", f"[dev-dependencies]\nvideo = {peer}\n", True, ""),
+            ("direct peer", '[dependencies]\ndenise = { path = "../denise" }\n', False, "agnus -> denise (normal"),
+            ("renamed peer", f"[dependencies]\nvideo = {peer}\n", False, "agnus -> denise (normal"),
+            ("optional peer", f"[dependencies]\nvideo = {optional_peer}\n", False, "agnus -> denise (normal"),
+            ("inactive target", '[target.\'cfg(target_arch = "wasm32")\'.dependencies]\n'
+             f"video = {peer}\n", False, 'cfg(target_arch = "wasm32")'),
+            ("build peer", f"[build-dependencies]\nvideo = {peer}\n", False, "agnus -> denise (build"),
+            ("unapproved test use", '[dev-dependencies]\nfoundation.workspace = true\n', False, "agnus -> config (dev"),
+        )
+        with patch.object(architecture, "APPROVED_CRATE_DEPENDENCIES", rules):
+            for label, dependency, passes, detail in cases:
+                with self.subTest(case=label):
+                    self.write("crates/agnus/Cargo.toml", manifest + dependency)
+                    self.check(name, passes, detail)
+
+    def test_new_workspace_crate_requires_explicit_dependency_rules(self):
+        name = "test_workspace_crate_dependencies_follow_approved_rules"
+        self.dependency_workspace()
+        with patch.object(architecture, "APPROVED_CRATE_DEPENDENCIES", {"agnus": {}, "config": {}}):
+            self.check(name, False, "denise: No approved dependency rules")
+
+    def test_cargo_metadata_failure_does_not_pass_dependency_check(self):
+        self.write("Cargo.toml", "[workspace\n")
+        self.check("test_workspace_crate_dependencies_follow_approved_rules", False, "Cargo metadata failed")
+
     def test_source_line_limit_and_registered_exceptions(self):
         name = "test_file_size_limits"
         self.write("crates/example/src/example.rs", "line\r\n" * 800)

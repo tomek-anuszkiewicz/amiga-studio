@@ -11,9 +11,11 @@ Read these shared rules before task work; linked files require explicit reads:
 
 Implement requested behavior and the technical changes necessary to make it work. Propose optional additions before implementing them; usefulness alone does not authorize a new feature. Leave product and editorial decisions to the user unless delegated explicitly. Before completion, review the diff against this boundary using the [scope rules](.agents/rules/structural-root-cause.md).
 
-Run validation commands explicitly. Do not install, configure, or use lifecycle, code, or Git hooks. Use `.agent/tasks/` for English execution plans and `.agent/tmp/` for disposable diagnostics and artifacts. Treat existing temporary artifacts as unverified until their assumptions are checked.
+Run validation commands explicitly. Do not install, configure, or use lifecycle, code, or Git hooks. Use `.agent/tasks/` for execution plans and `.agent/tmp/` for disposable diagnostics and artifacts. Treat existing temporary artifacts as unverified until their assumptions are checked.
 
 First identify the question and whether existing evidence resolves it. Use scripts for concrete measurement, verification, or data processing; do not repair a tool unless that repair is needed for the task.
+
+For routine workflow steps, prefer existing tools and direct commands. Create helper scripts or extra evidence files only for a concrete task requirement those tools cannot meet.
 
 During ordinary code work, read and follow relevant specifications as implementation requirements. Handle concrete conflicts immediately under [specification compliance](.agents/rules/spec-compliance.md). The authorized pre-commit workflow owns scoped compliance review and compatible documentation enrichment; milestone closure owns broader semantic review. Direct documentation tasks and explicitly requested reviews remain in scope.
 
@@ -23,7 +25,7 @@ This is a private, pre-release project without external users. Prefer the simple
 
 Use the nearest relevant implementation and tests as examples for conventions, helpers, structure, and verification commands. Reuse established patterns when they fit the task. Existing code and tests do not override approved specifications or hardware evidence; investigate inconsistencies rather than copying them.
 
-Add tests for meaningful behavior or identified risks, not merely because code changed. Prefer a few high-value tests over redundant edge cases or elaborate infrastructure. Simplify or remove tests whose original purpose disappears.
+Add tests for meaningful behavior or identified risks, not merely because code changed. Prefer a few high-value tests over redundant edge cases or elaborate infrastructure. Simplify or remove tests whose original purpose disappears, subject to [protected verification](.agents/rules/unit-testing-policy.md#protected-verification); architectural test changes and weakening other tests or required gates need explicit user approval.
 
 ### Compatibility and Internal Refactoring
 
@@ -79,7 +81,7 @@ required by [commit policy](.agents/rules/git-commits.md). MCP configuration is
 
 Never stage files or otherwise change the Git index unless the user explicitly requests staging or a commit. Editing a file that is already staged does not authorize staging its new version; leave the edit unstaged and preserve the existing index entry. If a required roadmap commit would need staging, ask the user first.
 
-Commits are mandatory when closing a minor roadmap point or major milestone. Otherwise, commit when the user explicitly requests it. Commits are atomic and written in English. **Every commit includes a new DIARY.md Section 10 entry.** At minor roadmap points or milestones, compact settled entries, verify specification compliance, enrich compatible documentation details, and update the remaining roadmap.
+Commits are mandatory when closing a minor roadmap point or major milestone. Otherwise, commit when the user explicitly requests it. Commits are atomic and written in English. **Every commit includes a new entry in DIARY.md's final, unnumbered Rolling Changelog.** At minor roadmap points or milestones, compact settled entries, verify specification compliance, enrich compatible documentation details, and update the remaining roadmap.
 
 Per-commit verification:
 ```powershell

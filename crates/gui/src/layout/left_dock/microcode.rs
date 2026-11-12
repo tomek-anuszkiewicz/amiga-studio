@@ -47,7 +47,7 @@ pub(crate) fn render_microcode(ui: &mut Ui, state: &CpuState, bus_blocked: bool)
                     };
                     ui.add(egui::ProgressBar::new(fraction).desired_width(40.0));
 
-                    let is_cck1 = (state.cycle_counter() & 2) == 0;
+                    let is_cck1 = (state.cycle_counter() & u64::from(cpu::MicroStep::CCK_CLOCKS)) == 0;
                     let phase_label = if is_cck1 {
                         ui.colored_label(Color32::from_rgb(100, 200, 255), "[CCK1]")
                     } else {
@@ -75,7 +75,7 @@ pub(crate) fn render_microcode(ui: &mut Ui, state: &CpuState, bus_blocked: bool)
                     }
                 }
                 let total_rem_clocks = (active_rem as u32) + upcoming_clocks;
-                let total_rem_cck = (total_rem_clocks + 1) / 2;
+                let total_rem_cck = (total_rem_clocks + 1) / u32::from(cpu::MicroStep::CCK_CLOCKS);
 
                 ui.horizontal(|ui| {
                     ui.monospace(

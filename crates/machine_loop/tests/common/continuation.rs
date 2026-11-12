@@ -66,7 +66,7 @@ pub fn assert_boot_entry(machine: &A500Machine) {
     assert!(!machine.cpu.state.is_stopped());
     assert!(!machine.cpu.state.is_halted());
     assert!(!machine.cpu.state.is_reset_line_asserted());
-    assert!(!machine.keyboard.reset_line_asserted);
+    assert!(!machine.keyboard.pins.reset_line_asserted);
 }
 
 pub fn execute_boot(machine: &mut A500Machine) {
@@ -80,7 +80,7 @@ pub fn execute_boot(machine: &mut A500Machine) {
     ] {
         retire(machine, next_pc);
         assert!(!machine.cpu.state.is_reset_line_asserted());
-        assert!(!machine.keyboard.reset_line_asserted);
+        assert!(!machine.keyboard.pins.reset_line_asserted);
         assert_eq!(machine.cpu.state.a_long(7), BOOT_SSP);
         if next_pc >= BOOT_PC + 8 {
             assert_eq!(

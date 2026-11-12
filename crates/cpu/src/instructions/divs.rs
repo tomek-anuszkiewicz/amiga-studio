@@ -10,9 +10,15 @@
 
 use crate::micro::common;
 use crate::micro::ea;
+use crate::micro::encoding::{extended_mode, mode};
 use crate::micro::types::MicroStep;
 use crate::state::CpuState;
 use crate::Cpu;
+
+const NEGATIVE_DIVIDEND_MACHINE_CYCLES: u16 = 7;
+const POSITIVE_DIVIDEND_MACHINE_CYCLES: u16 = 6;
+const QUOTIENT_MACHINE_CYCLES: u16 = 55;
+const OVERFLOW_MACHINE_CYCLES: u16 = 2;
 
 // ============================================================================
 // Atomic Micro-Step Constants
@@ -30,11 +36,15 @@ const FETCH_EXT_FINISH: MicroStep = common::FETCH_EXT_FINISH;
 
 #[inline(always)]
 pub fn calc_divs_internal_clocks(dividend: i32, divisor: i16) -> u16 {
-    let mut mcycles = if dividend < 0 { 7_u16 } else { 6_u16 };
+    let mut mcycles = if dividend < 0 {
+        NEGATIVE_DIVIDEND_MACHINE_CYCLES
+    } else {
+        POSITIVE_DIVIDEND_MACHINE_CYCLES
+    };
     let abs_dividend = (dividend as i64).unsigned_abs() as u32;
     let abs_divisor = (divisor as i32).unsigned_abs();
 
-    mcycles += 55;
+    mcycles += QUOTIENT_MACHINE_CYCLES;
     if divisor >= 0 {
         if dividend < 0 {
             mcycles += 1;
@@ -44,14 +54,14 @@ pub fn calc_divs_internal_clocks(dividend: i32, divisor: i16) -> u16 {
     }
 
     let mut aquot = abs_dividend / abs_divisor;
-    for _ in 0..15 {
+    for _ in 0..super::DIVISION_TIMING_ITERATIONS {
         if (aquot as i16) >= 0 {
             mcycles += 1;
         }
         aquot = (aquot << 1) & 0xFFFF;
     }
 
-    (2 * mcycles).saturating_sub(4)
+    (super::DIVISION_MACHINE_CYCLE_CLOCKS * mcycles).saturating_sub(super::DIVISION_PREFETCH_CLOCKS)
 }
 
 // ============================================================================
@@ -81,11 +91,17 @@ fn execute_divs(state: &mut CpuState, dividend: i32, divisor: i16, reg_dst: u8) 
     let quotient = d64 / div64;
     let remainder = d64 % div64;
 
-    let overflow = quotient < -32768 || quotient > 32767;
+    let overflow = quotient < i64::from(i16::MIN) || quotient > i64::from(i16::MAX);
     if overflow {
         state.set_ccr_v_clear_c();
-        let mcycles = if dividend < 0 { 7_u16 } else { 6_u16 };
-        state.micro_mut().clocks_remaining = ((mcycles + 2) * 2).saturating_sub(4);
+        let mcycles = if dividend < 0 {
+            NEGATIVE_DIVIDEND_MACHINE_CYCLES
+        } else {
+            POSITIVE_DIVIDEND_MACHINE_CYCLES
+        };
+        state.micro_mut().clocks_remaining = ((mcycles + OVERFLOW_MACHINE_CYCLES)
+            * super::DIVISION_MACHINE_CYCLE_CLOCKS)
+            .saturating_sub(super::DIVISION_PREFETCH_CLOCKS);
         return;
     }
 
@@ -112,7 +128,7 @@ pub static STEPS_DIVS_AI: [MicroStep; 5] = [
     MicroStep {
         bus_fn: Some(Cpu::step_bus_read_src_word),
         alu_fn: Some(ea::ea_calc_src_ai),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     BUS_READ_IDLE,
     MicroStep::alu(alu_divs_mem),
@@ -124,7 +140,7 @@ pub static STEPS_DIVS_PI: [MicroStep; 5] = [
     MicroStep {
         bus_fn: Some(Cpu::step_bus_read_src_word),
         alu_fn: Some(ea::ea_calc_src_pi_w),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     BUS_READ_IDLE,
     MicroStep::alu(alu_divs_mem),
@@ -136,7 +152,7 @@ pub static STEPS_DIVS_PD: [MicroStep; 6] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(ea::ea_calc_src_pd_w),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     READ_SRC_WORD,
     BUS_READ_IDLE,
@@ -149,7 +165,7 @@ pub static STEPS_DIVS_D16_AN: [MicroStep; 7] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_src_d16_an),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     FETCH_EXT_FINISH,
     READ_SRC_WORD,
@@ -163,7 +179,7 @@ pub static STEPS_DIVS_IDX_AN: [MicroStep; 8] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(ea::ea_calc_src_idx_an),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     FETCH_EXT_READ,
     FETCH_EXT_FINISH,
@@ -178,7 +194,7 @@ pub static STEPS_DIVS_ABSW: [MicroStep; 7] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absw),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     FETCH_EXT_FINISH,
     READ_SRC_WORD,
@@ -192,13 +208,13 @@ pub static STEPS_DIVS_ABSL: [MicroStep; 9] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absl_hi),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     FETCH_EXT_FINISH,
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absl_lo),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     FETCH_EXT_FINISH,
     READ_SRC_WORD,
@@ -212,7 +228,7 @@ pub static STEPS_DIVS_D16_PC: [MicroStep; 7] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_d16_pc),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     FETCH_EXT_FINISH,
     READ_SRC_WORD,
@@ -226,7 +242,7 @@ pub static STEPS_DIVS_IDX_PC: [MicroStep; 8] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(ea::ea_calc_idx_pc),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     FETCH_EXT_READ,
     FETCH_EXT_FINISH,
@@ -241,7 +257,7 @@ pub static STEPS_DIVS_IMM: [MicroStep; 5] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_imm_w),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     FETCH_EXT_FINISH,
     MicroStep::alu(alu_divs_mem),
@@ -269,18 +285,18 @@ static DIVS_LOOKUP: [&[MicroStep]; 11] = [
 
 pub const fn decode_divs_steps(mode: u8, reg: u8) -> Option<&'static [MicroStep]> {
     match mode {
-        0 => Some(DIVS_LOOKUP[0]),
-        2 => Some(DIVS_LOOKUP[1]),
-        3 => Some(DIVS_LOOKUP[2]),
-        4 => Some(DIVS_LOOKUP[3]),
-        5 => Some(DIVS_LOOKUP[4]),
-        6 => Some(DIVS_LOOKUP[5]),
-        7 => match reg {
-            0 => Some(DIVS_LOOKUP[6]),
-            1 => Some(DIVS_LOOKUP[7]),
-            2 => Some(DIVS_LOOKUP[8]),
-            3 => Some(DIVS_LOOKUP[9]),
-            4 => Some(DIVS_LOOKUP[10]),
+        mode::DATA_REGISTER => Some(DIVS_LOOKUP[0]),
+        mode::INDIRECT => Some(DIVS_LOOKUP[1]),
+        mode::POSTINCREMENT => Some(DIVS_LOOKUP[2]),
+        mode::PREDECREMENT => Some(DIVS_LOOKUP[3]),
+        mode::DISPLACEMENT => Some(DIVS_LOOKUP[4]),
+        mode::INDEXED => Some(DIVS_LOOKUP[5]),
+        mode::EXTENDED => match reg {
+            extended_mode::ABSOLUTE_WORD => Some(DIVS_LOOKUP[6]),
+            extended_mode::ABSOLUTE_LONG => Some(DIVS_LOOKUP[7]),
+            extended_mode::PC_DISPLACEMENT => Some(DIVS_LOOKUP[8]),
+            extended_mode::PC_INDEXED => Some(DIVS_LOOKUP[9]),
+            extended_mode::IMMEDIATE => Some(DIVS_LOOKUP[10]),
             _ => None,
         },
         _ => None,

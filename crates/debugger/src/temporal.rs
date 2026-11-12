@@ -7,6 +7,8 @@
 
 use cpu::CpuState;
 
+const INITIAL_ALLOCATION_LIMIT: usize = 10_000;
+
 /// Single temporal snapshot entry in the history ring buffer
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TemporalFrame {
@@ -47,7 +49,7 @@ impl TemporalHistory {
         let cap = capacity.max(1);
         Self {
             capacity: cap,
-            buffer: Vec::with_capacity(cap.min(10_000)), // lazily grow up to capacity
+            buffer: Vec::with_capacity(cap.min(INITIAL_ALLOCATION_LIMIT)), // lazily grow up to capacity
             write_pos: 0,
             total_recorded: 0,
             recording_enabled: true,

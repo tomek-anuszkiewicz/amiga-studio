@@ -6,7 +6,6 @@
 //! (Paula Audio, CIA-A, Agnus VBlank), through Paula INTREQ/INTENA and
 //! machine arbitration, to M68000 autovector exception processing and RTE.
 
-use config::cia_reg;
 use config::A500Config;
 use machine_loop::A500Machine;
 
@@ -62,7 +61,8 @@ fn test_end_to_end_audio_interrupt_to_cpu_isr_and_rte() {
 
     // 4. Enable Paula interrupts: Master enable (bit 14) + Audio Channel 0 (bit 7)
     // Write INTENA ($DFF09A) = 0xC080 (SET bit 15 | INTEN bit 14 | AUD0 bit 7)
-    machine.paula.write_intena(0xC080);
+    machine.paula.set_intena(0xC080);
+    machine.paula.step_cck();
     assert_eq!(machine.paula.interrupts.intena & 0x4080, 0x4080);
 
     // 5. Trigger Paula Audio Channel 0 buffer finish (AUD0DSR)
@@ -87,7 +87,7 @@ fn test_end_to_end_audio_interrupt_to_cpu_isr_and_rte() {
     assert!(machine.cpu.state.is_supervisor());
 
     // Clear Paula INTREQ bit 7 inside the handler to prevent infinite loop
-    machine.paula.write_intreq(0x0080);
+    machine.paula.set_intreq(0x0080);
 
     // 6. Step through ISR: execute MOVEQ #42, D1
     machine.step_instruction();
@@ -122,13 +122,14 @@ fn test_end_to_end_cia_a_timer_interrupt_to_cpu() {
 
     // Enable Paula PORTS interrupt (Level 2): Master enable (bit 14) + PORTS (bit 3)
     // Write INTENA ($DFF09A) = 0xC008 (SET bit 15 | INTEN bit 14 | PORTS bit 3)
-    machine.paula.write_intena(0xC008);
+    machine.paula.set_intena(0xC008);
+    machine.paula.step_cck();
 
     // Trigger CIA-A Timer A underflow
-    machine.cia_a.write_register(cia_reg::cia_a::ICR, 0x81); // Enable Timer A IRQ in ICR
-    machine.cia_a.write_register(cia_reg::cia_a::TALO, 1);
-    machine.cia_a.write_register(cia_reg::cia_a::TAHI, 0);
-    machine.cia_a.write_register(cia_reg::cia_a::CRA, 0x01); // Start Timer A
+    machine.cia_a.set_icr(0x81); // Enable Timer A IRQ in ICR
+    machine.cia_a.set_talo(1);
+    machine.cia_a.set_tahi(0);
+    machine.cia_a.set_cra(0x01); // Start Timer A
 
     // Step machine until CIA underflows and asserts IRQ
     let mut cck_count = 0;
@@ -138,7 +139,7 @@ fn test_end_to_end_cia_a_timer_interrupt_to_cpu() {
         assert!(cck_count < 200, "Timed out waiting for CIA-A IRQ");
     }
 
-    // Advance 1 CCK for physical pin propagation delay into Paula INTREQ
+    // Advance to the next model input phase before Paula samples the IRQ pin
     machine.step_cck();
 
     // Verify CIA-A asserts IRQ and Paula reflects PORTS bit 3
@@ -161,8 +162,8 @@ fn test_end_to_end_cia_a_timer_interrupt_to_cpu() {
     assert_eq!(machine.cpu.state.interrupt_mask(), 2);
 
     // Acknowledge CIA interrupt by reading ICR (clears IRQ line)
-    machine.cia_a.read_register(cia_reg::cia_a::ICR);
-    machine.paula.write_intreq(0x0008);
+    machine.cia_a.icr();
+    machine.paula.set_intreq(0x0008);
 
     // Step through ISR: execute MOVEQ #88, D2
     machine.step_instruction();
@@ -190,7 +191,8 @@ fn test_end_to_end_vblank_interrupt_to_cpu() {
 
     // Enable Paula VERTB interrupt: Master enable (bit 14) + VERTB (bit 5)
     // Write INTENA ($DFF09A) = 0xC020 (SET bit 15 | INTEN bit 14 | VERTB bit 5)
-    machine.paula.write_intena(0xC020);
+    machine.paula.set_intena(0xC020);
+    machine.paula.step_cck();
 
     // Advance Agnus beam to end of frame so it rolls over into line 0, CCK 0
     machine.agnus.vpos = 312;
@@ -223,7 +225,7 @@ fn test_end_to_end_vblank_interrupt_to_cpu() {
     assert_eq!(machine.cpu.state.interrupt_mask(), 3);
 
     // Clear VERTB request
-    machine.paula.write_intreq(0x0020);
+    machine.paula.set_intreq(0x0020);
 
     // Step through ISR: execute MOVEQ #99, D3
     machine.step_instruction();
@@ -246,7 +248,8 @@ fn test_master_intena_masking_suppresses_cpu_interrupt() {
 
     // Disable Master INTEN (bit 14 = 0), but set AUD0 channel enable (bit 7)
     // Write INTENA ($DFF09A) = 0x8080 (SET bit 15 | AUD0 bit 7, bit 14 INTEN is 0)
-    machine.paula.write_intena(0x8080);
+    machine.paula.set_intena(0x8080);
+    machine.paula.step_cck();
 
     // Assert Paula Audio Channel 0 request
     machine.paula.audio.channels[0].restart_strobe = true;

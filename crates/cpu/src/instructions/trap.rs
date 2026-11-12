@@ -11,7 +11,7 @@ use crate::state::{vector, CpuState};
 /// Initial setup for TRAP exception: saves old SR, switches to supervisor
 pub fn alu_trap_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
     let opcode = state.ir();
-    let vec = (opcode & 0x000F) as u32;
+    let vec = (opcode & crate::micro::encoding::field::MASK_TRAP_NUMBER) as u32;
     let vector_addr = vector::addr(vector::TRAP_BASE + vec);
     let base_pc = state.pc().wrapping_sub(2);
     let return_pc = base_pc;
@@ -27,7 +27,7 @@ pub fn alu_trap_init(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 pub static ALU_TRAP_INIT: MicroStep = MicroStep {
     bus_fn: None,
     alu_fn: Some(alu_trap_init),
-    base_clocks: 2,
+    base_clocks: MicroStep::CCK_CLOCKS,
 };
 
 /// Microcode pipeline for `TRAP #<vector>` (34 CPU clocks / 17 CCKs)

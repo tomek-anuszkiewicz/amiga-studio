@@ -6,17 +6,42 @@
 pub use frame_builder;
 pub use sprites;
 
-use config::custom_reg::{denise as reg, paula as paula_reg};
 pub use config::DeniseModel;
-use config::{stage_mutation, tick_mutations, BeamPosition, DelayedMutation, MutationMode};
+use config::{tick_mutations, DelayedMutation};
 use serde::{Deserialize, Serialize};
+
+mod pins;
+pub use pins::{DeniseInputs, DenisePins, DeniseSync};
+
+mod registers;
+
+const MASK_HORIZONTAL_CURSOR: u16 = 0xff;
 
 pub mod decode;
 pub use decode::{decode_dual_playfield, decode_ehb, decode_ham6};
 
+use config::display_window::{HIRES_FETCH_PERIOD_CCK, LORES_FETCH_PERIOD_CCK};
+
+const PIPELINE_PIXELS: usize = 2;
+const HBLANK_START_CCK: u16 = 18;
+const HBLANK_STOP_CCK: u16 = 35;
+const BIT_DIW_HORIZONTAL_LOW: u16 = 1;
+const DIW_COUNTS_PER_CCK: u16 = 2;
+const DIW_FIRST_COUNT_LEAD: u16 = 2;
+const DIW_SECOND_COUNT_LEAD: u16 = 3;
+const LAST_RENDER_CCK: u16 = 226;
+const TAIL_RENDER_CCK: u16 = 227;
+const BIT_BITPLANE_SERIAL: u16 = 0x8000;
+const MASK_ALL_PLANE_PIXEL: u8 = 0x3F;
+const BIT_PF2_PRIORITY: u16 = 0x0040;
+
 /// Denise video display processor state
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Denise {
+    /// Motherboard-facing signal state.
+    pub pins: DenisePins,
+    /// Receiver-owned synchronization and rendering cursor.
+    pub sync: DeniseSync,
     /// Active Denise chip hardware model (8362 OCS, 8373 ECS)
     pub model: DeniseModel,
     /// Denise 8 hardware sprite engines
@@ -59,18 +84,18 @@ pub struct Denise {
     pub joy1dat: u16,
 
     /// Bitplane data latches ($110-$11A)
-    pub bpldat: [u16; 6],
+    pub bpldat: [u16; config::OCS_BITPLANE_COUNT],
     /// Bitplane pipeline holding registers feeding the shifters
-    pub bpldat_pipe: [u16; 6],
+    pub bpldat_pipe: [u16; config::OCS_BITPLANE_COUNT],
     /// Active parallel bitplane shift registers
-    pub shifters: [u16; 6],
+    pub shifters: [u16; config::OCS_BITPLANE_COUNT],
     /// True when BPL1DAT has been written on the active scanline, arming bitplane serialization
     pub bpl_armed: bool,
     /// Last held color for HAM6 mode
     pub last_ham_rgb: u16,
     /// Pipeline delayed pixels (2 hires pixels hardware latency)
-    pub pipeline_pixels: [u32; 2],
-    pub pipeline_pixels_valid: [bool; 2],
+    pub pipeline_pixels: [u32; PIPELINE_PIXELS],
+    pub pipeline_pixels_valid: [bool; PIPELINE_PIXELS],
 
     /// Fixed inline in-flight mutation buffer (Zero-allocation)
     #[serde(with = "config::big_array")]
@@ -87,6 +112,8 @@ impl Denise {
     /// Creates a new Denise instance with the specified hardware model
     pub fn new(model: DeniseModel) -> Self {
         Self {
+            pins: DenisePins::default(),
+            sync: DeniseSync::default(),
             model,
             sprites: sprites::Sprites::new(),
             frame_builder: frame_builder::FrameBuilder::new(),
@@ -106,19 +133,21 @@ impl Denise {
             potgo: 0,
             joy0dat: 0,
             joy1dat: 0,
-            bpldat: [0; 6],
-            bpldat_pipe: [0; 6],
-            shifters: [0; 6],
+            bpldat: [0; config::OCS_BITPLANE_COUNT],
+            bpldat_pipe: [0; config::OCS_BITPLANE_COUNT],
+            shifters: [0; config::OCS_BITPLANE_COUNT],
             bpl_armed: false,
             last_ham_rgb: 0,
-            pipeline_pixels: [0; 2],
-            pipeline_pixels_valid: [false; 2],
+            pipeline_pixels: [0; PIPELINE_PIXELS],
+            pipeline_pixels_valid: [false; PIPELINE_PIXELS],
             mutations: [None; Self::MUTATION_CAPACITY],
         }
     }
 
     /// Resets Denise registers to power-on defaults
     pub fn reset(&mut self) {
+        self.pins = DenisePins::default();
+        self.sync = DeniseSync::default();
         self.sprites.reset();
         self.frame_builder.reset();
         self.bplcon0 = 0;
@@ -142,37 +171,44 @@ impl Denise {
         self.shifters.fill(0);
         self.bpl_armed = false;
         self.last_ham_rgb = 0;
-        self.pipeline_pixels = [0; 2];
-        self.pipeline_pixels_valid = [false; 2];
+        self.pipeline_pixels = [0; PIPELINE_PIXELS];
+        self.pipeline_pixels_valid = [false; PIPELINE_PIXELS];
         self.mutations = [None; Self::MUTATION_CAPACITY];
     }
 
     /// Advances Denise pixel pipeline, steps sprites and frame builder,
     /// and processes in-flight mutations by 1 Color Clock.
     /// Returns any register writes that matured and committed on this exact cycle.
-    pub fn step_cck(&mut self, beam: BeamPosition) -> [Option<(u16, u16)>; 8] {
-        if beam.hpos == 0 {
+    pub fn step_cck(&mut self) -> [Option<(u16, u16)>; Self::MUTATION_CAPACITY] {
+        if let Some(address) = self.pins.rga_strobe.take() {
+            self.sync.receive_strobe(address);
+        }
+        let hpos = self.sync.hpos;
+        let vpos = self.sync.vpos;
+        self.sync.hpos = self.sync.hpos.wrapping_add(1) & MASK_HORIZONTAL_CURSOR;
+        if hpos == 0 {
             self.last_ham_rgb = self.color[0];
             self.bpl_armed = false;
-            self.shifters = [0; 6];
-            self.pipeline_pixels = [0; 2];
-            self.pipeline_pixels_valid = [false; 2];
+            self.shifters = [0; config::OCS_BITPLANE_COUNT];
+            self.pipeline_pixels = [0; PIPELINE_PIXELS];
+            self.pipeline_pixels_valid = [false; PIPELINE_PIXELS];
         }
 
-        self.sprites.step_cck(beam);
-        self.frame_builder.step_cck(beam);
+        self.sprites.step_cck(hpos, vpos);
+        self.frame_builder.step_cck(hpos, vpos);
 
         // Check vertical and horizontal blanking
         // PAL: scanlines 0..25 and >= 311 are vertical blanking
-        let in_vblank = beam.vpos <= 25 || beam.vpos >= 311;
+        let in_vblank = self.sync.vertical_blank;
         // Horizontal blanking occupies CCKs 0x12..0x23 (18..35)
-        let in_hblank = beam.hpos >= 18 && beam.hpos <= 35;
+        let in_hblank = hpos >= HBLANK_START_CCK && hpos <= HBLANK_STOP_CCK;
 
         // Denise decodes the horizontal DIW bits; Agnus gates bitplane DMA by line.
-        let hstrt = (self.diwstrt & 0xFF) | 1;
-        let hstop = (self.diwstop & 0xFF) | 1 | 0x100;
+        let hstrt = (self.diwstrt & 0xFF) | BIT_DIW_HORIZONTAL_LOW;
+        let hstop =
+            (self.diwstop & 0xFF) | BIT_DIW_HORIZONTAL_LOW | frame_builder::BIT_HSTOP_EXTENSION;
 
-        let c0 = beam.hpos * 2 + 2;
+        let c0 = hpos * DIW_COUNTS_PER_CCK + DIW_FIRST_COUNT_LEAD;
         if c0 == hstrt {
             self.hflop = true;
         }
@@ -181,7 +217,7 @@ impl Denise {
             self.hflop = false;
         }
 
-        let c1 = beam.hpos * 2 + 3;
+        let c1 = hpos * DIW_COUNTS_PER_CCK + DIW_SECOND_COUNT_LEAD;
         if c1 == hstrt {
             self.hflop = true;
         }
@@ -191,8 +227,12 @@ impl Denise {
         }
 
         if self.bitplane_count() > 0 && self.bpl_armed {
-            let period = if self.is_hires() { 4 } else { 8 };
-            if beam.hpos % period == 0 {
+            let period = if self.is_hires() {
+                HIRES_FETCH_PERIOD_CCK
+            } else {
+                LORES_FETCH_PERIOD_CCK
+            };
+            if hpos % period == 0 {
                 self.shifters = self.bpldat_pipe;
             }
         }
@@ -200,16 +240,19 @@ impl Denise {
         if in_vblank || in_hblank {
             // Analog video output DACs are pulled to blanking level (pure black)
             self.frame_builder
-                .set_cck_pixels(beam.hpos, beam.vpos, 0xFF00_0000);
-            if beam.hpos == 226 {
-                self.frame_builder
-                    .set_cck_pixels(227, beam.vpos, 0xFF00_0000);
+                .set_cck_pixels(hpos, vpos, frame_builder::OPAQUE_BLACK);
+            if hpos == LAST_RENDER_CCK {
+                self.frame_builder.set_cck_pixels(
+                    TAIL_RENDER_CCK,
+                    vpos,
+                    frame_builder::OPAQUE_BLACK,
+                );
             }
         } else {
             let plane_count = self.bitplane_count();
             let backdrop = frame_builder::rgb444_to_argb32(self.color[0]);
-            let y = beam.vpos as usize;
-            let cck_base_x = (beam.hpos as usize) * 4;
+            let y = vpos as usize;
+            let cck_base_x = (hpos as usize) * frame_builder::PIXELS_PER_CCK;
 
             if plane_count > 0 && self.bpl_armed {
                 let hires = self.is_hires();
@@ -304,7 +347,7 @@ impl Denise {
                     }
                 }
 
-                if beam.hpos == 226 {
+                if hpos == LAST_RENDER_CCK {
                     let px4 = if self.pipeline_pixels_valid[0] {
                         self.pipeline_pixels[0]
                     } else {
@@ -351,10 +394,10 @@ impl Denise {
                 }
             } else {
                 self.pipeline_pixels_valid = [false, false];
-                self.frame_builder
-                    .set_cck_pixels(beam.hpos, beam.vpos, backdrop);
-                if beam.hpos == 226 {
-                    self.frame_builder.set_cck_pixels(227, beam.vpos, backdrop);
+                self.frame_builder.set_cck_pixels(hpos, vpos, backdrop);
+                if hpos == LAST_RENDER_CCK {
+                    self.frame_builder
+                        .set_cck_pixels(TAIL_RENDER_CCK, vpos, backdrop);
                 }
             }
         }
@@ -368,28 +411,10 @@ impl Denise {
             }
         });
         for item in committed[..committed_count].iter().flatten() {
-            self.commit_register_write(item.0, item.1);
+            self.apply_register_write(item.0, item.1);
         }
 
-        let mut due = [None; 8];
-        for (i, item) in committed[..committed_count.min(8)].iter().enumerate() {
-            due[i] = *item;
-        }
-        due
-    }
-
-    /// Writes a 16-bit word into BPLxDAT ($110 + plane * 2).
-    ///
-    /// When plane 0 (BPL1DAT) is written, all 6 bpldat latches are transferred into the active shift registers.
-    #[inline]
-    pub fn write_bpldat(&mut self, plane: usize, val: u16) {
-        if plane < 6 {
-            self.bpldat[plane] = val;
-            if plane == 0 {
-                self.bpldat_pipe = self.bpldat;
-                self.bpl_armed = true;
-            }
-        }
+        committed
     }
 
     /// Shifts out 1 pixel (MSB first) across all 6 bitplanes
@@ -397,7 +422,7 @@ impl Denise {
     pub fn shift_pixel(&mut self) -> u8 {
         let mut val = 0u8;
         for (i, shifter) in self.shifters.iter_mut().enumerate() {
-            if (*shifter & 0x8000) != 0 {
+            if (*shifter & BIT_BITPLANE_SERIAL) != 0 {
                 val |= 1 << i;
             }
             *shifter <<= 1;
@@ -412,341 +437,49 @@ impl Denise {
             return self.color[0];
         }
 
-        let mask = if plane_count >= 6 {
-            0x3F
+        let mask = if plane_count >= config::OCS_BITPLANE_COUNT as u8 {
+            MASK_ALL_PLANE_PIXEL
         } else {
             (1 << plane_count) - 1
         };
         let data = planes_data & mask;
 
-        if self.is_ham() && plane_count == 6 {
+        if self.is_ham() && plane_count == config::OCS_BITPLANE_COUNT as u8 {
             decode_ham6(data, &self.color, &mut self.last_ham_rgb)
         } else if self.is_dual_playfield() {
-            let pf2_priority = (self.bplcon2 & 0x0040) != 0;
+            let pf2_priority = (self.bplcon2 & BIT_PF2_PRIORITY) != 0;
             decode_dual_playfield(data, &self.color, pf2_priority)
-        } else if plane_count == 6 && !self.is_hires() {
+        } else if plane_count == config::OCS_BITPLANE_COUNT as u8 && !self.is_hires() {
             decode_ehb(data, &self.color)
         } else {
-            let idx = (data & 0x1F) as usize;
+            let idx = (data & decode::MASK_PALETTE_INDEX) as usize;
             self.color[idx]
         }
-    }
-
-    /// Action method: sets BPLCON0 and updates active display mode flags
-    #[inline]
-    pub fn set_bplcon0(&mut self, val: u16) {
-        self.bplcon0 = val;
-    }
-
-    /// Action method: sets BPLCON1 horizontal scroll offsets
-    #[inline]
-    fn set_bplcon1(&mut self, val: u16) {
-        self.bplcon1 = val;
-    }
-
-    /// Action method: sets BPLCON2 priority flags
-    #[inline]
-    fn set_bplcon2(&mut self, val: u16) {
-        self.bplcon2 = val;
     }
 
     /// Returns the active number of bitplanes (0..6)
     #[inline]
     pub fn bitplane_count(&self) -> u8 {
-        ((self.bplcon0 >> 12) & 0x07) as u8
+        ((self.bplcon0 >> config::mask::bplcon0::BIT_BPU_SHIFT)
+            & (config::mask::bplcon0::MASK_BPU >> config::mask::bplcon0::BIT_BPU_SHIFT))
+            as u8
     }
 
     /// Returns true if High-Resolution (640-pixel) mode is enabled
     #[inline]
     pub fn is_hires(&self) -> bool {
-        (self.bplcon0 & 0x8000) != 0
+        (self.bplcon0 & config::mask::bplcon0::BIT_HIRES) != 0
     }
 
     /// Returns true if Hold-And-Modify (HAM) mode is enabled
     #[inline]
     fn is_ham(&self) -> bool {
-        (self.bplcon0 & 0x0800) != 0
+        (self.bplcon0 & config::mask::bplcon0::BIT_HOMOD) != 0
     }
 
     /// Returns true if Dual Playfield mode is enabled
     #[inline]
     fn is_dual_playfield(&self) -> bool {
-        (self.bplcon0 & 0x0400) != 0
-    }
-
-    /// Reads collision data register (CLXDAT at $DFF00E) and clears it immediately on read
-    #[inline]
-    pub fn read_clxdat(&mut self) -> u16 {
-        let val = self.clxdat;
-        self.clxdat = 0;
-        val
-    }
-
-    /// Reads register with physical read side-effects (e.g. clearing CLXDAT).
-    /// Write-only registers return floating open bus $FFFF.
-    pub fn read_register(&mut self, offset: u16) -> u16 {
-        match offset & 0x1FE {
-            reg::JOY0DAT => self.joy0dat,
-            reg::JOY1DAT => self.joy1dat,
-            reg::CLXDAT => self.read_clxdat(),
-            _ => config::OPEN_BUS_WORD,
-        }
-    }
-
-    /// Read-only inspection without side-effects (for debuggers and GUI)
-    #[inline]
-    pub fn peek_register(&self, offset: u16) -> u16 {
-        match offset & 0x1FE {
-            reg::JOY0DAT => self.joy0dat,
-            reg::JOY1DAT => self.joy1dat,
-            reg::CLXDAT => self.clxdat,
-            _ => config::OPEN_BUS_WORD,
-        }
-    }
-
-    /// Receives a synchronization address strobe on RGA. Video effects are not modeled yet.
-    pub fn receive_sync_strobe(&mut self, _offset: u16) {}
-
-    /// Schedules a staged register write with appropriate propagation delay and overwrite mode.
-    /// Returns `Some((offset, val))` if committed immediately, or `None` if staged in pipeline.
-    pub fn write_register(&mut self, offset: u16, val: u16) -> Option<(u16, u16)> {
-        let offset = offset & 0x1FE;
-        let (delay, mode) = match offset {
-            reg::BPLCON0 | reg::BPLCON1 | reg::BPLCON2 => (1, MutationMode::OverwritePending),
-            reg::CLXCON | reg::DIWSTRT | reg::DIWSTOP => (1, MutationMode::OverwritePending),
-            reg::COLOR00
-            | reg::COLOR01
-            | reg::COLOR02
-            | reg::COLOR03
-            | reg::COLOR04
-            | reg::COLOR05
-            | reg::COLOR06
-            | reg::COLOR07
-            | reg::COLOR08
-            | reg::COLOR09
-            | reg::COLOR10
-            | reg::COLOR11
-            | reg::COLOR12
-            | reg::COLOR13
-            | reg::COLOR14
-            | reg::COLOR15
-            | reg::COLOR16
-            | reg::COLOR17
-            | reg::COLOR18
-            | reg::COLOR19
-            | reg::COLOR20
-            | reg::COLOR21
-            | reg::COLOR22
-            | reg::COLOR23
-            | reg::COLOR24
-            | reg::COLOR25
-            | reg::COLOR26
-            | reg::COLOR27
-            | reg::COLOR28
-            | reg::COLOR29
-            | reg::COLOR30
-            | reg::COLOR31 => (0, MutationMode::OverwritePending),
-            reg::BPL1DAT
-            | reg::BPL2DAT
-            | reg::BPL3DAT
-            | reg::BPL4DAT
-            | reg::BPL5DAT
-            | reg::BPL6DAT => (1, MutationMode::Pipeline),
-            reg::SPR0POS
-            | reg::SPR0CTL
-            | reg::SPR0DATA
-            | reg::SPR0DATB
-            | reg::SPR1POS
-            | reg::SPR1CTL
-            | reg::SPR1DATA
-            | reg::SPR1DATB
-            | reg::SPR2POS
-            | reg::SPR2CTL
-            | reg::SPR2DATA
-            | reg::SPR2DATB
-            | reg::SPR3POS
-            | reg::SPR3CTL
-            | reg::SPR3DATA
-            | reg::SPR3DATB
-            | reg::SPR4POS
-            | reg::SPR4CTL
-            | reg::SPR4DATA
-            | reg::SPR4DATB
-            | reg::SPR5POS
-            | reg::SPR5CTL
-            | reg::SPR5DATA
-            | reg::SPR5DATB
-            | reg::SPR6POS
-            | reg::SPR6CTL
-            | reg::SPR6DATA
-            | reg::SPR6DATB
-            | reg::SPR7POS
-            | reg::SPR7CTL
-            | reg::SPR7DATA
-            | reg::SPR7DATB => (1, MutationMode::OverwritePending),
-            _ => (1, MutationMode::OverwritePending),
-        };
-
-        if !stage_mutation(&mut self.mutations, offset, val, delay, mode) {
-            self.commit_register_write(offset, val);
-            Some((offset, val))
-        } else {
-            None
-        }
-    }
-
-    /// Commits a register write directly into active Denise silicon state
-    pub fn commit_register_write(&mut self, offset: u16, val: u16) {
-        match offset & 0x1FE {
-            reg::BPLCON0 => self.set_bplcon0(val),
-            reg::BPLCON1 => self.set_bplcon1(val),
-            reg::BPLCON2 => self.set_bplcon2(val),
-            reg::DIWSTRT => self.diwstrt = val,
-            reg::DIWSTOP => self.diwstop = val,
-            reg::CLXCON => self.clxcon = val,
-            paula_reg::POTGO => self.potgo = val,
-
-            // Color palette $180..$1BE
-            reg::COLOR00
-            | reg::COLOR01
-            | reg::COLOR02
-            | reg::COLOR03
-            | reg::COLOR04
-            | reg::COLOR05
-            | reg::COLOR06
-            | reg::COLOR07
-            | reg::COLOR08
-            | reg::COLOR09
-            | reg::COLOR10
-            | reg::COLOR11
-            | reg::COLOR12
-            | reg::COLOR13
-            | reg::COLOR14
-            | reg::COLOR15
-            | reg::COLOR16
-            | reg::COLOR17
-            | reg::COLOR18
-            | reg::COLOR19
-            | reg::COLOR20
-            | reg::COLOR21
-            | reg::COLOR22
-            | reg::COLOR23
-            | reg::COLOR24
-            | reg::COLOR25
-            | reg::COLOR26
-            | reg::COLOR27
-            | reg::COLOR28
-            | reg::COLOR29
-            | reg::COLOR30
-            | reg::COLOR31 => {
-                let idx = ((offset - reg::COLOR00) / 2) as usize;
-                if idx < Self::COLOR_PALETTE_SIZE {
-                    self.color[idx] = val & 0x0FFF;
-                }
-            }
-
-            // Bitplane parallel data latches
-            reg::BPL1DAT
-            | reg::BPL2DAT
-            | reg::BPL3DAT
-            | reg::BPL4DAT
-            | reg::BPL5DAT
-            | reg::BPL6DAT => {
-                let plane = ((offset - reg::BPL1DAT) / 2) as usize;
-                if plane < 6 {
-                    self.bpldat[plane] = val;
-                }
-            }
-
-            // Sprite registers
-            reg::SPR0POS
-            | reg::SPR0CTL
-            | reg::SPR0DATA
-            | reg::SPR0DATB
-            | reg::SPR1POS
-            | reg::SPR1CTL
-            | reg::SPR1DATA
-            | reg::SPR1DATB
-            | reg::SPR2POS
-            | reg::SPR2CTL
-            | reg::SPR2DATA
-            | reg::SPR2DATB
-            | reg::SPR3POS
-            | reg::SPR3CTL
-            | reg::SPR3DATA
-            | reg::SPR3DATB
-            | reg::SPR4POS
-            | reg::SPR4CTL
-            | reg::SPR4DATA
-            | reg::SPR4DATB
-            | reg::SPR5POS
-            | reg::SPR5CTL
-            | reg::SPR5DATA
-            | reg::SPR5DATB
-            | reg::SPR6POS
-            | reg::SPR6CTL
-            | reg::SPR6DATA
-            | reg::SPR6DATB
-            | reg::SPR7POS
-            | reg::SPR7CTL
-            | reg::SPR7DATA
-            | reg::SPR7DATB => {
-                let spr = ((offset - reg::SPR0POS) / 8) as usize;
-                let sub = ((offset - reg::SPR0POS) % 8) / 2;
-                if spr < 8 {
-                    match sub {
-                        0 => self.sprites.channels[spr].pos = val,
-                        1 => {
-                            self.sprites.channels[spr].ctl = val;
-                            self.sprites.channels[spr].is_armed = false;
-                        }
-                        2 => {
-                            self.sprites.channels[spr].data_a = val;
-                            self.sprites.channels[spr].is_armed = true;
-                        }
-                        3 => self.sprites.channels[spr].data_b = val,
-                        _ => {}
-                    }
-                }
-            }
-
-            _ => {}
-        }
-    }
-
-    /// Reads Joystick/Mouse 0 data register (JOY0DAT at $DFF00A)
-    #[inline(always)]
-    pub fn joy0dat(&self) -> u16 {
-        self.joy0dat
-    }
-
-    /// Reads Joystick/Mouse 0 data register without side-effects for debugging
-    #[inline(always)]
-    pub fn joy0dat_debug(&self) -> u16 {
-        self.joy0dat
-    }
-
-    /// Reads Joystick/Mouse 1 data register (JOY1DAT at $DFF00C)
-    #[inline(always)]
-    pub fn joy1dat(&self) -> u16 {
-        self.joy1dat
-    }
-
-    /// Reads Joystick/Mouse 1 data register without side-effects for debugging
-    #[inline(always)]
-    pub fn joy1dat_debug(&self) -> u16 {
-        self.joy1dat
-    }
-
-    /// Reads Collision Data register with clear-on-read side-effect (CLXDAT at $DFF00E)
-    #[inline(always)]
-    pub fn clxdat(&mut self) -> u16 {
-        self.read_clxdat()
-    }
-
-    /// Reads Collision Data register without clearing for debugging (CLXDAT at $DFF00E)
-    #[inline(always)]
-    pub fn clxdat_debug(&self) -> u16 {
-        self.clxdat
+        (self.bplcon0 & config::mask::bplcon0::BIT_DBLPF) != 0
     }
 }

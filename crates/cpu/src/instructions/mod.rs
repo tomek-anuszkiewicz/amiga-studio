@@ -1,5 +1,26 @@
 //! M68000 Instruction Implementations by Mnemonic (Microcode Archetype Baseline)
 
+pub const BIT_BYTE_SIGN: u8 = 0x80;
+pub const BIT_WORD_SIGN: u16 = 0x8000;
+pub const BIT_LONG_SIGN: u32 = 0x8000_0000;
+pub const SHIFT_BYTE_WORD_BASE_CLOCKS: u32 = 2;
+pub const SHIFT_LONG_BASE_CLOCKS: u32 = 4;
+pub const SHIFT_CLOCKS_PER_BIT: u32 = 2;
+pub const MULTIPLY_BASE_CLOCKS: u16 = 34;
+pub const MULTIPLY_CLOCKS_PER_BIT: u16 = 2;
+
+pub const MASK_BCD_LOW_DIGIT: u16 = 0x0F;
+pub const MASK_BCD_HIGH_DIGIT: u16 = 0xF0;
+pub const BCD_DIGIT_CORRECTION: u16 = 6;
+pub const BCD_HIGH_CORRECTION: u16 = 0x60;
+
+pub const BIT_REGISTER_UPPER_WORD_SELECT: u32 = 16;
+pub const BIT_MODIFY_LOW_WORD_CLOCKS: u16 = 2;
+pub const BIT_MODIFY_HIGH_WORD_CLOCKS: u16 = 4;
+pub const DIVISION_TIMING_ITERATIONS: usize = 15;
+pub const DIVISION_MACHINE_CYCLE_CLOCKS: u16 = 2;
+pub const DIVISION_PREFETCH_CLOCKS: u16 = 4;
+
 pub mod abcd;
 pub mod add;
 pub mod adda;

@@ -39,7 +39,8 @@ def repository_targets(scope):
     """Enumerate unchanged tracked files and nonignored new files, pruning data trees."""
     command = ["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z", "--"]
     command.extend(f":(glob,exclude)**/{name}/**" for name in scope["excluded_directory_names"])
-    command.extend(f":(glob,exclude){directory}/**" for directory in scope["excluded_directories"])
+    command.extend(f":(glob,exclude){directory}/**" for directory in
+                   scope["excluded_directories"] + scope["always_excluded_directories"])
     result = subprocess.run(command, cwd=REPO_ROOT, capture_output=True, check=True)
     targets = []
     for relative in sorted(set(result.stdout.decode("utf-8").split("\0")) - {""}):
@@ -157,7 +158,8 @@ def scan_files(targets, scope, vocabulary, workers):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("files", nargs="*", type=Path,
-                        help="Explicit files; by default scan the full repository using check_english.json")
+                        help="Explicit files; always-excluded directories still apply. "
+                             "By default scan the full repository using check_english.json")
     args = parser.parse_args()
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -165,6 +167,9 @@ def main():
         scope = json.loads(SCOPE_FILE.read_text(encoding="utf-8"))
         vocabulary = load_vocabulary(scope)
         targets = args.files or repository_targets(scope)
+        excluded = [(REPO_ROOT / directory).resolve() for directory in scope["always_excluded_directories"]]
+        targets = [path for path in targets
+                   if not any(path.resolve().is_relative_to(directory) for directory in excluded)]
     except (OSError, ValueError, KeyError, subprocess.CalledProcessError) as error:
         print(f"[ERROR] Cannot prepare English scan: {error}", file=sys.stderr)
         return 2

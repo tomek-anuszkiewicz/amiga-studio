@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "config"
 status: "active"
 created: 2026-09-05
-updated: 2026-10-13
+updated: 2026-11-11
 related: ["[General Architecture.md](General%20Architecture.md)", "[Physical Memory.md](Physical%20Memory.md)", "[MemoryBus.md](MemoryBus.md)", "[RTC.md](RTC.md)", "[Machine Loop.md](Machine%20Loop.md)"]
 tracked_paths:
   - "crates/config"
@@ -17,6 +17,18 @@ tracked_paths:
 > All ROM binaries, disk images, and memory configurations are injected into the core externally as raw byte slices (`&[u8]`), preserving WASM portability and system independence (see [AGENTS.md](../../../AGENTS.md)).
 > Implementation resides in the dedicated foundational crate [`crates/config`](../../../crates/config).
 > Physical memory layout is applied in [Physical Memory.md](Physical%20Memory.md), motherboard routing in [MemoryBus.md](MemoryBus.md), RTC models in [RTC.md](RTC.md), chipset variants in [Agnus.md](Agnus.md) and [Denise.md](Denise.md), and system coordinator setup in [Machine Loop.md](Machine%20Loop.md).
+
+The shared [address bounds](../../../crates/config/src/address_map.rs) define
+CIA banks `$A0-$BF` and custom banks `$DE-$DF` for all presets. Physical-memory
+classification and the production router import these same definitions.
+[MemoryBus](MemoryBus.md#cia-and-boot-overlay) owns register selection and
+transaction acceptance; these constants do not instantiate devices.
+
+Beam position remains in [Agnus](Agnus.md#motherboard-transport-boundary)
+as its `hpos`/`vpos` counters and field/line state. Configuration retains hardware presets,
+register definitions, the shared mutation helper and `big_array` Serde support.
+The array helper is below subsystem crates and has no dependency on the
+high-level [save format](Application/SaveState.md).
 
 ---
 
@@ -89,10 +101,13 @@ Because the emulator core is system-agnostic and decoupled from the host filesys
 
 ## 5. Deferred Peripheral Extension
 
-*The following peripheral extension is deferred to a subsequent project milestone:*
-- **Extended Peripherals:** 4-Player Parallel Port Joystick adapter, analog proportional joysticks.
+Extended peripherals remain deferred; see the [deferred peripheral work](../../../ROADMAP.md#deferred-bus-and-peripherals).
 
 ---
+
+## Shared propagation state
+
+The foundational crate also owns the serializable [mutation utility](../../../crates/config/src/mutation.rs), shared by custom chips and CIA. Its fixed-capacity buffer keeps retained events in issue order. Pipeline entries coexist; OverwritePending removes and replaces only the same destination and mode, at the new issue position. Tick commits every due entry and compacts retained entries without allocation. Full capacity and zero delay reject insertion; callers must retain or retry the event instead of applying it early. CIA retains its separate falling-E capture and bus acceptance contract. [MemoryBus](MemoryBus.md#custom-registers-and-specialized-chips) specifies provisional custom-register delays and recipient routing.
 
 ## 6. Reference Documentation & Upstream Ground Truth
 

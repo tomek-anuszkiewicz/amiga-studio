@@ -2,7 +2,7 @@
 """
 Static checks for hardware bus topology and DMA address ownership.
 
-Checks inter-chip dependency patterns, required motherboard poll interfaces,
+Checks inter-chip dependency patterns, required motherboard output interfaces,
 and DMA pointer or direct memory access patterns in Denise and Paula.
 Run without arguments; commit verification invokes this audit once.
 """
@@ -45,13 +45,15 @@ CUSTOM_CHIPS = {
 }
 
 MANDATORY_POLL_METHODS = {
-    "agnus": ["poll_blitter_irq", "poll_vblank_irq", "poll_copper_write", "poll_bpl_dma"],
+    "agnus": ["poll_vblank_irq", "poll_copper_write", "poll_bpl_dma"],
     "floppy": ["poll_dskblk_irq", "poll_dsksyn_irq"],
     "cia": ["irq_pending", "poll_pra_output"],
 }
 
+MANDATORY_OUTPUT_PINS = {"agnus": ["int3_high"]}
+
 def check_bus_topology():
-    """Verifies zero direct inter-chip calls and presence of required poll methods."""
+    """Verifies inter-chip isolation and required motherboard output interfaces."""
     issues = []
 
     # 1. Scan for forbidden peer imports / calls between custom chips
@@ -113,6 +115,15 @@ def check_bus_topology():
                     "file": f"crates/{chip}/src/",
                     "line": 1,
                     "message": f"Custom chip `{chip}` is missing mandatory motherboard query method `{method}()` per Section 1.1",
+                })
+
+        for pin in MANDATORY_OUTPUT_PINS.get(chip, []):
+            if not re.search(rf"\bpub\s+{pin}\s*:\s*bool\b", combined_src):
+                issues.append({
+                    "type": "missing_output_pin",
+                    "file": f"crates/{chip}/src/",
+                    "line": 1,
+                    "message": f"Custom chip `{chip}` is missing motherboard output pin `{pin}` per hardware-bus-topology.md",
                 })
 
     return issues
@@ -195,7 +206,7 @@ def main():
         for issue in top_issues:
             print(f"    * {issue['message']}")
     else:
-        print("  - Status: [PASS] 100% compliant (zero direct inter-chip calls, poll_* interface intact).")
+        print("  - Status: [PASS] Static topology checks passed (peer isolation and output interfaces).")
 
     # 2. DMA Mastership & Passive Latching
     print("\n[2. AGNUS DMA ADDRESS MASTERSHIP & PASSIVE CHIP LATCHING]")

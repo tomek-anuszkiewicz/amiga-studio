@@ -5,6 +5,10 @@
 
 use egui::{pos2, vec2, Color32, Rect, RichText, Stroke};
 
+pub(crate) const SCREEN_ASPECT_WIDTH: f32 = 4.0;
+pub(crate) const SCREEN_ASPECT_HEIGHT: f32 = 3.0;
+const SCREEN_ASPECT_RATIO: f32 = SCREEN_ASPECT_WIDTH / SCREEN_ASPECT_HEIGHT;
+
 pub(crate) fn render_amiga_screen(ui: &mut egui::Ui, show_floating_debug_btn: bool) -> bool {
     let available = ui.available_size();
     if available.x < 50.0 || available.y < 50.0 {
@@ -12,7 +16,7 @@ pub(crate) fn render_amiga_screen(ui: &mut egui::Ui, show_floating_debug_btn: bo
     }
 
     // Strict 4:3 aspect ratio calculation
-    let target_aspect = 4.0 / 3.0;
+    let target_aspect = SCREEN_ASPECT_RATIO;
     let (screen_w, screen_h) = if available.x / available.y > target_aspect {
         (available.y * target_aspect, available.y)
     } else {

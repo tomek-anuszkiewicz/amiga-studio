@@ -10,9 +10,14 @@
 
 use crate::micro::common;
 use crate::micro::ea;
+use crate::micro::encoding::{extended_mode, mode};
 use crate::micro::types::MicroStep;
 use crate::state::CpuState;
 use crate::Cpu;
+
+const BASE_MACHINE_CYCLES: u16 = 38;
+const RESTORE_MACHINE_CYCLES: u16 = 2;
+const OVERFLOW_INTERNAL_CLOCKS: u16 = 6;
 
 // ============================================================================
 // Atomic Micro-Step Constants
@@ -32,9 +37,9 @@ const FETCH_EXT_FINISH: MicroStep = common::FETCH_EXT_FINISH;
 pub fn calc_divu_internal_clocks(dividend: u32, divisor: u16) -> u16 {
     let mut d = dividend;
     let hdivisor = (divisor as u32) << 16;
-    let mut mcycles = 38_u16;
+    let mut mcycles = BASE_MACHINE_CYCLES;
 
-    for _ in 0..15 {
+    for _ in 0..super::DIVISION_TIMING_ITERATIONS {
         if (d as i32) < 0 {
             d = d.wrapping_shl(1);
             d = d.wrapping_sub(hdivisor);
@@ -44,11 +49,11 @@ pub fn calc_divu_internal_clocks(dividend: u32, divisor: u16) -> u16 {
                 d = d.wrapping_sub(hdivisor);
                 mcycles += 1;
             } else {
-                mcycles += 2;
+                mcycles += RESTORE_MACHINE_CYCLES;
             }
         }
     }
-    (2 * mcycles).saturating_sub(4)
+    (super::DIVISION_MACHINE_CYCLE_CLOCKS * mcycles).saturating_sub(super::DIVISION_PREFETCH_CLOCKS)
 }
 
 // ============================================================================
@@ -75,7 +80,7 @@ fn execute_divu(state: &mut CpuState, dividend: u32, divisor: u16, reg_dst: u8) 
 
     if (dividend >> 16) >= (divisor as u32) {
         state.set_ccr_v_clear_c();
-        state.micro_mut().clocks_remaining = 6;
+        state.micro_mut().clocks_remaining = OVERFLOW_INTERNAL_CLOCKS;
         return;
     }
 
@@ -103,7 +108,7 @@ pub static STEPS_DIVU_AI: [MicroStep; 5] = [
     MicroStep {
         bus_fn: Some(Cpu::step_bus_read_src_word),
         alu_fn: Some(ea::ea_calc_src_ai),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     BUS_READ_IDLE,
     MicroStep::alu(alu_divu_mem),
@@ -115,7 +120,7 @@ pub static STEPS_DIVU_PI: [MicroStep; 5] = [
     MicroStep {
         bus_fn: Some(Cpu::step_bus_read_src_word),
         alu_fn: Some(ea::ea_calc_src_pi_w),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     BUS_READ_IDLE,
     MicroStep::alu(alu_divu_mem),
@@ -127,7 +132,7 @@ pub static STEPS_DIVU_PD: [MicroStep; 6] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(ea::ea_calc_src_pd_w),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     READ_SRC_WORD,
     BUS_READ_IDLE,
@@ -140,7 +145,7 @@ pub static STEPS_DIVU_D16_AN: [MicroStep; 7] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_src_d16_an),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     FETCH_EXT_FINISH,
     READ_SRC_WORD,
@@ -154,7 +159,7 @@ pub static STEPS_DIVU_IDX_AN: [MicroStep; 8] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(ea::ea_calc_src_idx_an),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     FETCH_EXT_READ,
     FETCH_EXT_FINISH,
@@ -169,7 +174,7 @@ pub static STEPS_DIVU_ABSW: [MicroStep; 7] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absw),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     FETCH_EXT_FINISH,
     READ_SRC_WORD,
@@ -183,13 +188,13 @@ pub static STEPS_DIVU_ABSL: [MicroStep; 9] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absl_hi),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     FETCH_EXT_FINISH,
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absl_lo),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     FETCH_EXT_FINISH,
     READ_SRC_WORD,
@@ -203,7 +208,7 @@ pub static STEPS_DIVU_D16_PC: [MicroStep; 7] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_d16_pc),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     FETCH_EXT_FINISH,
     READ_SRC_WORD,
@@ -217,7 +222,7 @@ pub static STEPS_DIVU_IDX_PC: [MicroStep; 8] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(ea::ea_calc_idx_pc),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     FETCH_EXT_READ,
     FETCH_EXT_FINISH,
@@ -232,7 +237,7 @@ pub static STEPS_DIVU_IMM: [MicroStep; 5] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_imm_w),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     FETCH_EXT_FINISH,
     MicroStep::alu(alu_divu_mem),
@@ -260,18 +265,18 @@ static DIVU_LOOKUP: [&[MicroStep]; 11] = [
 
 pub const fn decode_divu_steps(mode: u8, reg: u8) -> Option<&'static [MicroStep]> {
     match mode {
-        0 => Some(DIVU_LOOKUP[0]),
-        2 => Some(DIVU_LOOKUP[1]),
-        3 => Some(DIVU_LOOKUP[2]),
-        4 => Some(DIVU_LOOKUP[3]),
-        5 => Some(DIVU_LOOKUP[4]),
-        6 => Some(DIVU_LOOKUP[5]),
-        7 => match reg {
-            0 => Some(DIVU_LOOKUP[6]),
-            1 => Some(DIVU_LOOKUP[7]),
-            2 => Some(DIVU_LOOKUP[8]),
-            3 => Some(DIVU_LOOKUP[9]),
-            4 => Some(DIVU_LOOKUP[10]),
+        mode::DATA_REGISTER => Some(DIVU_LOOKUP[0]),
+        mode::INDIRECT => Some(DIVU_LOOKUP[1]),
+        mode::POSTINCREMENT => Some(DIVU_LOOKUP[2]),
+        mode::PREDECREMENT => Some(DIVU_LOOKUP[3]),
+        mode::DISPLACEMENT => Some(DIVU_LOOKUP[4]),
+        mode::INDEXED => Some(DIVU_LOOKUP[5]),
+        mode::EXTENDED => match reg {
+            extended_mode::ABSOLUTE_WORD => Some(DIVU_LOOKUP[6]),
+            extended_mode::ABSOLUTE_LONG => Some(DIVU_LOOKUP[7]),
+            extended_mode::PC_DISPLACEMENT => Some(DIVU_LOOKUP[8]),
+            extended_mode::PC_INDEXED => Some(DIVU_LOOKUP[9]),
+            extended_mode::IMMEDIATE => Some(DIVU_LOOKUP[10]),
             _ => None,
         },
         _ => None,

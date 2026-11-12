@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "denise"
 status: "active"
 created: 2026-09-06
-updated: 2026-10-13
+updated: 2026-11-11
 related: ["[Sprites.md](Sprites.md)", "[Frame Buffer.md](Frame%20Buffer.md)", "[Agnus.md](Agnus.md)", "[Game Ports.md](Game%20Ports.md)"]
 tracked_paths:
   - "crates/denise"
@@ -61,9 +61,49 @@ The implementation spans three workspace crates:
 | [`sprites`](../../../crates/sprites) | Models the hardware sprite channels and produces sprite pixels. See [Sprites](Sprites.md). |
 | [`frame_builder`](../../../crates/frame_builder) | Collects raster pixels into a frame buffer for the host display. See [Frame Buffer](Frame%20Buffer.md). |
 
+## Register propagation
+
+Concrete queued setters in [registers.rs](../../../crates/denise/src/registers.rs) handle controls, palette, bitplane data and sprite latches with **1 CCK Pipeline** delivery. Address strobes act immediately at accepted selection without a queue entry. Both CPU and DMA BPLxDAT writes reach the same private latch application; committing BPL1DAT transfers the holding latches and arms serialization. [MemoryBus](MemoryBus.md#custom-registers-and-specialized-chips) specifies the common issue boundary. The fixed 64-entry queue exceeds CPU/Copper plus one bitplane DMA word per CCK over its one-CCK delay; every due event is applied once. Engine shifter movement and sampled port inputs remain separate operations.
+
+JOYTEST and sync reactions remain incomplete; see the [chipset reconstruction work](../../../ROADMAP.md#chipset-reconstruction).
+Live `CLXDAT` reads clear collision state; `clxdat_debug` inspects it without
+acknowledgment or queue advancement.
+
+## Delivered timing and controller inputs
+
+The serializable `DenisePins` state in [pins.rs](../../../crates/denise/src/pins.rs)
+is exposed as `denise.pins`. Its `incoming` values retain the RGA event until
+the next input sampling phase. Independent game-port levels are sampled directly
+before engine work in the current CCK, without another pending copy. It groups delivered RGA strobe events and game port levels separately from
+registers, sprite state and the pixel pipeline.
+
+`pins.rga_strobe` holds an unconsumed synchronization event. The
+[Machine Loop](Machine%20Loop.md#rga-synchronization-transport) delivers the
+captured RGA address before receiver work; no Agnus counter snapshot is passed.
+`DeniseSync` stores the local horizontal/line cursor, blank/equalization state,
+long-line marker and whether synchronization has begun. CPU sync writes use
+the same local operations immediately at accepted selection, without a queue entry.
+
+The cursor is a minimal boundary for the retained rendering code. Full field,
+half-line, equalization and pixel response reconstruction remain 2.4 work;
+these counters are not certified hardware internals or a reconstruction of
+Agnus's absolute vertical position. Repeated identical strobes remain distinct
+events. Snapshot restoration preserves the cursor and unconsumed input.
+
+`pins.game_port_inputs` holds the delivered raw direction/quadrature levels for both
+[game ports](Game%20Ports.md#connector-delivery). The motherboard no longer
+assigns JOY registers from device counters. Counting/decoding belongs to
+Denise's receiver, not to motherboard transport. Sprite RGA/data words enter
+the same named queued setters as bus writes, retain the source on refusal,
+and begin receiver delay after the common issue phase. Distinct endpoint words
+prove latch delivery without claiming that the old sprite scheduler or pixel
+pipeline is correct.
+
 ## References
 
 - [General Architecture](General%20Architecture.md): Places Denise and its crates in the machine architecture.
 - [Amiga Hardware Reference Manual, Chapter 3](../Reference/Hardware%20Reference%20Manual/03%20-%20Chapter%203%20-%20Playfield%20Hardware.md): Explains bitplanes, fetch and display windows, resolution, dual playfields, and HAM.
 - [Amiga Hardware Reference Manual, Chapter 7](../Reference/Hardware%20Reference%20Manual/07%20-%20Chapter%207%20-%20System%20Control%20Hardware.md): Describes video priority and collision detection.
 - [`crates/denise/src/denise.rs`](../../../crates/denise/src/denise.rs): Living implementation of the Denise coordinator.
+- [Register matrix](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md): Register meanings, named accessors, recipient sets and missing effects.
+- [`denise/pins.rs`](../../../crates/denise/src/pins.rs): Serializable motherboard-facing signal state and its input boundary.

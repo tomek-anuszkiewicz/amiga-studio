@@ -78,6 +78,7 @@ def rag_search_reference(query: str, limit: int = 5) -> str:
 
     The shared ``amiga`` source tag also contains other project documents, so
     validate each returned file path before exposing its content to the caller.
+    Indexed references may belong to another checkout of the repository.
     """
     if not 1 <= limit <= 20:
         return "Reference search limit must be between 1 and 20."
@@ -93,7 +94,6 @@ def rag_search_reference(query: str, limit: int = 5) -> str:
     if not isinstance(results, list):
         return "Error during reference search: rag_qdrant returned an unexpected JSON response."
 
-    reference_root = (PROJECT_ROOT / "Obsidian" / "Amiga" / "Reference").resolve()
     accepted = []
     for hit in results:
         if not isinstance(hit, dict) or hit.get("source") != "amiga":
@@ -104,9 +104,9 @@ def rag_search_reference(query: str, limit: int = 5) -> str:
         path = Path(raw_path)
         if not path.is_absolute():
             path = PROJECT_ROOT / path
-        try:
-            path.resolve().relative_to(reference_root)
-        except ValueError:
+        if not any(
+            parent.match("Obsidian/Amiga/Reference") for parent in path.resolve().parents
+        ):
             continue
         accepted.append(hit)
         if len(accepted) == limit:

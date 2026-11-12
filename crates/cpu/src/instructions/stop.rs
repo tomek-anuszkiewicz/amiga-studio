@@ -31,7 +31,7 @@ pub fn alu_stop(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 pub static ALU_STOP: MicroStep = MicroStep {
     bus_fn: None,
     alu_fn: Some(alu_stop),
-    base_clocks: 2,
+    base_clocks: MicroStep::CCK_CLOCKS,
 };
 
 impl Cpu {

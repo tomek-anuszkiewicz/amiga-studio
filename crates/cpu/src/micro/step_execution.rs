@@ -10,7 +10,7 @@ impl Cpu {
 
     /// CCK1: Reads source byte from memory into `self.state.micro.source`
     pub fn step_bus_read_src_byte(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
-        let addr = self.state.micro().ea_addr & 0x00FF_FFFF;
+        let addr = self.state.micro().ea_addr & physical_memory::MASK_PHYSICAL_ADDRESS;
         match bus.read_byte(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
@@ -27,7 +27,7 @@ impl Cpu {
             self.trigger_address_error(addr, true, false);
             return BusResult::Ready(());
         }
-        let addr = addr & 0x00FF_FFFF;
+        let addr = addr & physical_memory::MASK_PHYSICAL_ADDRESS;
         match bus.read_word(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
@@ -39,7 +39,7 @@ impl Cpu {
 
     /// CCK1: Reads destination byte from memory into `self.state.micro.destination`
     pub fn step_bus_read_dst_byte(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
-        let addr = self.state.micro().ea_addr & 0x00FF_FFFF;
+        let addr = self.state.micro().ea_addr & physical_memory::MASK_PHYSICAL_ADDRESS;
         match bus.read_byte(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
@@ -56,7 +56,7 @@ impl Cpu {
             self.trigger_address_error(addr, true, false);
             return BusResult::Ready(());
         }
-        let addr = addr & 0x00FF_FFFF;
+        let addr = addr & physical_memory::MASK_PHYSICAL_ADDRESS;
         match bus.read_word(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
@@ -68,7 +68,7 @@ impl Cpu {
 
     /// CCK1: Reads source byte from memory using `self.state.micro.addr1` into `self.state.micro.source`
     pub fn step_bus_read_addr1_byte(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
-        let addr = self.state.micro().addr1 & 0x00FF_FFFF;
+        let addr = self.state.micro().addr1 & physical_memory::MASK_PHYSICAL_ADDRESS;
         match bus.read_byte(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
@@ -85,7 +85,7 @@ impl Cpu {
             self.trigger_address_error(addr, true, false);
             return BusResult::Ready(());
         }
-        let addr = addr & 0x00FF_FFFF;
+        let addr = addr & physical_memory::MASK_PHYSICAL_ADDRESS;
         match bus.read_word(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
@@ -97,7 +97,7 @@ impl Cpu {
 
     /// CCK1: Reads destination byte from memory using `self.state.micro.addr2` into `self.state.micro.destination`
     pub fn step_bus_read_addr2_byte(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
-        let addr = self.state.micro().addr2 & 0x00FF_FFFF;
+        let addr = self.state.micro().addr2 & physical_memory::MASK_PHYSICAL_ADDRESS;
         match bus.read_byte(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
@@ -114,7 +114,7 @@ impl Cpu {
             self.trigger_address_error(addr, true, false);
             return BusResult::Ready(());
         }
-        let addr = addr & 0x00FF_FFFF;
+        let addr = addr & physical_memory::MASK_PHYSICAL_ADDRESS;
         match bus.read_word(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
@@ -131,7 +131,7 @@ impl Cpu {
             self.trigger_address_error(addr, true, false);
             return BusResult::Ready(());
         }
-        let addr = addr & 0x00FF_FFFF;
+        let addr = addr & physical_memory::MASK_PHYSICAL_ADDRESS;
         match bus.read_word(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
@@ -148,7 +148,7 @@ impl Cpu {
             self.trigger_address_error(addr, true, false);
             return BusResult::Ready(());
         }
-        let addr = addr & 0x00FF_FFFF;
+        let addr = addr & physical_memory::MASK_PHYSICAL_ADDRESS;
         match bus.read_word(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
@@ -166,7 +166,7 @@ impl Cpu {
             self.trigger_address_error(addr, true, false);
             return BusResult::Ready(());
         }
-        let addr = addr & 0x00FF_FFFF;
+        let addr = addr & physical_memory::MASK_PHYSICAL_ADDRESS;
         match bus.read_word(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
@@ -183,7 +183,7 @@ impl Cpu {
             self.trigger_address_error(addr, true, false);
             return BusResult::Ready(());
         }
-        let addr = addr & 0x00FF_FFFF;
+        let addr = addr & physical_memory::MASK_PHYSICAL_ADDRESS;
         match bus.read_word(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
@@ -198,7 +198,7 @@ impl Cpu {
     pub fn step_bus_write_addr2_byte(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
         let addr = self.state.micro().addr2;
         let val = (self.state.micro().destination & 0xFF) as u8;
-        let addr_masked = addr & 0x00FF_FFFF;
+        let addr_masked = addr & physical_memory::MASK_PHYSICAL_ADDRESS;
         match bus.write_byte(addr_masked, val) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(()) => BusResult::Ready(()),
@@ -213,7 +213,7 @@ impl Cpu {
             return BusResult::Ready(());
         }
         let val = (self.state.micro().destination & 0xFFFF) as u16;
-        let addr_masked = addr & 0x00FF_FFFF;
+        let addr_masked = addr & physical_memory::MASK_PHYSICAL_ADDRESS;
         match bus.write_word(addr_masked, val) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(()) => BusResult::Ready(()),
@@ -228,7 +228,7 @@ impl Cpu {
             return BusResult::Ready(());
         }
         let val = (self.state.micro().destination & 0xFFFF) as u16;
-        let addr_masked = addr & 0x00FF_FFFF;
+        let addr_masked = addr & physical_memory::MASK_PHYSICAL_ADDRESS;
         match bus.write_word(addr_masked, val) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(()) => BusResult::Ready(()),
@@ -243,7 +243,7 @@ impl Cpu {
             return BusResult::Ready(());
         }
         let val = ((self.state.micro().destination >> 16) & 0xFFFF) as u16;
-        let addr_masked = addr & 0x00FF_FFFF;
+        let addr_masked = addr & physical_memory::MASK_PHYSICAL_ADDRESS;
         match bus.write_word(addr_masked, val) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(()) => BusResult::Ready(()),
@@ -257,7 +257,7 @@ impl Cpu {
             self.trigger_address_error(addr, true, false);
             return BusResult::Ready(());
         }
-        let addr = addr & 0x00FF_FFFF;
+        let addr = addr & physical_memory::MASK_PHYSICAL_ADDRESS;
         match bus.read_word(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
@@ -274,7 +274,7 @@ impl Cpu {
             self.trigger_address_error(addr, true, false);
             return BusResult::Ready(());
         }
-        let addr = addr & 0x00FF_FFFF;
+        let addr = addr & physical_memory::MASK_PHYSICAL_ADDRESS;
         match bus.read_word(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
@@ -292,7 +292,7 @@ impl Cpu {
             self.trigger_address_error(addr, true, false);
             return BusResult::Ready(());
         }
-        let addr = addr & 0x00FF_FFFF;
+        let addr = addr & physical_memory::MASK_PHYSICAL_ADDRESS;
         match bus.read_word(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
@@ -309,7 +309,7 @@ impl Cpu {
             self.trigger_address_error(addr, true, false);
             return BusResult::Ready(());
         }
-        let addr = addr & 0x00FF_FFFF;
+        let addr = addr & physical_memory::MASK_PHYSICAL_ADDRESS;
         match bus.read_word(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
@@ -327,7 +327,7 @@ impl Cpu {
             self.trigger_address_error(addr, true, false);
             return BusResult::Ready(());
         }
-        let addr = addr & 0x00FF_FFFF;
+        let addr = addr & physical_memory::MASK_PHYSICAL_ADDRESS;
         match bus.read_word(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
@@ -345,7 +345,7 @@ impl Cpu {
             self.trigger_address_error(addr, true, false);
             return BusResult::Ready(());
         }
-        let addr = addr & 0x00FF_FFFF;
+        let addr = addr & physical_memory::MASK_PHYSICAL_ADDRESS;
         match bus.read_word(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
@@ -360,7 +360,7 @@ impl Cpu {
     pub fn step_bus_write_dst_byte(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
         let addr = self.state.micro().ea_addr;
         let val = (self.state.micro().destination & 0xFF) as u8;
-        let addr_masked = addr & 0x00FF_FFFF;
+        let addr_masked = addr & physical_memory::MASK_PHYSICAL_ADDRESS;
         match bus.write_byte(addr_masked, val) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(()) => BusResult::Ready(()),
@@ -384,7 +384,7 @@ impl Cpu {
             return BusResult::Ready(());
         }
         let val = (self.state.micro().destination & 0xFFFF) as u16;
-        let addr_masked = addr & 0x00FF_FFFF;
+        let addr_masked = addr & physical_memory::MASK_PHYSICAL_ADDRESS;
         match bus.write_word(addr_masked, val) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(()) => BusResult::Ready(()),
@@ -399,7 +399,7 @@ impl Cpu {
             return BusResult::Ready(());
         }
         let val = ((self.state.micro().destination >> 16) & 0xFFFF) as u16;
-        let addr_masked = addr & 0x00FF_FFFF;
+        let addr_masked = addr & physical_memory::MASK_PHYSICAL_ADDRESS;
         match bus.write_word(addr_masked, val) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(()) => BusResult::Ready(()),
@@ -414,7 +414,7 @@ impl Cpu {
             return BusResult::Ready(());
         }
         let val = self.state.micro().destination as u16;
-        match bus.write_word(addr & 0x00FF_FFFF, val) {
+        match bus.write_word(addr & physical_memory::MASK_PHYSICAL_ADDRESS, val) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(()) => {
                 self.state.set_ir(self.state.prefetch());
@@ -433,7 +433,7 @@ impl Cpu {
             return BusResult::Ready(());
         }
         let val = (self.state.micro().destination & 0xFFFF) as u16;
-        let addr_masked = addr & 0x00FF_FFFF;
+        let addr_masked = addr & physical_memory::MASK_PHYSICAL_ADDRESS;
         match bus.write_word(addr_masked, val) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(()) => BusResult::Ready(()),
@@ -448,7 +448,7 @@ impl Cpu {
             return BusResult::Ready(());
         }
         let val = (self.state.micro().destination & 0xFFFF) as u16;
-        let addr_masked = addr & 0x00FF_FFFF;
+        let addr_masked = addr & physical_memory::MASK_PHYSICAL_ADDRESS;
         match bus.write_word(addr_masked, val) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(()) => {
@@ -467,7 +467,7 @@ impl Cpu {
             return BusResult::Ready(());
         }
         let val = ((self.state.micro().destination >> 16) & 0xFFFF) as u16;
-        let addr_masked = addr & 0x00FF_FFFF;
+        let addr_masked = addr & physical_memory::MASK_PHYSICAL_ADDRESS;
         match bus.write_word(addr_masked, val) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(()) => {
@@ -484,7 +484,7 @@ impl Cpu {
 
     /// CCK1: Extension word fetch from PC directly into `self.state.prefetch`
     pub fn step_fetch_extension_read(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
-        let addr = self.state.pc() & 0x00FF_FFFF;
+        let addr = self.state.pc() & physical_memory::MASK_PHYSICAL_ADDRESS;
         match bus.read_word(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {
@@ -502,7 +502,7 @@ impl Cpu {
 
     /// CCK1: Prefetch next opcode from PC into `self.state.micro.irc`
     pub fn step_prefetch_next_read(&mut self, bus: &mut dyn AddressBus) -> BusResult<()> {
-        let addr = self.state.pc() & 0x00FF_FFFF;
+        let addr = self.state.pc() & physical_memory::MASK_PHYSICAL_ADDRESS;
         match bus.read_word(addr) {
             BusResult::WaitState => BusResult::WaitState,
             BusResult::Ready(data) => {

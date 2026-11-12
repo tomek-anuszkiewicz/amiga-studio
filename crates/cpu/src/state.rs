@@ -1,20 +1,32 @@
 //! Motorola 68000 CPU State, Registers, and Status Register / CCR flags
 
+use crate::micro::encoding::condition;
 use serde::{Deserialize, Serialize};
 
-pub const SR_T: u16 = 0x8000;
-pub const SR_S: u16 = 0x2000;
-pub const SR_I_MASK: u16 = 0x0700;
-pub const CCR_X: u16 = 0x0010;
-pub const CCR_N: u16 = 0x0008;
-pub const CCR_Z: u16 = 0x0004;
-pub const CCR_V: u16 = 0x0002;
-pub const CCR_C: u16 = 0x0001;
-pub const CCR_ALL: u16 = 0x001F;
-pub const SR_MASK: u16 = SR_T | SR_S | SR_I_MASK | CCR_ALL;
+pub const REGISTER_STACK_POINTER: usize = 7;
+pub const REGISTER_COUNT: usize = 8;
+pub const BIT_SR_INTERRUPT_SHIFT: u16 = 8;
+pub const MASK_SR_INTERRUPT_LEVEL: u16 = 0x07;
+const NMI_LEVEL: u8 = 7;
+const BIT_CCR_X_SHIFT: u16 = 4;
+const BIT_CCR_N_SHIFT: u16 = 3;
+const BIT_CCR_Z_SHIFT: u16 = 2;
+const BIT_CCR_V_SHIFT: u16 = 1;
+pub(crate) const MASK_CCR_NZVC: u16 = BIT_CCR_N | BIT_CCR_Z | BIT_CCR_V | BIT_CCR_C;
+
+pub const BIT_SR_T: u16 = 0x8000;
+pub const BIT_SR_S: u16 = 0x2000;
+pub const MASK_SR_I: u16 = 0x0700;
+pub const BIT_CCR_X: u16 = 0x0010;
+pub const BIT_CCR_N: u16 = 0x0008;
+pub const BIT_CCR_Z: u16 = 0x0004;
+pub const BIT_CCR_V: u16 = 0x0002;
+pub const BIT_CCR_C: u16 = 0x0001;
+pub const MASK_CCR_ALL: u16 = 0x001F;
+pub const MASK_SR: u16 = BIT_SR_T | BIT_SR_S | MASK_SR_I | MASK_CCR_ALL;
 
 /// Default Status Register on CPU Reset (Supervisor bit set, Interrupt Priority Mask Level 7)
-pub const SR_RESET_DEFAULT: u16 = SR_S | SR_I_MASK; // 0x2700
+pub const SR_RESET_DEFAULT: u16 = BIT_SR_S | MASK_SR_I; // 0x2700
 
 /// M68000 Function Code lines (FC0-FC2)
 pub mod function_code {
@@ -24,6 +36,8 @@ pub mod function_code {
     pub const SUPERVISOR_PROGRAM: u8 = 6;
     pub const CPU_SPACE: u8 = 7;
 }
+
+const VECTOR_BYTES: u32 = 4;
 
 /// Standard Motorola 68000 exception vector numbers (each vector occupies 4 bytes at vector * 4)
 pub mod vector {
@@ -47,7 +61,7 @@ pub mod vector {
     /// Converts an exception vector number to its 24-bit physical vector table address
     #[inline(always)]
     pub const fn addr(vec: u32) -> u32 {
-        vec * 4
+        vec * super::VECTOR_BYTES
     }
 }
 
@@ -55,10 +69,10 @@ pub mod vector {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CpuState {
     /// Data Registers D0-D7 (32-bit each, private)
-    d: [u32; 8],
+    d: [u32; REGISTER_COUNT],
 
     /// Address Registers A0-A7 (32-bit each, private). A7 holds the active stack pointer (USP or SSP).
-    a: [u32; 8],
+    a: [u32; REGISTER_COUNT],
 
     /// User Stack Pointer (stored A7 when Supervisor bit S = 0, private)
     usp: u32,
@@ -108,8 +122,8 @@ pub struct CpuState {
 impl Default for CpuState {
     fn default() -> Self {
         Self {
-            d: [0; 8],
-            a: [0; 8],
+            d: [0; REGISTER_COUNT],
+            a: [0; REGISTER_COUNT],
             usp: 0,
             ssp: 0,
             pc: 0,
@@ -277,8 +291,8 @@ impl CpuState {
     #[inline(always)]
     pub fn set_a_long(&mut self, reg: usize, val: u32) {
         self.a[reg] = val;
-        if reg == 7 {
-            if (self.sr & SR_S) != 0 {
+        if reg == crate::state::REGISTER_STACK_POINTER {
+            if (self.sr & BIT_SR_S) != 0 {
                 self.ssp = val;
             } else {
                 self.usp = val;
@@ -297,8 +311,8 @@ impl CpuState {
     #[inline(always)]
     pub fn set_usp(&mut self, val: u32) {
         self.usp = val;
-        if (self.sr & SR_S) == 0 {
-            self.a[7] = val;
+        if (self.sr & BIT_SR_S) == 0 {
+            self.a[REGISTER_STACK_POINTER] = val;
         }
     }
 
@@ -313,8 +327,8 @@ impl CpuState {
     #[inline(always)]
     pub fn set_ssp(&mut self, val: u32) {
         self.ssp = val;
-        if (self.sr & SR_S) != 0 {
-            self.a[7] = val;
+        if (self.sr & BIT_SR_S) != 0 {
+            self.a[REGISTER_STACK_POINTER] = val;
         }
     }
 
@@ -330,14 +344,14 @@ impl CpuState {
     /// Transitions or sets supervisor mode, swapping active A7 with stored USP/SSP if privilege changes
     #[inline]
     pub fn set_supervisor(&mut self, supervisor: bool) {
-        let old_s = (self.sr & SR_S) != 0;
+        let old_s = (self.sr & BIT_SR_S) != 0;
         if old_s != supervisor {
             if supervisor {
-                self.sr |= SR_S;
-                self.a[7] = self.ssp;
+                self.sr |= BIT_SR_S;
+                self.a[REGISTER_STACK_POINTER] = self.ssp;
             } else {
-                self.sr &= !SR_S;
-                self.a[7] = self.usp;
+                self.sr &= !BIT_SR_S;
+                self.a[REGISTER_STACK_POINTER] = self.usp;
             }
         }
     }
@@ -351,8 +365,8 @@ impl CpuState {
     /// Updates Status Register (SR), masks undefined bits, and swaps active A7 if the Supervisor bit changes
     #[inline]
     pub fn set_sr(&mut self, new_sr: u16) {
-        let masked_sr = new_sr & SR_MASK;
-        let new_s = (masked_sr & SR_S) != 0;
+        let masked_sr = new_sr & MASK_SR;
+        let new_s = (masked_sr & BIT_SR_S) != 0;
         self.set_supervisor(new_s);
         self.sr = masked_sr;
     }
@@ -360,22 +374,22 @@ impl CpuState {
     /// Returns true if CPU is running in Supervisor mode
     #[inline(always)]
     pub fn is_supervisor(&self) -> bool {
-        (self.sr & SR_S) != 0
+        (self.sr & BIT_SR_S) != 0
     }
 
     /// Returns true if the Trace bit (T) is set in SR
     #[inline(always)]
     pub fn is_trace(&self) -> bool {
-        (self.sr & SR_T) != 0
+        (self.sr & BIT_SR_T) != 0
     }
 
     /// Sets or clears the Trace bit (T) in SR
     #[inline(always)]
     pub fn set_trace(&mut self, trace: bool) {
         if trace {
-            self.sr |= SR_T;
+            self.sr |= BIT_SR_T;
         } else {
-            self.sr &= !SR_T;
+            self.sr &= !BIT_SR_T;
         }
     }
 
@@ -388,20 +402,21 @@ impl CpuState {
     /// Returns the 3-bit interrupt priority mask from SR (bits 8..=10, levels 0..=7)
     #[inline(always)]
     pub fn interrupt_mask(&self) -> u8 {
-        ((self.sr >> 8) & 0x07) as u8
+        ((self.sr >> BIT_SR_INTERRUPT_SHIFT) & MASK_SR_INTERRUPT_LEVEL) as u8
     }
 
     /// Sets the 3-bit interrupt priority mask in SR (bits 8..=10)
     #[inline(always)]
     pub fn set_interrupt_mask(&mut self, mask: u8) {
-        self.sr = (self.sr & !0x0700) | (((mask as u16) & 0x07) << 8);
+        self.sr = (self.sr & !MASK_SR_I)
+            | (((mask as u16) & MASK_SR_INTERRUPT_LEVEL) << BIT_SR_INTERRUPT_SHIFT);
     }
 
     /// Checks whether an A500 interrupt level (1-6) exceeds the SR mask.
     /// External level-seven NMI is outside the supported motherboard scope.
     #[inline(always)]
     pub fn is_interrupt_pending(&self) -> Option<u8> {
-        if self.ipl > self.interrupt_mask() && self.ipl < 7 {
+        if self.ipl > self.interrupt_mask() && self.ipl < NMI_LEVEL {
             Some(self.ipl)
         } else {
             None
@@ -411,13 +426,13 @@ impl CpuState {
     /// Returns the 8-bit Condition Code Register (lower byte of SR, bits 0..=4)
     #[inline(always)]
     pub fn ccr(&self) -> u8 {
-        (self.sr & 0x001F) as u8
+        (self.sr & MASK_CCR_ALL) as u8
     }
 
     /// Sets the Condition Code Register (lower byte of SR, bits 0..=4)
     #[inline(always)]
     pub fn set_ccr(&mut self, ccr: u8) {
-        self.sr = (self.sr & !0x001F) | ((ccr as u16) & 0x001F);
+        self.sr = (self.sr & !MASK_CCR_ALL) | ((ccr as u16) & MASK_CCR_ALL);
     }
 
     // --- Branchless Multi-Flag CCR Setters (Host Hardware Efficiency) ---
@@ -426,70 +441,73 @@ impl CpuState {
     /// Used by: ADD, ADDI, ADDQ, SUB, SUBI, SUBQ, NEG, arithmetic shifts, etc.
     #[inline(always)]
     pub fn set_ccr_xnzvc(&mut self, x: bool, n: bool, z: bool, v: bool, c: bool) {
-        let flags = ((x as u16) << 4)
-            | ((n as u16) << 3)
-            | ((z as u16) << 2)
-            | ((v as u16) << 1)
+        let flags = ((x as u16) << BIT_CCR_X_SHIFT)
+            | ((n as u16) << BIT_CCR_N_SHIFT)
+            | ((z as u16) << BIT_CCR_Z_SHIFT)
+            | ((v as u16) << BIT_CCR_V_SHIFT)
             | (c as u16);
-        self.sr = (self.sr & !CCR_ALL) | flags;
+        self.sr = (self.sr & !MASK_CCR_ALL) | flags;
     }
 
     /// Sets N, Z, V, C simultaneously without branching, strictly preserving Extend (X).
     /// Used by: CMP, CMPI, CMPA, CMPM, CHK.
     #[inline(always)]
     pub fn set_ccr_nzvc(&mut self, n: bool, z: bool, v: bool, c: bool) {
-        let flags = ((n as u16) << 3) | ((z as u16) << 2) | ((v as u16) << 1) | (c as u16);
-        self.sr = (self.sr & !0x000F) | flags;
+        let flags = ((n as u16) << BIT_CCR_N_SHIFT)
+            | ((z as u16) << BIT_CCR_Z_SHIFT)
+            | ((v as u16) << BIT_CCR_V_SHIFT)
+            | (c as u16);
+        self.sr = (self.sr & !MASK_CCR_NZVC) | flags;
     }
 
     /// Sets N and Z, clears V=0 and C=0, and strictly preserves Extend (X).
     /// Used by: ORI, ANDI, EORI, OR, AND, EOR, NOT, MOVE, MOVEQ, CLR, EXT, TST, TAS, SWAP.
     #[inline(always)]
     pub fn set_ccr_nz_clear_vc(&mut self, n: bool, z: bool) {
-        let flags = ((n as u16) << 3) | ((z as u16) << 2);
-        self.sr = (self.sr & !0x000F) | flags;
+        let flags = ((n as u16) << BIT_CCR_N_SHIFT) | ((z as u16) << BIT_CCR_Z_SHIFT);
+        self.sr = (self.sr & !MASK_CCR_NZVC) | flags;
     }
 
     /// Sets Zero (Z) flag branchlessly, strictly preserving X, N, V, C.
     /// Used by: BTST, BSET, BCLR, BCHG.
     #[inline(always)]
     pub fn set_ccr_z_only(&mut self, z: bool) {
-        let flag = (z as u16) << 2;
-        self.sr = (self.sr & !CCR_Z) | flag;
+        let flag = (z as u16) << BIT_CCR_Z_SHIFT;
+        self.sr = (self.sr & !BIT_CCR_Z) | flag;
     }
 
     /// Sets Overflow (V=1), clears Carry (C=0), and strictly preserves X, N, Z.
     /// Used by: DIVU and DIVS on division overflow (68000 hardware behavior).
     #[inline(always)]
     pub fn set_ccr_v_clear_c(&mut self) {
-        self.sr = (self.sr & !0x0003) | 0x0002;
+        self.sr = (self.sr & !(BIT_CCR_V | BIT_CCR_C)) | BIT_CCR_V;
     }
 
     // --- Condition Code Helpers ---
 
     #[inline(always)]
     pub fn is_x(&self) -> bool {
-        (self.sr & CCR_X) != 0
+        (self.sr & BIT_CCR_X) != 0
     }
 
     #[inline(always)]
     pub fn is_n(&self) -> bool {
-        (self.sr & CCR_N) != 0
+        (self.sr & BIT_CCR_N) != 0
     }
 
     #[inline(always)]
     pub fn is_z(&self) -> bool {
-        (self.sr & CCR_Z) != 0
+        (self.sr & BIT_CCR_Z) != 0
     }
 
     #[inline(always)]
     pub fn is_v(&self) -> bool {
-        (self.sr & CCR_V) != 0
+        (self.sr & BIT_CCR_V) != 0
     }
 
     #[inline(always)]
     pub fn is_c(&self) -> bool {
-        (self.sr & CCR_C) != 0
+        (self.sr & BIT_CCR_C) != 0
     }
 
     /// Evaluates M68000 branch/conditional tests (conditions 0000..1111)
@@ -500,23 +518,23 @@ impl CpuState {
         let z = self.is_z();
         let n = self.is_n();
 
-        match cond & 0x0F {
-            0x00 => true,                        // True (T) / BRA
-            0x01 => false,                       // False (F)
-            0x02 => !c && !z,                    // High (HI)
-            0x03 => c || z,                      // Low or Same (LS)
-            0x04 => !c,                          // Carry Clear (CC / HS)
-            0x05 => c,                           // Carry Set (CS / LO)
-            0x06 => !z,                          // Not Equal (NE)
-            0x07 => z,                           // Equal (EQ)
-            0x08 => !v,                          // Overflow Clear (VC)
-            0x09 => v,                           // Overflow Set (VS)
-            0x0A => !n,                          // Plus (PL)
-            0x0B => n,                           // Minus (MI)
-            0x0C => (n && v) || (!n && !v),      // Greater or Equal (GE)
-            0x0D => (n && !v) || (!n && v),      // Less Than (LT)
-            0x0E => (n == v) && !z,              // Greater Than (GT)
-            0x0F => z || (n && !v) || (!n && v), // Less or Equal (LE)
+        match cond & condition::MASK_CONDITION {
+            condition::TRUE => true,                                 // True (T) / BRA
+            condition::FALSE => false,                               // False (F)
+            condition::HIGH => !c && !z,                             // High (HI)
+            condition::LOW_OR_SAME => c || z,                        // Low or Same (LS)
+            condition::CARRY_CLEAR => !c,                            // Carry Clear (CC / HS)
+            condition::CARRY_SET => c,                               // Carry Set (CS / LO)
+            condition::NOT_EQUAL => !z,                              // Not Equal (NE)
+            condition::EQUAL => z,                                   // Equal (EQ)
+            condition::OVERFLOW_CLEAR => !v,                         // Overflow Clear (VC)
+            condition::OVERFLOW_SET => v,                            // Overflow Set (VS)
+            condition::PLUS => !n,                                   // Plus (PL)
+            condition::MINUS => n,                                   // Minus (MI)
+            condition::GREATER_OR_EQUAL => (n && v) || (!n && !v),   // Greater or Equal (GE)
+            condition::LESS_THAN => (n && !v) || (!n && v),          // Less Than (LT)
+            condition::GREATER_THAN => (n == v) && !z,               // Greater Than (GT)
+            condition::LESS_OR_EQUAL => z || (n && !v) || (!n && v), // Less or Equal (LE)
             _ => false,
         }
     }

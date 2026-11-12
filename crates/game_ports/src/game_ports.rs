@@ -11,14 +11,22 @@ pub use mouse::{self, Mouse};
 
 use serde::{Deserialize, Serialize};
 
+mod pins;
+pub use pins::{GamePortsInputs, GamePortsPins};
+
+const BIT_POT1_FIRE2: u16 = 1 << 14;
+const BIT_POT1_FIRE3: u16 = 1 << 12;
+const BIT_POT0_FIRE2: u16 = 1 << 10;
+const BIT_POT0_FIRE3: u16 = 1 << 8;
+
 /// CIA-A Port A bit 6: /FIR0 (Port 1 left mouse button, active low)
-pub const CIAA_PRA_FIR0: u8 = 0x40;
+pub const BIT_CIAA_PRA_FIR0: u8 = 0x40;
 
 /// CIA-A Port A bit 7: /FIR1 (Port 2 joystick fire 1, active low)
-pub const CIAA_PRA_FIR1: u8 = 0x80;
+pub const BIT_CIAA_PRA_FIR1: u8 = 0x80;
 
 /// CIA-A Port A mask for primary fire buttons (bits 6 and 7)
-pub const CIAA_PRA_FIRE_MASK: u8 = CIAA_PRA_FIR0 | CIAA_PRA_FIR1;
+pub const MASK_CIAA_PRA_FIRE: u8 = BIT_CIAA_PRA_FIR0 | BIT_CIAA_PRA_FIR1;
 
 /// Controller device plugged into a 9-pin game port
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -107,8 +115,10 @@ impl Default for GamePortsState {
 }
 
 /// Amiga Game Ports Subsystem handle
-#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GamePorts {
+    /// Motherboard-facing signal state.
+    pub pins: GamePortsPins,
     /// Observable hardware state snapshot
     pub state: GamePortsState,
 }
@@ -121,6 +131,7 @@ impl GamePorts {
 
     /// Resets all plugged devices and registers to initial state
     pub fn reset(&mut self) {
+        self.pins = GamePortsPins::default();
         self.state.port1.reset();
         self.state.port2.reset();
         self.state.pot0dat = 0;
@@ -200,34 +211,34 @@ impl GamePorts {
     /// - Bit 8:  Port 1 Pin 5 (Middle mouse). Active low (0 = pressed, 1 = released).
     #[inline]
     pub fn potgor(&self, potgo_latch: u16) -> u16 {
-        let mut val = potgo_latch | 0x5500; // Pull unused input lines high by default
+        let mut val = potgo_latch | config::mask::game_port::MASK_POT_DATA;
 
         // Port 2 pin 9 (Bit 14)
         if self.state.port2.is_fire2_pressed() {
-            val &= !(1 << 14);
+            val &= !(BIT_POT1_FIRE2);
         } else {
-            val |= 1 << 14;
+            val |= BIT_POT1_FIRE2;
         }
 
         // Port 2 pin 5 (Bit 12)
         if self.state.port2.is_middle_button_pressed() {
-            val &= !(1 << 12);
+            val &= !(BIT_POT1_FIRE3);
         } else {
-            val |= 1 << 12;
+            val |= BIT_POT1_FIRE3;
         }
 
         // Port 1 pin 9 (Bit 10)
         if self.state.port1.is_fire2_pressed() {
-            val &= !(1 << 10);
+            val &= !(BIT_POT0_FIRE2);
         } else {
-            val |= 1 << 10;
+            val |= BIT_POT0_FIRE2;
         }
 
         // Port 1 pin 5 (Bit 8)
         if self.state.port1.is_middle_button_pressed() {
-            val &= !(1 << 8);
+            val &= !(BIT_POT0_FIRE3);
         } else {
-            val |= 1 << 8;
+            val |= BIT_POT0_FIRE3;
         }
 
         val
@@ -257,12 +268,12 @@ impl GamePorts {
     /// Bit 7 = /FIR1 (Port 2 joystick fire 1, 0 = pressed, 1 = released)
     #[inline]
     pub fn sample_ciaa_port_a_inputs(&self) -> u8 {
-        let mut fire_pins = CIAA_PRA_FIRE_MASK;
+        let mut fire_pins = MASK_CIAA_PRA_FIRE;
         if self.fire1_port1() {
-            fire_pins &= !CIAA_PRA_FIR0;
+            fire_pins &= !BIT_CIAA_PRA_FIR0;
         }
         if self.fire1_port2() {
-            fire_pins &= !CIAA_PRA_FIR1;
+            fire_pins &= !BIT_CIAA_PRA_FIR1;
         }
         fire_pins
     }

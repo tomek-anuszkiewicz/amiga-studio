@@ -23,8 +23,9 @@ mouse = { workspace = true }
 paula = { workspace = true }
 rtc = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
+
+[dev-dependencies]
 serde_json = { workspace = true }
-image = { workspace = true }
 
 [lints]
 workspace = true

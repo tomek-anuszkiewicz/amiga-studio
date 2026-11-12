@@ -27,7 +27,7 @@ pub static STEPS_BSR_SHORT: [MicroStep; 9] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(alu_bsr_short),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::PUSH_STACK_HIGH_IDLE,
     common::PUSH_STACK_HIGH_WRITE,
@@ -44,7 +44,7 @@ pub static STEPS_BSR_WORD: [MicroStep; 9] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(alu_bsr_word),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::PUSH_STACK_HIGH_IDLE,
     common::PUSH_STACK_HIGH_WRITE,

@@ -1,61 +1,116 @@
-use cia::{Cia, CiaId};
-use config::{cia_reg, MutationMode};
+#![allow(clippy::unwrap_used)]
+
+use cia::Cia;
 
 #[test]
-fn full_addresses_route_to_cia_registers() {
-    let mut cia_a = Cia::new(CiaId::A);
-    let mut cia_b = Cia::new(CiaId::B);
-
-    cia_a.write_register(cia_reg::cia_a::PRA, 0x5A);
-    cia_b.write_register(cia_reg::cia_b::PRB, 0xA5);
-    assert_eq!(cia_a.read_register(cia_reg::cia_a::PRA), 0x5A);
-    assert_eq!(cia_b.read_register_debug(cia_reg::cia_b::PRB), 0xA5);
-
-    assert_eq!(
-        cia_a.stage_write(cia_reg::cia_a::DDRA, 0x03, 1, MutationMode::Pipeline),
-        None
-    );
-    for _ in 0..4 {
-        cia_a.step_cck();
+fn named_setters_capture_only_on_the_falling_edge() {
+    type Case = (&'static str, fn(&mut Cia, u8) -> bool, fn(&Cia) -> u32, u32);
+    let cases: [Case; 15] = [
+        ("PRA", Cia::set_pra, |c| u32::from(c.pra), 0x5a),
+        ("PRB", Cia::set_prb, |c| u32::from(c.prb), 0x5a),
+        ("DDRA", Cia::set_ddra, |c| u32::from(c.ddra), 0x5a),
+        ("DDRB", Cia::set_ddrb, |c| u32::from(c.ddrb), 0x5a),
+        ("TALO", Cia::set_talo, |c| u32::from(c.ta_latch), 0xff5a),
+        ("TAHI", Cia::set_tahi, |c| u32::from(c.ta_latch), 0x5aff),
+        ("TBLO", Cia::set_tblo, |c| u32::from(c.tb_latch), 0xff5a),
+        ("TBHI", Cia::set_tbhi, |c| u32::from(c.tb_latch), 0x5aff),
+        ("TODLO", Cia::set_todlo, |c| c.tod, 0x5a),
+        ("TODMID", Cia::set_todmid, |c| c.tod, 0x5a00),
+        ("TODHI", Cia::set_todhi, |c| c.tod, 0x5a0000),
+        ("SDR", Cia::set_sdr, |c| u32::from(c.sdr), 0x5a),
+        ("ICR", Cia::set_icr, |c| u32::from(c.icr_mask), 5),
+        ("CRA", Cia::set_cra, |c| u32::from(c.cra), 0x4a),
+        ("CRB", Cia::set_crb, |c| u32::from(c.crb), 0x4a),
+    ];
+    for (name, setter, observe, expected) in cases {
+        let mut cia = Cia::new();
+        if name == "ICR" {
+            cia.icr_mask = 0x1f;
+        }
+        let before = observe(&cia);
+        assert!(setter(&mut cia, 0x5a), "{name}");
+        assert_eq!(cia.mutations.iter().flatten().count(), 1, "{name}");
+        assert_eq!(observe(&cia), before, "{name}: scheduling");
+        cia.step_cck();
+        assert_eq!(observe(&cia), before, "{name}: before falling edge");
+        cia.step_cck();
+        assert_eq!(observe(&cia), expected, "{name}: falling edge");
+        assert!(cia.mutations.iter().all(Option::is_none), "{name}");
     }
-    assert_eq!(cia_a.step_cck()[0], Some((cia_reg::cia_a::DDRA, 0x03)));
-    assert_eq!(cia_a.read_register(cia_reg::cia_a::DDRA), 0x03);
-
-    assert_eq!(
-        cia_b.stage_write(cia_reg::cia_b::DDRB, 0xC0, 1, MutationMode::Pipeline),
-        None
-    );
-    for _ in 0..4 {
-        cia_b.step_cck();
-    }
-    assert_eq!(cia_b.step_cck()[0], Some((cia_reg::cia_b::DDRB, 0xC0)));
-    assert_eq!(cia_b.read_register(cia_reg::cia_b::DDRB), 0xC0);
 }
 
 #[test]
-fn out_of_range_selector_does_not_alias_register_zero() {
-    let mut cia = Cia::new(CiaId::A);
-    cia.pra = 0x5A;
+fn last_pending_value_is_captured_at_the_same_falling_edge() {
+    for phase in 0..5 {
+        let mut cia = Cia::new();
+        for _ in 0..phase {
+            cia.step_cck();
+        }
+        assert!(cia.set_pra(0x11));
+        let delay = cia.mutations.iter().flatten().next().unwrap().remaining_cck;
+        if delay > 1 {
+            cia.step_cck();
+        }
+        assert!(cia.set_pra(0x22));
+        assert!(cia.set_prb(0x33));
+        assert_eq!(cia.mutations.iter().flatten().count(), 2);
+        let remaining = delay - u8::from(delay > 1);
+        for _ in 1..remaining {
+            cia.step_cck();
+            assert_eq!(cia.pra, 0);
+        }
+        cia.step_cck();
+        assert_eq!((cia.pra, cia.prev_pra, cia.prb), (0x22, 0, 0x33));
+        assert!(cia.mutations.iter().all(Option::is_none));
+        assert!(cia.set_pra(0x44));
+        assert_eq!(cia.pra, 0x22, "captured state survives a new pending write");
+    }
+}
 
-    assert_eq!(cia.read_register(0x10), 0xFF);
-    assert_eq!(cia.peek_register(0x10), 0xFF);
-    assert_eq!(cia.read_register_debug(0x10), 0xFF);
-
-    assert_eq!(cia.write_register(0x10, 0xA5), Some((0x10, 0xA5)));
-    assert_eq!(cia.pra, 0x5A);
-
-    cia.commit_register_write(0x10, 0xB4);
-    assert_eq!(cia.pra, 0x5A);
-
-    assert_eq!(
-        cia.stage_write(0x10, 0xC3, 0, MutationMode::Pipeline),
-        Some((0x10, 0xC3))
-    );
-    assert_eq!(cia.pra, 0x5A);
-
-    assert_eq!(cia.stage_write(0x10, 0xD2, 1, MutationMode::Pipeline), None);
+#[test]
+fn cia_replaces_pending_mask_operations_but_preserves_captured_effects() {
+    let mut cia = Cia::new();
+    assert!(cia.set_icr(0x81));
+    assert!(cia.set_icr(0x82));
+    cia.step_cck();
+    cia.step_cck();
+    assert_eq!(cia.icr_mask, 2, "only the last pre-capture operation acts");
+    assert!(cia.set_icr(0x84));
     for _ in 0..5 {
         cia.step_cck();
     }
-    assert_eq!(cia.pra, 0x5A);
+    assert_eq!(
+        cia.icr_mask, 6,
+        "a captured SET remains composed with later SETs"
+    );
+}
+
+#[test]
+fn debug_reads_leave_pending_work_and_read_side_effects_untouched() {
+    let mut cia = Cia::new();
+    cia.tod = 0x123456;
+    cia.icr_data = 0x81;
+    assert!(cia.set_ddra(1));
+    let before = cia.clone();
+    assert_eq!(cia.todhi_debug(), 0x12);
+    assert_eq!(cia.todmid_debug(), 0x34);
+    assert_eq!(cia.todlo_debug(), 0x56);
+    assert_eq!(cia.icr_debug(), 0x81);
+    assert_eq!(cia, before);
+    assert_eq!(cia.todhi(), 0x12);
+    assert!(!cia.tod_latched);
+    cia.step_cck();
+    assert!(!cia.tod_latched);
+    cia.step_cck();
+    assert!(cia.tod_latched);
+    cia.tod = 0xabcdef;
+    assert_eq!(cia.todmid(), 0x34);
+    assert_eq!(cia.todlo(), 0x56);
+    assert!(cia.tod_latched);
+    for _ in 0..5 {
+        cia.step_cck();
+    }
+    assert!(!cia.tod_latched);
+    assert_eq!(cia.icr(), 0x81);
+    assert_eq!(cia.icr_debug(), 0);
 }

@@ -3,14 +3,17 @@
 //! Provides compile-time address calculation functions for all M68000
 //! addressing modes without cascaded runtime matching.
 
+use crate::micro::encoding::field;
 use crate::state::CpuState;
+
+pub const CONTROL_INDEX_CALC_CLOCKS: u8 = 6;
 
 /// Reads and sign-extends the index register (Xn) specified in a brief extension word
 #[inline(always)]
 pub fn read_index_reg(state: &CpuState, ext: u16) -> u32 {
-    let is_address = (ext & 0x8000) != 0;
-    let reg_idx = ((ext >> 12) & 7) as usize;
-    let is_long = (ext & 0x0800) != 0;
+    let is_address = (ext & field::BIT_INDEX_ADDRESS_REGISTER) != 0;
+    let reg_idx = ((ext >> field::BIT_INDEX_REGISTER_SHIFT) & field::MASK_REGISTER) as usize;
+    let is_long = (ext & field::BIT_INDEX_LONG) != 0;
     let raw = if is_address {
         state.a_long(reg_idx)
     } else {
@@ -36,7 +39,11 @@ pub fn ea_calc_src_ai(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
 pub fn ea_calc_src_pi_b(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
     let an = state.a_long(reg_src as usize);
     state.micro_mut().ea_addr = an;
-    let inc = if reg_src == 7 { 2 } else { 1 };
+    let inc = if reg_src == crate::state::REGISTER_STACK_POINTER as u8 {
+        2
+    } else {
+        1
+    };
     state.set_a_long(reg_src as usize, an.wrapping_add(inc));
 }
 
@@ -58,7 +65,11 @@ pub fn ea_calc_src_pi_l(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
 
 /// Address Register Indirect with Predecrement (Byte): -(An) -> An -= (2 if A7 else 1), ea_addr = An
 pub fn ea_calc_src_pd_b(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
-    let dec = if reg_src == 7 { 2 } else { 1 };
+    let dec = if reg_src == crate::state::REGISTER_STACK_POINTER as u8 {
+        2
+    } else {
+        1
+    };
     let an = state.a_long(reg_src as usize).wrapping_sub(dec);
     state.set_a_long(reg_src as usize, an);
     state.micro_mut().ea_addr = an;
@@ -157,7 +168,11 @@ pub fn ea_calc_dst_ai(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 pub fn ea_calc_dst_pi_b(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     let an = state.a_long(reg_dst as usize);
     state.micro_mut().ea_addr = an;
-    let inc = if reg_dst == 7 { 2 } else { 1 };
+    let inc = if reg_dst == crate::state::REGISTER_STACK_POINTER as u8 {
+        2
+    } else {
+        1
+    };
     state.set_a_long(reg_dst as usize, an.wrapping_add(inc));
 }
 
@@ -189,7 +204,11 @@ pub fn ea_calc_move_dst_pi_w(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
 
 /// Destination Address Register Indirect with Predecrement (Byte): -(An) -> An -= (2 if A7 else 1), ea_addr = An
 pub fn ea_calc_dst_pd_b(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
-    let dec = if reg_dst == 7 { 2 } else { 1 };
+    let dec = if reg_dst == crate::state::REGISTER_STACK_POINTER as u8 {
+        2
+    } else {
+        1
+    };
     let an = state.a_long(reg_dst as usize).wrapping_sub(dec);
     state.set_a_long(reg_dst as usize, an);
     state.micro_mut().ea_addr = an;
@@ -288,12 +307,20 @@ pub fn ea_calc_pea_idx_pc(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 
 /// Postincrement Byte: (Ay)+ -> addr1 = Ay, Ay += (2 if A7 else 1); (Ax)+ -> addr2 = Ax, Ax += (2 if A7 else 1)
 pub fn ea_calc_dual_pi_b(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
-    let inc_s = if reg_src == 7 { 2 } else { 1 };
+    let inc_s = if reg_src == crate::state::REGISTER_STACK_POINTER as u8 {
+        2
+    } else {
+        1
+    };
     let a_s = state.a_long(reg_src as usize);
     state.micro_mut().addr1 = a_s;
     state.set_a_long(reg_src as usize, a_s.wrapping_add(inc_s));
 
-    let inc_d = if reg_dst == 7 { 2 } else { 1 };
+    let inc_d = if reg_dst == crate::state::REGISTER_STACK_POINTER as u8 {
+        2
+    } else {
+        1
+    };
     let a_d = state.a_long(reg_dst as usize);
     state.micro_mut().addr2 = a_d;
     state.set_a_long(reg_dst as usize, a_d.wrapping_add(inc_d));
@@ -301,12 +328,20 @@ pub fn ea_calc_dual_pi_b(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
 
 /// Predecrement Byte: -(Ay) -> Ay -= (2 if A7 else 1), addr1 = Ay; -(Ax) -> Ax -= (2 if A7 else 1), addr2 = Ax
 pub fn ea_calc_dual_pd_b(state: &mut CpuState, reg_src: u8, reg_dst: u8) {
-    let dec_s = if reg_src == 7 { 2 } else { 1 };
+    let dec_s = if reg_src == crate::state::REGISTER_STACK_POINTER as u8 {
+        2
+    } else {
+        1
+    };
     let a_s = state.a_long(reg_src as usize).wrapping_sub(dec_s);
     state.set_a_long(reg_src as usize, a_s);
     state.micro_mut().addr1 = a_s;
 
-    let dec_d = if reg_dst == 7 { 2 } else { 1 };
+    let dec_d = if reg_dst == crate::state::REGISTER_STACK_POINTER as u8 {
+        2
+    } else {
+        1
+    };
     let a_d = state.a_long(reg_dst as usize).wrapping_sub(dec_d);
     state.set_a_long(reg_dst as usize, a_d);
     state.micro_mut().addr2 = a_d;

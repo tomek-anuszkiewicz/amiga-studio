@@ -415,10 +415,11 @@ fn read_kickstart_rom_word_debug(bus: &PhysicalMemory, addr: u32) -> u16 {
 
 #[inline]
 fn write_kickstart_rom_internal(bus: &mut PhysicalMemory, addr: u32, val: u8) {
-    if addr >= 0x00F8_0000 {
-        let offset = (addr - 0x00F8_0000) as usize;
-        if offset >= bus.kickstart_rom.len() && bus.kickstart_rom.len() < 512 * 1024 {
-            bus.kickstart_rom.resize(512 * 1024, 0xFF);
+    if addr >= config::address_map::KICKSTART_BASE {
+        let offset = (addr - config::address_map::KICKSTART_BASE) as usize;
+        if offset >= bus.kickstart_rom.len() && bus.kickstart_rom.len() < super::KICKSTART_SIZE_512K
+        {
+            bus.kickstart_rom.resize(super::KICKSTART_SIZE_512K, 0xFF);
         }
         let mask = bus.kickstart_rom.len().wrapping_sub(1);
         let idx = (addr as usize) & mask;
@@ -433,10 +434,12 @@ fn write_kickstart_rom_debug(bus: &mut PhysicalMemory, addr: u32, val: u8) {
 
 #[inline]
 fn write_kickstart_rom_word_internal(bus: &mut PhysicalMemory, addr: u32, val: u16) {
-    if addr >= 0x00F8_0000 {
-        let offset = (addr - 0x00F8_0000) as usize;
-        if offset + 1 >= bus.kickstart_rom.len() && bus.kickstart_rom.len() < 512 * 1024 {
-            bus.kickstart_rom.resize(512 * 1024, 0xFF);
+    if addr >= config::address_map::KICKSTART_BASE {
+        let offset = (addr - config::address_map::KICKSTART_BASE) as usize;
+        if offset + 1 >= bus.kickstart_rom.len()
+            && bus.kickstart_rom.len() < super::KICKSTART_SIZE_512K
+        {
+            bus.kickstart_rom.resize(super::KICKSTART_SIZE_512K, 0xFF);
         }
         let mask = bus.kickstart_rom.len().wrapping_sub(1);
         let idx = (addr as usize) & mask;

@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "floppy"
 status: "active"
 created: 2026-09-06
-updated: 2026-10-12
+updated: 2026-11-11
 related: ["[CIA.md](CIA.md)", "[Paula.md](Paula.md)", "[Agnus.md](Agnus.md)", "[DMA.md](DMA.md)", "[MemoryBus.md](MemoryBus.md)", "[Machine Loop.md](Machine%20Loop.md)"]
 tracked_paths:
   - "crates/floppy"
@@ -41,7 +41,44 @@ reverses: Agnus fetches raw encoded words from Chip RAM and Paula sends them
 to the drive as a serial stream. [DMA](DMA.md) describes the common grant and
 transfer path; [CIA](CIA.md) describes the drive-control and status pins.
 
+## Drive control and deterministic connector boundary
+
+The serializable `FloppyPins` state in [pins.rs](../../../crates/floppy/src/pins.rs)
+is exposed as `floppy.pins`. It groups the raw data, write gate and INDEX
+levels separately from drive mechanics and the retained media bridge.
+
+CIA-B committed PB7/SEL3-0/PB2/PB1/PB0 drive motor, selection, side, direction
+and STEP. The motherboard captures effective pins (`PRB | !DDRB`) and
+stores them in `pins.incoming`. The controller samples that state into
+`pins.control_input` before engine work, so
+an input-configured bit releases high. The controller's retained previous pin
+levels distinguish a selection/step edge from a held level. Drive ready,
+track-zero, write-protect and change sense return on CIA-A PA5-PA2, separately
+from data bytes and DMA. Exact motor/step mechanics in the old algorithm are
+not reconstructed or certified here. Control delivery and the resulting status
+return are separate captured hops. HRM Chapter 8 Table 8-5 requires MOTOR to be
+established before the selection edge that latches it, using separate writes;
+the transport regressions preserve that setup sequence.
+
+`pins.index_high` is the drive's active-low INDEX output and reaches CIA-B FLAG;
+it is not serial CD and is not synthesized by a fixed arbitrary scanline count.
+`pins.read_data_high` reaches Paula's raw disk input. Paula's exposed write data and
+asserted write-enable reach `pins.write_data_high` and active-low
+`pins.write_enable_high` after Gary/buffer routing. The [machine phase](Machine%20Loop.md#captured-connector-transport-and-pending-bus-words)
+captures those levels and delivers them before the next receiver step. S4/S7
+in the [signal catalog](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)
+establish the buffering/polarity; electrical rise times remain unknown.
+
+The controller serializes sampled connector levels and its own incoming inputs.
+Reset cancels pending edges and releases the write gate. Deterministic tests
+drive status, INDEX and data/gate levels without inserting a disk. Their
+success does not certify PLL/MFM decoding, FIFO behavior, drive rotation,
+media writes, or round-trip image preservation. The old media bridge remains
+for later reconstruction, under the explicit roadmap execution boundary.
+
 ## References
+
+- [Signal comparison](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md#three-reference-comparison-and-selected-transport) and [Machine Loop transport](Machine%20Loop.md#captured-connector-transport-and-pending-bus-words): Distinguish deterministic register/pin checks from deferred media/bitstream behavior.
 
 - [CIA.md](CIA.md): Drive control and status register ownership.
 - [Paula.md](Paula.md): Disk data and control register ownership.
@@ -49,3 +86,4 @@ transfer path; [CIA](CIA.md) describes the drive-control and status pins.
 - [MemoryBus.md](MemoryBus.md) and [Machine Loop.md](Machine%20Loop.md): Register access and signal routing.
 - [Amiga Hardware Reference Manual, Chapter 8](../Reference/Hardware%20Reference%20Manual/08%20-%20Chapter%208%20-%20Interface%20Hardware.md): Describes drive controls, raw MFM, synchronization, bidirectional disk DMA, and completion.
 - [Floppy implementation](../../../crates/floppy/src/floppy.rs): Drive state and integration behavior.
+- [`floppy/pins.rs`](../../../crates/floppy/src/pins.rs): Serializable motherboard-facing signal state and its input boundary.

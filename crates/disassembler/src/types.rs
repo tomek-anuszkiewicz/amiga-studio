@@ -1,12 +1,14 @@
 //! Disassembly data structures and line formatting
 
+pub const MAX_INSTRUCTION_WORDS: usize = 5;
+
 /// Disassembled instruction representation
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Disassembly {
     /// Program Counter address
     pub pc: u32,
     /// Instruction words (up to 5 words on MC68000)
-    pub words: [u16; 5],
+    pub words: [u16; crate::types::MAX_INSTRUCTION_WORDS],
     pub word_count: usize,
     /// Instruction mnemonic (e.g. "MOVE.W", "ADD.L", "NOP")
     pub mnemonic: &'static str,

@@ -19,8 +19,9 @@ pub use paula::{self, audio};
 pub use physical_memory;
 pub use physical_memory::{AddressBus, BusResult, PhysicalMemory};
 pub use rtc;
-pub mod save_state;
-pub use save_state::*;
+pub mod state;
+pub use state::A500State;
+mod signals;
 
 use config::A500Config;
 use cpu::Cpu;
@@ -28,6 +29,8 @@ use cpu::Cpu;
 /// Top-level Amiga 500 machine struct orchestrating all subsystems
 #[derive(Debug, Clone)]
 pub struct A500Machine {
+    /// Captured keyboard reset level awaiting the next CCK.
+    pub keyboard_reset_asserted: bool,
     /// Active hardware configuration
     pub config: A500Config,
     /// Motorola 68000 cycle-exact CPU core
@@ -84,8 +87,8 @@ impl A500Machine {
         let agnus = agnus::Agnus::new(config.agnus_model());
         let denise = denise::Denise::new(config.denise_model());
         let paula = paula::Paula::new();
-        let cia_a = cia::Cia::new(cia::CiaId::A);
-        let cia_b = cia::Cia::new(cia::CiaId::B);
+        let cia_a = cia::Cia::new();
+        let cia_b = cia::Cia::new();
         let rtc = rtc::RtcMsm6242b::new(config.rtc());
 
         let floppy = floppy::FloppyController::new();
@@ -93,6 +96,7 @@ impl A500Machine {
         let game_ports = game_ports::GamePorts::new();
 
         let mut machine = Self {
+            keyboard_reset_asserted: false,
             config,
             cpu,
             physical_memory,
@@ -107,16 +111,14 @@ impl A500Machine {
             keyboard,
             game_ports,
         };
-        machine.poll_peripheral_pins();
-        machine
-            .cpu
-            .state
-            .set_ipl(machine.paula.pending_interrupt_level());
+        machine.route_signal_pins_end_cck();
+        machine.deliver_cpu_interrupt_pins();
         machine
     }
 
     /// Performs cold reset: zeroes RAM, resets all chips and devices to power-on defaults
     pub fn reset(&mut self) {
+        self.keyboard_reset_asserted = false;
         self.physical_memory.reset();
         self.cck = 0;
         self.agnus.reset();
@@ -128,12 +130,13 @@ impl A500Machine {
         self.keyboard.reset();
         self.game_ports.reset();
         self.cpu.reset(&mut self.physical_memory);
-        self.poll_peripheral_pins();
-        self.cpu.state.set_ipl(self.paula.pending_interrupt_level());
+        self.route_signal_pins_end_cck();
+        self.deliver_cpu_interrupt_pins();
     }
 
     /// Performs warm reset: preserves RAM, re-engages overlay, restarts execution
     pub fn reset_warm(&mut self) {
+        self.keyboard_reset_asserted = false;
         self.physical_memory.reset_warm();
         self.cck = 0;
         self.agnus.reset();
@@ -145,13 +148,14 @@ impl A500Machine {
         self.keyboard.reset();
         self.game_ports.reset();
         self.cpu.reset_warm(&mut self.physical_memory);
-        self.poll_peripheral_pins();
-        self.cpu.state.set_ipl(self.paula.pending_interrupt_level());
+        self.route_signal_pins_end_cck();
+        self.deliver_cpu_interrupt_pins();
     }
 
     /// Resets all external devices (custom chips, CIAs, peripherals, overlay)
     /// without modifying RAM or CPU registers/PC. Invoked by M68000 `RESET` instruction.
     fn reset_external_devices(&mut self) {
+        self.keyboard_reset_asserted = false;
         self.physical_memory.map_kickstart_to_low_memory();
         self.agnus.reset();
         self.denise.reset();
@@ -160,57 +164,17 @@ impl A500Machine {
         self.cia_b.reset();
         self.floppy.reset();
         self.game_ports.reset();
-        self.poll_peripheral_pins();
-        self.cpu.state.set_ipl(self.paula.pending_interrupt_level());
-    }
-
-    /// Polls peripheral sensing lines into CIA input pins and custom chip port latches
-    pub fn poll_peripheral_pins(&mut self) {
-        // 1. Floppy disk drive control lines <- CIA-B Port B ($BFD100)
-        if let Some(prb) = self.cia_b.poll_prb_output() {
-            self.floppy.handle_ciab_port_b_write(prb);
-        }
-
-        // 2. Floppy disk sensing lines -> CIA-A Port A bits 2..5 (_RDY, _TK0, _WPROT, _CHNG)
-        let floppy_inputs = self.floppy.sample_ciaa_port_a_inputs();
-        self.cia_a
-            .set_input_pins_a(floppy_inputs, cia::CIAA_PRA_FLOPPY_SENSE_MASK);
-
-        // 3. Floppy MFM stream / byte ready -> Paula DSKBYTR
-        if let Some(floppy_byte) = self.floppy.poll_pending_dskbytr() {
-            self.paula.latch_floppy_dskbytr(floppy_byte);
-        }
-
-        // 4. Game ports fire buttons -> CIA-A Port A bits 6..7 (/FIR0, /FIR1, active low)
-        let fire_pins = self.game_ports.sample_ciaa_port_a_inputs();
-        self.cia_a
-            .set_input_pins_a(fire_pins, cia::CIAA_PRA_FIRE_MASK);
-
-        // 5. Mouse/joystick quadrature counters -> Denise JOY0DAT & JOY1DAT
-        self.denise.joy0dat = self.game_ports.joy0dat();
-        self.denise.joy1dat = self.game_ports.joy1dat();
-
-        // 6. Analog potentiometer coordinates -> Paula POT0DAT, POT1DAT & POTGOR
-        self.paula.pot0dat = self.game_ports.pot0dat();
-        self.paula.pot1dat = self.game_ports.pot1dat();
-        self.paula.potgor = self.game_ports.potgor(self.paula.potgo);
+        self.route_signal_pins_end_cck();
+        self.deliver_cpu_interrupt_pins();
     }
 
     /// Advances all peer custom chips, coprocessors, and peripheral subsystems by exactly 1 Color Clock (~280 ns),
     /// dispatching matured actions, advancing RTC, and arbitrating interrupts.
     pub fn step_subsystems_cck(&mut self) {
-        // Physical Trace: Disk DMA request line (_DSKREQ pin) -> Agnus
-        let dsk_req = self.paula.is_dsk_dma_active() && self.floppy.has_dma_word();
-        self.agnus.set_dsk_dma_req(dsk_req);
-
+        // Start of subsystem CCK: sample inputs before receiver work, even while waiting.
+        self.sample_signal_pins_start_cck();
         // 1. Advance Agnus (steps copper, blitter, dma, raster beam counters, and mutation pipeline)
         self.agnus.step_cck_ram(&mut self.physical_memory.chip_ram);
-        if let Some((reg, val)) = self.agnus.poll_copper_write() {
-            self.memory_bus().write_custom_word(reg, val);
-        }
-        if let Some((plane, word)) = self.agnus.poll_bpl_dma() {
-            self.denise.write_bpldat(plane as usize, word);
-        }
         if let Some(dskpt) = self.agnus.poll_dsk_dma_slot() {
             let is_write = self.paula.is_dsk_write();
             if !is_write {
@@ -224,91 +188,50 @@ impl A500Machine {
         }
         self.physical_memory.chip_ram_blocked = self.agnus.chip_ram_blocked;
 
-        // Physical Trace: Blitter completion (_BLITINT pin) -> Paula INTREQ bit 6 (IRQ_BLIT)
-        if self.agnus.poll_blitter_irq() {
-            self.paula
-                .set_interrupt_request(paula::interrupts::IRQ_BLIT);
-        }
-
-        // Physical Trace: Vertical blanking interval (_VSYNC pin) -> Paula INTREQ bit 5 (IRQ_VERTB) & CIA-A TOD tick
-        if self.agnus.poll_vblank_irq() {
-            self.paula
-                .set_interrupt_request(paula::interrupts::IRQ_VERTB);
-            self.cia_a.tick_tod();
-        }
-
-        // 2. Step Denise (steps sprites, frame_builder, and video serializer)
-        let beam = self.agnus.beam();
-        if beam.hpos == 0 {
-            self.cia_b.tick_tod(); // Physical Trace: _HSYNC pin -> CIA-B TOD pin
-        }
-        self.denise.step_cck(beam);
+        // 2. Step Denise using its delivered RGA input and local receiver state.
+        self.denise.step_cck();
 
         // 3. Step Paula (steps audio, serial_port, and mutation pipeline)
         self.paula.step_cck();
-        self.floppy.step_cck(self.paula.adkcon, self.paula.dsksync);
-
-        // Cross-Chip Signal: Disk sync pattern matched -> Paula INTREQ bit 12 (IRQ_DSKSYN)
-        if self.floppy.poll_dsksyn_irq() {
-            self.paula
-                .set_interrupt_request(paula::interrupts::IRQ_DSKSYN);
-        }
-
-        // Cross-Chip Signal: Disk block DMA finished -> Paula INTREQ bit 1 (IRQ_DSKBLK)
-        if self.floppy.poll_dskblk_irq() {
-            self.paula
-                .set_interrupt_request(paula::interrupts::IRQ_DSKBLK);
-        }
-
-        // Cross-Chip Signal: Audio channel buffer loop (AUDxDSR) -> Agnus audpt reload & Paula interrupt
-        for ch in 0..4 {
-            if self.paula.poll_audio_restart(ch) {
-                self.agnus.reload_audio_ptr(ch);
-                self.paula
-                    .set_interrupt_request(paula::interrupts::irq_aud(ch));
+        // Common register issue boundary: every receiver has completed this CCK.
+        if let Some((reg, val)) = self.agnus.pending_copper_write {
+            if self.memory_bus().write_custom_word(reg, val) {
+                self.agnus.poll_copper_write();
             }
         }
-
-        // 4. Step Keyboard serial transmission to CIA-A
-        let kdat_handshake = self.cia_a.is_sdr_output();
-        if let Some(scancode) = self.keyboard.step(kdat_handshake) {
-            self.cia_a.shift_in_sdr(scancode);
+        if let Some((plane, word)) = self.agnus.pending_bpl_dma {
+            if self.denise.set_bpldat(plane as usize, word) {
+                self.agnus.poll_bpl_dma();
+            }
         }
+        self.deliver_dma_register();
+
+        // 4. Step the retained decoded floppy engine.
+        self.floppy.step_cck(self.paula.adkcon, self.paula.dsksync);
+
+        // Keyboard KCLK/KDAT reach CIA pins through the captured delivery.
+        // A queued key is not an SDR write; device/receiver engines belong to 2.4.
 
         // 5. Step CIAs
         self.cia_a.step_cck();
         self.cia_b.step_cck();
 
-        // Cross-Chip Signals: CIA /IRQ pins -> Paula _INT2 & _INT6 pins
-        if self.cia_a.irq_pending() {
-            self.paula.set_int2_pin(true);
-        }
-        if self.cia_b.irq_pending() {
-            self.paula.set_int6_pin(true);
-        }
-
         // 6. Step Real-Time Clock
         self.rtc.step_cck(1);
 
-        // 7. Cross-Chip Cascades (Physical Pins)
-        if let Some(chip_ram_engaged) = self.cia_a.ovl_transition() {
-            if chip_ram_engaged {
-                self.physical_memory.map_chip_ram_to_low_memory();
-            } else {
-                self.physical_memory.map_kickstart_to_low_memory();
-            }
-        }
-        self.poll_peripheral_pins();
+        // 7. Route same-CCK outputs and capture pins for the next CCK input phase.
+        self.route_signal_pins_end_cck();
 
         // 8. Central interrupt priority line (IPL 1-6) arbitration
-        let ipl = self.paula.pending_interrupt_level();
-        self.cpu.state.set_ipl(ipl);
+        self.deliver_cpu_interrupt_pins();
     }
 
     /// Advances the entire machine by exactly 1 Color Clock (~280 ns).
     /// Subsystems receive required peer handles via method call parameters.
     /// Returns `true` if the M68000 CPU completed an instruction on this Color Clock.
     pub fn step_cck(&mut self) -> bool {
+        // Retain the previous capture before subsystem routing samples the source again.
+        let keyboard_reset_asserted = self.keyboard_reset_asserted;
         // 1. Advance master monotonic Color Clock counter
         self.cck = self.cck.wrapping_add(1);
 
@@ -316,8 +239,8 @@ impl A500Machine {
         self.step_subsystems_cck();
 
         // 3. Hardware keyboard reset line (Ctrl-Amiga-Amiga)
-        if self.keyboard.reset_line_asserted {
-            self.keyboard.reset_line_asserted = false;
+        if keyboard_reset_asserted {
+            self.keyboard.pins.reset_line_asserted = false;
             self.reset_warm();
             return false;
         }
@@ -336,9 +259,7 @@ impl A500Machine {
             rtc: &mut self.rtc,
         };
         let completed = self.cpu.step_cck(&mut bus);
-        if !reset_was_asserted && self.cpu.state.is_reset_line_asserted() {
-            self.reset_external_devices();
-        }
+        self.deliver_cpu_reset_pin(reset_was_asserted);
         completed
     }
 
@@ -394,22 +315,10 @@ impl A500Machine {
         self.cpu.set_pc_and_prime_prefetch(target_pc, &mut bus);
     }
 
-    /// Captures a complete machine state snapshot with embedded frame buffer screenshot
+    /// Captures a pure machine snapshot without host I/O or preview encoding
     pub fn save_state(&self) -> A500State {
-        let screenshot_png = encode_screenshot_png(
-            self.denise.frame_builder.frame_buffer(),
-            self.denise.frame_builder.width,
-            self.denise.frame_builder.height,
-        );
-
-        let header = SaveStateHeader {
-            version: SAVE_STATE_VERSION,
-            timestamp: 0,
-            screenshot_png,
-        };
-
         A500State {
-            header,
+            keyboard_reset_asserted: self.keyboard_reset_asserted,
             cck: self.cck,
             config: self.config.clone(),
             cpu: self.cpu.state.clone(),
@@ -427,15 +336,7 @@ impl A500Machine {
     }
 
     /// Restores a complete machine state snapshot, adopting configuration and memory
-    pub fn load_state(&mut self, state: &A500State) -> Result<(), SaveStateError> {
-        // 1. Verify Schema Version
-        if state.header.version != SAVE_STATE_VERSION {
-            return Err(SaveStateError::IncompatibleVersion {
-                found: state.header.version,
-                supported: SAVE_STATE_VERSION,
-            });
-        }
-
+    pub fn load_state(&mut self, state: &A500State) {
         // 2. Restore Machine Configuration from Save State
         self.config = state.config.clone();
 
@@ -458,28 +359,9 @@ impl A500Machine {
         self.floppy = state.floppy.clone();
         self.keyboard = state.keyboard.clone();
         self.game_ports = state.game_ports.clone();
+        self.keyboard_reset_asserted = state.keyboard_reset_asserted;
 
-        // 7. Re-poll peripheral pins to establish consistent signal line levels
-        self.poll_peripheral_pins();
-
-        Ok(())
-    }
-
-    /// Saves the machine state snapshot to a file as JSON
-    pub fn save_state_to_file(
-        &self,
-        path: impl AsRef<std::path::Path>,
-    ) -> Result<(), SaveStateError> {
-        let state = self.save_state();
-        state.save_to_file(path)
-    }
-
-    /// Restores the machine state from a JSON file
-    pub fn load_state_from_file(
-        &mut self,
-        path: impl AsRef<std::path::Path>,
-    ) -> Result<(), SaveStateError> {
-        let state = A500State::load_from_file(path)?;
-        self.load_state(&state)
+        // Signal levels and unconsumed output changes are serialized state.
+        // Routing here would consume an event before its next modeled phase.
     }
 }

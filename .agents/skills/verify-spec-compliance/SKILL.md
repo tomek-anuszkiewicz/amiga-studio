@@ -157,9 +157,9 @@ review, including for a commit containing only documentation changes.
 
 ## Report
 
-Record the intended snapshot, changed crates/paths, selected documents, concrete
-corrections or no-change findings, scope extensions, missing/invalid mappings,
-approved requirements and decisions, their implementation/test evidence,
-compatible documentation additions, unresolved differences or verification gaps,
-and checks actually run. Do not claim unchanged
-documents were updated or that an unreviewed subsystem was verified.
+Briefly identify the intended snapshot, reviewed scope and requirements, actual
+checks, and findings or no-change conclusion. Include requirement approvals,
+compatible additions, scope extensions and ownership or verification gaps when
+present. A workflow message is sufficient; no separate report or manifest is
+required by default. Do not claim unchanged documents were updated or that an
+unreviewed subsystem was verified.

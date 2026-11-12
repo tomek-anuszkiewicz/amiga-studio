@@ -22,6 +22,12 @@ use crate::theme::AppTheme;
 use debugger::temporal::DEFAULT_TEMPORAL_CAPACITY;
 use debugger::DebuggerSession;
 
+const WIDE_LAYOUT_MIN_WIDTH: f32 = 1680.0;
+const DESKTOP_LAYOUT_MIN_WIDTH: f32 = 1200.0;
+const ZOOM_STEP: f32 = 0.25;
+const MIN_ZOOM: f32 = 0.75;
+const MAX_ZOOM: f32 = 2.5;
+
 /// Responsive layout tier based on viewport width
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LayoutTier {
@@ -35,9 +41,9 @@ pub enum LayoutTier {
 
 impl LayoutTier {
     fn from_width(width: f32) -> Self {
-        if width >= 1680.0 {
+        if width >= WIDE_LAYOUT_MIN_WIDTH {
             LayoutTier::FullHdWide
-        } else if width >= 1200.0 {
+        } else if width >= DESKTOP_LAYOUT_MIN_WIDTH {
             LayoutTier::StandardDesktop
         } else {
             LayoutTier::Compact
@@ -318,13 +324,13 @@ impl EmulatorApp {
             && (input.key_pressed(egui::Key::Plus) || input.key_pressed(egui::Key::Equals));
         if should_zoom_in {
             let current = ctx.zoom_factor();
-            ctx.set_zoom_factor((current + 0.25).min(2.5));
+            ctx.set_zoom_factor((current + ZOOM_STEP).min(MAX_ZOOM));
         }
 
         // Ctrl + Minus: Zoom Out
         if input.modifiers.command && input.key_pressed(egui::Key::Minus) {
             let current = ctx.zoom_factor();
-            ctx.set_zoom_factor((current - 0.25).max(0.75));
+            ctx.set_zoom_factor((current - ZOOM_STEP).max(MIN_ZOOM));
         }
 
         // Ctrl + 0: Reset Zoom
@@ -425,7 +431,8 @@ impl EmulatorApp {
                                 &tokens,
                                 self.session.machine.physical_memory.chip_ram_blocked,
                                 self.session.instructions_executed,
-                                self.session.machine.cpu.state.cycle_counter() as u64 / 2,
+                                self.session.machine.cpu.state.cycle_counter() as u64
+                                    / u64::from(cpu::MicroStep::CCK_CLOCKS),
                                 self.session.machine.cpu.state.sr(),
                             );
                             if self.show_microcode {
@@ -621,10 +628,10 @@ impl EmulatorApp {
                                                 let avail_h =
                                                     (ui.available_height() - 48.0).max(120.0);
                                                 let screen_w = avail_w
-                                                    .min(avail_h * 4.0 / 3.0)
+                                                    .min(avail_h * crate::layout::main_viewport::amiga_screen::SCREEN_ASPECT_WIDTH / crate::layout::main_viewport::amiga_screen::SCREEN_ASPECT_HEIGHT)
                                                     .min(640.0)
                                                     .max(240.0);
-                                                let screen_h = (screen_w * 3.0 / 4.0).min(avail_h);
+                                                let screen_h = (screen_w * crate::layout::main_viewport::amiga_screen::SCREEN_ASPECT_HEIGHT / crate::layout::main_viewport::amiga_screen::SCREEN_ASPECT_WIDTH).min(avail_h);
 
                                                 ui.allocate_ui_with_layout(
                                                     egui::vec2(avail_w, screen_h),
@@ -738,14 +745,15 @@ impl EmulatorApp {
                                 if let Ok(data) = std::fs::read(path) {
                                     let clean =
                                         self.load_target_addr_str.trim().trim_start_matches('$');
-                                    let target_addr =
-                                        u32::from_str_radix(clean, 16).unwrap_or(0x001000);
+                                    let target_addr = u32::from_str_radix(clean, 16)
+                                        .unwrap_or(debugger::DEFAULT_TARGET_ADDRESS);
                                     self.session.load_binary(
                                         target_addr,
                                         &data,
                                         self.load_auto_prime,
                                     );
-                                    self.hex_base_addr = target_addr & 0x00FF_FFF0;
+                                    self.hex_base_addr = target_addr
+                                        & crate::layout::right_dock::memory_hex::MASK_ROW_ADDRESS;
                                 }
                             }
                             self.load_binary_modal_open = false;

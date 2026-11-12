@@ -909,6 +909,7 @@ dependencies = [
  "disassembler",
  "machine_loop",
  "physical_memory",
+ "save_state",
  "serde",
  "serde_json",
 ]
@@ -1325,6 +1326,7 @@ dependencies = [
 name = "floppy"
 version = "0.1.0"
 dependencies = [
+ "config",
  "serde",
 ]
 
@@ -1886,6 +1888,7 @@ dependencies = [
 name = "interrupts"
 version = "0.1.0"
 dependencies = [
+ "config",
  "serde",
 ]
 
@@ -2100,7 +2103,6 @@ dependencies = [
  "denise",
  "floppy",
  "game_ports",
- "image",
  "joystick",
  "keyboard",
  "memory_bus",
@@ -3117,6 +3119,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "93fc1dc3aaa9bfed95e02e6eadabb4baf7e3078b0bd1b4d7b6b0b68378900502"
 dependencies = [
  "winapi-util",
+]
+
+[[package]]
+name = "save_state"
+version = "0.1.0"
+dependencies = [
+ "config",
+ "image",
+ "machine_loop",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

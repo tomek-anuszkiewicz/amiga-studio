@@ -7,17 +7,17 @@
 //! 2. Paula ADKCON wordsync configuration and DSKSYNC pattern match.
 //! 3. Agnus 8-tier DMA slot scheduling (HPOS 7, 9, 11).
 //! 4. Chip RAM streaming at DSKPT with automatic address incrementation.
-//! 5. Level 1 IRQ_DSKBLK and Level 5 IRQ_DSKSYN interrupt assertion upon completion.
+//! 5. Level 1 DSKBLK and Level 5 DSKSYN interrupt assertion upon completion.
 
 use config::custom_reg;
 mod common;
 use common::MachineHarness;
 use floppy::{FORMATTED_DISK_BYTES, SECTORS_PER_TRACK, SECTOR_DATA_BYTES};
-use machine_loop::AddressBus;
 
 #[test]
 fn test_floppy_dma_stream_into_chip_ram_and_interrupt() {
     let mut harness = MachineHarness::new();
+    common::cia::configure_drive_control_outputs(&mut harness.machine);
 
     // 1. Prepare ADF disk image with recognizable data
     let mut adf_image = vec![0u8; FORMATTED_DISK_BYTES];
@@ -34,7 +34,7 @@ fn test_floppy_dma_stream_into_chip_ram_and_interrupt() {
 
     // 2. Select DF0: with motor ON via CIA-B PRB ($BFD100) write
     // _SEL0 = bit 3 (0), _MTR = bit 7 (0) -> 0b0111_0111 = 0x77
-    harness.machine.memory_bus().write_byte(0xBFD100, 0x77);
+    common::cia::write_byte(&mut harness.machine, 0xBFD100, 0x77);
     harness.machine.step_cck(); // Propagate CIA-B PRB to Floppy
     assert!(harness.machine.floppy.drives[0].selected);
     assert!(harness.machine.floppy.drives[0].motor_on);
@@ -43,35 +43,35 @@ fn test_floppy_dma_stream_into_chip_ram_and_interrupt() {
     harness
         .machine
         .memory_bus()
-        .write_custom_word(custom_reg::agnus::DSKPTH, 0x0000);
+        .write_custom_word(custom_reg::agnus::REGISTER_DSKPTH, 0x0000);
     harness
         .machine
         .memory_bus()
-        .write_custom_word(custom_reg::agnus::DSKPTL, 0x2000);
+        .write_custom_word(custom_reg::agnus::REGISTER_DSKPTL, 0x2000);
 
     // 4. Set DSKSYNC = $4489 ($DFF07E)
     harness
         .machine
         .memory_bus()
-        .write_custom_word(custom_reg::paula::DSKSYNC, 0x4489);
+        .write_custom_word(custom_reg::paula::REGISTER_DSKSYNC, 0x4489);
 
     // 5. Enable WORDSYNC and FAST in ADKCON ($DFF09E): SET_CLR | WORDSYNC | FAST = 0x8500
     harness
         .machine
         .memory_bus()
-        .write_custom_word(custom_reg::paula::ADKCON, 0x8500);
+        .write_custom_word(custom_reg::paula::REGISTER_ADKCON, 0x8500);
 
     // 6. Enable master DMA and Disk DMA in DMACON ($DFF096): SET_CLR | DMAEN | DSKEN = 0x8210
     harness
         .machine
         .memory_bus()
-        .write_custom_word(custom_reg::paula::DMACON, 0x8210);
+        .write_custom_word(custom_reg::paula::REGISTER_DMACON, 0x8210);
 
     // 7. Enable master INTENA and DSKBLK in INTENA ($DFF09A): SET_CLR | INTEN | DSKBLK = 0xC002
     harness
         .machine
         .memory_bus()
-        .write_custom_word(custom_reg::paula::INTENA, 0xC002);
+        .write_custom_word(custom_reg::paula::REGISTER_INTENA, 0xC002);
 
     // Step 2 CCKs to commit initial register mutations
     harness.machine.step_cck();
@@ -84,7 +84,7 @@ fn test_floppy_dma_stream_into_chip_ram_and_interrupt() {
     harness
         .machine
         .memory_bus()
-        .write_custom_word(custom_reg::paula::DSKLEN, dsklen_val);
+        .write_custom_word(custom_reg::paula::REGISTER_DSKLEN, dsklen_val);
     harness.machine.step_cck();
     harness.machine.step_cck();
     assert!(harness.machine.paula.dma_armed);
@@ -93,7 +93,7 @@ fn test_floppy_dma_stream_into_chip_ram_and_interrupt() {
     harness
         .machine
         .memory_bus()
-        .write_custom_word(custom_reg::paula::DSKLEN, dsklen_val);
+        .write_custom_word(custom_reg::paula::REGISTER_DSKLEN, dsklen_val);
     harness.machine.step_cck();
     harness.machine.step_cck();
     assert!(harness.machine.paula.is_dsk_dma_active());

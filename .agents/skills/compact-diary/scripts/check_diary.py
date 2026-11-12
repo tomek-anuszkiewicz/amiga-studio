@@ -11,21 +11,23 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 def check_diary_structure_and_chronology():
-    """Verifies that DIARY.md exists, contains Section 10, and entries are strictly chronological per diary-maintenance.md."""
+    """Verify the final Rolling Changelog and chronological entry order."""
     diary_path = REPO_ROOT / "DIARY.md"
     if not diary_path.exists():
         return {"total_entries": 0, "issues": [{"message": "DIARY.md does not exist in repository root"}]}
 
     content = diary_path.read_text(encoding="utf-8", errors="ignore")
-    section10 = re.split(r"^##\s+10\.\s+", content, flags=re.MULTILINE)
-    if len(section10) < 2:
-        return {"total_entries": 0, "issues": [{"message": "DIARY.md is missing Section 10 (`## 10. Living Chronological Engineering Log...`)"}]}
+    changelog = re.split(r"^## Rolling Changelog\s*$", content, flags=re.MULTILINE)
+    if len(changelog) != 2:
+        return {"total_entries": 0, "issues": [{"message": "DIARY.md must contain exactly one `## Rolling Changelog` heading"}]}
 
-    timestamps = re.findall(r"###\s+\[(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})", section10[1])
+    timestamps = re.findall(r"###\s+\[(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})", changelog[1])
     issues = []
+    if re.search(r"^#{1,2}\s+", changelog[1], flags=re.MULTILINE):
+        issues.append({"message": "Rolling Changelog must be the final DIARY.md section"})
     for i in range(1, len(timestamps)):
         if timestamps[i] < timestamps[i - 1]:
-            issues.append({"message": f"DIARY.md Section 10 chronological order violation: `{timestamps[i - 1]}` followed by earlier `{timestamps[i]}`"})
+            issues.append({"message": f"DIARY.md Rolling Changelog chronological order violation: `{timestamps[i - 1]}` followed by earlier `{timestamps[i]}`"})
 
     return {
         "total_entries": len(timestamps),

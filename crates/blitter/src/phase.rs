@@ -5,6 +5,44 @@
 
 use serde::{Deserialize, Serialize};
 
+const WORD_CYCLES_NONE: u8 = 2;
+const WORD_CYCLES_D_FILL: u8 = 3;
+const WORD_CYCLES_D: u8 = 2;
+const WORD_CYCLES_C: u8 = 2;
+const WORD_CYCLES_CD: u8 = 3;
+const WORD_CYCLES_B: u8 = 3;
+const WORD_CYCLES_BD_FILL: u8 = 4;
+const WORD_CYCLES_BD: u8 = 3;
+const WORD_CYCLES_BC: u8 = 3;
+const WORD_CYCLES_BCD: u8 = 4;
+const WORD_CYCLES_A: u8 = 2;
+const WORD_CYCLES_AD_FILL: u8 = 3;
+const WORD_CYCLES_AD: u8 = 2;
+const WORD_CYCLES_AC: u8 = 2;
+const WORD_CYCLES_ACD: u8 = 3;
+const WORD_CYCLES_AB: u8 = 3;
+const WORD_CYCLES_A_B_D_FILL: u8 = 4;
+const WORD_CYCLES_A_B_D: u8 = 3;
+const WORD_CYCLES_A_B_C: u8 = 3;
+const WORD_CYCLES_ABCD: u8 = 4;
+
+pub const MAX_WORD_PHASES: usize = 4;
+const CHANNELS_NONE: u8 = 0;
+const CHANNELS_D: u8 = 1;
+const CHANNELS_C: u8 = 2;
+const CHANNELS_CD: u8 = 3;
+const CHANNELS_B: u8 = 4;
+const CHANNELS_BD: u8 = 5;
+const CHANNELS_BC: u8 = 6;
+const CHANNELS_BCD: u8 = 7;
+const CHANNELS_A: u8 = 8;
+const CHANNELS_AD: u8 = 9;
+const CHANNELS_AC: u8 = 10;
+const CHANNELS_ACD: u8 = 11;
+const CHANNELS_AB: u8 = 12;
+const CHANNELS_A_B_D: u8 = 13;
+const CHANNELS_A_B_C: u8 = 14;
+
 /// Active execution phase for cycle-by-cycle Blitter stepping
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum BlitterPhase {
@@ -47,22 +85,25 @@ pub fn word_phases(
     use_c: bool,
     use_d: bool,
     fill: bool,
-) -> ([BlitterPhase; 4], u8) {
-    let abcd = ((use_a as u8) << 3) | ((use_b as u8) << 2) | ((use_c as u8) << 1) | (use_d as u8);
+) -> ([BlitterPhase; MAX_WORD_PHASES], u8) {
+    let abcd = ((use_a as u8) * CHANNELS_A)
+        | ((use_b as u8) * CHANNELS_B)
+        | ((use_c as u8) * CHANNELS_C)
+        | ((use_d as u8) * CHANNELS_D);
 
     match abcd {
         // 0: -- -- (2 idle cycles per word)
-        0 => (
+        CHANNELS_NONE => (
             [
                 BlitterPhase::BusIdle,
                 BlitterPhase::BusIdle,
                 BlitterPhase::Idle,
                 BlitterPhase::Idle,
             ],
-            2,
+            WORD_CYCLES_NONE,
         ),
         // 1: D only
-        1 => {
+        CHANNELS_D => {
             if fill {
                 (
                     [
@@ -71,7 +112,7 @@ pub fn word_phases(
                         BlitterPhase::BusIdle,
                         BlitterPhase::Idle,
                     ],
-                    3,
+                    WORD_CYCLES_D_FILL,
                 )
             } else {
                 (
@@ -81,42 +122,42 @@ pub fn word_phases(
                         BlitterPhase::Idle,
                         BlitterPhase::Idle,
                     ],
-                    2,
+                    WORD_CYCLES_D,
                 )
             }
         }
         // 2: C only
-        2 => (
+        CHANNELS_C => (
             [
                 BlitterPhase::BusIdle,
                 BlitterPhase::FetchC,
                 BlitterPhase::Idle,
                 BlitterPhase::Idle,
             ],
-            2,
+            WORD_CYCLES_C,
         ),
         // 3: C D
-        3 => (
+        CHANNELS_CD => (
             [
                 BlitterPhase::BusIdle,
                 BlitterPhase::FetchC,
                 BlitterPhase::WriteD,
                 BlitterPhase::Idle,
             ],
-            3,
+            WORD_CYCLES_CD,
         ),
         // 4: B only
-        4 => (
+        CHANNELS_B => (
             [
                 BlitterPhase::BusIdle,
                 BlitterPhase::FetchB,
                 BlitterPhase::BusIdle,
                 BlitterPhase::Idle,
             ],
-            3,
+            WORD_CYCLES_B,
         ),
         // 5: B D
-        5 => {
+        CHANNELS_BD => {
             if fill {
                 (
                     [
@@ -125,7 +166,7 @@ pub fn word_phases(
                         BlitterPhase::WriteD,
                         BlitterPhase::BusIdle,
                     ],
-                    4,
+                    WORD_CYCLES_BD_FILL,
                 )
             } else {
                 (
@@ -135,42 +176,42 @@ pub fn word_phases(
                         BlitterPhase::WriteD,
                         BlitterPhase::Idle,
                     ],
-                    3,
+                    WORD_CYCLES_BD,
                 )
             }
         }
         // 6: B C
-        6 => (
+        CHANNELS_BC => (
             [
                 BlitterPhase::BusIdle,
                 BlitterPhase::FetchB,
                 BlitterPhase::FetchC,
                 BlitterPhase::Idle,
             ],
-            3,
+            WORD_CYCLES_BC,
         ),
         // 7: B C D
-        7 => (
+        CHANNELS_BCD => (
             [
                 BlitterPhase::BusIdle,
                 BlitterPhase::FetchB,
                 BlitterPhase::FetchC,
                 BlitterPhase::WriteD,
             ],
-            4,
+            WORD_CYCLES_BCD,
         ),
         // 8: A only
-        8 => (
+        CHANNELS_A => (
             [
                 BlitterPhase::FetchA,
                 BlitterPhase::BusIdle,
                 BlitterPhase::Idle,
                 BlitterPhase::Idle,
             ],
-            2,
+            WORD_CYCLES_A,
         ),
         // 9: A D
-        9 => {
+        CHANNELS_AD => {
             if fill {
                 (
                     [
@@ -179,7 +220,7 @@ pub fn word_phases(
                         BlitterPhase::BusIdle,
                         BlitterPhase::Idle,
                     ],
-                    3,
+                    WORD_CYCLES_AD_FILL,
                 )
             } else {
                 (
@@ -189,42 +230,42 @@ pub fn word_phases(
                         BlitterPhase::Idle,
                         BlitterPhase::Idle,
                     ],
-                    2,
+                    WORD_CYCLES_AD,
                 )
             }
         }
         // 10: A C
-        10 => (
+        CHANNELS_AC => (
             [
                 BlitterPhase::FetchA,
                 BlitterPhase::FetchC,
                 BlitterPhase::Idle,
                 BlitterPhase::Idle,
             ],
-            2,
+            WORD_CYCLES_AC,
         ),
         // 11: A C D
-        11 => (
+        CHANNELS_ACD => (
             [
                 BlitterPhase::FetchA,
                 BlitterPhase::FetchC,
                 BlitterPhase::WriteD,
                 BlitterPhase::Idle,
             ],
-            3,
+            WORD_CYCLES_ACD,
         ),
         // 12: A B
-        12 => (
+        CHANNELS_AB => (
             [
                 BlitterPhase::FetchA,
                 BlitterPhase::FetchB,
                 BlitterPhase::BusIdle,
                 BlitterPhase::Idle,
             ],
-            3,
+            WORD_CYCLES_AB,
         ),
         // 13: A B D
-        13 => {
+        CHANNELS_A_B_D => {
             if fill {
                 (
                     [
@@ -233,7 +274,7 @@ pub fn word_phases(
                         BlitterPhase::WriteD,
                         BlitterPhase::BusIdle,
                     ],
-                    4,
+                    WORD_CYCLES_A_B_D_FILL,
                 )
             } else {
                 (
@@ -243,19 +284,19 @@ pub fn word_phases(
                         BlitterPhase::WriteD,
                         BlitterPhase::Idle,
                     ],
-                    3,
+                    WORD_CYCLES_A_B_D,
                 )
             }
         }
         // 14: A B C
-        14 => (
+        CHANNELS_A_B_C => (
             [
                 BlitterPhase::FetchA,
                 BlitterPhase::FetchB,
                 BlitterPhase::FetchC,
                 BlitterPhase::Idle,
             ],
-            3,
+            WORD_CYCLES_A_B_C,
         ),
         // 15: A B C D
         _ => (
@@ -265,7 +306,7 @@ pub fn word_phases(
                 BlitterPhase::FetchC,
                 BlitterPhase::WriteD,
             ],
-            4,
+            WORD_CYCLES_ABCD,
         ),
     }
 }

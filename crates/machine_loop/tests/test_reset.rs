@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-//! Integration tests for Amiga 500 machine-wide reset sequencing (Step 2.5)
+//! Integration tests for Amiga 500 machine-wide reset sequencing
 //!
 //! Validates:
 //! - Cold reset: zeroes all RAM buffers, resets custom chips to power-on defaults,
@@ -47,8 +47,9 @@ fn hardware_resets_execute_boot_beyond_the_initial_queue() {
             1 => machine.reset_warm(),
             _ => {
                 press_reset_keys(&mut machine);
-                assert!(machine.keyboard.reset_line_asserted);
-                assert!(!machine.step_cck());
+                assert!(machine.keyboard.pins.reset_line_asserted);
+                machine.step_cck(); // Capture; CPU may finish an instruction before delivery.
+                assert!(!machine.step_cck()); // Deliver to the reset network.
                 if reset_kind == 2 {
                     for key in [
                         keyboard::SCANCODE_CTRL,
@@ -81,6 +82,7 @@ fn hardware_resets_execute_boot_beyond_the_initial_queue() {
             // New host key-down events are a new request, rather than repetition
             // of the request consumed above.
             press_reset_keys(&mut machine);
+            machine.step_cck(); // Capture the new assertion.
             assert!(!machine.step_cck());
             assert_boot_entry(&machine);
             assert_eq!(machine.denise.color[0], 0);
@@ -111,6 +113,7 @@ fn keyboard_reset_replaces_stopped_and_partial_instruction_state() {
             assert!(!machine.cpu.state.micro().current_steps.is_empty());
         }
         press_reset_keys(&mut machine);
+        machine.step_cck(); // Capture while retaining the pending instruction state.
         assert!(!machine.step_cck());
         assert_boot_entry(&machine);
         execute_boot(&mut machine);
@@ -194,9 +197,10 @@ fn test_cold_reset_full_flow() {
     // 2. Modify custom chip registers
     machine.agnus.dma.write_dmacon(0x8200); // Enable master DMA
     machine.denise.color[0] = 0x0F00; // Red background
-    machine.paula.write_intena(0x8080); // Enable Audio 0 IRQ
-    machine.cia_a.write_register(cia_reg::cia_a::DDRA, 0x03); // DDRA bits 0-1
-    machine.cia_a.write_register(cia_reg::cia_a::PRA, 0x01); // PRA bit 0
+    machine.paula.set_intena(0x8080); // Enable Audio 0 IRQ
+    machine.paula.step_cck();
+    machine.cia_a.set_ddra(0x03); // DDRA bits 0-1
+    machine.cia_a.set_pra(0x01); // PRA bit 0
 
     // 3. Modify CPU registers and state
     machine.cpu.state.set_d_long(0, 0x12345678);
@@ -295,7 +299,8 @@ fn test_warm_reset_full_flow() {
     // 2. Modify custom chip registers
     machine.agnus.dma.write_dmacon(0x8200);
     machine.denise.color[0] = 0x00F0; // Green background
-    machine.paula.write_intena(0x8080);
+    machine.paula.set_intena(0x8080);
+    machine.paula.step_cck();
 
     // 3. Modify CPU registers
     machine.cpu.state.set_d_long(0, 0xCAFEBABE);
@@ -411,7 +416,8 @@ fn test_cpu_reset_instruction_external_propagation() {
     // Modify custom chip registers
     machine.agnus.dma.write_dmacon(0x8200);
     machine.denise.color[0] = 0x0F00;
-    machine.paula.write_intena(0x8080);
+    machine.paula.set_intena(0x8080);
+    machine.paula.step_cck();
 
     // Modify CPU registers
     machine.cpu.state.set_d_long(0, 0x12345678);
@@ -572,16 +578,18 @@ fn test_keyboard_ctrl_amiga_amiga_warm_reset() {
     machine.keyboard.key_down(keyboard::SCANCODE_R_AMIGA);
 
     assert!(
-        machine.keyboard.reset_line_asserted,
+        machine.keyboard.pins.reset_line_asserted,
         "Keyboard must assert reset_line_asserted on Ctrl-Amiga-Amiga"
     );
 
     // 3. Step 1 Color Clock (machine loop samples keyboard reset line)
     machine.step_cck();
 
+    machine.step_cck(); // Deliver the captured keyboard assertion.
+
     // 4. Verify warm reset executed
     assert!(
-        !machine.keyboard.reset_line_asserted,
+        !machine.keyboard.pins.reset_line_asserted,
         "Keyboard reset line asserted flag must be cleared after handling"
     );
     assert_eq!(machine.cck, 0, "Master CCK must be reset to 0");
@@ -657,14 +665,17 @@ fn test_reset_overlay_kickstart_vs_synthetic() {
     );
 
     // Disengage overlay via CIA-A Port A bit 0
-    machine.cia_a.write_register(cia_reg::cia_a::DDRA, 0x01); // DDRA bit 0 output
-    machine.cia_a.write_register(cia_reg::cia_a::PRA, 0x01); // PRA bit 0 high (disengage _OVL)
-    for _ in 0..10 {
-        machine.step_cck();
-    }
+    assert_eq!(
+        common::cia::write_byte(&mut machine, cia_reg::cia_a::REGISTER_PRA, 0x00),
+        machine_loop::BusResult::Ready(())
+    );
+    assert_eq!(
+        common::cia::write_byte(&mut machine, cia_reg::cia_a::REGISTER_DDRA, 0x01),
+        machine_loop::BusResult::Ready(())
+    );
     assert!(
         !machine.physical_memory.is_low_memory_overlay_active(),
-        "Overlay must disengage when CIA-A drives PRA bit 0 high"
+        "Overlay must disengage immediately when CIA-A drives PA0 low"
     );
 
     // Warm reset re-engages overlay

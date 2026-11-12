@@ -3,71 +3,39 @@
 //! Models the 14-source interrupt priority encoder, atomic SET/CLR bit 15 logic,
 //! master interrupt enable gating (bit 14 INTEN), and 6 prioritized CPU interrupt levels (IPL 1..6).
 
+use config::mask::intreq;
 use serde::{Deserialize, Serialize};
 
-// --- Interrupt Source Bit Definitions ---
+const LEVEL1: u8 = 1;
+const LEVEL2: u8 = 2;
+const LEVEL3: u8 = 3;
+const LEVEL4: u8 = 4;
+const LEVEL5: u8 = 5;
+const LEVEL6: u8 = 6;
 
-/// Level 1: Serial transmit buffer empty (TBE)
-pub const IRQ_TBE: u16 = 1 << 0;
-/// Level 1: Floppy disk block DMA finished (DSKBLK)
-pub const IRQ_DSKBLK: u16 = 1 << 1;
-/// Level 1: Software generated interrupt (SOFT)
-pub const IRQ_SOFT: u16 = 1 << 2;
-
-/// Level 2: I/O Ports and timers (CIA-A, PORTS)
-pub const IRQ_PORTS: u16 = 1 << 3;
-
-/// Level 3: Copper coprocessor instruction interrupt (COPER)
-pub const IRQ_COPER: u16 = 1 << 4;
-/// Level 3: Vertical blanking interval (VERTB)
-pub const IRQ_VERTB: u16 = 1 << 5;
-/// Level 3: Blitter operation finished (BLIT)
-pub const IRQ_BLIT: u16 = 1 << 6;
-
-/// Level 4: Audio channel 0 (AUD0)
-pub const IRQ_AUD0: u16 = 1 << 7;
-/// Level 4: Audio channel 1 (AUD1)
-pub const IRQ_AUD1: u16 = 1 << 8;
-/// Level 4: Audio channel 2 (AUD2)
-pub const IRQ_AUD2: u16 = 1 << 9;
-/// Level 4: Audio channel 3 (AUD3)
-pub const IRQ_AUD3: u16 = 1 << 10;
+const MASK_IRQ_WRITE: u16 = 0x7FFF;
 
 /// Returns the interrupt request bitmask for the specified audio channel (0..3)
 #[inline(always)]
 pub const fn irq_aud(channel: usize) -> u16 {
-    (IRQ_AUD0 as u32).wrapping_shl(channel as u32) as u16
+    (intreq::BIT_AUD0 as u32).wrapping_shl(channel as u32) as u16
 }
 
-/// Level 5: Serial receive buffer full (RBF)
-pub const IRQ_RBF: u16 = 1 << 11;
-/// Level 5: Floppy disk sync pattern matched (DSKSYN)
-pub const IRQ_DSKSYN: u16 = 1 << 12;
-
-/// Level 6: External interrupt line (CIA-B, EXTER)
-pub const IRQ_EXTER: u16 = 1 << 13;
-
-/// Master interrupt enable bit in INTENA (bit 14, INTEN)
-pub const INTENA_INTEN: u16 = 1 << 14;
-
-/// Atomic SET/CLR control flag (bit 15) in INTENA / INTREQ
-pub const INT_SET_CLR: u16 = 1 << 15;
-
 /// Mask of all 14 physical interrupt sources (bits 0..13)
-const ALL_IRQS_MASK: u16 = 0x3FFF;
+const MASK_ALL_IRQS: u16 = 0x3FFF;
 
 /// Level 6 mask: EXTER (bit 13)
-const LEVEL6_MASK: u16 = IRQ_EXTER;
+const MASK_LEVEL6: u16 = intreq::BIT_EXTER;
 /// Level 5 mask: DSKSYN (bit 12) | RBF (bit 11)
-const LEVEL5_MASK: u16 = IRQ_DSKSYN | IRQ_RBF;
+const MASK_LEVEL5: u16 = intreq::BIT_DSKSYN | intreq::BIT_RBF;
 /// Level 4 mask: AUD3..0 (bits 10..7)
-const LEVEL4_MASK: u16 = IRQ_AUD3 | IRQ_AUD2 | IRQ_AUD1 | IRQ_AUD0;
+const MASK_LEVEL4: u16 = intreq::BIT_AUD3 | intreq::BIT_AUD2 | intreq::BIT_AUD1 | intreq::BIT_AUD0;
 /// Level 3 mask: BLIT (bit 6) | VERTB (bit 5) | COPER (bit 4)
-const LEVEL3_MASK: u16 = IRQ_BLIT | IRQ_VERTB | IRQ_COPER;
+const MASK_LEVEL3: u16 = intreq::BIT_BLIT | intreq::BIT_VERTB | intreq::BIT_COPER;
 /// Level 2 mask: PORTS (bit 3)
-const LEVEL2_MASK: u16 = IRQ_PORTS;
+const MASK_LEVEL2: u16 = intreq::BIT_PORTS;
 /// Level 1 mask: SOFT (bit 2) | DSKBLK (bit 1) | TBE (bit 0)
-const LEVEL1_MASK: u16 = IRQ_SOFT | IRQ_DSKBLK | IRQ_TBE;
+const MASK_LEVEL1: u16 = intreq::BIT_SOFT | intreq::BIT_DSKBLK | intreq::BIT_TBE;
 
 /// Amiga 500 Central Interrupt Priority Controller
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -101,10 +69,10 @@ impl InterruptController {
     /// - Bits written with 0 remain unmodified.
     #[inline]
     pub fn write_intena(&mut self, val: u16) {
-        if (val & INT_SET_CLR) != 0 {
-            self.intena |= val & 0x7FFF;
+        if (val & intreq::BIT_SET_CLR) != 0 {
+            self.intena |= val & MASK_IRQ_WRITE;
         } else {
-            self.intena &= !(val & 0x7FFF);
+            self.intena &= !(val & MASK_IRQ_WRITE);
         }
     }
 
@@ -114,10 +82,10 @@ impl InterruptController {
     /// - Bits written with 0 remain unmodified.
     #[inline]
     pub fn write_intreq(&mut self, val: u16) {
-        if (val & INT_SET_CLR) != 0 {
-            self.intreq |= val & 0x7FFF;
+        if (val & intreq::BIT_SET_CLR) != 0 {
+            self.intreq |= val & MASK_IRQ_WRITE;
         } else {
-            self.intreq &= !(val & 0x7FFF);
+            self.intreq &= !(val & MASK_IRQ_WRITE);
         }
     }
 
@@ -125,13 +93,13 @@ impl InterruptController {
     /// Used by custom chips and hardware events to assert request lines directly.
     #[inline]
     pub fn request(&mut self, mask: u16) {
-        self.intreq |= mask & 0x7FFF;
+        self.intreq |= mask & MASK_IRQ_WRITE;
     }
 
     /// Returns true if the master interrupt enable bit (INTEN, bit 14) is active.
     #[inline]
     pub fn is_master_enabled(&self) -> bool {
-        (self.intena & INTENA_INTEN) != 0
+        (self.intena & intreq::BIT_INTEN) != 0
     }
 
     /// Evaluates active, enabled interrupt requests and returns the 14-bit mask of pending interrupts.
@@ -141,7 +109,7 @@ impl InterruptController {
         if !self.is_master_enabled() {
             0
         } else {
-            self.intreq & self.intena & ALL_IRQS_MASK
+            self.intreq & self.intena & MASK_ALL_IRQS
         }
     }
 
@@ -155,28 +123,28 @@ impl InterruptController {
         }
 
         // Level 6: External / CIA-B (bit 13)
-        if (pending & LEVEL6_MASK) != 0 {
-            return 6;
+        if (pending & MASK_LEVEL6) != 0 {
+            return LEVEL6;
         }
         // Level 5: Disk Sync (bit 12) or Serial Receive (bit 11)
-        if (pending & LEVEL5_MASK) != 0 {
-            return 5;
+        if (pending & MASK_LEVEL5) != 0 {
+            return LEVEL5;
         }
         // Level 4: Audio channels 0..3 (bits 10..7)
-        if (pending & LEVEL4_MASK) != 0 {
-            return 4;
+        if (pending & MASK_LEVEL4) != 0 {
+            return LEVEL4;
         }
         // Level 3: Blitter (bit 6), Vertical Blank (bit 5), Copper (bit 4)
-        if (pending & LEVEL3_MASK) != 0 {
-            return 3;
+        if (pending & MASK_LEVEL3) != 0 {
+            return LEVEL3;
         }
         // Level 2: External / CIA-A (bit 3)
-        if (pending & LEVEL2_MASK) != 0 {
-            return 2;
+        if (pending & MASK_LEVEL2) != 0 {
+            return LEVEL2;
         }
         // Level 1: Software (bit 2), Disk Block (bit 1), Serial Transmit (bit 0)
-        if (pending & LEVEL1_MASK) != 0 {
-            return 1;
+        if (pending & MASK_LEVEL1) != 0 {
+            return LEVEL1;
         }
 
         0

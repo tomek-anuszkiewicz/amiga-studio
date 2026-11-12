@@ -24,7 +24,7 @@ pub static STEPS_BRA_SHORT: [MicroStep; 5] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(alu_bra_short),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::READ_CONTROL_TARGET_OPCODE_READ,
     common::BUS_READ_IDLE,
@@ -37,7 +37,7 @@ pub static STEPS_BRA_WORD: [MicroStep; 5] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(alu_bra_word),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::READ_CONTROL_TARGET_OPCODE_READ,
     common::BUS_READ_IDLE,

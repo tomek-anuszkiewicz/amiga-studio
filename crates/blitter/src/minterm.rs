@@ -3,6 +3,15 @@
 //! Implements the 8-bit truth table (LF0..LF7) combining channels A, B, and C
 //! into destination D, as well as inclusive and exclusive fill modes.
 
+const BIT_NOT_A_NOT_B_NOT_C: u8 = 0x01;
+const BIT_NOT_A_NOT_B_C: u8 = 0x02;
+const BIT_NOT_A_B_NOT_C: u8 = 0x04;
+const BIT_NOT_A_B_C: u8 = 0x08;
+const BIT_A_NOT_B_NOT_C: u8 = 0x10;
+const BIT_A_NOT_B_C: u8 = 0x20;
+const BIT_A_B_NOT_C: u8 = 0x40;
+const BIT_A_B_C: u8 = 0x80;
+
 /// Evaluates the 256-minterm Boolean ALU for 16-bit word operands A, B, and C.
 ///
 /// Bits 7..0 of `minterm` correspond to truth table terms LF7..LF0:
@@ -17,28 +26,28 @@
 #[inline(always)]
 pub fn eval_minterm(a: u16, b: u16, c: u16, minterm: u8) -> u16 {
     let mut res = 0u16;
-    if (minterm & 0x80) != 0 {
+    if (minterm & BIT_A_B_C) != 0 {
         res |= a & b & c;
     }
-    if (minterm & 0x40) != 0 {
+    if (minterm & BIT_A_B_NOT_C) != 0 {
         res |= a & b & !c;
     }
-    if (minterm & 0x20) != 0 {
+    if (minterm & BIT_A_NOT_B_C) != 0 {
         res |= a & !b & c;
     }
-    if (minterm & 0x10) != 0 {
+    if (minterm & BIT_A_NOT_B_NOT_C) != 0 {
         res |= a & !b & !c;
     }
-    if (minterm & 0x08) != 0 {
+    if (minterm & BIT_NOT_A_B_C) != 0 {
         res |= !a & b & c;
     }
-    if (minterm & 0x04) != 0 {
+    if (minterm & BIT_NOT_A_B_NOT_C) != 0 {
         res |= !a & b & !c;
     }
-    if (minterm & 0x02) != 0 {
+    if (minterm & BIT_NOT_A_NOT_B_C) != 0 {
         res |= !a & !b & c;
     }
-    if (minterm & 0x01) != 0 {
+    if (minterm & BIT_NOT_A_NOT_B_NOT_C) != 0 {
         res |= !a & !b & !c;
     }
     res

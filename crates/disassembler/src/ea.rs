@@ -3,65 +3,88 @@
 //! Provides zero-panic formatting for addressing modes, immediate values,
 //! condition codes, and MOVEM register masks.
 
+use crate::encoding::{condition, extended_mode, field, mode};
+
+const REGISTER_BANK_COUNT: usize = 8;
 pub(crate) fn is_data_alterable_ea(mode: u8, reg: u8) -> bool {
-    matches!(mode, 0 | 2..=6) || (mode == 7 && reg <= 1)
+    matches!(mode, mode::DATA_REGISTER | mode::INDIRECT..=mode::INDEXED)
+        || (mode == mode::EXTENDED && reg <= extended_mode::ABSOLUTE_LONG)
 }
 
 pub(crate) fn is_data_ea(mode: u8, reg: u8) -> bool {
-    matches!(mode, 0 | 2..=6) || (mode == 7 && reg <= 4)
+    matches!(mode, mode::DATA_REGISTER | mode::INDIRECT..=mode::INDEXED)
+        || (mode == mode::EXTENDED && reg <= extended_mode::IMMEDIATE)
 }
 
 pub(crate) fn is_memory_alterable_ea(mode: u8, reg: u8) -> bool {
-    matches!(mode, 2..=6) || (mode == 7 && reg <= 1)
+    matches!(mode, mode::INDIRECT..=mode::INDEXED)
+        || (mode == mode::EXTENDED && reg <= extended_mode::ABSOLUTE_LONG)
 }
 
 pub(crate) fn is_control_ea(mode: u8, reg: u8) -> bool {
-    matches!(mode, 2 | 5 | 6) || (mode == 7 && reg <= 3)
+    matches!(mode, mode::INDIRECT | mode::DISPLACEMENT | mode::INDEXED)
+        || (mode == mode::EXTENDED && reg <= extended_mode::PC_INDEXED)
 }
 
 /// Formats an effective address (EA) based on mode (0..7) and register (0..7)
 pub fn format_ea(mode: u8, reg: u8, mut read_ext: impl FnMut() -> u16) -> String {
     match mode {
-        0 => format!("D{}", reg),
-        1 => format!("A{}", reg),
-        2 => format!("(A{})", reg),
-        3 => format!("(A{})+", reg),
-        4 => format!("-(A{})", reg),
-        5 => {
+        mode::DATA_REGISTER => format!("D{}", reg),
+        mode::ADDRESS_REGISTER => format!("A{}", reg),
+        mode::INDIRECT => format!("(A{})", reg),
+        mode::POSTINCREMENT => format!("(A{})+", reg),
+        mode::PREDECREMENT => format!("-(A{})", reg),
+        mode::DISPLACEMENT => {
             let d16 = read_ext() as i16;
             format!("(${:04X}, A{})", d16, reg)
         }
-        6 => {
+        mode::INDEXED => {
             let ext = read_ext();
-            let idx_name = if (ext & 0x8000) != 0 { 'A' } else { 'D' };
-            let idx_num = (ext >> 12) & 0x07;
-            let sz = if (ext & 0x0800) != 0 { ".L" } else { ".W" };
+            let idx_name = if (ext & field::BIT_INDEX_ADDRESS_REGISTER) != 0 {
+                'A'
+            } else {
+                'D'
+            };
+            let idx_num = (ext >> field::BIT_INDEX_REGISTER_SHIFT) & field::MASK_REGISTER;
+            let sz = if (ext & field::BIT_INDEX_LONG) != 0 {
+                ".L"
+            } else {
+                ".W"
+            };
             let d8 = (ext & 0xFF) as i8;
             format!("(${:02X}, A{}, {}{}{})", d8, reg, idx_name, idx_num, sz)
         }
-        7 => match reg {
-            0 => {
+        mode::EXTENDED => match reg {
+            extended_mode::ABSOLUTE_WORD => {
                 let w = read_ext();
                 format!("(${:04X}).W", w)
             }
-            1 => {
+            extended_mode::ABSOLUTE_LONG => {
                 let hi = read_ext() as u32;
                 let lo = read_ext() as u32;
                 format!("(${:08X}).L", (hi << 16) | lo)
             }
-            2 => {
+            extended_mode::PC_DISPLACEMENT => {
                 let d16 = read_ext() as i16;
                 format!("(${:04X}, PC)", d16)
             }
-            3 => {
+            extended_mode::PC_INDEXED => {
                 let ext = read_ext();
-                let idx_name = if (ext & 0x8000) != 0 { 'A' } else { 'D' };
-                let idx_num = (ext >> 12) & 0x07;
-                let sz = if (ext & 0x0800) != 0 { ".L" } else { ".W" };
+                let idx_name = if (ext & field::BIT_INDEX_ADDRESS_REGISTER) != 0 {
+                    'A'
+                } else {
+                    'D'
+                };
+                let idx_num = (ext >> field::BIT_INDEX_REGISTER_SHIFT) & field::MASK_REGISTER;
+                let sz = if (ext & field::BIT_INDEX_LONG) != 0 {
+                    ".L"
+                } else {
+                    ".W"
+                };
                 let d8 = (ext & 0xFF) as i8;
                 format!("(${:02X}, PC, {}{}{})", d8, idx_name, idx_num, sz)
             }
-            4 => {
+            extended_mode::IMMEDIATE => {
                 let val = read_ext();
                 format!("#${:04X}", val)
             }
@@ -99,15 +122,23 @@ pub fn format_movem_reg_list(mask: u16, is_predec: bool) -> String {
 
     let mut regs = Vec::new();
     // Data registers D0..D7 in ascending order
-    for k in 0..8 {
-        let bit = if is_predec { 15 - k } else { k };
+    for k in 0..REGISTER_BANK_COUNT {
+        let bit = if is_predec {
+            2 * REGISTER_BANK_COUNT - 1 - k
+        } else {
+            k
+        };
         if (mask & (1 << bit)) != 0 {
             regs.push(format!("D{}", k));
         }
     }
     // Address registers A0..A7 in ascending order
-    for k in 0..8 {
-        let bit = if is_predec { 7 - k } else { 8 + k };
+    for k in 0..REGISTER_BANK_COUNT {
+        let bit = if is_predec {
+            REGISTER_BANK_COUNT - 1 - k
+        } else {
+            REGISTER_BANK_COUNT + k
+        };
         if (mask & (1 << bit)) != 0 {
             regs.push(format!("A{}", k));
         }
@@ -157,69 +188,69 @@ fn collapse_reg_ranges(regs: &[String]) -> String {
 
 /// Returns standard M68000 Bcc condition mnemonic (BRA, BSR, BNE, etc.)
 pub fn bcc_condition_name(cond: u8) -> &'static str {
-    match cond & 0x0F {
-        0 => "BRA",
-        1 => "BSR",
-        2 => "BHI",
-        3 => "BLS",
-        4 => "BCC",
-        5 => "BCS",
-        6 => "BNE",
-        7 => "BEQ",
-        8 => "BVC",
-        9 => "BVS",
-        10 => "BPL",
-        11 => "BMI",
-        12 => "BGE",
-        13 => "BLT",
-        14 => "BGT",
-        15 => "BLE",
+    match cond & condition::MASK_CONDITION {
+        condition::TRUE => "BRA",
+        condition::FALSE => "BSR",
+        condition::HIGH => "BHI",
+        condition::LOW_OR_SAME => "BLS",
+        condition::CARRY_CLEAR => "BCC",
+        condition::CARRY_SET => "BCS",
+        condition::NOT_EQUAL => "BNE",
+        condition::EQUAL => "BEQ",
+        condition::OVERFLOW_CLEAR => "BVC",
+        condition::OVERFLOW_SET => "BVS",
+        condition::PLUS => "BPL",
+        condition::MINUS => "BMI",
+        condition::GREATER_OR_EQUAL => "BGE",
+        condition::LESS_THAN => "BLT",
+        condition::GREATER_THAN => "BGT",
+        condition::LESS_OR_EQUAL => "BLE",
         _ => "Bcc",
     }
 }
 
 /// Returns standard M68000 DBcc condition mnemonic (DBT, DBRA, DBNE, etc.)
 pub fn dbcc_condition_name(cond: u8) -> &'static str {
-    match cond & 0x0F {
-        0 => "DBT",
-        1 => "DBF",
-        2 => "DBHI",
-        3 => "DBLS",
-        4 => "DBCC",
-        5 => "DBCS",
-        6 => "DBNE",
-        7 => "DBEQ",
-        8 => "DBVC",
-        9 => "DBVS",
-        10 => "DBPL",
-        11 => "DBMI",
-        12 => "DBGE",
-        13 => "DBLT",
-        14 => "DBGT",
-        15 => "DBLE",
+    match cond & condition::MASK_CONDITION {
+        condition::TRUE => "DBT",
+        condition::FALSE => "DBF",
+        condition::HIGH => "DBHI",
+        condition::LOW_OR_SAME => "DBLS",
+        condition::CARRY_CLEAR => "DBCC",
+        condition::CARRY_SET => "DBCS",
+        condition::NOT_EQUAL => "DBNE",
+        condition::EQUAL => "DBEQ",
+        condition::OVERFLOW_CLEAR => "DBVC",
+        condition::OVERFLOW_SET => "DBVS",
+        condition::PLUS => "DBPL",
+        condition::MINUS => "DBMI",
+        condition::GREATER_OR_EQUAL => "DBGE",
+        condition::LESS_THAN => "DBLT",
+        condition::GREATER_THAN => "DBGT",
+        condition::LESS_OR_EQUAL => "DBLE",
         _ => "DBcc",
     }
 }
 
 /// Returns standard M68000 Scc condition mnemonic (ST, SF, SNE, etc.)
 pub fn scc_condition_name(cond: u8) -> &'static str {
-    match cond & 0x0F {
-        0 => "ST",
-        1 => "SF",
-        2 => "SHI",
-        3 => "SLS",
-        4 => "SCC",
-        5 => "SCS",
-        6 => "SNE",
-        7 => "SEQ",
-        8 => "SVC",
-        9 => "SVS",
-        10 => "SPL",
-        11 => "SMI",
-        12 => "SGE",
-        13 => "SLT",
-        14 => "SGT",
-        15 => "SLE",
+    match cond & condition::MASK_CONDITION {
+        condition::TRUE => "ST",
+        condition::FALSE => "SF",
+        condition::HIGH => "SHI",
+        condition::LOW_OR_SAME => "SLS",
+        condition::CARRY_CLEAR => "SCC",
+        condition::CARRY_SET => "SCS",
+        condition::NOT_EQUAL => "SNE",
+        condition::EQUAL => "SEQ",
+        condition::OVERFLOW_CLEAR => "SVC",
+        condition::OVERFLOW_SET => "SVS",
+        condition::PLUS => "SPL",
+        condition::MINUS => "SMI",
+        condition::GREATER_OR_EQUAL => "SGE",
+        condition::LESS_THAN => "SLT",
+        condition::GREATER_THAN => "SGT",
+        condition::LESS_OR_EQUAL => "SLE",
         _ => "Scc",
     }
 }

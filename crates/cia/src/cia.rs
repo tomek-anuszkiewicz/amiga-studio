@@ -3,44 +3,39 @@
 //! Reusable 8520 chip core with 16-bit decrementing Timers A & B,
 //! bidirectional 8-bit Ports A & B, 24-bit TOD clock, SDR, and ICR.
 
-use config::cia_reg::{cia_a, cia_b};
-use config::{stage_mutation, tick_mutations, DelayedMutation, MutationMode};
+mod pins;
+mod registers;
+pub use pins::{CiaInputs, CiaPins};
+use registers::{
+    BIT_CONTROL_ONE_SHOT, BIT_CONTROL_START, BIT_CRA_SERIAL_OUTPUT, BIT_CRB_INPUT_MODE_SHIFT,
+    BIT_ICR_ALARM, BIT_ICR_FLAG, BIT_ICR_PENDING, BIT_ICR_TIMER_A, BIT_ICR_TIMER_B, CRB_COUNT_CNT,
+    CRB_COUNT_ECLOCK, CRB_COUNT_TA_UNDERFLOW, CRB_COUNT_TA_UNDERFLOW_CNT_HIGH, MASK_CRB_INPUT_MODE,
+    MASK_ICR_SOURCE, MASK_TOD_COUNTER,
+};
+
+use config::{tick_mutations, DelayedMutation};
 use serde::{Deserialize, Serialize};
 
 /// Number of Color Clocks per Motorola E-Clock tick (5 CCK = 10 CPU cycles)
 const CCK_PER_ECLOCK: u8 = 5;
+/// Falling E edge in the current CCK phase convention.
+const E_WRITE_CAPTURE_PHASE: u8 = 2;
+const E_TIMER_TICK_PHASE: u8 = 0;
+const TIMER_RESET_VALUE: u16 = 0xFFFF;
+/// CPU transfer acceptance occurs one CCK before falling E.
+const E_BUS_ACCESS_PHASE: u8 = E_WRITE_CAPTURE_PHASE - 1;
+/// Minimum attempt-to-acceptance interval reproducing vAmiga's even-phase table.
+/// This is a model setting in CCK, not a measured pin propagation delay.
+const MIN_BUS_SYNC_CCK: u8 = 3;
 
 /// Total number of 8520 registers
 const CIA_REGISTER_COUNT: usize = 16;
-const CIA_ADDRESS_BANK_BASE: u32 = 0xBF0000;
-
-/// CIA-A Port A bit 6: /FIR0 (Port 1 left mouse button, active low)
-pub const CIAA_PRA_FIR0: u8 = 0x40;
-
-/// CIA-A Port A bit 7: /FIR1 (Port 2 joystick fire 1, active low)
-pub const CIAA_PRA_FIR1: u8 = 0x80;
-
-/// CIA-A Port A pin mask for game ports primary fire buttons (bits 6..7: /FIR0, /FIR1)
-pub const CIAA_PRA_FIRE_MASK: u8 = CIAA_PRA_FIR0 | CIAA_PRA_FIR1;
-
-/// CIA-A Port A pin mask for floppy drive status sensing lines (bits 2..5: _RDY, _TK0, _WPROT, _CHNG)
-pub const CIAA_PRA_FLOPPY_SENSE_MASK: u8 = 0x3C;
-
-/// CIA chip identity (CIA-A or CIA-B)
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
-pub enum CiaId {
-    /// CIA-A (connected to IRQ level 2, keyboard, game port fire, OVL)
-    #[default]
-    A,
-    /// CIA-B (connected to IRQ level 6, parallel port, floppy control)
-    B,
-}
 
 /// MOS 8520 CIA chip state
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct Cia {
-    /// CIA chip identifier
-    pub id: CiaId,
+    /// Input capture and output drive boundary for motherboard serial/handshake lines.
+    pub pins: CiaPins,
     /// Port A Data Register (PRA)
     pub pra: u8,
     /// Port B Data Register (PRB)
@@ -77,7 +72,7 @@ pub struct Cia {
     pub tod_latched: bool,
     /// Frozen TOD snapshot value captured upon reading TODHI
     pub tod_latch_val: u32,
-    /// True if TOD counter increment is halted (halted by writing TODHI until TODLO is written)
+    /// True if TOD counting is halted by a middle/high time write until TODLO is written
     pub tod_halted: bool,
     /// Serial Data Register (shift register)
     pub sdr: u8,
@@ -88,88 +83,99 @@ pub struct Cia {
     /// Internal Color Clock divider phase to E-Clock (0..4)
     pub eclock_phase: u8,
 
+    /// Remaining CCKs in a synchronized CPU bus access; zero awaits acknowledgment.
+    pub bus_wait_cck: Option<u8>,
+    /// Pending TOD latch acquire/release, applied at the falling E edge.
+    pub tod_read_latch: Option<bool>,
+    /// Captured value for a pending TOD high-byte read.
+    pub tod_read_value: u32,
+
     /// Fixed inline in-flight register mutation buffer for CIA
     pub mutations: [Option<DelayedMutation>; CIA_REGISTER_COUNT],
 }
 
 impl Cia {
-    /// Creates a new CIA instance for the given identifier
-    pub fn new(id: CiaId) -> Self {
+    /// Creates a new MOS 8520 instance
+    pub fn new() -> Self {
         Self {
-            id,
-            ta_latch: 0xFFFF,
-            ta_counter: 0xFFFF,
-            tb_latch: 0xFFFF,
-            tb_counter: 0xFFFF,
+            ta_latch: TIMER_RESET_VALUE,
+            ta_counter: TIMER_RESET_VALUE,
+            tb_latch: TIMER_RESET_VALUE,
+            tb_counter: TIMER_RESET_VALUE,
             ..Default::default()
         }
     }
 
     /// Resets all CIA registers to power-on defaults
     pub fn reset(&mut self) {
-        self.pra = 0;
-        self.prb = 0;
-        self.prev_pra = 0;
-        self.prev_prb = 0;
-        self.pra_mutated = false;
-        self.prb_mutated = false;
-        self.ddra = 0;
-        self.ddrb = 0;
-        self.ta_latch = 0xFFFF;
-        self.ta_counter = 0xFFFF;
-        self.cra = 0;
-        self.tb_latch = 0xFFFF;
-        self.tb_counter = 0xFFFF;
-        self.crb = 0;
-        self.tod = 0;
-        self.tod_alarm = 0;
-        self.tod_latched = false;
-        self.tod_latch_val = 0;
-        self.tod_halted = false;
-        self.sdr = 0;
-        self.icr_data = 0;
-        self.icr_mask = 0;
-        self.eclock_phase = 0;
-        self.mutations = [None; CIA_REGISTER_COUNT];
+        *self = Self::new();
     }
 
-    /// Advances CIA internal timers and E-Clock prescaler by 1 Color Clock.
-    /// Returns any register writes that matured and committed on this exact cycle.
-    pub fn step_cck(&mut self) -> [Option<(u32, u8)>; 4] {
-        self.eclock_phase = self.eclock_phase.wrapping_add(1);
-        if self.eclock_phase >= CCK_PER_ECLOCK {
-            self.eclock_phase = 0;
-            self.step_eclock()
-        } else {
-            [None; 4]
-        }
-    }
-
-    /// Ticks CIA timers on each E-Clock pulse (every 5 CCKs)
-    fn step_eclock(&mut self) -> [Option<(u32, u8)>; 4] {
-        // 1. Process in-flight mutations scheduled for this E-Clock
-        let mut due = [None; 4];
+    /// Advances the E-clock phase: rising at 0, falling at 2 (two CCK high).
+    pub fn step_cck(&mut self) {
+        self.eclock_phase = self.eclock_phase.wrapping_add(1) % CCK_PER_ECLOCK;
+        self.bus_wait_cck = self.bus_wait_cck.map(|n| n.saturating_sub(1));
+        let mut due = [None; CIA_REGISTER_COUNT];
         let mut due_count = 0;
-        tick_mutations(&mut self.mutations, |reg, val| {
-            if due_count < due.len() {
-                // CIA mutations retain the low 16 bits of a $BFxxxx register address.
-                due[due_count] = Some((CIA_ADDRESS_BANK_BASE | u32::from(reg), val as u8));
-                due_count += 1;
-            }
+        tick_mutations(&mut self.mutations, |selector, value| {
+            due[due_count] = Some((selector, value as u8));
+            due_count += 1;
         });
-        for item in due.iter().flatten() {
-            self.commit_register_write(item.0, item.1);
+        for (selector, value) in due.into_iter().flatten() {
+            self.apply_register(selector, value);
         }
+        if self.eclock_phase == E_WRITE_CAPTURE_PHASE {
+            if let Some(latched) = self.tod_read_latch.take() {
+                self.tod_latched = latched;
+                if latched {
+                    self.tod_latch_val = self.tod_read_value;
+                }
+            }
+        }
+        if self.eclock_phase == E_TIMER_TICK_PHASE {
+            self.step_eclock();
+        }
+    }
 
+    /// Prepares a stable CPU access for the penultimate high E-clock CCK.
+    /// Readiness is retained until the motherboard accepts the whole transfer.
+    /// The five delays are the even CPU-phase entries in vAmiga's E-clock table.
+    pub fn synchronize_bus_access(&mut self) -> bool {
+        match self.bus_wait_cck {
+            None => {
+                let cck_until_access =
+                    (CCK_PER_ECLOCK + E_BUS_ACCESS_PHASE - self.eclock_phase) % CCK_PER_ECLOCK;
+                // If the nearest acceptance window is too close, use the next E period.
+                let wait = if cck_until_access < MIN_BUS_SYNC_CCK {
+                    cck_until_access + CCK_PER_ECLOCK
+                } else {
+                    cck_until_access
+                };
+                self.bus_wait_cck = Some(wait);
+                false
+            }
+            Some(0) if self.eclock_phase == E_BUS_ACCESS_PHASE => true,
+            Some(_) => false,
+        }
+    }
+
+    /// Completes synchronization after every receiving chip is ready.
+    #[inline]
+    pub fn finish_bus_access(&mut self) {
+        self.bus_wait_cck = None;
+    }
+
+    /// Ticks the existing timer engines on the rising E edge.
+    fn step_eclock(&mut self) {
         // 2. Timer A down-count (if CRA bit 0 is set)
         let mut ta_underflow = false;
-        if (self.cra & 0x01) != 0 {
+        if (self.cra & BIT_CONTROL_START) != 0 {
             if self.ta_counter == 0 {
                 self.ta_counter = self.ta_latch;
-                self.trigger_icr(0x01); // Bit 0: Timer A underflow
+                self.trigger_icr(BIT_ICR_TIMER_A); // Bit 0: Timer A underflow
                 ta_underflow = true;
-                if (self.cra & 0x08) != 0 {
-                    self.cra &= !0x01; // One-shot mode: stop timer
+                if (self.cra & BIT_CONTROL_ONE_SHOT) != 0 {
+                    self.cra &= !BIT_CONTROL_START; // One-shot mode: stop timer
                 }
             } else {
                 self.ta_counter = self.ta_counter.wrapping_sub(1);
@@ -177,253 +183,40 @@ impl Cia {
         }
 
         // 3. Timer B down-count (if CRB bit 0 is set)
-        if (self.crb & 0x01) != 0 {
-            let inmode = (self.crb >> 5) & 0x03;
+        if (self.crb & BIT_CONTROL_START) != 0 {
+            let inmode = (self.crb >> BIT_CRB_INPUT_MODE_SHIFT) & MASK_CRB_INPUT_MODE;
             let tb_decrement = match inmode {
-                0x00 => true,                // Counts E-Clock pulses
-                0x02 | 0x03 => ta_underflow, // Cascaded 32-bit counting: Timer A underflow pulses
-                _ => false,                  // 0x01: Counts CNT pin pulses (handled via step_cnt)
+                CRB_COUNT_ECLOCK => true, // Counts E-Clock pulses
+                CRB_COUNT_TA_UNDERFLOW | CRB_COUNT_TA_UNDERFLOW_CNT_HIGH => ta_underflow, // Cascaded 32-bit counting: Timer A underflow pulses
+                _ => false, // 0x01: Counts CNT pin pulses (handled via step_cnt)
             };
 
             if tb_decrement {
                 if self.tb_counter == 0 {
                     self.tb_counter = self.tb_latch;
-                    self.trigger_icr(0x02); // Bit 1: Timer B underflow
-                    if (self.crb & 0x08) != 0 {
-                        self.crb &= !0x01; // One-shot mode: stop timer
+                    self.trigger_icr(BIT_ICR_TIMER_B); // Bit 1: Timer B underflow
+                    if (self.crb & BIT_CONTROL_ONE_SHOT) != 0 {
+                        self.crb &= !BIT_CONTROL_START; // One-shot mode: stop timer
                     }
                 } else {
                     self.tb_counter = self.tb_counter.wrapping_sub(1);
                 }
             }
         }
-
-        due
     }
 
     /// Sets ICR request bit and updates master IRQ flag
     pub fn trigger_icr(&mut self, bit: u8) {
-        self.icr_data |= bit & 0x1F;
-        if (self.icr_data & self.icr_mask & 0x1F) != 0 {
-            self.icr_data |= 0x80; // Master interrupt pending bit
+        self.icr_data |= bit & MASK_ICR_SOURCE;
+        if (self.icr_data & self.icr_mask & MASK_ICR_SOURCE) != 0 {
+            self.icr_data |= BIT_ICR_PENDING; // Master interrupt pending bit
         }
     }
 
     /// Returns true if an unmasked interrupt request is currently pending
     #[inline]
     pub fn irq_pending(&self) -> bool {
-        (self.icr_data & 0x80) != 0
-    }
-
-    /// Reads a mapped CIA register with clear-on-read for ICR and atomic latching for TOD.
-    pub fn read_register(&mut self, reg: u32) -> u8 {
-        match reg {
-            cia_a::PRA | cia_b::PRA => self.pra,
-            cia_a::PRB | cia_b::PRB => self.prb,
-            cia_a::DDRA | cia_b::DDRA => self.ddra,
-            cia_a::DDRB | cia_b::DDRB => self.ddrb,
-            cia_a::TALO | cia_b::TALO => (self.ta_counter & 0xFF) as u8,
-            cia_a::TAHI | cia_b::TAHI => (self.ta_counter >> 8) as u8,
-            cia_a::TBLO | cia_b::TBLO => (self.tb_counter & 0xFF) as u8,
-            cia_a::TBHI | cia_b::TBHI => (self.tb_counter >> 8) as u8,
-            cia_a::TODLO | cia_b::TODLO => {
-                // Reading TODLO unlatches TOD
-                let val = if self.tod_latched {
-                    (self.tod_latch_val & 0xFF) as u8
-                } else {
-                    (self.tod & 0xFF) as u8
-                };
-                self.tod_latched = false;
-                val
-            }
-            cia_a::TODMID | cia_b::TODMID => {
-                if self.tod_latched {
-                    ((self.tod_latch_val >> 8) & 0xFF) as u8
-                } else {
-                    ((self.tod >> 8) & 0xFF) as u8
-                }
-            }
-            cia_a::TODHI | cia_b::TODHI => {
-                // Reading TODHI freezes/latches TOD
-                self.tod_latched = true;
-                self.tod_latch_val = self.tod;
-                ((self.tod >> 16) & 0xFF) as u8
-            }
-            cia_a::SDR | cia_b::SDR => self.sdr,
-            cia_a::ICR | cia_b::ICR => {
-                let val = self.icr_data;
-                self.icr_data = 0; // Clear on read
-                val
-            }
-            cia_a::CRA | cia_b::CRA => self.cra,
-            cia_a::CRB | cia_b::CRB => self.crb,
-            _ => config::OPEN_BUS_BYTE,
-        }
-    }
-
-    /// Read-only inspection of register without side-effects (for debuggers)
-    #[inline]
-    pub fn peek_register(&self, reg: u32) -> u8 {
-        match reg {
-            cia_a::PRA | cia_b::PRA => self.pra,
-            cia_a::PRB | cia_b::PRB => self.prb,
-            cia_a::DDRA | cia_b::DDRA => self.ddra,
-            cia_a::DDRB | cia_b::DDRB => self.ddrb,
-            cia_a::TALO | cia_b::TALO => (self.ta_counter & 0xFF) as u8,
-            cia_a::TAHI | cia_b::TAHI => (self.ta_counter >> 8) as u8,
-            cia_a::TBLO | cia_b::TBLO => (self.tb_counter & 0xFF) as u8,
-            cia_a::TBHI | cia_b::TBHI => (self.tb_counter >> 8) as u8,
-            cia_a::TODLO | cia_b::TODLO => (self.tod & 0xFF) as u8,
-            cia_a::TODMID | cia_b::TODMID => ((self.tod >> 8) & 0xFF) as u8,
-            cia_a::TODHI | cia_b::TODHI => ((self.tod >> 16) & 0xFF) as u8,
-            cia_a::SDR | cia_b::SDR => self.sdr,
-            cia_a::ICR | cia_b::ICR => self.icr_data,
-            cia_a::CRA | cia_b::CRA => self.cra,
-            cia_a::CRB | cia_b::CRB => self.crb,
-            _ => config::OPEN_BUS_BYTE,
-        }
-    }
-
-    /// Read-only inspection of register without side-effects for debugging
-    #[inline(always)]
-    pub fn read_register_debug(&self, reg: u32) -> u8 {
-        self.peek_register(reg)
-    }
-
-    /// Stages a mapped register write with E-Clock delay in the mutation pipeline.
-    /// Returns `Some((reg, val))` if committed immediately, or `None` if staged in pipeline.
-    pub fn stage_write(
-        &mut self,
-        reg: u32,
-        val: u8,
-        delay_eclocks: u8,
-        mode: MutationMode,
-    ) -> Option<(u32, u8)> {
-        if !stage_mutation(
-            &mut self.mutations,
-            reg as u16,
-            val as u16,
-            delay_eclocks,
-            mode,
-        ) {
-            self.commit_register_write(reg, val);
-            Some((reg, val))
-        } else {
-            None
-        }
-    }
-
-    /// Writes CIA register directly upon completion of synchronous E-Clock bus cycle.
-    /// Returns `Some((reg, val))` representing the committed write.
-    pub fn write_register(&mut self, reg: u32, val: u8) -> Option<(u32, u8)> {
-        self.commit_register_write(reg, val);
-        Some((reg, val))
-    }
-
-    /// Injects external peripheral input pin levels into Port A for bits configured as inputs (`!ddra`)
-    #[inline]
-    pub fn set_input_pins_a(&mut self, pins: u8, mask: u8) {
-        let input_mask = mask & !self.ddra;
-        self.pra = (self.pra & !input_mask) | (pins & input_mask);
-    }
-
-    /// Polls whether Port A output data was written, clearing the flag and returning the written byte
-    #[inline]
-    pub fn poll_pra_output(&mut self) -> Option<u8> {
-        if self.pra_mutated {
-            self.pra_mutated = false;
-            Some(self.pra)
-        } else {
-            None
-        }
-    }
-
-    /// Polls whether Port B output data was written, clearing the flag and returning the written byte
-    #[inline]
-    pub fn poll_prb_output(&mut self) -> Option<u8> {
-        if self.prb_mutated {
-            self.prb_mutated = false;
-            Some(self.prb)
-        } else {
-            None
-        }
-    }
-
-    /// Commits a register write directly into active CIA silicon state
-    pub fn commit_register_write(&mut self, reg: u32, val: u8) {
-        match reg {
-            cia_a::PRA | cia_b::PRA => {
-                self.prev_pra = self.pra;
-                self.pra = val;
-                self.pra_mutated = true;
-            }
-            cia_a::PRB | cia_b::PRB => {
-                self.prev_prb = self.prb;
-                self.prb = val;
-                self.prb_mutated = true;
-            }
-            cia_a::DDRA | cia_b::DDRA => self.ddra = val,
-            cia_a::DDRB | cia_b::DDRB => self.ddrb = val,
-            cia_a::TALO | cia_b::TALO => self.ta_latch = (self.ta_latch & 0xFF00) | (val as u16),
-            cia_a::TAHI | cia_b::TAHI => {
-                self.ta_latch = (self.ta_latch & 0x00FF) | ((val as u16) << 8);
-                if (self.cra & 0x01) == 0 {
-                    self.ta_counter = self.ta_latch;
-                }
-            }
-            cia_a::TBLO | cia_b::TBLO => self.tb_latch = (self.tb_latch & 0xFF00) | (val as u16),
-            cia_a::TBHI | cia_b::TBHI => {
-                self.tb_latch = (self.tb_latch & 0x00FF) | ((val as u16) << 8);
-                if (self.crb & 0x01) == 0 {
-                    self.tb_counter = self.tb_latch;
-                }
-            }
-            cia_a::TODLO | cia_b::TODLO => {
-                if (self.crb & 0x80) != 0 {
-                    self.tod_alarm = (self.tod_alarm & 0xFFFF00) | (val as u32);
-                } else {
-                    self.tod = (self.tod & 0xFFFF00) | (val as u32);
-                    self.tod_halted = false; // Writing TODLO restarts counter
-                }
-            }
-            cia_a::TODMID | cia_b::TODMID => {
-                if (self.crb & 0x80) != 0 {
-                    self.tod_alarm = (self.tod_alarm & 0xFF00FF) | ((val as u32) << 8);
-                } else {
-                    self.tod = (self.tod & 0xFF00FF) | ((val as u32) << 8);
-                }
-            }
-            cia_a::TODHI | cia_b::TODHI => {
-                if (self.crb & 0x80) != 0 {
-                    self.tod_alarm = (self.tod_alarm & 0x00FFFF) | ((val as u32) << 16);
-                } else {
-                    self.tod = (self.tod & 0x00FFFF) | ((val as u32) << 16);
-                    self.tod_halted = true; // Writing TODHI halts counter until TODLO is written
-                }
-            }
-            cia_a::SDR | cia_b::SDR => self.sdr = val,
-            cia_a::ICR | cia_b::ICR => {
-                // SET/CLR bit 7 logic for ICR mask
-                if (val & 0x80) != 0 {
-                    self.icr_mask |= val & 0x1F;
-                } else {
-                    self.icr_mask &= !(val & 0x1F);
-                }
-            }
-            cia_a::CRA | cia_b::CRA => {
-                self.cra = val;
-                if (val & 0x10) != 0 {
-                    self.ta_counter = self.ta_latch; // Force load
-                }
-            }
-            cia_a::CRB | cia_b::CRB => {
-                self.crb = val;
-                if (val & 0x10) != 0 {
-                    self.tb_counter = self.tb_latch; // Force load
-                }
-            }
-            _ => {}
-        }
+        (self.icr_data & BIT_ICR_PENDING) != 0
     }
 
     /// Advances the 24-bit Time-of-Day (TOD) counter by 1 tick.
@@ -434,9 +227,9 @@ impl Cia {
     /// asserts the TOD alarm interrupt in ICR (bit 2).
     pub fn tick_tod(&mut self) {
         if !self.tod_halted {
-            self.tod = (self.tod.wrapping_add(1)) & 0x00FF_FFFF;
-            if self.tod == (self.tod_alarm & 0x00FF_FFFF) {
-                self.trigger_icr(0x04); // Bit 2: TOD alarm match
+            self.tod = (self.tod.wrapping_add(1)) & MASK_TOD_COUNTER;
+            if self.tod == (self.tod_alarm & MASK_TOD_COUNTER) {
+                self.trigger_icr(BIT_ICR_ALARM); // Bit 2: TOD alarm match
             }
         }
     }
@@ -444,12 +237,14 @@ impl Cia {
     /// Clocks an external transition on the CNT pin.
     /// If Timer B is in CNT count mode (CRB bits 6..5 == %01), decrements Timer B.
     pub fn step_cnt(&mut self) {
-        if (self.crb & 0x01) != 0 && ((self.crb >> 5) & 0x03) == 0x01 {
+        if (self.crb & BIT_CONTROL_START) != 0
+            && ((self.crb >> BIT_CRB_INPUT_MODE_SHIFT) & MASK_CRB_INPUT_MODE) == CRB_COUNT_CNT
+        {
             if self.tb_counter == 0 {
                 self.tb_counter = self.tb_latch;
-                self.trigger_icr(0x02); // Bit 1: Timer B underflow
-                if (self.crb & 0x08) != 0 {
-                    self.crb &= !0x01; // One-shot mode: stop timer
+                self.trigger_icr(BIT_ICR_TIMER_B); // Bit 1: Timer B underflow
+                if (self.crb & BIT_CONTROL_ONE_SHOT) != 0 {
+                    self.crb &= !BIT_CONTROL_START; // One-shot mode: stop timer
                 }
             } else {
                 self.tb_counter = self.tb_counter.wrapping_sub(1);
@@ -457,47 +252,16 @@ impl Cia {
         }
     }
 
-    /// Shifts an 8-bit byte serially into the SDR from an external device (e.g. keyboard),
-    /// latching the byte and asserting the SDR interrupt in ICR (bit 3).
-    pub fn shift_in_sdr(&mut self, val: u8) {
-        self.sdr = val;
-        self.trigger_icr(0x08); // Bit 3: SDR shift complete
-    }
-
     /// Returns true if the SDR is configured in serial output mode (CRA bit 6 = 1)
     #[inline]
     pub fn is_sdr_output(&self) -> bool {
-        (self.cra & 0x40) != 0
+        (self.cra & BIT_CRA_SERIAL_OUTPUT) != 0
     }
 
     /// Triggers the FLAG pin negative edge interrupt (ICR bit 4).
-    /// Connected to parallel port ACK on CIA-A, serial port CD on CIA-B.
+    /// Connected to parallel port ACK on CIA-A and disk INDEX on CIA-B.
     #[inline]
     pub fn trigger_flag_pin(&mut self) {
-        self.trigger_icr(0x10); // Bit 4: FLAG pin transition
-    }
-
-    /// Checks if Port A bit 0 (`_OVL`) has transitioned
-    #[inline]
-    pub fn ovl_transition(&self) -> Option<bool> {
-        let old = (self.prev_pra & 0x01) != 0;
-        let new = (self.pra & 0x01) != 0;
-        if old != new {
-            Some(new)
-        } else {
-            None
-        }
-    }
-
-    /// Checks if Port A bit 1 (`_LED`) has transitioned
-    #[inline]
-    pub fn led_transition(&self) -> Option<bool> {
-        let old = (self.prev_pra & 0x02) != 0;
-        let new = (self.pra & 0x02) != 0;
-        if old != new {
-            Some(new)
-        } else {
-            None
-        }
+        self.trigger_icr(BIT_ICR_FLAG); // Bit 4: FLAG pin transition
     }
 }

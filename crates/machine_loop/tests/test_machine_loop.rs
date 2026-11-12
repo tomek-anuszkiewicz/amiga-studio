@@ -1,6 +1,5 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use config::cia_reg;
 use config::custom_reg;
 use config::A500Config;
 use machine_loop::{A500Machine, AddressBus};
@@ -31,23 +30,23 @@ fn test_machine_interrupt_arbitration() {
     // 0x8000 (SET) | 0x4000 (INTEN) | 0x2000 (EXTER) | 0x0008 (PORTS) = 0xE008
     machine
         .memory_bus()
-        .write_custom_word(custom_reg::paula::INTENA, 0xE008);
+        .write_custom_word(custom_reg::paula::REGISTER_INTENA, 0xE008);
     machine.step_cycles(2);
 
     // Trigger CIA-A interrupt -> IPL 2
-    machine.cia_a.write_register(cia_reg::cia_a::ICR, 0x81); // Enable Timer A IRQ
-    machine.cia_a.write_register(cia_reg::cia_a::TALO, 1);
-    machine.cia_a.write_register(cia_reg::cia_a::TAHI, 0);
-    machine.cia_a.write_register(cia_reg::cia_a::CRA, 0x01); // Start Timer A
+    machine.cia_a.set_icr(0x81); // Enable Timer A IRQ
+    machine.cia_a.set_talo(1);
+    machine.cia_a.set_tahi(0);
+    machine.cia_a.set_cra(0x01); // Start Timer A
     machine.step_cycles(15);
     assert!(machine.cia_a.irq_pending());
     assert_eq!(machine.paula.pending_interrupt_level(), 2);
 
     // Trigger CIA-B interrupt -> IPL 6 (higher priority than Level 2)
-    machine.cia_b.write_register(cia_reg::cia_b::ICR, 0x81);
-    machine.cia_b.write_register(cia_reg::cia_b::TALO, 1);
-    machine.cia_b.write_register(cia_reg::cia_b::TAHI, 0);
-    machine.cia_b.write_register(cia_reg::cia_b::CRA, 0x01);
+    machine.cia_b.set_icr(0x81);
+    machine.cia_b.set_talo(1);
+    machine.cia_b.set_tahi(0);
+    machine.cia_b.set_cra(0x01);
     machine.step_cycles(15);
     assert!(machine.cia_b.irq_pending());
     assert_eq!(machine.paula.pending_interrupt_level(), 6);
@@ -63,7 +62,8 @@ fn test_machine_cold_and_warm_reset() {
     machine.step_cycles(500);
     assert_eq!(machine.cck, 500);
     machine.agnus.dma.write_dmacon(0x8200); // Enable DMA
-    machine.paula.write_intena(0x8080); // Enable Audio 0 IRQ
+    machine.paula.set_intena(0x8080); // Enable Audio 0 IRQ
+    machine.paula.step_cck();
     let _ = machine.memory_bus().write_byte(0x001000, 0x42);
     assert_eq!(machine.physical_memory.read_byte_debug(0x001000), 0x42);
 

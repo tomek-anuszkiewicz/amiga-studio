@@ -3,11 +3,11 @@
 //! Synchronized coprocessor executing MOVE, WAIT, and SKIP instructions
 //! driven in lockstep with the raster beam position.
 
-use config::chip_ram::OCS_DMA_ADDRESS_MASK;
+use config::chip_ram::MASK_OCS_DMA_ADDRESS;
 use config::custom_reg;
-use config::mask::copcon;
-use config::BeamPosition;
 use serde::{Deserialize, Serialize};
+
+mod registers;
 
 /// Execution state of the Copper instruction pipeline
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -55,22 +55,30 @@ pub struct Copper {
 }
 
 impl Copper {
+    const FETCH_WORD_CCK: u8 = 2;
+    const WAIT_PIPELINE_CCK: u8 = 4;
+    const COMPARE_PERIOD_CCK: u16 = 2;
+    const INSTRUCTION_BYTES: u32 = 4;
+    const MASK_VPOS_PROGRAMMABLE: u16 = 0x7F;
+    const TERMINATOR_IR1: u16 = 0xFFFF;
+    const MASK_TERMINATOR_IR2: u16 = 0xFFFE;
+
     /// Bit 0 of IR1: indicates MOVE instruction when 0, WAIT/SKIP when 1
-    pub const INSTR_TYPE_MASK: u16 = 0x0001;
+    pub const BIT_INSTR_TYPE: u16 = 0x0001;
     /// Bit 0 of IR2: indicates WAIT instruction when 0, SKIP instruction when 1
-    pub const WAIT_SKIP_MASK: u16 = 0x0001;
+    pub const BIT_WAIT_SKIP: u16 = 0x0001;
 
     /// Bit 15 of IR2 (BFD - Blitter Finish Disable): when 0, waits for blitter to finish before continuing
-    pub const BFD_MASK: u16 = 0x8000;
+    pub const BIT_BFD: u16 = 0x8000;
 
     /// Bit 7 of vertical compare mask is permanently forced active on physical Agnus silicon
-    pub const VPOS_FORCE_BIT7: u16 = 0x80;
+    pub const BIT_VPOS_FORCE_BIT7: u16 = 0x80;
 
     /// Horizontal position compare mask (bits 8..1, masking out sub-CCK bit 0)
-    pub const HPOS_COMPARE_MASK: u16 = 0x00FE;
+    pub const MASK_HPOS_COMPARE: u16 = 0x00FE;
 
     /// Register destination address mask for MOVE instruction (bits 8..1, word-aligned)
-    pub const MOVE_REG_MASK: u16 = 0x01FE;
+    pub const MASK_MOVE_REG: u16 = 0x01FE;
 
     /// Hardware cycle $E0 DMA lockout slot on physical Agnus silicon
     pub const CYCLE_E0_DMA_LOCKOUT: u16 = 0xE0;
@@ -79,10 +87,10 @@ impl Copper {
     pub const WAKEUP_HPOS_LEAD: u16 = 2;
 
     /// Threshold below which Copper writes require CDANG (Copper Danger bit) in COPCON ($080)
-    pub const CDANG_REGISTER_LIMIT: u16 = custom_reg::agnus::COP1LCH;
+    pub const CDANG_REGISTER_LIMIT: u16 = custom_reg::agnus::REGISTER_COP1LCH;
 
     /// Absolute threshold below which Copper writes are forbidden even with CDANG on OCS ($040)
-    pub const OCS_MIN_REGISTER_LIMIT: u16 = custom_reg::agnus::BLTCON0;
+    pub const OCS_MIN_REGISTER_LIMIT: u16 = custom_reg::agnus::REGISTER_BLTCON0;
 
     /// Creates a new uninitialized Copper instance
     pub fn new() -> Self {
@@ -115,51 +123,27 @@ impl Copper {
         }
     }
 
-    /// Restarts execution using Copper list 1 (COPJMP1 strobe)
-    #[inline]
-    pub fn restart_list1(&mut self) {
-        self.cop_pc = self.cop1lc & OCS_DMA_ADDRESS_MASK;
-        self.is_running = true;
-        self.is_waiting = false;
-        self.state = CopperState::FetchIR1(2);
-    }
-
-    /// Restarts execution using Copper list 2 (COPJMP2 strobe)
-    #[inline]
-    pub fn restart_list2(&mut self) {
-        self.cop_pc = self.cop2lc & OCS_DMA_ADDRESS_MASK;
-        self.is_running = true;
-        self.is_waiting = false;
-        self.state = CopperState::FetchIR1(2);
-    }
-
     /// Returns true if the Copper is actively fetching instructions from Chip RAM (not idle or waiting)
     #[inline]
     pub fn is_active_fetching(&self) -> bool {
         self.dma_enabled && self.is_running && !self.is_waiting
     }
 
-    /// Writes COPCON control register
-    #[inline]
-    pub fn set_copcon(&mut self, val: u16) {
-        self.copcon = val;
-        self.cdang = (val & copcon::CDANG) != 0;
-    }
-
     /// Evaluates the WAIT / SKIP beam position comparator
     #[inline]
-    fn eval_comparator(&self, beam: BeamPosition, blitter_busy: bool) -> bool {
+    fn eval_comparator(&self, hpos: u16, vpos: u16, blitter_busy: bool) -> bool {
         let vpos_target = ((self.ir1 >> 8) & 0xFF) as u16;
-        let vpos_mask = (((self.ir2 >> 8) & 0x7F) | Self::VPOS_FORCE_BIT7) as u16;
+        let vpos_mask =
+            (((self.ir2 >> 8) & Self::MASK_VPOS_PROGRAMMABLE) | Self::BIT_VPOS_FORCE_BIT7) as u16;
 
-        let cur_v = (beam.vpos & 0xFF) & vpos_mask;
+        let cur_v = (vpos & 0xFF) & vpos_mask;
         let tgt_v = vpos_target & vpos_mask;
 
         if cur_v < tgt_v {
             return false;
         }
 
-        let bfd = (self.ir2 & Self::BFD_MASK) == 0;
+        let bfd = (self.ir2 & Self::BIT_BFD) == 0;
         let blitter_ok = !bfd || !blitter_busy;
 
         if cur_v > tgt_v {
@@ -167,13 +151,13 @@ impl Copper {
         }
 
         // Vertical coordinates match: compare horizontal beam position
-        let hpos_target = (self.ir1 & Self::HPOS_COMPARE_MASK) as u16;
-        let hpos_mask = (self.ir2 & Self::HPOS_COMPARE_MASK) as u16;
+        let hpos_target = (self.ir1 & Self::MASK_HPOS_COMPARE) as u16;
+        let hpos_mask = (self.ir2 & Self::MASK_HPOS_COMPARE) as u16;
 
-        let cur_h = if beam.hpos < Self::CYCLE_E0_DMA_LOCKOUT {
-            beam.hpos.wrapping_add(Self::WAKEUP_HPOS_LEAD) & Self::HPOS_COMPARE_MASK
+        let cur_h = if hpos < Self::CYCLE_E0_DMA_LOCKOUT {
+            hpos.wrapping_add(Self::WAKEUP_HPOS_LEAD) & Self::MASK_HPOS_COMPARE
         } else {
-            beam.hpos.wrapping_sub(Self::CYCLE_E0_DMA_LOCKOUT) & Self::HPOS_COMPARE_MASK
+            hpos.wrapping_sub(Self::CYCLE_E0_DMA_LOCKOUT) & Self::MASK_HPOS_COMPARE
         } & hpos_mask;
         let tgt_h = hpos_target & hpos_mask;
 
@@ -183,12 +167,13 @@ impl Copper {
     /// Decodes and executes the active two-word instruction pair (IR1, IR2)
     fn execute_instruction(
         &mut self,
-        beam: BeamPosition,
+        hpos: u16,
+        vpos: u16,
         blitter_busy: bool,
     ) -> Option<(u16, u16)> {
-        if (self.ir1 & Self::INSTR_TYPE_MASK) == 0 {
+        if (self.ir1 & Self::BIT_INSTR_TYPE) == 0 {
             // MOVE instruction:
-            let reg = self.ir1 & Self::MOVE_REG_MASK;
+            let reg = self.ir1 & Self::MASK_MOVE_REG;
             let data = self.ir2;
 
             // Copper Danger mode / illegal register check:
@@ -205,30 +190,33 @@ impl Copper {
                 self.state = CopperState::Idle;
                 None
             } else {
-                self.state = CopperState::FetchIR1(2);
+                self.state = CopperState::FetchIR1(Self::FETCH_WORD_CCK);
                 self.is_waiting = false;
                 Some((reg, data))
             }
-        } else if (self.ir2 & Self::WAIT_SKIP_MASK) == 0 {
+        } else if (self.ir2 & Self::BIT_WAIT_SKIP) == 0 {
             // WAIT instruction:
-            if self.ir1 == 0xFFFF && (self.ir2 & 0xFFFE) == 0xFFFE {
+            if self.ir1 == Self::TERMINATOR_IR1
+                && (self.ir2 & Self::MASK_TERMINATOR_IR2) == Self::MASK_TERMINATOR_IR2
+            {
                 // Terminator WAIT $FFFF, $FFFE: halt until next VBlank
                 self.is_waiting = true;
                 self.state = CopperState::Idle;
                 None
             } else {
                 self.is_waiting = true;
-                self.state = CopperState::WaitPipeline(4);
+                self.state = CopperState::WaitPipeline(Self::WAIT_PIPELINE_CCK);
                 None
             }
         } else {
             // SKIP instruction (Bit 0 of IR2 = 1)
-            let skip_condition_met = self.eval_comparator(beam, blitter_busy);
+            let skip_condition_met = self.eval_comparator(hpos, vpos, blitter_busy);
             if skip_condition_met {
                 // Skip the next 4-byte instruction by advancing cop_pc by 4
-                self.cop_pc = self.cop_pc.wrapping_add(4) & OCS_DMA_ADDRESS_MASK;
+                self.cop_pc =
+                    self.cop_pc.wrapping_add(Self::INSTRUCTION_BYTES) & MASK_OCS_DMA_ADDRESS;
             }
-            self.state = CopperState::FetchIR1(2);
+            self.state = CopperState::FetchIR1(Self::FETCH_WORD_CCK);
             None
         }
     }
@@ -239,12 +227,13 @@ impl Copper {
     /// Returns `Some((register_offset, value))` if a MOVE instruction committed on this cycle.
     pub fn step_cck(
         &mut self,
-        beam: BeamPosition,
+        hpos: u16,
+        vpos: u16,
         blitter_busy: bool,
         chip_ram: &[u8],
     ) -> Option<(u16, u16)> {
         // Automatic restart on Vertical Blank line 0 / HPOS 0
-        if beam.vpos == 0 && beam.hpos == 0 && self.dma_enabled {
+        if vpos == 0 && hpos == 0 && self.dma_enabled {
             self.restart_list1();
         }
 
@@ -255,26 +244,26 @@ impl Copper {
         match self.state {
             CopperState::Idle => None,
             CopperState::FetchIR1(cck_left) => {
-                if beam.hpos == Self::CYCLE_E0_DMA_LOCKOUT {
+                if hpos == Self::CYCLE_E0_DMA_LOCKOUT {
                     return None;
                 }
                 if cck_left <= 1 {
                     self.ir1 = config::chip_ram::read_u16(chip_ram, self.cop_pc);
-                    self.cop_pc = self.cop_pc.wrapping_add(2) & OCS_DMA_ADDRESS_MASK;
-                    self.state = CopperState::FetchIR2(2);
+                    self.cop_pc = self.cop_pc.wrapping_add(2) & MASK_OCS_DMA_ADDRESS;
+                    self.state = CopperState::FetchIR2(Self::FETCH_WORD_CCK);
                 } else {
                     self.state = CopperState::FetchIR1(cck_left.wrapping_sub(1));
                 }
                 None
             }
             CopperState::FetchIR2(cck_left) => {
-                if beam.hpos == Self::CYCLE_E0_DMA_LOCKOUT {
+                if hpos == Self::CYCLE_E0_DMA_LOCKOUT {
                     return None;
                 }
                 if cck_left <= 1 {
                     self.ir2 = config::chip_ram::read_u16(chip_ram, self.cop_pc);
-                    self.cop_pc = self.cop_pc.wrapping_add(2) & OCS_DMA_ADDRESS_MASK;
-                    self.execute_instruction(beam, blitter_busy)
+                    self.cop_pc = self.cop_pc.wrapping_add(2) & MASK_OCS_DMA_ADDRESS;
+                    self.execute_instruction(hpos, vpos, blitter_busy)
                 } else {
                     self.state = CopperState::FetchIR2(cck_left.wrapping_sub(1));
                     None
@@ -284,9 +273,11 @@ impl Copper {
                 self.is_waiting = true;
                 if cck_left <= 1 {
                     self.state = CopperState::Waiting;
-                    if beam.hpos % 2 == 0 && self.eval_comparator(beam, blitter_busy) {
+                    if hpos % Self::COMPARE_PERIOD_CCK == 0
+                        && self.eval_comparator(hpos, vpos, blitter_busy)
+                    {
                         self.is_waiting = false;
-                        self.state = CopperState::FetchIR1(2);
+                        self.state = CopperState::FetchIR1(Self::FETCH_WORD_CCK);
                     }
                 } else {
                     self.state = CopperState::WaitPipeline(cck_left.wrapping_sub(1));
@@ -295,15 +286,17 @@ impl Copper {
             }
             CopperState::Waiting => {
                 self.is_waiting = true;
-                if beam.hpos % 2 == 0 && self.eval_comparator(beam, blitter_busy) {
+                if hpos % Self::COMPARE_PERIOD_CCK == 0
+                    && self.eval_comparator(hpos, vpos, blitter_busy)
+                {
                     self.is_waiting = false;
-                    self.state = CopperState::FetchIR1(2);
+                    self.state = CopperState::FetchIR1(Self::FETCH_WORD_CCK);
                 }
                 None
             }
             CopperState::Wakeup(cck_left) => {
                 if cck_left <= 1 {
-                    self.state = CopperState::FetchIR1(2);
+                    self.state = CopperState::FetchIR1(Self::FETCH_WORD_CCK);
                 } else {
                     self.state = CopperState::Wakeup(cck_left.wrapping_sub(1));
                 }

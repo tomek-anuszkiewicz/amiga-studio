@@ -6,6 +6,18 @@
 use debugger::{BreakpointCondition, ConditionOp, ConditionRegister, WatchAccess};
 use egui::{Color32, RichText, Ui};
 
+const REGISTER_DATA_FIRST: usize = 0;
+const REGISTER_DATA_LAST: usize = cpu::state::REGISTER_COUNT - 1;
+const REGISTER_ADDRESS_FIRST: usize = cpu::state::REGISTER_COUNT;
+const REGISTER_ADDRESS_LAST: usize = 2 * cpu::state::REGISTER_COUNT - 1;
+const REGISTER_PC_SELECTION: usize = 16;
+const REGISTER_SR_SELECTION: usize = 17;
+const EQ_SELECTION: usize = 0;
+const NE_SELECTION: usize = 1;
+const LT_SELECTION: usize = 2;
+const GT_SELECTION: usize = 3;
+const LTE_SELECTION: usize = 4;
+
 /// State for the inline Breakpoint/Watchpoint creation form
 #[derive(Debug, Clone)]
 pub struct BreakpointFormState {
@@ -169,20 +181,24 @@ pub(crate) fn render_breakpoints_panel(
                                 )
                                 .unwrap_or(0);
                                 let reg = match form.new_cond_reg_idx {
-                                    0..=7 => ConditionRegister::D(form.new_cond_reg_idx as u8),
-                                    8..=15 => {
-                                        ConditionRegister::A((form.new_cond_reg_idx - 8) as u8)
+                                    REGISTER_DATA_FIRST..=REGISTER_DATA_LAST => {
+                                        ConditionRegister::D(form.new_cond_reg_idx as u8)
                                     }
-                                    16 => ConditionRegister::PC,
-                                    17 => ConditionRegister::SR,
+                                    REGISTER_ADDRESS_FIRST..=REGISTER_ADDRESS_LAST => {
+                                        ConditionRegister::A(
+                                            (form.new_cond_reg_idx - REGISTER_ADDRESS_FIRST) as u8,
+                                        )
+                                    }
+                                    REGISTER_PC_SELECTION => ConditionRegister::PC,
+                                    REGISTER_SR_SELECTION => ConditionRegister::SR,
                                     _ => ConditionRegister::CCR,
                                 };
                                 let op = match form.new_cond_op_idx {
-                                    0 => ConditionOp::Eq,
-                                    1 => ConditionOp::Ne,
-                                    2 => ConditionOp::Lt,
-                                    3 => ConditionOp::Gt,
-                                    4 => ConditionOp::Lte,
+                                    EQ_SELECTION => ConditionOp::Eq,
+                                    NE_SELECTION => ConditionOp::Ne,
+                                    LT_SELECTION => ConditionOp::Lt,
+                                    GT_SELECTION => ConditionOp::Gt,
+                                    LTE_SELECTION => ConditionOp::Lte,
                                     _ => ConditionOp::Gte,
                                 };
                                 bpm.add_conditional_breakpoint(

@@ -5,6 +5,10 @@
 use crate::app::EmulatorApp;
 use crate::theme::AppTheme;
 
+const ZOOM_SELECTION_TOLERANCE: f32 = 0.01;
+
+const TOAST_DURATION_FRAMES: usize = 180;
+
 pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
     egui::TopBottomPanel::top("top_menu_bar")
         .frame(egui::Frame::menu(&ctx.style()))
@@ -70,7 +74,7 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
                     ui.separator();
 
                     ui.menu_button("Slots 2–5", |ui| {
-                        for slot in 2..=5 {
+                        for slot in 2..=debugger::session::QUICK_SLOT_COUNT {
                             ui.horizontal(|ui| {
                                 if ui.button(format!("Save #{slot}")).clicked() {
                                     quick_save_slot(app, slot);
@@ -194,25 +198,28 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
                     .selected_text(format!("{:.0}%", zoom * 100.0))
                     .show_ui(ui, |ui| {
                         if ui
-                            .selectable_label((zoom - 1.0).abs() < 0.01, "100%")
+                            .selectable_label((zoom - 1.0).abs() < ZOOM_SELECTION_TOLERANCE, "100%")
                             .clicked()
                         {
                             ctx.set_zoom_factor(1.0);
                         }
                         if ui
-                            .selectable_label((zoom - 1.25).abs() < 0.01, "125%")
+                            .selectable_label(
+                                (zoom - 1.25).abs() < ZOOM_SELECTION_TOLERANCE,
+                                "125%",
+                            )
                             .clicked()
                         {
                             ctx.set_zoom_factor(1.25);
                         }
                         if ui
-                            .selectable_label((zoom - 1.5).abs() < 0.01, "150%")
+                            .selectable_label((zoom - 1.5).abs() < ZOOM_SELECTION_TOLERANCE, "150%")
                             .clicked()
                         {
                             ctx.set_zoom_factor(1.5);
                         }
                         if ui
-                            .selectable_label((zoom - 2.0).abs() < 0.01, "200%")
+                            .selectable_label((zoom - 2.0).abs() < ZOOM_SELECTION_TOLERANCE, "200%")
                             .clicked()
                         {
                             ctx.set_zoom_factor(2.0);
@@ -236,7 +243,10 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
 /// Saves snapshot to an in-memory quick-save slot (1..=5)
 pub(crate) fn quick_save_slot(app: &mut EmulatorApp, slot: usize) {
     if let Ok(()) = app.session.save_quick_slot(slot) {
-        app.toast_message = Some((format!("Quick-saved to Slot #{slot}"), 180));
+        app.toast_message = Some((
+            format!("Quick-saved to Slot #{slot}"),
+            TOAST_DURATION_FRAMES,
+        ));
     }
 }
 
@@ -244,7 +254,7 @@ pub(crate) fn quick_save_slot(app: &mut EmulatorApp, slot: usize) {
 pub(crate) fn quick_load_slot(app: &mut EmulatorApp, slot: usize) {
     if let Ok(()) = app.session.load_quick_slot(slot) {
         app.disassembly_view_addr = None;
-        app.toast_message = Some((format!("Restored from Slot #{slot}"), 180));
+        app.toast_message = Some((format!("Restored from Slot #{slot}"), TOAST_DURATION_FRAMES));
     }
 }
 
@@ -259,7 +269,10 @@ pub(crate) fn open_save_state_dialog(app: &mut EmulatorApp) {
 
         if let Some(path) = file {
             if let Ok(()) = app.session.save_state_to_file(&path) {
-                app.toast_message = Some((format!("State saved to {}", path.display()), 180));
+                app.toast_message = Some((
+                    format!("State saved to {}", path.display()),
+                    TOAST_DURATION_FRAMES,
+                ));
             }
         }
     }
@@ -277,7 +290,10 @@ pub(crate) fn open_load_state_dialog(app: &mut EmulatorApp) {
         if let Some(path) = file {
             if let Ok(()) = app.session.load_state_from_file(&path) {
                 app.disassembly_view_addr = None;
-                app.toast_message = Some((format!("State loaded from {}", path.display()), 180));
+                app.toast_message = Some((
+                    format!("State loaded from {}", path.display()),
+                    TOAST_DURATION_FRAMES,
+                ));
             }
         }
     }

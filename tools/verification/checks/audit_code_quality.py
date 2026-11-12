@@ -87,7 +87,7 @@ HOST_IO_AND_SPEC_SYMBOLS = {
     # HRM Figure 6-9 DMA Slot Timing Specifications
     "HPOS_REFRESH_SLOTS", "HPOS_DISK_SLOTS", "HPOS_AUDIO_SLOTS", "HPOS_SPRITE_START", "HPOS_SPRITE_END",
     # Hardware Chip Interface Signals
-    "trigger_flag_pin", "poll_pra_output", "led_transition", "stage_write",
+    "trigger_flag_pin", "poll_pra_output",
     "set_disk_byte", "poll_dsksyn_irq",
     # Sprite pipeline evaluation
     "evaluate_pixel",

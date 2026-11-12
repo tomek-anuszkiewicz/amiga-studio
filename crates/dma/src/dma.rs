@@ -5,13 +5,55 @@
 //! 8-tier priority arbitration, Blitter Nasty vs Normal mode with 3-cycle CPU starvation yield,
 //! and Chip RAM bus contention against the CPU.
 
-use config::mask::dmacon;
+use config::mask::{bplcon0, dmacon};
+use config::{display_window, AUDIO_CHANNEL_COUNT};
 use serde::{Deserialize, Serialize};
 
+use config::display_window::{HIRES_FETCH_PERIOD_CCK, LORES_FETCH_PERIOD_CCK};
+
+const BPL1_REQUIRED_PLANES: u8 = 1;
+const BPL2_REQUIRED_PLANES: u8 = 2;
+const BPL3_REQUIRED_PLANES: u8 = 3;
+const BPL4_REQUIRED_PLANES: u8 = 4;
+const BPL5_REQUIRED_PLANES: u8 = 5;
+const BPL6_REQUIRED_PLANES: u8 = 6;
+
+pub const REFRESH_FIRST: u16 = 1;
+pub const REFRESH_SECOND: u16 = 3;
+const REFRESH_THIRD: u16 = 5;
+const REFRESH_LATE: u16 = 0xE2;
+const REFRESH_LONG_LINE: u16 = 0xE3;
+const DISK_FIRST: u16 = 7;
+const DISK_SECOND: u16 = 9;
+const DISK_THIRD: u16 = 11;
+const AUDIO0_SLOT: u16 = 13;
+const AUDIO1_SLOT: u16 = 15;
+const AUDIO2_SLOT: u16 = 17;
+const AUDIO3_SLOT: u16 = 19;
+const DMA_SLOT_PERIOD_CCK: u16 = 2;
+const DMA_ACTIVE_PHASE: u16 = 1;
+const SPRITE_SLOT_PERIOD_CCK: u16 = 4;
+const LORES_BPL4_PHASE: u16 = 1;
+const LORES_BPL6_PHASE: u16 = 2;
+const LORES_BPL2_PHASE: u16 = 3;
+const LORES_BPL3_PHASE: u16 = 5;
+const LORES_BPL5_PHASE: u16 = 6;
+const LORES_BPL1_PHASE: u16 = 7;
+const HIRES_BPL4_FIRST_PHASE: u16 = 0;
+const HIRES_BPL4_SECOND_PHASE: u16 = 4;
+const HIRES_BPL2_FIRST_PHASE: u16 = 1;
+const HIRES_BPL2_SECOND_PHASE: u16 = 5;
+const HIRES_BPL3_FIRST_PHASE: u16 = 2;
+const HIRES_BPL3_SECOND_PHASE: u16 = 6;
+const HIRES_BPL1_FIRST_PHASE: u16 = 3;
+const HIRES_BPL1_SECOND_PHASE: u16 = 7;
+
 /// CCK ranges and slots for fixed DMA channels on each horizontal scanline (Figure 6-9 in Commodore HRM)
-pub const HPOS_REFRESH_SLOTS: [u16; 4] = [1, 3, 5, 0xE2];
-pub const HPOS_DISK_SLOTS: [u16; 3] = [7, 9, 11];
-pub const HPOS_AUDIO_SLOTS: [u16; 4] = [13, 15, 17, 19];
+pub const HPOS_REFRESH_SLOTS: [u16; 4] =
+    [REFRESH_FIRST, REFRESH_SECOND, REFRESH_THIRD, REFRESH_LATE];
+pub const HPOS_DISK_SLOTS: [u16; 3] = [DISK_FIRST, DISK_SECOND, DISK_THIRD];
+pub const HPOS_AUDIO_SLOTS: [u16; AUDIO_CHANNEL_COUNT] =
+    [AUDIO0_SLOT, AUDIO1_SLOT, AUDIO2_SLOT, AUDIO3_SLOT];
 pub const HPOS_SPRITE_START: u16 = 21;
 pub const HPOS_SPRITE_END: u16 = 51;
 
@@ -74,7 +116,7 @@ impl Default for DmaScheduler {
             dmacon: 0,
             bplcon0: 0,
             vstart: 0,
-            vstop: 0x100,
+            vstop: display_window::BIT_VSTOP_EXTENSION,
             ddfstrt: DDFSTRT_DEFAULT,
             ddfstop: DDFSTOP_DEFAULT,
             cpu_starvation_counter: 0,
@@ -95,7 +137,7 @@ impl DmaScheduler {
         self.dmacon = 0;
         self.bplcon0 = 0;
         self.vstart = 0;
-        self.vstop = 0x100;
+        self.vstop = display_window::BIT_VSTOP_EXTENSION;
         self.ddfstrt = DDFSTRT_DEFAULT;
         self.ddfstop = DDFSTOP_DEFAULT;
         self.cpu_starvation_counter = 0;
@@ -136,13 +178,14 @@ impl DmaScheduler {
     /// Returns the active number of bitplane DMA channels (0..6)
     #[inline]
     pub fn planecount(&self) -> u8 {
-        ((self.bplcon0 >> 12) & 0x07) as u8
+        ((self.bplcon0 >> bplcon0::BIT_BPU_SHIFT) & (bplcon0::MASK_BPU >> bplcon0::BIT_BPU_SHIFT))
+            as u8
     }
 
     /// Returns true if High-Resolution mode is active (BPLCON0 bit 15)
     #[inline]
     pub fn is_hires(&self) -> bool {
-        (self.bplcon0 & 0x8000) != 0
+        (self.bplcon0 & bplcon0::BIT_HIRES) != 0
     }
 
     /// Returns true if the horizontal position is inside the Display Data Fetch window
@@ -151,7 +194,11 @@ impl DmaScheduler {
         if hpos < self.ddfstrt {
             return false;
         }
-        let period = if self.is_hires() { 4 } else { 8 };
+        let period = if self.is_hires() {
+            HIRES_FETCH_PERIOD_CCK
+        } else {
+            LORES_FETCH_PERIOD_CCK
+        };
         let block_start = hpos - ((hpos.wrapping_sub(self.ddfstrt)) % period);
         block_start <= self.ddfstop
     }
@@ -162,7 +209,11 @@ impl DmaScheduler {
         if hpos < self.ddfstrt {
             return false;
         }
-        let period = if self.is_hires() { 4 } else { 8 };
+        let period = if self.is_hires() {
+            HIRES_FETCH_PERIOD_CCK
+        } else {
+            LORES_FETCH_PERIOD_CCK
+        };
         let block_start = hpos - ((hpos.wrapping_sub(self.ddfstrt)) % period);
         block_start == self.ddfstop
     }
@@ -181,25 +232,25 @@ impl DmaScheduler {
 
     /// Updates DMACON register following SET/CLR bit 15 logic
     pub fn write_dmacon(&mut self, val: u16) {
-        if (val & dmacon::SET_CLR) != 0 {
+        if (val & dmacon::BIT_SET_CLR) != 0 {
             // SET bits
-            self.dmacon |= val & !dmacon::SET_CLR;
+            self.dmacon |= val & !dmacon::BIT_SET_CLR;
         } else {
             // CLR bits
-            self.dmacon &= !(val & !dmacon::SET_CLR);
+            self.dmacon &= !(val & !dmacon::BIT_SET_CLR);
         }
     }
 
     /// Returns true if the master DMA enable bit (DMAEN, bit 9) is asserted
     #[inline]
     pub fn is_dma_enabled(&self) -> bool {
-        (self.dmacon & dmacon::DMAEN) != 0
+        (self.dmacon & dmacon::BIT_DMAEN) != 0
     }
 
     /// Returns true if Blitter Nasty mode (BLTPRI, bit 10) is active
     #[inline]
     pub fn is_blitter_nasty(&self) -> bool {
-        (self.dmacon & dmacon::BLTPRI) != 0
+        (self.dmacon & dmacon::BIT_BLTPRI) != 0
     }
 
     /// Checks whether a specific DMA channel is enabled in DMACON
@@ -209,12 +260,15 @@ impl DmaScheduler {
         }
         match channel {
             DmaChannel::Refresh => true,
-            DmaChannel::Disk => (self.dmacon & dmacon::DSKEN) != 0,
-            DmaChannel::Audio(ch) => (self.dmacon & (1 << (ch.min(3)))) != 0,
-            DmaChannel::Sprite(_) => (self.dmacon & dmacon::SPREN) != 0,
-            DmaChannel::Bitplane(_) => (self.dmacon & dmacon::BPLEN) != 0,
-            DmaChannel::Copper => (self.dmacon & dmacon::COPEN) != 0,
-            DmaChannel::Blitter => (self.dmacon & dmacon::BLTEN) != 0,
+            DmaChannel::Disk => (self.dmacon & dmacon::BIT_DSKEN) != 0,
+            DmaChannel::Audio(ch) => {
+                (self.dmacon & (dmacon::BIT_AUD0EN << (ch.min((AUDIO_CHANNEL_COUNT - 1) as u8))))
+                    != 0
+            }
+            DmaChannel::Sprite(_) => (self.dmacon & dmacon::BIT_SPREN) != 0,
+            DmaChannel::Bitplane(_) => (self.dmacon & dmacon::BIT_BPLEN) != 0,
+            DmaChannel::Copper => (self.dmacon & dmacon::BIT_COPEN) != 0,
+            DmaChannel::Blitter => (self.dmacon & dmacon::BIT_BLTEN) != 0,
             DmaChannel::Cpu | DmaChannel::None => true,
         }
     }
@@ -222,14 +276,18 @@ impl DmaScheduler {
     /// Returns the fixed DMA channel mapped to a horizontal Color Clock slot (HPOS)
     fn fixed_slot_for_hpos(hpos: u16) -> Option<DmaChannel> {
         match hpos {
-            1 | 3 | 5 | 0xE2 | 0xE3 => Some(DmaChannel::Refresh),
-            7 | 9 | 11 => Some(DmaChannel::Disk),
-            13 => Some(DmaChannel::Audio(0)),
-            15 => Some(DmaChannel::Audio(1)),
-            17 => Some(DmaChannel::Audio(2)),
-            19 => Some(DmaChannel::Audio(3)),
-            21..=51 if (hpos % 2 == 1) => {
-                let sprite_num = ((hpos - 21) / 4) as u8;
+            REFRESH_FIRST | REFRESH_SECOND | REFRESH_THIRD | REFRESH_LATE | REFRESH_LONG_LINE => {
+                Some(DmaChannel::Refresh)
+            }
+            DISK_FIRST | DISK_SECOND | DISK_THIRD => Some(DmaChannel::Disk),
+            AUDIO0_SLOT => Some(DmaChannel::Audio(0)),
+            AUDIO1_SLOT => Some(DmaChannel::Audio(1)),
+            AUDIO2_SLOT => Some(DmaChannel::Audio(2)),
+            AUDIO3_SLOT => Some(DmaChannel::Audio(3)),
+            HPOS_SPRITE_START..=HPOS_SPRITE_END
+                if (hpos % DMA_SLOT_PERIOD_CCK == DMA_ACTIVE_PHASE) =>
+            {
+                let sprite_num = ((hpos - HPOS_SPRITE_START) / SPRITE_SLOT_PERIOD_CCK) as u8;
                 Some(DmaChannel::Sprite(sprite_num))
             }
             _ => None,
@@ -260,26 +318,42 @@ impl DmaScheduler {
             return None;
         }
 
-        let phase = (hpos.wrapping_sub(self.ddfstrt)) % 8;
+        let phase = (hpos.wrapping_sub(self.ddfstrt)) % LORES_FETCH_PERIOD_CCK;
 
         if !self.is_hires() {
             // Low-Resolution (LoRes) scheduling (Canonical Agnus fetch unit sequence)
             match phase {
-                1 if planes >= 4 => Some(3), // BPL4
-                2 if planes >= 6 => Some(5), // BPL6
-                3 if planes >= 2 => Some(1), // BPL2
-                5 if planes >= 3 => Some(2), // BPL3
-                6 if planes >= 5 => Some(4), // BPL5
-                7 if planes >= 1 => Some(0), // BPL1
+                LORES_BPL4_PHASE if planes >= BPL4_REQUIRED_PLANES => Some(3), // BPL4
+                LORES_BPL6_PHASE if planes >= BPL6_REQUIRED_PLANES => Some(5), // BPL6
+                LORES_BPL2_PHASE if planes >= BPL2_REQUIRED_PLANES => Some(1), // BPL2
+                LORES_BPL3_PHASE if planes >= BPL3_REQUIRED_PLANES => Some(2), // BPL3
+                LORES_BPL5_PHASE if planes >= BPL5_REQUIRED_PLANES => Some(4), // BPL5
+                LORES_BPL1_PHASE if planes >= BPL1_REQUIRED_PLANES => Some(0), // BPL1
                 _ => None,
             }
         } else {
             // High-Resolution (HiRes) scheduling (Canonical Agnus double fetch rate)
             match phase {
-                0 | 4 if planes >= 4 => Some(3), // BPL4
-                1 | 5 if planes >= 2 => Some(1), // BPL2
-                2 | 6 if planes >= 3 => Some(2), // BPL3
-                3 | 7 if planes >= 1 => Some(0), // BPL1
+                HIRES_BPL4_FIRST_PHASE | HIRES_BPL4_SECOND_PHASE
+                    if planes >= BPL4_REQUIRED_PLANES =>
+                {
+                    Some(3)
+                } // BPL4
+                HIRES_BPL2_FIRST_PHASE | HIRES_BPL2_SECOND_PHASE
+                    if planes >= BPL2_REQUIRED_PLANES =>
+                {
+                    Some(1)
+                } // BPL2
+                HIRES_BPL3_FIRST_PHASE | HIRES_BPL3_SECOND_PHASE
+                    if planes >= BPL3_REQUIRED_PLANES =>
+                {
+                    Some(2)
+                } // BPL3
+                HIRES_BPL1_FIRST_PHASE | HIRES_BPL1_SECOND_PHASE
+                    if planes >= BPL1_REQUIRED_PLANES =>
+                {
+                    Some(0)
+                } // BPL1
                 _ => None,
             }
         }
@@ -291,7 +365,7 @@ impl DmaScheduler {
     /// 2. Floppy Disk (slots 7, 9, 11, if active and enabled)
     /// 3. Audio 0..3 (slots 13, 15, 17, 19, if active and enabled)
     /// 4. Bitplane 1..6 (DDF window, dynamic based on resolution & planecount)
-    /// 5. Sprite 0..7 (slots 21..=51 odd, if enabled)
+    /// 5. Sprite 0..7 (slots HPOS_SPRITE_START..=HPOS_SPRITE_END odd, if enabled)
     /// 6. Copper (when instruction fetch pending, odd cycles only)
     /// 7. Blitter (Blitter Nasty mode awards all remaining cycles; normal mode yields after 3 CPU starvation cycles)
     /// 8. CPU (awarded when no higher priority channel claimed the cycle)
@@ -300,7 +374,7 @@ impl DmaScheduler {
         hpos: u16,
         vpos: u16,
         disk_active: bool,
-        audio_active: [bool; 4],
+        audio_active: [bool; AUDIO_CHANNEL_COUNT],
         copper_wants_bus: bool,
         blitter_wants_bus: bool,
         cpu_wants_bus: bool,
@@ -324,8 +398,10 @@ impl DmaScheduler {
         }
 
         // Priority 3: Audio DMA Channels 0..3 (CCK 13, 15, 17, 19)
-        if (13..=19).contains(&hpos) && (hpos % 2 == 1) {
-            let ch = ((hpos - 13) / 2) as u8;
+        if (AUDIO0_SLOT..=AUDIO3_SLOT).contains(&hpos)
+            && (hpos % DMA_SLOT_PERIOD_CCK == DMA_ACTIVE_PHASE)
+        {
+            let ch = ((hpos - AUDIO0_SLOT) / DMA_SLOT_PERIOD_CCK) as u8;
             if audio_active[ch as usize] && self.is_channel_enabled(DmaChannel::Audio(ch)) {
                 self.current_owner = DmaChannel::Audio(ch);
                 self.chip_ram_blocked = true;
@@ -340,12 +416,12 @@ impl DmaScheduler {
             return DmaChannel::Bitplane(plane);
         }
 
-        // Priority 5: Hardware Sprite DMA Pairs (CCK 21..=51 odd)
-        if (21..=51).contains(&hpos)
-            && (hpos % 2 == 1)
+        // Priority 5: Hardware Sprite DMA Pairs (CCK HPOS_SPRITE_START..=HPOS_SPRITE_END odd)
+        if (HPOS_SPRITE_START..=HPOS_SPRITE_END).contains(&hpos)
+            && (hpos % DMA_SLOT_PERIOD_CCK == DMA_ACTIVE_PHASE)
             && self.is_channel_enabled(DmaChannel::Sprite(0))
         {
-            let sprite_num = ((hpos - 21) / 4) as u8;
+            let sprite_num = ((hpos - HPOS_SPRITE_START) / SPRITE_SLOT_PERIOD_CCK) as u8;
             self.current_owner = DmaChannel::Sprite(sprite_num);
             self.chip_ram_blocked = true;
             return DmaChannel::Sprite(sprite_num);

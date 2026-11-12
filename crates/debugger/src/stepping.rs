@@ -50,7 +50,9 @@ impl Debugger {
         );
 
         let clocks = cpu.step_instruction(bus);
-        self.current_cck = self.current_cck.wrapping_add((clocks as u64) / 2);
+        self.current_cck = self
+            .current_cck
+            .wrapping_add((clocks as u64) / u64::from(cpu::MicroStep::CCK_CLOCKS));
         clocks
     }
 

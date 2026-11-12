@@ -1,5 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
+mod common;
+
 use config::cia_reg;
 use config::custom_reg;
 use config::{A500Config, VideoStandard};
@@ -12,9 +14,10 @@ fn test_cross_chip_bplcon0_broadcast_latencies() {
 
     // Write BPLCON0 ($DFF100) = 0x8200 (HIRES mode) via memory bus router
     assert_eq!(
-        machine
-            .memory_bus()
-            .write_word(0xDFF000 + u32::from(custom_reg::denise::BPLCON0), 0x8200),
+        machine.memory_bus().write_word(
+            0xDFF000 + u32::from(custom_reg::denise::REGISTER_BPLCON0),
+            0x8200
+        ),
         BusResult::Ready(())
     );
 
@@ -46,9 +49,10 @@ fn test_cross_chip_dmacon_broadcast_to_agnus_and_paula() {
 
     // Write DMACON ($DFF096) = SET DMAEN (bit 9) + DSKEN (bit 4) + AUD0EN (bit 0) = 0x8211
     assert_eq!(
-        machine
-            .memory_bus()
-            .write_word(0xDFF000 + u32::from(custom_reg::agnus::DMACON), 0x8211),
+        machine.memory_bus().write_word(
+            0xDFF000 + u32::from(custom_reg::agnus::REGISTER_DMACON),
+            0x8211
+        ),
         BusResult::Ready(())
     );
 
@@ -64,23 +68,58 @@ fn test_cross_chip_dmacon_broadcast_to_agnus_and_paula() {
 }
 
 #[test]
-fn test_cia_a_ovl_pin_cascade_to_memory_bus() {
+fn test_cia_a_overlay_follows_committed_port_level() {
     let mut machine = A500Machine::new(A500Config::bare_512k(VideoStandard::Pal));
-
-    // Initially, low memory overlay is disengaged for bare_512k test RAM (or re-engaged on cold reset)
-    machine.physical_memory.map_kickstart_to_low_memory();
-    assert!(machine.physical_memory.is_low_memory_overlay_active());
-
-    // Write CIA-A Port A ($BFE001) bit 0 = 1 (Chip RAM engaged)
-    machine.cia_a.write_register(cia_reg::cia_a::PRA, 0x01);
-
-    // Step CCK: machine loop observes CIA-A ovl_transition and disengages overlay
-    machine.step_cck();
-    assert!(!machine.physical_memory.is_low_memory_overlay_active());
-
-    // Write bit 0 = 0 (Kickstart ROM overlay engaged)
-    machine.cia_a.write_register(cia_reg::cia_a::PRA, 0x00);
-    machine.step_cck();
+    machine.cpu.state.set_stopped(true);
+    machine
+        .physical_memory
+        .write_bytes_debug(0xf80000, &[0x12, 0x34]);
+    for (addr, value, expected_overlay) in [
+        (cia_reg::cia_a::REGISTER_DDRA, 1, false),
+        (cia_reg::cia_a::REGISTER_PRA, 1, true),
+        (cia_reg::cia_a::REGISTER_PRA, 0, false),
+        (cia_reg::cia_a::REGISTER_DDRA, 0, true),
+    ] {
+        let before = machine.physical_memory.is_low_memory_overlay_active();
+        assert_eq!(
+            machine.memory_bus().write_byte(addr, value),
+            BusResult::WaitState
+        );
+        assert_eq!(
+            machine.physical_memory.is_low_memory_overlay_active(),
+            before
+        );
+        assert!(machine.cia_a.mutations.iter().all(Option::is_none));
+        assert_eq!(
+            common::cia::accept_write(&mut machine, addr, value),
+            BusResult::Ready(())
+        );
+        assert_eq!(machine.cia_a.eclock_phase, 1);
+        assert_eq!(machine.cia_a.mutations.iter().flatten().count(), 1);
+        assert_eq!(
+            machine.physical_memory.is_low_memory_overlay_active(),
+            before
+        );
+        machine.step_cck();
+        assert_eq!(machine.cia_a.eclock_phase, 2);
+        assert_eq!(
+            machine.physical_memory.is_low_memory_overlay_active(),
+            expected_overlay
+        );
+        let expected_word = if expected_overlay { 0x1234 } else { 0 };
+        assert_eq!(
+            machine.memory_bus().read_word(0),
+            BusResult::Ready(expected_word)
+        );
+        machine.step_cycles(5);
+        assert_eq!(
+            machine.physical_memory.is_low_memory_overlay_active(),
+            expected_overlay
+        );
+    }
+    // CIA-B has no OVL connection.
+    common::cia::write_byte(&mut machine, cia_reg::cia_b::REGISTER_DDRA, 1);
+    common::cia::write_byte(&mut machine, cia_reg::cia_b::REGISTER_PRA, 0);
     assert!(machine.physical_memory.is_low_memory_overlay_active());
 }
 
@@ -91,16 +130,18 @@ fn test_paula_interrupt_cascade_to_cpu_ipl() {
 
     // Write INTENA ($DFF09A) = 0xC020 (SET master INTEN + Level 3 VBlank)
     assert_eq!(
-        machine
-            .memory_bus()
-            .write_word(0xDFF000 + u32::from(custom_reg::paula::INTENA), 0xC020),
+        machine.memory_bus().write_word(
+            0xDFF000 + u32::from(custom_reg::paula::REGISTER_INTENA),
+            0xC020
+        ),
         BusResult::Ready(())
     );
     // Write INTREQ ($DFF09C) = 0x8020 (SET Level 3 VBlank request)
     assert_eq!(
-        machine
-            .memory_bus()
-            .write_word(0xDFF000 + u32::from(custom_reg::paula::INTREQ), 0x8020),
+        machine.memory_bus().write_word(
+            0xDFF000 + u32::from(custom_reg::paula::REGISTER_INTREQ),
+            0x8020
+        ),
         BusResult::Ready(())
     );
 
@@ -116,17 +157,15 @@ fn test_bus_custom_registers_snapshot_sync_and_open_bus() {
     let mut machine = A500Machine::new(A500Config::bare_512k(VideoStandard::Pal));
 
     // Direct write to DMACON
-    machine
-        .agnus
-        .commit_register_write(custom_reg::agnus::DMACON, 0x8200);
+    machine.agnus.set_dmacon(0x8200);
 
-    // Step CCK syncs state
-    machine.step_cck();
+    // Two CCKs commit the queued DMA control.
+    machine.step_cycles(2);
 
     // Reading DMACONR ($DFF002) from bus returns 0x0200
     let BusResult::Ready(dmaconr) = machine
         .memory_bus()
-        .read_word(0xDFF000 + u32::from(custom_reg::agnus::DMACONR))
+        .read_word(0xDFF000 + u32::from(custom_reg::agnus::REGISTER_DMACONR))
     else {
         panic!("Expected a completed bus read");
     };
@@ -135,7 +174,7 @@ fn test_bus_custom_registers_snapshot_sync_and_open_bus() {
     // Reading write-only register (e.g. BPLCON0 at $DFF100) returns 0xFFFF (open bus)
     let BusResult::Ready(bplcon0_read) = machine
         .memory_bus()
-        .read_word(0xDFF000 + u32::from(custom_reg::denise::BPLCON0))
+        .read_word(0xDFF000 + u32::from(custom_reg::denise::REGISTER_BPLCON0))
     else {
         panic!("Expected a completed bus read");
     };
@@ -149,13 +188,18 @@ fn test_write_custom_word_and_byte_methods() {
     // Test write_custom_word directly on MemoryBus
     machine
         .memory_bus()
-        .write_custom_word(custom_reg::denise::COLOR00, 0x0F00);
+        .write_custom_word(custom_reg::denise::REGISTER_COLOR00, 0x0F00);
+    assert_eq!(machine.denise.color[0], 0);
+    machine.step_cck();
     assert_eq!(machine.denise.color[0], 0x0F00);
 
     // Test write_custom_byte with byte duplication
-    machine
-        .memory_bus()
-        .write_custom_byte(0xDFF000 + u32::from(custom_reg::denise::COLOR01), 0x33);
+    machine.memory_bus().write_custom_byte(
+        0xDFF000 + u32::from(custom_reg::denise::REGISTER_COLOR01),
+        0x33,
+    );
+    assert_eq!(machine.denise.color[1], 0);
+    machine.step_cck();
     assert_eq!(machine.denise.color[1], 0x0333);
 }
 
@@ -169,7 +213,7 @@ fn test_dmacon_write_propagation_delay() {
     // Write DMACON = SET DMAEN (bit 9) + SPREN (bit 5) + BPLEN (bit 8) -> 0x8320
     machine
         .memory_bus()
-        .write_custom_word(custom_reg::agnus::DMACON, 0x8320);
+        .write_custom_word(custom_reg::agnus::REGISTER_DMACON, 0x8320);
 
     // After 1 CCK: in-flight in mutation pipeline, not yet committed in Agnus (2 CCKs delay)
     machine.step_cck();
@@ -182,7 +226,7 @@ fn test_dmacon_write_propagation_delay() {
     // Clear SPREN (bit 5)
     machine
         .memory_bus()
-        .write_custom_word(custom_reg::agnus::DMACON, 0x0020);
+        .write_custom_word(custom_reg::agnus::REGISTER_DMACON, 0x0020);
     machine.step_cck();
     assert_eq!(machine.agnus.dmacon, 0x0320);
 

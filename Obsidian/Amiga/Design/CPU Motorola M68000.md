@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "m68000"
 status: "active"
 created: 2026-08-31
-updated: 2026-10-25
+updated: 2026-11-11
 related: ["[CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md)", "[CPU SingleStepTests.md](Verification/CPU%20SingleStepTests.md)", "[MemoryBus.md](MemoryBus.md)", "[Physical Memory.md](Physical%20Memory.md)", "[DMA.md](DMA.md)", "[Interrupts.md](Interrupts.md)", "[Machine Loop.md](Machine%20Loop.md)", "[Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
 tracked_paths:
   - "crates/cpu"
@@ -155,6 +155,8 @@ transaction ordering.
 | 15, 24, 31 | Uninitialized interrupt, spurious interrupt and level-seven autovector are defined by MC68000; the current A500 interrupt input does not generate these cases. |
 | 25-30 | Implemented Amiga autovectors for interrupt levels 1-6. |
 | 32-47 | Software TRAP vectors. |
+
+Missing external exception inputs are tracked in the [deferred bus and interrupt work](../../../ROADMAP.md#deferred-bus-and-peripherals).
 
 The vector table starts at $000000; each vector is a big-endian longword at
 `4 * vector number`. The initial table seen by the CPU depends on the

@@ -6,6 +6,9 @@
 use crate::app::EmulatorApp;
 use egui::RichText;
 
+const PAL_CCK_PER_SECOND: f64 = 3_546_895.0;
+const MILLISECONDS_PER_SECOND: f64 = 1000.0;
+
 pub(crate) fn render_temporal_bar(app: &mut EmulatorApp, ui: &mut egui::Ui) {
     let tokens = app.theme.tokens();
 
@@ -134,7 +137,8 @@ pub(crate) fn render_temporal_bar(app: &mut EmulatorApp, ui: &mut egui::Ui) {
                 let (time_label, cur_cck) = match (cur_frame, head_frame) {
                     (Some(cur), Some(head)) => {
                         let delta_cck = head.cck.saturating_sub(cur.cck);
-                        let delta_ms = (delta_cck as f64 * 1000.0) / 3_546_895.0; // PAL ~3.546895 MHz
+                        let delta_ms =
+                            (delta_cck as f64 * MILLISECONDS_PER_SECOND) / PAL_CCK_PER_SECOND; // PAL ~3.546895 MHz
                         let text = if app.session.temporal.scrub_cursor.is_some() {
                             format!("- {:.1} ms (Δ {} CCKs)", delta_ms, delta_cck)
                         } else {

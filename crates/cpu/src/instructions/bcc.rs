@@ -4,6 +4,7 @@
 //! Execution time: 10 CPU clocks if taken; 8/12 CPU clocks if not taken.
 
 use crate::micro::common;
+use crate::micro::encoding::condition;
 use crate::micro::types::MicroStep;
 use crate::state::CpuState;
 
@@ -35,7 +36,7 @@ pub static STEPS_BRANCH_NOT_TAKEN_WORD: [MicroStep; 6] = [
 ];
 
 pub fn alu_bcc_short(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let cond = ((state.ir() >> 8) & 0x0F) as u8;
+    let cond = ((state.ir() >> condition::BIT_SHIFT) & condition::MASK_CONDITION as u16) as u8;
     if state.eval_condition(cond) {
         let d8 = (state.ir() & 0xFF) as i8;
         let base_pc = state.pc().wrapping_sub(2);
@@ -48,7 +49,7 @@ pub fn alu_bcc_short(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
 }
 
 pub fn alu_bcc_word(state: &mut CpuState, _reg_src: u8, _reg_dst: u8) {
-    let cond = ((state.ir() >> 8) & 0x0F) as u8;
+    let cond = ((state.ir() >> condition::BIT_SHIFT) & condition::MASK_CONDITION as u16) as u8;
     if state.eval_condition(cond) {
         let disp = state.prefetch() as i16 as i32;
         let base_pc = state.pc().wrapping_sub(2);

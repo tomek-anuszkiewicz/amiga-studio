@@ -59,7 +59,7 @@ External hardware programs and reference captures provide another view: the
 combined effect of instruction timing, DMA, video and peripheral behavior.
 The available vAmigaTS reference captures support investigation, but the previous
 capture runner has been removed. There is currently no executable capture
-comparison entry point. Whole-machine capture verification remains future work.
+comparison entry point. Whole-machine capture verification remains unavailable; see the [external hardware verification work](../ROADMAP.md#external-hardware-verification).
 
 Performance also needs separate evidence. A benchmark measures host execution
 time, whereas a cycle assertion measures emulated time. Stored benchmark results

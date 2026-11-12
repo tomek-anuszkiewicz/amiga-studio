@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "audio"
 status: "active"
 created: 2026-09-19
-updated: 2026-10-12
+updated: 2026-11-11
 related: ["[Paula.md](Paula.md)", "[Agnus.md](Agnus.md)", "[DMA.md](DMA.md)", "[Machine Loop.md](Machine%20Loop.md)"]
 tracked_paths:
   - "crates/audio"
@@ -36,6 +36,8 @@ modulate the following channel's volume or period instead of producing an
 independent sound. The [machine loop](Machine%20Loop.md) carries restart and
 interrupt signals between Paula, Agnus, and the CPU; [DMA](DMA.md) explains
 the shared-bus transfer path.
+
+Location-register writes enter [Agnus's propagation queue](Agnus.md#register-propagation); the audio engine exposes no custom-bus pointer setter. Its existing serializable playback bookkeeping remains separate from the hardware address generator. [Paula](Paula.md#register-propagation) queues the audio length, period, volume and data writes before updating this engine.
 
 ## Reference documentation and source
 

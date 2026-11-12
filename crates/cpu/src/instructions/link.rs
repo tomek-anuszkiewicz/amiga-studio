@@ -19,8 +19,10 @@ use crate::Cpu;
 
 pub fn alu_link_setup(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     let an = reg_dst;
-    let sp = state.a_long(7).wrapping_sub(4);
-    let val = if an == 7 {
+    let sp = state
+        .a_long(crate::state::REGISTER_STACK_POINTER)
+        .wrapping_sub(4);
+    let val = if an == crate::state::REGISTER_STACK_POINTER as u8 {
         sp
     } else {
         state.a_long(an as usize)
@@ -36,7 +38,7 @@ pub fn alu_link_finish(state: &mut CpuState, _reg_src: u8, reg_dst: u8) {
     let sp = state.micro().ea_addr;
     let disp = state.micro().source;
     state.set_a_long(an as usize, sp);
-    state.set_a_long(7, sp.wrapping_add(disp));
+    state.set_a_long(crate::state::REGISTER_STACK_POINTER, sp.wrapping_add(disp));
 }
 
 // ============================================================================
@@ -47,7 +49,7 @@ pub static STEPS_LINK: [MicroStep; 8] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(alu_link_setup),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_FINISH,
     common::BUS_WRITE_IDLE,
@@ -57,7 +59,7 @@ pub static STEPS_LINK: [MicroStep; 8] = [
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_link_finish),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::BUS_READ_IDLE,
 ];

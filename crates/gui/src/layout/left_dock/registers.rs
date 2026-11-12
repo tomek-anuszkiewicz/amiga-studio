@@ -71,7 +71,7 @@ pub(crate) fn render_registers(
                     .num_columns(6)
                     .spacing([10.0, 4.0])
                     .show(ui, |ui| {
-                        for i in 0..8 {
+                        for i in 0..cpu::state::REGISTER_COUNT {
                             let val = state.d_long(i);
                             let changed = prev_state.map_or(false, |p| p.d_long(i) != val);
                             let col = diff_color(changed);
@@ -158,13 +158,13 @@ pub(crate) fn render_registers(
                     .num_columns(6)
                     .spacing([10.0, 4.0])
                     .show(ui, |ui| {
-                        for i in 0..8 {
+                        for i in 0..cpu::state::REGISTER_COUNT {
                             let val = state.a_long(i);
                             let changed = prev_state.map_or(false, |p| p.a_long(i) != val);
                             let col = diff_color(changed);
 
                             let is_sup = state.is_supervisor();
-                            let tooltip = if i == 7 {
+                            let tooltip = if i == cpu::state::REGISTER_STACK_POINTER {
                                 if is_sup {
                                     "Address register A7 (Active Supervisor Stack Pointer - SSP)"
                                 } else {
@@ -339,7 +339,7 @@ pub(crate) fn render_registers(
         egui::CollapsingHeader::new(RichText::new("Execution Status & CCR").strong())
             .default_open(true)
             .show(ui, |ui| {
-                let instruction_pc = state.instruction_pc() & 0x00FF_FFFF;
+                let instruction_pc = state.instruction_pc() & physical_memory::MASK_PHYSICAL_ADDRESS;
 
                 ui.columns(2, |cols| {
                     // Col 0: PC, SR, Mode, IPL
@@ -355,7 +355,7 @@ pub(crate) fn render_registers(
                                      Hardware prefetch bus PC: ${:06X}\n\n\
                                      The M68000 prefetch pipeline primes 2 instruction words (IR and IRC) \
                                      ahead from the bus, advancing the hardware bus register by 4 bytes.",
-                                    instruction_pc, state.pc() & 0x00FF_FFFF
+                                    instruction_pc, state.pc() & physical_memory::MASK_PHYSICAL_ADDRESS
                                 ),
                             );
                         });
@@ -385,7 +385,7 @@ pub(crate) fn render_registers(
                                 resp.surrender_focus();
                                 let clean = buf.trim().trim_start_matches('$');
                                 if let Ok(new_pc) = u32::from_str_radix(clean, 16) {
-                                    pc_to_set = Some(new_pc & 0x00FF_FFFF);
+                                    pc_to_set = Some(new_pc & physical_memory::MASK_PHYSICAL_ADDRESS);
                                 }
                                 *active_reg_edit = None;
                             }
@@ -496,11 +496,11 @@ pub(crate) fn render_registers(
 
                     // Flags: X (bit 4), N (bit 3), Z (bit 2), V (bit 1), C (bit 0)
                     let flags = [
-                        ("X", 0x10, "eXtend: Used for multi-precision arithmetic. Preserved by data movement."),
-                        ("N", 0x08, "Negative: Set if result Most Significant Bit is 1 (negative)."),
-                        ("Z", 0x04, "Zero: Set if result equals zero."),
-                        ("V", 0x02, "oVerflow: Set if signed two's complement overflow occurred."),
-                        ("C", 0x01, "Carry: Set if unsigned carry/borrow occurred during operation."),
+                        ("X", cpu::BIT_CCR_X, "eXtend: Used for multi-precision arithmetic. Preserved by data movement."),
+                        ("N", cpu::BIT_CCR_N, "Negative: Set if result Most Significant Bit is 1 (negative)."),
+                        ("Z", cpu::BIT_CCR_Z, "Zero: Set if result equals zero."),
+                        ("V", cpu::BIT_CCR_V, "oVerflow: Set if signed two's complement overflow occurred."),
+                        ("C", cpu::BIT_CCR_C, "Carry: Set if unsigned carry/borrow occurred during operation."),
                     ];
 
                     for (name, mask, desc) in flags {

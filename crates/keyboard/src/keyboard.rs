@@ -5,6 +5,13 @@
 
 use serde::{Deserialize, Serialize};
 
+mod pins;
+pub use pins::KeyboardPins;
+
+const BIT_SCANCODE_SHIFT: u8 = 1;
+const MASK_SCANCODE: u8 = 0xFE;
+const BIT_KEY_RELEASE: u8 = 0x01;
+
 /// Maximum capacity of the physical keyboard type-ahead FIFO queue
 pub const KEYBOARD_BUFFER_CAPACITY: usize = 16;
 
@@ -35,6 +42,8 @@ pub enum KeyboardTransmissionState {
 /// Amiga keyboard controller and scancode encoder
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Keyboard {
+    /// Motherboard-facing signal state.
+    pub pins: KeyboardPins,
     /// Active scancode holding register (currently presented to receiver)
     pub current_scancode: Option<u8>,
     /// Serial transmission state machine
@@ -53,13 +62,12 @@ pub struct Keyboard {
     pub r_amiga_pressed: bool,
     /// Caps Lock LED state (true = enabled)
     pub caps_lock_active: bool,
-    /// True if the physical _RESET line is pulled low (Ctrl-Amiga-Amiga asserted)
-    pub reset_line_asserted: bool,
 }
 
 impl Default for Keyboard {
     fn default() -> Self {
         Self {
+            pins: KeyboardPins::default(),
             current_scancode: None,
             transmission_state: KeyboardTransmissionState::Idle,
             queue: [0; KEYBOARD_BUFFER_CAPACITY],
@@ -69,7 +77,6 @@ impl Default for Keyboard {
             l_amiga_pressed: false,
             r_amiga_pressed: false,
             caps_lock_active: false,
-            reset_line_asserted: false,
         }
     }
 }
@@ -82,6 +89,7 @@ impl Keyboard {
 
     /// Resets keyboard state
     pub fn reset(&mut self) {
+        self.pins = KeyboardPins::default();
         self.current_scancode = None;
         self.transmission_state = KeyboardTransmissionState::Idle;
         self.queue = [0; KEYBOARD_BUFFER_CAPACITY];
@@ -91,7 +99,6 @@ impl Keyboard {
         self.l_amiga_pressed = false;
         self.r_amiga_pressed = false;
         self.caps_lock_active = false;
-        self.reset_line_asserted = false;
     }
 
     /// Enqueues a pre-encoded scancode into the circular buffer.
@@ -137,9 +144,9 @@ impl Keyboard {
                 // When toggled on: transmits $62 (bit 7 = 0)
                 // When toggled off: transmits $E2 (bit 7 = 1)
                 let code = if self.caps_lock_active {
-                    (SCANCODE_CAPS_LOCK << 1) & 0xFE
+                    (SCANCODE_CAPS_LOCK << BIT_SCANCODE_SHIFT) & MASK_SCANCODE
                 } else {
-                    ((SCANCODE_CAPS_LOCK << 1) & 0xFE) | 0x01
+                    ((SCANCODE_CAPS_LOCK << BIT_SCANCODE_SHIFT) & MASK_SCANCODE) | BIT_KEY_RELEASE
                 };
                 self.current_scancode = Some(code);
                 self.enqueue_scancode(code);
@@ -149,13 +156,13 @@ impl Keyboard {
         }
 
         if self.ctrl_pressed && self.l_amiga_pressed && self.r_amiga_pressed {
-            self.reset_line_asserted = true;
-            let warn = (SCANCODE_RESET_WARNING << 1) & 0xFE;
+            self.pins.reset_line_asserted = true;
+            let warn = (SCANCODE_RESET_WARNING << BIT_SCANCODE_SHIFT) & MASK_SCANCODE;
             self.enqueue_scancode(warn);
         }
 
-        // Amiga scancode transmission format: (raw_code << 1) | 0
-        let encoded = (raw_code << 1) & 0xFE;
+        // Amiga scancode transmission format: (raw_code << BIT_SCANCODE_SHIFT) | 0
+        let encoded = (raw_code << BIT_SCANCODE_SHIFT) & MASK_SCANCODE;
         self.current_scancode = Some(encoded);
         self.enqueue_scancode(encoded);
     }
@@ -173,8 +180,8 @@ impl Keyboard {
             _ => {}
         }
 
-        // Key release bit is set: (raw_code << 1) | 1
-        let encoded = ((raw_code << 1) & 0xFE) | 0x01;
+        // Key release bit is set: (raw_code << BIT_SCANCODE_SHIFT) | 1
+        let encoded = ((raw_code << BIT_SCANCODE_SHIFT) & MASK_SCANCODE) | BIT_KEY_RELEASE;
         self.current_scancode = Some(encoded);
         self.enqueue_scancode(encoded);
     }
@@ -211,8 +218,8 @@ impl Keyboard {
     /// Returns true and clears the reset line if Ctrl-Amiga-Amiga was triggered
     #[inline]
     pub fn poll_reset(&mut self) -> bool {
-        let was_asserted = self.reset_line_asserted;
-        self.reset_line_asserted = false;
+        let was_asserted = self.pins.reset_line_asserted;
+        self.pins.reset_line_asserted = false;
         was_asserted
     }
 
@@ -220,7 +227,7 @@ impl Keyboard {
     pub fn queue_powerup_stream(&mut self, held_keys: &[u8]) {
         self.enqueue_scancode(SCANCODE_POWERUP_STREAM_START);
         for &k in held_keys {
-            self.enqueue_scancode((k << 1) & 0xFE);
+            self.enqueue_scancode((k << BIT_SCANCODE_SHIFT) & MASK_SCANCODE);
         }
         self.enqueue_scancode(SCANCODE_POWERUP_STREAM_END);
     }

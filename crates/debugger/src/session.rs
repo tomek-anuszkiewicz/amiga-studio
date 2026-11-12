@@ -4,13 +4,17 @@
 //! headless execution controller decoupled from GUI frameworks.
 
 use config::A500Config;
-use machine_loop::{A500Machine, A500State, SaveStateError};
+use machine_loop::{A500Machine, A500State};
 use physical_memory::PhysicalMemory;
+use save_state::{SaveState, SaveStateError};
 
 use crate::loader::inject_binary;
 use crate::stepping::Debugger;
 use crate::temporal::{TemporalHistory, DEFAULT_TEMPORAL_CAPACITY, PAL_FRAME_CCK};
 use cpu::CpuState;
+
+pub const MEMORY_DIFF_BYTES: usize = 256;
+pub const QUICK_SLOT_COUNT: usize = 5;
 
 /// Complete headless execution session and machine controller
 #[derive(Debug, Clone)]
@@ -28,11 +32,11 @@ pub struct DebuggerSession {
     pub prev_cpu_state: Option<CpuState>,
 
     // Diff memory snapshot (256 bytes around prev_hex_base)
-    pub prev_hex_bytes: [u8; 256],
+    pub prev_hex_bytes: [u8; MEMORY_DIFF_BYTES],
     pub prev_hex_base: u32,
 
     /// Quick Save Slots (slots 1..=5)
-    pub quick_slots: [Option<Box<A500State>>; 5],
+    pub quick_slots: [Option<Box<A500State>>; QUICK_SLOT_COUNT],
     /// Live CPU state preserved while scrubbing historical frames
     pub live_cpu_state: Option<CpuState>,
 }
@@ -58,7 +62,7 @@ impl DebuggerSession {
             is_running: false,
             instructions_executed: 0,
             prev_cpu_state: None,
-            prev_hex_bytes: [0; 256],
+            prev_hex_bytes: [0; MEMORY_DIFF_BYTES],
             prev_hex_base: 0,
             quick_slots: [None, None, None, None, None],
             live_cpu_state: None,
@@ -78,8 +82,8 @@ impl DebuggerSession {
 
     /// Captures a 256-byte snapshot of memory around `base_addr` for diff highlighting
     pub fn capture_memory_snapshot(&mut self, base_addr: u32) {
-        for i in 0..256 {
-            let addr = base_addr.wrapping_add(i as u32) & 0x00FF_FFFF;
+        for i in 0..MEMORY_DIFF_BYTES {
+            let addr = base_addr.wrapping_add(i as u32) & physical_memory::MASK_PHYSICAL_ADDRESS;
             self.prev_hex_bytes[i] = self.machine.physical_memory.read_byte_debug(addr);
         }
         self.prev_hex_base = base_addr;
@@ -292,8 +296,8 @@ impl DebuggerSession {
     }
 
     /// Restores machine state from an `A500State` snapshot and synchronizes debugger tracking
-    pub fn load_state(&mut self, state: &A500State) -> Result<(), SaveStateError> {
-        self.machine.load_state(state)?;
+    pub fn load_state(&mut self, state: &A500State) {
+        self.machine.load_state(state);
 
         // Synchronize debugger telemetry and execution tracking
         self.debugger.current_cck = self.machine.cck;
@@ -301,19 +305,18 @@ impl DebuggerSession {
         self.capture_memory_snapshot(self.prev_hex_base);
         self.jump_to_live_head();
         self.is_running = false;
-
-        Ok(())
     }
 
     /// Serializes machine state to pretty-printed JSON
     pub fn save_state_to_json(&self) -> Result<String, SaveStateError> {
-        self.save_state().to_json_pretty()
+        SaveState::capture(&self.machine).to_json_pretty()
     }
 
     /// Deserializes machine state from JSON
     pub fn load_state_from_json(&mut self, json_str: &str) -> Result<(), SaveStateError> {
-        let state = A500State::from_json(json_str)?;
-        self.load_state(&state)
+        let saved = SaveState::from_json(json_str)?;
+        self.load_state(&saved.state);
+        Ok(())
     }
 
     /// Saves machine state directly to a file as JSON
@@ -321,7 +324,7 @@ impl DebuggerSession {
         &self,
         path: impl AsRef<std::path::Path>,
     ) -> Result<(), SaveStateError> {
-        self.machine.save_state_to_file(path)
+        SaveState::capture(&self.machine).save_to_file(path)
     }
 
     /// Loads machine state directly from a file
@@ -329,13 +332,14 @@ impl DebuggerSession {
         &mut self,
         path: impl AsRef<std::path::Path>,
     ) -> Result<(), SaveStateError> {
-        let state = A500State::load_from_file(path)?;
-        self.load_state(&state)
+        let saved = SaveState::load_from_file(path)?;
+        self.load_state(&saved.state);
+        Ok(())
     }
 
     /// Saves machine snapshot to an in-memory quick slot (1..=5)
     pub fn save_quick_slot(&mut self, slot: usize) -> Result<(), SaveStateError> {
-        if slot == 0 || slot > 5 {
+        if slot == 0 || slot > QUICK_SLOT_COUNT {
             return Err(SaveStateError::CorruptedData(format!(
                 "Invalid quick slot index: {slot} (must be 1..=5)"
             )));
@@ -346,7 +350,7 @@ impl DebuggerSession {
 
     /// Loads machine snapshot from an in-memory quick slot (1..=5)
     pub fn load_quick_slot(&mut self, slot: usize) -> Result<(), SaveStateError> {
-        if slot == 0 || slot > 5 {
+        if slot == 0 || slot > QUICK_SLOT_COUNT {
             return Err(SaveStateError::CorruptedData(format!(
                 "Invalid quick slot index: {slot} (must be 1..=5)"
             )));
@@ -355,13 +359,14 @@ impl DebuggerSession {
             .as_ref()
             .ok_or_else(|| SaveStateError::CorruptedData(format!("Quick slot {slot} is empty")))?)
         .clone();
-        self.load_state(&state)
+        self.load_state(&state);
+        Ok(())
     }
 
     /// Returns true if the specified quick slot (1..=5) is populated
     #[inline]
     pub fn has_quick_slot(&self, slot: usize) -> bool {
-        if slot == 0 || slot > 5 {
+        if slot == 0 || slot > QUICK_SLOT_COUNT {
             false
         } else {
             self.quick_slots[slot - 1].is_some()

@@ -3,7 +3,7 @@
 //! Comprehensive unit tests for CpuState encapsulation, stack pointer synchronization,
 //! supervisor transitions, and Status Register invariants.
 
-use cpu::{CpuState, SR_MASK, SR_RESET_DEFAULT, SR_T};
+use cpu::{CpuState, BIT_SR_T, MASK_SR, SR_RESET_DEFAULT};
 
 #[test]
 fn test_stack_pointer_synchronization_in_supervisor_mode() {
@@ -116,10 +116,10 @@ fn test_set_sr_masks_reserved_bits_and_swaps_stack_pointers() {
     state.set_ssp(0x080000);
     state.set_usp(0x003000);
 
-    // Setting SR with reserved bits (0xFFFF) must mask them with SR_MASK (0xA71F)
+    // Setting SR with reserved bits (0xFFFF) must mask them with MASK_SR (0xA71F)
     state.set_sr(0xFFFF);
-    assert_eq!(state.sr(), SR_MASK);
-    assert_eq!(state.sr() & !SR_MASK, 0);
+    assert_eq!(state.sr(), MASK_SR);
+    assert_eq!(state.sr() & !MASK_SR, 0);
     assert!(state.is_supervisor());
     assert!(state.is_trace());
     assert_eq!(state.a_long(7), 0x080000);
@@ -151,11 +151,11 @@ fn test_trace_bit_helpers() {
 
     state.set_trace(true);
     assert!(state.is_trace());
-    assert_eq!(state.sr() & SR_T, SR_T);
+    assert_eq!(state.sr() & BIT_SR_T, BIT_SR_T);
 
     state.clear_trace();
     assert!(!state.is_trace());
-    assert_eq!(state.sr() & SR_T, 0);
+    assert_eq!(state.sr() & BIT_SR_T, 0);
 }
 
 #[test]

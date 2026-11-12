@@ -12,6 +12,7 @@
 
 use crate::micro::common;
 use crate::micro::ea;
+use crate::micro::encoding::{extended_mode, mode};
 use crate::micro::types::MicroStep;
 use crate::state::CpuState;
 use crate::Cpu;
@@ -39,7 +40,7 @@ pub static STEPS_LEA_AI: [MicroStep; 2] = [
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_lea_ai),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::BUS_READ_IDLE,
 ];
@@ -49,13 +50,13 @@ pub static STEPS_LEA_D16_AN: [MicroStep; 4] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_pea_d16_an),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_FINISH,
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_lea_finish),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::BUS_READ_IDLE,
 ];
@@ -65,7 +66,7 @@ pub static STEPS_LEA_IDX_AN: [MicroStep; 6] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(ea::ea_calc_pea_idx_an),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_READ,
     common::FETCH_EXT_FINISH,
@@ -73,7 +74,7 @@ pub static STEPS_LEA_IDX_AN: [MicroStep; 6] = [
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_lea_finish),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::BUS_READ_IDLE,
 ];
@@ -83,13 +84,13 @@ pub static STEPS_LEA_ABSW: [MicroStep; 4] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_pea_absw),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_FINISH,
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_lea_finish),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::BUS_READ_IDLE,
 ];
@@ -99,19 +100,19 @@ pub static STEPS_LEA_ABSL: [MicroStep; 6] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_absl_hi),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_FINISH,
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_pea_absl_lo),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_FINISH,
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_lea_finish),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::BUS_READ_IDLE,
 ];
@@ -121,13 +122,13 @@ pub static STEPS_LEA_D16_PC: [MicroStep; 4] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(ea::ea_calc_pea_d16_pc),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_FINISH,
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_lea_finish),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::BUS_READ_IDLE,
 ];
@@ -137,7 +138,7 @@ pub static STEPS_LEA_IDX_PC: [MicroStep; 6] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(ea::ea_calc_pea_idx_pc),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_READ,
     common::FETCH_EXT_FINISH,
@@ -145,7 +146,7 @@ pub static STEPS_LEA_IDX_PC: [MicroStep; 6] = [
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_lea_finish),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::BUS_READ_IDLE,
 ];
@@ -153,14 +154,14 @@ pub static STEPS_LEA_IDX_PC: [MicroStep; 6] = [
 /// Compile-time opcode decoder for LEA ($41C0..=$4FC0)
 pub const fn decode_lea_steps(mode: u8, reg: u8) -> Option<&'static [MicroStep]> {
     match mode {
-        2 => Some(&STEPS_LEA_AI),
-        5 => Some(&STEPS_LEA_D16_AN),
-        6 => Some(&STEPS_LEA_IDX_AN),
-        7 => match reg {
-            0 => Some(&STEPS_LEA_ABSW),
-            1 => Some(&STEPS_LEA_ABSL),
-            2 => Some(&STEPS_LEA_D16_PC),
-            3 => Some(&STEPS_LEA_IDX_PC),
+        mode::INDIRECT => Some(&STEPS_LEA_AI),
+        mode::DISPLACEMENT => Some(&STEPS_LEA_D16_AN),
+        mode::INDEXED => Some(&STEPS_LEA_IDX_AN),
+        mode::EXTENDED => match reg {
+            extended_mode::ABSOLUTE_WORD => Some(&STEPS_LEA_ABSW),
+            extended_mode::ABSOLUTE_LONG => Some(&STEPS_LEA_ABSL),
+            extended_mode::PC_DISPLACEMENT => Some(&STEPS_LEA_D16_PC),
+            extended_mode::PC_INDEXED => Some(&STEPS_LEA_IDX_PC),
             _ => None,
         },
         _ => None,

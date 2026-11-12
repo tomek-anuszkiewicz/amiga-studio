@@ -3,8 +3,17 @@
 //! Assembles scanline pixel data, applies display window clipping,
 //! and generates 32-bit ARGB frame buffers for host display frontends.
 
-use config::BeamPosition;
 use serde::{Deserialize, Serialize};
+
+pub const MASK_RGB444_COMPONENT: u16 = 0xF;
+pub const BIT_RGB444_RED_SHIFT: u16 = 8;
+pub const BIT_RGB444_GREEN_SHIFT: u16 = 4;
+pub const MASK_RGB444_COLOR: u16 = 0x0FFF;
+const BIT_COMPONENT_EXPANSION_SHIFT: u32 = 4;
+const OPAQUE_ALPHA: u32 = 0xFF00_0000;
+pub const OPAQUE_BLACK: u32 = OPAQUE_ALPHA;
+pub const PIXELS_PER_CCK: usize = 4;
+pub const BIT_HSTOP_EXTENSION: u16 = 0x100;
 
 /// Maximum overscan width in high-resolution pixels (4 pixels per CCK across 228 CCKs)
 pub const MAX_FRAME_WIDTH: usize = 912;
@@ -25,23 +34,28 @@ pub const FRAME_BUFFER_PIXELS: usize = MAX_FRAME_WIDTH * MAX_FRAME_HEIGHT;
 /// each 4-bit step corresponds to exactly 16 ADC codes (0, 16, 32, ..., 240).
 #[inline(always)]
 pub fn rgb444_to_argb32(rgb: u16) -> u32 {
-    let r = ((rgb >> 8) & 0xF) as u32;
-    let g = ((rgb >> 4) & 0xF) as u32;
-    let b = (rgb & 0xF) as u32;
-    let r8 = r << 4;
-    let g8 = g << 4;
-    let b8 = b << 4;
-    0xFF00_0000 | (r8 << 16) | (g8 << 8) | b8
+    let r = ((rgb >> BIT_RGB444_RED_SHIFT) & MASK_RGB444_COMPONENT) as u32;
+    let g = ((rgb >> BIT_RGB444_GREEN_SHIFT) & MASK_RGB444_COMPONENT) as u32;
+    let b = (rgb & MASK_RGB444_COMPONENT) as u32;
+    let r8 = r << BIT_COMPONENT_EXPANSION_SHIFT;
+    let g8 = g << BIT_COMPONENT_EXPANSION_SHIFT;
+    let b8 = b << BIT_COMPONENT_EXPANSION_SHIFT;
+    OPAQUE_ALPHA | (r8 << 16) | (g8 << 8) | b8
 }
 
 /// Checks whether a given raster coordinate is within the active Display Window (DIW)
 #[inline]
 pub fn is_in_display_window(hcoord: u16, vcoord: u16, diwstrt: u16, diwstop: u16) -> bool {
     let vstart = (diwstrt >> 8) & 0xFF;
-    let vstop = ((diwstop >> 8) & 0xFF) | (if (diwstop & 0x8000) != 0 { 0 } else { 0x100 });
+    let vstop = ((diwstop >> 8) & 0xFF)
+        | (if (diwstop & config::display_window::BIT_VSTOP_EXTENSION_SOURCE) != 0 {
+            0
+        } else {
+            config::display_window::BIT_VSTOP_EXTENSION
+        });
 
     let hstart = diwstrt & 0xFF;
-    let hstop = (diwstop & 0xFF) | 0x100;
+    let hstop = (diwstop & 0xFF) | BIT_HSTOP_EXTENSION;
 
     vcoord >= vstart && vcoord < vstop && hcoord >= hstart && hcoord < hstop
 }
@@ -66,7 +80,7 @@ pub struct FrameBuilder {
 
 #[inline]
 fn default_frame_buffer() -> Vec<u32> {
-    vec![0xFF000000; FRAME_BUFFER_PIXELS]
+    vec![OPAQUE_BLACK; FRAME_BUFFER_PIXELS]
 }
 
 impl Default for FrameBuilder {
@@ -96,7 +110,7 @@ impl FrameBuilder {
             vpos: 0,
             hpos: 0,
             frame_ready: false,
-            buffer: vec![0xFF000000; FRAME_BUFFER_PIXELS],
+            buffer: vec![OPAQUE_BLACK; FRAME_BUFFER_PIXELS],
         }
     }
 
@@ -105,15 +119,15 @@ impl FrameBuilder {
         self.vpos = 0;
         self.hpos = 0;
         self.frame_ready = false;
-        self.buffer.fill(0xFF000000);
+        self.buffer.fill(OPAQUE_BLACK);
     }
 
     /// Advances frame builder by 1 Color Clock observing current beam coordinates
     #[inline]
-    pub fn step_cck(&mut self, beam: BeamPosition) {
-        self.hpos = beam.hpos;
-        self.vpos = beam.vpos;
-        if beam.hpos == 0 && beam.vpos == 0 {
+    pub fn step_cck(&mut self, hpos: u16, vpos: u16) {
+        self.hpos = hpos;
+        self.vpos = vpos;
+        if hpos == 0 && vpos == 0 {
             self.frame_ready = true;
         }
     }
@@ -134,7 +148,7 @@ impl FrameBuilder {
             let idx = y * MAX_FRAME_WIDTH + x;
             self.buffer[idx]
         } else {
-            0xFF000000
+            OPAQUE_BLACK
         }
     }
 
@@ -162,7 +176,7 @@ impl FrameBuilder {
     #[inline(always)]
     pub fn set_cck_pixels(&mut self, hpos: u16, vpos: u16, argb: u32) {
         let y = vpos as usize;
-        let x_base = (hpos as usize) * 4;
+        let x_base = (hpos as usize) * PIXELS_PER_CCK;
         if y < MAX_FRAME_HEIGHT && x_base + 3 < MAX_FRAME_WIDTH {
             let idx = y * MAX_FRAME_WIDTH + x_base;
             self.buffer[idx] = argb;

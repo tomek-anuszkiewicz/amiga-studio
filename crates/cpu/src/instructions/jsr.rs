@@ -6,9 +6,12 @@
 //! Execution time: 16 to 22 CPU clocks depending on addressing mode.
 
 use crate::micro::common;
+use crate::micro::encoding::{extended_mode, mode};
 use crate::micro::types::MicroStep;
 use crate::state::CpuState;
 use crate::Cpu;
+
+use crate::micro::ea;
 
 pub fn alu_jsr_ai(state: &mut CpuState, reg_src: u8, _reg_dst: u8) {
     state.micro_mut().ea_addr = state.a_long(reg_src as usize);
@@ -62,7 +65,7 @@ pub static STEPS_JSR_AI: [MicroStep; 8] = [
     MicroStep {
         bus_fn: Some(Cpu::step_bus_read_control_target_opcode_read),
         alu_fn: Some(alu_jsr_ai),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::BUS_READ_IDLE,
     common::PUSH_STACK_HIGH_IDLE,
@@ -78,7 +81,7 @@ pub static STEPS_JSR_D16_AN: [MicroStep; 9] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(alu_jsr_d16_an),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::READ_CONTROL_TARGET_OPCODE_READ,
     common::BUS_READ_IDLE,
@@ -95,7 +98,7 @@ pub static STEPS_JSR_IDX_AN: [MicroStep; 9] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(alu_jsr_idx_an),
-        base_clocks: 6,
+        base_clocks: ea::CONTROL_INDEX_CALC_CLOCKS,
     },
     common::READ_CONTROL_TARGET_OPCODE_READ,
     common::BUS_READ_IDLE,
@@ -112,7 +115,7 @@ pub static STEPS_JSR_ABSW: [MicroStep; 9] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(alu_jsr_absw),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::READ_CONTROL_TARGET_OPCODE_READ,
     common::BUS_READ_IDLE,
@@ -129,13 +132,13 @@ pub static STEPS_JSR_ABSL: [MicroStep; 10] = [
     MicroStep {
         bus_fn: Some(Cpu::step_fetch_extension_read),
         alu_fn: Some(crate::micro::ea::ea_calc_absl_hi),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::FETCH_EXT_FINISH,
     MicroStep {
         bus_fn: Some(Cpu::step_bus_read_control_target_opcode_read),
         alu_fn: Some(alu_jsr_absl_lo),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::BUS_READ_IDLE,
     common::PUSH_STACK_HIGH_IDLE,
@@ -151,7 +154,7 @@ pub static STEPS_JSR_D16_PC: [MicroStep; 9] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(alu_jsr_d16_pc),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::READ_CONTROL_TARGET_OPCODE_READ,
     common::BUS_READ_IDLE,
@@ -168,7 +171,7 @@ pub static STEPS_JSR_IDX_PC: [MicroStep; 9] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(alu_jsr_idx_pc),
-        base_clocks: 6,
+        base_clocks: ea::CONTROL_INDEX_CALC_CLOCKS,
     },
     common::READ_CONTROL_TARGET_OPCODE_READ,
     common::BUS_READ_IDLE,
@@ -183,14 +186,14 @@ pub static STEPS_JSR_IDX_PC: [MicroStep; 9] = [
 /// Compile-time opcode decoder for JSR ($4E90..=$4EBF)
 pub const fn decode_jsr_steps(mode: u8, reg: u8) -> Option<&'static [MicroStep]> {
     match mode {
-        2 => Some(&STEPS_JSR_AI),
-        5 => Some(&STEPS_JSR_D16_AN),
-        6 => Some(&STEPS_JSR_IDX_AN),
-        7 => match reg {
-            0 => Some(&STEPS_JSR_ABSW),
-            1 => Some(&STEPS_JSR_ABSL),
-            2 => Some(&STEPS_JSR_D16_PC),
-            3 => Some(&STEPS_JSR_IDX_PC),
+        mode::INDIRECT => Some(&STEPS_JSR_AI),
+        mode::DISPLACEMENT => Some(&STEPS_JSR_D16_AN),
+        mode::INDEXED => Some(&STEPS_JSR_IDX_AN),
+        mode::EXTENDED => match reg {
+            extended_mode::ABSOLUTE_WORD => Some(&STEPS_JSR_ABSW),
+            extended_mode::ABSOLUTE_LONG => Some(&STEPS_JSR_ABSL),
+            extended_mode::PC_DISPLACEMENT => Some(&STEPS_JSR_D16_PC),
+            extended_mode::PC_INDEXED => Some(&STEPS_JSR_IDX_PC),
             _ => None,
         },
         _ => None,

@@ -3,8 +3,10 @@
 //! Quirk note: In ADDX, the Z flag is cleared if the result is non-zero,
 //! but remains unchanged if the result is zero (preserving chained multi-precision zero status).
 
+use super::{BIT_BYTE_SIGN, BIT_LONG_SIGN, BIT_WORD_SIGN};
 use crate::micro::common;
 use crate::micro::ea;
+use crate::micro::encoding::operand_size;
 use crate::micro::types::MicroStep;
 use crate::state::CpuState;
 use crate::Cpu;
@@ -19,8 +21,8 @@ pub fn addx_b(state: &mut CpuState, s: u8, d: u8) -> u8 {
     let (res1, c1) = d.overflowing_add(s);
     let (res, c2) = res1.overflowing_add(x);
     let c = c1 || c2;
-    let v = ((!(s ^ d) & (d ^ res)) & 0x80) != 0;
-    let n = (res & 0x80) != 0;
+    let v = ((!(s ^ d) & (d ^ res)) & BIT_BYTE_SIGN) != 0;
+    let n = (res & BIT_BYTE_SIGN) != 0;
     let z = if res != 0 { false } else { state.is_z() };
     state.set_ccr_xnzvc(c, n, z, v, c);
     res
@@ -32,8 +34,8 @@ pub fn addx_w(state: &mut CpuState, s: u16, d: u16) -> u16 {
     let (res1, c1) = d.overflowing_add(s);
     let (res, c2) = res1.overflowing_add(x);
     let c = c1 || c2;
-    let v = ((!(s ^ d) & (d ^ res)) & 0x8000) != 0;
-    let n = (res & 0x8000) != 0;
+    let v = ((!(s ^ d) & (d ^ res)) & BIT_WORD_SIGN) != 0;
+    let n = (res & BIT_WORD_SIGN) != 0;
     let z = if res != 0 { false } else { state.is_z() };
     state.set_ccr_xnzvc(c, n, z, v, c);
     res
@@ -45,8 +47,8 @@ pub fn addx_l(state: &mut CpuState, s: u32, d: u32) -> u32 {
     let (res1, c1) = d.overflowing_add(s);
     let (res, c2) = res1.overflowing_add(x);
     let c = c1 || c2;
-    let v = ((!(s ^ d) & (d ^ res)) & 0x8000_0000) != 0;
-    let n = (res & 0x8000_0000) != 0;
+    let v = ((!(s ^ d) & (d ^ res)) & BIT_LONG_SIGN) != 0;
+    let n = (res & BIT_LONG_SIGN) != 0;
     let z = if res != 0 { false } else { state.is_z() };
     state.set_ccr_xnzvc(c, n, z, v, c);
     res
@@ -112,7 +114,7 @@ pub static STEPS_ADDX_B_DN_DN: [MicroStep; 2] = [
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_addx_b_dn_dn),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::BUS_READ_IDLE,
 ];
@@ -121,7 +123,7 @@ pub static STEPS_ADDX_W_DN_DN: [MicroStep; 2] = [
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_addx_w_dn_dn),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::BUS_READ_IDLE,
 ];
@@ -130,7 +132,7 @@ pub static STEPS_ADDX_L_DN_DN: [MicroStep; 3] = [
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_addx_l_dn_dn),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::BUS_READ_IDLE,
     common::ALU_IDLE_4CLK,
@@ -140,7 +142,7 @@ pub static STEPS_ADDX_B_PD_PD: [MicroStep; 9] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(ea::ea_calc_dual_pd_b),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::READ_ADDR1_BYTE,
     common::BUS_READ_IDLE,
@@ -149,7 +151,7 @@ pub static STEPS_ADDX_B_PD_PD: [MicroStep; 9] = [
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_addx_b_mem),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
@@ -160,20 +162,20 @@ pub static STEPS_ADDX_W_PD_PD: [MicroStep; 9] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(ea::ea_calc_src_pd_w),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::READ_ADDR1_WORD,
     MicroStep {
         bus_fn: None,
         alu_fn: Some(ea::ea_calc_dst_pd_w),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::READ_ADDR2_WORD,
     common::BUS_READ_IDLE,
     MicroStep {
         bus_fn: Some(Cpu::step_prefetch_next_read),
         alu_fn: Some(alu_addx_w_mem),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::PREFETCH_IRC_FINISH,
     common::BUS_WRITE_IDLE,
@@ -184,31 +186,31 @@ pub static STEPS_ADDX_L_PD_PD: [MicroStep; 15] = [
     MicroStep {
         bus_fn: None,
         alu_fn: Some(ea::ea_calc_src_pd_l_split),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::READ_SRC_WORD,
     MicroStep {
         bus_fn: None,
         alu_fn: Some(ea::latch_src_lo_and_read_src_hi),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::READ_SRC_SPLIT_HIGH,
     MicroStep {
         bus_fn: None,
         alu_fn: Some(ea::ea_calc_dst_pd_l_split),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::READ_DST_WORD,
     MicroStep {
         bus_fn: None,
         alu_fn: Some(ea::latch_dst_lo_and_read_dst_hi),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::READ_DST_SPLIT_HIGH,
     MicroStep {
         bus_fn: None,
         alu_fn: Some(alu_addx_l_mem),
-        base_clocks: 2,
+        base_clocks: MicroStep::CCK_CLOCKS,
     },
     common::BUS_WRITE_IDLE,
     common::WRITE_ADDR2_PD_LONG_LOW,
@@ -226,16 +228,16 @@ pub static STEPS_ADDX_L_PD_PD: [MicroStep; 15] = [
 pub const fn decode_addx_steps(is_memory: bool, size: u8) -> Option<&'static [MicroStep]> {
     if !is_memory {
         match size {
-            0 => Some(&STEPS_ADDX_B_DN_DN),
-            1 => Some(&STEPS_ADDX_W_DN_DN),
-            2 => Some(&STEPS_ADDX_L_DN_DN),
+            operand_size::BYTE => Some(&STEPS_ADDX_B_DN_DN),
+            operand_size::WORD => Some(&STEPS_ADDX_W_DN_DN),
+            operand_size::LONG => Some(&STEPS_ADDX_L_DN_DN),
             _ => None,
         }
     } else {
         match size {
-            0 => Some(&STEPS_ADDX_B_PD_PD),
-            1 => Some(&STEPS_ADDX_W_PD_PD),
-            2 => Some(&STEPS_ADDX_L_PD_PD),
+            operand_size::BYTE => Some(&STEPS_ADDX_B_PD_PD),
+            operand_size::WORD => Some(&STEPS_ADDX_W_PD_PD),
+            operand_size::LONG => Some(&STEPS_ADDX_L_PD_PD),
             _ => None,
         }
     }
