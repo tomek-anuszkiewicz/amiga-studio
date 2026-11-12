@@ -481,3 +481,17 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - The isolated WASM check initially failed on two unused GUI parameters and passed after the repair
   - Prior live GUI inspection and extended source review passed
   - Renewed final-source profile and review outcomes are recorded in the closing commit
+---
+
+### [2026-11-13 00:19 CET] — Defer English audits to authorized commit workflows
+- **Affected Subsystems**:
+  - `agent rules`
+  - `verification guidance`
+- **What Was Changed (The Concrete Reality)**:
+  - Run language and vocabulary audits only during authorized commits or explicit language work
+  - Keep ordinary implementation and validation free of language scans and vocabulary decisions
+- **Architectural Rationale & Trade-Offs**:
+  - Keep language review at the user-approved workflow boundary
+- **Verification & Test Results**:
+  - The user reported testing and review complete
+  - No tests or audits were rerun under the explicit commit-only instruction
