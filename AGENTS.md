@@ -25,7 +25,7 @@ This is a private, pre-release project without external users. Prefer the simple
 
 Use the nearest relevant implementation and tests as examples for conventions, helpers, structure, and verification commands. Reuse established patterns when they fit the task. Existing code and tests do not override approved specifications or hardware evidence; investigate inconsistencies rather than copying them.
 
-Add tests for meaningful behavior or identified risks, not merely because code changed. Prefer a few high-value tests over redundant edge cases or elaborate infrastructure. Simplify or remove tests whose original purpose disappears.
+Add tests for meaningful behavior or identified risks, not merely because code changed. Prefer a few high-value tests over redundant edge cases or elaborate infrastructure. Simplify or remove tests whose original purpose disappears, subject to [protected verification](.agents/rules/unit-testing-policy.md#protected-verification); architectural test changes and weakening other tests or required gates need explicit user approval.
 
 ### Compatibility and Internal Refactoring
 

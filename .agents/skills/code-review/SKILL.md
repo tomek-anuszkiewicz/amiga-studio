@@ -43,9 +43,11 @@ The reviewer may deepen a focused review when a concrete risk appears; state the
 
 Read [AGENTS.md](../../../AGENTS.md) and its current rules for the affected domains. Requirements remain owned there; do not invent a second set of quality rules. Derive expected behavior from approved requirements and inspect the patch and necessary surrounding implementation before consulting the author's verification results.
 
-For Rust changes, explicitly check [named numeric values](../../rules/rust-best-practices.md#named-numeric-values) in changed production logic and its affected uses. Check that domain values reuse their owning definitions, and apply the rule's exceptions when deciding whether an unnamed literal is a finding.
+For Rust changes, explicitly check [named numeric values](../../rules/rust-best-practices.md#named-numeric-values), including the required `REGISTER_`, `BIT_` and `MASK_` prefixes, in changed production logic and its affected uses. Check that domain values reuse their owning definitions, and apply the rule's exceptions when deciding whether an unnamed literal is a finding.
 
 For changed behavior, follow input through decisions, state changes and observable output. Inspect callers and consumers beyond the changed lines where contracts cross a boundary. Look for a reachable failure: incorrect ordering or timing, incomplete transitions, wrong ownership, lost data, broken error handling, or a replaced mechanism still used by an active caller. Apply only risks relevant to this patch.
+
+For changes covered by [protected verification](../../rules/unit-testing-policy.md#protected-verification), verify explicit user approval for the concrete diff: every architectural test, checker or policy-data change, and any weakening of other tests or required gates. Treat missing approval as a blocker; implementation changes, matching documentation and passing verification do not supply that approval.
 
 For a defect repair, check that the evidence demonstrates the original failure and that the repair changes its cause. For refactoring, check that affected callers moved to the replacement and that required behavior remains intact. For instruction changes, walk a realistic invocation through selection, execution, evidence, failure handling and completion; check for conflicting triggers, circular delegation and unreachable required steps.
 

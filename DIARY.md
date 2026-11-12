@@ -1140,3 +1140,20 @@ Every repository commit must include a new Section 10 entry for the changes it r
 - **Verification & Test Results**:
   - PASS all 15 adapter and launch contracts
   - full commit verification and independent review are recorded in the closing commit
+---
+
+### [2026-11-12 01:11 CET] — Require named numeric values and protect verification rules
+- **Affected Subsystems**:
+  - `Agent rules`
+  - `Code review`
+- **What Was Changed (The Concrete Reality)**:
+  - Require REGISTER_ for register constants and BIT_ or MASK_ for flags and masks
+  - Require explicit user approval for every architectural test or checker change and for weakening other tests or required gates
+  - Apply the approval boundary to test cleanup and file-size exceptions and require reviewers to verify approval
+- **Architectural Rationale & Trade-Offs**:
+  - Keep architectural constraints and acceptance criteria under user control
+  - Separate policy changes from their implementation in two commits as requested
+- **Verification & Test Results**:
+  - Focused English scan passed for all five changed instruction files
+  - Git diff whitespace check passed
+  - Runtime refactoring is isolated for the next commit and no roadmap stage is closed
