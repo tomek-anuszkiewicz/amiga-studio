@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 tools/log_diary.py
-Deterministic CLI Appender for DIARY.md Section 10.
+Deterministic CLI Appender for DIARY.md's Rolling Changelog.
 
 Eliminates the need for the LLM to read 90+ KB of DIARY.md into its context window.
 Directly formats and appends timestamped architectural entries adhering strictly
@@ -90,7 +90,7 @@ def format_entry(title, subsystems, changes, rationale, results, timestamp=None)
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Deterministic CLI Appender for DIARY.md Section 10."
+        description="Deterministic CLI Appender for DIARY.md's Rolling Changelog."
     )
     parser.add_argument("--title", required=True, help="Title of the diary entry")
     parser.add_argument("--subsystems", required=True, help="Affected subsystems (comma/newline separated)")

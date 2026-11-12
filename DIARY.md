@@ -207,7 +207,7 @@ The final stage arrived once the microcode archetype baseline stabilized, focusi
 
 The initial 108-case benchmark catalog generated repeated guest instructions in memory and measured host time with warm-up, noise filtering and protected CSV hashes. It supported early CPU profiling, but its catalog, trace regressions, hashes and analyzer were later retired. The measurements and anomaly claims from that runner are historical, not a current performance baseline.
 
-A broader decoder-derived pilot then measured 4,571 representative workloads. Its fixture and NOP-control protocol differed from the later program-level measurements, so those numbers cannot be compared directly. Section 10 records the pilot's results and verification limits.
+A broader decoder-derived pilot then measured 4,571 representative workloads. Its fixture and NOP-control protocol differed from the later program-level measurements, so those numbers cannot be compared directly. The Rolling Changelog records the pilot's results and verification limits.
 
 The active benchmark path uses handwritten, assembler-backed M68000 programs in `benchmarks/m68k`. The reviewed full run contained 2,257 cases and 6,771 timed series. Its approved baseline is tracked with provenance and hashes; raw host-specific runs remain local. The current snapshot includes 86 refreshed cases from filtered runs. Compare measurements only when the program source, configuration and timing protocol match. See the dated October 2026 digests and the living performance specification for the exact workflow.
 
@@ -258,7 +258,7 @@ As the repository expanded to dozens of crates and hundreds of files, the human 
   8. *Golden Master Anti-Tamper Rule:* Modifying golden test hashes or benchmark constants to silence a failing test is strictly forbidden. Any divergence signifies an architectural regression requiring root-cause analysis.
   9. *Path Privacy:* Zero hardcoded external paths (`D:\...`, `/home/...`).
   10. *Mandatory Merge Commits (`git-merge-commits.md`):* Merges between worktrees and branches must produce clean merge commits with explicit conflict resolution records rather than fast-forward rebases.
-  11. *Mandatory Engineering Diary Maintenance (`DIARY.md`):* Recording all changes, rationale, and evolutionary context in `DIARY.md` (Section 10) because Git commits are often squashed, batched, or combined.
+  11. *Mandatory Engineering Diary Maintenance (`DIARY.md`):* Recording all changes, rationale, and evolutionary context in `DIARY.md`'s Rolling Changelog because Git commits are often squashed, batched, or combined.
 
 ---
 
@@ -279,17 +279,69 @@ This diary stands as the living record of how those foundations were built.
 
 ---
 
-## 10. Living Chronological Engineering Log & Evolutionary Change History
+## 10. Accepted-Recipe Reconstruction and Reference Publication
 
-This section records durable engineering decisions, findings, and dated verification evidence. Completed sequences are condensed into separate milestone digests; Git history retains their individual changes. Recent or unfinished work remains granular until its outcome is settled.
+On October 29, 2026, `ebc99c8` delivered Book Review reconstruction from an accepted `book.json` recipe and its matching source PDF, plus publication of reviewed Markdown with stable chapter links and image descriptions. This completed a tooling capability; it did not certify the Test Book or close the four-manual conversion stage. Earlier source preparation, authoring decisions and failed acceptance checks remain in the dated historical digests below.
 
-### Mandatory Entry Schema:
-Every repository commit must include a new Section 10 entry for the changes it records, including routine code, test, rule, documentation, and merge commits. At minor roadmap points and milestones, compact settled entries into separate milestone digests while retaining unfinished work. Use the following entry structure:
-- **Timestamp & Context**: Date / local time and the active branch / task / PR.
-- **Affected Subsystems**: Specific crates, modules, tools, or configuration affected.
-- **What Was Changed (The Concrete Reality)**: Detailed technical description of changes, data structures, algorithms, or mechanics implemented.
-- **Architectural Rationale & Trade-Offs**: Why this solution was chosen, what alternatives were rejected, and why.
-- **Verification & Invariants**: Test suites executed, assertions checked, and proof of correctness.
+The accepted recipe became the portable handoff between clones. Reconstruction rebuilds the editor's local page and asset workspace from the identified source while retaining the authored recipe. Working remains the edit surface, and acceptance remains an explicit author decision. Bulk description tasks were limited to visible Working elements rather than hidden content. Publication and RAG indexing remained a downstream user workflow. The same delivery added a structural frontmatter gate for local reference Markdown; that gate checks metadata, not source fidelity.
+
+The recorded Test Book replay completed PDF stages 01-08 with 545 cache hits and zero new model calls, then imported 993 elements. Source validation still reported 56 invalid fields in that raw import. The user retained the fresh import without treating successful execution as source acceptance. The closing commit records a passing commit profile, 35 design specifications with 691 resolving links, diary/roadmap checks and valid frontmatter in 104 local Markdown files. These are historical results for that delivery, not checks rerun during diary compaction.
+
+The roadmap pilot was removed by user direction, rather than verified as complete. The remaining repository deliverable was four accepted manual recipes with matching source identities; full-book quality, downstream publication and RAG ingestion were not established by this tooling delivery.
+
+---
+
+## 11. Register Access and Delivery to Owning Chips
+
+On November 11, 2026, `c83f046` closed Roadmap 2.1 under the explicitly approved documentation-and-delivery boundary (`REGISTER-ACCESS-CLOSE-20261111`). It followed direct CIA dispatch (`CIA-DIRECT-DISPATCH-20261111`), direct custom dispatch (`CUSTOM-DIRECT-DISPATCH-20261111`) and separation of private register application from engine execution. The completed contract identifies every modeled register, its access semantics, recipients, queue and logical owner; it does not certify every receiving engine's eventual effect.
+
+Generic motherboard-address mutations were replaced with named readers and queued setters for thirty canonical CIA addresses and 180 custom write offsets. Shared writes preflight their recipients, and Agnus owns the queue for Copper/Blitter children. Register-module separation preserved all 221 existing method bodies and signatures. CPU CIA synchronization and acknowledgment remain distinct from falling-E capture and same-phase overlay routing. Pending bus, TOD and output state survives continuation; reset cancels pending work. Restore-time polling that consumed unrouted events was removed.
+
+Effective Port-B output now respects DDRB and pull-ups after a regression reproduced unintended drive selection. Related corrections covered LOAD/unused-bit readback, TOD middle-write halt, pending ICR mask enable and one-shot timer-high loading. Palette/sync requests gained a positive provisional CCK delay; due events retain issue order, full queues reject writes without early application, rejected source outputs are retained and Paula replays all due writes rather than truncating the ninth. A merged interrupt-input destination remains separate from CPU INTREQ. The obsolete audio location setter/fixture and unused Denise inspection decoder were retired; Agnus retains audio pointer coverage. The user restored snapshot header version 1 for the evolving development format without an old-format decoder.
+
+Motorola's E-clock description, vAmiga's provisional waits and the replacement FPGA project's CIA capture/counting behavior informed the model. Queue delays, mutation modes and issue order remain model settings rather than measured silicon timing. Nine inert custom offsets, unresolved CIA PRA/PRB pin reads and missing engine effects were explicitly handed to later work; Gary decoding and board signal transport were separate stages.
+
+Historical delivery checks covered all 256 custom slots, all 180 writable offsets, word/both byte lanes, live/debug readers and PAL/NTSC. The final MemoryBus wiring suite passed 16 tests including 1,536 write transfers; preceding focused suites passed 168 tests before the last read-selection addition. CIA coverage included canonical addresses, five E phases, CPU retries, continuation and queue boundaries. The closing commit records passing commit/milestone profiles, 128/128 SingleStep groups with existing reviewed ASL.b corrections unchanged, strict Clippy, native/WASM checks, vault audits and independent approval of the exact staged snapshot. Static register/map checks covered no signal/quirk sentinels. Unknown hardware vocabulary was added only after explicit user approval. RAG retrieval was insufficient at that time, so targeted local references supplied evidence. No firmware, operating system, vAmigaTS execution or silicon calibration was claimed.
+
+---
+
+## 12. A500 Gary Address Decoding
+
+On November 11, 2026, `e7d870e` closed Roadmap 2.2 (`MEM-GARY-01`). Original-code failures first reproduced missing CIA aliases, dual selection, opposite-parity writes, custom DE routing and physical bank classification. The repair addressed the decoder and production bus paths while retaining installed memory boundaries and the existing CCK wait model.
+
+Banks A0-BF route through independent A12/A13 CIA selection using full canonical register identities. CIA-B supplies the high read lane and CIA-A the low lane; byte writes broadcast to selected chips regardless of parity, while word writes retain each chip's lane. DE and DF share custom live/debug/queued paths. Selected CIA receivers synchronize together, and CIA-A PA0 changes affect overlay only after commitment. Inactive read lanes retain FF and unmapped reads FFFF; Slow/Fast RAM, RTC precedence and physical DMA storage remain separate from device aliases.
+
+By explicit user decision, the redundant CIA bus capacity preflight was removed while sixteen mutation slots and direct-setter overflow rejection remained. Named CCK constants express the existing wait schedule, an optional countdown was simplified and an obsolete CIA debug-byte helper was replaced by the production word-debug API. The source review distinguished canonical HRM addresses, A500 Rev. 6A/7 wiring and differing reference-emulator equations. Extra mirrors and measured timing calibration were deferred. Full CIA CPU-cycle timing, including the hardware 10-19-clock range, remained unverified in this CCK model and was handed to later signal/guest verification work.
+
+Historical focused checks passed 47 CIA/MemoryBus tests and twelve production CIA/Gary integration tests across PAL/NTSC and all three memory presets, plus strict Clippy and machine WASM compilation. The user specifically authorized nine existing production-machine ADF/action regressions with a stop on errors; they passed, including disk DMA, while the floppy crate itself contained no tests. This exception did not authorize new media or firmware work. Static checks covered 196 offsets, twelve map boundaries and 26 crate relationships, with no signal/quirk sentinel coverage. The closing commit records passing commit/milestone profiles, 128/128 SingleStep groups and independent extended approval. Complete hardware timing and attached-device behavior were not established by decoder closure.
+
+---
+
+## 13. Receiver-Owned Signal Transport and Continuation
+
+On November 11, 2026, `e3ca26c` closed Roadmap 2.3 (`SIGNAL-THREE-REFERENCE-20261111`). The stage established motherboard transport through captured receiver-owned inputs at explicit CCK phases. It preserved the boundary between delivering a signal, reconstructing the receiving engine and proving a complete guest-visible exchange.
+
+Agnus retains beam-counter ownership and sends RGA synchronization events into receiver-owned state. Register contracts distinguish immediate address strobes from queued data writes; pending delivery remains serializable rather than depending on restore-time polling. Pure machine snapshots were separated from the higher-level save-file and preview format. CIA-B PA0/SP and PA1/CNT wiring was completed in both directions after a regression reproduced the missing reverse route. Obsolete direct SDR-byte injection and unused pin helpers were retired with their callers.
+
+Twenty focused machine transport and pin-propagation tests passed across PAL and NTSC. The recorded checks also passed workspace all-target Clippy with denied warnings, machine_loop/save_state WASM builds, configured semantic checks and a 35-note vault audit with 999 links before closure edits. Thirteen baseline RAG contracts passed in isolation from a separately staged adapter repair. The closing commit records passing commit/milestone profiles, 1,002,737 SingleStep executions with two existing reviewed overrides and independent extended approval of the exact committed snapshot. Those CPU vectors do not certify electrical pins or complete peripheral exchanges.
+
+Device-engine reconstruction remained in 2.4 and functional guest verification in 2.5. Serial and parallel ports remained disconnected; deterministic pin tests did not prove communication with attached devices. Firmware, media execution, vAmigaTS and measured silicon timing remained outside this closure. The separately closed timing research was not reopened. The November 12 workflow entry below records a separate planned register-propagation audit; this transport closure does not establish that audit's result or its current roadmap placement.
+
+---
+
+## Rolling Changelog
+
+This final, unnumbered section records changes in chronological order. Completed stages with a full narrative are recorded in the numbered chapters above; settled supporting work remains in dated digests. Detailed entries for unfinished work stay here until its scope is settled. Historical verification applies to the source and scope recorded at the time, not automatically to the current emulator.
+
+### Entry Format
+
+Every authorized repository commit adds its own entry here, including routine code, tests, rules, documentation and merges. Logging and compaction follow [diary-maintenance.md](.agents/rules/diary-maintenance.md) and [compact-diary](.agents/skills/compact-diary/SKILL.md). Record:
+
+- **Timestamp & Context**: Date/time and the task or stage where needed.
+- **Affected Subsystems**: Components touched.
+- **What Was Changed**: Concrete behavior or mechanisms delivered.
+- **Architectural Rationale & Trade-Offs**: Decisions and rejected alternatives.
+- **Verification & Invariants**: Actual results, failures and unrun checks.
 
 ---
 
@@ -682,21 +734,12 @@ Every repository commit must include a new Section 10 entry for the changes it r
 
 ---
 
-### [2026-10-26 15:27 CET] — Name physical memory address constants
-- **Affected Subsystems**:
-  - `crates/memory_bus`
-  - `crates/physical_memory`
-- **What Was Changed (The Concrete Reality)**:
-  - Named the 24-bit CPU address mask in MemoryBus
-  - named Fast and Slow RAM base addresses in PhysicalMemory handlers
-  - derived the synthetic boot SSP from the configured 512 KB Chip RAM size
-- **Architectural Rationale & Trade-Offs**:
-  - Keep repeated address values explicit and tie the fallback boot stack to the memory size it describes without changing routing behavior
-- **Verification & Test Results**:
-  - cargo test -p physical_memory -p memory_bus passed (55 integration tests)
-  - graphify update . completed with no topology changes
-  - git diff --check passed
-  - commit profile pending
+### [2026-10-26 15:27 CET] — Historical Digest: Named physical memory addresses
+- **Timestamp & Context**: 2026-10-26; behavior-preserving memory constant cleanup.
+- **Affected Subsystems**: MemoryBus and PhysicalMemory.
+- **What Was Changed**: Named the 24-bit address mask and Fast/Slow RAM bases; derived the synthetic boot SSP from the configured 512 KB Chip RAM size.
+- **Architectural Rationale & Trade-Offs**: Tie repeated addresses and fallback stack values to their owning definitions without changing routing.
+- **Verification & Invariants**: Historical physical_memory/memory_bus tests passed 55 integration cases; Graphify found no topology change and whitespace checks passed. The entry recorded the commit profile as pending.
 
 ---
 
@@ -714,475 +757,130 @@ Every repository commit must include a new Section 10 entry for the changes it r
 
 ---
 
-### [2026-10-27 23:29 CET] — Publish aligned Test Book recipe and close authoring points
-- **Affected Subsystems**:
-  - `tools/bootstrap/book-to-markdown`
-  - `ROADMAP.md`
-  - `DIARY.md`
-- **What Was Changed (The Concrete Reality)**:
-  - Replace historical import matching with page-local source alignment and remove obsolete compiler tests
-  - route new Working literals through the aligner without the old adjacent-correction helper
-  - publish the current Accepted Test Book recipe at the variant root
-  - close Roadmap 1.3 and 1.4 by user direction and expand 1.7 to four manual recipes
-  - carry standalone extraction requirements into 1.5
-  - compact the settled source-provenance and Stage 08 entries into a milestone digest
-- **Architectural Rationale & Trade-Offs**:
-  - The user confirmed the chapter-formatting review and chose the current Accepted book as the published recipe. Existing source references remain authored
-  - a short edited fragment can stay explicitly accepted. Publication does not establish standalone reconstruction or semantic source attribution.
-- **Verification & Test Results**:
-  - Book review suite passed 160 tests
-  - commit and milestone profiles failed the English scan with 101 unknown-word occurrences, while their other selected suites passed
-  - semantic-sync audit failed five emulator documentation/code checks
-  - source audit reported 56 fields requiring attention among 940 checked fields and 26360 references
-  - root and Accepted book hashes match and source PDF SHA-256 matches source.json
-  - roadmap check and git diff --check passed. Roadmap closure is user-directed despite these verification limits. No standalone reconstruction or RAG ingestion was run.
----
-
-### [2026-10-27 23:39 CET] — Merge bootstrap-codex-api into master
-- **Affected Subsystems**:
-  - `.agents`
-  - `tools/bootstrap`
-  - `tools/verification`
-  - `Obsidian/Amiga/Design/Verification`
-  - `ROADMAP.md`
-  - `DIARY.md`
-- **What Was Changed (The Concrete Reality)**:
-  - Integrated the reviewed Test Book authoring, Stage 08 proofreading, and verification routing with the master CPU benchmark and memory work
-  - reconciled seven text conflicts across testing rules, Book Review runner, verifier, tests, and documentation
-  - interleaved 25 existing diary entries chronologically
-  - reviewed 63 changed Markdown paths and their local links
-  - applied the reviewed English vocabulary and exact-file literal decisions; reworded one agent prompt sentence
-- **Architectural Rationale & Trade-Offs**:
-  - Preserve both branches' implementation and history while retaining dependency setup and the shared browser test runner
-  - retain the master CPU reference-vector coverage rule and the source branch's conditional Bootstrap contracts
-- **Verification & Test Results**:
-  - Fast-forward rejected because the branches diverged
-  - focused verification CLI contracts passed
-  - Book Review contracts passed
-  - Book Review dependency setup tests passed
-  - git diff --cached --check passed
-  - formatting, architecture, vault links and frontmatter passed
-  - ordinary Rust workspace tests passed
-  - commit profile passed Rust coverage tests, formatting, Clippy, architecture, quality, standard harness and all six Python contract suites
-  - initial commit profile failed only the English scan with 101 unknown-word occurrences in the merged Bootstrap text
-  - user approved the reviewed vocabulary and exact-file literal entries; focused English scan passed after those changes
-  - final commit profile passed the English scan, ordinary Rust coverage tests, formatting, Clippy, architecture, quality, standard harness and all six Python contract suites
----
-
-### [2026-10-28 15:41 CET] — Close FPGA reference and measured web research roadmap points
-- **Affected Subsystems**:
-  - `tools/bootstrap`
-  - `tools/graphify_query.py`
-  - `.codex/agents/hardware_researcher.toml`
-  - `ROADMAP.md`
-  - `Obsidian/Amiga/Design`
-- **What Was Changed (The Concrete Reality)**:
-  - Pinned MiniMig and Amiga Replacement Project sources with individual switches and general Sources selection
-  - unified the Graphify scope and added source filtered queries
-  - routed hardware research to measured Techtravels evidence
-  - pruned roadmap points 1.9 and 1.10
-  - updated reference links and removed the duplicate ignored vAmiga directory
-  - refreshed the English hash scanner and semantic memory map audit
-- **Architectural Rationale & Trade-Offs**:
-  - Keep one canonical vAmiga source and distinguish measured hardware signals from reference implementation models
-  - validate current source locations instead of obsolete CIA constants
-- **Verification & Test Results**:
-  - Individual and general source bootstrap checks passed on repeat runs with pinned manifests
-  - a Paula DMAL query found measured Techtravels signals and separated them from reconstructed circuitry
-  - Graphify query test, English scan, semantic audit, vault link audit, and roadmap check passed
+### [2026-10-27 23:29 CET] — Historical Digest: Published Test Book authoring decisions
+- **Timestamp & Context**: 2026-10-27; user-directed closure of then-Roadmap 1.3/1.4 in `570d578`.
+- **Affected Subsystems**: Book Review, Test Book recipe and roadmap.
+- **What Was Changed**: Replaced import matching with page-local source alignment, removed the obsolete compiler tests and adjacent-correction helper, and published the current Accepted recipe. The user accepted chapter formatting, retained authored source references and explicitly accepted short edited fragments. Standalone extraction remained in 1.5 and four manual recipes in 1.7.
+- **Architectural Rationale & Trade-Offs**: An accepted edit and publication do not establish semantic source attribution or standalone reconstruction.
+- **Verification & Invariants**: Historical Book Review passed 160 tests. Commit/milestone profiles failed English with 101 unknown-word occurrences; their other selected suites passed. Semantic sync failed five emulator checks; source audit reported 56 fields requiring attention among 940 fields/26,360 references. Root/Accepted hashes and PDF/source identity matched; roadmap/whitespace passed. No standalone reconstruction or RAG ingestion ran.
 
 ---
 
-### [2026-10-28 16:50 CET] — Relocate bootstrap books and shared Codex cache
-- **Affected Subsystems**:
-  - `tools/bootstrap/books`
-  - `tools/bootstrap/conversion`
-  - `tools/bootstrap/book-to-markdown`
-  - `tools/verification`
-  - `.agents`
-- **What Was Changed (The Concrete Reality)**:
-  - Move the tracked book catalog and local source and review data to tools/bootstrap/books
-  - move the shared completed-response cache to tools/bootstrap/.cache without changing its entries
-  - update code paths, review server default, documentation links, Git and Graphify exclusions, and verification scope
-- **Architectural Rationale & Trade-Offs**:
-  - Keep book source data and shared conversion cache at the bootstrap level while retaining existing response identities and local review workspaces
-- **Verification & Test Results**:
-  - PASS: 6694 moved files retained matching SHA-256, including 4775 Codex cache entries
-  - PASS: existing response cache hit, PDF status, and review server HTTP and API status
-  - PASS: conversion, PDF, Book Review, bootstrap, and verification CLI focused tests
-  - PASS: Graphify incremental update and git diff --check
-  - Design review: Testing Strategy already accurate, no specification edit
-  - NOT RUN: PDF conversion or Book import
+### [2026-10-27 23:39 CET] — Historical Digest: Bootstrap branch integration
+- **Timestamp & Context**: 2026-10-27; divergent merge `0f68632`.
+- **Affected Subsystems**: Agent rules, Bootstrap, verifier, testing specification, roadmap and diary.
+- **What Was Changed**: Integrated reviewed authoring/Stage 08 work with CPU benchmarks and memory changes. Reconciled seven text conflicts, interleaved 25 diary entries and reviewed 63 changed Markdown paths and links.
+- **Architectural Rationale & Trade-Offs**: Retain shared browser/dependency setup, master CPU-vector coverage requirements and conditional Bootstrap contracts. Fast-forward was unavailable because the branches diverged.
+- **Verification & Invariants**: Historical focused CLI/Book Review/setup, formatting, architecture, vault and whitespace checks passed. The first full profile failed only 101 English occurrences; after explicit user vocabulary/literal decisions and one reworded prompt, the full profile passed Rust coverage, Clippy, architecture, quality, standard harness, English and six Python contract suites.
+
 ---
 
-### [2026-10-28 17:05 CET] — Simplify Book Review documentation and agent guidance
-- **Affected Subsystems**:
-  - `tools/bootstrap`
-  - `tools/bootstrap/book-to-markdown`
-  - `DIARY.md`
-- **What Was Changed (The Concrete Reality)**:
-  - Reorganize Book Review README around server commands, review workflow, source identity, and recipe contract
-  - remove duplicated implementation and UI descriptions
-  - shorten nested agent instructions while preserving scope and source requirements
-- **Architectural Rationale & Trade-Offs**:
-  - Keep operational commands and authoring decisions easy to find while letting code and tests own implemented detail
-- **Verification & Test Results**:
-  - Focused English scan passed for three edited files
-  - 30 local Markdown links resolved
-  - git diff --check passed
-  - pre-commit design review selected no specifications
-  - existing unrelated crates/test_runner/src tracked path is unresolved
-  - application tests not run for documentation-only change
+### [2026-10-28 15:41 CET] — Historical Digest: FPGA references and measured hardware research
+- **Timestamp & Context**: 2026-10-28; `8ba6def` closed then-Roadmap 1.9/1.10.
+- **Affected Subsystems**: Source bootstrap, Graphify queries, hardware researcher and design links.
+- **What Was Changed**: Pinned MiniMig and Amiga Replacement Project sources with individual/general source selection; unified Graphify scopes and source filters, routed measured research to Techtravels and removed the duplicate ignored vAmiga tree. Updated the English hash scanner and semantic memory-map audit.
+- **Architectural Rationale & Trade-Offs**: Keep one canonical vAmiga source and separate measured signals from reconstructed circuitry and emulator models.
+- **Verification & Invariants**: Historical repeated source bootstrap retained pinned manifests. A Paula DMAL query distinguished measured Techtravels evidence from reconstruction; Graphify query tests, English, semantic/vault audits and roadmap checks passed.
+
 ---
 
-### [2026-10-28 23:22 CET] — Extend Book Review chapter and description workflows
-- **Affected Subsystems**:
-  - `.agents/rules`
-  - `tools/bootstrap/book-to-markdown`
-  - `tools/bootstrap/conversion`
-  - `tools/bootstrap/books/test-book-example-4567/78e52f075e17`
-  - `tools/verification/checks/english_words`
-- **What Was Changed (The Concrete Reality)**:
-  - Add chapter and contents renaming with source-aligned titles and safe Markdown exports
-  - add selected and bulk image and table descriptions with scoped context and Working rendering
-  - support cancellation of active Codex requests
-  - update Test Book recipe chapter structure and one image description
-  - keep an authorized commit workflow active while awaiting a language-scan decision
-  - resolve reviewed scanner findings with clearer test names and an approved JavaScript term
-- **Architectural Rationale & Trade-Offs**:
-  - Keep book editing and generated Markdown consistent with the authored recipe while limiting description writes to their selected source context
-- **Verification & Test Results**:
-  - PASS: Book Review suite, 182 tests
-  - PASS: conversion contracts, 44 tests
-  - PASS: git diff --check
-  - pre-commit design review found Testing Strategy accurate
-  - NOT RUN: PDF conversion or book import
+### [2026-10-28 16:50 CET] — Historical Digest: Book catalog and response-cache relocation
+- **Timestamp & Context**: 2026-10-28; `e35239e`.
+- **Affected Subsystems**: Bootstrap books, shared conversion cache, Book Review, verification and exclusions.
+- **What Was Changed**: Moved catalog/source/review data to `tools/bootstrap/books` and the completed-response cache to `tools/bootstrap/.cache`; updated consumers, server defaults, links and Git/Graphify/verification exclusions.
+- **Architectural Rationale & Trade-Offs**: Keep source and shared cache at bootstrap scope without changing response identities or local review workspaces. The testing specification already described this correctly.
+- **Verification & Invariants**: Historical SHA-256 comparison preserved 6,694 files including 4,775 cache entries. A cache hit, PDF status, review HTTP/API, focused conversion/PDF/Book Review/bootstrap/verifier tests, Graphify and whitespace passed. No PDF conversion or Book import ran.
+
 ---
 
-### [2026-10-28 23:52 CET] — Compact settled engineering diary history
-- **Affected Subsystems**:
-  - `DIARY.md`
-- **What Was Changed (The Concrete Reality)**:
-  - Consolidated settled September and October entries into dated theme digests while retaining recent detailed work
-  - Replaced the retired CPU benchmark narrative with the progression to handwritten workloads
-  - Reduced the diary from 5740 to 859 lines before this entry
-- **Architectural Rationale & Trade-Offs**:
-  - Preserve decisions and dated verification limits while leaving transient commit mechanics in Git history
-  - Keep unfinished Book Review work detailed
-- **Verification & Test Results**:
-  - PASS: diary structure and chronological order before this entry
-  - PASS: focused English scan and git diff --check
-  - PASS: commit verification on the compacted file before this entry
-  - NOT RUN: milestone profile because no roadmap point or major milestone was closed
+### [2026-10-28 17:05 CET] — Historical Digest: Book Review documentation
+- **Timestamp & Context**: 2026-10-28; `67743aa`.
+- **Affected Subsystems**: Bootstrap instructions and Book Review README.
+- **What Was Changed**: Organized commands, review workflow, source identity and recipe contract; removed duplicate implementation/UI prose and shortened nested guidance.
+- **Architectural Rationale & Trade-Offs**: Keep operational procedures and author decisions discoverable; selected no emulator specification change.
+- **Verification & Invariants**: Historical focused English, thirty local links and whitespace passed. An unrelated tracked `crates/test_runner/src` path remained unresolved. Application tests were not run for this documentation-only change.
+
 ---
 
-### [2026-10-29 17:42 CET] — Focus Step 11 on four committed book recipes
-- **Affected Subsystems**:
-  - `ROADMAP.md`
-- **What Was Changed (The Concrete Reality)**:
-  - Removed the former Step 11.1 Test Book pilot by explicit user decision.
-  - Kept the four-manual PDF conversion, recipe adjustment, and `book.json` commit as Step 11.1.
-  - Removed downstream Markdown reconstruction, description authoring, publication, and RAG indexing from the roadmap; kept the user workflow in the Book-to-Markdown README.
-- **Architectural Rationale & Trade-Offs**:
-  - The pilot was removed from planned scope, not verified as complete. The freshly imported Test Book has no descriptions or Accepted bundle, and its clean reconstruction gate was not demonstrated.
-  - The repository deliverable is four accepted recipes with matching source identities. A downstream user can continue from those recipes using the documented bootstrap sequence.
-- **Verification & Test Results**:
-  - PASS: roadmap retention check, focused English scan, and `git diff --check` for the changed documentation.
-  - NOT RUN: commit and milestone profiles or semantic parity review because this was a scope removal, not verified task completion.
+### [2026-10-28 23:22 CET] — Historical Digest: Chapter names and scoped descriptions
+- **Timestamp & Context**: 2026-10-28; `ac53f5e`.
+- **Affected Subsystems**: Book Review, shared conversion, Test Book recipe and commit guidance.
+- **What Was Changed**: Added chapter/contents renaming with source-aligned titles and safe Markdown exports, selected/bulk image and table descriptions, Working rendering and active Codex-request cancellation. Updated the Test Book chapter structure and one image description; kept an authorized commit active during language decisions.
+- **Architectural Rationale & Trade-Offs**: Keep rendered/exported content consistent with its authored recipe and restrict description writes to selected source context.
+- **Verification & Invariants**: Historical Book Review passed 182 tests and conversion contracts 44; whitespace passed. Clearer test names and a JavaScript term followed explicit user approval. The testing specification remained accurate; no PDF conversion or Book import ran.
+
 ---
 
-### [2026-10-29 17:48 CET] — Deliver Book Review recipe reconstruction and publication
-- **Affected Subsystems**:
-  - `tools/bootstrap/book-to-markdown`
-  - `tools/verification`
-  - `tools/bootstrap/books`
-  - `Obsidian/Amiga/Design/Verification`
-  - `ROADMAP.md`
-  - `docs/developers.md`
-- **What Was Changed (The Concrete Reality)**:
-  - Add accepted recipe import and reference publication with stable heading links
-  - Limit bulk descriptions to visible Working elements
-  - Add a structural frontmatter commit gate and tests
-  - Resolve reviewed English scan findings in description prompts and vocabulary rules
-  - Restore the Test Book root recipe from a fresh import
-  - Narrow Step 11 to four committed book recipes
-- **Architectural Rationale & Trade-Offs**:
-  - Make accepted book recipes portable across clones
-  - Keep publication and RAG indexing as a downstream user workflow
-  - Preserve the requested raw Test Book import without claiming source validation
-- **Verification & Test Results**:
-  - PASS: full Test Book PDF stages 01-08 using 545 cache hits and zero model calls
-  - PASS: Book import generated 993 elements
-  - PASS: vault audit of 35 specifications and 691 links
-  - PASS: structural frontmatter on 104 local Obsidian Markdown files
-  - LIMIT: source validation reported 56 invalid fields in the raw Test Book import
+### [2026-10-28 23:52 CET] — Historical Digest: Earlier diary compaction
+- **Timestamp & Context**: 2026-10-28; `4dbfa5e`.
+- **Affected Subsystems**: Diary history and benchmark narrative.
+- **What Was Changed**: Consolidated settled September/October history from 5,740 to 859 lines before the entry, preserving then-unfinished Book Review work and the transition to handwritten CPU workloads.
+- **Architectural Rationale & Trade-Offs**: Keep decisions and dated verification limits in the diary; Git retains mechanical changes.
+- **Verification & Invariants**: Historical diary, English, whitespace and commit checks passed before the entry. No milestone profile ran because the compaction closed no roadmap point.
+
 ---
 
-### [2026-11-08 23:41 CET] — Consolidate agent workflows and BLEP regression verification
-- **Affected Subsystems**:
-  - `.agents`
-  - `.codex/agents`
-  - `tools/blep_generator`
-  - `tools/bootstrap/html-to-markdown/tests`
-  - `tools/verification`
-  - `docs`
-  - `benchmarks/m68k`
-  - `Obsidian/Amiga/Design/Verification`
-- **What Was Changed (The Concrete Reality)**:
-  - Consolidate rule and skill ownership and require independent review of every authorized commit
-  - Replace obsolete instruction and test skills with scoped specification compliance and canonical verification routing
-  - Include pinned FPGA references in worktree procedures and link hardware research from topology rules
-  - Preserve accepted BLEP CSV curves with an offline regression test and move eight numerical tests outside production source
-  - Make WinUAE chart generation optional with an explicit source file and retain the existing SVG
-  - Move HTML source attachment tests into their owning tool and include them in verification selection
-  - Restore user-approved metadata in 66 ignored reference chapters in each of two checkouts while preserving all chapter text
-- **Architectural Rationale & Trade-Offs**:
-  - Keep requirements and procedures in their owning locations while preserving reference artifacts
-  - Separate stable numerical regression tests from optional external implementation comparisons
-  - Preserve existing BLEP output while recording that historical FIR conventions reproduce all reference samples exactly
-- **Verification & Test Results**:
-  - PASS: BLEP package tests and Clippy with all targets
-  - PASS: all eight moved test bodies and four production implementations preserved exactly
-  - PASS: all four CSV hashes and the committed SVG unchanged
-  - PASS: verification CLI contracts and HTML conversion contracts
-  - PASS: design vault metadata and links and new skill validation
-  - PASS: approved reference metadata restoration and all 104 local frontmatter files in each active checkout
-  - PASS: one-time WinUAE comparison and optional chart regeneration with identical plotted paths
-  - PASS: Graphify refresh in all three active checkouts and subsequent source refreshes in the current checkout
-  - NOT RUN: milestone profile because no roadmap point or milestone is being closed
+### [2026-10-29 17:42 CET] — Historical Digest: Four-manual recipe scope
+- **Timestamp & Context**: 2026-10-29; explicit roadmap scope removal preceding the tooling delivery in Chapter 10.
+- **Affected Subsystems**: Roadmap and Book-to-Markdown workflow boundary.
+- **What Was Changed**: Removed the former Step 11.1 Test Book pilot by user decision. Kept four manual PDF conversions, recipe adjustment and committed `book.json` files; downstream Markdown/descriptions/publication/RAG remained a documented user workflow rather than roadmap deliverables.
+- **Architectural Rationale & Trade-Offs**: The pilot was removed, not verified complete: the fresh Test Book had no descriptions or Accepted bundle and no demonstrated clean reconstruction gate. The four-manual stage remained pending.
+- **Verification & Invariants**: Historical roadmap retention, focused English and whitespace passed. Commit/milestone profiles and semantic parity were not run for this scope-only edit.
+
 ---
 
-### [2026-11-10 21:29 CET] — Apply approved instruction simplifications
-- **Affected Subsystems**:
-  - `.agents/rules`
-  - `.agents/skills/write-powershell`
-  - `.codex/agents/cpu_verifier.toml`
-- **What Was Changed (The Concrete Reality)**:
-  - Shorten approved Rust organization and API guidance, documentation conventions, test conventions and check repetition
-  - Simplify PowerShell parameter and usage guidance, variable naming and tool failure handling
-  - Preserve accurate-document dates, CPU observation limits and required procedure routing
-- **Architectural Rationale & Trade-Offs**:
-  - Apply user-approved recommendations from three instruction screening rounds. Individual pairs support screening decisions, not full equivalence
-  - combined behavioral validation has not been performed.
-- **Verification & Test Results**:
-  - Round-three screening produced 19 correct task results and one preserved host-fixture arithmetic failure
-  - Six approved round-three replacements matched exactly, all 20 checked link targets resolved, and the original index and experiment artifacts were preserved
-  - Scoped diff whitespace checks passed
+### [2026-11-08 23:41 CET] — Historical Digest: Agent workflow ownership
+- **Timestamp & Context**: 2026-11-08; workflow portion of `99c8e39`.
+- **Affected Subsystems**: Agent rules/skills/roles, verification, HTML contracts, worktrees and documentation.
+- **What Was Changed**: Consolidated instruction ownership, replaced obsolete skills with scoped compliance/canonical verification and required independent review for every authorized commit. Included pinned FPGA references in worktrees, moved HTML attachment tests to their owning tool and verification selection, and restored approved metadata in 66 ignored reference chapters in each of two checkouts without changing chapter text.
+- **Architectural Rationale & Trade-Offs**: Keep requirements, procedures and tests with their owners while preserving reference artifacts.
+- **Verification & Invariants**: Historical CLI/HTML contracts, vault metadata/links and skill checks passed. All 104 local frontmatter files passed in each active checkout; Graphify refreshed all three checkouts. No roadmap stage closed or milestone profile ran.
+
 ---
 
-### [2026-11-10 21:50 CET] — Simplify commit evidence and review reporting
-- **Affected Subsystems**:
-  - `AGENTS.md`
-  - `.agents/rules/git-commits.md`
-  - `.agents/skills/code-review`
-  - `.agents/skills/verify-spec-compliance`
-- **What Was Changed (The Concrete Reality)**:
-  - Prefer existing tools and direct commands for routine workflow steps
-  - Reuse original verification logs and allow concise workflow reports
-  - Identify review snapshots with native Git and allow review reading during verification
-- **Architectural Rationale & Trade-Offs**:
-  - Keep mandatory verification and independent approval while avoiding unnecessary scripts and evidence copies
-- **Verification & Test Results**:
-  - PASS: all 58 local link targets in the four changed instruction files resolve
-  - PASS: scoped diff whitespace checks
-  - Scoped compliance review found no affected emulator specification or missing instruction update
-  - NOT RUN: milestone profile because no roadmap point or milestone is being closed
+### [2026-11-08 23:41 CET] — Historical Digest: BLEP reference regression protection
+- **Timestamp & Context**: 2026-11-08; audio portion of `99c8e39`.
+- **Affected Subsystems**: BLEP generator, numerical tests and optional WinUAE comparison chart.
+- **What Was Changed**: Added offline CSV regression protection, moved eight numerical tests outside production source and made external chart generation optional with an explicit source path.
+- **Architectural Rationale & Trade-Offs**: Separate stable numerical regression from optional reference-implementation comparison. Historical FIR conventions reproduced all retained reference samples exactly.
+- **Verification & Invariants**: Historical BLEP tests and all-target Clippy passed. Eight moved test bodies, four production implementations, four CSV hashes and the committed SVG were preserved. A one-time WinUAE comparison and chart regeneration produced identical plotted paths; these numerical results do not establish physical audio output.
+
 ---
 
-### [2026-11-11 12:01 CET] ? Milestone Digest: Direct CIA and Custom Register Delivery
-- **Timestamp & Context**: 2026-11-11 10:46?12:01; settled implementation stages contributing to Roadmap 2.1: CIA-DIRECT-DISPATCH-20261111, CUSTOM-DIRECT-DISPATCH-20261111 and register-module separation.
-- **Affected Subsystems**: Config, CIA, Agnus, Copper, Blitter, Denise, Paula, audio, MemoryBus, machine loop, floppy output routing, snapshot handling and their design specifications.
-- **What Was Changed**:
-  - Replaced generic motherboard-address mutation interfaces with named readers and queued setters for thirty canonical CIA addresses and all 180 modeled custom write offsets. Shared writes preflight all recipients. Agnus retains the single queue for Copper/Blitter children; private application moved into register modules without changing the 221 existing method bodies/signatures during the final refactor.
-  - Separated CPU CIA synchronization/acknowledgment from falling-E capture and same-phase OVL routing. Preserved pending bus/TOD/output continuation, canceled pending work on reset and removed restore-time peripheral polling that consumed unrouted events.
-  - Routed effective Port-B outputs through DDRB/pull-ups after a focused reproduction of unintended drive selection. Corrected existing LOAD/unused-bit readback, TOD middle-write halt, pending ICR mask enable and one-shot timer-high loading. This output repair did not establish resolved-pin PRA/PRB reads.
-  - Delayed palette/sync requests by a positive provisional CCK, retained existing positive delays and empty effects, issued Copper then bitplane data after all receiver steps and retained rejected source outputs. Preserved issue order, rejected full queues without early fallback, replayed every due event instead of truncating the ninth Paula write and reserved a merged interrupt-input destination separate from CPU INTREQ.
-  - Retired the obsolete audio location setter/fixture and unused Denise inspection decoder; audio pointer coverage stays with Agnus. The user restored snapshot header version 1 for the evolving development format, without adding an old-format decoder.
-  - Recorded explicit vocabulary approval: enqueuing, unrouted, cias, vma, audlch, audlcl, bplpth, bplptl, sprpth, sprptl, sprdata, sprdatb, audper and audvol.
-- **Architectural Rationale & Trade-Offs**: Motorola Appendix B defines synchronous E and duty cycle; vAmiga supplies provisional CCK waits; replacement-project CIA sources distinguish rising counts and falling capture. Custom delays/modes and issue order are model settings, not measured silicon timing. Register access/queue ownership remains separate from engine reconstruction and board signal delivery.
-- **Verification & Invariants**: Historical original-mechanism reproductions failed before repairs and passed afterward. Focused config/CIA/custom/bus/machine suites covered all canonical CIA addresses, five E phases, real CPU retries, PAL/NTSC continuation, CPU byte writes during DMA, Copper timing, rejection/replay, interrupts, strobes, DMA and Blitter boundaries. Strict Clippy, native workspace and machine_loop WASM builds, formatting, architecture, whitespace and vault audits passed. The three commits' full commit profiles and independent approvals remain in Git. Earlier English findings were resolved only after user vocabulary approval. RAG retrieval was insufficient; targeted local references supplied evidence. No silicon calibration, firmware/OS, vAmigaTS or exhaustive functional certification was claimed; these stages did not individually close 2.1.
+### [2026-11-10 21:50 CET] — Historical Digest: Approved instruction and commit-report simplification
+- **Timestamp & Context**: 2026-11-10 21:29-21:50; `c1952f5` and `65da673`.
+- **Affected Subsystems**: Rules, PowerShell guidance, CPU verifier role, code review and specification-compliance skills.
+- **What Was Changed**: Shortened approved Rust/API/documentation/test guidance and PowerShell invocation/error guidance while preserving accurate-document dates and CPU observation limits. Preferred native Git/existing tools/original logs and concise reports, identified snapshots through Git and allowed review reading during verification.
+- **Architectural Rationale & Trade-Offs**: Retain mandatory gates and independent approval without extra evidence copies. Three screening rounds supported individual replacements, not overall equivalence; combined behavioral validation was not performed.
+- **Verification & Invariants**: Historical round-three screening produced nineteen correct results and one preserved host-fixture arithmetic failure. Six approved replacements matched; twenty first-change and 58 later local link targets resolved. Whitespace passed, original index/experiment artifacts were preserved and scoped review found no emulator-specification update. No milestone profile ran.
+
 ---
 
-### [2026-11-11 13:31 CET] — REGISTER-ACCESS-CLOSE-20261111: Close register documentation and owner delivery
-- **Affected Subsystems**:
-  - `Custom register matrix`
-  - `CIA`
-  - `MemoryBus`
-  - `Agnus`
-  - `Denise`
-  - `Paula`
-  - `register transport tests`
-  - `roadmap and diary`
-- **What Was Changed (The Concrete Reality)**:
-  - Document all custom/CIA register identities and families, fields, access classes, recipients and logical owners
-  - Record each custom setter, queue mode and configured CCK delay separately from unknown silicon timing and missing functional effects
-  - Add production-router delivery checks for all 256 custom slots, 180 writable offsets, word/both byte lanes and PAL/NTSC, plus complete live/debug reader selection
-  - Preserve all existing engine, strobe, read-side-effect, overlay and continuation protection without production behavior changes
-  - Compact only three settled direct-register entries into their own digest
-  - Prune 2.1 while preserving the approved pending 2.2-2.5 work and replace the incoming temporary-plan link with the permanent evidence record
-- **Architectural Rationale & Trade-Offs**:
-  - The approved 2.1 boundary is documentation and delivery to owning queues/interfaces
-  - Due events do not certify engine effects or electrical pin semantics
-  - Known nine inert offsets and CIA PRA/PRB findings retain their hardware requirements and named 2.3/2.4/2.5 implementation and verification owners
-  - Stop after 2.1 and do not push
-- **Verification & Test Results**:
-  - PASS: focused config/CIA/Agnus/Denise/Paula/MemoryBus/machine_loop suites with 168 tests before the final added read-selection test
-  - PASS: final focused MemoryBus wiring suite with 16 tests, including 1536 write transfers and all 256 live/debug slots
-  - PASS: strict all-target MemoryBus Clippy, machine_loop WASM compilation and workspace formatting
-  - PASS: semantic static check of 196 offsets, 10 memory boundaries and 26 crate relationships, with zero checked signal/quirk items
-  - PASS: design vault metadata and links, and diff whitespace
-  - Scoped semantic review preserves provisional timing, modeled open bus, missing engine effects and future Gary decoding
-  - Commit/milestone profiles and independent exact-snapshot review belong to the closing workflow
-  - Initial commit verification reported 23 unknown-word occurrences; the user explicitly approved nineteen register-family hardware terms and simpler descriptions for the three other terms. The hardware vocabulary contains only those approved additions; all other initial commit checks passed
-  - No firmware, OS, vAmigaTS, media transfer or measured-silicon timing evidence is claimed
+### [2026-11-11 15:11 CET] — Historical Digest: Pending implementation and verification ownership
+- **Timestamp & Context**: 2026-11-11; roadmap consolidation `9206fae`.
+- **Affected Subsystems**: Roadmap, design specifications, developer docs and documentation rules.
+- **What Was Changed**: Moved diagnostics and acceptance work to owning roadmap stages; retained the shared beam interface and clarified DMA review, production CPU/Gary tests, guest programs and live-frame prerequisites. Tracked debugger/deferred bus/interrupt/peripheral gaps and aligned audio/host-input prerequisites; refreshed recipe guidance and two comments without executable changes.
+- **Architectural Rationale & Trade-Offs**: Specifications retain hardware contracts and concise caveats; the roadmap owns pending work and evidence. Reorganization does not close implementation stages.
+- **Verification & Invariants**: Historical audit passed 35 design notes, 832 links, 21 changed-document roadmap anchors, roadmap and whitespace checks. Source inspection confirmed documented limitations and preserved both Rust files' executable content. No milestone profile ran.
+
 ---
 
-### [2026-11-11 15:11 CET] — Consolidate implementation gaps and verification priorities in the roadmap
-- **Affected Subsystems**:
-  - `ROADMAP.md`
-  - `design specifications`
-  - `developer documentation`
-  - `documentation maintenance rules`
-- **What Was Changed (The Concrete Reality)**:
-  - Move implementation diagnostics and pending acceptance work into owning roadmap stages with concise source caveats
-  - clarify DMA protocol review and preservation of the shared beam-position interface
-  - define production CPU/Gary and guest-program verification and live frame prerequisites
-  - track debugger gaps and deferred bus, interrupt and peripheral cases
-  - align native-suite audio and host input prerequisites
-  - refresh accepted-recipe reconstruction guidance and Rust comments without executable changes
-- **Architectural Rationale & Trade-Offs**:
-  - Keep hardware requirements and active mechanisms in specifications while pending work and its evidence remain in one roadmap location
-  - distinguish planned work and provisional timing from completed functionality
-- **Verification & Test Results**:
-  - PASS: 35 design documents with valid frontmatter and 832 resolving links
-  - PASS: roadmap check and diff whitespace
-  - PASS: 21 changed-document roadmap anchor references
-  - PASS: both Rust changes preserve executable content
-  - scoped source inspection confirms the documented beam, CIA, UART, debugger and bus-interface limitations
-  - NOT RUN: milestone profile because this change reorganizes pending work without closing an implementation stage
+### [2026-11-11 23:40 CET] — Historical Digest: Shared-reference RAG retrieval
+- **Timestamp & Context**: 2026-11-11; adapter repair `3a88406`.
+- **Affected Subsystems**: Amiga RAG adapter, subprocess boundary, contracts and README.
+- **What Was Changed**: Accepted manual hits from other checkouts while preserving Amiga/reference-directory filters; decoded CLI output explicitly as UTF-8. Added shared-checkout and actual UTF-8 subprocess regressions.
+- **Architectural Rationale & Trade-Offs**: The shared index can refer outside the active checkout; command output must not depend on the Windows locale.
+- **Verification & Invariants**: Historical fifteen adapter/launch contracts passed; full commit verification and independent review were recorded in the closing commit.
+
 ---
 
-### [2026-11-11 16:45 CET] — MEM-GARY-01: Close Roadmap 2.2 Gary address decoding
-- **Affected Subsystems**:
-  - `config`
-  - `physical_memory`
-  - `memory_bus`
-  - `CIA`
-  - `production machine tests`
-  - `affected design specifications`
-  - `roadmap`
-- **What Was Changed (The Concrete Reality)**:
-  - Route CIA banks A0-BF with independent A12/A13 selection and full canonical register identities
-  - preserve CIA-B high and CIA-A low read lanes, byte-write broadcast and word-write lane selection
-  - route DE-DF through the same custom live/debug/queued paths
-  - synchronize selected CIA receivers together and preserve committed PA0 overlay timing
-  - retain sixteen mutation slots and direct-setter overflow rejection while removing the CIA bus capacity preflight by user decision
-  - simplify the optional countdown and express the unchanged wait schedule through named CCK constants
-  - remove the superseded CIA-only debug byte helper and inspect lanes through the production word-debug API
-  - prepare Roadmap 2.2 pruning and repair active handoff links
-- **Architectural Rationale & Trade-Offs**:
-  - Preserve fixed inactive-lane FF and unmapped FFFF values, installed RAM/RTC boundaries and physical DMA storage
-  - distinguish HRM canonical software addresses, A500 Rev. 6A/7 wiring and differing reference-model decode equations
-  - keep extra mirrors and silicon timing calibration deferred
-  - full CIA CPU-cycle timing and the hardware 10-19-clock range remain unverified in the CCK model and are handed to 2.3/2.5
-  - user authorized existing ADF regressions for closure with a stop on errors, superseding the earlier ADF validation block without authorizing firmware or new media work
-- **Verification & Test Results**:
-  - Original-code failures reproduced before implementation for CIA aliases, dual selection, opposite-parity writes, DE routing and physical bank classification
-  - focused checks cover PAL/NTSC and all three memory presets
-  - PASS 47 CIA/MemoryBus tests and 12 production CIA/Gary integration tests on the final runtime source
-  - PASS nine existing production-machine ADF/action tests including disk DMA, while the floppy crate contains zero tests
-  - PASS strict focused Clippy, machine WASM compilation and English checks
-  - PASS configured semantic checks for 196 offsets, 12 map boundaries and 26 crates, with zero signal/quirk sentinels
-  - PASS 35 design notes and 843 links before the final timing caveat
-  - checkpoint and diary compaction review found no earlier settled MEM-GARY-01 entries, so unrelated history remains unchanged and the one pending task entry is consolidated here
----
+### [2026-11-12 01:18 CET] — Historical Digest: Named encodings and protected verification decisions
+- **Timestamp & Context**: 2026-11-12 01:11-01:18; policy `d2a9f6d` followed by implementation `2957128`, split at user request.
+- **Affected Subsystems**: Emulator constants, configuration, chipset, memory, debugger/GUI, semantic audit and agent rules.
+- **What Was Changed**: Required REGISTER_ names and BIT_/MASK_ flags, and explicit approval for architecture checks or weakened gates. Migrated unnamed domain encodings and callers, reused shared disk/interrupt flags through two explicitly approved config dependencies and updated architecture docs/permissions. Applied four approved semantic-parser/source-selection changes and approved identifier word splits without vocabulary expansion.
+- **Architectural Rationale & Trade-Offs**: Make hardware meaning and ownership traceable without runtime behavior changes; keep architecture and acceptance criteria under user control.
+- **Verification & Invariants**: Historical restored implementation matched the isolated pre-split snapshot before identifier corrections. Static audit covered 196 register rows, twelve memory boundaries and 27 crate names, but no signal/quirk sentinels; vault passed 35 notes/998 links. The initial implementation commit profile failed only English; focused English passed after approved corrections. Policy English and whitespace passed. Full SingleStep was not run and no roadmap stage closed.
 
-### [2026-11-11 23:31 CET] — SIGNAL-THREE-REFERENCE-20261111: Close Roadmap 2.3 signal transport
-- **Affected Subsystems**:
-  - `machine_loop and chip pins`
-  - `CIA and peripheral connections`
-  - `register transport`
-  - `save_state and debugger`
-  - `design specifications and verification rules`
-- **What Was Changed (The Concrete Reality)**:
-  - Establish captured receiver-owned input delivery and explicit CCK phases for interrupts and peripheral pins
-  - retain Agnus counters and deliver RGA synchronization events to receiver-owned state
-  - separate pure machine snapshots from the higher-level save file and preview format
-  - complete both directions of CIA-B PA0/SP and PA1/CNT wiring with current-format continuation protection
-  - retire obsolete direct SDR byte injection and unused pin helpers after replacing their callers
-  - align active descriptions with immediate address strobes and queued data writes
-  - prune Roadmap 2.3 and replace incoming plan links with permanent contracts
-- **Architectural Rationale & Trade-Offs**:
-  - Transport checks establish connections and ordering while device engines and full exchanges remain in 2.4 and guest verification in 2.5
-  - preserve disconnected serial and parallel ports and deferred firmware and media scope
-  - retain provisional timing limits without reopening the separately closed timing research
-- **Verification & Test Results**:
-  - Reproduced the missing CIA-B reverse route before repair and passed the same regression after repair
-  - PASS 20 machine transport and pin propagation tests covering PAL and NTSC paths
-  - PASS workspace all-target Clippy with denied warnings and machine_loop plus save_state WASM checks
-  - PASS configured semantic consistency and 35-note vault metadata with 999 links before closure edits
-  - PASS 13 baseline RAG contracts in isolation from the separate staged RAG repair
-  - checkpoint and compaction review found no earlier settled entries for this task so unrelated diary history remains intact
----
-
-### [2026-11-11 23:40 CET] — Repair shared-reference retrieval and CLI decoding in the RAG adapter
-- **Affected Subsystems**:
-  - `Amiga RAG MCP adapter`
-  - `command boundary`
-  - `adapter contracts and README`
-- **What Was Changed (The Concrete Reality)**:
-  - Accept reference hits from another checkout while retaining the Amiga source and reference-directory filters
-  - decode command output explicitly as UTF-8
-  - cover shared-checkout filtering and actual UTF-8 subprocess output in regressions
-- **Architectural Rationale & Trade-Offs**:
-  - The shared index can contain manual paths outside the active checkout
-  - CLI output encoding must not depend on the Windows locale
-- **Verification & Test Results**:
-  - PASS all 15 adapter and launch contracts
-  - full commit verification and independent review are recorded in the closing commit
----
-
-### [2026-11-12 01:11 CET] — Require named numeric values and protect verification rules
-- **Affected Subsystems**:
-  - `Agent rules`
-  - `Code review`
-- **What Was Changed (The Concrete Reality)**:
-  - Require REGISTER_ for register constants and BIT_ or MASK_ for flags and masks
-  - Require explicit user approval for every architectural test or checker change and for weakening other tests or required gates
-  - Apply the approval boundary to test cleanup and file-size exceptions and require reviewers to verify approval
-- **Architectural Rationale & Trade-Offs**:
-  - Keep architectural constraints and acceptance criteria under user control
-  - Separate policy changes from their implementation in two commits as requested
-- **Verification & Test Results**:
-  - Focused English scan passed for all five changed instruction files
-  - Git diff whitespace check passed
-  - Runtime refactoring is isolated for the next commit and no roadmap stage is closed
----
-
-### [2026-11-12 01:18 CET] — Apply semantic numeric constants across the emulator
-- **Affected Subsystems**:
-  - `CPU and configuration`
-  - `Chipset and peripherals`
-  - `Memory bus`
-  - `Debugger and GUI`
-  - `Semantic audit`
-- **What Was Changed (The Concrete Reality)**:
-  - Replace unnamed domain encodings with named constants and migrate register and flag references to REGISTER_ BIT_ and MASK_ prefixes
-  - Reuse shared disk and interrupt flags through the explicitly approved floppy to config and interrupts to config dependencies
-  - Update architecture documentation and the two approved dependency permissions
-  - Adapt the semantic audit with the four explicitly approved parser and source-selection changes
-  - Split the user-approved channel combination and sub word and look back identifier members without extending the English vocabulary
-- **Architectural Rationale & Trade-Offs**:
-  - Make hardware encodings traceable to their meaning and owning definitions while preserving runtime behavior
-  - Keep the implementation separate from the preceding policy commit as requested
-- **Verification & Test Results**:
-  - Restored implementation matched the isolated pre-split snapshot before the approved identifier corrections
-  - Static audit passed for 196 register table rows and 12 memory boundaries and 27 crate names
-  - The same audit matched no signal methods or quirk sentinels so those counts provide no semantic coverage
-  - Vault audit passed for 35 design notes and 998 links
-  - The initial commit profile passed every check except English vocabulary and the focused English recheck passed after the approved identifier corrections
-  - Git diff whitespace check passed
-  - Full SingleStep was not run and no roadmap stage is closed
 ---
 
 ### [2026-11-12 01:43 CET] — Verify register propagation before reconstruction and exempt task plans
@@ -1209,3 +907,29 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - PASS roadmap check and diff whitespace
   - scoped specification review found the testing strategy already delegates language scope to its owning policy
   - chipset tasks were not executed and no roadmap milestone is closed
+---
+
+### [2026-11-12 09:11 CET] — Compact diary chapters and align reconstruction verification
+- **Affected Subsystems**:
+  - `Diary`
+  - `agent rules and skills`
+  - `diary tools`
+  - `roadmap`
+- **What Was Changed (The Concrete Reality)**:
+  - Promote settled book reconstruction and register Gary and signal-transport stages into chapters 10-13
+  - replace the numbered log with the final unnumbered Rolling Changelog
+  - compact settled entries while retaining historical evidence limits and unfinished work
+  - align the appender and chronology checker with the stable heading
+  - record the user-approved removal of the separate pre-reconstruction propagation gate and move component unit tests into 2.4 while preserving functional propagation and guest acceptance in 2.5
+- **Architectural Rationale & Trade-Offs**:
+  - Keep completed-stage narratives separate from rolling changes without a fixed section number
+  - preserve the explicitly approved reconstruction and verification order without claiming a new hardware milestone
+- **Verification & Test Results**:
+  - PASS diary structure and chronological order with 47 entries before this entry
+  - PASS seven checker boundary cases and appender dry run without diary mutation
+  - PASS skill validation and focused English scan of six changed files
+  - PASS local-link and whitespace checks
+  - PASS roadmap retention check
+  - scoped specification selection found no mapped design changes or invalid tracked paths and the testing strategy remains accurate
+  - diary compaction reduced 1211 lines and 121583 bytes to 909 lines and 113367 bytes before this entry
+  - no implementation stage is closed by this documentation change

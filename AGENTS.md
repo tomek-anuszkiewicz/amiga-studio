@@ -81,7 +81,7 @@ required by [commit policy](.agents/rules/git-commits.md). MCP configuration is
 
 Never stage files or otherwise change the Git index unless the user explicitly requests staging or a commit. Editing a file that is already staged does not authorize staging its new version; leave the edit unstaged and preserve the existing index entry. If a required roadmap commit would need staging, ask the user first.
 
-Commits are mandatory when closing a minor roadmap point or major milestone. Otherwise, commit when the user explicitly requests it. Commits are atomic and written in English. **Every commit includes a new DIARY.md Section 10 entry.** At minor roadmap points or milestones, compact settled entries, verify specification compliance, enrich compatible documentation details, and update the remaining roadmap.
+Commits are mandatory when closing a minor roadmap point or major milestone. Otherwise, commit when the user explicitly requests it. Commits are atomic and written in English. **Every commit includes a new entry in DIARY.md's final, unnumbered Rolling Changelog.** At minor roadmap points or milestones, compact settled entries, verify specification compliance, enrich compatible documentation details, and update the remaining roadmap.
 
 Per-commit verification:
 ```powershell
