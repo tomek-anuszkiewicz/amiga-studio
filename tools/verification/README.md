@@ -24,7 +24,7 @@ includes a module path.
 | `test runner singlestep [case FILTER] [full|sample N]` | Full vectors by default; explicit positive sampling limit overrides inherited environment |
 | `check all` | All commit quality gates without crate coverage or ordinary tests |
 | `check architecture [case FILTER]` | Python repository architecture checks; no Rust compilation |
-| `check english [files PATH...]` | Full language audit or explicit files |
+| `check english [files PATH...]` | Full language audit or explicit files; task plans under `.agent/tasks/` are always excluded |
 | `check code|hardware|formatting|clippy` | One quality gate |
 | `check build [crate NAME]` | Cargo compilation check; workspace by default |
 | `runner build` | Compile release test and benchmark targets without running them |

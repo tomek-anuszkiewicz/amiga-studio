@@ -1183,3 +1183,29 @@ Every repository commit must include a new Section 10 entry for the changes it r
   - The initial commit profile passed every check except English vocabulary and the focused English recheck passed after the approved identifier corrections
   - Git diff whitespace check passed
   - Full SingleStep was not run and no roadmap stage is closed
+---
+
+### [2026-11-12 01:43 CET] — Verify register propagation before reconstruction and exempt task plans
+- **Affected Subsystems**:
+  - `roadmap`
+  - `agent rules`
+  - `language verification`
+  - `verification tests`
+- **What Was Changed (The Concrete Reality)**:
+  - Schedule REGISTER-PROPAGATION-VERIFY-20261111 before chipset reconstruction and retain BOOK-GUEST-PROGRAM-TESTS-20261111 functional acceptance after reconstruction
+  - exempt .agent/tasks from language requirements and scans even with explicit file arguments
+  - preserve ordinary explicit-file exclusions elsewhere
+  - add path-boundary regressions and the user-approved chdir vocabulary entry
+  - keep execution plans local and reference stable task IDs in the roadmap
+- **Architectural Rationale & Trade-Offs**:
+  - Separate propagation evidence from engine completion without dropping later functional tests
+  - avoid language findings and vocabulary approvals for temporary task plans
+  - keep other repository language protection unchanged
+- **Verification & Test Results**:
+  - New scanner regressions failed on the original implementation and pass after the change
+  - PASS all 87 verification tool tests
+  - PASS full repository English scan
+  - PASS task-only scan selects zero files
+  - PASS roadmap check and diff whitespace
+  - scoped specification review found the testing strategy already delegates language scope to its owning policy
+  - chipset tasks were not executed and no roadmap milestone is closed

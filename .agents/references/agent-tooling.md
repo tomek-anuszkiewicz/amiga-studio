@@ -72,7 +72,7 @@ For a full English vocabulary scan, use `python tools/verification/verify.py che
 and milestone profiles include this scan. Install its pinned dictionary dependency with `python -m pip install -r tools/verification/checks/requirements.txt`. Scope exclusions and text formats live
 in `tools/verification/checks/check_english.json`; maintain them according to
 [language-policy.md](../rules/language-policy.md). Explicit file arguments
-scan those entire files using the same English dictionary and project vocabulary. Reviewed terms live in [english_words/](../../tools/verification/checks/english_words/); deliberate literal examples use the scope catalog's exact-file `file_words` map. Invoke validation explicitly; use no lifecycle or Git hooks.
+scan those entire files using the same English dictionary and project vocabulary, except for `always_excluded_directories`. Task plans under `.agent/tasks/` are always excluded and need no vocabulary or file-specific exceptions. Reviewed terms live in [english_words/](../../tools/verification/checks/english_words/); deliberate literal examples use the scope catalog's exact-file `file_words` map. Invoke validation explicitly; use no lifecycle or Git hooks.
 
 
 ## Configuration and Reference Provisioning

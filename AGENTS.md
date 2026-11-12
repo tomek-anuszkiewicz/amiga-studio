@@ -11,7 +11,7 @@ Read these shared rules before task work; linked files require explicit reads:
 
 Implement requested behavior and the technical changes necessary to make it work. Propose optional additions before implementing them; usefulness alone does not authorize a new feature. Leave product and editorial decisions to the user unless delegated explicitly. Before completion, review the diff against this boundary using the [scope rules](.agents/rules/structural-root-cause.md).
 
-Run validation commands explicitly. Do not install, configure, or use lifecycle, code, or Git hooks. Use `.agent/tasks/` for English execution plans and `.agent/tmp/` for disposable diagnostics and artifacts. Treat existing temporary artifacts as unverified until their assumptions are checked.
+Run validation commands explicitly. Do not install, configure, or use lifecycle, code, or Git hooks. Use `.agent/tasks/` for execution plans and `.agent/tmp/` for disposable diagnostics and artifacts. Treat existing temporary artifacts as unverified until their assumptions are checked.
 
 First identify the question and whether existing evidence resolves it. Use scripts for concrete measurement, verification, or data processing; do not repair a tool unless that repair is needed for the task.
 

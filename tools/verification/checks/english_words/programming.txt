@@ -25,6 +25,7 @@ casefold
 cfg
 charref
 charrefs
+chdir
 chunksize
 cim
 cmdlet
