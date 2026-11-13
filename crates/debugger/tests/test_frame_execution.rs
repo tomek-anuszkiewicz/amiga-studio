@@ -66,15 +66,15 @@ fn partial_instruction_resumes_once_and_breakpoint_precedes_frame_completion() {
     session.toggle_run();
     assert_eq!(session.run_frame_slice(1), 0);
     assert_eq!(session.machine.cck, 1);
-    assert_eq!(session.debugger.trace.len(), 1);
+    assert_eq!(session.debugger.trace.len(), 0);
     session.debugger.breakpoints.add_pc_breakpoint(0x1002);
     session.request_pause();
     session.run_frame_slice(MAX_FRAME_SLICE_CCK);
     assert!(!session.is_running);
     assert_eq!(session.machine.cpu.state.instruction_pc(), 0x1002);
     assert_eq!(session.instructions_executed, 1);
-    assert_eq!(session.debugger.trace.len(), 1);
-    assert_eq!(session.temporal.len(), 1);
+    assert_eq!(session.debugger.trace.len(), 0);
+    assert_eq!(session.temporal.len(), 0);
     assert_eq!(session.machine.denise.frame_builder.frame_number, 0);
 
     session.step_frame();
@@ -177,10 +177,9 @@ fn cpu_stop_keeps_chip_clocks_running_until_user_pauses_at_a_field_boundary() {
         assert!(session.is_running);
         assert_eq!(session.machine.denise.frame_builder.frame_number, 2);
         assert!(session.machine.cpu.state.is_stopped());
-        let recorded = usize::from(debugger_enabled);
-        assert_eq!(session.debugger.trace.len(), recorded);
-        assert_eq!(session.temporal.len(), recorded);
-        assert_eq!(session.instructions_executed, recorded as u64);
+        assert_eq!(session.debugger.trace.len(), 0);
+        assert_eq!(session.temporal.len(), 0);
+        assert_eq!(session.instructions_executed, u64::from(debugger_enabled));
     }
 }
 
@@ -223,14 +222,14 @@ fn stopped_cpu_wakes_from_cia_timer_and_breakpoints_resume_with_execution() {
     session.run_frame_slice(30);
     assert!(session.is_running);
     assert!(session.machine.cpu.state.is_stopped());
-    assert_eq!(session.debugger.trace.len(), 1);
+    assert_eq!(session.debugger.trace.len(), 0);
 
     session.run_frame_slice(MAX_FRAME_SLICE_CCK);
     assert!(!session.is_running);
     assert!(!session.machine.cpu.state.is_stopped());
     assert_eq!(session.machine.cpu.state.instruction_pc(), 0x2000);
     assert_eq!(session.machine.cpu.state.d_long(0), 0);
-    assert_eq!(session.debugger.trace.len(), 1);
+    assert_eq!(session.debugger.trace.len(), 0);
     assert_ne!(session.machine.paula.interrupts.intreq & 0x0008, 0);
 
     session.debugger.breakpoints.remove_pc_breakpoint(0x2000);
@@ -246,7 +245,121 @@ fn stopped_cpu_wakes_from_cia_timer_and_breakpoints_resume_with_execution() {
         .iter()
         .map(|entry| entry.pc)
         .collect();
-    assert_eq!(program_counters, [0x1000, 0x2000, 0x2006, 0x200e]);
+    assert!(
+        program_counters.is_empty(),
+        "continuous Run does not record the interrupt handler"
+    );
     session.step_instruction();
     assert_eq!(session.machine.cpu.state.d_long(0), 42);
+}
+
+#[test]
+fn continuous_run_checks_live_conditions_without_collecting_diagnostics() {
+    use debugger::{BreakpointCondition, ConditionRegister};
+    let mut session = session(VideoStandard::Pal);
+    // ADDQ.L #1,D0; MOVE.L D0,$2000; BRA.S $1000.
+    session
+        .load_binary(
+            0x1000,
+            &[0x52, 0x80, 0x23, 0xc0, 0, 0, 0x20, 0, 0x60, 0xf6],
+            true,
+        )
+        .unwrap();
+    session.temporal.set_recording(true);
+    session.prev_hex_base = 0x2000;
+    session.step_instruction();
+    session.debugger.breakpoints.add_pc_breakpoint(0x1002);
+    session.debugger.breakpoints.pc_breakpoints[0].enabled = false;
+    session
+        .debugger
+        .breakpoints
+        .add_conditional_breakpoint(0x1000, BreakpointCondition::eq(ConditionRegister::D(0), 3));
+    let trace = session.debugger.trace.entries();
+    let history = session.temporal.len();
+    let diff = session.prev_hex_bytes;
+    session.toggle_run();
+    session.run_frame_slice(1);
+    assert!(session.is_running);
+    assert_eq!(session.prev_hex_bytes, diff);
+    assert_eq!(session.debugger.trace.entries(), trace);
+    session.run_frame_slice(MAX_FRAME_SLICE_CCK);
+    assert!(!session.is_running);
+    assert_eq!(session.machine.cpu.state.instruction_pc(), 0x1000);
+    assert_eq!(session.machine.cpu.state.d_long(0), 3);
+    assert_eq!(session.bus().read_word_debug(0x2000), 0);
+    assert_eq!(session.bus().read_word_debug(0x2002), 3);
+    assert_eq!(session.debugger.trace.entries(), trace);
+    assert_eq!(session.temporal.len(), history);
+    assert_eq!(session.debugger.current_cck, session.machine.cck);
+    assert_eq!(
+        session.prev_cpu_state.as_ref(),
+        Some(&session.machine.cpu.state)
+    );
+    let cck = session.machine.cck;
+    session.toggle_run();
+    assert_eq!(session.run_frame_slice(MAX_FRAME_SLICE_CCK), 0);
+    assert_eq!(
+        session.machine.cck, cck,
+        "immediate breakpoint executes nothing"
+    );
+    session.step_instruction();
+    assert_eq!(session.machine.cpu.state.d_long(0), 4);
+    assert_eq!(session.prev_cpu_state.as_ref().unwrap().d_long(0), 3);
+    assert_eq!(session.debugger.trace.len(), trace.len() + 1);
+    assert_eq!(session.temporal.len(), history + 1);
+}
+
+#[test]
+fn returning_from_game_defers_breakpoints_and_inspection_until_pause_completes() {
+    let mut session = session(VideoStandard::Pal);
+    session.set_debugger_enabled(false);
+    session.temporal.set_recording(true);
+    session.debugger.breakpoints.add_pc_breakpoint(0x1000);
+    session.toggle_run();
+    session.run_frame_slice(1);
+    session.request_pause();
+    session.set_debugger_enabled(true);
+    session.run_frame_slice(17);
+    assert!(session.pause_pending());
+    assert!(session.prev_cpu_state.is_none());
+    assert!(session.debugger.trace.entries().is_empty());
+    assert!(session.temporal.is_empty());
+    session.run_frame_slice(MAX_FRAME_SLICE_CCK);
+    assert!(!session.is_running);
+    assert_eq!(session.machine.denise.frame_builder.frame_number, 1);
+    assert_eq!(session.debugger.current_cck, session.machine.cck);
+    assert!(
+        session.instructions_executed > 0,
+        "retired total includes the Game interval"
+    );
+    session.toggle_run();
+    session.run_frame_slice(MAX_FRAME_SLICE_CCK);
+    assert!(!session.is_running);
+    assert_eq!(session.machine.denise.frame_builder.frame_number, 1);
+}
+
+#[test]
+fn explicit_step_after_an_unrecorded_partial_instruction_starts_diagnostics() {
+    let mut session = session(VideoStandard::Pal);
+    session
+        .load_binary(0x1000, &[0x4e, 0x71, 0x60, 0xfe], true)
+        .unwrap();
+    session.temporal.set_recording(true);
+    session.toggle_run();
+    session.run_frame_slice(1);
+    session.request_pause();
+    session.run_frame_slice(MAX_FRAME_SLICE_CCK);
+    assert!(!session.is_running);
+    assert!(session.debugger.trace.entries().is_empty());
+    let cck = session.machine.cck;
+    session.step_cck();
+    assert_eq!(session.debugger.trace.len(), 1);
+    assert_eq!(session.temporal.len(), 1);
+    assert_eq!(session.debugger.trace.get(0).unwrap().cck, cck);
+    session.step_instruction();
+    assert_eq!(
+        session.debugger.trace.len(),
+        1,
+        "continuation is recorded once"
+    );
 }

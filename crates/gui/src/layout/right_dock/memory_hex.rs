@@ -52,8 +52,110 @@ const KICKSTART_ROM_LAST: u32 = 0xFFFFFF;
 
 pub const MASK_ROW_ADDRESS: u32 = physical_memory::MASK_PHYSICAL_ADDRESS & !MASK_ROW_BYTE;
 
+#[derive(Debug, Default)]
+pub(crate) struct MemoryPresentation {
+    address: String,
+    scrollbar_tooltip: String,
+    rows: Vec<MemoryRow>,
+}
+
+#[derive(Debug)]
+struct MemoryByte {
+    address: u32,
+    value: u8,
+    hex: String,
+    changed: bool,
+    watchpoint: bool,
+    tooltip: Option<String>,
+}
+
+#[derive(Debug)]
+struct MemoryRow {
+    address_label: String,
+    bytes: [MemoryByte; ROW_BYTES],
+    ascii: egui::text::LayoutJob,
+}
+
+impl MemoryPresentation {
+    fn refresh(
+        &mut self,
+        bus: &PhysicalMemory,
+        breakpoints: &BreakpointManager,
+        base: u32,
+        count: usize,
+        selected: Option<u32>,
+        previous: Option<(&[u8; debugger::session::MEMORY_DIFF_BYTES], u32)>,
+        tokens: &ColorTokens,
+    ) {
+        self.rows.clear();
+        self.scrollbar_tooltip = format!(
+            "${base:06X}: {}\nScroll: Wheel (16B), Shift+Wheel (256B), Ctrl+Wheel (1KB)",
+            memory_region_name(base)
+        );
+        for row in 0..count {
+            let address = base.wrapping_add((row * ROW_BYTES) as u32)
+                & physical_memory::MASK_PHYSICAL_ADDRESS;
+            let mut ascii = egui::text::LayoutJob::default();
+            let bytes = std::array::from_fn(|col| {
+                let address =
+                    address.wrapping_add(col as u32) & physical_memory::MASK_PHYSICAL_ADDRESS;
+                let value = bus.read_byte_debug(address);
+                let wp = breakpoints.find_watchpoint_at(address);
+                let is_selected = selected == Some(address);
+                let color = if wp.is_some() {
+                    tokens.accent_error
+                } else if is_selected {
+                    tokens.border_active
+                } else {
+                    tokens.text_secondary
+                };
+                let background = if wp.is_some() || is_selected {
+                    Color32::from_rgba_unmultiplied(
+                        color.r(),
+                        color.g(),
+                        color.b(),
+                        if wp.is_some() { 80 } else { 60 },
+                    )
+                } else {
+                    Color32::TRANSPARENT
+                };
+                let ch = if value.is_ascii_graphic() || value == b' ' {
+                    value as char
+                } else {
+                    '.'
+                };
+                ascii.append(
+                    &ch.to_string(),
+                    0.0,
+                    egui::TextFormat {
+                        font_id: egui::FontId::monospace(13.0),
+                        color,
+                        background,
+                        ..Default::default()
+                    },
+                );
+                let offset = row * ROW_BYTES + col;
+                MemoryByte {
+                    address, value, hex: format!("{value:02X}"),
+                    changed: previous.is_some_and(|(bytes, old_base)| old_base == base && bytes.get(offset).is_some_and(|old| *old != value)),
+                    watchpoint: wp.is_some(),
+                    tooltip: wp.map(|wp| format!("Address: ${address:06X}\nWatch Range: ${:06X} .. ${:06X}\nAccess Mode: {:?}", wp.start, wp.end, wp.access)),
+                }
+            });
+            self.rows.push(MemoryRow {
+                address_label: format!("{address:06X}:"),
+                bytes,
+                ascii,
+            });
+        }
+    }
+}
+
 pub(crate) fn render_memory_hex(
     ui: &mut Ui,
+    data: &mut MemoryPresentation,
+    refresh: bool,
+    interactive: bool,
     bus: &mut PhysicalMemory,
     breakpoints: &mut BreakpointManager,
     base_addr: &mut u32,
@@ -75,7 +177,7 @@ pub(crate) fn render_memory_hex(
     let nav_visible_bytes = (nav_num_rows * ROW_BYTES) as u32;
 
     // 0. Mouse Wheel Infinite Scroll & Keyboard Navigation Handling
-    if is_hovered {
+    if is_hovered && ui.is_enabled() {
         let mut scrolled = false;
 
         for event in ui.input(|i| i.events.clone()) {
@@ -258,12 +360,15 @@ pub(crate) fn render_memory_hex(
     // Address navigation input
     ui.horizontal(|ui| {
         ui.label("Address:");
-        let mut addr_str = format!("{:06X}", *base_addr);
+        if refresh {
+            data.address = format!("{:06X}", *base_addr);
+        }
         if ui
-            .add(egui::TextEdit::singleline(&mut addr_str).desired_width(70.0))
+            .add(egui::TextEdit::singleline(&mut data.address).desired_width(70.0))
             .lost_focus()
+            && ui.is_enabled()
         {
-            let clean = addr_str.trim().trim_start_matches('$');
+            let clean = data.address.trim().trim_start_matches('$');
             if let Ok(addr) = u32::from_str_radix(clean, 16) {
                 *base_addr = addr & MASK_ROW_ADDRESS;
             }
@@ -277,7 +382,18 @@ pub(crate) fn render_memory_hex(
     let num_rows = ((ui.available_height() - 8.0) / row_height)
         .floor()
         .clamp(4.0, 48.0) as usize;
-    let grid_height = (num_rows as f32) * row_height;
+    if refresh {
+        data.refresh(
+            bus,
+            breakpoints,
+            *base_addr,
+            num_rows,
+            *selected_addr,
+            prev_memory,
+            tokens,
+        );
+    }
+    let grid_height = (data.rows.len() as f32) * row_height;
 
     let mut next_edit_target: Option<u32> = None;
     const SCROLLBAR_WIDTH: f32 = 10.0;
@@ -292,35 +408,24 @@ pub(crate) fn render_memory_hex(
                 // Grid Table Column
                 ui.vertical(|ui| {
                     ui.spacing_mut().item_spacing.y = 1.0;
-                    for row in 0..num_rows {
-                        let row_addr =
-                            base_addr.wrapping_add((row * ROW_BYTES) as u32) & physical_memory::MASK_PHYSICAL_ADDRESS;
-
+                    for row in &data.rows {
                         ui.horizontal(|ui| {
                             ui.spacing_mut().item_spacing.x = 2.0;
 
                             // Address header
                             ui.monospace(
-                                RichText::new(format!("{:06X}:", row_addr))
+                                RichText::new(&row.address_label)
                                     .color(tokens.address_blue),
                             );
                             ui.add_space(2.0);
 
                             // 16 Hex Bytes (each allocated with exact size so active editing can NEVER shift columns)
                             for col in 0..ROW_BYTES {
-                                let byte_addr = row_addr.wrapping_add(col as u32) & physical_memory::MASK_PHYSICAL_ADDRESS;
-                                let byte_val = bus.read_byte_debug(byte_addr);
-                                let active_wp = breakpoints.find_watchpoint_at(byte_addr).cloned();
+                                let byte = &row.bytes[col];
+                                let byte_addr = byte.address;
+                                let byte_val = byte.value;
                                 let is_selected = *selected_addr == Some(byte_addr);
-
-                                // Calculate diff status from prev_memory
-                                let is_changed = match prev_memory {
-                                    Some((prev_bytes, prev_base)) if prev_base == *base_addr => {
-                                        let offset = (row * ROW_BYTES) + col;
-                                        offset < prev_bytes.len() && byte_val != prev_bytes[offset]
-                                    }
-                                    _ => false,
-                                };
+                                let is_changed = byte.changed;
 
                                 let (cell_rect, cell_response) = ui.allocate_exact_size(
                                     egui::vec2(CELL_WIDTH, row_height),
@@ -338,7 +443,7 @@ pub(crate) fn render_memory_hex(
                                                     .desired_width(CELL_WIDTH)
                                                     .font(egui::FontId::monospace(13.0)),
                                             );
-                                            edit_res.request_focus();
+                                            if interactive { edit_res.request_focus(); }
 
                                             let just_started_id =
                                                 egui::Id::new("hex_just_started_edit");
@@ -347,15 +452,15 @@ pub(crate) fn render_memory_hex(
                                                 .unwrap_or(false);
 
                                             let should_commit_edit = || {
-                                                !just_started
+                                                interactive && !just_started
                                                     && (edit_res.lost_focus()
                                                         || ui.input(|i| {
                                                             i.key_pressed(egui::Key::Tab)
                                                                 || i.key_pressed(egui::Key::Enter)
                                                         }))
                                             };
-                                            if ui.input(|i| i.key_pressed(egui::Key::Escape))
-                                                || edit_res.clicked_elsewhere()
+                                            if interactive && (ui.input(|i| i.key_pressed(egui::Key::Escape))
+                                                || edit_res.clicked_elsewhere())
                                             {
                                                 edit_buffer.1.clear();
                                             } else if should_commit_edit() {
@@ -376,7 +481,7 @@ pub(crate) fn render_memory_hex(
                                         },
                                     );
                                 } else {
-                                    let text_color = if active_wp.is_some() {
+                                    let text_color = if byte.watchpoint {
                                         tokens.accent_error // Watched bytes
                                     } else if is_changed {
                                         tokens.accent_diff // Eye-friendly diff cyan
@@ -386,7 +491,7 @@ pub(crate) fn render_memory_hex(
                                         tokens.text_primary // Clean primary text
                                     };
 
-                                    if active_wp.is_some() {
+                                    if byte.watchpoint {
                                         // Crisp flat watchpoint indicator (0.0 corner radius, zero overlap)
                                         ui.painter().rect_filled(
                                             cell_rect,
@@ -432,24 +537,17 @@ pub(crate) fn render_memory_hex(
                                     ui.painter().text(
                                         cell_rect.center(),
                                         egui::Align2::CENTER_CENTER,
-                                        format!("{:02X}", byte_val),
+                                        &byte.hex,
                                         egui::FontId::monospace(13.0),
                                         text_color,
                                     );
 
                                     // Tooltip for watchpoint or address
-                                    if let Some(ref wp) = active_wp {
+                                    if let Some(tooltip) = &byte.tooltip {
                                         cell_response.clone().on_hover_ui(|ui| {
                                             ui.heading("🎯 Active Memory Watchpoint");
-                                            ui.label(format!("Address: ${:06X}", byte_addr));
-                                            ui.label(format!(
-                                                "Watch Range: ${:06X} .. ${:06X}",
-                                                wp.start, wp.end
-                                            ));
-                                            ui.label(format!("Access Mode: {:?}", wp.access));
-                                            ui.label(
-                                        "Shortcuts: Alt+Click to toggle, Right-click for options",
-                                    );
+                                            ui.label(tooltip);
+                                            ui.label("Shortcuts: Alt+Click to toggle, Right-click for options");
                                         });
                                     }
 
@@ -514,7 +612,7 @@ pub(crate) fn render_memory_hex(
                                             );
                                             ui.close_menu();
                                         }
-                                        if active_wp.is_some() {
+                                        if byte.watchpoint {
                                             ui.separator();
                                             if ui.button("🗑 Remove Watchpoint").clicked() {
                                                 breakpoints.remove_watchpoints_at(byte_addr);
@@ -551,52 +649,7 @@ pub(crate) fn render_memory_hex(
                             ui.add_space(3.0);
 
                             // ASCII representation with watchpoint and selection highlights
-                            let mut job = egui::text::LayoutJob::default();
-                            for col in 0..ROW_BYTES {
-                                let byte_addr = row_addr.wrapping_add(col as u32) & physical_memory::MASK_PHYSICAL_ADDRESS;
-                                let byte_val = bus.read_byte_debug(byte_addr);
-                                let is_wp = breakpoints.find_watchpoint_at(byte_addr).is_some();
-                                let is_selected = *selected_addr == Some(byte_addr);
-                                let ch = if byte_val.is_ascii_graphic() || byte_val == b' ' {
-                                    byte_val as char
-                                } else {
-                                    '.'
-                                };
-                                let ch_color = if is_wp {
-                                    tokens.accent_error
-                                } else if is_selected {
-                                    tokens.border_active
-                                } else {
-                                    tokens.text_secondary
-                                };
-                                job.append(
-                                    &ch.to_string(),
-                                    0.0,
-                                    egui::TextFormat {
-                                        font_id: egui::FontId::monospace(13.0),
-                                        color: ch_color,
-                                        background: if is_wp {
-                                            Color32::from_rgba_unmultiplied(
-                                                tokens.accent_error.r(),
-                                                tokens.accent_error.g(),
-                                                tokens.accent_error.b(),
-                                                80,
-                                            )
-                                        } else if is_selected {
-                                            Color32::from_rgba_unmultiplied(
-                                                tokens.border_active.r(),
-                                                tokens.border_active.g(),
-                                                tokens.border_active.b(),
-                                                60,
-                                            )
-                                        } else {
-                                            Color32::TRANSPARENT
-                                        },
-                                        ..Default::default()
-                                    },
-                                );
-                            }
-                            ui.label(job);
+                            ui.label(row.ascii.clone());
                         });
                     }
                 });
@@ -604,7 +657,7 @@ pub(crate) fn render_memory_hex(
 
         // Vertical scrollbar alongside table
         ui.add_space(4.0);
-        render_vertical_scrollbar(ui, base_addr, grid_height, tokens);
+        render_vertical_scrollbar(ui, base_addr, grid_height, tokens, &data.scrollbar_tooltip);
     });
 
     if let Some(target_addr) = next_edit_target {
@@ -628,6 +681,7 @@ fn render_vertical_scrollbar(
     base_addr: &mut u32,
     track_height: f32,
     tokens: &ColorTokens,
+    tooltip: &str,
 ) {
     const MAX_ADDR: f32 = MASK_ROW_ADDRESS as f32;
     const SCROLLBAR_WIDTH: f32 = 10.0;
@@ -677,12 +731,7 @@ fn render_vertical_scrollbar(
 
     ui.painter().rect_filled(thumb_rect, 2.0, thumb_color);
 
-    // Tooltip showing current memory region
-    let region = memory_region_name(*base_addr);
-    track_response.on_hover_text(format!(
-        "${:06X}: {}\nScroll: Wheel (16B), Shift+Wheel (256B), Ctrl+Wheel (1KB)",
-        *base_addr, region
-    ));
+    track_response.on_hover_text(tooltip);
 }
 
 /// Helper mapping 24-bit addresses to descriptive Amiga hardware memory regions

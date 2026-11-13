@@ -5,7 +5,57 @@
 use cpu::CpuState;
 use egui::{Color32, RichText, Ui};
 
-pub(crate) fn render_microcode(ui: &mut Ui, state: &CpuState, bus_blocked: bool) {
+#[derive(Debug, Default)]
+pub(crate) struct MicrocodePresentation {
+    ir: String,
+    step: String,
+    fraction: f32,
+    cck1: bool,
+    remaining: String,
+    staging: [String; 5],
+    bus_blocked: bool,
+    bus_free: String,
+}
+
+impl MicrocodePresentation {
+    pub(crate) fn refresh(&mut self, state: &CpuState, bus_blocked: bool) {
+        let micro = state.micro();
+        let total_steps = micro.current_steps.len();
+        self.ir = format!("IR: ${:04X}", state.ir());
+        self.step = format!("{}/{}", micro.micro_step, total_steps.max(1));
+        self.fraction = if total_steps > 0 {
+            micro.micro_step as f32 / total_steps as f32
+        } else {
+            0.0
+        };
+        self.cck1 = (state.cycle_counter() & u64::from(cpu::MicroStep::CCK_CLOCKS)) == 0;
+        let upcoming: u32 = micro
+            .current_steps
+            .iter()
+            .skip(micro.micro_step as usize + 1)
+            .map(|s| u32::from(s.base_clocks))
+            .sum();
+        let total = u32::from(micro.clocks_remaining) + upcoming;
+        self.remaining = format!(
+            "Step rem: {} clk | Total rem: {} clk ({} CCK)",
+            micro.clocks_remaining,
+            total,
+            (total + 1) / u32::from(cpu::MicroStep::CCK_CLOCKS)
+        );
+        self.staging = [
+            micro.addr1,
+            micro.addr2,
+            micro.source,
+            micro.destination,
+            micro.ea_addr,
+        ]
+        .map(|v| format!("${v:08X}"));
+        self.bus_blocked = bus_blocked;
+        self.bus_free = format!("FREE ({}c)", micro.clocks_remaining);
+    }
+}
+
+pub(crate) fn render_microcode(ui: &mut Ui, data: &MicrocodePresentation) {
     ui.group(|ui| {
         ui.set_width(ui.available_width());
 
@@ -30,25 +80,17 @@ pub(crate) fn render_microcode(ui: &mut Ui, state: &CpuState, bus_blocked: bool)
 
                 // 1. Active Opcode, Micro-step progress & Phase
                 ui.horizontal(|ui| {
-                    ui.monospace(format!("IR: ${:04X}", state.ir()));
+                    ui.monospace(&data.ir);
 
-                    let step_idx = state.micro().micro_step;
-                    let total_steps = state.micro().current_steps.len();
                     ui.monospace("Step:");
                     ui.colored_label(
                         Color32::from_rgb(0, 220, 180),
-                        format!("{}/{}", step_idx, total_steps.max(1)),
+                        &data.step,
                     );
 
-                    let fraction = if total_steps > 0 {
-                        (step_idx as f32) / (total_steps as f32)
-                    } else {
-                        0.0
-                    };
-                    ui.add(egui::ProgressBar::new(fraction).desired_width(40.0));
+                    ui.add(egui::ProgressBar::new(data.fraction).desired_width(40.0));
 
-                    let is_cck1 = (state.cycle_counter() & u64::from(cpu::MicroStep::CCK_CLOCKS)) == 0;
-                    let phase_label = if is_cck1 {
+                    let phase_label = if data.cck1 {
                         ui.colored_label(Color32::from_rgb(100, 200, 255), "[CCK1]")
                     } else {
                         ui.colored_label(Color32::from_rgb(255, 180, 50), "[CCK2]")
@@ -66,23 +108,9 @@ pub(crate) fn render_microcode(ui: &mut Ui, state: &CpuState, bus_blocked: bool)
                 });
 
                 // 2. Real-Time Remaining Clock & Cycle Counters
-                let active_rem = state.micro().clocks_remaining;
-                let mut upcoming_clocks = 0u32;
-                let cur_step = state.micro().micro_step as usize;
-                if cur_step + 1 < state.micro().current_steps.len() {
-                    for s in &state.micro().current_steps[cur_step + 1..] {
-                        upcoming_clocks += s.base_clocks as u32;
-                    }
-                }
-                let total_rem_clocks = (active_rem as u32) + upcoming_clocks;
-                let total_rem_cck = (total_rem_clocks + 1) / u32::from(cpu::MicroStep::CCK_CLOCKS);
-
                 ui.horizontal(|ui| {
                     ui.monospace(
-                        RichText::new(format!(
-                            "Step rem: {} clk | Total rem: {} clk ({} CCK)",
-                            active_rem, total_rem_clocks, total_rem_cck
-                        ))
+                        RichText::new(&data.remaining)
                         .color(Color32::from_rgb(180, 210, 240))
                         .small(),
                     )
@@ -104,37 +132,37 @@ pub(crate) fn render_microcode(ui: &mut Ui, state: &CpuState, bus_blocked: bool)
                     .show(ui, |ui| {
                         ui.monospace("addr1 (X1):")
                             .on_hover_text("Staged source address");
-                        ui.monospace(format!("${:08X}", state.micro().addr1))
+                        ui.monospace(&data.staging[0])
                             .on_hover_text("Staged source address");
                         ui.monospace("addr2 (X2):")
                             .on_hover_text("Staged destination address");
-                        ui.monospace(format!("${:08X}", state.micro().addr2))
+                        ui.monospace(&data.staging[1])
                             .on_hover_text("Staged destination address");
                         ui.end_row();
 
                         ui.monospace("source:")
                             .on_hover_text("Source operand value");
-                        ui.monospace(format!("${:08X}", state.micro().source))
+                        ui.monospace(&data.staging[2])
                             .on_hover_text("Source operand value");
                         ui.monospace("destination:")
                             .on_hover_text("Destination operand value");
-                        ui.monospace(format!("${:08X}", state.micro().destination))
+                        ui.monospace(&data.staging[3])
                             .on_hover_text("Destination operand value");
                         ui.end_row();
 
                         ui.monospace("ea_addr:")
                             .on_hover_text("Effective address");
-                        ui.monospace(format!("${:08X}", state.micro().ea_addr))
+                        ui.monospace(&data.staging[4])
                             .on_hover_text("Effective address");
                         ui.monospace("Chip RAM:")
                             .on_hover_text("Chip RAM DMA arbitration: Agnus/Denise bus locking status");
-                        if bus_blocked {
+                        if data.bus_blocked {
                             ui.colored_label(Color32::from_rgb(255, 70, 70), "BLOCKED")
                                 .on_hover_text("Chip RAM is currently locked by custom chip DMA; CPU is inserting wait states");
                         } else {
                             ui.colored_label(
                                 Color32::from_rgb(70, 220, 70),
-                                format!("FREE ({}c)", state.micro().clocks_remaining),
+                                &data.bus_free,
                             )
                             .on_hover_text("Chip RAM is accessible to CPU");
                         }

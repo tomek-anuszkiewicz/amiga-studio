@@ -22,8 +22,31 @@ pub struct DisasmEditState {
     pub error: Option<String>,
 }
 
+#[derive(Debug, Default)]
+pub(crate) struct DisassemblyPresentation {
+    current_pc: u32,
+    default_start: u32,
+    rows: Vec<InstructionRow>,
+    scrollbar_tooltip: String,
+}
+
+#[derive(Debug)]
+struct InstructionRow {
+    address: u32,
+    address_label: String,
+    line: String,
+    edit_text: String,
+    byte_len: usize,
+    breakpoint: bool,
+    historical_passes: Vec<(usize, u64)>,
+    history_tooltip: String,
+}
+
 pub(crate) fn render_disassembly(
     ui: &mut Ui,
+    data: &mut DisassemblyPresentation,
+    refresh: bool,
+    interactive: bool,
     cpu: &mut Cpu,
     bus: &mut PhysicalMemory,
     debugger: &mut Debugger,
@@ -35,6 +58,8 @@ pub(crate) fn render_disassembly(
     tokens: &ColorTokens,
 ) -> bool {
     let mut execution_replaced = false;
+    ui.scope(|ui| {
+    if !interactive { ui.disable(); }
     let start_pos = ui.cursor().min;
     let disasm_rect_id = egui::Id::new("disasm_view_rect");
     let prev_rect: Option<egui::Rect> = ui.data(|d| d.get_temp(disasm_rect_id));
@@ -42,7 +67,10 @@ pub(crate) fn render_disassembly(
 
     ui.heading("Disassembly");
 
-    let current_pc = cpu.state.instruction_pc() & physical_memory::MASK_PHYSICAL_ADDRESS;
+    if refresh {
+        data.current_pc = cpu.state.instruction_pc() & physical_memory::MASK_PHYSICAL_ADDRESS;
+    }
+    let current_pc = data.current_pc;
 
     // 1. Navigation & Jump Bar
     ui.horizontal(|ui| {
@@ -53,7 +81,7 @@ pub(crate) fn render_disassembly(
                 .hint_text("000000"),
         );
         let is_address_submitted =
-            response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
+            ui.is_enabled() && response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
         let should_jump = is_address_submitted || ui.button("Jump").clicked();
         if should_jump {
             let clean = goto_addr_str.trim().trim_start_matches('$');
@@ -80,6 +108,7 @@ pub(crate) fn render_disassembly(
     ui.separator();
 
     // 2. Disassembly Table (Smart aligned stream with CISC boundary preservation)
+    if refresh {
     let mut known_boundaries: Vec<u32> = Vec::with_capacity(BOUNDARY_HISTORY_LIMIT);
     let temp_len = temporal.len();
     for i in 0..temp_len.min(BOUNDARY_HISTORY_LIMIT) {
@@ -104,7 +133,7 @@ pub(crate) fn render_disassembly(
     );
 
     // Mouse wheel infinite stream browsing
-    if is_hovered {
+    if is_hovered && ui.is_enabled() {
         let mut scrolled = false;
         for event in ui.input(|i| i.events.clone()) {
             if let egui::Event::MouseWheel {
@@ -196,14 +225,36 @@ pub(crate) fn render_disassembly(
         }
     }
 
-    let anchor_addr = view_addr.unwrap_or(default_start) & physical_memory::MASK_PHYSICAL_ADDRESS;
-    let mut cur_addr = anchor_addr;
+    data.default_start = default_start;
+    }
+    let default_start = data.default_start;
 
     let total_avail_h = ui.available_height();
     const BOTTOM_MARGIN: f32 = 10.0;
     const ROW_HEIGHT: f32 = 21.5;
     let usable_h = (total_avail_h - BOTTOM_MARGIN).max(ROW_HEIGHT * 4.0);
     let row_count = ((usable_h / ROW_HEIGHT).floor() as usize).max(4);
+
+    if refresh {
+        data.rows.clear();
+        let mut address = view_addr.unwrap_or(default_start) & physical_memory::MASK_PHYSICAL_ADDRESS;
+        for _ in 0..row_count {
+            let (decoded, length) = disassemble(address, |a| bus.read_word_debug(a));
+            let historical_passes = temporal.find_matches_by_pc(address, HISTORY_PASSES_LIMIT);
+            data.rows.push(InstructionRow {
+                address,
+                address_label: format!("{address:06X}:"),
+                line: decoded.format_line(),
+                edit_text: if decoded.operands.is_empty() { decoded.mnemonic.to_string() } else { format!("{} {}", decoded.mnemonic, decoded.operands) },
+                byte_len: decoded.word_count * 2,
+                breakpoint: debugger.breakpoints.check_pc(address),
+                history_tooltip: format!("Rewind to historical execution ({} passes recorded)", historical_passes.len()),
+                historical_passes,
+            });
+            address = address.wrapping_add(length.max(2)) & physical_memory::MASK_PHYSICAL_ADDRESS;
+        }
+        data.scrollbar_tooltip = format!("Disassembly: ${:06X}\nDrag to scroll across 24-bit memory space", view_addr.unwrap_or(default_start));
+    }
 
     const SCROLLBAR_WIDTH: f32 = 8.0;
     const SPACING_X: f32 = 2.0;
@@ -218,12 +269,12 @@ pub(crate) fn render_disassembly(
                 ui.spacing_mut().item_spacing.y = 1.0;
                 ui.set_min_width(list_width);
                 ui.set_width(list_width);
-                for _ in 0..row_count {
-                let (disasm, byte_len) = disassemble(cur_addr, |a| bus.read_word_debug(a));
+                for row in &data.rows {
+                let cur_addr = row.address;
                 let is_current = cur_addr == current_pc;
                 let is_selected = *selected_addr == Some(cur_addr);
-                let is_bp = debugger.breakpoints.check_pc(cur_addr);
-                let orig_len = disasm.word_count * 2;
+                let is_bp = row.breakpoint;
+                let orig_len = row.byte_len;
 
                 let row_frame = if is_current && is_selected {
                     egui::Frame::NONE
@@ -260,7 +311,7 @@ pub(crate) fn render_disassembly(
                         ui.vertical(|ui| {
                             ui.horizontal(|ui| {
                                 ui.monospace(
-                                    RichText::new(format!("{:06X}:", cur_addr))
+                                    RichText::new(&row.address_label)
                                         .color(tokens.accent_pc),
                                 );
 
@@ -273,12 +324,12 @@ pub(crate) fn render_disassembly(
                                             .desired_width(180.0)
                                             .font(egui::TextStyle::Monospace),
                                     );
-                                    edit_resp.request_focus();
-                                    if ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                                    if interactive { edit_resp.request_focus(); }
+                                    if interactive && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
                                         commit = true;
                                     }
-                                    if ui.input(|i| i.key_pressed(egui::Key::Escape))
-                                        || edit_resp.clicked_elsewhere()
+                                    if interactive && (ui.input(|i| i.key_pressed(egui::Key::Escape))
+                                        || edit_resp.clicked_elsewhere())
                                     {
                                         cancel = true;
                                     }
@@ -297,13 +348,13 @@ pub(crate) fn render_disassembly(
                                     if let Some(edit) = active_edit.as_mut() {
                                         match assemble_instruction(&edit.text, cur_addr) {
                                             Err(err) => {
-                                                edit.error = Some(err);
+                                                edit.error = Some(format!("Error: {err}"));
                                             }
                                             Ok(words) => {
                                                 let new_len = words.len() * 2;
                                                 if new_len != orig_len {
                                                     edit.error = Some(format!(
-                                                        "Byte size mismatch: original is {} bytes ({} words), but new is {} bytes ({} words). In-place edit requires exact byte count match.",
+                                                        "Error: Byte size mismatch: original is {} bytes ({} words), but new is {} bytes ({} words). In-place edit requires exact byte count match.",
                                                         orig_len,
                                                         orig_len / 2,
                                                         new_len,
@@ -332,7 +383,7 @@ pub(crate) fn render_disassembly(
                             // Display validation error if present
                             if let Some(edit) = active_edit.as_ref() {
                                 if let Some(err) = &edit.error {
-                                    ui.colored_label(tokens.accent_error, format!("Error: {}", err));
+                                    ui.colored_label(tokens.accent_error, err);
                                 }
                             }
                         });
@@ -376,9 +427,9 @@ pub(crate) fn render_disassembly(
 
                             // Address & Disassembly text
                             let line_text = if is_current {
-                                RichText::new(disasm.format_line()).monospace().strong().color(tokens.text_primary)
+                                RichText::new(&row.line).monospace().strong().color(tokens.text_primary)
                             } else {
-                                RichText::new(disasm.format_line()).monospace().color(tokens.text_secondary)
+                                RichText::new(&row.line).monospace().color(tokens.text_secondary)
                             };
                             let line_label = ui
                                 .add(egui::Label::new(line_text).sense(egui::Sense::click()))
@@ -392,11 +443,7 @@ pub(crate) fn render_disassembly(
 
                             if line_label.double_clicked() {
                                 *selected_addr = Some(cur_addr);
-                                let initial_text = if disasm.operands.is_empty() {
-                                    disasm.mnemonic.to_string()
-                                } else {
-                                    format!("{} {}", disasm.mnemonic, disasm.operands)
-                                };
+                                let initial_text = row.edit_text.clone();
                                 *active_edit = Some(DisasmEditState {
                                     addr: cur_addr,
                                     text: initial_text,
@@ -405,7 +452,7 @@ pub(crate) fn render_disassembly(
                             }
 
                             // Quick Loop Rewind button
-                            let historical_passes = temporal.find_matches_by_pc(cur_addr, HISTORY_PASSES_LIMIT);
+                            let historical_passes = &row.historical_passes;
                             if !historical_passes.is_empty() {
                                 if ui
                                     .button(
@@ -413,10 +460,7 @@ pub(crate) fn render_disassembly(
                                             .size(11.0)
                                             .color(tokens.accent_diff),
                                     )
-                                    .on_hover_text(format!(
-                                        "Rewind to historical execution ({} passes recorded)",
-                                        historical_passes.len()
-                                    ))
+                                    .on_hover_text(&row.history_tooltip)
                                     .clicked()
                                 {
                                     if let Some((last_idx, _)) = historical_passes.last() {
@@ -447,11 +491,7 @@ pub(crate) fn render_disassembly(
                                     ui.close_menu();
                                 }
                                 if ui.button("✏ Edit Instruction").clicked() {
-                                    let initial_text = if disasm.operands.is_empty() {
-                                        disasm.mnemonic.to_string()
-                                    } else {
-                                        format!("{} {}", disasm.mnemonic, disasm.operands)
-                                    };
+                                    let initial_text = row.edit_text.clone();
                                     *active_edit = Some(DisasmEditState {
                                         addr: cur_addr,
                                         text: initial_text,
@@ -483,13 +523,12 @@ pub(crate) fn render_disassembly(
                     }
                 });
 
-                    cur_addr = (cur_addr.wrapping_add(byte_len.max(2))) & physical_memory::MASK_PHYSICAL_ADDRESS;
                 }
             },
         );
 
         // 24-bit vertical scrollbar on the right edge
-        render_disasm_scrollbar(ui, view_addr, default_start, usable_h, tokens);
+        render_disasm_scrollbar(ui, view_addr, default_start, usable_h, tokens, &data.scrollbar_tooltip);
     });
 
     ui.add_space(BOTTOM_MARGIN);
@@ -500,6 +539,7 @@ pub(crate) fn render_disassembly(
         egui::pos2(ui.max_rect().max.x, end_pos.y.max(start_pos.y + 100.0)),
     );
     ui.data_mut(|d| d.insert_temp(disasm_rect_id, total_rect));
+    });
     execution_replaced
 }
 
@@ -510,6 +550,7 @@ fn render_disasm_scrollbar(
     current_addr: u32,
     track_height: f32,
     tokens: &ColorTokens,
+    tooltip: &str,
 ) {
     const MAX_ADDR: f32 = physical_memory::MASK_WORD_ADDRESS as f32;
     const SCROLLBAR_WIDTH: f32 = 8.0;
@@ -575,8 +616,5 @@ fn render_disasm_scrollbar(
 
     ui.painter().rect_filled(thumb_rect, 2.0, thumb_color);
 
-    track_response.on_hover_text(format!(
-        "Disassembly: ${:06X}\nDrag to scroll across 24-bit memory space",
-        active_addr
-    ));
+    track_response.on_hover_text(tooltip);
 }

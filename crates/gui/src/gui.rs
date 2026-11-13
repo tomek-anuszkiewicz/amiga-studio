@@ -6,8 +6,10 @@
 
 pub mod app;
 pub mod file_actions;
+mod inspection;
 pub mod layout;
 pub mod playback;
+mod shortcuts;
 pub mod theme;
 
 pub use app::{EmulatorApp, UserPreferences, ViewMode};

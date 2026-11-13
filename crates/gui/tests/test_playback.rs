@@ -56,7 +56,7 @@ fn debugger_run_keeps_video_updates_and_pause_control_while_cpu_status_is_stoppe
             session.machine.denise.frame_builder.frame_number,
             prior_field + 1
         );
-        harness.get_by_label(" ● [STOPPED] ");
+        harness.get_by_label(" ● [RUNNING] ");
         harness.get_by_label("⏸ Pause (F5)");
         let frame = &session.machine.denise.frame_builder;
         let size = [frame.width as usize, frame.height as usize];

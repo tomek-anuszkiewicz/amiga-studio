@@ -32,7 +32,9 @@ A breakpoint can be added from a disassembly row or the breakpoint panel. It tar
 
 ## Following earlier execution
 
-The execution trace records recent instruction addresses, opcodes, disassembly, CPU state, and Color Clock positions for inspection after a run or step. A separate, optional history records CPU snapshots before instructions and allows the developer to browse backward and forward through those recorded states. History recording starts disabled. Browsing history restores CPU state for inspection; it does not rewind memory or the rest of the machine.
+The execution trace records recent instruction addresses, opcodes, disassembly, CPU state, and Color Clock positions during explicit instruction, CCK and frame steps. A separate, optional history records CPU snapshots before those instructions and allows the developer to browse backward and forward through recorded states. History recording starts disabled. Continuous Run checks enabled PC breakpoints and their conditions against the current CPU state without disassembly, trace writes, temporal snapshots, repeated CPU clones or memory diff capture. Pending ordinary pause keeps this policy until the field boundary. Existing entries remain available, but the unrecorded interval is not reconstructed on Stop. Browsing history restores CPU state for inspection; it does not rewind memory or the rest of the machine.
+
+Run and Game share bounded CCK execution with explicit stepping. Retired instruction counts are accumulated at slice boundaries and published for inspection after stopping; they are independent of recorded entries. On stopping, debugger clocks and diff baselines synchronize with the current machine. Returning from Game keeps instrumentation disconnected until its pending pause completes.
 
 ## References
 

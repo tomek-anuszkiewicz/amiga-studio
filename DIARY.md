@@ -648,3 +648,25 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - WASM package check passed
   - Fresh Studio capture visually inspected with selector visible and proportional Fit image
   - Vault metadata and 1049 links passed
+---
+
+### [2026-11-13 14:43 CET] — Retain prepared debugger inspectors during continuous Run
+- **Affected Subsystems**:
+  - `debugger session`
+  - `GUI inspection panels and controls`
+- **What Was Changed (The Concrete Reality)**:
+  - Keep prepared values and visible rows during Run and pending Pause
+  - Separate live breakpoint checks from trace and history collection
+  - Preserve diagnostics for explicit instruction, CCK and frame steps
+  - Refresh on real stop, reset, loading and paused edits
+  - Keep Game inspection disconnected through its return pause
+  - Preserve execution-edit invalidation and apply approved program_counters spelling
+- **Architectural Rationale & Trade-Offs**:
+  - Remove repeated diagnostic work while retaining live execution controls and the Amiga image without snapshots or cached drawings
+- **Verification & Test Results**:
+  - 132 focused debugger and GUI tests passed
+  - WASM check and vault audit passed
+  - Fresh paused, running and stopped captures visually inspected
+  - Same 60-field live_stripes release comparison measured Developer execution at 36.772 ms before and 25.042 ms after, excluding pacing waits
+  - Fresh instrumentation recorded zero inspector refresh, disassembly, trace and history calls during steady Run and zero inspector drawing in Game
+  - Measurements establish this local scenario, not a general FPS guarantee

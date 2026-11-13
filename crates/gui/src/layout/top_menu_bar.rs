@@ -35,11 +35,13 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
 
                     if ui.button("🔄 Reset (Ctrl+R)").clicked() {
                         app.session.reset();
+                        app.inspection.ready = false;
                         ui.close_menu();
                     }
 
                     if ui.button("⚡ Reset Warm").clicked() {
                         app.session.reset_warm();
+                        app.inspection.ready = false;
                         ui.close_menu();
                     }
                 });
@@ -119,7 +121,6 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
                 if ui.add_enabled(!app.session.pause_pending(), run_button)
                     .on_hover_text("Run at the selected PAL/NTSC speed, or pause after the current video field completes (F5).")
                     .clicked() {
-                    app.disassembly_view_addr = None;
                     app.session.toggle_run();
                 }
 
@@ -178,10 +179,13 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
             ui.horizontal_wrapped(|ui| {
                 ui.visuals_mut().button_frame = true;
 
+                if developer && (!app.session.continuous_run() || (!app.inspection.ready && !app.session.pause_pending())) {
+                    app.inspection.refresh_status(&app.session);
+                }
                 // --- 3. Machine Status Badge ---
-                let (status_text, bg_color) = if app.session.machine.cpu.state.is_halted() {
+                let (status_text, bg_color) = if if developer { app.inspection.halted } else { app.session.machine.cpu.state.is_halted() } {
                     ("HALTED", egui::Color32::from_rgb(180, 40, 40))
-                } else if developer && app.session.machine.cpu.state.is_stopped() {
+                } else if developer && app.inspection.stopped {
                     ("STOPPED", egui::Color32::from_rgb(40, 90, 180))
                 } else if app.session.is_running {
                     ("RUNNING", egui::Color32::from_rgb(40, 160, 60))
@@ -208,8 +212,8 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
 
                 // --- 4. Telemetry Metrics ---
                 if developer {
-                    ui.label(format!("CCK: {}", app.session.debugger.current_cck));
-                    ui.label(format!("Inst: {}", app.session.instructions_executed));
+                    ui.label(&app.inspection.cck_label);
+                    ui.label(&app.inspection.instruction_label);
                 }
 
                 ui.separator();

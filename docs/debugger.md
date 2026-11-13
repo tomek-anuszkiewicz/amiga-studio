@@ -43,8 +43,9 @@ while paused and can show a partial field.
 
 CPU **STOPPED** means the processor is waiting for an interrupt. Run and Step
 Frame still advance the rest of the machine, including video and timers, in both
-views. In Developer Studio, STOPPED remains visible while the Pause button and
-advancing CCK counter show that the machine is running. A CPU halt ends Run.
+views. During continuous Run, inspector values, including CPU status and CCK
+labels, retain their last prepared contents. The Pause control, FPS and Amiga
+screen stay live. A CPU halt ends Run and refreshes the inspectors.
 
 **File > Load ROM from File** installs a 256 KiB Kickstart image, resets the
 machine to its ROM vectors and leaves it paused. The toolbar shows the filename;
@@ -65,6 +66,18 @@ requested through the State menu or its shortcuts.
 ## 3. Core Debugger Subsystems
 
 ### A. Execution History and Rewind
+Continuous Run checks enabled PC breakpoints and their register conditions against
+the current CPU state, but does not collect trace or temporal history, even with
+Rec enabled. Existing entries remain available; stopping does not reconstruct the
+unrecorded interval. Instruction, CCK and frame steps retain diagnostic recording.
+
+Inspector registers, memory, decoded code and counters stay frozen during Run and
+pending Stop. Editing and navigation resume after execution actually stops. A
+breakpoint stops before its matching instruction and may show a partial field;
+ordinary Stop finishes the current field. Reset and state loading refresh the
+inspection view. Returning from Game keeps diagnostics disconnected until its
+pending pause finishes.
+
 Recorded execution history browses CPU states only; full-machine rewind is tracked in the [debugger work](../ROADMAP.md#debugger-execution-control). Within retained history:
 - **Instruction Scrubbing:** Step backward and forward through past instructions to locate bugs or crashes.
 - **Frame Scrubbing:** Jump backward by entire 50 Hz PAL video frames (~70,824 CCK cycles).

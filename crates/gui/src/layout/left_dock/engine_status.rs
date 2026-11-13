@@ -5,14 +5,30 @@
 use crate::theme::ColorTokens;
 use egui::{Grid, RichText, Ui};
 
-pub(crate) fn render_engine_status(
-    ui: &mut Ui,
-    tokens: &ColorTokens,
+#[derive(Debug, Default)]
+pub(crate) struct EnginePresentation {
     chip_ram_blocked: bool,
-    instructions_executed: u64,
-    current_cck: u64,
-    sr: u16,
-) {
+    cck: String,
+    instructions: String,
+    ipl: String,
+    interrupts_masked: bool,
+    supervisor: bool,
+}
+
+impl EnginePresentation {
+    pub(crate) fn refresh(&mut self, session: &debugger::DebuggerSession) {
+        self.chip_ram_blocked = session.machine.physical_memory.chip_ram_blocked;
+        self.cck = format!("#{}", session.machine.cck);
+        self.instructions = session.instructions_executed.to_string();
+        let state = &session.machine.cpu.state;
+        self.ipl = format!("Level {} (Bits 8-10)", state.interrupt_mask());
+        self.interrupts_masked =
+            u16::from(state.interrupt_mask()) == cpu::state::MASK_SR_INTERRUPT_LEVEL;
+        self.supervisor = state.is_supervisor();
+    }
+}
+
+pub(crate) fn render_engine_status(ui: &mut Ui, tokens: &ColorTokens, data: &EnginePresentation) {
     ui.group(|ui| {
         ui.set_width(ui.available_width());
         egui::CollapsingHeader::new(RichText::new("Emulation Engine Status").strong())
@@ -25,7 +41,7 @@ pub(crate) fn render_engine_status(
                         // 1. Chip RAM Bus Arbitration State
                         ui.label(RichText::new("Chip RAM Bus:").color(tokens.text_secondary))
                             .on_hover_text("Bus arbitration state for Agnus, Paula, and CPU");
-                        if chip_ram_blocked {
+                        if data.chip_ram_blocked {
                             ui.colored_label(tokens.accent_warning, "LOCKED (DMA Wait State)")
                                 .on_hover_text(
                                     "Chip RAM is currently locked by custom chip DMA channel",
@@ -41,9 +57,7 @@ pub(crate) fn render_engine_status(
                         // 2. Execution Clock & Timing
                         ui.label(RichText::new("Color Clock (CCK):").color(tokens.text_secondary))
                             .on_hover_text("Amiga 3.54 MHz Color Clock master counter");
-                        ui.monospace(
-                            RichText::new(format!("#{current_cck}")).color(tokens.text_monospace),
-                        );
+                        ui.monospace(RichText::new(&data.cck).color(tokens.text_monospace));
                         ui.end_row();
 
                         // 3. Instruction Counter
@@ -52,32 +66,26 @@ pub(crate) fn render_engine_status(
                         )
                         .on_hover_text("Total instructions executed since machine start/reset");
                         ui.monospace(
-                            RichText::new(format!("{instructions_executed}"))
-                                .color(tokens.text_monospace),
+                            RichText::new(&data.instructions).color(tokens.text_monospace),
                         );
                         ui.end_row();
 
                         // 4. Interrupt Priority Level (IPL)
-                        let ipl_mask = (sr >> cpu::state::BIT_SR_INTERRUPT_SHIFT)
-                            & cpu::state::MASK_SR_INTERRUPT_LEVEL;
                         ui.label(
                             RichText::new("Interrupt Mask (IPL):").color(tokens.text_secondary),
                         )
                         .on_hover_text("Current CPU interrupt priority mask (0-7)");
-                        let ipl_color = if ipl_mask == cpu::state::MASK_SR_INTERRUPT_LEVEL {
+                        let ipl_color = if data.interrupts_masked {
                             tokens.accent_warning // Mask 7 disables maskable interrupts
                         } else {
                             tokens.accent_pc
                         };
-                        ui.monospace(
-                            RichText::new(format!("Level {ipl_mask} (Bits 8-10)")).color(ipl_color),
-                        );
+                        ui.monospace(RichText::new(&data.ipl).color(ipl_color));
                         ui.end_row();
 
                         // 5. Privilege State
-                        let is_sup = (sr & cpu::BIT_SR_S) != 0;
                         ui.label(RichText::new("Privilege Mode:").color(tokens.text_secondary));
-                        if is_sup {
+                        if data.supervisor {
                             ui.colored_label(tokens.accent_warning, "Supervisor Mode (SSP)");
                         } else {
                             ui.colored_label(tokens.accent_pc, "User Mode (USP)");

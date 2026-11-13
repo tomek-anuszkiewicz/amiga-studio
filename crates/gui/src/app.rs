@@ -23,9 +23,6 @@ use debugger::DebuggerSession;
 
 const WIDE_LAYOUT_MIN_WIDTH: f32 = 1680.0;
 const DESKTOP_LAYOUT_MIN_WIDTH: f32 = 1200.0;
-const ZOOM_STEP: f32 = 0.25;
-const MIN_ZOOM: f32 = 0.75;
-const MAX_ZOOM: f32 = 2.5;
 
 /// Responsive layout tier based on viewport width
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -104,6 +101,7 @@ pub struct EmulatorApp {
     /// Headless machine execution controller & model
     pub session: Box<DebuggerSession>,
     screen_texture: ScreenTexture,
+    pub(crate) inspection: Box<crate::inspection::Inspection>,
     pub playback: Playback,
     pub show_fps: bool,
     pub loaded_rom_name: Option<String>,
@@ -162,6 +160,7 @@ impl Default for EmulatorApp {
         Self {
             session: Box::new(DebuggerSession::new()),
             screen_texture: ScreenTexture::default(),
+            inspection: Box::default(),
             playback: Playback::default(),
             show_fps: true,
             loaded_rom_name: None,
@@ -246,128 +245,6 @@ impl EmulatorApp {
             .set_debugger_enabled(mode == ViewMode::Developer);
     }
 
-    /// Handles global keyboard shortcuts
-    fn handle_keyboard_shortcuts(&mut self, ctx: &egui::Context) {
-        let input = ctx.input(|i| i.clone());
-
-        let toggle_view_mode = input.key_pressed(egui::Key::F12)
-            || input.key_pressed(egui::Key::F2)
-            || (self.view_mode == ViewMode::ScreenOnly && input.key_pressed(egui::Key::Escape));
-
-        if toggle_view_mode {
-            if self.view_mode == ViewMode::ScreenOnly {
-                self.set_view_mode(ViewMode::Developer);
-            } else {
-                self.set_view_mode(ViewMode::ScreenOnly);
-            }
-        }
-
-        // F5 or Space: Toggle Run / Pause
-        let should_toggle_run = input.key_pressed(egui::Key::F5)
-            || (input.key_pressed(egui::Key::Space) && !input.focused);
-        if should_toggle_run {
-            self.disassembly_view_addr = None;
-            self.session.toggle_run();
-        }
-
-        if self.view_mode == ViewMode::Developer {
-            // F10: Step Instruction
-            if !self.session.is_running
-                && input.key_pressed(egui::Key::F10)
-                && !input.modifiers.shift
-            {
-                self.disassembly_view_addr = None;
-                self.session.step_instruction();
-            }
-
-            // Shift + F10: Step Backward (Rewind)
-            if !self.session.is_running
-                && input.key_pressed(egui::Key::F10)
-                && input.modifiers.shift
-            {
-                self.disassembly_view_addr = None;
-                self.session.step_backward();
-            }
-
-            // F11: Step CCK
-            if !self.session.is_running
-                && input.key_pressed(egui::Key::F11)
-                && !input.modifiers.shift
-            {
-                self.disassembly_view_addr = None;
-                self.session.step_cck();
-            }
-
-            // Shift + F11: Step to the next completed video field.
-            if !self.session.is_running
-                && input.key_pressed(egui::Key::F11)
-                && input.modifiers.shift
-            {
-                self.disassembly_view_addr = None;
-                self.session.step_frame();
-            }
-
-            // F8: Toggle Microcode Inspector
-            if input.key_pressed(egui::Key::F8) {
-                self.show_microcode = !self.show_microcode;
-            }
-
-            // Alt + T: Toggle Temporal Recording
-            if input.modifiers.alt && input.key_pressed(egui::Key::T) {
-                self.session.temporal.toggle_recording();
-            }
-        }
-
-        // Ctrl + R: Reset
-        if input.modifiers.command && input.key_pressed(egui::Key::R) {
-            self.session.reset();
-        }
-
-        // Ctrl + O: Load Binary
-        if input.modifiers.command && input.key_pressed(egui::Key::O) {
-            self.open_load_binary_dialog();
-        }
-
-        // F6: Quick Save Slot 1
-        if input.key_pressed(egui::Key::F6) {
-            crate::layout::top_menu_bar::quick_save_slot(self, 1);
-        }
-
-        // F9: Quick Load Slot 1
-        if input.key_pressed(egui::Key::F9) {
-            crate::layout::top_menu_bar::quick_load_slot(self, 1);
-        }
-
-        // Ctrl + S: Save State to File
-        if input.modifiers.command && input.key_pressed(egui::Key::S) {
-            self.open_save_state_dialog();
-        }
-
-        // Ctrl + L: Load State from File
-        if input.modifiers.command && input.key_pressed(egui::Key::L) {
-            self.open_load_state_dialog();
-        }
-
-        // Ctrl + Plus / Equal: Zoom In
-        let should_zoom_in = input.modifiers.command
-            && (input.key_pressed(egui::Key::Plus) || input.key_pressed(egui::Key::Equals));
-        if should_zoom_in {
-            let current = ctx.zoom_factor();
-            ctx.set_zoom_factor((current + ZOOM_STEP).min(MAX_ZOOM));
-        }
-
-        // Ctrl + Minus: Zoom Out
-        if input.modifiers.command && input.key_pressed(egui::Key::Minus) {
-            let current = ctx.zoom_factor();
-            ctx.set_zoom_factor((current - ZOOM_STEP).max(MIN_ZOOM));
-        }
-
-        // Ctrl + 0: Reset Zoom
-        if input.modifiers.command && input.key_pressed(egui::Key::Num0) {
-            ctx.set_zoom_factor(1.0);
-        }
-    }
-
     /// Renders one complete UI frame, handling input events, execution time-slicing, and docked panels
     pub fn update_ui(&mut self, ctx: &egui::Context) {
         #[cfg(not(target_arch = "wasm32"))]
@@ -375,6 +252,7 @@ impl EmulatorApp {
         #[cfg(target_arch = "wasm32")]
         let update_started = eframe::web::now_sec();
         let now = ctx.input(|input| input.time);
+        let was_running = self.session.is_running;
         let first_pass = ctx.output(|output| output.num_completed_passes == 0);
         if first_pass {
             self.session
@@ -390,9 +268,31 @@ impl EmulatorApp {
             }
         }
 
-        let refresh_screen = (first_pass && self.playback.advance(now, &mut self.session))
+        // A Run started before the first UI pass needs one preparation pass before execution.
+        let prepare_first = self.view_mode == ViewMode::Developer
+            && !self.inspection.ready
+            && self.session.continuous_run()
+            && !self.session.pause_pending();
+        let start_after_preparation = std::mem::take(&mut self.inspection.start_after_preparation);
+        let refresh_screen = ((first_pass || start_after_preparation)
+            && !prepare_first
+            && self.playback.advance(now, &mut self.session))
             || self.screen_texture.image().is_none();
         render_top_menu_bar(self, ctx);
+        if was_running && !self.session.is_running {
+            self.disassembly_view_addr = None;
+        }
+        self.inspection.frozen = self.session.continuous_run()
+            && (self.inspection.ready || self.session.pause_pending());
+        if self.view_mode == ViewMode::Developer && !self.inspection.frozen {
+            self.inspection.engine.refresh(&self.session);
+            if self.show_microcode {
+                self.inspection.microcode.refresh(
+                    &self.session.machine.cpu.state,
+                    self.session.machine.physical_memory.chip_ram_blocked,
+                );
+            }
+        }
         self.screen_texture.set_scale(self.screen_scale);
         if refresh_screen {
             self.screen_texture.update(ctx, &self.session);
@@ -455,8 +355,14 @@ impl EmulatorApp {
                             egui::scroll_area::ScrollBarVisibility::VisibleWhenNeeded,
                         )
                         .show(ui, |ui| {
+                            if self.session.is_running {
+                                ui.disable();
+                            }
                             if render_registers(
                                 ui,
+                                &mut self.inspection.registers,
+                                !self.inspection.frozen,
+                                !self.session.is_running,
                                 &tokens,
                                 &mut self.session.machine.cpu,
                                 &mut self.session.machine.physical_memory,
@@ -466,22 +372,10 @@ impl EmulatorApp {
                                 self.session.invalidate_instruction_tracking();
                             }
                             ui.add_space(3.0);
-                            render_engine_status(
-                                ui,
-                                &tokens,
-                                self.session.machine.physical_memory.chip_ram_blocked,
-                                self.session.instructions_executed,
-                                self.session.machine.cpu.state.cycle_counter() as u64
-                                    / u64::from(cpu::MicroStep::CCK_CLOCKS),
-                                self.session.machine.cpu.state.sr(),
-                            );
+                            render_engine_status(ui, &tokens, &self.inspection.engine);
                             if self.show_microcode {
                                 ui.add_space(3.0);
-                                render_microcode(
-                                    ui,
-                                    &self.session.machine.cpu.state,
-                                    self.session.machine.physical_memory.chip_ram_blocked,
-                                );
+                                render_microcode(ui, &self.inspection.microcode);
                             }
                         });
                 });
@@ -500,6 +394,9 @@ impl EmulatorApp {
                     }),
                 )
                 .show(ctx, |ui| {
+                    if self.session.is_running {
+                        ui.disable();
+                    }
                     ui.with_layout(egui::Layout::bottom_up(egui::Align::Min), |ui| {
                         // 1. Bottom Zone: Tool Panels docked to bottom (rendered first in bottom_up)
                         let bottom_h = self.right_dock_bottom_height.clamp(50.0, 420.0);
@@ -524,6 +421,8 @@ impl EmulatorApp {
                                             ui.add_space(6.0);
                                             render_breakpoints_panel(
                                                 &mut self.session.debugger.breakpoints,
+                                                &mut self.inspection.breakpoints,
+                                                !self.inspection.frozen,
                                                 &mut self.breakpoint_form,
                                                 ui,
                                             );
@@ -558,12 +457,17 @@ impl EmulatorApp {
                             |ui| {
                                 render_memory_hex(
                                     ui,
+                                    &mut self.inspection.memory,
+                                    !self.inspection.frozen,
+                                    !self.session.is_running,
                                     &mut self.session.machine.physical_memory,
                                     &mut self.session.debugger.breakpoints,
                                     &mut self.hex_base_addr,
                                     &mut self.memory_selected_addr,
                                     &mut self.hex_edit_buffer,
-                                    if self.session.prev_cpu_state.is_some() {
+                                    if !self.inspection.frozen
+                                        && self.session.prev_cpu_state.is_some()
+                                    {
                                         Some((
                                             &self.session.prev_hex_bytes,
                                             self.session.prev_hex_base,
@@ -607,6 +511,9 @@ impl EmulatorApp {
                                     |ui| {
                                         if render_disassembly(
                                             ui,
+                                            &mut self.inspection.disassembly,
+                                            !self.inspection.frozen,
+                                            !self.session.is_running,
                                             &mut self.session.machine.cpu,
                                             &mut self.session.machine.physical_memory,
                                             &mut self.session.debugger,
@@ -746,6 +653,9 @@ impl EmulatorApp {
 
                             if render_disassembly(
                                 ui,
+                                &mut self.inspection.disassembly,
+                                !self.inspection.frozen,
+                                !self.session.is_running,
                                 &mut self.session.machine.cpu,
                                 &mut self.session.machine.physical_memory,
                                 &mut self.session.debugger,
@@ -763,6 +673,13 @@ impl EmulatorApp {
                 });
         }
 
+        if self.view_mode == ViewMode::Developer && !self.inspection.frozen {
+            self.inspection.ready = true;
+            if prepare_first {
+                self.inspection.start_after_preparation = true;
+                ctx.request_discard("Prepare inspection before the first Run slice");
+            }
+        }
         if first_pass {
             self.poll_file_dialog(ctx);
         }

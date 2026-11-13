@@ -32,8 +32,12 @@ pub struct DebuggerSession {
     pub is_running: bool,
     debugger_enabled: bool,
     pause_at_frame: bool,
+    stepping_frame: bool,
+    enable_debugger_on_pause: bool,
+    unpublished_instructions: u64,
     frame_boundary_cck: Option<u64>,
     instruction_started: bool,
+    instruction_recorded: bool,
     pub instructions_executed: u64,
     pub prev_cpu_state: Option<CpuState>,
 
@@ -68,8 +72,12 @@ impl DebuggerSession {
             is_running: false,
             debugger_enabled: true,
             pause_at_frame: false,
+            stepping_frame: false,
+            enable_debugger_on_pause: false,
+            unpublished_instructions: 0,
             frame_boundary_cck: None,
             instruction_started: false,
+            instruction_recorded: false,
             instructions_executed: 0,
             prev_cpu_state: None,
             prev_hex_bytes: [0; MEMORY_DIFF_BYTES],
@@ -92,6 +100,11 @@ impl DebuggerSession {
 
     /// Connects inspection to execution, or bypasses it completely for Game view.
     pub fn set_debugger_enabled(&mut self, enabled: bool) {
+        self.enable_debugger_on_pause = enabled && !self.debugger_enabled && self.is_running;
+        if self.enable_debugger_on_pause {
+            self.request_pause();
+            return;
+        }
         if self.debugger_enabled == enabled {
             return;
         }
@@ -99,7 +112,36 @@ impl DebuggerSession {
         self.debugger_enabled = enabled;
         self.prev_cpu_state = None;
         if enabled {
-            self.debugger.current_cck = self.machine.cck;
+            self.synchronize_inspection();
+        }
+    }
+
+    /// Continuous execution includes an ordinary pause waiting for its field boundary.
+    pub fn continuous_run(&self) -> bool {
+        self.is_running && !self.stepping_frame
+    }
+
+    fn synchronize_inspection(&mut self) {
+        self.debugger.current_cck = self.machine.cck;
+        self.instructions_executed = self
+            .instructions_executed
+            .saturating_add(self.unpublished_instructions);
+        self.unpublished_instructions = 0;
+        self.capture_memory_snapshot(self.prev_hex_base);
+        self.prev_cpu_state = Some(self.machine.cpu.state.clone());
+    }
+
+    fn finish_run(&mut self) {
+        let continuous = !self.stepping_frame;
+        self.is_running = false;
+        self.pause_at_frame = false;
+        self.stepping_frame = false;
+        if self.enable_debugger_on_pause {
+            self.debugger_enabled = true;
+            self.enable_debugger_on_pause = false;
+        }
+        if continuous && self.debugger_enabled {
+            self.synchronize_inspection();
         }
     }
 
@@ -124,6 +166,7 @@ impl DebuggerSession {
         self.record_instruction();
         self.machine.step_instruction();
         self.instruction_started = false;
+        self.instruction_recorded = false;
         self.debugger.current_cck = self.machine.cck;
         self.instructions_executed = self.instructions_executed.saturating_add(1);
     }
@@ -131,13 +174,14 @@ impl DebuggerSession {
     /// Restarts breakpoint and history checks after a host edit replaces CPU execution.
     pub fn invalidate_instruction_tracking(&mut self) {
         self.instruction_started = false;
+        self.instruction_recorded = false;
     }
 
     fn record_instruction(&mut self) {
-        if self.instruction_started {
+        if self.instruction_recorded {
             return;
         }
-        self.instruction_started = true;
+        self.instruction_recorded = true;
         let pc = self.machine.cpu.state.instruction_pc();
         if self.temporal.is_recording() {
             self.temporal.record(
@@ -178,6 +222,9 @@ impl DebuggerSession {
         self.debugger.current_cck = self.machine.cck;
         self.instruction_started = !completed;
         if completed {
+            self.instruction_recorded = false;
+        }
+        if completed {
             self.instructions_executed = self.instructions_executed.saturating_add(1);
         }
         if self.machine.denise.frame_builder.frame_number != frame {
@@ -191,62 +238,14 @@ impl DebuggerSession {
         if !self.is_running {
             return 0;
         }
-        if !self.debugger_enabled {
-            return self.run_game_frame_slice(max_cck);
-        }
-
-        if self.temporal.scrub_cursor.is_some() {
-            self.jump_to_live_head();
-        }
-
-        if self.prev_cpu_state.is_none() {
-            self.capture_memory_snapshot(self.prev_hex_base);
-            self.prev_cpu_state = Some(self.machine.cpu.state.clone());
-        }
-
-        let initial_instructions = self.instructions_executed;
-        let initial_frame = self.machine.denise.frame_builder.frame_number;
-        for _ in 0..max_cck {
-            if self.machine.cpu.state.is_halted() {
-                self.is_running = false;
-                break;
-            }
-            // STOP waits for an interrupt while the rest of the machine keeps running.
-            if !self.instruction_started && !self.machine.cpu.state.is_stopped() {
-                let next_pc = self.machine.cpu.state.instruction_pc();
-                if self
-                    .debugger
-                    .breakpoints
-                    .check_pc_with_state(next_pc, &self.machine.cpu.state)
-                {
-                    self.is_running = false;
-                    break;
-                }
-                self.capture_memory_snapshot(self.prev_hex_base);
-                self.prev_cpu_state = Some(self.machine.cpu.state.clone());
-                self.record_instruction();
-            }
-            self.advance_cck();
-            if self.machine.cpu.state.is_halted() {
-                self.is_running = false;
-                break;
-            }
-            if self.machine.denise.frame_builder.frame_number != initial_frame {
-                if self.pause_at_frame {
-                    self.is_running = false;
-                }
-                break;
-            }
-        }
-        if !self.is_running {
-            self.pause_at_frame = false;
-        }
-        self.instructions_executed
-            .wrapping_sub(initial_instructions) as usize
-    }
-
-    /// No inspection or history work belongs in the Game execution loop.
-    fn run_game_frame_slice(&mut self, max_cck: usize) -> usize {
+        let diagnostics = self.debugger_enabled && self.stepping_frame;
+        let check_breakpoints = self.debugger_enabled
+            && self
+                .debugger
+                .breakpoints
+                .pc_breakpoints
+                .iter()
+                .any(|bp| bp.enabled);
         let initial_frame = self.machine.denise.frame_builder.frame_number;
         let mut retired = 0;
         for _ in 0..max_cck {
@@ -254,9 +253,36 @@ impl DebuggerSession {
                 self.is_running = false;
                 break;
             }
+            // STOP waits for an interrupt while the rest of the machine keeps running.
+            let needs_debugger = (check_breakpoints && !self.instruction_started)
+                || (diagnostics && !self.instruction_recorded);
+            if needs_debugger && !self.machine.cpu.state.is_stopped() {
+                if !self.instruction_started
+                    && check_breakpoints
+                    && self.debugger.breakpoints.check_pc_with_state(
+                        self.machine.cpu.state.instruction_pc(),
+                        &self.machine.cpu.state,
+                    )
+                {
+                    self.is_running = false;
+                    break;
+                }
+                if diagnostics && !self.instruction_recorded {
+                    self.capture_memory_snapshot(self.prev_hex_base);
+                    self.prev_cpu_state = Some(self.machine.cpu.state.clone());
+                    self.record_instruction();
+                }
+            }
             let completed = self.machine.step_cck();
             self.instruction_started = !completed;
+            if completed {
+                self.instruction_recorded = false;
+            }
             retired += usize::from(completed);
+            if self.debugger_enabled && self.machine.cpu.state.is_halted() {
+                self.is_running = false;
+                break;
+            }
             if self.machine.denise.frame_builder.frame_number != initial_frame {
                 self.frame_boundary_cck = Some(self.machine.cck);
                 if self.pause_at_frame {
@@ -265,8 +291,18 @@ impl DebuggerSession {
                 break;
             }
         }
+        // Bookkeeping is independent of diagnostic collection, including Game intervals.
+        self.unpublished_instructions =
+            self.unpublished_instructions.saturating_add(retired as u64);
+        if self.debugger_enabled {
+            self.instructions_executed = self
+                .instructions_executed
+                .saturating_add(self.unpublished_instructions);
+            self.unpublished_instructions = 0;
+            self.debugger.current_cck = self.machine.cck;
+        }
         if !self.is_running {
-            self.pause_at_frame = false;
+            self.finish_run();
         }
         retired
     }
@@ -345,6 +381,7 @@ impl DebuggerSession {
             self.request_pause();
         } else {
             self.pause_at_frame = false;
+            self.stepping_frame = false;
             self.is_running = true;
             self.jump_to_live_head();
         }
@@ -353,7 +390,7 @@ impl DebuggerSession {
     /// Finishes the current field before pausing, unless already at its boundary.
     pub fn request_pause(&mut self) {
         if self.frame_boundary_cck == Some(self.machine.cck) {
-            self.is_running = false;
+            self.finish_run();
         }
         self.pause_at_frame = self.is_running;
     }
@@ -367,19 +404,24 @@ impl DebuggerSession {
         self.jump_to_live_head();
         self.is_running = true;
         self.pause_at_frame = true;
+        self.stepping_frame = true;
     }
 
     /// Resets the A500 machine
     pub fn reset(&mut self) {
         self.is_running = false;
         self.pause_at_frame = false;
+        self.stepping_frame = false;
+        self.enable_debugger_on_pause = false;
         self.frame_boundary_cck = None;
         self.instruction_started = false;
+        self.instruction_recorded = false;
         self.machine.reset();
         self.temporal.clear();
         self.debugger.trace.clear();
         self.debugger.current_cck = 0;
         self.instructions_executed = 0;
+        self.unpublished_instructions = 0;
         self.prev_cpu_state = None;
         self.live_cpu_state = None;
     }
@@ -388,8 +430,11 @@ impl DebuggerSession {
     pub fn reset_warm(&mut self) {
         self.is_running = false;
         self.pause_at_frame = false;
+        self.stepping_frame = false;
+        self.enable_debugger_on_pause = false;
         self.frame_boundary_cck = None;
         self.instruction_started = false;
+        self.instruction_recorded = false;
         self.machine.reset_warm();
         self.prev_cpu_state = None;
         self.live_cpu_state = None;
@@ -411,6 +456,7 @@ impl DebuggerSession {
         );
         if result.is_ok() && auto_prime {
             self.instruction_started = false;
+            self.instruction_recorded = false;
         }
         result
     }
@@ -434,8 +480,11 @@ impl DebuggerSession {
     pub fn load_state(&mut self, state: &A500State) {
         self.machine.load_state(state);
         self.pause_at_frame = false;
+        self.stepping_frame = false;
+        self.enable_debugger_on_pause = false;
         self.frame_boundary_cck = None;
         self.instruction_started = false;
+        self.instruction_recorded = false;
 
         // Synchronize debugger telemetry and execution tracking
         self.debugger.current_cck = self.machine.cck;

@@ -33,8 +33,8 @@ related: ["[GUI.md](Application/GUI.md)", "[Rust Guidelines.md](Rust%20Guideline
 ## 2. Synchronous Direct-State Pull (Zero Async / Zero Callbacks)
 
 To prevent architectural complexity, concurrency bugs, and UI stalls:
-1. **Direct State Access:** Panels directly query references to emulator state (`&app.cpu.state`, `&app.bus`, `&app.debugger`) during their draw calls.
-2. **No Change Notifications:** The emulator core never fires "events" or sends "messages" when registers or memory change. The GUI simply reads whatever the current state is on every render pass.
+1. **Synchronous Preparation:** Outside continuous Run, panels prepare visible register values, labels, decoded instructions and memory/trace rows directly from emulator state. Paused edits and navigation refresh through this same UI path.
+2. **Retained Presentation During Run:** Inspector drawing uses the last prepared contents, including toolbar counters. It performs no new inspection, decoding or diagnostic formatting until execution actually stops, including while Stop is pending. Retain displayed data only, without bitmap captures, saved meshes or machine snapshots. Game view does not prepare or draw inspectors. The core never fires change notifications or sends messages to the GUI.
 3. **Synchronous Mutations:** User interactions (typing a new hex value into memory, toggling a CCR flag, clicking a breakpoint) execute synchronously against the underlying state in the same frame tick.
 
 ---

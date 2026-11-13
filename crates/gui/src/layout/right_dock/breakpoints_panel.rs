@@ -47,11 +47,55 @@ impl Default for BreakpointFormState {
     }
 }
 
+#[derive(Debug, Default)]
+pub(crate) struct BreakpointsPresentation {
+    pc_count: String,
+    watch_count: String,
+    program_counters: Vec<(bool, String, Option<String>)>,
+    watches: Vec<(bool, String, WatchAccess)>,
+}
+
+impl BreakpointsPresentation {
+    fn refresh(&mut self, manager: &debugger::BreakpointManager) {
+        self.pc_count = format!("({})", manager.pc_breakpoints.len());
+        self.watch_count = format!("({})", manager.watchpoints.len());
+        self.program_counters = manager
+            .pc_breakpoints
+            .iter()
+            .map(|bp| {
+                (
+                    bp.enabled,
+                    format!("${:06X}", bp.addr),
+                    bp.condition
+                        .as_ref()
+                        .map(|c| format!("[IF {}]", c.format())),
+                )
+            })
+            .collect();
+        self.watches = manager
+            .watchpoints
+            .iter()
+            .map(|wp| {
+                (
+                    wp.enabled,
+                    format!("${:06X}..${:06X}", wp.start, wp.end),
+                    wp.access,
+                )
+            })
+            .collect();
+    }
+}
+
 pub(crate) fn render_breakpoints_panel(
     bpm: &mut debugger::BreakpointManager,
+    data: &mut BreakpointsPresentation,
+    refresh: bool,
     form: &mut BreakpointFormState,
     ui: &mut Ui,
 ) {
+    if refresh {
+        data.refresh(bpm);
+    }
     ui.spacing_mut().indent = 0.0;
     egui::CollapsingHeader::new(RichText::new("🎯 Breakpoints & Watchpoints").strong())
         .default_open(true)
@@ -68,11 +112,11 @@ pub(crate) fn render_breakpoints_panel(
                             .strong()
                             .color(Color32::from_rgb(0, 229, 255)),
                     );
-                    ui.label(format!("({})", bpm.pc_breakpoints.len()));
+                    ui.label(&data.pc_count);
                 });
                 ui.separator();
 
-                if bpm.pc_breakpoints.is_empty() {
+                if data.program_counters.is_empty() {
                     ui.label(
                         RichText::new(
                             "No PC breakpoints set. Click circle in Disassembly or add below.",
@@ -82,23 +126,22 @@ pub(crate) fn render_breakpoints_panel(
                     );
                 } else {
                     let mut to_remove = None;
-                    for (idx, bp) in bpm.pc_breakpoints.iter_mut().enumerate() {
+                    for (idx, (enabled, address, condition)) in
+                        data.program_counters.iter_mut().enumerate()
+                    {
                         ui.horizontal(|ui| {
-                            ui.checkbox(&mut bp.enabled, "");
-                            let addr_color = if bp.enabled {
+                            if ui.checkbox(enabled, "").changed() {
+                                bpm.pc_breakpoints[idx].enabled = *enabled;
+                            }
+                            let addr_color = if *enabled {
                                 Color32::from_rgb(255, 80, 80)
                             } else {
                                 Color32::from_rgb(120, 120, 130)
                             };
-                            ui.monospace(
-                                RichText::new(format!("${:06X}", bp.addr)).color(addr_color),
-                            );
+                            ui.monospace(RichText::new(&*address).color(addr_color));
 
-                            if let Some(ref cond) = bp.condition {
-                                ui.colored_label(
-                                    Color32::from_rgb(255, 180, 60),
-                                    format!("[IF {}]", cond.format()),
-                                );
+                            if let Some(cond) = condition {
+                                ui.colored_label(Color32::from_rgb(255, 180, 60), &*cond);
                             }
 
                             ui.with_layout(
@@ -229,11 +272,11 @@ pub(crate) fn render_breakpoints_panel(
                             .strong()
                             .color(Color32::from_rgb(255, 180, 0)),
                     );
-                    ui.label(format!("({})", bpm.watchpoints.len()));
+                    ui.label(&data.watch_count);
                 });
                 ui.separator();
 
-                if bpm.watchpoints.is_empty() {
+                if data.watches.is_empty() {
                     ui.label(
                         RichText::new(
                             "No watchpoints active. Add address range below to watch reads/writes.",
@@ -243,16 +286,18 @@ pub(crate) fn render_breakpoints_panel(
                     );
                 } else {
                     let mut wp_to_remove = None;
-                    for (idx, wp) in bpm.watchpoints.iter_mut().enumerate() {
+                    for (idx, (enabled, address, access)) in data.watches.iter_mut().enumerate() {
                         ui.horizontal(|ui| {
-                            ui.checkbox(&mut wp.enabled, "");
-                            ui.monospace(format!("${:06X}..${:06X}", wp.start, wp.end));
-                            let (access_label, access_color) = match wp.access {
-                                WatchAccess::Read => ("READ", Color32::from_rgb(80, 180, 255)),
-                                WatchAccess::Write => ("WRITE", Color32::from_rgb(255, 100, 100)),
-                                WatchAccess::Any => ("ANY", Color32::from_rgb(255, 200, 50)),
+                            if ui.checkbox(enabled, "").changed() {
+                                bpm.watchpoints[idx].enabled = *enabled;
+                            }
+                            ui.monospace(&*address);
+                            let (access_label, access_color) = match access {
+                                WatchAccess::Read => ("[READ]", Color32::from_rgb(80, 180, 255)),
+                                WatchAccess::Write => ("[WRITE]", Color32::from_rgb(255, 100, 100)),
+                                WatchAccess::Any => ("[ANY]", Color32::from_rgb(255, 200, 50)),
                             };
-                            ui.colored_label(access_color, format!("[{}]", access_label));
+                            ui.colored_label(access_color, access_label);
 
                             ui.with_layout(
                                 egui::Layout::right_to_left(egui::Align::Center),

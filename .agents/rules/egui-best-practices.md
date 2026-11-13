@@ -2,7 +2,7 @@
 
 Applies to `crates/gui`. Read [GUI.md](../../Obsidian/Amiga/Design/Application/GUI.md), [egui Guidelines.md](../../Obsidian/Amiga/Design/egui%20Guidelines.md), and [Debugger.md](../../Obsidian/Amiga/Design/Application/Debugger.md) for the affected UI behavior.
 
-- Render by directly querying machine and debugger state in a synchronous loop. No core-to-UI callbacks, observers, channels, async runtimes, or shared threading handles.
+- Prepare inspector data synchronously from machine and debugger state outside continuous Run. During Run, draw retained values, prepared labels and visible rows without new inspection or formatting. Game view neither prepares nor draws inspectors. No core-to-UI callbacks, observers, channels, async runtimes, or shared threading handles.
 - Execute bounded emulation slices per frame to keep native and WASM frontends responsive. Organize layout modules by visible panel responsibilities.
 - Use points and relative layout with host DPI scaling. Preserve framebuffer aspect ratio under the [image scaling contract](../../Obsidian/Amiga/Design/Application/GUI.md#scaling-and-appearance), dark-default theme, host preference detection, and runtime theme switching.
 - Avoid heap allocation in inner table/grid loops and tooltip generators; use static text, stack buffers, or preformatted labels. Virtualize large memory and trace views with `ScrollArea::show_rows`.

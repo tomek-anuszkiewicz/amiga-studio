@@ -31,14 +31,86 @@ const D_TOOLTIPS: [&str; 8] = [
 ];
 const A_LABELS: [&str; 8] = ["A0:", "A1:", "A2:", "A3:", "A4:", "A5:", "A6:", "A7:"];
 
+#[derive(Debug, Default)]
+pub(crate) struct RegisterValue {
+    value: u32,
+    changed: bool,
+    hex: String,
+    decimal: String,
+}
+
+impl RegisterValue {
+    fn new(value: u32, previous: Option<u32>, digits: usize) -> Self {
+        Self {
+            value,
+            changed: previous.is_some_and(|old| old != value),
+            hex: format!("${value:0digits$X}"),
+            decimal: format!("{:>11}", value as i32),
+        }
+    }
+}
+
+#[derive(Debug, Default)]
+pub(crate) struct RegisterPresentation {
+    d: [RegisterValue; cpu::state::REGISTER_COUNT],
+    a: [RegisterValue; cpu::state::REGISTER_COUNT],
+    pc: RegisterValue,
+    sr: RegisterValue,
+    alt: RegisterValue,
+    supervisor: bool,
+    previous_sr: u16,
+    ir: String,
+    irc: String,
+    ipl: String,
+    pc_tooltip: String,
+}
+
+impl RegisterPresentation {
+    fn refresh(&mut self, state: &CpuState, previous: Option<&CpuState>) {
+        self.d = std::array::from_fn(|i| {
+            RegisterValue::new(state.d_long(i), previous.map(|p| p.d_long(i)), 8)
+        });
+        self.a = std::array::from_fn(|i| {
+            RegisterValue::new(state.a_long(i), previous.map(|p| p.a_long(i)), 8)
+        });
+        self.pc = RegisterValue::new(
+            state.instruction_pc() & physical_memory::MASK_PHYSICAL_ADDRESS,
+            previous.map(CpuState::instruction_pc),
+            8,
+        );
+        self.sr = RegisterValue::new(
+            u32::from(state.sr()),
+            previous.map(|p| u32::from(p.sr())),
+            4,
+        );
+        self.supervisor = state.is_supervisor();
+        self.alt = if self.supervisor {
+            RegisterValue::new(state.usp(), previous.map(CpuState::usp), 8)
+        } else {
+            RegisterValue::new(state.ssp(), previous.map(CpuState::ssp), 8)
+        };
+        self.previous_sr = previous.map_or_else(|| state.sr(), CpuState::sr);
+        self.ir = format!("IR: ${:04X}", state.ir());
+        self.irc = format!("IRC: ${:04X}", state.micro().irc);
+        self.ipl = format!("IPL Mask: {}", state.interrupt_mask());
+        self.pc_tooltip = format!("Active instruction address: ${:06X}\nHardware prefetch bus PC: ${:06X}\n\nThe M68000 prefetch pipeline primes 2 instruction words (IR and IRC) ahead from the bus, advancing the hardware bus register by 4 bytes.", self.pc.value, state.pc() & physical_memory::MASK_PHYSICAL_ADDRESS);
+    }
+}
+
 pub(crate) fn render_registers(
     ui: &mut Ui,
+    presentation: &mut RegisterPresentation,
+    refresh: bool,
+    interactive: bool,
     tokens: &ColorTokens,
     cpu: &mut Cpu,
     bus: &mut PhysicalMemory,
     prev_state: Option<&CpuState>,
     active_reg_edit: &mut Option<(EditRegister, String)>,
 ) -> bool {
+    if refresh {
+        presentation.refresh(&cpu.state, prev_state);
+    }
     ui.heading("CPU Registers");
 
     let mut pc_to_set: Option<u32> = None;
@@ -72,8 +144,8 @@ pub(crate) fn render_registers(
                     .spacing([10.0, 4.0])
                     .show(ui, |ui| {
                         for i in 0..cpu::state::REGISTER_COUNT {
-                            let val = state.d_long(i);
-                            let changed = prev_state.map_or(false, |p| p.d_long(i) != val);
+                            let val = presentation.d[i].value;
+                            let changed = presentation.d[i].changed;
                             let col = diff_color(changed);
 
                             ui.monospace(D_LABELS[i]).on_hover_text(D_TOOLTIPS[i]);
@@ -97,17 +169,20 @@ pub(crate) fn render_registers(
                                                     .desired_width(75.0)
                                                     .font(egui::TextStyle::Monospace),
                                             );
-                                            r.request_focus();
+                                            if interactive {
+                                                r.request_focus();
+                                            }
                                             r
                                         })
                                         .inner;
 
-                                    if esc_pressed {
+                                    if interactive && esc_pressed {
                                         resp.surrender_focus();
                                         *active_reg_edit = None;
-                                    } else if enter_pressed
-                                        || resp.lost_focus()
-                                        || resp.clicked_elsewhere()
+                                    } else if interactive
+                                        && (enter_pressed
+                                            || resp.lost_focus()
+                                            || resp.clicked_elsewhere())
                                     {
                                         resp.surrender_focus();
                                         let clean = buf.trim().trim_start_matches('$');
@@ -120,7 +195,7 @@ pub(crate) fn render_registers(
                             } else {
                                 let label_resp = ui.add(
                                     egui::Label::new(
-                                        RichText::new(format!("${:08X}", val))
+                                        RichText::new(&presentation.d[i].hex)
                                             .monospace()
                                             .color(col),
                                     )
@@ -135,7 +210,7 @@ pub(crate) fn render_registers(
                                 }
                             }
 
-                            let dec_str = format!("{:>11}", val as i32);
+                            let dec_str = &presentation.d[i].decimal;
                             ui.add(egui::Label::new(
                                 RichText::new(dec_str).monospace().color(tokens.text_muted),
                             ));
@@ -159,11 +234,11 @@ pub(crate) fn render_registers(
                     .spacing([10.0, 4.0])
                     .show(ui, |ui| {
                         for i in 0..cpu::state::REGISTER_COUNT {
-                            let val = state.a_long(i);
-                            let changed = prev_state.map_or(false, |p| p.a_long(i) != val);
+                            let val = presentation.a[i].value;
+                            let changed = presentation.a[i].changed;
                             let col = diff_color(changed);
 
-                            let is_sup = state.is_supervisor();
+                            let is_sup = presentation.supervisor;
                             let tooltip = if i == cpu::state::REGISTER_STACK_POINTER {
                                 if is_sup {
                                     "Address register A7 (Active Supervisor Stack Pointer - SSP)"
@@ -195,17 +270,20 @@ pub(crate) fn render_registers(
                                                     .desired_width(75.0)
                                                     .font(egui::TextStyle::Monospace),
                                             );
-                                            r.request_focus();
+                                            if interactive {
+                                                r.request_focus();
+                                            }
                                             r
                                         })
                                         .inner;
 
-                                    if esc_pressed {
+                                    if interactive && esc_pressed {
                                         resp.surrender_focus();
                                         *active_reg_edit = None;
-                                    } else if enter_pressed
-                                        || resp.lost_focus()
-                                        || resp.clicked_elsewhere()
+                                    } else if interactive
+                                        && (enter_pressed
+                                            || resp.lost_focus()
+                                            || resp.clicked_elsewhere())
                                     {
                                         resp.surrender_focus();
                                         let clean = buf.trim().trim_start_matches('$');
@@ -218,7 +296,7 @@ pub(crate) fn render_registers(
                             } else {
                                 let label_resp = ui.add(
                                     egui::Label::new(
-                                        RichText::new(format!("${:08X}", val))
+                                        RichText::new(&presentation.a[i].hex)
                                             .monospace()
                                             .color(col),
                                     )
@@ -233,7 +311,7 @@ pub(crate) fn render_registers(
                                 }
                             }
 
-                            let dec_str = format!("{:>11}", val as i32);
+                            let dec_str = &presentation.a[i].decimal;
                             ui.add(egui::Label::new(
                                 RichText::new(dec_str).monospace().color(tokens.text_muted),
                             ));
@@ -245,19 +323,13 @@ pub(crate) fn render_registers(
                     });
 
                 // Inactive stack pointer & active status
-                let is_supervisor = state.is_supervisor();
+                let is_supervisor = presentation.supervisor;
                 let (alt_label, alt_val, alt_id) = if is_supervisor {
-                    ("Inactive USP:", state.usp(), EditRegister::USP)
+                    ("Inactive USP:", presentation.alt.value, EditRegister::USP)
                 } else {
-                    ("Inactive SSP:", state.ssp(), EditRegister::SSP)
+                    ("Inactive SSP:", presentation.alt.value, EditRegister::SSP)
                 };
-                let alt_changed = prev_state.map_or(false, |p| {
-                    if is_supervisor {
-                        p.usp() != state.usp()
-                    } else {
-                        p.ssp() != state.ssp()
-                    }
-                });
+                let alt_changed = presentation.alt.changed;
 
                 ui.horizontal(|ui| {
                     ui.colored_label(
@@ -293,15 +365,18 @@ pub(crate) fn render_registers(
                                             .desired_width(75.0)
                                             .font(egui::TextStyle::Monospace),
                                     );
-                                    r.request_focus();
+                                    if interactive {
+                                        r.request_focus();
+                                    }
                                     r
                                 })
                                 .inner;
 
-                            if esc_pressed {
+                            if interactive && esc_pressed {
                                 resp.surrender_focus();
                                 *active_reg_edit = None;
-                            } else if enter_pressed || resp.lost_focus() || resp.clicked_elsewhere()
+                            } else if interactive
+                                && (enter_pressed || resp.lost_focus() || resp.clicked_elsewhere())
                             {
                                 resp.surrender_focus();
                                 let clean = buf.trim().trim_start_matches('$');
@@ -318,7 +393,7 @@ pub(crate) fn render_registers(
                     } else {
                         let resp = ui.add(
                             egui::Label::new(
-                                RichText::new(format!("${:08X}", alt_val))
+                                RichText::new(&presentation.alt.hex)
                                     .monospace()
                                     .color(diff_color(alt_changed)),
                             )
@@ -339,24 +414,18 @@ pub(crate) fn render_registers(
         egui::CollapsingHeader::new(RichText::new("Execution Status & CCR").strong())
             .default_open(true)
             .show(ui, |ui| {
-                let instruction_pc = state.instruction_pc() & physical_memory::MASK_PHYSICAL_ADDRESS;
+                let instruction_pc = presentation.pc.value;
 
                 ui.columns(2, |cols| {
                     // Col 0: PC, SR, Mode, IPL
                     cols[0].vertical(|ui| {
                         ui.horizontal(|ui| {
-                            let pc_changed = prev_state.map_or(false, |p| p.instruction_pc() != state.instruction_pc());
+                            let pc_changed = presentation.pc.changed;
                     ui.monospace("PC:")
                         .on_hover_ui(|ui| {
                             ui.heading("Program Counter (PC)");
                             ui.label(
-                                format!(
-                                    "Active instruction address: ${:06X}\n\
-                                     Hardware prefetch bus PC: ${:06X}\n\n\
-                                     The M68000 prefetch pipeline primes 2 instruction words (IR and IRC) \
-                                     ahead from the bus, advancing the hardware bus register by 4 bytes.",
-                                    instruction_pc, state.pc() & physical_memory::MASK_PHYSICAL_ADDRESS
-                                ),
+                                &presentation.pc_tooltip,
                             );
                         });
 
@@ -371,16 +440,16 @@ pub(crate) fn render_registers(
                                         .desired_width(70.0)
                                         .font(egui::TextStyle::Monospace),
                                 );
-                                r.request_focus();
+                                if interactive { r.request_focus(); }
                                 r
                             }).inner;
 
-                            if esc_pressed {
+                            if interactive && esc_pressed {
                                 resp.surrender_focus();
                                 *active_reg_edit = None;
-                            } else if enter_pressed
+                            } else if interactive && (enter_pressed
                                 || resp.lost_focus()
-                                || resp.clicked_elsewhere()
+                                || resp.clicked_elsewhere())
                             {
                                 resp.surrender_focus();
                                 let clean = buf.trim().trim_start_matches('$');
@@ -393,7 +462,7 @@ pub(crate) fn render_registers(
                     } else {
                         let pc_resp = ui.add(
                             egui::Label::new(
-                                RichText::new(format!("${:08X}", instruction_pc))
+                                RichText::new(&presentation.pc.hex)
                                     .monospace()
                                     .color(diff_color(pc_changed)),
                             )
@@ -410,7 +479,7 @@ pub(crate) fn render_registers(
                 });
 
                 ui.horizontal(|ui| {
-                    let sr_changed = prev_state.map_or(false, |p| p.sr() != state.sr());
+                    let sr_changed = presentation.sr.changed;
                     ui.monospace("SR:")
                         .on_hover_ui(|ui| {
                             ui.heading("Status Register (SR)");
@@ -433,16 +502,16 @@ pub(crate) fn render_registers(
                                         .desired_width(45.0)
                                         .font(egui::TextStyle::Monospace),
                                 );
-                                r.request_focus();
+                                if interactive { r.request_focus(); }
                                 r
                             }).inner;
 
-                            if esc_pressed {
+                            if interactive && esc_pressed {
                                 resp.surrender_focus();
                                 *active_reg_edit = None;
-                            } else if enter_pressed
+                            } else if interactive && (enter_pressed
                                 || resp.lost_focus()
-                                || resp.clicked_elsewhere()
+                                || resp.clicked_elsewhere())
                             {
                                 resp.surrender_focus();
                                 let clean = buf.trim().trim_start_matches('$');
@@ -455,7 +524,7 @@ pub(crate) fn render_registers(
                     } else {
                         let sr_resp = ui.add(
                             egui::Label::new(
-                                RichText::new(format!("${:04X}", state.sr()))
+                                RichText::new(&presentation.sr.hex)
                                     .monospace()
                                     .color(diff_color(sr_changed)),
                             )
@@ -471,7 +540,7 @@ pub(crate) fn render_registers(
                     }
                 });
 
-                let is_supervisor = state.is_supervisor();
+                let is_supervisor = presentation.supervisor;
                 let mode_str = if is_supervisor {
                     "Supervisor [S]"
                 } else {
@@ -484,8 +553,7 @@ pub(crate) fn render_registers(
                 };
                 ui.colored_label(mode_color, mode_str);
 
-                let ipl = state.interrupt_mask();
-                ui.monospace(format!("IPL Mask: {}", ipl));
+                ui.monospace(&presentation.ipl);
             });
 
             // Col 1: CCR Flags and Prefetch registers
@@ -504,9 +572,9 @@ pub(crate) fn render_registers(
                     ];
 
                     for (name, mask, desc) in flags {
-                        let is_set = (state.sr() & mask) != 0;
+                        let is_set = (presentation.sr.value as u16 & mask) != 0;
                         let flag_changed =
-                            prev_state.map_or(false, |p| ((p.sr() ^ state.sr()) & mask) != 0);
+                            ((presentation.previous_sr ^ presentation.sr.value as u16) & mask) != 0;
 
                         let bg_color = if is_set {
                             tokens.ccr_active_bg
@@ -536,9 +604,9 @@ pub(crate) fn render_registers(
                 });
 
                 ui.horizontal(|ui| {
-                    ui.monospace(format!("IR: ${:04X}", state.ir()))
+                    ui.monospace(&presentation.ir)
                         .on_hover_text("Instruction Register (IR): Current executing opcode");
-                    ui.monospace(format!("IRC: ${:04X}", state.micro().irc))
+                    ui.monospace(&presentation.irc)
                         .on_hover_text("Instruction Register Capture (IRC): Prefetched next pipeline word");
                 });
             });

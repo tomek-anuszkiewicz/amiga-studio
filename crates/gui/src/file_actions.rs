@@ -90,6 +90,7 @@ impl EmulatorApp {
     pub fn load_rom_data(&mut self, name: &str, data: &[u8]) {
         match self.session.load_rom(data) {
             Ok(()) => {
+                self.inspection.ready = false;
                 self.loaded_rom_name = Some(name.to_owned());
                 self.file_error = None;
                 self.disassembly_view_addr = None;
@@ -120,6 +121,9 @@ impl EmulatorApp {
         });
         match result {
             Ok(size) => {
+                if !self.session.is_running {
+                    self.inspection.ready = false;
+                }
                 let address = target & physical_memory::MASK_PHYSICAL_ADDRESS;
                 if (address as usize).saturating_add(size)
                     > config::address_map::KICKSTART_BASE as usize
@@ -159,6 +163,7 @@ impl EmulatorApp {
     }
 
     pub(crate) fn state_loaded(&mut self, message: String) {
+        self.inspection.ready = false;
         self.loaded_rom_name = Some("from saved state".into());
         self.file_error = None;
         self.disassembly_view_addr = None;
