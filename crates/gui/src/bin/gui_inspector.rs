@@ -26,7 +26,7 @@ fn print_usage() {
     eprintln!(
         "Usage: gui-inspector [OPTIONS]\n\
          Options:\n\
-           --scenario <NAME>       Scenario: baseline, clean_startup, live_display, live_display_studio, hover_splitter, hover_scrollbar, hover_register, hover_ccr, hover_memory, game_mode, workbench_theme, edit_register, edit_disasm, small_window (default: baseline)\n\
+           --scenario <NAME>       Scenario: baseline, clean_startup, live_display, live_display_studio, mixed_scene, hover_splitter, hover_scrollbar, hover_register, hover_ccr, hover_memory, game_mode, workbench_theme, edit_register, edit_disasm, small_window (default: baseline)\n\
            --width <PIXELS>        Viewport width in points/pixels (default: 1280)\n\
            --height <PIXELS>       Viewport height in points/pixels (default: 720)\n\
            --output <PATH>         Target PNG output file path (default: target/gui_captures/baseline.png)\n\
@@ -127,7 +127,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         scenario, width, height
     );
 
-    let app = if matches!(scenario.as_str(), "live_display" | "live_display_studio") {
+    let app = if scenario == "mixed_scene" {
+        let mut app = EmulatorApp::default();
+        app.session.load_binary(
+            debugger::DEFAULT_TARGET_ADDRESS,
+            include_bytes!("../../../machine_loop/tests/programs/display/mixed_scene/program.bin"),
+            true,
+        )?;
+        // Advance the real guest past initialization before capturing its image.
+        for _ in 0..64 {
+            app.session.machine.step_frame();
+        }
+        app.view_mode = gui::ViewMode::ScreenOnly;
+        app
+    } else if matches!(scenario.as_str(), "live_display" | "live_display_studio") {
         let mut app = EmulatorApp::default();
         app.session.load_binary(
             debugger::DEFAULT_TARGET_ADDRESS,
@@ -191,7 +204,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             harness.state_mut().session.is_running = false;
             harness.step();
         }
-        "baseline" | "clean_startup" => {
+        "baseline" | "clean_startup" | "mixed_scene" => {
             // Settle layout with another step
             harness.step();
         }

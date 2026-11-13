@@ -882,3 +882,24 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Reviewed successful-load history and failure paths against the approved GUI contract
   - native integration and browser persistence fixtures are included
   - commit verification and independent review are recorded in the commit message
+---
+
+### [2026-11-13 23:14 CET] — Add an optimization workflow and mixed guest workload
+- **Affected Subsystems**:
+  - `Agent performance workflow`
+  - `machine integration fixtures`
+  - `GUI inspector`
+- **What Was Changed (The Concrete Reality)**:
+  - Add optimize-emulation guidance and evidence-backed examples
+  - deliver a deterministic standalone guest exercising CPU and chipset activity
+  - add separate audit and benchmark modes with deterministic input and audio consumption
+  - expose the same guest through the GUI inspector
+  - Accept established profiling and audio terms in the reviewed programming vocabulary
+- **Architectural Rationale & Trade-Offs**:
+  - Measure repeated host work while preserving guest timing and compare fixed workloads without imposing a timing threshold
+- **Verification & Test Results**:
+  - Skill validation passed
+  - source review confirms the runner uses ordinary machine stepping and keeps observation outside timed runs
+  - MIXED-GAME-SCENE-20261113 delivers the scene requested with this skill
+  - visual fidelity and hardware comparison remain unverified
+  - commit verification and independent review are recorded in the commit message

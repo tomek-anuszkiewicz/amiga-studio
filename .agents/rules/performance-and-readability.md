@@ -18,4 +18,18 @@ skip a call or memory access. Preserve these semantics when extracting helpers.
 - Do not force inline large control-flow functions (over roughly 15-20 lines) or indirect dispatch-table targets. Attribute choices must preserve the project's architecture checks for ALU, CCR, and cold exception handlers; performance conclusions require measurement.
 - Avoid clever optimizations without evidence. Use comparable benchmark measurements for performance claims and [audit-code-quality](../skills/audit-code-quality/SKILL.md) for review.
 
+## Continuous Optimization
+
+Treat measured micro-optimizations as worthwhile work in frequently executed
+emulation paths. Small savings per CCK, pixel, bus access or instruction can
+accumulate; do not dismiss a candidate because it falls below a profiler's display
+threshold or an arbitrary minimum percentage. Prefer simpler code when gains are
+equivalent, and distinguish host execution savings from emulated clock counts.
+
+For requested profiling, performance investigation or optimization, use
+[optimize-emulation](../skills/optimize-emulation/SKILL.md). Combine time profiling
+with analysis of how often work runs and whether its inputs changed. Measure
+candidate changes and preserve observable emulation behavior. This does not
+expand the task into unrelated optimization work.
+
 CPU execution phases and micro-step fusion follow the [CPU Micro-Step State Machine](../../Obsidian/Amiga/Design/CPU%20Micro-Step%20State%20Machine.md) specification.
