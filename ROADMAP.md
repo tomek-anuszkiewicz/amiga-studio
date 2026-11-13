@@ -2,12 +2,14 @@
 
 ## Step 2: HRM-Aligned Custom Chipset Reconstruction
 
-Current execution scope through 2.5 excludes
-vAmigaTS execution (including adapted payloads), Kickstart/AmigaOS integration,
-and floppy-media reads/writes. Use directly loaded authored assembly programs
-and deterministic pin/latch inputs. ROM overlay checks use synthetic ROM bytes
-without executing firmware. Later firmware, media, and external-suite work is
-unscheduled and must not start automatically after the current plans.
+Current execution scope through 2.5 excludes full native vAmigaTS execution,
+Kickstart/AmigaOS integration and floppy-media reads/writes. Use directly loaded
+small assembly programs, including selected standalone vAmigaTS adaptations,
+and deterministic pin/latch inputs. Replace required firmware/startup setup
+with explicit guest initialization in those adapted programs. ROM overlay
+checks use synthetic ROM bytes without executing firmware. Later firmware,
+media, and full external-suite work is unscheduled and must not start
+automatically after the current plans.
 Light-pen/gun input (12.5), external genlock synchronization (12.6), and
 expansion-connector INT2/INT6 sources (12.3) remain outside Step 2.5.
 The functional baseline requires complete supported OCS functionality within
@@ -16,15 +18,21 @@ active scanlines; sprite, palette and display-mode changes also take effect
 within a line under the modeled sampling/latch rules. Exact cycle offsets,
 few-cycle pipeline transients and cycle-exact silicon calibration are outside
 2.5 acceptance. Keep CCK stepping, documented ordering and existing
-signal/register propagation; do not batch all changes at line/frame boundaries,
-suppress writes or weaken existing checks.
+signal/register propagation; do not batch all changes at line/frame boundaries
+or suppress writes. Within 2.5, the user authorizes necessary code and test
+corrections, including weakening or removing faulty tests. Record the reasons
+and coverage changes; reconcile affected documentation with the verified
+implementation at the end, since existing documentation may also be wrong.
 
 <a id="cpu-memory-gary-verification"></a>
 
-- **2.5: CPU/Gary Propagation and Book-Derived Guest Programs**
-  - **Objective:** Verify the production CPU-to-memory/device path using the reconstructed chipset, including Gary decoding, CPU waiting, ROM overlay, observable motherboard data-latch behavior, revalidation of CIA/custom-register propagation after reconstruction, and book-derived display, sprite, Blitter, digital-audio and interaction scenarios. Reuse 2.2-2.4 evidence and fixtures; extend missing coverage with guest programs rather than duplicating equivalent tests.
-  - **Prerequisite:** Preserve the reconstructed engines, book-derived component tests, production DMA scheduler and live GUI frames recorded in [the reconstruction chapter](DIARY.md#15-book-derived-custom-chipset-reconstruction). This stage authors detailed whole-machine integration and guest/output tests (`BOOK-GUEST-PROGRAM-TESTS-20261111`).
-  - **Program contract:** Each authored guest-program integration test has its own directory under `crates/machine_loop/tests/programs/<subsystem>/<case>/`, containing `test.rs`, `program.as` and the compiled `program.bin`. Record book provenance, initial conditions, independent expected results and a bounded CCK/frame budget; reproduce the binary from its source during validation. The automated test and GUI load the same binary. Guest instructions perform the accesses under test; host code supplies initial conditions and observes results and CCK/phase boundaries.
+- **2.5: CPU/Gary Propagation and Guest-Program Integration**
+  - **Objective:** Verify the production CPU-to-memory/device path by running small, simple integration programs and checking their results using the reconstructed chipset. Cover Gary decoding, CPU waiting, ROM overlay, observable motherboard data-latch behavior, CIA/custom-register propagation, and display, sprite, Blitter, digital-audio and interaction scenarios derived from books or suitable vAmigaTS cases. Reuse 2.2-2.4 evidence and fixtures; extend missing coverage without duplicating equivalent tests.
+  - **Prerequisite:** Build on the reconstructed engines, book-derived component tests, production DMA scheduler and live GUI frames recorded in [the reconstruction chapter](DIARY.md#15-book-derived-custom-chipset-reconstruction), correcting code and tests where needed. This stage authors detailed whole-machine integration and guest/output tests (`BOOK-GUEST-PROGRAM-TESTS-20261111`).
+  - **Program contract:** Keep guest sources, compiled binaries and run instructions in a separate shared catalog organized by subsystem and case; the proposed root is `test_programs/`. Rust integration tests remain in the owning crate's `tests/` tree. Include the existing `live_stripes` program and migrate its machine, GUI and save-state test consumers to the single catalog binary. Record source/reference provenance, initial conditions, independent expected results and a bounded CCK/frame budget; reproduce each binary from its source during validation. Every binary must load and run from the GUI with equivalent setup and the same result as automation, including the expected screen effect for visual cases. Guest instructions perform initialization and accesses under test; host code supplies the documented environment and observes results and CCK/phase boundaries.
+  - **Selected vAmigaTS adaptations:** Inspect source, startup dependencies, reference screenshots/data and validation scripts. Port suitable small cases to standalone binaries without Kickstart, OS services or disk loading, retaining the tested operation and independently justified result. Record original case/revision, adaptations, machine applicability and GUI reproduction. Full native-suite execution remains in 2.8; an adapted case does not establish that its original boot path passes.
+  - **Run control:** The same binary loops indefinitely in normal GUI execution. Automation runs a configured number of emulated video frames from the documented initial state, captures the result at the final boundary, validates it and ends the run. No guest completion marker or separate test mode is required. Record the counting unit/origin and PAL/NTSC applicability; use a CCK safety limit if video progress fails. For example, 450 non-interlaced PAL frames represent nominally nine seconds at 50 Hz.
+  - **Old example collection:** Review retiring `examples/m68k/` after the shared catalog is usable. Include its binary-generating and binary-consuming debugger tests, old README instructions and stale configuration/documentation references. Retain only useful distinct coverage; do not migrate all five CPU demos automatically or leave a generator that recreates the removed directory.
   - **Actionable Scope:**
     - **CPU memory transactions:** Exercise byte, word and long accesses, big-endian byte lanes, read/write direction, installed Chip/Slow/Fast RAM and ROM, bank boundaries and applicable memory presets. Confirm ROM write protection, modeled unmapped accesses and that unrelated storage is unchanged.
     - **Gary selection and aliases:** Verify CPU-visible CIA selection, dual-CIA byte/word lanes, register selectors and aliases, custom `$DE/$DF` mirrors, and installed RAM/RTC precedence according to the completed 2.2 contract. Observe the selected devices' effects as well as returned data; a correct bank classification alone is insufficient.
@@ -41,7 +49,8 @@ suppress writes or weaken existing checks.
     - Include complete DMA paths using distinct successive data, applicable `WaitState` retries with exactly-once effects, shared-bus competition and simultaneous interrupt assertion/acknowledgment. Verify the full 2.4 feature inventory through applicable guest/output scenarios, including interlaced fields, collisions, all Blitter/audio modulation modes and all CIA modes. Exercise Copper/Blitter during active rendering and sprite, palette and mode changes within a line under modeled sampling/latch rules; exact cycle offsets and few-cycle transients are not required.
     - Record PAL/NTSC OCS and memory-preset applicability, run required common paths on both supported Agnus models, and add model-specific timing/geometry cases. Separate supported-model coverage from default PAL results.
     - Compare uninterrupted and restored execution for relevant pending/active operations within the reconstructed saved-state format; old-format compatibility is not required. Keep provisional model timing distinct from unknown silicon calibration; full vAmigaTS capture and lockstep work remain separate.
-  - **Verification Gate:** Focused unit tests established in 2.4 continue to verify component-local contracts, and executed ASM/BIN integration cases prove expected memory/device results, pixels, Blitter output and digital sample sequences, including the relevant waiting, grant, latch and overlay boundaries. Independently derived outputs and reproducible GUI/automatic execution are required; a nonempty buffer, register assignment or four introductory programs do not prove complete coverage. Record which layer establishes each contract. Pure CPU benchmarks, direct host writes or eventual readback alone do not establish production bus timing. Run affected memory, bus, machine and native/WASM checks and the existing roadmap closure profiles; preserve the final register-wide coverage requirement. See [MemoryBus](Obsidian/Amiga/Design/MemoryBus.md), [Physical Memory](Obsidian/Amiga/Design/Physical%20Memory.md), [DMA](Obsidian/Amiga/Design/DMA.md) and the [register matrix](Obsidian/Amiga/Design/Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md).
+  - **Verification Gate:** Retained and corrected component tests pass, and executed ASM/BIN integration cases prove expected memory/device results, pixels, Blitter output and digital sample sequences, including the relevant waiting, grant, latch and overlay boundaries. Independently derived outputs and reproducible GUI/automatic execution are required; a nonempty buffer, register assignment or four introductory programs do not prove complete coverage. Record which layer establishes each contract and explain changed or removed coverage. Run affected memory, bus, machine and native/WASM checks and the existing roadmap closure profiles; preserve the final register-wide coverage requirement. See [MemoryBus](Obsidian/Amiga/Design/MemoryBus.md), [Physical Memory](Obsidian/Amiga/Design/Physical%20Memory.md), [DMA](Obsidian/Amiga/Design/DMA.md) and the [register matrix](Obsidian/Amiga/Design/Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md).
+    - Pure CPU benchmarks, direct host writes or eventual readback alone do not establish production bus timing.
     - `python tools/verification/verify.py commit`
     - `python tools/verification/verify.py check architecture`
 

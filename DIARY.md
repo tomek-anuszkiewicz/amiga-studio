@@ -547,3 +547,18 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Focused frame_builder tests passed
   - Historical Kickstart color comparison and user visual acceptance are recorded in session 01a1d47e-011b-7980-8771-ca3c01af51f5
   - Broader display calibration remains pending
+---
+
+### [2026-11-13 13:58 CET] — Define shared guest-program integration work for stage 2.5
+- **Affected Subsystems**:
+  - `roadmap`
+- **What Was Changed (The Concrete Reality)**:
+  - Plan a shared guest-program catalog with equivalent GUI and automated runs
+  - Allow selected standalone vAmigaTS adaptations and bounded frame-count execution
+  - Record the user-authorized correction of faulty tests and later documentation reconciliation
+- **Architectural Rationale & Trade-Offs**:
+  - Keep small integration programs independent of firmware startup while preserving evidence and native-suite boundaries
+- **Verification & Test Results**:
+  - Roadmap retention check passed
+  - Reviewed original user decisions in session 01a1d211-1581-7222-955b-226b5213cc0c
+  - Stage 2.5 remains pending
