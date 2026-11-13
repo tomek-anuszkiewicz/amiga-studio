@@ -67,7 +67,7 @@ view_image({ path: "<repo_path>/target/gui_captures/baseline.png" })
 ```
 The agent inspects:
 1. Are the 3 columns (CPU Registers, Amiga Viewport, Memory Hex Editor) balanced?
-2. Is the retro CRT screen maintaining its proper 4:3 aspect ratio?
+2. Is the retro CRT screen preserving the framebuffer aspect ratio with equal scaling of both axes?
 3. Is typography crisp and monospace addresses aligned?
 4. Are text or scrollbars clipping against dock boundaries?
 

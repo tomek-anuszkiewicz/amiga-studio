@@ -23,22 +23,39 @@ RGB444 channels expand from 0..15 to 0..255 by multiplication by 17, with
 opaque alpha. This host normalization preserves channel order and ignores the
 unused upper four bits. It does not apply gamma or CRT correction.
 
+## Visible storage
+
+The framebuffer contains the complete visible border and playfield, independently
+of DIW registers, pixel colors or firmware. Horizontal and vertical blanking
+samples are not stored. Scanlines that span a vertical blanking transition are
+excluded at both ends of the field, so their partial output cannot form a step
+at the image edge. The existing receiver blanking phases are retained; this
+storage change does not calibrate physical chip timing.
+
+A fixed high-resolution, interlaced spatial grid preserves mixed-resolution
+content, including changes within a line. Low-resolution pixels occupy two
+horizontal samples; non-interlaced lines occupy two rows. Interlaced fields
+occupy alternate rows. Storage reserves the maximum visible capacity once;
+the exposed pixel slice contains only the active rectangle. There is no raw
+raster buffer or separate cropped/expanded presentation image.
+
+The [GUI](Application/GUI.md#scaling-and-appearance) uploads this rectangle directly
+and fits it uniformly into the display area. It does not infer a crop from DIW
+or colors.
+
 ## Field assembly and snapshots
 
-The fixed allocation covers 912 high-resolution pixels by 626 rows, including
-two complete 313-line PAL fields. Non-interlaced output maps a receiver line
-to one row. Interlaced output maps it to twice the line plus field parity,
-retaining the opposite field. The visible buffer dimensions are 313/263 rows
-for PAL/NTSC or 626/526 when interlaced; until a complete field is observed,
-the receiver uses the maximum PAL geometry. Changing interlace mode clears
-stale rows without allocating a new buffer.
+Denise derives field and visible-line boundaries from received equalization,
+blank and horizontal strobes. Counter positions before HBLANK complete the
+preceding visible line; its field parity survives the counter wrap. The first
+partial field does not publish measured geometry. Completed visible lines
+determine the extent; frame completion increments the host refresh generation.
+The opposite interlaced field remains available, while changing interlace mode
+clears incompatible rows.
 
-Denise derives field boundaries from its received equalization/blank/horizontal
-strobes. Frame completion increments a generation counter for host refresh;
-CPU/host time does not advance this counter. The buffer and field assembly
-state serialize together so restoration preserves already rendered rows and
-the opposite interlaced field. No pre-reconstruction snapshot compatibility
-is required by the approved 2.4 plan.
+The buffer, geometry and pending line/field state serialize
+together. Restoration preserves both the displayed pixels and subsequent
+mid-line output. No pre-release snapshot compatibility is required.
 
 ## References
 

@@ -17,6 +17,7 @@ fn test_denise_display_window_uses_horizontal_bits_only() {
 
         denise.sync.vpos = 150;
         denise.sync.vertical_blank = false;
+        denise.frame_builder.begin_line(false, false, false, false);
         for hpos in 0..80 {
             if hpos == 64 {
                 assert!(denise.set_bpldat(0, 0xFFFF));
@@ -26,14 +27,14 @@ fn test_denise_display_window_uses_horizontal_bits_only() {
     }
 
     let color = frame_builder::rgb444_to_argb32(0x00F0);
-    let green_pixels = (256..320)
-        .filter(|&x| inside_vertical_window.frame_builder.get_pixel(x, 150) == color)
+    let green_pixels = (112..176)
+        .filter(|&x| inside_vertical_window.frame_builder.get_pixel(x, 0) == color)
         .count();
     assert!(green_pixels > 0);
-    for x in 256..320 {
+    for x in 112..176 {
         assert_eq!(
-            outside_vertical_window.frame_builder.get_pixel(x, 150),
-            inside_vertical_window.frame_builder.get_pixel(x, 150),
+            outside_vertical_window.frame_builder.get_pixel(x, 0),
+            inside_vertical_window.frame_builder.get_pixel(x, 0),
             "Denise must ignore DIW vertical bits at pixel {x}"
         );
     }

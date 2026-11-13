@@ -1,13 +1,12 @@
 //! Per-pixel mixing, horizontal display window and collision accumulation.
 
 use crate::{decode, Denise};
-use frame_builder::{rgb444_to_argb32, OPAQUE_BLACK, PIXELS_PER_CCK};
+use frame_builder::{
+    rgb444_to_argb32, HBLANK_START_CCK, HBLANK_STOP_CCK, LORES_PIXELS_PER_CCK, OPAQUE_BLACK,
+};
 
-const HBLANK_START_CCK: u16 = 18;
-const HBLANK_STOP_CCK: u16 = 35;
 const BIT_DIW_HORIZONTAL_LOW: u16 = 1;
 const DIW_COUNT_LEAD: u16 = 2;
-const LORES_PIXELS_PER_CCK: u16 = 2;
 const MASK_PRIORITY: u16 = 0x0007;
 const BIT_SECOND_PRIORITY_SHIFT: u16 = 3;
 const MASK_ODD_PLANES: u8 = 0x15;
@@ -31,8 +30,8 @@ impl Denise {
         let blank =
             self.sync.vertical_blank || (HBLANK_START_CCK..=HBLANK_STOP_CCK).contains(&horizontal);
         let hires = self.is_hires();
-        for half in 0..LORES_PIXELS_PER_CCK {
-            let position = horizontal * LORES_PIXELS_PER_CCK + half;
+        for half in 0..LORES_PIXELS_PER_CCK as u16 {
+            let position = horizontal * LORES_PIXELS_PER_CCK as u16 + half;
             let in_window = self.horizontal_window(position + DIW_COUNT_LEAD);
             let sprite = self
                 .sprites
@@ -42,7 +41,8 @@ impl Denise {
             } else {
                 0
             };
-            for subpixel in 0..2 {
+            let mut output = [OPAQUE_BLACK; 2];
+            for (subpixel, output_pixel) in output.iter_mut().enumerate() {
                 let planes = if hires && subpixel != 0 && self.bpl_armed {
                     self.shift_pixel()
                 } else {
@@ -74,11 +74,11 @@ impl Denise {
                 self.pipeline_pixels[1] = color;
                 self.pipeline_pixels_valid[0] = self.pipeline_pixels_valid[1];
                 self.pipeline_pixels_valid[1] = true;
-                self.frame_builder.set_pixel(
-                    usize::from(horizontal) * PIXELS_PER_CCK + usize::from(half) * 2 + subpixel,
-                    usize::from(vertical),
-                    if blank { OPAQUE_BLACK } else { pixel },
-                );
+                *output_pixel = pixel;
+            }
+            if !blank {
+                self.frame_builder
+                    .write_pixel_pair(usize::from(position), output);
             }
         }
     }

@@ -367,7 +367,7 @@ impl EmulatorApp {
         }
 
         self.screen_texture.update(ctx, &self.session);
-        let screen_texture = self.screen_texture.id();
+        let screen_texture = self.screen_texture.image();
 
         // --- RENDER BASED ON ACTIVE VIEW MODE ---
         if self.view_mode == ViewMode::ScreenOnly {
@@ -636,17 +636,23 @@ impl EmulatorApp {
                                                 let avail_w = ui.available_width();
                                                 let avail_h =
                                                     (ui.available_height() - 48.0).max(120.0);
-                                                let screen_w = avail_w
-                                                    .min(avail_h * crate::layout::main_viewport::amiga_screen::SCREEN_ASPECT_WIDTH / crate::layout::main_viewport::amiga_screen::SCREEN_ASPECT_HEIGHT)
-                                                    .min(640.0)
-                                                    .max(240.0);
-                                                let screen_h = (screen_w * crate::layout::main_viewport::amiga_screen::SCREEN_ASPECT_HEIGHT / crate::layout::main_viewport::amiga_screen::SCREEN_ASPECT_WIDTH).min(avail_h);
+                                                let image_size = screen_texture.map_or_else(
+                                                    || egui::vec2(avail_w, avail_h),
+                                                    |image| image.size,
+                                                );
+                                                let scale = (avail_w.min(640.0) / image_size.x)
+                                                    .min(avail_h / image_size.y);
+                                                let screen_h = image_size.y * scale;
 
                                                 ui.allocate_ui_with_layout(
                                                     egui::vec2(avail_w, screen_h),
                                                     egui::Layout::top_down(egui::Align::Center),
                                                     |ui| {
-                                                        render_amiga_screen(ui, screen_texture, false);
+                                                        render_amiga_screen(
+                                                            ui,
+                                                            screen_texture,
+                                                            false,
+                                                        );
                                                     },
                                                 );
 

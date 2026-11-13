@@ -5,6 +5,113 @@ use gui::{AppTheme, DisasmEditState, EditRegister, EmulatorApp, ViewMode};
 use std::path::PathBuf;
 
 #[test]
+fn screen_uploads_the_visible_framebuffer_unchanged_and_preserves_its_geometry() {
+    for (standard, lines, blanks, ccks) in [
+        (config::VideoStandard::Pal, 313, 26, 227),
+        (config::VideoStandard::Ntsc, 263, 21, 228),
+    ] {
+        for interlaced in [false, true] {
+            for view in [ViewMode::Developer, ViewMode::ScreenOnly] {
+                let mut app = EmulatorApp::default();
+                app.session = Box::new(gui::DebuggerSession::from_config(
+                    config::A500Config::standard_1mb(standard),
+                ));
+                app.view_mode = view;
+                let frame = &mut app.session.machine.denise.frame_builder;
+                for field in 0..2 {
+                    for line in 0..lines {
+                        frame.begin_line(
+                            interlaced,
+                            interlaced && field == 1,
+                            field > 0 && line == 0,
+                            line < blanks,
+                        );
+                        for hpos in 0..ccks {
+                            frame.step_cck(hpos, line);
+                        }
+                    }
+                }
+                frame.begin_line(interlaced, false, true, true);
+                for hpos in 0..19 {
+                    frame.step_cck(hpos, 0);
+                }
+                let stride = frame.width as usize;
+                let height = frame.height as usize;
+                let image_width = ccks as usize * 4 - 72;
+                let image_height = (lines - blanks - 1) as usize * 2;
+                frame.frame_buffer_mut().fill(0xff00ff00);
+                for y in 0..height {
+                    let color = if y % 2 == 0 { 0xff0000ff } else { 0xffff0000 };
+                    let start = y * stride;
+                    frame.frame_buffer_mut()[start..start + stride].fill(color);
+                    // Keep both outer columns of the monitor image, including corners.
+                    frame.frame_buffer_mut()[start] = 0xffffffff;
+                    frame.frame_buffer_mut()[start + image_width - 1] = 0xffffffff;
+                }
+                let before = frame.clone();
+                let ctx = egui::Context::default();
+                let viewport =
+                    egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(1280.0, 720.0));
+                let output = ctx.run(
+                    RawInput {
+                        screen_rect: Some(viewport),
+                        ..Default::default()
+                    },
+                    |ctx| app.update_ui(ctx),
+                );
+                let (texture_id, image) = output
+                    .textures_delta
+                    .set
+                    .iter()
+                    .find_map(|(id, delta)| match &delta.image {
+                        egui::ImageData::Color(image)
+                            if image.size == [image_width, image_height] =>
+                        {
+                            Some((*id, image))
+                        }
+                        _ => None,
+                    })
+                    .expect("the complete monitor image must be uploaded");
+                let (shape, mesh) = output
+                    .shapes
+                    .iter()
+                    .find_map(|shape| match &shape.shape {
+                        egui::Shape::Mesh(mesh) if mesh.texture_id == texture_id => {
+                            Some((shape, mesh))
+                        }
+                        _ => None,
+                    })
+                    .expect("the complete monitor image must be drawn");
+                let bounds = mesh.calc_bounds();
+                assert!(
+                    (bounds.width() / image_width as f32 - bounds.height() / image_height as f32)
+                        .abs()
+                        < 0.001
+                );
+                assert!(viewport.contains_rect(bounds));
+                assert!(bounds.center().distance(shape.clip_rect.center()) < 1.0);
+                assert!(mesh.vertices.iter().any(|v| v.uv == egui::pos2(0.0, 0.0)));
+                assert!(mesh.vertices.iter().any(|v| v.uv == egui::pos2(1.0, 1.0)));
+                for y in 0..image_height {
+                    let source_y = y;
+                    for x in 0..image_width {
+                        let expected = if x == 0 || x == image_width - 1 {
+                            egui::Color32::WHITE
+                        } else if source_y % 2 == 0 {
+                            egui::Color32::BLUE
+                        } else {
+                            egui::Color32::RED
+                        };
+                        assert_eq!(image.pixels[y * image_width + x], expected);
+                    }
+                }
+                assert_eq!(app.session.machine.denise.frame_builder, before);
+            }
+        }
+    }
+}
+
+#[test]
 fn test_simulated_f12_view_mode_toggle() {
     let ctx = egui::Context::default();
     let mut app = EmulatorApp::default();

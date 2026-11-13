@@ -12,6 +12,62 @@ use common::continuation::{
 };
 
 #[test]
+fn snapshot_between_field_strobe_and_hblank_finishes_the_previous_display_row() {
+    for standard in [VideoStandard::Pal, VideoStandard::Ntsc] {
+        let mut machine = A500Machine::new(A500Config::standard_1mb(standard));
+        machine.denise.color[0] = 0x0f00;
+        machine
+            .memory_bus()
+            .write_custom_word(custom_reg::denise::REGISTER_BPLCON0, 4);
+        let mut boundary = false;
+        for _ in 0..(3 * 313 * 228) {
+            machine.step_subsystems_cck();
+            if machine.denise.sync.field_odd
+                && machine.denise.sync.vpos == 0
+                && machine.denise.sync.hpos == 9
+            {
+                boundary = true;
+                break;
+            }
+        }
+        assert!(
+            boundary,
+            "the machine did not reach the pending field boundary"
+        );
+        assert_eq!(machine.denise.frame_builder.frame_number, 0);
+        assert!(!machine.denise.frame_builder.field_odd);
+        let json = serde_json::to_string(&machine.save_state()).unwrap();
+        let state = serde_json::from_str::<A500State>(&json).unwrap();
+        let mut restored = A500Machine::new(A500Config::standard_1mb(standard));
+        restored.load_state(&state);
+        for _ in 0..10 {
+            machine.step_subsystems_cck();
+            restored.step_subsystems_cck();
+            assert_eq!(restored.denise.frame_builder, machine.denise.frame_builder);
+        }
+        assert_eq!(machine.denise.frame_builder.frame_number, 1);
+        assert!(machine.denise.frame_builder.field_odd);
+        let frame = &machine.denise.frame_builder;
+        let blank_lines = if standard == VideoStandard::Pal {
+            26
+        } else {
+            21
+        };
+        let complete_lines = usize::from(machine.denise.sync.field_lines) - blank_lines - 1;
+        assert_eq!(frame.height as usize, complete_lines * 2 - 1);
+        let row = complete_lines * 2 - 2;
+        // The retained two-sample Denise pipeline follows the blanking edge.
+        assert_eq!(frame.get_pixel(0, row), 0xff000000);
+        assert_eq!(frame.get_pixel(2, row), 0xffff0000);
+        assert_eq!(frame.get_pixel(835, row), 0xffff0000);
+        assert_eq!(
+            frame.frame_buffer().len(),
+            frame.width as usize * frame.height as usize
+        );
+    }
+}
+
+#[test]
 fn snapshots_resume_reset_stop_and_a_refused_second_operand_half() {
     for boundary in 0..3 {
         let prefix: &[u16] = match boundary {

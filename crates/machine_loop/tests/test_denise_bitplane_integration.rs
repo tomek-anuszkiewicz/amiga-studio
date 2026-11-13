@@ -204,7 +204,11 @@ fn test_denise_frame_builder_raster_scanline_generation() {
     assert_eq!(expected_argb, 0xFF00_00FF);
 
     // Verify FrameBuilder captured the backdrop color on the scanned line (line 30)
-    let pixel = harness.machine.denise.frame_builder.get_pixel(200, 30);
+    let pixel = harness
+        .machine
+        .denise
+        .frame_builder
+        .get_pixel(56, (30 - 26) * 2);
     assert_eq!(
         pixel, expected_argb,
         "FrameBuilder should contain rendered backdrop pixels on active scanlines"

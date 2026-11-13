@@ -6,6 +6,7 @@ fn visible() -> Denise {
     d.sync.vertical_blank = false;
     d.sync.hpos = 40;
     d.sync.vpos = 100;
+    d.frame_builder.begin_line(false, false, false, false);
     d.hflop = true;
     d.diwstrt = 0x0081;
     d.diwstop = 0x00c1;
@@ -110,16 +111,16 @@ fn supported_normal_resolutions_and_plane_counts_render_independent_palette_valu
             for _ in 0..3 {
                 d.step_cck();
             }
-            assert_eq!(d.frame_builder.get_pixel(166, 100), 0xffff0000);
+            assert_eq!(d.frame_builder.get_pixel(22, 0), 0xffff0000);
             assert_eq!(
-                d.frame_builder.get_pixel(167, 100),
+                d.frame_builder.get_pixel(23, 0),
                 if resolution == 0 {
                     0xffff0000
                 } else {
                     0xff000000
                 }
             );
-            assert_eq!(d.frame_builder.get_pixel(168, 100), 0xff000000);
+            assert_eq!(d.frame_builder.get_pixel(24, 0), 0xff000000);
         }
     }
 }
@@ -137,14 +138,16 @@ fn special_modes_render_book_colors_in_both_interlaced_fields() {
         (0x6400, [1, 2, 3, 0], [0xf00, 0x0f0, 0xf00, 0]),
         (0xc400, [1, 2, 3, 0], [0xf00, 0x0f0, 0xf00, 0]),
     ] {
-        for (lines, ntsc) in [(312, false), (262, true)] {
+        for ntsc in [false, true] {
             for (lace, odd) in [(false, false), (true, false), (true, true)] {
                 let mut d = visible();
                 d.bplcon0 = mode | if lace { 4 } else { 0 };
                 d.color[1] = 0xf00;
                 d.color[5] = 0xf97;
                 d.color[9] = 0x0f0;
-                d.frame_builder.begin_field(lace, odd, lines, ntsc);
+                d.frame_builder.begin_line(false, false, false, true);
+                d.frame_builder.step_cck(if ntsc { 227 } else { 226 }, 99);
+                d.frame_builder.begin_line(lace, odd, false, false);
                 for plane in (0..6).rev() {
                     let word = codes.iter().enumerate().fold(0, |word, (pixel, code)| {
                         word | (u16::from((code >> plane) & 1) << (15 - pixel))
@@ -154,11 +157,11 @@ fn special_modes_render_book_colors_in_both_interlaced_fields() {
                 for _ in 0..4 {
                     d.step_cck();
                 }
-                let row = if lace { 200 + usize::from(odd) } else { 100 };
+                let row = usize::from(lace && odd);
                 let stride = if mode & 0x8000 == 0 { 2 } else { 1 };
                 for (pixel, expected) in expected.iter().enumerate() {
                     assert_eq!(
-                        d.frame_builder.get_pixel(166 + pixel * stride, row),
+                        d.frame_builder.get_pixel(22 + pixel * stride, row),
                         denise::frame_builder::rgb444_to_argb32(*expected),
                         "mode {mode:x}, lace {lace}, odd {odd}, pixel {pixel}"
                     );
@@ -182,8 +185,8 @@ fn palette_and_resolution_changes_take_effect_during_the_line() {
     for _ in 0..3 {
         d.step_cck();
     }
-    assert_eq!(d.frame_builder.get_pixel(166, 100), 0xffff0000);
-    assert_eq!(d.frame_builder.get_pixel(182, 100), 0xff00ff00);
+    assert_eq!(d.frame_builder.get_pixel(22, 0), 0xffff0000);
+    assert_eq!(d.frame_builder.get_pixel(38, 0), 0xff00ff00);
     assert!(d.is_hires());
 }
 
@@ -206,7 +209,7 @@ fn normal_playfield_uses_pf2_priority_and_hidden_sprites_still_collide() {
                 d.step_cck();
             }
             assert_eq!(
-                d.frame_builder.get_pixel(170, 100),
+                d.frame_builder.get_pixel(26, 0),
                 if pair < priority as usize {
                     0xff00ff00
                 } else {
@@ -276,9 +279,28 @@ fn dual_playfield_priority_retains_the_books_invisible_sprite_boundary() {
             d.step_cck();
         }
         assert_eq!(
-            d.frame_builder.get_pixel(170, 100),
+            d.frame_builder.get_pixel(26, 0),
             denise::frame_builder::rgb444_to_argb32(expected),
             "playfield occupancy {planes}"
         );
+    }
+}
+
+#[test]
+fn blanking_skips_framebuffer_writes_while_registers_and_receiver_clocks_continue() {
+    for vertical in [false, true] {
+        let mut d = visible();
+        d.color[0] = 0xf00;
+        d.step_cck();
+        let before = d.frame_builder.frame_buffer().to_vec();
+        d.sync.hpos = if vertical { 40 } else { 18 };
+        d.sync.vertical_blank = vertical;
+        d.set_color(0, 0x0f0);
+        for _ in 0..18 {
+            d.step_cck();
+        }
+        assert_eq!(d.frame_builder.frame_buffer(), before);
+        assert_eq!(d.color[0], 0x0f0);
+        assert_eq!(d.sync.hpos, if vertical { 58 } else { 36 });
     }
 }

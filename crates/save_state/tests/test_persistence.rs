@@ -274,7 +274,13 @@ fn file_roundtrip_preserves_drawn_pixels_and_resumes_active_display() {
         }
     }
     assert_eq!(machine.agnus.vpos, 120);
-    assert_ne!(machine.denise.frame_builder.get_pixel(300, 100), 0xff000000);
+    assert_ne!(
+        machine
+            .denise
+            .frame_builder
+            .get_pixel(300 - 144, (100 - 26) * 2),
+        0xff000000
+    );
     assert!(machine.denise.bpl_armed);
     assert!(machine
         .denise
@@ -292,7 +298,10 @@ fn file_roundtrip_preserves_drawn_pixels_and_resumes_active_display() {
         assert_eq!(machine.agnus, restored.agnus);
     }
     assert_ne!(
-        restored.denise.frame_builder.get_pixel(600, 120),
+        restored
+            .denise
+            .frame_builder
+            .get_pixel(600 - 144, (120 - 26) * 2),
         0xff000000
     );
 }

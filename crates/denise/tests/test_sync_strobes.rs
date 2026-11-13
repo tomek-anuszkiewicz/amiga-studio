@@ -39,6 +39,9 @@ fn field_boundaries_follow_received_strobes_for_both_standards_and_interlace() {
                 let odd = interlaced && field % 2 != 0;
                 let lines = base_lines + u16::from(odd);
                 for line in 1..lines {
+                    for _ in denise.sync.hpos..227 {
+                        denise.step_cck();
+                    }
                     if line < 8 {
                         denise.strobe_strequ();
                     } else if line < 26 {
@@ -51,13 +54,30 @@ fn field_boundaries_follow_received_strobes_for_both_standards_and_interlace() {
                     denise.strobe_strlong();
                     assert_eq!(denise.sync.vpos, line);
                 }
+                for _ in denise.sync.hpos..227 {
+                    denise.step_cck();
+                }
                 denise.strobe_strequ();
                 assert_eq!(denise.sync.vpos, 0);
                 assert_eq!(denise.sync.field_lines, lines);
+                assert_eq!(denise.frame_builder.frame_number, field);
+                for _ in 0..18 {
+                    denise.step_cck();
+                }
+                assert_eq!(denise.frame_builder.frame_number, field);
+                denise.step_cck();
                 assert_eq!(denise.frame_builder.frame_number, field + 1);
                 assert_eq!(
                     denise.frame_builder.height,
-                    u32::from(base_lines + 1) * if interlaced { 2 } else { 1 }
+                    if interlaced {
+                        if field > 0 {
+                            u32::from(base_lines - 26) * 2
+                        } else {
+                            u32::from(base_lines - 26 - 1) * 2 - 1
+                        }
+                    } else {
+                        u32::from(base_lines - 26 - 1) * 2
+                    }
                 );
             }
             denise.reset();

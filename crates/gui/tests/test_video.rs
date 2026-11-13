@@ -19,7 +19,8 @@ fn video(output: &egui::FullOutput) -> (TextureId, Vec<Color32>) {
         .set
         .iter()
         .find_map(|(id, delta)| {
-            if delta.image.size() != [912, 313] {
+            // This guest uses 312 PAL lines: 26 blank and one incomplete edge line.
+            if delta.image.size() != [836, 570] {
                 return None;
             }
             match &delta.image {
@@ -60,17 +61,26 @@ fn loaded_guest_updates_texture_and_pause_preserves_it_at_all_viewport_sizes() {
             pixels.contains(&Color32::from_rgb(255, 0, 0))
                 || pixels.contains(&Color32::from_rgb(0, 255, 0))
         );
-        let mesh = output
+        let (shape, mesh) = output
             .shapes
             .iter()
             .find_map(|shape| match &shape.shape {
-                egui::Shape::Mesh(mesh) if mesh.texture_id == id => Some(mesh),
+                egui::Shape::Mesh(mesh) if mesh.texture_id == id => Some((shape, mesh)),
                 _ => None,
             })
             .expect("video texture was not drawn");
         let bounds = mesh.calc_bounds();
-        assert!((bounds.width() / bounds.height() - 4.0 / 3.0).abs() < 0.001);
+        assert!((bounds.width() / bounds.height() - 836.0 / 570.0).abs() < 0.001);
         assert!(Rect::from_min_size(pos2(0.0, 0.0), vec2(size[0], size[1])).contains_rect(bounds));
+        assert!(bounds.center().distance(shape.clip_rect.center()) < 1.0);
+        assert!(mesh
+            .vertices
+            .iter()
+            .any(|vertex| vertex.uv == pos2(0.0, 0.0)));
+        assert!(mesh
+            .vertices
+            .iter()
+            .any(|vertex| vertex.uv == pos2(1.0, 1.0)));
         assert_eq!(app.session.machine.cck, cck);
         if let Some(previous) = &paused_pixels {
             assert_eq!(&pixels, previous);

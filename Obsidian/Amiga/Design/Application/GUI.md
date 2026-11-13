@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "gui"
 status: "active"
 created: 2026-09-05
-updated: 2026-11-12
+updated: 2026-11-13
 related: ["[egui Guidelines.md](../egui%20Guidelines.md)", "[Debugger.md](Debugger.md)", "[General Architecture.md](../General%20Architecture.md)", "[Keyboard.md](../Keyboard.md)", "[Mouse.md](../Mouse.md)", "[Audio.md](../Audio.md)", "[Denise.md](../Denise.md)"]
 tracked_paths:
   - "crates/gui"
@@ -24,7 +24,7 @@ The views change how the machine is presented, not which machine is running. F2 
 
 ## Application and debugger layout
 
-The Developer Studio has a top bar and three main areas: a left dock for CPU state, a central workspace for the screen and code, and a right dock for memory and tools. The width of each side dock can be changed. On a wide window, the central workspace separates disassembly from the screen: the screen and history controls sit above the execution trace. On narrower windows, the screen, history controls, and disassembly stack vertically in the central area; the trace moves into the right dock's tools section. The screen remains framed at a 4:3 presentation ratio in either layout.
+The Developer Studio has a top bar and three main areas: a left dock for CPU state, a central workspace for the screen and code, and a right dock for memory and tools. The width of each side dock can be changed. On a wide window, the central workspace separates disassembly from the screen: the screen and history controls sit above the execution trace. On narrower windows, the screen, history controls, and disassembly stack vertically in the central area; the trace moves into the right dock's tools section. In either layout, the complete monitor image supplied by the frame builder is centered in the available display area. Both axes use the same scale to fit that area, preserving the monitor image's width-to-height ratio instead of imposing 4:3.
 
 | Area | Available information and controls |
 | --- | --- |
@@ -41,7 +41,7 @@ Binary loading into the Kickstart address window accepts only a 256 KiB image. A
 
 The intended input path maps host keyboard events to the [Amiga keyboard](../Keyboard.md) and host mouse movement and buttons to the emulated [mouse and game port](../Mouse.md). Host gamepad or keyboard controls can likewise represent an emulated [joystick](../Joystick.md). These mappings belong at the frontend boundary; the emulated devices and chips decide their hardware effects.
 
-For video, [Denise](../Denise.md) builds a rendered frame in the [frame buffer](../Frame%20Buffer.md). After each bounded execution slice, the GUI uploads the current ARGB buffer into an egui texture and draws it in the existing 4:3 viewport with nearest-neighbor sampling. A paused machine keeps its partially drawn field visible; snapshot restoration replaces the displayed pixels on the next UI frame. Texture allocation and upload belong to the host frontend. For sound, the GUI is intended to deliver samples produced by the [audio subsystem](../Audio.md) to the host playback device. Emulated audio generation remains in the core.
+For video, [Denise](../Denise.md) builds a rendered frame in the [frame buffer](../Frame%20Buffer.md). After each bounded execution slice, the GUI uploads the current ARGB buffer into an egui texture and draws the complete visible rectangle with uniform scaling and nearest-neighbor sampling. A paused machine keeps its partially drawn field visible; snapshot restoration replaces the displayed pixels on the next UI frame. Texture allocation and upload belong to the host frontend. For sound, the GUI is intended to deliver samples produced by the [audio subsystem](../Audio.md) to the host playback device. Emulated audio generation remains in the core.
 
 The shared `live_stripes` guest fixture supplies the live-frame smoke check without firmware. Full guest display acceptance remains [guest verification](../../../../ROADMAP.md#cpu-memory-gary-verification) work. Host audio/input remain incomplete; see [native test prerequisites](../../../../ROADMAP.md#native-disk-verification).
 

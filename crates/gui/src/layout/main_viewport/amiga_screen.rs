@@ -1,13 +1,9 @@
-//! Main Viewport: Amiga 4:3 CRT Display Viewport
+//! Main Viewport: complete Amiga framebuffer display.
 //!
-//! Renders the centered 4:3 aspect-locked video display canvas with retro CRT bezel
+//! Renders the centered video display with uniform scaling and a retro CRT bezel
 //! and optional floating debugger toggle button for Clean Screen mode.
 
-use egui::{pos2, vec2, Color32, Rect, RichText, Stroke};
-
-pub(crate) const SCREEN_ASPECT_WIDTH: f32 = 4.0;
-pub(crate) const SCREEN_ASPECT_HEIGHT: f32 = 3.0;
-const SCREEN_ASPECT_RATIO: f32 = SCREEN_ASPECT_WIDTH / SCREEN_ASPECT_HEIGHT;
+use egui::{load::SizedTexture, pos2, vec2, Color32, Rect, RichText, Stroke};
 
 /// Host texture refreshed from the machine after each bounded execution slice.
 #[derive(Default)]
@@ -15,7 +11,7 @@ pub(crate) struct ScreenTexture(Option<egui::TextureHandle>);
 
 impl std::fmt::Debug for ScreenTexture {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_tuple("ScreenTexture").field(&self.id()).finish()
+        f.debug_tuple("ScreenTexture").field(&self.image()).finish()
     }
 }
 
@@ -23,7 +19,8 @@ impl ScreenTexture {
     pub(crate) fn update(&mut self, ctx: &egui::Context, session: &debugger::DebuggerSession) {
         let frame = &session.machine.denise.frame_builder;
         let size = [frame.width as usize, frame.height as usize];
-        let pixels = frame.frame_buffer()[..size[0] * size[1]]
+        let pixels = frame
+            .frame_buffer()
             .iter()
             .map(|pixel| {
                 let [alpha, red, green, blue] = pixel.to_be_bytes();
@@ -38,14 +35,14 @@ impl ScreenTexture {
         }
     }
 
-    pub(crate) fn id(&self) -> Option<egui::TextureId> {
-        self.0.as_ref().map(egui::TextureHandle::id)
+    pub(crate) fn image(&self) -> Option<SizedTexture> {
+        self.0.as_ref().map(SizedTexture::from_handle)
     }
 }
 
 pub(crate) fn render_amiga_screen(
     ui: &mut egui::Ui,
-    texture: Option<egui::TextureId>,
+    texture: Option<SizedTexture>,
     show_floating_debug_btn: bool,
 ) -> bool {
     let available = ui.available_size();
@@ -53,13 +50,10 @@ pub(crate) fn render_amiga_screen(
         return false;
     }
 
-    // Strict 4:3 aspect ratio calculation
-    let target_aspect = SCREEN_ASPECT_RATIO;
-    let (screen_w, screen_h) = if available.x / available.y > target_aspect {
-        (available.y * target_aspect, available.y)
-    } else {
-        (available.x, available.x / target_aspect)
-    };
+    let image_size = texture.map_or(available, |image| image.size);
+    let scale = (available.x / image_size.x).min(available.y / image_size.y);
+    let screen_w = image_size.x * scale;
+    let screen_h = image_size.y * scale;
 
     // Center viewport in available space
     let offset_x = (available.x - screen_w) * 0.5;
@@ -91,7 +85,7 @@ pub(crate) fn render_amiga_screen(
 
     if let Some(texture) = texture {
         painter.image(
-            texture,
+            texture.id,
             screen_rect,
             Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
             Color32::WHITE,

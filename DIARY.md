@@ -562,3 +562,26 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Roadmap retention check passed
   - Reviewed original user decisions in session 01a1d211-1581-7222-955b-226b5213cc0c
   - Stage 2.5 remains pending
+---
+
+### [2026-11-13 14:03 CET] — Store the complete visible image without blanking samples
+- **Affected Subsystems**:
+  - `frame_builder`
+  - `Denise`
+  - `GUI`
+  - `machine and save-state tests`
+  - `GUI guidance`
+- **What Was Changed (The Concrete Reality)**:
+  - Retain visible border and playfield on a high-resolution spatial grid
+  - Exclude horizontal and vertical blanking and incomplete edge lines
+  - Preserve row tails, field parity and pending assembly in snapshots
+  - Fit the complete image uniformly in the GUI
+  - Add the user-approved framebuffer vocabulary term
+- **Architectural Rationale & Trade-Offs**:
+  - Map receiver coordinates to visible image rows without shifting or stretching the display
+  - Retain current modeled blanking timing without claiming silicon calibration
+- **Verification & Test Results**:
+  - Focused frame_builder, Denise, machine_loop, save_state and GUI tests passed
+  - Vault metadata and 1047 links passed
+  - Fresh live_display GUI capture was rendered and visually inspected: complete centered image and proportional scaling
+  - Historical ROM captures remain in the display-centering diagnostics

@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "denise"
 status: "active"
 created: 2026-09-06
-updated: 2026-11-12
+updated: 2026-11-13
 related: ["[Sprites.md](Sprites.md)", "[Frame Buffer.md](Frame%20Buffer.md)", "[Agnus.md](Agnus.md)", "[Game Ports.md](Game%20Ports.md)"]
 tracked_paths:
   - "crates/denise"
@@ -66,7 +66,8 @@ The Denise crate owns its sprite engine as an internal module. The frame builder
 HRM Appendix A BPLxDAT defines BPL1DAT as the parallel-to-serial trigger.
 Its committed write captures all six data latches into shifters; another word
 is not invented by periodically reloading unchanged latches. High resolution
-shifts four bits per CCK; low resolution shifts two and doubles each host pixel.
+shifts four bits per CCK; low resolution shifts two and occupies two samples per pixel on the shared
+high-resolution framebuffer grid.
 BPLCON1 delays odd/even plane streams independently by 0-15 pixel periods,
 retaining history across adjacent words. The local line boundary resets
 serialization and HAM's held color; it does not defer mid-line register commits.

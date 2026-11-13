@@ -65,7 +65,7 @@ impl Default for DeniseSync {
             synchronized: false,
             field_locked: false,
             field_odd: false,
-            field_lines: frame_builder::PAL_FIELD_HEIGHT as u16,
+            field_lines: frame_builder::PAL_MAX_RASTER_LINES as u16,
         }
     }
 }
@@ -110,11 +110,14 @@ impl Denise {
     pub(super) fn receive_sync_strobe(&mut self, address: u16) {
         let interlaced = self.bplcon0 & config::mask::bplcon0::BIT_LACE != 0;
         let completed = self.sync.receive_strobe(address, interlaced);
-        self.frame_builder.begin_field(
+        if address == sync::REGISTER_STRLONG {
+            return;
+        }
+        self.frame_builder.begin_line(
             interlaced,
             self.sync.field_odd,
-            self.sync.field_lines,
             completed,
+            self.sync.vertical_blank,
         );
     }
 }

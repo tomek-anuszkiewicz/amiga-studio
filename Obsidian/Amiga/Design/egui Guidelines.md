@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "gui"
 status: "active"
 created: 2026-09-10
-updated: 2026-10-13
+updated: 2026-11-13
 related: ["[GUI.md](Application/GUI.md)", "[Rust Guidelines.md](Rust%20Guidelines.md)"]
 ---
 
@@ -65,7 +65,7 @@ Each `.rs` file corresponds to a single, visually distinct dock or panel on the 
 Interfaces must look sharp and properly proportioned across monitors and browser viewports:
 - **Desktop High-DPI:** `eframe` automatically detects OS scale factors (100%–200%) and sets `egui::Context::set_pixels_per_point`. Do not hardcode absolute pixel sizes for text or UI elements; use relative units (`em`, point sizes, and layout proportions).
 - **WebAssembly Zoom:** `eframe::WebRunner` automatically binds to `window.devicePixelRatio`. Browser zoom actions (`Ctrl +` / `Ctrl -`) scale the vector UI automatically.
-- **Retro Pixel Viewport Isolation:** The 4:3 Amiga display viewport ($320 \times 256$) in [`amiga_screen.rs`](../../../crates/gui/src/layout/main_viewport/amiga_screen.rs) uses explicit integer prescaling (1x, 2x, 3x) within its container, ensuring vintage pixel graphics remain crisp and undistorted while tool panels scale with the host display.
+- **Retro Pixel Viewport Isolation:** The Amiga display viewport in [`amiga_screen.rs`](../../../crates/gui/src/layout/main_viewport/amiga_screen.rs) fits the complete framebuffer into its container with one scale for both axes and nearest-neighbor sampling. It preserves the framebuffer dimensions and aspect ratio while tool panels scale with the host display.
 
 ---
 

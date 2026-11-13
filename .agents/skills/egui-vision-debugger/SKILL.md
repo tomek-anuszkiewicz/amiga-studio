@@ -78,7 +78,7 @@ view_image({ path: "<repo_path>/target/gui_captures/<capture_name>.png" })
 The agent uses its native multimodal vision to inspect:
 1. **Layout & Proportions:**
    - Are all 3 columns visible and balanced?
-   - Is the central Amiga CRT screen clearly visible at a 4:3 aspect ratio without being squashed or collapsed?
+   - Is the central Amiga CRT screen fully visible with its framebuffer aspect ratio and equal scaling of both axes?
    - Is the temporal timeline bar positioned neatly beneath the screen?
 2. **Splitters & Scrollbars:**
    - Are panel resize handles cleanly separated from scrollbars?

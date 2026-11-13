@@ -1,24 +1,32 @@
 use frame_builder::FrameBuilder;
 
 #[test]
-fn both_standards_weave_alternate_fields_and_preserve_the_other_field() {
-    for (lines, height) in [(313, 626), (263, 526)] {
-        let mut frame = FrameBuilder::new();
-        frame.begin_field(true, false, lines, false);
-        frame.set_pixel(10, 100, 0xfff00000);
-        assert_eq!(frame.get_pixel(10, 200), 0xfff00000);
-        assert_eq!(frame.get_pixel(10, 201), 0xff000000);
-        frame.begin_field(true, true, lines, true);
-        frame.set_pixel(10, 100, 0xff00f000);
-        assert_eq!(frame.get_pixel(10, 200), 0xfff00000);
-        assert_eq!(frame.get_pixel(10, 201), 0xff00f000);
-        assert_eq!(frame.height, height);
-        assert_eq!(frame.frame_number, 1);
-        assert!(frame.frame_ready);
-        frame.begin_field(false, false, lines, true);
-        frame.set_pixel(10, 100, 0xff0000f0);
-        assert_eq!(frame.get_pixel(10, 100), 0xff0000f0);
-        assert_eq!(frame.get_pixel(10, 200), 0xff000000);
-        assert_eq!(frame.height, height / 2);
-    }
+fn alternate_fields_keep_the_other_parity_and_progressive_lines_are_doubled() {
+    let mut frame = FrameBuilder::new();
+    frame.begin_line(true, false, false, false);
+    frame.step_cck(36, 100);
+    frame.write_pixel_pair(77, [0xfff00000; 2]);
+    assert_eq!(frame.get_pixel(10, 0), 0xfff00000);
+    assert_eq!(frame.get_pixel(10, 1), 0xff000000);
+    frame.step_cck(226, 100);
+    frame.begin_line(true, false, false, false);
+    frame.step_cck(36, 101);
+    frame.begin_line(true, true, true, true);
+    frame.step_cck(18, 0);
+    frame.begin_line(true, true, false, false);
+    frame.step_cck(36, 100);
+    frame.write_pixel_pair(77, [0xff00f000; 2]);
+    assert_eq!(frame.get_pixel(10, 0), 0xfff00000);
+    frame.step_cck(226, 100);
+    frame.begin_line(true, true, false, false);
+    frame.step_cck(36, 101);
+    frame.begin_line(true, false, true, true);
+    frame.step_cck(18, 0);
+    assert_eq!(frame.get_pixel(10, 1), 0xff00f000);
+    frame.begin_line(false, false, false, false);
+    frame.step_cck(36, 100);
+    frame.write_pixel_pair(77, [0xff0000f0; 2]);
+    assert_eq!(frame.get_pixel(10, 0), 0xff0000f0);
+    assert_eq!(frame.get_pixel(10, 1), 0xff0000f0);
+    assert_eq!(frame.get_pixel(10, 2), 0xff000000);
 }

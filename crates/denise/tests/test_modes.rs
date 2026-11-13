@@ -2,7 +2,7 @@ use denise::{Denise, DeniseModel};
 
 #[test]
 fn display_mode_matrix_masks_planes_and_places_pixels_in_both_standard_fields() {
-    for (lines, ntsc) in [(312, false), (262, true)] {
+    for ntsc in [false, true] {
         for (lace, odd) in [(false, false), (true, false), (true, true)] {
             for (resolution, maximum) in [(0, 6u16), (0x8000, 4)] {
                 for count in 0..=maximum {
@@ -19,7 +19,10 @@ fn display_mode_matrix_masks_planes_and_places_pixels_in_both_standard_fields() 
                                 | if dual { 0x400 } else { 0 }
                                 | if lace { 4 } else { 0 };
                             denise.bplcon2 = if second_first { 0x40 } else { 0 };
-                            denise.frame_builder.begin_field(lace, odd, lines, ntsc);
+                            denise
+                                .frame_builder
+                                .step_cck(if ntsc { 227 } else { 226 }, 99);
+                            denise.frame_builder.begin_line(lace, odd, false, false);
                             for (index, color) in denise.color.iter_mut().enumerate() {
                                 *color = 0x800 | index as u16 * 0x11;
                             }
@@ -46,11 +49,11 @@ fn display_mode_matrix_masks_planes_and_places_pixels_in_both_standard_fields() 
                             } else {
                                 0x800 | ((1u16 << count) - 1) * 0x11
                             };
-                            let row = if lace { 200 + usize::from(odd) } else { 100 };
+                            let row = if lace { usize::from(odd) } else { 0 };
                             assert_eq!(
-                                denise.frame_builder.get_pixel(166, row),
+                                denise.frame_builder.get_pixel(22, row),
                                 denise::frame_builder::rgb444_to_argb32(expected),
-                                "{lines} lines, lace {lace}, odd {odd}, resolution {resolution:x}, count {count}, dual {dual}, second {second_first}"
+                                "NTSC {ntsc}, lace {lace}, odd {odd}, resolution {resolution:x}, count {count}, dual {dual}, second {second_first}"
                             );
                         }
                     }

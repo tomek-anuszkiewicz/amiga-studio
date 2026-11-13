@@ -5,7 +5,7 @@ Read when creating panels or hardware tooltips. These details supplement the [GU
 ## 2. Visual-to-Source 1:1 Layout Mapping
 Structure all files under `crates/gui/src/layout/` to strictly mirror what is visible on the screen:
 - `top_menu_bar.rs`: Top toolbar (file loading, run/pause/step, theme, zoom).
-- `main_viewport/amiga_screen.rs`: 4:3 centered Amiga CRT display container.
+- `main_viewport/amiga_screen.rs`: centered Amiga display container preserving the framebuffer aspect ratio.
 - `main_viewport/temporal_bar.rs`: Timeline scrubber and rewind slider below screen.
 - `left_dock/registers.rs`: Live D0-D7, A0-A7, PC, SR, and CCR LED badges.
 - `left_dock/microcode.rs`: Micro-step index, active ALU op, staging registers.

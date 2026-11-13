@@ -35,13 +35,25 @@ fn guest_stripes_update_across_completed_fields() {
             machine.step_cck();
             let frame = &machine.denise.frame_builder;
             if frame.frame_number == 2 + fields.len() as u64 {
-                let pair = [frame.get_pixel(300, 100), frame.get_pixel(308, 100)];
+                let first_line = if standard == VideoStandard::Pal {
+                    26
+                } else {
+                    21
+                };
+                let y = (100 - first_line) * 2;
+                let pair = [frame.get_pixel(156, y), frame.get_pixel(164, y)];
                 assert!(pair.contains(&BLUE), "missing background: {pair:x?}");
                 assert!(
                     pair.contains(&RED) || pair.contains(&GREEN),
                     "missing stripes: {pair:x?}"
                 );
-                assert_eq!(pair, [frame.get_pixel(300, 120), frame.get_pixel(308, 120)]);
+                assert_eq!(
+                    pair,
+                    [
+                        frame.get_pixel(156, (120 - first_line) * 2),
+                        frame.get_pixel(164, (120 - first_line) * 2)
+                    ]
+                );
                 fields.push(pair);
                 if fields.len() == 2 {
                     break;
