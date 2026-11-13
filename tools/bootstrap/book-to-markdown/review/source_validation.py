@@ -15,11 +15,11 @@ TAGS = {'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td', 'caption',
         'sub', 'sup', 'code', 'pre', 'ul', 'ol', 'li', 'blockquote', 'a', 'img'}
 ATTRIBUTES = {'rowspan', 'colspan', 'style', 'class', 'id', 'href', 'src',
               'width', 'height', 'align', 'valign', 'scope', 'start', 'type'}
-# Formatting commands consume referenced arguments; visible symbols such as
-# \\alpha are content, rather than an unrestricted command-name exemption.
+# Formatting and spacing commands add no literal text; visible symbols such as
+# \\alpha remain content requiring source references.
 MATH_FORMATTING = {'frac', 'dfrac', 'tfrac', 'sqrt', 'overline', 'underline',
                    'mathrm', 'mathbf', 'mathit', 'mathsf', 'mathtt', 'mathcal',
-                   'text', 'operatorname', 'left', 'right', 'begin', 'end'}
+                   'text', 'textit', 'quad', 'operatorname', 'left', 'right', 'begin', 'end'}
 
 
 class MarkupAudit(HTMLParser):
@@ -132,7 +132,8 @@ def validate_book(book, workspace):
         def math(text):
             def command(match):
                 if match[1] not in MATH_FORMATTING:
-                    issue('unsupported_math_command', match[0])
+                    # The renderer checks command support; this audit checks provenance.
+                    issue('unreferenced_math_command', match[0])
                 return ''
             text = re.sub(r'\\([A-Za-z]+)', command, text)
             # Braces, scripts and spacing are math structure. Operators and

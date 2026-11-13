@@ -531,3 +531,20 @@ Every authorized repository commit adds a concise entry here. Logging and compac
 - **Verification & Test Results**:
   - The user reported testing and review complete
   - No tests or audits were rerun under the explicit commit-only instruction
+---
+
+### [2026-11-13 09:48 CET] — Distinguish math formatting from missing source references
+- **Affected Subsystems**:
+  - `Book Review source validation`
+- **What Was Changed (The Concrete Reality)**:
+  - Allow italic text and spacing commands without reporting added content
+  - Report other math commands as missing source references
+  - Add regression coverage and clarify the source audit documentation
+  - Add the user-approved textit command to the English vocabulary
+- **Architectural Rationale & Trade-Offs**:
+  - Separate source provenance from renderer syntax support while retaining checks on visible text and symbols
+- **Verification & Test Results**:
+  - The regression failed on the original validator
+  - All 108 focused tests passed after the correction
+  - The hardware manual audit removed 18 formatting findings and retained seven math commands plus 158 literal content findings
+  - Review server HTTP checks passed with no pending render or error
