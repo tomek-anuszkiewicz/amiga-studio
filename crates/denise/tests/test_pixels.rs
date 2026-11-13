@@ -14,6 +14,46 @@ fn visible() -> Denise {
 }
 
 #[test]
+fn all_plane_collision_enable_and_match_values_use_current_serialized_bits() {
+    let mut d = visible();
+    d.bplcon0 = 0x6000;
+    for sprite in [0, 2, 4, 6] {
+        d.sprites.write_pos(sprite, 40);
+        d.sprites.write_data(sprite, 0xffff);
+    }
+    for control in 0..0x1000u16 {
+        d.clxcon = control.into();
+        for planes in 0..64u8 {
+            d.sync.hpos = 40;
+            d.hflop = true;
+            d.bpl_armed = true;
+            d.sprites.step_cck(0);
+            d.clxdat = 0;
+            for plane in 0..6 {
+                d.shifters[plane] = if planes & (1 << plane) != 0 {
+                    0xffff
+                } else {
+                    0
+                };
+            }
+            d.step_cck();
+            let mismatch = (u16::from(planes) ^ control) & (control >> 6);
+            let odd = mismatch & 0x15 == 0;
+            let even = mismatch & 0x2a == 0;
+            let expected = 0x7e00
+                | if odd { 0x1e } else { 0 }
+                | if even { 0x1e0 } else { 0 }
+                | u16::from(odd && even);
+            assert_eq!(
+                d.read_clxdat(),
+                expected,
+                "control={control:04x} planes={planes:02x}"
+            );
+        }
+    }
+}
+
+#[test]
 fn mid_line_sprite_commits_arm_reload_and_disarm_without_stopping_serialization() {
     let mut d = visible();
     d.step_cck();

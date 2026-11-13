@@ -88,6 +88,12 @@ independently of display mode; excluding every plane always satisfies its
 match. CLXDAT accumulates all documented pair and plane collisions until a live
 read clears it. Debug reads remain neutral.
 
+The [sprite line buffer](Sprites.md#derived-state-and-pixel-evaluation) supplies
+potential collision bits alongside its palette index. Applied CLXCON writes
+precompute the allowed playfield collision bits for all 64 plane codes. Each
+visible output sample combines that table entry with current sprite presence;
+precomputation itself never accumulates CLXDAT or fixes a future palette color.
+
 ## Register propagation
 
 Concrete queued setters in [registers.rs](../../../crates/denise/src/registers.rs) handle controls, palette, bitplane data and sprite latches with **1 CCK Pipeline** delivery. Address strobes act immediately at accepted selection without a queue entry. Both CPU and DMA BPLxDAT writes reach the same private latch application; committing BPL1DAT transfers the holding latches and arms serialization. [MemoryBus](MemoryBus.md#custom-registers-and-specialized-chips) specifies the common issue boundary. The fixed 64-entry queue exceeds CPU/Copper plus one bitplane DMA word per CCK over its one-CCK delay; every due event is applied once. Engine shifter movement and sampled port inputs remain separate operations.

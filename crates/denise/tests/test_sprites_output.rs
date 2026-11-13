@@ -1,5 +1,77 @@
 use denise::sprites::Sprites;
 
+#[test]
+fn late_word_cannot_wrap_into_earlier_pixels_and_continues_after_cache_end() {
+    let mut s = Sprites::new();
+    s.write_data(0, 0xffff);
+    s.write_pos(2, 255); // HSTART = 510, two pixels before the cache boundary.
+    s.write_data(2, 0xffff);
+    s.step_cck(0);
+    let mut collisions = 0;
+    for horizontal in 0..527 {
+        let expected = if horizontal < 16 {
+            Some(17)
+        } else if (510..526).contains(&horizontal) {
+            Some(21)
+        } else {
+            None
+        };
+        let pixel = s.evaluate_pixel(horizontal, &0.into(), &mut collisions);
+        assert_eq!(pixel.map(|pixel| pixel.color_index), expected);
+        assert_eq!(collisions, 0, "horizontal={horizontal}");
+        if horizontal < 510 {
+            assert_eq!(s.channels()[2].pixel_counter, 0);
+        }
+    }
+    assert_eq!(s.channels()[2].pixel_counter, 0);
+}
+
+#[test]
+fn future_pixels_do_not_latch_collisions_and_mid_word_controls_apply_immediately() {
+    let mut s = armed(0);
+    s.write_data(0, 0xffff);
+    s.write_pos(3, 44);
+    s.write_data(3, 0xffff);
+    let mut collisions = 0;
+    for x in 80..88 {
+        assert_eq!(
+            s.evaluate_pixel(x, &0x2000.into(), &mut collisions)
+                .unwrap()
+                .color_index,
+            17
+        );
+        assert_eq!(collisions, 0);
+    }
+    s.evaluate_pixel(88, &0x2000.into(), &mut collisions);
+    assert_eq!(collisions, 0x200);
+    collisions = 0; // A live CLXDAT read clears only collisions already reached.
+    s.evaluate_pixel(89, &0.into(), &mut collisions);
+    assert_eq!(collisions, 0);
+    assert_eq!(s.collision_pairs, 1);
+    s.write_ctl(3, 0x80); // Disarm and attach while the loaded word continues.
+    s.write_pos(3, 60);
+    s.write_data(3, 0); // Rearm a transparent future word, preserving the old shifter.
+    s.evaluate_pixel(90, &0x2000.into(), &mut collisions);
+    assert_eq!(collisions, 0x200);
+    for x in 91..96 {
+        s.evaluate_pixel(x, &0x2000.into(), &mut collisions);
+    }
+    assert_eq!(
+        s.evaluate_pixel(96, &0x2000.into(), &mut collisions)
+            .unwrap()
+            .color_index,
+        20
+    );
+    for x in 97..120 {
+        s.evaluate_pixel(x, &0x2000.into(), &mut collisions);
+    }
+    assert!(s
+        .evaluate_pixel(120, &0x2000.into(), &mut collisions)
+        .is_none());
+    assert_eq!(s.channels()[3].pixel_counter, 15);
+    assert_eq!(s.collision_pairs, 0);
+}
+
 fn armed(channels: u8) -> Sprites {
     let mut sprites = Sprites::new();
     for index in 0..8 {
@@ -19,7 +91,7 @@ fn all_channels_select_their_palette_group_and_lowest_channel_wins() {
             let mut s = armed(1 << channel);
             s.write_data(channel, if code & 1 != 0 { 0x8000 } else { 0 });
             s.write_datb(channel, if code & 2 != 0 { 0x8000 } else { 0 });
-            let pixel = s.evaluate_pixel(80, 0.into(), &mut 0).unwrap();
+            let pixel = s.evaluate_pixel(80, &0.into(), &mut 0).unwrap();
             assert_eq!(pixel.color_index, 16 + channel / 2 * 4 + code);
             assert_eq!(pixel.sprite_pair, channel / 2);
         }
@@ -27,7 +99,7 @@ fn all_channels_select_their_palette_group_and_lowest_channel_wins() {
     let mut s = armed(0xff);
     let mut collisions = 0;
     assert_eq!(
-        s.evaluate_pixel(80, 0xffff.into(), &mut collisions)
+        s.evaluate_pixel(80, &0xffff.into(), &mut collisions)
             .unwrap()
             .color_index,
         17
@@ -46,7 +118,7 @@ fn attachment_combines_four_bits_for_all_pairs_and_preserves_transparency() {
             s.write_datb(even, if code & 2 != 0 { 0x8000 } else { 0 });
             s.write_data(even + 1, if code & 4 != 0 { 0x8000 } else { 0 });
             s.write_datb(even + 1, if code & 8 != 0 { 0x8000 } else { 0 });
-            let pixel = s.evaluate_pixel(80, 0.into(), &mut 0);
+            let pixel = s.evaluate_pixel(80, &0.into(), &mut 0);
             assert_eq!(
                 pixel.map(|p| p.color_index),
                 if code == 0 { None } else { Some(16 + code) }
@@ -67,7 +139,7 @@ fn pair_collisions_follow_odd_enables_even_when_attached_or_hidden() {
     ] {
         let mut s = armed((1 << (first * 2)) | (1 << (second * 2)));
         let mut collisions = 0;
-        s.evaluate_pixel(80, 0.into(), &mut collisions);
+        s.evaluate_pixel(80, &0.into(), &mut collisions);
         assert_eq!(collisions, 1 << bit);
         let mut s = armed((1 << (first * 2 + 1)) | (1 << (second * 2 + 1)));
         s.write_ctl(first * 2 + 1, 0x80);
@@ -75,11 +147,11 @@ fn pair_collisions_follow_odd_enables_even_when_attached_or_hidden() {
         s.write_ctl(second * 2 + 1, 0x80);
         s.write_data(second * 2 + 1, 0x8000);
         let mut collisions = 0;
-        s.evaluate_pixel(80, 0.into(), &mut collisions);
+        s.evaluate_pixel(80, &0.into(), &mut collisions);
         assert_eq!(collisions, 0);
         s.evaluate_pixel(
             80,
-            ((0x1000 << first) | (0x1000 << second)).into(),
+            &((0x1000 << first) | (0x1000 << second)).into(),
             &mut collisions,
         );
         assert_eq!(collisions, 1 << bit);
@@ -91,9 +163,9 @@ fn sixteen_pixels_repeat_each_line_and_position_data_changes_allow_same_line_reu
     let mut s = armed(1);
     s.write_data(0, 0xa001);
     let mut collisions = 0;
-    assert!(s.evaluate_pixel(79, 0.into(), &mut collisions).is_none());
+    assert!(s.evaluate_pixel(79, &0.into(), &mut collisions).is_none());
     let pixels: Vec<_> = (80..97)
-        .map(|x| s.evaluate_pixel(x, 0.into(), &mut collisions).is_some())
+        .map(|x| s.evaluate_pixel(x, &0.into(), &mut collisions).is_some())
         .collect();
     assert_eq!(
         pixels,
@@ -106,21 +178,21 @@ fn sixteen_pixels_repeat_each_line_and_position_data_changes_allow_same_line_reu
     s.write_data(0, 0x8000);
     s.write_datb(0, 0x8000);
     assert_eq!(
-        s.evaluate_pixel(120, 0.into(), &mut collisions)
+        s.evaluate_pixel(120, &0.into(), &mut collisions)
             .unwrap()
             .color_index,
         19
     );
     s.step_cck(0);
     assert_eq!(
-        s.evaluate_pixel(120, 0.into(), &mut collisions)
+        s.evaluate_pixel(120, &0.into(), &mut collisions)
             .unwrap()
             .color_index,
         19
     );
     s.write_ctl(0, s.channels()[0].ctl);
     s.step_cck(0);
-    assert!(s.evaluate_pixel(120, 0.into(), &mut collisions).is_none());
+    assert!(s.evaluate_pixel(120, &0.into(), &mut collisions).is_none());
 }
 
 #[test]
@@ -128,23 +200,23 @@ fn idle_evaluation_clears_pair_presence_preserves_collisions_and_can_arm_any_cha
     for channel in 0..8 {
         let mut s = armed(0);
         s.write_data(channel, 0xffff);
-        s.evaluate_pixel(80, 0.into(), &mut 0);
+        s.evaluate_pixel(80, &0.into(), &mut 0);
         s.write_data(channel, 0x8000);
         s.write_ctl(channel, 0);
         s.step_cck(0);
         s.collision_pairs = 0x0f;
-        let channels = *s.channels();
+        let channels = s.channels();
         let mut collisions = 0x7e00;
         assert!(s
-            .evaluate_pixel(79, 0xffff.into(), &mut collisions)
+            .evaluate_pixel(79, &0xffff.into(), &mut collisions)
             .is_none());
         assert_eq!(s.collision_pairs, 0);
         assert_eq!(collisions, 0x7e00);
-        assert_eq!(*s.channels(), channels);
+        assert_eq!(s.channels(), channels);
 
         s.write_data(channel, 0x8000);
         let pixel = s
-            .evaluate_pixel(80, 0xffff.into(), &mut collisions)
+            .evaluate_pixel(80, &0xffff.into(), &mut collisions)
             .unwrap();
         assert_eq!(pixel.color_index, 17 + channel / 2 * 4);
         assert_eq!(s.channels()[channel].pixel_counter, 15);
@@ -159,10 +231,10 @@ fn disarmed_serializer_finishes_both_visible_and_transparent_words() {
         let mut s = armed(1);
         s.write_data(0, data);
         let mut collisions = 0;
-        s.evaluate_pixel(80, 0.into(), &mut collisions);
+        s.evaluate_pixel(80, &0.into(), &mut collisions);
         s.write_ctl(0, s.channels()[0].ctl);
         for pixel in 1..16 {
-            let output = s.evaluate_pixel(80 + pixel, 0.into(), &mut collisions);
+            let output = s.evaluate_pixel(80 + pixel, &0.into(), &mut collisions);
             assert_eq!(output.is_some(), data & (0x8000 >> pixel) != 0);
             assert_eq!(s.channels()[0].pixel_counter, 15 - pixel as u8);
             assert_eq!(
@@ -170,7 +242,7 @@ fn disarmed_serializer_finishes_both_visible_and_transparent_words() {
                 (u32::from(data) << (pixel + 1)) as u16
             );
         }
-        assert!(s.evaluate_pixel(96, 0.into(), &mut collisions).is_none());
+        assert!(s.evaluate_pixel(96, &0.into(), &mut collisions).is_none());
         assert_eq!(s.collision_pairs, 0);
         assert_eq!(s.channels()[0].pixel_counter, 0);
     }
@@ -187,7 +259,7 @@ fn independent_pair_colors_cover_both_channels_and_all_transparent_combinations(
                     s.write_datb(channel, if code & 2 != 0 { 0x8000 } else { 0 });
                 }
                 let code = if even != 0 { even } else { odd };
-                let actual = s.evaluate_pixel(80, 0.into(), &mut 0);
+                let actual = s.evaluate_pixel(80, &0.into(), &mut 0);
                 assert_eq!(
                     actual.map(|p| p.color_index),
                     if code == 0 {
@@ -229,13 +301,13 @@ fn all_collision_presence_masks_follow_odd_enables_independently_of_attachment()
                     }
                 }
                 let mut collisions = 0x8001;
-                s.evaluate_pixel(80, (enabled << 12).into(), &mut collisions);
+                s.evaluate_pixel(80, &(enabled << 12).into(), &mut collisions);
                 assert_eq!(s.collision_pairs, presence);
                 assert_eq!(collisions, expected);
                 s.reset();
                 assert_eq!(s, Sprites::new());
                 assert!(s
-                    .evaluate_pixel(80, 0xffff.into(), &mut collisions)
+                    .evaluate_pixel(80, &0xffff.into(), &mut collisions)
                     .is_none());
             }
         }

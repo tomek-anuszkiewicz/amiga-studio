@@ -373,3 +373,15 @@ noop
 dt
 accesskit
 texel
+precompute
+precomputation
+birthtime
+islnk
+lstat
+strerror
+isdir
+scandir
+isreg
+fromtimestamp
+timedelta
+astimezone

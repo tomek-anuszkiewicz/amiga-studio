@@ -9,12 +9,6 @@ const BIT_DIW_HORIZONTAL_LOW: u16 = 1;
 const DIW_COUNT_LEAD: u16 = 2;
 const MASK_PRIORITY: u16 = 0x0007;
 const BIT_SECOND_PRIORITY_SHIFT: u16 = 3;
-const MASK_ODD_PLANES: u8 = 0x15;
-const MASK_EVEN_PLANES: u8 = 0x2a;
-const BIT_COLLISION_ENABLE_SHIFT: u16 = 6;
-const BIT_FIRST_ODD_COLLISION: u16 = 0x0002;
-const BIT_FIRST_EVEN_COLLISION: u16 = 0x0020;
-const BIT_PLAYFIELD_COLLISION: u16 = 0x0001;
 
 impl Denise {
     pub(super) fn render_cck(&mut self, horizontal: u16, vertical: u16) {
@@ -35,7 +29,7 @@ impl Denise {
             let in_window = self.horizontal_window(position + DIW_COUNT_LEAD);
             let sprite = self
                 .sprites
-                .evaluate_pixel(position, self.clxcon, &mut self.clxdat);
+                .evaluate_pixel(position, &self.clxcon, &mut self.clxdat);
             let first = if self.bpl_armed {
                 self.shift_pixel()
             } else {
@@ -109,23 +103,8 @@ impl Denise {
     }
 
     fn accumulate_plane_collisions(&mut self, planes: u8) {
-        let control = self.clxcon.value();
-        let mismatch = (planes ^ control as u8) & (control >> BIT_COLLISION_ENABLE_SHIFT) as u8;
-        let odd = mismatch & MASK_ODD_PLANES == 0;
-        let even = mismatch & MASK_EVEN_PLANES == 0;
-        if odd && even {
-            self.clxdat |= BIT_PLAYFIELD_COLLISION;
-        }
-        for pair in 0..config::SPRITE_COUNT / 2 {
-            if self.sprites.collision_pairs & (1 << pair) == 0 {
-                continue;
-            }
-            if odd {
-                self.clxdat |= BIT_FIRST_ODD_COLLISION << pair;
-            }
-            if even {
-                self.clxdat |= BIT_FIRST_EVEN_COLLISION << pair;
-            }
-        }
+        self.clxdat |= self
+            .clxcon
+            .plane_collisions(planes, self.sprites.collision_bits());
     }
 }

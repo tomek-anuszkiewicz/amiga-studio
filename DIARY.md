@@ -737,3 +737,32 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Compared with the intermediate idle-sprite guard, throughput rose 4.70 percent for Kickstart, 3.63 percent for separated sprites, 4.12 percent for overlapping sprites and 4.89 percent for attached sprites with mid-line Copper writes
   - Active synthetic scenes used eight DMA channels over 200 lines, two bitplanes and a stopped CPU
   - Results preserve the existing model and do not establish new silicon timing or milestone acceptance
+---
+
+### [2026-11-13 20:41 CET] — Cache sprite line output and playfield collision conditions
+- **Affected Subsystems**:
+  - `crates/denise`
+  - `crates/machine_loop/tests`
+  - `Obsidian/Amiga/Design`
+- **What Was Changed (The Concrete Reality)**:
+  - CORE-PERFORMANCE-PREP-20261113: replace per-pixel sprite serialization with a lazily built 2 KiB line buffer shared by palette selection and both collision paths
+  - Rebuild future output after applied sprite changes and retain consumption-time CLXDAT updates plus current shifter inspection and snapshot continuation
+  - Precompute all 64 playfield collision masks when CLXCON changes and retain current palette and display priority
+  - Add the explicitly approved computation and Python API terms to the English vocabulary
+- **Architectural Rationale & Trade-Offs**:
+  - Move repeated sprite work to occupied word spans while preserving register delivery and observable hardware state
+- **Verification & Test Results**:
+  - Matched release ABBA runs against bbcbcdf9ad87e4105ffee26b33e5cea824a6be9d: 300 warmup frames and 3000 measured frames per version per workload
+  - Whole-machine FPS: ROM 109.417 to 116.571 (+6.538%)
+  - separated DMA sprites 121.745 to 125.830 (+3.355%)
+  - overlapping 124.798 to 128.540 (+2.998%)
+  - attached with mid-line writes 123.323 to 126.865 (+2.872%)
+  - GUI excluded and active synthetic scenes use a stopped CPU
+  - 138 full PAL/NTSC machine states and 67840 pixel samples across 4220 deterministic events match baseline bytes without exclusions
+  - Independent review found an H=510 word wrapping into earlier cache entries; clipping to the anchored window fixes early collisions while preserving continuation, with a regression test failing before and passing after
+  - All 231 focused Denise, machine-loop, memory-bus and save-state tests pass on the corrected source
+  - Native release build and Wasm workspace check pass
+  - vault audit passes for 35 specifications and 1054 links
+  - Compatibility evidence preserves the existing timing model rather than measuring silicon
+  - Raw measurements and chart: .agent/tmp/sprite-line-buffer/report.html
+  - Other core performance candidates remain pending and this is not milestone closure

@@ -66,18 +66,32 @@ value alongside decoded odd-channel collision enables. These derived values
 change when [Denise commits the queued write](Denise.md#register-propagation),
 so a pending write cannot affect an earlier pixel.
 
-An activity mask selects pairs with at least one armed channel or a word still
-being shifted. CTL stops future reloads but lets that word finish, including
-transparent pixels. A line boundary ends serialization while retaining armed
-input latches. Small tables map the two channel pixels to a pair color and
-the four collision-presence bits to CLXDAT pair collisions. Once a color wins,
-later pairs skip color selection but still advance and contribute collisions.
-Current pair presence remains available to Denise's playfield collision logic.
+A derived line buffer stores the winning palette index and pair together with
+potential sprite/sprite and sprite/playfield collision bits at each horizontal
+position. Construction starts at the first possible sprite output, so earlier
+DMA latch writes do not repeatedly build the line. Small tables decode occupied
+sprite spans; hidden pairs still contribute collision presence. Rendering reads
+one entry per low-resolution pixel. Palette and playfield priority remain live.
+
+Applied sprite writes invalidate future output after bringing channel state
+up to the consumed pixel. A changed odd-channel collision enable also rebuilds
+the buffer when next used. CTL stops future reloads but lets the current word
+finish, including transparent pixels. A line boundary ends serialization while
+retaining armed input latches. With no armed or serializing channel, evaluation
+returns transparent output without building or reading the buffer.
+
+Cached collisions enter CLXDAT only when their pixel is consumed. Denise tests
+the cached sprite/playfield bits against the current serialized plane bits and
+CLXCON conditions, preserving high-resolution subpixel matches and live reads
+that clear CLXDAT partway through a line.
 
 Snapshots store channel registers, shifters, counters, armed flags, current
 pair presence and the raw CLXCON value. Deserialization rebuilds the derived
-positions, attachment flags and activity masks from that state without
-advancing pixels or committing pending writes. Reset clears both forms.
+positions and attachment flags, leaving the line buffer invalid. Inspection
+and serialization project shifters and counters only through already consumed
+pixels; they never expose the precomputed future. Word shifts occur during
+buffer construction and state projection rather than for every rendered pixel.
+Restore does not advance pixels or commit pending writes. Reset clears both forms.
 
 ## References
 

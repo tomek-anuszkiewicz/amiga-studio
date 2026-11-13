@@ -24,14 +24,14 @@ fn sprite_decode_restore_preserves_pending_writes_and_disarmed_serializers() {
     assert_eq!(d.sprites.channels()[1].hstart(), 81);
     assert_eq!(
         d.sprites
-            .evaluate_pixel(80, d.clxcon, &mut d.clxdat)
+            .evaluate_pixel(80, &d.clxcon, &mut d.clxdat)
             .unwrap()
             .color_index,
         17
     );
     assert_eq!(
         d.sprites
-            .evaluate_pixel(81, d.clxcon, &mut d.clxdat)
+            .evaluate_pixel(81, &d.clxcon, &mut d.clxdat)
             .unwrap()
             .color_index,
         29
@@ -60,11 +60,11 @@ fn sprite_decode_restore_preserves_pending_writes_and_disarmed_serializers() {
     for horizontal in 82..115 {
         let actual = d
             .sprites
-            .evaluate_pixel(horizontal, d.clxcon, &mut d.clxdat);
+            .evaluate_pixel(horizontal, &d.clxcon, &mut d.clxdat);
         let resumed =
             restored
                 .sprites
-                .evaluate_pixel(horizontal, restored.clxcon, &mut restored.clxdat);
+                .evaluate_pixel(horizontal, &restored.clxcon, &mut restored.clxdat);
         assert_eq!(actual, resumed);
         assert_eq!(d, restored);
         if horizontal == 82 {
@@ -158,7 +158,7 @@ fn test_manual_sprite_repeats_outside_dma_vertical_window() {
         let denise = &mut harness.machine.denise;
         let pixel = denise
             .sprites
-            .evaluate_pixel(240, denise.clxcon, &mut denise.clxdat);
+            .evaluate_pixel(240, &denise.clxcon, &mut denise.clxdat);
         assert_eq!(pixel.map(|value| value.color_index), Some(17));
         assert!(denise.sprites.channels()[0].is_armed);
     }
