@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "testing"
 status: "active"
 created: 2026-09-14
-updated: 2026-11-12
+updated: 2026-11-13
 related: ["[General Architecture.md](../General%20Architecture.md)", "[CPU SingleStepTests.md](CPU%20SingleStepTests.md)", "[CPU Instruction Benchmarking.md](../Performance/CPU%20Instruction%20Benchmarking.md)", "[Machine Loop.md](../Machine%20Loop.md)", "[Platform Quirks and Invariants Catalog.md](../Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
 tracked_paths:
   - "crates/test_runner/tests"
@@ -17,6 +17,7 @@ tracked_paths:
   - "tools/bootstrap/pdf-to-markdown/tests"
   - "tools/bootstrap/book-to-markdown/tests"
   - "tools/amiga-rag-mcp-server/tests"
+  - "tools/artifacts/tests"
   - "tools/blep_generator/tests"
 ---
 
@@ -33,7 +34,8 @@ Transaction checker regressions, SingleStep override contracts and the bounded
 are standard suites. The pilot checks the verifier using selected SingleStep cases;
 it does not run the full external suite. If no
 standard suites remain, it schedules no Cargo test command. Python contracts
-for the RAG MCP adapter and verification tooling always run. Bootstrap, shared
+for the RAG MCP adapter, [artifact report](../../../../tools/artifacts/report.py)
+and verification tooling always run. Bootstrap, shared
 conversion, HTML conversion, PDF conversion and book review contracts run when Git reports staged,
 unstaged or nonignored new paths under `tools/bootstrap/`. The book review suite
 shares one browser process across its browser tests while isolating each test in

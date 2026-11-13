@@ -259,7 +259,7 @@ to inspect only this gate. Missing local reference books are outside its scan.
 Topic tags are selected by reviewing the chapter and are not mechanically checked.
 
 Python tool contracts live beside their owning tools. Commit verification always
-runs RAG MCP and verification CLI contracts. It runs the four Bootstrap contract
+runs RAG MCP, artifact report and verification CLI contracts. It runs the four Bootstrap contract
 suites when Git reports staged, unstaged or nonignored new paths under
 `tools/bootstrap/`, including book data. Renames count at both endpoints. The
 Book Review suite checks pinned Python packages and local KaTeX assets, then uses

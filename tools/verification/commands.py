@@ -105,6 +105,7 @@ PYTHON_SUITES = (
     ("PDF conversion contracts", "tools/bootstrap/pdf-to-markdown/tests"),
     ("Book review contracts", "tools/bootstrap/book-to-markdown/tests"),
     ("RAG MCP contracts", "tools/amiga-rag-mcp-server/tests"),
+    ("Artifact report contracts", "tools/artifacts/tests"),
     ("Verification CLI contracts", "tools/verification/tests"),
 )
 
@@ -130,6 +131,7 @@ PYTHON_INPUTS = {
         "tools/bootstrap/conversion/",
     ),
     "RAG MCP contracts": ("tools/amiga-rag-mcp-server/", ".codex/config.toml"),
+    "Artifact report contracts": ("tools/artifacts/",),
     "Verification CLI contracts": ("tools/verification/",),
 }
 

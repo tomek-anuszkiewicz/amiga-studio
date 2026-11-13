@@ -52,3 +52,11 @@ Diagnose and resolve the failure, then rerun the full commit profile on the fina
 If the failure cannot be resolved, report blocked verification and leave the changes uncommitted. A focused passing test or a written explanation of the failure does not waive this gate. For milestone completion, the required milestone profile must also pass before its completion commit.
 
 `verify.py` owns test selection and includes the architecture gate. Do not replace it with individually chosen completion suites. Milestone requirements are in [roadmap-maintenance.md](roadmap-maintenance.md). Run [audit-code-quality](../skills/audit-code-quality/SKILL.md) only on explicit request or before a major branch merge.
+
+After each successful commit, include a fresh storage report for `target` and
+`.agent/tmp` in the user-facing completion message, following the
+[artifact reporting procedure](../references/agent-tooling.md#local-artifact-storage).
+Show sizes, accumulation across observed work periods, and optional cleanup
+commands. Reporting does not authorize deletion, change build settings, or add
+hooks. If measurement is incomplete, state that limit instead of claiming a
+complete total.

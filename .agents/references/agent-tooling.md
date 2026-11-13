@@ -75,6 +75,59 @@ in `tools/verification/checks/check_english.json`; maintain them according to
 scan those entire files using the same English dictionary and project vocabulary, except for `always_excluded_directories`. Task plans under `.agent/tasks/` are always excluded and need no vocabulary or file-specific exceptions. Reviewed terms live in [english_words/](../../tools/verification/checks/english_words/); deliberate literal examples use the scope catalog's exact-file `file_words` map. Invoke validation explicitly; use no lifecycle or Git hooks.
 
 
+## Local Artifact Storage
+
+After a successful commit, run the shared read-only report from the repository
+root and summarize its output in the completion message:
+
+```powershell
+python tools/artifacts/report.py
+```
+
+The report measures `target` and `.agent/tmp`, lists their largest directories,
+and groups current file sizes by creation date, modification date, and the later
+of those dates. Each observed date has its own row, so continuous work does not
+collapse into one large period. These groups describe surviving files, not
+measured historical growth, actual work sessions, or last access. A file created long ago but rewritten recently
+belongs to a recent later-date group. Copies and extracted files can preserve
+both timestamps, so inspect directory context before interpreting very old dates.
+Missing creation times, scan errors, and excluded links are reported explicitly.
+The totals are logical file sizes, not exact physical disk allocation.
+
+Compare earlier groups with the latest activity and identify substantial
+accumulation across multiple work dates or periods. Base a cleanup recommendation
+on the amount and share of earlier data, its directory, and task status; quote
+those observations. Do not use a fixed number of calendar days or a size threshold
+alone. Old build dependencies may still be used, and a large fresh build may be
+normal. Never label timestamp groups as proven unused or promise that their size
+is the lasting space saving after rebuilding. If the data is mostly recent or
+task status is unclear, report that without recommending a broad purge.
+
+Include these optional commands, explaining that the next build recreates its
+needed artifacts and takes longer. Run cleanup only on a separate user decision
+and while affected builds, tests, and programs are stopped:
+
+```powershell
+cargo clean --target-dir target --dry-run
+cargo clean --target-dir target
+cargo clean --target-dir target/llvm-cov-target
+```
+
+The last command removes only the separate coverage build cache. At roadmap
+closure, identify `.agent/tmp` directories belonging to the completed work,
+confirm necessary conclusions are preserved in the committed record, and provide
+`Remove-Item -LiteralPath '<verified repository-relative directory>' -Recurse -Force`
+commands with actual reviewed paths. Resolve each proposed path inside
+`.agent/tmp`; do not select an entire directory if it contains active work,
+unresolved evidence, or files with uncertain ownership. Date alone is insufficient
+to select these paths. If no directory qualifies, state that instead of inventing
+a cleanup candidate. The commit and its roadmap closure share one report.
+
+Keep the report in the conversation; do not create report files, scheduled jobs,
+or hooks. A failed scan affects the report's completeness, not the validity of a
+commit already created. Test changes to this tool with
+`python tools/verification/verify.py test python directory tools/artifacts/tests`.
+
 ## Configuration and Reference Provisioning
 
 Project MCP registration is in [`.codex/config.toml`](../../.codex/config.toml).

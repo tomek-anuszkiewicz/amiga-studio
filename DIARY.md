@@ -766,3 +766,24 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Compatibility evidence preserves the existing timing model rather than measuring silicon
   - Raw measurements and chart: .agent/tmp/sprite-line-buffer/report.html
   - Other core performance candidates remain pending and this is not milestone closure
+---
+
+### [2026-11-13 21:25 CET] — Report local artifact storage after commits
+- **Affected Subsystems**:
+  - `tools/artifacts`
+  - `verification tool contracts`
+  - `commit and roadmap procedures`
+- **What Was Changed (The Concrete Reality)**:
+  - Add a read-only report of target and temporary artifact sizes with creation and modification date groups
+  - Show cleanup commands bound to the measured target directory
+  - Require a fresh report after commits and scoped temporary-directory recommendations at roadmap closure
+  - Register artifact report tests in ordinary Python selection and commit verification
+- **Architectural Rationale & Trade-Offs**:
+  - Expose accumulated data across work periods while keeping cleanup under user control
+  - Distinguish surviving file sizes from historical growth and actual use
+- **Verification & Test Results**:
+  - Artifact tests completed with four passes and one platform-dependent symbolic link skip
+  - All 91 verification tool contracts passed
+  - Full local artifact measurement and command help completed successfully
+  - Vault audit passed for 35 specifications and 1055 links
+  - Whitespace checks passed

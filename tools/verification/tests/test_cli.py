@@ -96,6 +96,8 @@ class SelectionTests(unittest.TestCase):
             ("tools/bootstrap/book-to-markdown/review/model.py", {"Book review contracts"}),
             ("tools/amiga-rag-mcp-server/server.py", {"RAG MCP contracts"}),
             (".codex/config.toml", {"RAG MCP contracts"}),
+            ("tools/artifacts/report.py", {"Artifact report contracts"}),
+            ("tools/artifacts/tests/test_report.py", {"Artifact report contracts"}),
             ("tools/verification/commands.py", {"Verification CLI contracts"}),
         )
         for path, expected in cases:
@@ -159,7 +161,7 @@ class SelectionTests(unittest.TestCase):
         commands = selected("commit", ["tools/bootstrap/book-to-markdown/review/service.py"])
         self.assertTrue(any("llvm-cov" in item[1] for item in commands))
         self.assertTrue(any(any(part.endswith("checks/check_architecture.py") for part in item[1]) for item in commands))
-        self.assertEqual(sum("discover" in item[1] for item in commands), 6)
+        self.assertEqual(sum("discover" in item[1] for item in commands), 7)
         self.assertTrue(any("tools/bootstrap/book-to-markdown/run_tests.py" in item[1] for item in commands))
 
     def test_commit_skips_bootstrap_contracts_without_bootstrap_changes(self):
@@ -170,6 +172,7 @@ class SelectionTests(unittest.TestCase):
                 names = {name for name, _, _ in selected("commit", changes)}
                 self.assertFalse(names & bootstrap)
                 self.assertIn("RAG MCP contracts", names)
+                self.assertIn("Artifact report contracts", names)
                 self.assertIn("Verification CLI contracts", names)
         for path in ("tools/bootstrap/conversion/client.py",
                      "tools/bootstrap/books/new/source.json"):
