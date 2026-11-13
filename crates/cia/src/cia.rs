@@ -15,7 +15,7 @@ use registers::{
 };
 use serial::SerialState;
 
-use config::{tick_mutations, DelayedMutation};
+use config::MutationQueue;
 use serde::{Deserialize, Serialize};
 
 /// Number of Color Clocks per Motorola E-Clock tick (5 CCK = 10 CPU cycles)
@@ -103,7 +103,7 @@ pub struct Cia {
     pc_pipeline: u8,
 
     /// Fixed inline in-flight register mutation buffer for CIA
-    pub mutations: [Option<DelayedMutation>; CIA_REGISTER_COUNT],
+    pub mutations: MutationQueue<{ CIA_REGISTER_COUNT }>,
 }
 
 impl Cia {
@@ -127,14 +127,10 @@ impl Cia {
     pub fn step_cck(&mut self) {
         self.eclock_phase = self.eclock_phase.wrapping_add(1) % CCK_PER_ECLOCK;
         self.bus_wait_cck = self.bus_wait_cck.map(|n| n.saturating_sub(1));
-        let mut due = [None; CIA_REGISTER_COUNT];
-        let mut due_count = 0;
-        tick_mutations(&mut self.mutations, |selector, value| {
-            due[due_count] = Some((selector, value as u8));
-            due_count += 1;
-        });
-        for (selector, value) in due.into_iter().flatten() {
-            self.apply_register(selector, value);
+        self.mutations.tick();
+        for index in 0..self.mutations.due().len() {
+            let (selector, value) = self.mutations.due()[index];
+            self.apply_register(selector, value as u8);
         }
         if self.eclock_phase == E_WRITE_CAPTURE_PHASE {
             if let Some(latched) = self.tod_read_latch.take() {

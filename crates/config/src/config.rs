@@ -11,7 +11,7 @@ pub mod mutation;
 pub mod registers;
 
 pub use mutation::{
-    stage_mutation, tick_mutations, DelayedMutation, MutationMode, DMACON_WRITE_DELAY_CCK,
+    DelayedMutation, MutationMode, MutationQueue, DMACON_WRITE_DELAY_CCK,
     PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
 };
 pub use registers::*;

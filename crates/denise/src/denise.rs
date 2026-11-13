@@ -8,7 +8,7 @@ pub mod sprites;
 pub use sprites::Sprites;
 
 pub use config::DeniseModel;
-use config::{tick_mutations, DelayedMutation};
+use config::MutationQueue;
 use serde::{Deserialize, Serialize};
 
 mod game_ports;
@@ -95,8 +95,7 @@ pub struct Denise {
     pub pipeline_pixels_valid: [bool; PIPELINE_PIXELS],
 
     /// Fixed inline in-flight mutation buffer (Zero-allocation)
-    #[serde(with = "config::big_array")]
-    pub mutations: [Option<DelayedMutation>; Denise::MUTATION_CAPACITY],
+    pub mutations: MutationQueue<{ Denise::MUTATION_CAPACITY }>,
 }
 
 impl Denise {
@@ -138,7 +137,7 @@ impl Denise {
             last_ham_rgb: 0,
             pipeline_pixels: [0; PIPELINE_PIXELS],
             pipeline_pixels_valid: [false; PIPELINE_PIXELS],
-            mutations: [None; Self::MUTATION_CAPACITY],
+            mutations: MutationQueue::default(),
         }
     }
 
@@ -172,13 +171,13 @@ impl Denise {
         self.last_ham_rgb = 0;
         self.pipeline_pixels = [0; PIPELINE_PIXELS];
         self.pipeline_pixels_valid = [false; PIPELINE_PIXELS];
-        self.mutations = [None; Self::MUTATION_CAPACITY];
+        self.mutations.clear();
     }
 
     /// Advances Denise pixel pipeline, steps sprites and frame builder,
     /// and processes in-flight mutations by 1 Color Clock.
-    /// Returns any register writes that matured and committed on this exact cycle.
-    pub fn step_cck(&mut self) -> [Option<(u16, u16)>; Self::MUTATION_CAPACITY] {
+    /// Borrows all writes committed this cycle until the next mutable chip access.
+    pub fn step_cck(&mut self) -> &[(u16, u16)] {
         if let Some(address) = self.pins.rga_strobe.take() {
             self.receive_sync_strobe(address);
         }
@@ -188,19 +187,13 @@ impl Denise {
         self.sync.hpos = self.sync.hpos.wrapping_add(1) & MASK_HORIZONTAL_CURSOR;
         self.render_cck(hpos, vpos);
 
-        let mut committed = [None; Self::MUTATION_CAPACITY];
-        let mut committed_count = 0;
-        tick_mutations(&mut self.mutations, |reg, val| {
-            if committed_count < committed.len() {
-                committed[committed_count] = Some((reg, val));
-                committed_count += 1;
-            }
-        });
-        for item in committed[..committed_count].iter().flatten() {
-            self.apply_register_write(item.0, item.1);
+        self.mutations.tick();
+        for index in 0..self.mutations.due().len() {
+            let (reg, value) = self.mutations.due()[index];
+            self.apply_register_write(reg, value);
         }
 
-        committed
+        self.mutations.due()
     }
 
     /// Shifts out 1 pixel (MSB first) across all 6 bitplanes

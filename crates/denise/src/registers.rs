@@ -2,7 +2,7 @@
 
 use super::Denise;
 use config::custom_reg::denise as reg;
-use config::{stage_mutation, MutationMode, PROVISIONAL_CUSTOM_WRITE_DELAY_CCK};
+use config::{MutationMode, PROVISIONAL_CUSTOM_WRITE_DELAY_CCK};
 
 const REGISTER_SPR_POS_SELECTOR: u16 = 0;
 const REGISTER_SPR_CTL_SELECTOR: u16 = (reg::REGISTER_SPR0CTL - reg::REGISTER_SPR0POS) / 2;
@@ -13,7 +13,7 @@ impl Denise {
     /// Capacity preflight for an atomic transfer with multiple receivers.
     #[inline]
     pub fn can_accept_register_write(&self) -> bool {
-        self.mutations.iter().any(Option::is_none)
+        !self.mutations.is_full()
     }
 
     /// Applies STREQU at accepted selection.
@@ -43,8 +43,7 @@ impl Denise {
     /// Queues BPLCON0; active state changes only when due.
     #[inline]
     pub fn set_bplcon0(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
+        self.mutations.stage(
             reg::REGISTER_BPLCON0,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
@@ -55,8 +54,7 @@ impl Denise {
     /// Queues DIWSTRT; active state changes only when due.
     #[inline]
     pub fn set_diwstrt(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
+        self.mutations.stage(
             reg::REGISTER_DIWSTRT,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
@@ -67,8 +65,7 @@ impl Denise {
     /// Queues DIWSTOP; active state changes only when due.
     #[inline]
     pub fn set_diwstop(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
+        self.mutations.stage(
             reg::REGISTER_DIWSTOP,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
@@ -82,8 +79,7 @@ impl Denise {
         if index >= config::SPRITE_COUNT {
             return false;
         }
-        stage_mutation(
-            &mut self.mutations,
+        self.mutations.stage(
             reg::REGISTER_SPR0POS + (index as u16) * config::SPRITE_REGISTER_STRIDE,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
@@ -97,8 +93,7 @@ impl Denise {
         if index >= config::SPRITE_COUNT {
             return false;
         }
-        stage_mutation(
-            &mut self.mutations,
+        self.mutations.stage(
             reg::REGISTER_SPR0CTL + (index as u16) * config::SPRITE_REGISTER_STRIDE,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
@@ -109,8 +104,7 @@ impl Denise {
     /// Queues BPLCON1; active state changes only when due.
     #[inline]
     pub fn set_bplcon1(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
+        self.mutations.stage(
             reg::REGISTER_BPLCON1,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
@@ -121,8 +115,7 @@ impl Denise {
     /// Queues CLXCON; active state changes only when due.
     #[inline]
     pub fn set_clxcon(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
+        self.mutations.stage(
             reg::REGISTER_CLXCON,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
@@ -133,8 +126,7 @@ impl Denise {
     /// Queues BPLCON2; active state changes only when due.
     #[inline]
     pub fn set_bplcon2(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
+        self.mutations.stage(
             reg::REGISTER_BPLCON2,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
@@ -148,8 +140,7 @@ impl Denise {
         if index >= config::OCS_BITPLANE_COUNT {
             return false;
         }
-        stage_mutation(
-            &mut self.mutations,
+        self.mutations.stage(
             reg::REGISTER_BPL1DAT + (index as u16) * 2,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
@@ -163,8 +154,7 @@ impl Denise {
         if index >= config::SPRITE_COUNT {
             return false;
         }
-        stage_mutation(
-            &mut self.mutations,
+        self.mutations.stage(
             reg::REGISTER_SPR0DATA + (index as u16) * config::SPRITE_REGISTER_STRIDE,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
@@ -178,8 +168,7 @@ impl Denise {
         if index >= config::SPRITE_COUNT {
             return false;
         }
-        stage_mutation(
-            &mut self.mutations,
+        self.mutations.stage(
             reg::REGISTER_SPR0DATB + (index as u16) * config::SPRITE_REGISTER_STRIDE,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
@@ -193,8 +182,7 @@ impl Denise {
         if index >= Self::COLOR_PALETTE_SIZE {
             return false;
         }
-        stage_mutation(
-            &mut self.mutations,
+        self.mutations.stage(
             reg::REGISTER_COLOR00 + (index as u16) * 2,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
@@ -205,8 +193,7 @@ impl Denise {
     /// Queues JOYTEST; active state changes only when due.
     #[inline]
     pub fn set_joytest(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
+        self.mutations.stage(
             reg::REGISTER_JOYTEST,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,

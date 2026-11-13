@@ -101,9 +101,9 @@ fn every_ocs_write_reaches_only_its_owners_and_is_delivered_once_when_due() {
                     _ => 0x5a5a,
                 };
                 for (queue, &(delay, mode)) in [
-                    mb.agnus.mutations.as_slice(),
-                    mb.denise.mutations.as_slice(),
-                    mb.paula.mutations.as_slice(),
+                    mb.agnus.mutations.pending(),
+                    mb.denise.mutations.pending(),
+                    mb.paula.mutations.pending(),
                 ]
                 .into_iter()
                 .zip(&contract)
@@ -119,20 +119,16 @@ fn every_ocs_write_reaches_only_its_owners_and_is_delivered_once_when_due() {
                         }]
                     };
                     assert_eq!(
-                        queue.iter().flatten().copied().collect::<Vec<_>>(),
+                        queue.to_vec(),
                         expected,
                         "{video:?} {offset:03x} lane {lane}"
                     );
                 }
                 for elapsed in 1..=5 {
                     let due = [
-                        mb.agnus
-                            .step_cck()
-                            .into_iter()
-                            .flatten()
-                            .collect::<Vec<_>>(),
-                        mb.denise.step_cck().into_iter().flatten().collect(),
-                        mb.paula.step_cck().into_iter().flatten().collect(),
+                        mb.agnus.step_cck().to_vec(),
+                        mb.denise.step_cck().to_vec(),
+                        mb.paula.step_cck().to_vec(),
                     ];
                     for (events, &(delay, _)) in due.iter().zip(&contract) {
                         let expected = if delay != 0 && elapsed == delay {
@@ -146,9 +142,9 @@ fn every_ocs_write_reaches_only_its_owners_and_is_delivered_once_when_due() {
                         );
                     }
                 }
-                assert!(mb.agnus.mutations.iter().all(Option::is_none));
-                assert!(mb.denise.mutations.iter().all(Option::is_none));
-                assert!(mb.paula.mutations.iter().all(Option::is_none));
+                assert!(mb.agnus.mutations.is_empty());
+                assert!(mb.denise.mutations.is_empty());
+                assert!(mb.paula.mutations.is_empty());
             }
         }
         assert_eq!(writable, 180);
@@ -744,8 +740,8 @@ fn test_agnus_writes_are_explicit_and_reserved_offset_is_ignored() {
         assert!(mb
             .agnus
             .mutations
+            .pending()
             .iter()
-            .flatten()
             .any(|mutation| { mutation.reg_offset == offset && mutation.value == value }));
     }
 
@@ -754,8 +750,8 @@ fn test_agnus_writes_are_explicit_and_reserved_offset_is_ignored() {
     assert!(mb
         .agnus
         .mutations
+        .pending()
         .iter()
-        .flatten()
         .all(|mutation| mutation.reg_offset != 0x07C));
 }
 
@@ -768,12 +764,12 @@ fn test_sprite_position_and_control_writes_reach_both_chips() {
             let offset = custom_reg::denise::REGISTER_SPR0POS + sprite * 8 + register;
             mb.router().write_custom_word(offset, value);
 
-            let first = mb.agnus.step_cck();
+            let first = mb.agnus.step_cck().to_vec();
             let second = mb.agnus.step_cck();
             assert!(first
                 .into_iter()
-                .chain(second)
-                .any(|write| write == Some((offset, value))));
+                .chain(second.iter().copied())
+                .any(|write| write == (offset, value)));
 
             let _ = mb.denise.step_cck();
             let channel = &mb.denise.sprites.channels[usize::from(sprite)];
@@ -857,16 +853,7 @@ fn address_strobes_do_not_wait_for_full_data_queues() {
     assert!(!mb.denise.sync.vertical_blank);
     assert_eq!(mb.paula.sync.cck_since_horizontal, 0);
     assert!(!mb.paula.sync.equalization);
-    assert_eq!(
-        mb.agnus.mutations.iter().flatten().count(),
-        Agnus::MUTATION_CAPACITY
-    );
-    assert_eq!(
-        mb.denise.mutations.iter().flatten().count(),
-        Denise::MUTATION_CAPACITY
-    );
-    assert_eq!(
-        mb.paula.mutations.iter().flatten().count(),
-        Paula::MUTATION_CAPACITY
-    );
+    assert_eq!(mb.agnus.mutations.len(), Agnus::MUTATION_CAPACITY);
+    assert_eq!(mb.denise.mutations.len(), Denise::MUTATION_CAPACITY);
+    assert_eq!(mb.paula.mutations.len(), Paula::MUTATION_CAPACITY);
 }

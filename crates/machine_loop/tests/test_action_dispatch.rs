@@ -472,7 +472,7 @@ fn test_floppy_ciab_prb_polling_and_dskbytr_paula_latching() {
     // The accepted write is pending; pins and drive control have not changed.
     assert!(!machine.cia_b.prb_mutated);
     assert!(!machine.floppy.drives[0].motor_on);
-    assert_eq!(machine.cia_b.mutations.iter().flatten().count(), 1);
+    assert_eq!(machine.cia_b.mutations.len(), 1);
 
     // CIA capture changes the source latch first. The retained connector frame
     // is delivered at our next input phase, not during that register commitment.

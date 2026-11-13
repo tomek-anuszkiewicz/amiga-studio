@@ -8,9 +8,7 @@ use crate::register_bits::dskbytr::{
 use crate::register_bits::intreq;
 use config::custom_reg::paula as reg;
 use config::mask::dmacon;
-use config::{
-    stage_mutation, MutationMode, DMACON_WRITE_DELAY_CCK, PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
-};
+use config::{MutationMode, DMACON_WRITE_DELAY_CCK, PROVISIONAL_CUSTOM_WRITE_DELAY_CCK};
 
 const MASK_PAULA_DMA: u16 = dmacon::BIT_DSKEN | dmacon::MASK_AUD_ALL;
 
@@ -18,7 +16,7 @@ impl Paula {
     /// Capacity preflight for an atomic transfer with multiple receivers.
     #[inline]
     pub fn can_accept_register_write(&self) -> bool {
-        self.mutations.iter().flatten().count() < Self::MUTATION_CAPACITY
+        !self.mutations.is_full()
     }
 
     fn schedule_register(
@@ -28,8 +26,7 @@ impl Paula {
         delay: u8,
         mode: MutationMode,
     ) -> bool {
-        self.can_accept_register_write()
-            && stage_mutation(&mut self.mutations, offset, value, delay, mode)
+        self.can_accept_register_write() && self.mutations.stage(offset, value, delay, mode)
     }
 
     /// Applies a CPU-selected RGA sync address without using the data-write queue.

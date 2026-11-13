@@ -321,7 +321,7 @@ fn granted_audio_and_sprite_bus_words_use_receiver_queues_once() {
                 assert_eq!(machine.paula.audio.channels[channel].dat, before);
                 machine.step_cck();
                 assert_eq!(machine.paula.audio.channels[channel].dat, word);
-                assert!(machine.paula.mutations.iter().all(Option::is_none));
+                assert!(machine.paula.mutations.is_empty());
             }
         }
         for sprite in 0..8 {
@@ -351,8 +351,15 @@ fn refused_dma_output_survives_a_snapshot_until_capacity_returns() {
         assert!(machine.paula.set_auddat(0, 0x1111));
     }
     // Keep the receiving local queue busy across the common issue boundary.
-    for mutation in machine.paula.mutations.iter_mut().flatten() {
-        mutation.remaining_cck = 5;
+    let pending = machine.paula.mutations.pending().to_vec();
+    machine.paula.mutations.clear();
+    for mutation in pending {
+        assert!(machine.paula.mutations.stage(
+            mutation.reg_offset,
+            mutation.value,
+            5,
+            mutation.mode,
+        ));
     }
     let output = Some((custom_reg::paula::REGISTER_AUD1DAT, 0x4567));
     machine.agnus.pending_dma_write = output;
@@ -378,7 +385,7 @@ fn refused_dma_output_survives_a_snapshot_until_capacity_returns() {
     }
     assert!(machine.agnus.pending_dma_write.is_none());
     assert_eq!(machine.paula.audio.channels[1].dat, 0x4567);
-    assert!(machine.paula.mutations.iter().all(Option::is_none));
+    assert!(machine.paula.mutations.is_empty());
 }
 
 #[test]

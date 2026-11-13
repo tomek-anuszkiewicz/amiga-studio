@@ -105,7 +105,7 @@ fn guest_cpu_cia_write_retries_and_serializes_before_acceptance_and_commitment()
             }
         }
         assert!(machine.cia_a.bus_wait_cck.is_some());
-        assert!(machine.cia_a.mutations.iter().all(Option::is_none));
+        assert!(machine.cia_a.mutations.is_empty());
         let mut restored = serialized_copy(&machine);
         let mut accepted = false;
         for _ in 0..12 {
@@ -117,7 +117,7 @@ fn guest_cpu_cia_write_retries_and_serializes_before_acceptance_and_commitment()
                 machine.save_state() == restored.save_state(),
                 "serialized continuation differs"
             );
-            if machine.cia_a.mutations.iter().flatten().count() == 1 {
+            if machine.cia_a.mutations.len() == 1 {
                 assert_eq!(machine.cia_a.eclock_phase, 1);
                 assert_eq!(machine.cia_a.sdr(), 0);
                 assert_eq!(machine.cia_a.bus_wait_cck, None);
@@ -138,7 +138,7 @@ fn guest_cpu_cia_write_retries_and_serializes_before_acceptance_and_commitment()
                 "continuation differs at CCK {cck}"
             );
             assert_eq!(machine.cia_a.sdr(), 0x5a);
-            assert!(machine.cia_a.mutations.iter().all(Option::is_none));
+            assert!(machine.cia_a.mutations.is_empty());
         }
     }
 }
@@ -156,7 +156,7 @@ fn reset_cancels_pending_capture_and_bus_synchronization() {
     );
     assert!(machine.cia_b.bus_wait_cck.is_some());
     machine.reset_warm();
-    assert!(machine.cia_a.mutations.iter().all(Option::is_none));
+    assert!(machine.cia_a.mutations.is_empty());
     assert_eq!(machine.cia_b.bus_wait_cck, None);
     assert!(machine.physical_memory.is_low_memory_overlay_active());
     machine.step_cycles(10);

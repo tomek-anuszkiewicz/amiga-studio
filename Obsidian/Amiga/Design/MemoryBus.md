@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "memory_bus"
 status: "active"
 created: 2026-08-31
-updated: 2026-11-12
+updated: 2026-11-13
 related: ["[General Architecture.md](General%20Architecture.md)", "[Physical Memory.md](Physical%20Memory.md)", "[Machine Loop.md](Machine%20Loop.md)", "[DMA.md](DMA.md)", "[Agnus.md](Agnus.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)", "[CIA.md](CIA.md)", "[RTC.md](RTC.md)", "[Custom Chip Register Ownership and Access Matrix.md](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md)", "[Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
 tracked_paths:
   - "crates/memory_bus"
@@ -163,7 +163,10 @@ another write. The CPU holds the same active micro-step and payload on
 can later be returned due. Shared preflight rejects a full receiver before
 any destination accepts the write. Paula has 32 register-write slots; Agnus
 and Denise each have 64. Interrupt input levels use no register slot.
-All matured entries are returned in retained order.
+All matured entries are returned in retained order as a borrowed slice from
+each custom chip step. The [shared queue](Configuration.md#shared-propagation-state)
+owns occupied storage, due-result lifetime and serialization; changing its
+representation does not move acceptance, commitment or pin-sampling phases.
 
 ### RTC and exceptional access paths
 

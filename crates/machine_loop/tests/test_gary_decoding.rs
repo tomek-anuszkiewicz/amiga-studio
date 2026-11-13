@@ -54,13 +54,13 @@ fn guest_dual_cia_word_transfer_keeps_one_pending_event_per_receiver() {
                         );
                     }
                 }
-                if machine.cia_a.mutations.iter().flatten().count() == 1 {
+                if machine.cia_a.mutations.len() == 1 {
                     assert!(!saw_pending, "a retry inserted another write");
                     saw_pending = true;
                     assert_eq!(machine.cia_a.eclock_phase, 1);
                     assert_eq!((machine.cia_a.sdr, machine.cia_b.sdr), (0, 0));
                     for (chip, value) in [(&machine.cia_a, 0x65), (&machine.cia_b, 0x87)] {
-                        let pending: Vec<_> = chip.mutations.iter().flatten().collect();
+                        let pending: Vec<_> = chip.mutations.pending().iter().collect();
                         assert_eq!(pending.len(), 1);
                         assert_eq!(pending[0].reg_offset, 0x0c);
                         assert_eq!(pending[0].value, value);
@@ -75,8 +75,8 @@ fn guest_dual_cia_word_transfer_keeps_one_pending_event_per_receiver() {
             assert!(machine.cpu.state.is_stopped());
             assert_eq!(machine.cpu.state.d_word(0), 0x8765);
             assert_eq!((machine.cia_a.sdr, machine.cia_b.sdr), (0x65, 0x87));
-            assert!(machine.cia_a.mutations.iter().all(Option::is_none));
-            assert!(machine.cia_b.mutations.iter().all(Option::is_none));
+            assert!(machine.cia_a.mutations.is_empty());
+            assert!(machine.cia_b.mutations.is_empty());
         }
     }
 }

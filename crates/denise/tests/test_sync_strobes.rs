@@ -18,7 +18,7 @@ fn repeated_address_strobes_update_receiver_state_immediately() {
     assert!(denise.sync.long_line);
     denise.strobe_strhor();
     assert!(!denise.sync.vertical_blank && !denise.sync.long_line);
-    assert!(denise.mutations.iter().all(Option::is_none));
+    assert!(denise.mutations.is_empty());
     denise.reset();
     assert!(!denise.sync.synchronized);
 }

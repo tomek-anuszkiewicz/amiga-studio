@@ -2,14 +2,13 @@
 
 use super::Agnus;
 use config::custom_reg::agnus as reg;
-use config::{stage_mutation, MutationMode, PROVISIONAL_CUSTOM_WRITE_DELAY_CCK};
+use config::{MutationMode, PROVISIONAL_CUSTOM_WRITE_DELAY_CCK};
 
 impl Agnus {
     /// Queues COPCON; active state changes only when due.
     #[inline]
     pub fn set_copcon(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
+        self.mutations.stage(
             reg::REGISTER_COPCON,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
@@ -20,8 +19,7 @@ impl Agnus {
     /// Queues COP1LCH; active state changes only when due.
     #[inline]
     pub fn set_cop1lch(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
+        self.mutations.stage(
             reg::REGISTER_COP1LCH,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
@@ -32,8 +30,7 @@ impl Agnus {
     /// Queues COP1LCL; active state changes only when due.
     #[inline]
     pub fn set_cop1lcl(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
+        self.mutations.stage(
             reg::REGISTER_COP1LCL,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
@@ -44,8 +41,7 @@ impl Agnus {
     /// Queues COP2LCH; active state changes only when due.
     #[inline]
     pub fn set_cop2lch(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
+        self.mutations.stage(
             reg::REGISTER_COP2LCH,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
@@ -56,8 +52,7 @@ impl Agnus {
     /// Queues COP2LCL; active state changes only when due.
     #[inline]
     pub fn set_cop2lcl(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
+        self.mutations.stage(
             reg::REGISTER_COP2LCL,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
@@ -68,8 +63,7 @@ impl Agnus {
     /// Queues COPINS; active state changes only when due.
     #[inline]
     pub fn set_copins(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
+        self.mutations.stage(
             reg::REGISTER_COPINS,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,

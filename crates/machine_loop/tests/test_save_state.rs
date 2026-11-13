@@ -12,6 +12,53 @@ use common::continuation::{
 };
 
 #[test]
+fn snapshots_preserve_pending_queues_without_replaying_last_ticks_writes() {
+    let mut machine = A500Machine::new(A500Config::default());
+    machine.cpu.state.set_stopped(true);
+    assert!(machine.denise.set_color(0, 0x123));
+    assert!(machine.agnus.set_bplcon0(0x2000));
+    assert!(machine.paula.set_dmacon(0x8200));
+    assert!(machine.cia_a.set_pra(0x42));
+    machine.step_cck();
+    assert_eq!(machine.denise.mutations.due(), [(0x180, 0x123)]);
+    assert_eq!(machine.agnus.mutations.pending()[0].remaining_cck, 3);
+    assert_eq!(machine.paula.mutations.pending()[0].remaining_cck, 1);
+    assert_eq!(machine.cia_a.mutations.pending()[0].remaining_cck, 1);
+
+    let snapshot = machine.save_state();
+    assert!(snapshot.denise.mutations.due().is_empty());
+    let encoded = serde_json::to_value(&snapshot).unwrap();
+    assert_eq!(encoded["denise"]["mutations"], serde_json::json!([]));
+    assert_eq!(encoded["agnus"]["mutations"].as_array().unwrap().len(), 1);
+    let decoded: A500State = serde_json::from_value(encoded).unwrap();
+    assert_eq!(snapshot, decoded);
+    let mut restored = A500Machine::new(A500Config::default());
+    restored.load_state(&decoded);
+    assert!(restored.denise.mutations.due().is_empty());
+    for _ in 0..5 {
+        machine.step_cck();
+        restored.step_cck();
+        assert_eq!(machine.save_state(), restored.save_state());
+        assert!(restored.denise.mutations.due().is_empty());
+    }
+}
+
+#[test]
+fn snapshots_reject_mutation_queues_that_cannot_keep_the_occupied_prefix_valid() {
+    let mut machine = A500Machine::new(A500Config::default());
+    assert!(machine.agnus.set_bplcon0(0x1000));
+    let encoded = serde_json::to_value(machine.save_state()).unwrap();
+    let mut zero_delay = encoded.clone();
+    zero_delay["agnus"]["mutations"][0]["remaining_cck"] = serde_json::json!(0);
+    assert!(serde_json::from_value::<A500State>(zero_delay).is_err());
+    let mut overflow = encoded.clone();
+    let entry = encoded["agnus"]["mutations"][0].clone();
+    overflow["agnus"]["mutations"] =
+        serde_json::Value::Array(vec![entry; agnus::Agnus::MUTATION_CAPACITY + 1]);
+    assert!(serde_json::from_value::<A500State>(overflow).is_err());
+}
+
+#[test]
 fn snapshot_between_field_strobe_and_hblank_finishes_the_previous_display_row() {
     for standard in [VideoStandard::Pal, VideoStandard::Ntsc] {
         let mut machine = A500Machine::new(A500Config::standard_1mb(standard));

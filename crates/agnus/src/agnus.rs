@@ -13,9 +13,7 @@ pub use dma::DmaScheduler;
 use config::chip_ram::MASK_OCS_DMA_ADDRESS;
 use config::mask::dmacon;
 pub use config::AgnusModel;
-use config::{
-    tick_mutations, DelayedMutation, AUDIO_CHANNEL_COUNT, OCS_BITPLANE_COUNT, SPRITE_COUNT,
-};
+use config::{MutationQueue, AUDIO_CHANNEL_COUNT, OCS_BITPLANE_COUNT, SPRITE_COUNT};
 use serde::{Deserialize, Serialize};
 
 mod pins;
@@ -96,8 +94,7 @@ pub struct Agnus {
     pub pending_copper_write: Option<(u16, u16)>,
 
     /// Fixed inline in-flight mutation buffer (Zero-allocation)
-    #[serde(with = "config::big_array")]
-    pub mutations: [Option<DelayedMutation>; Agnus::MUTATION_CAPACITY],
+    pub mutations: MutationQueue<{ Agnus::MUTATION_CAPACITY }>,
 }
 
 impl Agnus {
@@ -153,7 +150,7 @@ impl Agnus {
             audio_dma_request: [false; AUDIO_CHANNEL_COUNT],
             audio_dma_restart: [false; AUDIO_CHANNEL_COUNT],
             dskpt: 0,
-            mutations: [None; Self::MUTATION_CAPACITY],
+            mutations: MutationQueue::default(),
         }
     }
 
@@ -188,24 +185,21 @@ impl Agnus {
         self.audio_dma_restart.fill(false);
         self.dskpt = 0;
         self.pending_copper_write = None;
-        self.mutations = [None; Self::MUTATION_CAPACITY];
+        self.mutations.clear();
     }
 
     /// Advances raster beam position, steps embedded coprocessors and schedulers,
     /// and processes in-flight register mutations by 1 Color Clock.
-    /// Returns any register writes that matured and committed on this exact cycle.
+    /// Borrows all writes committed this cycle until the next mutable chip access.
     #[inline]
-    pub fn step_cck(&mut self) -> [Option<(u16, u16)>; Self::MUTATION_CAPACITY] {
+    pub fn step_cck(&mut self) -> &[(u16, u16)] {
         self.step_cck_ram(&mut [])
     }
 
     /// Advances raster beam position, steps embedded coprocessors and schedulers with Chip RAM access,
     /// and processes in-flight register mutations by 1 Color Clock.
-    /// Returns any register writes that matured and committed on this exact cycle.
-    pub fn step_cck_ram(
-        &mut self,
-        chip_ram: &mut [u8],
-    ) -> [Option<(u16, u16)>; Self::MUTATION_CAPACITY] {
+    /// Borrows all writes committed this cycle until the next mutable chip access.
+    pub fn step_cck_ram(&mut self, chip_ram: &mut [u8]) -> &[(u16, u16)] {
         self.advance_beam();
         self.sample_audio_request();
         self.sample_disk_request();
@@ -275,21 +269,15 @@ impl Agnus {
             .step_cck_ram(chip_ram, owner == dma::DmaChannel::Blitter);
 
         // 3. Process and commit due register mutations
-        let mut committed = [None; Self::MUTATION_CAPACITY];
-        let mut committed_count = 0;
-        tick_mutations(&mut self.mutations, |reg, val| {
-            if committed_count < committed.len() {
-                committed[committed_count] = Some((reg, val));
-                committed_count += 1;
-            }
-        });
-        for item in committed[..committed_count].iter().flatten() {
-            self.apply_register_write(item.0, item.1);
+        self.mutations.tick();
+        for index in 0..self.mutations.due().len() {
+            let (reg, value) = self.mutations.due()[index];
+            self.apply_register_write(reg, value);
         }
 
         self.drive_sync_strobe();
         self.drive_timing_pins(line_ccks, max_lines);
-        committed
+        self.mutations.due()
     }
 
     /// Polls and clears any custom register write emitted by the Copper on this cycle

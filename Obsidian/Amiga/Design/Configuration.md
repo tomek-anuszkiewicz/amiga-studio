@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "config"
 status: "active"
 created: 2026-09-05
-updated: 2026-11-12
+updated: 2026-11-13
 related: ["[General Architecture.md](General%20Architecture.md)", "[Physical Memory.md](Physical%20Memory.md)", "[MemoryBus.md](MemoryBus.md)", "[RTC.md](RTC.md)", "[Machine Loop.md](Machine%20Loop.md)"]
 tracked_paths:
   - "crates/config"
@@ -26,7 +26,7 @@ transaction acceptance; these constants do not instantiate devices.
 
 Beam position remains in [Agnus](Agnus.md#motherboard-transport-boundary)
 as its `hpos`/`vpos` counters and field/line state. Configuration retains hardware presets,
-register definitions, the shared mutation helper and `big_array` Serde support.
+register definitions, the shared mutation queue and `big_array` Serde support.
 The array helper is below subsystem crates and has no dependency on the
 high-level [save format](Application/SaveState.md).
 
@@ -107,10 +107,15 @@ Extended peripherals remain deferred; see the [deferred peripheral work](../../.
 
 ## Shared propagation state
 
-The foundational crate also owns the serializable [mutation utility](../../../crates/config/src/mutation.rs), shared by custom chips and CIA. Its fixed-capacity buffer keeps retained events in issue order. Pipeline entries coexist; OverwritePending removes and replaces only the same destination and mode, at the new issue position. Tick commits every due entry and compacts retained entries without allocation. Full capacity and zero delay reject insertion; callers must retain or retry the event instead of applying it early. CIA retains its separate falling-E capture and bus acceptance contract. [MemoryBus](MemoryBus.md#custom-registers-and-specialized-chips) specifies provisional custom-register delays and recipient routing.
+The foundational crate owns the serializable [MutationQueue](../../../crates/config/src/mutation.rs), shared by custom chips and CIA. Fixed storage holds an occupied prefix in retained issue order. The queue keeps its count private and exposes pending entries through a read-only slice. Each tick scans only occupied entries; capacity checks use the count. Pipeline entries coexist. OverwritePending replaces only the same destination and mode, placing the replacement after retained entries even when the queue is full. Zero delay and insertion without available capacity are refused without applying the write early. CIA retains its separate falling-E capture and bus acceptance contract. [MemoryBus](MemoryBus.md#custom-registers-and-specialized-chips) owns custom-register delays and recipient routing.
+
+A tick first extracts every matured pair into reusable inline storage and compacts the pending prefix. The chip then applies those pairs at its existing phase. A newly staged write cannot join that tick's due set. Custom chip steps return all committed pairs as a borrowed slice, valid until the next mutable chip access. Staging leaves the observation intact; the next tick replaces it. No full-capacity result array is initialized, returned or scanned on an empty tick.
+
+Only the pending sequence is logical snapshot state. Serialization omits unused storage, the derived count and the last due observation. Loading derives the count and rejects excessive capacity or zero remaining delay. Clone preserves pending writes and discards the observation; reset cancels both. Equality compares pending entries, so inactive storage and already committed pairs do not affect snapshot equality. The old array of optional entries has no compatibility parser under the pre-release snapshot policy.
 
 ## 6. Reference Documentation & Upstream Ground Truth
 
 - [Amiga Hardware Reference Manual: Appendix D (System Memory Map)](../Reference/Hardware%20Reference%20Manual/12%20-%20Appendix%20D%20-%20System%20Memory%20Map.md): Memory map boundaries for 512 KB Chip, 512 KB Slow, and 8 MB Auto-Config address spaces.
 - [A500/A2000 Technical Reference Manual: Section 1 (Summary of Differences)](../Reference/A500%20A2000%20Technical%20Reference%20Manual/01%20-%20Section%201%20Summary%20of%20Differences.md): Motherboard revision differences, video timing selection, and expansion bus options.
 - [Configuration Subsystem Implementation Source](../../../crates/config/src/config.rs): Rust implementation of `A500Config`, hardware presets (`Bare512k`, `Standard1Mb`, `ExpandedPowerUser`), and video standards.
+- [Mutation queue](../../../crates/config/src/mutation.rs): Fixed storage, issue ordering, due observations and pending-state serialization shared by custom chips and CIA.

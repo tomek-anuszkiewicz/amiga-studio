@@ -98,7 +98,7 @@ fn shared_bus_refusal_retains_live_read_and_custom_write_effects_until_acceptanc
             BusResult::WaitState
         );
         assert_eq!(mb.denise.clxdat, 0x0042);
-        assert!(mb.denise.mutations.iter().all(Option::is_none));
+        assert!(mb.denise.mutations.is_empty());
         assert!(mb.agnus.dma.cpu_request_pending);
         assert_eq!(mb.agnus.dma.cpu_starvation_counter, 1);
     }
@@ -110,7 +110,7 @@ fn shared_bus_refusal_retains_live_read_and_custom_write_effects_until_acceptanc
         mb.router().write_word(0xdff180, 0x0abc),
         BusResult::Ready(())
     );
-    assert_eq!(mb.denise.mutations.iter().flatten().count(), 1);
+    assert_eq!(mb.denise.mutations.len(), 1);
     mb.denise.step_cck();
     assert_eq!(mb.denise.color[0], 0x0abc);
 }
@@ -215,7 +215,7 @@ fn granted_custom_dma_write_does_not_use_cpu_contention_guard() {
         .router()
         .write_custom_word(custom_reg::denise::REGISTER_COLOR00, 0x0abc));
     assert!(mb.agnus.dma.cpu_request_pending);
-    assert_eq!(mb.denise.mutations.iter().flatten().count(), 1);
+    assert_eq!(mb.denise.mutations.len(), 1);
     mb.denise.step_cck();
     assert_eq!(mb.denise.color[0], 0x0abc);
 }
@@ -304,8 +304,8 @@ fn cia_acceptance_tracks_each_eclock_phase_without_duplicate_writes() {
             }
             assert_eq!(bus.write_byte(addr, 0x5a), BusResult::WaitState);
             for elapsed in 1..=expected_wait {
-                assert!(bus.cia_a.mutations.iter().all(Option::is_none));
-                assert!(bus.cia_b.mutations.iter().all(Option::is_none));
+                assert!(bus.cia_a.mutations.is_empty());
+                assert!(bus.cia_b.mutations.is_empty());
                 assert_eq!(read_byte_debug(&bus, addr), 0);
                 clock_cias(&mut bus);
                 let expected = if elapsed == expected_wait {
@@ -321,19 +321,15 @@ fn cia_acceptance_tracks_each_eclock_phase_without_duplicate_writes() {
             }
             assert_eq!(bus.cia_a.eclock_phase, 1);
             assert_eq!(bus.cia_b.eclock_phase, 1);
-            assert_eq!(
-                bus.cia_a.mutations.iter().flatten().count()
-                    + bus.cia_b.mutations.iter().flatten().count(),
-                1
-            );
+            assert_eq!(bus.cia_a.mutations.len() + bus.cia_b.mutations.len(), 1);
             assert_eq!(read_byte_debug(&bus, addr), 0);
             clock_cias(&mut bus);
             assert_eq!(read_byte_debug(&bus, addr), 0x5a);
             for _ in 0..5 {
                 clock_cias(&mut bus);
             }
-            assert!(bus.cia_a.mutations.iter().all(Option::is_none));
-            assert!(bus.cia_b.mutations.iter().all(Option::is_none));
+            assert!(bus.cia_a.mutations.is_empty());
+            assert!(bus.cia_b.mutations.is_empty());
         }
     }
 }
@@ -407,8 +403,8 @@ fn each_canonical_cia_write_selects_one_receiver_and_one_capture() {
         } else {
             &bus.cia_a
         };
-        assert!(other.mutations.iter().all(Option::is_none), "{addr:06x}");
-        let pending: Vec<_> = selected.mutations.iter().flatten().collect();
+        assert!(other.mutations.is_empty(), "{addr:06x}");
+        let pending: Vec<_> = selected.mutations.pending().iter().collect();
         assert_eq!(pending.len(), 1, "{addr:06x}");
         assert_eq!(pending[0].reg_offset, ((addr >> 8) & 15) as u16);
         assert_eq!(pending[0].value, 0x5a);
@@ -469,8 +465,8 @@ fn test_custom_register_broadcast_and_routing() {
     let agnus_staged = mb
         .agnus
         .mutations
+        .pending()
         .iter()
-        .flatten()
         .any(|m| m.reg_offset == custom_reg::agnus::REGISTER_DMACON && m.value == 0x8280);
     assert!(
         agnus_staged,
@@ -954,8 +950,8 @@ fn gary_dual_writes_wait_for_eclock_and_drain_before_the_next_transfer() {
                 mb.router().write_word(0xa00c00, 0x8765),
                 BusResult::WaitState
             );
-            assert!(mb.cia_a.mutations.iter().all(Option::is_none));
-            assert!(mb.cia_b.mutations.iter().all(Option::is_none));
+            assert!(mb.cia_a.mutations.is_empty());
+            assert!(mb.cia_b.mutations.is_empty());
             clock_cias(&mut mb.router());
         }
         assert_eq!(
@@ -965,7 +961,7 @@ fn gary_dual_writes_wait_for_eclock_and_drain_before_the_next_transfer() {
         for (chip, value) in [(&mb.cia_a, 0x65), (&mb.cia_b, 0x87)] {
             assert_eq!(chip.eclock_phase, 1);
             assert_eq!(chip.sdr, 0);
-            let pending: Vec<_> = chip.mutations.iter().flatten().collect();
+            let pending: Vec<_> = chip.mutations.pending().iter().collect();
             assert_eq!(pending.len(), 1);
             assert_eq!(pending[0].reg_offset, 0x0c);
             assert_eq!(pending[0].value, value);
@@ -985,17 +981,17 @@ fn gary_dual_writes_wait_for_eclock_and_drain_before_the_next_transfer() {
                 accepted = true;
                 break;
             }
-            assert!(mb.cia_a.mutations.iter().all(Option::is_none));
-            assert!(mb.cia_b.mutations.iter().all(Option::is_none));
+            assert!(mb.cia_a.mutations.is_empty());
+            assert!(mb.cia_b.mutations.is_empty());
             clock_cias(&mut mb.router());
         }
         assert!(accepted);
-        assert_eq!(mb.cia_a.mutations.iter().flatten().count(), 1);
-        assert_eq!(mb.cia_b.mutations.iter().flatten().count(), 1);
+        assert_eq!(mb.cia_a.mutations.len(), 1);
+        assert_eq!(mb.cia_b.mutations.len(), 1);
         clock_cias(&mut mb.router());
         assert_eq!((mb.cia_b.sdr, mb.cia_a.sdr), (value, value + 32));
-        assert!(mb.cia_a.mutations.iter().all(Option::is_none));
-        assert!(mb.cia_b.mutations.iter().all(Option::is_none));
+        assert!(mb.cia_a.mutations.is_empty());
+        assert!(mb.cia_b.mutations.is_empty());
     }
 }
 
@@ -1034,7 +1030,7 @@ fn gary_custom_alias_byte_duplication_and_shared_queue_capacity_checks() {
     let mut mb = TestMotherboard::new();
     for (addr, value) in [(0xde0180, 0x12), (0x01deff81, 0x34)] {
         assert_eq!(mb.router().write_byte(addr, value), BusResult::Ready(()));
-        let pending: Vec<_> = mb.denise.mutations.iter().flatten().collect();
+        let pending: Vec<_> = mb.denise.mutations.pending().iter().collect();
         assert_eq!(pending.len(), 1);
         assert_eq!(pending[0].value, u16::from_be_bytes([value; 2]));
         let _ = mb.denise.step_cck();
@@ -1051,16 +1047,16 @@ fn gary_custom_alias_byte_duplication_and_shared_queue_capacity_checks() {
     );
     assert!(!mb.agnus.dma.cpu_request_pending);
     assert_eq!(mb.agnus.dma.cpu_starvation_counter, 0);
-    assert!(mb.agnus.mutations.iter().all(Option::is_none));
-    assert_eq!(mb.paula.mutations.iter().flatten().count(), 32);
+    assert!(mb.agnus.mutations.is_empty());
+    assert_eq!(mb.paula.mutations.len(), 32);
     let _ = mb.paula.step_cck();
     let _ = mb.paula.step_cck();
     assert_eq!(
         mb.router().write_word(0xde0096, 0x8211),
         BusResult::Ready(())
     );
-    assert_eq!(mb.agnus.mutations.iter().flatten().count(), 1);
-    assert_eq!(mb.paula.mutations.iter().flatten().count(), 1);
+    assert_eq!(mb.agnus.mutations.len(), 1);
+    assert_eq!(mb.paula.mutations.len(), 1);
 }
 
 #[test]

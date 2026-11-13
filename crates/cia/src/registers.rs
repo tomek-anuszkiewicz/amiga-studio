@@ -1,7 +1,7 @@
 //! Named CIA register access and falling-edge capture.
 
 use crate::{Cia, CCK_PER_ECLOCK, E_WRITE_CAPTURE_PHASE};
-use config::{stage_mutation, MutationMode};
+use config::MutationMode;
 
 pub const BIT_CONTROL_START: u8 = 0x01;
 pub const BIT_CONTROL_PORT_OUTPUT: u8 = 0x02;
@@ -191,8 +191,7 @@ impl Cia {
         } else {
             CCK_PER_ECLOCK + E_WRITE_CAPTURE_PHASE - self.eclock_phase
         };
-        stage_mutation(
-            &mut self.mutations,
+        self.mutations.stage(
             selector,
             u16::from(value),
             delay,

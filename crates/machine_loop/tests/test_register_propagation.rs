@@ -87,13 +87,13 @@ fn test_cia_a_overlay_follows_committed_port_level() {
             machine.physical_memory.is_low_memory_overlay_active(),
             before
         );
-        assert!(machine.cia_a.mutations.iter().all(Option::is_none));
+        assert!(machine.cia_a.mutations.is_empty());
         assert_eq!(
             common::cia::accept_write(&mut machine, addr, value),
             BusResult::Ready(())
         );
         assert_eq!(machine.cia_a.eclock_phase, 1);
-        assert_eq!(machine.cia_a.mutations.iter().flatten().count(), 1);
+        assert_eq!(machine.cia_a.mutations.len(), 1);
         assert_eq!(
             machine.physical_memory.is_low_memory_overlay_active(),
             before

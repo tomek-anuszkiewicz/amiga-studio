@@ -11,7 +11,7 @@ pub mod serial;
 pub use serial::SerialPort;
 
 use crate::register_bits::intreq;
-use config::{tick_mutations, DelayedMutation};
+use config::MutationQueue;
 use serde::{Deserialize, Serialize};
 
 mod pins;
@@ -66,8 +66,7 @@ pub struct Paula {
     pub dma_master: bool,
 
     /// Fixed inline in-flight mutation buffer (Zero-allocation)
-    #[serde(with = "config::big_array")]
-    pub mutations: [Option<DelayedMutation>; Paula::MUTATION_CAPACITY],
+    pub mutations: MutationQueue<{ Paula::MUTATION_CAPACITY }>,
 }
 
 pub const BIT_DSKLEN_WRITE_FLAG: u16 = 0x4000;
@@ -104,7 +103,7 @@ impl Paula {
             dma_active: false,
             dma_enables: 0,
             dma_master: false,
-            mutations: [None; Self::MUTATION_CAPACITY],
+            mutations: MutationQueue::default(),
         }
     }
 
@@ -129,12 +128,12 @@ impl Paula {
         self.dma_active = false;
         self.dma_enables = 0;
         self.dma_master = false;
-        self.mutations = [None; Self::MUTATION_CAPACITY];
+        self.mutations.clear();
     }
 
     /// Advances Paula timers and processes in-flight register mutations by 1 Color Clock.
-    /// Returns any register writes that matured and committed on this exact cycle.
-    pub fn step_cck(&mut self) -> [Option<(u16, u16)>; Self::MUTATION_CAPACITY] {
+    /// Borrows all writes committed this cycle until the next mutable chip access.
+    pub fn step_cck(&mut self) -> &[(u16, u16)] {
         self.sync.cck_since_horizontal = self.sync.cck_since_horizontal.wrapping_add(1);
         let vertical_blank = self
             .pins
@@ -148,16 +147,10 @@ impl Paula {
         let serial_irq = self
             .serial_port
             .step_cck(true, self.interrupts.intreq & intreq::BIT_RBF != 0);
-        let mut due = [None; Self::MUTATION_CAPACITY];
-        let mut due_count = 0;
-        tick_mutations(&mut self.mutations, |reg, val| {
-            if due_count < due.len() {
-                due[due_count] = Some((reg, val));
-                due_count += 1;
-            }
-        });
-        for item in due.iter().flatten() {
-            self.apply_register_write(item.0, item.1);
+        self.mutations.tick();
+        for index in 0..self.mutations.due().len() {
+            let (reg, value) = self.mutations.due()[index];
+            self.apply_register_write(reg, value);
         }
         if vertical_blank {
             self.set_interrupt_request(intreq::BIT_VERTB);
@@ -171,7 +164,7 @@ impl Paula {
         self.interrupts
             .request(serial_irq | core::mem::take(&mut self.disk.irq_pending));
         self.sample_interrupt_pins();
-        due
+        self.mutations.due()
     }
 
     /// Returns true if DSKLEN is configured for write to disk (bit 14 set)

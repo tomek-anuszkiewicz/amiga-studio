@@ -123,7 +123,7 @@ fn address_strobes_act_immediately_without_register_queue_entries() {
         0xffff
     );
     assert_eq!(machine.agnus.copper.cop_pc, 0x3000);
-    assert!(machine.agnus.mutations.iter().all(Option::is_none));
+    assert!(machine.agnus.mutations.is_empty());
 
     for offset in [
         custom_reg::denise::REGISTER_STREQU,
@@ -133,8 +133,8 @@ fn address_strobes_act_immediately_without_register_queue_entries() {
     ] {
         assert!(machine.memory_bus().write_custom_word(offset, 0x1234));
     }
-    assert!(machine.denise.mutations.iter().all(Option::is_none));
-    assert!(machine.paula.mutations.iter().all(Option::is_none));
+    assert!(machine.denise.mutations.is_empty());
+    assert!(machine.paula.mutations.is_empty());
     assert!(machine.denise.sync.long_line);
     assert_eq!(machine.paula.sync.cck_since_horizontal, 0);
     assert_eq!(machine.denise.bplcon0, 0);
@@ -155,7 +155,7 @@ fn full_receiver_rejects_shared_transfer_atomically_without_blocking_unrelated_c
             machine.memory_bus().write_word(0xdff096, 0x8200),
             BusResult::WaitState
         );
-        assert!(machine.paula.mutations.iter().all(Option::is_none));
+        assert!(machine.paula.mutations.is_empty());
         assert_eq!(machine.agnus.dma.dmacon, 0);
     }
     assert_eq!(
@@ -170,13 +170,13 @@ fn full_receiver_rejects_shared_transfer_atomically_without_blocking_unrelated_c
         machine.memory_bus().write_word(0xdff096, 0x8200),
         BusResult::Ready(())
     );
-    assert_eq!(machine.agnus.mutations.iter().flatten().count(), 1);
-    assert_eq!(machine.paula.mutations.iter().flatten().count(), 1);
+    assert_eq!(machine.agnus.mutations.len(), 1);
+    assert_eq!(machine.paula.mutations.len(), 1);
     machine.step_cycles(2);
     assert_eq!(machine.agnus.dma.dmacon, 0x200);
     assert!(machine.paula.dma_master);
-    assert!(machine.agnus.mutations.iter().all(Option::is_none));
-    assert!(machine.paula.mutations.iter().all(Option::is_none));
+    assert!(machine.agnus.mutations.is_empty());
+    assert!(machine.paula.mutations.is_empty());
 }
 
 #[test]
@@ -188,15 +188,9 @@ fn full_capacity_register_replay_does_not_block_interrupt_pins() {
     }
     let agnus_due = machine.agnus.step_cck();
     let denise_due = machine.denise.step_cck();
-    assert_eq!(
-        agnus_due.iter().flatten().count(),
-        agnus::Agnus::MUTATION_CAPACITY
-    );
-    assert_eq!(
-        denise_due.iter().flatten().count(),
-        denise::Denise::MUTATION_CAPACITY
-    );
-    for (value, entry) in agnus_due.into_iter().flatten().enumerate() {
+    assert_eq!(agnus_due.len(), agnus::Agnus::MUTATION_CAPACITY);
+    assert_eq!(denise_due.len(), denise::Denise::MUTATION_CAPACITY);
+    for (value, entry) in agnus_due.iter().copied().enumerate() {
         assert_eq!(entry, (custom_reg::agnus::REGISTER_BLTADAT, value as u16));
     }
     assert_eq!(machine.denise.bpldat[0], 63);
@@ -211,22 +205,19 @@ fn full_capacity_register_replay_does_not_block_interrupt_pins() {
     machine.paula.pins.int2_high = false;
     machine.paula.pins.int6_high = false;
     assert_eq!(
-        machine.paula.mutations.iter().flatten().count(),
+        machine.paula.mutations.len(),
         paula::Paula::MUTATION_CAPACITY
     );
     assert_eq!(machine.paula.intreqr(), 0);
     let due = machine.paula.step_cck();
-    assert_eq!(
-        due.iter().flatten().count(),
-        paula::Paula::MUTATION_CAPACITY
-    );
+    assert_eq!(due.len(), paula::Paula::MUTATION_CAPACITY);
     assert_eq!(
         machine.paula.intreqr(),
         0x2008,
         "delivered input sampling follows due register commitment"
     );
-    assert!(machine.paula.mutations.iter().all(Option::is_none));
-    assert_eq!(machine.paula.step_cck().iter().flatten().count(), 0);
+    assert!(machine.paula.mutations.is_empty());
+    assert_eq!(machine.paula.step_cck().len(), 0);
 }
 
 #[test]
@@ -234,7 +225,7 @@ fn interrupt_input_levels_are_sampled_after_cpu_acknowledgments() {
     let mut machine = idle_machine();
     machine.paula.receive_interrupt_pins(false, true, false);
     assert!(machine.paula.set_intreq(0x0008));
-    assert_eq!(machine.paula.mutations.iter().flatten().count(), 1);
+    assert_eq!(machine.paula.mutations.len(), 1);
     assert_eq!(
         machine.paula.intreqr(),
         0,
@@ -279,8 +270,8 @@ fn copper_and_cpu_shared_writes_start_from_the_same_receiver_boundary() {
         if copper
             .agnus
             .mutations
+            .pending()
             .iter()
-            .flatten()
             .any(|m| m.reg_offset == custom_reg::agnus::REGISTER_BPLCON0)
         {
             issued = true;
@@ -379,8 +370,8 @@ fn authored_cpu_byte_write_propagates_once_while_dma_competes_for_chip_ram() {
             if machine
                 .denise
                 .mutations
+                .pending()
                 .iter()
-                .flatten()
                 .any(|m| m.reg_offset == custom_reg::denise::REGISTER_COLOR00)
             {
                 accepted += 1;

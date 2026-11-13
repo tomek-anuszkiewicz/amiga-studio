@@ -4,9 +4,7 @@ use super::{Agnus, AgnusModel};
 use crate::register_bits::vposr;
 use config::custom_reg::agnus as reg;
 use config::mask::dmacon;
-use config::{
-    stage_mutation, MutationMode, DMACON_WRITE_DELAY_CCK, PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
-};
+use config::{MutationMode, DMACON_WRITE_DELAY_CCK, PROVISIONAL_CUSTOM_WRITE_DELAY_CCK};
 
 const DISPLAY_CONTROL_WRITE_DELAY_CCK: u8 = 4;
 
@@ -14,14 +12,13 @@ impl Agnus {
     /// Capacity preflight for an atomic transfer with multiple receivers.
     #[inline]
     pub fn can_accept_register_write(&self) -> bool {
-        self.mutations.iter().any(Option::is_none)
+        !self.mutations.is_full()
     }
 
     /// Queues DMACON; active state changes only when due.
     #[inline]
     pub fn set_dmacon(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
+        self.mutations.stage(
             reg::REGISTER_DMACON,
             val,
             DMACON_WRITE_DELAY_CCK,
@@ -32,8 +29,7 @@ impl Agnus {
     /// Queues BPLCON0; active state changes only when due.
     #[inline]
     pub fn set_bplcon0(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
+        self.mutations.stage(
             reg::REGISTER_BPLCON0,
             val,
             DISPLAY_CONTROL_WRITE_DELAY_CCK,
@@ -44,8 +40,7 @@ impl Agnus {
     /// Queues DIWSTRT; active state changes only when due.
     #[inline]
     pub fn set_diwstrt(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
+        self.mutations.stage(
             reg::REGISTER_DIWSTRT,
             val,
             DISPLAY_CONTROL_WRITE_DELAY_CCK,
@@ -56,8 +51,7 @@ impl Agnus {
     /// Queues DIWSTOP; active state changes only when due.
     #[inline]
     pub fn set_diwstop(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
+        self.mutations.stage(
             reg::REGISTER_DIWSTOP,
             val,
             DISPLAY_CONTROL_WRITE_DELAY_CCK,
@@ -71,8 +65,7 @@ impl Agnus {
         if index >= config::SPRITE_COUNT {
             return false;
         }
-        stage_mutation(
-            &mut self.mutations,
+        self.mutations.stage(
             reg::REGISTER_SPR0POS + (index as u16) * config::SPRITE_REGISTER_STRIDE,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
@@ -86,8 +79,7 @@ impl Agnus {
         if index >= config::SPRITE_COUNT {
             return false;
         }
-        stage_mutation(
-            &mut self.mutations,
+        self.mutations.stage(
             reg::REGISTER_SPR0CTL + (index as u16) * config::SPRITE_REGISTER_STRIDE,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
@@ -98,8 +90,7 @@ impl Agnus {
     /// Queues DSKPTH; active state changes only when due.
     #[inline]
     pub fn set_dskpth(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
+        self.mutations.stage(
             reg::REGISTER_DSKPTH,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
@@ -110,8 +101,7 @@ impl Agnus {
     /// Queues DSKPTL; active state changes only when due.
     #[inline]
     pub fn set_dskptl(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
+        self.mutations.stage(
             reg::REGISTER_DSKPTL,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
@@ -122,8 +112,7 @@ impl Agnus {
     /// Queues REFPTR; active state changes only when due.
     #[inline]
     pub fn set_refptr(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
+        self.mutations.stage(
             reg::REGISTER_REFPTR,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
@@ -134,8 +123,7 @@ impl Agnus {
     /// Queues VPOSW; active state changes only when due.
     #[inline]
     pub fn set_vposw(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
+        self.mutations.stage(
             reg::REGISTER_VPOSW,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
@@ -146,8 +134,7 @@ impl Agnus {
     /// Queues VHPOSW; active state changes only when due.
     #[inline]
     pub fn set_vhposw(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
+        self.mutations.stage(
             reg::REGISTER_VHPOSW,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
@@ -158,8 +145,7 @@ impl Agnus {
     /// Queues DDFSTRT; active state changes only when due.
     #[inline]
     pub fn set_ddfstrt(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
+        self.mutations.stage(
             reg::REGISTER_DDFSTRT,
             val,
             DISPLAY_CONTROL_WRITE_DELAY_CCK,
@@ -170,8 +156,7 @@ impl Agnus {
     /// Queues DDFSTOP; active state changes only when due.
     #[inline]
     pub fn set_ddfstop(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
+        self.mutations.stage(
             reg::REGISTER_DDFSTOP,
             val,
             DISPLAY_CONTROL_WRITE_DELAY_CCK,
@@ -185,8 +170,7 @@ impl Agnus {
         if index >= config::AUDIO_CHANNEL_COUNT {
             return false;
         }
-        stage_mutation(
-            &mut self.mutations,
+        self.mutations.stage(
             reg::REGISTER_AUD0LCH + (index as u16) * config::AUDIO_REGISTER_STRIDE,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
@@ -200,8 +184,7 @@ impl Agnus {
         if index >= config::AUDIO_CHANNEL_COUNT {
             return false;
         }
-        stage_mutation(
-            &mut self.mutations,
+        self.mutations.stage(
             reg::REGISTER_AUD0LCL + (index as u16) * config::AUDIO_REGISTER_STRIDE,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
@@ -215,8 +198,7 @@ impl Agnus {
         if index >= config::OCS_BITPLANE_COUNT {
             return false;
         }
-        stage_mutation(
-            &mut self.mutations,
+        self.mutations.stage(
             reg::REGISTER_BPL1PTH + (index as u16) * config::BITPLANE_POINTER_STRIDE,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
@@ -230,8 +212,7 @@ impl Agnus {
         if index >= config::OCS_BITPLANE_COUNT {
             return false;
         }
-        stage_mutation(
-            &mut self.mutations,
+        self.mutations.stage(
             reg::REGISTER_BPL1PTL + (index as u16) * config::BITPLANE_POINTER_STRIDE,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
@@ -242,8 +223,7 @@ impl Agnus {
     /// Queues BPL1MOD; active state changes only when due.
     #[inline]
     pub fn set_bpl1mod(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
+        self.mutations.stage(
             reg::REGISTER_BPL1MOD,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
@@ -254,8 +234,7 @@ impl Agnus {
     /// Queues BPL2MOD; active state changes only when due.
     #[inline]
     pub fn set_bpl2mod(&mut self, val: u16) -> bool {
-        stage_mutation(
-            &mut self.mutations,
+        self.mutations.stage(
             reg::REGISTER_BPL2MOD,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
@@ -269,8 +248,7 @@ impl Agnus {
         if index >= config::SPRITE_COUNT {
             return false;
         }
-        stage_mutation(
-            &mut self.mutations,
+        self.mutations.stage(
             reg::REGISTER_SPR0PTH + (index as u16) * config::SPRITE_POINTER_STRIDE,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
@@ -284,8 +262,7 @@ impl Agnus {
         if index >= config::SPRITE_COUNT {
             return false;
         }
-        stage_mutation(
-            &mut self.mutations,
+        self.mutations.stage(
             reg::REGISTER_SPR0PTL + (index as u16) * config::SPRITE_POINTER_STRIDE,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,

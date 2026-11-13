@@ -29,13 +29,13 @@ fn named_setters_capture_only_on_the_falling_edge() {
         }
         let before = observe(&cia);
         assert!(setter(&mut cia, 0x5a), "{name}");
-        assert_eq!(cia.mutations.iter().flatten().count(), 1, "{name}");
+        assert_eq!(cia.mutations.len(), 1, "{name}");
         assert_eq!(observe(&cia), before, "{name}: scheduling");
         cia.step_cck();
         assert_eq!(observe(&cia), before, "{name}: before falling edge");
         cia.step_cck();
         assert_eq!(observe(&cia), expected, "{name}: falling edge");
-        assert!(cia.mutations.iter().all(Option::is_none), "{name}");
+        assert!(cia.mutations.is_empty(), "{name}");
     }
 }
 
@@ -47,13 +47,13 @@ fn last_pending_value_is_captured_at_the_same_falling_edge() {
             cia.step_cck();
         }
         assert!(cia.set_pra(0x11));
-        let delay = cia.mutations.iter().flatten().next().unwrap().remaining_cck;
+        let delay = cia.mutations.pending().iter().next().unwrap().remaining_cck;
         if delay > 1 {
             cia.step_cck();
         }
         assert!(cia.set_pra(0x22));
         assert!(cia.set_prb(0x33));
-        assert_eq!(cia.mutations.iter().flatten().count(), 2);
+        assert_eq!(cia.mutations.len(), 2);
         let remaining = delay - u8::from(delay > 1);
         for _ in 1..remaining {
             cia.step_cck();
@@ -61,7 +61,7 @@ fn last_pending_value_is_captured_at_the_same_falling_edge() {
         }
         cia.step_cck();
         assert_eq!((cia.pra, cia.prev_pra, cia.prb), (0x22, 0, 0x33));
-        assert!(cia.mutations.iter().all(Option::is_none));
+        assert!(cia.mutations.is_empty());
         assert!(cia.set_pra(0x44));
         assert_eq!(cia.pra, 0x22, "captured state survives a new pending write");
     }

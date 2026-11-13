@@ -685,3 +685,29 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Roadmap structure check passed
   - Reviewed numbering and prerequisites against existing 2.5, 4.2.3 and 4.3 tasks
   - No implementation or milestone closure is claimed
+---
+
+### [2026-11-13 16:40 CET] — Reduce register queue work per Color Clock
+- **Affected Subsystems**:
+  - `config mutation queue`
+  - `Agnus and its register writers`
+  - `Denise`
+  - `Paula`
+  - `CIA`
+  - `bus and snapshot tests`
+  - `design specifications`
+- **What Was Changed (The Concrete Reality)**:
+  - Complete stage one of CORE-PERFORMANCE-PREP-20261113 with private occupied counts and reusable due buffers
+  - Preserve capacities, register delays, issue ordering and receiver phases while migrating all consumers
+  - Serialize pending entries only and discard due observations on clone or reset, with no old snapshot parser
+  - Prepare the second-stage sprite, input, frame storage and audio candidates without implementing them
+- **Architectural Rationale & Trade-Offs**:
+  - Remove repeated scans and the initialization and copying of mostly empty fixed arrays without changing guest timing or allocating in the execution loop
+- **Verification & Test Results**:
+  - 317 affected component and integration tests passed
+  - 28 complete PAL and NTSC machine-state checkpoints matched the starting implementation after normalizing only empty queue slots
+  - Native workspace all-target and WASM checks, Clippy, formatting and architecture checks passed
+  - Matched release measurements over 5000 frames per version reduced core frame time from 23.889839 to 10.017356 ms, a 58.07 percent reduction with pixel generation enabled and GUI work excluded
+  - Separate profiles reduced queue tick share from 22.75 to 0.59 percent
+  - Vault metadata and 1051 links passed
+  - These measurements cover the recorded scenarios and do not establish a general FPS guarantee or hardware timing acceptance
