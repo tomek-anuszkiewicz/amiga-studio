@@ -670,3 +670,18 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Same 60-field live_stripes release comparison measured Developer execution at 36.772 ms before and 25.042 ms after, excluding pacing waits
   - Fresh instrumentation recorded zero inspector refresh, disassembly, trace and history calls during steady Run and zero inspector drawing in Game
   - Measurements establish this local scenario, not a general FPS guarantee
+---
+
+### [2026-11-13 14:50 CET] — Plan display mode, color and border comparisons
+- **Affected Subsystems**:
+  - `ROADMAP display verification backlog`
+- **What Was Changed (The Concrete Reality)**:
+  - Add deferred resolution and interlace transition coverage
+  - Plan palette, dual playfield, Extra Half-Brite and HAM6 comparisons
+  - Include overscan and dynamic border decisions with WinUAE and physical Amiga references
+- **Architectural Rationale & Trade-Offs**:
+  - Record pending visual acceptance work after its guest execution prerequisites without treating model agreement as hardware evidence
+- **Verification & Test Results**:
+  - Roadmap structure check passed
+  - Reviewed numbering and prerequisites against existing 2.5, 4.2.3 and 4.3 tasks
+  - No implementation or milestone closure is claimed

@@ -163,6 +163,14 @@ implementation at the end, since existing documentation may also be wrong.
     - Zero regression across all active baseline OCS vAmigaTS suites.
     - Run DMA, Agnus and production memory_bus regression tests, including contention and pending CPU-request arbitration; CPU-only waiting tests do not validate scheduler changes.
 
+- **4.4: Display Modes, Color Fidelity and Dynamic Borders**
+  - When separately scheduled, extend the display coverage from 2.5 and 4.2.3 with focused test programs and representative games once their native execution prerequisites are available.
+  - **Resolution changes:** Test low/high resolution switches between frames, within a frame and within a scanline, including mixed-resolution images. Verify pixel placement, proportions and frontend scaling across transitions.
+  - **Interlace:** Test interlaced output, alternating field alignment, field presentation and transitions between interlaced and non-interlaced modes.
+  - **Color modes and accuracy:** Test supported OCS palette/bitplane configurations, dual playfield, Extra Half-Brite and HAM6, including palette and mode changes during rendering. Verify both generated color values and displayed colors against WinUAE and a physical Amiga, recording reference settings and hardware capture conditions.
+  - **Borders and changing display area:** Test overscan and games that change the size or position of the visible area during a frame or between frames. Determine how to retain or crop the border and how cropping and scaling should react to those changes; check for lost visible content, unwanted image movement and stale pixels.
+  - **Gate:** Record reproducible comparisons with WinUAE and a physical Amiga, covering static images and transition sequences. Agree on the border/cropping behavior from those cases, then verify it in the framebuffer and frontend; keep emulator agreement distinct from hardware evidence.
+
 ---
 
 ## Step 5: Custom Chipset Debugger & Deep Architectural Observability (Developer Studio Extension)
