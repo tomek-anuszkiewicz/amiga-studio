@@ -110,11 +110,11 @@ fn supported_normal_resolutions_and_plane_counts_render_independent_palette_valu
             for _ in 0..3 {
                 d.step_cck();
             }
-            assert_eq!(d.frame_builder.get_pixel(166, 100), 0xfff00000);
+            assert_eq!(d.frame_builder.get_pixel(166, 100), 0xffff0000);
             assert_eq!(
                 d.frame_builder.get_pixel(167, 100),
                 if resolution == 0 {
-                    0xfff00000
+                    0xffff0000
                 } else {
                     0xff000000
                 }
@@ -182,8 +182,8 @@ fn palette_and_resolution_changes_take_effect_during_the_line() {
     for _ in 0..3 {
         d.step_cck();
     }
-    assert_eq!(d.frame_builder.get_pixel(166, 100), 0xfff00000);
-    assert_eq!(d.frame_builder.get_pixel(182, 100), 0xff00f000);
+    assert_eq!(d.frame_builder.get_pixel(166, 100), 0xffff0000);
+    assert_eq!(d.frame_builder.get_pixel(182, 100), 0xff00ff00);
     assert!(d.is_hires());
 }
 
@@ -208,9 +208,9 @@ fn normal_playfield_uses_pf2_priority_and_hidden_sprites_still_collide() {
             assert_eq!(
                 d.frame_builder.get_pixel(170, 100),
                 if pair < priority as usize {
-                    0xff00f000
+                    0xff00ff00
                 } else {
-                    0xfff00000
+                    0xffff0000
                 }
             );
             assert_eq!(d.clxdat & (0x22 << pair), 0x22 << pair);

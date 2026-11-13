@@ -531,3 +531,19 @@ Every authorized repository commit adds a concise entry here. Logging and compac
 - **Verification & Test Results**:
   - The user reported testing and review complete
   - No tests or audits were rerun under the explicit commit-only instruction
+---
+
+### [2026-11-13 13:55 CET] — Normalize RGB444 output to the full host color range
+- **Affected Subsystems**:
+  - `frame_builder`
+  - `Denise`
+  - `machine and GUI video tests`
+- **What Was Changed (The Concrete Reality)**:
+  - Expand each four-bit channel by multiplication by 17 with opaque alpha
+  - Keep independent expected colors in component, guest and texture tests
+- **Architectural Rationale & Trade-Offs**:
+  - Apply the approved full-range host normalization without adding gamma or CRT correction
+- **Verification & Test Results**:
+  - Focused frame_builder tests passed
+  - Historical Kickstart color comparison and user visual acceptance are recorded in session 01a1d47e-011b-7980-8771-ca3c01af51f5
+  - Broader display calibration remains pending

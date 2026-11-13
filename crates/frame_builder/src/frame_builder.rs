@@ -9,7 +9,7 @@ pub const MASK_RGB444_COMPONENT: u16 = 0xF;
 pub const BIT_RGB444_RED_SHIFT: u16 = 8;
 pub const BIT_RGB444_GREEN_SHIFT: u16 = 4;
 pub const MASK_RGB444_COLOR: u16 = 0x0FFF;
-const BIT_COMPONENT_EXPANSION_SHIFT: u32 = 4;
+const RGB444_COMPONENT_SCALE: u32 = 17;
 const OPAQUE_ALPHA: u32 = 0xFF00_0000;
 pub const OPAQUE_BLACK: u32 = OPAQUE_ALPHA;
 pub const PIXELS_PER_CCK: usize = 4;
@@ -26,22 +26,17 @@ pub const FRAME_BUFFER_PIXELS: usize = MAX_FRAME_WIDTH * MAX_FRAME_HEIGHT;
 
 /// Converts a 12-bit Amiga RGB444 color to a 32-bit host ARGB color (0xAARRGGBB).
 ///
-/// Applies linear DAC voltage quantization (n * 16 = n << 4) rather than naive ((n << 4) | n).
-/// In the physical Amiga 500, Denise outputs 4 bits per RGB channel to an onboard discrete R-2R
-/// resistor ladder DAC (270 / 560 ohm), producing 16 equidistant linear voltage levels from 0.0V to 0.7V.
-/// Unlike broadcast television video (which applied gamma pre-compression ~0.45 at the camera), the Amiga
-/// video signal was uncorrected linear voltage. Consequently, on analog CRT monitors, the natural power-law
-/// electron gun transfer function (gamma ~2.8) expanded shadow contrast so that dark values occupied
-/// proportionally equal voltage bandwidth. In 8-bit studio/raw digitizations (such as vAmigaTS captures),
-/// each 4-bit step corresponds to exactly 16 ADC codes (0, 16, 32, ..., 240).
+/// Expands each channel from 0..15 to 0..255 by multiplying by 17.
+/// Preserves channel order, ignores the upper four input bits and sets opaque alpha.
+/// This is full-range host normalization, without gamma or CRT correction.
 #[inline(always)]
 pub fn rgb444_to_argb32(rgb: u16) -> u32 {
     let r = ((rgb >> BIT_RGB444_RED_SHIFT) & MASK_RGB444_COMPONENT) as u32;
     let g = ((rgb >> BIT_RGB444_GREEN_SHIFT) & MASK_RGB444_COMPONENT) as u32;
     let b = (rgb & MASK_RGB444_COMPONENT) as u32;
-    let r8 = r << BIT_COMPONENT_EXPANSION_SHIFT;
-    let g8 = g << BIT_COMPONENT_EXPANSION_SHIFT;
-    let b8 = b << BIT_COMPONENT_EXPANSION_SHIFT;
+    let r8 = r * RGB444_COMPONENT_SCALE;
+    let g8 = g * RGB444_COMPONENT_SCALE;
+    let b8 = b * RGB444_COMPONENT_SCALE;
     OPAQUE_ALPHA | (r8 << 16) | (g8 << 8) | b8
 }
 

@@ -10,9 +10,9 @@ use machine_loop::A500Machine;
 const PROGRAM: &[u8] = include_bytes!("program.bin");
 const ENTRY: u32 = 0x1000;
 const MAX_CCK: u64 = 4 * 313 * 228;
-const BLUE: u32 = 0xff00_0020;
-const RED: u32 = 0xfff0_0000;
-const GREEN: u32 = 0xff00_f000;
+const BLUE: u32 = 0xff00_0022;
+const RED: u32 = 0xffff_0000;
+const GREEN: u32 = 0xff00_ff00;
 
 #[test]
 fn guest_stripes_update_across_completed_fields() {

@@ -199,9 +199,9 @@ fn test_denise_frame_builder_raster_scanline_generation() {
     harness.step_until_vpos(30, 50_000);
     harness.step_scanlines(1);
 
-    // In linear DAC quantization, RGB444 $00F produces ARGB $FF0000F0
+    // Full-range expansion maps RGB444 $00F to opaque blue at 255.
     let expected_argb = frame_builder::rgb444_to_argb32(0x000F);
-    assert_eq!(expected_argb, 0xFF00_00F0);
+    assert_eq!(expected_argb, 0xFF00_00FF);
 
     // Verify FrameBuilder captured the backdrop color on the scanned line (line 30)
     let pixel = harness.machine.denise.frame_builder.get_pixel(200, 30);

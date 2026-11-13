@@ -55,10 +55,10 @@ fn loaded_guest_updates_texture_and_pause_preserves_it_at_all_viewport_sizes() {
     for size in [[1280.0, 720.0], [800.0, 900.0], [1920.0, 1080.0]] {
         let output = render(&mut app, &context, size);
         let (id, pixels) = video(&output);
-        assert!(pixels.contains(&Color32::from_rgb(0, 0, 32)));
+        assert!(pixels.contains(&Color32::from_rgb(0, 0, 34)));
         assert!(
-            pixels.contains(&Color32::from_rgb(240, 0, 0))
-                || pixels.contains(&Color32::from_rgb(0, 240, 0))
+            pixels.contains(&Color32::from_rgb(255, 0, 0))
+                || pixels.contains(&Color32::from_rgb(0, 255, 0))
         );
         let mesh = output
             .shapes
