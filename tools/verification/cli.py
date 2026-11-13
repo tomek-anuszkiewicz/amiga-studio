@@ -10,6 +10,7 @@ COMMAND_TREE = """Command tree (run from the repository root):
   │  ├─ rust
   │  │  ├─ [unit|integration|all|workspace]
   │  │  └─ crate NAME [suite NAME] [case FILTER]
+  │  ├─ coverage crate NAME|workspace
   │  ├─ python [directory PATH [file PATTERN] [case FILTER]]
   │  └─ runner
   │     ├─ [standard|silicon]
@@ -42,6 +43,7 @@ EXAMPLES = """Examples (run from the repository root):
   python tools/verification/verify.py commit
   python tools/verification/verify.py milestone --plan
   python tools/verification/verify.py test rust crate cpu
+  python tools/verification/verify.py test coverage crate cpu
   python tools/verification/verify.py test rust crate test_runner suite test_singlestep case test_sub
   python tools/verification/verify.py test python directory tools/bootstrap/tests
   python tools/verification/verify.py test python
@@ -54,7 +56,8 @@ EXAMPLES = """Examples (run from the repository root):
   python tools/verification/verify.py runner refresh benchmarks/results/<run-id>
   python tools/verification/verify.py runner bench mnemonic ADD
 
-Focused commands do not run completion gates or coverage. Commit selects Rust
+Focused commands do not run completion gates. Only test coverage measures
+coverage outside the commit profile. Commit selects Rust
 tests and coverage from changed packages and their transitive consumers. Unknown
 inputs and build or verification changes require the full Rust scope. Independent
 documentation and Python tools skip Rust tests. Quality gates and Python contract
@@ -102,6 +105,8 @@ def parser():
     kinds = tests.add_subparsers(dest="kind", required=True)
     rust = kinds.add_parser("rust", help="[unit|integration|all|workspace] or crate NAME [suite NAME] [case FILTER]")
     rust.add_argument("words", nargs="*", metavar="SELECTOR")
+    coverage = kinds.add_parser("coverage", help="Measure ordinary tests: crate NAME or workspace")
+    coverage.add_argument("words", nargs="+", metavar="SELECTOR")
     python = kinds.add_parser("python", help="Changed tool contracts or directory PATH [file PATTERN] [case FILTER]")
     python.add_argument("words", nargs="*", metavar="SELECTOR")
     runner = kinds.add_parser("runner", help="[standard|silicon|singlestep] [case FILTER] [sample N|full]")

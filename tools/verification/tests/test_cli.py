@@ -170,7 +170,9 @@ class SelectionTests(unittest.TestCase):
         with patch.object(selection, "select_rust_scope", return_value=RustScope(("cpu", "gui", "test_runner"), "fixture")):
             commands = selected("commit", ["crates/cpu/src/cpu.rs"])
         run = next(command for _, command, _ in commands if "--no-report" in command)
-        export = next(command for _, command, _ in commands if "--summary-only" in command)
+        export = next(command for _, command, _ in commands if "--json" in command)
+        self.assertNotIn("--summary-only", export)
+        self.assertEqual(export[-2:], ["--output-path", ".agent/tmp/coverage/coverage.json"])
         summary = next(command for _, command, _ in commands
                        if "tools/verification/coverage_report.py" in command and "--prepare" not in command)
         for command in (run, export):
@@ -181,6 +183,29 @@ class SelectionTests(unittest.TestCase):
         self.assertEqual(len(plain), 1)
         self.assertIn("test_runner", plain[0])
         self.assertNotIn("test_singlestep", plain[0])
+
+    def test_development_coverage_reuses_pipeline_without_completion_gates(self):
+        for sentence, package in (("test coverage crate cpu", "cpu"),
+                                  ("test coverage workspace", None)):
+            with self.subTest(sentence=sentence):
+                commands = selected(sentence)
+                self.assertEqual(len(commands), 5)
+                run = next(command for _, command, _ in commands if "--no-report" in command)
+                self.assertNotIn("cargo test", " ".join(run))
+                if package:
+                    self.assertEqual(run[run.index("-p") + 1], package)
+                    self.assertNotIn("--workspace", run)
+                else:
+                    self.assertIn("--workspace", run)
+                    self.assertEqual(run[run.index("--exclude") + 1], "test_runner")
+                self.assertFalse(any("check_" in " ".join(command) for _, command, _ in commands))
+                self.assertFalse(any("run_singlestep.py" in " ".join(command) for _, command, _ in commands))
+
+    def test_coverage_rejects_unknown_packages_harness_and_partial_test_filters(self):
+        for sentence in ("test coverage crate unknown_package", "test coverage crate test_runner",
+                         "test coverage crate cpu suite test_add", "test coverage workspace --exact"):
+            with self.subTest(sentence=sentence), self.assertRaises(ValueError):
+                selected(sentence)
 
     def test_unaffected_runner_is_skipped_and_harness_only_change_has_no_coverage(self):
         for packages, harness, coverage in ((("gui",), False, True), (("test_runner",), True, False), ((), False, False)):
@@ -272,6 +297,22 @@ class SelectionTests(unittest.TestCase):
                 selected(sentence)
 
 class ExecutionTests(unittest.TestCase):
+    def test_failed_coverage_step_stops_export_but_keeps_other_commit_checks(self):
+        phases = [("Coverage", [(name, [name], {}) for name in ("prepare", "reset", "tests", "export", "summary")]),
+                  ("Verification", [("remaining gate", ["gate"], {})])]
+        for failing in ("prepare", "reset", "tests", "export"):
+            with self.subTest(failing=failing), \
+                 patch.object(verify, "select_phases", return_value=phases), \
+                 patch.object(verify, "collect_changes", return_value=set()), \
+                 patch.object(verify, "snapshot", return_value="same"), \
+                 patch.object(verify, "execute_command", side_effect=lambda command, *args, **kwargs:
+                              (command[0] != failing, "fixture", 0)) as execute, \
+                 contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(verify.main(["commit"]), 1)
+            invoked = [call.args[0][0] for call in execute.call_args_list]
+            expected = ["prepare", "reset", "tests", "export"]
+            self.assertEqual(invoked, expected[:expected.index(failing) + 1] + ["gate"])
+
     def test_exact_rust_run_rejects_zero_matching_tests(self):
         for count, expected in ((0, 1), (1, 0)):
             process = unittest.mock.MagicMock()

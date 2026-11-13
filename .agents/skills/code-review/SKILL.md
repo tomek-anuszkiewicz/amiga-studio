@@ -53,6 +53,15 @@ For a defect repair, check that the evidence demonstrates the original failure a
 
 Compare relevant tests with these paths. Determine whether their fixture, assertions and integration boundary could detect the failure, rather than treating test presence or a passing aggregate as proof. Identify the missing observable protection when it matters; follow [testing policy](../../rules/unit-testing-policy.md) rather than requiring tests per file.
 
+For emulator production-code changes, inspect the detailed coverage report under
+[coverage policy](../../rules/unit-testing-policy.md#coverage-during-development-and-review).
+Trace uncovered functions and source spans in changed behavior and affected
+interactions to the tests and their assertions. Verify the measured packages,
+executed suites and source snapshot before treating a gap as missing protection.
+Report unresolved in-scope behavioral gaps as blockers and unrelated existing
+gaps separately. A high percentage or a test that only executes code does not
+satisfy this review; do not require coverage for documentation-only changes.
+
 Keep hypotheses distinct from findings. Support a defect with a concrete trigger or reachable path, the resulting behavior, and its consequence. A focused read-only diagnostic may resolve uncertainty; do not change files, references or snapshots to demonstrate a problem. Report pre-existing issues separately from introduced regressions and explain any effect on required gates.
 
 For review outside an authorized commit, assess known specification requirements and encountered conflicts; do not trigger the whole pre-commit compliance workflow unless requested. At commit or milestone review, inspect its scoped compliance/audit evidence and investigate concrete gaps; do not repeat an already current audit by default.

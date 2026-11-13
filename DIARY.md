@@ -810,3 +810,20 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Partial coverage exposed and now excludes 13 retired source files retained in cached objects
   - No full SingleStep or performance benchmarks were run
   - This is ordinary tooling work and does not close a roadmap milestone
+---
+
+### [2026-11-13 22:33 CET] — Use coverage gaps to guide behavioral tests
+- **Affected Subsystems**:
+  - `tools/verification`
+  - `testing policy`
+  - `code review`
+- **What Was Changed (The Concrete Reality)**:
+  - Add focused package and workspace coverage commands
+  - export detailed LLVM data and source gap reports
+  - require coverage analysis during emulator changes and review
+  - stop report publication after failed coverage steps
+- **Architectural Rationale & Trade-Offs**:
+  - Make missing execution paths visible while requiring meaningful behavioral assertions and preserving measurement scope
+- **Verification & Test Results**:
+  - Verification tool tests and a focused blep_generator coverage run passed during development
+  - skill and vault checks passed. Full emulator coverage audit was not performed.

@@ -3,6 +3,7 @@ accessor
 accessors
 addr
 alloc
+allowlists
 argparse
 args
 argtypes
@@ -69,6 +70,7 @@ dfrac
 dict
 dicts
 docstrings
+doctests
 doctype
 dollarmath
 dotall

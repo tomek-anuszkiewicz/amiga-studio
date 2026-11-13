@@ -94,6 +94,10 @@ packages and current source files. A partial report is not a workspace baseline.
 Coverage shows which
 code was executed; it does not tell you whether the assertions were sufficient,
 whether all hardware cases were represented, or whether execution was fast.
+During implementation, `python tools/verification/verify.py test coverage crate NAME`
+produces a detailed report without completion gates. Use its unexecuted source
+locations to identify and test missing behavior; see the
+[coverage workflow](../tools/verification/README.md#coverage-guided-testing).
 
 When assessing a result, check which suites actually ran, whether they used full
 or sampled inputs, and whether failures or unavailable assets limited the run.

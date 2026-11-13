@@ -45,6 +45,17 @@ Report totals include only current files in those packages; retired or unselecte
 source files retained in cached LLVM objects are excluded without deleting build caches.
 Skipped coverage never reuses an earlier report as current evidence.
 
+During implementation, `test coverage crate NAME` measures all ordinary tests
+of one package without completion gates; `test coverage workspace` measures all
+ordinary workspace packages. The same coverage pipeline produces a summary,
+detailed LLVM data and a source-location report of unexecuted code. Reports
+identify their selected packages and cover only the current build target and
+instrumented code. Separate harness suites, doctests and branch coverage are
+not included. Follow the [coverage policy](../../../../.agents/rules/unit-testing-policy.md#coverage-during-development-and-review)
+to resolve behavioral gaps in changed emulator code and review its assertions
+before completion. Full executable-code coverage is the goal; there is no
+percentage gate or coverage exception list.
+
 Formatting, Clippy, architecture, hardware/code audits, frontmatter and English
 retain their full scope. Python contract selection remains unchanged below.
 Performance measurements remain explicit diagnostics; benchmark workload contracts

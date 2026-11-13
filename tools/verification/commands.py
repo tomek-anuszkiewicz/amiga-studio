@@ -3,7 +3,7 @@ import os
 import sys
 from pathlib import Path
 from repository import REPO_ROOT
-from impact import select_rust_scope
+from impact import RustScope, select_rust_scope, workspace_packages
 
 
 def singlestep_command(profile="verification", case=None, exact=False):
@@ -36,7 +36,7 @@ def select_coverage_commands(mode, rust_scope=None):
     """Only ordinary workspace tests contribute to the commit coverage report."""
     import sys
 
-    if mode != "commit" or rust_scope is not None and rust_scope.ordinary == ():
+    if mode not in ("commit", "coverage") or rust_scope is not None and rust_scope.ordinary == ():
         return []
     packages = rust_scope.ordinary if rust_scope is not None else None
     package_args = [part for name in packages for part in ("-p", name)] if packages is not None else []
@@ -47,10 +47,10 @@ def select_coverage_commands(mode, rust_scope=None):
         ("Reset coverage counters", ["cargo", "llvm-cov", "clean", "--profraw-only"], {}),
         ("Ordinary crate tests" if packages is not None else "All ordinary crate tests",
          ["cargo", "llvm-cov", "--no-report", "--no-fail-fast", *test_args, "--", "--quiet"], {}),
-        ("Export ordinary crate coverage", ["cargo", "llvm-cov", "report", "--json", "--summary-only",
+        ("Export ordinary crate coverage", ["cargo", "llvm-cov", "report", "--json",
                                             *package_args,
                                             "--ignore-filename-regex", r"[/\\]test_runner[/\\]",
-                                            "--output-path", ".agent/tmp/coverage/summary.json"], {}),
+                                            "--output-path", ".agent/tmp/coverage/coverage.json"], {}),
         ("Ordinary crate coverage summary", [sys.executable, "tools/verification/coverage_report.py",
                                              *report_scope], {}),
     ]
@@ -328,6 +328,19 @@ def select_phases(args, changes, explanations=None):
         if args.exact:
             raise ValueError("--exact requires a focused Rust or SingleStep case")
         selected = runner_commands(args.action, args.words)
+    elif args.kind == "coverage":
+        if args.exact:
+            raise ValueError("Coverage measures all ordinary tests of the selected packages; --exact is unsupported")
+        scope = None
+        if args.words != ["workspace"]:
+            values = keyword_values(args.words, ("crate",))
+            if "crate" not in values:
+                raise ValueError("Use test coverage crate NAME or test coverage workspace")
+            _, roots = workspace_packages(REPO_ROOT)
+            if values["crate"] not in set(roots.values()) - {"test_runner"}:
+                raise ValueError("Coverage requires an ordinary workspace package, excluding test_runner")
+            scope = RustScope((values["crate"],), "Explicit coverage selection.")
+        return [("Coverage", select_coverage_commands("coverage", scope))]
     elif args.kind == "rust":
         if args.exact and not all(word in args.words for word in ("crate", "suite", "case")):
             raise ValueError("--exact requires test rust crate NAME suite NAME case NAME")

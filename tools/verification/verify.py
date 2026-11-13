@@ -80,6 +80,8 @@ def main(argv=None):
                                                   log_dir=results_dir / "verify" if results_dir else None)
             results.append(ok)
             print(f"{result_label(ok)} {name} ({elapsed:.2f}s): {detail}", flush=True)
+            if phase == "Coverage" and not ok:
+                break
             if args.command == "runner" and args.action in ("bench", "profile") and not ok:
                 break
     try:

@@ -18,6 +18,8 @@ includes a module path.
 | `milestone [singlestep]` | Full language audit and full SingleStep; the selector does not duplicate execution |
 | `test rust [unit|integration|all|workspace]` | Diagnostic tiers; default is unit plus integration; workspace excludes test_runner |
 | `test rust crate NAME [suite NAME] [case FILTER]` | One Cargo package, optionally one integration target and filter |
+| `test coverage crate NAME` | All ordinary tests of one package with detailed coverage; excludes test_runner |
+| `test coverage workspace` | All ordinary workspace tests with detailed coverage; excludes test_runner |
 | `test python` | Tool contracts affected by changed owning inputs and shared dependencies |
 | `test python directory PATH [file PATTERN] [case FILTER]` | One Python test directory and optional discovery filters |
 | `test runner [standard|silicon]` | Standard harness by default (transaction checker regressions), or full SingleStep |
@@ -230,6 +232,52 @@ The `test_runner` suites retain emulator execution checks and reference-result i
 
 Commit verification runs selected ordinary crate tests once under LLVM coverage instrumentation, excluding `test_runner`. There is no second uninstrumented run of those tests. The remaining quality gates and selected harness suites use normal Cargo artifacts. `cargo-llvm-cov` uses its separate `target/llvm-cov-target` cache, while normal Cargo commands retain their usual target directory. Raw measurement counters and the previous summary are cleared before each measurement, without deleting build caches. Yellow `[INFO]` messages identify the phases and summarize line, function and region coverage. Data is saved to `.agent/tmp/coverage/summary.json`, with `verification_scope` recording the test packages. Report totals include only current source files in those packages; retired files from old cached objects are excluded. A partial result is not a workspace-wide baseline. When Rust tests are skipped, no coverage is measured and any previous summary is not evidence for that run. There is no percentage threshold. Coverage does not measure performance or prove assertion quality. Stable coverage does not include doctest execution; branch coverage is not enabled.
 
+### Coverage-guided testing
+
+Measure during implementation without running completion gates:
+
+```powershell
+python tools/verification/verify.py test coverage crate denise
+python tools/verification/verify.py test coverage workspace
+```
+
+Both commands use the commit coverage pipeline and run all ordinary tests of the
+selected packages. The package command measures only the named package, without
+automatically selecting its consumers. Use the workspace command for an explicitly
+requested broad audit. There is no suite or case filter that could make a partial
+test run look like complete package coverage.
+
+The pipeline writes three files under `.agent/tmp/coverage/`:
+
+- `summary.json`: per-file and total line, function and region counts, with
+  `verification_scope` identifying the test packages.
+- `coverage.json`: scoped LLVM data, including function counts and source segments.
+- `gaps.md`: per-file missing counts, unexecuted function entry locations and
+  zero-count source spans, including partial-line gaps. Coordinates use
+  `line:column` with an exclusive end; function entries combine instantiations
+  at the same source location. Zero-count regions in individual function
+  instances are also listed: they may execute in another instance even when
+  the combined source view has no gap. Inspect their scenarios before adding tests.
+
+All three reports and raw counters are cleared before measurement; build caches
+remain. A failed coverage phase stops before exporting subsequent reports; other
+commit checks still run. Reports include only current files in the selected
+ordinary packages. They describe the current build target and instrumented code,
+not every platform or conditional build. Code absent from instrumentation is not
+proven covered. The Markdown report identifies source locations; LLVM's summary
+counts remain authoritative because source spans are not the same as LLVM regions.
+
+Read `gaps.md`, inspect the corresponding production behavior and existing
+assertions, then add or extend tests for in-scope gaps under the
+[coverage policy](../../.agents/rules/unit-testing-policy.md#coverage-during-development-and-review).
+Check whether an omitted suite already tests the behavior before declaring a
+missing test. Rerun coverage after test or production changes; use evidence only
+from a successful run whose source and index remained unchanged. Before an
+authorized commit, review the final commit report with its assertions. Report
+unrelated existing gaps separately; do not suppress them or create a permanent
+coverage exception list. Execution coverage does not establish assertion quality,
+complete hardware scenarios or performance.
+
 ### Selection from changed inputs
 
 `commit --plan` explains the scope before listing commands. Git supplies the union
@@ -376,7 +424,8 @@ python tools/verification/verify.py test rust all --plan
 `test rust all` combines those two tiers. `test runner standard` selects ordinary harness suites, including
 transaction checker regressions and SingleStep override contracts;
 `test runner silicon` selects full SingleStepTests.
-Focused commands do not run coverage or completion gates. With no arguments,
+Focused commands do not run completion gates; only `test coverage` measures
+coverage. With no arguments,
 the entry point displays help without executing commands.
 
 SingleStep uses CPU + synthetic TestMemoryBus, not production MemoryBus or
