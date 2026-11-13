@@ -57,6 +57,7 @@ impl Mouse {
     }
 
     /// Advances at most one quadrature transition per axis and returns pins 1..4.
+    #[inline]
     pub fn step_cck(&mut self) -> u8 {
         const MASK_PHASE: u8 = 3;
         const BIT_Y_PIN: u8 = 0;

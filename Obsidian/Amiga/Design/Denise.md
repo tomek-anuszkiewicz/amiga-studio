@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "denise"
 status: "active"
 created: 2026-09-06
-updated: 2026-11-13
+updated: 2026-11-14
 related: ["[Sprites.md](Sprites.md)", "[Frame Buffer.md](Frame%20Buffer.md)", "[Agnus.md](Agnus.md)", "[Game Ports.md](Game%20Ports.md)"]
 tracked_paths:
   - "crates/denise"
@@ -144,6 +144,12 @@ backward quadrature transitions. A simultaneous ambiguous two-phase jump
 updates the visible pin bits without inventing a direction. JOYTEST writes
 `$FCFC` on both registers and preserves the four input-derived low bits,
 following HRM Appendix A. No device-side position is copied into a JOY register.
+
+A 16-entry table decodes the connector pins into both axis phases. When those
+phases match the counter low bits, the receiver skips the counter update. The
+counters themselves retain the last phase, so this needs no additional saved
+state and remains valid after JOYTEST or snapshot restoration. Device stepping
+and connector sampling still occur every CCK.
 
 ## References
 

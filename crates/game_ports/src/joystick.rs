@@ -66,6 +66,7 @@ impl Joystick {
     }
 
     /// Each closed switch pulls its connector pin low; no JOY register lives here.
+    #[inline]
     pub fn direction_pins(&self) -> u8 {
         let pressed = if self.up { BIT_PIN_UP } else { 0 }
             | if self.down { BIT_PIN_DOWN } else { 0 }

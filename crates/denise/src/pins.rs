@@ -35,6 +35,7 @@ impl Default for DenisePins {
 
 impl Denise {
     /// Captures current levels; the local engine advances quadrature counters.
+    #[inline]
     pub fn receive_game_port_pins(&mut self, pins: [u8; 2]) {
         self.pins.game_port_inputs = pins.map(|value| value & MASK_DIRECTION_INPUTS);
     }

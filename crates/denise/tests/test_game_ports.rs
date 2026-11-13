@@ -36,3 +36,36 @@ fn every_joystick_contact_combination_is_visible_through_xor_bits() {
         }
     }
 }
+
+#[test]
+fn held_pins_preserve_joytest_counts_until_the_next_transition() {
+    let mut denise = Denise::new(DeniseModel::Ocs8362);
+    // X forward to phase 3, Y backward to phase 1.
+    for pins in [0x09, 0x00, 0x06] {
+        denise.receive_game_port_pins([pins; 2]);
+        denise.step_cck();
+    }
+    assert_eq!(denise.joy0dat(), 0xfd03);
+    assert!(denise.set_joytest(0xfcfc));
+    denise.step_cck();
+    for _ in 0..32 {
+        denise.receive_game_port_pins([0x06; 2]);
+        denise.step_cck();
+        assert_eq!(denise.joy0dat(), 0xfdff);
+        assert_eq!(denise.joy1dat(), 0xfdff);
+    }
+    let mut restored = denise.clone();
+    for target in [&mut denise, &mut restored] {
+        // Port 1 continues across X wrap; port 2 reverses both axes.
+        target.receive_game_port_pins([0x0f, 0x00]);
+        target.step_cck();
+        assert_eq!(target.joy0dat(), 0xfc00);
+        assert_eq!(target.joy1dat(), 0xfefe);
+        target.reset();
+        target.receive_game_port_pins([0x06; 2]);
+        target.step_cck();
+        assert_eq!(target.joy0dat(), 0x01ff);
+        assert_eq!(target.joy1dat(), 0x01ff);
+    }
+    assert_eq!(denise, restored);
+}

@@ -176,6 +176,7 @@ impl GamePorts {
     }
 
     /// Advances external device waveforms before the current input sampling phase.
+    #[inline]
     pub fn step_cck(&mut self) {
         self.pins.direction_pins = [
             self.state.port1.step_direction_pins(),

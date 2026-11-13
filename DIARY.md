@@ -903,3 +903,25 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - MIXED-GAME-SCENE-20261113 delivers the scene requested with this skill
   - visual fidelity and hardware comparison remain unverified
   - commit verification and independent review are recorded in the commit message
+---
+
+### [2026-11-14 00:34 CET] — Skip unchanged game-port counter work
+- **Affected Subsystems**:
+  - `Denise`
+  - `game ports`
+  - `device regression tests`
+- **What Was Changed (The Concrete Reality)**:
+  - Decode direction pins through a 16-entry phase table and skip unchanged JOY counter updates
+  - add ordinary inline hints to four small device and pin paths
+  - cover held inputs after JOYTEST, wrapping, reversal, cloning and reset
+  - document the unchanged CCK sampling contract
+- **Architectural Rationale & Trade-Offs**:
+  - Reuse counter low bits as the retained phase without adding snapshot state
+  - CORE-PERFORMANCE-PREP-20261113 device optimization preserves input timing, while host batching and keyboard scheduling remain future work
+- **Verification & Test Results**:
+  - The six source and test files match the frozen measured version after line-ending normalization
+  - earlier validation passed 238 focused tests and native, Wasm, Clippy, formatting and architecture checks
+  - 112 complete checkpoints and 300000 per-CCK samples matched the previous model
+  - native ABBA throughput improved by 2.378 percent for ROM, 6.686 percent for idle devices and 7.141 percent for active input batches
+  - these measurements exclude GUI and host latency
+  - current commit verification and independent review are recorded in the commit message
