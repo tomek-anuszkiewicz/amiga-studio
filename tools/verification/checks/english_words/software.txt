@@ -358,6 +358,7 @@ dmaconr
 dmaon
 dmap
 doctest
+doctests
 dod
 dotenv
 downclocking

@@ -65,9 +65,22 @@ class ImpactTests(unittest.TestCase):
         self.assertEqual(self.select(["DIARY.md", "docs/guide.md", ".agents/rules/git-commits.md",
                                       "tools/verification/README.md", "tools/artifacts/report.py"]).packages, ())
 
+    def test_language_data_does_not_select_rust_or_expand_package_scope(self):
+        paths = ["tools/verification/checks/check_english.json",
+                 *[f"tools/verification/checks/english_words/{name}.txt"
+                   for name in ("programming", "hardware", "software", "names", "new")]]
+        for path in paths:
+            with self.subTest(path=path):
+                self.assertEqual(self.select([path]).packages, ())
+                self.assertEqual(self.select([path, "crates/gui/src/lib.rs"]).packages, ("gui",))
+                self.assertEqual(self.select([path, "crates/core/src/lib.rs"]).packages,
+                                 ("core", "gui", "machine", "test_runner"))
+
     def test_unknown_inputs_build_changes_and_selection_changes_require_full_scope(self):
         for path in ("Cargo.lock", "crates/core/Cargo.toml", "crates/core/build.rs", ".cargo/config.toml",
                      "rust-toolchain.toml", "tools/verification/impact.py", "tools/verification/tests/test_impact.py",
+                     "tools/verification/checks/check_english.py", "tools/verification/tests/test_english.py",
+                     "tools/verification/checks/english_words/tool.py", "tools/verification/checks/other.json",
                      "Obsidian/Amiga/Design/CPU.md", "tools/new/check.py", "examples/fixture.bin",
                      "crates/deleted/src/lib.rs", "tools/artifacts/native.rs", "tools/artifacts-old/a.py"):
             with self.subTest(path=path):

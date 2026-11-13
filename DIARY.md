@@ -827,3 +827,24 @@ Every authorized repository commit adds a concise entry here. Logging and compac
 - **Verification & Test Results**:
   - Verification tool tests and a focused blep_generator coverage run passed during development
   - skill and vault checks passed. Full emulator coverage audit was not performed.
+---
+
+### [2026-11-13 22:48 CET] — Automate language review during change rounds
+- **Affected Subsystems**:
+  - `.agents`
+  - `tools/verification`
+  - `AGENTS.md`
+  - `Obsidian/Amiga/Design/Verification`
+- **What Was Changed (The Concrete Reality)**:
+  - Resolve clear language findings and maintain reviewed vocabulary during each change round
+  - Block completion on unresolved findings and finish language corrections before final tests
+  - Keep language data changes from expanding Rust test scope while retaining all quality gates
+  - Cover standalone and mixed language-data changes with selection regressions
+- **Architectural Rationale & Trade-Offs**:
+  - The user delegated routine language decisions and approved the narrow test-selection exception
+  - Keep genuine language problems blocking without unnecessary emulator test runs
+- **Verification & Test Results**:
+  - The new regression reproduced the original full-scope selection
+  - 111 verification tool tests passed during development
+  - Scoped language checks and the Design vault audit passed
+  - Full SingleStep and milestone verification were not run

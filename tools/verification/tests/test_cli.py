@@ -166,6 +166,20 @@ class SelectionTests(unittest.TestCase):
         self.assertEqual(sum("discover" in item[1] for item in commands), 7)
         self.assertTrue(any("tools/bootstrap/book-to-markdown/run_tests.py" in item[1] for item in commands))
 
+    def test_language_data_keeps_commit_gates_without_expanding_rust(self):
+        docs = selected("commit", ["docs/testing.md"])
+        gui = selected("commit", ["crates/gui/src/lib.rs"])
+        names = {name for name, _, _ in docs}
+        self.assertTrue({"Strict English Policy", "Architecture Rules", "Clippy Invariants",
+                         "Verification CLI contracts"} <= names)
+        self.assertFalse(any("llvm-cov" in command or command[:2] == ["cargo", "test"]
+                             for _, command, _ in docs))
+        for path in ("tools/verification/checks/english_words/programming.txt",
+                     "tools/verification/checks/check_english.json"):
+            with self.subTest(path=path):
+                self.assertEqual(selected("commit", [path]), docs)
+                self.assertEqual(selected("commit", ["crates/gui/src/lib.rs", path]), gui)
+
     def test_partial_coverage_runs_once_and_exports_the_same_packages(self):
         with patch.object(selection, "select_rust_scope", return_value=RustScope(("cpu", "gui", "test_runner"), "fixture")):
             commands = selected("commit", ["crates/cpu/src/cpu.rs"])

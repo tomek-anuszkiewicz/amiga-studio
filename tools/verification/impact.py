@@ -63,7 +63,16 @@ def workspace_graph(root):
     return roots, consumers
 
 
+def language_data_input(path):
+    target = Path(path)
+    return (path == "tools/verification/checks/check_english.json"
+            or target.parent.as_posix() == "tools/verification/checks/english_words"
+            and target.suffix == ".txt")
+
+
 def full_scope_input(path):
+    if language_data_input(path):
+        return False
     name = Path(path).name
     return (name in {"Cargo.toml", "Cargo.lock", "build.rs", "rust-toolchain", "rust-toolchain.toml"}
             or path.startswith((".cargo/", "Obsidian/Amiga/Design/"))
@@ -72,6 +81,8 @@ def full_scope_input(path):
 
 def independent_input(path, python_inputs):
     # Package ownership is checked first: README files can be included by Rust.
+    if language_data_input(path):
+        return True
     if path.endswith(".md") and ("/" not in path or path.startswith(("docs/", ".agents/", "tools/"))):
         return True
     if path.endswith(".rs"):

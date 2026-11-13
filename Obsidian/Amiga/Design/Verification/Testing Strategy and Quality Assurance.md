@@ -34,7 +34,11 @@ their transitive consumers through normal, development and build dependencies,
 including optional and target-specific declarations. All ordinary tests of the
 selected packages run once under coverage; dependencies still compile as needed.
 Independent documentation and known Python tool changes skip Rust tests and
-coverage. Changes inside a package, including fixtures, select that package and
+coverage. Language data in `tools/verification/checks/english_words/*.txt` and
+`tools/verification/checks/check_english.json` also selects no Rust tests and does
+not expand the scope selected by other changes. Language checker code and tests
+remain verification implementation inputs requiring the full Rust scope.
+Changes inside a package, including fixtures, select that package and
 its consumers. Manifest, lockfile, toolchain, Cargo configuration, verification
 implementation and design specification changes require the full Rust scope.
 Unknown input ownership, unavailable metadata and a clean tree also select the

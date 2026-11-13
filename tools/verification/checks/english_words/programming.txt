@@ -70,7 +70,6 @@ dfrac
 dict
 dicts
 docstrings
-doctests
 doctype
 dollarmath
 dotall

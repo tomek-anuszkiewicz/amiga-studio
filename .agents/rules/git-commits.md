@@ -25,7 +25,7 @@ need, or an explicit task requirement.
 
 Append the required DIARY.md entry with work completed and verification results already observed. Finish source and documentation edits, check the intended paths and generated artifacts, and resolve index or line-ending issues before running the full commit profile. Record the profile's outcome in the commit message and final report; do not edit the diary solely to repeat that outcome. If a later correction changes the intended source, rerun the profile on the corrected source.
 
-Then run the canonical verification entry point on the final intended source.
+Resolve language findings first under [language policy](language-policy.md#resolving-findings), so language corrections do not require repeating completed emulator tests. Then run the canonical verification entry point on the final intended source.
 Verification does not require staging first:
 
 ```powershell
@@ -47,7 +47,7 @@ prevent the commit. Finally stage only the intended paths and verify that the
 index matches the approved snapshot; partial staging or other differences require
 review of the actual intended version before committing.
 
-Diagnose and resolve the failure, then rerun the full commit profile on the final intended source before committing. When resolution needs a user decision, present the findings and concrete choices in an interactive dialog when available. Keep the authorized commit workflow active while awaiting the answer. For English findings, follow [language-policy.md](language-policy.md): do not change text or vocabulary before the user decides. After the decision, apply it and continue verification and the same authorized commit without requesting commit permission again.
+Diagnose and resolve the failure, then rerun the full commit profile on the final intended source before committing. Resolve routine English findings automatically under [language-policy.md](language-policy.md#resolving-findings). When resolution still needs a user decision, present the unresolved findings and concrete choices in an interactive dialog when available. Keep the authorized commit workflow active while awaiting the answer. After the decision, apply it and continue verification and the same authorized commit without requesting commit permission again.
 
 If the failure cannot be resolved, report blocked verification and leave the changes uncommitted. A focused passing test or a written explanation of the failure does not waive this gate. For milestone completion, the required milestone profile must also pass before its completion commit.
 

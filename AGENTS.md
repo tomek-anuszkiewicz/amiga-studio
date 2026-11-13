@@ -7,7 +7,7 @@ Read these shared rules before task work; linked files require explicit reads:
 - [Specification compliance](.agents/rules/spec-compliance.md): Surface conflicts with design specifications and never silently change golden references.
 - [Path privacy](.agents/rules/no-external-paths.md): Keep committed paths portable.
 - [Commit policy](.agents/rules/git-commits.md): Required commit points, user-controlled timing, validation, and diary entries.
-- [Language policy](.agents/rules/language-policy.md): Keep repository artifacts in English and answer in the user's language.
+- [Language policy](.agents/rules/language-policy.md): Keep repository artifacts in English, resolve language findings at the end of each change round, and answer in the user's language.
 
 Implement requested behavior and the technical changes necessary to make it work. Propose optional additions before implementing them; usefulness alone does not authorize a new feature. Leave product and editorial decisions to the user unless delegated explicitly. Before completion, review the diff against this boundary using the [scope rules](.agents/rules/structural-root-cause.md).
 

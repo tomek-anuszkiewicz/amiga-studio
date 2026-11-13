@@ -290,6 +290,7 @@ Rust changes therefore expand the test scope, even for a documentation task.
 | --- | --- |
 | Files inside a workspace package, including tests and fixtures | Owning package and every transitive consumer |
 | Independent root, `docs/`, `.agents/` or tool Markdown; known Python tool inputs | No Rust tests or coverage |
+| `checks/english_words/*.txt` and `checks/check_english.json` under `tools/verification/` | No Rust tests or coverage; does not expand the scope of other changes |
 | Cargo manifests/lockfiles, build scripts, toolchain or `.cargo/` configuration | Full ordinary workspace and standard harness |
 | Verification implementation/tests or Design specifications | Full ordinary workspace and standard harness |
 | Unknown ownership, unavailable Cargo metadata, or a clean tree | Full ordinary workspace and standard harness |

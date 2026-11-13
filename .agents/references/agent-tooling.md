@@ -68,7 +68,12 @@ Usual types are `feat`, `fix`, `refactor`, `perf`, `docs`, `test`, and `chore`;
 scope names identify the affected subsystem or tooling. Implementation, tests,
 design updates, and diary for the same concern belong together.
 
-For a full English vocabulary scan authorized by [language-policy.md](../rules/language-policy.md), use `python tools/verification/verify.py check english`. Both commit
+At the end of a change round, select the task's authored files within the configured
+scope and run `python tools/verification/verify.py check english files <paths>`.
+Resolve findings under [language-policy.md](../rules/language-policy.md) before
+reporting the round complete. This command runs only the language check.
+For the full English vocabulary scan before commit verification or on explicit request,
+use `python tools/verification/verify.py check english`. Both commit
 and milestone profiles include this scan. Install its pinned dictionary dependency with `python -m pip install -r tools/verification/checks/requirements.txt`. Scope exclusions and text formats live
 in `tools/verification/checks/check_english.json`; maintain them according to
 [language-policy.md](../rules/language-policy.md). Explicit file arguments
