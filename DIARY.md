@@ -548,3 +548,20 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - All 108 focused tests passed after the correction
   - The hardware manual audit removed 18 formatting findings and retained seven math commands plus 158 literal content findings
   - Review server HTTP checks passed with no pending render or error
+---
+
+### [2026-11-13 11:16 CET] — Save reference manual preparation artifacts
+- **Affected Subsystems**:
+  - `Book Review recipes`
+  - `PDF preparation metadata`
+- **What Was Changed (The Concrete Reality)**:
+  - Save the current Hardware Reference Manual editor recipe with 2508 elements from 405 PDF pages
+  - Record OCR preparation provenance for the M68000 programmer reference manual
+- **Architectural Rationale & Trade-Offs**:
+  - Preserve editable book preparation and matching source identity while source review remains unfinished
+- **Verification & Test Results**:
+  - Original and prepared PDF hashes match both manuals metadata
+  - OCR profiles match their workspace configuration and page selections are within the 405-page and 646-page sources
+  - The recipe matches Working and Accepted and loads all 80 graphics
+  - Source audit resolves 60752 references but exits with code 1 for 158 literal content findings and seven math commands without source references
+  - No new conversion or reconstruction run and no whole-book quality approval
