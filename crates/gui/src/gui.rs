@@ -15,6 +15,7 @@ pub use debugger::DebuggerSession;
 pub use file_actions::BinarySource;
 pub use layout::left_dock::disassembly::DisasmEditState;
 pub use layout::left_dock::registers::EditRegister;
+pub use layout::main_viewport::amiga_screen::ScreenScale;
 pub use theme::AppTheme;
 
 #[cfg(target_arch = "wasm32")]

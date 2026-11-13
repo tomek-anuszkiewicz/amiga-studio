@@ -4,10 +4,64 @@
 //! and optional floating debugger toggle button for Clean Screen mode.
 
 use egui::{load::SizedTexture, pos2, vec2, Color32, Rect, RichText, Stroke};
+use serde::{Deserialize, Serialize};
+
+/// Amiga image scale, independent of interface zoom and host DPI.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub enum ScreenScale {
+    #[default]
+    Fit,
+    Half,
+    One,
+    Two,
+    Four,
+}
+
+impl ScreenScale {
+    pub(crate) const ALL: [Self; 5] = [Self::Fit, Self::Half, Self::One, Self::Two, Self::Four];
+
+    pub(crate) fn label(self) -> &'static str {
+        match self {
+            Self::Fit => "Fit (smooth)",
+            Self::Half => "0.5x",
+            Self::One => "1x",
+            Self::Two => "2x",
+            Self::Four => "4x",
+        }
+    }
+
+    fn texture_options(self) -> egui::TextureOptions {
+        if self == Self::Fit {
+            egui::TextureOptions::LINEAR
+        } else {
+            egui::TextureOptions::NEAREST
+        }
+    }
+
+    fn image_size(
+        self,
+        source: egui::Vec2,
+        available: egui::Vec2,
+        pixels_per_point: f32,
+    ) -> egui::Vec2 {
+        let factor = match self {
+            Self::Fit => return source * (available.x / source.x).min(available.y / source.y),
+            Self::Half => 0.5,
+            Self::One => 1.0,
+            Self::Two => 2.0,
+            Self::Four => 4.0,
+        };
+        source * (factor / pixels_per_point)
+    }
+}
 
 /// Host texture refreshed after a completed field or paused debugger step.
 #[derive(Default)]
-pub(crate) struct ScreenTexture(Option<egui::TextureHandle>);
+pub(crate) struct ScreenTexture {
+    texture: Option<egui::TextureHandle>,
+    options: egui::TextureOptions,
+    first_pixel: Color32,
+}
 
 impl std::fmt::Debug for ScreenTexture {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -16,6 +70,22 @@ impl std::fmt::Debug for ScreenTexture {
 }
 
 impl ScreenTexture {
+    pub(crate) fn set_scale(&mut self, scale: ScreenScale) {
+        let options = scale.texture_options();
+        if self.options != options {
+            self.options = options;
+            if let Some(texture) = &mut self.texture {
+                // egui 0.31 carries sampler options in image updates. Re-send one
+                // unchanged texel so a filter switch cannot expose an unfinished field.
+                texture.set_partial(
+                    [0, 0],
+                    egui::ColorImage::new([1, 1], self.first_pixel),
+                    options,
+                );
+            }
+        }
+    }
+
     pub(crate) fn update(&mut self, ctx: &egui::Context, session: &debugger::DebuggerSession) {
         let frame = &session.machine.denise.frame_builder;
         let size = [frame.width as usize, frame.height as usize];
@@ -28,21 +98,23 @@ impl ScreenTexture {
             })
             .collect();
         let image = egui::ColorImage { size, pixels };
-        if let Some(texture) = self.0.as_mut() {
-            texture.set(image, egui::TextureOptions::NEAREST);
+        self.first_pixel = image.pixels.first().copied().unwrap_or(Color32::BLACK);
+        if let Some(texture) = self.texture.as_mut() {
+            texture.set(image, self.options);
         } else {
-            self.0 = Some(ctx.load_texture("Amiga display", image, egui::TextureOptions::NEAREST));
+            self.texture = Some(ctx.load_texture("Amiga display", image, self.options));
         }
     }
 
     pub(crate) fn image(&self) -> Option<SizedTexture> {
-        self.0.as_ref().map(SizedTexture::from_handle)
+        self.texture.as_ref().map(SizedTexture::from_handle)
     }
 }
 
 pub(crate) fn render_amiga_screen(
     ui: &mut egui::Ui,
     texture: Option<SizedTexture>,
+    scale: ScreenScale,
     show_floating_debug_btn: bool,
 ) -> bool {
     let available = ui.available_size();
@@ -50,19 +122,19 @@ pub(crate) fn render_amiga_screen(
         return false;
     }
 
-    let image_size = texture.map_or(available, |image| image.size);
-    let scale = (available.x / image_size.x).min(available.y / image_size.y);
-    let screen_w = image_size.x * scale;
-    let screen_h = image_size.y * scale;
-
-    // Center viewport in available space
-    let offset_x = (available.x - screen_w) * 0.5;
-    let offset_y = (available.y - screen_h) * 0.5;
+    let pixels_per_point = ui.ctx().pixels_per_point();
+    let image_size = texture.map_or(available, |image| {
+        scale.image_size(image.size, available, pixels_per_point)
+    });
 
     let (response, painter) = ui.allocate_painter(available, egui::Sense::hover());
+    let painter = painter.with_clip_rect(response.rect.intersect(ui.clip_rect()));
     painter.rect_filled(response.rect, 0.0, ui.visuals().panel_fill);
-    let origin = response.rect.min + vec2(offset_x, offset_y);
-    let screen_rect = Rect::from_min_size(origin, vec2(screen_w, screen_h));
+    let mut origin = response.rect.center() - image_size * 0.5;
+    if scale != ScreenScale::Fit {
+        origin = (origin * pixels_per_point).round() / pixels_per_point;
+    }
+    let screen_rect = Rect::from_min_size(origin, image_size);
 
     // Outer CRT Bezel
     let bezel_rect = screen_rect.expand(6.0);

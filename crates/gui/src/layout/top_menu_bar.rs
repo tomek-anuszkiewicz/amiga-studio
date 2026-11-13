@@ -281,6 +281,20 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
 
                 ui.separator();
 
+                egui::ComboBox::from_label("Image scale")
+                    .selected_text(app.screen_scale.label())
+                    .show_ui(ui, |ui| {
+                        for scale in crate::ScreenScale::ALL {
+                            if ui.selectable_value(&mut app.screen_scale, scale, scale.label()).clicked() {
+                                ui.memory_mut(|memory| memory.close_popup());
+                            }
+                        }
+                    })
+                    .response
+                    .on_hover_text("Fit smoothly fills the available area while preserving proportions. Fixed scales (0.5x, 1x, 2x, 4x) use sharp pixels, independently of interface zoom and monitor DPI. Oversized images stay centered and are clipped.");
+
+                ui.separator();
+
                 // --- 6. View Mode Toggle ---
                 if ui
                     .button(if developer { "🎮 Game View (F2 / F12)" } else { "Debug View (F2 / F12)" })

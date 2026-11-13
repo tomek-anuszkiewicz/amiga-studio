@@ -9,7 +9,7 @@ use crate::layout::left_dock::disassembly::{render_disassembly, DisasmEditState}
 use crate::layout::left_dock::engine_status::render_engine_status;
 use crate::layout::left_dock::microcode::render_microcode;
 use crate::layout::left_dock::registers::{render_registers, EditRegister};
-use crate::layout::main_viewport::amiga_screen::{render_amiga_screen, ScreenTexture};
+use crate::layout::main_viewport::amiga_screen::{render_amiga_screen, ScreenScale, ScreenTexture};
 use crate::layout::main_viewport::temporal_bar::render_temporal_bar;
 use crate::layout::right_dock::breakpoints_panel::{render_breakpoints_panel, BreakpointFormState};
 use crate::layout::right_dock::memory_hex::render_memory_hex;
@@ -75,6 +75,7 @@ fn default_right_dock_bottom_height() -> f32 {
 pub struct UserPreferences {
     pub theme: AppTheme,
     pub view_mode: ViewMode,
+    pub screen_scale: ScreenScale,
     pub show_microcode: bool,
     pub temporal_capacity: usize,
     pub disasm_pane_width: f32,
@@ -87,6 +88,7 @@ impl Default for UserPreferences {
         Self {
             theme: AppTheme::Dark,
             view_mode: ViewMode::Developer,
+            screen_scale: ScreenScale::default(),
             show_microcode: true,
             temporal_capacity: DEFAULT_TEMPORAL_CAPACITY,
             disasm_pane_width: default_disasm_pane_width(),
@@ -111,6 +113,7 @@ pub struct EmulatorApp {
     // UI Configuration & Themes
     pub theme: AppTheme,
     pub view_mode: ViewMode,
+    pub screen_scale: ScreenScale,
 
     // Interactive Edit states
     pub active_reg_edit: Option<(EditRegister, String)>,
@@ -166,6 +169,7 @@ impl Default for EmulatorApp {
             browser_file_task: None,
             theme: AppTheme::Dark,
             view_mode,
+            screen_scale: ScreenScale::default(),
             active_reg_edit: None,
             active_disasm_edit: None,
             disasm_pane_width: default_disasm_pane_width(),
@@ -210,6 +214,7 @@ impl EmulatorApp {
         UserPreferences {
             theme: self.theme,
             view_mode: self.view_mode,
+            screen_scale: self.screen_scale,
             show_microcode: self.show_microcode,
             temporal_capacity: self.temporal_capacity_selection,
             disasm_pane_width: self.disasm_pane_width,
@@ -222,6 +227,7 @@ impl EmulatorApp {
     pub fn apply_preferences(&mut self, prefs: &UserPreferences) {
         self.theme = prefs.theme;
         self.view_mode = prefs.view_mode;
+        self.screen_scale = prefs.screen_scale;
         self.show_microcode = prefs.show_microcode;
         self.temporal_capacity_selection = prefs.temporal_capacity;
         self.disasm_pane_width = prefs.disasm_pane_width;
@@ -384,19 +390,20 @@ impl EmulatorApp {
             }
         }
 
-        if (first_pass && self.playback.advance(now, &mut self.session))
-            || self.screen_texture.image().is_none()
-        {
+        let refresh_screen = (first_pass && self.playback.advance(now, &mut self.session))
+            || self.screen_texture.image().is_none();
+        render_top_menu_bar(self, ctx);
+        self.screen_texture.set_scale(self.screen_scale);
+        if refresh_screen {
             self.screen_texture.update(ctx, &self.session);
         }
         let screen_texture = self.screen_texture.image();
 
-        render_top_menu_bar(self, ctx);
         // --- RENDER BASED ON ACTIVE VIEW MODE ---
         if self.view_mode == ViewMode::ScreenOnly {
             // Game view never invokes inspection panels or their data queries.
             egui::CentralPanel::default().show(ctx, |ui| {
-                render_amiga_screen(ui, screen_texture, false);
+                render_amiga_screen(ui, screen_texture, self.screen_scale, false);
             });
         } else {
             // Mode B: Full Developer Studio GUI (Responsive Multi-Tier Architecture)
@@ -662,21 +669,14 @@ impl EmulatorApp {
                                                 let avail_w = ui.available_width();
                                                 let avail_h =
                                                     (ui.available_height() - 48.0).max(120.0);
-                                                let image_size = screen_texture.map_or_else(
-                                                    || egui::vec2(avail_w, avail_h),
-                                                    |image| image.size,
-                                                );
-                                                let scale = (avail_w.min(640.0) / image_size.x)
-                                                    .min(avail_h / image_size.y);
-                                                let screen_h = image_size.y * scale;
-
                                                 ui.allocate_ui_with_layout(
-                                                    egui::vec2(avail_w, screen_h),
+                                                    egui::vec2(avail_w, avail_h),
                                                     egui::Layout::top_down(egui::Align::Center),
                                                     |ui| {
                                                         render_amiga_screen(
                                                             ui,
                                                             screen_texture,
+                                                            self.screen_scale,
                                                             false,
                                                         );
                                                     },
@@ -731,7 +731,12 @@ impl EmulatorApp {
                                 egui::vec2(ui.available_width(), screen_h),
                                 egui::Layout::top_down(egui::Align::Center),
                                 |ui| {
-                                    render_amiga_screen(ui, screen_texture, false);
+                                    render_amiga_screen(
+                                        ui,
+                                        screen_texture,
+                                        self.screen_scale,
+                                        false,
+                                    );
                                 },
                             );
 

@@ -40,8 +40,9 @@ the exposed pixel slice contains only the active rectangle. There is no raw
 raster buffer or separate cropped/expanded presentation image.
 
 The [GUI](Application/GUI.md#scaling-and-appearance) uploads this rectangle directly
-and fits it uniformly into the display area. It does not infer a crop from DIW
-or colors.
+and applies the selected uniform scale. Fixed scales may clip the centered
+image to the viewport; Fit shows it completely. The GUI does not infer a crop
+from DIW or colors.
 
 ## Field assembly and snapshots
 

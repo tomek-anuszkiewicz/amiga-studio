@@ -7,7 +7,7 @@
 //! Trace, Execution count) remains strictly clean and transient.
 
 use eframe::Storage;
-use gui::{AppTheme, EmulatorApp, UserPreferences, ViewMode};
+use gui::{AppTheme, EmulatorApp, ScreenScale, UserPreferences, ViewMode};
 use std::collections::HashMap;
 
 /// In-memory implementation of eframe::Storage for headless deterministic testing
@@ -43,6 +43,7 @@ fn test_user_preferences_roundtrip_via_storage() {
     let mut app = EmulatorApp::default();
     app.theme = AppTheme::ClassicWorkbench;
     app.view_mode = ViewMode::ScreenOnly;
+    app.screen_scale = ScreenScale::Two;
     app.show_microcode = false;
     app.temporal_capacity_selection = 50_000;
     app.disasm_pane_width = 520.0;
@@ -74,6 +75,7 @@ fn test_user_preferences_roundtrip_via_storage() {
     let prefs = loaded_prefs.unwrap();
     assert_eq!(prefs.theme, AppTheme::ClassicWorkbench);
     assert_eq!(prefs.view_mode, ViewMode::ScreenOnly);
+    assert_eq!(prefs.screen_scale, ScreenScale::Two);
     assert_eq!(prefs.show_microcode, false);
     assert_eq!(prefs.temporal_capacity, 50_000);
     assert_eq!(prefs.disasm_pane_width, 520.0);
@@ -86,6 +88,7 @@ fn test_user_preferences_roundtrip_via_storage() {
     // 4. Assert UI preferences are restored
     assert_eq!(new_app.theme, AppTheme::ClassicWorkbench);
     assert_eq!(new_app.view_mode, ViewMode::ScreenOnly);
+    assert_eq!(new_app.screen_scale, ScreenScale::Two);
     assert_eq!(new_app.show_microcode, false);
     assert_eq!(new_app.temporal_capacity_selection, 50_000);
     assert_eq!(new_app.disasm_pane_width, 520.0);

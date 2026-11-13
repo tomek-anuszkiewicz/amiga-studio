@@ -627,3 +627,24 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Six frame execution tests passed including CIA wakeup and breakpoints
   - GUI test confirmed advancing video and working Pause during STOP
   - Vault metadata and 1048 links passed
+---
+
+### [2026-11-13 14:31 CET] — Add independent Amiga image scaling
+- **Affected Subsystems**:
+  - `GUI screen rendering`
+  - `GUI preferences`
+  - `display specifications`
+- **What Was Changed (The Concrete Reality)**:
+  - Select Fit or fixed 0.5x, 1x, 2x and 4x image scales in both views
+  - Use bilinear filtering for Fit and nearest sampling for fixed scales
+  - Preserve physical pixel scale across DPI and interface zoom
+  - Center and clip oversized images
+  - Persist selection without exposing unfinished fields during filter changes
+  - Apply approved texel vocabulary and pixels_per_point spelling
+- **Architectural Rationale & Trade-Offs**:
+  - Keep image presentation independent of emulated samples and interface scaling
+- **Verification & Test Results**:
+  - Scaling, interaction, persistence and execution-edit tests passed
+  - WASM package check passed
+  - Fresh Studio capture visually inspected with selector visible and proportional Fit image
+  - Vault metadata and 1049 links passed

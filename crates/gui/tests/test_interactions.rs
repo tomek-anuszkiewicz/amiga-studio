@@ -138,7 +138,11 @@ fn playback_toolbar_and_preferences_fit_supported_window_widths() {
             .filter_map(|node| node.raw_bounds())
             .filter(|bounds| bounds.y0 < 55.0)
             .collect::<Vec<_>>();
-        assert_eq!(preferences.len(), 2, "theme and zoom must remain visible");
+        assert_eq!(
+            preferences.len(),
+            3,
+            "theme, zoom and image scale must remain visible"
+        );
         for bounds in preferences {
             assert!(bounds.x0 >= 0.0 && bounds.x1 <= f64::from(width));
         }
