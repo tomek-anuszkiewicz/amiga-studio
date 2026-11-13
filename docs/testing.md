@@ -77,16 +77,21 @@ For an authorized commit, run from the repository root:
 python tools/verification/verify.py commit
 ```
 
-It runs standard tests and quality checks on the current working tree, including
+It selects Rust tests for changed packages and their transitive consumers while
+retaining full quality checks. Independent documentation and known Python tools
+skip Rust tests; shared build inputs and unknown impact require full verification.
+`commit --plan` explains the selection. It uses the current working tree, including
 unchanged files where the check's scope requires them. Staging is not required,
 and the command does not create a commit. Ordinary task completion uses relevant
 focused checks. Full SingleStep verification runs automatically at
 milestone closure or explicitly for diagnosis; changes alone do not select it
-in the commit profile. CPU waiting tests run with ordinary crate tests. Use
+in the commit profile. CPU waiting tests run when ordinary CPU tests are selected. Use
 `python tools/verification/verify.py --help` for the available profiles and
 [tools/verification/README.md](../tools/verification/README.md#completion-verification) for execution details.
 
-The report includes code coverage for ordinary crate tests. Coverage shows which
+When ordinary crate tests run, their report includes coverage for the selected
+packages and current source files. A partial report is not a workspace baseline.
+Coverage shows which
 code was executed; it does not tell you whether the assertions were sufficient,
 whether all hardware cases were represented, or whether execution was fast.
 

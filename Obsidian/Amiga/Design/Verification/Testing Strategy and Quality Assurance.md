@@ -26,9 +26,31 @@ tracked_paths:
 ## Completion entry point
 
 Completion uses [verify.py](../../../../tools/verification/verify.py) with
-`commit` for ordinary crate tests with coverage, quality gates, all available
-standard harness suites, Python tool contracts and the full English audit.
-Standard harness selection excludes the aggregate `test_singlestep` target.
+`commit` for affected ordinary crate tests with coverage, quality gates,
+standard harness suites when affected, Python tool contracts and the full English audit.
+Selection includes staged, unstaged and nonignored new paths, including both
+endpoints of renames. Cargo metadata identifies owning workspace packages and
+their transitive consumers through normal, development and build dependencies,
+including optional and target-specific declarations. All ordinary tests of the
+selected packages run once under coverage; dependencies still compile as needed.
+Independent documentation and known Python tool changes skip Rust tests and
+coverage. Changes inside a package, including fixtures, select that package and
+its consumers. Manifest, lockfile, toolchain, Cargo configuration, verification
+implementation and design specification changes require the full Rust scope.
+Unknown input ownership, unavailable metadata and a clean tree also select the
+full Rust scope. This conservative fallback covers inputs outside Cargo's graph.
+The plan explains selection and omissions. Coverage reports identify the selected
+test packages and are not presented as whole-workspace measurements when partial.
+Report totals include only current files in those packages; retired or unselected
+source files retained in cached LLVM objects are excluded without deleting build caches.
+Skipped coverage never reuses an earlier report as current evidence.
+
+Formatting, Clippy, architecture, hardware/code audits, frontmatter and English
+retain their full scope. Python contract selection remains unchanged below.
+Performance measurements remain explicit diagnostics; benchmark workload contracts
+are ordinary standard harness tests. Build caches are retained.
+Standard harness selection runs when `test_runner` is affected or the full Rust
+scope is required, and excludes the aggregate `test_singlestep` target.
 Transaction checker regressions, SingleStep override contracts and the bounded
 [JSON mutation pilot](../../../../crates/test_runner/tests/test_singlestep_mutations.rs)
 are standard suites. The pilot checks the verifier using selected SingleStep cases;

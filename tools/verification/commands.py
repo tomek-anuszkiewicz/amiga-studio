@@ -3,6 +3,7 @@ import os
 import sys
 from pathlib import Path
 from repository import REPO_ROOT
+from impact import select_rust_scope
 
 
 def singlestep_command(profile="verification", case=None, exact=False):
@@ -16,11 +17,11 @@ def singlestep_command(profile="verification", case=None, exact=False):
 
 # Full SingleStep verification runs automatically only at milestones.
 # SingleStep uses TestMemoryBus, not production MemoryBus/PhysicalMemory.
-def select_tests(root, mode, verify_singlestep=False, changes=()):
+def select_tests(root, mode, verify_singlestep=False, changes=(), rust_scope=None):
     completion = mode == "commit"
     singlestep = mode == "milestone" or verify_singlestep
     commands = []
-    if completion:
+    if completion and (rust_scope is None or rust_scope.harness):
         commands.extend(standard_harness(root))
     if singlestep:
         commands.append(("Full SingleStepTests", singlestep_command(),
@@ -31,21 +32,27 @@ def select_tests(root, mode, verify_singlestep=False, changes=()):
     return commands
 
 
-def select_coverage_commands(mode):
+def select_coverage_commands(mode, rust_scope=None):
     """Only ordinary workspace tests contribute to the commit coverage report."""
     import sys
 
-    if mode != "commit":
+    if mode != "commit" or rust_scope is not None and rust_scope.ordinary == ():
         return []
+    packages = rust_scope.ordinary if rust_scope is not None else None
+    package_args = [part for name in packages for part in ("-p", name)] if packages is not None else []
+    test_args = package_args if packages is not None else ["--workspace", "--exclude", "test_runner"]
+    report_scope = [part for name in packages for part in ("--package", name)] if packages is not None else []
     return [
         ("Prepare coverage report", [sys.executable, "tools/verification/coverage_report.py", "--prepare"], {}),
         ("Reset coverage counters", ["cargo", "llvm-cov", "clean", "--profraw-only"], {}),
-        ("All ordinary crate tests", ["cargo", "llvm-cov", "--no-report", "--no-fail-fast", "--workspace",
-                                      "--exclude", "test_runner", "--", "--quiet"], {}),
+        ("Ordinary crate tests" if packages is not None else "All ordinary crate tests",
+         ["cargo", "llvm-cov", "--no-report", "--no-fail-fast", *test_args, "--", "--quiet"], {}),
         ("Export ordinary crate coverage", ["cargo", "llvm-cov", "report", "--json", "--summary-only",
+                                            *package_args,
                                             "--ignore-filename-regex", r"[/\\]test_runner[/\\]",
                                             "--output-path", ".agent/tmp/coverage/summary.json"], {}),
-        ("Ordinary crate coverage summary", [sys.executable, "tools/verification/coverage_report.py"], {}),
+        ("Ordinary crate coverage summary", [sys.executable, "tools/verification/coverage_report.py",
+                                             *report_scope], {}),
     ]
 
 
@@ -291,17 +298,23 @@ def runner_commands(action, words):
     raise ValueError(f"Unsupported runner action: {action}")
 
 
-def select_phases(args, changes):
+def select_phases(args, changes, explanations=None):
     from cli import keyword_values
     if args.command in ("commit", "milestone"):
         if args.exact:
             raise ValueError("--exact requires a focused Rust or SingleStep case")
         if len(set(args.sets)) != len(args.sets) or set(args.sets) - {"singlestep"}:
             raise ValueError("Completion profiles accept singlestep at most once")
-        coverage = select_coverage_commands(args.command)
+        rust_scope = None
+        if args.command == "commit":
+            rust_scope = select_rust_scope(REPO_ROOT, changes,
+                                           {path for inputs in PYTHON_INPUTS.values() for path in inputs})
+            if explanations is not None:
+                explanations.extend(rust_scope.explain())
+        coverage = select_coverage_commands(args.command, rust_scope)
         commands = select_quality_commands(args.command) + select_tests(
             REPO_ROOT, args.command, verify_singlestep="singlestep" in args.sets,
-            changes=changes)
+            changes=changes, rust_scope=rust_scope)
         phases = []
         if coverage:
             phases.append(("Coverage", coverage))

@@ -17,15 +17,25 @@ def main(argv=None):
     parser, args = parse_args(sys.argv[1:] if argv is None else argv)
     if args is None:
         return 0
+    before = None
+    if args.command == "commit" and not args.plan:
+        try:
+            before = snapshot(REPO_ROOT)
+        except (RuntimeError, OSError) as error:
+            print(f"{result_label(False)} Cannot capture source snapshot: {error}")
+            return 1
     try:
         automatic_python = args.command == "test" and args.kind == "python" and not args.words
         changes = collect_changes(REPO_ROOT) if automatic_python or args.command == "commit" else set()
-        phases = select_phases(args, changes)
+        explanations = []
+        phases = select_phases(args, changes, explanations)
         if args.results_dir is not None and not args.results_dir.strip():
             raise ValueError("--results-dir requires a nonempty path")
     except (RuntimeError, OSError, ValueError) as error:
         parser.error(str(error))
     results_dir = (REPO_ROOT / args.results_dir).resolve() if args.results_dir else None
+    for explanation in explanations:
+        print(f"[INFO] {explanation}")
     if results_dir is not None:
         phases = [(phase, [(name, command,
                             {**overrides, "SINGLESTEP_RESULTS_DIR": str(results_dir / "singlestep")}
@@ -52,7 +62,7 @@ def main(argv=None):
                   if automatic_python else "[INFO] No checks or tests selected.")
         return 0
     produces_reports = args.command == "runner" and args.action in ("bench", "analyze", "refresh")
-    if not produces_reports:
+    if not produces_reports and before is None:
         try:
             before = snapshot(REPO_ROOT)
         except (RuntimeError, OSError) as error:

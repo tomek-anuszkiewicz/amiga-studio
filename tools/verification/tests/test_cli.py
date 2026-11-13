@@ -14,6 +14,7 @@ from repository import REPO_ROOT
 import verify
 import commands as selection
 import execution
+from impact import RustScope
 
 
 def selected(sentence, changes=()):
@@ -146,8 +147,9 @@ class SelectionTests(unittest.TestCase):
 
     def test_ordinary_cpu_wait_tests_remain_in_normal_selection(self):
         for sentence in ("test rust unit", "commit"):
-            commands = selected(sentence)
-            self.assertTrue(any("cpu" in item[1] or "--workspace" in item[1] for item in commands))
+            commands = selected(sentence, ["crates/cpu/tests/test_cck_bus.rs"])
+            self.assertTrue(any("cpu" in item[1] for item in commands
+                                if "test" in item[1] or "llvm-cov" in item[1]))
 
     def test_milestone_retains_separate_scope(self):
         for changes in ([], ["crates/cpu/src/cpu.rs"], ["docs/testing.md"]):
@@ -157,12 +159,36 @@ class SelectionTests(unittest.TestCase):
             self.assertEqual(commands[1][2], {"SINGLESTEP_FULL": "1", "SINGLESTEP_LIMIT": "all"})
             self.assertEqual(commands[1][1][-2:], ["--profile", "verification"])
 
-    def test_commit_keeps_coverage_quality_and_all_python_suites_for_bootstrap_changes(self):
+    def test_commit_skips_rust_but_keeps_quality_and_python_suites_for_bootstrap_changes(self):
         commands = selected("commit", ["tools/bootstrap/book-to-markdown/review/service.py"])
-        self.assertTrue(any("llvm-cov" in item[1] for item in commands))
+        self.assertFalse(any("llvm-cov" in item[1] or item[1][:2] == ["cargo", "test"] for item in commands))
         self.assertTrue(any(any(part.endswith("checks/check_architecture.py") for part in item[1]) for item in commands))
         self.assertEqual(sum("discover" in item[1] for item in commands), 7)
         self.assertTrue(any("tools/bootstrap/book-to-markdown/run_tests.py" in item[1] for item in commands))
+
+    def test_partial_coverage_runs_once_and_exports_the_same_packages(self):
+        with patch.object(selection, "select_rust_scope", return_value=RustScope(("cpu", "gui", "test_runner"), "fixture")):
+            commands = selected("commit", ["crates/cpu/src/cpu.rs"])
+        run = next(command for _, command, _ in commands if "--no-report" in command)
+        export = next(command for _, command, _ in commands if "--summary-only" in command)
+        summary = next(command for _, command, _ in commands
+                       if "tools/verification/coverage_report.py" in command and "--prepare" not in command)
+        for command in (run, export):
+            self.assertEqual([command[i + 1] for i, word in enumerate(command) if word == "-p"], ["cpu", "gui"])
+            self.assertNotIn("--workspace", command)
+        self.assertEqual(summary[-4:], ["--package", "cpu", "--package", "gui"])
+        plain = [command for _, command, _ in commands if command[:2] == ["cargo", "test"]]
+        self.assertEqual(len(plain), 1)
+        self.assertIn("test_runner", plain[0])
+        self.assertNotIn("test_singlestep", plain[0])
+
+    def test_unaffected_runner_is_skipped_and_harness_only_change_has_no_coverage(self):
+        for packages, harness, coverage in ((("gui",), False, True), (("test_runner",), True, False), ((), False, False)):
+            with self.subTest(packages=packages), patch.object(selection, "select_rust_scope", return_value=RustScope(packages, "fixture")):
+                commands = selected("commit", ["docs/testing.md"])
+            self.assertEqual(any(command[:2] == ["cargo", "test"] for _, command, _ in commands), harness)
+            self.assertEqual(any("llvm-cov" in command for _, command, _ in commands), coverage)
+            self.assertIn(["cargo", "clippy", "--workspace", "--all-targets"], [command for _, command, _ in commands])
 
     def test_commit_skips_bootstrap_contracts_without_bootstrap_changes(self):
         bootstrap = {"Bootstrap contracts", "Conversion contracts", "HTML conversion contracts",
@@ -314,6 +340,24 @@ class ExecutionTests(unittest.TestCase):
                 self.assertEqual(verify.main(["commit", "--plan"]), 0)
         collect.assert_called_once_with(REPO_ROOT)
         self.assertIn("Book review contracts", output.getvalue())
+        self.assertIn("Rust test scope: none", output.getvalue())
+        self.assertIn("previous summary is not evidence", output.getvalue())
+
+    def test_commit_captures_source_before_change_selection(self):
+        events = []
+        def fingerprint(root):
+            events.append("snapshot")
+            return "before" if len(events) == 1 else "after"
+        def changes(root):
+            events.append("changes")
+            return {"docs/testing.md"}
+        with patch.object(verify, "snapshot", side_effect=fingerprint), \
+             patch.object(verify, "collect_changes", side_effect=changes), \
+             patch.object(verify, "execute_command", return_value=(True, "ok", 0)), \
+             contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(verify.main(["commit"]), 1)
+        self.assertEqual(events, ["snapshot", "changes", "snapshot"])
+        self.assertIn("Source or index changed", output.getvalue())
 
     def test_plan_never_executes_or_fingerprints_source(self):
         with patch.object(verify, "execute_command") as execute, patch.object(verify, "snapshot") as snapshot:

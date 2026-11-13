@@ -787,3 +787,26 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Full local artifact measurement and command help completed successfully
   - Vault audit passed for 35 specifications and 1055 links
   - Whitespace checks passed
+---
+
+### [2026-11-13 22:15 CET] — Select verification tests from changed packages
+- **Affected Subsystems**:
+  - `tools/verification`
+  - `testing specifications and procedures`
+- **What Was Changed (The Concrete Reality)**:
+  - VERIFICATION-SELECTION-20261113: select changed Cargo packages and their transitive consumers
+  - Skip Rust tests and coverage for independent documentation and known Python tool changes
+  - Retain full Rust verification for shared build inputs, verification changes, specifications and unknown ownership
+  - Keep all quality gates and the existing Python contract policy
+  - Identify coverage scope and remove retired source files from report totals without deleting build caches
+- **Architectural Rationale & Trade-Offs**:
+  - The measured cached commit profile spent 78.59 of 88.08 seconds in coverage and standard harness tests
+  - Reduce that work when it cannot be affected while preserving full Clippy and architecture enforcement
+- **Verification & Test Results**:
+  - All 103 verification tool contracts passed
+  - All 18 architecture checks passed
+  - Nine BLEP generator Rust tests and partial coverage passed in a 4.24 second pipeline
+  - Vault audit passed for 35 specifications and 1056 links
+  - Partial coverage exposed and now excludes 13 retired source files retained in cached objects
+  - No full SingleStep or performance benchmarks were run
+  - This is ordinary tooling work and does not close a roadmap milestone

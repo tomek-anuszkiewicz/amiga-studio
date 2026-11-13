@@ -228,7 +228,43 @@ worktree management lives in `tools/worktree.ps1`. The shared diary appender liv
 
 The `test_runner` suites retain emulator execution checks and reference-result invariants. The decoder inventory has a targeted test; Python tests check CPU performance test selection, analysis and command contracts. Empirical anomaly reports use stored results and do not establish fresh performance measurements.
 
-Commit verification starts with ordinary workspace crate tests under LLVM coverage instrumentation, excluding `test_runner`. This is automatic, with no coverage switch. Only this execution contributes to the coverage report; the remaining quality gates and harness suites use normal Cargo artifacts. `cargo-llvm-cov` uses its separate `target/llvm-cov-target` cache, while normal Cargo commands retain their usual target directory. Raw measurement counters and the previous summary are cleared before each measurement, without deleting the build caches. Yellow `[INFO]` messages identify the instrumented and uninstrumented phases and summarize line, function and region coverage. Full summary data is saved to `.agent/tmp/coverage/summary.json`; there is no percentage threshold. Coverage does not measure performance or prove assertion quality. Stable coverage does not include doctest execution; branch coverage is not enabled.
+Commit verification runs selected ordinary crate tests once under LLVM coverage instrumentation, excluding `test_runner`. There is no second uninstrumented run of those tests. The remaining quality gates and selected harness suites use normal Cargo artifacts. `cargo-llvm-cov` uses its separate `target/llvm-cov-target` cache, while normal Cargo commands retain their usual target directory. Raw measurement counters and the previous summary are cleared before each measurement, without deleting build caches. Yellow `[INFO]` messages identify the phases and summarize line, function and region coverage. Data is saved to `.agent/tmp/coverage/summary.json`, with `verification_scope` recording the test packages. Report totals include only current source files in those packages; retired files from old cached objects are excluded. A partial result is not a workspace-wide baseline. When Rust tests are skipped, no coverage is measured and any previous summary is not evidence for that run. There is no percentage threshold. Coverage does not measure performance or prove assertion quality. Stable coverage does not include doctest execution; branch coverage is not enabled.
+
+### Selection from changed inputs
+
+`commit --plan` explains the scope before listing commands. Git supplies the union
+of staged, unstaged and nonignored new paths, including both rename endpoints.
+Verification executes the working tree; it does not extract or stage an index-only
+candidate. A scoped commit must still match the verified source. Unrelated pending
+Rust changes therefore expand the test scope, even for a documentation task.
+
+| Changed inputs | Rust test scope |
+| --- | --- |
+| Files inside a workspace package, including tests and fixtures | Owning package and every transitive consumer |
+| Independent root, `docs/`, `.agents/` or tool Markdown; known Python tool inputs | No Rust tests or coverage |
+| Cargo manifests/lockfiles, build scripts, toolchain or `.cargo/` configuration | Full ordinary workspace and standard harness |
+| Verification implementation/tests or Design specifications | Full ordinary workspace and standard harness |
+| Unknown ownership, unavailable Cargo metadata, or a clean tree | Full ordinary workspace and standard harness |
+
+[impact.py](impact.py) reads `cargo metadata --no-deps --offline --locked`. It uses
+all local normal, development and build dependency declarations, including
+optional and target-specific edges, then follows consumers transitively. Ownership
+comes from manifest locations, including workspace tools outside `crates/`.
+Dependencies compile as required by Cargo; their own tests are selected only if
+they are affected. A change to `gui`, for example, selects `gui`; a change to
+`cpu` also selects `machine_loop`, `save_state`, `debugger`, `gui` and `test_runner`.
+Unknown external assets take the full fallback because Cargo does not describe
+every runtime file dependency. Package ownership takes precedence over the
+independent-documentation classification; build and specification inputs take
+precedence over package selection.
+
+All ordinary unit and integration tests of selected packages run. When
+`test_runner` is selected, all its standard harness targets run, excluding the
+aggregate full SingleStep target. Performance benchmarks remain explicit
+`runner bench` diagnostics; benchmark workload contracts remain standard tests.
+Full Clippy, formatting, architecture, hardware/code audits, English, frontmatter
+and the Python contract policy are unchanged. Selection never reuses a prior test
+verdict. Cargo retains responsibility for incremental compilation.
 
 Install the required tooling once:
 
@@ -246,7 +282,7 @@ python tools/verification/verify.py commit
 python tools/verification/verify.py milestone
 ```
 
-Routine commits use only the first command. The profiles are invoked separately. Commit first runs ordinary workspace crate tests with coverage, reports the measured coverage, then runs quality gates, standard `test_runner` suites and Python tool contracts without coverage instrumentation. It never selects full SingleStepTests, even for CPU changes. Every commit scans all repository-owned text files against the English dictionary and reviewed project vocabulary, regardless of staging or changes, using `tools/verification/checks/check_english.json`. Milestone runs that language audit plus full SingleStepTests, including on a clean tree so already committed milestone work is covered. It does not repeat the other commit checks. vAmigaTS Cargo suites and chipset workload tests have been removed; capture runs and chipset throughput comparisons are excluded from automatic verification.
+Routine commits use only the first command. The profiles are invoked separately. Commit first runs selected ordinary crate tests with coverage, then quality gates, selected standard `test_runner` suites and Python tool contracts. It never selects full SingleStepTests, even for CPU changes. Every commit scans all repository-owned text files against the English dictionary and reviewed project vocabulary, regardless of staging or changes, using `tools/verification/checks/check_english.json`. Milestone runs that language audit plus full SingleStepTests, including on a clean tree so already committed milestone work is covered. It does not repeat the other commit checks. vAmigaTS Cargo suites and chipset workload tests have been removed; capture runs and chipset throughput comparisons are excluded from automatic verification.
 
 The commit profile also checks every local Markdown file under `Obsidian/Amiga/`
 for line-one YAML frontmatter with `title` and `tags`, including Git-ignored

@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "m68000"
 status: "active"
 created: 2026-08-31
-updated: 2026-10-26
+updated: 2026-11-13
 related: ["[CPU Motorola M68000.md](../CPU%20Motorola%20M68000.md)", "[CPU Micro-Step State Machine.md](../CPU%20Micro-Step%20State%20Machine.md)", "[CPU Instruction Benchmarking.md](../Performance/CPU%20Instruction%20Benchmarking.md)"]
 tracked_paths:
   - "crates/test_runner/tests"
@@ -64,7 +64,7 @@ python tools/verification/verify.py test runner singlestep case test_add_b sampl
 python tools/verification/verify.py test runner singlestep full
 ```
 
-The full SingleStep run belongs to milestone verification and is available on explicit request or for diagnosis. Ordinary commit verification runs the standard test targets but excludes the full reference dataset. Both sampled and full SingleStep runs use the same state, clock, and bus comparisons.
+The full SingleStep run belongs to milestone verification and is available on explicit request or for diagnosis. Ordinary commit verification runs the standard test targets when `test_runner` is affected or full Rust verification is required, but excludes the full reference dataset. Selection follows the [testing strategy](Testing%20Strategy%20and%20Quality%20Assurance.md#completion-entry-point). Both sampled and full SingleStep runs use the same state, clock, and bus comparisons.
 
 ## 4. Checks around the comparator
 
