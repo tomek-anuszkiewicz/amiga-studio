@@ -1641,6 +1641,7 @@ dependencies = [
  "egui",
  "egui_kittest",
  "image",
+ "js-sys",
  "physical_memory",
  "rfd",
  "rtc",

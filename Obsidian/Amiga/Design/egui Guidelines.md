@@ -42,9 +42,9 @@ To prevent architectural complexity, concurrency bugs, and UI stalls:
 ## 3. Single-Threaded Time-Slice Execution Model
 
 To ensure seamless compilation to **WebAssembly (`wasm32-unknown-unknown`)** where native OS threads are not readily available:
-- **Bounded Cycle Slices:** When the emulator is running continuously (F5), the frame loop executes a bounded budget of machine cycles (e.g. 1/60th second of PAL Color Clocks = ~141,875 cycles, or up to 10,000 instructions) per GUI frame.
+- **Bounded Cycle Slices:** Run (F5) advances to the next completed video field within a bounded CCK budget. If the field is unfinished, a later UI update continues it while retaining the previous image. The [GUI playback contract](Application/GUI.md#input-and-output) defines host pacing, speed selection and presentation.
 - **Responsive UI Under Load:** Because execution is bounded per frame, the host window never freezes. If guest code enters an infinite loop (`BRA *`), the user can still hit Pause (Space / F5) or click buttons without lag.
-- **Frame Rate Synchronization:** Request repaints (`ctx.request_repaint()`) only when the emulator is running or animating. When paused, `egui` renders strictly on user interaction, saving host CPU cycles.
+- **Frame Rate Synchronization:** Schedule repaints for the next field deadline, accounting for time already spent executing and rendering. Additional input-driven repaints must not advance a field before its deadline. When paused, `egui` renders on user interaction or UI animation.
 
 ---
 

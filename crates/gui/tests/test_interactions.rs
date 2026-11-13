@@ -112,6 +112,40 @@ fn screen_uploads_the_visible_framebuffer_unchanged_and_preserves_its_geometry()
 }
 
 #[test]
+fn playback_toolbar_and_preferences_fit_supported_window_widths() {
+    use egui_kittest::{
+        kittest::{by, Queryable},
+        Harness,
+    };
+
+    for width in [1024.0, 1280.0, 1920.0] {
+        let mut harness = Harness::builder()
+            .with_size(egui::vec2(width, 720.0))
+            .build_state(
+                |ctx, app: &mut EmulatorApp| app.update_ui(ctx),
+                EmulatorApp::default(),
+            );
+        harness.run();
+        for label in ["Step Frame (Shift+F11)", "Slower", "Faster", "1x"] {
+            let bounds = harness.get_by_label(label).raw_bounds().unwrap();
+            assert!(
+                bounds.x0 >= 0.0 && bounds.x1 <= f64::from(width),
+                "{label} at {width}"
+            );
+        }
+        let preferences = harness
+            .query_all(by().role(egui::accesskit::Role::ComboBox))
+            .filter_map(|node| node.raw_bounds())
+            .filter(|bounds| bounds.y0 < 55.0)
+            .collect::<Vec<_>>();
+        assert_eq!(preferences.len(), 2, "theme and zoom must remain visible");
+        for bounds in preferences {
+            assert!(bounds.x0 >= 0.0 && bounds.x1 <= f64::from(width));
+        }
+    }
+}
+
+#[test]
 fn test_simulated_f12_view_mode_toggle() {
     let ctx = egui::Context::default();
     let mut app = EmulatorApp::default();
@@ -237,7 +271,7 @@ fn test_simulated_drag_and_drop_file() {
     let ctx = egui::Context::default();
     let mut app = EmulatorApp::default();
     assert!(!app.load_binary_modal_open);
-    assert!(app.pending_binary_path.is_none());
+    assert!(app.pending_binary.is_none());
 
     // Simulate drag-and-drop of a binary file
     let input_drop = RawInput {
@@ -257,7 +291,9 @@ fn test_simulated_drag_and_drop_file() {
 
     // Modal should now be open with the dropped file path
     assert!(app.load_binary_modal_open);
-    assert_eq!(app.pending_binary_path, Some(PathBuf::from("test.bin")));
+    assert!(
+        matches!(app.pending_binary, Some(gui::BinarySource::File(ref path)) if path == &PathBuf::from("test.bin"))
+    );
 }
 
 #[test]

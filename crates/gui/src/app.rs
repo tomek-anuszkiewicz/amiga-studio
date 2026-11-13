@@ -3,8 +3,6 @@
 //! Owns the UI state, themes, and views, delegating machine execution orchestration
 //! entirely to headless `debugger::DebuggerSession`.
 
-use std::path::PathBuf;
-
 use serde::{Deserialize, Serialize};
 
 use crate::layout::left_dock::disassembly::{render_disassembly, DisasmEditState};
@@ -18,6 +16,7 @@ use crate::layout::right_dock::memory_hex::render_memory_hex;
 use crate::layout::right_dock::memory_search::{render_memory_search, MemorySearchState};
 use crate::layout::right_dock::trace_log::render_trace_log;
 use crate::layout::top_menu_bar::render_top_menu_bar;
+use crate::playback::Playback;
 use crate::theme::AppTheme;
 use debugger::temporal::DEFAULT_TEMPORAL_CAPACITY;
 use debugger::DebuggerSession;
@@ -50,9 +49,6 @@ impl LayoutTier {
         }
     }
 }
-
-/// Maximum instructions executed per GUI frame during free-running emulation
-const MAX_INSTRUCTIONS_PER_FRAME: usize = 5000;
 
 /// App display mode: Developer Studio vs Clean Standalone Game Mode
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -106,6 +102,11 @@ pub struct EmulatorApp {
     /// Headless machine execution controller & model
     pub session: Box<DebuggerSession>,
     screen_texture: ScreenTexture,
+    pub playback: Playback,
+    pub show_fps: bool,
+    pub loaded_rom_name: Option<String>,
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) browser_file_task: Option<crate::file_actions::BrowserFileTask>,
 
     // UI Configuration & Themes
     pub theme: AppTheme,
@@ -137,7 +138,7 @@ pub struct EmulatorApp {
 
     // File loading modal state
     pub load_binary_modal_open: bool,
-    pub pending_binary_path: Option<PathBuf>,
+    pub pending_binary: Option<crate::file_actions::BinarySource>,
     pub load_target_addr_str: String,
     pub load_auto_prime: bool,
     pub file_error: Option<String>,
@@ -158,6 +159,11 @@ impl Default for EmulatorApp {
         Self {
             session: Box::new(DebuggerSession::new()),
             screen_texture: ScreenTexture::default(),
+            playback: Playback::default(),
+            show_fps: true,
+            loaded_rom_name: None,
+            #[cfg(target_arch = "wasm32")]
+            browser_file_task: None,
             theme: AppTheme::Dark,
             view_mode,
             active_reg_edit: None,
@@ -177,7 +183,7 @@ impl Default for EmulatorApp {
             temporal_capacity_selection: DEFAULT_TEMPORAL_CAPACITY,
             breakpoint_form: BreakpointFormState::default(),
             load_binary_modal_open: false,
-            pending_binary_path: None,
+            pending_binary: None,
             load_target_addr_str: "001000".to_string(),
             load_auto_prime: true,
             file_error: None,
@@ -224,21 +230,14 @@ impl EmulatorApp {
         self.session.temporal.set_capacity(prefs.temporal_capacity);
     }
 
-    /// Opens the native file chooser dialog for binary injection
-    pub(crate) fn open_load_binary_dialog(&mut self) {
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            let file = rfd::FileDialog::new()
-                .set_title("Select M68000 Binary Machine Code")
-                .add_filter("Raw Binary / ROM", &["bin", "rom", "exe", "dat"])
-                .pick_file();
-
-            if let Some(path) = file {
-                self.file_error = None;
-                self.pending_binary_path = Some(path);
-                self.load_binary_modal_open = true;
-            }
+    /// Changes presentation and connects debugger work only in Developer view.
+    pub fn set_view_mode(&mut self, mode: ViewMode) {
+        if self.view_mode == ViewMode::ScreenOnly && mode == ViewMode::Developer {
+            self.session.request_pause();
         }
+        self.view_mode = mode;
+        self.session
+            .set_debugger_enabled(mode == ViewMode::Developer);
     }
 
     /// Handles global keyboard shortcuts
@@ -251,10 +250,9 @@ impl EmulatorApp {
 
         if toggle_view_mode {
             if self.view_mode == ViewMode::ScreenOnly {
-                self.session.is_running = false; // Pause emulation to inspect state
-                self.view_mode = ViewMode::Developer;
+                self.set_view_mode(ViewMode::Developer);
             } else {
-                self.view_mode = ViewMode::ScreenOnly;
+                self.set_view_mode(ViewMode::ScreenOnly);
             }
         }
 
@@ -266,32 +264,52 @@ impl EmulatorApp {
             self.session.toggle_run();
         }
 
-        // F10: Step Instruction
-        if input.key_pressed(egui::Key::F10) && !input.modifiers.shift {
-            self.disassembly_view_addr = None;
-            self.session.step_instruction();
-        }
+        if self.view_mode == ViewMode::Developer {
+            // F10: Step Instruction
+            if !self.session.is_running
+                && input.key_pressed(egui::Key::F10)
+                && !input.modifiers.shift
+            {
+                self.disassembly_view_addr = None;
+                self.session.step_instruction();
+            }
 
-        // Shift + F10: Step Backward (Rewind)
-        if input.key_pressed(egui::Key::F10) && input.modifiers.shift {
-            self.disassembly_view_addr = None;
-            self.session.step_backward();
-        }
+            // Shift + F10: Step Backward (Rewind)
+            if !self.session.is_running
+                && input.key_pressed(egui::Key::F10)
+                && input.modifiers.shift
+            {
+                self.disassembly_view_addr = None;
+                self.session.step_backward();
+            }
 
-        // F11: Step CCK
-        if input.key_pressed(egui::Key::F11) {
-            self.disassembly_view_addr = None;
-            self.session.step_cck();
-        }
+            // F11: Step CCK
+            if !self.session.is_running
+                && input.key_pressed(egui::Key::F11)
+                && !input.modifiers.shift
+            {
+                self.disassembly_view_addr = None;
+                self.session.step_cck();
+            }
 
-        // F8: Toggle Microcode Inspector
-        if input.key_pressed(egui::Key::F8) {
-            self.show_microcode = !self.show_microcode;
-        }
+            // Shift + F11: Step to the next completed video field.
+            if !self.session.is_running
+                && input.key_pressed(egui::Key::F11)
+                && input.modifiers.shift
+            {
+                self.disassembly_view_addr = None;
+                self.session.step_frame();
+            }
 
-        // Alt + T: Toggle Temporal Recording
-        if input.modifiers.alt && input.key_pressed(egui::Key::T) {
-            self.session.temporal.toggle_recording();
+            // F8: Toggle Microcode Inspector
+            if input.key_pressed(egui::Key::F8) {
+                self.show_microcode = !self.show_microcode;
+            }
+
+            // Alt + T: Toggle Temporal Recording
+            if input.modifiers.alt && input.key_pressed(egui::Key::T) {
+                self.session.temporal.toggle_recording();
+            }
         }
 
         // Ctrl + R: Reset
@@ -316,12 +334,12 @@ impl EmulatorApp {
 
         // Ctrl + S: Save State to File
         if input.modifiers.command && input.key_pressed(egui::Key::S) {
-            crate::layout::top_menu_bar::open_save_state_dialog(self);
+            self.open_save_state_dialog();
         }
 
         // Ctrl + L: Load State from File
         if input.modifiers.command && input.key_pressed(egui::Key::L) {
-            crate::layout::top_menu_bar::open_load_state_dialog(self);
+            self.open_load_state_dialog();
         }
 
         // Ctrl + Plus / Equal: Zoom In
@@ -346,39 +364,43 @@ impl EmulatorApp {
 
     /// Renders one complete UI frame, handling input events, execution time-slicing, and docked panels
     pub fn update_ui(&mut self, ctx: &egui::Context) {
-        self.handle_keyboard_shortcuts(ctx);
+        #[cfg(not(target_arch = "wasm32"))]
+        let update_started = std::time::Instant::now();
+        #[cfg(target_arch = "wasm32")]
+        let update_started = eframe::web::now_sec();
+        let now = ctx.input(|input| input.time);
+        let first_pass = ctx.output(|output| output.num_completed_passes == 0);
+        if first_pass {
+            self.session
+                .set_debugger_enabled(self.view_mode == ViewMode::Developer);
+            self.handle_keyboard_shortcuts(ctx);
+        }
 
         // Check for drag-and-dropped files onto the emulator window
         let dropped_files = ctx.input(|i| i.raw.dropped_files.clone());
-        for file in dropped_files {
-            if let Some(path) = file.path {
-                self.file_error = None;
-                self.pending_binary_path = Some(path);
-                self.load_binary_modal_open = true;
+        if first_pass {
+            for file in dropped_files {
+                self.accept_dropped_file(file);
             }
         }
 
-        // Bounded Time-Slicing Execution Loop (when free-running)
-        if self.session.is_running {
-            self.session.run_slice(MAX_INSTRUCTIONS_PER_FRAME);
-            if self.session.is_running {
-                ctx.request_repaint(); // Request next frame immediately
-            }
+        if (first_pass && self.playback.advance(now, &mut self.session))
+            || self.screen_texture.image().is_none()
+        {
+            self.screen_texture.update(ctx, &self.session);
         }
-
-        self.screen_texture.update(ctx, &self.session);
         let screen_texture = self.screen_texture.image();
 
+        render_top_menu_bar(self, ctx);
         // --- RENDER BASED ON ACTIVE VIEW MODE ---
         if self.view_mode == ViewMode::ScreenOnly {
-            // Mode A: Clean Standalone Screen / Game View (no floating buttons)
+            // Game view never invokes inspection panels or their data queries.
             egui::CentralPanel::default().show(ctx, |ui| {
                 render_amiga_screen(ui, screen_texture, false);
             });
         } else {
             // Mode B: Full Developer Studio GUI (Responsive Multi-Tier Architecture)
             let tokens = self.theme.tokens();
-            render_top_menu_bar(self, ctx);
 
             let screen_rect = ctx.screen_rect();
             let total_w = screen_rect.width();
@@ -426,14 +448,16 @@ impl EmulatorApp {
                             egui::scroll_area::ScrollBarVisibility::VisibleWhenNeeded,
                         )
                         .show(ui, |ui| {
-                            render_registers(
+                            if render_registers(
                                 ui,
                                 &tokens,
                                 &mut self.session.machine.cpu,
                                 &mut self.session.machine.physical_memory,
                                 self.session.prev_cpu_state.as_ref(),
                                 &mut self.active_reg_edit,
-                            );
+                            ) {
+                                self.session.invalidate_instruction_tracking();
+                            }
                             ui.add_space(3.0);
                             render_engine_status(
                                 ui,
@@ -574,7 +598,7 @@ impl EmulatorApp {
                                     egui::vec2(disasm_w, total_h),
                                     egui::Layout::top_down(egui::Align::Min),
                                     |ui| {
-                                        render_disassembly(
+                                        if render_disassembly(
                                             ui,
                                             &mut self.session.machine.cpu,
                                             &mut self.session.machine.physical_memory,
@@ -585,7 +609,9 @@ impl EmulatorApp {
                                             &mut self.disassembly_selected_addr,
                                             &mut self.active_disasm_edit,
                                             &tokens,
-                                        );
+                                        ) {
+                                            self.session.invalidate_instruction_tracking();
+                                        }
                                     },
                                 );
 
@@ -618,7 +644,7 @@ impl EmulatorApp {
                                         .clamp(min_disasm_w, max_disasm_w);
                                 }
 
-                                // Sub-column 1: Prominent 4:3 Amiga CRT Screen + Temporal Bar (top) + Trace Log (bottom)
+                                // Sub-column 1: Amiga Screen + Temporal Bar (top) + Trace Log (bottom)
                                 let remaining_w = ui.available_width();
                                 ui.allocate_ui_with_layout(
                                     egui::vec2(remaining_w, total_h),
@@ -713,7 +739,7 @@ impl EmulatorApp {
                             render_temporal_bar(self, ui);
                             ui.separator();
 
-                            render_disassembly(
+                            if render_disassembly(
                                 ui,
                                 &mut self.session.machine.cpu,
                                 &mut self.session.machine.physical_memory,
@@ -724,13 +750,25 @@ impl EmulatorApp {
                                 &mut self.disassembly_selected_addr,
                                 &mut self.active_disasm_edit,
                                 &tokens,
-                            );
+                            ) {
+                                self.session.invalidate_instruction_tracking();
+                            }
                         }
                     }
                 });
         }
 
+        if first_pass {
+            self.poll_file_dialog(ctx);
+        }
         crate::layout::file_dialogs::render(self, ctx);
+
+        #[cfg(not(target_arch = "wasm32"))]
+        let elapsed = update_started.elapsed().as_secs_f64();
+        #[cfg(target_arch = "wasm32")]
+        let elapsed = eframe::web::now_sec() - update_started;
+        self.playback
+            .request_repaint(ctx, &self.session, now + elapsed);
     }
 }
 

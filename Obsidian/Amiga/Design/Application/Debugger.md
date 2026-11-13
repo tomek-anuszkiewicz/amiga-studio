@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "debugger"
 status: "active"
 created: 2026-09-05
-updated: 2026-11-11
+updated: 2026-11-13
 related: ["[General Architecture.md](../General%20Architecture.md)", "[Machine Loop.md](../Machine%20Loop.md)", "[GUI.md](GUI.md)", "[CPU Motorola M68000.md](../CPU%20Motorola%20M68000.md)"]
 tracked_paths:
   - "crates/debugger"
@@ -18,11 +18,13 @@ The debugger lets a developer pause the emulated machine, inspect its state, and
 
 ## Controlling execution
 
-Execution can run continuously, pause, advance by one M68000 instruction, or advance by one Color Clock step. Continuous execution stops before an instruction whose program counter matches an enabled breakpoint, or when the CPU halts or stops. Instruction stepping executes the next instruction even when a breakpoint is set at its address. The GUI exposes run/pause and both stepping controls; see the [Debugger Guide](../../../../docs/debugger.md) for shortcuts.
+Execution can run continuously, pause, advance by one M68000 instruction or Color Clock, or advance to the next completed video field with Step Frame. Ordinary pause completes the current field; pausing at an already completed field does not advance another one. Field completion follows Denise's frame counter, so stopping can occur within a CPU instruction. Frame stepping uses the same bounded execution path as Run and respects breakpoints. Continuous execution stops before an instruction whose program counter matches an enabled breakpoint, or when the CPU halts or stops; these debugger stops take precedence over completing the field. Instruction stepping executes the next instruction even when a breakpoint is set at its address. The GUI owns wall-clock pacing and speed selection; the headless session only advances emulated CCKs. See the [Debugger Guide](../../../../docs/debugger.md) for shortcuts.
 
 ## Inspecting code and memory
 
-The register view shows the current CPU state. The memory viewer lets the developer navigate to an address, inspect bytes in hex and ASCII, search memory, and edit bytes. Disassembly decodes words from the selected address into M68000 instructions, highlights the current instruction, and supports navigation through surrounding code. It recognizes MOVEP and NBCD and checks effective-address legality for the covered ALU, data, and control-flow forms. Rejected encodings are displayed as `DATA.W` and consume one word so inspection remains aligned with the input stream. An instruction can also be replaced in place with assembled text when the replacement has the same byte length. Inspection reads do not cause guest bus side effects.
+Game execution disables debugger instrumentation at the session boundary. It advances the same machine CCK loop without breakpoint checks, instruction disassembly, trace or temporal recording, CPU cloning, memory diff capture or debugger counter updates. Switching back synchronizes inspection state; it does not reconstruct the unrecorded interval. CPU STOP does not pause Game execution: chips continue until an interrupt can resume the CPU. Manual save/load remains explicit and independent of history recording.
+
+The register view shows the current CPU state. The memory viewer lets the developer navigate to an address, inspect bytes in hex and ASCII, search memory, and edit bytes. Disassembly decodes words from the selected address into M68000 instructions, highlights the current instruction, and supports navigation through surrounding code. It recognizes MOVEP and NBCD and checks effective-address legality for the covered ALU, data, and control-flow forms. Rejected encodings are displayed as `DATA.W` and consume one word so inspection remains aligned with the input stream. An instruction can also be replaced in place with assembled text when the replacement has the same byte length. Replacing execution through PC editing, instruction patching or historical CPU restoration restarts instruction tracking, so the next Run checks its breakpoint before executing. Inspection reads do not cause guest bus side effects.
 
 ## Stopping at a location
 

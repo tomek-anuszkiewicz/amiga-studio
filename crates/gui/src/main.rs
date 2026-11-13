@@ -39,6 +39,8 @@ fn main() -> eframe::Result<()> {
     }
 
     let native_options = eframe::NativeOptions {
+        // Playback schedules complete fields; display refresh must not cap fast modes.
+        vsync: false,
         viewport: egui::ViewportBuilder::default()
             .with_title("Amiga 500 Developer Studio")
             .with_app_id("amiga-studio")

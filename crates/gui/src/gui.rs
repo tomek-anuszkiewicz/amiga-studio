@@ -5,11 +5,14 @@
 //! execution orchestration to headless `debugger::DebuggerSession`.
 
 pub mod app;
+pub mod file_actions;
 pub mod layout;
+pub mod playback;
 pub mod theme;
 
 pub use app::{EmulatorApp, UserPreferences, ViewMode};
 pub use debugger::DebuggerSession;
+pub use file_actions::BinarySource;
 pub use layout::left_dock::disassembly::DisasmEditState;
 pub use layout::left_dock::registers::EditRegister;
 pub use theme::AppTheme;

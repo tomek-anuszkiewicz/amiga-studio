@@ -33,7 +33,8 @@ pub(crate) fn render_disassembly(
     selected_addr: &mut Option<u32>,
     active_edit: &mut Option<DisasmEditState>,
     tokens: &ColorTokens,
-) {
+) -> bool {
+    let mut execution_replaced = false;
     let start_pos = ui.cursor().min;
     let disasm_rect_id = egui::Id::new("disasm_view_rect");
     let prev_rect: Option<egui::Rect> = ui.data(|d| d.get_temp(disasm_rect_id));
@@ -59,6 +60,7 @@ pub(crate) fn render_disassembly(
             if let Ok(addr) = u32::from_str_radix(clean, 16) {
                 let target = addr & physical_memory::MASK_PHYSICAL_ADDRESS;
                 cpu.set_pc_and_prime_prefetch(target, bus);
+                execution_replaced = true;
                 *view_addr = None;
                 *selected_addr = Some(target);
             }
@@ -317,6 +319,7 @@ pub(crate) fn render_disassembly(
                                                     // If this is the current instruction, re-prime prefetch
                                                     if is_current {
                                                         cpu.set_pc_and_prime_prefetch(cur_addr, bus);
+                                                        execution_replaced = true;
                                                     }
                                                     *active_edit = None;
                                                 }
@@ -419,6 +422,7 @@ pub(crate) fn render_disassembly(
                                     if let Some((last_idx, _)) = historical_passes.last() {
                                         if let Some(target_frame) = temporal.scrub_to_index(*last_idx) {
                                             cpu.restore_state(target_frame.state.clone());
+                                            execution_replaced = true;
                                         }
                                     }
                                 }
@@ -428,6 +432,7 @@ pub(crate) fn render_disassembly(
                             line_label.context_menu(|ui| {
                                 if ui.button("📍 Set PC here").clicked() {
                                     cpu.set_pc_and_prime_prefetch(cur_addr, bus);
+                                    execution_replaced = true;
                                     *view_addr = None;
                                     *selected_addr = Some(cur_addr);
                                     ui.close_menu();
@@ -467,6 +472,7 @@ pub(crate) fn render_disassembly(
                                         if ui.button(item_label).clicked() {
                                             if let Some(target_frame) = temporal.scrub_to_index(*hist_idx) {
                                                 cpu.restore_state(target_frame.state.clone());
+                                                execution_replaced = true;
                                             }
                                             ui.close_menu();
                                         }
@@ -494,6 +500,7 @@ pub(crate) fn render_disassembly(
         egui::pos2(ui.max_rect().max.x, end_pos.y.max(start_pos.y + 100.0)),
     );
     ui.data_mut(|d| d.insert_temp(disasm_rect_id, total_rect));
+    execution_replaced
 }
 
 /// Interactive vertical scrollbar mapping 24-bit Amiga address space ($000000..=$00FFFFFE)

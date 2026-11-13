@@ -5,7 +5,7 @@
 
 use egui::{load::SizedTexture, pos2, vec2, Color32, Rect, RichText, Stroke};
 
-/// Host texture refreshed from the machine after each bounded execution slice.
+/// Host texture refreshed after a completed field or paused debugger step.
 #[derive(Default)]
 pub(crate) struct ScreenTexture(Option<egui::TextureHandle>);
 

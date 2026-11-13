@@ -241,7 +241,7 @@ fn test_debugger_session_controller() {
     // Toggle run and execute bounded slice
     session.toggle_run();
     assert!(session.is_running);
-    let executed = session.run_slice(10);
+    let executed = session.run_frame_slice(10);
     assert!(executed > 0);
     assert_eq!(session.instructions_executed, 1 + executed as u64);
 

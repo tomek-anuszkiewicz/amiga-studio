@@ -75,7 +75,7 @@ fn test_debugger_session_full_lifecycle() {
     // Free run slice
     session.toggle_run();
     assert!(session.is_running);
-    let ran = session.run_slice(5);
+    let ran = session.run_frame_slice(5);
     assert!(ran > 0);
 
     // Warm reset

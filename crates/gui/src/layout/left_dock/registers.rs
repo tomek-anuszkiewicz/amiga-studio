@@ -38,7 +38,7 @@ pub(crate) fn render_registers(
     bus: &mut PhysicalMemory,
     prev_state: Option<&CpuState>,
     active_reg_edit: &mut Option<(EditRegister, String)>,
-) {
+) -> bool {
     ui.heading("CPU Registers");
 
     let mut pc_to_set: Option<u32> = None;
@@ -549,4 +549,5 @@ pub(crate) fn render_registers(
     if let Some(target_pc) = pc_to_set {
         cpu.set_pc_and_prime_prefetch(target_pc, bus);
     }
+    pc_to_set.is_some()
 }

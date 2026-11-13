@@ -11,7 +11,7 @@ This guide introduces the Developer Studio for users and developers who want to 
   cargo run -p gui
   ```
 - **From Game Mode:** When running in clean game mode (`cargo run -p gui -- --game`), press **`F12`** at any time to pause emulation and switch into Developer Studio.
-- **Direct Binary Loading:** To boot directly into a compiled machine code binary or kickstart snapshot:
+- **Direct Binary Loading:** To load compiled machine code into RAM:
   ```powershell
   cargo run -p gui -- --load path/to/game.bin --addr 001000
   ```
@@ -23,14 +23,37 @@ This guide introduces the Developer Studio for users and developers who want to 
 | Shortcut | Action | Description |
 | :--- | :--- | :--- |
 | **`F12`** | **Toggle Screen Mode** | Switches between Clean Game Screen and Developer Studio. Pauses emulation on entry. |
-| **`F5` / `Space`** | **Run / Pause** | Toggles continuous free-running emulation. |
+| **`F5` / `Space`** | **Run / Pause** | Runs at the selected speed; pause finishes the current video field. |
 | **`F10`** | **Step Instruction** | Executes exactly 1 M68000 instruction, recording trace and history. |
 | **`Shift + F10`** | **Step Backward (Rewind)** | Restores a recorded CPU state; full-machine rewind remains pending. |
 | **`F11`** | **Step CCK** | Steps 1 Color Clock phase (2 CPU clocks, CCK1 / CCK2). |
+| **`Shift + F11`** | **Step Frame** | Advances to the next completed PAL/NTSC video field and pauses. Breakpoints and CPU stops take precedence. |
 | **`Alt + T`** | **Toggle Recording** | Activates or pauses temporal execution history recording. |
 | **`Ctrl + O`** | **Load Binary** | Opens file dialog to load compiled machine code at an arbitrary RAM address. |
 | **`Ctrl + R`** | **Reset Cold** | Restores initial hardware state and reloads CPU vectors. |
-| **Drag & Drop** | **Quick File Loading** | Drag any `.adf`, `.bin`, or `.rom` directly onto the window. |
+| **Drag & Drop** | **Binary Loading** | Opens the binary injection dialog for the dropped bytes. Use File > Load ROM from File to boot firmware. |
+
+Run presents each completed field before waiting for the next field deadline.
+The **Slower** and **Faster** buttons select 0.25x, 0.5x, 1x, 2x or 4x;
+**1x** restores normal PAL/NTSC timing. **FPS** reports completed emulated video
+fields per host second, not GUI repaints. Frame controls count each field of an
+interlaced image separately. Host capacity can limit the achieved speed; no
+completed fields are skipped. Instruction and CCK stepping remain available
+while paused and can show a partial field.
+
+**File > Load ROM from File** installs a 256 KiB Kickstart image, resets the
+machine to its ROM vectors and leaves it paused. The toolbar shows the filename;
+press **Run** to begin execution. A rejected image preserves the existing machine
+and ROM name. This file picker works on desktop and WASM; the browser requires an
+explicit file selection. Snapshot loading uses the ROM stored in the snapshot and
+labels it **ROM: from saved state**.
+
+Game View keeps File, State, Run/Stop, speed, FPS visibility, theme and zoom
+controls. **Debug View**, F2/F12 or Escape returns to inspection. While in Game
+View, debugger panels and shortcuts, breakpoints, disassembly, trace collection,
+CPU history and memory diff capture are disconnected. The CPU's STOP instruction
+still allows the chips to run and deliver interrupts. State saves occur only when
+requested through the State menu or its shortcuts.
 
 ---
 

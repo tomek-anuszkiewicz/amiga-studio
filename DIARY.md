@@ -585,3 +585,26 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Vault metadata and 1047 links passed
   - Fresh live_display GUI capture was rendered and visually inspected: complete centered image and proportional scaling
   - Historical ROM captures remain in the display-centering diagnostics
+---
+
+### [2026-11-13 14:10 CET] — Drive playback by video fields and expose shared Game controls
+- **Affected Subsystems**:
+  - `debugger session`
+  - `GUI playback and file loading`
+  - `browser host integration`
+- **What Was Changed (The Concrete Reality)**:
+  - Run bounded CCK slices to completed fields with boundary pause and frame stepping
+  - Pace PAL and NTSC playback with speed controls and measured field FPS
+  - Disconnect Game inspection and expose File, State and playback controls
+  - Load ROM buffers through a shared desktop and browser path with visible source labels and errors
+  - Restart instruction tracking after GUI execution edits and route native loading through the tested file entry points
+  - Add user-approved API vocabulary
+- **Architectural Rationale & Trade-Offs**:
+  - Keep host timing and file operations in the frontend while both views execute the same machine and share explicit loading controls
+- **Verification & Test Results**:
+  - Focused debugger and GUI tests passed
+  - WASM package check passed
+  - Fresh Studio and Game captures were visually inspected
+  - Vault metadata and 1048 links passed
+  - The execution-edit regression failed before the repair and passed for both PC editing and instruction patching after it
+  - Native dialogs and browser picker interaction were not exercised in this commit workflow

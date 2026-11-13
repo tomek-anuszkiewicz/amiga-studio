@@ -5,15 +5,23 @@
 //! interaction scripting, splitter/scrollbar hover testing, inline editing,
 //! and metadata JSON dumping for Agent Multimodal Vision inspection.
 
+#[cfg(not(target_arch = "wasm32"))]
 use std::fs;
+#[cfg(not(target_arch = "wasm32"))]
 use std::path::PathBuf;
 
+#[cfg(not(target_arch = "wasm32"))]
 use egui::{pos2, vec2, Event};
+#[cfg(not(target_arch = "wasm32"))]
 use egui_kittest::kittest::by;
+#[cfg(not(target_arch = "wasm32"))]
 use egui_kittest::kittest::Queryable;
+#[cfg(not(target_arch = "wasm32"))]
 use egui_kittest::Harness;
+#[cfg(not(target_arch = "wasm32"))]
 use gui::{DisasmEditState, EditRegister, EmulatorApp};
 
+#[cfg(not(target_arch = "wasm32"))]
 fn print_usage() {
     eprintln!(
         "Usage: gui-inspector [OPTIONS]\n\
@@ -27,6 +35,7 @@ fn print_usage() {
     );
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn create_primed_app() -> Result<EmulatorApp, physical_memory::KickstartSizeError> {
     let mut app = EmulatorApp::default();
 
@@ -52,6 +61,7 @@ fn create_primed_app() -> Result<EmulatorApp, physical_memory::KickstartSizeErro
     Ok(app)
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
 
@@ -316,3 +326,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
+// Trunk builds package targets; the browser application lives in the GUI library.
+#[cfg(target_arch = "wasm32")]
+fn main() {}

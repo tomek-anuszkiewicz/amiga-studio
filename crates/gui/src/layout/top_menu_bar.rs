@@ -7,9 +7,10 @@ use crate::theme::AppTheme;
 
 const ZOOM_SELECTION_TOLERANCE: f32 = 0.01;
 
-pub(super) const TOAST_DURATION_FRAMES: usize = 180;
+pub(crate) const TOAST_DURATION_FRAMES: usize = 180;
 
 pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
+    let developer = app.view_mode == crate::ViewMode::Developer;
     egui::TopBottomPanel::top("top_menu_bar")
         .frame(egui::Frame::menu(&ctx.style()))
         .show(ctx, |ui| {
@@ -20,6 +21,13 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
                 ui.menu_button("File", |ui| {
                     if ui.button("📁 Load Binary... (Ctrl+O)").clicked() {
                         app.open_load_binary_dialog();
+                        ui.close_menu();
+                    }
+
+                    if ui.button("Load ROM from File...")
+                        .on_hover_text("Install a 256 KiB Kickstart ROM and reset the machine to its boot vectors. Press Run after loading.")
+                        .clicked() {
+                        app.open_load_rom_dialog();
                         ui.close_menu();
                     }
 
@@ -39,12 +47,12 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
                 // --- 2. State Menu ---
                 ui.menu_button("State", |ui| {
                     if ui.button("💾 Save State to File... (Ctrl+S)").clicked() {
-                        open_save_state_dialog(app);
+                        app.open_save_state_dialog();
                         ui.close_menu();
                     }
 
                     if ui.button("📂 Load State from File... (Ctrl+L)").clicked() {
-                        open_load_state_dialog(app);
+                        app.open_load_state_dialog();
                         ui.close_menu();
                     }
 
@@ -96,8 +104,10 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
                 ui.separator();
 
                 // --- 2. Execution Controls ---
-                let run_label = if app.session.is_running {
-                    "⏸ Pause (F5)"
+                let run_label = if app.session.pause_pending() {
+                    "Pausing..."
+                } else if app.session.is_running {
+                    if developer { "⏸ Pause (F5)" } else { "⏹ Stop (F5)" }
                 } else {
                     "▶ Run (F5)"
                 };
@@ -106,32 +116,72 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
                 } else {
                     egui::Color32::from_rgb(34, 139, 34)
                 });
-                if ui.add(run_button).clicked() {
+                if ui.add_enabled(!app.session.pause_pending(), run_button)
+                    .on_hover_text("Run at the selected PAL/NTSC speed, or pause after the current video field completes (F5).")
+                    .clicked() {
                     app.disassembly_view_addr = None;
                     app.session.toggle_run();
                 }
 
-                if ui.button("⏭ Step Inst (F10)").clicked() {
-                    app.disassembly_view_addr = None;
-                    app.session.step_instruction();
-                }
+                if developer {
+                    if ui.add_enabled(!app.session.is_running, egui::Button::new("⏭ Step Inst (F10)"))
+                        .on_hover_text("Execute the current CPU instruction, even at a breakpoint. The image may be partway through a field.")
+                        .clicked() {
+                        app.disassembly_view_addr = None;
+                        app.session.step_instruction();
+                    }
 
-                if ui.button("⏯ Step CCK (F11)").clicked() {
-                    app.disassembly_view_addr = None;
-                    app.session.step_cck();
-                }
+                    if ui.add_enabled(!app.session.is_running, egui::Button::new("⏯ Step CCK (F11)"))
+                        .on_hover_text("Advance the entire machine by one Color Clock. The image may be partway through a field.")
+                        .clicked() {
+                        app.disassembly_view_addr = None;
+                        app.session.step_cck();
+                    }
 
-                if ui.button("⏮ Rewind (Shift+F10)").clicked() {
-                    app.disassembly_view_addr = None;
-                    app.session.step_backward();
+                    if ui.add_enabled(!app.session.is_running, egui::Button::new("Step Frame (Shift+F11)"))
+                        .on_hover_text("Advance to the next completed PAL/NTSC video field and pause. Breakpoints and CPU stops take precedence.")
+                        .clicked() {
+                        app.disassembly_view_addr = None;
+                        app.session.step_frame();
+                    }
+
+                    if ui.add_enabled(!app.session.is_running, egui::Button::new("⏮ Rewind (Shift+F10)")).clicked() {
+                        app.disassembly_view_addr = None;
+                        app.session.step_backward();
+                    }
                 }
 
                 ui.separator();
 
+                if ui.add_enabled(app.playback.can_slow_down(), egui::Button::new("Slower"))
+                    .on_hover_text("Halve the requested emulation speed, down to 0.25x.")
+                    .clicked() {
+                    app.playback.slower();
+                }
+                ui.label(format!("{:.2}x", app.playback.speed()))
+                    .on_hover_text("Requested speed relative to the configured PAL/NTSC color clock.");
+                if ui.add_enabled(app.playback.can_speed_up(), egui::Button::new("Faster"))
+                    .on_hover_text("Double the requested emulation speed, up to 4x. Actual speed depends on host capacity; every completed field is presented.")
+                    .clicked() {
+                    app.playback.faster();
+                }
+                if ui.button("1x").on_hover_text("Restore normal PAL/NTSC emulation speed.").clicked() {
+                    app.playback.normal_speed();
+                }
+                ui.checkbox(&mut app.show_fps, "FPS")
+                    .on_hover_text("Show or hide the measured emulated video fields per second.");
+                if app.show_fps {
+                    ui.label(format!("FPS: {:.1}", app.playback.fps()))
+                    .on_hover_text("Completed emulated video fields per host second, sampled over one second. This is not the GUI repaint rate. Paused execution shows zero.");
+                }
+            });
+            ui.horizontal_wrapped(|ui| {
+                ui.visuals_mut().button_frame = true;
+
                 // --- 3. Machine Status Badge ---
                 let (status_text, bg_color) = if app.session.machine.cpu.state.is_halted() {
                     ("HALTED", egui::Color32::from_rgb(180, 40, 40))
-                } else if app.session.machine.cpu.state.is_stopped() {
+                } else if developer && app.session.machine.cpu.state.is_stopped() {
                     ("STOPPED", egui::Color32::from_rgb(40, 90, 180))
                 } else if app.session.is_running {
                     ("RUNNING", egui::Color32::from_rgb(40, 160, 60))
@@ -156,8 +206,10 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
                 ui.separator();
 
                 // --- 4. Telemetry Metrics ---
-                ui.label(format!("CCK: {}", app.session.debugger.current_cck));
-                ui.label(format!("Inst: {}", app.session.instructions_executed));
+                if developer {
+                    ui.label(format!("CCK: {}", app.session.debugger.current_cck));
+                    ui.label(format!("Inst: {}", app.session.instructions_executed));
+                }
 
                 ui.separator();
 
@@ -230,12 +282,16 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
 
                 // --- 6. View Mode Toggle ---
                 if ui
-                    .button("🎮 Game View (F2 / F12)")
-                    .on_hover_text("Toggle Screen-Only Game View (F2, F12, or `)")
+                    .button(if developer { "🎮 Game View (F2 / F12)" } else { "Debug View (F2 / F12)" })
+                    .on_hover_text("Switch between Game and Debug views. Returning to Debug requests a pause at the next completed field. F2/F12 toggle; Escape returns to Debug.")
                     .clicked()
                 {
-                    app.view_mode = crate::app::ViewMode::ScreenOnly;
+                    app.set_view_mode(if developer { crate::ViewMode::ScreenOnly } else { crate::ViewMode::Developer });
                 }
+
+                ui.separator();
+                ui.add(egui::Label::new(format!("ROM: {}", app.loaded_rom_name.as_deref().unwrap_or("not loaded"))).truncate())
+                    .on_hover_text(app.loaded_rom_name.as_deref().unwrap_or("Use File > Load ROM from File to install Kickstart firmware."));
             });
         });
 }
@@ -253,46 +309,6 @@ pub(crate) fn quick_save_slot(app: &mut EmulatorApp, slot: usize) {
 /// Restores snapshot from an in-memory quick-save slot (1..=5)
 pub(crate) fn quick_load_slot(app: &mut EmulatorApp, slot: usize) {
     if let Ok(()) = app.session.load_quick_slot(slot) {
-        app.disassembly_view_addr = None;
-        app.toast_message = Some((format!("Restored from Slot #{slot}"), TOAST_DURATION_FRAMES));
-    }
-}
-
-/// Opens native file chooser dialog to save an A500 state file
-pub(crate) fn open_save_state_dialog(app: &mut EmulatorApp) {
-    #[cfg(target_arch = "wasm32")]
-    let _ = app;
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        let file = rfd::FileDialog::new()
-            .set_title("Save Amiga 500 State")
-            .add_filter("Amiga Save State (*.json)", &["json"])
-            .save_file();
-
-        if let Some(path) = file {
-            if let Ok(()) = app.session.save_state_to_file(&path) {
-                app.toast_message = Some((
-                    format!("State saved to {}", path.display()),
-                    TOAST_DURATION_FRAMES,
-                ));
-            }
-        }
-    }
-}
-
-/// Opens native file chooser dialog to load an A500 state file
-pub(crate) fn open_load_state_dialog(app: &mut EmulatorApp) {
-    #[cfg(target_arch = "wasm32")]
-    let _ = app;
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        let file = rfd::FileDialog::new()
-            .set_title("Load Amiga 500 State")
-            .add_filter("Amiga Save State (*.json)", &["json"])
-            .pick_file();
-
-        if let Some(path) = file {
-            app.load_state_file(&path);
-        }
+        app.state_loaded(format!("Restored from Slot #{slot}"));
     }
 }
