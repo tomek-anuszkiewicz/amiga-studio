@@ -209,7 +209,7 @@ impl Denise {
             reg::REGISTER_BPLCON2 => self.apply_bplcon2(val),
             reg::REGISTER_DIWSTRT => self.diwstrt = val,
             reg::REGISTER_DIWSTOP => self.diwstop = val,
-            reg::REGISTER_CLXCON => self.clxcon = val,
+            reg::REGISTER_CLXCON => self.clxcon = val.into(),
 
             // Color palette $180..$1BE
             reg::REGISTER_COLOR00
@@ -301,16 +301,10 @@ impl Denise {
                 let sub = ((offset - reg::REGISTER_SPR0POS) % config::SPRITE_REGISTER_STRIDE) / 2;
                 if spr < config::SPRITE_COUNT {
                     match sub {
-                        REGISTER_SPR_POS_SELECTOR => self.sprites.channels[spr].pos = val,
-                        REGISTER_SPR_CTL_SELECTOR => {
-                            self.sprites.channels[spr].ctl = val;
-                            self.sprites.channels[spr].is_armed = false;
-                        }
-                        REGISTER_SPR_DATA_SELECTOR => {
-                            self.sprites.channels[spr].data_a = val;
-                            self.sprites.channels[spr].is_armed = true;
-                        }
-                        REGISTER_SPR_DATB_SELECTOR => self.sprites.channels[spr].data_b = val,
+                        REGISTER_SPR_POS_SELECTOR => self.sprites.write_pos(spr, val),
+                        REGISTER_SPR_CTL_SELECTOR => self.sprites.write_ctl(spr, val),
+                        REGISTER_SPR_DATA_SELECTOR => self.sprites.write_data(spr, val),
+                        REGISTER_SPR_DATB_SELECTOR => self.sprites.write_datb(spr, val),
                         _ => {}
                     }
                 }

@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "denise"
 status: "active"
 created: 2026-09-19
-updated: 2026-11-12
+updated: 2026-11-13
 related: ["[Denise.md](Denise.md)", "[Agnus.md](Agnus.md)", "[DMA.md](DMA.md)"]
 tracked_paths:
   - "crates/denise/src/sprites.rs"
@@ -57,8 +57,31 @@ replace that enable. All six pair/pair collision bits accumulate independently
 of the winning color; Denise combines pair presence with the bitplane match
 conditions from HRM 7, Tables 7-3 and 7-4.
 
+## Derived state and pixel evaluation
+
+The sprite engine owns its channel storage and exposes it for read-only
+inspection. Applied POS and CTL writes refresh cached horizontal starts;
+odd-channel CTL writes also refresh attachment state. CLXCON retains its raw
+value alongside decoded odd-channel collision enables. These derived values
+change when [Denise commits the queued write](Denise.md#register-propagation),
+so a pending write cannot affect an earlier pixel.
+
+An activity mask selects pairs with at least one armed channel or a word still
+being shifted. CTL stops future reloads but lets that word finish, including
+transparent pixels. A line boundary ends serialization while retaining armed
+input latches. Small tables map the two channel pixels to a pair color and
+the four collision-presence bits to CLXDAT pair collisions. Once a color wins,
+later pairs skip color selection but still advance and contribute collisions.
+Current pair presence remains available to Denise's playfield collision logic.
+
+Snapshots store channel registers, shifters, counters, armed flags, current
+pair presence and the raw CLXCON value. Deserialization rebuilds the derived
+positions, attachment flags and activity masks from that state without
+advancing pixels or committing pending writes. Reset clears both forms.
+
 ## References
 
 - [Amiga Hardware Reference Manual, Chapter 4: Sprite Hardware](../Reference/Hardware%20Reference%20Manual/04%20-%20Chapter%204%20-%20Sprite%20Hardware.md): Describes the Amiga's hardware sprites.
 - [Denise](Denise.md): Places sprite display within the video chip.
 - [DMA](DMA.md): Describes Agnus's role in supplying sprite data.
+- [`sprites.rs`](../../../crates/denise/src/sprites.rs): Implements channel state, derived controls, pixel selection and collision groups.

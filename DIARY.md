@@ -711,3 +711,29 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Separate profiles reduced queue tick share from 22.75 to 0.59 percent
   - Vault metadata and 1051 links passed
   - These measurements cover the recorded scenarios and do not establish a general FPS guarantee or hardware timing acceptance
+---
+
+### [2026-11-13 20:07 CET] — Reduce sprite evaluation work per pixel
+- **Affected Subsystems**:
+  - `Denise sprite engine`
+  - `register application`
+  - `machine and bus tests`
+  - `sprite specification`
+- **What Was Changed (The Concrete Reality)**:
+  - Continue CORE-PERFORMANCE-PREP-20261113 with cached horizontal starts, attachment and collision enables
+  - Skip inactive sprite pairs while completing disarmed serializers
+  - Replace repeated color and pair collision decoding with small lookup tables
+  - Rebuild derived state from canonical serialized values and migrate channel inspection callers
+  - Retain the line buffer proposal and other performance candidates as future work
+- **Architectural Rationale & Trade-Offs**:
+  - Reduce repeated work in the pixel loop while preserving current register commitment
+  - color priority
+  - hidden collisions and snapshot continuation
+- **Verification & Test Results**:
+  - 228 focused Denise, machine, memory bus and save state tests passed
+  - 138 full PAL and NTSC machine checkpoints matched the baseline byte for byte without masks, including framebuffer and serialized continuation
+  - Native all-target and WASM workspace builds, warning-free Clippy, formatting and architecture checks passed
+  - Matched release ABBA runs measured 3000 frames per version per scene after 300 warmup frames with rendering enabled and GUI excluded
+  - Compared with the intermediate idle-sprite guard, throughput rose 4.70 percent for Kickstart, 3.63 percent for separated sprites, 4.12 percent for overlapping sprites and 4.89 percent for attached sprites with mid-line Copper writes
+  - Active synthetic scenes used eight DMA channels over 200 lines, two bitplanes and a stopped CPU
+  - Results preserve the existing model and do not establish new silicon timing or milestone acceptance

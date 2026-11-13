@@ -69,7 +69,7 @@ pub struct Denise {
     /// Collision Data Register (cleared upon read)
     pub clxdat: u16,
     /// Collision Control Register
-    pub clxcon: u16,
+    pub clxcon: sprites::CollisionControl,
     /// Proportional pin drive and start timer (POTGO)
     pub potgo: u16,
 
@@ -125,7 +125,7 @@ impl Denise {
             bpl2mod: 0,
             color: [0; Self::COLOR_PALETTE_SIZE],
             clxdat: 0,
-            clxcon: 0,
+            clxcon: sprites::CollisionControl::default(),
             potgo: 0,
             joy0dat: 0,
             joy1dat: 0,
@@ -159,7 +159,7 @@ impl Denise {
         self.bpl2mod = 0;
         self.color.fill(0);
         self.clxdat = 0;
-        self.clxcon = 0;
+        self.clxcon = sprites::CollisionControl::default();
         self.potgo = 0;
         self.joy0dat = 0;
         self.joy1dat = 0;

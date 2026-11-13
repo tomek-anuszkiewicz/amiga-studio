@@ -109,8 +109,8 @@ impl Denise {
     }
 
     fn accumulate_plane_collisions(&mut self, planes: u8) {
-        let mismatch =
-            (planes ^ self.clxcon as u8) & (self.clxcon >> BIT_COLLISION_ENABLE_SHIFT) as u8;
+        let control = self.clxcon.value();
+        let mismatch = (planes ^ control as u8) & (control >> BIT_COLLISION_ENABLE_SHIFT) as u8;
         let odd = mismatch & MASK_ODD_PLANES == 0;
         let even = mismatch & MASK_EVEN_PLANES == 0;
         if odd && even {

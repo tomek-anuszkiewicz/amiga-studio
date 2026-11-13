@@ -330,7 +330,7 @@ fn granted_audio_and_sprite_bus_words_use_receiver_queues_once() {
                 machine.agnus.pending_dma_write = Some((reg, value));
                 machine.step_cck();
                 machine.step_cck();
-                let channel = &machine.denise.sprites.channels[sprite];
+                let channel = &machine.denise.sprites.channels()[sprite];
                 assert_eq!(
                     if offset == 4 {
                         channel.data_a

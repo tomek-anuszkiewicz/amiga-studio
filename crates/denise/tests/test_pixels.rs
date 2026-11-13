@@ -14,6 +14,43 @@ fn visible() -> Denise {
 }
 
 #[test]
+fn mid_line_sprite_commits_arm_reload_and_disarm_without_stopping_serialization() {
+    let mut d = visible();
+    d.step_cck();
+    assert_eq!(d.sprites.channels()[0].pixel_counter, 0);
+    assert!(d.set_sprpos(0, 42));
+    assert!(d.set_sprdata(0, 0xffff));
+    d.step_cck();
+    assert!(d.sprites.channels()[0].is_armed);
+    assert_eq!(d.sprites.channels()[0].pixel_counter, 0);
+    d.step_cck();
+    assert_eq!(d.sprites.channels()[0].pixel_counter, 14);
+
+    assert!(d.set_sprctl(0, 0));
+    d.step_cck();
+    assert!(!d.sprites.channels()[0].is_armed);
+    assert_eq!(d.sprites.channels()[0].pixel_counter, 12);
+    assert!(d.set_sprpos(0, 46));
+    d.step_cck();
+    assert_eq!(d.sprites.channels()[0].pixel_counter, 10);
+    assert!(d.set_sprdata(0, 0));
+    d.step_cck();
+    assert_eq!(d.sprites.channels()[0].pixel_counter, 8);
+    d.step_cck();
+    assert_eq!(d.sprites.channels()[0].pixel_counter, 14);
+    assert_eq!(d.sprites.channels()[0].shift_a, 0);
+    assert!(d.set_sprctl(0, 0));
+    d.step_cck();
+    assert!(!d.sprites.channels()[0].is_armed);
+    for remaining in (0..=10).step_by(2).rev() {
+        d.step_cck();
+        assert_eq!(d.sprites.channels()[0].pixel_counter, remaining);
+    }
+    d.step_cck();
+    assert_eq!(d.sprites.collision_pairs, 0);
+}
+
+#[test]
 fn palette_dual_ham_and_half_brite_match_book_color_rules() {
     let mut palette = [0; 32];
     for (index, color) in palette.iter_mut().enumerate() {
@@ -201,10 +238,8 @@ fn normal_playfield_uses_pf2_priority_and_hidden_sprites_still_collide() {
             d.shifters[0] = 0xffff;
             d.color[1] = 0x0f00;
             d.color[17 + pair * 4] = 0x00f0;
-            let sprite = &mut d.sprites.channels[pair * 2];
-            sprite.pos = 42;
-            sprite.is_armed = true;
-            sprite.data_a = 0x8000;
+            d.sprites.write_pos(pair * 2, 42);
+            d.sprites.write_data(pair * 2, 0x8000);
             for _ in 0..4 {
                 d.step_cck();
             }
@@ -232,7 +267,7 @@ fn all_collision_groups_use_enable_and_match_values_before_visual_priority() {
         let mut d = visible();
         d.bplcon0 = 0x6000;
         d.bpl_armed = true;
-        d.clxcon = control;
+        d.clxcon = control.into();
         for plane in 0..6 {
             d.shifters[plane] = if planes & (1 << plane) != 0 {
                 0xffff
@@ -240,10 +275,9 @@ fn all_collision_groups_use_enable_and_match_values_before_visual_priority() {
                 0
             };
         }
-        for sprite in &mut d.sprites.channels {
-            sprite.pos = 40;
-            sprite.data_a = 0x8000;
-            sprite.is_armed = true;
+        for sprite in 0..8 {
+            d.sprites.write_pos(sprite, 40);
+            d.sprites.write_data(sprite, 0x8000);
         }
         d.step_cck();
         assert_eq!(d.clxdat_debug(), expected);
@@ -271,10 +305,8 @@ fn dual_playfield_priority_retains_the_books_invisible_sprite_boundary() {
                 0
             };
         }
-        let sprite = &mut d.sprites.channels[0];
-        sprite.pos = 42;
-        sprite.is_armed = true;
-        sprite.data_a = 0x8000;
+        d.sprites.write_pos(0, 42);
+        d.sprites.write_data(0, 0x8000);
         for _ in 0..4 {
             d.step_cck();
         }
