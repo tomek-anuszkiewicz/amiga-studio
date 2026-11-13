@@ -865,3 +865,20 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Design vault audit passed for 35 specifications and 1057 links
   - whitespace checks passed
   - commit verification and independent review are recorded in the commit message
+---
+
+### [2026-11-13 23:14 CET] — Remember binary and ROM file locations
+- **Affected Subsystems**:
+  - `GUI file actions`
+  - `desktop persistence`
+  - `browser file references`
+- **What Was Changed (The Concrete Reality)**:
+  - Keep separate last-used folders and five recent files per category
+  - reload native files with saved binary options
+  - persist browser names and handles in IndexedDB and open recent folders through explicit selection
+- **Architectural Rationale & Trade-Offs**:
+  - Keep host file references outside machine snapshots and avoid caching file contents
+- **Verification & Test Results**:
+  - Reviewed successful-load history and failure paths against the approved GUI contract
+  - native integration and browser persistence fixtures are included
+  - commit verification and independent review are recorded in the commit message

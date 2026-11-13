@@ -386,3 +386,9 @@ isreg
 fromtimestamp
 timedelta
 astimezone
+onupgradeneeded
+onsuccess
+onblocked
+oncomplete
+onabort
+reinitialization

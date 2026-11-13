@@ -31,6 +31,8 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
                         ui.close_menu();
                     }
 
+                    crate::layout::file_dialogs::render_recent_files(app, ui);
+
                     ui.separator();
 
                     if ui.button("🔄 Reset (Ctrl+R)").clicked() {

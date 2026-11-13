@@ -2,6 +2,89 @@
 
 use crate::EmulatorApp;
 
+#[cfg(target_arch = "wasm32")]
+pub(super) fn render_recent_files(app: &mut EmulatorApp, ui: &mut egui::Ui) {
+    for (binary, title, empty) in [
+        (true, "Recent binaries", "No recent binaries"),
+        (false, "Recent ROMs", "No recent ROMs"),
+    ] {
+        ui.separator();
+        ui.label(title);
+        let names = app.browser_history.names(binary);
+        if names.is_empty() {
+            ui.add_enabled(false, egui::Button::new(empty));
+        }
+        for (index, name) in names.iter().enumerate() {
+            if ui.push_id((binary, index), |ui| {
+                ui.button(name).on_hover_text("Choose a file from this file's folder. Browsers without folder support use their default location.").clicked()
+            }).inner {
+                app.open_recent_browser_file(binary, index);
+                ui.close_menu();
+            }
+        }
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub(super) fn render_recent_files(app: &mut EmulatorApp, ui: &mut egui::Ui) {
+    ui.separator();
+    ui.label("Recent binaries");
+    let mut selected_binary = None;
+    for (index, entry) in app.file_history.binaries.iter().enumerate() {
+        let name = entry.path.file_name().unwrap_or_default().to_string_lossy();
+        if ui
+            .push_id(("binary", index), |ui| {
+                ui.button(name.as_ref())
+                    .on_hover_ui(|ui| {
+                        ui.label(entry.path.display().to_string());
+                        ui.label(format!(
+                            "Reload at ${:06X}; set PC: {}.",
+                            entry.target, entry.auto_prime
+                        ));
+                    })
+                    .clicked()
+            })
+            .inner
+        {
+            selected_binary = Some(entry.clone());
+        }
+    }
+    if app.file_history.binaries.is_empty() {
+        ui.add_enabled(false, egui::Button::new("No recent binaries"));
+    }
+    if let Some(entry) = selected_binary {
+        app.load_binary_file(&entry.path, entry.target, entry.auto_prime);
+        ui.close_menu();
+    }
+
+    ui.separator();
+    ui.label("Recent ROMs");
+    let mut selected_rom = None;
+    for (index, path) in app.file_history.roms.iter().enumerate() {
+        let name = path.file_name().unwrap_or_default().to_string_lossy();
+        if ui
+            .push_id(("rom", index), |ui| {
+                ui.button(name.as_ref())
+                    .on_hover_ui(|ui| {
+                        ui.label(path.display().to_string());
+                        ui.label("Reload this ROM and reset the machine. Press Run to boot.");
+                    })
+                    .clicked()
+            })
+            .inner
+        {
+            selected_rom = Some(path.clone());
+        }
+    }
+    if app.file_history.roms.is_empty() {
+        ui.add_enabled(false, egui::Button::new("No recent ROMs"));
+    }
+    if let Some(path) = selected_rom {
+        app.load_rom_file(&path);
+        ui.close_menu();
+    }
+}
+
 pub fn render(app: &mut EmulatorApp, ctx: &egui::Context) {
     if app.load_binary_modal_open {
         egui::Window::new("Load Binary into Memory")

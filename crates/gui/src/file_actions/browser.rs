@@ -1,4 +1,4 @@
-//! Browser-selected files and explicit snapshot downloads, without host paths.
+//! Browser file selection, recent directory references and snapshot downloads.
 
 use super::{EmulatorApp, FileAction, TOAST_DURATION_FRAMES};
 use js_sys::{Array, Promise, Uint8Array};
@@ -8,18 +8,36 @@ use std::{
     task::{Context, Poll, Waker},
     time::Duration,
 };
-use wasm_bindgen::{closure::Closure, JsCast, JsValue};
+use wasm_bindgen::{prelude::wasm_bindgen, JsCast, JsValue};
 use wasm_bindgen_futures::JsFuture;
-use web_sys::{Document, Event, HtmlAnchorElement, HtmlInputElement};
+use web_sys::{Document, HtmlAnchorElement};
 
-type ReadResult = Result<Option<(String, Vec<u8>)>, JsValue>;
+#[wasm_bindgen(module = "/src/file_actions/browser_files.js")]
+extern "C" {
+    fn restore_history() -> Promise;
+    fn recent_names(kind: &str) -> Array;
+    fn remember_file(kind: &str, name: &str, handle: &JsValue) -> Promise;
+    #[wasm_bindgen(catch)]
+    fn pick_file(
+        kind: &str,
+        title: &str,
+        extensions: &Array,
+        recent_index: i32,
+    ) -> Result<Promise, JsValue>;
+}
+
+struct SelectedFile {
+    name: String,
+    data: Vec<u8>,
+    handle: JsValue,
+}
+
+type ReadResult = Result<Option<SelectedFile>, JsValue>;
 const FILE_POLL_INTERVAL: Duration = Duration::from_millis(50);
+const NO_RECENT_FILE_INDEX: i32 = -1;
 
 pub struct BrowserFileTask {
     action: FileAction,
-    input: HtmlInputElement,
-    // Keep the host event handler alive only while its file request is pending.
-    _selection: Option<Closure<dyn FnMut(Event)>>,
     future: Pin<Box<dyn Future<Output = ReadResult>>>,
 }
 
@@ -31,11 +49,69 @@ impl std::fmt::Debug for BrowserFileTask {
     }
 }
 
-impl Drop for BrowserFileTask {
-    fn drop(&mut self) {
-        self.input.set_onchange(None);
-        self.input.set_oncancel(None);
-        self.input.remove();
+#[derive(Default)]
+pub struct BrowserHistory {
+    pending: Vec<JsFuture>,
+}
+
+impl std::fmt::Debug for BrowserHistory {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("BrowserHistory")
+            .field("pending", &self.pending.len())
+            .finish()
+    }
+}
+
+impl BrowserHistory {
+    pub fn restore(&mut self) {
+        self.pending.push(JsFuture::from(restore_history()));
+    }
+
+    pub(super) fn remember(&mut self, action: FileAction, name: &str, handle: &JsValue) {
+        self.pending
+            .push(JsFuture::from(remember_file(action.key(), name, handle)));
+    }
+
+    pub fn names(&self, binary: bool) -> Vec<String> {
+        let action = if binary {
+            FileAction::Binary
+        } else {
+            FileAction::Rom
+        };
+        recent_names(action.key())
+            .iter()
+            .filter_map(|value| value.as_string())
+            .collect()
+    }
+
+    fn poll(&mut self, ctx: &egui::Context) -> Option<String> {
+        let mut error = None;
+        self.pending.retain_mut(|future| {
+            match Pin::new(future).poll(&mut Context::from_waker(Waker::noop())) {
+                Poll::Ready(result) => {
+                    if let Err(reason) = result {
+                        error = Some(format!("Could not persist recent files: {reason:?}"));
+                    }
+                    ctx.request_repaint();
+                    false
+                }
+                Poll::Pending => true,
+            }
+        });
+        if !self.pending.is_empty() {
+            ctx.request_repaint_after(FILE_POLL_INTERVAL);
+        }
+        error
+    }
+}
+
+impl FileAction {
+    fn key(self) -> &'static str {
+        match self {
+            Self::Binary => "binary",
+            Self::Rom => "rom",
+            Self::State => "state",
+        }
     }
 }
 
@@ -46,58 +122,47 @@ fn document() -> Result<Document, JsValue> {
 }
 
 impl BrowserFileTask {
-    fn new(action: FileAction) -> Result<Self, JsValue> {
-        let document = document()?;
-        let input: HtmlInputElement = document.create_element("input")?.dyn_into()?;
-        input.set_type("file");
-        input.set_title(action.title());
-        input.set_hidden(true);
-        input.set_accept(
-            &action
-                .extensions()
-                .iter()
-                .map(|ext| format!(".{ext}"))
-                .collect::<Vec<_>>()
-                .join(","),
-        );
-        document
-            .body()
-            .ok_or_else(|| JsValue::from_str("Browser body is unavailable."))?
-            .append_child(&input)?;
-        let mut selection = None;
-        let promise = Promise::new(&mut |resolve, _reject| {
-            let handler = Closure::wrap(Box::new(move |event: Event| {
-                let selected = JsValue::from_bool(event.type_() != "cancel");
-                let _ = resolve.call1(&JsValue::UNDEFINED, &selected);
-            }) as Box<dyn FnMut(Event)>);
-            input.set_onchange(Some(handler.as_ref().unchecked_ref()));
-            input.set_oncancel(Some(handler.as_ref().unchecked_ref()));
-            selection = Some(handler);
-        });
-        let selected_input = input.clone();
+    fn new(action: FileAction, recent_index: i32) -> Result<Self, JsValue> {
+        let extensions = action
+            .extensions()
+            .iter()
+            .map(|extension| JsValue::from_str(&format!(".{extension}")))
+            .collect();
+        let selection = pick_file(action.key(), action.title(), &extensions, recent_index)?;
         let future = Box::pin(async move {
-            if JsFuture::from(promise).await?.as_bool() != Some(true) {
+            let selected = JsFuture::from(selection).await?;
+            if selected.is_null() {
                 return Ok(None);
             }
-            let Some(file) = selected_input.files().and_then(|files| files.get(0)) else {
-                return Ok(None);
-            };
+            let selected = Array::from(&selected);
+            let file: web_sys::File = selected.get(0).dyn_into()?;
             let buffer = JsFuture::from(file.array_buffer()).await?;
-            Ok(Some((file.name(), Uint8Array::new(&buffer).to_vec())))
+            Ok(Some(SelectedFile {
+                name: file.name(),
+                data: Uint8Array::new(&buffer).to_vec(),
+                handle: selected.get(1),
+            }))
         });
-        input.click();
-        Ok(Self {
-            action,
-            input,
-            _selection: selection,
-            future,
-        })
+        Ok(Self { action, future })
     }
 }
 
 impl EmulatorApp {
     pub(super) fn open_file_dialog(&mut self, action: FileAction) {
-        match BrowserFileTask::new(action) {
+        self.open_browser_file_dialog(action, NO_RECENT_FILE_INDEX);
+    }
+
+    pub(crate) fn open_recent_browser_file(&mut self, binary: bool, index: usize) {
+        let action = if binary {
+            FileAction::Binary
+        } else {
+            FileAction::Rom
+        };
+        self.open_browser_file_dialog(action, index as i32);
+    }
+
+    fn open_browser_file_dialog(&mut self, action: FileAction, recent_index: i32) {
+        match BrowserFileTask::new(action, recent_index) {
             Ok(task) => self.browser_file_task = Some(task),
             Err(error) => self.file_error = Some(format!("Could not open file picker: {error:?}")),
         }
@@ -123,6 +188,9 @@ impl EmulatorApp {
 
     // Host I/O completion is pulled here; it never calls into the machine asynchronously.
     pub(crate) fn poll_file_dialog(&mut self, ctx: &egui::Context) {
+        if let Some(error) = self.browser_history.poll(ctx) {
+            self.file_error = Some(error);
+        }
         let Some(task) = &mut self.browser_file_task else {
             return;
         };
@@ -135,7 +203,9 @@ impl EmulatorApp {
                 let action = task.action;
                 self.browser_file_task = None;
                 match result {
-                    Ok(Some((name, data))) => self.accept_file_data(action, name, data),
+                    Ok(Some(file)) => {
+                        self.accept_file_data(action, file.name, file.data, file.handle)
+                    }
                     Ok(None) => {}
                     Err(error) => {
                         self.file_error = Some(format!("Could not read selected file: {error:?}"))

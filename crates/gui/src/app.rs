@@ -105,8 +105,12 @@ pub struct EmulatorApp {
     pub playback: Playback,
     pub show_fps: bool,
     pub loaded_rom_name: Option<String>,
+    #[cfg(not(target_arch = "wasm32"))]
+    pub file_history: crate::file_actions::FileHistory,
     #[cfg(target_arch = "wasm32")]
     pub(crate) browser_file_task: Option<crate::file_actions::BrowserFileTask>,
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) browser_history: crate::file_actions::BrowserHistory,
 
     // UI Configuration & Themes
     pub theme: AppTheme,
@@ -164,8 +168,12 @@ impl Default for EmulatorApp {
             playback: Playback::default(),
             show_fps: true,
             loaded_rom_name: None,
+            #[cfg(not(target_arch = "wasm32"))]
+            file_history: crate::file_actions::FileHistory::default(),
             #[cfg(target_arch = "wasm32")]
             browser_file_task: None,
+            #[cfg(target_arch = "wasm32")]
+            browser_history: crate::file_actions::BrowserHistory::default(),
             theme: AppTheme::Dark,
             view_mode,
             screen_scale: ScreenScale::default(),
@@ -199,7 +207,15 @@ impl EmulatorApp {
     /// Initializes a new EmulatorApp instance with headless session
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         let mut app = Self::default();
+        #[cfg(target_arch = "wasm32")]
+        app.browser_history.restore();
         if let Some(storage) = cc.storage {
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                app.file_history =
+                    eframe::get_value(storage, crate::file_actions::HISTORY_STORAGE_KEY)
+                        .unwrap_or_default();
+            }
             if let Some(prefs) = eframe::get_value::<UserPreferences>(storage, eframe::APP_KEY) {
                 app.apply_preferences(&prefs);
             }
@@ -701,6 +717,12 @@ impl eframe::App for EmulatorApp {
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         eframe::set_value(storage, eframe::APP_KEY, &self.preferences());
+        #[cfg(not(target_arch = "wasm32"))]
+        eframe::set_value(
+            storage,
+            crate::file_actions::HISTORY_STORAGE_KEY,
+            &self.file_history,
+        );
     }
 
     fn persist_egui_memory(&self) -> bool {

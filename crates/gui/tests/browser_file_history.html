@@ -1,0 +1,83 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Browser file history checks</title>
+<pre id="result">Running</pre>
+<script type="module">
+// Serve the repository over localhost and open this page in an isolated browser profile.
+// Real IndexedDB and file handles exercise persistence; picker calls are simulated.
+const result = document.getElementById("result");
+function check(condition, message) {
+    if (!condition) throw new Error(message);
+}
+try {
+    const files = await import("../src/file_actions/browser_files.js");
+    await files.restore_history();
+    const directory = await navigator.storage.getDirectory();
+    const handles = [];
+    for (let index = 0; index < 6; index++) {
+        const handle = await directory.getFileHandle(`program-${index}.bin`, { create: true });
+        handles.push(handle);
+        await files.remember_file("binary", handle.name, handle);
+    }
+    const rom = await directory.getFileHandle("firmware.rom", { create: true });
+    await files.remember_file("rom", rom.name, rom);
+    check(JSON.stringify(files.recent_names("binary")) === JSON.stringify([
+        "program-5.bin", "program-4.bin", "program-3.bin", "program-2.bin", "program-1.bin",
+    ]), "Five most recent binaries must be retained in order");
+    await files.remember_file("binary", handles[2].name, handles[2]);
+    check(files.recent_names("binary").length === 5, "Reopening must not add a duplicate");
+    check(files.recent_names("binary")[0] === handles[2].name, "Reopened file must move to the front");
+    check(files.recent_names("rom").join() === "firmware.rom", "ROM history must remain independent");
+
+    // A fresh module has no in-memory history and must reconstruct structured file handles.
+    const restored = await import("../src/file_actions/browser_files.js?restored");
+    await restored.restore_history();
+    check(JSON.stringify(restored.recent_names("binary")) === JSON.stringify(files.recent_names("binary")), "History must survive reinitialization");
+    let options;
+    window.showOpenFilePicker = settings => {
+        options = settings;
+        return Promise.resolve([handles[2]]);
+    };
+    const selection = restored.pick_file("binary", "Load binary", [".bin"], 0);
+    check(options !== undefined, "Picker must be called synchronously during activation");
+    check(options.id === "amiga-binary", "Binary picker needs its own directory ID");
+    check(await options.startIn.isSameEntry(handles[2]), "Recent entry must pass its restored file handle as the starting folder");
+    check((await selection)[0].name === handles[2].name, "Selected file must be returned");
+    await restored.pick_file("rom", "Load ROM", [".rom"], -1);
+    check(options.id === "amiga-rom" && !options.startIn, "ROM picker must use its separate remembered directory");
+    check(options.types[0].accept["application/octet-stream"][0] === ".rom", "File filter must follow the selected category");
+    await restored.pick_file("rom", "Load ROM", [".rom"], 0);
+    check(await options.startIn.isSameEntry(rom), "Recent ROM must use its own file's folder");
+
+    window.showOpenFilePicker = () => Promise.reject(new DOMException("Canceled", "AbortError"));
+    check(await restored.pick_file("binary", "Load binary", [".bin"], 0) === null, "Cancellation must remain a normal outcome");
+    window.showOpenFilePicker = () => Promise.reject(new Error("Read denied"));
+    let rejected = false;
+    try { await restored.pick_file("binary", "Load binary", [".bin"], 0); }
+    catch (error) { rejected = error.message === "Read denied"; }
+    check(rejected, "Picker failures must reach the GUI");
+
+    window.showOpenFilePicker = undefined;
+    const originalClick = HTMLInputElement.prototype.click;
+    HTMLInputElement.prototype.click = function () {
+        check(this.accept === ".bin", "Fallback must retain the file filter");
+        this.dispatchEvent(new Event("cancel"));
+    };
+    check(await restored.pick_file("binary", "Load binary", [".bin"], 0) === null, "Fallback cancellation must resolve");
+    check(!document.querySelector("input"), "Fallback input must be removed");
+    HTMLInputElement.prototype.click = function () {
+        Object.defineProperty(this, "files", { value: [new File(["data"], "fallback.bin")] });
+        this.dispatchEvent(new Event("change"));
+    };
+    const fallback = await restored.pick_file("binary", "Load binary", [".bin"], -1);
+    check(fallback[0].name === "fallback.bin" && fallback[1] === null, "Fallback must return an explicit file without a handle");
+    HTMLInputElement.prototype.click = originalClick;
+    await restored.remember_file("binary", "fallback.bin", null);
+    await restored.remember_file("binary", "fallback.bin", null);
+    check(restored.recent_names("binary").filter(name => name === "fallback.bin").length === 1, "Fallback filenames must be deduplicated");
+    check(!document.querySelector("input"), "Completed fallback input must be removed");
+    result.textContent = "PASS: history limit, ordering, deduplication, category separation, IndexedDB restoration, starting folders, activation, cancellation, errors and fallback";
+} catch (error) {
+    result.textContent = `FAIL: ${error.stack}`;
+}
+</script>

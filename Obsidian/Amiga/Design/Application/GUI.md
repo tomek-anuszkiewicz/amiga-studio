@@ -41,6 +41,10 @@ Binary loading into the Kickstart address window accepts only a 256 KiB image. A
 
 File also offers **Load ROM from File** on native desktop and WASM. A valid 256 KiB image is installed as Kickstart, followed by a cold reset with the ROM overlay and reset vectors active; execution remains paused until Run. The toolbar displays the loaded filename. Invalid images preserve both machine state and the previous filename. Loading a state replaces this label with a snapshot source because the snapshot includes its own ROM. Browser files are selected explicitly by the user; no local directory scanning is required. Browser file selection and download are host operations, separate from synchronous machine execution.
 
+File remembers separate last-used folders for binaries and ROMs and shows up to five recent files in each category, newest first. On desktop, clicking a recent entry reads the original file again; binary entries reuse their last successful target address and PC setting. Only successful loads update these lists. Paths and load options persist alongside the GUI preferences, separately from machine snapshots.
+
+In browsers with the File System Access API, each file category has its own picker directory. Clicking a recent entry opens the picker in that file's folder and requires explicit selection. Names and file handles persist in IndexedDB; file contents are not cached. Other browsers retain file selection and recent names but cannot be directed to a particular local folder. The browser controls directory availability and persistence. [Host file actions](../../../../crates/gui/src/file_actions.rs) keep these differences outside emulation.
+
 ## Input and output
 
 The intended input path maps host keyboard events to the [Amiga keyboard](../Keyboard.md) and host mouse movement and buttons to the emulated [mouse and game port](../Mouse.md). Host gamepad or keyboard controls can likewise represent an emulated [joystick](../Joystick.md). These mappings belong at the frontend boundary; the emulated devices and chips decide their hardware effects.

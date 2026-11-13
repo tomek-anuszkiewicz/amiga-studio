@@ -3,6 +3,13 @@
 use crate::layout::top_menu_bar::TOAST_DURATION_FRAMES;
 use crate::EmulatorApp;
 
+#[cfg(not(target_arch = "wasm32"))]
+mod history;
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) use history::STORAGE_KEY as HISTORY_STORAGE_KEY;
+#[cfg(not(target_arch = "wasm32"))]
+pub use history::{FileHistory, RecentBinary};
+
 /// Selected binary, read on confirmation so a native file can be corrected and retried.
 #[derive(Debug)]
 pub enum BinarySource {
@@ -11,6 +18,8 @@ pub enum BinarySource {
     Bytes {
         name: String,
         data: Vec<u8>,
+        #[cfg(target_arch = "wasm32")]
+        handle: wasm_bindgen::JsValue,
     },
 }
 
@@ -81,6 +90,10 @@ impl EmulatorApp {
     }
 
     fn select_binary(&mut self, source: BinarySource) {
+        #[cfg(not(target_arch = "wasm32"))]
+        if let BinarySource::File(path) = &source {
+            self.file_history.binary_directory = path.parent().map(std::path::Path::to_owned);
+        }
         self.pending_binary = Some(source);
         self.load_binary_modal_open = true;
         self.file_error = None;
@@ -121,6 +134,16 @@ impl EmulatorApp {
         });
         match result {
             Ok(size) => {
+                #[cfg(not(target_arch = "wasm32"))]
+                if let BinarySource::File(path) = source {
+                    self.file_history.remember_binary(path, target, auto_prime);
+                }
+                #[cfg(target_arch = "wasm32")]
+                {
+                    let BinarySource::Bytes { name, handle, .. } = source;
+                    self.browser_history
+                        .remember(FileAction::Binary, name, handle);
+                }
                 if !self.session.is_running {
                     self.inspection.ready = false;
                 }
@@ -142,10 +165,22 @@ impl EmulatorApp {
     }
 
     #[cfg(target_arch = "wasm32")]
-    fn accept_file_data(&mut self, action: FileAction, name: String, data: Vec<u8>) {
+    fn accept_file_data(
+        &mut self,
+        action: FileAction,
+        name: String,
+        data: Vec<u8>,
+        handle: wasm_bindgen::JsValue,
+    ) {
         match action {
-            FileAction::Binary => self.select_binary(BinarySource::Bytes { name, data }),
-            FileAction::Rom => self.load_rom_data(&name, &data),
+            FileAction::Binary => self.select_binary(BinarySource::Bytes { name, data, handle }),
+            FileAction::Rom => {
+                self.load_rom_data(&name, &data);
+                if self.file_error.is_none() {
+                    self.browser_history
+                        .remember(FileAction::Rom, &name, &handle);
+                }
+            }
             FileAction::State => {
                 let result = std::str::from_utf8(&data)
                     .map_err(|error| error.to_string())
@@ -180,6 +215,8 @@ impl EmulatorApp {
             self.select_binary(BinarySource::Bytes {
                 name: file.name,
                 data: data.to_vec(),
+                #[cfg(target_arch = "wasm32")]
+                handle: wasm_bindgen::JsValue::NULL,
             });
         }
     }
@@ -188,11 +225,28 @@ impl EmulatorApp {
 #[cfg(not(target_arch = "wasm32"))]
 impl EmulatorApp {
     fn open_file_dialog(&mut self, action: FileAction) {
-        if let Some(path) = rfd::FileDialog::new()
+        let mut dialog = rfd::FileDialog::new()
             .set_title(action.title())
-            .add_filter("Supported files", action.extensions())
-            .pick_file()
-        {
+            .add_filter("Supported files", action.extensions());
+        let directory = match action {
+            FileAction::Binary => &self.file_history.binary_directory,
+            FileAction::Rom => &self.file_history.rom_directory,
+            FileAction::State => &None,
+        };
+        if let Some(directory) = directory {
+            dialog = dialog.set_directory(directory);
+        }
+        if let Some(path) = dialog.pick_file() {
+            match action {
+                FileAction::Binary => {
+                    self.file_history.binary_directory =
+                        path.parent().map(std::path::Path::to_owned)
+                }
+                FileAction::Rom => {
+                    self.file_history.rom_directory = path.parent().map(std::path::Path::to_owned)
+                }
+                FileAction::State => {}
+            }
             match action {
                 FileAction::Binary => self.select_binary(BinarySource::File(path)),
                 FileAction::Rom => self.load_rom_file(&path),
@@ -203,7 +257,12 @@ impl EmulatorApp {
 
     pub fn load_rom_file(&mut self, path: &std::path::Path) {
         match std::fs::read(path) {
-            Ok(data) => self.load_rom_data(&file_name(path), &data),
+            Ok(data) => {
+                self.load_rom_data(&file_name(path), &data);
+                if self.file_error.is_none() {
+                    self.file_history.remember_rom(path);
+                }
+            }
             Err(error) => {
                 self.file_error = Some(format!("Could not read {}: {error}", path.display()))
             }
@@ -249,4 +308,4 @@ impl EmulatorApp {
 mod browser;
 
 #[cfg(target_arch = "wasm32")]
-pub(crate) use browser::BrowserFileTask;
+pub(crate) use browser::{BrowserFileTask, BrowserHistory};
