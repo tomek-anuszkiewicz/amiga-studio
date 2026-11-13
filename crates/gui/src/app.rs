@@ -251,6 +251,10 @@ impl EmulatorApp {
         let update_started = std::time::Instant::now();
         #[cfg(target_arch = "wasm32")]
         let update_started = eframe::web::now_sec();
+        #[cfg(not(target_arch = "wasm32"))]
+        let elapsed = || update_started.elapsed().as_secs_f64();
+        #[cfg(target_arch = "wasm32")]
+        let elapsed = || eframe::web::now_sec() - update_started;
         let now = ctx.input(|input| input.time);
         let was_running = self.session.is_running;
         let first_pass = ctx.output(|output| output.num_completed_passes == 0);
@@ -276,7 +280,7 @@ impl EmulatorApp {
         let start_after_preparation = std::mem::take(&mut self.inspection.start_after_preparation);
         let refresh_screen = ((first_pass || start_after_preparation)
             && !prepare_first
-            && self.playback.advance(now, &mut self.session))
+            && self.playback.advance(now, &mut self.session, elapsed))
             || self.screen_texture.image().is_none();
         render_top_menu_bar(self, ctx);
         if was_running && !self.session.is_running {
@@ -685,12 +689,8 @@ impl EmulatorApp {
         }
         crate::layout::file_dialogs::render(self, ctx);
 
-        #[cfg(not(target_arch = "wasm32"))]
-        let elapsed = update_started.elapsed().as_secs_f64();
-        #[cfg(target_arch = "wasm32")]
-        let elapsed = eframe::web::now_sec() - update_started;
         self.playback
-            .request_repaint(ctx, &self.session, now + elapsed);
+            .request_repaint(ctx, &self.session, now + elapsed());
     }
 }
 

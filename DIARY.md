@@ -848,3 +848,20 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - 111 verification tool tests passed during development
   - Scoped language checks and the Design vault audit passed
   - Full SingleStep and milestone verification were not run
+---
+
+### [2026-11-13 23:12 CET] — Batch accelerated playback independently of presentation
+- **Affected Subsystems**:
+  - `GUI playback`
+  - `presentation timing`
+- **What Was Changed (The Concrete Reality)**:
+  - Execute accelerated playback in complete-field batches with 50 Hz PAL and 60 Hz NTSC presentation
+  - count every completed emulated field in FPS
+  - preserve bounded slices and debugger stops
+- **Architectural Rationale & Trade-Offs**:
+  - Allow faster emulation without requiring a texture upload for every emulated field
+- **Verification & Test Results**:
+  - Scoped specification review agrees with the requested pacing and FPS behavior
+  - Design vault audit passed for 35 specifications and 1057 links
+  - whitespace checks passed
+  - commit verification and independent review are recorded in the commit message

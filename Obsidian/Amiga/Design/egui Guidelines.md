@@ -42,9 +42,9 @@ To prevent architectural complexity, concurrency bugs, and UI stalls:
 ## 3. Single-Threaded Time-Slice Execution Model
 
 To ensure seamless compilation to **WebAssembly (`wasm32-unknown-unknown`)** where native OS threads are not readily available:
-- **Bounded Cycle Slices:** Run (F5) advances to the next completed video field within a bounded CCK budget. If the field is unfinished, a later UI update continues it while retaining the previous image. The [GUI playback contract](Application/GUI.md#input-and-output) defines host pacing, speed selection and presentation.
+- **Bounded Cycle Slices:** Run (F5) advances through bounded CCK slices ending at completed video fields. Accelerated playback batches fields until its time budget is consumed or the presentation deadline is reached. If a field is unfinished, a later UI update continues it while retaining the previous image. The [GUI playback contract](Application/GUI.md#input-and-output) defines host pacing, speed selection and presentation.
 - **Responsive UI Under Load:** Because execution is bounded per frame, the host window never freezes. If guest code enters an infinite loop (`BRA *`), the user can still hit Pause (Space / F5) or click buttons without lag.
-- **Frame Rate Synchronization:** Schedule repaints for the next field deadline, accounting for time already spent executing and rendering. Additional input-driven repaints must not advance a field before its deadline. When paused, `egui` renders on user interaction or UI animation.
+- **Frame Rate Synchronization:** Schedule repaints for the next playback deadline, accounting for time already spent executing and rendering. Additional input-driven repaints must not start work before its deadline. Accelerated playback accumulates a separate presentation deadline. When paused, `egui` renders on user interaction or UI animation.
 
 ---
 

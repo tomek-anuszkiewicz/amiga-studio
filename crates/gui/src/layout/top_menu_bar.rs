@@ -162,7 +162,7 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
                 ui.label(format!("{:.2}x", app.playback.speed()))
                     .on_hover_text("Requested speed relative to the configured PAL/NTSC color clock.");
                 if ui.add_enabled(app.playback.can_speed_up(), egui::Button::new("Faster"))
-                    .on_hover_text("Double the requested emulation speed, up to 4x. Actual speed depends on host capacity; every completed field is presented.")
+                    .on_hover_text("Double the requested emulation speed, up to 4x. Actual speed depends on host capacity; presentation targets 50 Hz PAL or 60 Hz NTSC using the latest completed field.")
                     .clicked() {
                     app.playback.faster();
                 }

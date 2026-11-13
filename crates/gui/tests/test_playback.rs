@@ -166,6 +166,36 @@ fn speed_controls_change_emulated_time_without_skipping_fields() {
 }
 
 #[test]
+fn accelerated_fps_counts_emulated_fields_in_both_views() {
+    for view in [ViewMode::ScreenOnly, ViewMode::Developer] {
+        let mut app = app(VideoStandard::Pal);
+        app.view_mode = view;
+        app.playback.faster();
+        let ctx = Context::default();
+        app.session.toggle_run();
+        render(&mut app, &ctx, 0.0);
+        let mut uploads = 0;
+        let mut measured_fields = 0;
+        for tick in 1..=50 {
+            measured_fields = app.session.machine.denise.frame_builder.frame_number;
+            let output = render(&mut app, &ctx, f64::from(tick) / 50.0);
+            let frame = &app.session.machine.denise.frame_builder;
+            uploads += output
+                .textures_delta
+                .set
+                .iter()
+                .filter(|(_, delta)| {
+                    delta.image.size() == [frame.width as usize, frame.height as usize]
+                })
+                .count();
+        }
+        assert_eq!(uploads, 50);
+        // Host throughput varies; the displayed sample must equal actual completed fields.
+        assert_eq!(app.playback.fps(), measured_fields as f64, "{view:?}");
+    }
+}
+
+#[test]
 fn repeated_layout_passes_do_not_skip_a_completed_field_when_running_late() {
     let mut app = app(VideoStandard::Pal);
     let ctx = Context::default();
