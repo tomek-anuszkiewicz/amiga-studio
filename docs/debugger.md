@@ -27,7 +27,7 @@ This guide introduces the Developer Studio for users and developers who want to 
 | **`F10`** | **Step Instruction** | Executes exactly 1 M68000 instruction, recording trace and history. |
 | **`Shift + F10`** | **Step Backward (Rewind)** | Restores a recorded CPU state; full-machine rewind remains pending. |
 | **`F11`** | **Step CCK** | Steps 1 Color Clock phase (2 CPU clocks, CCK1 / CCK2). |
-| **`Shift + F11`** | **Step Frame** | Advances to the next completed PAL/NTSC video field and pauses. Breakpoints and CPU stops take precedence. |
+| **`Shift + F11`** | **Step Frame** | Advances to the next completed PAL/NTSC video field and pauses. Breakpoints and CPU halts take precedence. |
 | **`Alt + T`** | **Toggle Recording** | Activates or pauses temporal execution history recording. |
 | **`Ctrl + O`** | **Load Binary** | Opens file dialog to load compiled machine code at an arbitrary RAM address. |
 | **`Ctrl + R`** | **Reset Cold** | Restores initial hardware state and reloads CPU vectors. |
@@ -40,6 +40,11 @@ fields per host second, not GUI repaints. Frame controls count each field of an
 interlaced image separately. Host capacity can limit the achieved speed; no
 completed fields are skipped. Instruction and CCK stepping remain available
 while paused and can show a partial field.
+
+CPU **STOPPED** means the processor is waiting for an interrupt. Run and Step
+Frame still advance the rest of the machine, including video and timers, in both
+views. In Developer Studio, STOPPED remains visible while the Pause button and
+advancing CCK counter show that the machine is running. A CPU halt ends Run.
 
 **File > Load ROM from File** installs a 256 KiB Kickstart image, resets the
 machine to its ROM vectors and leaves it paused. The toolbar shows the filename;

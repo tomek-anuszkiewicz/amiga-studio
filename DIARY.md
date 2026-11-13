@@ -608,3 +608,22 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Vault metadata and 1048 links passed
   - The execution-edit regression failed before the repair and passed for both PC editing and instruction patching after it
   - Native dialogs and browser picker interaction were not exercised in this commit workflow
+---
+
+### [2026-11-13 14:26 CET] — Keep the machine running while the CPU waits in STOP
+- **Affected Subsystems**:
+  - `debugger session`
+  - `GUI playback`
+- **What Was Changed (The Concrete Reality)**:
+  - Continue CCK execution during CPU STOP in Developer Studio
+  - Preserve field stepping, pause and HALT behavior
+  - Resume breakpoint checks after interrupt entry
+  - Explain the stopped CPU status
+- **Architectural Rationale & Trade-Offs**:
+  - CPU STOP suspends instruction execution while video
+  - timers and interrupt delivery must continue
+- **Verification & Test Results**:
+  - STOP regression failed on the previous implementation
+  - Six frame execution tests passed including CIA wakeup and breakpoints
+  - GUI test confirmed advancing video and working Pause during STOP
+  - Vault metadata and 1048 links passed

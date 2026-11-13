@@ -139,7 +139,7 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
                     }
 
                     if ui.add_enabled(!app.session.is_running, egui::Button::new("Step Frame (Shift+F11)"))
-                        .on_hover_text("Advance to the next completed PAL/NTSC video field and pause. Breakpoints and CPU stops take precedence.")
+                        .on_hover_text("Advance to the next completed PAL/NTSC video field and pause, including while the CPU is stopped. Breakpoints and CPU halts take precedence.")
                         .clicked() {
                         app.disassembly_view_addr = None;
                         app.session.step_frame();
@@ -189,7 +189,8 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
                     ("PAUSED", egui::Color32::from_rgb(160, 130, 30))
                 };
 
-                ui.colored_label(bg_color, format!(" ● [{}] ", status_text));
+                ui.colored_label(bg_color, format!(" ● [{}] ", status_text))
+                    .on_hover_text("STOPPED means the CPU is waiting for an interrupt. During Run, chip clocks and video continue; Pause suspends the machine. HALTED ends Run.");
 
                 if let Some((ref msg, ref mut frames)) = app.toast_message {
                     ui.colored_label(egui::Color32::from_rgb(0, 220, 255), format!(" 💾 {msg} "));

@@ -28,6 +28,62 @@ fn render(app: &mut EmulatorApp, ctx: &Context, time: f64) -> egui::FullOutput {
 }
 
 #[test]
+fn debugger_run_keeps_video_updates_and_pause_control_while_cpu_status_is_stopped() {
+    let mut app = app(VideoStandard::Pal);
+    app.view_mode = ViewMode::Developer;
+    app.session
+        .load_binary(0x1000, &[0x4e, 0x72, 0x27, 0x00], true)
+        .unwrap();
+    app.session.toggle_run();
+    let mut harness = Harness::builder()
+        .with_size(egui::vec2(1280.0, 720.0))
+        .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
+    let mut prior_cck = harness.state().session.machine.cck;
+    let mut prior_field = harness
+        .state()
+        .session
+        .machine
+        .denise
+        .frame_builder
+        .frame_number;
+    for _ in 0..3 {
+        harness.step();
+        let session = &harness.state().session;
+        assert!(session.is_running);
+        assert!(session.machine.cpu.state.is_stopped());
+        assert!(session.machine.cck > prior_cck);
+        assert_eq!(
+            session.machine.denise.frame_builder.frame_number,
+            prior_field + 1
+        );
+        harness.get_by_label(" ● [STOPPED] ");
+        harness.get_by_label("⏸ Pause (F5)");
+        let frame = &session.machine.denise.frame_builder;
+        let size = [frame.width as usize, frame.height as usize];
+        let (texture_id, _) = harness
+            .output()
+            .textures_delta
+            .set
+            .iter()
+            .find(|(_, delta)| delta.image.size() == size)
+            .expect("completed field was not uploaded while CPU was stopped");
+        assert!(
+            harness.output().shapes.iter().any(|shape| matches!(
+                &shape.shape, egui::Shape::Mesh(mesh) if mesh.texture_id == *texture_id
+            )),
+            "uploaded field was not drawn"
+        );
+        prior_cck = session.machine.cck;
+        prior_field = frame.frame_number;
+    }
+    harness.get_by_label("⏸ Pause (F5)").click();
+    harness.run_steps(2);
+    assert!(!harness.state().session.is_running);
+    harness.get_by_label("▶ Run (F5)");
+    harness.get_by_label(" ● [STOPPED] ");
+}
+
+#[test]
 fn run_uses_host_time_and_measures_fields_independently_of_gui_repaints() {
     for (standard, updates_per_second) in [(VideoStandard::Pal, 120), (VideoStandard::Ntsc, 240)] {
         let mut app = app(standard);

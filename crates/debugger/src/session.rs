@@ -176,8 +176,8 @@ impl DebuggerSession {
         let frame = self.machine.denise.frame_builder.frame_number;
         let completed = self.machine.step_cck();
         self.debugger.current_cck = self.machine.cck;
+        self.instruction_started = !completed;
         if completed {
-            self.instruction_started = false;
             self.instructions_executed = self.instructions_executed.saturating_add(1);
         }
         if self.machine.denise.frame_builder.frame_number != frame {
@@ -207,11 +207,12 @@ impl DebuggerSession {
         let initial_instructions = self.instructions_executed;
         let initial_frame = self.machine.denise.frame_builder.frame_number;
         for _ in 0..max_cck {
-            if self.machine.cpu.state.is_halted() || self.machine.cpu.state.is_stopped() {
+            if self.machine.cpu.state.is_halted() {
                 self.is_running = false;
                 break;
             }
-            if !self.instruction_started {
+            // STOP waits for an interrupt while the rest of the machine keeps running.
+            if !self.instruction_started && !self.machine.cpu.state.is_stopped() {
                 let next_pc = self.machine.cpu.state.instruction_pc();
                 if self
                     .debugger
@@ -226,7 +227,7 @@ impl DebuggerSession {
                 self.record_instruction();
             }
             self.advance_cck();
-            if self.machine.cpu.state.is_halted() || self.machine.cpu.state.is_stopped() {
+            if self.machine.cpu.state.is_halted() {
                 self.is_running = false;
                 break;
             }
