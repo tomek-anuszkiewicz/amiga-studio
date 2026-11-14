@@ -6,7 +6,7 @@
 //! and Chip RAM bus contention against the CPU.
 
 use config::mask::{bplcon0, dmacon};
-use config::{display_window, AUDIO_CHANNEL_COUNT, SPRITE_COUNT};
+use config::{display_window, AUDIO_CHANNEL_COUNT};
 use serde::{Deserialize, Serialize};
 
 use crate::register_bits::display_fetch::{HIRES_FETCH_PERIOD_CCK, LORES_FETCH_PERIOD_CCK};
@@ -305,7 +305,7 @@ impl DmaScheduler {
         vpos: u16,
         disk_active: bool,
         audio_active: [bool; AUDIO_CHANNEL_COUNT],
-        sprite_active: [bool; SPRITE_COUNT],
+        sprite_active: u8,
         copper_wants_bus: bool,
         blitter_wants_bus: bool,
         cpu_wants_bus: bool,
@@ -340,7 +340,7 @@ impl DmaScheduler {
         vpos: u16,
         disk_active: bool,
         audio_active: [bool; AUDIO_CHANNEL_COUNT],
-        sprite_active: [bool; SPRITE_COUNT],
+        sprite_active: u8,
         copper_wants_bus: bool,
         blitter_wants_bus: bool,
         cpu_wants_bus: bool,
@@ -367,7 +367,7 @@ impl DmaScheduler {
                 return DmaChannel::Bitplane(plane);
             }
             if let Some(DmaChannel::Sprite(sprite)) = fixed {
-                if sprite_active[usize::from(sprite)] && self.dmacon & dmacon::BIT_SPREN != 0 {
+                if sprite_active & (1 << sprite) != 0 && self.dmacon & dmacon::BIT_SPREN != 0 {
                     return DmaChannel::Sprite(sprite);
                 }
             }

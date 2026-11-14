@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "agnus"
 status: "draft"
 created: 2026-09-19
-updated: 2026-11-12
+updated: 2026-11-14
 related: ["[Agnus.md](Agnus.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)", "[MemoryBus.md](MemoryBus.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)"]
 tracked_paths:
   - "crates/agnus/src/dma.rs"
@@ -141,6 +141,14 @@ these coordinates are provisional model timing. Earlier vertical-blank lines
 disable sprite fetching. Pointers are software-owned reload values: a new
 field does not restore an old address automatically. Mid-line committed POS/CTL
 changes participate in subsequent comparisons; pending words still deliver once.
+
+The [sprite DMA implementation](../../../crates/agnus/src/dma_sprite.rs) retains
+the vertical latches and uses an eight-channel request mask. It reuses comparisons
+while the vertical position, model control line and committed POS/CTL values stay
+unchanged. Effective writes invalidate that result; reset and restore rebuild it.
+Vertical latches still update with DMA disabled or the output occupied. Current
+DMA enables and output availability gate the mask independently, and an empty
+mask permits a quick return without changing the fixed transfer opportunities.
 
 ## Paula request framing and state ownership
 

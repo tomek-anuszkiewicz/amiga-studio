@@ -1350,3 +1350,28 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - verifiers
   - graph refresh
   - language scans and independent review were not run for this batch at the user's explicit request.
+---
+
+### [2026-11-14 22:34 CET] — Reuse sprite DMA comparisons without changing transfer timing
+- **Affected Subsystems**:
+  - `agnus`
+  - `memory_bus register tests`
+  - `save_state`
+  - `DMA and save-state specifications`
+- **What Was Changed (The Concrete Reality)**:
+  - Complete the bounded PERIPHERAL-EVENT-OPTIMIZATION-20261114 pass with compact sprite active/request masks and comparisons reused until their inputs change
+  - Preserve mid-line register writes and vertical latches with DMA disabled or output blocked
+  - Group sprite state in save format 8 and test continuation from an active latch
+  - Reject and restore three disk variants, the UART variant and two audio variants after whole-machine measurements
+- **Architectural Rationale & Trade-Offs**:
+  - Reduce repeated per-CCK work while preserving fixed DMA slots and snapshot continuation
+  - Keep only the candidate supported by the requested PAL measurements
+- **Verification & Test Results**:
+  - Mixed PAL 8.51569 to 7.87536 ms per field, 7.52 percent lower time
+  - Mixed NTSC 7.19934 to 6.69548 ms, 7.00 percent lower time
+  - Kickstart PAL 6.72357 to 6.74259 ms, 0.28 percent higher within overlapping ranges
+  - Four 1000-field samples per build and workload in two ABBA blocks, with matching full state values and frames after a lossless sprite-field relocation
+  - 275 focused tests passed with no failures or ignored tests
+  - Core Wasm compilation and architecture, code, hardware, Clippy and formatting checks passed
+  - Commit-profile verification and independent batch review are pending
+  - Game-port work remains in Host Input Delivery

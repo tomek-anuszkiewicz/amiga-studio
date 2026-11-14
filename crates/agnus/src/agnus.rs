@@ -25,6 +25,7 @@ mod copper_registers;
 mod dma_audio;
 mod dma_disk;
 mod dma_sprite;
+pub use dma_sprite::{SpriteDma, SpriteDmaState};
 mod register_apply;
 mod register_bits;
 mod registers;
@@ -71,12 +72,8 @@ pub struct Agnus {
     pub bplpt: [u32; OCS_BITPLANE_COUNT],
     /// Sprite DMA pointers 0..7 ($120-$13E)
     pub sprpt: [u32; SPRITE_COUNT],
-    /// Sprite position registers 0..7 ($140-$178)
-    pub sprpos: [u16; SPRITE_COUNT],
-    /// Sprite control registers 0..7 ($142-$17A)
-    pub sprctl: [u16; SPRITE_COUNT],
-    /// Vertical start/stop latch for each sprite DMA channel.
-    pub sprite_dma_active: [bool; SPRITE_COUNT],
+    /// Sprite position/control registers and vertical DMA comparisons.
+    pub sprite_dma: SpriteDma,
     /// Audio DMA pointers 0..3 ($0A0, $0B0, $0C0, $0D0)
     pub audpt: [u32; AUDIO_CHANNEL_COUNT],
     /// Audio DMA start/loop locations 0..3 (AUDxLCH/AUDxLCL)
@@ -142,9 +139,7 @@ impl Agnus {
             bpl2mod: 0,
             bplpt: [0; OCS_BITPLANE_COUNT],
             sprpt: [0; SPRITE_COUNT],
-            sprpos: [0; SPRITE_COUNT],
-            sprctl: [0; SPRITE_COUNT],
-            sprite_dma_active: [false; SPRITE_COUNT],
+            sprite_dma: SpriteDma::default(),
             audpt: [0; AUDIO_CHANNEL_COUNT],
             audlc: [0; AUDIO_CHANNEL_COUNT],
             audio_dma_request: [false; AUDIO_CHANNEL_COUNT],
@@ -176,9 +171,7 @@ impl Agnus {
         self.bpl2mod = 0;
         self.bplpt.fill(0);
         self.sprpt.fill(0);
-        self.sprpos.fill(0);
-        self.sprctl.fill(0);
-        self.sprite_dma_active.fill(false);
+        self.sprite_dma = SpriteDma::default();
         self.audpt.fill(0);
         self.audlc.fill(0);
         self.audio_dma_request.fill(false);

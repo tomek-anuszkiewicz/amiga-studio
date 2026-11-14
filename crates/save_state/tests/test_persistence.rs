@@ -233,7 +233,7 @@ fn dma_registers_roundtrip_in_their_single_owner() {
     assert_eq!(machine.agnus.dma.planecount(), 2);
     let saved = SaveState::capture(&machine);
     let json = serde_json::to_value(&saved).unwrap();
-    assert_eq!(json["header"]["version"], 7);
+    assert_eq!(json["header"]["version"], 8);
     for (name, value) in [
         ("dmacon", 0x0300),
         ("bplcon0", 0x2004),
@@ -274,6 +274,30 @@ fn file_roundtrip_resumes_an_undelivered_rga_event() {
         assert_eq!(machine.save_state(), restored.save_state());
     }
     assert!(restored.denise.sync.synchronized);
+}
+
+#[test]
+fn file_roundtrip_rebuilds_sprite_comparisons_with_an_active_vertical_latch() {
+    let mut machine = A500Machine::new(A500Config::bare_512k(VideoStandard::Pal));
+    machine.cpu.state.set_stopped(true);
+    machine.agnus.vpos = 100;
+    machine.agnus.hpos = 20;
+    machine.agnus.dma.write_dmacon(0x8220);
+    machine.agnus.sprite_dma.set_position(0, 0x6440);
+    machine.agnus.sprite_dma.set_control(0, 0x6500);
+    machine.step_cck();
+    assert!(machine.agnus.sprite_dma.state().sprite_dma_active[0]);
+
+    let saved = SaveState::from_json(&SaveState::capture(&machine).to_json().unwrap()).unwrap();
+    let mut restored = A500Machine::new(A500Config::bare_512k(VideoStandard::Pal));
+    restored.load_state(&saved.state);
+    assert_eq!(machine.save_state(), restored.save_state());
+    for _ in 0..500 {
+        machine.step_cck();
+        restored.step_cck();
+    }
+    assert!(!machine.agnus.sprite_dma.state().sprite_dma_active[0]);
+    assert_eq!(machine.save_state(), restored.save_state());
 }
 
 #[test]

@@ -8,7 +8,7 @@ fn short_and_long_lines_reserve_four_refresh_opportunities() {
         let mut slots = Vec::new();
         for hpos in 0..line_ccks {
             if dma.step_cck(
-                hpos, 100, false, [false; 4], [false; 8], false, false, true, line_ccks,
+                hpos, 100, false, [false; 4], 0, false, false, true, line_ccks,
             ) == DmaChannel::Refresh
             {
                 slots.push(hpos);
@@ -52,7 +52,7 @@ fn fixed_opportunities_require_current_requests_and_channel_enables() {
                             100,
                             requested,
                             [requested; 4],
-                            [requested; 8],
+                            if requested { 0xff } else { 0 },
                             false,
                             false,
                             true,
@@ -76,17 +76,17 @@ fn a_fixed_sprite_opportunity_keeps_live_display_priority() {
     dma.set_ddfstrt(20);
     dma.set_ddfstop(28);
     assert_eq!(
-        dma.step_cck(21, 100, false, [false; 4], [true; 8], false, false, true, 227),
+        dma.step_cck(21, 100, false, [false; 4], 0xff, false, false, true, 227),
         DmaChannel::Bitplane(1)
     );
     dma.write_dmacon(0x0100); // Stop bitplane DMA without changing the opportunity.
     assert_eq!(
-        dma.step_cck(21, 100, false, [false; 4], [true; 8], false, false, true, 227),
+        dma.step_cck(21, 100, false, [false; 4], 0xff, false, false, true, 227),
         DmaChannel::Sprite(0)
     );
     dma.write_dmacon(0x0020);
     assert_eq!(
-        dma.step_cck(21, 100, false, [false; 4], [true; 8], false, false, true, 227),
+        dma.step_cck(21, 100, false, [false; 4], 0xff, false, false, true, 227),
         DmaChannel::Cpu
     );
 }
@@ -98,11 +98,11 @@ fn copper_uses_only_its_memory_phase() {
     let mut dma = DmaScheduler::new();
     dma.write_dmacon(0x8280);
     assert_eq!(
-        dma.step_cck(0x40, 100, false, [false; 4], [false; 8], true, false, true, 227),
+        dma.step_cck(0x40, 100, false, [false; 4], 0, true, false, true, 227),
         DmaChannel::Copper
     );
     assert_eq!(
-        dma.step_cck(0x41, 100, false, [false; 4], [false; 8], true, false, true, 227),
+        dma.step_cck(0x41, 100, false, [false; 4], 0, true, false, true, 227),
         DmaChannel::Cpu
     );
 }
@@ -114,7 +114,7 @@ fn unused_fixed_opportunities_do_not_block_a_requesting_cpu() {
     dma.write_dmacon(0x821F);
     for hpos in [7, 9, 11, 13, 15, 17, 19] {
         assert_eq!(
-            dma.step_cck(hpos, 100, false, [false; 4], [false; 8], false, false, true, 227),
+            dma.step_cck(hpos, 100, false, [false; 4], 0, false, false, true, 227),
             DmaChannel::Cpu
         );
         assert!(!dma.chip_ram_blocked);
@@ -128,12 +128,12 @@ fn normal_blitter_yield_counts_unsatisfied_cpu_requests_across_other_dma() {
     dma.write_dmacon(0x8240);
     for hpos in [1, 2, 3] {
         assert_ne!(
-            dma.step_cck(hpos, 100, false, [false; 4], [false; 8], false, true, true, 227),
+            dma.step_cck(hpos, 100, false, [false; 4], 0, false, true, true, 227),
             DmaChannel::Cpu
         );
     }
     assert_eq!(
-        dma.step_cck(4, 100, false, [false; 4], [false; 8], false, true, true, 227),
+        dma.step_cck(4, 100, false, [false; 4], 0, false, true, true, 227),
         DmaChannel::Cpu
     );
     assert_eq!(dma.cpu_starvation_counter, 0);
@@ -143,12 +143,8 @@ fn normal_blitter_yield_counts_unsatisfied_cpu_requests_across_other_dma() {
 fn absent_cpu_request_cancels_the_consecutive_denial_count() {
     let mut dma = DmaScheduler::new();
     dma.write_dmacon(0x8240);
-    dma.step_cck(
-        0x40, 100, false, [false; 4], [false; 8], false, true, true, 227,
-    );
-    dma.step_cck(
-        0x41, 100, false, [false; 4], [false; 8], false, true, false, 227,
-    );
+    dma.step_cck(0x40, 100, false, [false; 4], 0, false, true, true, 227);
+    dma.step_cck(0x41, 100, false, [false; 4], 0, false, true, false, 227);
     assert_eq!(dma.cpu_starvation_counter, 0);
 }
 

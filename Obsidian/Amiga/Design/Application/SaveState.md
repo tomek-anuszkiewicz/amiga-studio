@@ -40,7 +40,9 @@ old layouts have no
 compatibility parser. Frontends and the debugger use this crate for persistence;
 in-memory quick slots retain only the machine value.
 
-Schema version 7 excludes the live RTC and its independent battery offset.
+Schema version 8 groups sprite coordinates and vertical DMA latches under
+`state.agnus.sprite_dma`; derived comparison results are rebuilt after restore.
+It excludes the live RTC and its independent battery offset.
 It stores Denise's frame cursor alongside the
 [frame buffer](../Frame%20Buffer.md), preserving the write position across
 visible and blanking boundaries. The buffer uses a fixed

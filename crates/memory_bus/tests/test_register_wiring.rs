@@ -774,10 +774,16 @@ fn test_sprite_position_and_control_writes_reach_both_chips() {
             let _ = mb.denise.step_cck();
             let channel = &mb.denise.sprites.channels()[usize::from(sprite)];
             if register == 0 {
-                assert_eq!(mb.agnus.sprpos[usize::from(sprite)], value);
+                assert_eq!(
+                    mb.agnus.sprite_dma.state().sprpos[usize::from(sprite)],
+                    value
+                );
                 assert_eq!(channel.pos, value);
             } else {
-                assert_eq!(mb.agnus.sprctl[usize::from(sprite)], value);
+                assert_eq!(
+                    mb.agnus.sprite_dma.state().sprctl[usize::from(sprite)],
+                    value
+                );
                 assert_eq!(channel.ctl, value);
             }
         }

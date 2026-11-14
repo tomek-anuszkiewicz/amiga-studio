@@ -181,9 +181,9 @@ impl Agnus {
             | reg::REGISTER_SPR7CTL => {
                 let sprite = ((offset - reg::REGISTER_SPR0POS) / SPRITE_REGISTER_STRIDE) as usize;
                 if (offset & BIT_POINTER_LOW_REGISTER) == 0 {
-                    self.sprpos[sprite] = val;
+                    self.sprite_dma.set_position(sprite, val);
                 } else {
-                    self.sprctl[sprite] = val;
+                    self.sprite_dma.set_control(sprite, val);
                 }
             }
 

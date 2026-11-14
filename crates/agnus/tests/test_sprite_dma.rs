@@ -69,8 +69,8 @@ fn all_eight_channels_fetch_controls_data_reuse_and_terminator() {
 #[test]
 fn nine_bit_positions_disable_and_retained_output_control_memory_advancement() {
     let mut a = Agnus::new(AgnusModel::OcsPal8371);
-    a.sprpos[0] = 0x2c40;
-    a.sprctl[0] = 0x2e06;
+    a.sprite_dma.set_position(0, 0x2c40);
+    a.sprite_dma.set_control(0, 0x2e06);
     let mut ram = [0x12; 64];
     assert!(line(&mut a, &mut ram, 299).is_empty());
     assert!(line(&mut a, &mut ram, 300).is_empty()); // DMA disabled, comparator still active.
@@ -99,8 +99,8 @@ fn overlapping_bitplane_grant_prevents_sprite_fetch_and_pointer_increment() {
     let mut a = Agnus::new(AgnusModel::OcsPal8371);
     a.vpos = 100;
     a.hpos = 20;
-    a.sprpos[0] = 0x6440;
-    a.sprctl[0] = 0x6600;
+    a.sprite_dma.set_position(0, 0x6440);
+    a.sprite_dma.set_control(0, 0x6600);
     a.dma.write_dmacon(0x8320);
     a.dma.set_bplcon0(0xc000);
     a.dma.set_ddfstrt(20);
@@ -120,12 +120,15 @@ fn comparators_update_outside_slots_while_dma_and_output_are_blocked() {
         a.hpos = 70;
         a.pending_dma_write = Some((0x00a0, 0xcafe));
         // All eight combinations of old active, start match and stop match.
-        a.sprite_dma_active = [false, false, false, false, true, true, true, true];
-        a.sprpos = [99, 99, 100, 100, 99, 99, 100, 100].map(|v| v << 8);
-        a.sprctl = [101, 100, 101, 100, 101, 100, 101, 100].map(|v| v << 8);
+        a.sprite_dma = agnus::SpriteDmaState {
+            sprite_dma_active: [false, false, false, false, true, true, true, true],
+            sprpos: [99, 99, 100, 100, 99, 99, 100, 100].map(|v| v << 8),
+            sprctl: [101, 100, 101, 100, 101, 100, 101, 100].map(|v| v << 8),
+        }
+        .into();
         a.step_cck();
         assert_eq!(
-            a.sprite_dma_active,
+            a.sprite_dma.state().sprite_dma_active,
             [false, false, true, false, true, false, true, false]
         );
         assert_eq!(a.pending_dma_write, Some((0x00a0, 0xcafe)));
@@ -147,7 +150,7 @@ fn comparators_update_outside_slots_while_dma_and_output_are_blocked() {
         a.pending_dma_write = Some((0x00a0, 0xcafe));
         a.vpos = control_line;
         a.step_cck();
-        assert_eq!(a.sprite_dma_active, [false; 8]);
+        assert_eq!(a.sprite_dma.state().sprite_dma_active, [false; 8]);
         assert_eq!(a.pending_dma_write, Some((0x00a0, 0xcafe)));
     }
 }
@@ -157,24 +160,43 @@ fn midline_position_control_and_beam_writes_reach_the_next_comparison() {
     let mut a = Agnus::new(AgnusModel::OcsPal8371);
     a.vpos = 100;
     a.hpos = 70;
-    a.sprpos[0] = 0x6340;
-    a.sprctl[0] = 0x6500;
+    a.sprite_dma.set_position(0, 0x6340);
+    a.sprite_dma.set_control(0, 0x6500);
     assert!(a.set_sprpos(0, 0x6440));
     a.step_cck();
-    assert!(!a.sprite_dma_active[0]); // Write commits after this comparison.
+    assert!(!a.sprite_dma.state().sprite_dma_active[0]); // Write commits after this comparison.
     a.step_cck();
-    assert!(a.sprite_dma_active[0]);
+    assert!(a.sprite_dma.state().sprite_dma_active[0]);
     assert!(a.set_sprctl(0, 0x6400));
     a.step_cck();
-    assert!(a.sprite_dma_active[0]);
+    assert!(a.sprite_dma.state().sprite_dma_active[0]);
     a.step_cck();
-    assert!(!a.sprite_dma_active[0]); // Simultaneous start/stop leaves the latch clear.
+    assert!(!a.sprite_dma.state().sprite_dma_active[0]); // Simultaneous start/stop leaves the latch clear.
 
-    a.sprpos[0] = 0x6640;
-    a.sprctl[0] = 0x6700;
+    a.sprite_dma.set_position(0, 0x6640);
+    a.sprite_dma.set_control(0, 0x6700);
     assert!(a.set_vhposw(0x6646));
     a.step_cck();
-    assert!(!a.sprite_dma_active[0]);
+    assert!(!a.sprite_dma.state().sprite_dma_active[0]);
     a.step_cck();
-    assert!(a.sprite_dma_active[0]);
+    assert!(a.sprite_dma.state().sprite_dma_active[0]);
+}
+
+#[test]
+fn enabling_dma_midline_uses_the_latch_updated_while_disabled() {
+    let mut a = Agnus::new(AgnusModel::OcsPal8371);
+    a.vpos = 100;
+    a.hpos = 20;
+    a.sprite_dma.set_position(0, 0x6440);
+    a.sprite_dma.set_control(0, 0x6600);
+    let mut ram = [0x12; 64];
+    a.step_cck_ram(&mut ram);
+    assert!(a.sprite_dma.state().sprite_dma_active[0]);
+    assert_eq!(a.pending_dma_write, None);
+    assert_eq!(a.sprpt[0], 0);
+    a.dma.write_dmacon(0x8220);
+    a.step_cck_ram(&mut ram);
+    a.step_cck_ram(&mut ram);
+    assert_eq!(a.pending_dma_write, Some((0x146, 0x1212)));
+    assert_eq!(a.sprpt[0], 2);
 }
