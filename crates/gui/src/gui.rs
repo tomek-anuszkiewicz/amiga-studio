@@ -6,6 +6,7 @@
 
 pub mod app;
 pub mod file_actions;
+mod host_clock;
 mod inspection;
 pub mod layout;
 pub mod playback;

@@ -6,8 +6,8 @@ category: "Design"
 subsystem: "machine_loop"
 status: "active"
 created: 2026-08-31
-updated: 2026-11-12
-related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[DMA.md](DMA.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)"]
+updated: 2026-11-14
+related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[DMA.md](DMA.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)", "[RTC.md](RTC.md)"]
 tracked_paths:
   - "crates/machine_loop"
 ---
@@ -191,9 +191,9 @@ Instantaneous beam coordinates and a stream of strobes are not interchangeable.
 
 ## Lifecycle around the loop
 
-Construction creates the components from `A500Config`, resets the CPU against physical memory, captures released connector levels for the first delivery, and initializes the CPU interrupt level from Paula. A cold `reset()` resets physical memory, the master counter, chips, and devices before resetting the CPU. `reset_warm()` preserves RAM through the physical-memory warm-reset path and restarts the CPU and devices with the low-memory overlay restored. A CPU `RESET` instruction takes a narrower path: `reset_external_devices()` re-engages the Kickstart overlay and resets external chips and devices without clearing RAM or resetting CPU execution state. These are distinct operations in [`machine_loop.rs`](../../../crates/machine_loop/src/machine_loop.rs).
+Construction creates the components from `A500Config`, resets the CPU against physical memory, captures released connector levels for the first delivery, and initializes the CPU interrupt level from Paula. A cold `reset()` resets physical memory, the master counter, chips, and devices before resetting the CPU. `reset_warm()` preserves RAM through the physical-memory warm-reset path and restarts the CPU and devices with the low-memory overlay restored. A CPU `RESET` instruction takes a narrower path: `reset_external_devices()` re-engages the Kickstart overlay and resets external chips and devices without clearing RAM or resetting CPU execution state. These are distinct operations in [`machine_loop.rs`](../../../crates/machine_loop/src/machine_loop.rs). All reset paths retain the live [RTC](RTC.md); its host UTC clock is independent of CCK stepping.
 
-The machine also owns whole-machine snapshots: `save_state()` captures the clock, configuration, CPU, memory, chips, and peripherals as pure values; `load_state()` restores those components, and retains serialized pin levels and unconsumed output changes. Output routing resumes on the next modeled CCK; loading does not consume an event or synthesize a second one. The higher-level save_state crate owns version validation, JSON/files and PNG previews; its boundary is described in [SaveState.md](Application/SaveState.md). Video buffer production belongs to [Denise.md](Denise.md) and [Frame Buffer.md](Frame%20Buffer.md).
+The machine also owns snapshots: `save_state()` captures the master CCK, configuration, CPU, memory, chips, and peripherals as pure values, except for the live [RTC](RTC.md). `load_state()` restores the captured components and retains serialized pin levels and unconsumed output changes. RTC time, battery offset, calendar latches and controls remain independent; only RTC hardware presence follows the restored configuration. Output routing resumes on the next modeled CCK; loading does not consume an event or synthesize a second one. The higher-level save_state crate owns version validation, JSON/files and PNG previews; its boundary is described in [SaveState.md](Application/SaveState.md). Video buffer production belongs to [Denise.md](Denise.md) and [Frame Buffer.md](Frame%20Buffer.md).
 
 ## Reference Documentation & Upstream Ground Truth
 

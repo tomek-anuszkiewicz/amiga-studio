@@ -71,16 +71,17 @@ preserve explicit stepping and live controls.
 
 ## Resolve Elapsed Time on Access
 
-The November 14 [RTC implementation](../../../../crates/rtc/src/rtc.rs) replaces
-per-CCK stepping with elapsed-time settlement on register access and time/control
-changes. It retains the last machine CCK and fractional second, then derives the
-current time when needed. Debug reads evaluate a copy; machine reset settles the
-old interval before rebasing the CCK origin.
+An earlier November 14 RTC experiment replaced per-CCK stepping with elapsed-time
+settlement on register access and time/control changes. It retained the last
+machine CCK and fractional second. That implementation was rolled back and is
+unavailable in the current code. The [current RTC](../../../../Obsidian/Amiga/Design/RTC.md)
+uses host UTC plus an independent battery offset under an explicitly approved
+functional contract; machine snapshots exclude the clock.
 
-The lesson is to defer a result whose intermediate updates have no required
-consumer. Preserve STOP/HOLD behavior, control-write ordering, fractional time,
-counter wrap and snapshot continuation. This uses emulated time, not host wall
-time; it does not authorize deferring devices that emit intermediate events.
+The general lesson is to defer a result only when intermediate updates have no
+required consumer. Such an optimization must preserve the device's specified
+clock, control-write ordering and observable state. Switching from emulated time
+to host time is a separate requirement decision, not an equivalent calculation.
 
 ## Update Derived Results Only When Their Inputs Change
 
@@ -89,10 +90,11 @@ Commit `2451f6c` uses a 16-entry pin-to-phase table in
 existing low bits retain the consumed phase, so unchanged inputs need no counter
 arithmetic or separate dirty flag. Input sampling still occurs every CCK.
 
-The November 14 [audio mixer](../../../../crates/paula/src/audio.rs) similarly
-rebuilds stereo levels only when a contributing channel changes or derived mixer
-state becomes invalid. Channel stepping, PCM scheduling and existing BLEP tails
-continue. Data/control changes and restore retain explicit update boundaries.
+An earlier November 14 audio-mixer experiment rebuilt stereo levels only when a
+contributing channel changed or the derived state became invalid. That trial was
+rejected and removed; the [current mixer](../../../../crates/paula/src/audio.rs)
+runs unconditionally. It illustrates the invalidation obligations of a candidate,
+not an optimization available in the retained implementation.
 
 Reuse existing state before adding a cache. If a validity flag is needed, keep
 mutation paths controlled so callers cannot silently leave derived output stale.

@@ -18,8 +18,6 @@ pub struct A500State {
     pub cpu: CpuState,
     /// 24-bit physical memory buffers and overlay flag
     pub physical_memory: PhysicalMemory,
-    /// OKI MSM6242B Real-Time Clock
-    pub rtc: rtc::RtcMsm6242b,
     /// Agnus (beam counters, copper, blitter, dma, chip RAM bus lock)
     pub agnus: agnus::Agnus,
     /// Denise (video control, sprites, frame builder, color palette, collisions)

@@ -292,6 +292,7 @@ struct
 subdir
 subdirs
 subparsers
+subsec
 svg
 symlink
 sysctl

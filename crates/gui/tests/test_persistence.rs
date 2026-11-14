@@ -162,3 +162,42 @@ fn test_app_session_save_state_file_json_roundtrip() {
     assert_eq!(app.session.machine.cck, new_app.session.machine.cck);
     let _ = std::fs::remove_file(&temp_file);
 }
+
+#[test]
+fn battery_offset_persists_separately_and_ui_refreshes_host_utc() {
+    use eframe::App;
+    let mut storage = MemoryStorage::new();
+    let mut app = EmulatorApp::default();
+    app.session.machine.rtc.load_battery(rtc::RtcBattery {
+        offset_seconds: -123,
+    });
+    let snapshot = app.session.machine.save_state();
+    app.save(&mut storage);
+    let battery: rtc::RtcBattery = eframe::get_value(&storage, "rtc_battery").unwrap();
+    assert_eq!(battery.offset_seconds, -123);
+    let encoded = storage.get_string("rtc_battery").unwrap();
+    assert!(!encoded.contains("timestamp"));
+    assert!(!encoded.contains("registers"));
+    let mut context = eframe::CreationContext::_new_kittest(egui::Context::default());
+    context.storage = Some(&storage);
+    let mut restarted = EmulatorApp::new(&context);
+    assert_eq!(restarted.session.machine.rtc.battery_data(), battery);
+    restarted.session.machine.load_state(&snapshot);
+    assert_eq!(restarted.session.machine.rtc.battery_data(), battery);
+    // Model an old sample while the UI is paused, then refresh without stepping.
+    restarted.session.machine.rtc.supply_host_utc(631152000);
+    let before_cck = restarted.session.machine.cck;
+    let lower = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as i64;
+    let _ = context
+        .egui_ctx
+        .run(egui::RawInput::default(), |ctx| restarted.update_ui(ctx));
+    let upper = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as i64;
+    assert!((lower - 123..=upper - 123).contains(&restarted.session.machine.rtc.time()));
+    assert_eq!(restarted.session.machine.cck, before_cck);
+}

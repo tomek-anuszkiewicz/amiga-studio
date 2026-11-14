@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "memory_bus"
 status: "active"
 created: 2026-08-31
-updated: 2026-11-13
+updated: 2026-11-14
 related: ["[General Architecture.md](General%20Architecture.md)", "[Physical Memory.md](Physical%20Memory.md)", "[Machine Loop.md](Machine%20Loop.md)", "[DMA.md](DMA.md)", "[Agnus.md](Agnus.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)", "[CIA.md](CIA.md)", "[RTC.md](RTC.md)", "[Custom Chip Register Ownership and Access Matrix.md](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md)", "[Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
 tracked_paths:
   - "crates/memory_bus"
@@ -170,7 +170,7 @@ representation does not move acceptance, commitment or pin-sampling phases.
 
 ### RTC and exceptional access paths
 
-The router forwards addresses `$DC0000-$DC003F` to [`RtcMsm6242b`](../../../crates/rtc/src/rtc.rs). The RTC itself returns `$FF` and ignores writes on even bytes or when its model is `None`; on odd bytes it selects one of 16 four-bit registers using `(addr >> 2) & $0F`. Word operations split into two byte lanes in big-endian order. The machine advances the RTC once per subsystem CCK; the router only handles its mapped accesses.
+The router forwards addresses `$DC0000-$DC003F` to [`RtcMsm6242b`](../../../crates/rtc/src/rtc.rs). The RTC itself returns `$FF` and ignores writes on even bytes or when its model is `None`; on odd bytes it selects one of 16 four-bit registers using `(addr >> 2) & $0F`. Word operations split into two byte lanes in big-endian order. The [RTC calendar](RTC.md) follows the latest supplied host UTC sample and its independent battery offset. The router handles mapped register accesses without stepping the clock or reading host time.
 
 `write_tas_byte()` implements the modeled TAS read-modify-write exception. It checks the physical-memory bank classification: on Chip or Slow RAM it waits if Chip RAM is blocked and otherwise completes without storing the byte. Other targets use the ordinary byte write. This is specific to the TAS write phase; ordinary writes to these RAM banks use their memory handlers.
 

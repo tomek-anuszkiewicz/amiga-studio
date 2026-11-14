@@ -62,14 +62,19 @@ const UNIX_EPOCH_MARCH_OFFSET: i64 = 719468;
 const DAYS_PER_ERA: i64 = 146097;
 const YEARS_PER_ERA: i64 = 400;
 const DAYS_PER_YEAR: u32 = 365;
-const YEAR_ESTIMATE_CORRECTION_DIVISOR: u32 = 1020;
 const FOUR_YEAR_DAYS: u32 = 1460;
 const CENTURY_DAYS: u32 = 36524;
 const SECONDS_PER_HOUR: i64 = 3600;
 const SECONDS_PER_DAY: i64 = 86400;
 
-/// OKI MSM6242B Real-Time Clock state and register emulation
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+/// Independently persisted battery data; never part of a machine snapshot.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RtcBattery {
+    pub offset_seconds: i64,
+}
+
+/// OKI MSM6242B registers driven by UTC samples from the host boundary.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RtcMsm6242b {
     /// Active RTC hardware model (None vs Msm6242b)
     pub model: RtcModel,
@@ -86,11 +91,8 @@ pub struct RtcMsm6242b {
     /// Control Register F ($F): Bit 0 = RESET, Bit 1 = STOP, Bit 2 = 24/12, Bit 3 = TEST
     pub control_f: u8,
 
-    /// Current simulated time in seconds since January 1, 1970 (Unix epoch)
-    pub simulated_time: i64,
-
-    /// Number of master Color Clock cycles elapsed since last 1-second step
-    pub cck_accumulator: u64,
+    host_utc: i64,
+    battery: RtcBattery,
 }
 
 impl Default for RtcMsm6242b {
@@ -110,41 +112,48 @@ impl RtcMsm6242b {
             control_e: 0x00,
             control_f: BIT_CONTROL_F_24_HOUR,
             // Default baseline date: 1990-01-01 00:00:00 (Amiga Kickstart 1.3 / 2.0 era)
-            simulated_time: RESET_TIMESTAMP,
-            cck_accumulator: 0,
+            host_utc: RESET_TIMESTAMP,
+            battery: RtcBattery::default(),
         };
         rtc.sync_time_to_registers();
         rtc
     }
 
-    /// Sets the simulated RTC time to an explicit Unix timestamp (seconds since 1970-01-01)
-    #[inline]
-    pub fn set_time(&mut self, timestamp: i64) {
-        self.simulated_time = timestamp;
+    /// Latest supplied UTC plus the independently retained offset.
+    pub fn time(&self) -> i64 {
+        self.host_utc.wrapping_add(self.battery.offset_seconds)
+    }
+
+    /// Supplies UTC seconds without advancing any emulated machine clocks.
+    pub fn supply_host_utc(&mut self, timestamp: i64) {
+        if timestamp == self.host_utc {
+            return;
+        }
+        if self.control_f & BIT_CONTROL_F_STOP != 0 {
+            self.battery.offset_seconds = self.time().wrapping_sub(timestamp);
+            self.host_utc = timestamp;
+            return;
+        }
+        self.host_utc = timestamp;
+        if self.control_d & BIT_CONTROL_D_HOLD == 0 {
+            self.sync_time_to_registers();
+        }
+    }
+
+    pub fn battery_data(&self) -> RtcBattery {
+        self.battery
+    }
+
+    /// Applies battery data to the latest host sample at application startup.
+    pub fn load_battery(&mut self, battery: RtcBattery) {
+        self.battery = battery;
         self.sync_time_to_registers();
     }
 
-    /// Advances the internal RTC clock by a given number of Color Clock (CCK) cycles (~3.54 MHz PAL)
-    pub fn step_cck(&mut self, cck_cycles: u64) {
-        if self.model == RtcModel::None || (self.control_f & BIT_CONTROL_F_STOP) != 0 {
-            // Clock stopped via STOP bit (Control F bit 1) or no RTC installed
-            return;
-        }
-
-        // 3,546,895 Color Clocks per second on PAL A500
-        const CCK_PER_SECOND: u64 = 3_546_895;
-
-        self.cck_accumulator += cck_cycles;
-        if self.cck_accumulator >= CCK_PER_SECOND {
-            let seconds = self.cck_accumulator / CCK_PER_SECOND;
-            self.cck_accumulator %= CCK_PER_SECOND;
-            self.simulated_time = self.simulated_time.wrapping_add(seconds as i64);
-
-            // Only update readable register latches if HOLD is cleared
-            if (self.control_d & BIT_CONTROL_D_HOLD) == 0 {
-                self.sync_time_to_registers();
-            }
-        }
+    /// Sets the guest clock by changing its offset from the latest host sample.
+    pub fn set_time(&mut self, timestamp: i64) {
+        self.battery.offset_seconds = timestamp.wrapping_sub(self.host_utc);
+        self.sync_time_to_registers();
     }
 
     /// Reads an 8-bit byte from the RTC address space ($DC0000..$DC003F)
@@ -196,13 +205,13 @@ impl RtcMsm6242b {
 
                 // 30-second adjust: round seconds to nearest minute
                 if (data & BIT_CONTROL_D_ADJUST) != 0 {
-                    let sec = (self.simulated_time % i64::from(SECONDS_PER_MINUTE)) as i32;
+                    let timestamp = self.time();
+                    let sec = timestamp.rem_euclid(i64::from(SECONDS_PER_MINUTE)) as i32;
                     if sec < ADJUST_HALF_MINUTE_SECONDS {
-                        self.simulated_time -= sec as i64;
+                        self.set_time(timestamp.wrapping_sub(i64::from(sec)));
                     } else {
-                        self.simulated_time += (SECONDS_PER_MINUTE - sec) as i64;
+                        self.set_time(timestamp.wrapping_add(i64::from(SECONDS_PER_MINUTE - sec)));
                     }
-                    self.sync_time_to_registers();
                 }
             }
             REGISTER_CONTROL_E => {
@@ -221,9 +230,9 @@ impl RtcMsm6242b {
         }
     }
 
-    /// Synchronizes the internal `simulated_time` timestamp into the 16 4-bit BCD registers
-    pub fn sync_time_to_registers(&mut self) {
-        let (year, month, day, hour, min, sec, wday) = decompose_timestamp(self.simulated_time);
+    /// Encodes the current UTC-based clock into the calendar latches.
+    fn sync_time_to_registers(&mut self) {
+        let (year, month, day, hour, min, sec, wday) = decompose_timestamp(self.time());
 
         // Seconds
         self.registers[REGISTER_SECONDS_UNITS] = (sec % 10) as u8;
@@ -273,8 +282,8 @@ impl RtcMsm6242b {
         self.registers[REGISTER_WEEKDAY] = (wday % DAYS_PER_WEEK) as u8;
     }
 
-    /// Synchronizes user-written BCD registers back into `simulated_time`
-    pub fn sync_registers_to_time(&mut self) {
+    /// Applies guest-written calendar digits without rewriting their latches.
+    fn sync_registers_to_time(&mut self) {
         let sec = (self.registers[REGISTER_SECONDS_TENS] * 10
             + self.registers[REGISTER_SECONDS_UNITS]) as u32;
         let min = (self.registers[REGISTER_MINUTES_TENS] * 10
@@ -311,7 +320,8 @@ impl RtcMsm6242b {
             CURRENT_CENTURY + year_2d
         };
 
-        self.simulated_time = compose_timestamp(year, month, day, hour, min, sec);
+        self.battery.offset_seconds =
+            compose_timestamp(year, month, day, hour, min, sec).wrapping_sub(self.host_utc);
     }
 }
 
@@ -338,8 +348,7 @@ fn decompose_timestamp(mut ts: i64) -> (i32, u32, u32, u32, u32, u32, u32) {
     let z = days + UNIX_EPOCH_MARCH_OFFSET;
     let era = if z >= 0 { z } else { z - (DAYS_PER_ERA - 1) } / DAYS_PER_ERA;
     let doe = (z - era * DAYS_PER_ERA) as u32;
-    let yoe = (doe - doe / YEAR_ESTIMATE_CORRECTION_DIVISOR + doe / FOUR_YEAR_DAYS
-        - doe / CENTURY_DAYS)
+    let yoe = (doe - doe / FOUR_YEAR_DAYS + doe / CENTURY_DAYS - doe / (DAYS_PER_ERA as u32 - 1))
         / DAYS_PER_YEAR;
     let y = (yoe as i64) + era * YEARS_PER_ERA;
     let doy = doe - (DAYS_PER_YEAR * yoe + yoe / LEAP_YEAR_PERIOD - yoe / CENTURY_YEARS);

@@ -21,6 +21,8 @@ use crate::theme::AppTheme;
 use debugger::temporal::DEFAULT_TEMPORAL_CAPACITY;
 use debugger::DebuggerSession;
 
+const RTC_BATTERY_STORAGE_KEY: &str = "rtc_battery";
+
 const WIDE_LAYOUT_MIN_WIDTH: f32 = 1680.0;
 const DESKTOP_LAYOUT_MIN_WIDTH: f32 = 1200.0;
 
@@ -161,8 +163,14 @@ impl Default for EmulatorApp {
             }
         };
 
+        let mut session = Box::new(DebuggerSession::new());
+        session
+            .machine
+            .rtc
+            .supply_host_utc(crate::host_clock::utc_now());
+        session.machine.rtc.load_battery(rtc::RtcBattery::default());
         Self {
-            session: Box::new(DebuggerSession::new()),
+            session,
             screen_texture: ScreenTexture::default(),
             inspection: Box::default(),
             playback: Playback::default(),
@@ -210,6 +218,9 @@ impl EmulatorApp {
         #[cfg(target_arch = "wasm32")]
         app.browser_history.restore();
         if let Some(storage) = cc.storage {
+            if let Some(battery) = eframe::get_value(storage, RTC_BATTERY_STORAGE_KEY) {
+                app.session.machine.rtc.load_battery(battery);
+            }
             #[cfg(not(target_arch = "wasm32"))]
             {
                 app.file_history =
@@ -275,6 +286,10 @@ impl EmulatorApp {
         let was_running = self.session.is_running;
         let first_pass = ctx.output(|output| output.num_completed_passes == 0);
         if first_pass {
+            self.session
+                .machine
+                .rtc
+                .supply_host_utc(crate::host_clock::utc_now());
             self.session
                 .set_debugger_enabled(self.view_mode == ViewMode::Developer);
             self.handle_keyboard_shortcuts(ctx);
@@ -716,6 +731,15 @@ impl eframe::App for EmulatorApp {
     }
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
+        self.session
+            .machine
+            .rtc
+            .supply_host_utc(crate::host_clock::utc_now());
+        eframe::set_value(
+            storage,
+            RTC_BATTERY_STORAGE_KEY,
+            &self.session.machine.rtc.battery_data(),
+        );
         eframe::set_value(storage, eframe::APP_KEY, &self.preferences());
         #[cfg(not(target_arch = "wasm32"))]
         eframe::set_value(

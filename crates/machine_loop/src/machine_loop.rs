@@ -172,7 +172,7 @@ impl A500Machine {
     }
 
     /// Advances all peer custom chips, coprocessors, and peripheral subsystems by exactly 1 Color Clock (~280 ns),
-    /// dispatching matured actions, advancing RTC, and arbitrating interrupts.
+    /// dispatching matured actions and arbitrating interrupts.
     pub fn step_subsystems_cck(&mut self) {
         // Start of subsystem CCK: sample inputs before receiver work, even while waiting.
         self.sample_signal_pins_start_cck();
@@ -214,13 +214,10 @@ impl A500Machine {
         self.cia_a.step_cck();
         self.cia_b.step_cck();
 
-        // 6. Step Real-Time Clock
-        self.rtc.step_cck(1);
-
-        // 7. Route same-CCK outputs and capture pins for the next CCK input phase.
+        // 6. Route same-CCK outputs and capture pins for the next CCK input phase.
         self.route_signal_pins_end_cck();
 
-        // 8. Central interrupt priority line (IPL 1-6) arbitration
+        // 7. Central interrupt priority line (IPL 1-6) arbitration
         self.deliver_cpu_interrupt_pins();
     }
 
@@ -321,7 +318,6 @@ impl A500Machine {
             config: self.config.clone(),
             cpu: self.cpu.state.clone(),
             physical_memory: self.physical_memory.clone(),
-            rtc: self.rtc.clone(),
             agnus: self.agnus.clone(),
             denise: self.denise.clone(),
             paula: self.paula.clone(),
@@ -348,7 +344,8 @@ impl A500Machine {
         self.cpu.restore_state(state.cpu.clone());
 
         // 6. Restore Custom Chips & Peripherals
-        self.rtc = state.rtc.clone();
+        // Battery time and register latches remain independent of snapshots.
+        self.rtc.model = self.config.rtc();
         self.agnus = state.agnus.clone();
         self.denise = state.denise.clone();
         self.paula = state.paula.clone();

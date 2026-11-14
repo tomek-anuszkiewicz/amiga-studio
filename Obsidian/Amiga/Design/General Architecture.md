@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "general"
 status: "active"
 created: 2026-08-31
-updated: 2026-11-12
+updated: 2026-11-14
 related: ["[Machine Loop.md](Machine%20Loop.md)", "[Game Ports.md](Game%20Ports.md)", "[MemoryBus.md](MemoryBus.md)", "[Physical Memory.md](Physical%20Memory.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md)", "[Agnus.md](Agnus.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)", "[Interrupts.md](Interrupts.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)", "[Custom Chip Register Ownership and Access Matrix.md](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md)", "[Testing Strategy and Quality Assurance.md](Verification/Testing%20Strategy%20and%20Quality%20Assurance.md)"]
 ---
 
@@ -253,7 +253,7 @@ Source files stay flat within each crate. Multi-file engines prefix supporting f
 - **Decoupled Host I/O**:
   - Video rendering outputs into a dedicated frame buffer.
   - Audio outputs into decoupled sample ring buffers.
-  - Save states serialize full machine state to/from JSON (see [SaveState.md](Application/SaveState.md)).
+  - Save states serialize machine state to/from JSON, excluding the live [RTC](RTC.md) and its separately persisted battery offset (see [SaveState.md](Application/SaveState.md)).
 
 ---
 

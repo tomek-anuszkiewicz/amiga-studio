@@ -7,7 +7,7 @@ subsystem: "general"
 status: "active"
 created: 2026-08-31
 updated: 2026-11-14
-related: ["[General Architecture.md](../General%20Architecture.md)", "[MemoryBus.md](../MemoryBus.md)", "[CPU Motorola M68000.md](../CPU%20Motorola%20M68000.md)", "[Machine Loop.md](../Machine%20Loop.md)", "[Agnus.md](../Agnus.md)"]
+related: ["[General Architecture.md](../General%20Architecture.md)", "[MemoryBus.md](../MemoryBus.md)", "[CPU Motorola M68000.md](../CPU%20Motorola%20M68000.md)", "[Machine Loop.md](../Machine%20Loop.md)", "[Agnus.md](../Agnus.md)", "[RTC.md](../RTC.md)"]
 tracked_paths:
   - "crates/machine_loop/src/state.rs"
   - "crates/save_state"
@@ -40,7 +40,8 @@ old layouts have no
 compatibility parser. Frontends and the debugger use this crate for persistence;
 in-memory quick slots retain only the machine value.
 
-Schema version 6 stores Denise's frame cursor alongside the
+Schema version 7 excludes the live RTC and its independent battery offset.
+It stores Denise's frame cursor alongside the
 [frame buffer](../Frame%20Buffer.md), preserving the write position across
 visible and blanking boundaries. The buffer uses a fixed
 row stride and retains destination addresses for pending line output. PNG
@@ -60,7 +61,7 @@ timing state and RGA events are serialized at their respective owners.
 ## 2. Full snapshot contents
 
 `A500State` includes the CPU's micro-execution state, physical memory and ROM,
-RTC, Agnus, Denise, Paula, both CIAs, floppy, keyboard and game ports. Custom
+Agnus, Denise, Paula, both CIAs, floppy, keyboard and game ports. Custom
 chips are already value containers, so no duplicate per-chip snapshot wrappers
 are introduced. Their registers, input levels and pending changes are retained.
 Each receiver stores its incoming inputs alongside sampled levels and local
@@ -75,6 +76,10 @@ A snapshot at CCK T must resume with the same subsequent state as uninterrupted
 execution, including a signal captured but not delivered and an unaccepted
 register word. Construction/reset defines released levels. Current snapshots
 require their complete state fields; there are no legacy defaults or host handles.
+The deliberate exception is the [RTC](../RTC.md): its time, battery offset,
+calendar latches and controls are neither captured nor restored. Its hardware
+presence follows the saved configuration, while the live clock continues from
+current host UTC and its independently persisted offset.
 
 ---
 

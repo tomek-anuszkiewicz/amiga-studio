@@ -3,13 +3,13 @@
 //! Integration tests for the OKI MSM6242B Real-Time Clock (RTC) subsystem via A500Machine
 //!
 //! Verifies odd-byte address decoding, BCD conversion, 24/12h mode, HOLD latching,
-//! CCK cycle stepping, and preset mapping per Obsidian/Amiga/Design/RTC.md.
+//! host UTC sampling, snapshot independence, and preset mapping per Obsidian/Amiga/Design/RTC.md.
 
 use config::{A500Config, RtcModel, VideoStandard};
 use machine_loop::BusResult;
 use machine_loop::{A500Machine, AddressBus};
 
-const CCK_PER_SECOND: u64 = 3_546_895;
+const UTC: i64 = 631152000;
 
 fn running_clock() -> A500Machine {
     let mut machine = A500Machine::new(A500Config::standard_1mb(VideoStandard::Pal));
@@ -23,17 +23,16 @@ fn running_clock() -> A500Machine {
 }
 
 #[test]
-fn rtc_advances_each_subsystem_cycle_and_reads_do_not_change_state() {
+fn rtc_uses_host_time_and_reads_do_not_change_state() {
     let mut machine = running_clock();
-    machine.rtc.step_cck(CCK_PER_SECOND - 2);
-    machine.step_subsystems_cck();
-    assert_eq!(machine.rtc.cck_accumulator, CCK_PER_SECOND - 1);
-    machine.step_cck();
-    assert_eq!(machine.rtc.simulated_time, 631152009);
-    assert_eq!(machine.rtc.cck_accumulator, 0);
     let before = machine.rtc.clone();
-
-    // Other addresses and byte lanes leave clock state untouched.
+    machine.step_subsystems_cck();
+    machine.step_cck();
+    machine.step_cycles(1000);
+    assert_eq!(machine.rtc, before);
+    machine.rtc.supply_host_utc(UTC + 1);
+    assert_eq!(machine.rtc.time(), UTC + 9);
+    let before = machine.rtc.clone();
     assert_eq!(
         machine.memory_bus().read_byte(0xDC0041),
         BusResult::Ready(0xFF)
@@ -46,43 +45,39 @@ fn rtc_advances_each_subsystem_cycle_and_reads_do_not_change_state() {
         machine.memory_bus().write_byte(0xDC0000, 3),
         BusResult::Ready(())
     );
-    assert_eq!(machine.rtc, before);
-
     assert_eq!(machine.memory_bus().read_word_debug(0xDC0000), 0xFF09);
-    assert_eq!(machine.rtc, before, "Inspection must not change live state");
     assert_eq!(
         machine.memory_bus().read_word(0xDC0000),
         BusResult::Ready(0xFF09)
     );
-    assert_eq!(machine.rtc.simulated_time, 631152009);
-    assert_eq!(machine.rtc.cck_accumulator, 0);
+    assert_eq!(machine.rtc, before);
 }
 
 #[test]
-fn guest_cpu_rtc_read_uses_the_current_bus_cycle_time() {
+fn guest_cpu_rtc_read_uses_latest_host_sample() {
     let mut machine = running_clock();
     machine.physical_memory.map_chip_ram_to_low_memory();
     // MOVE.B $DC0001,D0; STOP #$2700.
     machine.physical_memory.chip_ram[0x1000..0x100A]
         .copy_from_slice(&[0x10, 0x39, 0x00, 0xDC, 0x00, 0x01, 0x4E, 0x72, 0x27, 0x00]);
     machine.cpu.state.set_sr(0x2700);
-    machine.rtc.step_cck(CCK_PER_SECOND - 1);
+    machine.rtc.supply_host_utc(UTC + 1);
     machine.set_pc_and_prime_prefetch(0x1000);
     machine.step_instruction();
     assert!(!machine.cpu.state.is_halted());
     assert_eq!(machine.cpu.state.d_byte(0), 9);
-    assert_eq!(machine.rtc.simulated_time, 631152009);
+    assert_eq!(machine.rtc.time(), UTC + 9);
 }
 
 #[test]
 fn rtc_hold_captures_time_at_the_write_and_releases_elapsed_time() {
     let mut machine = running_clock();
-    machine.rtc.step_cck(2 * CCK_PER_SECOND + 17);
+    machine.rtc.supply_host_utc(UTC + 2);
     assert_eq!(
         machine.memory_bus().write_word(0xDC0034, 0xFF01),
         BusResult::Ready(())
     );
-    machine.rtc.step_cck(3 * CCK_PER_SECOND);
+    machine.rtc.supply_host_utc(UTC + 5);
     assert_eq!(
         machine.memory_bus().read_byte(0xDC0001),
         BusResult::Ready(0)
@@ -99,19 +94,17 @@ fn rtc_hold_captures_time_at_the_write_and_releases_elapsed_time() {
         machine.memory_bus().read_byte(0xDC0001),
         BusResult::Ready(3)
     );
-    assert_eq!(machine.rtc.cck_accumulator, 17);
 }
 
 #[test]
-fn rtc_stop_excludes_stopped_cycles_and_keeps_fractional_second() {
+fn rtc_stop_excludes_stopped_host_interval() {
     let mut machine = running_clock();
-    machine.rtc.step_cck(2 * CCK_PER_SECOND - 1);
+    machine.rtc.supply_host_utc(UTC + 1);
     assert_eq!(
         machine.memory_bus().write_byte(0xDC003D, 0x06),
         BusResult::Ready(())
     );
-    machine.rtc.step_cck(10 * CCK_PER_SECOND);
-    // Resume without an intervening RTC read: the stopped interval must be discarded.
+    machine.rtc.supply_host_utc(UTC + 11);
     assert_eq!(
         machine.memory_bus().write_byte(0xDC003D, 0x04),
         BusResult::Ready(())
@@ -120,7 +113,7 @@ fn rtc_stop_excludes_stopped_cycles_and_keeps_fractional_second() {
         machine.memory_bus().read_byte(0xDC0001),
         BusResult::Ready(9)
     );
-    machine.step_cck();
+    machine.rtc.supply_host_utc(UTC + 12);
     assert_eq!(
         machine.memory_bus().read_byte(0xDC0001),
         BusResult::Ready(0)
@@ -129,13 +122,12 @@ fn rtc_stop_excludes_stopped_cycles_and_keeps_fractional_second() {
         machine.memory_bus().read_byte(0xDC0005),
         BusResult::Ready(1)
     );
-    assert_eq!(machine.rtc.cck_accumulator, 0);
 }
 
 #[test]
-fn rtc_writes_use_current_calendar_and_preserve_latches_until_next_second() {
+fn rtc_writes_update_offset_and_preserve_latches_until_next_second() {
     let mut machine = running_clock();
-    machine.rtc.step_cck(62 * CCK_PER_SECOND + 29);
+    machine.rtc.supply_host_utc(UTC + 62);
     assert_eq!(
         machine.memory_bus().write_byte(0xDC0001, 5),
         BusResult::Ready(())
@@ -144,17 +136,18 @@ fn rtc_writes_use_current_calendar_and_preserve_latches_until_next_second() {
         machine.memory_bus().read_byte(0xDC0009),
         BusResult::Ready(1)
     );
-    assert_eq!(machine.rtc.simulated_time, 631152075); // 00:01:15
-                                                       // A written weekday remains latched until the next second, even across reads.
+    assert_eq!(machine.rtc.time(), UTC + 75);
+    assert_eq!(machine.rtc.battery_data().offset_seconds, 13);
     assert_eq!(
         machine.memory_bus().write_byte(0xDC0031, 6),
         BusResult::Ready(())
     );
+    machine.rtc.supply_host_utc(UTC + 62);
     assert_eq!(
         machine.memory_bus().read_byte(0xDC0031),
         BusResult::Ready(6)
     );
-    machine.rtc.step_cck(CCK_PER_SECOND - 29);
+    machine.rtc.supply_host_utc(UTC + 63);
     assert_eq!(
         machine.memory_bus().read_byte(0xDC0031),
         BusResult::Ready(1)
@@ -166,52 +159,44 @@ fn rtc_writes_use_current_calendar_and_preserve_latches_until_next_second() {
 }
 
 #[test]
-fn rtc_fraction_and_stop_state_survive_serialization_and_restore() {
+fn snapshots_exclude_rtc_and_restore_leaves_live_clock_intact() {
     for control in [0x04, 0x06] {
         let mut machine = running_clock();
-        machine.rtc.step_cck(CCK_PER_SECOND - 1);
-        assert_eq!(
-            machine.memory_bus().write_byte(0xDC003D, control),
-            BusResult::Ready(())
-        );
-        machine.rtc.step_cck(3 * CCK_PER_SECOND);
-        let rtc_before = machine.rtc.clone();
         let state = machine.save_state();
-        let bytes = serde_json::to_vec(&state).unwrap();
-        let decoded = serde_json::from_slice(&bytes).unwrap();
-        let mut restored = A500Machine::new(machine.config.clone());
-        restored.load_state(&decoded);
+        let json = serde_json::to_value(&state).unwrap();
+        assert!(json.get("rtc").is_none());
+        assert!(json.get("offset_seconds").is_none());
+        let decoded = serde_json::from_value(json).unwrap();
+        machine.rtc.supply_host_utc(UTC + 100);
+        machine.rtc.set_time(UTC + 250);
+        machine.rtc.write_byte(0xDC003D, control);
+        let rtc_before = machine.rtc.clone();
+        machine.load_state(&decoded);
         assert_eq!(machine.rtc, rtc_before);
-        assert_eq!(restored.save_state(), state);
-        for instance in [&mut machine, &mut restored] {
-            instance.step_cck();
-            let expected = if control == 0x04 { 2 } else { 8 };
-            assert_eq!(
-                instance.memory_bus().read_byte(0xDC0001),
-                BusResult::Ready(expected)
-            );
-        }
-        assert_eq!(machine.save_state(), restored.save_state());
+        assert_eq!(machine.save_state(), state);
+        machine.rtc.supply_host_utc(UTC + 110);
+        assert_eq!(
+            machine.rtc.time(),
+            UTC + if control == 0x04 { 260 } else { 250 }
+        );
     }
 }
 
 #[test]
-fn rtc_resets_preserve_calendar_and_fractional_second() {
+fn rtc_resets_preserve_clock_and_battery() {
     for warm in [false, true] {
         let mut machine = running_clock();
-        machine.cck = 2 * CCK_PER_SECOND - 1;
-        machine.rtc.step_cck(machine.cck);
+        machine.rtc.supply_host_utc(UTC + 1);
+        machine.cck = 100;
+        let rtc_before = machine.rtc.clone();
         if warm {
             machine.reset_warm();
         } else {
             machine.reset();
         }
         assert_eq!(machine.cck, 0);
-        assert_eq!(
-            machine.memory_bus().read_byte(0xDC0001),
-            BusResult::Ready(9)
-        );
-        machine.step_cck();
+        assert_eq!(machine.rtc, rtc_before);
+        machine.rtc.supply_host_utc(UTC + 2);
         assert_eq!(
             machine.memory_bus().read_byte(0xDC0001),
             BusResult::Ready(0)
@@ -220,7 +205,6 @@ fn rtc_resets_preserve_calendar_and_fractional_second() {
             machine.memory_bus().read_byte(0xDC0005),
             BusResult::Ready(1)
         );
-        assert_eq!(machine.rtc.cck_accumulator, 0);
     }
 }
 
@@ -440,8 +424,8 @@ fn test_rtc_hold_register_latching() {
     // Engage HOLD (Bit 0 of Control Register D, addr $DC0035)
     let _ = machine.memory_bus().write_byte(0xDC0035, 0x01);
 
-    // Step clock by 5 seconds (5 * 3,546,895 CCK cycles)
-    machine.rtc.step_cck(5 * 3_546_895);
+    // Supply host time five seconds later.
+    machine.rtc.supply_host_utc(UTC + 5);
 
     // While HOLD is engaged, readable register latches are frozen
     assert_eq!(
@@ -468,30 +452,24 @@ fn test_rtc_hold_register_latching() {
 }
 
 #[test]
-fn test_rtc_step_cck_cycle_exactness() {
-    let config = A500Config::standard_1mb(VideoStandard::Pal);
-    let mut machine = A500Machine::new(config);
-
-    // Clear HOLD to allow live updates
-    let _ = machine.memory_bus().write_byte(0xDC0035, 0x00);
-    machine.rtc.set_time(732196028); // Seconds = 08
+fn restored_configuration_changes_presence_without_replacing_clock() {
+    let mut machine = running_clock();
+    let saved = machine.save_state();
+    let bare = A500Machine::new(A500Config::bare_512k(VideoStandard::Ntsc)).save_state();
+    machine.rtc.supply_host_utc(UTC + 50);
+    let time = machine.rtc.time();
+    let battery = machine.rtc.battery_data();
+    machine.load_state(&bare);
+    assert_eq!(
+        machine.memory_bus().read_byte(0xDC0001),
+        BusResult::Ready(0xFF)
+    );
+    machine.load_state(&saved);
+    assert_eq!(machine.rtc.time(), time);
+    assert_eq!(machine.rtc.battery_data(), battery);
     assert_eq!(
         machine.memory_bus().read_byte(0xDC0001),
         BusResult::Ready(8)
-    );
-
-    // Step 3,546,894 cycles (1 cycle short of 1 second)
-    machine.rtc.step_cck(3_546_894);
-    assert_eq!(
-        machine.memory_bus().read_byte(0xDC0001),
-        BusResult::Ready(8)
-    );
-
-    // Step the final 1 cycle to complete 1 full second
-    machine.step_cck();
-    assert_eq!(
-        machine.memory_bus().read_byte(0xDC0001),
-        BusResult::Ready(9)
     );
 }
 

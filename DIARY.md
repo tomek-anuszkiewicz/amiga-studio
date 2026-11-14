@@ -1269,3 +1269,34 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - repeated-write focused time improved about 83 percent
   - complete machine states and framebuffers matched
 ---
+
+### [2026-11-14 19:16 CET] — Follow host UTC independently of machine snapshots
+- **Affected Subsystems**:
+  - `rtc`
+  - `gui`
+  - `machine_loop`
+  - `save_state`
+  - `optimization documentation`
+- **What Was Changed (The Concrete Reality)**:
+  - Use supplied host UTC plus an independently persisted battery offset
+  - exclude live RTC state from snapshot format 7
+  - preserve HOLD, STOP, calendar writes and reset behavior
+  - correct the calendar year estimate at February and leap-day boundaries
+  - isolate host timestamp conversion and correct negative fractional seconds to match the Wasm floor convention
+  - cover 12-hour guest calendar writes, battery restart and native epoch-boundary conversion
+  - close EMULATION-OPTIMIZATION-ROUND-02-20261114 implementation and the requested rejected-candidate repeat
+  - mark retired RTC and audio examples as historical
+- **Architectural Rationale & Trade-Offs**:
+  - The user explicitly retained RTC as a functional change despite the measured standalone NTSC cost
+  - PAL is the primary standard for the requested repeat
+  - no rejected optimization was reintroduced and additional general profiling was cancelled
+- **Verification & Test Results**:
+  - 315 RTC, bus, machine, save-state and GUI tests passed in 58 targets after reproducing and repairing the calendar underflow
+  - native and Wasm production builds passed
+  - final combined core time fell 4.09 percent PAL, 4.41 percent NTSC and 3.66 percent ROM versus preserved B0
+  - native GUI time fell 2.83 percent PAL and 3.99 percent NTSC
+  - every validated GUI field matched its paired core
+  - 408 repeated machine series and 160 focused series preserved state/output
+  - canonical batch verification and final independent review remain pending
+  - these RTC2 measurements precede a Wasm constant rename and removal of the obsolete Denise plane-count cache and getter
+  - focused RTC calendar and native host-conversion tests passed after coverage review, including reproduction and repair of pre-epoch rounding
