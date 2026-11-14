@@ -79,6 +79,10 @@ low-resolution pixel regardless of bitplane resolution. The existing horizontal
 window comparisons, blanking region and two-high-resolution-pixel output delay
 are retained model timing, without a claim of calibrated silicon edge offsets.
 
+The BPLCON0 value retains its decoded plane count and display mode locally.
+Applied writes and deserialization derive those fields from the raw register;
+pending writes do not affect decoding. Only the raw word is serialized.
+
 The renderer advances that two-sample output pipeline as a pair. Low resolution
 composes one color for both new samples; high resolution composes each sample
 separately. The previous pair still leaves the pipeline at the same phase,

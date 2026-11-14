@@ -109,7 +109,7 @@ impl DeniseSync {
 
 impl Denise {
     pub(super) fn receive_sync_strobe(&mut self, address: u16) {
-        let interlaced = self.bplcon0 & config::mask::bplcon0::BIT_LACE != 0;
+        let interlaced = self.bplcon0.value() & config::mask::bplcon0::BIT_LACE != 0;
         let completed = self.sync.receive_strobe(address, interlaced);
         if address == sync::REGISTER_STRLONG {
             return;

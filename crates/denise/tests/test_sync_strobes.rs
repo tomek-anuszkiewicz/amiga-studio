@@ -28,7 +28,7 @@ fn field_boundaries_follow_received_strobes_for_both_standards_and_interlace() {
     for base_lines in [262u16, 312] {
         for interlaced in [false, true] {
             let mut denise = Denise::new(DeniseModel::Ocs8362);
-            denise.bplcon0 = if interlaced { 4 } else { 0 };
+            denise.bplcon0 = (if interlaced { 4 } else { 0 }).into();
             // Joining a field in progress must not publish a short frame.
             for _ in 0..20 {
                 denise.strobe_strhor();

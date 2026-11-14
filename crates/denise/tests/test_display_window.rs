@@ -12,7 +12,7 @@ fn test_denise_display_window_uses_horizontal_bits_only() {
     ] {
         denise.diwstrt = diwstrt;
         denise.diwstop = 0xC8C1;
-        denise.bplcon0 = 0x1000;
+        denise.bplcon0 = (0x1000).into();
         denise.color[1] = 0x00F0;
 
         denise.sync.vpos = 150;

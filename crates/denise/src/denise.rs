@@ -16,6 +16,7 @@ mod pins;
 pub use pins::{DeniseInputs, DenisePins, DeniseSync};
 
 mod registers;
+pub use registers::BitplaneControl;
 mod render;
 
 const MASK_HORIZONTAL_CURSOR: u16 = 0xff;
@@ -46,7 +47,7 @@ pub struct Denise {
 
     // --- Active Latched Registers (Read is NOW) ---
     /// Bitplane Control 0 (plane count BPU, HIRES, HAM, DBLPF, COLOR)
-    pub bplcon0: u16,
+    pub bplcon0: BitplaneControl,
     /// Bitplane Control 1 (horizontal scroll offsets for PF1 and PF2)
     pub bplcon1: u16,
     /// Bitplane Control 2 (playfield and sprite priority arbitration)
@@ -113,7 +114,7 @@ impl Denise {
             model,
             sprites: sprites::Sprites::new(),
             frame_builder: frame_builder::FrameBuilder::new(),
-            bplcon0: 0,
+            bplcon0: BitplaneControl::default(),
             bplcon1: 0,
             bplcon2: 0,
             diwstrt: 0,
@@ -147,7 +148,7 @@ impl Denise {
         self.sync = DeniseSync::default();
         self.sprites.reset();
         self.frame_builder.reset();
-        self.bplcon0 = 0;
+        self.bplcon0 = BitplaneControl::default();
         self.bplcon1 = 0;
         self.bplcon2 = 0;
         self.diwstrt = 0;
@@ -241,29 +242,27 @@ impl Denise {
         }
     }
 
-    /// Returns the active number of bitplanes (0..6)
+    /// Returns the encoded number of bitplanes (0..7).
     #[inline]
     pub fn bitplane_count(&self) -> u8 {
-        ((self.bplcon0 >> config::mask::bplcon0::BIT_BPU_SHIFT)
-            & (config::mask::bplcon0::MASK_BPU >> config::mask::bplcon0::BIT_BPU_SHIFT))
-            as u8
+        self.bplcon0.plane_count
     }
 
     /// Returns true if High-Resolution (640-pixel) mode is enabled
     #[inline]
     pub fn is_hires(&self) -> bool {
-        (self.bplcon0 & config::mask::bplcon0::BIT_HIRES) != 0
+        self.bplcon0.hires
     }
 
     /// Returns true if Hold-And-Modify (HAM) mode is enabled
     #[inline]
     fn is_ham(&self) -> bool {
-        (self.bplcon0 & config::mask::bplcon0::BIT_HOMOD) != 0
+        self.bplcon0.ham
     }
 
     /// Returns true if Dual Playfield mode is enabled
     #[inline]
     fn is_dual_playfield(&self) -> bool {
-        (self.bplcon0 & config::mask::bplcon0::BIT_DBLPF) != 0
+        self.bplcon0.dual_playfield
     }
 }

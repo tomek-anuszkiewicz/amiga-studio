@@ -22,14 +22,14 @@ fn test_cross_chip_bplcon0_broadcast_latencies() {
     );
 
     // Cycle T: write is dispatched directly into Denise & Agnus mutation pipelines
-    assert_eq!(machine.denise.bplcon0, 0);
+    assert_eq!(machine.denise.bplcon0.value(), 0);
     assert_eq!(machine.agnus.dma.bplcon0, 0);
 
     // Step 1 CCK (Cycle T+1):
     // - Denise mutation matures and commits!
     // - Agnus ticks: 3 CCKs remaining
     machine.step_cck();
-    assert_eq!(machine.denise.bplcon0, 0x8200);
+    assert_eq!(machine.denise.bplcon0.value(), 0x8200);
     assert_eq!(machine.agnus.dma.bplcon0, 0);
 
     // Step 2 CCKs (Cycle T+2, T+3): Agnus still in flight

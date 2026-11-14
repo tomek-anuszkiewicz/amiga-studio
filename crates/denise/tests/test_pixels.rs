@@ -16,7 +16,7 @@ fn visible() -> Denise {
 #[test]
 fn all_plane_collision_enable_and_match_values_use_current_serialized_bits() {
     let mut d = visible();
-    d.bplcon0 = 0x6000;
+    d.bplcon0 = (0x6000).into();
     for sprite in [0, 2, 4, 6] {
         d.sprites.write_pos(sprite, 40);
         d.sprites.write_data(sprite, 0xffff);
@@ -134,9 +134,45 @@ fn palette_dual_ham_and_half_brite_match_book_color_rules() {
 }
 
 #[test]
+fn dual_playfield_lookup_ignores_upper_bits_and_reads_the_current_palette() {
+    let mut palette = [0; 32];
+    for (index, color) in palette.iter_mut().enumerate() {
+        *color = index as u16;
+    }
+    // PF1 bits occupy positions 0, 2, 4; PF2 bits occupy positions 1, 3, 5.
+    for first in 0..8u8 {
+        for second in 0..8u8 {
+            let data = (first & 1)
+                | ((first & 2) << 1)
+                | ((first & 4) << 2)
+                | ((second & 1) << 1)
+                | ((second & 2) << 2)
+                | ((second & 4) << 3);
+            for upper in [0, 0x40, 0x80, 0xc0] {
+                assert_eq!(
+                    decode_dual_playfield(data | upper, &palette, false),
+                    u16::from(if first != 0 || second == 0 {
+                        first
+                    } else {
+                        8 + second
+                    })
+                );
+                assert_eq!(
+                    decode_dual_playfield(data | upper, &palette, true),
+                    u16::from(if second != 0 { 8 + second } else { first })
+                );
+            }
+        }
+    }
+    assert_eq!(decode_dual_playfield(2, &palette, true), 9);
+    palette[9] = 0xabc;
+    assert_eq!(decode_dual_playfield(2, &palette, true), 0xabc);
+}
+
+#[test]
 fn bpl1_commit_loads_serializers_and_word_exhaustion_does_not_reload_old_latches() {
     let mut d = visible();
-    d.bplcon0 = 0x2000;
+    d.bplcon0 = (0x2000).into();
     d.set_bpldat(1, 0xffff);
     d.step_cck();
     assert_eq!(d.shifters, [0; 6]);
@@ -218,7 +254,7 @@ fn special_modes_render_book_colors_in_both_interlaced_fields() {
         for ntsc in [false, true] {
             for (lace, odd) in [(false, false), (true, false), (true, true)] {
                 let mut d = visible();
-                d.bplcon0 = mode | if lace { 4 } else { 0 };
+                d.bplcon0 = (mode | if lace { 4 } else { 0 }).into();
                 d.color[1] = 0xf00;
                 d.color[5] = 0xf97;
                 d.color[9] = 0x0f0;
@@ -270,7 +306,7 @@ fn palette_and_resolution_changes_take_effect_during_the_line() {
 #[test]
 fn switching_to_lores_preserves_the_distinct_hires_pixels_already_in_flight() {
     let mut d = visible();
-    d.bplcon0 = 0x9000;
+    d.bplcon0 = (0x9000).into();
     d.bpl_armed = true;
     d.shifters[0] = 0xa6f0;
     d.color[0] = 0x000f;
@@ -297,7 +333,7 @@ fn normal_playfield_uses_pf2_priority_and_hidden_sprites_still_collide() {
     for priority in 0..=4 {
         for pair in 0..4 {
             let mut d = visible();
-            d.bplcon0 = 0x1000;
+            d.bplcon0 = (0x1000).into();
             d.bplcon2 = priority << 3;
             d.bpl_armed = true;
             d.shifters[0] = 0xffff;
@@ -330,7 +366,7 @@ fn all_collision_groups_use_enable_and_match_values_before_visual_priority() {
         (0x0f, 0xffff, 0x7e00),
     ] {
         let mut d = visible();
-        d.bplcon0 = 0x6000;
+        d.bplcon0 = (0x6000).into();
         d.bpl_armed = true;
         d.clxcon = control.into();
         for plane in 0..6 {
@@ -357,7 +393,7 @@ fn dual_playfield_priority_retains_the_books_invisible_sprite_boundary() {
     // PF1 hides sprite 0 even where the frontmost PF2 visually covers PF1.
     for (planes, expected) in [(0, 0x0fff), (1, 0x0f00), (2, 0x0fff), (3, 0x00f0)] {
         let mut d = visible();
-        d.bplcon0 = 0x2400;
+        d.bplcon0 = (0x2400).into();
         d.bplcon2 = 0x0050;
         d.bpl_armed = true;
         d.color[1] = 0x0f00;
@@ -403,11 +439,57 @@ fn blanking_skips_framebuffer_writes_while_registers_and_receiver_clocks_continu
 }
 
 #[test]
+fn blanking_advances_serializers_window_and_sprite_collisions() {
+    for hires in [false, true] {
+        for (horizontal, vertical, closing) in
+            [(18, false, false), (40, true, false), (127, true, true)]
+        {
+            let mut d = visible();
+            d.sync.hpos = horizontal;
+            d.sync.vertical_blank = vertical;
+            d.bplcon0 = (0x6000 | if hires { 0x8000 } else { 0 }).into();
+            d.bplcon1 = 0xf3;
+            d.bpl_armed = true;
+            d.diwstrt = horizontal * 2 + 3;
+            d.diwstop = 0;
+            d.hflop = closing;
+            let words = [0x96a5, 0x8001, 0x0ff0, 0xaaaa, 0x3333, 0xffff];
+            let history = [0x1234, 0x4321, 0x5555, 0, 0xffff, 0x1357];
+            d.shifters = words;
+            d.scroll_history = history;
+            for sprite in [0, 2] {
+                d.sprites.write_pos(sprite, horizontal);
+                d.sprites.write_data(sprite, 0xffff);
+            }
+
+            d.step_cck();
+
+            // Serializers consume two low-resolution or four high-resolution
+            // bits per CCK even when no framebuffer sample is stored.
+            let bits = if hires { 4 } else { 2 };
+            assert_eq!(d.shifters, words.map(|word| word << bits));
+            for plane in 0..6 {
+                assert_eq!(
+                    d.scroll_history[plane],
+                    (history[plane] << bits) | (words[plane] >> (16 - bits))
+                );
+            }
+            assert_eq!(d.hflop, !closing);
+            for sprite in [0, 2] {
+                assert_eq!(d.sprites.channels()[sprite].pixel_counter, 14);
+                assert_eq!(d.sprites.channels()[sprite].shift_a, 0xfffc);
+            }
+            assert_eq!(d.clxdat, 0x0200);
+        }
+    }
+}
+
+#[test]
 fn horizontal_blanking_cannot_leak_black_into_the_visible_pixel_pipeline() {
     for hires in [false, true] {
         let mut d = visible();
         d.sync.hpos = 18;
-        d.bplcon0 = if hires { 0x8000 } else { 0 };
+        d.bplcon0 = (if hires { 0x8000 } else { 0 }).into();
         d.color[0] = 0x0f00;
         for _ in 18..36 {
             d.step_cck();

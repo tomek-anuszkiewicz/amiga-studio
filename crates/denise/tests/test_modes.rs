@@ -1,6 +1,37 @@
 use denise::{Denise, DeniseModel};
 
 #[test]
+fn decoded_modes_change_only_when_the_register_write_applies() {
+    let mut denise = Denise::new(DeniseModel::Ocs8362);
+    denise.sync.hpos = 40;
+    denise.color[2] = 0x246;
+    denise.color[9] = 0x579;
+    denise.color[31] = 0xdef;
+    for (value, count, hires, pixel, color) in [
+        (0x6800, 6, false, 0x1f, 0xabf),
+        (0x2400, 2, false, 2, 0x579),
+        (0x2000, 2, false, 2, 0x246),
+        (0xe800, 6, true, 0x1f, 0xdef),
+        (0x7000, 7, false, 2, 0x246),
+    ] {
+        let previous = denise.bplcon0;
+        assert!(denise.set_bplcon0(value));
+        assert_eq!(denise.bplcon0, previous);
+        denise.step_cck();
+        assert_eq!(denise.bplcon0.value(), value);
+        assert_eq!(denise.bitplane_count(), count);
+        assert_eq!(denise.is_hires(), hires);
+        denise.last_ham_rgb = 0xabc;
+        assert_eq!(denise.decode_pixel(pixel), color);
+    }
+    denise.reset();
+    assert_eq!(denise.bplcon0.value(), 0);
+    assert_eq!(denise.bitplane_count(), 0);
+    assert!(!denise.is_hires());
+    assert_eq!(denise.decode_pixel(0x1f), 0);
+}
+
+#[test]
 fn display_mode_matrix_masks_planes_and_places_pixels_in_both_standard_fields() {
     for ntsc in [false, true] {
         for (lace, odd) in [(false, false), (true, false), (true, true)] {
@@ -14,10 +45,11 @@ fn display_mode_matrix_masks_planes_and_places_pixels_in_both_standard_fields() 
                             denise.sync.hpos = 40;
                             denise.sync.vpos = 100;
                             denise.hflop = true;
-                            denise.bplcon0 = resolution
+                            denise.bplcon0 = (resolution
                                 | (count << 12)
                                 | if dual { 0x400 } else { 0 }
-                                | if lace { 4 } else { 0 };
+                                | if lace { 4 } else { 0 })
+                            .into();
                             denise.bplcon2 = if second_first { 0x40 } else { 0 };
                             denise
                                 .frame_builder

@@ -75,9 +75,9 @@ fn concrete_setters_delay_controls_and_reads_do_not_flush_pending_changes() {
             0xffff
         );
     }
-    assert_eq!(machine.denise.bplcon0, 0);
+    assert_eq!(machine.denise.bplcon0.value(), 0);
     machine.step_cck();
-    assert_eq!(machine.denise.bplcon0, 0x1000);
+    assert_eq!(machine.denise.bplcon0.value(), 0x1000);
     assert_eq!(
         machine
             .memory_bus()
@@ -137,7 +137,7 @@ fn address_strobes_act_immediately_without_register_queue_entries() {
     assert!(machine.paula.mutations.is_empty());
     assert!(machine.denise.sync.long_line);
     assert_eq!(machine.paula.sync.cck_since_horizontal, 0);
-    assert_eq!(machine.denise.bplcon0, 0);
+    assert_eq!(machine.denise.bplcon0.value(), 0);
     assert_eq!(machine.paula.dma_enables, 0);
 }
 
@@ -280,7 +280,7 @@ fn copper_and_cpu_shared_writes_start_from_the_same_receiver_boundary() {
     }
     assert!(issued, "authored Copper MOVE was not issued");
     assert_eq!(copper.agnus.dma.bplcon0, 0);
-    assert_eq!(copper.denise.bplcon0, 0);
+    assert_eq!(copper.denise.bplcon0.value(), 0);
     let mut cpu_bus = idle_machine();
     assert!(cpu_bus
         .memory_bus()
@@ -293,10 +293,11 @@ fn copper_and_cpu_shared_writes_start_from_the_same_receiver_boundary() {
             "Agnus step {step}"
         );
         assert_eq!(
-            copper.denise.bplcon0, cpu_bus.denise.bplcon0,
+            copper.denise.bplcon0.value(),
+            cpu_bus.denise.bplcon0.value(),
             "Denise step {step}"
         );
-        assert_eq!(copper.denise.bplcon0, 0x1000);
+        assert_eq!(copper.denise.bplcon0.value(), 0x1000);
         assert_eq!(copper.agnus.dma.bplcon0, if step == 4 { 0x1000 } else { 0 });
     }
 }

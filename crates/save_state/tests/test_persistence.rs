@@ -5,6 +5,27 @@ use machine_loop::A500Machine;
 use save_state::{SaveState, SaveStateError, SAVE_STATE_VERSION};
 
 #[test]
+fn denise_display_controls_roundtrip_with_a_pending_mode_change() {
+    use machine_loop::denise::{Denise, DeniseModel};
+    let mut denise = Denise::new(DeniseModel::Ocs8362);
+    denise.sync.hpos = 40;
+    for value in [0x6800, 0x2400, 0xe800, 0x7000] {
+        assert!(denise.set_bplcon0(value));
+        denise.step_cck();
+        assert!(denise.set_bplcon0(0x1000));
+        let json = serde_json::to_value(&denise).unwrap();
+        assert_eq!(json["bplcon0"], value);
+        let mut restored: Denise = serde_json::from_value(json).unwrap();
+        assert_eq!(restored, denise);
+        denise.step_cck();
+        restored.step_cck();
+        assert_eq!(restored, denise);
+        assert_eq!(restored.bitplane_count(), 1);
+        assert!(!restored.is_hires());
+    }
+}
+
+#[test]
 fn snapshot_rejects_kickstart_buffers_of_other_sizes() {
     let machine = A500Machine::new(A500Config::default());
     let mut value = serde_json::to_value(SaveState::capture(&machine)).unwrap();

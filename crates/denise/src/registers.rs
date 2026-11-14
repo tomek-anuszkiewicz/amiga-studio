@@ -3,11 +3,49 @@
 use super::Denise;
 use config::custom_reg::denise as reg;
 use config::{MutationMode, PROVISIONAL_CUSTOM_WRITE_DELAY_CCK};
+use serde::{Deserialize, Serialize};
 
 const REGISTER_SPR_POS_SELECTOR: u16 = 0;
 const REGISTER_SPR_CTL_SELECTOR: u16 = (reg::REGISTER_SPR0CTL - reg::REGISTER_SPR0POS) / 2;
 const REGISTER_SPR_DATA_SELECTOR: u16 = (reg::REGISTER_SPR0DATA - reg::REGISTER_SPR0POS) / 2;
 const REGISTER_SPR_DATB_SELECTOR: u16 = (reg::REGISTER_SPR0DATB - reg::REGISTER_SPR0POS) / 2;
+
+/// BPLCON0 with display controls decoded on application and deserialization.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(from = "u16", into = "u16")]
+pub struct BitplaneControl {
+    value: u16,
+    pub(super) plane_count: u8,
+    pub(super) hires: bool,
+    pub(super) ham: bool,
+    pub(super) dual_playfield: bool,
+}
+
+impl BitplaneControl {
+    #[inline]
+    pub fn value(&self) -> u16 {
+        self.value
+    }
+}
+
+impl From<u16> for BitplaneControl {
+    fn from(value: u16) -> Self {
+        use config::mask::bplcon0;
+        Self {
+            value,
+            plane_count: ((value & bplcon0::MASK_BPU) >> bplcon0::BIT_BPU_SHIFT) as u8,
+            hires: value & bplcon0::BIT_HIRES != 0,
+            ham: value & bplcon0::BIT_HOMOD != 0,
+            dual_playfield: value & bplcon0::BIT_DBLPF != 0,
+        }
+    }
+}
+
+impl From<BitplaneControl> for u16 {
+    fn from(control: BitplaneControl) -> Self {
+        control.value
+    }
+}
 
 impl Denise {
     /// Capacity preflight for an atomic transfer with multiple receivers.
@@ -337,7 +375,7 @@ impl Denise {
     /// Action method: sets BPLCON0 and updates active display mode flags
     #[inline]
     fn apply_bplcon0(&mut self, val: u16) {
-        self.bplcon0 = val;
+        self.bplcon0 = val.into();
     }
 
     /// Action method: sets BPLCON1 horizontal scroll offsets
