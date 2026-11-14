@@ -253,8 +253,13 @@ elapsed command time and hashed evidence artifacts. Records and original logs
 stay under that directory. Repeating the command reads only its current record;
 the verifier never searches old logs or other tasks. A changed `HEAD` starts a new
 batch and executes all required groups. Missing, corrupt or incompatible records
-also require execution and cannot produce a reused pass. An active/interrupted
-lock requires its owner to finish or a fresh directory after that owner stops.
+also require execution and cannot produce a reused pass. Repeat the same command
+and results directory after interruption. A process-held lock rejects simultaneous
+owners; abandoned runs resume only after their tagged child processes have stopped.
+The lock file stays in place; its existence alone does not mean a run is active.
+Unknown ownership blocks automatic recovery. Completed, matching groups survive;
+an interrupted group never counts as passed. Do not change output directories just
+to recover an interrupted run, because a new directory has no prior evidence.
 
 Coverage test execution, export and summary form one reuse group. The three
 reports are retained together beside the original logs; reuse does not invoke
@@ -269,17 +274,21 @@ local Amiga Markdown, the 68000 reference JSON corpus, local Cargo configuration
 and `.env`. Generated build and diagnostic directories are excluded. SHA-256
 content checks at attempt boundaries complement source/index checks and file
 metadata checks at each group boundary. Environment values are hashed rather than
-stored. The agent's per-call `CODEX_TOOL_CALL_ID` is correlation metadata and is
-excluded; all other environment keys remain inputs. Tool versions, Python packages and parent/user Cargo configuration also
+stored. The agent's per-call `CODEX_TOOL_CALL_ID` and the verifier's inherited
+`AMIGA_VERIFICATION_RUNS` process markers are correlation metadata and are
+excluded; other environment keys remain inputs. Tool versions, Python packages and parent/user Cargo configuration also
 participate. Changed source/index or execution conditions reject the attempt.
 Input ownership must be reviewed when a suite acquires another ignored or external
 runtime dependency; do not claim reusable evidence for an unmodeled dependency.
 
-The initial reuse boundary is deliberately conservative: every group includes
-all captured inputs except that non-language groups omit vocabulary and exact-file
-`file_words` data. Verification CLI contracts retain those data. Scanner logic,
+The reuse boundary is conservative: every group includes all captured inputs
+except for reviewed independent data. Known build, test and static-check groups
+omit the root `DIARY.md`; the English gate and unknown groups retain it. The final
+candidate identity and source-stability checks still include the diary. Non-language
+groups omit vocabulary and exact-file `file_words` data; verification CLI contracts
+retain those data. Scanner logic,
 authored scan scope, test criteria, specifications, unknown inputs, build settings
-and source/test changes invalidate the broad groups. Documentation remains a
+and source/test changes invalidate the broad groups. Other documentation remains a
 conservative input;
 a `.md` extension does not prove independence. This is bounded reuse within one
 batch, not a persistent test cache or a relaxation of final acceptance criteria.

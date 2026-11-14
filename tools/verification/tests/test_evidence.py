@@ -6,6 +6,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from unittest.mock import patch
 
@@ -15,6 +16,8 @@ import execution
 import repository
 import verify
 import commands
+import psutil
+from batch_lock import BatchLock, RUN_MARKERS
 from impact import RustScope
 
 
@@ -100,6 +103,112 @@ class ContinuationTests(unittest.TestCase):
         self.assertEqual(self.run_profile(), 0, self.output)
         self.assertEqual(self.events(), events)
 
+    def test_diary_edit_preserves_known_groups_but_updates_final_candidate(self):
+        self.write("DIARY.md", "First entry.\n")
+        for name in sorted(evidence.DIARY_INDEPENDENT_GROUPS - {"Coverage", "Verification CLI contracts"}):
+            self.phases[-1][1].append((name, self.child(name), {}))
+        self.phases[-1][1].append(("Unknown diary consumer", self.child("unknown"), {}))
+        self.assertEqual(self.run_profile(), 0, self.output)
+        previous = self.record()
+        count = len(self.events())
+        self.write("DIARY.md", "Separate entries for the commit partition.\n")
+        self.assertEqual(self.run_profile(), 0, self.output)
+        current = self.record()
+        self.assertEqual(self.events()[count:], ["english", "unknown"])
+        self.assertNotEqual(current["source"], previous["source"])
+        self.assertEqual(current["batch"], previous["batch"])
+        for name in evidence.DIARY_INDEPENDENT_GROUPS:
+            self.assertEqual(current["results"][name]["status"], "reused", name)
+            self.assertEqual(current["groups"][name]["artifacts"], previous["groups"][name]["artifacts"])
+
+    def test_diary_change_during_execution_still_rejects_candidate(self):
+        self.write("DIARY.md", "Before.\n")
+        self.phases[1][1][0][1][-1] += "; Path('DIARY.md').write_text('Changed during tests.')"
+        self.assertEqual(self.run_profile(), 1)
+        self.assertIn("Source or index changed", self.output)
+
+    def test_interrupt_preserves_completed_groups_for_same_directory_retry(self):
+        execute = verify.execute_command
+        def interrupt(command, *args, **kwargs):
+            if command == self.phases[1][1][0][1]:
+                raise KeyboardInterrupt
+            return execute(command, *args, **kwargs)
+        with patch.object(verify, "execute_command", side_effect=interrupt):
+            self.assertEqual(self.run_profile(), 130)
+        self.assertEqual(self.record()["outcome"], "interrupted")
+        self.assertEqual(self.record()["groups"]["Strict English Policy"]["status"], "passed")
+        self.assertEqual(self.run_profile(), 0, self.output)
+        self.assertEqual(self.events(), ["english", "coverage", "contracts"])
+        self.assertEqual(self.record()["results"]["Strict English Policy"]["status"], "reused")
+
+    def test_active_owner_blocks_second_verifier_without_overwriting_evidence(self):
+        self.assertEqual(self.run_profile(), 0, self.output)
+        previous = self.record()
+        lock = BatchLock(self.directory)
+        lock.acquire()
+        try:
+            self.assertEqual(self.run_profile(), 1)
+            self.assertIn("Verification is active", self.output)
+            self.assertEqual(self.record(), previous)
+        finally:
+            lock.complete()
+            lock.release()
+
+    def test_killed_verifier_waits_for_surviving_command_then_reuses_success(self):
+        ready = self.root / ".agent/tmp/ready"
+        release = self.root / ".agent/tmp/release"
+        command = self.phases[1][1][0][1]
+        command[-1] += ("\nimport os,time\nPath('.agent/tmp/ready').write_text(str(os.getpid()))\n"
+                       "while not Path('.agent/tmp/release').exists(): time.sleep(0.02)\n")
+        worker = command[-1]
+        command[-1] = ("import subprocess,sys,os\nfrom pathlib import Path\n"
+                       "Path('.agent/tmp/command').write_text(str(os.getpid()))\n"
+                       f"sys.exit(subprocess.call([sys.executable, '-c', {worker!r}]))\n")
+        code = (f"import sys\nsys.path.insert(0, {str(Path(verify.__file__).parent)!r})\n"
+                "from pathlib import Path\nimport verify, execution\n"
+                f"verify.REPO_ROOT = execution.REPO_ROOT = Path({str(self.root)!r})\n"
+                f"verify.select_phases = lambda *args: {self.phases!r}\n"
+                f"verify.execution_conditions = lambda root: {self.condition!r}\n"
+                "sys.exit(verify.main(['commit']))\n")
+        with tempfile.TemporaryFile() as log:
+            process = subprocess.Popen([sys.executable, "-c", code], cwd=self.root, stdout=log, stderr=log)
+            survivor = None
+            try:
+                deadline = time.monotonic() + 15
+                while not ready.exists() and process.poll() is None and time.monotonic() < deadline:
+                    time.sleep(0.02)
+                self.assertTrue(ready.exists(), "Fixture command did not start")
+                survivor = psutil.Process(int(ready.read_text()))
+                process.kill()
+                process.wait(timeout=5)
+                parent = psutil.Process(int((self.root / ".agent/tmp/command").read_text()))
+                parent.kill()
+                parent.wait(timeout=5)
+                self.assertEqual(self.run_profile(), 1)
+                self.assertIn("Previous verification command is still active", self.output)
+                self.assertEqual(self.events(), ["english", "coverage"])
+                release.touch()
+                survivor.wait(timeout=10)
+                self.assertEqual(self.run_profile(), 0, self.output)
+                self.assertEqual(self.events(), ["english", "coverage", "coverage", "contracts"])
+                self.assertEqual(self.record()["results"]["Strict English Policy"]["status"], "reused")
+            finally:
+                release.touch()
+                if process.poll() is None:
+                    process.kill()
+                process.wait(timeout=5)
+                if survivor is not None:
+                    survivor.wait(timeout=10)
+
+    def test_unknown_lock_ownership_blocks_without_discarding_evidence(self):
+        self.assertEqual(self.run_profile(), 0, self.output)
+        previous = self.record()
+        for raw in ("old-attempt-id", "{}", '{"active": null}'):
+            (self.directory / "active.lock").write_text(raw)
+            self.assertEqual(self.run_profile(), 1)
+            self.assertIn("Cannot establish previous batch ownership", self.output)
+            self.assertEqual(self.record(), previous)
+
     def test_early_failure_defers_coverage_and_remains_failure_on_retry(self):
         self.phases.insert(1, ("Build checks", [("Clippy Invariants", self.child("clippy"), {})]))
         self.write(self.words, "invalid\n")
@@ -181,6 +290,8 @@ class ContinuationTests(unittest.TestCase):
             original = evidence.execution_conditions(self.root)
             evidence.os.environ["CODEX_TOOL_CALL_ID"] = "second"
             self.assertEqual(evidence.execution_conditions(self.root), original)
+            with patch.dict(evidence.os.environ, {RUN_MARKERS: "different-parent-run"}):
+                self.assertEqual(evidence.execution_conditions(self.root), original)
             evidence.os.environ["RUSTFLAGS"] = "-C opt-level=1"
             self.assertNotEqual(evidence.execution_conditions(self.root), original)
 

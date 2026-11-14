@@ -73,8 +73,15 @@ findings also prevent avoidable test execution. Repeating the canonical command
 automatically combines new results with valid successful groups for the same `HEAD`. It reruns failed,
 missing or invalidated groups and rejects edits during execution. Coverage remains
 one execution/export/summary bundle; no partial-report merging is performed.
-All documents remain conservative inputs; changing their content invalidates
-dependent evidence. Python contract selection remains unchanged below.
+The final verdict covers the complete current candidate, while each group's
+reuse identity covers its inputs. `DIARY.md` is an editorial input to the English
+gate, not to the known build, test and static-check groups. A diary-only correction
+therefore preserves their successful results. Other documents, specifications
+and unknown groups remain conservative; a Markdown extension alone never proves
+independence. Process ownership protects the results directory: after interruption,
+the same command resumes only after the previous verifier and its child commands
+have stopped, retaining completed groups and rerunning unfinished work.
+Python contract selection remains unchanged below.
 Performance measurements remain explicit diagnostics; benchmark workload contracts
 are ordinary standard harness tests. Build caches are retained.
 Standard harness selection runs when `test_runner` is affected or the full Rust

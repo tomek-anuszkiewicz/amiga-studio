@@ -1174,3 +1174,20 @@ Every authorized repository commit adds a concise entry here. Logging and compac
 - **Verification & Test Results**:
   - The user reports that verification was completed in another session. Tests
   - verification profiles and review were not repeated at the explicit user request.
+---
+
+### [2026-11-14 15:12 CET] — Reuse verification after diary edits and interrupted runs
+- **Affected Subsystems**:
+  - `tools/verification`
+  - `verification specifications`
+- **What Was Changed (The Concrete Reality)**:
+  - Keep successful independent checks after root diary edits while refreshing the English gate and final candidate verdict
+  - resume interrupted runs in the same results directory after process ownership checks, including surviving descendants
+  - Add reviewed API names and valid terminology reported by the language gate, including terms in the previously committed optimization guide
+- **Architectural Rationale & Trade-Offs**:
+  - A diary-only commit partition repeated emulator tests despite unchanged code
+  - abandoned lock files also discarded useful verification history
+- **Verification & Test Results**:
+  - 137 verification tool tests passed
+  - a real Cargo and LLVM probe executed three Cargo commands initially, zero after a diary edit and three after a source edit
+  - this bounded probe is not a full emulator benchmark

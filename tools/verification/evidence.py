@@ -12,9 +12,19 @@ import uuid
 
 from impact import language_data_input
 from repository import git
+from batch_lock import RUN_MARKERS
 
 
-VERSION = 2
+VERSION = 3
+
+# These commands do not consume the root changelog. Unknown commands retain it.
+DIARY_INDEPENDENT_GROUPS = frozenset({
+    "Obsidian Frontmatter", "Formatting", "Architecture Rules", "Hardware Quality",
+    "Code Quality", "Clippy Invariants", "Coverage", "All standard harness tests",
+    "Full SingleStepTests", "RAG MCP contracts", "Artifact report contracts",
+    "Verification CLI contracts", "Bootstrap contracts", "Conversion contracts",
+    "HTML conversion contracts", "PDF conversion contracts", "Book review contracts",
+})
 
 
 def digest(value):
@@ -73,7 +83,8 @@ def execution_conditions(root):
                      for name in ("config", "config.toml")}
     packages = sorted((item.metadata["Name"], item.version) for item in importlib.metadata.distributions())
     # Tool-call correlation changes without changing build or test configuration.
-    environment = {key: value for key, value in os.environ.items() if key != "CODEX_TOOL_CALL_ID"}
+    environment = {key: value for key, value in os.environ.items()
+                   if key not in {"CODEX_TOOL_CALL_ID", RUN_MARKERS}}
     return digest([environment, versions, configuration, packages, platform.platform(),
                    sys.version, sys.executable, file_digest(Path(sys.executable))])
 
@@ -83,6 +94,8 @@ def group_identity(name, commands, inputs, conditions):
     # Verification contracts consume these data, and must execute again after edits.
     selected = inputs if name in {"Strict English Policy", "Verification CLI contracts"} else {
         path: value for path, value in inputs.items() if not language_data_input(path)}
+    if name in DIARY_INDEPENDENT_GROUPS:
+        selected = {path: value for path, value in selected.items() if path != "DIARY.md"}
     return digest([VERSION, commands, selected, conditions])
 
 

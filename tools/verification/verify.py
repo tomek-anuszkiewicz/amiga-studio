@@ -9,6 +9,7 @@ from commands import select_phases
 from execution import execute_command, print_info, result_label
 from repository import REPO_ROOT, collect_changes, snapshot
 from evidence import BatchEvidence, capture_inputs, execution_conditions, group_identity
+from batch_lock import BatchLock
 
 
 if hasattr(sys.stdout, "reconfigure"):
@@ -113,12 +114,11 @@ def main(argv=None):
 def execute_batch(args, phases, batch, before):
     """Execute the full selected profile, retaining only matching successful groups."""
     batch.directory.mkdir(parents=True, exist_ok=True)
-    lock = batch.directory / "active.lock"
+    lock = BatchLock(batch.directory)
     try:
-        with lock.open("x", encoding="utf-8") as handle:
-            handle.write(batch.attempt)
-    except FileExistsError:
-        print(f"{result_label(False)} Batch is active or interrupted; use a fresh evidence directory if its owner stopped.")
+        lock.acquire()
+    except (OSError, RuntimeError) as error:
+        print(f"{result_label(False)} {error}")
         return 1
     try:
         batch.load()
@@ -168,7 +168,8 @@ def execute_batch(args, phases, batch, before):
             success, elapsed = True, 0
             for title, command, overrides in commands:
                 print(f"[RUN] {title}", flush=True)
-                ok, detail, seconds = execute_command(command, overrides, log_level=args.log_level, log_dir=directory)
+                ok, detail, seconds = execute_command(command, lock.command_environment(overrides),
+                                                      log_level=args.log_level, log_dir=directory)
                 elapsed += seconds
                 success = success and ok
                 print(f"{result_label(ok)} {title} ({seconds:.2f}s): {detail}", flush=True)
@@ -190,8 +191,14 @@ def execute_batch(args, phases, batch, before):
         batch.record["outcome"] = "passed" if success else "failed"
         batch.record["source"] = source
         batch.save()
+        lock.complete()
         print(f"{result_label(success)} {args.command} verification; evidence: {batch.path}")
         return 0 if success else 1
+    except KeyboardInterrupt:
+        batch.record["outcome"] = "interrupted"
+        batch.save()
+        print(f"{result_label(False)} Verification interrupted; repeat the same command after its commands stop.")
+        return 130
     except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
         for item in batch.record["groups"].values():
             if item.get("attempt") == batch.attempt:
@@ -201,7 +208,7 @@ def execute_batch(args, phases, batch, before):
         print(f"{result_label(False)} {error}")
         return 1
     finally:
-        lock.unlink()
+        lock.release()
 
 
 if __name__ == "__main__":
