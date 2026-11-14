@@ -1,29 +1,31 @@
-bin/
-obj/
-node_modules/
-dist/
-build/
+# Match generated directories and binary formats at any depth, regardless of case.
+# Segment patterns avoid repeated whole-path matching during Graphify scans.
+**/[bB][iI][nN]/
+**/[oO][bB][jJ]/
+**/[nN][oO][dD][eE]_[mM][oO][dD][uU][lL][eE][sS]/
+**/[dD][iI][sS][tT]/
+**/[bB][uU][iI][lL][dD]/
 
-.vscode/
+**/.[vV][sS][cC][oO][dD][eE]/
 
-*.adf
-*.rom
-*.hdf
-*.ipf
-*.dms
-*.bin
+**/*.[aA][dD][fF]
+**/*.[rR][oO][mM]
+**/*.[hH][dD][fF]
+**/*.[iI][pP][fF]
+**/*.[dD][mM][sS]
+**/*.[bB][iI][nN]
 
-.git/
-.agent/
-.agents/
-.codex/
-.tmp.driveupload/
-.tmp.drivedownload/
-archive/
-target/
-schematics/
-graphify-out/
-*.json
+**/.[gG][iI][tT]/
+**/.[aA][gG][eE][nN][tT]/
+**/.[aA][gG][eE][nN][tT][sS]/
+**/.[cC][oO][dD][eE][xX]/
+**/.[tT][mM][pP].[dD][rR][iI][vV][eE][uU][pP][lL][oO][aA][dD]/
+**/.[tT][mM][pP].[dD][rR][iI][vV][eE][dD][oO][wW][nN][lL][oO][aA][dD]/
+**/[aA][rR][cC][hH][iI][vV][eE]/
+**/[tT][aA][rR][gG][eE][tT]/
+**/[sS][cC][hH][eE][mM][aA][tT][iI][cC][sS]/
+**/[gG][rR][aA][pP][hH][iI][fF][yY]-[oO][uU][tT]/
+**/*.[jJ][sS][oO][nN]
 tools/bootstrap/books/
 tools/bootstrap/.cache/
 

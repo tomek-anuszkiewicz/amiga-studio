@@ -1317,3 +1317,19 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - verifiers
   - graph refresh
   - language scans and independent review were not run for this batch at the user's explicit request.
+---
+
+### [2026-11-14 20:50 CET] — Use segment patterns for Graphify exclusions
+- **Affected Subsystems**:
+  - `.graphifyignore`
+  - `Graphify skill`
+- **What Was Changed (The Concrete Reality)**:
+  - Express generated-directory and binary-format exclusions with recursive segment patterns and ASCII case classes
+  - document root anchoring and preservation of the selected reference corpus
+- **Architectural Rationale & Trade-Offs**:
+  - Reduce repeated whole-path matching while preserving case-insensitive exclusions and reference relationships
+- **Verification & Test Results**:
+  - Tests
+  - verifiers
+  - graph refresh
+  - language scans and independent review were not run for this batch at the user's explicit request.
