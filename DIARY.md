@@ -1055,3 +1055,19 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - changed executable paths were reviewed against coverage
   - individual commit boundaries were not tested separately
   - no new timing measurement of the final combination
+---
+
+### [2026-11-14 14:40 CET] — simplify fixed DMA slots and sprite requests
+- **Affected Subsystems**:
+  - `agnus`
+- **What Was Changed (The Concrete Reality)**:
+  - Use a fixed slot table and direct enable checks
+  - share sprite output availability and simplify start/stop comparisons
+  - retain arbitration and sprite boundary tests
+- **Architectural Rationale & Trade-Offs**:
+  - Reduce repeated scheduling arithmetic while preserving grant order and pending outputs
+- **Verification & Test Results**:
+  - The combined candidate passed ordinary Rust tests, the standard harness and canonical commit verification before this diary partition
+  - changed executable paths were reviewed against coverage
+  - individual commit boundaries were not tested separately
+  - no new timing measurement of the final combination

@@ -29,7 +29,6 @@ const AUDIO1_SLOT: u16 = 15;
 const AUDIO2_SLOT: u16 = 17;
 const AUDIO3_SLOT: u16 = 19;
 const DMA_SLOT_PERIOD_CCK: u16 = 2;
-const DMA_ACTIVE_PHASE: u16 = 1;
 pub const SPRITE_SLOT_PERIOD_CCK: u16 = 4;
 /// CCK ranges and slots for fixed DMA channels on each horizontal scanline (Figure 6-9 in Commodore HRM)
 pub const HPOS_REFRESH_SLOTS: [u16; 4] =
@@ -69,6 +68,31 @@ pub enum DmaChannel {
     /// Bus idle / unassigned
     None,
 }
+
+// Fixed opportunities at the start of a line. The final refresh follows line length.
+const FIXED_SLOTS: [Option<DmaChannel>; HPOS_SPRITE_END as usize + 1] = {
+    let mut slots = [None; HPOS_SPRITE_END as usize + 1];
+    slots[REFRESH_FIRST as usize] = Some(DmaChannel::Refresh);
+    slots[REFRESH_SECOND as usize] = Some(DmaChannel::Refresh);
+    slots[REFRESH_THIRD as usize] = Some(DmaChannel::Refresh);
+    let mut disk = 0;
+    while disk < HPOS_DISK_SLOTS.len() {
+        slots[HPOS_DISK_SLOTS[disk] as usize] = Some(DmaChannel::Disk);
+        disk += 1;
+    }
+    let mut audio = 0;
+    while audio < AUDIO_CHANNEL_COUNT {
+        slots[HPOS_AUDIO_SLOTS[audio] as usize] = Some(DmaChannel::Audio(audio as u8));
+        audio += 1;
+    }
+    let mut hpos = HPOS_SPRITE_START;
+    while hpos <= HPOS_SPRITE_END {
+        let sprite = ((hpos - HPOS_SPRITE_START) / SPRITE_SLOT_PERIOD_CCK) as u8;
+        slots[hpos as usize] = Some(DmaChannel::Sprite(sprite));
+        hpos += DMA_SLOT_PERIOD_CCK;
+    }
+    slots
+};
 
 /// Agnus DMA scheduler and bus arbitration state
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -237,46 +261,13 @@ impl DmaScheduler {
         (self.dmacon & dmacon::BIT_BLTPRI) != 0
     }
 
-    /// Checks whether a specific DMA channel is enabled in DMACON
-    pub fn is_channel_enabled(&self, channel: DmaChannel) -> bool {
-        if !self.is_dma_enabled() {
-            return false;
-        }
-        match channel {
-            DmaChannel::Refresh => true,
-            DmaChannel::Disk => (self.dmacon & dmacon::BIT_DSKEN) != 0,
-            DmaChannel::Audio(ch) => {
-                (self.dmacon & (dmacon::BIT_AUD0EN << (ch.min((AUDIO_CHANNEL_COUNT - 1) as u8))))
-                    != 0
-            }
-            DmaChannel::Sprite(_) => (self.dmacon & dmacon::BIT_SPREN) != 0,
-            DmaChannel::Bitplane(_) => (self.dmacon & dmacon::BIT_BPLEN) != 0,
-            DmaChannel::Copper => (self.dmacon & dmacon::BIT_COPEN) != 0,
-            DmaChannel::Blitter => (self.dmacon & dmacon::BIT_BLTEN) != 0,
-            DmaChannel::Cpu | DmaChannel::None => true,
-        }
-    }
-
     /// Returns the fixed DMA channel mapped to a horizontal Color Clock slot (HPOS)
+    #[inline]
     fn fixed_slot_for_hpos(hpos: u16, line_ccks: u16) -> Option<DmaChannel> {
         if hpos.wrapping_add(1) == line_ccks {
             return Some(DmaChannel::Refresh);
         }
-        match hpos {
-            REFRESH_FIRST | REFRESH_SECOND | REFRESH_THIRD => Some(DmaChannel::Refresh),
-            DISK_FIRST | DISK_SECOND | DISK_THIRD => Some(DmaChannel::Disk),
-            AUDIO0_SLOT => Some(DmaChannel::Audio(0)),
-            AUDIO1_SLOT => Some(DmaChannel::Audio(1)),
-            AUDIO2_SLOT => Some(DmaChannel::Audio(2)),
-            AUDIO3_SLOT => Some(DmaChannel::Audio(3)),
-            HPOS_SPRITE_START..=HPOS_SPRITE_END
-                if (hpos % DMA_SLOT_PERIOD_CCK == DMA_ACTIVE_PHASE) =>
-            {
-                let sprite_num = ((hpos - HPOS_SPRITE_START) / SPRITE_SLOT_PERIOD_CCK) as u8;
-                Some(DmaChannel::Sprite(sprite_num))
-            }
-            _ => None,
-        }
+        FIXED_SLOTS.get(usize::from(hpos)).copied().flatten()
     }
 
     /// The E0 exclusion is retained model timing; parity is relative to HPOS.
@@ -287,7 +278,8 @@ impl DmaScheduler {
 
     /// Allocates fetches from HRM 6, Figures 6-11 and 6-12.
     pub fn bitplane_channel_for_slot(&self, hpos: u16, vpos: u16) -> Option<u8> {
-        if !self.is_channel_enabled(DmaChannel::Bitplane(0))
+        let required = dmacon::BIT_DMAEN | dmacon::BIT_BPLEN;
+        if self.dmacon & required != required
             || !self.is_in_vertical_display(vpos)
             || !self.is_in_ddf_window(hpos)
         {
@@ -360,14 +352,12 @@ impl DmaScheduler {
         }
         if self.is_dma_enabled() {
             match fixed {
-                Some(DmaChannel::Disk)
-                    if disk_active && self.is_channel_enabled(DmaChannel::Disk) =>
-                {
+                Some(DmaChannel::Disk) if disk_active && self.dmacon & dmacon::BIT_DSKEN != 0 => {
                     return DmaChannel::Disk;
                 }
                 Some(DmaChannel::Audio(channel))
                     if audio_active[usize::from(channel)]
-                        && self.is_channel_enabled(DmaChannel::Audio(channel)) =>
+                        && self.dmacon & (dmacon::BIT_AUD0EN << channel) != 0 =>
                 {
                     return DmaChannel::Audio(channel);
                 }
@@ -377,20 +367,18 @@ impl DmaScheduler {
                 return DmaChannel::Bitplane(plane);
             }
             if let Some(DmaChannel::Sprite(sprite)) = fixed {
-                if sprite_active[usize::from(sprite)]
-                    && self.is_channel_enabled(DmaChannel::Sprite(sprite))
-                {
+                if sprite_active[usize::from(sprite)] && self.dmacon & dmacon::BIT_SPREN != 0 {
                     return DmaChannel::Sprite(sprite);
                 }
             }
             if copper_wants_bus
                 && Self::is_copper_slot(hpos)
-                && self.is_channel_enabled(DmaChannel::Copper)
+                && self.dmacon & dmacon::BIT_COPEN != 0
             {
                 return DmaChannel::Copper;
             }
             if blitter_wants_bus
-                && self.is_channel_enabled(DmaChannel::Blitter)
+                && self.dmacon & dmacon::BIT_BLTEN != 0
                 && (self.is_blitter_nasty()
                     || !cpu_wants_bus
                     || self.cpu_starvation_counter < BLITTER_STARVATION_YIELD_CYCLES)

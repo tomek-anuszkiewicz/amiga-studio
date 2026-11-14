@@ -19,6 +19,79 @@ fn short_and_long_lines_reserve_four_refresh_opportunities() {
 }
 
 #[test]
+fn fixed_opportunities_require_current_requests_and_channel_enables() {
+    // HRM fixed opportunities in the scheduler's existing horizontal convention.
+    for line_ccks in [227, 228] {
+        for enabled in [
+            0, 0x003f, 0x0200, 0x0201, 0x0202, 0x0204, 0x0208, 0x0210, 0x0220, 0x023f,
+        ] {
+            for requested in [false, true] {
+                let mut dma = DmaScheduler::new();
+                dma.write_dmacon(0x8000 | enabled);
+                for hpos in 0..line_ccks {
+                    let fixed = match hpos {
+                        1 | 3 | 5 => DmaChannel::Refresh,
+                        h if h == line_ccks - 1 => DmaChannel::Refresh,
+                        7 | 9 | 11 if enabled & 0x0210 == 0x0210 && requested => DmaChannel::Disk,
+                        13 | 15 | 17 | 19 if enabled & 0x0200 != 0 && requested => {
+                            let channel = ((hpos - 13) / 2) as u8;
+                            if enabled & (1 << channel) != 0 {
+                                DmaChannel::Audio(channel)
+                            } else {
+                                DmaChannel::Cpu
+                            }
+                        }
+                        21..=51 if hpos % 2 == 1 && enabled & 0x0220 == 0x0220 && requested => {
+                            DmaChannel::Sprite(((hpos - 21) / 4) as u8)
+                        }
+                        _ => DmaChannel::Cpu,
+                    };
+                    assert_eq!(
+                        dma.step_cck(
+                            hpos,
+                            100,
+                            requested,
+                            [requested; 4],
+                            [requested; 8],
+                            false,
+                            false,
+                            true,
+                            line_ccks
+                        ),
+                        fixed,
+                        "line={line_ccks}, enable={enabled:x}, requested={requested}, hpos={hpos}"
+                    );
+                    assert_eq!(dma.chip_ram_blocked, fixed != DmaChannel::Cpu);
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn a_fixed_sprite_opportunity_keeps_live_display_priority() {
+    let mut dma = DmaScheduler::new();
+    dma.write_dmacon(0x8320);
+    dma.set_bplcon0(0xc000);
+    dma.set_ddfstrt(20);
+    dma.set_ddfstop(28);
+    assert_eq!(
+        dma.step_cck(21, 100, false, [false; 4], [true; 8], false, false, true, 227),
+        DmaChannel::Bitplane(1)
+    );
+    dma.write_dmacon(0x0100); // Stop bitplane DMA without changing the opportunity.
+    assert_eq!(
+        dma.step_cck(21, 100, false, [false; 4], [true; 8], false, false, true, 227),
+        DmaChannel::Sprite(0)
+    );
+    dma.write_dmacon(0x0020);
+    assert_eq!(
+        dma.step_cck(21, 100, false, [false; 4], [true; 8], false, false, true, 227),
+        DmaChannel::Cpu
+    );
+}
+
+#[test]
 fn copper_uses_only_its_memory_phase() {
     // HRM 2 Introduction: alternate memory opportunities, avoiding fixed DMA.
     // In the existing HPOS convention fixed slots are odd and Copper is even.

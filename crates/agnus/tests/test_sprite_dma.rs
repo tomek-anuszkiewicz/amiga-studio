@@ -111,3 +111,70 @@ fn overlapping_bitplane_grant_prevents_sprite_fetch_and_pointer_increment() {
     assert_eq!(a.pending_dma_write, None);
     assert_eq!(a.sprpt[0], 0);
 }
+
+#[test]
+fn comparators_update_outside_slots_while_dma_and_output_are_blocked() {
+    for (model, control_line) in [(AgnusModel::OcsPal8371, 25), (AgnusModel::OcsNtsc8370, 19)] {
+        let mut a = Agnus::new(model);
+        a.vpos = 100;
+        a.hpos = 70;
+        a.pending_dma_write = Some((0x00a0, 0xcafe));
+        // All eight combinations of old active, start match and stop match.
+        a.sprite_dma_active = [false, false, false, false, true, true, true, true];
+        a.sprpos = [99, 99, 100, 100, 99, 99, 100, 100].map(|v| v << 8);
+        a.sprctl = [101, 100, 101, 100, 101, 100, 101, 100].map(|v| v << 8);
+        a.step_cck();
+        assert_eq!(
+            a.sprite_dma_active,
+            [false, false, true, false, true, false, true, false]
+        );
+        assert_eq!(a.pending_dma_write, Some((0x00a0, 0xcafe)));
+        assert_eq!(a.sprpt, [0; 8]);
+        a.pending_dma_write = None;
+        a.dma.write_dmacon(0x8220);
+        let mut ram = [0x12; 64];
+        for sprite in 0..8u16 {
+            a.hpos = 20 + sprite * 4;
+            a.step_cck_ram(&mut ram);
+            let expected = if sprite == 0 {
+                None
+            } else {
+                let register = if sprite % 2 == 1 { 0x140 } else { 0x144 };
+                Some((register + sprite * 8, 0x1212))
+            };
+            assert_eq!(a.pending_dma_write.take(), expected);
+        }
+        a.pending_dma_write = Some((0x00a0, 0xcafe));
+        a.vpos = control_line;
+        a.step_cck();
+        assert_eq!(a.sprite_dma_active, [false; 8]);
+        assert_eq!(a.pending_dma_write, Some((0x00a0, 0xcafe)));
+    }
+}
+
+#[test]
+fn midline_position_control_and_beam_writes_reach_the_next_comparison() {
+    let mut a = Agnus::new(AgnusModel::OcsPal8371);
+    a.vpos = 100;
+    a.hpos = 70;
+    a.sprpos[0] = 0x6340;
+    a.sprctl[0] = 0x6500;
+    assert!(a.set_sprpos(0, 0x6440));
+    a.step_cck();
+    assert!(!a.sprite_dma_active[0]); // Write commits after this comparison.
+    a.step_cck();
+    assert!(a.sprite_dma_active[0]);
+    assert!(a.set_sprctl(0, 0x6400));
+    a.step_cck();
+    assert!(a.sprite_dma_active[0]);
+    a.step_cck();
+    assert!(!a.sprite_dma_active[0]); // Simultaneous start/stop leaves the latch clear.
+
+    a.sprpos[0] = 0x6640;
+    a.sprctl[0] = 0x6700;
+    assert!(a.set_vhposw(0x6646));
+    a.step_cck();
+    assert!(!a.sprite_dma_active[0]);
+    a.step_cck();
+    assert!(a.sprite_dma_active[0]);
+}

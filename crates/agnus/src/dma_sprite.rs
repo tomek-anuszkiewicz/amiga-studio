@@ -18,31 +18,26 @@ impl Agnus {
         }
     }
 
+    #[inline]
     fn sprite_stop(&self, sprite: usize) -> u16 {
         (self.sprctl[sprite] >> 8) | ((self.sprctl[sprite] & BIT_STOP_HIGH) << 7)
     }
 
     pub(super) fn sprite_requests(&mut self) -> [bool; SPRITE_COUNT] {
-        let mut requests = [false; SPRITE_COUNT];
         let first_line = self.sprite_control_line();
+        let output_available = self.pending_dma_write.is_none();
+        if self.vpos <= first_line {
+            self.sprite_dma_active.fill(false);
+            return [self.vpos == first_line && output_available; SPRITE_COUNT];
+        }
+        let mut requests = [false; SPRITE_COUNT];
         for (sprite, request) in requests.iter_mut().enumerate() {
-            if self.vpos <= first_line {
-                self.sprite_dma_active[sprite] = false;
-                *request = self.vpos == first_line;
-            } else {
-                let start =
-                    (self.sprpos[sprite] >> 8) | ((self.sprctl[sprite] & BIT_START_HIGH) << 6);
-                if self.vpos == start {
-                    self.sprite_dma_active[sprite] = true;
-                }
-                if self.vpos == self.sprite_stop(sprite) {
-                    self.sprite_dma_active[sprite] = false;
-                    *request = true;
-                } else {
-                    *request = self.sprite_dma_active[sprite];
-                }
-            }
-            *request &= self.pending_dma_write.is_none();
+            let start = (self.sprpos[sprite] >> 8) | ((self.sprctl[sprite] & BIT_START_HIGH) << 6);
+            let started = self.sprite_dma_active[sprite] | (self.vpos == start);
+            let stopped = self.vpos == self.sprite_stop(sprite);
+            // Stop wins the latch comparison, but still requests the next control pair.
+            self.sprite_dma_active[sprite] = started & !stopped;
+            *request = (started | stopped) & output_available;
         }
         requests
     }
