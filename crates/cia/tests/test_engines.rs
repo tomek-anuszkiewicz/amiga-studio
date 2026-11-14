@@ -113,6 +113,90 @@ fn timer_outputs_override_input_direction_and_support_toggle_and_pulse() {
 }
 
 #[test]
+fn cnt_one_shot_pulses_expire_between_eclock_edges() {
+    let mut cia = Cia::new();
+    cia.ta_counter = 0;
+    cia.tb_counter = 0;
+    cia.receive_serial_pins(true, false);
+    assert!(cia.set_cra(0x2b));
+    assert!(cia.set_crb(0x2b));
+    capture(&mut cia);
+    assert_eq!(cia.poll_prb_output(), Some(0x3f));
+
+    // CNT starts both pulses at phase 3, so expiry is also outside an E edge.
+    cia.receive_serial_pins(true, true);
+    cia.step_cck();
+    assert_eq!(cia.eclock_phase, 3);
+    assert_eq!(cia.cra() & 1, 0);
+    assert_eq!(cia.crb() & 1, 0);
+    assert_eq!(cia.icr(), 3);
+    assert_eq!(cia.poll_prb_output(), Some(0xff));
+    let checkpoint = cia.clone();
+    for phase in [4, 0, 1, 2] {
+        cia.step_cck();
+        assert_eq!(cia.eclock_phase, phase);
+        assert_eq!(cia.port_b_output_pins(), 0xff);
+        assert_eq!(cia.poll_prb_output(), None);
+    }
+    cia.step_cck();
+    assert_eq!(cia.eclock_phase, 3);
+    assert_eq!(cia.poll_prb_output(), Some(0x3f));
+
+    let mut restored = checkpoint;
+    for _ in 0..5 {
+        restored.step_cck();
+    }
+    assert_eq!(restored.poll_prb_output(), Some(0x3f));
+    assert_eq!(restored, cia);
+}
+
+#[test]
+fn enabling_timer_port_outputs_reveals_hidden_pulse_and_toggle_state() {
+    for (control, expected) in [(0x29, 0xc0), (0x2d, 0)] {
+        let mut cia = Cia::new();
+        cia.ta_counter = 0;
+        cia.tb_counter = 0;
+        cia.receive_serial_pins(true, false);
+        assert!(cia.set_ddrb(0xff));
+        assert!(cia.set_cra(control));
+        assert!(cia.set_crb(control));
+        capture(&mut cia);
+        assert_eq!(cia.poll_prb_output(), Some(0));
+
+        cia.receive_serial_pins(true, true);
+        cia.step_cck();
+        assert_eq!(cia.icr(), 3);
+        assert_eq!(cia.poll_prb_output(), None);
+        assert_eq!(cia.port_b_output_pins(), 0);
+
+        // Keep the stopped one-shot state and expose its existing waveform.
+        assert!(cia.set_cra((control & !1) | 2));
+        assert!(cia.set_crb((control & !1) | 2));
+        capture(&mut cia);
+        assert_eq!(cia.port_b_output_pins(), expected);
+        assert_eq!(cia.poll_prb_output(), Some(expected));
+        cia.step_cck();
+        assert_eq!(cia.port_b_output_pins(), 0);
+        assert_eq!(cia.poll_prb_output(), (expected != 0).then_some(0));
+    }
+}
+
+#[test]
+fn timer_idle_steps_preserve_pending_port_write_notifications() {
+    let mut cia = Cia::new();
+    assert!(cia.set_ddrb(0xff));
+    assert!(cia.set_prb(0xa5));
+    capture(&mut cia);
+    assert!(cia.prb_mutated);
+    for _ in 0..10 {
+        cia.step_cck();
+        assert!(cia.prb_mutated);
+    }
+    assert_eq!(cia.poll_prb_output(), Some(0xa5));
+    assert_eq!(cia.poll_prb_output(), None);
+}
+
+#[test]
 fn serial_input_publishes_only_a_full_msb_first_byte() {
     let mut cia = Cia::new();
     assert!(cia.set_icr(0x88));

@@ -1,9 +1,9 @@
 //! 8520 count sources, reloads and PB6/PB7 timer waveforms (HRM Appendix F).
 
 use crate::registers::{
-    BIT_CONTROL_ONE_SHOT, BIT_CONTROL_START, BIT_CONTROL_TOGGLE, BIT_CRA_COUNT_CNT,
-    BIT_CRB_INPUT_MODE_SHIFT, BIT_ICR_TIMER_A, BIT_ICR_TIMER_B, CRB_COUNT_CNT, CRB_COUNT_ECLOCK,
-    CRB_COUNT_TA_UNDERFLOW, CRB_COUNT_TA_UNDERFLOW_CNT_HIGH, MASK_CRB_INPUT_MODE,
+    BIT_CONTROL_ONE_SHOT, BIT_CONTROL_PORT_OUTPUT, BIT_CONTROL_START, BIT_CONTROL_TOGGLE,
+    BIT_CRA_COUNT_CNT, BIT_CRB_INPUT_MODE_SHIFT, BIT_ICR_TIMER_A, BIT_ICR_TIMER_B, CRB_COUNT_CNT,
+    CRB_COUNT_ECLOCK, CRB_COUNT_TA_UNDERFLOW, CRB_COUNT_TA_UNDERFLOW_CNT_HIGH, MASK_CRB_INPUT_MODE,
 };
 use crate::{Cia, CCK_PER_ECLOCK};
 
@@ -56,7 +56,12 @@ impl Cia {
     }
 
     pub(super) fn step_timers(&mut self, e_rising: bool, cnt_rising: bool) {
-        let previous = self.port_b_output_pins();
+        if !e_rising && !cnt_rising && self.timer_a_pulse == 0 && self.timer_b_pulse == 0 {
+            return;
+        }
+        // Hidden timer waveforms still evolve, but cannot change Port B pins.
+        let previous = ((self.cra | self.crb) & BIT_CONTROL_PORT_OUTPUT != 0)
+            .then(|| self.port_b_output_pins());
         expire_pulse(&mut self.timer_a_pulse, &mut self.timer_a_output, self.cra);
         expire_pulse(&mut self.timer_b_pulse, &mut self.timer_b_output, self.crb);
         let clock_a = if self.cra & BIT_CRA_COUNT_CNT == 0 {
@@ -81,6 +86,8 @@ impl Cia {
             self.trigger_icr(BIT_ICR_TIMER_B);
             underflow_output(&mut self.timer_b_output, &mut self.timer_b_pulse, self.crb);
         }
-        self.prb_mutated |= previous != self.port_b_output_pins();
+        if let Some(previous) = previous {
+            self.prb_mutated |= previous != self.port_b_output_pins();
+        }
     }
 }

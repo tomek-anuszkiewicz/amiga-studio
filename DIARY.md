@@ -1039,3 +1039,19 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - changed executable paths were reviewed against coverage
   - individual commit boundaries were not tested separately
   - no new timing measurement of the final combination
+---
+
+### [2026-11-14 14:40 CET] — skip timer work between relevant clock events
+- **Affected Subsystems**:
+  - `cia`
+- **What Was Changed (The Concrete Reality)**:
+  - Skip timer work without a clock edge or pending pulse
+  - avoid resolving Port B when timer outputs are hidden
+  - retain pulse and edge regression tests
+- **Architectural Rationale & Trade-Offs**:
+  - Reduce repeated idle work without stopping hidden timer waveforms or changing clock sources
+- **Verification & Test Results**:
+  - The combined candidate passed ordinary Rust tests, the standard harness and canonical commit verification before this diary partition
+  - changed executable paths were reviewed against coverage
+  - individual commit boundaries were not tested separately
+  - no new timing measurement of the final combination
