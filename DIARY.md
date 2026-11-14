@@ -1162,3 +1162,15 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - changed executable paths were reviewed against coverage
   - individual commit boundaries were not tested separately
   - no new timing measurement of the final combination
+---
+
+### [2026-11-14 14:55 CET] — Commit omitted optimization skill updates
+- **Affected Subsystems**:
+  - `.agents/skills/optimize-emulation`
+- **What Was Changed (The Concrete Reality)**:
+  - Include the pending optimization skill and project example updates omitted from earlier commits
+- **Architectural Rationale & Trade-Offs**:
+  - Complete the previously reviewed work with the remaining documentation files
+- **Verification & Test Results**:
+  - The user reports that verification was completed in another session. Tests
+  - verification profiles and review were not repeated at the explicit user request.
