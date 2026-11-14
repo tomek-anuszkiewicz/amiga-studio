@@ -59,8 +59,14 @@ fn denise_display_controls_roundtrip_with_a_pending_mode_change() {
         denise.step_cck();
         restored.step_cck();
         assert_eq!(restored, denise);
-        assert_eq!(restored.bitplane_count(), 1);
+        assert_eq!(restored.bplcon0.value(), 0x1000);
         assert!(!restored.is_hires());
+        restored.color[0] = 0x0123;
+        restored.color[1] = 0x0abc;
+        for planes in 0..64 {
+            let expected = if planes & 1 == 0 { 0x0123 } else { 0x0abc };
+            assert_eq!(restored.decode_pixel(planes), expected);
+        }
     }
 }
 

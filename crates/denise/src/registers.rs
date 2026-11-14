@@ -10,15 +10,24 @@ const REGISTER_SPR_CTL_SELECTOR: u16 = (reg::REGISTER_SPR0CTL - reg::REGISTER_SP
 const REGISTER_SPR_DATA_SELECTOR: u16 = (reg::REGISTER_SPR0DATA - reg::REGISTER_SPR0POS) / 2;
 const REGISTER_SPR_DATB_SELECTOR: u16 = (reg::REGISTER_SPR0DATB - reg::REGISTER_SPR0POS) / 2;
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum PixelDecoder {
+    #[default]
+    Palette,
+    Ham,
+    DualPlayfield,
+    ExtraHalfBrite,
+}
+
 /// BPLCON0 with display controls decoded on application and deserialization.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(from = "u16", into = "u16")]
 pub struct BitplaneControl {
     value: u16,
-    pub(super) plane_count: u8,
+    pub(super) plane_mask: u8,
     pub(super) hires: bool,
-    pub(super) ham: bool,
     pub(super) dual_playfield: bool,
+    pub(super) decoder: PixelDecoder,
 }
 
 impl BitplaneControl {
@@ -31,12 +40,25 @@ impl BitplaneControl {
 impl From<u16> for BitplaneControl {
     fn from(value: u16) -> Self {
         use config::mask::bplcon0;
+        let plane_count = ((value & bplcon0::MASK_BPU) >> bplcon0::BIT_BPU_SHIFT) as u8;
+        let hires = value & bplcon0::BIT_HIRES != 0;
+        let dual_playfield = value & bplcon0::BIT_DBLPF != 0;
+        let six_lores_planes = plane_count == config::OCS_BITPLANE_COUNT as u8 && !hires;
+        let decoder = if six_lores_planes && value & bplcon0::BIT_HOMOD != 0 {
+            PixelDecoder::Ham
+        } else if dual_playfield {
+            PixelDecoder::DualPlayfield
+        } else if six_lores_planes {
+            PixelDecoder::ExtraHalfBrite
+        } else {
+            PixelDecoder::Palette
+        };
         Self {
             value,
-            plane_count: ((value & bplcon0::MASK_BPU) >> bplcon0::BIT_BPU_SHIFT) as u8,
-            hires: value & bplcon0::BIT_HIRES != 0,
-            ham: value & bplcon0::BIT_HOMOD != 0,
-            dual_playfield: value & bplcon0::BIT_DBLPF != 0,
+            plane_mask: (1 << plane_count.min(config::OCS_BITPLANE_COUNT as u8)) - 1,
+            hires,
+            dual_playfield,
+            decoder,
         }
     }
 }

@@ -45,8 +45,7 @@ impl Denise {
             .frame_cursor
             .frame_y
             .filter(|_| self.frame_cursor.active);
-        let count = self.bitplane_count().min(config::OCS_BITPLANE_COUNT as u8);
-        let plane_mask = (1u8 << count) - 1;
+        let plane_mask = self.bplcon0.plane_mask;
         for half in 0..LORES_PIXELS_PER_CCK as u16 {
             let position = horizontal * LORES_PIXELS_PER_CCK as u16 + half;
             let in_window = self.horizontal_window(position + DIW_COUNT_LEAD);

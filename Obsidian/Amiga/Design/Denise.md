@@ -79,15 +79,17 @@ low-resolution pixel regardless of bitplane resolution. The existing horizontal
 window comparisons, blanking region and two-high-resolution-pixel output delay
 are retained model timing, without a claim of calibrated silicon edge offsets.
 
-The BPLCON0 value retains its decoded plane count and display mode locally.
+The BPLCON0 value retains its decoded plane mask and pixel decoder
+selection locally. The selection preserves the six-plane low-resolution
+requirements of HAM and Extra Half-Brite, including the distinct BPU=7 case.
 Applied writes and deserialization derive those fields from the raw register;
 pending writes do not affect decoding. Only the raw word is serialized.
 
 The renderer advances that two-sample output pipeline as a pair. Low resolution
 composes one color for both new samples; high resolution composes each sample
 separately. The previous pair still leaves the pipeline at the same phase,
-including across mode changes and snapshot restoration. The plane mask and
-converted border color are derived once per CCK from committed registers.
+including across mode changes and snapshot restoration. Rendering uses the
+retained plane mask and derives the converted border color once per CCK.
 Blanking suppresses framebuffer writes without injecting black into that
 pipeline, so the first visible pair retains the preceding border color.
 

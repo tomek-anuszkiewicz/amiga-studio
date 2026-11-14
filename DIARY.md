@@ -1237,3 +1237,19 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - focused idle, one-axis and two-axis cases improved
   - whole-machine impact was mostly below measurement spread
 ---
+
+### [2026-11-14 19:16 CET] — Retain derived bitplane masks and pixel decoder selection
+- **Affected Subsystems**:
+  - `denise`
+  - `machine_loop`
+- **What Was Changed (The Concrete Reality)**:
+  - Derive the plane mask and pixel decoder from effective BPLCON0 writes and deserialization
+  - keep raw-word snapshot storage and cover zero planes, BPU=7 and mode combinations
+  - remove the obsolete plane-count getter and cache, with register and pixel-output assertions protecting the same behavior
+- **Architectural Rationale & Trade-Offs**:
+  - Remove repeated mode decoding while preserving HAM history, palette selection and both pixel halves
+- **Verification & Test Results**:
+  - 211 tests across 44 targets passed
+  - the original matched trial reduced mixed PAL time 2.47 percent and NTSC 1.61 percent
+  - complete states and framebuffers matched
+---

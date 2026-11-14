@@ -1,6 +1,33 @@
 use denise::{Denise, DeniseModel};
 
 #[test]
+fn restored_control_word_retains_ham_ehb_and_seven_plane_distinctions(
+) -> Result<(), serde::de::value::Error> {
+    let mut denise = Denise::new(DeniseModel::Ocs8362);
+    denise.color[0] = 0x123;
+    denise.color[7] = 0x456;
+    denise.color[31] = 0xdef;
+    for (word, planes, expected, held) in [
+        (0x6800u16, 0x1f, 0xabf, 0xabf),
+        (0x6c00, 0x1f, 0xabf, 0xabf),
+        (0x7800, 0x3f, 0xdef, 0xabc),
+        (0xe800, 0x1f, 0xdef, 0xabc),
+        (0xf800, 0x3f, 0xdef, 0xabc),
+        (0x6000, 0x3f, 0x677, 0xabc),
+        (0x7c00, 0x3f, 0x456, 0xabc),
+        (0x0c00, 0x3f, 0x123, 0xabc),
+    ] {
+        let raw = serde::de::value::U16Deserializer::<serde::de::value::Error>::new(word);
+        denise.bplcon0 = serde::Deserialize::deserialize(raw)?;
+        assert_eq!(u16::from(denise.bplcon0), word);
+        denise.last_ham_rgb = 0xabc;
+        assert_eq!(denise.decode_pixel(planes), expected, "BPLCON0 {word:04x}");
+        assert_eq!(denise.last_ham_rgb, held, "BPLCON0 {word:04x}");
+    }
+    Ok(())
+}
+
+#[test]
 fn decoded_modes_change_only_when_the_register_write_applies() {
     let mut denise = Denise::new(DeniseModel::Ocs8362);
     denise.sync.hpos = 40;
@@ -19,14 +46,14 @@ fn decoded_modes_change_only_when_the_register_write_applies() {
         assert_eq!(denise.bplcon0, previous);
         denise.step_cck();
         assert_eq!(denise.bplcon0.value(), value);
-        assert_eq!(denise.bitplane_count(), count);
+        assert_eq!((denise.bplcon0.value() >> 12) & 7, count);
         assert_eq!(denise.is_hires(), hires);
         denise.last_ham_rgb = 0xabc;
         assert_eq!(denise.decode_pixel(pixel), color);
     }
     denise.reset();
     assert_eq!(denise.bplcon0.value(), 0);
-    assert_eq!(denise.bitplane_count(), 0);
+    assert_eq!((denise.bplcon0.value() >> 12) & 7, 0);
     assert!(!denise.is_hires());
     assert_eq!(denise.decode_pixel(0x1f), 0);
 }

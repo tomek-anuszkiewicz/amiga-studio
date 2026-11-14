@@ -223,47 +223,23 @@ impl Denise {
 
     /// Decodes a 6-bit pixel into 12-bit RGB444 based on active display mode
     pub fn decode_pixel(&mut self, planes_data: u8) -> u16 {
-        let plane_count = self.bitplane_count();
-        if plane_count == 0 {
-            return self.color[0];
+        use registers::PixelDecoder;
+        let data = planes_data & self.bplcon0.plane_mask;
+        match self.bplcon0.decoder {
+            PixelDecoder::Ham => decode_ham6(data, &self.color, &mut self.last_ham_rgb),
+            PixelDecoder::DualPlayfield => {
+                let pf2_priority = (self.bplcon2 & BIT_PF2_PRIORITY) != 0;
+                decode_dual_playfield(data, &self.color, pf2_priority)
+            }
+            PixelDecoder::ExtraHalfBrite => decode_ehb(data, &self.color),
+            PixelDecoder::Palette => self.color[usize::from(data & decode::MASK_PALETTE_INDEX)],
         }
-
-        let mask = if plane_count >= config::OCS_BITPLANE_COUNT as u8 {
-            MASK_ALL_PLANE_PIXEL
-        } else {
-            (1 << plane_count) - 1
-        };
-        let data = planes_data & mask;
-
-        if self.is_ham() && !self.is_hires() && plane_count == config::OCS_BITPLANE_COUNT as u8 {
-            decode_ham6(data, &self.color, &mut self.last_ham_rgb)
-        } else if self.is_dual_playfield() {
-            let pf2_priority = (self.bplcon2 & BIT_PF2_PRIORITY) != 0;
-            decode_dual_playfield(data, &self.color, pf2_priority)
-        } else if plane_count == config::OCS_BITPLANE_COUNT as u8 && !self.is_hires() {
-            decode_ehb(data, &self.color)
-        } else {
-            let idx = (data & decode::MASK_PALETTE_INDEX) as usize;
-            self.color[idx]
-        }
-    }
-
-    /// Returns the encoded number of bitplanes (0..7).
-    #[inline]
-    pub fn bitplane_count(&self) -> u8 {
-        self.bplcon0.plane_count
     }
 
     /// Returns true if High-Resolution (640-pixel) mode is enabled
     #[inline]
     pub fn is_hires(&self) -> bool {
         self.bplcon0.hires
-    }
-
-    /// Returns true if Hold-And-Modify (HAM) mode is enabled
-    #[inline]
-    fn is_ham(&self) -> bool {
-        self.bplcon0.ham
     }
 
     /// Returns true if Dual Playfield mode is enabled

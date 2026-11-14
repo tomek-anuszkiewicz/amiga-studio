@@ -157,10 +157,12 @@ fn test_denise_bitplane_mode_and_serialization() {
         .write_custom_word(custom_reg::denise::REGISTER_COLOR01, 0x00F0);
     harness.step_cck(2);
 
-    assert_eq!(harness.machine.denise.bitplane_count(), 1);
+    assert_eq!(harness.machine.denise.bplcon0.value(), 0x1200);
     assert!(!harness.machine.denise.is_hires());
     assert_eq!(harness.machine.denise.color[0], 0x0000);
     assert_eq!(harness.machine.denise.color[1], 0x00F0);
+    assert_eq!(harness.machine.denise.decode_pixel(0b111110), 0x0000);
+    assert_eq!(harness.machine.denise.decode_pixel(0b111111), 0x00F0);
 
     // Write Bitplane 1 data latch (0x8000 -> first pixel 1, next 15 pixels 0)
     harness
