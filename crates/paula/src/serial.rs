@@ -186,6 +186,17 @@ impl SerialPort {
     /// Returns interrupt pulses. Production calls this with RXD high; component
     /// tests can provide explicit input levels without an attached connector.
     pub fn step_cck(&mut self, receive_high: bool, receive_full: bool) -> u16 {
+        // Stable idle levels have no counter, shifter or status work to perform.
+        if self.tx_shift == 0
+            && self.tx_holding == 0
+            && self.rx_phase == ReceivePhase::Idle
+            && receive_high == self.rx_previous_high
+            && self.tx_bit_high
+            && self.serdatr & (BIT_RXD | BIT_TSRE)
+                == (BIT_TSRE | if receive_high { BIT_RXD } else { 0 })
+        {
+            return 0;
+        }
         self.serdatr = (self.serdatr & !BIT_RXD) | if receive_high { BIT_RXD } else { 0 };
         let requests = self.step_transmit() | self.step_receive(receive_high, receive_full);
         self.rx_previous_high = receive_high;

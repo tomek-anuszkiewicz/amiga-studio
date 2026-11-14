@@ -84,6 +84,38 @@ fn receive_width_stop_readback_overrun_and_acknowledgement_follow_intreq() {
 }
 
 #[test]
+fn idle_uart_resumes_both_directions_and_preserves_unrelated_status() {
+    let mut serial = SerialPort::new();
+    // A status edit must still settle the idle RXD and TSRE bits once.
+    serial.serdatr = 0x8205;
+    assert_eq!(serial.step_cck(true, false), 0);
+    assert_eq!(serial.serdatr, 0x9a05);
+    let idle = serial.clone();
+    for _ in 0..64 {
+        assert_eq!(serial.step_cck(true, true), 0);
+        assert_eq!(serial, idle);
+    }
+    serial.write_serper(3);
+    serial.write_serdat(0x155);
+    assert_eq!(serial.step_cck(true, false), 1);
+    assert!(!serial.transmit_high(false));
+    assert_eq!(receive(&mut serial, 0xa6, 8, true, false), 0x0800);
+    assert_eq!(serial.read_status(true) & 0x73ff, 0x71a6);
+
+    // A low stop bit leaves an idle-low receiver. A later high then falling
+    // edge must still start the next word, even after a long stable interval.
+    assert_eq!(receive(&mut serial, 0x35, 8, false, false), 0x0800);
+    let idle_low = serial.clone();
+    for _ in 0..64 {
+        assert_eq!(serial.step_cck(false, false), 0);
+        assert_eq!(serial, idle_low);
+    }
+    assert_eq!(serial.step_cck(true, false), 0);
+    assert_eq!(receive(&mut serial, 0x5a, 8, true, false), 0x0800);
+    assert_eq!(serial.read_status(true) & 0x73ff, 0x715a);
+}
+
+#[test]
 fn production_transmitter_interrupt_break_and_disconnected_receive_are_independent() {
     let mut paula = Paula::default();
     paula.set_intena(0xc001);

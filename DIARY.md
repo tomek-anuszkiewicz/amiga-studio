@@ -1087,3 +1087,19 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - changed executable paths were reviewed against coverage
   - individual commit boundaries were not tested separately
   - no new timing measurement of the final combination
+---
+
+### [2026-11-14 14:40 CET] — skip stable idle UART work
+- **Affected Subsystems**:
+  - `paula`
+- **What Was Changed (The Concrete Reality)**:
+  - Return early for stable idle transmit/receive state
+  - retain tests for status and transition boundaries
+- **Architectural Rationale & Trade-Offs**:
+  - Avoid work when counters and status cannot change
+  - whole-machine gain remains inconclusive in the earlier audit
+- **Verification & Test Results**:
+  - The combined candidate passed ordinary Rust tests, the standard harness and canonical commit verification before this diary partition
+  - changed executable paths were reviewed against coverage
+  - individual commit boundaries were not tested separately
+  - no new timing measurement of the final combination
