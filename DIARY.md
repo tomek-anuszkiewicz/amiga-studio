@@ -1206,3 +1206,19 @@ Every authorized repository commit adds a concise entry here. Logging and compac
 - **Verification & Test Results**:
   - Reviewed ordinary single-change, multiple-session, shared-file and explicit-partition cases against the batch lifecycle
   - commit timing and push authorization remain user controlled
+---
+
+### [2026-11-14 19:16 CET] — Avoid mutation queue self-copies
+- **Affected Subsystems**:
+  - `config`
+  - `machine_loop`
+- **What Was Changed (The Concrete Reality)**:
+  - Update only remaining delay while an entry retains its original queue position
+  - copy complete entries only after a compaction hole
+- **Architectural Rationale & Trade-Offs**:
+  - Preserve due order, capacity, positive delays and snapshot behavior while reducing repeated data movement
+- **Verification & Test Results**:
+  - Existing config and machine tests passed: 182 tests across 41 targets
+  - occupied focused workloads improved about 17-21 percent
+  - full-state and framebuffer comparisons passed
+---

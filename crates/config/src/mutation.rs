@@ -159,7 +159,11 @@ impl<const N: usize> MutationQueue<N> {
                 self.due[self.due_len] = (item.reg_offset, item.value);
                 self.due_len += 1;
             } else {
-                self.entries[retained] = item;
+                if retained == index {
+                    self.entries[index].remaining_cck = item.remaining_cck;
+                } else {
+                    self.entries[retained] = item;
+                }
                 retained += 1;
             }
         }
