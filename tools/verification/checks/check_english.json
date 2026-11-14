@@ -73,6 +73,16 @@
     "english_words/names.txt"
   ],
   "file_words": {
+    "crates/agnus/tests/test_blitter_phases.rs": [
+      "abi",
+      "abc",
+      "abd",
+      "ibc",
+      "ibcd",
+      "ibd",
+      "ibi",
+      "icd"
+    ],
     ".agents/skills/graphify/references/query.md": [
       "\u043e\u0431\u0440\u0430\u0431\u043e\u0442\u0447\u0438\u043a",
       "\u0430\u0443\u0442\u0435\u043d\u0442\u0438\u0444\u0438\u043a\u0430\u0446\u0438\u044f"

@@ -200,7 +200,7 @@ impl Blitter {
                 BlitterPhase::BusIdle
             };
         }
-        let (phases, count) = self.active_word_phases();
+        let (phases, count) = word_phases(self.bltcon0, self.bltcon1);
         let phase = phases[usize::from(self.phase_index.min(count - 1))];
         if phase == BlitterPhase::WriteD && self.pending_word.is_none() {
             BlitterPhase::BusIdle
@@ -211,14 +211,7 @@ impl Blitter {
 
     /// Only an actual source read or destination write requests Chip RAM.
     pub fn wants_bus(&self) -> bool {
-        self.dma_enabled
-            && matches!(
-                self.current_phase(),
-                BlitterPhase::FetchA
-                    | BlitterPhase::FetchB
-                    | BlitterPhase::FetchC
-                    | BlitterPhase::WriteD
-            )
+        self.dma_enabled && self.current_phase().requires_bus()
     }
 
     /// Advances internal work without supplying a memory grant.
@@ -228,32 +221,33 @@ impl Blitter {
     }
 
     /// One CCK, with at most one word transferred when Agnus grants the bus.
+    #[inline]
     pub fn step_cck_ram(&mut self, chip_ram: &mut [u8], bus_granted: bool) {
         if !self.is_busy || !self.dma_enabled {
             return;
         }
+        self.step_active_cck_ram(chip_ram, bus_granted);
+    }
+
+    fn step_active_cck_ram(&mut self, chip_ram: &mut [u8], bus_granted: bool) {
         if self.startup_cycles != 0 {
             self.startup_cycles = self.startup_cycles.wrapping_sub(1);
             return;
         }
-        if self.wants_bus() && (!bus_granted || chip_ram.is_empty()) {
+        let line_mode = self.bltcon1 & bltcon::BIT_LINE != 0;
+        let phase = if line_mode {
+            self.line_phase()
+        } else {
+            self.current_phase()
+        };
+        if phase.requires_bus() && (!bus_granted || chip_ram.is_empty()) {
             return;
         }
-        if self.bltcon1 & bltcon::BIT_LINE != 0 {
+        if line_mode {
             self.step_line_cycle(chip_ram);
         } else {
-            self.step_area_cycle(chip_ram);
+            self.step_area_cycle(chip_ram, phase);
         }
-    }
-
-    fn active_word_phases(&self) -> ([BlitterPhase; phase::MAX_WORD_PHASES], u8) {
-        word_phases(
-            self.bltcon0 & bltcon::BIT_USEA != 0,
-            self.bltcon0 & bltcon::BIT_USEB != 0,
-            self.bltcon0 & bltcon::BIT_USEC != 0,
-            self.bltcon0 & bltcon::BIT_USED != 0,
-            self.bltcon1 & field::MASK_FILL != 0,
-        )
     }
 
     /// HRM 6: the write loads B's shifted holding value using current controls.

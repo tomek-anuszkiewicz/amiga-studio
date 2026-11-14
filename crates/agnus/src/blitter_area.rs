@@ -1,14 +1,16 @@
 //! Area transfers, source shifts and the destination pipeline from HRM chapter 6.
 
-use super::{apply_fill, barrel_shift, eval_minterm, Blitter, BlitterPhase, PendingBlitWord};
+use super::{
+    apply_fill, barrel_shift, eval_minterm, word_phases, Blitter, BlitterPhase, PendingBlitWord,
+};
 use crate::register_bits::{blitter_fields as field, bltcon};
 use config::chip_ram;
 
 const WORD_BYTES: u32 = 2;
 
 impl Blitter {
-    pub(crate) fn step_area_cycle(&mut self, ram: &mut [u8]) {
-        match self.current_phase() {
+    pub(crate) fn step_area_cycle(&mut self, ram: &mut [u8], phase: BlitterPhase) {
+        match phase {
             BlitterPhase::FetchA => {
                 self.bltadat = chip_ram::read_u16(ram, self.bltapt);
                 self.bltapt = self.advance_pointer(self.bltapt, WORD_BYTES);
@@ -28,7 +30,7 @@ impl Blitter {
             self.finish_blit();
             return;
         }
-        let (_, count) = self.active_word_phases();
+        let (_, count) = word_phases(self.bltcon0, self.bltcon1);
         self.phase_index = self.phase_index.wrapping_add(1);
         if self.phase_index >= count {
             self.phase_index = 0;

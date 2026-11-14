@@ -1024,3 +1024,18 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - independent task review approved the implementation
   - preparation resolved one vocabulary finding and interrupted an incomplete profile to correct the agent-call identity issue
   - final canonical verification and commit review are recorded in the commit message
+---
+
+### [2026-11-14 14:40 CET] — reuse immutable channel phase sequences
+- **Affected Subsystems**:
+  - `agnus`
+- **What Was Changed (The Concrete Reality)**:
+  - Use immutable channel/fill phase tables
+  - reuse the selected execution phase and retain startup, waits and destination drain tests
+- **Architectural Rationale & Trade-Offs**:
+  - Reduce repeated phase construction while preserving existing bus phases
+- **Verification & Test Results**:
+  - The combined candidate passed ordinary Rust tests, the standard harness and canonical commit verification before this diary partition
+  - changed executable paths were reviewed against coverage
+  - individual commit boundaries were not tested separately
+  - no new timing measurement of the final combination
