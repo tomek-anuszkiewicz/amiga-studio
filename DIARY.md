@@ -1375,3 +1375,16 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Core Wasm compilation and architecture, code, hardware, Clippy and formatting checks passed
   - Commit-profile verification and independent batch review are pending
   - Game-port work remains in Host Input Delivery
+---
+
+### [2026-11-14 23:37 CET] — Record pending roadmap updates
+- **Affected Subsystems**:
+  - `ROADMAP.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Commit the pending roadmap edits at the user's explicit request
+- **Architectural Rationale & Trade-Offs**:
+  - Preserve the roadmap changes separately from the sprite DMA optimization
+- **Verification & Test Results**:
+  - Tests
+  - verification and content inspection were not performed
+  - as explicitly requested
