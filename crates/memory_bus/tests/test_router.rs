@@ -256,7 +256,7 @@ impl TestMotherboard {
             mem,
             agnus: Agnus::new(config.agnus_model()),
             denise: Denise::new(DeniseModel::Ocs8362),
-            paula: Paula::new(),
+            paula: Paula::default(),
             cia_a: Cia::new(),
             cia_b: Cia::new(),
             rtc: RtcMsm6242b::new(config.rtc()),

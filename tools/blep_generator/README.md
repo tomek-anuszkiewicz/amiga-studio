@@ -49,7 +49,9 @@ The generator models the exact analog filtering path of the Amiga 500 and Amiga 
 
 ## 3. Output Files and Regression Tests
 
-Running `cargo run -p blep_generator` generates 4 CSV files and a ready-to-compile Rust module in `tools/blep_generator/output/`:
+Running `cargo run -p blep_generator` generates four PAL CSV files in
+`tools/blep_generator/output/` and the runtime Rust module at
+[`crates/paula/src/audio_tables.rs`](../../crates/paula/src/audio_tables.rs).
 
 The four tracked CSV files are the accepted PAL regression baselines. Run
 `cargo test -p blep_generator` to regenerate all four curves in an isolated
@@ -73,7 +75,16 @@ reference, not measurements of original hardware.
 | **Amiga 1200**| Filter ON  | `blep_a1200_filter_on.csv` | **97** / 131072  | **0.0740%** |
 
 ### Rust Source Output for Paula Core
-- **`tools/blep_generator/output/blep_tables.rs`**: Exports `BLEP_A500_FILTER_OFF`, `BLEP_A500_FILTER_ON`, `BLEP_A1200_FILTER_OFF`, `BLEP_A1200_FILTER_ON` as static const arrays (`[i32; 2048]`), ready for zero-allocation static embedding directly into Paula's audio rendering engine.
+The runtime module contains A500 PAL and NTSC tables, each with LED filtering
+enabled or disabled. Each correction has 2,048 entries spaced one CCK apart at
+that standard's clock rate, starting at 131072 and ending at zero. The renderer
+subtracts scaled step corrections from the current output level. Its 44.1 kHz
+PCM clock is independent of the table spacing. A1200 curves remain generator
+comparison data; they are not part of the A500 runtime.
+
+The regression test also compares the complete generated Rust module, including
+the NTSC tables. The former `output/blep_tables.rs` artifact has been replaced by
+the module consumed directly by Paula.
 
 The largest observed difference was 0.2609% of full scale.
 

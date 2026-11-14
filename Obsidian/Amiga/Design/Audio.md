@@ -6,12 +6,16 @@ category: "Design"
 subsystem: "paula"
 status: "active"
 created: 2026-09-19
-updated: 2026-11-12
+updated: 2026-11-14
 related: ["[Paula.md](Paula.md)", "[Agnus.md](Agnus.md)", "[DMA.md](DMA.md)", "[Machine Loop.md](Machine%20Loop.md)"]
 tracked_paths:
   - "crates/paula/src/audio.rs"
   - "crates/paula/src/audio_channel.rs"
+  - "crates/paula/src/audio_output.rs"
+  - "crates/paula/src/audio_tables.rs"
   - "crates/paula/tests/test_audio_channels.rs"
+  - "crates/paula/tests/test_audio_output.rs"
+  - "crates/machine_loop/tests/test_audio_output.rs"
 ---
 # Paula Audio Module
 
@@ -61,14 +65,54 @@ low-byte transition. Both enabled use both transitions; attached sources are
 muted, including channel 3 which has no following destination. Agnus exclusively
 owns location and active memory pointers. Request/restart and interrupt state
 are separate; a restart does not itself authorize a coordinator pointer write.
-Digital output retains its existing normalized stereo scale, channels 1/2 left
-and 0/3 right. The fixed output ring and its indices serialize together, so
-restoration retains unread samples. Exact transition edge calibration and host
-playback/filter electronics remain outside this functional contract.
+Stereo routing remains channels 1/2 left and 0/3 right. Channel clocks, DMA and
+interrupts retain this contract independently of output sampling. Exact hardware
+transition edge calibration remains outside this functional contract.
+
+## BLEP output and host consumption
+
+The output renderer produces 44,100 signed 16-bit stereo sample pairs per second
+of emulated time. It records changes in the volume-scaled channel outputs at
+their CCK boundary, including attachment muting and committed manual data writes.
+It combines simultaneous changes on each stereo side before retaining their
+time and amplitude. Channel products retain their precision until PCM conversion.
+Two full-volume channels use the signed 16-bit range; overshoot clips at that
+range after filtering and mixing.
+
+The [BLEP generator](../../../tools/blep_generator/README.md) supplies static A500
+correction tables for PAL and NTSC, with the LED filter enabled or disabled.
+Each table spans 2,048 CCKs at its corresponding clock rate. A PCM sample is the
+current stereo level minus the sum of recent steps multiplied by their table
+corrections. Integer phase accumulation determines the output instants without
+long-term drift; linear interpolation evaluates fractional table positions.
+The renderer retains enough history for a change every CCK, merges changes at
+the same boundary and expires steps only after their correction ends.
+
+The machine derives filter selection from the effective active-low CIA-A PA1
+output. Selection applies to the complete retained history at the next output
+sample. This table-selection model does not calibrate the analog transient when
+the physical filter switches. Audio counters advance at their existing phase;
+the renderer emits samples for each elapsed CCK interval before recording the
+channel transitions at its ending boundary. Register commits at that boundary
+can merge with those transitions without moving the channel or bus timing.
+
+The rolling PCM ring holds 1,024 stereo pairs, about 23.2 ms. This covers the
+longest PAL field, including interlaced field alternation, between calls to
+`step_frame`. If the consumer falls behind, the ring replaces the oldest unread
+pair. Reading consumes pairs in order and never changes emulated time. The
+machine exposes buffer draining for a future host adapter; it neither opens an
+audio device nor discards samples automatically at video boundaries.
+
+Snapshots retain the clock standard, output phase, current levels, pending BLEP
+history, filter selection and unread PCM ring. Restoration continues the same
+stream without replaying steps. Reset clears synthesis history and unread output
+while retaining the configured PAL/NTSC clock. Host playback remains deferred.
 
 ## Reference documentation and source
 
 - [`audio.rs`](../../../crates/paula/src/audio.rs) is the living implementation of the audio engine.
+- [`audio_output.rs`](../../../crates/paula/src/audio_output.rs) owns timed BLEP synthesis and the rolling PCM ring.
+- [BLEP generator](../../../tools/blep_generator/README.md): Produces the runtime tables; numerical regression against these tables is not original-hardware validation.
 - [Amiga Hardware Reference Manual, Chapter 5](../Reference/Hardware%20Reference%20Manual/05%20-%20Chapter%205%20-%20Audio%20Hardware.md): Explains audio block playback, sample timing, DMA requests, and channel modulation.
 - [Paula.md](Paula.md) describes Paula's role in the machine.
 

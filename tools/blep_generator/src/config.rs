@@ -67,7 +67,6 @@ pub enum LedFilter {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TvMode {
     Pal,
-    #[allow(dead_code)]
     Ntsc,
 }
 

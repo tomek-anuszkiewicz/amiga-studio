@@ -1,6 +1,5 @@
 //! HRM chapter 5 channel states, separate data/output latches and counters.
 
-use super::MAX_VOLUME;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -154,7 +153,7 @@ impl AudioChannel {
     }
 
     #[inline]
-    pub fn output_scaled(&self) -> i16 {
-        (i16::from(self.current_sample) * i16::from(self.output_volume)) / i16::from(MAX_VOLUME)
+    pub fn output_level(&self) -> i16 {
+        i16::from(self.current_sample) * i16::from(self.output_volume)
     }
 }

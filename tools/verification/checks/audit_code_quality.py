@@ -80,7 +80,7 @@ HOST_IO_AND_SPEC_SYMBOLS = {
     # Host Display & Frame Buffer Extraction
     "is_in_display_window", "get_pixel", "frame_buffer", "frame_buffer_mut", "begin_frame", "end_frame",
     # Host Audio Sample Ring Buffer
-    "pop_sample", "samples_available",
+    "pop_sample", "samples_available", "read_audio_samples",
     # Host Real-Time Clock
     "set_time",
     # System Topologies & Save States / Synchronous Stepping

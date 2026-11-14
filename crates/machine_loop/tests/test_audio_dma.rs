@@ -94,10 +94,10 @@ fn serialized_partial_request_and_unread_sound_resume_identically() {
         );
         assert_eq!(machine.agnus.audpt, restored.agnus.audpt);
     }
-    assert!(machine
-        .paula
-        .audio
-        .ring_buffer
+    let mut samples = vec![machine_loop::paula::audio::StereoSample::default(); 1024];
+    let mut observed = machine.paula.audio.clone();
+    let count = observed.read_samples(&mut samples);
+    assert!(samples[..count]
         .iter()
         .any(|sample| sample.left != 0 || sample.right != 0));
     assert_eq!(machine.save_state(), restored.save_state());

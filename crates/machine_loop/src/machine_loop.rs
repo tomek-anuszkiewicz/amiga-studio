@@ -62,6 +62,11 @@ pub struct A500Machine {
 }
 
 impl A500Machine {
+    /// Drains generated 44.1 kHz stereo PCM for a host consumer.
+    pub fn read_audio_samples(&mut self, destination: &mut [paula::audio::StereoSample]) -> usize {
+        self.paula.audio.read_samples(destination)
+    }
+
     /// Constructs a zero-cost stack-allocated MemoryBus router spanning all subsystems
     #[inline]
     pub fn memory_bus(&mut self) -> MemoryBus<'_> {
@@ -84,7 +89,7 @@ impl A500Machine {
         cpu.reset(&mut physical_memory);
         let agnus = agnus::Agnus::new(config.agnus_model());
         let denise = denise::Denise::new(config.denise_model());
-        let paula = paula::Paula::new();
+        let paula = paula::Paula::new(config.video_standard());
         let cia_a = cia::Cia::new();
         let cia_b = cia::Cia::new();
         let rtc = rtc::RtcMsm6242b::new(config.rtc());

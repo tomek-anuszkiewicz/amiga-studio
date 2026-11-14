@@ -85,7 +85,7 @@ fn receive_width_stop_readback_overrun_and_acknowledgement_follow_intreq() {
 
 #[test]
 fn production_transmitter_interrupt_break_and_disconnected_receive_are_independent() {
-    let mut paula = Paula::new();
+    let mut paula = Paula::default();
     paula.set_intena(0xc001);
     paula.set_serper(3);
     paula.set_serdat(0x01ff);

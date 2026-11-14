@@ -1,57 +1,51 @@
 //! Four Paula audio state machines and fixed-capacity digital stereo output.
 
+use config::VideoStandard;
 use serde::{Deserialize, Serialize};
 
 #[path = "audio_channel.rs"]
 mod channel;
 use channel::Attachment;
 pub use channel::{AudioChannel, AudioState};
+#[path = "audio_output.rs"]
+mod output;
+use output::AudioOutput;
+pub use output::{StereoSample, AUDIO_RING_BUFFER_CAPACITY, AUDIO_SAMPLE_RATE};
 
 pub const MAX_VOLUME: u8 = 64;
 pub const MASK_VOLUME_REGISTER: u16 = 0x007f;
-pub const AUDIO_RING_BUFFER_CAPACITY: usize = 1024;
-
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct StereoSample {
-    pub left: i16,
-    pub right: i16,
-}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Audio {
     pub channels: [AudioChannel; config::AUDIO_CHANNEL_COUNT],
     pub adkcon: u16,
-    #[serde(with = "config::big_array")]
-    pub ring_buffer: [StereoSample; AUDIO_RING_BUFFER_CAPACITY],
-    pub ring_write_pos: usize,
-    pub ring_read_pos: usize,
-    pub ring_count: usize,
+    output: AudioOutput,
 }
 
 impl Default for Audio {
     fn default() -> Self {
-        Self::new()
+        Self::new(VideoStandard::Pal)
     }
 }
 
 impl Audio {
-    pub fn new() -> Self {
+    pub fn new(standard: VideoStandard) -> Self {
         Self {
             channels: [AudioChannel::default(); config::AUDIO_CHANNEL_COUNT],
             adkcon: 0,
-            ring_buffer: [StereoSample::default(); AUDIO_RING_BUFFER_CAPACITY],
-            ring_write_pos: 0,
-            ring_read_pos: 0,
-            ring_count: 0,
+            output: AudioOutput::new(standard),
         }
     }
 
     pub fn reset(&mut self) {
-        *self = Self::new();
+        self.channels = [AudioChannel::default(); config::AUDIO_CHANNEL_COUNT];
+        self.adkcon = 0;
+        self.output.reset();
     }
 
     pub fn set_adkcon(&mut self, value: u16) {
         self.adkcon = value;
+        self.record_output();
     }
 
     pub fn set_channel_dma(&mut self, channel: usize, enabled: bool) {
@@ -89,22 +83,25 @@ impl Audio {
 
     /// The interrupt mask is Paula's current AUD0..AUD3 pending state in bits 0..3.
     pub fn step_cck(&mut self, interrupts: u8) {
+        self.output.advance_cck();
         for index in 0..config::AUDIO_CHANNEL_COUNT {
             let (volume, period) = self.attachment(index);
             let attachment =
                 self.channels[index].step(interrupts & (1 << index) != 0, volume, period);
             self.apply_attachment(index, attachment);
         }
-        let mut output = [0; config::AUDIO_CHANNEL_COUNT];
+        self.record_output();
+    }
+
+    fn record_output(&mut self) {
+        let mut output = [0i32; config::AUDIO_CHANNEL_COUNT];
         for (index, sample) in output.iter_mut().enumerate() {
             if self.attachment(index) == (false, false) {
-                *sample = self.channels[index].output_scaled();
+                *sample = i32::from(self.channels[index].output_level());
             }
         }
-        self.push_sample(StereoSample {
-            left: output[1] + output[2],
-            right: output[0] + output[3],
-        });
+        self.output
+            .record_levels(output[1] + output[2], output[0] + output[3]);
     }
 
     pub fn poll_channel_irq(&mut self, channel: usize) -> bool {
@@ -120,6 +117,7 @@ impl Audio {
             let (volume, period) = self.attachment(channel);
             let attachment = self.channels[channel].load_word(value, interrupt, volume, period);
             self.apply_attachment(channel, attachment);
+            self.record_output();
         }
     }
 
@@ -141,27 +139,29 @@ impl Audio {
         }
     }
 
-    pub fn push_sample(&mut self, sample: StereoSample) {
-        self.ring_buffer[self.ring_write_pos] = sample;
-        self.ring_write_pos = (self.ring_write_pos + 1) % AUDIO_RING_BUFFER_CAPACITY;
-        if self.ring_count == AUDIO_RING_BUFFER_CAPACITY {
-            self.ring_read_pos = (self.ring_read_pos + 1) % AUDIO_RING_BUFFER_CAPACITY;
-        } else {
-            self.ring_count += 1;
-        }
+    /// Selects the modeled motherboard filter without changing guest audio clocks.
+    pub fn set_filter_enabled(&mut self, enabled: bool) {
+        self.output.set_filter_enabled(enabled);
     }
 
     pub fn pop_sample(&mut self) -> Option<StereoSample> {
-        if self.ring_count == 0 {
-            return None;
+        self.output.pop_sample()
+    }
+
+    /// Drains oldest PCM pairs into caller-owned storage, without allocating.
+    pub fn read_samples(&mut self, destination: &mut [StereoSample]) -> usize {
+        let mut written = 0;
+        for slot in destination {
+            let Some(sample) = self.output.pop_sample() else {
+                break;
+            };
+            *slot = sample;
+            written += 1;
         }
-        let sample = self.ring_buffer[self.ring_read_pos];
-        self.ring_read_pos = (self.ring_read_pos + 1) % AUDIO_RING_BUFFER_CAPACITY;
-        self.ring_count -= 1;
-        Some(sample)
+        written
     }
 
     pub fn samples_available(&self) -> usize {
-        self.ring_count
+        self.output.samples_available()
     }
 }

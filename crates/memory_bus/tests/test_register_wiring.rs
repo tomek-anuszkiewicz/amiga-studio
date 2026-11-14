@@ -159,7 +159,7 @@ impl TestMotherboard {
             mem,
             agnus: Agnus::new(A500Config::standard_1mb(VideoStandard::Pal).agnus_model()),
             denise: Denise::new(DeniseModel::Ocs8362),
-            paula: Paula::new(),
+            paula: Paula::default(),
             cia_a: Cia::new(),
             cia_b: Cia::new(),
             rtc: RtcMsm6242b::new(RtcModel::Msm6242b),

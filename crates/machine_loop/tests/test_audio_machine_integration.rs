@@ -96,7 +96,16 @@ fn test_audio_dma_playback_and_interrupt_propagation() {
         "CPU IPL should be Level 4 following Audio 0 interrupt"
     );
 
-    // 7. Verify audio engine generated output samples into its buffer
+    // 7. The DMA startup IRQ can precede the first 44.1 kHz output instant.
+    let clock_hz = u64::from(harness.machine.config.video_standard().color_clock_hz());
+    let first_pcm_cck = clock_hz.div_ceil(44_100);
+    while harness.machine.cck < first_pcm_cck {
+        harness.machine.step_cck();
+    }
+    assert_eq!(
+        harness.machine.paula.audio.samples_available() as u64,
+        harness.machine.cck * 44_100 / clock_hz
+    );
     assert!(
         harness.machine.paula.audio.samples_available() > 0,
         "Paula audio engine should have generated audio samples during playback"

@@ -54,6 +54,12 @@ fn generated_pal_tables_match_committed_csv() -> Result<(), Box<dyn Error>> {
         }
     }
 
+    let generated = fs::read_to_string(scratch.join("crates/paula/src/audio_tables.rs"))?;
+    assert_eq!(
+        generated,
+        include_str!("../../../crates/paula/src/audio_tables.rs").replace("\r\n", "\n"),
+        "Runtime PAL/NTSC tables must match the generator"
+    );
     fs::remove_dir_all(scratch)?;
     Ok(())
 }

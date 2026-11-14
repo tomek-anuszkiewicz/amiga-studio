@@ -11,7 +11,7 @@ pub mod serial;
 pub use serial::SerialPort;
 
 use crate::register_bits::intreq;
-use config::MutationQueue;
+use config::{MutationQueue, VideoStandard};
 use serde::{Deserialize, Serialize};
 
 mod pins;
@@ -73,7 +73,7 @@ pub const BIT_DSKLEN_WRITE_FLAG: u16 = 0x4000;
 
 impl Default for Paula {
     fn default() -> Self {
-        Self::new()
+        Self::new(VideoStandard::Pal)
     }
 }
 
@@ -82,11 +82,11 @@ impl Paula {
     pub const MUTATION_CAPACITY: usize = 32;
 
     /// Creates a new Paula instance
-    pub fn new() -> Self {
+    pub fn new(standard: VideoStandard) -> Self {
         Self {
             pins: PaulaPins::default(),
             sync: PaulaSync::default(),
-            audio: audio::Audio::new(),
+            audio: audio::Audio::new(standard),
             serial_port: serial::SerialPort::new(),
             interrupts: interrupts::InterruptController::new(),
             adkcon: 0,

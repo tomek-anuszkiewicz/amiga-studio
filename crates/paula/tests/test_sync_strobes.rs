@@ -9,7 +9,7 @@ fn receive(paula: &mut Paula, address: u16) {
 fn all_line_strobes_capture_and_emit_audio_requests() {
     // Approved RGA model: all three line markers anchor the same DMAL frame.
     for address in [0x038, 0x03a, 0x03c] {
-        let mut paula = Paula::new();
+        let mut paula = Paula::default();
         paula.sync.cck_since_horizontal = 80;
         let channel = &mut paula.audio.channels[0];
         channel.dma_enabled = true;
@@ -35,7 +35,7 @@ fn all_line_strobes_capture_and_emit_audio_requests() {
 
 #[test]
 fn equalization_entry_requests_vertb_once_and_wins_a_coincident_clear() {
-    let mut paula = Paula::new();
+    let mut paula = Paula::default();
     assert!(paula.set_intena(0xc020));
     assert!(paula.set_intreq(0x0020));
     receive(&mut paula, 0x038);

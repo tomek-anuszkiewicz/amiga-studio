@@ -1,7 +1,7 @@
 use paula::Paula;
 
 fn arm(length: u16, control: u16) -> Paula {
-    let mut paula = Paula::new();
+    let mut paula = Paula::default();
     assert!(paula.set_dmacon(0x8210));
     assert!(paula.set_adkcon(0x8000 | control));
     assert!(paula.set_dsklen(length));

@@ -4,6 +4,7 @@ use crate::{A500Machine, MemoryBus};
 use config::mask::game_port::{BIT_POT_OUTPUT_ENABLE_SHIFT, MASK_POT_DATA};
 
 const MASK_CIAA_PA_BOARD_CONTROL: u8 = 0x03;
+const BIT_CIAA_PA_LED: u8 = 0x02;
 const BIT_CIAB_PA_SP: u8 = 0x01;
 const BIT_CIAB_PA_CNT: u8 = 0x02;
 
@@ -100,6 +101,10 @@ impl A500Machine {
         self.denise
             .receive_game_port_pins(self.game_ports.pins.direction_pins);
         self.paula.receive_pot_inputs(self.game_ports.potgor());
+        // The board's active-low LED line selects the audio output filter.
+        self.paula
+            .audio
+            .set_filter_enabled(self.cia_a.port_a_output_pins() & BIT_CIAA_PA_LED == 0);
     }
 
     /// Delivers Paula IPL before CPU sampling in the same CCK.

@@ -453,5 +453,5 @@ fn file_roundtrip_resumes_disk_write_fifo_and_partial_bit_cell() {
     assert_eq!(restored.paula.disk.buffered_words(), 0);
     assert!(!restored.paula.pins.disk_write_enable);
     restored.paula.reset();
-    assert_eq!(restored.paula, machine_loop::paula::Paula::new());
+    assert_eq!(restored.paula, machine_loop::paula::Paula::default());
 }

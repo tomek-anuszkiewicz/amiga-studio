@@ -951,3 +951,28 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - The initial combined profile found a snapshot assertion retaining the former black edge; the user approved red pixels at x=0 and x=1 while preserving continuation and geometry assertions
   - This batch will receive one combined commit profile and independent review before three commits as requested
   - Intermediate revisions are not separately tested and no milestone or measured silicon timing is claimed
+---
+
+### [2026-11-14 02:24 CET] — Generate a deterministic stereo BLEP stream
+- **Affected Subsystems**:
+  - `crates/paula`
+  - `crates/machine_loop`
+  - `tools/blep_generator`
+  - `audio callers and snapshots`
+- **What Was Changed (The Concrete Reality)**:
+  - BLEP-AUDIO-STREAM-20261114: replace per-CCK output with 44100 Hz stereo PCM using timed steps and PAL/NTSC correction tables
+  - Preserve channel DMA and interrupt timing while routing CIA-A filter selection and exposing buffer draining
+  - Retain unread PCM and synthesis history across snapshots with a 1024-pair overwrite ring
+  - Move generated runtime tables into Paula while preserving accepted PAL CSV references
+  - Register read_audio_samples as an intentional host I/O boundary in the existing code-quality symbol set with explicit user approval
+  - Close the superseded audio-output performance investigation without retaining its exploratory variants or claiming a speedup
+  - Finish the original CORE-PERFORMANCE-PREP-20261113 candidates with the approved replacement audio contract
+- **Architectural Rationale & Trade-Offs**:
+  - Provide deterministic buffered output for future host playback without host audio I/O in the core
+  - The old per-CCK preservation experiment was superseded by the approved output contract
+  - Further queue overflow investigation remains unscheduled and host input work retains its separate plan
+- **Verification & Test Results**:
+  - Reviewed the prior BLEP coverage log and focused verification record with successful component and integration checks
+  - The initial combined code-quality gate rejected the host drain API as test-only; the approved single-symbol exception retains this API without adding a playback backend
+  - Final combined verification and independent review are recorded in the commit messages
+  - Host playback and analog filter-switch transient calibration remain deferred and no milestone is closed

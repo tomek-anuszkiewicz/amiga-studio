@@ -1,29 +1,21 @@
-use paula::audio::{Audio, AudioState, StereoSample, AUDIO_RING_BUFFER_CAPACITY};
+use paula::audio::{Audio, AudioState, StereoSample};
 
 #[test]
-fn all_channels_play_signed_high_then_low_with_volume_and_stereo_assignment() {
+fn all_channels_play_signed_high_then_low_with_latched_volume() {
     for channel in 0..4 {
         for volume in [0u8, 1, 32, 63, 64, 65, 127] {
-            let mut audio = Audio::new();
+            let mut audio = Audio::default();
             audio.set_per(channel, 3);
             audio.set_vol(channel, volume);
             audio.set_dat(channel, 0x807f, false);
             assert!(audio.poll_channel_irq(channel));
             for sample in [-128i16, -128, 127, 127, 127] {
                 audio.step_cck(1 << channel);
-                let scaled = sample * i16::from(volume.min(64)) / 64;
-                let expected = if channel == 1 || channel == 2 {
-                    StereoSample {
-                        left: scaled,
-                        right: 0,
-                    }
-                } else {
-                    StereoSample {
-                        left: 0,
-                        right: scaled,
-                    }
-                };
-                assert_eq!(audio.pop_sample(), Some(expected));
+                assert_eq!(audio.channels[channel].current_sample, sample as i8);
+                assert_eq!(
+                    audio.channels[channel].output_level(),
+                    sample * i16::from(volume.min(64))
+                );
             }
             audio.step_cck(1 << channel);
             assert_eq!(audio.channels[channel].state, AudioState::Idle);
@@ -38,7 +30,7 @@ fn all_channels_play_signed_high_then_low_with_volume_and_stereo_assignment() {
 
 #[test]
 fn dma_discards_first_word_then_keeps_output_and_reload_latches_independent() {
-    let mut audio = Audio::new();
+    let mut audio = Audio::default();
     audio.set_len(0, 3);
     audio.set_per(0, 2);
     audio.set_channel_dma(0, true);
@@ -91,7 +83,7 @@ fn dma_discards_first_word_then_keeps_output_and_reload_latches_independent() {
 fn attachments_use_their_sample_transition_and_mute_every_source_channel() {
     for channel in 0..4 {
         for mode in [1u16, 16, 17] {
-            let mut audio = Audio::new();
+            let mut audio = Audio::default();
             audio.set_adkcon(mode << channel);
             audio.set_per(channel, 2);
             audio.set_vol(channel, 64);
@@ -118,6 +110,10 @@ fn attachments_use_their_sample_transition_and_mute_every_source_channel() {
             if channel < 3 && mode & 1 != 0 {
                 assert_eq!(audio.channels[channel + 1].vol, 7);
             }
+            for _ in 0..4096 {
+                audio.step_cck(0);
+            }
+            assert!(audio.samples_available() > 0);
             while let Some(sample) = audio.pop_sample() {
                 assert_eq!(sample, StereoSample::default());
             }
@@ -127,7 +123,7 @@ fn attachments_use_their_sample_transition_and_mute_every_source_channel() {
 
 #[test]
 fn zero_counters_wrap_and_period_writes_wait_for_the_next_sample_boundary() {
-    let mut audio = Audio::new();
+    let mut audio = Audio::default();
     audio.set_per(0, 0);
     audio.set_dat(0, 0x1234, false);
     for _ in 0..65535 {
@@ -147,28 +143,4 @@ fn zero_counters_wrap_and_period_writes_wait_for_the_next_sample_boundary() {
     audio.set_channel_dma(0, false);
     assert_eq!(audio.channels[0].state, AudioState::Idle);
     assert!(!audio.channels[0].dma_request);
-}
-
-#[test]
-fn unread_output_keeps_the_latest_ring_capacity_and_reset_clears_it() {
-    let mut audio = Audio::new();
-    for index in 0..AUDIO_RING_BUFFER_CAPACITY + 7 {
-        audio.push_sample(StereoSample {
-            left: index as i16,
-            right: -(index as i16),
-        });
-    }
-    assert_eq!(audio.samples_available(), AUDIO_RING_BUFFER_CAPACITY);
-    for index in 7..AUDIO_RING_BUFFER_CAPACITY + 7 {
-        assert_eq!(
-            audio.pop_sample(),
-            Some(StereoSample {
-                left: index as i16,
-                right: -(index as i16)
-            })
-        );
-    }
-    assert_eq!(audio.pop_sample(), None);
-    audio.reset();
-    assert_eq!(audio, Audio::new());
 }
