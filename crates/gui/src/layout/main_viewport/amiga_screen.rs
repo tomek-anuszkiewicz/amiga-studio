@@ -91,7 +91,8 @@ impl ScreenTexture {
         let size = [frame.width as usize, frame.height as usize];
         let pixels = frame
             .frame_buffer()
-            .iter()
+            .chunks_exact(frame.row_stride())
+            .flat_map(|row| &row[..frame.width as usize])
             .map(|pixel| {
                 let [alpha, red, green, blue] = pixel.to_be_bytes();
                 Color32::from_rgba_unmultiplied(red, green, blue, alpha)

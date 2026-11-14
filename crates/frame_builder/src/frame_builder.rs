@@ -32,13 +32,7 @@ pub const MAX_FRAME_HEIGHT: usize = MAX_VISIBLE_FIELD_LINES * 2;
 const FRAME_BUFFER_CAPACITY: usize = MAX_FRAME_WIDTH * MAX_FRAME_HEIGHT;
 pub const BIT_HSTOP_EXTENSION: u16 = 0x100;
 
-/// Converts a 12-bit Amiga RGB444 color to a 32-bit host ARGB color (0xAARRGGBB).
-///
-/// Expands each channel from 0..15 to 0..255 by multiplying by 17.
-/// Preserves channel order, ignores the upper four input bits and sets opaque alpha.
-/// This is full-range host normalization, without gamma or CRT correction.
-#[inline(always)]
-pub fn rgb444_to_argb32(rgb: u16) -> u32 {
+const fn expand_rgb444(rgb: u16) -> u32 {
     let r = ((rgb >> BIT_RGB444_RED_SHIFT) & MASK_RGB444_COMPONENT) as u32;
     let g = ((rgb >> BIT_RGB444_GREEN_SHIFT) & MASK_RGB444_COMPONENT) as u32;
     let b = (rgb & MASK_RGB444_COMPONENT) as u32;
@@ -46,6 +40,25 @@ pub fn rgb444_to_argb32(rgb: u16) -> u32 {
     let g8 = g * RGB444_COMPONENT_SCALE;
     let b8 = b * RGB444_COMPONENT_SCALE;
     OPAQUE_ALPHA | (r8 << 16) | (g8 << 8) | b8
+}
+
+const RGB444_COLOR_COUNT: usize = MASK_RGB444_COLOR as usize + 1;
+static RGB444_TO_ARGB32: [u32; RGB444_COLOR_COUNT] = build_color_table();
+const fn build_color_table() -> [u32; RGB444_COLOR_COUNT] {
+    let mut table = [0; RGB444_COLOR_COUNT];
+    let mut rgb = 0;
+    while rgb < RGB444_COLOR_COUNT {
+        table[rgb] = expand_rgb444(rgb as u16);
+        rgb += 1;
+    }
+    table
+}
+
+/// Converts RGB444 to opaque ARGB through the full-range host color table.
+/// Each channel expands by 17; upper input bits are ignored, without gamma correction.
+#[inline(always)]
+pub fn rgb444_to_argb32(rgb: u16) -> u32 {
+    RGB444_TO_ARGB32[usize::from(rgb & MASK_RGB444_COLOR)]
 }
 
 /// Checks whether a given raster coordinate is within the active Display Window (DIW)
@@ -67,8 +80,9 @@ pub fn is_in_display_window(hcoord: u16, vcoord: u16, diwstrt: u16, diwstop: u16
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 struct PreviousLine {
-    row: usize,
+    row_start: usize,
     ccks: usize,
+    prefix_column: Option<usize>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -94,10 +108,9 @@ pub struct FrameBuilder {
     buffer: Vec<u32>,
     line_ccks: usize,
     first_visible_line: Option<u16>,
-    active_row: Option<usize>,
+    active_row_start: Option<usize>,
     previous_line: Option<PreviousLine>,
     pending_field: Option<PendingField>,
-    active_blank: bool,
     complete_lines: usize,
     field_lines: [usize; 2],
 }
@@ -122,10 +135,9 @@ impl FrameBuilder {
             buffer: vec![OPAQUE_BLACK; FRAME_BUFFER_CAPACITY],
             line_ccks: PAL_LINE_CCKS,
             first_visible_line: None,
-            active_row: None,
+            active_row_start: None,
             previous_line: None,
             pending_field: None,
-            active_blank: true,
             complete_lines: 0,
             field_lines: [0; 2],
         }
@@ -143,10 +155,9 @@ impl FrameBuilder {
         self.field_odd = false;
         self.line_ccks = PAL_LINE_CCKS;
         self.first_visible_line = None;
-        self.active_row = None;
+        self.active_row_start = None;
         self.previous_line = None;
         self.pending_field = None;
-        self.active_blank = true;
         self.complete_lines = 0;
         self.field_lines = [0; 2];
     }
@@ -156,9 +167,17 @@ impl FrameBuilder {
         let ccks = usize::from(self.hpos) + 1;
         if ccks > self.line_ccks && ccks <= MAX_LINE_CCKS {
             self.line_ccks = ccks;
-            self.repack_width();
+            self.width = ((ccks - HBLANK_CCKS) * HIRES_PIXELS_PER_CCK) as u32;
         }
-        self.previous_line = self.active_row.map(|row| PreviousLine { row, ccks });
+        self.previous_line = if blank {
+            None
+        } else {
+            self.active_row_start.map(|row_start| PreviousLine {
+                row_start,
+                ccks,
+                prefix_column: (ccks * LORES_PIXELS_PER_CCK).checked_sub(VISIBLE_START),
+            })
+        };
         self.pending_field = Some(PendingField {
             interlaced,
             odd,
@@ -171,25 +190,24 @@ impl FrameBuilder {
         if hpos >= HBLANK_START_CCK {
             if let Some(field) = self.pending_field.take() {
                 if let Some(previous) = self.previous_line.take() {
-                    if !field.blank {
-                        let stride = 2;
-                        self.complete_lines = self.complete_lines.max(previous.row / stride + 1);
-                        let pixels =
-                            previous.ccks.saturating_sub(HBLANK_CCKS) * HIRES_PIXELS_PER_CCK;
-                        self.clear_row_tail(previous.row, pixels);
-                    }
+                    let row = previous.row_start / MAX_FRAME_WIDTH;
+                    self.complete_lines = self.complete_lines.max(row / 2 + 1);
+                    let pixels = previous.ccks.saturating_sub(HBLANK_CCKS) * HIRES_PIXELS_PER_CCK;
+                    self.clear_row_tail(row, pixels);
                 }
                 if field.completed {
                     let parity = usize::from(self.field_odd);
-                    self.field_lines[parity] = self.complete_lines;
-                    // The final body has no visible counter prefix. Clear its
-                    // whole row, including any stale samples from a longer field.
-                    let first_unused =
-                        self.complete_lines * 2 + if self.interlaced { parity } else { 0 };
-                    let step = if self.interlaced { 2 } else { 1 };
-                    for row in (first_unused..MAX_FRAME_HEIGHT).step_by(step) {
+                    let previous_lines = self.field_lines[parity];
+                    let painted_lines = self
+                        .active_row_start
+                        .map_or(0, |start| start / (MAX_FRAME_WIDTH * 2) + 1);
+                    // Only the unfinished row and rows retained from a longer
+                    // field can contain pixels outside the new visible extent.
+                    for line in self.complete_lines..previous_lines.max(painted_lines) {
+                        let row = line * 2 + if self.interlaced { parity } else { 0 };
                         self.clear_row_tail(row, 0);
                     }
+                    self.field_lines[parity] = self.complete_lines;
                     let rows = if self.interlaced {
                         self.field_lines[0]
                             .saturating_mul(2)
@@ -213,18 +231,14 @@ impl FrameBuilder {
                 }
                 self.interlaced = field.interlaced;
                 self.field_odd = field.odd;
-                self.active_blank = field.blank;
-                self.active_row = if field.blank {
+                self.active_row_start = if field.blank {
                     None
                 } else {
                     let first = *self.first_visible_line.get_or_insert(vpos);
                     let line = usize::from(vpos.saturating_sub(first));
                     if line < MAX_VISIBLE_FIELD_LINES {
-                        Some(if self.interlaced {
-                            line * 2 + usize::from(self.field_odd)
-                        } else {
-                            line * 2
-                        })
+                        let row = line * 2 + usize::from(self.interlaced && self.field_odd);
+                        Some(row * MAX_FRAME_WIDTH)
                     } else {
                         None
                     }
@@ -237,76 +251,69 @@ impl FrameBuilder {
 
     /// Stores one low-resolution interval, with both high-resolution samples.
     pub fn write_pixel_pair(&mut self, x: usize, pixels: [u32; 2]) {
-        let (column, row) = if x >= VISIBLE_START && !self.active_blank {
-            let Some(row) = self.active_row else {
+        let (column, row_start) = if x >= VISIBLE_START {
+            let Some(row_start) = self.active_row_start else {
                 return;
             };
-            (x - VISIBLE_START, row)
+            (x - VISIBLE_START, row_start)
         } else if x < COUNTER_PREFIX_END {
-            if self.pending_field.is_none_or(|field| field.blank) {
-                return;
-            }
             let Some(previous) = self.previous_line else {
                 return;
             };
-            let Some(tail) = (previous.ccks * LORES_PIXELS_PER_CCK).checked_sub(VISIBLE_START)
-            else {
+            let Some(tail) = previous.prefix_column else {
                 return;
             };
-            (tail + x, previous.row)
+            (tail + x, previous.row_start)
         } else {
             return;
         };
-        if row >= MAX_FRAME_HEIGHT {
-            return;
-        }
         let column = column * 2;
         let width = self.width as usize;
         if column + 1 < width {
-            let start = row * width + column;
+            let start = row_start + column;
             self.buffer[start..start + 2].copy_from_slice(&pixels);
-            if !self.interlaced && row + 1 < MAX_FRAME_HEIGHT {
-                self.buffer[start + width..start + width + 2].copy_from_slice(&pixels);
+            if !self.interlaced {
+                let start = row_start + MAX_FRAME_WIDTH + column;
+                self.buffer[start..start + 2].copy_from_slice(&pixels);
             }
         }
-    }
-
-    /// A long NTSC line adds two low-resolution intervals to the image width.
-    fn repack_width(&mut self) {
-        let old_width = self.width as usize;
-        let new_width = (self.line_ccks - HBLANK_CCKS) * HIRES_PIXELS_PER_CCK;
-        for row in (0..MAX_FRAME_HEIGHT).rev() {
-            self.buffer
-                .copy_within(row * old_width..(row + 1) * old_width, row * new_width);
-            self.buffer[row * new_width + old_width..(row + 1) * new_width].fill(OPAQUE_BLACK);
-        }
-        self.width = new_width as u32;
     }
 
     fn clear_row_tail(&mut self, row: usize, first: usize) {
         let width = self.width as usize;
         if row < MAX_FRAME_HEIGHT && first < width {
-            self.buffer[row * width + first..(row + 1) * width].fill(OPAQUE_BLACK);
+            self.buffer[row * MAX_FRAME_WIDTH + first..row * MAX_FRAME_WIDTH + width]
+                .fill(OPAQUE_BLACK);
             if !self.interlaced && row + 1 < MAX_FRAME_HEIGHT {
-                self.buffer[(row + 1) * width + first..(row + 2) * width].fill(OPAQUE_BLACK);
+                self.buffer
+                    [(row + 1) * MAX_FRAME_WIDTH + first..(row + 1) * MAX_FRAME_WIDTH + width]
+                    .fill(OPAQUE_BLACK);
             }
         }
     }
 
     pub fn get_pixel(&self, x: usize, y: usize) -> u32 {
         if x < self.width as usize && y < self.height as usize {
-            self.buffer[y * self.width as usize + x]
+            self.buffer[y * MAX_FRAME_WIDTH + x]
         } else {
             OPAQUE_BLACK
         }
     }
 
-    pub fn frame_buffer(&self) -> &[u32] {
-        &self.buffer[..self.width as usize * self.height as usize]
+    /// Fixed storage stride; each row starts with width visible ARGB pixels.
+    #[inline]
+    pub fn row_stride(&self) -> usize {
+        MAX_FRAME_WIDTH
     }
 
+    /// Returns height rows at row_stride; only each row's first width pixels are visible.
+    pub fn frame_buffer(&self) -> &[u32] {
+        &self.buffer[..MAX_FRAME_WIDTH * self.height as usize]
+    }
+
+    /// Mutable storage with the same row stride and visible bounds as frame_buffer.
     pub fn frame_buffer_mut(&mut self) -> &mut [u32] {
-        let len = self.width as usize * self.height as usize;
+        let len = MAX_FRAME_WIDTH * self.height as usize;
         &mut self.buffer[..len]
     }
 }

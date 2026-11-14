@@ -6,7 +6,7 @@ use std::fmt;
 use std::path::Path;
 
 /// Active schema format version for A500 save states
-pub const SAVE_STATE_VERSION: u32 = 4;
+pub const SAVE_STATE_VERSION: u32 = 5;
 
 /// Metadata header identifying state compatibility, creation time, and display preview
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -74,6 +74,7 @@ impl SaveState {
                     frame.frame_buffer(),
                     frame.width,
                     frame.height,
+                    frame.row_stride(),
                 ),
             },
             state: Box::new(machine.save_state()),
@@ -133,14 +134,18 @@ impl SaveState {
 }
 
 /// Encodes an ARGB (0xAARRGGBB) pixel buffer into PNG bytes.
-fn encode_screenshot_png(frame_buffer: &[u32], width: u32, height: u32) -> Vec<u8> {
+fn encode_screenshot_png(frame_buffer: &[u32], width: u32, height: u32, stride: usize) -> Vec<u8> {
     use image::ImageEncoder;
     let total_pixels = (width as usize).saturating_mul(height as usize);
-    if total_pixels == 0 || frame_buffer.len() < total_pixels {
+    if total_pixels == 0 || frame_buffer.len() < stride.saturating_mul(height as usize) {
         return Vec::new();
     }
     let mut rgba = Vec::with_capacity(total_pixels.saturating_mul(4));
-    for &pixel in &frame_buffer[..total_pixels] {
+    for &pixel in frame_buffer
+        .chunks_exact(stride)
+        .take(height as usize)
+        .flat_map(|row| &row[..width as usize])
+    {
         rgba.push(((pixel >> 16) & 0xFF) as u8); // R
         rgba.push(((pixel >> 8) & 0xFF) as u8); // G
         rgba.push((pixel & 0xFF) as u8); // B

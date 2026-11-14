@@ -84,7 +84,7 @@ implementation at the end, since existing documentation may also be wrong.
   - **Objective:** When separately scheduled after 2.7, execute native vAmigaTS using the verified disk/firmware/OS path, validating drive control, floppy DMA, CPU coordination, and required operating-system interactions.
   - **Actionable Scope:**
     - Execute disk-based vAmigaTS tests verifying that the emulator can run native Amiga software to test itself.
-    - **Audio readiness:** Complete Paula audio/DMA simulation and digital sample generation in 2.4, with independently expected sample sequences checked in 2.5. Complete the basic host-playback portion of 6.1 before or during 2.8, before running its audio scenarios, so their sound can be heard as well as checked automatically. Keep native/WASM frontend audio boundaries; later CRT shaders do not gate these tests.
+    - **Audio readiness:** Complete Paula audio/DMA simulation and digital sample generation in 2.4, with independently expected sample sequences checked in 2.5. Complete the basic host-playback portion of 6.1 before or during 2.8, before running its audio scenarios, so their sound can be heard as well as checked automatically. Keep native/WASM frontend audio boundaries; later presentation shaders do not gate these tests.
     - **Host input readiness:** Complete the basic keyboard, mouse and joystick/gamepad routing from 6.2 before or during 2.8, before executing tests that require those inputs. Identify each selected test's required controls and verify host key presses/releases, mouse motion/buttons and joystick directions/fire through the frontend boundary into the emulated devices and guest-visible behavior. Preserve native/WASM separation and core ownership. Deterministic inputs remain sufficient for 2.5; advanced controller features and the deferred 12.2 peripherals are not prerequisites for ordinary input tests. See the [GUI specification](Obsidian/Amiga/Design/Application/GUI.md).
     - Leverage unthrottled headless execution (running as fast as the host CPU permits without wall-clock rate limiting) for maximum throughput.
   - **Verification Gate:**
@@ -218,15 +218,17 @@ implementation at the end, since existing documentation may also be wrong.
 
 ## Step 6: Host I/O Peripherals, Audio Playback & Controller Hub
 
-- **6.1: Host Audio Playback & CRT Presentation Shaders**
-  - **Objective:** Operationalize host real-time audio output streaming and authentic CRT display presentation.
-  - **Execution order:** Complete basic audio playback before or during 2.8, before its audio scenarios run. Keep later playback refinements and CRT shaders in this track; do not delay the basic sound path until after external-suite bring-up.
+- **6.1: Host Audio Playback & Image Presentation Shaders**
+  - **Objective:** Operationalize host real-time audio output streaming, evaluate image enhancement filters, and support authentic CRT display presentation.
+  - **Execution order:** Complete basic audio playback before or during 2.8, before its audio scenarios run. Keep later playback refinements and presentation shaders in this track; do not delay the basic sound path until after external-suite bring-up.
   - **Actionable Scope:**
     - Audio sink ring buffer decoupled from host audio playback (`cpal` / Web Audio) with dynamic resampling and ring buffer underflow/overflow protection.
+    - Evaluate optional GPU shaders for pixel-art scaling and edge smoothing before selecting an algorithm. Compare image quality and rendering cost on native and WASM; preserve uniform image scaling and keep source framebuffer samples unchanged.
     - GPU post-processing shaders for authentic CRT TV presentation (scanlines, shadow mask, curvature, phosphor bloom).
   - **Verification Gate:**
     - Audio ring buffer unit tests in `crates/paula/tests/`.
     - Headless shader initialization and rendering verification.
+    - Visual comparison with unfiltered output, including text readability, mixed-resolution graphics, and motion, plus rendering cost measurements on native and WASM.
 
 - **6.2: Host Input Subsystem, Game Controller Mapping & Port Hub**
   - **Objective:** Implement comprehensive host-to-Amiga keyboard translation, physical mouse capture, gamepad ingestion, and dual game port switching (`crates/keyboard`, `crates/game_ports/src/mouse.rs`, `crates/game_ports/src/joystick.rs`, `crates/game_ports`, `crates/gui`).

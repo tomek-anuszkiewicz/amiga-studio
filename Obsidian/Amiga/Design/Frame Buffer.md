@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "frame_builder"
 status: "active"
 created: 2026-09-19
-updated: 2026-11-13
+updated: 2026-11-14
 related: ["[Denise.md](Denise.md)", "[Agnus.md](Agnus.md)", "[GUI.md](Application/GUI.md)"]
 tracked_paths:
   - "crates/frame_builder"
@@ -22,6 +22,8 @@ The frame buffer holds the pixels of a rendered video frame. In the emulator, `F
 RGB444 channels expand from 0..15 to 0..255 by multiplication by 17, with
 opaque alpha. This host normalization preserves channel order and ignores the
 unused upper four bits. It does not apply gamma or CRT correction.
+The 4096 ARGB values are prepared at compile time in a 16 KiB lookup table;
+rendering indexes it with the twelve color bits.
 
 ## Visible storage
 
@@ -35,12 +37,21 @@ storage change does not calibrate physical chip timing.
 A fixed high-resolution, interlaced spatial grid preserves mixed-resolution
 content, including changes within a line. Low-resolution pixels occupy two
 horizontal samples; non-interlaced lines occupy two rows. Interlaced fields
-occupy alternate rows. Storage reserves the maximum visible capacity once;
-the exposed pixel slice contains only the active rectangle. There is no raw
-raster buffer or separate cropped/expanded presentation image.
+occupy alternate rows. Storage reserves the maximum visible capacity once,
+with a fixed row stride of 840 pixels. The exposed slice contains `height`
+rows at that stride; only the first `width` pixels of each row are visible.
+PAL rows therefore retain four unused storage pixels after their visible edge.
+The row stride does not change when a long NTSC line establishes a wider image.
+There is no raw raster buffer or separate cropped/expanded presentation image.
 
-The [GUI](Application/GUI.md#scaling-and-appearance) uploads this rectangle directly
-and applies the selected uniform scale. Fixed scales may clip the centered
+Each line retains its destination address. Completed ARGB samples go directly
+to their final columns and, without interlace, both destination rows. Finished
+rows are never moved. Short-line tails and rows invalidated by a shorter field
+are cleared; unchanged unused capacity needs no repeated clearing.
+
+The [GUI](Application/GUI.md#scaling-and-appearance) reads the visible prefix of
+each stored row for texture upload and applies the selected uniform scale.
+Saved previews use the same rectangle. Fixed scales may clip the centered
 image to the viewport; Fit shows it completely. The GUI does not infer a crop
 from DIW or colors.
 

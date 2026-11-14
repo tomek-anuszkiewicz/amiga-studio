@@ -40,6 +40,31 @@ fn test_save_state_metadata_and_header() {
     assert_eq!(state.config.fast_ram(), config::FastRamSize::None);
     assert_eq!(state.cck, 0);
 }
+
+#[test]
+fn screenshot_preserves_visible_row_edges_and_excludes_storage_padding() {
+    for width in [836, 840] {
+        let mut machine = A500Machine::new(A500Config::default());
+        let frame = &mut machine.denise.frame_builder;
+        frame.width = width;
+        frame.height = 2;
+        let stride = frame.row_stride();
+        frame.frame_buffer_mut().fill(0xff00ff00);
+        for (row, color) in [0xffff0000, 0xff0000ff].into_iter().enumerate() {
+            frame.frame_buffer_mut()[row * stride..row * stride + width as usize].fill(color);
+        }
+        let saved = SaveState::capture(&machine);
+        let preview = image::load_from_memory(&saved.header.screenshot_png)
+            .unwrap()
+            .to_rgba8();
+        assert_eq!(preview.dimensions(), (width, 2));
+        for x in 0..width {
+            assert_eq!(preview.get_pixel(x, 0).0, [255, 0, 0, 255]);
+            assert_eq!(preview.get_pixel(x, 1).0, [0, 0, 255, 255]);
+        }
+    }
+}
+
 #[test]
 fn test_save_state_json_roundtrip() {
     let mut machine = A500Machine::new(A500Config::from_preset(
@@ -142,7 +167,7 @@ fn dma_registers_roundtrip_in_their_single_owner() {
     assert_eq!(machine.agnus.dma.planecount(), 2);
     let saved = SaveState::capture(&machine);
     let json = serde_json::to_value(&saved).unwrap();
-    assert_eq!(json["header"]["version"], 4);
+    assert_eq!(json["header"]["version"], 5);
     for (name, value) in [
         ("dmacon", 0x0300),
         ("bplcon0", 0x2004),

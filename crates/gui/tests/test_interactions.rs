@@ -35,7 +35,7 @@ fn screen_uploads_the_visible_framebuffer_unchanged_and_preserves_its_geometry()
                 for hpos in 0..19 {
                     frame.step_cck(hpos, 0);
                 }
-                let stride = frame.width as usize;
+                let stride = frame.row_stride();
                 let height = frame.height as usize;
                 let image_width = ccks as usize * 4 - 72;
                 let image_height = (lines - blanks - 1) as usize * 2;

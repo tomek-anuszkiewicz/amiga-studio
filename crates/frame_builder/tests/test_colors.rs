@@ -16,4 +16,16 @@ fn rgb444_expands_to_full_range_argb_and_ignores_unused_bits() {
     ] {
         assert_eq!(rgb444_to_argb32(rgb), expected, "RGB444 {rgb:#06x}");
     }
+    for rgb in u16::MIN..=u16::MAX {
+        let red = ((rgb >> 8) & 0xf) as u8;
+        let green = ((rgb >> 4) & 0xf) as u8;
+        let blue = (rgb & 0xf) as u8;
+        let expected = u32::from_be_bytes([
+            0xff,
+            (red << 4) | red,
+            (green << 4) | green,
+            (blue << 4) | blue,
+        ]);
+        assert_eq!(rgb444_to_argb32(rgb), expected, "RGB444 {rgb:#06x}");
+    }
 }

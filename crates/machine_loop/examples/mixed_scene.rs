@@ -15,7 +15,11 @@ fn image(machine: &A500Machine, path: &Path) -> std::io::Result<()> {
     let frame = &machine.denise.frame_builder;
     let mut out = BufWriter::new(std::fs::File::create(path)?);
     write!(out, "P6\n{} {}\n255\n", frame.width, frame.height)?;
-    for pixel in frame.frame_buffer() {
+    for pixel in frame
+        .frame_buffer()
+        .chunks_exact(frame.row_stride())
+        .flat_map(|row| &row[..frame.width as usize])
+    {
         out.write_all(&[(pixel >> 16) as u8, (pixel >> 8) as u8, *pixel as u8])?;
     }
     out.flush()

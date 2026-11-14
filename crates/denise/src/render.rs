@@ -1,9 +1,7 @@
 //! Per-pixel mixing, horizontal display window and collision accumulation.
 
 use crate::{decode, Denise};
-use frame_builder::{
-    rgb444_to_argb32, HBLANK_START_CCK, HBLANK_STOP_CCK, LORES_PIXELS_PER_CCK, OPAQUE_BLACK,
-};
+use frame_builder::{rgb444_to_argb32, HBLANK_START_CCK, HBLANK_STOP_CCK, LORES_PIXELS_PER_CCK};
 
 const BIT_DIW_HORIZONTAL_LOW: u16 = 1;
 const DIW_COUNT_LEAD: u16 = 2;
@@ -24,6 +22,9 @@ impl Denise {
         let blank =
             self.sync.vertical_blank || (HBLANK_START_CCK..=HBLANK_STOP_CCK).contains(&horizontal);
         let hires = self.is_hires();
+        let count = self.bitplane_count().min(config::OCS_BITPLANE_COUNT as u8);
+        let plane_mask = (1u8 << count) - 1;
+        let border = rgb444_to_argb32(self.color[0]);
         for half in 0..LORES_PIXELS_PER_CCK as u16 {
             let position = horizontal * LORES_PIXELS_PER_CCK as u16 + half;
             let in_window = self.horizontal_window(position + DIW_COUNT_LEAD);
@@ -35,41 +36,45 @@ impl Denise {
             } else {
                 0
             };
-            let mut output = [OPAQUE_BLACK; 2];
-            for (subpixel, output_pixel) in output.iter_mut().enumerate() {
-                let planes = if hires && subpixel != 0 && self.bpl_armed {
-                    self.shift_pixel()
-                } else {
-                    first
-                };
-                let count = self.bitplane_count().min(config::OCS_BITPLANE_COUNT as u8);
-                let planes = planes & ((1u8 << count) - 1);
-                let color = if blank {
-                    OPAQUE_BLACK
-                } else if in_window {
-                    self.accumulate_plane_collisions(planes);
-                    let playfield = self.decode_pixel(planes);
-                    let rgb = match &sprite {
-                        Some(sprite) if self.sprite_is_visible(planes, sprite.sprite_pair) => {
-                            self.color[sprite.color_index]
+            let compose = |this: &mut Self, planes: u8| {
+                let planes = planes & plane_mask;
+                if in_window && !blank {
+                    this.accumulate_plane_collisions(planes);
+                    let playfield = this.decode_pixel(planes);
+                    let rgb = match sprite {
+                        Some(sprite) if this.sprite_is_visible(planes, sprite.sprite_pair) => {
+                            this.color[sprite.color_index]
                         }
                         _ => playfield,
                     };
                     rgb444_to_argb32(rgb)
                 } else {
-                    rgb444_to_argb32(self.color[0])
-                };
-                let pixel = if self.pipeline_pixels_valid[0] {
-                    self.pipeline_pixels[0]
+                    // Blanking gates storage below. Keep border color in flight
+                    // so blanking cannot inject black into the first visible pair.
+                    border
+                }
+            };
+            let color = compose(self, first);
+            let next = if hires {
+                let second = if self.bpl_armed {
+                    self.shift_pixel()
                 } else {
-                    rgb444_to_argb32(self.color[0])
+                    0
                 };
-                self.pipeline_pixels[0] = self.pipeline_pixels[1];
-                self.pipeline_pixels[1] = color;
-                self.pipeline_pixels_valid[0] = self.pipeline_pixels_valid[1];
-                self.pipeline_pixels_valid[1] = true;
-                *output_pixel = pixel;
+                [color, compose(self, second)]
+            } else {
+                [color; 2]
+            };
+            // Emit the old pair before replacing it, even after a hires-to-lores change.
+            let mut output = self.pipeline_pixels;
+            if !self.pipeline_pixels_valid[0] {
+                output[0] = border;
             }
+            if !self.pipeline_pixels_valid[1] {
+                output[1] = border;
+            }
+            self.pipeline_pixels = next;
+            self.pipeline_pixels_valid = [true; 2];
             if !blank {
                 self.frame_builder
                     .write_pixel_pair(usize::from(position), output);

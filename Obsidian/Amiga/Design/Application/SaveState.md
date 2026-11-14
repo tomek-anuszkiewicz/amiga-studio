@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "general"
 status: "active"
 created: 2026-08-31
-updated: 2026-11-12
+updated: 2026-11-14
 related: ["[General Architecture.md](../General%20Architecture.md)", "[MemoryBus.md](../MemoryBus.md)", "[CPU Motorola M68000.md](../CPU%20Motorola%20M68000.md)", "[Machine Loop.md](../Machine%20Loop.md)", "[Agnus.md](../Agnus.md)"]
 tracked_paths:
   - "crates/machine_loop/src/state.rs"
@@ -40,9 +40,11 @@ old layouts have no
 compatibility parser. Frontends and the debugger use this crate for persistence;
 in-memory quick slots retain only the machine value.
 
-Schema version 4 groups chipset engines inside their owning crates and removes
-the duplicate outer Agnus fields for DMACON, BPLCON0, DDFSTRT and DDFSTOP.
-Their sole values live in `state.agnus.dma`. Earlier files are unsupported; no
+Schema version 5 stores the [frame buffer](../Frame%20Buffer.md) with a fixed
+row stride and retains destination addresses for pending line output. PNG
+previews contain only the visible pixels of each row. Chipset engines remain
+inside their owning crates; DMACON, BPLCON0, DDFSTRT and DDFSTOP have their sole
+values in `state.agnus.dma`. Earlier files are unsupported; no
 migration or default-state fallback is provided. This does not remove files
 from the host. Copper still stores instruction progress and the pending SKIP
 decision. A restored partial instruction must consume its remaining word only

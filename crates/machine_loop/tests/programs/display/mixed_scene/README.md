@@ -4,8 +4,11 @@ A standalone 68000 program keeps CPU, Chip RAM and the display/audio DMA engines
 working together. The same `program.bin` runs in the GUI and in the native
 benchmark. It needs no Kickstart, disk image or operating system.
 
-The display contains moving columns of colored sprite emblems over scrolling
-bitplanes and raster palette changes. Visual fidelity is still exploratory.
+The 320 x 256 PAL display contains moving columns of colored sprite emblems over
+scrolling bitplanes and raster palette changes. Visual fidelity is still exploratory.
+The scene starts at raster line 40, leaving 14 lines above and 15 below in the
+current non-interlaced PAL image. Copper bars also cover the surrounding border;
+palette writes occur during horizontal blanking to keep each bar aligned.
 The integration test checks activity and reproducibility; it does not certify
 the image against a physical Amiga or establish compatibility with real games.
 
@@ -20,7 +23,8 @@ cargo run --release -p gui --bin amiga-studio -- --game --load crates/machine_lo
 Press **Run**. Initialization takes approximately eight emulated PAL fields;
 allow it to finish before judging the image. The program loops indefinitely.
 To load into an already running GUI, reset first, then load `program.bin` at
-`$001000`, set the PC through the loader, and Run. PAL and NTSC are supported.
+`$001000`, set the PC through the loader, and Run. The full scene requires PAL;
+NTSC still runs the workload but its shorter field clips the bottom of the scene.
 
 The program initializes its stack and interrupt vectors and controls all custom
 registers itself. Host keyboard/mouse mappings and speaker output are not added
@@ -75,8 +79,10 @@ demonstrate activity.
   pilot starved that sprite and was corrected in the guest program.
 - Eight 96-line sprites move, overlap and collide with each other and playfields.
   The last pair uses attachment. All sprite streams are reloaded every field.
-- Copper reloads display pointers and performs three palette writes on each of
-  200 visible lines. Its waits and transfers compete through ordinary arbitration.
+- Copper reloads display pointers and performs three palette writes during
+  horizontal blanking on lines 26 through 311, covering the visible PAL border.
+  An extra wait at the end of line 255 handles the vertical comparison wrap.
+  Its transfers compete through ordinary arbitration.
 - The Blitter repeatedly combines three source planes into the fifth plane with
   four-channel area operations. Normal Blitter priority allows CPU progress.
 - CPU arithmetic, multiplication, rotating/XOR operations and Chip RAM stores

@@ -100,8 +100,9 @@ audio_setup:
 set_palette:
     move.w (a0)+,(a1)+
     dbra d0,set_palette
-    move.w #$2c81,$08e(a6)
-    move.w #$f4c1,$090(a6)
+    ; Center 256 lines within the visible PAL border: raster lines 40..295.
+    move.w #$2881,$08e(a6)
+    move.w #$28c1,$090(a6)
     ; Start after sprite 7 slots; early wide fetch would steal its DMA.
     move.w #$0038,$092(a6)
     move.w #$00d0,$094(a6)
@@ -127,9 +128,10 @@ copper_sprites:
     bsr copper_pointer
     addi.l #$800,d1
     dbra d7,copper_sprites
-    ; WAIT and three palette changes on each of 200 visible lines.
-    move.w #$2c41,d0
-    move.w #199,d7
+    ; Cover the full PAL border, including the extra line of a long field.
+    ; Change all three colors during HBLANK, before the visible line starts.
+    move.w #$1a19,d0
+    move.w #285,d7
     moveq #0,d1
 copper_raster:
     move.w d0,(a0)+
@@ -146,6 +148,11 @@ copper_raster:
     addi.w #$0100,d0
     addi.w #$0011,d1
     andi.w #$0777,d1
+    cmpi.w #$0019,d0
+    bne.s copper_next_line
+    ; Finish line 255 before comparing the wrapped eight-bit vertical counter.
+    move.l #$ffdffffe,(a0)+
+copper_next_line:
     dbra d7,copper_raster
     move.l #$fffffffe,(a0)
     move.l #COPPER,$080(a6)

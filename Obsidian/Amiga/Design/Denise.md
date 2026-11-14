@@ -79,6 +79,14 @@ low-resolution pixel regardless of bitplane resolution. The existing horizontal
 window comparisons, blanking region and two-high-resolution-pixel output delay
 are retained model timing, without a claim of calibrated silicon edge offsets.
 
+The renderer advances that two-sample output pipeline as a pair. Low resolution
+composes one color for both new samples; high resolution composes each sample
+separately. The previous pair still leaves the pipeline at the same phase,
+including across mode changes and snapshot restoration. The plane mask and
+converted border color are derived once per CCK from committed registers.
+Blanking suppresses framebuffer writes without injecting black into that
+pipeline, so the first visible pair retains the preceding border color.
+
 HRM 7 Tables 7-1/7-2 place the two playfields among sprite pairs. A normal
 playfield uses PF2P; in dual mode, each nontransparent playfield supplies its own
 priority condition and PF2PRI chooses between their colors. Collision logic
@@ -91,7 +99,7 @@ read clears it. Debug reads remain neutral.
 The [sprite line buffer](Sprites.md#derived-state-and-pixel-evaluation) supplies
 potential collision bits alongside its palette index. Applied CLXCON writes
 precompute the allowed playfield collision bits for all 64 plane codes. Each
-visible output sample combines that table entry with current sprite presence;
+visible pixel combines that table entry with current sprite presence;
 precomputation itself never accumulates CLXDAT or fixes a future palette color.
 
 ## Register propagation

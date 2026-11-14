@@ -268,6 +268,31 @@ fn palette_and_resolution_changes_take_effect_during_the_line() {
 }
 
 #[test]
+fn switching_to_lores_preserves_the_distinct_hires_pixels_already_in_flight() {
+    let mut d = visible();
+    d.bplcon0 = 0x9000;
+    d.bpl_armed = true;
+    d.shifters[0] = 0xa6f0;
+    d.color[0] = 0x000f;
+    d.color[1] = 0x0f00;
+    d.step_cck();
+    assert!(d.set_bplcon0(0x1000));
+    d.step_cck();
+    assert!(!d.is_hires());
+
+    // The last two hires bits are 1,0; the next lores bit is 1 and spans two samples.
+    d.step_cck();
+    for (x, color) in [0xffff0000, 0xff0000ff, 0xffff0000, 0xffff0000]
+        .into_iter()
+        .enumerate()
+    {
+        for row in 0..2 {
+            assert_eq!(d.frame_builder.get_pixel(24 + x, row), color);
+        }
+    }
+}
+
+#[test]
 fn normal_playfield_uses_pf2_priority_and_hidden_sprites_still_collide() {
     for priority in 0..=4 {
         for pair in 0..4 {
@@ -374,5 +399,30 @@ fn blanking_skips_framebuffer_writes_while_registers_and_receiver_clocks_continu
         assert_eq!(d.frame_builder.frame_buffer(), before);
         assert_eq!(d.color[0], 0x0f0);
         assert_eq!(d.sync.hpos, if vertical { 58 } else { 36 });
+    }
+}
+
+#[test]
+fn horizontal_blanking_cannot_leak_black_into_the_visible_pixel_pipeline() {
+    for hires in [false, true] {
+        let mut d = visible();
+        d.sync.hpos = 18;
+        d.bplcon0 = if hires { 0x8000 } else { 0 };
+        d.color[0] = 0x0f00;
+        for _ in 18..36 {
+            d.step_cck();
+        }
+        // Change the color at the visible edge. The already composed pair must
+        // remain red, followed by green, without inserting blanking samples.
+        d.color[0] = 0x00f0;
+        d.step_cck();
+        for row in 0..2 {
+            for (x, expected) in [0xffff0000, 0xffff0000, 0xff00ff00, 0xff00ff00]
+                .into_iter()
+                .enumerate()
+            {
+                assert_eq!(d.frame_builder.get_pixel(x, row), expected);
+            }
+        }
     }
 }

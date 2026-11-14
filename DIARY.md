@@ -925,3 +925,29 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - native ABBA throughput improved by 2.378 percent for ROM, 6.686 percent for idle devices and 7.141 percent for active input batches
   - these measurements exclude GUI and host latency
   - current commit verification and independent review are recorded in the commit message
+---
+
+### [2026-11-14 02:24 CET] — Write display pixels directly to fixed-stride rows
+- **Affected Subsystems**:
+  - `crates/denise`
+  - `crates/frame_builder`
+  - `crates/gui`
+  - `crates/save_state`
+  - `mixed_scene`
+  - `ROADMAP.md`
+- **What Was Changed (The Concrete Reality)**:
+  - CORE-PERFORMANCE-PREP-20261113: finish row-address mapping with a fixed 840-pixel stride and paired Denise output
+  - Use a compile-time RGB444 lookup and clear only invalid row tails
+  - Update texture upload and PNG previews to consume visible row prefixes and advance the internal save format to version 5
+  - Extend the mixed guest scene and regressions for mixed resolution and row boundaries
+  - Preserve border color through horizontal blanking without injecting a black pair into visible storage
+  - Retain optional image-filter evaluation in Roadmap 6.1
+- **Architectural Rationale & Trade-Offs**:
+  - Preserve visible geometry and pipeline order while avoiding row relocation and repeated pixel work
+  - Shared-memory presentation and host input delivery remain separate planned tasks
+- **Verification & Test Results**:
+  - Reviewed the prior frame-direct-apply verification record: component coverage and machine/display/GUI checks succeeded
+  - git diff --check passes for the combined candidate
+  - The initial combined profile found a snapshot assertion retaining the former black edge; the user approved red pixels at x=0 and x=1 while preserving continuation and geometry assertions
+  - This batch will receive one combined commit profile and independent review before three commits as requested
+  - Intermediate revisions are not separately tested and no milestone or measured silicon timing is claimed

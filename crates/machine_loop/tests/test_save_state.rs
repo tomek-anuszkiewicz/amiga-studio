@@ -103,13 +103,14 @@ fn snapshot_between_field_strobe_and_hblank_finishes_the_previous_display_row() 
         let complete_lines = usize::from(machine.denise.sync.field_lines) - blank_lines - 1;
         assert_eq!(frame.height as usize, complete_lines * 2 - 1);
         let row = complete_lines * 2 - 2;
-        // The retained two-sample Denise pipeline follows the blanking edge.
-        assert_eq!(frame.get_pixel(0, row), 0xff000000);
+        // Blanking suppresses storage without injecting black into the retained pair.
+        assert_eq!(frame.get_pixel(0, row), 0xffff0000);
+        assert_eq!(frame.get_pixel(1, row), 0xffff0000);
         assert_eq!(frame.get_pixel(2, row), 0xffff0000);
         assert_eq!(frame.get_pixel(835, row), 0xffff0000);
         assert_eq!(
             frame.frame_buffer().len(),
-            frame.width as usize * frame.height as usize
+            frame.row_stride() * frame.height as usize
         );
     }
 }
