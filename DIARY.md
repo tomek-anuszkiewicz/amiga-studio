@@ -976,3 +976,24 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - The initial combined code-quality gate rejected the host drain API as test-only; the approved single-symbol exception retains this API without adding a playback backend
   - Final combined verification and independent review are recorded in the commit messages
   - Host playback and analog filter-switch transient calibration remain deferred and no milestone is closed
+---
+
+### [2026-11-14 02:24 CET] — Verify DMA audio spectra and attachment output
+- **Affected Subsystems**:
+  - `crates/machine_loop/tests/audio_spectrum`
+  - `crates/machine_loop/tests/test_audio_spectrum.rs`
+  - `reviewed English vocabulary`
+  - `ROADMAP.md`
+- **What Was Changed (The Concrete Reality)**:
+  - AUDIO-SPECTRUM-20261114: capture PAL/NTSC DMA output as WAV and compare tones plus DAC images against independent frequency-domain expectations
+  - AUDIO-ATTACHMENT-20261114: verify looping volume and period modulation with a silent source side and return to the initial plateau
+  - Retain negative controls and original amplitude frequency residual alias and stereo tolerances
+  - Add reviewed Hann DFT RMS WAV SciPy and powi vocabulary
+  - Keep enhanced reconstruction experiments deferred until games and host music playback are available
+- **Architectural Rationale & Trade-Offs**:
+  - Exercise Chip RAM DMA and reconstructed output together without using runtime tables as the spectral oracle
+  - Settled modulation checks complement existing transition tests and do not calibrate hardware edges
+- **Verification & Test Results**:
+  - The task records report four PAL/NTSC filter combinations and both attachment scenarios passing with WAV decoding and negative controls
+  - Fresh combined commit verification and review are required before creating this batch
+  - This closes the two output-test tasks without claiming host-device playback or Roadmap 2.5 completion

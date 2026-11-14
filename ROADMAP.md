@@ -243,6 +243,12 @@ implementation at the end, since existing documentation may also be wrong.
     - Unit tests in `crates/keyboard/tests/` and `crates/game_ports/tests/`.
     - Headless UI input tests in `crates/gui/tests/`.
 
+- **6.3: Audio Reconstruction and Filtering Experiments (Deferred Exploration)**
+  - **Revisit when:** Games run and music can be loaded and heard through the host playback path from 6.1. This is an optional experiment, with no commitment to deliver an enhancement feature.
+  - Compare faithful Paula output and Amiga analog filtering with per-channel reconstruction adapted to the current playback rate, such as band-limited interpolation. Use sample values and actual playback timing; the original recording sample rate is not required.
+  - Distinguish aliasing introduced by host sample-rate conversion from spectral images present in the original DAC output. Explore cleaner reconstruction before channel mixing while retaining the Amiga analog filter model as a separate stage; distinguish sound enhancement from hardware fidelity.
+  - **Evaluation:** Use listening comparisons, spectral measurements and processing-cost measurements on representative game sounds and music, including slow playback, period changes, loops and modulation. Record audible benefits and changes in character, then decide whether any approach merits an optional playback mode. A documented decision to retain the faithful path is a valid outcome.
+
 ---
 
 ## Step 7: Dedicated Player GUI & Frontend Experience
