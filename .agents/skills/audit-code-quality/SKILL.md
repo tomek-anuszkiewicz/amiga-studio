@@ -13,7 +13,6 @@ This skill interprets deterministic verification results and reviews code-qualit
 
 - **Requested Audit or Major Branch Merge:** Follow [git-commits.md](../../rules/git-commits.md). At milestone closure, use existing verification results when this review is requested; milestone verification alone does not invoke this skill.
 - **Review Preparation:** When requested, assess code-quality findings before the architectural review in [`code-review`](../code-review/SKILL.md).
-- **Refactoring Sprints:** Run whenever restructuring crate boundaries, decomposing oversized files, or auditing information hiding.
 
 ---
 

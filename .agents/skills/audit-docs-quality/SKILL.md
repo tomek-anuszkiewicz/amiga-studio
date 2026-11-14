@@ -15,7 +15,7 @@ This skill reviews instruction brevity and audits agent governance. Specificatio
 - **Requested Governance Review:** Review script ownership and required procedure routing.
 
 Ordinary code work and specification updates do not invoke this skill. The
-authorized pre-commit workflow owns scoped specification compliance review;
+batch preparation workflow owns scoped specification compliance review;
 milestone closure owns broader semantic parity.
 
 ---
@@ -23,7 +23,7 @@ milestone closure owns broader semantic parity.
 ## 2. Documentation Quality Checks
 
 ### Pillar 1: Scoped Design Documentation Review (Pre-Commit)
-[verify-spec-compliance](../verify-spec-compliance/SKILL.md) owns the pre-commit review against approved requirements and compatible enrichment of documents selected by `tracked_paths`.
+[verify-spec-compliance](../verify-spec-compliance/SKILL.md) owns the batch review against approved requirements and compatible enrichment of documents selected by `tracked_paths`.
 
 ### Pillar 2: Obsidian Vault Linking & Graph Integrity (`--vault-links`)
 [obsidian-vault-linking](../obsidian-vault-linking/SKILL.md) owns link checks.

@@ -11,8 +11,9 @@ This skill defines the complete operational checklist and formatting template fo
 
 ## 1. When to Trigger This Skill
 
-- **Mandatory Trigger:** Whenever any note under `Obsidian/Amiga/Design/` is created, modified, or reorganized.
-- **Scope:** All 28+ architecture specifications, hardware reference notes, and developer workflow guidelines.
+- **Preparation:** Audit the final document set once when a batch changes Design notes; a direct audit or link-repair request also invokes the full procedure.
+- **Editing:** Preserve local frontmatter and links while editing without launching a recursive audit on every turn.
+- **Scope:** Design specifications and relevant reference relationships. The canonical verifier owns structural frontmatter checks across all local Amiga Markdown, including ignored books; reuse its matching evidence.
 
 ---
 
@@ -75,11 +76,11 @@ For a note in `Design/Application/`, `Design/Verification/`, or
 roots. Link sibling notes using their actual relative position; for example,
 `[MemoryBus.md](../MemoryBus.md)` or `[CPU SingleStepTests.md](../Verification/CPU%20SingleStepTests.md)`.
 
-Run automated verification:
+During the final audit, run both checks once. The vault check also rejects empty Design tags, so the canonical structural frontmatter gate alone does not replace it:
 ```powershell
 python .agents/skills/obsidian-vault-linking/scripts/audit_vault.py --vault-links --frontmatter
 ```
-Ensure both checks complete with zero issues.
+Confirm links and frontmatter from the combined applicable evidence. The local property review above still covers semantic metadata and relationships that the canonical structural gate does not inspect.
 
 ---
 

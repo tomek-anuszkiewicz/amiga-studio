@@ -1,6 +1,6 @@
 ---
 name: refactor-split-module
-description: Decompose oversized Rust files (> 800 lines) into cohesive submodules while preserving 3-tier re-exports.
+description: Decompose Rust modules when requested, necessary for implementation, or required for touched files during preparation; preserve re-exports.
 ---
 
 # Recipe: Rust Module Decomposition & 800-Line Refactoring
@@ -15,10 +15,11 @@ For decomposition examples, read [module-examples](references/module-examples.md
 
 ## 1. When to Use This Skill
 
-Activate this skill whenever:
-- An existing `.rs` file under `crates/*/src/` approaches or exceeds 750–800 lines.
-- The automated architecture test `test_file_size_limits` fails during verification.
-- A single module accumulates multiple distinct responsibilities (e.g., mixing register state definition, bus routing, and display rendering).
+Use this skill for a requested decomposition, when splitting is necessary for the
+implementation, or when preparation identifies a touched module that must be split
+to satisfy [file cohesion](../../rules/file-size-and-cohesion.md). Assess touched
+modules during preparation; a large file encountered during navigation alone does
+not trigger a refactoring task. Existing architecture limits remain in force.
 
 ---
 

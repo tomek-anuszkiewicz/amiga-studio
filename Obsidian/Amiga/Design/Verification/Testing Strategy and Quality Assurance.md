@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "testing"
 status: "active"
 created: 2026-09-14
-updated: 2026-11-13
+updated: 2026-11-14
 related: ["[General Architecture.md](../General%20Architecture.md)", "[CPU SingleStepTests.md](CPU%20SingleStepTests.md)", "[CPU Instruction Benchmarking.md](../Performance/CPU%20Instruction%20Benchmarking.md)", "[Machine Loop.md](../Machine%20Loop.md)", "[Platform Quirks and Invariants Catalog.md](../Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
 tracked_paths:
   - "crates/test_runner/tests"
@@ -28,8 +28,11 @@ tracked_paths:
 Completion uses [verify.py](../../../../tools/verification/verify.py) with
 `commit` for affected ordinary crate tests with coverage, quality gates,
 standard harness suites when affected, Python tool contracts and the full English audit.
-Selection includes staged, unstaged and nonignored new paths, including both
-endpoints of renames. Cargo metadata identifies owning workspace packages and
+Selection includes staged, unstaged and nonignored new paths against the current
+`HEAD`, including both endpoints of renames. Repeating the command checks the
+whole pending change, including earlier edits still awaiting commit. Matching
+successful evidence is reused automatically; a changed `HEAD` starts a new batch.
+Cargo metadata identifies owning workspace packages and
 their transitive consumers through normal, development and build dependencies,
 including optional and target-specific declarations. All ordinary tests of the
 selected packages run once under coverage; dependencies still compile as needed.
@@ -47,9 +50,11 @@ The plan explains selection and omissions. Coverage reports identify the selecte
 test packages and are not presented as whole-workspace measurements when partial.
 Report totals include only current files in those packages; retired or unselected
 source files retained in cached LLVM objects are excluded without deleting build caches.
-Skipped coverage never reuses an earlier report as current evidence.
+Skipped coverage is not current evidence. Repeating the command can reuse a
+successful coverage bundle only with matching inputs and intact archived reports,
+under the [continuation contract](../../../../tools/verification/README.md#completion-verification).
 
-During implementation, `test coverage crate NAME` measures all ordinary tests
+During an explicit coverage task or a concrete diagnostic, `test coverage crate NAME` measures all ordinary tests
 of one package without completion gates; `test coverage workspace` measures all
 ordinary workspace packages. The same coverage pipeline produces a summary,
 detailed LLVM data and a source-location report of unexecuted code. Reports
@@ -57,11 +62,19 @@ identify their selected packages and cover only the current build target and
 instrumented code. Separate harness suites, doctests and branch coverage are
 not included. Follow the [coverage policy](../../../../.agents/rules/unit-testing-policy.md#coverage-during-development-and-review)
 to resolve behavioral gaps in changed emulator code and review its assertions
-before completion. Full executable-code coverage is the goal; there is no
+during preparation. Ordinary turns use focused checks without mandatory coverage
+measurement. Full executable-code coverage is the goal; there is no
 percentage gate or coverage exception list.
 
 Formatting, Clippy, architecture, hardware/code audits, frontmatter and English
-retain their full scope. Python contract selection remains unchanged below.
+retain their full scope. Cheap blocking gates precede coverage and expensive suites;
+a failure pauses that work. Clippy follows static gates before coverage so its
+findings also prevent avoidable test execution. Repeating the canonical command
+automatically combines new results with valid successful groups for the same `HEAD`. It reruns failed,
+missing or invalidated groups and rejects edits during execution. Coverage remains
+one execution/export/summary bundle; no partial-report merging is performed.
+All documents remain conservative inputs; changing their content invalidates
+dependent evidence. Python contract selection remains unchanged below.
 Performance measurements remain explicit diagnostics; benchmark workload contracts
 are ordinary standard harness tests. Build caches are retained.
 Standard harness selection runs when `test_runner` is affected or the full Rust

@@ -312,10 +312,15 @@ def select_phases(args, changes, explanations=None):
             if explanations is not None:
                 explanations.extend(rust_scope.explain())
         coverage = select_coverage_commands(args.command, rust_scope)
-        commands = select_quality_commands(args.command) + select_tests(
+        quality = select_quality_commands(args.command)
+        early = [item for item in quality if item[0] != "Clippy Invariants"]
+        builds = [item for item in quality if item[0] == "Clippy Invariants"]
+        commands = select_tests(
             REPO_ROOT, args.command, verify_singlestep="singlestep" in args.sets,
             changes=changes, rust_scope=rust_scope)
-        phases = []
+        phases = [("Preflight", early)]
+        if builds:
+            phases.append(("Build checks", builds))
         if coverage:
             phases.append(("Coverage", coverage))
         phases.append(("Verification", commands))

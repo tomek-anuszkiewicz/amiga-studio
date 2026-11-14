@@ -7,7 +7,7 @@ Read these shared rules before task work; linked files require explicit reads:
 - [Specification compliance](.agents/rules/spec-compliance.md): Surface conflicts with design specifications and never silently change golden references.
 - [Path privacy](.agents/rules/no-external-paths.md): Keep committed paths portable.
 - [Commit policy](.agents/rules/git-commits.md): Required commit points, user-controlled timing, validation, and diary entries.
-- [Language policy](.agents/rules/language-policy.md): Keep repository artifacts in English, resolve language findings at the end of each change round, and answer in the user's language.
+- [Language policy](.agents/rules/language-policy.md): Keep repository artifacts in English, resolve language findings during batch preparation, and answer in the user's language.
 
 Implement requested behavior and the technical changes necessary to make it work. Propose optional additions before implementing them; usefulness alone does not authorize a new feature. Leave product and editorial decisions to the user unless delegated explicitly. Before completion, review the diff against this boundary using the [scope rules](.agents/rules/structural-root-cause.md).
 
@@ -17,7 +17,7 @@ First identify the question and whether existing evidence resolves it. Use scrip
 
 For routine workflow steps, prefer existing tools and direct commands. Create helper scripts or extra evidence files only for a concrete task requirement those tools cannot meet.
 
-During ordinary code work, read and follow relevant specifications as implementation requirements. Handle concrete conflicts immediately under [specification compliance](.agents/rules/spec-compliance.md). The authorized pre-commit workflow owns scoped compliance review and compatible documentation enrichment; milestone closure owns broader semantic review. Direct documentation tasks and explicitly requested reviews remain in scope.
+During ordinary code work, read and follow relevant specifications as implementation requirements. Handle concrete conflicts immediately under [specification compliance](.agents/rules/spec-compliance.md). Batch preparation owns scoped compliance review and compatible documentation enrichment; milestone closure owns broader semantic review. Direct documentation tasks and explicitly requested reviews remain in scope.
 
 ## Development Defaults
 
@@ -62,7 +62,7 @@ Skill names and descriptions in `.agents/skills/` guide selection. Read the sele
 `SKILL.md` and execute required procedures; discovery alone does not execute a skill.
 
 Roles live in `.codex/agents/*.toml`; delegate only when requested by the user or
-applicable instructions. Every authorized commit requires a separate `code_reviewer`
+applicable instructions. Every prepared batch requires one separate `code_reviewer`
 with fresh context through [code-review](.agents/skills/code-review/SKILL.md), as
 required by [commit policy](.agents/rules/git-commits.md). MCP configuration is
 `.codex/config.toml`.
@@ -80,22 +80,31 @@ required by [commit policy](.agents/rules/git-commits.md). MCP configuration is
 
 ## Verification and Completion
 
-Never stage files or otherwise change the Git index unless the user explicitly requests staging or a commit. Editing a file that is already staged does not authorize staging its new version; leave the edit unstaged and preserve the existing index entry. If a required roadmap commit would need staging, ask the user first.
+Ordinary changes remain unstaged. An explicit batch-preparation request authorizes
+staging its selected scope; a commit request also authorizes creating the prepared
+commits. Preserve unrelated index entries, including staged versions of files
+edited later. Follow [batch lifecycle](.agents/rules/git-commits.md) for scope,
+isolation, review, freeze and mechanical completion.
 
-Commits are mandatory when closing a minor roadmap point or major milestone. Otherwise, commit when the user explicitly requests it. Commits are atomic and written in English. **Every commit includes a new entry in DIARY.md's final, unnumbered Rolling Changelog.** At minor roadmap points or milestones, compact settled entries, verify specification compliance, enrich compatible documentation details, and update the remaining roadmap.
+Commits are mandatory at minor roadmap or major milestone closure. Each commit
+includes a prepared entry in DIARY.md's final, unnumbered Rolling Changelog.
+Prepare the complete batch once, including its partition, applicable coverage
+review, scoped compliance, language corrections and one independent review.
+At closure, also compact settled diary entries and prune verified roadmap work.
 
-Per-commit verification:
+Canonical batch verification of pending changes against `HEAD`:
 ```powershell
 python tools/verification/verify.py commit
 ```
+Repeat the same command after corrections; matching evidence is reused automatically.
 The commit profile checks frontmatter in every local Markdown file under
 `Obsidian/Amiga/`, including Git-ignored reference books. If it reports missing
 metadata, show the user the affected paths and the proposed frontmatter for
 each file, then ask for approval before editing those files. After approval,
-repair the files and rerun verification. The verifier never edits them.
+repair the files and continue verification with validated evidence. The verifier never edits them.
 Reference book metadata follows [Reference Book Metadata](.agents/rules/docs-maintenance.md#reference-book-metadata).
 The canonical commit profile selects standard suites and architecture checks. Run relevant focused tests during development; full SingleStepTests and additional milestone checks are selected by the verification workflow at their required trigger. Do not claim unrun checks passed.
-Do not commit if the commit profile fails for any reason. Resolve the failure and rerun the full profile on the final intended source; milestone completion also requires a passing milestone profile.
+Do not freeze or commit a batch with a failed or missing required gate. After corrections, the canonical verifier reruns failed, missing or invalidated groups and retains only applicable successful evidence. Milestone completion also requires a passing milestone profile. Final evidence covers the combined batch, not unverified intermediate commits.
 
 Milestone completion requires `python tools/verification/verify.py milestone`, [semantic parity review](.agents/skills/audit-semantic-parity/SKILL.md) of modified subsystems, specification compliance and compatible documentation enrichment, checkpoint updates, diary compaction, and pruning completed roadmap steps. The broader audit may satisfy the scoped pre-commit review when its coverage and snapshot match. **Prohibition of Blind Golden Hash Modifications:** Never silently change golden hashes or cycle references; follow the conflict and approval procedure in specification-compliance rules.
 

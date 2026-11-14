@@ -997,3 +997,30 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - The task records report four PAL/NTSC filter combinations and both attachment scenarios passing with WAV decoding and negative controls
   - Fresh combined commit verification and review are required before creating this batch
   - This closes the two output-test tasks without claiming host-device playback or Roadmap 2.5 completion
+---
+
+### [2026-11-14 03:56 CET] — Prepare and verify changes as one commit batch
+- **Affected Subsystems**:
+  - `Agent workflow`
+  - `verification tooling`
+  - `testing specifications`
+- **What Was Changed (The Concrete Reality)**:
+  - FAST-TURNS-BATCH-COMMITS-20261114: defer recurring audits and maintenance to batch preparation
+  - run preliminary gates before expensive suites
+  - retain matching successful verification groups for pending changes against HEAD
+  - remove manual base, resume and editorial options
+  - exclude only the changing agent tool-call identifier from execution identity while retaining build and runtime settings
+  - prepare diary entries and commit partitions before freezing the verified content
+- **Architectural Rationale & Trade-Offs**:
+  - Avoid repeated work after independent corrections while preserving required gates and artifact integrity
+  - document changes conservatively invalidate execution results
+  - one prepared batch can produce several atomic commits without repeating verification between them
+- **Verification & Test Results**:
+  - 130 focused Python tests passed
+  - a focused regression preserved execution identity across agent calls while RUSTFLAGS changes still invalidated it
+  - separate real Cargo probe invocations reused English and coverage results with zero Cargo commands on the second invocation
+  - a real Cargo LLVM and English probe reused coverage after unchanged retries and vocabulary corrections, and reran it after source or document changes, report corruption and a new HEAD
+  - these fixtures do not establish emulator performance or milestone completion
+  - independent task review approved the implementation
+  - preparation resolved one vocabulary finding and interrupted an incomplete profile to correct the agent-call identity issue
+  - final canonical verification and commit review are recorded in the commit message

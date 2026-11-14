@@ -9,7 +9,12 @@ description: Integrate settled diary history into thematic chapters and remove r
 
 Every commit adds a concise entry to [DIARY.md](../../../DIARY.md)'s final, unnumbered `Rolling Changelog` using `tools/log_diary.py`, per [diary-maintenance.md](../../rules/diary-maintenance.md). The appender formats entries; it does not compact them. Locate the changelog by its heading, never by a fixed section number.
 
-Run this skill after a minor roadmap point or major milestone passes its completion gates, regardless of diary size. Consolidate its settled commit entries before the completion commit. A user may also explicitly request historical compaction.
+Run this skill during preparation for closing a minor roadmap point or major
+milestone, regardless of diary size. Consolidate settled history and prepare the
+completion entry before final verification and batch freeze. Describe only observed
+results; do not claim pending gates passed. If compaction follows an earlier gate,
+return to canonical continuation so final document evidence covers the edits.
+A user may also explicitly request historical compaction.
 
 ## Preserve the Engineering Record
 

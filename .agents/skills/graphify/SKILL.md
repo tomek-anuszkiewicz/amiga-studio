@@ -1,6 +1,6 @@
 ---
 name: graphify
-description: Query and navigate codebase AST relationships, call hierarchies, and architectural dependencies, and refresh repository graphs after code changes via graphify.
+description: Query and navigate codebase AST relationships, call hierarchies, and architectural dependencies, and refresh repository graphs during batch preparation or when current graph data is needed.
 ---
 
 # $graphify
@@ -14,7 +14,7 @@ This repository keeps its unified knowledge graph in `graphify-out/`, connecting
 - When the user types `/graphify` or invokes `$graphify`, read this skill before selecting the command or workflow.
 - Choose direct source inspection, `rg`, or Graphify to suit the question; Graphify is useful for callers, dependencies, and cross-file relationships. When using an existing `graphify-out/graph.json`, use `graphify query "<question>"`, `graphify path "<A>" "<B>"`, or `graphify explain "<concept>"`. The corresponding optional MCP tools are `query_graph`, `shortest_path`, and `get_node`.
 - If `graphify-out/wiki/index.md` exists, use it for broad navigation. Read `graphify-out/GRAPH_REPORT.md` only for broad architecture reviews or when query/path/explain provide insufficient context.
-- After code changes, run `graphify update .` explicitly from the repository root. This is an incremental AST refresh without LLM calls or API cost; it does not perform semantic document extraction or establish automatic lifecycle refresh.
+- During batch preparation when code changed, run `graphify update .` once from the repository root before final verification. Run it earlier only when current graph data is needed for the task or refresh is requested. Stale graph results are not current evidence. This is an incremental AST refresh without LLM calls or API cost; it does not perform semantic document extraction or establish automatic lifecycle refresh.
 - When asked to run or update Graphify, execute the appropriate command. If the user wants to run the code refresh themselves, provide `graphify update .` for their terminal.
 - Run commands explicitly. Do not install, configure, or use lifecycle, code, or Git hooks.
 

@@ -1,62 +1,111 @@
-# Atomic Commits
+# Batch Preparation and Atomic Commits
 
-- Create a Git commit only on explicit user request or when closing a completed minor roadmap point (for example, 1.1 or 1.2). Ordinary implementation tasks, fixes, reviews, and documentation changes do not authorize staging or committing by themselves.
-- Validate completed changes and report their results even when leaving them uncommitted. Do not label a routine task as a roadmap completion to trigger a commit.
-- Commit when closing a major milestone. Outside required roadmap completion, the user controls commit timing.
-- Group implementation, relevant tests, design updates, and the diary entry for one concern into one atomic commit. Do not split a feature by file category.
-- Inspect status and diffs, then stage intended paths explicitly. Never blindly stage unrelated changes with `git add -A`.
-- Use an English Conventional Commit message with a concise imperative summary, rationale when useful, and actual validation results. Templates are in [agent maintenance](../references/agent-tooling.md#recording-and-validating-changes).
-- Every commit includes its own diary entry per [diary-maintenance.md](diary-maintenance.md).
+## Authorization and Ordinary Completion
 
-Before each authorized commit, execute [verify-spec-compliance](../skills/verify-spec-compliance/SKILL.md) on the intended snapshot, include significant compatible documentation additions, and leave already accurate documents untouched. This requirement applies even when no documentation edits result. A broader milestone audit may satisfy this review when it covers the same snapshot, selected requirements and evidence; record that coverage instead of repeating the comparison.
+Ordinary implementation, fixes, reviews and documentation work authorize the
+requested changes and relevant focused checks. They do not authorize staging or
+commits, or trigger full coverage measurement, language scans, graph refresh,
+documentation synchronization or broad audits. Reuse context and evidence while
+their inputs remain valid. Handle requirement conflicts immediately.
 
-Every authorized commit, including documentation, rules, tests and merge commits,
-also requires independent [code-review](../skills/code-review/SKILL.md) by a
-separate `code_reviewer` started without inherited conversation history. The
-coordinating agent owns delegation and resolution; author self-review cannot
-satisfy this requirement. Use a focused review for ordinary commits and an
-extended review for milestones, substantial features or changes with significant
-correctness risks, following the skill's selection criteria.
+An explicit request to **prepare a batch** authorizes staging its selected scope,
+but not creating commits. A request to **commit** authorizes preparation and the
+planned commits without another confirmation. Keep the request active through
+routine in-scope corrections and user answers. Ask only for substantive unresolved
+decisions, including protected verification or reference changes.
 
-Use native Git and the existing verifier for routine commits. Reuse original logs
-and report review/compliance conclusions in workflow messages. Create additional
-scripts, copied logs or manifests only for a concrete isolation or reproducibility
-need, or an explicit task requirement.
+Commits remain mandatory when closing a minor roadmap point or major milestone.
+Do not label ordinary work as roadmap completion to trigger a commit. Outside
+those closure points, the user controls commit timing.
 
-Append the required DIARY.md entry with work completed and verification results already observed. Finish source and documentation edits, check the intended paths and generated artifacts, and resolve index or line-ending issues before running the full commit profile. Record the profile's outcome in the commit message and final report; do not edit the diary solely to repeat that outcome. If a later correction changes the intended source, rerun the profile on the corrected source.
+## Prepare One Stable Batch
 
-Resolve language findings first under [language policy](language-policy.md#resolving-findings), so language corrections do not require repeating completed emulator tests. Then run the canonical verification entry point on the final intended source.
-Verification does not require staging first:
+1. Select sessions, paths/hunks and commit groups, including any
+   requested milestone scope. Session provenance guides grouping; a shared dirty
+   directory does not establish authorship. Resolve dependencies and integration
+   conflicts now. Prefer separate worktrees for simultaneous writers; follow
+   [merge policy](git-merge-commits.md) for divergent integration.
+2. Establish a candidate containing exactly that batch. The verifier executes the
+   working tree, not just staged files. Isolate mixed or actively changing work
+   using [git-worktree](../skills/git-worktree/SKILL.md); preserve unrelated source,
+   staged entries and history. Compare pending changes against the current `HEAD`.
+   Later edits belong to a later batch.
+3. Perform [specification compliance](../skills/verify-spec-compliance/SKILL.md),
+   compatible documentation enrichment, necessary refactoring, language resolution
+   and applicable [coverage review](unit-testing-policy.md#coverage-during-development-and-review).
+   Prepare every commit's diary entry, ordering and English Conventional Commit
+   message. Each coherent concern includes its implementation, tests, documentation
+   and diary entry; do not split a feature merely by file category. Record checks
+   already observed in the diary, and the final profile outcome in commit messages
+   and the completion response. Do not rewrite the diary just to repeat that outcome.
+4. Arrange one independent [code-review](../skills/code-review/SKILL.md) by a
+   separate `code_reviewer` started without inherited conversation history. It
+   covers the cumulative change, affected interactions and proposed partition.
+   Review may begin before final tests to find corrections early. Reuse this
+   reviewer's context for corrections; its final verdict must cover final content
+   and current evidence. Author self-review is not a substitute.
+5. Finish any graph refresh that changes candidate content. Resolve cheap blockers
+   and pending requirement decisions before expensive tests where possible. Run
+   the canonical profile for the entire candidate. Use its preliminary gates;
+   do not add a duplicate standalone language pass by default. Continue after
+   corrections under the evidence rules below. Run milestone verification and
+   closure procedures only at their own [trigger](roadmap-maintenance.md).
+6. Measure [artifact storage](../references/agent-tooling.md#local-artifact-storage)
+   once after builds and diagnostics, before freeze. Record observation time and
+   limitations; reuse that observation in the completion response.
+7. Confirm the final **APPROVED** verdict, all required passing evidence, exact
+   candidate and complete commit partition. Freeze them together.
+
+Compatible documentation and in-scope audit corrections belong to this same
+preparation; they do not create a second approval channel. Optional behavior,
+requirement changes, protected checks and references retain their existing
+approval boundaries. Broader milestone audits can satisfy overlapping scoped
+work when their coverage and candidate match.
+
+## Canonical Verification and Continuation
+
+Use native Git and the existing verifier. The complete required check set comes
+from all pending changes against `HEAD`; reruns come from each successful group's
+inputs. These comparisons must remain separate.
 
 ```powershell
 python tools/verification/verify.py commit
 ```
 
-After verification, obtain the independent review verdict on that same intended
-snapshot, including the diary and documentation. Commit only if this command exits
-successfully, every selected check passes, and the reviewer returns **APPROVED**
-with current required evidence. Any failed check, including an unrelated test or
-a local environment failure, stops the commit workflow. An unavailable reviewer,
-timeout or missing verdict does not satisfy the review requirement.
+The [verification reference](../../tools/verification/README.md#completion-verification)
+owns record format, dependency boundaries and fallback behavior. Repeat the same
+command after corrections; it automatically checks evidence from the current
+batch. A changed `HEAD` starts a new batch. Documents remain conservative inputs.
+The verifier alone issues the complete final verdict. Reuse only evidence
+from this batch with matching inputs, commands, execution conditions, acceptance
+criteria and intact artifacts. Coverage execution, export and summary are one
+bundle. Failed, missing, interrupted or invalidated groups must execute; approval,
+a question or a resumed conversation is neither a pass nor an invalidation.
 
-Resolve findings within the authorized scope and return corrections to the
-reviewer. If the intended source changes, rerun the full profile and obtain an
-updated review before committing. Follow the skill's evidence and finding
-resolution procedure; unresolved blocking findings or required evidence gaps
-prevent the commit. Finally stage only the intended paths and verify that the
-index matches the approved snapshot; partial staging or other differences require
-review of the actual intended version before committing.
+Content changes return the batch to preparation. Rerun affected checks and update
+review; retain demonstrably valid independent results. Unknown impact requires
+conservative execution, up to the full profile. Never waive a failed gate with a
+focused pass or explanation, including unrelated or environment failures. Missing
+independent review also blocks freeze. Report the blocker and leave work
+uncommitted when it cannot be resolved.
 
-Diagnose and resolve the failure, then rerun the full commit profile on the final intended source before committing. Resolve routine English findings automatically under [language-policy.md](language-policy.md#resolving-findings). When resolution still needs a user decision, present the unresolved findings and concrete choices in an interactive dialog when available. Keep the authorized commit workflow active while awaiting the answer. After the decision, apply it and continue verification and the same authorized commit without requesting commit permission again.
+## Mechanical Completion After Freeze
 
-If the failure cannot be resolved, report blocked verification and leave the changes uncommitted. A focused passing test or a written explanation of the failure does not waive this gate. For milestone completion, the required milestone profile must also pass before its completion commit.
+- Create only the planned commits, each with its already prepared diary entry.
+  Validate the intended index and tree using lightweight native Git comparisons.
+  Stage selected paths explicitly; never sweep unrelated edits into the batch.
+- Do not edit diary, documentation or code between commits. Detect interference
+  before each operation, and compare the final tree with the frozen candidate.
+  Partial failure stops the sequence; retain completed commits and pending work
+  without automatic reset or history rewriting.
+- Evidence applies to the combined final candidate. Do not describe intermediate
+  commits as individually tested unless that verification was explicitly required
+  and completed during preparation.
+- Report commit IDs and the collected verification, review and storage results.
+  Do not repeat tests, audits, cleanup or storage scans after commits as routine
+  completion. Deletion and pushing require their own authorization.
 
-`verify.py` owns test selection and includes the architecture gate. Do not replace it with individually chosen completion suites. Milestone requirements are in [roadmap-maintenance.md](roadmap-maintenance.md). Run [audit-code-quality](../skills/audit-code-quality/SKILL.md) only on explicit request or before a major branch merge.
-
-After each successful commit, include a fresh storage report for `target` and
-`.agent/tmp` in the user-facing completion message, following the
-[artifact reporting procedure](../references/agent-tooling.md#local-artifact-storage).
-Show sizes, accumulation across observed work periods, and optional cleanup
-commands. Reporting does not authorize deletion, change build settings, or add
-hooks. If measurement is incomplete, state that limit instead of claiming a
-complete total.
+The verifier owns deterministic architecture and code-quality gates. Invoke the
+manual [audit-code-quality](../skills/audit-code-quality/SKILL.md) only on explicit
+request or for a major branch merge. Use no hooks, wrappers, session database or
+cross-task verdict cache. Keep diagnostic artifacts under `.agent/tmp`.

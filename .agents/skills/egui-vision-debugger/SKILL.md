@@ -107,8 +107,8 @@ graph TD
     C -- Yes --> D["3. Locate code in crates/gui/src/layout/"]
     D --> E["4. Edit layout / styling / focus logic"]
     E --> A
-    C -- No --> F["5. Lock in automated tests in test_interactions.rs"]
-    F --> G["6. Update DIARY.md & ROADMAP.md"]
+    C -- No --> F["5. Confirm meaningful regression protection"]
+    F --> G["6. Report repair and focused evidence"]
 ```
 
 1. **Repro:** Run `gui-inspector` with the scenario reproducing the defect.
@@ -116,7 +116,9 @@ graph TD
 3. **Diagnose:** Analyze the visual defect and identify the root cause in `crates/gui/src/layout/` or `app.rs`.
 4. **Fix:** Edit the relevant Rust file cleanly.
 5. **Verify:** Re-run `gui-inspector` and re-inspect with `view_image` to visually verify the fix.
-6. **Test Gate:** Add a headless integration test in `crates/gui/tests/test_interactions.rs` to prevent future regressions.
+6. **Test Gate:** Reuse or add meaningful headless integration protection in `crates/gui/tests/test_interactions.rs` for the demonstrated defect, under [testing policy](../../rules/unit-testing-policy.md).
+
+Diary and broad completion work belong to [batch preparation](../../rules/git-commits.md); roadmap maintenance runs only at its actual closure trigger. Focused reproduction and visual confirmation remain part of the repair.
 
 ---
 

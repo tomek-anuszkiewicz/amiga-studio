@@ -1,13 +1,13 @@
 ---
 name: code-review
-description: Arrange and perform independent review in fresh agent context before every authorized commit, at milestones, or on request; scale depth to the change and verify the exact snapshot.
+description: Arrange and perform independent review in fresh agent context for each prepared batch, at milestones, or on request; scale depth to the change and verify the exact snapshot.
 ---
 
 # Independent Code Review
 
-Use this skill before every authorized commit under [commit policy](../../rules/git-commits.md), for milestone or substantial feature review, and for an explicit review request. Ordinary edits alone do not trigger it. Review authorizes inspection and a report, not file changes, staging, or a commit.
+Use this skill for each prepared batch under [commit policy](../../rules/git-commits.md), for milestone or substantial feature review, and for an explicit review request. Ordinary edits alone do not trigger it. Review authorizes inspection and a report, not file changes, staging, or a commit.
 
-The coordinating agent arranges the review and resolves findings. An assigned reviewer performs the review itself and returns its report; it does not delegate another copy of this procedure.
+The coordinating agent arranges one review of the cumulative batch and proposed commit partition, and resolves findings. Review may start before final tests; the final verdict requires applicable complete evidence. Follow [batch lifecycle](../../rules/git-commits.md) for freeze and mechanical completion. An assigned reviewer performs the review itself and returns its report; it does not delegate another copy of this procedure.
 
 ## 1. Delegate with Fresh Context
 
@@ -68,9 +68,9 @@ For review outside an authorized commit, assess known specification requirements
 
 ## 4. Check Evidence and Snapshot Freshness
 
-Inspect raw results after forming the behavioral assessment. Check what actually ran, its outcome, source identity and coverage limits. Distinguish a synthetic fixture from production integration and static inspection from behavioral verification. Mark required obligations **unverified** when evidence is absent or stale.
+Inspect raw results after forming the behavioral assessment. Check what actually ran, its outcome, source identity and coverage limits. Distinguish a synthetic fixture from production integration and static inspection from behavioral verification. Mark required obligations **unverified** when evidence is absent or stale. Validate the canonical continuation record, input identities and artifact integrity; successful earlier groups can apply to the final candidate. An unrelated correction or user answer alone is not a reason to demand another full run. Failed or invalidated checks still require execution.
 
-For an authorized commit, require a passing `python tools/verification/verify.py commit` result for the final intended source; milestone completion also needs its milestone evidence and other required procedures. The owning workflow selects and runs these gates. Do not repeat them solely because this skill was invoked. A task-only review needs the checks applicable to that task, not an unrequested commit profile. Invoke [audit-code-quality](../audit-code-quality/SKILL.md) only under its own trigger.
+For batch preparation, require a passing `python tools/verification/verify.py commit` result for the complete final candidate, with executed and reused groups distinguished; milestone completion also needs its milestone evidence and other required procedures. The owning workflow selects and runs these gates. Do not repeat them solely because this skill was invoked. A task-only review needs the checks applicable to that task, not an unrequested commit profile. Invoke [audit-code-quality](../audit-code-quality/SKILL.md) only under its own trigger.
 
 Review cannot make a failed mandatory gate acceptable, change a protected reference, waive a requirement or approve an unauthorized contract change. Handle conflicts through [specification compliance](../../rules/spec-compliance.md). Future staging is not missing evidence when the reviewed target is intentionally unstaged; the coordinator must later compare the index with the approved content.
 
@@ -82,4 +82,4 @@ Then report the baseline and target identity, mode and actual coverage, observed
 
 The coordinator fixes supported findings within the authorized scope or returns concrete counter-evidence. An author disagreement alone does not close a finding. The reviewer checks the correction or evidence and explicitly closes or retains each blocker. Escalate unresolved requirement or scope decisions to the user; do not weaken a rule or keep retrying without new evidence.
 
-For a recheck, the original reviewer may retain its own review context and receive the updated patch and raw evidence, without the implementation conversation. Examine changed paths and affected interactions, including regressions introduced by corrections. If the target or required evidence changed, issue an updated verdict tied to the final snapshot; earlier approval does not transfer automatically. An extended review may satisfy the focused commit review only when it covers that commit's final scope and current evidence. The coordinator verifies that the staged content matches the approved target before committing.
+For a recheck, the original reviewer may retain its own review context and receive the updated patch and raw evidence, without the implementation conversation. Examine changed paths and affected interactions, including regressions introduced by corrections. If the target or required evidence changed, issue an updated verdict tied to the final snapshot; earlier approval does not transfer automatically. An extended review may satisfy the batch review only when it covers the complete candidate, proposed partition and current evidence. Several prepared commits consume this one verdict; intermediate commits are not individually verified unless that was explicitly required and completed. The coordinator verifies that the staged content matches the approved target before committing.

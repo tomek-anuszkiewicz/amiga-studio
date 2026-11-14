@@ -89,7 +89,7 @@ graphify path "Cpu" "BusResult"
 ```
 
 The graph helps locate source; the implementation and tests provide the behavior.
-The agent refreshes the code graph after code changes using `graphify update .`.
+The agent refreshes changed code once during batch preparation using `graphify update .`, or earlier when current graph data is needed for the task.
 Setup and traversal details are in the
 [Graphify skill](../.agents/skills/graphify/SKILL.md).
 
@@ -122,7 +122,7 @@ Delegation happens when requested by you or required by an applicable procedure.
 Each helper receives a scoped assignment and reports back to the main session.
 The role configuration contains its current model and permissions.
 
-Every authorized commit requires a separate `code_reviewer` with fresh context.
+Each prepared batch requires one separate `code_reviewer` with fresh context, covering its cumulative change and planned commit partition.
 It receives the exact patch, approved requirement sources and verification
 artifacts, without the implementation conversation or the author's explanation.
 Ordinary commits receive a focused review; milestones, substantial features and
@@ -133,10 +133,12 @@ changes with significant correctness risks receive an extended review. The
 
 Routine task completion leaves validated changes available for review. It does
 not itself authorize staging or committing. Ask for a commit when the change is
-ready; closing a completed minor roadmap point also authorizes its completion
-commit under the [commit policy](../.agents/rules/git-commits.md).
+ready, or request batch preparation to authorize staging without creating commits.
+A commit request authorizes preparation and mechanical execution without another
+confirmation. Roadmap closure retains its required completion commit under the
+[commit policy](../.agents/rules/git-commits.md).
 
-The standard completion command is:
+Prepare one complete candidate against `HEAD`, then repeat the command after corrections:
 
 ```powershell
 python tools/verification/verify.py commit
@@ -148,7 +150,12 @@ diagnostics and additional milestone requirements. Each authorized commit has a
 corresponding `DIARY.md` entry recording the change and observed validation.
 After verification, the independent reviewer checks the final intended snapshot.
 Blocking findings and missing required evidence must be resolved before the
-commit; corrections require renewed verification and review of the final version.
+batch freeze. Corrections rerun failed, missing or invalidated groups and renew
+the verdict; demonstrably valid evidence survives. After freeze, create only the
+prepared commits and compare their final tree with the candidate. No routine
+tests, audits, documentation edits or storage scans run between or after them.
+Evidence covers the combined batch; intermediate commits are not individually
+verified unless that was explicitly required and done during preparation.
 
 If you are changing the agent infrastructure itself, use
 [Maintaining Agent Tooling](../.agents/references/agent-tooling.md) for script ownership, configuration

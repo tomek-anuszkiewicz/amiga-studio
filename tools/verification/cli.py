@@ -35,6 +35,8 @@ The test rust, test runner and runner bench branches also accept no selector.
 Execution options: --plan, --log-level full|warn|error and --results-dir PATH
 may appear anywhere among sentence selectors. --exact requires crate NAME,
 suite NAME and case NAME for Rust, or case NAME for SingleStep groups.
+Completion profiles compare pending changes against HEAD and automatically reuse
+matching evidence in .agent/tmp/verification/PROFILE, or the chosen --results-dir.
 Only runner gui uses -- to pass native program options.
 """
 

@@ -6,9 +6,9 @@ Reader-facing documentation under `docs/` explains the project and provides entr
 
 The following requirements apply to specifications under `Obsidian/Amiga/Design/`.
 
-- Before every authorized commit, use [verify-spec-compliance](../skills/verify-spec-compliance/SKILL.md) to check the intended changes against approved requirements and enrich only affected specifications with compatible implementation details. Ordinary implementation/refactoring alone does not trigger this review; milestone closure may reuse its broader audit as described by the skill. The review does not authorize a commit.
+- During batch preparation, use [verify-spec-compliance](../skills/verify-spec-compliance/SKILL.md) to check the intended changes against approved requirements and enrich only affected specifications with compatible implementation details. Ordinary implementation/refactoring alone does not trigger this review; milestone closure may reuse its broader audit as described by the skill. The review does not authorize a commit.
 - Select affected specifications by frontmatter `tracked_paths`, including renamed/deleted paths; report unmapped changes.
-- Establish the exact intended commit snapshot. If staged, review its index version; otherwise use only agreed paths/hunks and explicitly selected new files. Resolve ambiguous scope before proceeding. Include documentation corrections in the same atomic commit.
+- Establish the complete intended batch candidate and partition under [commit policy](git-commits.md). Include agreed paths/hunks and explicitly selected new files; staging alone does not isolate verification. Resolve ambiguous scope before proceeding. Include documentation corrections in the same atomic commit.
 - Leave accurate specifications and their dates unchanged.
 - Read the authoritative specification through the [design index](../../Obsidian/Amiga/Design/General%20Architecture.md) and handle conflicts through [spec-compliance.md](spec-compliance.md); do not silently align documentation to incorrect code.
 - Distinguish [compatible documentation enrichment](spec-compliance.md#compatible-documentation-enrichment) from [requirement changes before implementation](spec-compliance.md#specification-changes-before-implementation). Review changed requirements against code and tests even when only documentation changed; unresolved differences block task completion and the commit. Documentation enrichment does not require an exhaustive description of implementation details.
@@ -33,7 +33,7 @@ These requirements apply to authored specifications under `Obsidian/Amiga/Design
 - Use [General Architecture](../../Obsidian/Amiga/Design/General%20Architecture.md) as the hub; link meaningful dependencies reciprocally without quotas.
 - Adapt document sections to the subsystem rather than duplicating a fixed outline.
 
-The owning skill provides frontmatter templates, path examples, and link-check commands.
+The owning skill provides frontmatter templates, path examples, and link-check commands. Preserve local metadata and links while editing; run the full vault audit once for the final document set during preparation, or on an explicit audit/repair request. Reuse overlapping canonical frontmatter evidence rather than repeating its structural scan.
 
 ## Reference Book Metadata
 

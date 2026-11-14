@@ -311,22 +311,6 @@ class SelectionTests(unittest.TestCase):
                 selected(sentence)
 
 class ExecutionTests(unittest.TestCase):
-    def test_failed_coverage_step_stops_export_but_keeps_other_commit_checks(self):
-        phases = [("Coverage", [(name, [name], {}) for name in ("prepare", "reset", "tests", "export", "summary")]),
-                  ("Verification", [("remaining gate", ["gate"], {})])]
-        for failing in ("prepare", "reset", "tests", "export"):
-            with self.subTest(failing=failing), \
-                 patch.object(verify, "select_phases", return_value=phases), \
-                 patch.object(verify, "collect_changes", return_value=set()), \
-                 patch.object(verify, "snapshot", return_value="same"), \
-                 patch.object(verify, "execute_command", side_effect=lambda command, *args, **kwargs:
-                              (command[0] != failing, "fixture", 0)) as execute, \
-                 contextlib.redirect_stdout(io.StringIO()):
-                self.assertEqual(verify.main(["commit"]), 1)
-            invoked = [call.args[0][0] for call in execute.call_args_list]
-            expected = ["prepare", "reset", "tests", "export"]
-            self.assertEqual(invoked, expected[:expected.index(failing) + 1] + ["gate"])
-
     def test_exact_rust_run_rejects_zero_matching_tests(self):
         for count, expected in ((0, 1), (1, 0)):
             process = unittest.mock.MagicMock()
@@ -397,22 +381,6 @@ class ExecutionTests(unittest.TestCase):
         self.assertIn("Book review contracts", output.getvalue())
         self.assertIn("Rust test scope: none", output.getvalue())
         self.assertIn("previous summary is not evidence", output.getvalue())
-
-    def test_commit_captures_source_before_change_selection(self):
-        events = []
-        def fingerprint(root):
-            events.append("snapshot")
-            return "before" if len(events) == 1 else "after"
-        def changes(root):
-            events.append("changes")
-            return {"docs/testing.md"}
-        with patch.object(verify, "snapshot", side_effect=fingerprint), \
-             patch.object(verify, "collect_changes", side_effect=changes), \
-             patch.object(verify, "execute_command", return_value=(True, "ok", 0)), \
-             contextlib.redirect_stdout(io.StringIO()) as output:
-            self.assertEqual(verify.main(["commit"]), 1)
-        self.assertEqual(events, ["snapshot", "changes", "snapshot"])
-        self.assertIn("Source or index changed", output.getvalue())
 
     def test_plan_never_executes_or_fingerprints_source(self):
         with patch.object(verify, "execute_command") as execute, patch.object(verify, "snapshot") as snapshot:

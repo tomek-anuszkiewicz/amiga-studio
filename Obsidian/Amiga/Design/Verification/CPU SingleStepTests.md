@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "m68000"
 status: "active"
 created: 2026-08-31
-updated: 2026-11-13
+updated: 2026-11-14
 related: ["[CPU Motorola M68000.md](../CPU%20Motorola%20M68000.md)", "[CPU Micro-Step State Machine.md](../CPU%20Micro-Step%20State%20Machine.md)", "[CPU Instruction Benchmarking.md](../Performance/CPU%20Instruction%20Benchmarking.md)"]
 tracked_paths:
   - "crates/test_runner/tests"
@@ -74,7 +74,7 @@ Ordinary [CPU wait-state tests](../../../../crates/cpu/tests/test_cck_bus.rs) co
 
 ## 5. Failure diagnostics and saved reports
 
-A failing case identifies its JSON file and vector, then reports expected and actual CPU state, clock count, and bus-transaction differences. Status flags and register differences help locate the mismatch. The runner writes results under `.agent/tmp/singlestep/`:
+A failing case identifies its JSON file and vector, then reports expected and actual CPU state, clock count, and bus-transaction differences. Status flags and register differences help locate the mismatch. Standalone runs default to `.agent/tmp/singlestep/`; milestone verification keeps reports under its profile directory. The [verification reference](../../../../tools/verification/README.md#saved-singlestep-reports) owns output selection and the archived evidence location. The selected directory contains:
 
 | Artifact | Use |
 | --- | --- |

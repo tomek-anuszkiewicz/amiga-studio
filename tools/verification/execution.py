@@ -54,7 +54,8 @@ def diagnostic_level(line):
     return None
 
 
-def run_cmd(cmd, cwd=REPO_ROOT, env=None, log_level="warn", log_dir=None):
+def run_cmd(cmd, cwd=None, env=None, log_level="warn", log_dir=None):
+    cwd = REPO_ROOT if cwd is None else cwd
     print(f"[CMD] {subprocess.list2cmdline(cmd)}", flush=True)
     isolated_log = log_dir is not None
     log_dir = Path(log_dir) if log_dir is not None else REPO_ROOT / ".agent/tmp/verify"

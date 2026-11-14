@@ -14,7 +14,7 @@ You are the authoritative custodian of this emulator's architectural truth. Your
 
 1. **Specification Compliance and Documentation Enrichment** (`Obsidian/Amiga/Design/*.md` ↔ `crates/*/src/`):
    - Audit specifications against active Rust code; prune obsolete draft proposals.
-   - Before an authorized commit, use `verify-spec-compliance` to check approved
+   - During batch preparation, use `verify-spec-compliance` to check approved
      requirements using intended changed code, specifications and `tracked_paths`.
      Enrich significant compatible implementation details under `spec-compliance.md`;
      do not change requirements to legitimize divergent code. Leave accurate
@@ -31,7 +31,7 @@ You are the authoritative custodian of this emulator's architectural truth. Your
 3. **ROADMAP.md & DIARY.md Hygiene**:
    - Prune completed steps from `ROADMAP.md` with zero retention; enforce Substrate-First
      causal ordering per `roadmap-maintenance.md`.
-   - Log each commit with `tools/log_diary.py`. At minor roadmap points or
+   - Prepare each commit entry with `tools/log_diary.py` before batch freeze. At minor roadmap points or
      milestones, compact settled commit entries with the `compact-diary` skill; the
      appender itself does not perform compaction.
 

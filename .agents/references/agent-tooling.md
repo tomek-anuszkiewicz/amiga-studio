@@ -37,11 +37,12 @@ installation and recording approved reference baselines remain separate.
 Commit policy is in [git-commits.md](../rules/git-commits.md); diary policy
 is in [diary-maintenance.md](../rules/diary-maintenance.md). Inspect the
 diff, append the diary entry with verification already observed, and run the
-per-commit gates on the final intended source. Put the commit profile's outcome
-in the commit message and final report; rerun the profile if the source changes.
+batch gates on the complete final candidate. Put the profile outcome
+in commit messages and the final report; continue the same batch after corrections
+using validated evidence. Prepare all entries and commit messages before freeze.
 Obtain the independent [code review](../skills/code-review/SKILL.md) required by
-commit policy on that same snapshot. Stage only the agreed paths when a commit
-is authorized, preserving the approved content:
+commit policy on that same snapshot. Stage only the agreed paths when preparation or a commit
+is authorized, preserving unrelated index entries:
 
 ```powershell
 python tools/log_diary.py `
@@ -68,12 +69,11 @@ Usual types are `feat`, `fix`, `refactor`, `perf`, `docs`, `test`, and `chore`;
 scope names identify the affected subsystem or tooling. Implementation, tests,
 design updates, and diary for the same concern belong together.
 
-At the end of a change round, select the task's authored files within the configured
-scope and run `python tools/verification/verify.py check english files <paths>`.
-Resolve findings under [language-policy.md](../rules/language-policy.md) before
-reporting the round complete. This command runs only the language check.
-For the full English vocabulary scan before commit verification or on explicit request,
-use `python tools/verification/verify.py check english`. Both commit
+For an explicit scoped language task, use
+`python tools/verification/verify.py check english files <paths>`; for a full requested
+audit, use `python tools/verification/verify.py check english`. Ordinary turns do
+not trigger either scan. During preparation, use the canonical preliminary English
+gate and resume after corrections; do not duplicate it as a standalone pass. Both commit
 and milestone profiles include this scan. Install its pinned dictionary dependency with `python -m pip install -r tools/verification/checks/requirements.txt`. Scope exclusions and text formats live
 in `tools/verification/checks/check_english.json`; maintain them according to
 [language-policy.md](../rules/language-policy.md). Explicit file arguments
@@ -82,8 +82,9 @@ scan those entire files using the same English dictionary and project vocabulary
 
 ## Local Artifact Storage
 
-After a successful commit, run the shared read-only report from the repository
-root and summarize its output in the completion message:
+During preparation, after builds and diagnostics and before batch freeze, run the
+shared read-only report once from the repository root. Report its observation time
+and limitations in the completion message; do not scan again after each commit:
 
 ```powershell
 python tools/artifacts/report.py
@@ -130,7 +131,7 @@ a cleanup candidate. The commit and its roadmap closure share one report.
 
 Keep the report in the conversation; do not create report files, scheduled jobs,
 or hooks. A failed scan affects the report's completeness, not the validity of a
-commit already created. Test changes to this tool with
+otherwise verified candidate. Test changes to this tool with
 `python tools/verification/verify.py test python directory tools/artifacts/tests`.
 
 ## Configuration and Reference Provisioning

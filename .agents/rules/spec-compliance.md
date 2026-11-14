@@ -2,7 +2,7 @@
 
 Design specifications and [AGENTS.md](../../AGENTS.md) govern implementation. Never silently contradict or bypass documented behavior, timing, memory semantics, or architectural boundaries.
 
-Read the relevant requirements before changing code and follow them throughout implementation. Handle concrete conflicts when encountered; do not defer them to a commit or milestone. This does not trigger a general code/design parity audit; scoped compliance review belongs to the authorized pre-commit workflow, and broader semantic parity belongs to milestone closure or an explicit request.
+Read the relevant requirements before changing code and follow them throughout implementation. Handle concrete conflicts when encountered; do not defer them to a commit or milestone. This does not trigger a general code/design parity audit; scoped compliance review belongs to batch preparation, and broader semantic parity belongs to milestone closure or an explicit request.
 
 - When a requirement, test expectation, or reference emulator conflicts with the specification, stop the conflicting change and present the current rule, contrary evidence, and concrete options. Provisional register mutation parameters follow the [exception below](#provisional-register-mutation-parameters).
 - Obtain an explicit recorded user decision before changing or waiving an existing requirement or introducing behavior outside the authorized scope. Otherwise implement the documented behavior. Compatible documentation enrichment follows the rule below and does not require separate approval.
@@ -45,7 +45,7 @@ for the same approval again merely because existing code behaves differently.
 - Resolve known differences in code and relevant tests as part of the same
   change. If implementation work exceeds the authorized scope, report the
   difference and obtain direction before expanding it; leave completion blocked.
-- Before committing, use [verify-spec-compliance](../skills/verify-spec-compliance/SKILL.md)
+- During batch preparation, use [verify-spec-compliance](../skills/verify-spec-compliance/SKILL.md)
   to verify agreement in the intended snapshot, including changed requirements
   whose implementation files have no diff. Block the commit while differences
   remain or the affected implementation has not been verified. Do not revert or

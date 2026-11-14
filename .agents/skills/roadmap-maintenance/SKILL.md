@@ -17,20 +17,32 @@ Use this procedure when reorganizing [ROADMAP.md](../../../ROADMAP.md), reviewin
 
 ## Complete a Listed Task
 
-- Confirm implementation and run both independent verification sets once:
-  ```powershell
-  python tools/verification/verify.py commit
-  python tools/verification/verify.py milestone
-  ```
-  If commit verification already ran for this exact snapshot, run only the remaining milestone set. Milestone runs the full language audit; it does not repeat commit tests. CPU sets run only when explicitly added.
-- Before declaring a minor roadmap point or major milestone complete, perform the required semantic parity review, the completion commit's scoped design review, and diary compaction. A reorganization alone does not trigger subsystem milestone completion.
-- Delete the verified task entirely. Leave any distinct unfinished work with its own gate; keep evidence in diary and Git rather than a completed-capability section.
-- After pruning, check the final roadmap for presence and retained completed
-  checkboxes before declaring closure:
-  ```powershell
-  python .agents/skills/roadmap-maintenance/scripts/check_roadmap.py
-  ```
-- Follow the policy's reporting requirements when the vAmigaTS verification track resumes; the previous scorecard has been removed.
+1. Confirm implementation and prepare closure through [batch policy](../../rules/git-commits.md).
+   Perform required semantic parity and scoped design review, diary compaction and
+   checkpoint updates before final verification and freeze. A reorganization alone
+   does not trigger subsystem milestone completion.
+2. Prepare deletion of the completed task entirely. Leave distinct unfinished work
+   with its own gate; keep evidence in diary and Git rather than a completed-capability
+   section. Prepared pruning does not declare closure until final gates, review and
+   the required completion commit succeed. Check the final roadmap:
+   ```powershell
+   python .agents/skills/roadmap-maintenance/scripts/check_roadmap.py
+   ```
+3. Run both canonical profiles for the final candidate:
+   ```powershell
+   python tools/verification/verify.py commit
+   python tools/verification/verify.py milestone
+   ```
+   If commit evidence already applies to this candidate, run only the remaining
+   milestone set. Milestone requires full SingleStepTests and the full language
+   audit; it does not repeat commit tests. After corrections, repeat each affected
+   profile's command; the verifier retains only valid groups.
+   Do not finalize closure while either required verdict is missing or failed.
+4. Include pruning and diary edits in the verified candidate. Any edits made after
+   verification return to preparation and continuation. Once frozen, execute only
+   the prepared completion commit and report the collected results. Follow the
+   policy's reporting requirements when the vAmigaTS verification track resumes;
+   the previous scorecard has been removed.
 
 ## Verify and Report
 

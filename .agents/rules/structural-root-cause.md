@@ -2,7 +2,7 @@
 
 - Inspection questions authorize investigation and explanation. Modify files when implementation is requested or proposed changes are accepted.
 - Every new behavior must follow from a user requirement or be technically necessary for that requirement to work correctly. Explain necessity in terms of what would fail or remain incomplete without it. Convenience, possible future use, and agent preference do not establish necessity.
-- Complete the requested change, including affected consumers, relevant tests, and documentation. Choose routine implementation details autonomously within that scope. Review specification compliance and enrich compatible implementation details before an authorized commit, unless documentation work was explicitly requested earlier. Follow [spec-compliance.md](spec-compliance.md) for the enrichment boundary and conflicts. Avoid unrelated cleanup; obtain direction if the cause requires expanding the agreed scope.
+- Complete the requested change, including affected consumers, relevant tests, and documentation. Choose routine implementation details autonomously within that scope. Review specification compliance and enrich compatible implementation details during batch preparation, unless documentation work was explicitly requested earlier. Follow [spec-compliance.md](spec-compliance.md) for the enrichment boundary and conflicts. Avoid unrelated cleanup; obtain direction if the cause requires expanding the agreed scope.
 - Present optional features, flags, configuration, automation, and fallback behavior as proposals; implement them only after acceptance. Leave product and editorial decisions, such as selecting, hiding, or replacing source content, to the user unless explicitly delegated. Continue authorized work that does not depend on those decisions.
 
 ## Defect Resolution
@@ -16,7 +16,7 @@
 - Use the [verification reference](../../tools/verification/README.md) for focused test commands and saved reports. For CPU vector divergences, also consult the [CPU verification specification](../../Obsidian/Amiga/Design/Verification/CPU%20SingleStepTests.md).
 - Before completion, review the diff and identify the requirement or technical necessity behind each added behavior. Remove unrequested additions introduced by the current task; preserve pre-existing work. Verify cause and absence of duplicated definitions; requested refactors follow [Compatibility and Internal Refactoring](../../AGENTS.md#compatibility-and-internal-refactoring). Report delivered work, actual verification, and material unresolved findings.
 
-Ordinary defect completion requires relevant focused checks. Full commit and milestone profiles run only at their respective triggers in [AGENTS.md](../../AGENTS.md); report actual results and remaining gaps.
+Ordinary defect completion requires relevant focused checks. Reuse still-valid context and evidence within the session; a turn alone triggers no language scan, coverage campaign, graph refresh or broad audit. Report implementation separately from verified batch readiness and roadmap closure. Full commit and milestone profiles run only at their respective triggers in [AGENTS.md](../../AGENTS.md); report actual results and remaining gaps.
 
 ## Execution-Plan Lifecycle
 

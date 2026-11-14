@@ -72,20 +72,28 @@ For each path in that union, inspect the available base, target, and source vers
 
 Keep a per-path review checklist in `.agent/tmp/` during the merge. Do not finalize while any changed Markdown path is unreviewed or a substantive conflict remains unresolved. Summarize the reviewed scope and significant decisions in the merge commit and diary; do not describe automated checks as semantic approval.
 
-### Step 4: Execute Pre-Commit Verification Gate
-Never finalize a divergent merge commit without running the full repository verification gate:
+### Step 4: Prepare and Verify the Merge Batch
+Follow [batch preparation](../../rules/git-commits.md), including the complete
+integrated candidate against `HEAD`. Prepare the merge's diary entry and message
+now, recording the Markdown review, conflict decisions and checks already observed.
+Finish all edits before final verification; record its outcome in the message and
+completion response without a later diary rewrite. Never finalize a divergent merge
+without a passing canonical verdict and independent review:
 ```powershell
-python tools/verification/verify.py check formatting
 python tools/verification/verify.py commit
-python tools/verification/verify.py test rust workspace
 ```
 
-Run any additional domain gates required by `AGENTS.md`. Append the merge's
-own diary entry with the Markdown review scope, substantive decisions, conflict
-resolutions, and observed verification before staging the completion commit.
+Retain full ordinary-workspace test coverage for the merge. If the canonical
+profile selects only part of it, also run `python tools/verification/verify.py test rust workspace`
+during preparation; a full ordinary-workspace coverage run already supplies those
+tests. Formatting is included in the canonical profile. Run additional domain
+gates required by `AGENTS.md`. Corrections return to preparation; repeat the same
+command and freeze only after the final evidence and reviewer verdict pass.
 
 ### Step 5: Author Standardized Merge Commit
-Commit using the mandatory structured merge message schema:
+Consume the frozen reviewed candidate and the already prepared message, using the
+mandatory structured merge message schema. Do not edit the diary or rerun gates
+between freeze and the mechanical Git operation:
 ```powershell
 git commit -m "merge(<source-branch>): integrate <source-branch> into master
 

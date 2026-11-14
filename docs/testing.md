@@ -71,7 +71,7 @@ explains the measurement model.
 <a id="completion-verification"></a>
 ## Run Verification and Read the Result
 
-For an authorized commit, run from the repository root:
+During batch preparation, run from the repository root:
 
 ```powershell
 python tools/verification/verify.py commit
@@ -94,13 +94,18 @@ packages and current source files. A partial report is not a workspace baseline.
 Coverage shows which
 code was executed; it does not tell you whether the assertions were sufficient,
 whether all hardware cases were represented, or whether execution was fast.
-During implementation, `python tools/verification/verify.py test coverage crate NAME`
-produces a detailed report without completion gates. Use its unexecuted source
+For an identified diagnostic need or an explicit request,
+`python tools/verification/verify.py test coverage crate NAME` produces a detailed
+report without completion gates. Mandatory coverage measurement and gap review
+belong to batch preparation. Use its unexecuted source
 locations to identify and test missing behavior; see the
 [coverage workflow](../tools/verification/README.md#coverage-guided-testing).
 
 When assessing a result, check which suites actually ran, whether they used full
 or sampled inputs, and whether failures or unavailable assets limited the run.
-A pass applies to the executed cases and assertions. For the broader design and
+A pass applies to the executed cases and assertions. Repeating batch verification
+can reuse successful groups with matching inputs and intact evidence; the canonical
+verdict still requires every final gate. Evidence covers the combined candidate,
+not each intermediate commit. For the broader design and
 verification strategy, follow the
 [testing specification](../Obsidian/Amiga/Design/Verification/Testing%20Strategy%20and%20Quality%20Assurance.md).

@@ -1,6 +1,6 @@
 ---
 name: verify-spec-compliance
-description: Before every authorized Git commit, verify implementation against approved specifications using tracked_paths, enrich compatible implementation details, and block unresolved conflicts or verification gaps.
+description: During batch preparation, verify implementation against approved specifications using tracked_paths, enrich compatible implementation details, and block unresolved conflicts or verification gaps.
 ---
 
 # Specification Compliance Review Before Commit
@@ -11,8 +11,10 @@ it does not authorize staging, committing, or modifying unrelated work.
 
 ## When to Use
 
-Mandatory before every authorized Git commit, including documentation, rules,
-tests and merge commits. Review only the intended commit snapshot. Ordinary
+Mandatory once for each prepared batch, including documentation, rules,
+tests and merge commits. Review the complete cumulative candidate and proposed
+partition. Recheck affected requirements after corrections; do not repeat an
+unaffected comparison for each prepared commit. Ordinary
 implementation or refactoring alone does not trigger this procedure. Milestone
 closure may use its broader semantic audit to satisfy this review when it covers
 the same intended snapshot, selected requirements and evidence. Record that
@@ -21,20 +23,20 @@ Explicit review requests remain valid.
 
 ## 1. Establish the Intended Snapshot
 
-Identify the exact paths and changes agreed for this commit before reviewing.
+Identify the exact pending paths/hunks, new files and planned commits under [commit policy](../../rules/git-commits.md) before reviewing. Compare the complete intended change against the current `HEAD`.
 Do not treat every dirty file as part of the commit or stage files merely to
 select a documentation scope.
 
-For an already staged snapshot, use:
+For an already staged candidate, compare its complete index with `HEAD`:
 
 ```powershell
-git diff --cached --name-only --no-renames -z
-git diff --cached -- <selected_paths>
+git diff --cached --name-only --no-renames -z HEAD
+git diff --cached HEAD -- <selected_paths>
 ```
 
 Using `--no-renames` exposes both old and new paths as deletion/addition. Include
-both when selecting documents; compare old content from HEAD for deleted files.
-For a commit not yet staged, use `git diff HEAD -- <intended_paths>` for tracked
+both when selecting documents; compare old content from `HEAD` for deleted files.
+For an unstaged candidate, use `git diff HEAD -- <intended_paths>` for tracked
 files and read only explicitly selected untracked files. An untracked file is
 not present in Git's diff. If the intended patch is partial or a file has both
 staged and unstaged edits, inspect the actual proposed version and exclude
@@ -148,7 +150,7 @@ After document edits, follow
 checks. Include only the necessary documentation corrections in the agreed
 atomic commit together with required implementation and test changes. Recheck
 selection if intended code, ownership or the proposed snapshot changes.
-The enclosing workflow runs verification on the final source
+The enclosing workflow continues canonical verification for the final candidate
 and stages only authorized paths; do not repeat its gates inside this skill.
 Do not return a passing review while an unresolved requirement conflict,
 significant documentation gap or unverified changed requirement remains.
