@@ -1222,3 +1222,18 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - occupied focused workloads improved about 17-21 percent
   - full-state and framebuffer comparisons passed
 ---
+
+### [2026-11-14 19:16 CET] — Skip idle mouse-axis arithmetic
+- **Affected Subsystems**:
+  - `game_ports`
+  - `machine_loop`
+- **What Was Changed (The Concrete Reality)**:
+  - Advance pending mouse motion only on active axes
+  - retain unconditional phase normalization and add motion, saturation and restored-phase regressions
+- **Architectural Rationale & Trade-Offs**:
+  - Keep connector sampling and active motion on every CCK without calculating zero movement
+- **Verification & Test Results**:
+  - 169 tests across 38 targets passed
+  - focused idle, one-axis and two-axis cases improved
+  - whole-machine impact was mostly below measurement spread
+---

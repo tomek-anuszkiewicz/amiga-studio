@@ -69,9 +69,12 @@ impl Mouse {
             (&mut self.phase_x, &mut self.pending_x),
             (&mut self.phase_y, &mut self.pending_y),
         ] {
-            let direction = pending.signum();
-            *pending -= direction;
-            *phase = phase.wrapping_add(direction as u8) & MASK_PHASE;
+            if *pending != 0 {
+                let direction = pending.signum();
+                *pending -= direction;
+                *phase = phase.wrapping_add(direction as u8);
+            }
+            *phase &= MASK_PHASE;
         }
         // Binary phase becomes Gray-coded, active-low connector levels.
         let x_high = (self.phase_x >> BIT_PHASE_HIGH) & 1;
