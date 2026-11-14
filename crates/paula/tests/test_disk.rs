@@ -97,6 +97,32 @@ fn wordsync_detects_a_second_match_between_software_word_boundaries() {
 }
 
 #[test]
+fn fast_changes_preserve_mid_cell_sampling_without_dma() {
+    // Slow phase 9 becomes fast phase 3, not phase 0. The opposite change
+    // reaches slow phase 7 from fast phase 6. Both must sample immediately.
+    for (old_fast, phase, new_fast, matches) in [
+        (false, 9, true, true),
+        (false, 2, true, true),
+        (true, 6, false, true),
+        (false, 13, true, false),
+    ] {
+        let mut paula = Paula::default();
+        paula.adkcon = if old_fast { 0x0100 } else { 0 };
+        for _ in 0..phase {
+            paula.step_cck();
+        }
+        paula.dsksync = 0;
+        paula.adkcon = if new_fast { 0x0100 } else { 0 };
+        paula.set_intreq(0x1000);
+        paula.step_cck();
+        assert_eq!(paula.intreqr() & 0x1000 != 0, matches);
+        assert_eq!(paula.peek_dskbytr() & 0x1000 != 0, matches);
+        assert!(!paula.dma_active);
+        assert_eq!(paula.disk.buffered_words(), 0);
+    }
+}
+
+#[test]
 fn write_fifo_drains_msb_first_after_dma_count_reaches_zero() {
     for (control, clocks) in [(0x0100, 7), (0, 14)] {
         let mut paula = arm(0xc003, control);

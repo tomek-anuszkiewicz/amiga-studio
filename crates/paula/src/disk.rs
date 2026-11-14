@@ -254,7 +254,13 @@ impl Paula {
             self.disk.read_phase = 0;
             self.disk.read_one = true;
         } else {
-            self.disk.read_phase = self.disk.read_phase.wrapping_add(1) % period;
+            let next = self.disk.read_phase.wrapping_add(1);
+            // Keep constant divisors, including when FAST changes mid-cell.
+            self.disk.read_phase = if period == FAST_CELL_CCK {
+                next % FAST_CELL_CCK
+            } else {
+                next % SLOW_CELL_CCK
+            };
         }
         if self.disk.read_phase == period / 2 && !self.is_dsk_write() {
             let bit = core::mem::take(&mut self.disk.read_one);

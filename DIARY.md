@@ -1071,3 +1071,19 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - changed executable paths were reviewed against coverage
   - individual commit boundaries were not tested separately
   - no new timing measurement of the final combination
+---
+
+### [2026-11-14 14:40 CET] — use constant disk clock divisors
+- **Affected Subsystems**:
+  - `paula`
+- **What Was Changed (The Concrete Reality)**:
+  - Select constant fast/slow disk cell divisors
+  - verify phase continuity when FAST changes
+- **Architectural Rationale & Trade-Offs**:
+  - Retain the local arithmetic simplification
+  - whole-machine gain remains inconclusive in the earlier audit
+- **Verification & Test Results**:
+  - The combined candidate passed ordinary Rust tests, the standard harness and canonical commit verification before this diary partition
+  - changed executable paths were reviewed against coverage
+  - individual commit boundaries were not tested separately
+  - no new timing measurement of the final combination
