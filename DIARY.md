@@ -1144,3 +1144,21 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - changed executable paths were reviewed against coverage
   - individual commit boundaries were not tested separately
   - no new timing measurement of the final combination
+---
+
+### [2026-11-14 14:40 CET] — retain boundary checks after rejected experiments
+- **Affected Subsystems**:
+  - `machine_loop`
+  - `paula`
+  - `rtc`
+- **What Was Changed (The Concrete Reality)**:
+  - Keep audio output, signal transport and RTC boundary tests using the restored interfaces
+  - remove the pending signal suppression, audio mixer cache and deferred CCK RTC experiments before publication
+- **Architectural Rationale & Trade-Offs**:
+  - The captured audit found repeatable regressions for all three experiments
+  - host UTC plus an independent persisted offset outside save states remains a local second-round proposal and is not implemented
+- **Verification & Test Results**:
+  - The combined candidate passed ordinary Rust tests, the standard harness and canonical commit verification before this diary partition
+  - changed executable paths were reviewed against coverage
+  - individual commit boundaries were not tested separately
+  - no new timing measurement of the final combination

@@ -170,6 +170,80 @@ fn volume_latches_and_attachment_changes_leave_their_complete_filter_tail() {
 }
 
 #[test]
+fn byte_transitions_and_direct_output_changes_keep_their_cck_boundaries() {
+    for standard in [VideoStandard::Pal, VideoStandard::Ntsc] {
+        for filter in [false, true] {
+            let mut audio = Audio::new(standard);
+            audio.set_filter_enabled(filter);
+            audio.set_per(0, 17);
+            audio.set_vol(0, 64);
+            audio.set_dat(0, 0x4080, false);
+            // Pending manual-mode IRQ stops the channel at the word boundary,
+            // retaining the low-byte output and its filter tail.
+            let events = [(0, 4096), (17, -12_288), (121, 7168)];
+            let mut produced = 0;
+            for cck in 0..3000 {
+                if cck == 120 {
+                    let channel = &mut audio.channels[0];
+                    channel.current_sample = -64;
+                    channel.output_volume = 16;
+                }
+                audio.step_cck(1);
+                if let Some(sample) = audio.pop_sample() {
+                    produced += 1;
+                    assert_eq!(sample.left, 0);
+                    assert_eq!(
+                        sample.right,
+                        reference(
+                            &events,
+                            produced,
+                            standard.color_clock_hz(),
+                            table(standard, filter),
+                        ),
+                    );
+                }
+            }
+            assert_eq!(audio.channels[0].state, paula::audio::AudioState::Idle);
+        }
+    }
+}
+
+#[test]
+fn volume_attachment_reaches_the_next_channels_latch_in_the_same_cck() {
+    for standard in [VideoStandard::Pal, VideoStandard::Ntsc] {
+        for filter in [false, true] {
+            let mut audio = Audio::new(standard);
+            audio.set_filter_enabled(filter);
+            audio.set_adkcon(1);
+            start(&mut audio, 1, 64, 16, 2);
+            audio.set_per(0, 2);
+            audio.set_dat(0, 32, false);
+            let events = [(0, 1024), (4, 1024), (8, 2048)];
+            let mut produced = 0;
+            for cck in 0..3000 {
+                if cck == 4 {
+                    audio.set_dat(0, 64, false);
+                }
+                audio.step_cck(0);
+                if let Some(sample) = audio.pop_sample() {
+                    produced += 1;
+                    assert_eq!(sample.right, 0);
+                    assert_eq!(
+                        sample.left,
+                        reference(
+                            &events,
+                            produced,
+                            standard.color_clock_hz(),
+                            table(standard, filter),
+                        ),
+                    );
+                }
+            }
+        }
+    }
+}
+
+#[test]
 fn dense_steps_coalesce_at_one_cck_and_expire_without_losing_recent_history() {
     let mut audio = Audio::default();
     start(&mut audio, 0, 32, 64, 0);

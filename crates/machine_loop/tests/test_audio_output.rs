@@ -89,6 +89,33 @@ fn full_pcm_ring_dense_blep_history_and_fractional_phase_survive_machine_restore
 }
 
 #[test]
+fn pending_direct_channel_changes_survive_clone_and_restore_before_mixing() {
+    let mut audio = Audio::default();
+    audio.set_per(0, 0);
+    audio.set_vol(0, 64);
+    audio.set_dat(0, 0x4040, false);
+    for _ in 0..120 {
+        audio.step_cck(0);
+    }
+    audio.channels[0].current_sample = -64;
+    let mut cloned = audio.clone();
+    let json = serde_json::to_string(&audio).unwrap();
+    let mut restored: Audio = serde_json::from_str(&json).unwrap();
+    assert_eq!(audio, restored);
+    for _ in 0..3000 {
+        audio.step_cck(0);
+        cloned.step_cck(0);
+        restored.step_cck(0);
+        while let Some(sample) = audio.pop_sample() {
+            assert_eq!(cloned.pop_sample(), Some(sample));
+            assert_eq!(restored.pop_sample(), Some(sample));
+        }
+    }
+    assert_eq!(audio, cloned);
+    assert_eq!(audio, restored);
+}
+
+#[test]
 fn cia_direction_and_active_low_led_control_select_the_filter() {
     let mut machine = machine(VideoStandard::Pal);
     machine.cia_a.pra &= !2;
