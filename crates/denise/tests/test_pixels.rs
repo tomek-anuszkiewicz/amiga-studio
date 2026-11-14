@@ -56,6 +56,31 @@ fn all_plane_collision_enable_and_match_values_use_current_serialized_bits() {
 }
 
 #[test]
+fn repeated_collision_controls_preserve_accumulation_and_read_clear() {
+    let mut d = visible();
+    d.bplcon0 = 0x1000.into();
+    d.bpl_armed = true;
+    d.shifters[0] = 0xffff;
+    d.sprites.write_pos(0, 40);
+    d.sprites.write_data(0, 0xffff);
+    for (value, expected_before, expected_after) in [
+        (0, 0x23, 0x23),
+        (0x40, 0x23, 0x20),
+        (0x40, 0x20, 0x20),
+        (0x41, 0x20, 0x23),
+    ] {
+        assert!(d.set_clxcon(value));
+        d.step_cck();
+        assert_eq!(d.clxcon.value(), value);
+        assert_eq!(d.read_clxdat(), expected_before);
+        assert_eq!(d.read_clxdat(), 0);
+        d.step_cck();
+        assert_eq!(d.read_clxdat(), expected_after);
+        assert_eq!(d.read_clxdat(), 0);
+    }
+}
+
+#[test]
 fn mid_line_sprite_commits_arm_reload_and_disarm_without_stopping_serialization() {
     let mut d = visible();
     d.step_cck();

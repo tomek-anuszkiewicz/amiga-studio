@@ -269,7 +269,11 @@ impl Denise {
             reg::REGISTER_BPLCON2 => self.apply_bplcon2(val),
             reg::REGISTER_DIWSTRT => self.diwstrt = val,
             reg::REGISTER_DIWSTOP => self.diwstop = val,
-            reg::REGISTER_CLXCON => self.clxcon = val.into(),
+            reg::REGISTER_CLXCON => {
+                if self.clxcon.value() != val {
+                    self.clxcon = val.into();
+                }
+            }
 
             // Color palette $180..$1BE
             reg::REGISTER_COLOR00

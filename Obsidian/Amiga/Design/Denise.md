@@ -104,7 +104,9 @@ read clears it. Debug reads remain neutral.
 
 The [sprite line buffer](Sprites.md#derived-state-and-pixel-evaluation) supplies
 potential collision bits alongside its palette index. Applied CLXCON writes
-precompute the allowed playfield collision bits for all 64 plane codes. Each
+precompute the allowed playfield collision bits for all 64 plane codes. An
+identical effective CLXCON write retains the existing table; it still reaches
+the normal register-commit phase and does not clear accumulated collisions. Each
 visible pixel combines that table entry with current sprite presence;
 precomputation itself never accumulates CLXDAT or fixes a future palette color.
 

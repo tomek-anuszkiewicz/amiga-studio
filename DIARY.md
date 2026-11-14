@@ -1253,3 +1253,19 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - the original matched trial reduced mixed PAL time 2.47 percent and NTSC 1.61 percent
   - complete states and framebuffers matched
 ---
+
+### [2026-11-14 19:16 CET] — Retain collision decoding on identical CLXCON writes
+- **Affected Subsystems**:
+  - `denise`
+  - `machine_loop`
+- **What Was Changed (The Concrete Reality)**:
+  - Skip table reconstruction for identical effective CLXCON values
+  - preserve register commitment, accumulated collisions and live-read clearing
+  - add repeated and changed write coverage
+- **Architectural Rationale & Trade-Offs**:
+  - Avoid repeated construction of the same derived table without moving collision side effects
+- **Verification & Test Results**:
+  - 212 tests across 44 targets passed
+  - repeated-write focused time improved about 83 percent
+  - complete machine states and framebuffers matched
+---
