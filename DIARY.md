@@ -1333,3 +1333,20 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - verifiers
   - graph refresh
   - language scans and independent review were not run for this batch at the user's explicit request.
+---
+
+### [2026-11-14 20:50 CET] — Overlap independent preparation work on a stable candidate
+- **Affected Subsystems**:
+  - `Commit policy`
+  - `Graphify skill`
+- **What Was Changed (The Concrete Reality)**:
+  - Allow independent review, Graphify refresh and canonical verification to overlap on a stable candidate
+  - require isolated outputs and completion before freeze
+  - serialize work sharing Cargo or coverage outputs and bound competing Graphify workers
+- **Architectural Rationale & Trade-Offs**:
+  - Reduce sequential preparation overhead without treating background launch as completion or changing verifier group scheduling
+- **Verification & Test Results**:
+  - Tests
+  - verifiers
+  - graph refresh
+  - language scans and independent review were not run for this batch at the user's explicit request.

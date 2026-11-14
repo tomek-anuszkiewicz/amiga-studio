@@ -69,6 +69,19 @@ those closure points, the user controls commit timing.
 7. Confirm the final **APPROVED** verdict, all required passing evidence, exact
    candidate and complete commit partition. Freeze them together.
 
+After candidate edits stop, overlap independent work: start the separate review,
+the required Graphify refresh and the canonical verifier in the background when
+their outputs are isolated. Graphify may overlap verification when it writes only
+ignored `graphify-out/` artifacts; finish it before freeze. Review may inspect the
+stable candidate while checks run, then assess their final evidence. Await every
+required result and inspect its exit status; background launch is not completion.
+Do not edit validated inputs, run competing graph writers, or launch duplicate
+test commands beside a canonical profile that already selects them. Serialize
+commands sharing Cargo targets or coverage reports. Limit Graphify extraction
+workers when it competes with compilation, and compare elapsed time before
+claiming an improvement. The verifier's internal groups currently run serially;
+subagents do not change that scheduling or replace its final verdict.
+
 Compatible documentation and in-scope audit corrections belong to this same
 preparation; they do not create a second approval channel. Optional behavior,
 requirement changes, protected checks and references retain their existing
