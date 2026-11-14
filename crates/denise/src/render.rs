@@ -46,6 +46,7 @@ impl Denise {
             .frame_y
             .filter(|_| self.frame_cursor.active);
         let plane_mask = self.bplcon0.plane_mask;
+        let mut samples = [border; frame_builder::HIRES_PIXELS_PER_CCK];
         for half in 0..LORES_PIXELS_PER_CCK as u16 {
             let position = horizontal * LORES_PIXELS_PER_CCK as u16 + half;
             let in_window = self.horizontal_window(position + DIW_COUNT_LEAD);
@@ -94,12 +95,14 @@ impl Denise {
             }
             self.pipeline_pixels = next;
             self.pipeline_pixels_valid = [true; 2];
-            if let Some(frame_y) = frame_y {
-                self.frame_builder
-                    .write_pixel_pair(self.frame_cursor.frame_x, frame_y, output);
-            }
-            self.frame_cursor.frame_x += 2;
+            let offset = usize::from(half) * 2;
+            samples[offset..offset + 2].copy_from_slice(&output);
         }
+        if let Some(frame_y) = frame_y {
+            self.frame_builder
+                .write_cck(self.frame_cursor.frame_x, frame_y, samples);
+        }
+        self.frame_cursor.frame_x += frame_builder::HIRES_PIXELS_PER_CCK;
     }
 
     fn horizontal_window(&mut self, count: u16) -> bool {

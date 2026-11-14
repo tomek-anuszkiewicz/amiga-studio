@@ -162,6 +162,28 @@ impl FrameBuilder {
         self.field_odd = odd;
     }
 
+    /// Stores one color clock of hires samples at their final visible coordinates.
+    /// Partial edge pairs retain the same clipping as individual pair writes.
+    #[inline]
+    pub fn write_cck(
+        &mut self,
+        frame_x: usize,
+        frame_y: usize,
+        pixels: [u32; HIRES_PIXELS_PER_CCK],
+    ) {
+        if frame_x + HIRES_PIXELS_PER_CCK <= self.width as usize && frame_y < MAX_FRAME_HEIGHT {
+            let start = frame_y * MAX_FRAME_WIDTH + frame_x;
+            self.buffer[start..start + HIRES_PIXELS_PER_CCK].copy_from_slice(&pixels);
+            if !self.interlaced && frame_y + 1 < MAX_FRAME_HEIGHT {
+                let start = start + MAX_FRAME_WIDTH;
+                self.buffer[start..start + HIRES_PIXELS_PER_CCK].copy_from_slice(&pixels);
+            }
+        } else {
+            self.write_pixel_pair(frame_x, frame_y, [pixels[0], pixels[1]]);
+            self.write_pixel_pair(frame_x + 2, frame_y, [pixels[2], pixels[3]]);
+        }
+    }
+
     /// Stores two hires samples at their final visible coordinates.
     #[inline]
     pub fn write_pixel_pair(&mut self, frame_x: usize, frame_y: usize, pixels: [u32; 2]) {

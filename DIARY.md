@@ -1388,3 +1388,26 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Tests
   - verification and content inspection were not performed
   - as explicitly requested
+---
+
+### [2026-11-15 00:16 CET] — Store completed Denise samples once per color clock
+- **Affected Subsystems**:
+  - `Denise`
+  - `FrameBuilder`
+- **What Was Changed (The Concrete Reality)**:
+  - Complete DENISE-RENDER-EXPERIMENTS-20261114 with one four-sample framebuffer write per CCK
+  - Preserve pixel composition order and two-sample output latency
+  - Add clipping and row-boundary coverage
+  - Reject grouped serializers, table gathering, shared sprite checks and stream reconstruction after comparison
+- **Architectural Rationale & Trade-Offs**:
+  - Resolve output row coordinates once per CCK while retaining current rendering
+  - collision and snapshot behavior
+- **Verification & Test Results**:
+  - Mixed PAL median 8.476499 to 8.156421 ms per field, 3.78 percent less time
+  - Mixed NTSC median 7.113554 to 6.851335 ms, 3.69 percent less time
+  - Four samples per build from interleaved runs after 64 warmup fields, with 600 fields per PAL series and 240 per NTSC series
+  - Complete serialized states and frame images match, excluding GUI and pacing
+  - Idle PAL remains within overlapping ranges
+  - Invalid final measurements caused by preserved source timestamps were discarded and repeated after rebuilding
+  - 68 focused tests, core Wasm compilation, Clippy, formatting and diff checks passed
+  - Commit-profile verification and independent review are pending

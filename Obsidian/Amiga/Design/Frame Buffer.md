@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "frame_builder"
 status: "active"
 created: 2026-09-19
-updated: 2026-11-14
+updated: 2026-11-15
 related: ["[Denise.md](Denise.md)", "[Agnus.md](Agnus.md)", "[GUI.md](Application/GUI.md)"]
 tracked_paths:
   - "crates/frame_builder"
@@ -52,6 +52,11 @@ Completed ARGB samples go directly
 to their final columns and, without interlace, both destination rows. Finished
 rows are never moved. Short-line tails and rows invalidated by a shorter field
 are cleared; unchanged unused capacity needs no repeated clearing.
+
+Denise collects the four high-resolution output samples of each CCK before
+storing them together. Pixel composition and the two-sample pipeline still
+advance in their original order. The shared write resolves destination rows
+once; at the visible edge, only complete pairs within the row are stored.
 
 The [GUI](Application/GUI.md#scaling-and-appearance) reads the visible prefix of
 each stored row for texture upload and applies the selected uniform scale.
