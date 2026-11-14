@@ -198,6 +198,28 @@ class SelectionTests(unittest.TestCase):
         self.assertIn("test_runner", plain[0])
         self.assertNotIn("test_singlestep", plain[0])
 
+    def test_orchestration_keeps_all_quality_gates_and_python_contracts(self):
+        docs = selected("commit", ["docs/testing.md"])
+        gui = selected("commit", ["crates/gui/src/lib.rs"])
+        for path in ("tools/verification/verify.py", "tools/verification/execution.py",
+                     "tools/verification/evidence.py", "tools/verification/batch_lock.py",
+                     "tools/verification/tests/test_evidence.py"):
+            with self.subTest(path=path):
+                self.assertEqual(selected("commit", [path]), docs)
+                self.assertEqual(selected("commit", ["crates/gui/src/lib.rs", path]), gui)
+        names = {name for name, _, _ in docs}
+        self.assertTrue({"Strict English Policy", "Obsidian Frontmatter", "Formatting",
+                         "Clippy Invariants", "Architecture Rules", "Hardware Quality",
+                         "Code Quality", "RAG MCP contracts", "Artifact report contracts",
+                         "Verification CLI contracts"} <= names)
+        for path in ("tools/verification/commands.py", "tools/verification/impact.py",
+                     "tools/verification/repository.py", "tools/verification/new_module.py"):
+            with self.subTest(path=path):
+                commands = selected("commit", ["tools/verification/evidence.py", path])
+                run = next(command for _, command, _ in commands if "--no-report" in command)
+                self.assertIn("--workspace", run)
+                self.assertIn("All standard harness tests", {name for name, _, _ in commands})
+
     def test_development_coverage_reuses_pipeline_without_completion_gates(self):
         for sentence, package in (("test coverage crate cpu", "cpu"),
                                   ("test coverage workspace", None)):

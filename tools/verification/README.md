@@ -360,8 +360,9 @@ Rust changes therefore expand the test scope, even for a documentation task.
 | Files inside a workspace package, including tests and fixtures | Owning package and every transitive consumer |
 | Independent root, `docs/`, `.agents/` or tool Markdown; known Python tool inputs | No Rust tests or coverage |
 | `checks/english_words/*.txt` and `checks/check_english.json` under `tools/verification/` | No Rust tests or coverage; does not expand the scope of other changes |
+| Known verifier orchestration inputs: `verify.py`, `execution.py`, `evidence.py`, `batch_lock.py`, `tests/test_evidence.py` | No Rust tests or coverage; Python contracts and all quality gates still run |
 | Cargo manifests/lockfiles, build scripts, toolchain or `.cargo/` configuration | Full ordinary workspace and standard harness |
-| Verification implementation/tests or Design specifications | Full ordinary workspace and standard harness |
+| Other verification implementation/tests, including selection, CLI grammar, Git change discovery, commands, coverage processing and checks; Design specifications | Full ordinary workspace and standard harness |
 | Unknown ownership, unavailable Cargo metadata, or a clean tree | Full ordinary workspace and standard harness |
 
 [impact.py](impact.py) reads `cargo metadata --no-deps --offline --locked`. It uses
@@ -375,6 +376,13 @@ Unknown external assets take the full fallback because Cargo does not describe
 every runtime file dependency. Package ownership takes precedence over the
 independent-documentation classification; build and specification inputs take
 precedence over package selection.
+
+Orchestration ownership is an explicit file list in [impact.py](impact.py), not
+an exemption for the verification directory. A logging or evidence-reuse change
+alone therefore keeps the Python contracts without starting emulator tests.
+Combined with a Rust change, it retains that package and its transitive consumers.
+Unknown verifier files and rename destinations still require the full Rust scope.
+Changing this selection contract itself also requires the full scope.
 
 All ordinary unit and integration tests of selected packages run. When
 `test_runner` is selected, all its standard harness targets run, excluding the

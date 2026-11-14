@@ -1300,3 +1300,20 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - canonical batch verification and final independent review remain pending
   - these RTC2 measurements precede a Wasm constant rename and removal of the obsolete Denise plane-count cache and getter
   - focused RTC calendar and native host-conversion tests passed after coverage review, including reproduction and repair of pre-epoch rounding
+---
+
+### [2026-11-14 20:50 CET] — Keep verifier orchestration changes within Python contracts
+- **Affected Subsystems**:
+  - `tools/verification`
+  - `Verification design specification`
+- **What Was Changed (The Concrete Reality)**:
+  - Classify five known execution and evidence files explicitly as orchestration inputs
+  - preserve package selection for concurrent Rust changes and the full Rust fallback for selection logic and unknown files
+  - add selection contract tests and describe the ownership boundary
+- **Architectural Rationale & Trade-Offs**:
+  - Avoid starting emulator tests solely because execution or evidence handling changed while retaining Python contracts and quality gates
+- **Verification & Test Results**:
+  - Tests
+  - verifiers
+  - graph refresh
+  - language scans and independent review were not run for this batch at the user's explicit request.

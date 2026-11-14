@@ -76,9 +76,33 @@ class ImpactTests(unittest.TestCase):
                 self.assertEqual(self.select([path, "crates/core/src/lib.rs"]).packages,
                                  ("core", "gui", "machine", "test_runner"))
 
+    def test_orchestration_changes_keep_only_affected_rust_packages(self):
+        for path in ("tools/verification/verify.py", "tools/verification/execution.py",
+                     "tools/verification/evidence.py", "tools/verification/batch_lock.py",
+                     "tools/verification/tests/test_evidence.py"):
+            with self.subTest(path=path):
+                # Ownership is path-based, including a deleted known input.
+                self.assertFalse((self.root / path).exists())
+                self.assertEqual(self.select([path]).packages, ())
+                self.assertEqual(self.select([path, "crates/gui/src/lib.rs"]).packages, ("gui",))
+                self.assertEqual(self.select([path, "crates/core/src/lib.rs"]).packages,
+                                 ("core", "gui", "machine", "test_runner"))
+
+    def test_renamed_orchestration_requires_known_ownership_at_both_ends(self):
+        self.assertIsNone(self.select(["tools/verification/execution.py",
+                                       "tools/verification/new_execution.py"]).packages)
+        self.assertIsNone(self.select(["tools/verification/tests/test_evidence.py",
+                                       "tools/verification/tests/test_new_evidence.py"]).packages)
+        self.assertEqual(self.select(["tools/verification/verify.py",
+                                      "tools/verification/execution.py"]).packages, ())
+
     def test_unknown_inputs_build_changes_and_selection_changes_require_full_scope(self):
         for path in ("Cargo.lock", "crates/core/Cargo.toml", "crates/core/build.rs", ".cargo/config.toml",
                      "rust-toolchain.toml", "tools/verification/impact.py", "tools/verification/tests/test_impact.py",
+                     "tools/verification/cli.py", "tools/verification/repository.py",
+                     "tools/verification/commands.py", "tools/verification/coverage_report.py",
+                     "tools/verification/run_singlestep.py", "tools/verification/tests/test_cli.py",
+                     "tools/verification/tests/test_coverage_report.py", "tools/verification/new_module.py",
                      "tools/verification/checks/check_english.py", "tools/verification/tests/test_english.py",
                      "tools/verification/checks/english_words/tool.py", "tools/verification/checks/other.json",
                      "Obsidian/Amiga/Design/CPU.md", "tools/new/check.py", "examples/fixture.bin",

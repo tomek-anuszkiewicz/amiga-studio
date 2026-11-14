@@ -5,6 +5,18 @@ from pathlib import Path
 import subprocess
 
 
+# Execution and continuation have Python process/fixture contracts. Selection,
+# CLI grammar, change discovery, command construction and check criteria do not
+# belong here: changes to those inputs still select the full Rust scope.
+ORCHESTRATION_INPUTS = frozenset({
+    "tools/verification/verify.py",
+    "tools/verification/execution.py",
+    "tools/verification/evidence.py",
+    "tools/verification/batch_lock.py",
+    "tools/verification/tests/test_evidence.py",
+})
+
+
 @dataclass(frozen=True)
 class RustScope:
     # None means full workspace; an empty tuple means no Rust tests.
@@ -71,7 +83,7 @@ def language_data_input(path):
 
 
 def full_scope_input(path):
-    if language_data_input(path):
+    if language_data_input(path) or path in ORCHESTRATION_INPUTS:
         return False
     name = Path(path).name
     return (name in {"Cargo.toml", "Cargo.lock", "build.rs", "rust-toolchain", "rust-toolchain.toml"}
@@ -81,7 +93,7 @@ def full_scope_input(path):
 
 def independent_input(path, python_inputs):
     # Package ownership is checked first: README files can be included by Rust.
-    if language_data_input(path):
+    if language_data_input(path) or path in ORCHESTRATION_INPUTS:
         return True
     if path.endswith(".md") and ("/" not in path or path.startswith(("docs/", ".agents/", "tools/"))):
         return True

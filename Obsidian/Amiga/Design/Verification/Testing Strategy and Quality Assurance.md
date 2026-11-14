@@ -39,11 +39,19 @@ selected packages run once under coverage; dependencies still compile as needed.
 Independent documentation and known Python tool changes skip Rust tests and
 coverage. Language data in `tools/verification/checks/english_words/*.txt` and
 `tools/verification/checks/check_english.json` also selects no Rust tests and does
-not expand the scope selected by other changes. Language checker code and tests
-remain verification implementation inputs requiring the full Rust scope.
+not expand the scope selected by other changes. Known orchestration inputs also
+select no Rust tests: `verify.py`, `execution.py`, `evidence.py`, `batch_lock.py`
+and `tests/test_evidence.py` under `tools/verification/`. Their Python contracts
+still run, together with every existing quality gate. These inputs control
+execution, logging, process ownership and evidence reuse; they do not expand
+the package scope selected by concurrent emulator changes.
 Changes inside a package, including fixtures, select that package and
 its consumers. Manifest, lockfile, toolchain, Cargo configuration, verification
-implementation and design specification changes require the full Rust scope.
+selection, command construction, coverage processing, check implementation and
+design specification changes require the full Rust scope. This includes the CLI
+grammar and Git change discovery because they determine selectors and the change
+boundary. Other verification code and tests remain conservative; a new module or
+renamed destination does not inherit orchestration ownership from its directory.
 Unknown input ownership, unavailable metadata and a clean tree also select the
 full Rust scope. This conservative fallback covers inputs outside Cargo's graph.
 The plan explains selection and omissions. Coverage reports identify the selected
