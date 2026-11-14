@@ -14,6 +14,17 @@ planned commits without another confirmation. Keep the request active through
 routine in-scope corrections and user answers. Ask only for substantive unresolved
 decisions, including protected verification or reference changes.
 
+A request to commit, including a commit required by roadmap closure, delegates
+commit partitioning to the agent. Inspect available session/task records, pending
+diffs and recent history to identify the coherent changes within the authorized
+scope. Split independent fixes or features into separate commits automatically;
+one coherent change may remain one commit. Session boundaries are evidence, not
+a requirement to separate tightly coupled work. Resolve shared files by hunks
+and order dependent commits so each is coherent. Do not include unrelated work
+merely because it is pending. Report the planned groups briefly, without asking
+for routine partition approval, then list the resulting commit count, IDs and
+scopes at completion. An explicit user-selected scope or partition takes priority.
+
 Commits remain mandatory when closing a minor roadmap point or major milestone.
 Do not label ordinary work as roadmap completion to trigger a commit. Outside
 those closure points, the user controls commit timing.
@@ -34,7 +45,9 @@ those closure points, the user controls commit timing.
    compatible documentation enrichment, necessary refactoring, language resolution
    and applicable [coverage review](unit-testing-policy.md#coverage-during-development-and-review).
    Prepare every commit's diary entry, ordering and English Conventional Commit
-   message. Each coherent concern includes its implementation, tests, documentation
+   message before starting expensive verification. Check the prepared partition
+   with lightweight Git comparisons, including `git diff --check`, first.
+   Each coherent concern includes its implementation, tests, documentation
    and diary entry; do not split a feature merely by file category. Record checks
    already observed in the diary, and the final profile outcome in commit messages
    and the completion response. Do not rewrite the diary just to repeat that outcome.

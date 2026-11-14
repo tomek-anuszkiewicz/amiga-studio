@@ -1191,3 +1191,18 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - 137 verification tool tests passed
   - a real Cargo and LLVM probe executed three Cargo commands initially, zero after a diary edit and three after a source edit
   - this bounded probe is not a full emulator benchmark
+---
+
+### [2026-11-14 15:12 CET] — Partition authorized commits automatically
+- **Affected Subsystems**:
+  - `.agents/rules/git-commits.md`
+  - `docs/ai_agents.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Delegate coherent commit grouping to the agent for ordinary commit requests and roadmap closure
+  - inspect session provenance and changes, preserve explicit scope and report commit counts and IDs
+  - finish diary entries and cheap partition checks before expensive verification
+- **Architectural Rationale & Trade-Offs**:
+  - Users should not need a separate request to split independent concerns or avoid repeated verification caused by late preparation
+- **Verification & Test Results**:
+  - Reviewed ordinary single-change, multiple-session, shared-file and explicit-partition cases against the batch lifecycle
+  - commit timing and push authorization remain user controlled

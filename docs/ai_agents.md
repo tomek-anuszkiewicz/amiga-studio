@@ -135,7 +135,9 @@ Routine task completion leaves validated changes available for review. It does
 not itself authorize staging or committing. Ask for a commit when the change is
 ready, or request batch preparation to authorize staging without creating commits.
 A commit request authorizes preparation and mechanical execution without another
-confirmation. Roadmap closure retains its required completion commit under the
+confirmation. The agent identifies the included sessions and changes and splits
+independent concerns into coherent commits automatically, reporting their count,
+IDs and scopes. Roadmap closure retains its required completion commit under the
 [commit policy](../.agents/rules/git-commits.md).
 
 Prepare one complete candidate against `HEAD`, then repeat the command after corrections:
