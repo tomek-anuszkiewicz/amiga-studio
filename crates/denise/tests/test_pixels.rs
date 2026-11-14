@@ -6,7 +6,9 @@ fn visible() -> Denise {
     d.sync.vertical_blank = false;
     d.sync.hpos = 40;
     d.sync.vpos = 100;
-    d.frame_builder.begin_line(false, false, false, false);
+    d.strobe_strhor();
+    d.sync.hpos = 40;
+    d.sync.vpos = 100;
     d.hflop = true;
     d.diwstrt = 0x0081;
     d.diwstop = 0x00c1;
@@ -258,9 +260,13 @@ fn special_modes_render_book_colors_in_both_interlaced_fields() {
                 d.color[1] = 0xf00;
                 d.color[5] = 0xf97;
                 d.color[9] = 0x0f0;
-                d.frame_builder.begin_line(false, false, false, true);
-                d.frame_builder.step_cck(if ntsc { 227 } else { 226 }, 99);
-                d.frame_builder.begin_line(lace, odd, false, false);
+                d.strobe_strvbl();
+                d.sync.hpos = if ntsc { 227 } else { 226 };
+                d.step_cck();
+                d.sync.field_odd = odd;
+                d.strobe_strhor();
+                d.sync.hpos = 40;
+                d.sync.vpos = 100;
                 for plane in (0..6).rev() {
                     let word = codes.iter().enumerate().fold(0, |word, (pixel, code)| {
                         word | (u16::from((code >> plane) & 1) << (15 - pixel))

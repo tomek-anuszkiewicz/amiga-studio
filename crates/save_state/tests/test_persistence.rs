@@ -5,6 +5,45 @@ use machine_loop::A500Machine;
 use save_state::{SaveState, SaveStateError, SAVE_STATE_VERSION};
 
 #[test]
+fn frame_coordinates_resume_at_visible_and_blanking_boundaries() {
+    use machine_loop::denise::{Denise, DeniseModel};
+
+    for ccks in [227, 228] {
+        for interlaced in [false, true] {
+            let mut denise = Denise::new(DeniseModel::Ocs8362);
+            denise.bplcon0 = (if interlaced { 4 } else { 0 }).into();
+            denise.sync.field_odd = interlaced;
+            denise.color[0] = 0xf00;
+            denise.strobe_strhor();
+            for _ in 0..ccks {
+                denise.step_cck();
+            }
+            for hpos in [0, 17, 18, 35, 36, 100] {
+                let mut original = denise.clone();
+                original.strobe_strhor();
+                for _ in 0..hpos {
+                    original.step_cck();
+                }
+                let json = serde_json::to_vec(&original).unwrap();
+                let mut restored: Denise = serde_json::from_slice(&json).unwrap();
+                assert_eq!(original, restored);
+                for step in hpos..ccks + 37 {
+                    for target in [&mut original, &mut restored] {
+                        if step == ccks {
+                            target.strobe_strhor();
+                        }
+                        assert!(target.set_color(0, step));
+                        target.step_cck();
+                    }
+                    assert_eq!(original.frame_cursor, restored.frame_cursor);
+                }
+                assert_eq!(original, restored);
+            }
+        }
+    }
+}
+
+#[test]
 fn denise_display_controls_roundtrip_with_a_pending_mode_change() {
     use machine_loop::denise::{Denise, DeniseModel};
     let mut denise = Denise::new(DeniseModel::Ocs8362);
@@ -188,7 +227,7 @@ fn dma_registers_roundtrip_in_their_single_owner() {
     assert_eq!(machine.agnus.dma.planecount(), 2);
     let saved = SaveState::capture(&machine);
     let json = serde_json::to_value(&saved).unwrap();
-    assert_eq!(json["header"]["version"], 5);
+    assert_eq!(json["header"]["version"], 6);
     for (name, value) in [
         ("dmacon", 0x0300),
         ("bplcon0", 0x2004),

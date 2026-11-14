@@ -91,6 +91,7 @@ fn snapshot_between_field_strobe_and_hblank_finishes_the_previous_display_row() 
             machine.step_subsystems_cck();
             restored.step_subsystems_cck();
             assert_eq!(restored.denise.frame_builder, machine.denise.frame_builder);
+            assert_eq!(restored.denise.frame_cursor, machine.denise.frame_cursor);
         }
         assert_eq!(machine.denise.frame_builder.frame_number, 1);
         assert!(machine.denise.frame_builder.field_odd);

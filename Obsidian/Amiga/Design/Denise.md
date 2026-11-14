@@ -138,6 +138,10 @@ preserves the cursor, unconsumed input, pixel pipeline and partially drawn
 buffer. These receiver counters and retained edge offsets are a functional
 model, not measured silicon phase or copies of Agnus's absolute beam position.
 
+The separate [frame cursor](../../../crates/denise/src/frame_cursor.rs) maps
+those receiver phases to final visible coordinates in the [frame buffer](Frame%20Buffer.md).
+Its position and pending line survive snapshots with the pixel pipeline.
+
 `pins.game_port_inputs` holds the delivered raw direction/quadrature levels for both
 [game ports](Game%20Ports.md#connector-delivery). The motherboard no longer
 assigns JOY registers from device counters. Counting/decoding belongs to

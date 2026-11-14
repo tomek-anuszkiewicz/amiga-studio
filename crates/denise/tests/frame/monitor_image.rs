@@ -1,4 +1,5 @@
-use frame_builder::{FrameBuilder, OPAQUE_BLACK};
+use crate::receiver::Video;
+use denise::frame_builder::OPAQUE_BLACK;
 
 const RED: u32 = 0xfff00000;
 const GREEN: u32 = 0xff00f000;
@@ -10,7 +11,7 @@ fn monitor_image_keeps_the_border_and_square_pixels_without_retrace_or_partial_l
         [(313, 26, 227, 836, 572), (263, 21, 228, 840, 482)]
     {
         for interlaced in [false, true] {
-            let mut frame = FrameBuilder::new();
+            let mut frame = Video::new();
             for field in 0..2 {
                 let odd = interlaced && field == 1;
                 for line in 0..lines {
@@ -31,7 +32,7 @@ fn monitor_image_keeps_the_border_and_square_pixels_without_retrace_or_partial_l
                             } else {
                                 GREEN
                             };
-                            frame.write_pixel_pair(x / 2, [color; 2]);
+                            frame.write_pair(half, [color; 2]);
                         }
                     }
                 }
@@ -40,7 +41,7 @@ fn monitor_image_keeps_the_border_and_square_pixels_without_retrace_or_partial_l
             for hpos in 0..19 {
                 frame.step_cck(hpos, 0);
                 for half in 0..2 {
-                    frame.write_pixel_pair(hpos as usize * 2 + half, [OPAQUE_BLACK; 2]);
+                    frame.write_pair(half, [OPAQUE_BLACK; 2]);
                 }
             }
             assert_eq!(frame.frame_number, 2);
@@ -74,7 +75,7 @@ fn monitor_image_keeps_the_border_and_square_pixels_without_retrace_or_partial_l
 
 #[test]
 fn short_interlaced_field_cannot_leave_a_partial_row_inside_the_opposite_long_field() {
-    let mut frame = FrameBuilder::new();
+    let mut frame = Video::new();
     for (field, lines) in [(0, 312), (1, 313)] {
         let color = if field == 0 { RED } else { GREEN };
         for line in 0..lines {
@@ -82,7 +83,7 @@ fn short_interlaced_field_cannot_leave_a_partial_row_inside_the_opposite_long_fi
             for hpos in 0..227 {
                 frame.step_cck(hpos, line);
                 for half in 0..2 {
-                    frame.write_pixel_pair(hpos as usize * 2 + half, [color; 2]);
+                    frame.write_pair(half, [color; 2]);
                 }
             }
         }
@@ -104,7 +105,7 @@ fn short_interlaced_field_cannot_leave_a_partial_row_inside_the_opposite_long_fi
 fn shorter_fields_clear_retired_rows_without_erasing_the_other_field() {
     for (long_lines, blank_lines, ccks) in [(313, 26, 227), (263, 21, 228)] {
         for interlaced in [false, true] {
-            let mut frame = FrameBuilder::new();
+            let mut frame = Video::new();
             let mut retained = [(0usize, OPAQUE_BLACK); 2];
             for (field, lines) in [
                 long_lines,
@@ -124,7 +125,7 @@ fn shorter_fields_clear_retired_rows_without_erasing_the_other_field() {
                     for hpos in 0..ccks {
                         frame.step_cck(hpos, line);
                         for half in 0..2 {
-                            frame.write_pixel_pair(hpos as usize * 2 + half, [color; 2]);
+                            frame.write_pair(half, [color; 2]);
                         }
                     }
                 }

@@ -40,7 +40,9 @@ old layouts have no
 compatibility parser. Frontends and the debugger use this crate for persistence;
 in-memory quick slots retain only the machine value.
 
-Schema version 5 stores the [frame buffer](../Frame%20Buffer.md) with a fixed
+Schema version 6 stores Denise's frame cursor alongside the
+[frame buffer](../Frame%20Buffer.md), preserving the write position across
+visible and blanking boundaries. The buffer uses a fixed
 row stride and retains destination addresses for pending line output. PNG
 previews contain only the visible pixels of each row. Chipset engines remain
 inside their owning crates; DMACON, BPLCON0, DDFSTRT and DDFSTOP have their sole

@@ -51,10 +51,12 @@ fn display_mode_matrix_masks_planes_and_places_pixels_in_both_standard_fields() 
                                 | if lace { 4 } else { 0 })
                             .into();
                             denise.bplcon2 = if second_first { 0x40 } else { 0 };
-                            denise
-                                .frame_builder
-                                .step_cck(if ntsc { 227 } else { 226 }, 99);
-                            denise.frame_builder.begin_line(lace, odd, false, false);
+                            denise.sync.hpos = if ntsc { 227 } else { 226 };
+                            denise.step_cck();
+                            denise.sync.field_odd = odd;
+                            denise.strobe_strhor();
+                            denise.sync.hpos = 40;
+                            denise.sync.vpos = 100;
                             for (index, color) in denise.color.iter_mut().enumerate() {
                                 *color = 0x800 | index as u16 * 0x11;
                             }

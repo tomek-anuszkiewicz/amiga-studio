@@ -18,7 +18,7 @@ impl Denise {
             self.pipeline_pixels_valid.fill(false);
         }
         self.sprites.step_cck(horizontal);
-        self.frame_builder.step_cck(horizontal, vertical);
+        self.advance_frame_cursor(horizontal, vertical);
         let blank =
             self.sync.vertical_blank || (HBLANK_START_CCK..=HBLANK_STOP_CCK).contains(&horizontal);
         let hires = self.is_hires();
@@ -41,6 +41,10 @@ impl Denise {
             self.pipeline_pixels_valid = [true; 2];
             return;
         }
+        let frame_y = self
+            .frame_cursor
+            .frame_y
+            .filter(|_| self.frame_cursor.active);
         let count = self.bitplane_count().min(config::OCS_BITPLANE_COUNT as u8);
         let plane_mask = (1u8 << count) - 1;
         for half in 0..LORES_PIXELS_PER_CCK as u16 {
@@ -91,8 +95,11 @@ impl Denise {
             }
             self.pipeline_pixels = next;
             self.pipeline_pixels_valid = [true; 2];
-            self.frame_builder
-                .write_pixel_pair(usize::from(position), output);
+            if let Some(frame_y) = frame_y {
+                self.frame_builder
+                    .write_pixel_pair(self.frame_cursor.frame_x, frame_y, output);
+            }
+            self.frame_cursor.frame_x += 2;
         }
     }
 

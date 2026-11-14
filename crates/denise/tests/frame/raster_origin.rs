@@ -1,11 +1,12 @@
-use frame_builder::{FrameBuilder, OPAQUE_BLACK};
+use crate::receiver::Video;
+use denise::frame_builder::OPAQUE_BLACK;
 
-fn emit(frame: &mut FrameBuilder, line: u16, first: u16, end: u16) {
+fn emit(frame: &mut Video, line: u16, first: u16, end: u16) {
     for hpos in first..end {
         frame.step_cck(hpos, line);
         for half in 0..2 {
             let x = usize::from(hpos) * 2 + half;
-            frame.write_pixel_pair(x, [sample(line, x * 2), sample(line, x * 2 + 1)]);
+            frame.write_pair(half, [sample(line, x * 2), sample(line, x * 2 + 1)]);
         }
     }
 }
@@ -18,7 +19,7 @@ fn sample(line: u16, x: usize) -> u32 {
 fn visible_rows_keep_the_next_counter_prefix_without_storing_horizontal_blanking() {
     for line_ccks in [227, 228] {
         for interlaced in [false, true] {
-            let mut frame = FrameBuilder::new();
+            let mut frame = Video::new();
             frame.begin_line(interlaced, true, false, false);
             emit(&mut frame, 100, 0, line_ccks);
             let row = usize::from(interlaced);
@@ -44,7 +45,7 @@ fn visible_rows_keep_the_next_counter_prefix_without_storing_horizontal_blanking
 
 #[test]
 fn vertical_blanking_and_both_partial_edge_lines_are_excluded() {
-    let mut frame = FrameBuilder::new();
+    let mut frame = Video::new();
     frame.begin_line(false, false, false, true);
     emit(&mut frame, 25, 0, 227);
     let before = frame.frame_buffer().to_vec();
@@ -66,7 +67,7 @@ fn vertical_blanking_and_both_partial_edge_lines_are_excluded() {
     let mut restored = frame.clone();
     emit(&mut frame, 0, 18, 19);
     emit(&mut restored, 0, 18, 19);
-    assert_eq!(restored, frame);
+    assert_eq!(restored.denise, frame.denise);
     assert_eq!(frame.frame_number, 1);
     assert_eq!(frame.height, 2, "only the complete scanline is retained");
     assert_eq!(frame.get_pixel(835, 0), sample(27, 71));
@@ -79,7 +80,7 @@ fn vertical_blanking_and_both_partial_edge_lines_are_excluded() {
 #[test]
 fn long_lines_keep_nonzero_rows_and_clear_short_line_tails() {
     for interlaced in [false, true] {
-        let mut frame = FrameBuilder::new();
+        let mut frame = Video::new();
         frame.begin_line(interlaced, true, false, false);
         emit(&mut frame, 100, 0, 227);
         frame.begin_line(interlaced, true, false, false);
@@ -124,11 +125,11 @@ fn long_lines_keep_nonzero_rows_and_clear_short_line_tails() {
 
 #[test]
 fn early_strobes_and_out_of_range_coordinates_cannot_write_another_row() {
-    let mut frame = FrameBuilder::new();
+    let mut frame = Video::new();
     frame.begin_line(false, false, false, false);
     emit(&mut frame, 100, 0, 20);
     frame.begin_line(false, false, false, false);
-    frame.write_pixel_pair(0, [0xffffffff; 2]);
+    frame.write_pair(0, [0xffffffff; 2]);
     assert!(frame
         .frame_buffer()
         .iter()
@@ -136,26 +137,26 @@ fn early_strobes_and_out_of_range_coordinates_cannot_write_another_row() {
 
     emit(&mut frame, 101, 0, 227);
     let before = frame.frame_buffer().to_vec();
-    frame.write_pixel_pair(72 + 836 / 2, [0xffffffff; 2]);
+    frame.write_pixel_pair(836, 0, [0xffffffff; 2]);
     assert_eq!(frame.frame_buffer(), before);
 
     frame.begin_line(false, false, false, false);
     frame.step_cck(36, 386);
     let before = frame.frame_buffer().to_vec();
-    frame.write_pixel_pair(72, [0xffffffff; 2]);
+    frame.write_pair(1, [0xffffffff; 2]);
     assert_eq!(frame.frame_buffer(), before);
 }
 
 #[test]
 fn reset_discards_mapped_rows_and_pending_prefix_output() {
-    let mut frame = FrameBuilder::default();
+    let mut frame = Video::new();
     frame.begin_line(true, true, false, false);
     emit(&mut frame, 100, 0, 228);
     frame.begin_line(true, true, false, false);
     emit(&mut frame, 101, 0, 8);
     frame.reset();
-    assert_eq!(frame, FrameBuilder::new());
-    frame.write_pixel_pair(0, [0xffffffff; 2]);
-    frame.write_pixel_pair(72, [0xffffffff; 2]);
-    assert_eq!(frame, FrameBuilder::new());
+    assert_eq!(frame.denise, Video::new().denise);
+    frame.write_pair(0, [0xffffffff; 2]);
+    frame.write_pair(1, [0xffffffff; 2]);
+    assert_eq!(frame.denise, Video::new().denise);
 }

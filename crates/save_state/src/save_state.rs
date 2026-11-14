@@ -6,7 +6,7 @@ use std::fmt;
 use std::path::Path;
 
 /// Active schema format version for A500 save states
-pub const SAVE_STATE_VERSION: u32 = 5;
+pub const SAVE_STATE_VERSION: u32 = 6;
 
 /// Metadata header identifying state compatibility, creation time, and display preview
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

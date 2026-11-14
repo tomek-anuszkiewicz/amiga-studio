@@ -44,7 +44,11 @@ PAL rows therefore retain four unused storage pixels after their visible edge.
 The row stride does not change when a long NTSC line establishes a wider image.
 There is no raw raster buffer or separate cropped/expanded presentation image.
 
-Each line retains its destination address. Completed ARGB samples go directly
+Denise's [frame cursor](../../../crates/denise/src/frame_cursor.rs) translates
+receiver timing into visible `frame_x` and `frame_y` coordinates. It retains
+the preceding row across counter wrap until HBLANK finishes that row; the
+frame builder receives final coordinates and owns storage and published geometry.
+Completed ARGB samples go directly
 to their final columns and, without interlace, both destination rows. Finished
 rows are never moved. Short-line tails and rows invalidated by a shorter field
 are cleared; unchanged unused capacity needs no repeated clearing.

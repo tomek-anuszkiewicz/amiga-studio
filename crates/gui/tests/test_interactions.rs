@@ -17,24 +17,27 @@ fn screen_uploads_the_visible_framebuffer_unchanged_and_preserves_its_geometry()
                     config::A500Config::standard_1mb(standard),
                 ));
                 app.view_mode = view;
-                let frame = &mut app.session.machine.denise.frame_builder;
-                for field in 0..2 {
+                let denise = &mut app.session.machine.denise;
+                denise.bplcon0 = (if interlaced { 4 } else { 0 }).into();
+                for _field in 0..2 {
                     for line in 0..lines {
-                        frame.begin_line(
-                            interlaced,
-                            interlaced && field == 1,
-                            field > 0 && line == 0,
-                            line < blanks,
-                        );
-                        for hpos in 0..ccks {
-                            frame.step_cck(hpos, line);
+                        if line == 0 {
+                            denise.strobe_strequ();
+                        } else if line < blanks {
+                            denise.strobe_strvbl();
+                        } else {
+                            denise.strobe_strhor();
+                        }
+                        for _ in 0..ccks {
+                            denise.step_cck();
                         }
                     }
                 }
-                frame.begin_line(interlaced, false, true, true);
-                for hpos in 0..19 {
-                    frame.step_cck(hpos, 0);
+                denise.strobe_strequ();
+                for _ in 0..19 {
+                    denise.step_cck();
                 }
+                let frame = &mut denise.frame_builder;
                 let stride = frame.row_stride();
                 let height = frame.height as usize;
                 let image_width = ccks as usize * 4 - 72;

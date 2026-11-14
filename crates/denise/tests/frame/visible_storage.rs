@@ -1,8 +1,8 @@
-use frame_builder::FrameBuilder;
+use crate::receiver::Video;
 
 #[test]
 fn framebuffer_keeps_visible_dimensions_with_a_fixed_row_stride() {
-    let mut frame = FrameBuilder::new();
+    let mut frame = Video::new();
     for field in 0..2 {
         for line in 0..313 {
             frame.begin_line(false, false, field > 0 && line == 0, line < 26);

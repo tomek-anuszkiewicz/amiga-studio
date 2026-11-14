@@ -114,12 +114,7 @@ impl Denise {
         if address == sync::REGISTER_STRLONG {
             return;
         }
-        self.frame_builder.begin_line(
-            interlaced,
-            self.sync.field_odd,
-            completed,
-            self.sync.vertical_blank,
-        );
+        self.begin_frame_line(interlaced, completed);
     }
 }
 

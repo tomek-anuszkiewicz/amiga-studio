@@ -1122,3 +1122,25 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - changed executable paths were reviewed against coverage
   - individual commit boundaries were not tested separately
   - no new timing measurement of the final combination
+---
+
+### [2026-11-14 14:40 CET] — give Denise explicit framebuffer coordinates
+- **Affected Subsystems**:
+  - `denise`
+  - `frame_builder`
+  - `machine_loop`
+  - `gui`
+  - `save_state`
+- **What Was Changed (The Concrete Reality)**:
+  - Move timing-to-image coordinates into the Denise frame cursor
+  - pass final positions to framebuffer storage
+  - relocate rendering tests and adapt GUI fixtures
+  - persist the cursor in snapshot format 6
+- **Architectural Rationale & Trade-Offs**:
+  - User explicitly retains this simplification even without a demonstrated speed gain
+  - host image dimensions and scaling stay unchanged
+- **Verification & Test Results**:
+  - The combined candidate passed ordinary Rust tests, the standard harness and canonical commit verification before this diary partition
+  - changed executable paths were reviewed against coverage
+  - individual commit boundaries were not tested separately
+  - no new timing measurement of the final combination

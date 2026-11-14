@@ -17,7 +17,8 @@ fn test_denise_display_window_uses_horizontal_bits_only() {
 
         denise.sync.vpos = 150;
         denise.sync.vertical_blank = false;
-        denise.frame_builder.begin_line(false, false, false, false);
+        denise.strobe_strhor();
+        denise.sync.vpos = 150;
         for hpos in 0..80 {
             if hpos == 64 {
                 assert!(denise.set_bpldat(0, 0xFFFF));

@@ -11,6 +11,8 @@ pub use config::DeniseModel;
 use config::MutationQueue;
 use serde::{Deserialize, Serialize};
 
+mod frame_cursor;
+pub use frame_cursor::FrameCursor;
 mod game_ports;
 mod pins;
 pub use pins::{DeniseInputs, DenisePins, DeniseSync};
@@ -38,6 +40,8 @@ pub struct Denise {
     pub pins: DenisePins,
     /// Receiver-owned synchronization and rendering cursor.
     pub sync: DeniseSync,
+    /// Visible output coordinates; receiver counters remain in `sync`.
+    pub frame_cursor: FrameCursor,
     /// Active Denise chip hardware model (8362 OCS, 8373 ECS)
     pub model: DeniseModel,
     /// Denise 8 hardware sprite engines
@@ -111,6 +115,7 @@ impl Denise {
         Self {
             pins: DenisePins::default(),
             sync: DeniseSync::default(),
+            frame_cursor: FrameCursor::default(),
             model,
             sprites: sprites::Sprites::new(),
             frame_builder: frame_builder::FrameBuilder::new(),
@@ -146,6 +151,7 @@ impl Denise {
     pub fn reset(&mut self) {
         self.pins = DenisePins::default();
         self.sync = DeniseSync::default();
+        self.frame_cursor = FrameCursor::default();
         self.sprites.reset();
         self.frame_builder.reset();
         self.bplcon0 = BitplaneControl::default();
