@@ -128,3 +128,26 @@ fn ten_code_buffer_reports_overflow_and_a500_reset_is_a_separate_line() {
     keyboard.reset();
     assert_eq!(bits(&mut keyboard, 1, 1000), 0);
 }
+
+#[test]
+fn first_key_after_long_idle_and_restored_idle_starts_on_the_same_cck(
+) -> Result<(), Box<dyn std::error::Error>> {
+    for hz in [3_546_895, 3_579_545] {
+        let mut keyboard = Keyboard::new(hz);
+        boot(&mut keyboard);
+        for _ in 0..1_000_000 {
+            assert!(!step(&mut keyboard, true));
+        }
+        let mut restored: Keyboard = serde_json::from_str(&serde_json::to_string(&keyboard)?)?;
+        keyboard.key_down(0x20);
+        restored.key_down(0x20);
+        // Expired idle delay selects immediately; the first rising edge is two portions later.
+        let portion = (u64::from(hz) * 20).div_ceil(1_000_000) as usize;
+        for cck in 0..=2 * portion {
+            assert_eq!(step(&mut keyboard, true), cck == 2 * portion);
+            step(&mut restored, true);
+            assert_eq!(keyboard, restored);
+        }
+    }
+    Ok(())
+}

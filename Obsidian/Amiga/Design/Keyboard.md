@@ -71,7 +71,10 @@ press/release codes on presses only. A500 reset directly asserts the separate
 line and never queues the A1000/A2000 reset-warning protocol. The old whole-byte
 step/acknowledgment shortcut is removed. Current state includes partial wire
 phases, timeout/acknowledgment counters, queued and retransmitted codes, and
-startup progress. Guest-visible keyboard integration is scheduled with
+startup progress. After the idle guard expires with no code available, an explicit
+empty phase skips repeated selection; enqueueing a code wakes selection on the
+same CCK without restarting the guard. This phase is serialized for snapshot
+continuation. Guest-visible keyboard integration is scheduled with
 [input-dependent native cases](../../../ROADMAP.md#native-disk-verification);
 the frontend key adapter remains 6.2 work.
 

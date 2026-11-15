@@ -84,6 +84,9 @@ impl Keyboard {
 
     /// Queues a logical keycode; rotation and active-low encoding occur on the wire.
     pub fn enqueue_scancode(&mut self, code: u8) {
+        if self.phase == Phase::IdleEmpty {
+            self.phase = Phase::Idle;
+        }
         if self.queue_len == KEYBOARD_BUFFER_CAPACITY {
             self.overflow = true;
             return;

@@ -1726,3 +1726,19 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - No Rust production code or architecture checker was changed
   - No retired skill references remained in active instructions or documentation
   - Combined batch verification and independent review are pending
+---
+
+### [2026-11-15 17:31 CET] — Reduce repeated idle input work
+- **Affected Subsystems**:
+  - `crates/keyboard`
+  - `crates/game_ports`
+- **What Was Changed (The Concrete Reality)**:
+  - Encode joystick direction contacts when switches change
+  - retain an explicit empty keyboard idle phase and wake it on queued input
+  - preserve wire timing and serialized continuation
+- **Architectural Rationale & Trade-Offs**:
+  - Avoid repeated per-CCK reconstruction and empty selection without changing device phases
+- **Verification & Test Results**:
+  - Existing focused keyboard and game-port checks passed before preparation
+  - retained measurement report records direct original-to-candidate throughput gains and the isolated active-keyboard tradeoff.
+---

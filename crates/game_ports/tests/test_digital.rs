@@ -1,6 +1,30 @@
 use game_ports::{GamePorts, Mouse, PortDevice};
 
 #[test]
+fn joystick_contacts_cover_every_direction_combination_and_snapshot_restore(
+) -> Result<(), Box<dyn std::error::Error>> {
+    for contacts in 0..16u8 {
+        let mut joystick = game_ports::Joystick::new();
+        joystick.set_directions(
+            contacts & 1 != 0,
+            contacts & 2 != 0,
+            contacts & 4 != 0,
+            contacts & 8 != 0,
+        );
+        joystick.set_fire1(true);
+        joystick.set_fire2(true);
+        assert_eq!(joystick.direction_pins(), 0x0f ^ contacts);
+        let mut restored: game_ports::Joystick =
+            serde_json::from_str(&serde_json::to_string(&joystick)?)?;
+        assert_eq!(restored, joystick);
+        restored.reset();
+        assert_eq!(restored.direction_pins(), 0x0f);
+        assert!(!restored.fire1 && !restored.fire2);
+    }
+    Ok(())
+}
+
+#[test]
 fn every_pot_line_resolves_direction_data_and_button_pull_down() {
     for bit in [0x0100, 0x0400, 0x1000, 0x4000] {
         for output in [false, true] {

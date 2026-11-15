@@ -41,6 +41,8 @@ impl Timing {
 pub enum Phase {
     Synchronize,
     Idle,
+    /// Expired idle guard with no code; enqueueing input wakes selection.
+    IdleEmpty,
     DataSetup,
     ClockLow,
     ClockHigh,
@@ -160,9 +162,12 @@ impl Keyboard {
                     if let Some(code) = self.next_code() {
                         self.active_code = Some(code);
                         self.start_bits(!code.rotate_left(1), SERIAL_BITS);
+                    } else {
+                        self.phase = Phase::IdleEmpty;
                     }
                 }
             }
+            Phase::IdleEmpty => {}
             Phase::DataSetup => {
                 self.pins.clock_high = false;
                 self.phase = Phase::ClockLow;

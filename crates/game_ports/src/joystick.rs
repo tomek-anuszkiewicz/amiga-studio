@@ -14,14 +14,8 @@ const MASK_DIRECTION_PINS: u8 = BIT_PIN_UP | BIT_PIN_DOWN | BIT_PIN_LEFT | BIT_P
 /// Digital Joystick state and directional switch matrix
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct Joystick {
-    /// Up direction switch
-    pub up: bool,
-    /// Down direction switch
-    pub down: bool,
-    /// Left direction switch
-    pub left: bool,
-    /// Right direction switch
-    pub right: bool,
+    /// Closed direction contacts, using connector pins 1..4.
+    direction_contacts: u8,
     /// Primary fire button (connected to CIA-A PRA)
     pub fire1: bool,
     /// Secondary fire button (connected to POTGO)
@@ -36,10 +30,7 @@ impl Joystick {
 
     /// Resets all switches to released state
     pub fn reset(&mut self) {
-        self.up = false;
-        self.down = false;
-        self.left = false;
-        self.right = false;
+        self.direction_contacts = 0;
         self.fire1 = false;
         self.fire2 = false;
     }
@@ -47,10 +38,10 @@ impl Joystick {
     /// Updates directional switches
     #[inline]
     pub fn set_directions(&mut self, up: bool, down: bool, left: bool, right: bool) {
-        self.up = up;
-        self.down = down;
-        self.left = left;
-        self.right = right;
+        self.direction_contacts = if up { BIT_PIN_UP } else { 0 }
+            | if down { BIT_PIN_DOWN } else { 0 }
+            | if left { BIT_PIN_LEFT } else { 0 }
+            | if right { BIT_PIN_RIGHT } else { 0 };
     }
 
     /// Updates primary fire button
@@ -68,10 +59,6 @@ impl Joystick {
     /// Each closed switch pulls its connector pin low; no JOY register lives here.
     #[inline]
     pub fn direction_pins(&self) -> u8 {
-        let pressed = if self.up { BIT_PIN_UP } else { 0 }
-            | if self.down { BIT_PIN_DOWN } else { 0 }
-            | if self.left { BIT_PIN_LEFT } else { 0 }
-            | if self.right { BIT_PIN_RIGHT } else { 0 };
-        MASK_DIRECTION_PINS & !pressed
+        MASK_DIRECTION_PINS & !self.direction_contacts
     }
 }
