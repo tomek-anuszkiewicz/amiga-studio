@@ -112,4 +112,4 @@ When delegating an isolated task to a subagent:
 1. Establish the user's task location choice first; delegation does not grant relocation permission. Create a task worktree only after that choice, via `.\tools\worktree.ps1 add <branch>`.
 2. The subagent executes all commands strictly within the worktree directory.
 3. Upon completion and verification, the subagent returns its report to the parent.
-4. The parent follows `git-resolve-merge` for authorized integration; cleanup requires its stated authorization scope.
+4. The parent follows [git-close-task](../git-close-task/SKILL.md) for authorized integration and task closure, including its required plan approval and cleanup scope.

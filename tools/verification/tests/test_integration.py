@@ -19,6 +19,7 @@ import integration_cleanup
 import integration_state
 import repository
 import verify
+from cli import parse_args
 from evidence import digest
 
 
@@ -39,6 +40,7 @@ class IntegrationTests(unittest.TestCase):
         self.git(self.target, "worktree", "add", "-q", "-b", "task", str(self.source), self.base)
         self.directory = self.source / ".agent/tmp/verification/commit"
         self.record = self.directory / "integration.json"
+        self.native_selection = commands.select_phases
         self.enterContext(patch.object(integration, "execution_conditions", return_value="fixture"))
         self.enterContext(patch.object(verify, "execution_conditions", return_value="fixture"))
         self.phases = [("Preflight", [("Fixture check", [sys.executable, "-c", "print('verified fixture')"], {})])]
@@ -67,12 +69,15 @@ class IntegrationTests(unittest.TestCase):
         self.git(root, "update-ref", "HEAD", revision)
         return revision
 
-    def prepare(self, pending=True, message="feat: candidate"):
+    def prepare(self, pending=True, message="feat: candidate", original_source=None):
         if pending:
             self.write(self.source, "value.txt", "candidate\n")
         with patch.object(verify, "REPO_ROOT", self.source), patch.object(execution, "REPO_ROOT", self.source), \
              patch.object(verify, "stable_update_notice", return_value=""), contextlib.redirect_stdout(io.StringIO()) as output:
-            result = verify.main(["commit", "--integration-base", self.base])
+            sentence = ["commit", "--integration-base", self.base]
+            if original_source:
+                sentence += ["--integration-source", original_source]
+            result = verify.main(sentence)
         self.assertEqual(result, 0, output.getvalue())
         evidence = integration.read(self.directory / "commit.json")
         partition = [{"message": "feat: candidate", "tree": evidence["tree"]}] if repository.collect_changes(self.source) else []
@@ -111,6 +116,101 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(self.prepare(pending=False), feature)
         integration.publish(self.source, self.record)
         self.assertEqual(self.git(self.target, "rev-parse", "HEAD"), feature)
+
+    def confirmation(self, **overrides):
+        record = {"base": self.base, "commit": self.git(self.source, "rev-parse", "HEAD"),
+                  "tree": self.git(self.source, "rev-parse", "HEAD^{tree}"),
+                  "plan_approved": True, "tested": True,
+                  "confirmation": "User approved this exact fast-forward and confirmed the tip was tested."}
+        record.update(overrides)
+        return self.write(self.source, ".agent/tmp/confirmation.json", json.dumps(record))
+
+    def test_confirmed_fast_forward_runs_no_profile_and_supports_cleanup(self):
+        self.write(self.source, "value.txt", "already tested\n")
+        feature = self.commit(self.source)
+        self.confirmation()
+        with patch.object(verify, "REPO_ROOT", self.source), \
+             patch.object(integration, "validate_evidence", side_effect=AssertionError("Unexpected verification")), \
+             contextlib.redirect_stdout(io.StringIO()) as output:
+            result = verify.main(["integrate", "accept-tested", "confirmation", ".agent/tmp/confirmation.json",
+                                  "target", "master"])
+        self.assertEqual(result, 0, output.getvalue())
+        self.assertIn("no new verification was run", output.getvalue())
+        record = integration.read(self.record)
+        self.assertEqual(record["verification"], "confirmed-fast-forward")
+        self.assertNotIn("evidence", record)
+        self.assertFalse((self.directory / "commit.json").exists())
+        integration.publish(self.source, self.record)
+        self.assertEqual(self.git(self.target, "rev-parse", "HEAD"), feature)
+        self.assertEqual((self.target / "value.txt").read_text(), "already tested\n")
+        with patch.object(integration_cleanup, "stopped"):
+            integration_cleanup.cleanup(self.target, self.record)
+        self.assertFalse(self.source.exists())
+        self.assertEqual(self.git(self.target, "branch", "--list", "task"), "")
+
+    def test_fast_forward_requires_affirmative_plan_and_test_confirmation(self):
+        for changed in ({"tested": False}, {"tested": None}, {"tested": 1},
+                        {"plan_approved": False}, {"confirmation": " "}):
+            with self.subTest(changed=changed), self.assertRaisesRegex(ValueError, "Explicit plan approval"):
+                integration.accept_tested(self.source, self.directory, self.confirmation(**changed), "master")
+        self.assertFalse(self.record.exists())
+        self.assertEqual(self.git(self.target, "rev-parse", "HEAD"), self.base)
+
+    def test_fast_forward_confirmation_rejects_pending_work_and_divergence(self):
+        self.write(self.source, "value.txt", "uncommitted\n")
+        with self.assertRaisesRegex(ValueError, "pending changes"):
+            integration.accept_tested(self.source, self.directory, self.confirmation(), "master")
+        self.commit(self.source)
+        self.write(self.target, "primary.txt", "divergent target\n")
+        self.base = self.commit(self.target)
+        with self.assertRaisesRegex(ValueError, "not an ancestor"):
+            integration.accept_tested(self.source, self.directory, self.confirmation(), "master")
+        self.assertFalse(self.record.exists())
+
+    def test_confirmed_publication_rejects_changed_confirmation_and_source(self):
+        self.write(self.source, "value.txt", "tested\n")
+        feature = self.commit(self.source)
+        confirmation = self.confirmation()
+        integration.accept_tested(self.source, self.directory, confirmation, "master")
+        saved = confirmation.read_bytes()
+        confirmation.write_text("{}")
+        with self.assertRaisesRegex(ValueError, "confirmation artifact changed"):
+            integration.publish(self.source, self.record)
+        confirmation.write_bytes(saved)
+        self.write(self.source, "value.txt", "later edit\n")
+        with self.assertRaisesRegex(ValueError, "pending changes"):
+            integration.publish(self.source, self.record)
+        self.commit(self.source)
+        with self.assertRaisesRegex(ValueError, "advanced after sealing"):
+            integration.publish(self.source, self.record)
+        self.assertNotEqual(self.git(self.source, "rev-parse", "HEAD"), feature)
+        self.assertEqual(self.git(self.target, "rev-parse", "HEAD"), self.base)
+
+    def test_confirmed_publication_refuses_a_new_target_baseline(self):
+        self.write(self.source, "value.txt", "tested\n")
+        self.commit(self.source)
+        confirmation = self.confirmation()
+        integration.accept_tested(self.source, self.directory, confirmation, "master")
+        self.write(self.target, "primary.txt", "new target work\n")
+        other = self.commit(self.target)
+        with self.assertRaisesRegex(ValueError, "Target advanced"):
+            integration.publish(self.source, self.record)
+        with self.assertRaisesRegex(ValueError, "Target advanced"):
+            integration.accept_tested(self.source, self.directory, confirmation, "master")
+        self.assertEqual(self.git(self.target, "rev-parse", "HEAD"), other)
+
+    def test_interrupted_confirmed_publication_uses_existing_recovery(self):
+        self.write(self.source, "value.txt", "tested\n")
+        self.commit(self.source)
+        integration.accept_tested(self.source, self.directory, self.confirmation(), "master")
+        with patch.object(integration.RefTransaction, "commit", side_effect=ValueError("interruption")):
+            with self.assertRaisesRegex(ValueError, "interruption"):
+                integration.publish(self.source, self.record)
+        integration.recover(self.target)
+        self.assertEqual(self.git(self.target, "rev-parse", "HEAD"), self.base)
+        self.assertEqual((self.target / "value.txt").read_text(), "baseline\n")
+        integration.publish(self.source, self.record)
+        self.assertEqual((self.target / "value.txt").read_text(), "tested\n")
 
     def test_force_added_ignored_file_remains_in_the_reviewed_tree(self):
         self.write(self.source, "ignored-feature", "explicit candidate\n")
@@ -232,6 +332,45 @@ class IntegrationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             integration.freeze(self.source, self.directory, self.source / ".agent/tmp/review.json",
                                self.source / ".agent/tmp/partition.json", "master")
+
+    def test_rebased_divergent_source_retains_full_selection_through_freeze(self):
+        self.write(self.source, "docs/task.md", "Task documentation\n")
+        original = self.commit(self.source)
+        self.write(self.target, "primary.txt", "New primary work\n")
+        self.base = self.commit(self.target)
+        self.git(self.source, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid",
+                 "rebase", self.base)
+        self.assertFalse(repository.divergent_integration(self.source, self.base))
+        self.assertTrue(repository.divergent_integration(self.source, self.base, original))
+        self.assertFalse(repository.divergent_integration(self.source, self.base, self.base))
+        seen = []
+
+        def select(args, changes, *extra):
+            seen.append(args.integration_divergent)
+            return self.phases
+
+        with patch.object(verify, "select_phases", side_effect=select), \
+             patch.object(commands, "select_phases", side_effect=select):
+            commit = self.prepare(pending=False, original_source=original)
+        self.assertEqual(seen, [True, True])  # Execution and independent freeze revalidation.
+        self.assertEqual(integration.read(self.record)["evidence"]["integration_source"], original)
+
+        _, args = parse_args(["commit", "--integration-base", self.base, "--integration-source", original])
+        args.integration_divergent = repository.divergent_integration(self.source, self.base, original)
+        phases = self.native_selection(args, {"docs/task.md"})
+        self.assertIn("Coverage", [name for name, _ in phases])
+        self.assertTrue(any(title == "All standard harness tests" for _, items in phases for title, _, _ in items))
+        integration.publish(self.source, self.record)
+        self.assertEqual(self.git(self.target, "rev-parse", "HEAD"), commit)
+        self.assertTrue((self.target / "docs/task.md").is_file())
+
+    def test_original_source_requires_an_immutable_integration_context(self):
+        with patch.object(verify, "REPO_ROOT", self.source), contextlib.redirect_stderr(io.StringIO()):
+            for sentence in (["commit", "--integration-source", self.base, "--plan"],
+                             ["commit", "--integration-base", self.base, "--integration-source", "task", "--plan"]):
+                with self.subTest(sentence=sentence), self.assertRaises(SystemExit) as error:
+                    verify.main(sentence)
+                self.assertEqual(error.exception.code, 2)
 
     def child_code(self, extra=""):
         module = str(Path(integration.__file__).parent)

@@ -104,7 +104,7 @@ def group_identity(name, commands, inputs, conditions):
 
 
 class BatchEvidence:
-    def __init__(self, root, directory, profile, base=None):
+    def __init__(self, root, directory, profile, base=None, integration_source=None):
         self.root = root.resolve()
         self.directory = directory.resolve()
         if not self.directory.is_relative_to(self.root / ".agent/tmp"):
@@ -114,7 +114,7 @@ class BatchEvidence:
         self.record = {"version": VERSION, "batch": uuid.uuid4().hex,
                        "head": git(self.root, "rev-parse", "HEAD").decode().strip(),
                        "checkout": digest(str(self.root)), "profile": profile, "groups": {},
-                       "integration_base": base}
+                       "integration_base": base, "integration_source": integration_source}
 
     def load(self):
         """Read the current record only while holding the batch execution lock."""
@@ -128,7 +128,7 @@ class BatchEvidence:
         if not isinstance(previous, dict) or not isinstance(previous.get("groups"), dict) or not previous.get("batch"):
             print("[INFO] Incomplete evidence record; all required groups will execute.")
             return
-        for key in ("version", "head", "checkout", "profile", "integration_base"):
+        for key in ("version", "head", "checkout", "profile", "integration_base", "integration_source"):
             if previous.get(key) != self.record[key]:
                 print(f"[INFO] Batch {key} changed; all required groups will execute.")
                 return

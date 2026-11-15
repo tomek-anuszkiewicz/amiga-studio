@@ -88,13 +88,20 @@ def main(argv=None):
             if not completion:
                 raise ValueError("--integration-base requires a completion profile")
             base = resolve_base(REPO_ROOT, base)
+        original_source = args.integration_source
+        if original_source is not None:
+            if base is None:
+                raise ValueError("--integration-source requires --integration-base and a completion profile")
+            original_source = resolve_base(REPO_ROOT, original_source)
         changes = (collect_changes(REPO_ROOT, base) if base else collect_changes(REPO_ROOT)) if automatic_python or completion else set()
-        args.integration_divergent = bool(base and divergent_integration(REPO_ROOT, base))
+        args.integration_divergent = bool(base and divergent_integration(REPO_ROOT, base, original_source))
         if completion and not args.plan:
-            batch = BatchEvidence(REPO_ROOT, results_dir, args.command, base)
+            batch = BatchEvidence(REPO_ROOT, results_dir, args.command, base, original_source)
         explanations = []
         if completion:
             explanations.append("Comparison base: " + (base or "HEAD"))
+            if original_source:
+                explanations.append("Original integration source: " + original_source)
             explanations.append("Selected paths: " + ", ".join(sorted(changes)))
         phases = select_phases(args, changes, explanations)
     except (RuntimeError, OSError, ValueError) as error:

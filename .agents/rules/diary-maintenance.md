@@ -1,6 +1,6 @@
 # Engineering Diary
 
-- Every commit includes a new entry in [DIARY.md](../../DIARY.md)'s `Rolling Changelog`, staged with that change, including documentation, rules, tests, and merges.
+- Every ordinary or final integration commit includes a new entry in [DIARY.md](../../DIARY.md)'s `Rolling Changelog`, staged with that change, including documentation, rules, tests, and merges. The approved [integration working-commit exception](git-merge-commits.md#authorization-and-preparation) defers its record to the final closure entry.
 - Prepare all entries before batch freeze, with the checks already observed. Record the final profile outcome in commit messages and the completion response; do not edit the diary between prepared commits.
 - Keep `## Rolling Changelog` as the final, unnumbered section. Append entries there regardless of how many numbered chapters precede it; do not refer to it by a section number.
 - Record affected components, changes, rationale, and actual verification. Identify failures and checks not run; a commit alone does not prove milestone completion.

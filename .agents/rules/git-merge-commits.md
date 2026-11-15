@@ -28,21 +28,46 @@ checkout. Failed cleanup remains outstanding work.
 ## Authorization and Preparation
 
 Distinguish ordinary work, commit authorization, merge authorization and complete
-local integration with cleanup. A commit alone permits neither publication nor
-branch/worktree removal. Complete integration includes removal of the unchanged
-integrated source without another permission question. No local operation implies
+local integration with cleanup. A commit alone permits neither integration nor
+branch/worktree removal. Use [git-close-task](../skills/git-close-task/SKILL.md)
+for complete local integration, task closure and cleanup. Before every integration,
+including fast-forward, inspect state read-only, present the concrete plan and
+wait for explicit user approval before any repository mutation. Name source and
+target branches and checkouts, selected pending changes, integration method,
+verification location and scope, commits, closure record and exact cleanup paths.
+Include any unresolved tested-commit question in this approval exchange. Approval
+covers routine corrections and the stated cleanup; material scope, method or
+baseline changes require an updated plan and approval. No local operation implies
 fetching, pushing or remote branch deletion. Work selected on the primary branch
 uses ordinary preparation without a feature branch, self-merge or removal phase.
 
 For integration between different branches, resolve the primary branch and its
 checkout, then record its immutable commit as `B`. Inspect both checkouts, index
-entries, pending Git operations and unrelated work. Synchronize the task branch
-with exactly `B` in the task checkout. Divergent histories require a real merge;
-never silently rebase or squash. Do not stash, reset, relocate work or make unverified
-commits to bypass a dirty merge. Retain pending work only when Git can preserve it
-and the candidate remains exact. Otherwise, under existing commit authorization,
-explain and prepare the selected pending work through ordinary gates first, then
-synchronize. An ambiguous or unrelated obstruction requires a scoped decision.
+entries, pending Git operations and unrelated work. Select one approved path:
+
+- **Pending task changes:** create a local working commit of only the approved
+  changes without first running tests, audits, review or batch preparation. This
+  is a narrow exception to ordinary commit gates and diary timing: mark the commit
+  as awaiting integration verification and record it in the final closure entry.
+  Then synchronize exactly `B` and verify the complete result, even if the working
+  commit makes publication a fast-forward. Do not claim this commit was tested.
+- **Clean committed branch with divergent history:** synchronize exactly `B`,
+  then verify the complete result. Prior commit test status does not change this
+  requirement; do not verify the old branch separately before synchronization.
+- **Clean committed branch allowing target fast-forward:** when `B` is an
+  ancestor of the unchanged source tip `C`, establish whether exactly `C` was
+  already verified. Use clear current-session evidence or ask the user. Only an
+  affirmative determination, included in the approved plan, permits publication
+  without new tests, audits, review or commits. Unknown or working status requires
+  normal integrated verification. Any new content, including a closure diary
+  edit, returns to the verified path. Record user confirmation as confirmation,
+  not as freshly executed tests or reconstructed canonical evidence.
+
+Synchronize in the selected task checkout. Use a real merge for divergent
+histories by default; rebase requires an explicit user instruction and an approved
+plan identifying rewritten commits. Do not silently squash. Do not stash, reset,
+relocate work or sweep unrelated index entries into a working commit. An ambiguous
+or unrelated obstruction requires a scoped decision.
 
 Reconcile code, tests and every tracked Markdown path changed on either side of
 a divergent merge, including conflict-free paths and both move endpoints. Review
@@ -50,8 +75,9 @@ the common-base version, both branches and the proposed result against the merge
 code. Preserve decisions in the diary and merge message. A clean textual merge
 does not establish semantic agreement.
 
-Prepare the complete integrated candidate relative to `B`, including committed
-task work and pending changes. Follow [batch preparation](git-commits.md), with
+Except for the approved unchanged fast-forward path, prepare the complete
+integrated candidate relative to `B`, including working commits, committed task
+work and pending changes. Follow [batch preparation](git-commits.md), with
 compliance, applicable coverage review, language resolution, diary preparation,
 independent approval and canonical verification. Divergent integration retains
 full ordinary-workspace verification. Existing milestone triggers remain intact.
@@ -61,14 +87,16 @@ do not rerun expensive profiles solely because those commits change HEAD.
 
 ## Conditional Publication and Cleanup
 
-Follow [git-resolve-merge](../skills/git-resolve-merge/SKILL.md) and the
+Follow [git-close-task](../skills/git-close-task/SKILL.md) and the
 [integration command reference](../../tools/verification/README.md#local-integration).
 Publication must change the primary branch from exactly `B` to the sealed source
 commit `C`, or refuse. Require `B` to be an ancestor of `C`, the approved tree to
-equal `C^{tree}`, clean source state and matching retained evidence. A separate
+equal `C^{tree}`, clean source state and matching retained evidence or the explicit
+unchanged fast-forward confirmation. A separate
 SHA comparison followed by an ordinary merge cannot supply this guarantee.
-If the target advances, synchronize its new immutable tip into the task branch,
-prepare the new combined scope and review, and rerun the canonical profile.
+If the target advances, stop publication, present an updated plan and obtain
+approval before synchronizing its new immutable tip into the task branch.
+Prepare the new combined scope and review, and rerun the canonical profile.
 Reuse only demonstrably valid groups; conservative reruns are acceptable.
 
 The tool holds a shared process lock and native prepared reference locks while

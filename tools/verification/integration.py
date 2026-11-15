@@ -4,7 +4,7 @@ from pathlib import Path
 import subprocess
 
 from evidence import BatchEvidence, capture_inputs, digest, execution_conditions, file_digest, group_identity
-from repository import candidate_tree, collect_changes, git, merge_heads, snapshot
+from repository import candidate_tree, collect_changes, git, merge_heads, resolve_base, snapshot
 from integration_state import (ancestor, checkout, clean, collisions, common, no_operation,
                                publication_lock, RefTransaction, represents, save, value)
 
@@ -19,7 +19,8 @@ def validate_evidence(root, directory):
     base = record.get("integration_base")
     if not base or record.get("outcome") != "passed":
         raise ValueError("Passing canonical commit evidence with an integration base is required")
-    batch = BatchEvidence(root, directory, "commit", base)
+    original_source = record.get("integration_source")
+    batch = BatchEvidence(root, directory, "commit", base, original_source)
     batch.load()
     if batch.record != record or record.get("source") != snapshot(root):
         raise ValueError("Completion evidence does not identify the current candidate")
@@ -34,7 +35,7 @@ def validate_evidence(root, directory):
     from commands import select_phases
     from repository import divergent_integration
     _, args = parse_args(["commit", "--integration-base", base])
-    args.integration_divergent = divergent_integration(root, base)
+    args.integration_divergent = divergent_integration(root, base, original_source)
     phases = select_phases(args, set(record["scope"]))
     groups = [("Coverage" if phase == "Coverage" else items[0][0], items)
               for phase, commands in phases
@@ -85,7 +86,7 @@ def freeze(root, directory, review_path, partition_path, target):
     start = value(root, "rev-parse", start + "^{tree}" )
     if start != candidate_tree(root) or start != record["tree"] or (pending and not commits):
         raise ValueError("Partition does not consume the complete verified candidate")
-    frozen = {"version": 1, "base": base, "head": record["head"], "source_ref": source_ref,
+    frozen = {"version": 1, "verification": "canonical", "base": base, "head": record["head"], "source_ref": source_ref,
               "source_root": str(root.resolve()), "target_ref": target_ref, "target_root": str(target_root),
               "tree": start, "merge_heads": merge_heads(root), "commits": commits,
               "review": review, "evidence": record, "inputs": inputs, "state": "frozen",
@@ -94,6 +95,54 @@ def freeze(root, directory, review_path, partition_path, target):
                                    for path in (review_path, partition_path)}}
     if snapshot(root) != record["source"] or capture_inputs(root) != inputs:
         raise ValueError("Candidate changed during freeze")
+    path = directory / "integration.json"
+    save(path, frozen)
+    return path
+
+
+def verify_confirmation(root, frozen):
+    """A user-confirmed tested tip is an explicit exception, not test evidence."""
+    confirmation = frozen["confirmation"]
+    artifact = Path(frozen["confirmation_path"])
+    if (not artifact.is_file() or file_digest(artifact) != frozen["confirmation_digest"]
+            or read(artifact) != confirmation):
+        raise ValueError("Fast-forward confirmation artifact changed")
+    if (confirmation.get("plan_approved") is not True or confirmation.get("tested") is not True
+            or not isinstance(confirmation.get("confirmation"), str)
+            or not confirmation["confirmation"].strip()):
+        raise ValueError("Explicit plan approval and tested-commit confirmation are required")
+    if (resolve_base(root, confirmation["base"]) != frozen["base"]
+            or resolve_base(root, confirmation["commit"]) != frozen["commit"]
+            or confirmation["tree"] != frozen["tree"]):
+        raise ValueError("Fast-forward confirmation identifies a different result")
+    clean(root)
+    if (value(root, "symbolic-ref", "HEAD") != frozen["source_ref"]
+            or value(root, "rev-parse", "HEAD") != frozen["commit"]
+            or value(root, "rev-parse", "HEAD^{tree}") != frozen["tree"]):
+        raise ValueError("Confirmed source branch or content changed")
+    ancestor(root, frozen["base"], frozen["commit"])
+
+
+def accept_tested(root, directory, confirmation_path, target):
+    """Seal only an unchanged clean fast-forward explicitly confirmed as tested."""
+    confirmation = read(confirmation_path)
+    source_ref = value(root, "symbolic-ref", "HEAD")
+    target_ref = "refs/heads/" + target
+    if source_ref == target_ref:
+        raise ValueError("Primary-branch work cannot use fast-forward confirmation")
+    target_root = checkout(root, target_ref)
+    if checkout(root, source_ref) != root.resolve():
+        raise ValueError("Expected the selected source checkout")
+    frozen = {"version": 1, "verification": "confirmed-fast-forward", "state": "sealed",
+              "base": confirmation["base"], "commit": confirmation["commit"], "tree": confirmation["tree"],
+              "source_ref": source_ref, "source_root": str(root.resolve()),
+              "target_ref": target_ref, "target_root": str(target_root),
+              "confirmation": confirmation, "confirmation_path": str(confirmation_path.resolve()),
+              "confirmation_digest": file_digest(confirmation_path)}
+    verify_confirmation(root, frozen)
+    clean(target_root, untracked=False)
+    if value(root, "rev-parse", target_ref) != frozen["base"]:
+        raise ValueError("Target advanced; obtain approval of an updated plan")
     path = directory / "integration.json"
     save(path, frozen)
     return path
@@ -154,8 +203,13 @@ def check_source(root, frozen):
     if value(root, "rev-parse", frozen["source_ref"]) != frozen["commit"]:
         raise ValueError("Source branch advanced after sealing")
     source = checkout(root, frozen["source_ref"])
-    if source != Path(frozen["source_root"]).resolve() or verify_seal(source, frozen) != frozen["commit"]:
+    if source != Path(frozen["source_root"]).resolve():
         raise ValueError("Source checkout changed after sealing")
+    if frozen["verification"] == "confirmed-fast-forward":
+        verify_confirmation(source, frozen)
+        return
+    if frozen["verification"] != "canonical" or verify_seal(source, frozen) != frozen["commit"]:
+        raise ValueError("Source checkout or verification mode changed after sealing")
     # Retained logs remain acceptance evidence after mechanical commits.
     record = frozen["evidence"]
     directory = Path(frozen["evidence_directory"])
@@ -254,17 +308,23 @@ def recover(root):
 
 def dispatch(root, args):
     from cli import keyword_values
-    if args.plan or args.exact or args.integration_base:
-        raise ValueError("Integration operations do not accept --plan, --exact or --integration-base")
-    if args.action == "freeze":
-        values = keyword_values(args.words, ("review", "partition", "target"))
-        if set(values) != {"review", "partition", "target"}:
-            raise ValueError("Use integrate freeze review PATH partition PATH target BRANCH")
+    if args.plan or args.exact or args.integration_base or args.integration_source:
+        raise ValueError("Integration operations do not accept preview, exact or comparison options")
+    if args.action in {"freeze", "accept-tested"}:
+        keys = ("review", "partition", "target") if args.action == "freeze" else ("confirmation", "target")
+        values = keyword_values(args.words, keys)
+        if set(values) != set(keys):
+            raise ValueError("Use integrate " + args.action + " " + " ".join(key + " VALUE" for key in keys))
         directory = (root / (args.results_dir or ".agent/tmp/verification/commit")).resolve()
         if not directory.is_relative_to(root / ".agent/tmp"):
             raise ValueError("Integration records belong under .agent/tmp in the source checkout")
-        path = freeze(root, directory, root / values["review"], root / values["partition"], values["target"])
-        print("[PASS] Frozen integration candidate: " + str(path))
+        if args.action == "freeze":
+            path = freeze(root, directory, root / values["review"], root / values["partition"], values["target"])
+            print("[PASS] Frozen integration candidate: " + str(path))
+        else:
+            path = accept_tested(root, directory, root / values["confirmation"], values["target"])
+            print("[INFO] Existing tested tip accepted by explicit confirmation; no new verification was run")
+            print("[PASS] Sealed unchanged fast-forward: " + str(path))
     elif args.action == "recover":
         if args.words or args.results_dir:
             raise ValueError("Use integrate recover from a surviving checkout")

@@ -61,7 +61,12 @@ def merge_heads(root):
     return path.read_text().splitlines() if path.exists() else []
 
 
-def divergent_integration(root, base):
+def divergent_integration(root, base, source=None):
+    if source is not None:
+        original = resolve_base(root, source)
+        common = git(root, "merge-base", base, original).decode().strip()
+        if common not in {base, original}:
+            return True
     return bool(merge_heads(root) or git(root, "rev-list", "--merges", base + "..HEAD").strip())
 
 

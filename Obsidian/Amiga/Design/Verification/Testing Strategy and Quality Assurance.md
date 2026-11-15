@@ -37,6 +37,9 @@ primary-branch commit with `--integration-base`, including committed task work.
 This comparison base remains separate from HEAD, source and index stability.
 Divergent synchronization requires full ordinary-workspace coverage and standard
 harness suites. The base and selected paths appear in plans and completion records.
+An explicitly requested rebase also supplies the immutable original task tip with
+`--integration-source`, preserving divergent classification after history rewriting.
+This tip participates in batch identity and freeze-time selection revalidation.
 After final approval, the [local integration protocol](../../../../tools/verification/README.md#local-integration)
 freezes the candidate and prepared partition. It validates the exact resulting
 commit sequence without repeating expensive checks solely for mechanical HEAD
@@ -44,6 +47,15 @@ changes. This narrow bridge permits no general changed-HEAD evidence reuse.
 Conditional reference publication installs only the sealed tree; interruptions
 require recovery before source cleanup. A new primary baseline requires a newly
 prepared combined candidate and conservatively revalidated evidence.
+The [integration rule](../../../../.agents/rules/git-merge-commits.md#authorization-and-preparation)
+requires approval of a concrete plan before mutation and owns two exceptions:
+pending task changes may receive an explicitly unverified local working commit
+before synchronization, with verification deferred to the complete integrated
+result; a clean unchanged fast-forward may use affirmative confirmation that
+its exact tip was already tested. The latter uses `integrate accept-tested` and
+records confirmation separately from canonical test evidence. It runs no new
+verification or review and creates no commit. New content requires the canonical
+path; unknown test status is never inferred from the mere existence of a commit.
 Cargo metadata identifies owning workspace packages and
 their transitive consumers through normal, development and build dependencies,
 including optional and target-specific declarations. All ordinary tests of the

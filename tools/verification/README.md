@@ -17,6 +17,7 @@ includes a module path.
 | `commit` | Required commit profile; excludes full SingleStep |
 | `milestone [singlestep]` | Full language audit and full SingleStep; the selector does not duplicate execution |
 | `integrate freeze review PATH partition PATH target BRANCH` | Freeze the approved complete integration candidate and canonical evidence |
+| `integrate accept-tested confirmation PATH target BRANCH` | Seal an unchanged clean fast-forward explicitly confirmed as already tested, without new verification |
 | `integrate seal\|publish\|cleanup record PATH` | Check prepared commits, conditionally publish, or remove the integrated source |
 | `integrate recover` | Inspect an interrupted publication from a surviving checkout |
 | `test rust [unit|integration|all|workspace]` | Diagnostic tiers; default is unit plus integration; workspace excludes test_runner |
@@ -55,6 +56,11 @@ once after all selected groups finish, including failing executions.
 `--integration-base COMMIT` selects complete integration scope for completion
 profiles; it requires a full immutable commit ID. Integration operations have
 their own validation and reject preview/exact selectors.
+For an explicitly requested rebase, also pass `--integration-source COMMIT` with
+the immutable task tip recorded immediately before rebase. It requires an
+integration base and preserves original divergence for full workspace selection,
+evidence continuation and freeze-time validation. Repeat the same arguments after
+corrections; a different original source starts a new batch.
 Only `runner gui -- OPTIONS` forwards native switches to a separate program.
 Counts must be positive; the parser rejects unknown or repeated selectors and
 missing or invalid values before execution, with exit code 2.
@@ -770,9 +776,13 @@ to fit an image do not establish hardware behavior.
 
 Authorization and checkout selection belong to the
 [local integration rule](../../.agents/rules/git-merge-commits.md); semantic
-preparation belongs to [the merge skill](../../.agents/skills/git-resolve-merge/SKILL.md).
+preparation and full task closure belong to [git-close-task](../../.agents/skills/git-close-task/SKILL.md).
 The tool does not choose the task location, merge branches, grant authorization,
-write review verdicts or create commits.
+write review verdicts or create commits. Every integration first requires approval
+of its concrete plan, including its verification and cleanup scope. Pending task
+changes may be recorded in an explicitly unverified local working commit before
+synchronization; the canonical profile then verifies the complete combined result
+once. Working commits are not passing evidence.
 
 Record the primary branch's immutable tip as `B`, synchronize exactly that commit
 into the selected task branch, reconcile the combined result and finish all
@@ -787,6 +797,10 @@ are rejected as comparison bases. The selected scope includes committed source
 changes, pending staged/unstaged/new paths and both endpoints of moves/deletions.
 Divergent synchronization retains full ordinary-workspace coverage and standard
 harness tests. Full SingleStep retains its milestone trigger.
+For an explicitly requested rebase, record original task tip `S` before rewriting
+history and use `commit --integration-base <B> --integration-source <S>`.
+The retained original commit preserves divergence classification through both
+canonical execution and freeze-time selection revalidation.
 
 Prepare a JSON partition under `.agent/tmp/`: a list of objects with `message`
 (the exact complete commit message) and `tree` (the prepared Git tree ID after
@@ -828,6 +842,44 @@ first-parent commit sequence, merge parents, messages and trees. It bridges only
 those mechanical commits to the frozen evidence, without a second expensive
 profile or general evidence reuse across changed HEAD. Publication checks retained
 artifacts again. New content or a different target baseline returns to preparation.
+
+### Confirmed unchanged fast-forward
+
+When a clean source tip `C` already contains `B`, no content will change and the
+closure record is already committed, the approved plan may accept clear session
+evidence or the user's affirmative confirmation that exactly `C` was tested.
+Working or unknown status requires canonical verification. A working commit
+created during this integration cannot use this shortcut. Before mutation, ask
+for the status when unknown and wait for plan approval in every case.
+
+Record the actual approval and confirmation source under `.agent/tmp/`:
+
+```json
+{
+  "base": "<full immutable B>",
+  "commit": "<full immutable C>",
+  "tree": "<C tree ID>",
+  "plan_approved": true,
+  "tested": true,
+  "confirmation": "<user confirmation or current-session evidence and approved plan reference>"
+}
+```
+
+```powershell
+python tools/verification/verify.py integrate accept-tested confirmation .agent/tmp/confirmation.json target master
+python tools/verification/verify.py integrate publish record .agent/tmp/verification/commit/integration.json
+```
+
+`accept-tested` creates a sealed record explicitly marked `confirmed-fast-forward`;
+it does not run checks, fabricate canonical evidence or require a new commit or
+review. The confirmation must identify the exact clean source and unchanged target
+baseline. Publication rechecks the confirmation artifact, source tip/tree, ancestry
+and clean source state. Ordinary frozen records remain marked `canonical` and
+retain their full evidence requirements. Both modes use the same conditional
+publication, recovery and authorized cleanup. Any new content uses the canonical
+path; a moving target requires approval of an updated plan.
+
+### Conditional publication and cleanup
 
 Publication holds a process lock in Git's common directory, shared by worktrees.
 A native `update-ref --stdin` transaction prepares expected-old target and source

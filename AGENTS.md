@@ -88,7 +88,8 @@ commits. Preserve unrelated index entries, including staged versions of files
 edited later. Follow [batch lifecycle](.agents/rules/git-commits.md) for scope,
 isolation, review, freeze and mechanical completion.
 
-Commits are mandatory at minor roadmap or major milestone closure. Each commit
+Commits are mandatory at minor roadmap or major milestone closure. Each ordinary
+or final integration commit
 includes a prepared entry in DIARY.md's final, unnumbered Rolling Changelog.
 Prepare the complete batch once, including its partition, applicable coverage
 review, scoped compliance, language corrections and one independent review.
@@ -99,6 +100,8 @@ Canonical batch verification of pending changes against `HEAD`:
 python tools/verification/verify.py commit
 ```
 For local integration, compare the complete candidate against the recorded immutable primary-branch commit with `commit --integration-base <commit>`. Follow [local integration](tools/verification/README.md#local-integration) for freezing, mechanical commits, conditional publication and authorized cleanup.
+Use [git-close-task](.agents/skills/git-close-task/SKILL.md) for approved task
+closure, including the integration exceptions to ordinary commit gates and diary timing.
 Repeat the same command after corrections; matching evidence is reused automatically.
 The commit profile checks frontmatter in every local Markdown file under
 `Obsidian/Amiga/`, including Git-ignored reference books. If it reports missing
@@ -107,7 +110,7 @@ each file, then ask for approval before editing those files. After approval,
 repair the files and continue verification with validated evidence. The verifier never edits them.
 Reference book metadata follows [Reference Book Metadata](.agents/rules/docs-maintenance.md#reference-book-metadata).
 The canonical commit profile selects standard suites and architecture checks. Run relevant focused tests during development; full SingleStepTests and additional milestone checks are selected by the verification workflow at their required trigger. Do not claim unrun checks passed.
-Do not freeze or commit a batch with a failed or missing required gate. After corrections, the canonical verifier reruns failed, missing or invalidated groups and retains only applicable successful evidence. Milestone completion also requires a passing milestone profile. Final evidence covers the combined batch, not unverified intermediate commits.
+Outside the explicit integration exceptions above, do not freeze or commit a batch with a failed or missing required gate. After corrections, the canonical verifier reruns failed, missing or invalidated groups and retains only applicable successful evidence. Milestone completion also requires a passing milestone profile. Final evidence covers the combined batch, not unverified intermediate commits.
 
 Milestone completion requires `python tools/verification/verify.py milestone`, [semantic parity review](.agents/skills/audit-semantic-parity/SKILL.md) of modified subsystems, specification compliance and compatible documentation enrichment, checkpoint updates, diary compaction, and pruning completed roadmap steps. The broader audit may satisfy the scoped pre-commit review when its coverage and snapshot match. **Prohibition of Blind Golden Hash Modifications:** Never silently change golden hashes or cycle references; follow the conflict and approval procedure in specification-compliance rules.
 

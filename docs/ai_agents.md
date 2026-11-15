@@ -155,8 +155,9 @@ python tools/verification/verify.py commit
 
 Despite its name, this command verifies the current working tree; it does not
 create a commit. The [testing guide](testing.md) explains its checks, focused
-diagnostics and additional milestone requirements. Each authorized commit has a
-corresponding `DIARY.md` entry recording the change and observed validation.
+diagnostics and additional milestone requirements. Each ordinary or final
+integration commit has a corresponding `DIARY.md` entry recording the change and
+observed validation; integration working commits defer this record to closure.
 After verification, the independent reviewer checks the final intended snapshot.
 Blocking findings and missing required evidence must be resolved before the
 batch freeze. Corrections rerun failed, missing or invalidated groups and renew
@@ -166,13 +167,20 @@ tests, audits, documentation edits or storage scans run between or after them.
 Evidence covers the combined batch; intermediate commits are not individually
 verified unless that was explicitly required and done during preparation.
 
-For complete local integration, the agent records the primary branch's immutable
-tip, synchronizes it into the task branch and verifies the complete result with
+Use `$git-close-task <branch>` for complete local integration and task closure.
+The agent inspects state and asks you to approve a concrete plan before any
+mutation, including for fast-forward. Pending task changes first receive a local
+working commit without preliminary verification; clean divergent branches start
+with synchronization. Both paths then verify the complete combined result with
 `commit --integration-base <commit>`. The reviewed partition is frozen before
-commits and sealed afterward. Conditional publication advances the primary
-checkout to exactly that result; authorized cleanup preserves local material
-before removing the unchanged task checkout and branch. Commit-only and
-merge-only requests retain their narrower scope. The
+final commits and sealed afterward. A clean unchanged fast-forward can skip new
+verification when the exact tip is already tested; the agent asks about unknown
+status and records your confirmation separately from executed checks.
+Conditional publication advances the primary checkout to exactly the approved
+result. After the closure record is committed, cleanup removes the closed task's
+plan copies and preserves needed local material before removing its unchanged
+checkout and branch. Commit-only and merge-only requests retain their narrower
+scope. The [skill](../.agents/skills/git-close-task/SKILL.md) owns the procedure; the
 [integration reference](../tools/verification/README.md#local-integration)
 describes commands, recovery and concurrency limits.
 

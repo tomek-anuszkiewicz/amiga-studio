@@ -1692,3 +1692,22 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Sealing also rejects a same-tree ancestor rewind with an empty partition; worktree test ownership preserves the script's full Rust verification scope
   - The first complete profile passed static gates and the browser build but coverage compilation exhausted virtual memory; the next attempt limits Cargo to one build job without reducing test scope
   - Automatic cleanup conservatively refuses inaccessible Windows process ownership; successful teardown contracts isolate process discovery while exercising real Git and PowerShell removal
+---
+
+### [2026-11-15 19:13 CET] — TASK-CLOSURE-20261115: approve and complete local task integrations
+- **Affected Subsystems**:
+  - `Agent rules`
+  - `Task closure skill`
+  - `Verification tooling`
+- **What Was Changed (The Concrete Reality)**:
+  - Replace the merge procedure with git-close-task and require approval of an exact integration and cleanup plan
+  - Allow an explicitly unverified working commit before one combined integration verification
+  - Accept an unchanged clean fast-forward after confirmation of the exact tested tip without fabricating canonical evidence
+  - Preserve original divergent verification scope through explicitly requested rebase and freeze revalidation
+- **Architectural Rationale & Trade-Offs**:
+  - Keep commit-only requests scoped and avoid duplicate preparation while retaining exact conditional publication and safe cleanup
+- **Verification & Test Results**:
+  - 202 verification tool tests passed before preparation
+  - Skill validation passed and 179 local Markdown targets resolved
+  - Vault audit passed for 35 Design notes and 1098 links
+  - Canonical commit verification and final independent review are pending
