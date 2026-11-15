@@ -13,12 +13,13 @@ Build or serve the shared-memory browser application.
 
 Usage: ./tools/web.ps1 <build|serve>
 
-  build  Compile the GUI and worker into .agent/tmp/web-dist.
-  serve  Compile code, watch sources and serve with isolation headers.
+  build  Compile the optimized GUI and worker into .agent/tmp/web-dist.
+  serve  Compile optimized code, watch sources and serve with isolation headers.
 
 Requires Trunk and Rust nightly with rust-src and wasm32-unknown-unknown.
 Uses nightly only for this invocation; the default toolchain is unchanged.
 The shared linear memory uses the wasm32 maximum of 4 GiB; it grows on demand.
+Cargo lint warnings fail the build, including workspace manifest warnings.
 
 Examples:
   ./tools/web.ps1 build
@@ -36,7 +37,7 @@ if ($Action -notin @('build', 'serve')) {
     exit 1
 }
 
-$WebEnvironmentNames = @('RUSTUP_TOOLCHAIN', 'CARGO_UNSTABLE_BUILD_STD', 'RUSTFLAGS', 'NO_COLOR')
+$WebEnvironmentNames = @('RUSTUP_TOOLCHAIN', 'CARGO_UNSTABLE_BUILD_STD', 'CARGO_BUILD_WARNINGS', 'RUSTFLAGS', 'NO_COLOR')
 $PreviousWebEnvironment = @{}
 foreach ($WebEnvironmentName in $WebEnvironmentNames) {
     $PreviousWebEnvironment[$WebEnvironmentName] = [Environment]::GetEnvironmentVariable($WebEnvironmentName, 'Process')
@@ -47,8 +48,9 @@ try {
     $env:RUSTUP_TOOLCHAIN = 'nightly'
     $env:NO_COLOR = 'true'
     $env:CARGO_UNSTABLE_BUILD_STD = 'std,panic_abort'
+    $env:CARGO_BUILD_WARNINGS = 'deny'
     $env:RUSTFLAGS = '-C target-feature=+atomics,+bulk-memory,+mutable-globals -C link-arg=--shared-memory -C link-arg=--max-memory=4294967296 -C link-arg=--import-memory -C link-arg=--export=__wasm_init_tls -C link-arg=--export=__tls_size -C link-arg=--export=__tls_align -C link-arg=--export=__tls_base'
-    & trunk $Action --locked --no-sri
+    & trunk $Action --release --locked --no-sri
     $WebExitCode = $LASTEXITCODE
 }
 finally {

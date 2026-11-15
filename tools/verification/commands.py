@@ -73,6 +73,8 @@ def select_quality_commands(mode):
             ("Obsidian Frontmatter", script("check_obsidian_frontmatter"), {}),
             ("Formatting", ["cargo", "fmt", "--all", "--", "--check"], {}),
             ("Clippy Invariants", script("check_clippy_policy"), {}),
+            ("WebAssembly build", ["powershell" if os.name == "nt" else "pwsh",
+                                  "-NoProfile", "-File", "tools/web.ps1", "build"], {}),
             ("Architecture Rules", script("check_architecture"), {}),
             ("Hardware Quality", script("audit_hardware_quality"), {}),
             ("Code Quality", script("audit_code_quality"), {}),
@@ -139,7 +141,7 @@ PYTHON_INPUTS = {
     ),
     "RAG MCP contracts": ("tools/amiga-rag-mcp-server/", ".codex/config.toml"),
     "Artifact report contracts": ("tools/artifacts/",),
-    "Verification CLI contracts": ("tools/verification/",),
+    "Verification CLI contracts": ("tools/verification/", "tools/web.ps1"),
 }
 
 
@@ -235,7 +237,8 @@ def harness_commands(words, exact=False):
 def check_commands(name, words):
     from cli import keyword_values
     labels = {"english": "Strict English Policy", "formatting": "Formatting", "clippy": "Clippy Invariants",
-              "architecture": "Architecture Rules", "hardware": "Hardware Quality", "code": "Code Quality"}
+              "architecture": "Architecture Rules", "hardware": "Hardware Quality", "code": "Code Quality",
+              "web": "WebAssembly build"}
     if name == "all" and not words:
         return select_quality_commands("commit")
     if name == "build":
@@ -313,8 +316,9 @@ def select_phases(args, changes, explanations=None):
                 explanations.extend(rust_scope.explain())
         coverage = select_coverage_commands(args.command, rust_scope)
         quality = select_quality_commands(args.command)
-        early = [item for item in quality if item[0] != "Clippy Invariants"]
-        builds = [item for item in quality if item[0] == "Clippy Invariants"]
+        build_checks = {"Clippy Invariants", "WebAssembly build"}
+        early = [item for item in quality if item[0] not in build_checks]
+        builds = [item for item in quality if item[0] in build_checks]
         commands = select_tests(
             REPO_ROOT, args.command, verify_singlestep="singlestep" in args.sets,
             changes=changes, rust_scope=rust_scope)

@@ -100,6 +100,7 @@ class SelectionTests(unittest.TestCase):
             ("tools/artifacts/report.py", {"Artifact report contracts"}),
             ("tools/artifacts/tests/test_report.py", {"Artifact report contracts"}),
             ("tools/verification/commands.py", {"Verification CLI contracts"}),
+            ("tools/web.ps1", {"Verification CLI contracts"}),
         )
         for path, expected in cases:
             with self.subTest(path=path):
@@ -123,6 +124,17 @@ class SelectionTests(unittest.TestCase):
             commands = selected("commit", changes)
             self.assertTrue(any(item[1][-1] == "tools/verification/checks/check_obsidian_frontmatter.py"
                                 for item in commands))
+
+    def test_commit_always_builds_the_browser_application(self):
+        web = selected("check web")
+        self.assertEqual(len(web), 1)
+        self.assertEqual(web[0][0], "WebAssembly build")
+        self.assertEqual(web[0][1][-4:], ["-NoProfile", "-File", "tools/web.ps1", "build"])
+        for changes in ([], ["docs/testing.md"], ["crates/gui/src/app.rs"], ["Cargo.toml"]):
+            with self.subTest(changes=changes):
+                commands = selected("commit", changes)
+                self.assertEqual([item for item in commands if item[0] == "WebAssembly build"], web)
+        self.assertIn(web[0], selected("check all"))
 
     def test_empty_standard_harness_never_selects_all_cargo_targets(self):
         with patch.object(Path, "glob", return_value=[Path("test_singlestep.rs")]):

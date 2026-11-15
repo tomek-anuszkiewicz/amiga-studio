@@ -1395,3 +1395,21 @@ Every authorized repository commit adds a concise entry here. Logging and compac
 - **Verification & Test Results**:
   - The originating session reported seven Rust tests and a Chromium history regression passing
   - final combined verification remains pending
+---
+
+### [2026-11-15 10:53 CET] — Require optimized browser builds without Cargo lint warnings
+- **Affected Subsystems**:
+  - `tools/web.ps1`
+  - `verification`
+  - `frontend setup`
+- **What Was Changed (The Concrete Reality)**:
+  - Build and serve Release WebAssembly with the existing Nightly shared-memory configuration
+  - require the real browser build in commit verification
+  - reject Cargo lint warnings and restore the caller environment
+  - include browser build tools in execution conditions
+- **Architectural Rationale & Trade-Offs**:
+  - Catch browser build failures and manifest warnings during development and before a commit
+  - keep the global default compiler independent of the browser launcher
+- **Verification & Test Results**:
+  - The originating session reported the actual browser build and architecture checks passing
+  - final combined verification remains pending

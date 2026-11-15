@@ -225,7 +225,8 @@ class ContinuationTests(unittest.TestCase):
         with patch.object(commands, "select_rust_scope", return_value=RustScope(("config",), "fixture")):
             selected = commands.select_phases(args, {"crates/config/src/config.rs"})
         self.assertEqual([phase for phase, _ in selected][:3], ["Preflight", "Build checks", "Coverage"])
-        self.assertEqual([name for name, _, _ in selected[1][1]], ["Clippy Invariants"])
+        self.assertEqual([name for name, _, _ in selected[1][1]],
+                         ["Clippy Invariants", "WebAssembly build"])
         command = self.child("clippy")
         command[-1] += "sys.exit(1)"
         self.phases.insert(1, ("Build checks", [("Clippy Invariants", command, {})]))
@@ -242,6 +243,20 @@ class ContinuationTests(unittest.TestCase):
                 before = len(self.events())
                 self.assertEqual(self.run_profile(extra=("--results-dir", f".agent/tmp/{failing}")), 1)
                 self.assertEqual(self.events()[before:], names[:names.index(failing) + 1] + ["gate"])
+
+    def test_failed_web_build_blocks_commit_and_cannot_be_reused_as_success(self):
+        command = self.child("web")
+        successful_script = command[-1]
+        command[-1] += "sys.exit(1)"
+        self.phases.insert(1, ("Build checks", [("WebAssembly build", command, {})]))
+        self.assertEqual(self.run_profile(), 1)
+        self.assertEqual(self.events(), ["english", "web"])
+        self.assertEqual(self.record()["groups"]["WebAssembly build"]["status"], "failed")
+        self.assertEqual(self.run_profile(), 1)
+        self.assertEqual(self.events(), ["english", "web", "web"])
+        command[-1] = successful_script
+        self.assertEqual(self.run_profile(), 0, self.output)
+        self.assertEqual(self.events(), ["english", "web", "web", "web", "coverage", "contracts"])
 
     def test_commit_captures_source_before_change_selection(self):
         events = []
@@ -294,6 +309,26 @@ class ContinuationTests(unittest.TestCase):
                 self.assertEqual(evidence.execution_conditions(self.root), original)
             evidence.os.environ["RUSTFLAGS"] = "-C opt-level=1"
             self.assertNotEqual(evidence.execution_conditions(self.root), original)
+
+    def test_browser_tool_versions_invalidate_execution_conditions(self):
+        changed = {}
+
+        def version(command, **kwargs):
+            return subprocess.CompletedProcess(command, 0, stdout=changed.get(tuple(command), b"version"),
+                                               stderr=b"")
+
+        with patch.object(evidence.subprocess, "run", side_effect=version), \
+             patch.object(evidence.importlib.metadata, "distributions", return_value=[]), \
+             patch.object(evidence, "file_digest", return_value="content"):
+            original = evidence.execution_conditions(self.root)
+            shell = "powershell" if evidence.os.name == "nt" else "pwsh"
+            for command in (("cargo", "+nightly", "--version"), ("rustc", "+nightly", "-vV"),
+                            ("trunk", "--version"),
+                            (shell, "-NoProfile", "-Command", "$PSVersionTable.PSVersion.ToString()")):
+                with self.subTest(command=command):
+                    changed[command] = b"new version"
+                    self.assertNotEqual(evidence.execution_conditions(self.root), original)
+                    changed.clear()
 
     def test_missing_and_corrupt_coverage_artifacts_require_the_whole_bundle(self):
         self.assertEqual(self.run_profile(), 0, self.output)

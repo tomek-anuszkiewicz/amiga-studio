@@ -29,6 +29,7 @@ includes a module path.
 | `check english [files PATH...]` | Full language audit or explicit files; task plans under `.agent/tasks/` are always excluded |
 | `check code|hardware|formatting|clippy` | One quality gate |
 | `check build [crate NAME]` | Cargo compilation check; workspace by default |
+| `check web` | Build the browser application through Trunk and nightly; Cargo lint warnings fail |
 | `runner build` | Compile release test and benchmark targets without running them |
 | `runner bench [case ID\|mnemonic NAME\|opcode XXXX] [duration-ms N] [series N]` | CPU performance test measurement |
 | `runner gui -- OPTIONS` | GUI inspector capture |
@@ -80,6 +81,23 @@ The dedicated SingleStep sentence explicitly chooses full or sampled execution.
 Skill-owned scripts remain owned by their skills. Bootstrap, conversion,
 indexing, worktree management, diary appending, tool installation and baseline
 recording remain workflow operations with their own entry points.
+
+## Browser build verification
+
+Run `python tools/verification/verify.py check web` during changes to GUI code,
+workspace manifests or the browser build pipeline. Every `commit` profile selects
+the same `WebAssembly build` gate after preflight and before coverage. It invokes
+`tools/web.ps1 build`, including Trunk asset processing and the production shared
+memory flags. The launcher sets `CARGO_BUILD_WARNINGS=deny`, so Cargo lint warnings
+such as unused workspace dependencies fail both ordinary web builds and the gate.
+This does not change the centrally reviewed Clippy permissions. Non-lint Cargo
+warnings are outside this Cargo setting's scope.
+
+The build requires Trunk, PowerShell, and nightly Rust with `rust-src` and the
+`wasm32-unknown-unknown` target, as described in the [launch instructions](../../README.md).
+Missing tools or a failed build block commit verification. Batch continuation
+fingerprints nightly Cargo/Rust, Trunk and PowerShell versions as well as source
+inputs; changed build tools invalidate successful evidence.
 
 ## Saved SingleStep reports
 

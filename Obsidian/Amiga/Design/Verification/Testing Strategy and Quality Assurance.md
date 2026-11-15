@@ -77,7 +77,12 @@ percentage gate or coverage exception list.
 Formatting, Clippy, architecture, hardware/code audits, frontmatter and English
 retain their full scope. Code-quality reference discovery includes production and
 test JavaScript callers, preserving the distinction between host browser entry
-points and test-only APIs. Cheap blocking gates precede coverage and expensive suites;
+points and test-only APIs. Commit also builds the production WebAssembly application
+through [tools/web.ps1](../../../../tools/web.ps1), using its Nightly shared-memory
+configuration. Cargo lint warnings fail that build. Native and Nightly compiler,
+Trunk and launcher versions participate in execution conditions.
+
+Cheap blocking gates precede coverage and expensive suites;
 a failure pauses that work. Clippy follows static gates before coverage so its
 findings also prevent avoidable test execution. Repeating the canonical command
 automatically combines new results with valid successful groups for the same `HEAD`. It reruns failed,

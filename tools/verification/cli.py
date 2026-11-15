@@ -23,6 +23,7 @@ COMMAND_TREE = """Command tree (run from the repository root):
   │  ├─ hardware
   │  ├─ formatting
   │  ├─ clippy
+  │  ├─ web
   │  └─ build [crate NAME]
   └─ runner
      ├─ build
@@ -115,7 +116,7 @@ def parser():
     runner.add_argument("words", nargs="*", metavar="SELECTOR")
     checks = commands.add_parser("check", help="Run an individual quality or compilation check")
     checks.add_argument("name", choices=("all", "architecture", "english", "code", "hardware",
-                                         "formatting", "clippy", "build"))
+                                         "formatting", "clippy", "web", "build"))
     checks.add_argument("words", nargs="*", metavar="SELECTOR")
     runs = commands.add_parser("runner", help="Reports, CPU benchmarks and GUI captures")
     runs.add_argument("action", choices=("build", "bench", "gui", "analyze", "refresh"))
