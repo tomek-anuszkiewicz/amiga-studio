@@ -33,13 +33,15 @@ This guide introduces the Developer Studio for users and developers who want to 
 | **`Ctrl + R`** | **Reset Cold** | Restores initial hardware state and reloads CPU vectors. |
 | **Drag & Drop** | **Binary Loading** | Opens the binary injection dialog for the dropped bytes. Use File > Load ROM from File to boot firmware. |
 
-Run presents each completed field before waiting for the next field deadline.
 The **Slower** and **Faster** buttons select 0.25x, 0.5x, 1x, 2x or 4x;
-**1x** restores normal PAL/NTSC timing. **FPS** reports completed emulated video
-fields per host second, not GUI repaints. Frame controls count each field of an
-interlaced image separately. Host capacity can limit the achieved speed; no
-completed fields are skipped. Instruction and CCK stepping remain available
-while paused and can show a partial field.
+**1x** restores normal PAL/NTSC timing. At normal or slower speed, Run presents
+each completed field before waiting for the next field deadline. Above 1x, it
+executes every field but presents only the latest completed image from each
+batch, targeting 50 Hz for PAL or 60 Hz for NTSC. **FPS** reports all completed
+emulated video fields per host second, including fields omitted from presentation.
+Frame controls count each field of an interlaced image separately. Host capacity
+can limit the achieved speed and presentation rate. Instruction and CCK stepping
+remain available while paused and can show a partial field.
 
 CPU **STOPPED** means the processor is waiting for an interrupt. Run and Step
 Frame still advance the rest of the machine, including video and timers, in both

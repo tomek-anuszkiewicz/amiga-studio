@@ -298,6 +298,10 @@ literal content without source addresses. It prints JSON and exits with code 1
 when the audit fails. It does not change the book or prove that a valid range
 identifies the correct printed occurrence.
 
+Math formatting and spacing commands need no source address, but their text
+arguments do. Other math commands are reported as `unreferenced_math_command`;
+the renderer checks whether their syntax is supported.
+
 ## Codex Working task
 
 Use **Book Actions → Codex...** for tasks across Working, or the context menu

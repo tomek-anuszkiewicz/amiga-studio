@@ -33,7 +33,7 @@ Sampling limits the number of inputs and never weakens those
 comparisons. SingleStep uses the published JSON format;
 test names are descriptions and do not select how registers or bus data are
 interpreted. Internal delays advance the expected transaction timeline, so correct
-total clocks do not conceal an early or late read or write. Existing state masks
+total clocks do not conceal an early or late read or write. The compared state
 and the callback interface's signal limits are documented in the
 [CPU verification specification](../Obsidian/Amiga/Design/Verification/CPU%20SingleStepTests.md#12-input-scope-and-complete-verification).
 

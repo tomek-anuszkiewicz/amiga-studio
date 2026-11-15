@@ -517,7 +517,13 @@ PhysicalMemory. Its selection is owned by [commands.py](commands.py):
 | Explicit suite selection | `test runner singlestep` |
 | Milestone, including a clean working tree | Full suite |
 
-Commit architecture tests run once as a fixed quality gate. Other standard commit tests run independently of changed paths, including ordinary CPU tests using real PhysicalMemory. The separate milestone set runs the full language audit and full SingleStepTests; vAmigaTS Cargo suites and automatic chipset/capture runs have been removed.
+Commit architecture tests run once as a fixed quality gate. Rust tests are selected
+for changed packages and their transitive consumers, with full workspace fallback
+for shared or unknown inputs. Independent documentation and known Python tool
+changes skip Rust tests while retaining all quality gates. Ordinary CPU tests
+using real PhysicalMemory run when the CPU package is selected. The separate
+milestone set runs the full language audit and full SingleStepTests; vAmigaTS
+Cargo suites and automatic chipset/capture runs have been removed.
 
 Manual commands in the following sections and diagnostic selectors in `verify.py` validate ordinary tasks and support diagnosis; they do not replace pre-commit verification. Wall-clock microbenchmarks run explicitly. Decoder-derived CPU benchmark regression targets, the old chipset throughput workload and capture execution commands have been removed. The approved CPU baseline records the latest user-approved snapshot. During batch preparation, `verify-spec-compliance` checks the cumulative intended changes against approved specifications selected through `tracked_paths`, including implementation affected by changed requirements even when code has no diff. It permits significant compatible documentation enrichment; accurate documents and their dates stay untouched. The broader semantic milestone audit may satisfy the scoped review for the same snapshot and covered requirements. Diary compaction and roadmap pruning remain separate agent procedures.
 
@@ -543,12 +549,14 @@ python tools/verification/verify.py test rust crate test_runner suite test_singl
 
 #### B. Full Exhaustive Verification (`SINGLESTEP_FULL`)
 Setting `SINGLESTEP_FULL=1` removes the ordinary per-suite sample limit. Every
-executed vector always compares CPU state, listed RAM, instruction clocks and
+executed vector always compares CPU state, instruction clocks and
 transaction callback times, direction, address, size and data. Internal delays
 remain part of the expected timeline. There is no weaker assertion mode. All
 124 JSON files are selected by the named tests; filtered CMPM tests additionally
-exercise subsets of the CMP files. Existing pipeline allowances, RAM masks and
-unobserved electrical signals remain documented in the
+exercise subsets of the CMP files. Initial RAM initializes the isolated fixture;
+writes are checked through committed transaction callbacks. The reference's
+`final.ram` is not a separate CPU assertion. The callback interface's timing and
+electrical signal limits remain documented in the
 [CPU verification specification](../../Obsidian/Amiga/Design/Verification/CPU%20SingleStepTests.md#12-input-scope-and-complete-verification).
 
 - **PowerShell (Windows):**

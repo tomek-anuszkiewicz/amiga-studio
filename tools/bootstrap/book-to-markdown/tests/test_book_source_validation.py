@@ -59,6 +59,23 @@ class SourceValidationTests(unittest.TestCase):
         for text in ('$\\\\text\\{invented\\}$', '$\\\\madeup\\{' + self.reference + '\\}$'):
             self.assertTrue(self.check(text)['issues'])
 
+    def test_math_italic_and_spacing_preserve_argument_provenance_checks(self):
+        text = r'$\\textit\{' + self.reference + r'\}\\quad ' + self.reference + '$'
+        self.assertEqual(self.check(text)['issues'], [])
+        literal = r'$\\textit\{invented\}\\quad ' + self.reference + '$'
+        self.assertEqual([(issue['code'], issue['text']) for issue in self.check(literal)['issues']],
+                         [('literal_content', 'invented')])
+        self.assertTrue(self.check('`' + text + '`')['issues'])
+
+    def test_unreferenced_math_commands_report_provenance_not_renderer_support(self):
+        for command in ('to', 'cdot', 'phi', 'madeup'):
+            with self.subTest(command=command):
+                text = '$' + self.reference + r'\\' + command + '$'
+                report = self.check(text)
+                self.assertFalse(report['valid'])
+                self.assertEqual([(issue['code'], issue['text']) for issue in report['issues']],
+                                 [('unreferenced_math_command', '\\' + command)])
+
     def test_math_command_fragments_are_not_reported_as_literal_words(self):
         write_json(self.root / '02_preprocess/page_0001.json',
                    {'blocks': [{'block_id': 0, 'text': 'mathrm Alpha'}]})

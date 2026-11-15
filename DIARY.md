@@ -533,6 +533,40 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - No tests or audits were rerun under the explicit commit-only instruction
 ---
 
+### [2026-11-13 09:48 CET] — Distinguish math formatting from missing source references
+- **Affected Subsystems**:
+  - `Book Review source validation`
+- **What Was Changed (The Concrete Reality)**:
+  - Allow italic text and spacing commands without reporting added content
+  - Report other math commands as missing source references
+  - Add regression coverage and clarify the source audit documentation
+  - Add the user-approved textit command to the English vocabulary
+- **Architectural Rationale & Trade-Offs**:
+  - Separate source provenance from renderer syntax support while retaining checks on visible text and symbols
+- **Verification & Test Results**:
+  - The regression failed on the original validator
+  - All 108 focused tests passed after the correction
+  - The hardware manual audit removed 18 formatting findings and retained seven math commands plus 158 literal content findings
+  - Review server HTTP checks passed with no pending render or error
+---
+
+### [2026-11-13 11:16 CET] — Save reference manual preparation artifacts
+- **Affected Subsystems**:
+  - `Book Review recipes`
+  - `PDF preparation metadata`
+- **What Was Changed (The Concrete Reality)**:
+  - Save the current Hardware Reference Manual editor recipe with 2508 elements from 405 PDF pages
+  - Record OCR preparation provenance for the M68000 programmer reference manual
+- **Architectural Rationale & Trade-Offs**:
+  - Preserve editable book preparation and matching source identity while source review remains unfinished
+- **Verification & Test Results**:
+  - Original and prepared PDF hashes match both manuals metadata
+  - OCR profiles match their workspace configuration and page selections are within the 405-page and 646-page sources
+  - The recipe matches Working and Accepted and loads all 80 graphics
+  - Source audit resolves 60752 references but exits with code 1 for 158 literal content findings and seven math commands without source references
+  - No new conversion or reconstruction run and no whole-book quality approval
+---
+
 ### [2026-11-13 13:55 CET] — Normalize RGB444 output to the full host color range
 - **Affected Subsystems**:
   - `frame_builder`
@@ -1411,3 +1445,27 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Invalid final measurements caused by preserved source timestamps were discarded and repeated after rebuilding
   - 68 focused tests, core Wasm compilation, Clippy, formatting and diff checks passed
   - Commit-profile verification and independent review are pending
+---
+
+### [2026-11-15 00:49 CET] — Integrate Bootstrap Codex into master
+- **Affected Subsystems**:
+  - `Book Review`
+  - `reference manual recipes`
+  - `branch integration`
+- **What Was Changed (The Concrete Reality)**:
+  - Merge bootstrap-codex-api into master while preserving both histories
+  - Retain the Book Review math provenance correction and reference manual preparation artifacts
+  - Reconcile both diary append sequences chronologically and retain both vocabulary additions
+  - Include all 56 changed Markdown paths in the integration review
+  - Correct retained documentation about accelerated field presentation, test selection and SingleStep comparison boundaries
+- **Architectural Rationale & Trade-Offs**:
+  - Combine the bootstrap work with current emulator and workflow development, then advance the bootstrap branch to the merge point
+  - Retain unfinished source review and roadmap work
+- **Verification & Test Results**:
+  - Both initial worktrees were clean
+  - Fast-forward into master was unavailable because the histories diverged
+  - Both imported JSON artifacts parse and exactly match the source branch
+  - Git diff checks passed
+  - Initial language, frontmatter, formatting, architecture, hardware, code quality and Clippy checks passed
+  - The initial profile was stopped during coverage to reconcile documentation findings
+  - Final canonical verification and independent review are pending
