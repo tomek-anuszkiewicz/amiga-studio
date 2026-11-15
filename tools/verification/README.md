@@ -564,10 +564,11 @@ are run by their owning skills. Follow
 triggers. Semantic milestone review is required by its skill. A successful
 `verify.py milestone` alone does not certify these separate skill checks.
 
-Each prepared batch also requires one independent
-[code review](../../.agents/skills/code-review/SKILL.md) in fresh agent context
-covering the cumulative candidate, proposed commit partition and final applicable evidence. The coordinating agent arranges
-the review and resolves findings under [commit policy](../../.agents/rules/git-commits.md).
+Each prepared batch also requires four independent
+[review lanes](../../.agents/skills/code-review/SKILL.md), each in fresh agent context,
+covering the cumulative candidate, proposed commit partition and final applicable
+evidence. The coordinating agent consolidates all four scoped verdicts and resolves
+findings under [commit policy](../../.agents/rules/git-commits.md).
 The verifier does not launch reviewers or grant review approval.
 
 Full SingleStep runs automatically at milestones. Independent full runs remain available for explicit diagnosis or user requests:
@@ -810,13 +811,17 @@ in several prepared trees. Each intermediate tree may change only pending paths,
 and the last tree must equal the verified candidate. Use an empty list when all
 task changes are already committed and no merge commit remains pending.
 
-After the fresh-context reviewer approves the exact final source, baseline,
-partition and canonical evidence, record its result in a JSON review object:
+Once all four scoped approvals cover the final source, baseline, partition and
+applicable evidence, record the consolidated result. The
+[review procedure](../../.agents/skills/code-review/SKILL.md#reuse-scoped-approvals)
+allows carrying unchanged lane approvals after comparison, without another reviewer
+invocation. Keep their original verdicts and identities; only the consolidation
+identifies the final source. This does not change canonical test-evidence validity.
 
 ```json
 {
   "verdict": "APPROVED",
-  "reviewer": "<independent reviewer identity>",
+  "reviewer": "<four reviewer identities with their lane names>",
   "source": "<commit.json source digest>",
   "integration_base": "<B>",
   "partition": "<SHA-256 of canonical partition JSON>"
@@ -825,8 +830,8 @@ partition and canonical evidence, record its result in a JSON review object:
 
 The partition digest uses `evidence.digest(partition)`: UTF-8 SHA-256 of
 `json.dumps(partition, sort_keys=True)`. This records the independent review
-decision; it is not a cryptographic reviewer authentication service. Keep the
-reviewer's actual verdict and evidence references with the retained logs.
+decision; it is not a cryptographic reviewer authentication service. Keep all four
+actual scoped verdicts and evidence references in the review messages or logs.
 
 ```powershell
 python tools/verification/verify.py integrate freeze review .agent/tmp/review.json partition .agent/tmp/partition.json target master

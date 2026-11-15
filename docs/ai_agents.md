@@ -122,7 +122,9 @@ Delegation happens when requested by you or required by an applicable procedure.
 Each helper receives a scoped assignment and reports back to the main session.
 The role configuration contains its current model and permissions.
 
-Each prepared batch requires one separate `code_reviewer` with fresh context, covering its cumulative change and planned commit partition.
+Each prepared batch requires four separate `code_reviewer` instances with fresh
+context. Their bounded lanes cover behavior, architecture, tests and evidence,
+and specifications and instructions for the same candidate and commit partition.
 It receives the exact patch, approved requirement sources and verification
 artifacts, without the implementation conversation or the author's explanation.
 Ordinary commits receive a focused review; milestones, substantial features and
@@ -158,10 +160,13 @@ create a commit. The [testing guide](testing.md) explains its checks, focused
 diagnostics and additional milestone requirements. Each ordinary or final
 integration commit has a corresponding `DIARY.md` entry recording the change and
 observed validation; integration working commits defer this record to closure.
-After verification, the independent reviewer checks the final intended snapshot.
+The four independent reviewers check the final intended snapshot in their lanes.
 Blocking findings and missing required evidence must be resolved before the
 batch freeze. Corrections rerun failed, missing or invalidated groups and renew
-the verdict; demonstrably valid evidence survives. After freeze, create only the
+the affected scoped verdicts; demonstrably valid evidence survives. Descriptive
+documentation corrections return only to their review lane; unchanged scoped
+approvals are carried after comparison, without invoking those reviewers again.
+After freeze, create only the
 prepared commits and compare their final tree with the candidate. No routine
 tests, audits, documentation edits or storage scans run between or after them.
 Evidence covers the combined batch; intermediate commits are not individually

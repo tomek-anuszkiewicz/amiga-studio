@@ -70,7 +70,7 @@ actual stage closure retains its own audits and milestone checks.
 
 For the verified path, follow [batch preparation](../../rules/git-commits.md),
 including scoped compliance, applicable coverage review, final diary entries,
-commit partition and one independent [review](../code-review/SKILL.md). Run in
+commit partition and the four independent [review lanes](../code-review/SKILL.md). Run in
 the selected task checkout:
 
 ```powershell

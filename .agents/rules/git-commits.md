@@ -64,12 +64,15 @@ those closure points, the user controls commit timing.
    and diary entry; do not split a feature merely by file category. Record checks
    already observed in the diary, and the final profile outcome in commit messages
    and the completion response. Do not rewrite the diary just to repeat that outcome.
-4. Arrange one independent [code-review](../skills/code-review/SKILL.md) by a
-   separate `code_reviewer` started without inherited conversation history. It
-   covers the cumulative change, affected interactions and proposed partition.
-   Review may begin before final tests to find corrections early. Reuse this
-   reviewer's context for corrections; its final verdict must cover final content
-   and current evidence. Author self-review is not a substitute.
+4. Arrange the four independent [review lanes](../skills/code-review/SKILL.md),
+   each with a separate `code_reviewer` started without inherited conversation
+   history. Together they cover the cumulative change, affected interactions and
+   proposed partition. Start lanes concurrently within available slots. Review may
+   begin before final tests. Route corrections only to affected lanes and carry
+   unchanged scoped approvals under the skill's comparison procedure without
+   re-invoking their reviewers. All four applicable verdicts must cover the final
+   content and evidence; a changed global fingerprint alone does not reopen a lane.
+   Author self-review is not a substitute.
 5. Finish any graph refresh that changes candidate content. Resolve cheap blockers
    and pending requirement decisions before expensive tests where possible. Run
    the canonical profile for the entire candidate. Use its preliminary gates;
@@ -79,10 +82,11 @@ those closure points, the user controls commit timing.
 6. Measure [artifact storage](../references/agent-tooling.md#local-artifact-storage)
    once after builds and diagnostics, before freeze. Record observation time and
    limitations; reuse that observation in the completion response.
-7. Confirm the final **APPROVED** verdict, all required passing evidence, exact
+7. Confirm all four applicable scoped **APPROVED** verdicts, renewed or validly carried,
+   all required passing evidence, exact
    candidate and complete commit partition. Freeze them together.
 
-After candidate edits stop, overlap independent work: start the separate review,
+After candidate edits stop, overlap independent work: start the independent review lanes,
 the required Graphify refresh and the canonical verifier in the background when
 their outputs are isolated. Graphify may overlap verification when it writes only
 ignored `graphify-out/` artifacts; finish it before freeze. Review may inspect the

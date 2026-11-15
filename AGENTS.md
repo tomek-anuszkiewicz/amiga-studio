@@ -64,9 +64,9 @@ Skill names and descriptions in `.agents/skills/` guide selection. Read the sele
 `SKILL.md` and execute required procedures; discovery alone does not execute a skill.
 
 Roles live in `.codex/agents/*.toml`; delegate only when requested by the user or
-applicable instructions. Every prepared batch requires one separate `code_reviewer`
-with fresh context through [code-review](.agents/skills/code-review/SKILL.md), as
-required by [commit policy](.agents/rules/git-commits.md). MCP configuration is
+applicable instructions. Batches require four `code_reviewer` instances
+with fresh context through [code-review](.agents/skills/code-review/SKILL.md),
+under [commit policy](.agents/rules/git-commits.md). MCP configuration is
 `.codex/config.toml`.
 
 ## Machine Invariants
@@ -92,7 +92,7 @@ Commits are mandatory at minor roadmap or major milestone closure. Each ordinary
 or final integration commit
 includes a prepared entry in DIARY.md's final, unnumbered Rolling Changelog.
 Prepare the complete batch once, including its partition, applicable coverage
-review, scoped compliance, language corrections and one independent review.
+review, scoped compliance, language corrections and four independent review lanes.
 At closure, also compact settled diary entries and prune verified roadmap work.
 
 Canonical batch verification of pending changes against `HEAD`:

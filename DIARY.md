@@ -1804,3 +1804,19 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - The user approved stopping the remaining MSVC telemetry process from the first verifier job without changing the process ownership guard
   - Coverage review identified missing retained GUI-focus interaction protection; the added focused regression passes and honors repaint retries
   - Canonical integration verification and final independent review are pending
+---
+
+### [2026-11-15 22:08 CET] — Separate independent review into four bounded lanes
+- **Affected Subsystems**:
+  - `Agent governance`
+  - `Review skills and role routing`
+- **What Was Changed (The Concrete Reality)**:
+  - Assign fresh reviewers to behavior, architecture, tests and evidence, and documentation
+  - Synchronize affected reviewer criteria with instruction changes
+  - Carry unchanged scoped approvals after exact comparison
+- **Architectural Rationale & Trade-Offs**:
+  - Keep each reviewer focused and avoid repeating unaffected reviews after descriptive corrections
+- **Verification & Test Results**:
+  - Reviewed the pending instructions and their routing
+  - No emulator behavior changes in this concern
+  - Canonical verification and independent review are pending
