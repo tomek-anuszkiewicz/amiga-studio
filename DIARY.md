@@ -1488,3 +1488,17 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Reimported 5334 elements from 646 pages of the M68000 Programmer reference manual
   - Rendering completed and Working matches Accepted
   - Editor and document endpoints returned HTTP 200 with no pending render or error
+---
+
+### [2026-11-15 10:07 CET] — Store prepared Motorola manual artifacts
+- **Affected Subsystems**:
+  - `Reference manual recipes`
+  - `PDF preparation metadata`
+- **What Was Changed (The Concrete Reality)**:
+  - Store the M68000 Programmer reference manual book recipe
+  - Store the M68000 User manual revision 8 OCR provenance
+- **Architectural Rationale & Trade-Offs**:
+  - Record the remaining local book artifacts at the user-requested commit point
+- **Verification & Test Results**:
+  - No tests or verification were run for this commit at the explicit user request
+  - Earlier importer verification does not certify whole-book transcription quality
