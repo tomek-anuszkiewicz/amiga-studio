@@ -258,20 +258,22 @@ fn native_physical_modifiers_repeats_and_mouse_edges_preserve_their_meaning() {
         events.translate(EventType::MouseMove { x: 103.0, y: 198.0 }, true),
         Some(HostInputEvent::MouseMotion { dx: 3, dy: -2 })
     );
-    for pressed in [true, false] {
-        let raw = if pressed {
-            EventType::ButtonPress(Button::Left)
-        } else {
-            EventType::ButtonRelease(Button::Left)
-        };
-        assert_eq!(
-            events.translate(raw, true),
-            Some(HostInputEvent::MouseButtons {
-                left: pressed,
-                right: false,
-                middle: false
-            })
-        );
+    for (button, index) in [(Button::Left, 0), (Button::Right, 1), (Button::Middle, 2)] {
+        for pressed in [true, false] {
+            let raw = if pressed {
+                EventType::ButtonPress(button)
+            } else {
+                EventType::ButtonRelease(button)
+            };
+            assert_eq!(
+                events.translate(raw, true),
+                Some(HostInputEvent::MouseButtons {
+                    left: pressed && index == 0,
+                    right: pressed && index == 1,
+                    middle: pressed && index == 2
+                })
+            );
+        }
     }
 }
 

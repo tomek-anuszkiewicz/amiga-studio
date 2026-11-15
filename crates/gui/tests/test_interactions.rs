@@ -131,7 +131,7 @@ fn playback_toolbar_and_preferences_fit_supported_window_widths() {
                 |ctx, app: &mut EmulatorApp| app.update_ui(ctx),
                 EmulatorApp::default(),
             );
-        harness.run();
+        common::settle_harness(&mut harness);
         for label in ["Step Frame (Shift+F11)", "Slower", "Faster", "1x"] {
             let bounds = harness.get_by_label(label).raw_bounds().unwrap();
             assert!(

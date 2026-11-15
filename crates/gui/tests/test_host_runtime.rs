@@ -1,6 +1,8 @@
 #![cfg(not(target_arch = "wasm32"))]
 #![allow(clippy::unwrap_used, clippy::panic)]
 
+mod common;
+
 use gui::host_commands::{HistoryCommand, HostCommand, HostReply, HostValue};
 use gui::host_owner::MachineOwner;
 use gui::host_runtime::HostRuntime;
@@ -610,6 +612,97 @@ fn snapshot(host: &mut HostRuntime) -> debugger::SaveState {
         panic!("Missing machine snapshot");
     };
     debugger::SaveState::from_json(&json).unwrap()
+}
+
+#[test]
+fn developer_image_click_admits_input_and_window_focus_loss_releases_it() {
+    use gui::host_input::HostInputEvent;
+
+    let mut app = gui::EmulatorApp::with_session(session());
+    let context = egui::Context::default();
+    common::settle(&mut app, &context);
+    assert_eq!(app.view_mode, gui::ViewMode::Developer);
+    assert!(common::command(&mut app, HostCommand::Run).value.is_ok());
+    let draw = |app: &mut gui::EmulatorApp, focused, events| {
+        let _ = context.run(
+            egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(
+                    egui::Pos2::ZERO,
+                    egui::vec2(1920.0, 1080.0),
+                )),
+                focused,
+                events,
+                ..Default::default()
+            },
+            |context| app.update_ui(context),
+        );
+    };
+    draw(&mut app, true, vec![]);
+    common::settle(&mut app, &context);
+    let sender = app.host.runtime.as_ref().unwrap().input_sender();
+    let press = || {
+        let deadline = Instant::now() + Duration::from_secs(10);
+        while !sender.try_send(
+            HostInputEvent::MouseButtons {
+                left: true,
+                right: true,
+                middle: true,
+            },
+            None,
+        ) {
+            assert!(Instant::now() < deadline);
+            std::thread::yield_now();
+        }
+    };
+    let sample = |app: &mut gui::EmulatorApp, focused| {
+        let before = app.host.runtime.as_ref().unwrap().status().input_deliveries;
+        let deadline = Instant::now() + Duration::from_secs(10);
+        loop {
+            // Honor repaint retries while preserving the simulated window focus.
+            draw(app, focused, vec![]);
+            if app.host.status.input_deliveries >= before + 2 {
+                break;
+            }
+            assert!(Instant::now() < deadline, "Input delivery did not progress");
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        let state = snapshot(app.host.runtime.as_mut().unwrap()).state;
+        (
+            state.game_ports.sample_ciaa_port_a_inputs() & 0x40,
+            state.game_ports.potgor() & 0x0500,
+        )
+    };
+
+    // Developer view must reject host input until the image is clicked.
+    press();
+    assert_eq!(sample(&mut app, true), (0x40, 0x0500));
+    let image_id = egui::Id::new("amiga-screen-input");
+    let center = context.read_response(image_id).unwrap().rect.center();
+    for pressed in [true, false] {
+        draw(
+            &mut app,
+            true,
+            vec![
+                egui::Event::PointerMoved(center),
+                egui::Event::PointerButton {
+                    pos: center,
+                    button: egui::PointerButton::Primary,
+                    pressed,
+                    modifiers: egui::Modifiers::NONE,
+                },
+            ],
+        );
+    }
+    common::settle(&mut app, &context);
+    assert!(context.memory(|memory| memory.has_focus(image_id)));
+    press();
+    assert_eq!(sample(&mut app, true), (0, 0));
+
+    // Losing application focus releases held controls and rejects fresh presses.
+    draw(&mut app, false, vec![egui::Event::WindowFocused(false)]);
+    assert_eq!(sample(&mut app, false), (0x40, 0x0500));
+    press();
+    assert_eq!(sample(&mut app, false), (0x40, 0x0500));
 }
 
 #[test]

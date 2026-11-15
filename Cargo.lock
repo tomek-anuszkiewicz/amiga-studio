@@ -1753,6 +1753,7 @@ dependencies = [
  "gilrs",
  "image",
  "js-sys",
+ "keyboard",
  "physical_memory",
  "rdev",
  "rfd",

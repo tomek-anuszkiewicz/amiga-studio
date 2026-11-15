@@ -1775,3 +1775,32 @@ Every authorized repository commit adds a concise entry here. Logging and compac
 - **Verification & Test Results**:
   - Reviewed future prerequisites and verification scope
   - no roadmap stage closed or advanced profile feature implemented.
+---
+
+### [2026-11-15 19:40 CET] — HOST-INPUT-DELIVERY-20261113: close host input delivery after local integration
+- **Affected Subsystems**:
+  - `GUI host input`
+  - `Keyboard and game ports`
+  - `Integration and task closure`
+- **What Was Changed (The Concrete Reality)**:
+  - Rebase the three committed task concerns onto master decdd50 and preserve both diary histories and vocabulary sets
+  - Deliver ordered bounded host input at three field boundaries with native blocking listeners and browser shared queues
+  - Retain keyboard idle and joystick contact optimizations without changing wire timing or adding mouse smoothing
+  - Keep mapping profiles and physical input acceptance work in the roadmap
+  - Synchronize the toolbar layout fixture with the existing asynchronous host settling helper while retaining all geometry assertions
+  - Name raw key mappings locally and reuse the keyboard modifier constants through the explicitly approved GUI dependency
+  - Protect Developer image-click capture and window-focus release through real headless pointer events and guest button-pin assertions
+  - Extend native mouse translation assertions to all three buttons
+- **Architectural Rationale & Trade-Offs**:
+  - Close the delivered task through one combined integration verification while retaining deterministic ownership and recorded platform limits
+- **Verification & Test Results**:
+  - Rebase completed with conflicts limited to the diary and programming vocabulary
+  - Range comparison preserves all production code and tests from the original task tip ef138f0
+  - Twenty-three changed Markdown paths were reconciled and the detailed task report will survive in the integration archive
+  - Existing Windows and Chrome probes remain historical evidence with no new timing measurements
+  - Physical gamepad freshness, Linux and macOS execution and A500 combination fidelity remain unverified or deferred
+  - The first integration coverage run exposed a toolbar fixture that exhausted four immediate GUI passes while awaiting the machine worker
+  - The user approved the direct GUI-to-keyboard dependency and its single architecture permission for authoritative keycode reuse
+  - The user approved stopping the remaining MSVC telemetry process from the first verifier job without changing the process ownership guard
+  - Coverage review identified missing retained GUI-focus interaction protection; the added focused regression passes and honors repaint retries
+  - Canonical integration verification and final independent review are pending

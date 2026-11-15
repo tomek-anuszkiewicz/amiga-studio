@@ -26,6 +26,7 @@ rtc = { path = "../rtc" }
 physical_memory = { path = "../physical_memory" }
 cpu = { path = "../cpu" }
 debugger = { workspace = true }
+keyboard = { path = "../keyboard" }
 serde = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

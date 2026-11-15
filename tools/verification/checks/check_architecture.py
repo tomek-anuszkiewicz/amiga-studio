@@ -42,7 +42,7 @@ APPROVED_CRATE_DEPENDENCIES = {
     "floppy": {"normal": {"config"}},
     "frame_builder": {"normal": {"config"}},
     "game_ports": {"normal": {"config"}},
-    "gui": {"normal": {"config", "cpu", "debugger", "physical_memory", "rtc"}},
+    "gui": {"normal": {"config", "cpu", "debugger", "keyboard", "physical_memory", "rtc"}},
     "keyboard": {},
     "machine_loop": {"normal": {
         "agnus", "cia", "config", "cpu", "denise", "floppy", "game_ports",

@@ -208,6 +208,7 @@ graph TD
     DBG --> PMEM
     DBG --> DIS
     GUI --> DBG
+    GUI --> KBD
     TR --> CPU
     TR --> PMEM
     TR --> DIS
@@ -237,7 +238,10 @@ The diagram shows ownership and selected connections. Internal module nodes are 
 | **debugger** | [crates/debugger](../../../crates/debugger) | Headless inspection and debugging subsystem, temporal time-travel engine, breakpoints, and watchpoints. | config, cpu, disassembler, machine_loop, physical_memory, save_state |
 | **save_state** | [crates/save_state](../../../crates/save_state) | Versioned file envelope, JSON persistence and PNG previews around the pure machine snapshot. | machine_loop; dev: config |
 | **test_runner** | [crates/test_runner](../../../crates/test_runner) | Aggregate SingleStep verification with shared reporting helpers, automated validation against Tom Harte SingleStepTests, and whole-program CPU performance testing. | *None*; dev: agnus, cia, cpu, denise, disassembler, memory_bus, paula, physical_memory, rtc |
-| **gui** | [crates/gui](../../../crates/gui) | Immediate-mode Developer Studio & Standalone GUI (egui/eframe), live CPU/memory inspection, temporal time-travel scrubber. | config, cpu, debugger, physical_memory, rtc |
+| **gui** | [crates/gui](../../../crates/gui) | Immediate-mode Developer Studio & Standalone GUI (egui/eframe), live CPU/memory inspection, temporal time-travel scrubber. | config, cpu, debugger, keyboard, physical_memory, rtc |
+
+GUI host-key translation reuses the keyboard's named modifier keycodes. This
+dependency shares encodings; the machine owner still applies all input events.
 
 ### Chipset design chapters
 
