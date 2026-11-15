@@ -7,7 +7,8 @@ from pathlib import Path
 
 from review.model import export_markdown, import_book, load_input, write_json
 from review.render import Renderer
-from review.service import read_snapshot, render_accepted, replace_accepted, serve
+from review.service import read_snapshot, render_accepted, replace_accepted
+from review.library import serve
 from review.source_validation import validate_book
 from review.reconstruct import import_accepted_book
 from review.publish import publish_book
@@ -16,11 +17,18 @@ from review.publish import publish_book
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("command", choices=("import", "import-book", "render", "export", "publish", "serve", "validate"))
-    parser.add_argument("--book", type=Path, required=True)
+    parser.add_argument("--book", type=Path, help="Variant directory; required except for serve")
     parser.add_argument("--width", type=int, default=1200, help="Preparation viewport width; HTML view wraps to its panel")
     parser.add_argument("--channel", default="msedge", help="Playwright channel; empty selects bundled Chromium")
     parser.add_argument("--port", type=int, default=8765)
     args = parser.parse_args()
+    if args.command == "serve":
+        if args.book is not None:
+            parser.error("serve opens the books catalog; select a book in the browser")
+        serve(args.port, args.width, args.channel)
+        return
+    if args.book is None:
+        parser.error("--book is required for this command")
     root = args.book.resolve()
     if args.command == "validate":
         book = json.loads((root / 'working' / 'book.json').read_text(encoding='utf-8'))
@@ -58,8 +66,6 @@ def main():
         if not snapshot or load_input(root / "working")[2] != snapshot["input_fingerprint"]:
             raise ValueError("Render the newest authored data before exporting")
         export_markdown(snapshot, root / "working")
-    else:
-        serve(root, args.port, args.width, args.channel)
 
 
 if __name__ == "__main__":

@@ -1,8 +1,9 @@
 """Coalescing render queue, local HTTP/SSE and complete-bundle acceptance."""
 
 from copy import deepcopy
+from contextlib import nullcontext
 from io import BytesIO
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import BaseHTTPRequestHandler
 import json
 import mimetypes
 from pathlib import Path
@@ -858,7 +859,7 @@ class Handler(BaseHTTPRequestHandler):
             self.close_connection = True
         else:
             try:
-                with self.state.lock:
+                with self.state.lock if path.startswith("/files/") else nullcontext():
                     if path in ("/", "/viewer.js", "/viewer.css"):
                         file = HERE / ("viewer.html" if path == "/" else path[1:])
                     elif path.startswith("/katex/"):
@@ -954,25 +955,3 @@ class Handler(BaseHTTPRequestHandler):
             self.send_bytes(json_bytes(result), "application/json")
         except Exception as error:
             self.send_bytes(json_bytes({"error": str(error)}), "application/json", 409)
-
-
-def serve(root, port, width, channel):
-    state = ReviewState(root, width, channel)
-    server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
-    server.daemon_threads = True
-    server.state = state
-    worker = threading.Thread(target=state.render_loop, name="book-renderer", daemon=True)
-    worker.start()
-    print(f"Book review: http://127.0.0.1:{server.server_port}", flush=True)
-    try:
-        server.serve_forever()
-    except KeyboardInterrupt:
-        pass
-    finally:
-        state.stopping.set()
-        if state.codex_stop:
-            state.codex_stop.set()
-        with state.condition:
-            state.condition.notify_all()
-        server.server_close()
-        worker.join(timeout=10)

@@ -45,10 +45,10 @@ class BookOverflowTest(unittest.TestCase):
             page.goto("http://book-review.test/")
             page.wait_for_function("state && !loading && nodes.pdf.length === 4")
             page.evaluate("panes.pdf.scrollTop = [...panes.pdf.querySelectorAll('.page')][2].offsetTop")
-            page.wait_for_function("localStorage.getItem('book-review.pdf-page') === '3'")
+            page.wait_for_function("localStorage.getItem(pdfPageKey) === '3'")
             page.reload()
             page.wait_for_function("state && !loading && document.getElementById('pdf-location').textContent === 'Page 3'")
-            self.assertEqual(page.evaluate("localStorage.getItem('book-review.pdf-page')"), "3")
+            self.assertEqual(page.evaluate("localStorage.getItem(pdfPageKey)"), "3")
 
     def test_wide_tables_scroll_in_panel_while_text_and_images_follow_width(self):
         prose = "Ordinary paragraph text wraps to the panel width. " * 60
@@ -135,7 +135,7 @@ class BookOverflowTest(unittest.TestCase):
             page.mouse.down()
             page.mouse.move(box["x"] + box["width"] / 2 + 120, box["y"] + 40, steps=4)
             page.mouse.up()
-            self.assertEqual(page.evaluate("Number(localStorage.getItem('book-review.pdf-width'))"), initial_width + 120)
+            self.assertEqual(page.evaluate("Number(localStorage.getItem(pdfWidthKey))"), initial_width + 120)
             page.set_viewport_size({"width": 900, "height": 800})
             page.wait_for_timeout(100)
             self.assertEqual(page.locator("#pdf").evaluate("n=>n.parentElement.getBoundingClientRect().width"), initial_width + 120)
@@ -150,7 +150,7 @@ class BookOverflowTest(unittest.TestCase):
             page.locator("main").evaluate("n=>n.scrollLeft=0")
             divider.focus()
             divider.press("ArrowRight")
-            self.assertEqual(page.evaluate("Number(localStorage.getItem('book-review.pdf-width'))"), initial_width + 130)
+            self.assertEqual(page.evaluate("Number(localStorage.getItem(pdfWidthKey))"), initial_width + 130)
             self.assertFalse(page.locator("body").evaluate("n=>n.classList.contains('resizing-pdf')"))
             self.assertEqual(errors, [])
 

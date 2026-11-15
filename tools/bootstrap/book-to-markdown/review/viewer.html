@@ -1,7 +1,8 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Book Review</title><link rel="stylesheet" href="/viewer.css"></head><body>
-<header><strong>Book Review</strong><label>Chapter <select id="chapter"><option value="">Choose…</option></select></label>
+<header><strong>Book Review</strong><label id="book-picker" hidden>Book <select id="book"><option value="">Choose…</option></select></label>
+<label>Chapter <select id="chapter"><option value="">Choose…</option></select></label>
 <button id="previous" disabled>Previous Change</button><button id="next" disabled>Next Change</button>
 <button id="book-actions" disabled aria-haspopup="menu" aria-expanded="false" aria-controls="book-menu">Book Actions</button>
 <label><input type="checkbox" id="show-hidden"> Show hidden elements</label>

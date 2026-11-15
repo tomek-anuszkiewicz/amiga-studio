@@ -20,19 +20,34 @@ For an already imported book, use the controller so the console remains free:
 ./tools/bootstrap/book-to-markdown/review-server.ps1 stop
 ```
 
-The controller defaults to
-`tools/bootstrap/books/test-book-example-4567/78e52f075e17` on port 8765.
-Use `-Book <path>` for another variant and `-Port <number>` for another port.
+The controller starts one server on port 8765. Use `-Port <number>` to change
+the port. Choose an imported book from the **Book** list in the browser.
 Open `http://127.0.0.1:8765/`; the status endpoint is
 `http://127.0.0.1:8765/api/status`. Process information and logs are in
 `.agent/tmp/book-review/<port>/`. `status` distinguishes an HTTP response
-from pending rendering and render errors.
+from pending rendering and render errors for each opened book. Invoking the
+controller without arguments prints its usage.
 
 Restart after changing review Python code or `review/document.css`; then check
 `/` and `/api/status`. Reload the browser after changing viewer HTML, CSS or
 JavaScript. Working book data is picked up by the render queue. Stop a foreground
 `serve` process with Ctrl+C before using the controller on the same port. The
 controller is a background process, not an automatically started Windows service.
+
+The list discovers `tools/bootstrap/books/<book-id>/<variant>/working/book.json`.
+Names come from book directories; multiple imported variants of the same book
+include their variant names. Import a book before opening it; reload to refresh
+the list after an import. Opening the catalog does not import or render books.
+Rendering starts when a book is selected.
+
+Each book has its own URL, Working/Accepted data, render queue, task state, last
+PDF page and PDF pane width. Switching books reloads the editor, clearing open
+dialogs and temporary selections. Reopening the catalog restores the last
+selected book when it is still available. Separate browser tabs can edit
+different books without changing each other's selection. Render viewport and
+browser channel are server settings; Codex model settings remain in the shared
+`config.yaml`. TOC settings are stored in each book's recipe. Use only one
+server or standalone renderer for a book at a time.
 
 Working updates refresh changed chapters while retaining unchanged elements and
 their expanded details. Images and document styles are reused by content hash
@@ -71,17 +86,17 @@ Then start a fresh review:
 $Book = "tools/bootstrap/books/test-book-example-4567/78e52f075e17"
 python tools/bootstrap/book-to-markdown/book_review.py import --book $Book
 python tools/bootstrap/book-to-markdown/book_review.py render --book $Book
-./tools/bootstrap/book-to-markdown/review-server.ps1 start -Book $Book
+./tools/bootstrap/book-to-markdown/review-server.ps1 start
 ```
 
 **Import deletes and rebuilds Working, Accepted and the copied PDF pages.** It
 discards existing review edits and settings. Do not rerun it to continue a
 review. The first render initializes Accepted from the new Working book.
-`serve` also renders when needed, so the separate `render` command is optional
-when starting the server. Use only one renderer or server for a book at a time.
+Selecting a book also renders when needed, so the separate `render` command
+is optional. Choose the imported book in the browser after starting the server.
 
 For a foreground server, run
-`python tools/bootstrap/book-to-markdown/book_review.py serve --book $Book`
+`python tools/bootstrap/book-to-markdown/book_review.py serve`
 and stop it with Ctrl+C. `--port` changes its port; `--width` changes the
 preparation browser viewport, not the displayed document width.
 
@@ -94,7 +109,7 @@ the variant root to rebuild local editor inputs:
 $Book = "tools/bootstrap/books/test-book-example-4567/78e52f075e17"
 python tools/bootstrap/book-to-markdown/book_review.py import-book --book $Book
 python tools/bootstrap/book-to-markdown/book_review.py render --book $Book
-./tools/bootstrap/book-to-markdown/review-server.ps1 start -Book $Book
+./tools/bootstrap/book-to-markdown/review-server.ps1 start
 ```
 
 `import-book` runs PDF Stages 01 and 02 for the full source, generating the OCR

@@ -1,4 +1,27 @@
 "use strict";
+const catalogNode=document.getElementById("book-catalog");
+const library=catalogNode ? JSON.parse(catalogNode.textContent) : null;
+const bookId=library?.selected || "";
+const bookPrefix=bookId ? `/books/${bookId.split("/").map(encodeURIComponent).join("/")}` : "";
+const bookUrl=path=>bookPrefix+path;
+const storageKey=name=>`book-review.${bookId}.${name}`;
+if(library) {
+  const picker=document.getElementById("book");
+  document.getElementById("book-picker").hidden=false;
+  for(const book of library.books)picker.append(new Option(book.name,book.id));
+  picker.value=bookId;
+  picker.options[0].disabled=Boolean(bookId);
+  const choose=id=>{location.href=id ? `/?book=${encodeURIComponent(id)}` : "/";};
+  picker.onchange=()=>choose(picker.value);
+  try {
+    if(bookId)localStorage.setItem("book-review.selected-book",bookId);
+    else {
+      const saved=localStorage.getItem("book-review.selected-book");
+      if(library.books.some(book=>book.id===saved))choose(saved);
+    }
+  } catch (_) { /* Book selection remains available without browser storage. */ }
+  if(bookId)document.title=`${library.books.find(book=>book.id===bookId).name} — Book Review`;
+}
 const panes = Object.fromEntries(["pdf", "accepted", "working"].map(id => [id, document.getElementById(id)]));
 let state = null, selected = null, hovered = null, leader = "working", changeIndex = -1;
 let pointerX = 0, loading = false, requested = false, resizing = false;
@@ -358,8 +381,8 @@ showTypes.onchange=()=>{
 showTypes.onchange();
 
 const pdfSplitter = document.getElementById("pdf-splitter");
-const pdfWidthKey = "book-review.pdf-width";
-const pdfPageKey = "book-review.pdf-page";
+const pdfWidthKey = storageKey("pdf-width");
+const pdfPageKey = storageKey("pdf-page");
 const minimumPdfWidth = 240;
 let pdfWidth = 600, pdfDrag = null;
 let pdfPageRestored = false;
@@ -628,14 +651,14 @@ async function buildMarkdown(version, snapshot) {
   try {
   for (const layout of snapshot?.render?.chapters || []) {
     if (!layout.document) throw new Error("Preparing the HTML presentation; waiting for a completed revision");
-    const url=new URL(`/files/${version}/${layout.document}`,location.href).href;
+    const url=new URL(bookUrl(`/files/${version}/${layout.document}`),location.href).href;
     const previous=chapterViews[version].get(layout.id);
     if(layout.key && previous?.key === layout.key) {
       const view={...previous,url,entries:previous.entries.map(entry=>({...entry,element:index.get(entry.id)?.element}))};
       views.push(view);entries.push(...view.entries);styles.push(...view.styles);
       continue;
     }
-    const response = await fetch(`/files/${version}/${layout.document}`);
+    const response = await fetch(bookUrl(`/files/${version}/${layout.document}`));
     if (!response.ok) throw new Error(`Cannot load ${version} chapter ${layout.id}`);
     const markup = await response.text();
     const chapter = snapshot.chapters.find(c => c.id === layout.id);
@@ -802,7 +825,7 @@ function buildPdf() {
     });
   }
   for (const page of state.pdf_pages) {
-    const holder = imageHolder(`/files/${page.image}`,page.width,page.height,"page");
+    const holder = imageHolder(bookUrl(`/files/${page.image}`),page.width,page.height,"page");
     holder.dataset.page = page.page;
     holder.tabIndex=0;
     const pageMenu=(x,y)=>{
@@ -1044,7 +1067,7 @@ function navigate(id, preferred="working") {
   scheduleLocations();
 }
 async function post(url, command) {
-  const response=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(command)});
+  const response=await fetch(bookUrl(url),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(command)});
   if(response.status === 404) {
     throw new Error(`Server does not support ${url}. Restart Book Review server and reload this page.`);
   }
@@ -1108,7 +1131,7 @@ async function refresh() {
   try {
     while(requested) {
       requested=false;
-      const response=await fetch("/api/status"); if(!response.ok) throw new Error("Cannot load review state");
+      const response=await fetch(bookUrl("/api/status")); if(!response.ok) throw new Error("Cannot load review state");
       const next=await response.json();
       const versions=["accepted","working"].filter(version=>!state || next[version]?.revision!==state[version]?.revision);
       if(state)for(const version of ["accepted","working"])if(!versions.includes(version))next[version]=state[version];
@@ -1762,10 +1785,12 @@ document.getElementById("run-codex").onclick=async()=>{
     progress.hidden=true;error.textContent=failure.message;error.hidden=false;
   } finally {codexRunning=false;cancel.disabled=false;if(codexScope === "element") {button.disabled=false;field.disabled=false;} else updateCodexStatus();}
 };
-const events=new EventSource("/api/events");
-events.onmessage=event=>{if(event.data!==String(state?.sequence))refresh();};
-events.onopen=refresh;
-events.onerror=()=>showError("Connection interrupted; reconnecting…");
+if(!library || bookId) {
+  const events=new EventSource(bookUrl("/api/events"));
+  events.onmessage=event=>{if(event.data!==String(state?.sequence))refresh();};
+  events.onopen=refresh;
+  events.onerror=()=>showError("Connection interrupted; reconnecting…");
+}
 const sizes=new Map();
 const resizeObserver=new ResizeObserver(entries=>{
   let changed=false;
@@ -1784,4 +1809,9 @@ const resizeObserver=new ResizeObserver(entries=>{
   });
 });
 for(const pane of Object.values(panes))resizeObserver.observe(pane);
-refresh();
+if(!library || bookId)refresh();
+else {
+  for(const control of document.querySelectorAll("header button, header input, header select"))
+    if(control.id!=="book")control.disabled=true;
+  document.getElementById("status").textContent=library.books.length ? "Choose a book to review" : "No imported books. Import a book before review.";
+}

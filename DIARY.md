@@ -1852,3 +1852,20 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Reviewed process-handle ownership and telemetry identity checks
   - Updated the testing specification to describe the approved exception
   - Canonical verification and independent review are pending
+---
+
+### [2026-11-15 23:32 CET] — Review imported books through one catalog server
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown`
+- **What Was Changed (The Concrete Reality)**:
+  - Discover imported book variants in a browser catalog
+  - Bind editor requests and render queues to the selected book
+  - Keep PDF page and pane width per book
+  - Replace per-book server arguments with browser selection
+- **Architectural Rationale & Trade-Offs**:
+  - Allow separate browser tabs to review books without redirecting edits to another book
+- **Verification & Test Results**:
+  - Book library contracts passed
+  - PowerShell parser and usage checks passed
+  - Status reports five books and no pending renders or errors for the two opened books
+  - Invalid actions return a nonzero exit code
