@@ -1762,3 +1762,16 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Focused GUI, debugger, machine-loop and Agnus tests and native/Wasm quality checks passed before preparation. Existing Windows and Chrome probes exercised keyboard/mouse delivery
   - physical gamepad freshness and Linux/macOS execution remain unverified. Vault audit passed for 35 documents and 1102 links.
 ---
+
+### [2026-11-15 17:31 CET] — Plan reusable input profiles and gamepad frontend control
+- **Affected Subsystems**:
+  - `ROADMAP.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Plan reusable keyboard and controller mappings with named profiles
+  - defer full gamepad-only frontend navigation until player controls exist
+  - specify physical input diagnostics after basic host input and Workbench boot
+- **Architectural Rationale & Trade-Offs**:
+  - Keep advanced input configuration and interactive acceptance evidence explicit in their owning roadmap stages; user approved the basic adapter before the separate, still-open A500 combination fidelity investigation
+- **Verification & Test Results**:
+  - Reviewed future prerequisites and verification scope
+  - no roadmap stage closed or advanced profile feature implemented.

@@ -35,6 +35,7 @@
   - [7.5: Game Profiles and WASM Bundles with Immediate State Resume](#task-7-5)
   - [7.6: Desktop Game Library and Portable Game Packages](#task-7-6)
   - [7.7: Gameplay Video Recording](#task-7-7)
+  - [7.8: Full Frontend Control with a Gamepad (Deferred)](#task-7-8)
 - [Step 8: Real-World Amiga Workloads & Pipeline Optimization (Post-Boot)](#step-8)
   - [8.1: Deferred Full-OS & MFM Floppy vAmigaTS Test Suites Verification Gate](#task-8-1)
   - [8.2: End-to-End Bootable ADF Integration Testing](#task-8-2)
@@ -314,6 +315,8 @@ bring-up failures. Light-pen/gun input (12.5), external genlock synchronization
   - **Execution order:** Complete basic keyboard, mouse and joystick/gamepad routing before or during 2.6, before its input-dependent scenarios run. Keep extended controller protocols, mapping options and input UI refinements in this track; do not defer the basic host-to-guest input path until after external-suite bring-up.
   - **Actionable Scope:**
     - **Host Keyboard Mapping:** Translation table from host keyboard events (`winit::keyboard::KeyCode` / `egui::Key`) to raw Amiga scancodes, qualifiers (Amiga keys, Alt, Ctrl, CapsLock, Help), `Ctrl + Left Amiga + Right Amiga` reset combo, and Keyboard-as-Joystick mapping.
+    - **Reusable Mapping Profiles:** Allow users to create, name, save and edit any number of host-to-Amiga keyboard mappings (initially configurable special keys), keyboard-as-joystick mappings, and gamepad-to-joystick mappings. Let users compose these mappings into named input profiles, select the active profile and apply it during emulation, including the selected game-port assignments. Keep input profiles distinct from the game/asset profiles in 7.5.
+    - **Gamepad Button Assignments:** Let users choose which physical button produces joystick fire and assign other buttons to frontend actions such as pause/resume, quick save/load and opening the save/load catalog. Reuse the controls from 7.3/7.4 as they become available. Define how bindings consume or share an event between guest input and frontend actions; keep full gamepad-only interface navigation in 7.8.
     - **Keyboard Combination Fidelity (basic host adapter accepted; hardware fidelity remains open):** Define how host key combinations produce the same guest-visible effects as an A500 keyboard. Establish the original matrix/controller behavior from documentation and hardware measurements, including simultaneous-key limits, blocked keys and phantom key detection (ghosting), then compare it with host keyboard rollover limits and native/browser event delivery. Decide how to reproduce Amiga behavior, preserve held modifiers and press/release sequences, and handle conflicts with frontend or system shortcuts. Explicitly address combinations the host never reports: document the limits and decide on alternative mappings or other workarounds without assuming missing key events can be recovered. Record the agreed behavior in the keyboard and GUI specifications before implementation.
     - **Dual Game Port Hub:** Slot assignment for Port 1 & Port 2 (Mouse, Joystick, CD32 Pad, Keyboard-Joystick, Disconnected), simultaneous dual-mouse and dual-joystick modes, hardware button routing (CIA-A `PRA`, Paula `POTGOR`), and CD32 7-button shift register protocol.
     - **Physical Host Mouse Capture:** Viewport mouse grab/lock mode, relative motion delta scaling into Amiga 8-bit wrap-around quadrature counters ($0..255$), and sensitivity tuning.
@@ -322,6 +325,7 @@ bring-up failures. Light-pen/gun input (12.5), external genlock synchronization
   - **Verification Gate:**
     - Unit tests in `crates/keyboard/tests/` and `crates/game_ports/tests/`.
     - Headless UI input tests in `crates/gui/tests/`.
+    - Create and persist several mappings of each supported type, compose and select input profiles, and verify actual guest key/direction/fire delivery and frontend actions on native and WASM. Switching profiles with controls held, focus loss and controller disconnect must release obsolete guest inputs without stuck keys or buttons; verify the agreed event-sharing behavior.
     - Verify representative multi-key combinations, modifiers, reset and keyboard-as-joystick controls against the agreed A500 behavior, including different press/release orders and focus loss. Combine deterministic event tests with physical host keyboard checks on native and WASM; compare guest-visible effects with Amiga reference evidence and record host limitations and agreed workarounds. Injected events alone do not verify physical keyboard combination support.
 
 <a id="task-6-3"></a>
@@ -392,6 +396,13 @@ bring-up failures. Light-pen/gun input (12.5), external genlock synchronization
   - Plan video capture separately from deterministic session replay. Select the native/browser capture and export approach, including whether audio is included and its synchronization, before implementation. A recorded movie does not provide rewindable machine state or executable input history.
   - **Gate:** Verify the selected recording/export path produces playable output with correct frame timing and any selected audio, and assess its effect on gameplay responsiveness.
 
+<a id="task-7-8"></a>
+
+- **7.8: Full Frontend Control with a Gamepad (Deferred)**
+  - After the input profiles in 6.2 and the player controls in this stage are available, provide an optional gamepad-only mode for the entire frontend, without requiring a host keyboard or mouse. Cover menu navigation, configuration, game/disk selection, save/load catalogs and session controls; plan any text-entry interaction needed by those flows.
+  - Reuse configurable frontend button assignments from 6.2 and define transitions between guest control and interface navigation, including focus and return to play.
+  - **Gate:** On native and WASM, complete the supported frontend flows and return to gameplay using only a physical gamepad, with no unintended guest input or stuck controls.
+
 ---
 
 <a id="step-8"></a>
@@ -412,12 +423,15 @@ bring-up failures. Light-pen/gun input (12.5), external genlock synchronization
 
 - **8.2: End-to-End Bootable ADF Integration Testing**
   - **Objective:** Boot and execute genuine Amiga benchmarks and diagnostic suites directly from floppy disk images (`python tools/verification/verify.py test rust crate test_runner suite test_boot_adf`).
+  - **Input diagnostic trigger:** As soon as Workbench boots and basic host input from 6.2 is available, run the interactive hardware-diagnostic checks below; do not wait for the rest of Step 8 or advanced input profiles.
   - **Actionable Scope:**
     - Load and execute `AmigaTestKit.adf`, `SysInfo.adf`, and Dhrystone on the authentic Kickstart / Amiga chipset stack.
+    - Use suitable Amiga hardware-diagnostic programs, including the existing AmigaTestKit candidate, to exercise the complete physical host-to-guest input path: keyboard keys, modifiers and press/release combinations; mouse motion and buttons; joystick directions, diagonals and fire; and gamepad-to-joystick routing. Check selected mappings as they become available. Use the programs' actual supported tests and record gaps separately.
     - Leverage address guards, breakpoint traps, and instruction bounds for parameterized termination.
     - Assert functional correctness, numerical determinism, and measure baseline throughput (MIPS, host CPU cycle cost per emulated CCK).
   - **Verification Gate:**
     - `python tools/verification/verify.py test rust crate test_runner suite test_boot_adf` passing cleanly.
+    - Record the diagnostic program/version, ROM/image, machine configuration, host platform, physical devices, selected mappings, exercised controls and guest-observed results. Exercise native and WASM delivery and report unrun cases explicitly; successful Workbench boot or synthetic event injection alone does not verify interactive input delivery.
 
 <a id="task-8-3"></a>
 
