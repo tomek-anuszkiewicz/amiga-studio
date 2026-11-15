@@ -10,6 +10,7 @@ from markdown_it.rules_inline import newline
 from markdown_it.rules_inline.backticks import backtick
 from markdown_it.token import Token
 from mdit_py_plugins.dollarmath import dollarmath_plugin
+from mdit_py_plugins.dollarmath.index import math_inline_dollar
 
 
 def source_newline(state, silent):
@@ -28,10 +29,22 @@ def source_backtick(state, silent):
     return matched
 
 
+_math_inline = math_inline_dollar()
+
+
+def source_math_inline(state, silent):
+    position, count = state.pos, len(state.tokens)
+    matched = _math_inline(state, silent)
+    if matched and not silent and len(state.tokens) > count:
+        state.tokens[-1].meta['source_span'] = (position, state.pos)
+    return matched
+
+
 PARSER = MarkdownIt("commonmark", {"html": True}).enable("table").enable("strikethrough")
 PARSER.use(dollarmath_plugin, allow_labels=False)
 PARSER.inline.ruler.at("newline", source_newline)
 PARSER.inline.ruler.at('backticks', source_backtick)
+PARSER.inline.ruler.at('math_inline', source_math_inline)
 
 
 def _source_positions(text, expression, start, end, code=()):
@@ -50,18 +63,40 @@ def _source_positions(text, expression, start, end, code=()):
 
 def math_source_positions(text, tokens, code):
     """Map parsed math through continuation prefixes and table pipe escapes."""
-    def expressions(entries):
-        for token in entries:
-            if token.type.startswith('math_'):
-                yield token.markup + token.content + token.markup
-            if token.children:
-                yield from expressions(token.children)
-
+    offsets = [0]
+    for line in text.splitlines(keepends=True):
+        offsets.append(offsets[-1] + len(line))
     cursor = 0
-    for expression in expressions(tokens):
-        positions = _source_positions(text, expression, cursor, len(text), code)
-        cursor = positions[-1] + 1
-        yield expression, positions
+    for token in tokens:
+        if token.type == 'inline' and token.content and token.map:
+            positions = _source_positions(text, token.content,
+                                          max(cursor, offsets[token.map[0]]), offsets[token.map[1]])
+            cursor = positions[-1] + 1
+            for child in token.children or []:
+                if child.type.startswith('math_'):
+                    start, end = child.meta['source_span']
+                    yield token.content[start:end], positions[start:end]
+        elif token.type.startswith('math_') and token.map:
+            expression = token.markup + token.content + token.markup
+            positions = _source_positions(text, expression, offsets[token.map[0]], offsets[token.map[1]], code)
+            yield expression, positions
+
+
+def normalize_math_angle_entities(text):
+    """Decode HTML angle brackets in parsed math before authoring PDF references."""
+    if '&' not in text:
+        return text
+    tokens = PARSER.parse(text)
+    code = code_source_spans(text, tokens)
+    replacements = []
+    for expression, positions in math_source_positions(text, tokens, code):
+        for entity in re.finditer(r'&(?:[A-Za-z]+|#[0-9]+|#[xX][0-9A-Fa-f]+);', expression):
+            symbol = unescape(entity[0])
+            if symbol in ('<', '>'):
+                replacements.append((positions[entity.start()], positions[entity.end() - 1] + 1, symbol))
+    for start, end, symbol in reversed(replacements):
+        text = text[:start] + symbol + text[end:]
+    return text
 
 
 def code_source_spans(text, tokens):

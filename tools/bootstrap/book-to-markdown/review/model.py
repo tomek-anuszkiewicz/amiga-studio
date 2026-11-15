@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "pdf-to-markdown"))
 from common.pdf_artifacts import read_json
 from common.pdf_page_conversion import read_conversion
 from common.pdf_elements import ELEMENT_ROLES, ELEMENT_TYPES
-from .markdown import PARSER, preserve_line_breaks
+from .markdown import PARSER, normalize_math_angle_entities, preserve_line_breaks
 from .source_alignment import compile_page_template
 from .text_recipe import (REFERENCE, escape_literal, edit_template,
                           literal_html_tags, join_adjacent_references,
@@ -187,14 +187,15 @@ def import_book(root):
             for field in ("md_text", "heading_level", "table_format"):
                 if segment.get(field) is not None:
                     element[field] = segment[field]
+            if "md_text" in element and element["type"] not in {"code_block", "preformatted_text"}:
+                element["md_text"] = normalize_math_angle_entities(element["md_text"])
             if element["type"] in HEADING_TYPES:
                 set_heading_level(element, element.get("heading_level", 1))
             if "md_text" in element:
                 # Conversion supplies formatting; source text comes from PDF ranges.
-                prefix = "#" * element["heading_level"] + " " if element["type"] in HEADING_TYPES else ""
-                template = prefix + compile_page_template(
-                    page['page'], text_page, segment['bbox'], segment['md_text'])
-                element.update(md_text=template, resolved_md_text=prefix + segment['md_text'])
+                template = compile_page_template(
+                    page['page'], text_page, segment['bbox'], element['md_text'])
+                element.update(md_text=template, resolved_md_text=element['md_text'])
             if element["type"] == "graphic":
                 name = f"{element['id']}.png"
                 shutil.copy2(workspace / "06_extract_crops" / "assets" / name, assets / name)

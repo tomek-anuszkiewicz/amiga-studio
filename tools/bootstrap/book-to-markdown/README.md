@@ -61,6 +61,10 @@ does not mean that preparation failed. An empty `segments` list in the latest
 page JSON excludes that page. Import keeps physical-page order and uses all
 retained pages, regardless of the last invocation's page range.
 
+Before creating PDF text references, import decodes HTML entities for angle
+brackets inside parsed Markdown math. Named and numeric entities become `<` and
+`>`; code, preformatted text and ordinary HTML entities remain unchanged.
+
 Then start a fresh review:
 
 ```powershell

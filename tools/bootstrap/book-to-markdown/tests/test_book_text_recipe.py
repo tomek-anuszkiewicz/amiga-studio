@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4] / 'tools/bootstrap/bo
 from review.text_recipe import REFERENCE, accepted_literal, compile_region_template, edit_template, escape_literal, join_adjacent_references, slice_template, preserve_bold, resolve_template, source_differences, source_reference, source_span_with_spacing
 
 
-from review.markdown import callout_plugin
+from review.markdown import callout_plugin, normalize_math_angle_entities
 from review.model import InputCache, element_markdown, export_markdown, import_book, load_input, read_json, set_heading_level, toc_markdown, write_json
 from review.service import replace_accepted
 from review.service import ReviewState
@@ -127,6 +127,15 @@ class UnmatchedTextTests(unittest.TestCase):
 
 
 class TextRecipeTest(unittest.TestCase):
+    def test_math_entity_normalization_uses_the_parsed_occurrence(self):
+        formula = '$&lt;x&gt;$'
+        for prefix in (f'<table><tr><td>{formula}</td></tr></table>\n\n',
+                       f'<!-- {formula} -->\n\n',
+                       f'[label]({formula}) ',
+                       f'<a title="{formula}">label</a> '):
+            with self.subTest(prefix=prefix):
+                self.assertEqual(normalize_math_angle_entities(prefix + formula), prefix + '$<x>$')
+
     def test_source_span_uses_case_for_case_only_changes(self):
         block = {'block_id': 2, 'text': 'bit EXAMPLE res LOAD nd'}
         pages = {93: [block]}
@@ -465,6 +474,57 @@ class TextRecipeTest(unittest.TestCase):
                              [f'page_{number:04d}_seg_001' for number in range(1, 6)])
             self.assertEqual([element['resolved_md_text'] for element in imported],
                              ['One', 'Two', '**Three**', '> [!NOTE] NOTE\n>\n> Four', '_Five_'])
+
+    def test_import_normalizes_math_angle_entities_before_source_alignment(self):
+        formula = r'**Operation:** $&lt; ea &gt; \rightarrow \mathrm{An}$'
+        mixed = ('&lt; outside &gt; `$&lt; code &gt;$`\n\n'
+                 '$$\n&#60; x &#x3e;\n$$\n\n'
+                 '| Value |\n| --- |\n| $\\|x\\| &lt; y$ |\n\n'
+                 '```text\n$&lt; code &gt;$\n```')
+        prepared = [formula, mixed, '$&lt; code &gt;$', '$&lt; code &gt;$',
+                    '<table><tr><td>&lt; ea &gt;</td></tr></table>',
+                    'Heading $&lt; ea &gt;$', '# Heading $&lt; ea &gt;$']
+        expected = [r'**Operation:** $< ea > \rightarrow \mathrm{An}$',
+                    mixed.replace('&#60;', '<').replace('&#x3e;', '>').replace(
+                        r'$\|x\| &lt; y$', r'$\|x\| < y$'), *prepared[2:5],
+                    '# Heading $< ea >$', '# Heading $< ea >$']
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            workspace = root / 'pdf-to-markdown'
+            write_json(workspace / 'stage_status.json',
+                       {stage: {'status': 'success'} for stage in ('02', '06', '07', '08')})
+            source = 'Operation: ea An outside code x Value y Heading'
+            blocks = [{'block_id': 0, 'text': source, 'bbox': [0, 0, 100, 10],
+                       'char_bboxes': [[0, 0, 100, 10]] * len(source)}]
+            write_json(workspace / '02_preprocess/page_0001.json',
+                       {'page': 1, 'page_id': 'page_0001', 'blocks': blocks,
+                        'raster': {'display_to_pixels': [1, 0, 0, 1, 0, 0]}})
+            input_path = workspace / '08_proofreading/page_0001_segments.json'
+            write_json(input_path, {'page': 1, 'segments': [
+                {'segment_id': f'element-{index}', 'type': kind, 'role': None,
+                 'bbox': [0, 0, 100, 10], 'md_text': text}
+                for index, (kind, text) in enumerate(zip(
+                    ('table', 'prose', 'code_block', 'preformatted_text', 'table', 'heading', 'heading'), prepared))]})
+            original = input_path.read_bytes()
+            imported = import_book(root)
+            self.assertEqual([e['resolved_md_text'] for e in imported['chapters'][0]['elements']], expected)
+            self.assertEqual(input_path.read_bytes(), original)
+            loaded, assets, fingerprint = load_input(root / 'working')
+            for element, text in zip(loaded['chapters'][0]['elements'], expected):
+                self.assertEqual(element['resolved_md_text'], text)
+                self.assertEqual(resolve_template(element['md_text'], {1: blocks}), text)
+                self.assertIn('{{text ', element['md_text'])
+            export_markdown(loaded, root / 'working')
+            exported = (root / 'working' / loaded['chapters'][0]['resolved_markdown_file']).read_text(encoding='utf-8')
+            self.assertIn(expected[0], exported)
+            renderer = Renderer()
+            try:
+                snapshot = renderer.render(root / 'working', loaded, assets, fingerprint)
+                document = root / 'working' / snapshot['render']['chapters'][1]['document']
+                self.assertIn('class="katex"', document.read_text(encoding='utf-8'))
+                self.assertEqual(renderer.page.locator('.katex-error').count(), 0)
+            finally:
+                renderer.close()
 
     def test_import_preserves_prepared_markdown_without_literal_transcription(self):
         prepared = ['**Operation:** Source + Dest ination',

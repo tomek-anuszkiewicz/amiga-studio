@@ -1469,3 +1469,22 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Initial language, frontmatter, formatting, architecture, hardware, code quality and Clippy checks passed
   - The initial profile was stopped during coverage to reconcile documentation findings
   - Final canonical verification and independent review are pending
+---
+
+### [2026-11-15 09:48 CET] — Normalize math angle entities during book import
+- **Affected Subsystems**:
+  - `Book-to-Markdown importer`
+  - `PDF source recipes`
+- **What Was Changed (The Concrete Reality)**:
+  - Decode named and numeric HTML angle entities inside parsed Markdown math before source alignment
+  - Preserve code and preformatted text plus entities outside math
+  - Add import-to-render regression coverage without changing PDF conversion prompts
+  - Locate math by parser source spans and apply heading prefixes once
+- **Architectural Rationale & Trade-Offs**:
+  - Prevent HTML angle entities from reaching KaTeX as invalid math while keeping PDF references and exports consistent
+- **Verification & Test Results**:
+  - The new regression failed before the fix and passed afterward
+  - All 41 text recipe tests and 33 source alignment tests passed
+  - Reimported 5334 elements from 646 pages of the M68000 Programmer reference manual
+  - Rendering completed and Working matches Accepted
+  - Editor and document endpoints returned HTTP 200 with no pending render or error
