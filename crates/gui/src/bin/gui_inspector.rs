@@ -37,7 +37,7 @@ fn print_usage() {
 
 #[cfg(not(target_arch = "wasm32"))]
 fn create_primed_app() -> Result<EmulatorApp, physical_memory::KickstartSizeError> {
-    let mut app = EmulatorApp::default();
+    let mut session = Box::new(gui::DebuggerSession::new());
 
     // Load sample assembly program: NOP, NOP, MOVE.W #$1234, D0, RTS
     let code: [u8; 10] = [
@@ -46,19 +46,18 @@ fn create_primed_app() -> Result<EmulatorApp, physical_memory::KickstartSizeErro
         0x30, 0x3C, 0x12, 0x34, // MOVE.W #$1234, D0
         0x4E, 0x75, // RTS
     ];
-    app.session
-        .load_binary(debugger::DEFAULT_TARGET_ADDRESS, &code, true)?;
+    session.load_binary(debugger::DEFAULT_TARGET_ADDRESS, &code, true)?;
 
     // Seed realistic register and debugger state
-    app.session.machine.cpu.state.set_d_long(0, 0xCAFE_BABE);
-    app.session.machine.cpu.state.set_d_long(1, 0x0000_1000);
-    app.session.machine.cpu.state.set_a_long(0, 0x0000_2000);
-    app.session.machine.cpu.state.set_sr(0x2700);
+    session.machine.cpu.state.set_d_long(0, 0xCAFE_BABE);
+    session.machine.cpu.state.set_d_long(1, 0x0000_1000);
+    session.machine.cpu.state.set_a_long(0, 0x0000_2000);
+    session.machine.cpu.state.set_sr(0x2700);
 
     // Step one instruction so trace log has entries and PC moves to $1002
-    app.session.step_instruction();
+    session.step_instruction();
 
-    Ok(app)
+    Ok(EmulatorApp::with_session(session))
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -128,29 +127,31 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     let app = if scenario == "mixed_scene" {
-        let mut app = EmulatorApp::default();
-        app.session.load_binary(
+        let mut session = Box::new(gui::DebuggerSession::new());
+        session.load_binary(
             debugger::DEFAULT_TARGET_ADDRESS,
             include_bytes!("../../../machine_loop/tests/programs/display/mixed_scene/program.bin"),
             true,
         )?;
         // Advance the real guest past initialization before capturing its image.
         for _ in 0..64 {
-            app.session.machine.step_frame();
+            session.machine.step_frame();
         }
+        let mut app = EmulatorApp::with_session(session);
         app.view_mode = gui::ViewMode::ScreenOnly;
         app
     } else if matches!(scenario.as_str(), "live_display" | "live_display_studio") {
-        let mut app = EmulatorApp::default();
-        app.session.load_binary(
+        let mut session = Box::new(gui::DebuggerSession::new());
+        session.load_binary(
             debugger::DEFAULT_TARGET_ADDRESS,
             include_bytes!("../../../machine_loop/tests/programs/display/live_stripes/program.bin"),
             true,
         )?;
+        let mut app = EmulatorApp::with_session(session);
         if scenario == "live_display" {
             app.view_mode = gui::ViewMode::ScreenOnly;
         }
-        app.session.toggle_run();
+        app.host.queue(gui::host_commands::HostCommand::Run);
         app
     } else if scenario == "clean_startup" {
         EmulatorApp::default()
@@ -171,38 +172,43 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
 
     // Initial render step to lay out widgets and build AccessKit tree
-    harness.step();
+    let inspection_deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    loop {
+        harness.step();
+        if harness.state().host.is_idle() {
+            break;
+        }
+        if std::time::Instant::now() >= inspection_deadline {
+            return Err("GUI initialization did not settle".into());
+        }
+        std::thread::sleep(std::time::Duration::from_millis(1));
+    }
 
     // Apply scenario-specific interactions
     match scenario.as_str() {
         "live_display" | "live_display_studio" => {
-            for _ in 0..32 {
-                if harness
-                    .state()
-                    .session
-                    .machine
-                    .denise
-                    .frame_builder
-                    .frame_number
-                    >= 2
-                {
-                    break;
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+            while harness.state().host.status.field_number < 2 {
+                if std::time::Instant::now() >= deadline {
+                    return Err("Display program did not produce two completed fields".into());
                 }
                 harness.step();
+                std::thread::sleep(std::time::Duration::from_millis(1));
             }
-            if harness
-                .state()
-                .session
-                .machine
-                .denise
-                .frame_builder
-                .frame_number
-                < 2
-            {
-                return Err("Display program did not produce two completed fields".into());
+            harness
+                .state_mut()
+                .host
+                .queue(gui::host_commands::HostCommand::Pause);
+            loop {
+                harness.step();
+                if !harness.state().host.status.running && harness.state().host.is_idle() {
+                    break;
+                }
+                if std::time::Instant::now() >= deadline {
+                    return Err("Display program did not pause".into());
+                }
+                std::thread::sleep(std::time::Duration::from_millis(1));
             }
-            harness.state_mut().session.is_running = false;
-            harness.step();
         }
         "baseline" | "clean_startup" | "mixed_scene" => {
             // Settle layout with another step

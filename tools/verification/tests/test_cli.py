@@ -249,7 +249,8 @@ class SelectionTests(unittest.TestCase):
                 commands = selected("commit", ["docs/testing.md"])
             self.assertEqual(any(command[:2] == ["cargo", "test"] for _, command, _ in commands), harness)
             self.assertEqual(any("llvm-cov" in command for _, command, _ in commands), coverage)
-            self.assertIn(["cargo", "clippy", "--workspace", "--all-targets"], [command for _, command, _ in commands])
+            self.assertIn([sys.executable, "tools/verification/checks/check_clippy_policy.py"],
+                          [command for _, command, _ in commands])
 
     def test_commit_skips_bootstrap_contracts_without_bootstrap_changes(self):
         bootstrap = {"Bootstrap contracts", "Conversion contracts", "HTML conversion contracts",

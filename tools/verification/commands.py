@@ -72,7 +72,7 @@ def select_quality_commands(mode):
             ("Strict English Policy", script("check_english"), {}),
             ("Obsidian Frontmatter", script("check_obsidian_frontmatter"), {}),
             ("Formatting", ["cargo", "fmt", "--all", "--", "--check"], {}),
-            ("Clippy Invariants", ["cargo", "clippy", "--workspace", "--all-targets"], {}),
+            ("Clippy Invariants", script("check_clippy_policy"), {}),
             ("Architecture Rules", script("check_architecture"), {}),
             ("Hardware Quality", script("audit_hardware_quality"), {}),
             ("Code Quality", script("audit_code_quality"), {}),

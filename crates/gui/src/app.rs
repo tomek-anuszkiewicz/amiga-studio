@@ -5,6 +5,9 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::app_host::AppHost;
+use crate::host_commands::{HistoryCommand, HostCommand};
+use crate::host_video::VideoRead;
 use crate::layout::left_dock::disassembly::{render_disassembly, DisasmEditState};
 use crate::layout::left_dock::engine_status::render_engine_status;
 use crate::layout::left_dock::microcode::render_microcode;
@@ -16,7 +19,6 @@ use crate::layout::right_dock::memory_hex::render_memory_hex;
 use crate::layout::right_dock::memory_search::{render_memory_search, MemorySearchState};
 use crate::layout::right_dock::trace_log::render_trace_log;
 use crate::layout::top_menu_bar::render_top_menu_bar;
-use crate::playback::Playback;
 use crate::theme::AppTheme;
 use debugger::temporal::DEFAULT_TEMPORAL_CAPACITY;
 use debugger::DebuggerSession;
@@ -100,11 +102,10 @@ impl Default for UserPreferences {
 /// Central Amiga 500 Emulator GUI Application (View Layer)
 #[derive(Debug)]
 pub struct EmulatorApp {
-    /// Headless machine execution controller & model
-    pub session: Box<DebuggerSession>,
+    /// GUI-owned command handle and retained inspection data.
+    pub host: Box<AppHost>,
     screen_texture: ScreenTexture,
     pub(crate) inspection: Box<crate::inspection::Inspection>,
-    pub playback: Playback,
     pub show_fps: bool,
     pub loaded_rom_name: Option<String>,
     #[cfg(not(target_arch = "wasm32"))]
@@ -150,6 +151,10 @@ pub struct EmulatorApp {
     pub load_auto_prime: bool,
     pub file_error: Option<String>,
     pub toast_message: Option<(String, usize)>,
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) closing: bool,
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) close_ready: bool,
 }
 
 impl Default for EmulatorApp {
@@ -170,10 +175,9 @@ impl Default for EmulatorApp {
             .supply_host_utc(crate::host_clock::utc_now());
         session.machine.rtc.load_battery(rtc::RtcBattery::default());
         Self {
-            session,
+            host: Box::new(AppHost::new(session)),
             screen_texture: ScreenTexture::default(),
             inspection: Box::default(),
-            playback: Playback::default(),
             show_fps: true,
             loaded_rom_name: None,
             #[cfg(not(target_arch = "wasm32"))]
@@ -207,11 +211,30 @@ impl Default for EmulatorApp {
             load_auto_prime: true,
             file_error: None,
             toast_message: None,
+            #[cfg(not(target_arch = "wasm32"))]
+            closing: false,
+            #[cfg(not(target_arch = "wasm32"))]
+            close_ready: false,
         }
     }
 }
 
 impl EmulatorApp {
+    pub fn with_session(session: Box<DebuggerSession>) -> Self {
+        Self {
+            host: Box::new(AppHost::new(session)),
+            ..Self::default()
+        }
+    }
+
+    pub(crate) fn toggle_run(&mut self) {
+        self.host.queue(if self.host.status.running {
+            HostCommand::Pause
+        } else {
+            HostCommand::Run
+        });
+    }
+
     /// Initializes a new EmulatorApp instance with headless session
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         let mut app = Self::default();
@@ -219,7 +242,7 @@ impl EmulatorApp {
         app.browser_history.restore();
         if let Some(storage) = cc.storage {
             if let Some(battery) = eframe::get_value(storage, RTC_BATTERY_STORAGE_KEY) {
-                app.session.machine.rtc.load_battery(battery);
+                app.host.queue(HostCommand::LoadRtcBattery(battery));
             }
             #[cfg(not(target_arch = "wasm32"))]
             {
@@ -259,41 +282,26 @@ impl EmulatorApp {
         self.disasm_pane_width = prefs.disasm_pane_width;
         self.crt_pane_height = prefs.crt_pane_height;
         self.right_dock_bottom_height = prefs.right_dock_bottom_height;
-        self.session.temporal.set_capacity(prefs.temporal_capacity);
+        self.host
+            .queue(HostCommand::History(HistoryCommand::Capacity(
+                prefs.temporal_capacity,
+            )));
     }
 
     /// Changes presentation and connects debugger work only in Developer view.
     pub fn set_view_mode(&mut self, mode: ViewMode) {
         if self.view_mode == ViewMode::ScreenOnly && mode == ViewMode::Developer {
-            self.session.request_pause();
+            self.host.queue(HostCommand::Pause);
         }
         self.view_mode = mode;
-        self.session
-            .set_debugger_enabled(mode == ViewMode::Developer);
+        self.host
+            .queue(HostCommand::SetDebuggerEnabled(mode == ViewMode::Developer));
     }
 
-    /// Renders one complete UI frame, handling input events, execution time-slicing, and docked panels
+    /// Renders one complete UI frame using owner replies, image notifications, and docked panels
     pub fn update_ui(&mut self, ctx: &egui::Context) {
-        #[cfg(not(target_arch = "wasm32"))]
-        let update_started = std::time::Instant::now();
-        #[cfg(target_arch = "wasm32")]
-        let update_started = eframe::web::now_sec();
-        #[cfg(not(target_arch = "wasm32"))]
-        let elapsed = || update_started.elapsed().as_secs_f64();
-        #[cfg(target_arch = "wasm32")]
-        let elapsed = || eframe::web::now_sec() - update_started;
-        let now = ctx.input(|input| input.time);
-        let was_running = self.session.is_running;
         let first_pass = ctx.output(|output| output.num_completed_passes == 0);
-        if first_pass {
-            self.session
-                .machine
-                .rtc
-                .supply_host_utc(crate::host_clock::utc_now());
-            self.session
-                .set_debugger_enabled(self.view_mode == ViewMode::Developer);
-            self.handle_keyboard_shortcuts(ctx);
-        }
+        self.poll_host(ctx, first_pass);
 
         // Check for drag-and-dropped files onto the emulator window
         let dropped_files = ctx.input(|i| i.raw.dropped_files.clone());
@@ -303,35 +311,41 @@ impl EmulatorApp {
             }
         }
 
-        // A Run started before the first UI pass needs one preparation pass before execution.
-        let prepare_first = self.view_mode == ViewMode::Developer
-            && !self.inspection.ready
-            && self.session.continuous_run()
-            && !self.session.pause_pending();
-        let start_after_preparation = std::mem::take(&mut self.inspection.start_after_preparation);
-        let refresh_screen = ((first_pass || start_after_preparation)
-            && !prepare_first
-            && self.playback.advance(now, &mut self.session, elapsed))
-            || self.screen_texture.image().is_none();
-        render_top_menu_bar(self, ctx);
-        if was_running && !self.session.is_running {
-            self.disassembly_view_addr = None;
-        }
-        self.inspection.frozen = self.session.continuous_run()
-            && (self.inspection.ready || self.session.pause_pending());
-        if self.view_mode == ViewMode::Developer && !self.inspection.frozen {
-            self.inspection.engine.refresh(&self.session);
-            if self.show_microcode {
-                self.inspection.microcode.refresh(
-                    &self.session.machine.cpu.state,
-                    self.session.machine.physical_memory.chip_ram_blocked,
-                );
+        self.screen_texture.set_scale(self.screen_scale);
+        if let Some(runtime) = self.host.runtime.as_mut().filter(|_| first_pass) {
+            let result = runtime.try_consume(|info, status, pixels| {
+                if !status.running && info.cck != status.cck {
+                    return None;
+                }
+                Some((info, ScreenTexture::convert(info, pixels)))
+            });
+            let status = runtime.status();
+            let previous = self.host.status;
+            self.host.accept_status(status);
+            if previous != status {
+                if previous.generation != status.generation && self.host.data.is_none() {
+                    self.inspection.ready = false;
+                }
+                if previous.running && !status.running {
+                    self.disassembly_view_addr = None;
+                }
+                ctx.request_repaint();
+            }
+            match result {
+                Ok(VideoRead::Frame(Some((info, image)))) => {
+                    self.host.presented = Some(info);
+                    self.screen_texture.update(ctx, image);
+                }
+                Ok(_) => {}
+                Err(error) => {
+                    self.file_error = Some(format!("Could not read machine image: {error}"))
+                }
             }
         }
-        self.screen_texture.set_scale(self.screen_scale);
-        if refresh_screen {
-            self.screen_texture.update(ctx, &self.session);
-        }
+        render_top_menu_bar(self, ctx);
+        self.inspection.frozen = (self.host.continuous_requested()
+            || (self.host.inspector_revision.is_none() && self.host.data.is_some()))
+            && (self.inspection.ready || self.host.status.pause_pending);
         let screen_texture = self.screen_texture.image();
 
         // --- RENDER BASED ON ACTIVE VIEW MODE ---
@@ -342,6 +356,24 @@ impl EmulatorApp {
             });
         } else {
             // Mode B: Full Developer Studio GUI (Responsive Multi-Tier Architecture)
+            let Some(mut data) = self.host.data.take() else {
+                egui::CentralPanel::default().show(ctx, |ui| {
+                    ui.label("Preparing debugger inspection...");
+                });
+                self.host.flush();
+                self.host.request_submission_retry(ctx);
+                return;
+            };
+            let original_breakpoints = data.debugger.breakpoints.clone();
+            if !self.inspection.frozen {
+                self.inspection.refresh_status(&data);
+                self.inspection.engine.refresh(&data);
+                if self.show_microcode {
+                    self.inspection
+                        .microcode
+                        .refresh(&data.cpu, data.memory.chip_ram_blocked);
+                }
+            }
             let tokens = self.theme.tokens();
 
             let screen_rect = ctx.screen_rect();
@@ -390,22 +422,20 @@ impl EmulatorApp {
                             egui::scroll_area::ScrollBarVisibility::VisibleWhenNeeded,
                         )
                         .show(ui, |ui| {
-                            if self.session.is_running {
+                            if self.host.status.running {
                                 ui.disable();
                             }
-                            if render_registers(
+                            render_registers(
                                 ui,
                                 &mut self.inspection.registers,
                                 !self.inspection.frozen,
-                                !self.session.is_running,
+                                !self.host.status.running && self.host.can_edit(),
                                 &tokens,
-                                &mut self.session.machine.cpu,
-                                &mut self.session.machine.physical_memory,
-                                self.session.prev_cpu_state.as_ref(),
+                                &data.cpu,
+                                &mut self.host.commands,
+                                data.previous_cpu.as_ref(),
                                 &mut self.active_reg_edit,
-                            ) {
-                                self.session.invalidate_instruction_tracking();
-                            }
+                            );
                             ui.add_space(3.0);
                             render_engine_status(ui, &tokens, &self.inspection.engine);
                             if self.show_microcode {
@@ -429,7 +459,7 @@ impl EmulatorApp {
                     }),
                 )
                 .show(ctx, |ui| {
-                    if self.session.is_running {
+                    if self.host.status.running {
                         ui.disable();
                     }
                     ui.with_layout(egui::Layout::bottom_up(egui::Align::Min), |ui| {
@@ -449,13 +479,13 @@ impl EmulatorApp {
                                         let tools_resp = ui.vertical(|ui| {
                                             render_memory_search(
                                                 ui,
-                                                &self.session.machine.physical_memory,
+                                                &data.memory,
                                                 &mut self.hex_base_addr,
                                                 &mut self.memory_search_state,
                                             );
                                             ui.add_space(6.0);
                                             render_breakpoints_panel(
-                                                &mut self.session.debugger.breakpoints,
+                                                &mut data.debugger.breakpoints,
                                                 &mut self.inspection.breakpoints,
                                                 !self.inspection.frozen,
                                                 &mut self.breakpoint_form,
@@ -463,7 +493,7 @@ impl EmulatorApp {
                                             );
                                             if layout_tier != LayoutTier::FullHdWide {
                                                 ui.add_space(6.0);
-                                                render_trace_log(self, ui);
+                                                render_trace_log(self, ui, &data);
                                             }
                                         });
                                         let measured_h = tools_resp.response.rect.height();
@@ -494,19 +524,15 @@ impl EmulatorApp {
                                     ui,
                                     &mut self.inspection.memory,
                                     !self.inspection.frozen,
-                                    !self.session.is_running,
-                                    &mut self.session.machine.physical_memory,
-                                    &mut self.session.debugger.breakpoints,
+                                    !self.host.status.running && self.host.can_edit(),
+                                    &data.memory,
+                                    &mut self.host.commands,
+                                    &mut data.debugger.breakpoints,
                                     &mut self.hex_base_addr,
                                     &mut self.memory_selected_addr,
                                     &mut self.hex_edit_buffer,
-                                    if !self.inspection.frozen
-                                        && self.session.prev_cpu_state.is_some()
-                                    {
-                                        Some((
-                                            &self.session.prev_hex_bytes,
-                                            self.session.prev_hex_base,
-                                        ))
+                                    if !self.inspection.frozen && data.previous_cpu.is_some() {
+                                        Some((&data.previous_bytes, data.previous_base))
                                     } else {
                                         None
                                     },
@@ -544,23 +570,22 @@ impl EmulatorApp {
                                     egui::vec2(disasm_w, total_h),
                                     egui::Layout::top_down(egui::Align::Min),
                                     |ui| {
-                                        if render_disassembly(
+                                        render_disassembly(
                                             ui,
                                             &mut self.inspection.disassembly,
                                             !self.inspection.frozen,
-                                            !self.session.is_running,
-                                            &mut self.session.machine.cpu,
-                                            &mut self.session.machine.physical_memory,
-                                            &mut self.session.debugger,
-                                            &mut self.session.temporal,
+                                            !self.host.status.running && self.host.can_edit(),
+                                            &data.cpu,
+                                            &data.memory,
+                                            &mut data.debugger,
+                                            &data.temporal,
+                                            &mut self.host.commands,
                                             &mut self.goto_addr_str,
                                             &mut self.disassembly_view_addr,
                                             &mut self.disassembly_selected_addr,
                                             &mut self.active_disasm_edit,
                                             &tokens,
-                                        ) {
-                                            self.session.invalidate_instruction_tracking();
-                                        }
+                                        );
                                     },
                                 );
 
@@ -625,7 +650,7 @@ impl EmulatorApp {
                                                 );
 
                                                 ui.separator();
-                                                render_temporal_bar(self, ui);
+                                                render_temporal_bar(self, ui, &data.temporal);
                                             },
                                         );
 
@@ -659,7 +684,7 @@ impl EmulatorApp {
                                         }
 
                                         ui.add_space(2.0);
-                                        render_trace_log(self, ui);
+                                        render_trace_log(self, ui, &data);
                                     },
                                 );
                             });
@@ -683,45 +708,53 @@ impl EmulatorApp {
                             );
 
                             ui.separator();
-                            render_temporal_bar(self, ui);
+                            render_temporal_bar(self, ui, &data.temporal);
                             ui.separator();
 
-                            if render_disassembly(
+                            render_disassembly(
                                 ui,
                                 &mut self.inspection.disassembly,
                                 !self.inspection.frozen,
-                                !self.session.is_running,
-                                &mut self.session.machine.cpu,
-                                &mut self.session.machine.physical_memory,
-                                &mut self.session.debugger,
-                                &mut self.session.temporal,
+                                !self.host.status.running && self.host.can_edit(),
+                                &data.cpu,
+                                &data.memory,
+                                &mut data.debugger,
+                                &data.temporal,
+                                &mut self.host.commands,
                                 &mut self.goto_addr_str,
                                 &mut self.disassembly_view_addr,
                                 &mut self.disassembly_selected_addr,
                                 &mut self.active_disasm_edit,
                                 &tokens,
-                            ) {
-                                self.session.invalidate_instruction_tracking();
-                            }
+                            );
                         }
                     }
                 });
+            if data.debugger.breakpoints != original_breakpoints {
+                self.host.queue(HostCommand::SetBreakpoints(
+                    data.debugger.breakpoints.clone(),
+                ));
+            }
+            if !self.host.status.running
+                && self.host.can_edit()
+                && data.previous_base != self.hex_base_addr
+            {
+                self.host
+                    .queue(HostCommand::SetMemoryBase(self.hex_base_addr));
+            }
+            self.host.data = Some(data);
         }
 
         if self.view_mode == ViewMode::Developer && !self.inspection.frozen {
             self.inspection.ready = true;
-            if prepare_first {
-                self.inspection.start_after_preparation = true;
-                ctx.request_discard("Prepare inspection before the first Run slice");
-            }
         }
         if first_pass {
             self.poll_file_dialog(ctx);
         }
         crate::layout::file_dialogs::render(self, ctx);
 
-        self.playback
-            .request_repaint(ctx, &self.session, now + elapsed());
+        self.host.flush();
+        self.host.request_submission_retry(ctx);
     }
 }
 
@@ -731,15 +764,7 @@ impl eframe::App for EmulatorApp {
     }
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
-        self.session
-            .machine
-            .rtc
-            .supply_host_utc(crate::host_clock::utc_now());
-        eframe::set_value(
-            storage,
-            RTC_BATTERY_STORAGE_KEY,
-            &self.session.machine.rtc.battery_data(),
-        );
+        eframe::set_value(storage, RTC_BATTERY_STORAGE_KEY, &self.host.status.battery);
         eframe::set_value(storage, eframe::APP_KEY, &self.preferences());
         #[cfg(not(target_arch = "wasm32"))]
         eframe::set_value(

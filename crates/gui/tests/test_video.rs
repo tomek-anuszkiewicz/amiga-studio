@@ -1,6 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use egui::{pos2, vec2, Color32, Context, ImageData, RawInput, Rect, TextureId};
+mod common;
+use egui::{pos2, vec2, Color32, Context, RawInput, Rect};
+use gui::host_commands::HostCommand;
 use gui::{EmulatorApp, ViewMode};
 
 fn render(app: &mut EmulatorApp, context: &Context, size: [f32; 2]) -> egui::FullOutput {
@@ -13,49 +15,58 @@ fn render(app: &mut EmulatorApp, context: &Context, size: [f32; 2]) -> egui::Ful
     )
 }
 
-fn video(output: &egui::FullOutput) -> (TextureId, Vec<Color32>) {
-    output
-        .textures_delta
-        .set
-        .iter()
-        .find_map(|(id, delta)| {
-            // This guest uses 312 PAL lines: 26 blank and one incomplete edge line.
-            if delta.image.size() != [836, 570] {
-                return None;
-            }
-            match &delta.image {
-                ImageData::Color(image) => Some((*id, image.pixels.clone())),
-                _ => None,
-            }
-        })
-        .expect("machine image was not uploaded")
-}
-
 #[test]
 fn loaded_guest_updates_texture_and_pause_preserves_it_at_all_viewport_sizes() {
     let context = Context::default();
-    let mut app = EmulatorApp::default();
-    app.view_mode = ViewMode::ScreenOnly;
+    let mut session = Box::new(gui::DebuggerSession::new());
     let program =
         include_bytes!("../../machine_loop/tests/programs/display/live_stripes/program.bin");
     assert_eq!(
-        app.session.load_binary(0x1000, program, true).unwrap(),
+        session.load_binary(0x1000, program, true).unwrap(),
         program.len()
     );
-    app.session.toggle_run();
-    for _ in 0..32 {
-        render(&mut app, &context, [1280.0, 720.0]);
-        if app.session.machine.denise.frame_builder.frame_number >= 2 {
+    let mut app = EmulatorApp::with_session(session);
+    app.view_mode = ViewMode::ScreenOnly;
+    app.host.queue(HostCommand::Run);
+    let mut captured = common::ScreenCapture::new([836, 570]);
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    loop {
+        captured.apply(&render(&mut app, &context, [1280.0, 720.0]));
+        if app.host.status.field_number >= 2 && captured.id.is_some() {
             break;
         }
+        assert!(
+            std::time::Instant::now() < deadline,
+            "Guest did not publish completed fields"
+        );
+        std::thread::sleep(std::time::Duration::from_millis(1));
     }
-    assert!(app.session.machine.denise.frame_builder.frame_number >= 2);
-    app.session.toggle_run();
-    let cck = app.session.machine.cck;
+    assert!(app.host.status.field_number >= 2);
+    app.host.queue(HostCommand::Pause);
+    loop {
+        captured.apply(&render(&mut app, &context, [1280.0, 720.0]));
+        if !app.host.status.running
+            && app.host.is_idle()
+            && app
+                .host
+                .presented
+                .is_some_and(|info| info.cck == app.host.status.cck)
+        {
+            break;
+        }
+        assert!(
+            std::time::Instant::now() < deadline,
+            "Pause did not publish its boundary image"
+        );
+        std::thread::sleep(std::time::Duration::from_millis(1));
+    }
+    let cck = app.host.status.cck;
     let mut paused_pixels = None;
     for size in [[1280.0, 720.0], [800.0, 900.0], [1920.0, 1080.0]] {
         let output = render(&mut app, &context, size);
-        let (id, pixels) = video(&output);
+        captured.apply(&output);
+        let id = captured.id.unwrap();
+        let pixels = captured.pixels.clone();
         assert!(pixels.contains(&Color32::from_rgb(0, 0, 34)));
         assert!(
             pixels.contains(&Color32::from_rgb(255, 0, 0))
@@ -81,21 +92,22 @@ fn loaded_guest_updates_texture_and_pause_preserves_it_at_all_viewport_sizes() {
             .vertices
             .iter()
             .any(|vertex| vertex.uv == pos2(1.0, 1.0)));
-        assert_eq!(app.session.machine.cck, cck);
+        assert_eq!(app.host.status.cck, cck);
         if let Some(previous) = &paused_pixels {
             assert_eq!(&pixels, previous);
         }
         paused_pixels = Some(pixels);
     }
-    app.session.toggle_run();
+    app.host.queue(HostCommand::Run);
     let mut changed = false;
-    for _ in 0..16 {
-        let output = render(&mut app, &context, [1280.0, 720.0]);
-        if Some(video(&output).1) != paused_pixels {
+    while std::time::Instant::now() < deadline {
+        captured.apply(&render(&mut app, &context, [1280.0, 720.0]));
+        if Some(&captured.pixels) != paused_pixels.as_ref() {
             changed = true;
             break;
         }
+        std::thread::sleep(std::time::Duration::from_millis(1));
     }
     assert!(changed, "resuming did not update the video texture");
-    assert!(app.session.machine.cck > cck);
+    assert!(app.host.status.cck > cck);
 }

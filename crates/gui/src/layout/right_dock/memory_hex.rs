@@ -156,7 +156,8 @@ pub(crate) fn render_memory_hex(
     data: &mut MemoryPresentation,
     refresh: bool,
     interactive: bool,
-    bus: &mut PhysicalMemory,
+    bus: &PhysicalMemory,
+    commands: &mut Vec<crate::host_commands::HostCommand>,
     breakpoints: &mut BreakpointManager,
     base_addr: &mut u32,
     selected_addr: &mut Option<u32>,
@@ -466,7 +467,7 @@ pub(crate) fn render_memory_hex(
                                             } else if should_commit_edit() {
                                                 let clean = edit_buffer.1.trim();
                                                 if let Ok(val) = u8::from_str_radix(clean, 16) {
-                                                    bus.write_byte_debug(byte_addr, val);
+                                                    commands.push(crate::host_commands::HostCommand::WriteMemory { address: byte_addr, bytes: vec![val], restart_instruction: false });
                                                     if ui.input(|i| {
                                                         i.key_pressed(egui::Key::Tab)
                                                             || i.key_pressed(egui::Key::Enter)

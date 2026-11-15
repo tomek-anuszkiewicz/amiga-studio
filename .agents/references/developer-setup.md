@@ -11,7 +11,7 @@ This operational reference contains setup commands and provisioning details. Sta
 <a id="1-build-run"></a><a id="1-build--run"></a><a id="1-zero-setup-build-execution"></a>
 ## 1. Build & Run
 
-A freshly cloned repository is **100% self-contained for compilation and execution** using the standard stable Rust toolchain ([rustup.rs](https://rustup.rs)). No bootstrapping, external downloads, or database services are required to run the emulator.
+Native builds use the standard Stable Rust toolchain ([rustup.rs](https://rustup.rs)). The shared-memory browser build additionally requires Nightly with `rust-src`, the Wasm target and Trunk. Neither frontend requires the documentation database services.
 
 <a id="standalone-native-gui-release"></a>
 ### Standalone Native GUI (Release)
@@ -34,8 +34,11 @@ Run the emulator directly inside a web browser using WebAssembly and [Trunk](htt
 # Install Trunk (first-time only):
 cargo install --locked trunk
 
-# Serve and open the WebAssembly canvas in your default browser:
-trunk serve crates/gui/index.html --open
+# Install the browser toolchain components:
+rustup toolchain install nightly --component rust-src --target wasm32-unknown-unknown
+
+# Build and serve the optimized application with shared-memory settings:
+./tools/web.ps1 serve
 ```
 
 ---

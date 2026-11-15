@@ -1,5 +1,10 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
+mod common;
+use gui::host_video;
+#[path = "../src/layout/main_viewport/amiga_screen.rs"]
+#[allow(dead_code)]
+pub mod screen;
 use egui::{pos2, vec2, Color32, Context, ImageData, RawInput, Rect, TextureOptions, ViewportId};
 use egui_kittest::{
     kittest::{by, Queryable},
@@ -18,7 +23,19 @@ fn render(app: &mut EmulatorApp, ctx: &Context, width: f32, dpi: f32) -> egui::F
         .get_mut(&ViewportId::ROOT)
         .unwrap()
         .native_pixels_per_point = Some(dpi);
-    ctx.run(input, |ctx| app.update_ui(ctx))
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    let mut combined = egui::FullOutput::default();
+    loop {
+        combined.append(ctx.run(input.clone(), |ctx| app.update_ui(ctx)));
+        if app.host.is_idle() && app.host.presented.is_some() {
+            return combined;
+        }
+        assert!(
+            std::time::Instant::now() < deadline,
+            "Initial screen was not published"
+        );
+        std::thread::sleep(std::time::Duration::from_millis(1));
+    }
 }
 
 #[test]
@@ -33,10 +50,12 @@ fn fixed_scales_preserve_physical_pixels_and_clip_in_every_layout() {
             let ctx = Context::default();
             let mut app = EmulatorApp::default();
             app.view_mode = view;
-            render(&mut app, &ctx, width, dpi);
+            let initial = render(&mut app, &ctx, width, dpi);
+            let info = app.host.presented.unwrap();
+            let mut captured = common::ScreenCapture::new([info.width, info.height]);
+            captured.apply(&initial);
             ctx.set_zoom_factor(zoom);
-            let frame = &app.session.machine.denise.frame_builder;
-            let source_size = vec2(frame.width as f32, frame.height as f32);
+            let source_size = vec2(info.width as f32, info.height as f32);
             for (scale, factor) in [
                 (ScreenScale::Half, 0.5),
                 (ScreenScale::One, 1.0),
@@ -44,17 +63,11 @@ fn fixed_scales_preserve_physical_pixels_and_clip_in_every_layout() {
                 (ScreenScale::Four, 4.0),
             ] {
                 app.screen_scale = scale;
-                render(&mut app, &ctx, width, dpi);
+                captured.apply(&render(&mut app, &ctx, width, dpi));
                 let output = render(&mut app, &ctx, width, dpi);
-                let (id, delta) = output
-                    .textures_delta
-                    .set
-                    .iter()
-                    .find(|(_, delta)| {
-                        delta.image.size() == [source_size.x as usize, source_size.y as usize]
-                    })
-                    .unwrap_or_else(|| panic!("No screen upload: {view:?}, width={width}, dpi={dpi}, zoom={zoom}, scale={scale:?}"));
-                assert_eq!(delta.options, TextureOptions::NEAREST);
+                captured.apply(&output);
+                let id = captured.id.as_ref().expect("No retained screen texture");
+                assert_eq!(captured.options, TextureOptions::NEAREST);
                 let (shape, bounds) = output
                     .shapes
                     .iter()
@@ -83,19 +96,13 @@ fn fixed_scales_preserve_physical_pixels_and_clip_in_every_layout() {
                     assert!(bounds.width() > shape.clip_rect.width());
                     assert!(bounds.height() > shape.clip_rect.height());
                 }
-                assert_eq!(app.session.machine.cck, 0);
+                assert_eq!(app.host.status.cck, 0);
             }
             app.screen_scale = ScreenScale::Fit;
             let output = render(&mut app, &ctx, width, dpi);
-            let (id, delta) = output
-                .textures_delta
-                .set
-                .iter()
-                .find(|(_, delta)| {
-                    delta.image.size() == [source_size.x as usize, source_size.y as usize]
-                })
-                .unwrap();
-            assert_eq!(delta.options, TextureOptions::LINEAR);
+            captured.apply(&output);
+            let id = captured.id.as_ref().unwrap();
+            assert_eq!(captured.options, TextureOptions::LINEAR);
             let (shape, bounds) = output
                 .shapes
                 .iter()
@@ -126,7 +133,7 @@ fn selector_changes_image_scale_without_changing_machine_or_interface_zoom() {
         let mut harness = Harness::builder()
             .with_size(vec2(1280.0, 900.0))
             .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
-        harness.run();
+        common::settle_harness(&mut harness);
         for (label, expected) in [
             ("0.5x", ScreenScale::Half),
             ("2x", ScreenScale::Two),
@@ -141,12 +148,12 @@ fn selector_changes_image_scale_without_changing_machine_or_interface_zoom() {
                 .next()
                 .unwrap()
                 .click();
-            harness.run();
+            common::settle_harness(&mut harness);
             harness.get_by_label(label).click();
-            harness.run();
+            common::settle_harness(&mut harness);
             assert!(!harness.ctx.memory(|m| m.any_popup_open()));
             assert_eq!(harness.state().screen_scale, expected);
-            assert_eq!(harness.state().session.machine.cck, 0);
+            assert_eq!(harness.state().host.status.cck, 0);
             assert_eq!(harness.ctx.zoom_factor(), 1.0);
         }
     }
@@ -155,13 +162,28 @@ fn selector_changes_image_scale_without_changing_machine_or_interface_zoom() {
 #[test]
 fn switching_filters_keeps_the_published_image_until_the_next_field() {
     let ctx = Context::default();
-    let mut app = EmulatorApp::default();
-    app.view_mode = ViewMode::ScreenOnly;
-    app.session
-        .load_binary(0x1000, &[0x60, 0xfe], true)
-        .unwrap();
-    app.session.toggle_run();
-    let published = render(&mut app, &ctx, 1280.0, 1.0);
+    let mut session = gui::DebuggerSession::new();
+    session.load_binary(0x1000, &[0x60, 0xfe], true).unwrap();
+    let frame = &session.machine.denise.frame_builder;
+    let info = host_video::FrameInfo {
+        width: frame.width as usize,
+        height: frame.height as usize,
+        row_stride: frame.row_stride(),
+        field_number: frame.frame_number,
+        publication: 1,
+        cck: session.machine.cck,
+        generation: 1,
+        interlaced: frame.interlaced,
+        field_odd: frame.field_odd,
+        complete: false,
+    };
+    let mut texture = screen::ScreenTexture::default();
+    let mut image = Some(screen::ScreenTexture::convert(info, frame.frame_buffer()));
+    let published = ctx.run(RawInput::default(), |ctx| {
+        if let Some(image) = image.take() {
+            texture.update(ctx, image);
+        }
+    });
     let (id, delta) = published
         .textures_delta
         .set
@@ -169,21 +191,20 @@ fn switching_filters_keeps_the_published_image_until_the_next_field() {
         .find(|(_, delta)| delta.image.width() == 836)
         .unwrap();
     let ImageData::Color(image) = &delta.image else {
-        panic!("Expected color texture")
+        panic!("Expected color texture");
     };
     let published_first_pixel = image.pixels[0];
-    let field = app.session.machine.denise.frame_builder.frame_number;
-    app.session.machine.step_cycles(40);
-    assert_eq!(app.session.machine.denise.frame_builder.frame_number, field);
-    let cck = app.session.machine.cck;
-    app.session.machine.denise.frame_builder.frame_buffer_mut()[0] = 0xffff0000;
+    let field = session.machine.denise.frame_builder.frame_number;
+    session.machine.step_cycles(40);
+    assert_eq!(session.machine.denise.frame_builder.frame_number, field);
+    let cck = session.machine.cck;
+    session.machine.denise.frame_builder.frame_buffer_mut()[0] = 0xffff0000;
 
     for (scale, expected) in [
-        (ScreenScale::Two, TextureOptions::NEAREST),
-        (ScreenScale::Fit, TextureOptions::LINEAR),
+        (screen::ScreenScale::Two, TextureOptions::NEAREST),
+        (screen::ScreenScale::Fit, TextureOptions::LINEAR),
     ] {
-        app.screen_scale = scale;
-        let output = render(&mut app, &ctx, 1280.0, 1.0);
+        let output = ctx.run(RawInput::default(), |_| texture.set_scale(scale));
         let updates: Vec<_> = output
             .textures_delta
             .set
@@ -196,13 +217,13 @@ fn switching_filters_keeps_the_published_image_until_the_next_field() {
         assert_eq!(delta.pos, Some([0, 0]));
         assert_eq!(delta.image.size(), [1, 1]);
         let ImageData::Color(image) = &delta.image else {
-            panic!("Expected color texture")
+            panic!("Expected color texture");
         };
         assert_eq!(image.pixels, [published_first_pixel]);
         assert_ne!(image.pixels[0], Color32::RED);
-        assert_eq!(app.session.machine.cck, cck);
+        assert_eq!(session.machine.cck, cck);
         assert_eq!(
-            app.session.machine.denise.frame_builder.frame_buffer()[0],
+            session.machine.denise.frame_builder.frame_buffer()[0],
             0xffff0000
         );
     }

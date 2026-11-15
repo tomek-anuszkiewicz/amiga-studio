@@ -1,5 +1,6 @@
 //! Global application shortcuts, sharing execution policy with the toolbar.
 
+use crate::host_commands::{HistoryCommand, HostCommand};
 use crate::{EmulatorApp, ViewMode};
 
 const ZOOM_STEP: f32 = 0.25;
@@ -27,60 +28,71 @@ impl EmulatorApp {
         let should_toggle_run = input.key_pressed(egui::Key::F5)
             || (input.key_pressed(egui::Key::Space) && !input.focused);
         if should_toggle_run {
-            self.session.toggle_run();
+            self.toggle_run();
         }
 
         if self.view_mode == ViewMode::Developer {
             // F10: Step Instruction
-            if !self.session.is_running
+            if !self.host.status.running
+                && self.host.can_edit()
                 && input.key_pressed(egui::Key::F10)
                 && !input.modifiers.shift
             {
                 self.disassembly_view_addr = None;
-                self.session.step_instruction();
+                self.host.queue(HostCommand::StepInstruction);
             }
 
             // Shift + F10: Step Backward (Rewind)
-            if !self.session.is_running
+            if !self.host.status.running
+                && self.host.can_edit()
                 && input.key_pressed(egui::Key::F10)
                 && input.modifiers.shift
             {
                 self.disassembly_view_addr = None;
-                self.session.step_backward();
+                self.host
+                    .queue(HostCommand::History(HistoryCommand::Backward));
             }
 
             // F11: Step CCK
-            if !self.session.is_running
+            if !self.host.status.running
+                && self.host.can_edit()
                 && input.key_pressed(egui::Key::F11)
                 && !input.modifiers.shift
             {
                 self.disassembly_view_addr = None;
-                self.session.step_cck();
+                self.host.queue(HostCommand::StepCck);
             }
 
             // Shift + F11: Step to the next completed video field.
-            if !self.session.is_running
+            if !self.host.status.running
+                && self.host.can_edit()
                 && input.key_pressed(egui::Key::F11)
                 && input.modifiers.shift
             {
                 self.disassembly_view_addr = None;
-                self.session.step_frame();
+                self.host.queue(HostCommand::StepField);
             }
 
             // F8: Toggle Microcode Inspector
-            if !self.session.is_running && input.key_pressed(egui::Key::F8) {
+            if !self.host.status.running && self.host.can_edit() && input.key_pressed(egui::Key::F8)
+            {
                 self.show_microcode = !self.show_microcode;
             }
 
             // Alt + T: Toggle Temporal Recording
-            if !self.session.is_running && input.modifiers.alt && input.key_pressed(egui::Key::T) {
-                self.session.temporal.toggle_recording();
+            if !self.host.status.running
+                && self.host.can_edit()
+                && input.modifiers.alt
+                && input.key_pressed(egui::Key::T)
+            {
+                self.host
+                    .queue(HostCommand::History(HistoryCommand::ToggleRecording));
             }
         }
 
         // Ctrl + R: Reset
         if input.modifiers.command && input.key_pressed(egui::Key::R) {
-            self.session.reset();
+            self.host.queue(HostCommand::Reset);
             self.inspection.ready = false;
         }
 

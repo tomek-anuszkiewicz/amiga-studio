@@ -1,6 +1,6 @@
 //! Browser file selection, recent directory references and snapshot downloads.
 
-use super::{EmulatorApp, FileAction, TOAST_DURATION_FRAMES};
+use super::{EmulatorApp, FileAction};
 use js_sys::{Array, Promise, Uint8Array};
 use std::{
     future::Future,
@@ -169,21 +169,10 @@ impl EmulatorApp {
     }
 
     pub(crate) fn open_save_state_dialog(&mut self) {
-        let result = self
-            .session
-            .save_state_to_json()
-            .map_err(|error| error.to_string())
-            .and_then(|json| {
-                download_state(&json)
-                    .map_err(|error| format!("Could not download state: {error:?}"))
-            });
-        match result {
-            Ok(()) => {
-                self.toast_message =
-                    Some(("State download requested.".into(), TOAST_DURATION_FRAMES))
-            }
-            Err(error) => self.file_error = Some(error),
-        }
+        self.host.queue_effect(
+            crate::host_commands::HostCommand::SaveSnapshot,
+            crate::app_host::HostEffect::File(super::FileCompletion::Download),
+        );
     }
 
     // Host I/O completion is pulled here; it never calls into the machine asynchronously.
@@ -218,7 +207,7 @@ impl EmulatorApp {
     }
 }
 
-fn download_state(json: &str) -> Result<(), JsValue> {
+pub(super) fn download_state(json: &str) -> Result<(), JsValue> {
     let document = document()?;
     let link: HtmlAnchorElement = document.create_element("a")?.dyn_into()?;
     let parts = Array::of1(&JsValue::from_str(json));

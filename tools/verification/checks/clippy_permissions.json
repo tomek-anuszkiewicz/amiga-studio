@@ -1,0 +1,38 @@
+[
+  {
+    "file": "crates/gui/src/host_video.rs",
+    "lint": "clippy::disallowed_types",
+    "symbol": "std::sync::Mutex",
+    "reason": "Protect host video ownership transfers; pixel access is exclusive and GUI access never waits."
+  },
+  {
+    "file": "crates/gui/tests/test_host_video.rs",
+    "lint": "clippy::disallowed_types",
+    "symbol": "std::sync::Arc",
+    "reason": "Share the production exchange between producer and consumer test threads."
+  },
+  {
+    "file": "crates/gui/tests/test_host_video.rs",
+    "lint": "clippy::disallowed_methods",
+    "symbol": "std::thread::spawn",
+    "reason": "Exercise actual concurrent ownership with bounded test completion."
+  },
+  {
+    "file": "crates/gui/src/host_runtime.rs",
+    "lint": "clippy::disallowed_types",
+    "symbol": "std::sync::Arc",
+    "reason": "Share host command/reply storage and the video exchange with one machine-owning worker."
+  },
+  {
+    "file": "crates/gui/src/host_runtime.rs",
+    "lint": "clippy::disallowed_types",
+    "symbol": "std::sync::Mutex",
+    "reason": "Protect bounded host command/reply queues and Wasm startup ownership; GUI access uses try_lock."
+  },
+  {
+    "file": "crates/gui/src/host_runtime.rs",
+    "lint": "clippy::disallowed_methods",
+    "symbol": "std::thread::spawn",
+    "reason": "Start the single native worker that exclusively owns the complete debugger session and machine."
+  }
+]

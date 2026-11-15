@@ -4,6 +4,7 @@
 //! recording on/off toggle, capacity presets, and direct CCK cycle jumping.
 
 use crate::app::EmulatorApp;
+use crate::host_commands::{HistoryCommand, HostCommand};
 use egui::RichText;
 
 const PAL_CCK_PER_SECOND: f64 = 3_546_895.0;
@@ -20,7 +21,7 @@ pub(crate) struct TemporalPresentation {
 }
 
 impl TemporalPresentation {
-    fn refresh(&mut self, history: &debugger::temporal::TemporalHistory) {
+    fn refresh(&mut self, history: &crate::host_inspection::HistoryInspection) {
         self.recording = history.is_recording();
         self.count = history.len();
         self.cursor = history.scrub_cursor;
@@ -55,13 +56,17 @@ impl TemporalPresentation {
     }
 }
 
-pub(crate) fn render_temporal_bar(app: &mut EmulatorApp, ui: &mut egui::Ui) {
+pub(crate) fn render_temporal_bar(
+    app: &mut EmulatorApp,
+    ui: &mut egui::Ui,
+    history: &crate::host_inspection::HistoryInspection,
+) {
     let tokens = app.theme.tokens();
     if !app.inspection.frozen {
-        app.inspection.temporal.refresh(&app.session.temporal);
+        app.inspection.temporal.refresh(history);
     }
     ui.scope(|ui| {
-    if app.session.is_running { ui.disable(); }
+    if app.host.status.running { ui.disable(); }
 
     ui.vertical(|ui| {
         // Row 1: Transport Controls & Capacity Preset
@@ -80,7 +85,7 @@ pub(crate) fn render_temporal_bar(app: &mut EmulatorApp, ui: &mut egui::Ui) {
                 .on_hover_text("Toggle recording of explicit instruction, CCK and frame steps (Alt+T). Continuous Run is not recorded.")
                 .clicked()
             {
-                app.session.temporal.toggle_recording();
+                app.host.queue(HostCommand::History(HistoryCommand::ToggleRecording));
             }
 
             ui.separator();
@@ -94,7 +99,7 @@ pub(crate) fn render_temporal_bar(app: &mut EmulatorApp, ui: &mut egui::Ui) {
                 .add_enabled(can_step_back, egui::Button::new("⏮ First"))
                 .clicked()
             {
-                app.session.scrub_to_frame(0);
+                app.host.queue(HostCommand::History(HistoryCommand::Index(0)));
             }
 
             if ui
@@ -102,7 +107,7 @@ pub(crate) fn render_temporal_bar(app: &mut EmulatorApp, ui: &mut egui::Ui) {
                 .on_hover_text("Rewind 1 PAL video frame (~70,824 CCK / 20ms)")
                 .clicked()
             {
-                app.session.step_backward_frame();
+                app.host.queue(HostCommand::History(HistoryCommand::BackwardField));
             }
 
             if ui
@@ -110,7 +115,7 @@ pub(crate) fn render_temporal_bar(app: &mut EmulatorApp, ui: &mut egui::Ui) {
                 .on_hover_text("Step back 1 instruction (Shift+F10)")
                 .clicked()
             {
-                app.session.step_backward();
+                app.host.queue(HostCommand::History(HistoryCommand::Backward));
             }
 
             if ui
@@ -118,7 +123,7 @@ pub(crate) fn render_temporal_bar(app: &mut EmulatorApp, ui: &mut egui::Ui) {
                 .on_hover_text("Step forward 1 instruction toward live head")
                 .clicked()
             {
-                app.session.step_forward();
+                app.host.queue(HostCommand::History(HistoryCommand::Forward));
             }
 
             if ui
@@ -126,7 +131,7 @@ pub(crate) fn render_temporal_bar(app: &mut EmulatorApp, ui: &mut egui::Ui) {
                 .on_hover_text("Advance forward 1 PAL video frame (~70,824 CCK)")
                 .clicked()
             {
-                app.session.step_forward_frame();
+                app.host.queue(HostCommand::History(HistoryCommand::ForwardField));
             }
 
             if ui
@@ -134,7 +139,7 @@ pub(crate) fn render_temporal_bar(app: &mut EmulatorApp, ui: &mut egui::Ui) {
                 .on_hover_text("Return to current live execution head")
                 .clicked()
             {
-                app.session.jump_to_live_head();
+                app.host.queue(HostCommand::History(HistoryCommand::Live));
             }
 
             ui.separator();
@@ -162,7 +167,7 @@ pub(crate) fn render_temporal_bar(app: &mut EmulatorApp, ui: &mut egui::Ui) {
                             .selectable_value(&mut app.temporal_capacity_selection, cap, text)
                             .clicked()
                         {
-                            app.session.temporal.set_capacity(cap);
+                            app.host.queue(HostCommand::History(HistoryCommand::Capacity(cap)));
                         }
                     }
                 });
@@ -180,7 +185,7 @@ pub(crate) fn render_temporal_bar(app: &mut EmulatorApp, ui: &mut egui::Ui) {
                     .show_value(false);
 
                 if ui.add(slider).changed() && slider_val != current_pos {
-                    app.session.scrub_to_frame(slider_val);
+                    app.host.queue(HostCommand::History(HistoryCommand::Index(slider_val)));
                 }
             } else {
                 ui.label(
@@ -205,7 +210,7 @@ pub(crate) fn render_temporal_bar(app: &mut EmulatorApp, ui: &mut egui::Ui) {
                 || (resp.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)));
             if ui.is_enabled() && is_jump_requested && !app.target_cck_input.is_empty() {
                 if let Ok(target) = app.target_cck_input.trim().parse::<u64>() {
-                    app.session.jump_to_cck(target);
+                    app.host.queue(HostCommand::History(HistoryCommand::Cck(target)));
                 }
             }
         });

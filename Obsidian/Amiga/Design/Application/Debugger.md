@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "debugger"
 status: "active"
 created: 2026-09-05
-updated: 2026-11-13
+updated: 2026-11-15
 related: ["[General Architecture.md](../General%20Architecture.md)", "[Machine Loop.md](../Machine%20Loop.md)", "[GUI.md](GUI.md)", "[CPU Motorola M68000.md](../CPU%20Motorola%20M68000.md)"]
 tracked_paths:
   - "crates/debugger"
@@ -18,7 +18,7 @@ The debugger lets a developer pause the emulated machine, inspect its state, and
 
 ## Controlling execution
 
-Execution can run continuously, pause, advance by one M68000 instruction or Color Clock, or advance to the next completed video field with Step Frame. Ordinary pause completes the current field; pausing at an already completed field does not advance another one. Field completion follows Denise's frame counter, so stopping can occur within a CPU instruction. Frame stepping uses the same bounded execution path as Run and respects breakpoints. Continuous execution stops before an instruction whose program counter matches an enabled breakpoint, or when the CPU halts; these debugger stops take precedence over completing the field. CPU STOP keeps Run and frame stepping active: chip clocks, video and interrupts continue while the CPU waits. Waiting does not record instructions or trigger a breakpoint at the following instruction before the CPU resumes. Instruction stepping executes the next instruction even when a breakpoint is set at its address. The GUI owns wall-clock pacing and speed selection; the headless session only advances emulated CCKs. See the [Debugger Guide](../../../../docs/debugger.md) for shortcuts.
+Execution can run continuously, pause, advance by one M68000 instruction or Color Clock, or advance to the next completed video field with Step Frame. Ordinary pause completes the current field; pausing at an already completed field does not advance another one. Field completion follows Denise's frame counter, so stopping can occur within a CPU instruction. Frame stepping uses the same bounded execution path as Run and respects breakpoints. Continuous execution stops before an instruction whose program counter matches an enabled breakpoint, or when the CPU halts; these debugger stops take precedence over completing the field. CPU STOP keeps Run and frame stepping active: chip clocks, video and interrupts continue while the CPU waits. Waiting does not record instructions or trigger a breakpoint at the following instruction before the CPU resumes. Instruction stepping executes the next instruction even when a breakpoint is set at its address. The host runtime owns wall-clock pacing and applies GUI speed selection; the headless session only advances emulated CCKs. See the [Debugger Guide](../../../../docs/debugger.md) for shortcuts.
 
 ## Inspecting code and memory
 

@@ -123,6 +123,9 @@ def build_file_corpus():
         elif "src" in parts:
             prod_files.append(rs_file)
 
+    for js_file in CRATES_DIR.rglob("*.js"):
+        (test_files if "tests" in js_file.relative_to(CRATES_DIR).parts else prod_files).append(js_file)
+
     return prod_files, test_files
 
 

@@ -12,14 +12,18 @@ pub(crate) struct TracePresentation {
     rows: Vec<(usize, String, bool)>,
 }
 
-pub(crate) fn render_trace_log(app: &mut EmulatorApp, ui: &mut Ui) {
+pub(crate) fn render_trace_log(
+    app: &mut EmulatorApp,
+    ui: &mut Ui,
+    data: &crate::host_inspection::HostInspection,
+) {
     ui.scope(|ui| {
         let refresh = !app.inspection.frozen;
-        if app.session.is_running {
+        if app.host.status.running {
             ui.disable();
         }
         if refresh {
-            app.inspection.trace.count = app.session.debugger.trace.len();
+            app.inspection.trace.count = data.debugger.trace.len();
             app.inspection.trace.label =
                 format!("Recorded: {} / 1024 entries", app.inspection.trace.count);
         }
@@ -35,7 +39,8 @@ pub(crate) fn render_trace_log(app: &mut EmulatorApp, ui: &mut Ui) {
                 ui.horizontal(|ui| {
                     ui.label(&app.inspection.trace.label);
                     if ui.button("Clear Log").clicked() {
-                        app.session.debugger.trace.clear();
+                        app.host
+                            .queue(crate::host_commands::HostCommand::ClearTrace);
                     }
                 });
 
@@ -57,21 +62,21 @@ pub(crate) fn render_trace_log(app: &mut EmulatorApp, ui: &mut Ui) {
 
                 egui::ScrollArea::both()
                     .id_salt("trace_log_scroll")
-                    .enable_scrolling(!app.session.is_running)
+                    .enable_scrolling(!app.host.status.running)
                     .max_height(260.0)
                     .auto_shrink([false, false])
                     .show_rows(ui, row_height, count, |ui, row_range| {
                         if refresh {
                             app.inspection.trace.rows.clear();
                             for idx in row_range.clone() {
-                                if let Some(entry) = app.session.debugger.trace.get(idx) {
+                                if let Some(entry) = data.debugger.trace.get(idx) {
                                     app.inspection.trace.rows.push((
                                         idx,
                                         format!(
                                             "{:<13} ${:06X}  ${:04X}  {}",
                                             entry.cck, entry.pc, entry.opcode, entry.disassembly
                                         ),
-                                        app.session.temporal.scrub_cursor == Some(idx),
+                                        data.temporal.scrub_cursor == Some(idx),
                                     ));
                                 }
                             }
@@ -114,7 +119,9 @@ pub(crate) fn render_trace_log(app: &mut EmulatorApp, ui: &mut Ui) {
                     });
 
                 if let Some(idx) = clicked_idx {
-                    app.session.scrub_to_frame(idx);
+                    app.host.queue(crate::host_commands::HostCommand::History(
+                        crate::host_commands::HistoryCommand::Index(idx),
+                    ));
                 }
             });
     });

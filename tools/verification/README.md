@@ -296,6 +296,18 @@ batch, not a persistent test cache or a relaxation of final acceptance criteria.
 Verification orchestration and coverage result processing live in `tools/verification/`;
 worktree management lives in `tools/worktree.ps1`. The shared diary appender lives in `tools/log_diary.py`. Concrete project audits and checks live in `tools/verification/checks/`. Run these scripts from the repository root. Task selection uses subcommands; the former selection switches are rejected.
 
+The `Clippy Invariants` gate runs through `python tools/verification/verify.py check clippy`.
+It obtains native workspace/all-target and Wasm workspace/library diagnostics from
+Clippy, forcing only `disallowed_types` and `disallowed_methods` to warnings.
+The checker then enforces exact source-file/lint/symbol permissions from
+[`clippy_permissions.json`](checks/clippy_permissions.json). Every unapproved use,
+unused or malformed permission, unsupported policy diagnostic and compiler failure
+fails the gate. Local lint suppressions cannot hide forced warnings. All other
+lint levels and verification gates retain their existing behavior. Direct
+`cargo clippy` does not apply the central permissions and remains a strict
+diagnostic command. Changes to these permissions require explicit approval under
+[protected verification](../../.agents/rules/unit-testing-policy.md#protected-verification).
+
 The `test_runner` suites retain emulator execution checks and reference-result invariants. The decoder inventory has a targeted test; Python tests check CPU performance test selection, analysis and command contracts. Empirical anomaly reports use stored results and do not establish fresh performance measurements.
 
 Commit verification runs selected ordinary crate tests once under LLVM coverage instrumentation, excluding `test_runner`. There is no second uninstrumented run of those tests. The remaining quality gates and selected harness suites use normal Cargo artifacts. `cargo-llvm-cov` uses its separate `target/llvm-cov-target` cache, while normal Cargo commands retain their usual target directory. Raw measurement counters and the previous summary are cleared before each measurement, without deleting build caches. Yellow `[INFO]` messages identify the phases and summarize line, function and region coverage. Data is saved to `.agent/tmp/coverage/summary.json`, with `verification_scope` recording the test packages. Report totals include only current source files in those packages; retired files from old cached objects are excluded. A partial result is not a workspace-wide baseline. When Rust tests are skipped, no coverage is measured and any previous summary is not evidence for that run. There is no percentage threshold. Coverage does not measure performance or prove assertion quality. Stable coverage does not include doctest execution; branch coverage is not enabled.

@@ -6,6 +6,8 @@ use config::VideoStandard;
 use debugger::{session::MAX_FRAME_SLICE_CCK, DebuggerSession};
 
 const SPEEDS: [f64; 5] = [0.25, 0.5, 1.0, 2.0, 4.0];
+pub const MIN_SPEED: f64 = SPEEDS[0];
+pub const MAX_SPEED: f64 = SPEEDS[SPEEDS.len() - 1];
 const NORMAL_SPEED_INDEX: usize = 2;
 const FPS_SAMPLE_SECONDS: f64 = 1.0;
 const PAL_PRESENTATION_HZ: f64 = 50.0;
@@ -45,14 +47,6 @@ impl Playback {
 
     pub fn fps(&self) -> f64 {
         self.fps
-    }
-
-    pub fn can_slow_down(&self) -> bool {
-        self.speed_index > 0
-    }
-
-    pub fn can_speed_up(&self) -> bool {
-        self.speed_index + 1 < SPEEDS.len()
     }
 
     pub fn slower(&mut self) {
@@ -160,7 +154,7 @@ impl Playback {
         }
     }
 
-    fn reset_timing(&mut self) {
+    pub(crate) fn reset_timing(&mut self) {
         self.next_field_time = None;
         self.presentation_start = None;
         self.next_presentation_time = None;
@@ -179,19 +173,12 @@ impl Playback {
         }
     }
 
-    pub(crate) fn request_repaint(&self, ctx: &egui::Context, session: &DebuggerSession, now: f64) {
-        if session.is_running {
-            let delay = if self.field_ccks != 0 || session.pause_pending() {
-                0.0
-            } else {
-                (self.wake_time(now) - now).max(0.0)
-            };
-            // egui subtracts predicted_dt from repaint delays. Our deadline already
-            // accounts for work elapsed, and native presentation has vsync disabled.
-            let predicted = ctx.input(|input| input.predicted_dt);
-            ctx.request_repaint_after(
-                Duration::from_secs_f64(delay) + Duration::from_secs_f32(predicted),
-            );
+    /// Host-worker wait without the GUI integration's predicted-frame adjustment.
+    pub(crate) fn worker_delay(&self, now: f64) -> Duration {
+        if self.field_ccks != 0 {
+            Duration::ZERO
+        } else {
+            Duration::from_secs_f64((self.wake_time(now) - now).max(0.0))
         }
     }
 }

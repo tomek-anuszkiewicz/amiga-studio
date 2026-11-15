@@ -16,11 +16,11 @@ pub(crate) struct EnginePresentation {
 }
 
 impl EnginePresentation {
-    pub(crate) fn refresh(&mut self, session: &debugger::DebuggerSession) {
-        self.chip_ram_blocked = session.machine.physical_memory.chip_ram_blocked;
-        self.cck = format!("#{}", session.machine.cck);
+    pub(crate) fn refresh(&mut self, session: &crate::host_inspection::HostInspection) {
+        self.chip_ram_blocked = session.memory.chip_ram_blocked;
+        self.cck = format!("#{}", session.cck);
         self.instructions = session.instructions_executed.to_string();
-        let state = &session.machine.cpu.state;
+        let state = &session.cpu;
         self.ipl = format!("Level {} (Bits 8-10)", state.interrupt_mask());
         self.interrupts_masked =
             u16::from(state.interrupt_mask()) == cpu::state::MASK_SR_INTERRUPT_LEVEL;

@@ -1350,3 +1350,30 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - verifiers
   - graph refresh
   - language scans and independent review were not run for this batch at the user's explicit request.
+---
+
+### [2026-11-15 10:53 CET] — Run the machine on an independent native and browser owner
+- **Affected Subsystems**:
+  - `gui`
+  - `debugger`
+  - `frame_builder`
+  - `save_state`
+  - `host runtime policy`
+- **What Was Changed (The Concrete Reality)**:
+  - Move the complete session to one host worker
+  - exchange seeded reusable pixel allocations through synchronized ownership
+  - migrate commands and stopped inspection
+  - retire direct-session file and ROM wrappers
+  - recognize production JavaScript callers in code-quality reference discovery
+  - preserve debugger ROM patching and 24-bit address wrapping through the owner command boundary
+  - bound the absent-image playback test failure path
+  - add grouped regressions for owner history and stack/reset commands, unfinished-field continuation, GUI ROM/RAM byte edits and breakpoint submission, and actual snapshot file save/error completion
+- **Architectural Rationale & Trade-Offs**:
+  - HOST-SHARED-MEMORY-PRESENTATION-20261113 keeps deterministic CCK execution independent of GUI repaint
+  - six exact Clippy permissions and the JavaScript corpus change have explicit user approval
+  - host audio and guest input endpoints remain open
+- **Verification & Test Results**:
+  - The initial five-concern candidate passed the canonical commit profile with CARGO_BUILD_JOBS=1
+  - subsequent coverage review identified reachable migration gaps and added grouped behavioral regressions
+  - focused instruction/hex/breakpoint, persistence, history, continuation and corrected warm-reset tests pass
+  - final combined verification and review remain pending

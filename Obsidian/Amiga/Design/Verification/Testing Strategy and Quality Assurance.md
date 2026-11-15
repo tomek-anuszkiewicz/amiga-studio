@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "testing"
 status: "active"
 created: 2026-09-14
-updated: 2026-11-14
+updated: 2026-11-15
 related: ["[General Architecture.md](../General%20Architecture.md)", "[CPU SingleStepTests.md](CPU%20SingleStepTests.md)", "[CPU Instruction Benchmarking.md](../Performance/CPU%20Instruction%20Benchmarking.md)", "[Machine Loop.md](../Machine%20Loop.md)", "[Platform Quirks and Invariants Catalog.md](../Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
 tracked_paths:
   - "crates/test_runner/tests"
@@ -75,7 +75,9 @@ measurement. Full executable-code coverage is the goal; there is no
 percentage gate or coverage exception list.
 
 Formatting, Clippy, architecture, hardware/code audits, frontmatter and English
-retain their full scope. Cheap blocking gates precede coverage and expensive suites;
+retain their full scope. Code-quality reference discovery includes production and
+test JavaScript callers, preserving the distinction between host browser entry
+points and test-only APIs. Cheap blocking gates precede coverage and expensive suites;
 a failure pauses that work. Clippy follows static gates before coverage so its
 findings also prevent avoidable test execution. Repeating the canonical command
 automatically combines new results with valid successful groups for the same `HEAD`. It reruns failed,

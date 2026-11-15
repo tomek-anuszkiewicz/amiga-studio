@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "gui"
 status: "active"
 created: 2026-09-05
-updated: 2026-11-14
+updated: 2026-11-15
 related: ["[egui Guidelines.md](../egui%20Guidelines.md)", "[Debugger.md](Debugger.md)", "[General Architecture.md](../General%20Architecture.md)", "[Keyboard.md](../Keyboard.md)", "[Mouse.md](../Mouse.md)", "[Audio.md](../Audio.md)", "[Denise.md](../Denise.md)", "[RTC.md](../RTC.md)"]
 tracked_paths:
   - "crates/gui"
@@ -22,7 +22,7 @@ The same frontend targets a native desktop application and a browser build. It p
 
 The views share one machine. F2 or F12 switches between them; Escape returns from the game view to the Developer Studio. Returning requests a pause at the field boundary and keeps instrumentation disconnected until that pause completes. Game execution bypasses breakpoints, disassembly, trace collection, CPU history and memory diff snapshots. Previously collected history remains available when returning, but no automatic snapshots or progress recording run in Game view. Manual State operations remain available. A stopped CPU still allows chip clocks, video and interrupts to advance in both views; a halted CPU ends Run.
 
-Continuous Developer Run retains the last prepared inspector contents, including register and CPU status values, disassembly, memory, history and toolbar CCK/instruction labels. The Amiga image, FPS and execution controls remain live. Editing, browsing new inspection data and history navigation are inactive until paused. Repaints and resizing lay out retained data without rereading the machine or rebuilding diagnostic text. Stop pending retains the same freeze; a real stop refreshes current data. Explicit instruction, CCK and frame steps retain their diagnostic collection and show their resulting state. Reset, state loading and paused edits refresh through the synchronous UI path. Enabled breakpoints use current CPU state and stop before their matching instruction, even before a field completes.
+Continuous Developer Run retains the last prepared inspector contents, including register and CPU status values, disassembly, memory, history and toolbar CCK/instruction labels. The Amiga image, FPS and execution controls remain live. Editing, browsing new inspection data and history navigation are inactive until paused. Repaints and resizing lay out retained data without rereading the machine or rebuilding diagnostic text. Stop pending retains the same freeze; a real stop refreshes current data. Explicit instruction, CCK and frame steps retain their diagnostic collection and show their resulting state. Reset, state loading and paused edits refresh after their coherent owner replies. Enabled breakpoints use current CPU state and stop before their matching instruction, even before a field completes.
 
 ## Application and debugger layout
 
@@ -49,7 +49,7 @@ In browsers with the File System Access API, each file category has its own pick
 
 The intended input path maps host keyboard events to the [Amiga keyboard](../Keyboard.md) and host mouse movement and buttons to the emulated [mouse and game port](../Mouse.md). Host gamepad or keyboard controls can likewise represent an emulated [joystick](../Joystick.md). These mappings belong at the frontend boundary; the emulated devices and chips decide their hardware effects.
 
-For video, [Denise](../Denise.md) builds a rendered frame in the [frame buffer](../Frame%20Buffer.md). Run at 1x follows the configured PAL or NTSC color clock using host elapsed time; emulation and rendering time count toward each deadline. Slower and Faster controls select 0.25x, 0.5x, 1x, 2x or 4x; a 1x control restores normal speed. At normal or slower speed, each update advances at most one field. If a bounded slice ends before field completion, the viewport retains the previous image.
+For video, [Denise](../Denise.md) builds a rendered frame in the [frame buffer](../Frame%20Buffer.md). Run at 1x follows the configured PAL or NTSC color clock using host elapsed time; emulation and rendering time count toward each deadline. Slower and Faster controls select 0.25x, 0.5x, 1x, 2x or 4x; a 1x control restores normal speed. At normal or slower speed, each publication selects one completed field. If a bounded slice ends before field completion, the viewport retains the previous image.
 
 Above 1x, both views execute batches of complete fields and upload only the latest completed image. Presentation targets 50 Hz for PAL or 60 Hz for NTSC, independently of the requested emulation speed. Each batch ends when its emulated time budget is consumed or the host presentation deadline is reached, checked after each bounded field slice. Presentation deadlines accumulate, preserving fractional overruns; expired presentation slots are skipped without building an unbounded catch-up backlog. Host capacity can limit both achieved emulation speed and presentation rate. FPS measures all completed emulated video fields per host second, including fields omitted from presentation; it does not count texture uploads or GUI repaints. Here, Step Frame and FPS count fields, including each field of an interlaced image.
 
@@ -57,8 +57,62 @@ Ordinary pause finishes the current field, and Step Frame advances to the next c
 
 The shared `live_stripes` guest fixture supplies the live-frame smoke check without firmware. Full guest display acceptance remains [guest verification](../../../../ROADMAP.md#cpu-memory-gary-verification) work. Host audio/input remain incomplete; see [native test prerequisites](../../../../ROADMAP.md#native-disk-verification).
 
-The frontend supplies UTC seconds to the [RTC](../RTC.md) before each first UI
-pass, including paused inspection and resuming execution. Native uses the system
+The [host runtime](../../../../crates/gui/src/host_runtime.rs) moves the complete
+session to one native thread or browser Web Worker. This owner executes all CPU,
+chip and peripheral work in the existing CCK order; GUI updates execute no guest
+cycles. Commands and owned replies use bounded queues. GUI operations only try
+shared locks and retain a rejected command for retry. The owner services commands
+even when an unread image prevents further video publication. Reset and successful
+loads advance a runtime generation. GUI image consumption waits for the reset/load
+reply and validates the current generation before exposing pixels.
+
+The [video exchange](../../../../crates/gui/src/host_video.rs) owns one raw image
+allocation; the machine retains the other. Publication seeds and swaps them through
+the [frame builder](../Frame%20Buffer.md), preserving partially drawn and opposite
+interlaced rows. Atomic claims distinguish free, writing, ready and reading access.
+A ready or reading image cannot be overwritten. Matching image metadata and owner
+status become visible under the same host boundary. The GUI releases that status
+lock before converting immutable pixels into its own `ColorImage`, then releases
+the image slot before updating the GPU texture. It consumes at most one image per
+UI frame, including when egui repeats layout. Paused state changes retain the
+previous image until a matching CCK image arrives.
+
+Image publication, command replies and shutdown wake the native GUI through
+`request_repaint`; browser worker messages request the corresponding GUI repaint.
+Releasing an image slot wakes the producer. A paused GUI does not poll for frames
+or repeatedly submit an unchanged UTC sample. Native workers park between deadlines
+or events. Browser workers return to their event loop between bounded slices;
+message tasks continue immediately due work and timers handle future deadlines.
+The eframe browser runner still schedules animation-frame callbacks while idle,
+but it invokes GUI logic only when a repaint is due.
+
+Developer inspection receives coherent, stopped CPU, physical memory, trace,
+breakpoint and timeline data through the command boundary. The timeline transfers
+PCs and CCK positions; historical CPU snapshots remain with the owner. Formatting
+and visible-row preparation remain on the GUI thread. A stopped snapshot is
+captured before Run; continuous Run retains prepared inspectors. Game does not
+request inspector snapshots. Register edits, memory patches, breakpoints, history,
+load/save and quick slots execute as owner commands. A binary load during Run
+retains the prepared inspectors until stopping and waits for a completed field
+before publishing if the current field is unfinished. File selection, host file I/O
+and downloads remain host UI operations; filenames and recent-file records change
+only after successful owner replies.
+
+The browser uses one explicitly initialized main Wasm instance and one worker
+instance sharing its memory. [The launcher](../../../../tools/web.ps1) rebuilds the
+Rust standard library with atomics and exports thread-local initialization data.
+Trunk provides the required isolation headers and disables its automatic second
+initializer. Worker shutdown drops the owner, releases its stack and thread-local
+storage, then acknowledges completion. Native close waits asynchronously for the
+owner's final battery data before allowing normal application persistence.
+Early wake messages remain represented in shared queues until the worker finishes
+its single initialization. The [browser worker regression](../../../../crates/gui/tests/browser_worker_runtime.py)
+checks ordinary and delayed startup, shared memory and idle notifications against
+the served application.
+
+The frontend refreshes UTC seconds for the [RTC](../RTC.md) on the first UI
+pass when its latest coherent sample differs, including paused inspection and
+resuming execution. It retains one outstanding clock command at a time. Native uses the system
 UTC clock; the browser uses `Date.now()`. Both round down to whole Unix seconds,
 including fractional timestamps before the epoch. The RTC battery offset is loaded and
 saved under the independent `rtc_battery` storage key through the normal

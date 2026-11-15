@@ -1,6 +1,7 @@
 #![cfg(not(target_arch = "wasm32"))]
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
+mod common;
 use eframe::{App, Storage};
 use egui_kittest::{kittest::Queryable, Harness};
 use gui::{file_actions::FileHistory, EmulatorApp, ViewMode};
@@ -47,7 +48,9 @@ fn separate_histories_keep_five_successful_files_and_persist_load_options() {
         let binary = fixture(&format!("program-{index}.bin"), &[0x4e, 0x71]);
         let firmware = fixture(&format!("firmware-{index}.rom"), &rom());
         app.load_binary_file(&binary, 0x1000, true);
+        common::settle(&mut app, &egui::Context::default());
         app.load_rom_file(&firmware);
+        common::settle(&mut app, &egui::Context::default());
         binaries.push(binary);
         roms.push(firmware);
     }
@@ -61,7 +64,10 @@ fn separate_histories_keep_five_successful_files_and_persist_load_options() {
     );
 
     app.load_binary_file(&binaries[2], 0x2000, false);
+
+    common::settle(&mut app, &egui::Context::default());
     app.load_rom_file(&roms[3]);
+    common::settle(&mut app, &egui::Context::default());
     assert_eq!(app.file_history.binaries.len(), 5);
     assert_eq!(app.file_history.binaries[0].path, binaries[2]);
     assert_eq!(app.file_history.binaries[0].target, 0x2000);
@@ -71,8 +77,11 @@ fn separate_histories_keep_five_successful_files_and_persist_load_options() {
 
     let before = app.file_history.clone();
     app.load_rom_file(&binaries[1]);
+    common::settle(&mut app, &egui::Context::default());
     app.load_binary_file(&binaries[1], 0xfc0000, false);
+    common::settle(&mut app, &egui::Context::default());
     app.load_binary_file(&binaries[1].with_extension("missing"), 0x1000, false);
+    common::settle(&mut app, &egui::Context::default());
     assert_eq!(
         app.file_history, before,
         "Failed loads must not change recent files"
@@ -103,33 +112,41 @@ fn recent_menu_reloads_current_bytes_with_saved_options_and_reports_missing_file
     let path = fixture("menu-program.bin", &[0x4e, 0x71]);
     let mut app = EmulatorApp::default();
     app.load_binary_file(&path, 0x2000, false);
-    let pc = app.session.machine.cpu.state.pc();
+    common::settle(&mut app, &egui::Context::default());
+    let pc = common::inspect(&mut app).cpu.pc();
     std::fs::write(&path, [0x70, 0x2a]).unwrap();
     let mut harness = Harness::builder()
         .with_size(egui::vec2(1024.0, 600.0))
         .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
     harness.run_steps(2);
+    common::settle_harness(&mut harness);
     harness.get_by_label("File").click();
     harness.run_steps(2);
+    common::settle_harness(&mut harness);
     harness.get_by_label("Recent binaries");
     harness.get_by_label("menu-program.bin").click();
     harness.run_steps(2);
+    common::settle_harness(&mut harness);
     assert_eq!(
-        harness.state().session.bus().read_word_debug(0x2000),
+        common::inspect(harness.state_mut())
+            .memory
+            .read_word_debug(0x2000),
         0x702a
     );
-    assert_eq!(harness.state().session.machine.cpu.state.pc(), pc);
+    assert_eq!(common::inspect(harness.state_mut()).cpu.pc(), pc);
     assert!(!harness.state().load_binary_modal_open);
     assert_eq!(harness.state().file_history.binaries.len(), 1);
 
     std::fs::remove_file(&path).unwrap();
-    let before = harness.state().session.save_state();
+    let before = common::snapshot(harness.state_mut());
     harness.get_by_label("File").click();
     harness.run_steps(2);
+    common::settle_harness(&mut harness);
     harness.get_by_label("menu-program.bin").click();
     harness.run_steps(2);
+    common::settle_harness(&mut harness);
     assert!(harness.state().file_error.is_some());
-    assert_eq!(harness.state().session.save_state(), before);
+    assert_eq!(common::snapshot(harness.state_mut()), before);
     assert_eq!(harness.state().file_history.binaries.len(), 1);
 }
 
@@ -140,32 +157,46 @@ fn game_menu_reloads_rom_and_keeps_binary_directory_separate() {
     let mut app = EmulatorApp::default();
     app.set_view_mode(ViewMode::ScreenOnly);
     app.load_binary_file(&binary, 0x1000, true);
+    common::settle(&mut app, &egui::Context::default());
     app.load_rom_file(&path);
+    common::settle(&mut app, &egui::Context::default());
     assert_eq!(
         app.file_history.binary_directory.as_deref(),
         binary.parent()
     );
     assert_eq!(app.file_history.rom_directory.as_deref(), path.parent());
-    app.session.machine.step_cycles(10);
+    for _ in 0..10 {
+        common::command(&mut app, gui::host_commands::HostCommand::StepCck);
+    }
     let mut harness = Harness::builder()
         .with_size(egui::vec2(1024.0, 600.0))
         .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
     harness.run_steps(2);
+    common::settle_harness(&mut harness);
     harness.get_by_label("File").click();
     harness.run_steps(2);
+    common::settle_harness(&mut harness);
     harness.get_by_label("menu-firmware.rom").click();
     harness.run_steps(2);
-    assert_eq!(harness.state().session.machine.cck, 0);
+    common::settle_harness(&mut harness);
+    assert_eq!(harness.state().host.status.cck, 0);
     assert_eq!(
-        harness.state().session.machine.cpu.state.instruction_pc(),
+        common::inspect(harness.state_mut()).cpu.instruction_pc(),
         0xfc0008
     );
-    assert!(!harness.state().session.is_running);
+    assert!(!harness.state().host.status.running);
     assert_eq!(harness.state().file_history.roms.len(), 1);
     std::fs::remove_file(&path).unwrap();
-    let before = harness.state().file_history.clone();
-    harness.state_mut().load_rom_file(&path);
+    let before = common::snapshot(harness.state_mut());
+    harness.get_by_label("File").click();
+    harness.run_steps(2);
+    common::settle_harness(&mut harness);
+    harness.get_by_label("menu-firmware.rom").click();
+    harness.run_steps(2);
+    common::settle_harness(&mut harness);
     assert!(harness.state().file_error.is_some());
-    assert_eq!(harness.state().file_history, before);
+    assert_eq!(harness.state().file_history.roms.len(), 1);
+    assert_eq!(harness.state().file_history.binaries[0].path, binary);
+    assert_eq!(common::snapshot(harness.state_mut()), before);
     std::fs::remove_file(binary).unwrap();
 }

@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "frame_builder"
 status: "active"
 created: 2026-09-19
-updated: 2026-11-14
+updated: 2026-11-15
 related: ["[Denise.md](Denise.md)", "[Agnus.md](Agnus.md)", "[GUI.md](Application/GUI.md)"]
 tracked_paths:
   - "crates/frame_builder"
@@ -72,6 +72,15 @@ clears incompatible rows.
 The buffer, geometry and pending line/field state serialize
 together. Restoration preserves both the displayed pixels and subsequent
 mid-line output. No pre-release snapshot compatibility is required.
+
+The host can allocate a reusable spare with `FrameBuilder::new_buffer` and
+hand off the current allocation through `exchange_buffer`. The replacement must
+have the complete fixed storage length. Before swapping allocations, the builder
+seeds the replacement with the current pixels, including the opposite field,
+unfinished rows and padding. Logical image and assembly state remain unchanged;
+subsequent drawing cannot change the handed-off image. The host must exclusively
+own the spare throughout the operation. This API contains no synchronization or
+host handles, and snapshots continue to capture the builder's current allocation.
 
 ## References
 

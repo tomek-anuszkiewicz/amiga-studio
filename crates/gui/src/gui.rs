@@ -5,8 +5,14 @@
 //! execution orchestration to headless `debugger::DebuggerSession`.
 
 pub mod app;
+pub mod app_host;
 pub mod file_actions;
 mod host_clock;
+pub mod host_commands;
+pub mod host_inspection;
+pub mod host_owner;
+pub mod host_runtime;
+pub mod host_video;
 mod inspection;
 pub mod layout;
 pub mod playback;
@@ -25,7 +31,7 @@ pub use theme::AppTheme;
 use wasm_bindgen::prelude::*;
 
 #[cfg(target_arch = "wasm32")]
-#[wasm_bindgen(start)]
+#[wasm_bindgen]
 pub async fn start() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
 

@@ -1,6 +1,12 @@
 [build]
 target = "crates/gui/index.html"
-dist = "crates/gui/dist"
+dist = ".agent/tmp/web-dist"
+filehash = false
+inject_scripts = false
+
+[serve.headers]
+Cross-Origin-Opener-Policy = "same-origin"
+Cross-Origin-Embedder-Policy = "require-corp"
 
 [watch]
-watch = ["crates/gui/src"]
+watch = ["crates/gui/src", "crates/gui/main.js", "crates/gui/machine_worker.js", "crates/gui/host_bridge.js", "crates/gui/index.html"]

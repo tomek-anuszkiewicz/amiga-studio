@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "general"
 status: "active"
 created: 2026-08-31
-updated: 2026-11-14
+updated: 2026-11-15
 related: ["[General Architecture.md](../General%20Architecture.md)", "[MemoryBus.md](../MemoryBus.md)", "[CPU Motorola M68000.md](../CPU%20Motorola%20M68000.md)", "[Machine Loop.md](../Machine%20Loop.md)", "[Agnus.md](../Agnus.md)", "[RTC.md](../RTC.md)"]
 tracked_paths:
   - "crates/machine_loop/src/state.rs"
@@ -32,7 +32,11 @@ pending events or synthesize a signal edge. Native and WASM use the same state.
 
 The higher-level [save_state crate](../../../../crates/save_state) depends on
 `machine_loop`, not the reverse. It owns the `SaveState` file envelope, schema
-version, `SaveStateHeader`, JSON conversion, file I/O and PNG preview encoding.
+version, `SaveStateHeader`, JSON conversion and PNG preview encoding. The
+[frontend](GUI.md#input-and-output) owns file I/O: the machine owner encodes or
+decodes JSON, while the GUI reads and writes those owned documents. Retired
+direct file helpers are unavailable; file contents and version validation retain
+the same contract.
 A decoded file must have the supported schema version before its machine value
 is restored. The envelope contains `header` and a boxed `state` value, keeping large
 serialized payloads off the call stack. JSON contains an ordinary state object;
