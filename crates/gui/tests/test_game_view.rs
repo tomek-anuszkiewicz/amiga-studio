@@ -18,7 +18,9 @@ fn game_execution_does_not_collect_debugger_data() {
     let mut owner = gui::host_owner::MachineOwner::new(session);
     let exchange = gui::host_video::VideoExchange::new(vec![0; owner.video_storage_len()]);
     assert!(owner.publish(&exchange).unwrap());
-    owner.advance(0.0, || 0.0);
+    for tick in 0..=20 {
+        owner.advance(f64::from(tick) / 1000.0, || 0.0);
+    }
     assert_eq!(owner.status().field_number, 1);
     owner.execute(HostRequest {
         id: 1,

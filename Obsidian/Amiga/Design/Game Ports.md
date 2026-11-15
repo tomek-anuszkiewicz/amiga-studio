@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "game_ports"
 status: "active"
 created: 2026-09-13
-updated: 2026-11-12
+updated: 2026-11-15
 related: ["[Mouse.md](Mouse.md)", "[Joystick.md](Joystick.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)", "[CIA.md](CIA.md)", "[Machine Loop.md](Machine%20Loop.md)", "[General Architecture.md](General%20Architecture.md)"]
 tracked_paths:
   - "crates/game_ports"
@@ -67,8 +67,8 @@ selection, neutral/release events and per-port state are serialized. External
 levels must hold through the input phase; later changes appear at the next input
 phase. Sub-CCK pulses and analog
 capacitor charging are not modeled by that interface. Proportional devices and
-four-player adapters remain 12.2 work; physical host mouse/gamepad adapters
-remain 6.2. Tests cover digital direction/data/button combinations, quadrature wrapping,
+four-player adapters remain 12.2 work. The [frontend](Application/GUI.md#input-and-output)
+now supplies physical mouse and gamepad events; configurable profiles remain 6.2 work. Tests cover digital direction/data/button combinations, quadrature wrapping,
 JOYTEST and continuation of queued movement after snapshot restore.
 
 ## References

@@ -363,3 +363,17 @@ fn explicit_step_after_an_unrecorded_partial_instruction_starts_diagnostics() {
         "continuation is recorded once"
     );
 }
+#[test]
+fn keyboard_warm_reset_ends_the_slice_at_the_new_timeline() {
+    let mut session = debugger::DebuggerSession::new();
+    session.load_binary(0x1000, &[0x60, 0xfe], true).unwrap();
+    session.set_debugger_enabled(false);
+    session.toggle_run();
+    session.run_frame_slice(1000);
+    for code in [0x63, 0x66, 0x67] {
+        session.machine.keyboard.key_down(code);
+    }
+    session.run_frame_slice(100);
+    assert_eq!(session.machine.cck, 0);
+    assert!(session.is_running);
+}

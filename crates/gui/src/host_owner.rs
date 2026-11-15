@@ -43,6 +43,17 @@ impl MachineOwner {
             revision: self.revision,
             generation: self.generation,
             cck: self.session.machine.cck,
+            input_deliveries: self.playback.input_deliveries,
+            last_input_cck: self.playback.last_input_cck,
+            input_poll_seconds: f64::from(self.session.machine.agnus.field_ccks())
+                / f64::from(
+                    self.session
+                        .machine
+                        .config
+                        .video_standard()
+                        .color_clock_hz(),
+                )
+                / f64::from(crate::host_input::DELIVERIES_PER_FIELD),
             field_number: self.session.machine.denise.frame_builder.frame_number,
             publication: self.publication,
             running: self.session.is_running,
@@ -85,7 +96,15 @@ impl MachineOwner {
         }
     }
 
+    pub fn collect_input(&mut self, event: crate::host_input::HostInputEvent) {
+        if self.session.is_running && !self.session.pause_pending() {
+            self.playback.collected_input.push(event);
+        }
+    }
+
     fn new_generation(&mut self) {
+        self.playback.collected_input.clear();
+        self.playback.input.release(&mut self.session);
         self.generation = self.generation.wrapping_add(1);
         self.pending_image = !self.session.is_running || self.session.at_frame_boundary();
         self.playback.reset_timing();
@@ -98,7 +117,11 @@ impl MachineOwner {
                     self.session.toggle_run();
                 }
             }
-            HostCommand::Pause => self.session.request_pause(),
+            HostCommand::Pause => {
+                self.playback.collected_input.clear();
+                self.playback.input.release(&mut self.session);
+                self.session.request_pause();
+            }
             HostCommand::Slower => self.playback.slower(),
             HostCommand::Faster => self.playback.faster(),
             HostCommand::NormalSpeed => self.playback.normal_speed(),
@@ -268,6 +291,13 @@ impl MachineOwner {
     pub fn advance(&mut self, now: f64, elapsed: impl Fn() -> f64) {
         if self.session.is_running && !self.pending_image && !self.shutdown {
             self.pending_image = self.playback.advance(now, &mut self.session, elapsed);
+            if self.playback.reset_seen {
+                self.new_generation();
+            }
+            if !self.session.is_running {
+                self.playback.collected_input.clear();
+                self.playback.input.release(&mut self.session);
+            }
             self.revision = self.revision.wrapping_add(1);
         }
     }

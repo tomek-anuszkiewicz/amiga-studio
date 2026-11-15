@@ -273,7 +273,14 @@ impl DebuggerSession {
                     self.record_instruction();
                 }
             }
+            let previous_cck = self.machine.cck;
             let completed = self.machine.step_cck();
+            if self.machine.cck.wrapping_sub(previous_cck) != 1 {
+                // A motherboard keyboard reset starts a new clock timeline.
+                self.frame_boundary_cck = None;
+                self.invalidate_instruction_tracking();
+                break;
+            }
             self.instruction_started = !completed;
             if completed {
                 self.instruction_recorded = false;

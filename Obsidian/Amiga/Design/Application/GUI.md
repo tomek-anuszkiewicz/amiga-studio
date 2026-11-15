@@ -47,7 +47,11 @@ In browsers with the File System Access API, each file category has its own pick
 
 ## Input and output
 
-The intended input path maps host keyboard events to the [Amiga keyboard](../Keyboard.md) and host mouse movement and buttons to the emulated [mouse and game port](../Mouse.md). Host gamepad or keyboard controls can likewise represent an emulated [joystick](../Joystick.md). These mappings belong at the frontend boundary; the emulated devices and chips decide their hardware effects.
+Host physical key positions map to the [Amiga keyboard](../Keyboard.md), relative mouse movement and buttons reach the [mouse and game port](../Mouse.md), and a host gamepad supplies digital [joystick](../Joystick.md) directions and two fire buttons. Desktop input uses blocking rdev keyboard/mouse and gilrs controller listeners outside the machine owner. Browser DOM callbacks and standard-gamepad sampling remain on the main thread; the gamepad timer targets three samples per field independently of repaint. The basic adapter forwards host-reported transitions; it does not reconstruct missing host events or A500 matrix ghosting. Combination fidelity, configurable mappings and profiles remain [6.2 work](../../../../ROADMAP.md#task-6-2).
+
+Clicking the Amiga image gives it input focus in Developer Studio. Game view accepts input while the application has focus; text controls suspend capture. Frontend shortcuts retain their existing actions. Ordered, bounded queues publish input immediately, and the owner admits it at three evenly spaced opportunities per emulated field, derived from current PAL/NTSC and interlace geometry. Initialization aligns the first grid with the receiver field origin; synchronization suppressed by guest code has a bounded nominal-period fallback. Guest beam writes that prolong a field retain nominal-period input opportunities. Every delivered edge gets a CCK sample before its successor; a short electrical pulse does not guarantee a guest software read. Keyboard bytes still traverse the controller queue and serial pins, and mouse quadrature continues at its existing CCK rate without smoothing.
+
+Capture loss, pause and queue overflow discard pending input and release controls. Reset, successful load and keyboard reset invalidate the old input generation. Native backend timestamps reject events older than capture; fresh controller events re-establish its state after resume. Host queues and listeners are runtime handles outside serialized machine state. Physical controller freshness and Linux/macOS execution remain unverified; the interactive checks belong to [8.2](../../../../ROADMAP.md#task-8-2).
 
 For video, [Denise](../Denise.md) builds a rendered frame in the [frame buffer](../Frame%20Buffer.md). Run at 1x follows the configured PAL or NTSC color clock using host elapsed time; emulation and rendering time count toward each deadline. Slower and Faster controls select 0.25x, 0.5x, 1x, 2x or 4x; a 1x control restores normal speed. At normal or slower speed, each publication selects one completed field. If a bounded slice ends before field completion, the viewport retains the previous image.
 
@@ -55,7 +59,7 @@ Above 1x, both views execute batches of complete fields and upload only the late
 
 Ordinary pause finishes the current field, and Step Frame advances to the next completed field, including while the CPU is stopped. Instruction/CCK stepping, breakpoints and CPU halts can still expose a partial field. Snapshot restoration replaces the displayed pixels on the next UI frame. Host timing, texture allocation and upload belong to the frontend. For sound, the GUI is intended to deliver samples produced by the [audio subsystem](../Audio.md) to the host playback device. Emulated audio generation remains in the core.
 
-The shared `live_stripes` guest fixture supplies the live-frame smoke check without firmware. Broader display comparisons remain in [native disk verification](../../../../ROADMAP.md#native-disk-verification) and its later subsystem suites. Host audio/input remain incomplete; see [native test prerequisites](../../../../ROADMAP.md#native-disk-verification).
+The shared `live_stripes` guest fixture supplies the live-frame smoke check without firmware. Broader display comparisons remain in [native disk verification](../../../../ROADMAP.md#native-disk-verification) and its later subsystem suites. Host audio and advanced input mappings remain incomplete; see [native test prerequisites](../../../../ROADMAP.md#native-disk-verification).
 
 The [host runtime](../../../../crates/gui/src/host_runtime.rs) moves the complete
 session to one native thread or browser Web Worker. This owner executes all CPU,
@@ -80,8 +84,8 @@ previous image until a matching CCK image arrives.
 Image publication, command replies and shutdown wake the native GUI through
 `request_repaint`; browser worker messages request the corresponding GUI repaint.
 Releasing an image slot wakes the producer. A paused GUI does not poll for frames
-or repeatedly submit an unchanged UTC sample. Native workers park between deadlines
-or events. Browser workers return to their event loop between bounded slices;
+or repeatedly submit an unchanged UTC sample. Native workers park while waiting for events and use short sleeps between timed
+execution deadlines. Browser workers return to their event loop between bounded slices;
 message tasks continue immediately due work and timers handle future deadlines.
 The eframe browser runner still schedules animation-frame callbacks while idle,
 but it invokes GUI logic only when a repaint is due.
@@ -133,4 +137,6 @@ The GUI offers dark and light themes, plus a Workbench-inspired theme. A theme c
 - [General Architecture](../General%20Architecture.md): Machine ownership and the boundary between emulation and host presentation.
 - [Debugger](Debugger.md): Execution and inspection behavior behind the debugger view.
 - [egui Guidelines](../egui%20Guidelines.md): Frontend implementation and interaction guidance.
+- [Host input](../../../../crates/gui/src/host_input.rs): Ordered admission and peripheral delivery.
+- [Host key mapping](../../../../crates/gui/src/host_keys.rs): Physical positions to Amiga codes.
 - [GUI source](../../../../crates/gui/src/gui.rs): Native and browser entry points, view state, and layout modules.

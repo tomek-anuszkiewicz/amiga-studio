@@ -10,6 +10,18 @@ const MASK_HORIZONTAL: u16 = 0x00ff;
 const MASK_OCS_VPOSW_HIGH: u16 = 0x0001;
 
 impl Agnus {
+    /// Duration of the current field, including NTSC alternating line lengths.
+    pub fn field_ccks(&self) -> u32 {
+        let lines = u32::from(self.field_lines());
+        match self.model {
+            AgnusModel::OcsPal8371 => lines * u32::from(Self::PAL_LINE_CCKS),
+            AgnusModel::OcsNtsc8370 => {
+                let first_long = self.lol ^ (self.vpos & 1 != 0);
+                lines * u32::from(Self::NTSC_SHORT_LINE_CCKS) + (lines + u32::from(first_long)) / 2
+            }
+        }
+    }
+
     pub(super) fn line_ccks(&self) -> u16 {
         match self.model {
             AgnusModel::OcsPal8371 => Self::PAL_LINE_CCKS,

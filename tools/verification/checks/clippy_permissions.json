@@ -33,6 +33,6 @@
     "file": "crates/gui/src/host_runtime.rs",
     "lint": "clippy::disallowed_methods",
     "symbol": "std::thread::spawn",
-    "reason": "Start the single native worker that exclusively owns the complete debugger session and machine."
+    "reason": "Start the machine-owning worker and native OS input listeners; input listeners never access the machine."
   }
 ]

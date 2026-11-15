@@ -76,7 +76,11 @@ empty phase skips repeated selection; enqueueing a code wakes selection on the
 same CCK without restarting the guard. This phase is serialized for snapshot
 continuation. Guest-visible keyboard integration is scheduled with
 [input-dependent native cases](../../../ROADMAP.md#native-disk-verification);
-the frontend key adapter remains 6.2 work.
+the [frontend](Application/GUI.md#input-and-output) now supplies physical key events,
+while configurable mappings remain 6.2 work. The basic adapter forwards reported
+physical transitions without reproducing keyboard-matrix blocking or ghosting.
+Original A500 combination fidelity and host rollover limits remain explicitly
+open in [6.2](../../../ROADMAP.md#task-6-2), independently of adapter delivery.
 
 ## Power LED and audio filter
 

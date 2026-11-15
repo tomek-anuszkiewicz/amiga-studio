@@ -9,7 +9,11 @@ pub mod app_host;
 pub mod file_actions;
 mod host_clock;
 pub mod host_commands;
+pub mod host_input;
 pub mod host_inspection;
+pub mod host_keys;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod host_native_input;
 pub mod host_owner;
 pub mod host_runtime;
 pub mod host_video;

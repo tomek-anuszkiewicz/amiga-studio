@@ -157,4 +157,11 @@ impl Keyboard {
             self.enqueue_scancode(code | BIT_KEY_RELEASE);
         }
     }
+
+    /// Releases physical keys when the host loses input capture.
+    pub fn release_keys(&mut self) {
+        for code in 0..=MASK_KEY_CODE {
+            self.key_up(code);
+        }
+    }
 }

@@ -72,6 +72,13 @@ impl Default for DeniseSync {
 }
 
 impl DeniseSync {
+    /// Whether receiver initialization has reached the field assembly origin.
+    pub fn field_started(&self) -> bool {
+        self.synchronized
+            && self.field_locked
+            && (self.vpos != 0 || self.hpos > frame_builder::HBLANK_START_CCK)
+    }
+
     fn receive_strobe(&mut self, address: u16, interlaced: bool) -> bool {
         if address == sync::REGISTER_STRLONG {
             self.long_line = true;

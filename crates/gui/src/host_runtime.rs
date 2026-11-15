@@ -1,6 +1,7 @@
 //! Bounded host exchange and machine-owner lifetime on desktop and the web.
 
 use crate::host_commands::{HostCommand, HostReply, HostRequest, HostStatus, HOST_QUEUE_CAPACITY};
+use crate::host_input::{HostInputEvent, InputQueue};
 use crate::host_owner::MachineOwner;
 use crate::host_video::{FrameInfo, VideoExchange, VideoExchangeError, VideoRead};
 use std::collections::VecDeque;
@@ -18,6 +19,83 @@ struct Mailboxes {
     commands: VecDeque<HostRequest>,
     replies: VecDeque<HostReply>,
     status: HostStatus,
+    input: InputQueue,
+    input_enabled: bool,
+    input_generation: u64,
+    capture_epoch: u64,
+    #[cfg(not(target_arch = "wasm32"))]
+    capture_started_at: std::time::SystemTime,
+}
+
+impl Mailboxes {
+    fn input_active(&self) -> bool {
+        self.input_enabled && self.status.running && !self.status.pause_pending
+    }
+
+    fn push_input(&mut self, event: HostInputEvent) {
+        if self.input_generation != self.status.generation {
+            self.input.clear();
+            self.input_generation = self.status.generation;
+        }
+        self.input.push(event);
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+static NATIVE_INPUT: Mutex<Option<HostInputSender>> = Mutex::new(None);
+#[cfg(not(target_arch = "wasm32"))]
+static NATIVE_LISTENER: std::sync::Once = std::sync::Once::new();
+#[cfg(not(target_arch = "wasm32"))]
+const MAX_NATIVE_SLEEP: std::time::Duration = std::time::Duration::from_millis(1);
+
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) fn collect_native_event(
+    events: &mut crate::host_native_input::NativeEvents,
+    raw: rdev::Event,
+) {
+    let Ok(target) = NATIVE_INPUT.lock() else {
+        return;
+    };
+    let Some(sender) = &*target else {
+        events.translate(raw.event_type, false);
+        return;
+    };
+    let Ok(mut mailboxes) = sender.shared.mailboxes.lock() else {
+        return;
+    };
+    events.capture((mailboxes.status.generation, mailboxes.capture_epoch));
+    let enabled = mailboxes.input_active() && raw.time >= mailboxes.capture_started_at;
+    if let Some(event) = events.translate(raw.event_type, enabled) {
+        mailboxes.push_input(event);
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) fn collect_native_gamepad(
+    gamepads: &mut crate::host_native_input::NativeGamepads,
+    observed: std::time::SystemTime,
+) {
+    let Ok(target) = NATIVE_INPUT.lock() else {
+        return;
+    };
+    let Some(sender) = &*target else {
+        gamepads.release();
+        return;
+    };
+    let Ok(mut mailboxes) = sender.shared.mailboxes.lock() else {
+        return;
+    };
+    if !mailboxes.input_active() || observed < mailboxes.capture_started_at {
+        gamepads.release();
+        return;
+    }
+    for event in gamepads
+        .changed_events((mailboxes.status.generation, mailboxes.capture_epoch))
+        .into_iter()
+        .flatten()
+    {
+        mailboxes.push_input(event);
+    }
 }
 
 #[derive(Debug)]
@@ -32,6 +110,49 @@ struct SharedHost {
 /// A rejected submission retains its owned command for retry by the GUI.
 #[derive(Debug)]
 pub struct HostBusy(pub HostCommand);
+
+/// Event callbacks publish under the existing bounded host mailbox boundary.
+#[derive(Debug, Clone)]
+pub struct HostInputSender {
+    shared: Arc<SharedHost>,
+}
+
+impl HostInputSender {
+    pub fn try_send(&self, event: HostInputEvent, generation: Option<u64>) -> bool {
+        let Ok(mut mailboxes) = self.shared.mailboxes.try_lock() else {
+            return false;
+        };
+        if generation.is_some_and(|generation| generation != mailboxes.status.generation) {
+            return true;
+        }
+        if event == HostInputEvent::ReleaseAll || mailboxes.input_active() {
+            mailboxes.push_input(event);
+        }
+        true
+    }
+
+    pub fn set_enabled(&self, enabled: bool) -> bool {
+        let Ok(mut mailboxes) = self.shared.mailboxes.try_lock() else {
+            return false;
+        };
+        if mailboxes.input_enabled != enabled {
+            mailboxes.input_enabled = enabled;
+            mailboxes.capture_epoch = mailboxes.capture_epoch.wrapping_add(1);
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                mailboxes.capture_started_at = std::time::SystemTime::now();
+            }
+            mailboxes.push_input(HostInputEvent::ReleaseAll);
+        }
+        #[cfg(target_arch = "wasm32")]
+        set_host_input_enabled(
+            enabled,
+            mailboxes.status.input_poll_seconds * 1000.0,
+            mailboxes.status.generation,
+        );
+        true
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HostRuntimeError {
@@ -63,6 +184,12 @@ impl HostRuntime {
                 commands: VecDeque::with_capacity(HOST_QUEUE_CAPACITY),
                 replies: VecDeque::with_capacity(HOST_QUEUE_CAPACITY),
                 status,
+                input: Default::default(),
+                input_enabled: false,
+                input_generation: status.generation,
+                capture_epoch: 0,
+                #[cfg(not(target_arch = "wasm32"))]
+                capture_started_at: std::time::SystemTime::now(),
             }),
             video: VideoExchange::new(spare),
             stop: AtomicBool::new(false),
@@ -90,6 +217,25 @@ impl HostRuntime {
 
     pub fn status(&self) -> HostStatus {
         self.status
+    }
+
+    pub fn input_sender(&self) -> HostInputSender {
+        HostInputSender {
+            shared: self.shared.clone(),
+        }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) fn start_native_input(&self) -> bool {
+        let Ok(mut target) = NATIVE_INPUT.try_lock() else {
+            return false;
+        };
+        *target = Some(self.input_sender());
+        NATIVE_LISTENER.call_once(|| {
+            std::thread::spawn(crate::host_native_input::listen);
+            std::thread::spawn(crate::host_native_input::listen_gamepads);
+        });
+        true
     }
 
     fn wake_worker(&self) {
@@ -257,6 +403,15 @@ impl HostRuntime {
 
 impl Drop for HostRuntime {
     fn drop(&mut self) {
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Ok(mut target) = NATIVE_INPUT.lock() {
+            if target
+                .as_ref()
+                .is_some_and(|sender| Arc::ptr_eq(&sender.shared, &self.shared))
+            {
+                *target = None;
+            }
+        }
         self.shared.stop.store(true, Ordering::Release);
         self.wake_worker();
         #[cfg(not(target_arch = "wasm32"))]
@@ -284,6 +439,7 @@ impl WorkerLoop {
             return (false, WorkerWait::Stop);
         }
         let previous_running = self.owner.status().running;
+        let previous_generation = self.owner.status().generation;
         let Self {
             owner,
             shared,
@@ -324,6 +480,23 @@ impl WorkerLoop {
             };
             *pending_reply = Some(owner.execute(request));
         }
+        match shared.mailboxes.try_lock() {
+            Ok(mut mailboxes) => {
+                if previous_generation != owner.status().generation
+                    || mailboxes.input_generation != owner.status().generation
+                    || !owner.status().running
+                    || owner.status().pause_pending
+                {
+                    mailboxes.input.clear();
+                } else {
+                    while let Some(event) = mailboxes.input.pop() {
+                        owner.collect_input(event);
+                    }
+                }
+            }
+            Err(TryLockError::WouldBlock) => contended = true,
+            Err(TryLockError::Poisoned(_)) => return Self::fail(shared),
+        }
         owner.advance(now, &elapsed);
         match shared.mailboxes.try_lock() {
             Ok(mut mailboxes) => {
@@ -331,7 +504,14 @@ impl WorkerLoop {
                     Ok(published) => notify |= published,
                     Err(_) => return Self::fail(shared),
                 }
-                mailboxes.status = owner.status();
+                let status = owner.status();
+                #[cfg(not(target_arch = "wasm32"))]
+                if mailboxes.status.generation != status.generation {
+                    mailboxes.capture_started_at = std::time::SystemTime::now();
+                    mailboxes.capture_epoch = mailboxes.capture_epoch.wrapping_add(1);
+                    mailboxes.input.clear();
+                }
+                mailboxes.status = status;
             }
             Err(TryLockError::WouldBlock) => contended = true,
             Err(TryLockError::Poisoned(_)) => return Self::fail(shared),
@@ -380,7 +560,11 @@ fn run_native(
         }
         match wait {
             WorkerWait::Event => std::thread::park(),
-            WorkerWait::Delay(delay) if !delay.is_zero() => std::thread::park_timeout(delay),
+            // Windows address-based timed parking has a coarse timer quantum.
+            // Sleep uses the high-resolution timer; bound waits to service commands.
+            WorkerWait::Delay(delay) if !delay.is_zero() => {
+                std::thread::sleep(delay.min(MAX_NATIVE_SLEEP))
+            }
             WorkerWait::Delay(_) => {}
             WorkerWait::Stop => break,
         }
@@ -402,7 +586,9 @@ extern "C" {
         memory: wasm_bindgen::JsValue,
         notify: wasm_bindgen::JsValue,
         finished: wasm_bindgen::JsValue,
+        input: wasm_bindgen::JsValue,
     ) -> Result<web_sys::Worker, wasm_bindgen::JsValue>;
+    fn set_host_input_enabled(enabled: bool, interval_ms: f64, generation: u64);
     fn host_now() -> f64;
     fn notify_gui();
 }
@@ -414,6 +600,16 @@ fn start_web(
     context: egui::Context,
 ) -> Result<web_sys::Worker, HostRuntimeError> {
     use wasm_bindgen::closure::Closure;
+    const BIT_MOUSE_LEFT: u32 = 1;
+    const BIT_MOUSE_RIGHT: u32 = 1 << 1;
+    const BIT_MOUSE_MIDDLE: u32 = 1 << 2;
+    const BIT_JOYSTICK_UP: u32 = 1;
+    const BIT_JOYSTICK_DOWN: u32 = 1 << 1;
+    const BIT_JOYSTICK_LEFT: u32 = 1 << 2;
+    const BIT_JOYSTICK_RIGHT: u32 = 1 << 3;
+    const BIT_JOYSTICK_FIRE1: u32 = 1 << 4;
+    const BIT_JOYSTICK_FIRE2: u32 = 1 << 5;
+
     let mut slot = WEB_OWNER
         .try_lock()
         .map_err(|_| HostRuntimeError::StartupFailed)?;
@@ -423,6 +619,41 @@ fn start_web(
     let notify_context = context.clone();
     let notify = Closure::<dyn FnMut()>::new(move || notify_context.request_repaint());
     let finished_shared = shared.clone();
+    let sender = HostInputSender {
+        shared: shared.clone(),
+    };
+    let input = Closure::<dyn FnMut(String, String, i32, i32, u32, u64) -> bool>::new(
+        move |kind: String, code: String, dx, dy, bits, generation| {
+            let event = match kind.as_str() {
+                "keydown" | "keyup" => {
+                    let Some(code) = crate::host_keys::amiga_key_code(&code) else {
+                        return true;
+                    };
+                    HostInputEvent::Key {
+                        code,
+                        pressed: kind == "keydown",
+                    }
+                }
+                "motion" => HostInputEvent::MouseMotion { dx, dy },
+                "mouse" => HostInputEvent::MouseButtons {
+                    left: bits & BIT_MOUSE_LEFT != 0,
+                    right: bits & BIT_MOUSE_RIGHT != 0,
+                    middle: bits & BIT_MOUSE_MIDDLE != 0,
+                },
+                "joystick" => HostInputEvent::Joystick {
+                    up: bits & BIT_JOYSTICK_UP != 0,
+                    down: bits & BIT_JOYSTICK_DOWN != 0,
+                    left: bits & BIT_JOYSTICK_LEFT != 0,
+                    right: bits & BIT_JOYSTICK_RIGHT != 0,
+                    fire1: bits & BIT_JOYSTICK_FIRE1 != 0,
+                    fire2: bits & BIT_JOYSTICK_FIRE2 != 0,
+                },
+                "release" => HostInputEvent::ReleaseAll,
+                _ => return true,
+            };
+            sender.try_send(event, Some(generation))
+        },
+    );
     let finished = Closure::<dyn FnMut(bool)>::new(move |success: bool| {
         if !success {
             finished_shared.failed.store(true, Ordering::Release);
@@ -442,6 +673,7 @@ fn start_web(
         wasm_bindgen::memory(),
         notify.into_js_value(),
         finished.into_js_value(),
+        input.into_js_value(),
     ) {
         Ok(worker) => Ok(worker),
         Err(_) => {

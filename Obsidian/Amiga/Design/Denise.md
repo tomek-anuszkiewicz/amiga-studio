@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "denise"
 status: "active"
 created: 2026-09-06
-updated: 2026-11-14
+updated: 2026-11-15
 related: ["[Sprites.md](Sprites.md)", "[Frame Buffer.md](Frame%20Buffer.md)", "[Agnus.md](Agnus.md)", "[Game Ports.md](Game%20Ports.md)"]
 tracked_paths:
   - "crates/denise"
@@ -119,6 +119,11 @@ Live `CLXDAT` reads clear collision state; `clxdat_debug` inspects it without
 acknowledgment or queue advancement.
 
 ## Delivered timing and controller inputs
+
+The host can query whether receiver initialization has reached the field assembly
+origin through `sync.field_started()`. This derives from synchronization, field
+lock and the existing horizontal blanking boundary; it introduces no new chip
+state or timing. The frontend uses it to align the first input delivery grid.
 
 The serializable `DenisePins` state in [pins.rs](../../../crates/denise/src/pins.rs)
 is exposed as `denise.pins`. Its `incoming` values retain the RGA event until

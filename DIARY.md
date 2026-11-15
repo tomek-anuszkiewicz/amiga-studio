@@ -1742,3 +1742,23 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Existing focused keyboard and game-port checks passed before preparation
   - retained measurement report records direct original-to-candidate throughput gains and the isolated active-keyboard tradeoff.
 ---
+
+### [2026-11-15 17:31 CET] — Deliver host input at three field boundaries
+- **Affected Subsystems**:
+  - `crates/gui`
+  - `crates/agnus`
+  - `crates/denise`
+  - `crates/debugger`
+  - `Obsidian/Amiga/Design`
+- **What Was Changed (The Concrete Reality)**:
+  - Collect native OS and controller events on blocking listener threads
+  - publish browser DOM and sampled gamepad events through bounded shared queues
+  - admit ordered events three times per field, aligned with the receiver origin after startup and reset
+  - release controls and reject obsolete generations across lifecycle changes
+  - document host transport
+- **Architectural Rationale & Trade-Offs**:
+  - Separate immediate host publication from deterministic device delivery without adding host synchronization per CCK
+- **Verification & Test Results**:
+  - Focused GUI, debugger, machine-loop and Agnus tests and native/Wasm quality checks passed before preparation. Existing Windows and Chrome probes exercised keyboard/mouse delivery
+  - physical gamepad freshness and Linux/macOS execution remain unverified. Vault audit passed for 35 documents and 1102 links.
+---

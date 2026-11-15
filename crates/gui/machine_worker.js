@@ -24,7 +24,9 @@ function tick() {
             // Message tasks avoid the nested-timer minimum delay between slices.
             immediate.port2.postMessage(schedule);
         } else if (delay !== WAIT_FOR_EVENT) {
-            timer = setTimeout(tick, delay);
+            // Schedule the timer from a message task, avoiding the nested 4 ms clamp.
+            const token = schedule;
+            timer = setTimeout(() => immediate.port2.postMessage(token), Math.ceil(delay));
         }
     } catch (error) {
         postMessage({type: 'failed', message: String(error.stack || error)});

@@ -18,6 +18,8 @@ pub(crate) enum HostEffect {
 
 #[derive(Debug)]
 pub struct AppHost {
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) native_input: bool,
     pub status: HostStatus,
     pub data: Option<Box<HostInspection>>,
     pub presented: Option<crate::host_video::FrameInfo>,
@@ -47,6 +49,8 @@ impl AppHost {
     pub(crate) fn new(session: Box<debugger::DebuggerSession>) -> Self {
         let owner = MachineOwner::new(session);
         Self {
+            #[cfg(not(target_arch = "wasm32"))]
+            native_input: false,
             status: owner.status(),
             data: None,
             presented: None,
@@ -72,7 +76,10 @@ impl AppHost {
     }
 
     pub fn is_idle(&self) -> bool {
-        self.queued.is_empty() && self.pending.is_empty() && self.commands.is_empty()
+        self.queued.is_empty()
+            && self.pending.is_empty()
+            && self.commands.is_empty()
+            && !self.status.pause_pending
     }
 
     pub(crate) fn can_edit(&self) -> bool {
@@ -287,6 +294,31 @@ impl crate::EmulatorApp {
         if first_pass {
             self.host.refresh_utc(crate::host_clock::utc_now());
             self.handle_keyboard_shortcuts(ctx);
+        }
+    }
+}
+
+impl crate::EmulatorApp {
+    pub(crate) fn update_input_capture(&self, ctx: &egui::Context) {
+        if let Some(runtime) = &self.host.runtime {
+            let focused = ctx.input(|input| input.focused);
+            let screen_focus = ctx.memory(|memory| {
+                memory.has_focus(egui::Id::new(
+                    crate::layout::main_viewport::amiga_screen::SCREEN_INPUT_ID,
+                ))
+            });
+            let enabled = self.host.status.running
+                && !self.host.status.pause_pending
+                && focused
+                && (!ctx.wants_keyboard_input() || screen_focus)
+                && (self.view_mode == crate::ViewMode::ScreenOnly || screen_focus);
+            if !runtime.input_sender().set_enabled(enabled) {
+                ctx.request_repaint_after(crate::host_runtime::HOST_RETRY_DELAY);
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            if self.host.native_input && !runtime.start_native_input() {
+                ctx.request_repaint_after(crate::host_runtime::HOST_RETRY_DELAY);
+            }
         }
     }
 }

@@ -383,3 +383,4 @@ fci
 uartbrk
 msbsync
 roms
+keycodes

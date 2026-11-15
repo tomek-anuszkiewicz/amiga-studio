@@ -446,4 +446,9 @@ eof
 fsync
 inode
 readline
+keyup
+visibilitychange
+backquote
+intl
+kp
 enqueueing

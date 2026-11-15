@@ -6,6 +6,8 @@
 use egui::{load::SizedTexture, pos2, vec2, Color32, Rect, RichText, Stroke};
 use serde::{Deserialize, Serialize};
 
+pub(crate) const SCREEN_INPUT_ID: &str = "amiga-screen-input";
+
 /// Amiga image scale, independent of interface zoom and host DPI.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum ScreenScale {
@@ -136,6 +138,19 @@ pub(crate) fn render_amiga_screen(
         origin = (origin * pixels_per_point).round() / pixels_per_point;
     }
     let screen_rect = Rect::from_min_size(origin, image_size);
+    let input = ui.interact(
+        screen_rect
+            .intersect(response.rect)
+            .intersect(ui.clip_rect()),
+        egui::Id::new(SCREEN_INPUT_ID),
+        egui::Sense::click(),
+    );
+    if input.clicked() {
+        input.request_focus();
+    }
+    input.on_hover_text(
+        "Click to send keyboard and mouse input to the Amiga. Frontend shortcuts remain available.",
+    );
 
     // Outer CRT Bezel
     let bezel_rect = screen_rect.expand(6.0);

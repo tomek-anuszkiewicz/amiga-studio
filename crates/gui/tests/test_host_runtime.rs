@@ -594,3 +594,148 @@ fn binary_load_during_an_unfinished_running_field_keeps_the_previous_image() {
         VideoRead::Pending
     );
 }
+
+fn wait_status(host: &mut HostRuntime, ready: impl Fn(gui::host_commands::HostStatus) -> bool) {
+    let deadline = Instant::now() + Duration::from_secs(10);
+    while !ready(host.status()) {
+        host.poll().unwrap();
+        host.try_consume(|_, _, _| ()).unwrap();
+        assert!(Instant::now() < deadline, "Input delivery did not progress");
+        std::thread::sleep(Duration::from_millis(1));
+    }
+}
+
+fn snapshot(host: &mut HostRuntime) -> debugger::SaveState {
+    let Ok(HostValue::Snapshot(json)) = wait_reply(host, HostCommand::SaveSnapshot).value else {
+        panic!("Missing machine snapshot");
+    };
+    debugger::SaveState::from_json(&json).unwrap()
+}
+
+#[test]
+fn runtime_input_capture_pause_reset_and_load_release_obsolete_controls() {
+    use gui::host_input::HostInputEvent;
+    let mut host = start_host();
+    let neutral = snapshot(&mut host).to_json().unwrap();
+    let sender = host.input_sender();
+    let buttons = HostInputEvent::MouseButtons {
+        left: true,
+        right: true,
+        middle: true,
+    };
+    let send = |event, generation| {
+        let deadline = Instant::now() + Duration::from_secs(10);
+        while !sender.try_send(event, generation) {
+            assert!(Instant::now() < deadline);
+            std::thread::yield_now();
+        }
+    };
+    let capture = |enabled| {
+        let deadline = Instant::now() + Duration::from_secs(10);
+        while !sender.set_enabled(enabled) {
+            assert!(Instant::now() < deadline);
+            std::thread::yield_now();
+        }
+    };
+    assert!(wait_reply(&mut host, HostCommand::Run).value.is_ok());
+    // Disabled capture must discard presses at runtime ingress.
+    send(buttons, None);
+    let before = host.status().input_deliveries;
+    wait_status(&mut host, |status| status.input_deliveries >= before + 2);
+    assert_eq!(
+        snapshot(&mut host)
+            .state
+            .game_ports
+            .sample_ciaa_port_a_inputs()
+            & 0x40,
+        0x40
+    );
+    capture(true);
+    send(buttons, None);
+    let before = host.status().input_deliveries;
+    wait_status(&mut host, |status| status.input_deliveries >= before + 2);
+    assert_eq!(
+        snapshot(&mut host)
+            .state
+            .game_ports
+            .sample_ciaa_port_a_inputs()
+            & 0x40,
+        0
+    );
+    capture(false);
+    let before = host.status().input_deliveries;
+    wait_status(&mut host, |status| status.input_deliveries >= before + 2);
+    assert_eq!(
+        snapshot(&mut host)
+            .state
+            .game_ports
+            .sample_ciaa_port_a_inputs()
+            & 0x40,
+        0x40
+    );
+    capture(true);
+    send(buttons, None);
+    assert!(wait_reply(&mut host, HostCommand::Pause).value.is_ok());
+    wait_status(&mut host, |status| !status.running);
+    send(buttons, None); // Paused input must not survive resume.
+    assert!(wait_reply(&mut host, HostCommand::Run).value.is_ok());
+    let before = host.status().input_deliveries;
+    wait_status(&mut host, |status| status.input_deliveries >= before + 2);
+    assert_eq!(
+        snapshot(&mut host)
+            .state
+            .game_ports
+            .sample_ciaa_port_a_inputs()
+            & 0x40,
+        0x40
+    );
+    for command in [HostCommand::ResetWarm, HostCommand::LoadSnapshot(neutral)] {
+        send(buttons, None);
+        let generation = host.status().generation;
+        let reply = wait_reply(&mut host, command);
+        assert!(reply.value.is_ok());
+        assert_eq!(reply.status.generation, generation + 1);
+        assert_eq!(
+            snapshot(&mut host)
+                .state
+                .game_ports
+                .sample_ciaa_port_a_inputs()
+                & 0x40,
+            0x40
+        );
+        assert!(wait_reply(
+            &mut host,
+            HostCommand::WriteMemory {
+                address: 0xc01000,
+                bytes: vec![0x60, 0xfe],
+                restart_instruction: false,
+            }
+        )
+        .value
+        .is_ok());
+        assert!(wait_reply(
+            &mut host,
+            HostCommand::SetRegister {
+                register: EditRegister::PC,
+                value: 0xc01000,
+            }
+        )
+        .value
+        .is_ok());
+        assert_eq!(host.status().generation, generation + 1);
+        assert!(wait_reply(&mut host, HostCommand::Run).value.is_ok());
+        let before = host.status().input_deliveries;
+        wait_status(&mut host, |status| status.input_deliveries >= before + 2);
+        send(buttons, Some(generation)); // Capture is active: only the generation check rejects this.
+        let before = host.status().input_deliveries;
+        wait_status(&mut host, |status| status.input_deliveries >= before + 2);
+        assert_eq!(
+            snapshot(&mut host)
+                .state
+                .game_ports
+                .sample_ciaa_port_a_inputs()
+                & 0x40,
+            0x40
+        );
+    }
+}

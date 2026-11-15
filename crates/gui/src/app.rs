@@ -238,6 +238,10 @@ impl EmulatorApp {
     /// Initializes a new EmulatorApp instance with headless session
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         let mut app = Self::default();
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            app.host.native_input = true;
+        }
         #[cfg(target_arch = "wasm32")]
         app.browser_history.restore();
         if let Some(storage) = cc.storage {
@@ -755,6 +759,9 @@ impl EmulatorApp {
 
         self.host.flush();
         self.host.request_submission_retry(ctx);
+        if first_pass {
+            self.update_input_capture(ctx);
+        }
     }
 }
 
