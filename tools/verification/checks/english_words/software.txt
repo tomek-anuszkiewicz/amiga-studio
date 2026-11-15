@@ -1226,3 +1226,5 @@ prunable
 recreatable
 reflog
 revalidated
+ofs
+bootblocks

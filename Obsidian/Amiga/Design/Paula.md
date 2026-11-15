@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "paula"
 status: "active"
 created: 2026-09-06
-updated: 2026-11-12
+updated: 2026-11-15
 related: ["[Audio.md](Audio.md)", "[Interrupts.md](Interrupts.md)", "[Floppy.md](Floppy.md)", "[Game Ports.md](Game%20Ports.md)", "[Agnus.md](Agnus.md)", "[DMA.md](DMA.md)", "[Machine Loop.md](Machine%20Loop.md)"]
 tracked_paths:
   - "crates/paula"
@@ -126,7 +126,7 @@ remain deferred to [12.4](../../../ROADMAP.md#serial-parallel-device-support).
 
 `pins.disk_read_high` receives the drive's raw read line. `pins.disk_write_high` and
 `pins.disk_write_enable` drive the modeled Gary/buffered connector output, separate
-from host image buffers and deferred media generation. These pin checks attach no image
+from the drive-owned raw track buffers. These pin checks attach no image
 and perform no media transfer. `receive_pot_inputs` accepts the current digital
 POT button levels before engine work, without a pending copy. The earlier
 decoded POT counters remain a separate captured bridge. Committed POTGO
@@ -161,8 +161,11 @@ calibrated analog PLL or flux-media decoder. FIFO overflow retains buffered
 words and discards a newly completed word. Sub-CCK precompensation and the
 manual's timing-dependent final-bit/read-word loss are not calibrated by this
 model. ADKCON retains their control bits without claiming measured pulse shifts.
-Raw MFM words are never decoded into sectors inside Paula. Drive/media
-execution remains outside this reconstruction's explicit boundary.
+Raw MFM words are never decoded into sectors inside Paula. The autonomous
+[Floppy](Floppy.md#autonomous-adf-reads-and-continuation) read stream supplies
+nominal two-microsecond cells through the existing connector; the separator
+re-anchors on transitions despite seven/eight-CCK cell quantization. Analog PLL
+calibration and media writes remain outside this read-boot evidence.
 
 ## References
 

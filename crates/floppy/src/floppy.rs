@@ -6,6 +6,7 @@
 
 pub mod mfm;
 pub use mfm::*;
+mod media;
 
 use serde::{Deserialize, Serialize};
 
@@ -54,9 +55,10 @@ pub struct FloppyDrive {
     /// Disk change hardware flip-flop: set when disk is removed/changed;
     /// cleared only when a disk is present AND a step pulse is received!
     pub disk_change_flip_flop: bool,
-    /// Loaded 880 KB ADF sector image byte container
-    #[serde(skip)]
-    pub disk_data: Option<Vec<u8>>,
+    /// Prepared circular raw tracks, including usable media in serialized state.
+    track_data: Option<Vec<u8>>,
+    rotation_bit: u32,
+    cell_phase: u32,
 }
 
 impl Default for FloppyDrive {
@@ -69,22 +71,19 @@ impl Default for FloppyDrive {
             disk_inserted: false,
             write_protected: false,
             disk_change_flip_flop: true, // Power-on with no disk inserted
-            disk_data: None,
+            track_data: None,
+            rotation_bit: 0,
+            cell_phase: 0,
         }
     }
 }
 
 impl FloppyDrive {
-    /// Resets drive state to power-on default
+    /// Electronic reset stops the motor, retaining physical media and head position.
     pub fn reset(&mut self) {
-        self.cylinder = 0;
         self.side = LOWER_SIDE;
         self.motor_on = false;
         self.selected = false;
-        self.disk_inserted = false;
-        self.write_protected = false;
-        self.disk_change_flip_flop = true;
-        self.disk_data = None;
     }
 
     /// Action method: sets head side (0 = lower head, 1 = upper head)
@@ -111,16 +110,20 @@ impl FloppyDrive {
     }
 
     /// Inserts a floppy disk image into the drive
-    pub fn insert_disk(&mut self, data: &[u8]) {
-        self.disk_data = Some(data.to_vec());
+    pub fn insert_disk(&mut self, data: &[u8]) -> bool {
+        if data.len() != FORMATTED_DISK_BYTES {
+            return false;
+        }
+        self.track_data = Some(media::encode_disk(data));
         self.disk_inserted = true;
         // Inserting a disk trips the change flip-flop until stepped
         self.disk_change_flip_flop = true;
+        true
     }
 
     /// Ejects the disk from the drive
     pub fn eject_disk(&mut self) {
-        self.disk_data = None;
+        self.track_data = None;
         self.disk_inserted = false;
         self.disk_change_flip_flop = true;
     }
@@ -157,6 +160,8 @@ pub struct FloppyController {
     pub drives: [FloppyDrive; DRIVE_COUNT],
     /// Last applied controls, for motor-selection and step edge detection.
     pub prev_ciab_prb: u8,
+    clock_hz: u32,
+    media_output_active: bool,
 }
 
 impl Default for FloppyController {
@@ -165,24 +170,35 @@ impl Default for FloppyController {
             pins: FloppyPins::default(),
             drives: core::array::from_fn(|_| FloppyDrive::default()),
             prev_ciab_prb: CONTROL_RELEASED,
+            clock_hz: config::VideoStandard::Pal.color_clock_hz(),
+            media_output_active: false,
         }
     }
 }
 
 impl FloppyController {
-    pub fn new() -> Self {
-        Self::default()
+    pub fn new(video: config::VideoStandard) -> Self {
+        Self {
+            clock_hz: video.color_clock_hz(),
+            ..Self::default()
+        }
     }
 
     pub fn reset(&mut self) {
-        *self = Self::default();
+        self.pins = FloppyPins::default();
+        self.prev_ciab_prb = CONTROL_RELEASED;
+        self.media_output_active = false;
+        for drive in &mut self.drives {
+            drive.reset();
+        }
     }
 
-    /// Advances control edges delivered before this CCK; no image data is streamed.
+    /// Advances control edges and every running spindle, including deselected drives.
     pub fn step_cck(&mut self) {
         let current = self.pins.control_input;
         let previous = self.prev_ciab_prb;
         if current == previous {
+            self.step_media();
             return;
         }
         for (index, drive) in self.drives.iter_mut().enumerate() {
@@ -204,6 +220,26 @@ impl FloppyController {
             }
         }
         self.prev_ciab_prb = current;
+        self.step_media();
+    }
+
+    fn step_media(&mut self) {
+        // Unattached deterministic pin fixtures retain control of the connector.
+        let attached = self.drives.iter().any(|drive| drive.track_data.is_some());
+        let mut read_high = true;
+        let mut index_high = true;
+        for drive in &mut self.drives {
+            let (transition, index) = drive.step_rotation(self.clock_hz);
+            if drive.selected {
+                read_high &= !transition;
+                index_high &= !index;
+            }
+        }
+        if attached || self.media_output_active {
+            self.pins.read_data_high = read_high;
+            self.pins.index_high = index_high;
+        }
+        self.media_output_active = attached;
     }
 
     /// All selected open-collector sense outputs resolve together, low dominant.

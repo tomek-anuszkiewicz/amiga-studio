@@ -8,6 +8,9 @@ const CHECKSUM_MFM_BYTES: usize = 8;
 
 const MASK_MFM_DATA_BITS: u32 = 0x5555_5555;
 const MASK_MFM_CLOCK_BITS: u32 = 0xAAAA_AAAA;
+pub(super) const BIT_MFM_DATA_LSB: u8 = 1;
+const MFM_NEIGHBOR_SHIFT: u32 = 1;
+const BIT_MFM_BYTE_CARRY_SHIFT: u32 = u8::BITS - 1;
 const SECTOR_FORMAT: u8 = 0xFF;
 pub(super) const MFM_GAP_BYTE: u8 = 0xAA;
 const SYNC_BYTES: usize = 4;
@@ -23,7 +26,7 @@ const HEADER_MFM_LONGWORDS: usize = LABEL_MFM_LONGWORDS + 2;
 const LABEL_MFM_BYTES: usize = LABEL_MFM_LONGWORDS * 4;
 const PAYLOAD_LONGWORDS: usize = SECTOR_DATA_BYTES / 4;
 const PAYLOAD_MFM_LONGWORDS: usize = PAYLOAD_LONGWORDS * 2;
-const TRAILING_GAP_BYTES: usize = 4;
+const PREAMBLE_BYTES: usize = 4;
 const ENCODED_SECTOR_BODY_BYTES: usize = 1080;
 
 /// Standard Amiga sync mark word ($4489)
@@ -72,13 +75,14 @@ pub fn encode_mfm_long(payload: u32) -> (u32, u32) {
 /// Computes the 32-bit XOR checksum over an array of 32-bit MFM longwords
 #[inline]
 fn calculate_mfm_checksum(words: &[u32]) -> u32 {
-    words.iter().fold(0u32, |acc, &val| acc ^ val)
+    words.iter().fold(0u32, |acc, &val| acc ^ val) & MASK_MFM_DATA_BITS
 }
 
 /// Encodes a single 512-byte sector into a standard 1088-byte raw MFM block
 pub fn encode_amiga_sector(track: u8, sector: u8, data: &[u8; SECTOR_DATA_BYTES]) -> Vec<u8> {
     let mut out = Vec::with_capacity(RAW_MFM_SECTOR_BYTES);
 
+    out.extend_from_slice(&[MFM_GAP_BYTE; PREAMBLE_BYTES]);
     // 1. Sync mark: $4489 $4489 (4 bytes)
     out.extend_from_slice(&MFM_SYNC_WORD.to_be_bytes());
     out.extend_from_slice(&MFM_SYNC_WORD.to_be_bytes());
@@ -139,8 +143,17 @@ pub fn encode_amiga_sector(track: u8, sector: u8, data: &[u8; SECTOR_DATA_BYTES]
         out.extend_from_slice(&even.to_be_bytes());
     }
 
-    // 8. Trailing gap words (4 bytes zeros)
-    out.extend_from_slice(&[MFM_GAP_BYTE; TRAILING_GAP_BYTES]);
+    // Clock bits depend on the preceding data bit across every longword boundary.
+    let mut previous = MFM_SYNC_WORD as u8;
+    for byte in &mut out[PREAMBLE_BYTES + SYNC_BYTES..] {
+        let data = *byte & MASK_MFM_DATA_BITS as u8;
+        *byte = data
+            | (!(data << MFM_NEIGHBOR_SHIFT
+                | data >> MFM_NEIGHBOR_SHIFT
+                | previous << BIT_MFM_BYTE_CARRY_SHIFT)
+                & MASK_MFM_CLOCK_BITS as u8);
+        previous = *byte;
+    }
 
     out
 }
@@ -161,7 +174,7 @@ fn read_be_u32(slice: &[u8], offset: usize) -> u32 {
 
 /// Decodes an Amiga sector from raw MFM bytes starting at the sync mark
 pub fn decode_amiga_sector(raw: &[u8]) -> Result<(u8, u8, [u8; SECTOR_DATA_BYTES]), MfmError> {
-    if raw.len() < RAW_MFM_SECTOR_BYTES - TRAILING_GAP_BYTES {
+    if raw.len() < RAW_MFM_SECTOR_BYTES - PREAMBLE_BYTES {
         return Err(MfmError::BufferTooShort);
     }
 

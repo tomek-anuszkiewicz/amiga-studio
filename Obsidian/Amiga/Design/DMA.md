@@ -82,7 +82,7 @@ sub-CCK bus edges or establish that its current eligibility algorithm is correct
 | User | Eligibility / opportunity | Transfer and advancement | Retention / competing work |
 | --- | --- | --- | --- |
 | Refresh | Periodic four refresh opportunities, independent of software DMA enables. | Agnus supplies DRAM row strobes; no receiving peripheral word. | Highest reserved memory work. Null RGA and refresh strobes differ from data delivery. |
-| Disk | Master and DSKEN enabled; Paula's armed/active count, direction, sync state and word availability permit a request. Reference positions `$07/$09/$0B`. | Agnus addresses Chip RAM; read-from-drive uses Paula's DSKDATR supply and writes RAM, write-to-drive reads RAM into Paula's DSKDAT. Advance the pointer and count on a real transfer. | An unused opportunity is available to another eligible user. The request is not a completed word. Media execution remains later work; this stage checks only pins/register delivery. |
+| Disk | Master and DSKEN enabled; Paula's armed/active count, direction, sync state and word availability permit a request. Reference positions `$07/$09/$0B`. | Agnus addresses Chip RAM; read-from-drive uses Paula's DSKDATR supply and writes RAM, write-to-drive reads RAM into Paula's DSKDAT. Advance the pointer and count on a real transfer. | An unused opportunity is available to another eligible user. The request is not a completed word. Autonomous ADF reads also use this path; media writes remain unverified. |
 | Audio 0-3 | Master/channel enables plus the channel's retained data/restart request. Reference positions `$0D/$0F/$11/$13`, one word per channel opportunity. | Agnus chooses active or reload address, reads a word and selects AUDxDAT. Paula captures it and advances its local holding/count/reload state; later sample output is a separate operation. | A pending request survives until its matching transfer or a source-supported cancellation. Enabling alone must not fabricate a supplied word. Request snapshots and active-enable changes follow the channel transitions described in [Audio](Audio.md). |
 | Sprites 0-7 | Master/SPREN plus sprite vertical/control state; two word opportunities per sprite, reference odd positions `$15-$33`. | Agnus selects pointer and POS/CTL or DATA/DATB destination; RAM supplies distinct words; Denise captures selected latches. Pointer/state advance follows each granted word. | Display fetches can preempt a sprite opportunity under the documented display overlap conditions. Whether a missed opportunity is retried follows sprite state, not a motherboard queue invented by the coordinator. |
 | Bitplanes | Master/BPLEN, vertical DIW state, horizontal DDF window, resolution and plane count. | Agnus fetches selected planes, advances their pointers and applies the appropriate odd/even modulo at the line's final block. BPLxDAT captures data in Denise; BPL1DAT's local load/arm sequence and pixel shifting occur later. | Display priority can steal CPU/Copper/Blitter slots, and under overlap can outrank sprites. No return request/grant wire from Denise. The reconstructed shifter and fetch engines retain distinct ownership. |
@@ -233,10 +233,11 @@ Paula supplies a word and RAM accepts it; a write advances it when Agnus fetches
 the word into the retained common output. Audio/sprite and deterministic disk
 exchange tests cover these paths and snapshot continuation.
 Working bitplane/Copper routes keep their existing queues.
-[Native disk bring-up](../../../ROADMAP.md#native-disk-bring-up) owns the missing
-media stream and firmware execution; selected
-[native tests](../../../ROADMAP.md#native-disk-verification) check program-level
-exchanges. Deterministic pin tests do not require firmware or certify media boot.
+[Floppy](Floppy.md#autonomous-adf-reads-and-continuation) supplies timed ADF
+transitions through the same connector. The original cross1 boot test exercises
+firmware and guest setup; broader [native tests](../../../ROADMAP.md#native-disk-verification)
+retain image comparisons and selected program-level exchanges. Deterministic pin
+tests alone do not certify media boot.
 
 ## Reference Documentation & Upstream Ground Truth
 
