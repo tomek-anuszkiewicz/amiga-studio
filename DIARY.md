@@ -1665,3 +1665,30 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Native Git merge preparation and diff whitespace checks completed
   - Vault metadata and link audit passed for 35 Design notes and 1096 links
   - Canonical verification and independent review are pending
+---
+
+### [2026-11-15 12:27 CET] — LOCAL-INTEGRATION-20261115: prepare local integration on the task branch
+- **Affected Subsystems**:
+  - `Agent rules`
+  - `Verification tooling`
+  - `Worktree lifecycle`
+- **What Was Changed (The Concrete Reality)**:
+  - Require an explicit task checkout choice while retaining bounded detached diagnostics
+  - Compare complete integration candidates with immutable primary-branch commits
+  - Freeze approved trees and partitions and seal exact mechanical commits
+  - Publish through prepared native Git reference locks with recoverable checkout transitions
+  - Preserve unique local material before safe worktree removal and conditional branch deletion
+- **Architectural Rationale & Trade-Offs**:
+  - Keep the combined reviewed candidate as the acceptance target
+  - Refuse concurrent reference changes and preserve unexpected file edits
+  - Keep commit-only and complete integration authorization distinct
+- **Verification & Test Results**:
+  - Passed 16 real-Git integration contracts including competing processes and termination at five publication boundaries
+  - Passed 3 PowerShell worktree contracts and script parsing
+  - Passed 34 existing continuation contracts and 43 existing CLI contracts
+  - Vault audit passed for 35 specifications and 1097 links
+  - Canonical commit verification and independent final review remain pending
+  - Independent review identified a staged ignored-file omission and a recovery reference race; candidate trees now retain the real index and recovery holds native verification locks
+  - Sealing also rejects a same-tree ancestor rewind with an empty partition; worktree test ownership preserves the script's full Rust verification scope
+  - The first complete profile passed static gates and the browser build but coverage compilation exhausted virtual memory; the next attempt limits Cargo to one build job without reducing test scope
+  - Automatic cleanup conservatively refuses inaccessible Windows process ownership; successful teardown contracts isolate process discovery while exercising real Git and PowerShell removal

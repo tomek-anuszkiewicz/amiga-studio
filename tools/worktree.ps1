@@ -17,8 +17,7 @@
 
 [CmdletBinding()]
 param(
-    [Parameter(Position = 0, Mandatory = $true)]
-    [ValidateSet("add", "remove", "sync", "list")]
+    [Parameter(Position = 0, Mandatory = $false)]
     [string]$Action,
 
     [Parameter(Position = 1, Mandatory = $false)]
@@ -34,8 +33,51 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+function Show-Usage {
+    Write-Host @'
+Usage: .\tools\worktree.ps1 <add|test|remove|sync|list> [Name] [-Base COMMIT] [-Path PATH]
+
+  add Name     Create or select a task branch in a new sibling checkout.
+  test Name    Create a disposable detached checkout; create no task branch.
+  remove Name  Remove only a registered clean worktree, by exact branch or path.
+               Preserve dirty files and failed removals; never force or prune.
+  sync         Physically copy missing ignored assets into the current checkout.
+  list         Show registered worktrees.
+  -Base        Starting commit for a new branch or test checkout (default: HEAD).
+  -Path        Explicit sibling directory for add/test (default: <repo>-<Name>).
+
+Creation and sync copy independent fixtures, .env and graph data from the primary
+checkout; Cargo caches remain independent. Task worktrees require the user's
+location choice. Detached tests keep implementation in that selected checkout.
+Before removal, preserve unique ignored files and stop commands using the checkout.
+Run removal from a surviving checkout. Branch deletion is a separate operation.
+
+Examples:
+  .\tools\worktree.ps1 add feature-blitter -Base master
+  .\tools\worktree.ps1 test integration-probe -Base HEAD
+  .\tools\worktree.ps1 remove feature-blitter
+  .\tools\worktree.ps1 sync
+  .\tools\worktree.ps1 list
+'@
+}
+
+if (-not $Action) { Show-Usage; exit 0 }
+if ($Action -notin @('add', 'test', 'remove', 'sync', 'list') -or
+    ($Action -in @('add', 'test', 'remove') -and -not $Name) -or
+    ($Action -in @('sync', 'list') -and $Name) -or
+    ($Action -notin @('add', 'test') -and ($Base -or $Path))) {
+    Write-Host 'Invalid action or parameter combination.'
+    Show-Usage
+    exit 1
+}
+
+function Invoke-Git {
+    & git @args
+    if ($LASTEXITCODE -ne 0) { throw "Git failed with exit code $LASTEXITCODE." }
+}
+
 function Get-MainRepoRoot {
-    $commonDir = git rev-parse --git-common-dir 2>$null
+    $commonDir = Invoke-Git rev-parse --path-format=absolute --git-common-dir
     if (-not $commonDir) {
         throw "Not inside a Git repository."
     }
@@ -46,7 +88,7 @@ function Get-MainRepoRoot {
     } elseif ($item.Parent.Name -eq '.git') {
         return $item.Parent.Parent.FullName
     } else {
-        return (git rev-parse --show-toplevel)
+        return (Invoke-Git rev-parse --show-toplevel)
     }
 }
 
@@ -111,7 +153,7 @@ function Copy-WorktreeAssets {
             Write-Host "  [COPYING] $rel ..." -ForegroundColor Cyan
             $exitCode = (Start-Process -FilePath $toolBin -ArgumentList "`"$srcPath`"", "`"$dstPath`"", "/E", "/R:1", "/W:1", "/MT:8", "/NFL", "/NDL" -Wait -Passthru -NoNewWindow).ExitCode
             if ($exitCode -ge 8) {
-                Write-Warning "File copy returned non-standard exit code: $exitCode for $rel"
+                throw "Asset copy failed with exit code $exitCode for $rel"
             } else {
                 Write-Host "  [COPIED]  $rel" -ForegroundColor Green
             }
@@ -139,10 +181,10 @@ function Copy-WorktreeAssets {
 # --- Action Handlers ---
 
 $mainRepo = Get-MainRepoRoot
-$currentRepo = (git rev-parse --show-toplevel)
+$currentRepo = (Invoke-Git rev-parse --show-toplevel)
 
 switch ($Action) {
-    "add" {
+    { $_ -in 'add', 'test' } {
         if (-not $Name) {
             Write-Error "Branch or worktree name is required for 'add'. Example: .\tools\worktree.ps1 add feature-blitter"
             exit 1
@@ -167,14 +209,20 @@ switch ($Action) {
             Write-Error "Target directory already exists at: $targetPath"
             exit 1
         }
+        if ([System.IO.Path]::GetDirectoryName($targetPath.TrimEnd('\', '/')) -ne $parentDir) {
+            throw 'Worktrees must use a sibling directory of the primary checkout.'
+        }
 
         Write-Host ">> Creating Git worktree at sibling path: $targetPath" -ForegroundColor Cyan
 
         $gitArgs = @("worktree", "add", $targetPath)
         # Check if branch exists
-        $branchCheck = (& git branch --list $Name | Out-String).Trim()
+        $branchCheck = (Invoke-Git branch --list $Name | Out-String).Trim()
         $branchExists = ($branchCheck -ne "")
-        if ($branchExists) {
+        if ($Action -eq 'test') {
+            $gitArgs += @('--detach', $(if ($Base) { $Base } else { 'HEAD' }))
+        } elseif ($branchExists) {
+            if ($Base) { throw '-Base applies only when creating a new task branch.' }
             $gitArgs += $Name
         } else {
             $gitArgs += "-b"
@@ -184,18 +232,14 @@ switch ($Action) {
             }
         }
 
-        & git @gitArgs
-        if ($LASTEXITCODE -ne 0) {
-            Write-Error "git worktree add failed."
-            exit $LASTEXITCODE
-        }
+        Invoke-Git @gitArgs
 
         Copy-WorktreeAssets -SourceRoot $mainRepo -TargetRoot $targetPath
         Update-WorktreeGraph -WorktreeRoot $targetPath
 
         Write-Host "`n>> Worktree created successfully!" -ForegroundColor Green
         Write-Host "   Path:   $targetPath"
-        Write-Host "   Branch: $Name"
+        Write-Host "   Mode:   $Action $Name"
         Write-Host "   To switch: cd `"$targetPath`""
     }
 
@@ -213,35 +257,15 @@ switch ($Action) {
         }
 
         $targetPath = $null
-        if (Test-Path -LiteralPath $Name) {
-            $targetPath = [System.IO.Path]::GetFullPath($Name)
-        } else {
-            # Check by worktree list
-            $wtList = git worktree list --porcelain
-            $matchPath = $null
-            $currentPath = $null
-            foreach ($line in $wtList) {
-                if ($line.StartsWith("worktree ")) {
-                    $currentPath = $line.Substring(9)
-                } elseif ($line.StartsWith("branch refs/heads/") -and $line.EndsWith("/$Name") -or $line -eq "branch refs/heads/$Name") {
-                    $matchPath = $currentPath
-                    break
-                }
-            }
-
-            if ($matchPath) {
-                $targetPath = $matchPath
-            } else {
-                # Fallback to standard naming
-                $parentDir = (Get-Item -LiteralPath $mainRepo).Parent.FullName
-                $mainRepoName = (Get-Item -LiteralPath $mainRepo).Name
-                $candidate1 = Join-Path $parentDir "$mainRepoName-$Name"
-                $candidate2 = Join-Path $parentDir $Name
-                if (Test-Path -LiteralPath $candidate1) {
-                    $targetPath = $candidate1
-                } elseif (Test-Path -LiteralPath $candidate2) {
-                    $targetPath = $candidate2
-                }
+        $requestedPath = [System.IO.Path]::GetFullPath($Name)
+        $wtList = Invoke-Git -c core.quotePath=false worktree list --porcelain
+        $registeredPath = $null
+        foreach ($line in $wtList) {
+            if ($line.StartsWith('worktree ')) {
+                $registeredPath = [System.IO.Path]::GetFullPath($line.Substring(9))
+                if ($registeredPath -eq $requestedPath) { $targetPath = $registeredPath }
+            } elseif ($line -eq "branch refs/heads/$Name") {
+                $targetPath = $registeredPath
             }
         }
 
@@ -254,19 +278,29 @@ switch ($Action) {
             Write-Error "Cannot remove the main repository root: $targetPath"
             exit 1
         }
+        $resolvedTarget = (Get-Item -LiteralPath $targetPath -Force).FullName
+        $resolvedCurrent = (Get-Location).Path
+        if ($resolvedCurrent -eq $resolvedTarget -or
+            $resolvedCurrent.StartsWith($resolvedTarget.TrimEnd('\', '/') + [System.IO.Path]::DirectorySeparatorChar,
+                [System.StringComparison]::OrdinalIgnoreCase)) {
+            throw 'Run removal from a surviving checkout, outside the target directory.'
+        }
+        if ((Get-Item -LiteralPath $targetPath -Force).Attributes -band [System.IO.FileAttributes]::ReparsePoint) {
+            throw 'Refusing to remove a linked worktree directory.'
+        }
 
         Write-Host ">> Removing Git worktree: $targetPath" -ForegroundColor Cyan
-        git worktree remove $targetPath --force
-        git worktree prune
-
-        if (Test-Path -LiteralPath $targetPath) {
-            Remove-Item -LiteralPath $targetPath -Recurse -Force
+        Invoke-Git worktree remove $resolvedTarget
+        if (Test-Path -LiteralPath $resolvedTarget) { throw 'Worktree directory remains after Git removal.' }
+        $remaining = Invoke-Git -c core.quotePath=false worktree list --porcelain
+        if ($remaining -contains ('worktree ' + ($resolvedTarget -replace '\\', '/'))) {
+            throw 'Worktree registration remains after Git removal.'
         }
 
         Write-Host ">> Worktree removed cleanly: $targetPath" -ForegroundColor Green
     }
 
     "list" {
-        git worktree list
+        Invoke-Git worktree list
     }
 }

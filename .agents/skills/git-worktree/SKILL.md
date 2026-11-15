@@ -13,7 +13,7 @@ This skill defines the operational procedure for managing Git worktrees, ensurin
 
 Activate this skill whenever:
 - The user requests a new worktree (e.g., *"create a worktree for branch X"*, *"set up an isolated worktree for Y"*).
-- Running parallel subagents or background tasks that require an isolated checkout without disrupting the active working tree.
+- The user selects a new task checkout, or a bounded detached diagnostic requires isolation.
 - Repairing or synchronizing an existing worktree that is missing ignored test vectors, reference documentation, or `.env`.
 
 ---
@@ -22,7 +22,7 @@ Activate this skill whenever:
 
 1. **Sibling Directory Placement Invariant:**
    - Worktrees must **always** be placed as sibling directories in the repository's parent folder (`../<repo_name>-<branch_name>`).
-   - **Zero Prompts to User:** Never ask the user where to place the worktree. Sibling placement in the parent folder is the standard invariant.
+   - First follow the [task checkout choice](../../rules/git-merge-commits.md#choose-the-task-checkout), on both primary and task branches. After the user selects a new worktree, sibling placement needs no second question. Parallel work alone does not authorize relocation.
    - **No Internal Worktree Nesting:** Never create worktrees inside the repository (e.g., `.worktrees/` is deprecated).
 
 2. **Strict Worktree Isolation & Zero-Junction Invariant:**
@@ -83,18 +83,33 @@ If an existing worktree was created without the script and is missing `.env`, `r
 Apply the FPGA source check from Step 1 before and after synchronization. For a repair limited to missing FPGA sources, physically copy only those missing directories from a validated checkout, including their manifests, and verify them in the target with the bootstrap command above. A full asset synchronization and graph refresh are unnecessary for this limited repair.
 
 ### Step 4: Teardown & Cleanup
-Once the worktree branch has been merged into `master` or is no longer needed:
+Removal requires its own authorization or an existing complete-integration request.
+Inspect ownership, active commands and all pending/ignored files first. Preserve
+unique material under the surviving checkout's `.agent/tmp/`. Run from there:
 ```powershell
 .\tools\worktree.ps1 remove <branch_name>
 ```
-The script removes the worktree via `git worktree remove --force` and prunes stale worktree registrations.
+The script uses ordinary `git worktree remove`, checks failure, and confirms both
+directory and registration removal. It never forces removal, prunes unrelated
+registrations or recursively deletes a leftover directory. Branch deletion is
+separate. For automatic post-integration preservation and conditional branch
+deletion, use [the integration tool](../../../tools/verification/README.md#local-integration).
+
+### Temporary Detached Tests
+
+For a bounded diagnostic, use `.\tools\worktree.ps1 test <name> -Base <commit>`.
+This creates no task branch and copies independent assets. Keep real edits and
+final commits in the selected task checkout. Reproduce dirty candidate files and
+fixtures explicitly when needed; canonical acceptance stays in the selected
+checkout. Report the experiment, preserve useful outputs and remove it from a
+surviving checkout. A failed removal remains outstanding work.
 
 ---
 
 ## 4. Subagent Delegation Contract
 
 When delegating an isolated task to a subagent:
-1. The parent agent creates the worktree via `.\tools\worktree.ps1 add <branch>`.
+1. Establish the user's task location choice first; delegation does not grant relocation permission. Create a task worktree only after that choice, via `.\tools\worktree.ps1 add <branch>`.
 2. The subagent executes all commands strictly within the worktree directory.
 3. Upon completion and verification, the subagent returns its report to the parent.
-4. The parent merges the branch (using `git-resolve-merge` if conflicts arise) and runs `.\tools\worktree.ps1 remove <branch>`.
+4. The parent follows `git-resolve-merge` for authorized integration; cleanup requires its stated authorization scope.

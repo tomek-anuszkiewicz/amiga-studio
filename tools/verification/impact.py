@@ -87,6 +87,7 @@ def full_scope_input(path):
         return False
     name = Path(path).name
     return (name in {"Cargo.toml", "Cargo.lock", "build.rs", "rust-toolchain", "rust-toolchain.toml"}
+            or path == "tools/worktree.ps1"
             or path.startswith((".cargo/", "Obsidian/Amiga/Design/"))
             or path.startswith("tools/verification/") and not path.endswith(".md"))
 

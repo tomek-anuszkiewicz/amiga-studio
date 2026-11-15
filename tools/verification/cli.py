@@ -38,6 +38,10 @@ may appear anywhere among sentence selectors. --exact requires crate NAME,
 suite NAME and case NAME for Rust, or case NAME for SingleStep groups.
 Completion profiles compare pending changes against HEAD and automatically reuse
 matching evidence in .agent/tmp/verification/PROFILE, or the chosen --results-dir.
+Use --integration-base COMMIT for complete integration scope, including committed
+task work. COMMIT must be a full immutable commit ID.
+Local integration: integrate freeze review PATH partition PATH target BRANCH;
+integrate seal|publish|cleanup record PATH; integrate recover.
 Only runner gui uses -- to pass native program options.
 """
 
@@ -97,6 +101,8 @@ def parser():
                       help="Store verifier logs and SingleStep reports under PATH")
     root.add_argument("--exact", action="store_true",
                       help="Match one Rust suite test or SingleStep group exactly")
+    root.add_argument("--integration-base", metavar="COMMIT",
+                      help="Compare the complete integration candidate with this immutable commit")
     commands = root.add_subparsers(dest="command", required=True)
     for name in ("commit", "milestone"):
         leaf = commands.add_parser(name, help=f"Run the {name} completion profile")
@@ -121,6 +127,9 @@ def parser():
     runs = commands.add_parser("runner", help="Reports, CPU benchmarks and GUI captures")
     runs.add_argument("action", choices=("build", "bench", "gui", "analyze", "refresh"))
     runs.add_argument("words", nargs=argparse.REMAINDER)
+    integration = commands.add_parser("integrate", help="Freeze, seal, publish, recover or clean up local integration")
+    integration.add_argument("action", choices=("freeze", "seal", "publish", "recover", "cleanup"))
+    integration.add_argument("words", nargs="*", metavar="SELECTOR")
     return root
 
 
@@ -135,6 +144,7 @@ def parse_args(argv):
     common.add_argument("--log-level", choices=("full", "warn", "error"))
     common.add_argument("--results-dir")
     common.add_argument("--exact", action="store_true")
+    common.add_argument("--integration-base")
     separator = argv.index("--") if "--" in argv else len(argv)
     settings, words = common.parse_known_args(argv[:separator])
     args = root.parse_args(words + argv[separator:])
@@ -143,4 +153,5 @@ def parse_args(argv):
     args.log_level = settings.log_level or ("full" if report else "warn")
     args.results_dir = settings.results_dir
     args.exact = settings.exact
+    args.integration_base = settings.integration_base
     return root, args

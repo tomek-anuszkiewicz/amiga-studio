@@ -442,3 +442,6 @@ unqueryable
 usestdhandles
 rdonly
 eof
+fsync
+inode
+readline

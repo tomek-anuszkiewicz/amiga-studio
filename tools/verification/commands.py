@@ -141,7 +141,7 @@ PYTHON_INPUTS = {
     ),
     "RAG MCP contracts": ("tools/amiga-rag-mcp-server/", ".codex/config.toml"),
     "Artifact report contracts": ("tools/artifacts/",),
-    "Verification CLI contracts": ("tools/verification/", "tools/web.ps1"),
+    "Verification CLI contracts": ("tools/verification/", "tools/web.ps1", "tools/worktree.ps1"),
 }
 
 
@@ -312,6 +312,8 @@ def select_phases(args, changes, explanations=None):
         if args.command == "commit":
             rust_scope = select_rust_scope(REPO_ROOT, changes,
                                            {path for inputs in PYTHON_INPUTS.values() for path in inputs})
+            if getattr(args, "integration_divergent", False):
+                rust_scope = RustScope(None, "Divergent integration requires full ordinary workspace verification.")
             if explanations is not None:
                 explanations.extend(rust_scope.explain())
         coverage = select_coverage_commands(args.command, rust_scope)

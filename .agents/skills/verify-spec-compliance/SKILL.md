@@ -24,6 +24,9 @@ Explicit review requests remain valid.
 ## 1. Establish the Intended Snapshot
 
 Identify the exact pending paths/hunks, new files and planned commits under [commit policy](../../rules/git-commits.md) before reviewing. Compare the complete intended change against the current `HEAD`.
+For local integration, use the recorded immutable primary-branch comparison base
+instead, including already committed task changes and merge resolutions. HEAD
+and index identities still detect concurrent edits independently.
 Do not treat every dirty file as part of the commit or stage files merely to
 select a documentation scope.
 

@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import impact
+from commands import PYTHON_INPUTS
 from repository import collect_changes, git
 
 
@@ -110,6 +111,14 @@ class ImpactTests(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertIsNone(self.select([path]).packages)
         self.assertIsNone(self.select([]).packages)
+
+    def test_worktree_python_ownership_preserves_its_existing_full_rust_scope(self):
+        inputs = {path for owned in PYTHON_INPUTS.values() for path in owned}
+        self.assertIn("tools/worktree.ps1", inputs)
+        # Valid metadata must not turn the known Python input into a Rust skip.
+        with patch.object(impact, "workspace_graph", return_value=({}, {})):
+            scope = impact.select_rust_scope(self.root, ["tools/worktree.ps1"], inputs)
+        self.assertIsNone(scope.packages)
 
     def test_metadata_failure_incomplete_graph_and_outside_local_dependency_cannot_skip(self):
         with patch.object(impact.subprocess, "run", side_effect=OSError("not available")):

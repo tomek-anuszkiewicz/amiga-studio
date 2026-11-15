@@ -14,6 +14,11 @@ planned commits without another confirmation. Keep the request active through
 routine in-scope corrections and user answers. Ask only for substantive unresolved
 decisions, including protected verification or reference changes.
 
+Follow the [task checkout choice](git-merge-commits.md#choose-the-task-checkout)
+before new implementation. Preparation does not authorize a new task destination.
+Commit-only authorization does not include merging or removal; complete local
+integration follows [its owning rule](git-merge-commits.md#authorization-and-preparation).
+
 A request to commit, including a commit required by roadmap closure, delegates
 commit partitioning to the agent. Inspect available session/task records, pending
 diffs and recent history to identify the coherent changes within the authorized
@@ -34,13 +39,15 @@ those closure points, the user controls commit timing.
 1. Select sessions, paths/hunks and commit groups, including any
    requested milestone scope. Session provenance guides grouping; a shared dirty
    directory does not establish authorship. Resolve dependencies and integration
-   conflicts now. Prefer separate worktrees for simultaneous writers; follow
+   conflicts now. Use separate worktrees for simultaneous writers only after the
+   user's location choice; follow
    [merge policy](git-merge-commits.md) for divergent integration.
 2. Establish a candidate containing exactly that batch. The verifier executes the
    working tree, not just staged files. Isolate mixed or actively changing work
-   using [git-worktree](../skills/git-worktree/SKILL.md); preserve unrelated source,
+   using [git-worktree](../skills/git-worktree/SKILL.md) after that choice; preserve unrelated source,
    staged entries and history. Compare pending changes against the current `HEAD`.
-   Later edits belong to a later batch.
+   For local integration, compare the complete candidate against the recorded
+   immutable primary-branch base instead. Later edits belong to a later batch.
 3. Perform [specification compliance](../skills/verify-spec-compliance/SKILL.md),
    compatible documentation enrichment, necessary refactoring, language resolution
    and applicable [coverage review](unit-testing-policy.md#coverage-during-development-and-review).
@@ -91,7 +98,8 @@ work when their coverage and candidate match.
 ## Canonical Verification and Continuation
 
 Use native Git and the existing verifier. The complete required check set comes
-from all pending changes against `HEAD`; reruns come from each successful group's
+from all pending changes against `HEAD`, or the complete integration candidate
+against its explicit immutable base; reruns come from each successful group's
 inputs. These comparisons must remain separate.
 
 ```powershell
@@ -112,6 +120,11 @@ criteria and intact artifacts. Coverage execution, export and summary are one
 bundle. Failed, missing, interrupted or invalidated groups must execute; approval,
 a question or a resumed conversation is neither a pass nor an invalidation.
 
+Integration uses `commit --integration-base <commit>`; its complete comparison
+scope is separate from HEAD/source/index stability. After freeze, the integration
+tool validates the prepared partition against the resulting commits as a narrow
+mechanical bridge. This does not permit general evidence reuse across changed HEAD.
+
 Content changes return the batch to preparation. Rerun affected checks and update
 review; retain demonstrably valid independent results. Unknown impact requires
 conservative execution, up to the full profile. Never waive a failed gate with a
@@ -127,7 +140,8 @@ uncommitted when it cannot be resolved.
 - Do not edit diary, documentation or code between commits. Detect interference
   before each operation, and compare the final tree with the frozen candidate.
   Partial failure stops the sequence; retain completed commits and pending work
-  without automatic reset or history rewriting.
+  without automatic reset or history rewriting. For integration, seal the exact
+  frozen result before conditional publication through the owning merge procedure.
 - Evidence applies to the combined final candidate. Do not describe intermediate
   commits as individually tested unless that verification was explicitly required
   and completed during preparation.

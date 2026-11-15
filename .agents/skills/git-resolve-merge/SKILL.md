@@ -1,144 +1,79 @@
 ---
 name: git-resolve-merge
-description: Fast-forward branches directly; reconcile changed Markdown, conflicts, and verification for divergent merges.
+description: Prepare integration on the task branch, conditionally publish the reviewed commit, and perform authorized cleanup.
 ---
 
-# Recipe: Git Branch Reintegration & Conflict Resolution
+# Local Branch Integration
 
-This skill provides the fast-forward command and the operational procedure for divergent merges, conflict resolution, and merge commits per [`.agents/rules/git-merge-commits.md`](../../rules/git-merge-commits.md).
+Follow [task location, authorization and integration rules](../../rules/git-merge-commits.md).
+A merge-only request does not authorize cleanup; complete local integration does.
+Use the selected task checkout for synchronization and preparation. Primary-branch
+implementation uses ordinary batch preparation without self-integration.
 
----
+## 1. Record the Baseline and Synchronize
 
-## 1. When to Use This Skill
+Inspect native Git state in both registered checkouts. Resolve the primary branch
+and record its immutable commit as `B`; do not repeatedly merge a moving name.
+Preserve unrelated work and index entries. If pending changes prevent a safe
+merge, follow the owning rule's prerequisite-commit or scoped-decision procedure.
 
-Activate this skill whenever:
-- Reintegrating a feature branch or isolated Git worktree back into `master`.
-- Resolving Git merge conflicts between divergent branches.
-- Cleaning up and pruning Git worktrees after successful branch reintegration.
-
----
-
-## 2. Core Reintegration Principles
-
-1. **Fast-Forward:** Run `git merge --ff-only <source-branch>` in the target worktree. On success, stop without review, verification, a new commit, a diary entry, or worktree cleanup. A conflict-free merge of diverged branches still needs a merge commit.
-2. **Conflicting Merges $\to$ Explicit Merge Commit:** Never silently rebase away conflicts. Create an explicit merge commit documenting the conflict resolution strategy.
-3. **Holistic Resolution:** Never blindly accept `--ours` or `--theirs`. Merge conflicting code, unit tests, and documentation from both branches.
-4. **Divergent-Merge Markdown Review:** Git conflict detection is only a text merge. The agent reviews every changed tracked `.md` file before accepting a divergent merge result, including files with no conflict markers.
-
----
-
-## 3. Step-by-Step Execution Workflow
-
-### Step 1: Attempt Fast-Forward
-From the target branch's worktree, run:
-```powershell
-git merge --ff-only <source-branch>
-```
-If it succeeds, the reintegration is complete. Do not perform the later steps or run checks for this branch advance. If it fails, diagnose the reason; use the divergent-merge steps only when the branches have diverged.
-
-### Step 2: Merge Diverged Branches
-Ensure the target branch is clean, then start the merge without committing:
-```powershell
-git status
-git merge <source-branch> --no-ff --no-commit
-```
-- Inspect and validate the merged tree before committing.
-- For merge conflicts, inspect conflicted files:
-  ```powershell
-  git status
-  ```
-
-### Step 3: Resolve Conflicts and Reconcile Markdown
-For each conflicted file:
-1. Open the file and inspect the conflict markers (`<<<<<<< HEAD`, `=======`, `>>>>>>> <source-branch>`).
-2. Unify architectural changes:
-   - **Rust Code:** Retain new structs/methods from both branches. Verify disjoint borrowing and zero allocation invariants.
-   - **Unit Tests:** Retain and merge test cases from both branches.
-   - **Design Docs & DIARY.md:** Combine chronological entries and design notes without losing historical entries.
-3. Remove all conflict markers and stage resolved files:
-   ```powershell
-   git add <resolved-file>
-   ```
-
-Review Markdown independently of Git's conflict list. Before committing a divergent merge, identify the union of tracked `.md` paths changed from the common base to each branch. Use `--no-renames` to expose both sides of a move and `-z` to handle unusual path names:
+In the task checkout, merge exactly `B`. For divergent histories:
 
 ```powershell
-$base = git merge-base HEAD <source-branch>
-git diff --name-status --no-renames -z $base HEAD -- '*.md'
-git diff --name-status --no-renames -z $base <source-branch> -- '*.md'
+git merge --no-ff --no-commit <B>
 ```
 
-For each path in that union, inspect the available base, target, and source versions and read the complete proposed file where it exists, not just conflict hunks. Resolve overlapping and separate edits in context; check section flow, terminology, links, referenced paths and commands, and claims against the merged implementation. Explicitly decide whether additions, deletions, and moves remain valid. Edit and stage the Markdown result when Git's clean automatic merge is incoherent. Follow [documentation maintenance](../../rules/docs-maintenance.md) for affected specifications and links.
+For a simple synchronization, use `git merge --ff-only <B>`. This synchronization
+does not publish the task result. Preserve real divergent merge parents.
 
-Keep a per-path review checklist in `.agent/tmp/` during the merge. Do not finalize while any changed Markdown path is unreviewed or a substantive conflict remains unresolved. Summarize the reviewed scope and significant decisions in the merge commit and diary; do not describe automated checks as semantic approval.
+## 2. Reconcile the Complete Result
 
-### Step 4: Prepare and Verify the Merge Batch
-Follow [batch preparation](../../rules/git-commits.md), including the complete
-integrated candidate against `HEAD`. Prepare the merge's diary entry and message
-now, recording the Markdown review, conflict decisions and checks already observed.
-Finish all edits before final verification; record its outcome in the message and
-completion response without a later diary rewrite. Never finalize a divergent merge
-without a passing canonical verdict and independent review:
+For divergent integration, identify the common base of the original source tip
+and `B`. Inventory the union of tracked Markdown paths changed on both sides:
+
 ```powershell
-python tools/verification/verify.py commit
+git diff --name-only --no-renames -z <common-base> <original-source-tip> -- '*.md'
+git diff --name-only --no-renames -z <common-base> <B> -- '*.md'
 ```
 
-Retain full ordinary-workspace test coverage for the merge. If the canonical
-profile selects only part of it, also run `python tools/verification/verify.py test rust workspace`
-during preparation; a full ordinary-workspace coverage run already supplies those
-tests. Formatting is included in the canonical profile. Run additional domain
-gates required by `AGENTS.md`. Corrections return to preparation; repeat the same
-command and freeze only after the final evidence and reviewer verdict pass.
+Review every inventoried path, including additions, deletions, moves and files
+without textual conflicts. Compare common-base, both branch versions and candidate
+content against the integrated code. Reconcile features, tests, instructions,
+links and diary decisions; stage only authorized resolutions. Keep a per-path
+checklist under `.agent/tmp/`. Record scope and substantive decisions in the diary
+and prepared merge message, including resolution, Markdown review and verification.
 
-### Step 5: Author Standardized Merge Commit
-Consume the frozen reviewed candidate and the already prepared message, using the
-mandatory structured merge message schema. Do not edit the diary or rerun gates
-between freeze and the mechanical Git operation:
+## 3. Prepare, Verify and Freeze
+
+Prepare the complete candidate, partition, messages, compliance review, applicable
+coverage review, diary and fresh-context independent review through
+[batch preparation](../../rules/git-commits.md). Run:
+
 ```powershell
-git commit -m "merge(<source-branch>): integrate <source-branch> into master
-
-Conflict Resolution:
-- <file1>: <Concise description of resolution>
-- <file2>: <Concise description of resolution>
-
-Markdown Review:
-- Reviewed <count> changed Markdown paths from both branches, including clean automatic merges.
-- <Significant reconciliation decisions or "No corrections needed after review">.
-
-Verification:
-- Passed: python tools/verification/verify.py check formatting
-- Passed: python tools/verification/verify.py check architecture
-- Passed: python tools/verification/verify.py test rust workspace"
+python tools/verification/verify.py commit --integration-base <B>
 ```
 
-### Step 6: Worktree Teardown & Cleanup (If Using Worktrees)
-After a divergent merge, if the branch was developed in an isolated worktree:
-1. Teardown the worktree using the automated script:
-   ```powershell
-   .\tools\worktree.ps1 remove <branch-name>
-   ```
-2. Delete the merged feature branch (if not deleted by worktree remove):
-   ```powershell
-   git branch -d <source-branch>
-   ```
+This includes already committed task changes. Divergent integration retains full
+ordinary-workspace tests through coverage, without another uninstrumented run.
+Milestone checks retain their own triggers.
 
----
+Follow the [tool reference](../../../tools/verification/README.md#local-integration)
+to record the review and prepared trees, freeze, make only the prepared commits,
+then seal their exact mechanical consumption. Do not rerun expensive verification
+solely because those commits change HEAD. A pre-existing clean committed result
+can use an empty new-commit partition.
 
-## 5. Standard Merge Report Format
+## 4. Publish and Complete the Authorized Scope
 
-```markdown
-### 🔀 Git Merge & Conflict Resolution Report
-- **Source Branch:** `<source_branch>` $\to$ **Target Branch:** `<target_branch>`
-- **Merge Status:** [MERGED CLEANLY | CONFLICTS RESOLVED | ABORTED]
-- **Merge Commit SHA:** `<commit_sha>`
-- **Conflict Decision Log:**
-  | Conflicted File | Conflicting Aspects | Resolution Rationale |
-  | :--- | :--- | :--- |
-  | `crates/.../<crate>.rs` | Both branches added imports | Merged both import blocks, eliminated duplicate entries |
-- **Markdown Review:** <count> changed paths reviewed, including clean automatic merges; <significant decisions or none>.
-- **Test Verification:**
-  - `python tools/verification/verify.py test rust workspace`: PASS
-  - `python tools/verification/verify.py check formatting`: PASS
-  - `check_architecture.py`: PASS
-- **Worktree Cleanup:** Worktree removed and pruned cleanly.
-```
+Run `integrate publish` using the sealed record. The operation conditionally
+publishes exactly `B -> C` while advancing the target checkout under native
+reference locks. Do not substitute an ordinary target-side merge. If the target
+advances, merge its new immutable tip into the task branch and prepare the new
+combined result. If publication is interrupted, use `integrate recover` from a
+surviving checkout; unexpected edits require a decision and remain preserved.
+
+For complete integration, run `integrate cleanup` from the surviving target
+checkout. It preserves local material and removes only the unchanged integrated
+source checkout and branch. A merge-only request stops after publication. Report
+publication and cleanup separately; retry failed cleanup using its retained
+record without repeating verification or creating replacement commits.

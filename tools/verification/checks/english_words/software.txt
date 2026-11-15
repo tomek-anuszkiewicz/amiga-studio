@@ -1222,3 +1222,7 @@ dft
 rms
 wav
 reimported
+prunable
+recreatable
+reflog
+revalidated

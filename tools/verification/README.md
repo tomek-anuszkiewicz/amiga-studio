@@ -16,6 +16,9 @@ includes a module path.
 | --- | --- |
 | `commit` | Required commit profile; excludes full SingleStep |
 | `milestone [singlestep]` | Full language audit and full SingleStep; the selector does not duplicate execution |
+| `integrate freeze review PATH partition PATH target BRANCH` | Freeze the approved complete integration candidate and canonical evidence |
+| `integrate seal\|publish\|cleanup record PATH` | Check prepared commits, conditionally publish, or remove the integrated source |
+| `integrate recover` | Inspect an interrupted publication from a surviving checkout |
 | `test rust [unit|integration|all|workspace]` | Diagnostic tiers; default is unit plus integration; workspace excludes test_runner |
 | `test rust crate NAME [suite NAME] [case FILTER]` | One Cargo package, optionally one integration target and filter |
 | `test coverage crate NAME` | All ordinary tests of one package with detailed coverage; excludes test_runner |
@@ -49,6 +52,9 @@ controls how many vectors from that group execute.
 CPU benchmarks use the Cargo benchmark target described below.
 The aggregate SingleStep test saves suite results and calls report aggregation
 once after all selected groups finish, including failing executions.
+`--integration-base COMMIT` selects complete integration scope for completion
+profiles; it requires a full immutable commit ID. Integration operations have
+their own validation and reject preview/exact selectors.
 Only `runner gui -- OPTIONS` forwards native switches to a separate program.
 Counts must be positive; the parser rejects unknown or repeated selectors and
 missing or invalid values before execution, with exit code 2.
@@ -264,6 +270,11 @@ the intended batch. The full required set comes from all staged, unstaged and
 nonignored new changes against the current `HEAD`, including earlier pending
 edits even when only a vocabulary correction changed since the last attempt.
 `--plan` selects and displays commands without executing or writing records.
+For integration, `--integration-base <full-commit-id>` selects committed task
+changes as well as pending paths against that immutable base. HEAD, source and
+index identities still guard concurrency independently. The plan and completion
+record include the base and full selected path scope. Changing the base starts a
+new context with conservative reruns; ordinary HEAD-based continuation is unchanged.
 
 Each actual `commit` invocation also checks official Rust Stable metadata with a
 five-second network timeout. It compares the installed `stable` channel with the
@@ -422,6 +433,9 @@ complete hardware scenarios or performance.
 `commit --plan` explains the scope before listing commands. Git supplies the union
 of staged, unstaged and nonignored new paths against the current `HEAD`, including
 both rename endpoints. Already committed changes are outside this selection.
+With `--integration-base`, committed changes are included against the recorded
+primary-branch revision; divergent synchronization selects the full ordinary
+workspace regardless of changed package ownership.
 Verification executes the working tree; it does not extract or stage an index-only
 candidate. A scoped commit must still match the verified source. Unrelated pending
 Rust changes therefore expand the test scope, even for a documentation task.
@@ -434,6 +448,7 @@ Rust changes therefore expand the test scope, even for a documentation task.
 | Known verifier orchestration inputs: `verify.py`, `execution.py`, `evidence.py`, `batch_lock.py`, `tests/test_evidence.py` | No Rust tests or coverage; Python contracts and all quality gates still run |
 | Cargo manifests/lockfiles, build scripts, toolchain or `.cargo/` configuration | Full ordinary workspace and standard harness |
 | Other verification implementation/tests, including selection, CLI grammar, Git change discovery, commands, coverage processing and checks; Design specifications | Full ordinary workspace and standard harness |
+| `tools/worktree.ps1` | Full ordinary workspace and standard harness; Python contract ownership does not reduce its existing Rust fallback |
 | Unknown ownership, unavailable Cargo metadata, or a clean tree | Full ordinary workspace and standard harness |
 
 [impact.py](impact.py) reads `cargo metadata --no-deps --offline --locked`. It uses
@@ -460,7 +475,8 @@ All ordinary unit and integration tests of selected packages run. When
 aggregate full SingleStep target. Performance benchmarks remain explicit
 `runner bench` diagnostics; benchmark workload contracts remain standard tests.
 Full Clippy, formatting, architecture, hardware/code audits, English, frontmatter
-and the Python contract policy are unchanged. Selection always derives the full required set from pending changes against HEAD. Repeating the command
+and the Python contract policy are unchanged. Selection derives the full required
+set against HEAD, or the explicit immutable integration base. Repeating the command
 can retain successful groups under the input and artifact rules below; Cargo
 retains responsibility for incremental compilation.
 
@@ -749,3 +765,117 @@ For future investigations, follow
 the observed failure, establish the relevant clock or state transition, and
 repair its demonstrated mechanism. Coordinate or timing adjustments made solely
 to fit an image do not establish hardware behavior.
+
+## Local integration
+
+Authorization and checkout selection belong to the
+[local integration rule](../../.agents/rules/git-merge-commits.md); semantic
+preparation belongs to [the merge skill](../../.agents/skills/git-resolve-merge/SKILL.md).
+The tool does not choose the task location, merge branches, grant authorization,
+write review verdicts or create commits.
+
+Record the primary branch's immutable tip as `B`, synchronize exactly that commit
+into the selected task branch, reconcile the combined result and finish all
+candidate edits, messages and diary entries before final verification:
+
+```powershell
+python tools/verification/verify.py commit --integration-base <B>
+```
+
+A full hexadecimal commit ID is required; moving names such as `master` or `HEAD`
+are rejected as comparison bases. The selected scope includes committed source
+changes, pending staged/unstaged/new paths and both endpoints of moves/deletions.
+Divergent synchronization retains full ordinary-workspace coverage and standard
+harness tests. Full SingleStep retains its milestone trigger.
+
+Prepare a JSON partition under `.agent/tmp/`: a list of objects with `message`
+(the exact complete commit message) and `tree` (the prepared Git tree ID after
+that commit). A temporary Git index can construct intermediate trees without
+editing the candidate or real index. Shared paths such as the diary may appear
+in several prepared trees. Each intermediate tree may change only pending paths,
+and the last tree must equal the verified candidate. Use an empty list when all
+task changes are already committed and no merge commit remains pending.
+
+After the fresh-context reviewer approves the exact final source, baseline,
+partition and canonical evidence, record its result in a JSON review object:
+
+```json
+{
+  "verdict": "APPROVED",
+  "reviewer": "<independent reviewer identity>",
+  "source": "<commit.json source digest>",
+  "integration_base": "<B>",
+  "partition": "<SHA-256 of canonical partition JSON>"
+}
+```
+
+The partition digest uses `evidence.digest(partition)`: UTF-8 SHA-256 of
+`json.dumps(partition, sort_keys=True)`. This records the independent review
+decision; it is not a cryptographic reviewer authentication service. Keep the
+reviewer's actual verdict and evidence references with the retained logs.
+
+```powershell
+python tools/verification/verify.py integrate freeze review .agent/tmp/review.json partition .agent/tmp/partition.json target master
+# Create only the prepared commits, using their exact trees, parents and messages.
+python tools/verification/verify.py integrate seal record .agent/tmp/verification/commit/integration.json
+python tools/verification/verify.py integrate publish record .agent/tmp/verification/commit/integration.json
+```
+
+Use the same `--results-dir .agent/tmp/<batch>` for verification and freeze when
+using a custom directory. Freeze validates current inputs, conditions, required
+commands and intact artifacts. Seal requires a clean source and checks the exact
+first-parent commit sequence, merge parents, messages and trees. It bridges only
+those mechanical commits to the frozen evidence, without a second expensive
+profile or general evidence reuse across changed HEAD. Publication checks retained
+artifacts again. New content or a different target baseline returns to preparation.
+
+Publication holds a process lock in Git's common directory, shared by worktrees.
+A native `update-ref --stdin` transaction prepares expected-old target and source
+reference locks before `read-tree -m -u B C` advances the clean target index and
+tracked files. It then confirms the exact tree, commits the reference transaction,
+records `B -> C` in the reflog and checks final checkout consistency. Dirty or
+staged target state, unexpected HEAD, pending Git operations, changed ownership
+and untracked/ignored collisions are preserved and rejected. Another publisher
+is refused without bypassing the locks.
+
+The Git mechanisms are described in [update-ref](https://git-scm.com/docs/git-update-ref)
+and [read-tree](https://git-scm.com/docs/git-read-tree). Reference publication is
+atomic; the checkout directory is not. A minimal common-directory phase record
+survives interruptions. From a surviving checkout, run:
+
+```powershell
+python tools/verification/verify.py integrate recover
+```
+
+Recovery recognizes an untouched baseline, rolls a complete uncommitted checkout
+transition back through safe two-tree checkout, or confirms a committed transition.
+It holds a native prepared verification lock on the target reference through
+checkout consistency checks and phase removal, excluding ordinary Git ref writers.
+Mixed files, unexpected references or edited recovery evidence require a concrete
+decision and remain preserved. Native reference locks left by an abruptly killed
+Git process also require ownership investigation; never blindly delete locks.
+The process lock coordinates participating publishers and native ref locks guard
+against ordinary Git writers. Neither protects files from arbitrary editors;
+observed interference blocks completion.
+
+For an authorized complete integration, run from the surviving target checkout:
+
+```powershell
+python tools/verification/verify.py integrate cleanup record <source-checkout>/.agent/tmp/verification/commit/integration.json
+```
+
+Cleanup rechecks tip, ancestry, registration, pending work and local command
+ownership. It inventories ignored files and preserves unknown/unique material,
+including edited `.env`, plans, diagnostics and evidence, under
+`.agent/tmp/integration-archives/`. Identical files already surviving in the target
+need no second copy; build caches and graph outputs are recreatable. Ordinary
+Git removal runs through `tools/worktree.ps1`, never forced or followed by
+recursive fallback deletion or unrelated pruning. Prepared reference locks protect
+conditional deletion of the unchanged source branch. Cleanup failure leaves
+publication intact and reports the retained record for retry. After checkout
+removal, use that archived record for remaining branch cleanup.
+
+The operation does not prevent an arbitrary editor or external process broker
+from changing files. Cleanup conservatively rejects inaccessible process ownership;
+preservation and state checks detect observed changes. Permission errors and
+unexpected partial removal remain incomplete cleanup, never success.

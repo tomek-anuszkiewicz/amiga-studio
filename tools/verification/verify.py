@@ -11,7 +11,7 @@ import urllib.request
 from cli import parse_args
 from commands import select_phases
 from execution import execute_command, print_info, result_label
-from repository import REPO_ROOT, collect_changes, snapshot
+from repository import REPO_ROOT, collect_changes, snapshot, resolve_base, divergent_integration, candidate_tree
 from evidence import BatchEvidence, capture_inputs, execution_conditions, group_identity
 from batch_lock import BatchLock
 
@@ -61,6 +61,13 @@ def main(argv=None):
     parser, args = parse_args(sys.argv[1:] if argv is None else argv)
     if args is None:
         return 0
+    if args.command == "integrate":
+        from integration import dispatch
+        try:
+            return dispatch(REPO_ROOT, args)
+        except (OSError, ValueError, KeyError, TypeError, RuntimeError, subprocess.SubprocessError) as error:
+            print(f"{result_label(False)} {error}")
+            return 1
     before = None
     batch = None
     completion = args.command in ("commit", "milestone")
@@ -76,10 +83,19 @@ def main(argv=None):
             raise ValueError("--results-dir requires a nonempty path")
         directory = args.results_dir or (f".agent/tmp/verification/{args.command}" if completion else None)
         results_dir = (REPO_ROOT / directory).resolve() if directory else None
-        changes = collect_changes(REPO_ROOT) if automatic_python or completion else set()
+        base = getattr(args, "integration_base", None)
+        if base is not None:
+            if not completion:
+                raise ValueError("--integration-base requires a completion profile")
+            base = resolve_base(REPO_ROOT, base)
+        changes = (collect_changes(REPO_ROOT, base) if base else collect_changes(REPO_ROOT)) if automatic_python or completion else set()
+        args.integration_divergent = bool(base and divergent_integration(REPO_ROOT, base))
         if completion and not args.plan:
-            batch = BatchEvidence(REPO_ROOT, results_dir, args.command)
+            batch = BatchEvidence(REPO_ROOT, results_dir, args.command, base)
         explanations = []
+        if completion:
+            explanations.append("Comparison base: " + (base or "HEAD"))
+            explanations.append("Selected paths: " + ", ".join(sorted(changes)))
         phases = select_phases(args, changes, explanations)
     except (RuntimeError, OSError, ValueError) as error:
         parser.error(str(error))
@@ -173,6 +189,8 @@ def execute_batch(args, phases, batch, before):
                   for phase, commands in phases
                   for items in ([commands] if phase == "Coverage" else [[item] for item in commands]) if items]
         batch.record["required"] = [name for _, name, _ in groups]
+        base = getattr(args, "integration_base", None)
+        batch.record["scope"] = sorted(collect_changes(REPO_ROOT, base) if base else collect_changes(REPO_ROOT))
         batch.record["attempt"] = batch.attempt
         batch.record["outcome"] = "running"
         batch.record["results"] = {}
@@ -238,6 +256,7 @@ def execute_batch(args, phases, batch, before):
         success = all(item["status"] in ("executed", "reused") for item in results.values())
         batch.record["outcome"] = "passed" if success else "failed"
         batch.record["source"] = source
+        batch.record["tree"] = candidate_tree(REPO_ROOT)
         batch.save()
         lock.complete()
         print(f"{result_label(success)} {args.command} verification; evidence: {batch.path}")

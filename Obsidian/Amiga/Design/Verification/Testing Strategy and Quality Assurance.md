@@ -32,6 +32,18 @@ Selection includes staged, unstaged and nonignored new paths against the current
 `HEAD`, including both endpoints of renames. Repeating the command checks the
 whole pending change, including earlier edits still awaiting commit. Matching
 successful evidence is reused automatically; a changed `HEAD` starts a new batch.
+Local integration explicitly selects the complete candidate against an immutable
+primary-branch commit with `--integration-base`, including committed task work.
+This comparison base remains separate from HEAD, source and index stability.
+Divergent synchronization requires full ordinary-workspace coverage and standard
+harness suites. The base and selected paths appear in plans and completion records.
+After final approval, the [local integration protocol](../../../../tools/verification/README.md#local-integration)
+freezes the candidate and prepared partition. It validates the exact resulting
+commit sequence without repeating expensive checks solely for mechanical HEAD
+changes. This narrow bridge permits no general changed-HEAD evidence reuse.
+Conditional reference publication installs only the sealed tree; interruptions
+require recovery before source cleanup. A new primary baseline requires a newly
+prepared combined candidate and conservatively revalidated evidence.
 Cargo metadata identifies owning workspace packages and
 their transitive consumers through normal, development and build dependencies,
 including optional and target-specific declarations. All ordinary tests of the
@@ -54,6 +66,8 @@ boundary. Other verification code and tests remain conservative; a new module or
 renamed destination does not inherit orchestration ownership from its directory.
 Unknown input ownership, unavailable metadata and a clean tree also select the
 full Rust scope. This conservative fallback covers inputs outside Cargo's graph.
+The worktree script retains its full Rust fallback even though its behavioral
+contracts belong to the verification Python suite.
 The plan explains selection and omissions. Coverage reports identify the selected
 test packages and are not presented as whole-workspace measurements when partial.
 Report totals include only current files in those packages; retired or unselected

@@ -131,6 +131,13 @@ changes with significant correctness risks receive an extended review. The
 
 ## Review and Record the Result
 
+Before a new implementation task, the agent names the current checkout and branch
+and asks whether to continue there or create a new task worktree. An explicit
+location instruction answers that question for the task. Bounded detached test
+checkouts leave the real implementation in the selected location. The
+[location rule](../.agents/rules/git-merge-commits.md#choose-the-task-checkout)
+defines this boundary.
+
 Routine task completion leaves validated changes available for review. It does
 not itself authorize staging or committing. Ask for a commit when the change is
 ready, or request batch preparation to authorize staging without creating commits.
@@ -158,6 +165,16 @@ prepared commits and compare their final tree with the candidate. No routine
 tests, audits, documentation edits or storage scans run between or after them.
 Evidence covers the combined batch; intermediate commits are not individually
 verified unless that was explicitly required and done during preparation.
+
+For complete local integration, the agent records the primary branch's immutable
+tip, synchronizes it into the task branch and verifies the complete result with
+`commit --integration-base <commit>`. The reviewed partition is frozen before
+commits and sealed afterward. Conditional publication advances the primary
+checkout to exactly that result; authorized cleanup preserves local material
+before removing the unchanged task checkout and branch. Commit-only and
+merge-only requests retain their narrower scope. The
+[integration reference](../tools/verification/README.md#local-integration)
+describes commands, recovery and concurrency limits.
 
 If you are changing the agent infrastructure itself, use
 [Maintaining Agent Tooling](../.agents/references/agent-tooling.md) for script ownership, configuration

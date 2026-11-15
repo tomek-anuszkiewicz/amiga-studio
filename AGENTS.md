@@ -13,6 +13,8 @@ Implement requested behavior and the technical changes necessary to make it work
 
 Run validation commands explicitly. Do not install, configure, or use lifecycle, code, or Git hooks. Use `.agent/tasks/` for execution plans and `.agent/tmp/` for disposable diagnostics and artifacts. Treat existing temporary artifacts as unverified until their assumptions are checked.
 
+Before new implementation, follow the explicit [task checkout choice](.agents/rules/git-merge-commits.md#choose-the-task-checkout), including in an existing worktree. Reuse an established choice for the same task; disposable detached tests retain their bounded exception.
+
 First identify the question and whether existing evidence resolves it. Use scripts for concrete measurement, verification, or data processing; do not repair a tool unless that repair is needed for the task.
 
 For routine workflow steps, prefer existing tools and direct commands. Create helper scripts or extra evidence files only for a concrete task requirement those tools cannot meet.
@@ -96,6 +98,7 @@ Canonical batch verification of pending changes against `HEAD`:
 ```powershell
 python tools/verification/verify.py commit
 ```
+For local integration, compare the complete candidate against the recorded immutable primary-branch commit with `commit --integration-base <commit>`. Follow [local integration](tools/verification/README.md#local-integration) for freezing, mechanical commits, conditional publication and authorized cleanup.
 Repeat the same command after corrections; matching evidence is reused automatically.
 The commit profile checks frontmatter in every local Markdown file under
 `Obsidian/Amiga/`, including Git-ignored reference books. If it reports missing
