@@ -84,15 +84,17 @@ Apply the FPGA source check from Step 1 before and after synchronization. For a 
 
 ### Step 4: Teardown & Cleanup
 Removal requires its own authorization or an existing complete-integration request.
-Inspect ownership, active commands and all pending/ignored files first. Preserve
-unique material under the surviving checkout's `.agent/tmp/`. Run from there:
+Inspect ownership, active commands and pending Git changes first. All ignored
+files are deleted with the worktree, including local configuration, references,
+caches, reports and verification records. Do not inventory, hash, compare, copy
+or archive them before removal. Run from the surviving checkout:
 ```powershell
 .\tools\worktree.ps1 remove <branch_name>
 ```
 The script uses ordinary `git worktree remove`, checks failure, and confirms both
 directory and registration removal. It never forces removal, prunes unrelated
 registrations or recursively deletes a leftover directory. Branch deletion is
-separate. For automatic post-integration preservation and conditional branch
+separate. For automatic post-integration cleanup and conditional branch
 deletion, use [the integration tool](../../../tools/verification/README.md#local-integration).
 
 ### Temporary Detached Tests
@@ -101,8 +103,9 @@ For a bounded diagnostic, use `.\tools\worktree.ps1 test <name> -Base <commit>`.
 This creates no task branch and copies independent assets. Keep real edits and
 final commits in the selected task checkout. Reproduce dirty candidate files and
 fixtures explicitly when needed; canonical acceptance stays in the selected
-checkout. Report the experiment, preserve useful outputs and remove it from a
-surviving checkout. A failed removal remains outstanding work.
+checkout. Report the experiment and useful conclusions in the conversation,
+then remove it from a surviving checkout. Ignored diagnostic outputs are
+discarded. A failed removal remains outstanding work.
 
 ---
 

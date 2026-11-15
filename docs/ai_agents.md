@@ -183,7 +183,7 @@ verification when the exact tip is already tested; the agent asks about unknown
 status and records your confirmation separately from executed checks.
 Conditional publication advances the primary checkout to exactly the approved
 result. After the closure record is committed, cleanup removes the closed task's
-plan copies and preserves needed local material before removing its unchanged
+plan copies and discards all ignored local files when removing its unchanged
 checkout and branch. Commit-only and merge-only requests retain their narrower
 scope. The [skill](../.agents/skills/git-close-task/SKILL.md) owns the procedure; the
 [integration reference](../tools/verification/README.md#local-integration)

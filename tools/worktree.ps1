@@ -49,7 +49,8 @@ Usage: .\tools\worktree.ps1 <add|test|remove|sync|list> [Name] [-Base COMMIT] [-
 Creation and sync copy independent fixtures, .env and graph data from the primary
 checkout; Cargo caches remain independent. Task worktrees require the user's
 location choice. Detached tests keep implementation in that selected checkout.
-Before removal, preserve unique ignored files and stop commands using the checkout.
+Removal discards all ignored files in the worktree without preservation.
+Stop commands using the checkout before removal.
 Run removal from a surviving checkout. Branch deletion is a separate operation.
 
 Examples:

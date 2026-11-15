@@ -922,17 +922,23 @@ python tools/verification/verify.py integrate cleanup record <source-checkout>/.
 ```
 
 Cleanup rechecks tip, ancestry, registration, pending work and local command
-ownership. It inventories ignored files and preserves unknown/unique material,
-including edited `.env`, plans, diagnostics and evidence, under
-`.agent/tmp/integration-archives/`. Identical files already surviving in the target
-need no second copy; build caches and graph outputs are recreatable. Ordinary
+ownership. All ignored files in the source worktree are discarded, including
+`.env`, references, caches, plans, reports and verification evidence. Cleanup does
+not inventory, hash, compare, copy or archive them. The input integration record
+is consumed in memory and is also deleted if it resides in the removed worktree.
+Ordinary
 Git removal runs through `tools/worktree.ps1`, never forced or followed by
 recursive fallback deletion or unrelated pruning. Prepared reference locks protect
 conditional deletion of the unchanged source branch. Cleanup failure leaves
-publication intact and reports the retained record for retry. After checkout
-removal, use that archived record for remaining branch cleanup.
+publication intact. Retry with the original record if it still exists; otherwise
+inspect the remaining directory, registration and branch before completing cleanup.
+Do not rerun verification or recreate deleted evidence merely to finish removal.
+Review the integration diff for bootstrap procedure changes and recommend any
+needed bootstrap steps on the primary branch; cleanup does not run bootstrap.
 
 The operation does not prevent an arbitrary editor or external process broker
-from changing files. Cleanup conservatively rejects inaccessible process ownership;
-preservation and state checks detect observed changes. Permission errors and
+from changing files. Cleanup blocks processes with a readable working directory
+inside the source checkout. It does not query process owners; protected system
+processes with inaccessible working directories do not block cleanup.
+Git state checks detect observed changes. Permission errors and
 unexpected partial removal remain incomplete cleanup, never success.

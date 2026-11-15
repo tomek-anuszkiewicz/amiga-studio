@@ -1820,3 +1820,20 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Reviewed the pending instructions and their routing
   - No emulator behavior changes in this concern
   - Canonical verification and independent review are pending
+---
+
+### [2026-11-15 22:08 CET] — Discard ignored worktree files during integration cleanup
+- **Affected Subsystems**:
+  - `Worktree tooling`
+  - `Integration cleanup and documentation`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove ignored-file inventories and preservation archives during worktree deletion
+  - Retain conditional branch deletion and native removal failure handling
+  - Ignore inaccessible process directories while blocking confirmed source commands
+  - Recommend bootstrap steps from changed tracked procedures without automatically running them
+- **Architectural Rationale & Trade-Offs**:
+  - Apply the user-approved cleanup contract without comparing or copying disposable local material
+- **Verification & Test Results**:
+  - Reviewed cleanup data flow and updated behavioral assertions
+  - git diff --check passed before diary preparation
+  - Canonical verification and independent review are pending

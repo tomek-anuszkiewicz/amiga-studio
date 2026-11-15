@@ -16,7 +16,7 @@ workflow; it does not approve its concrete plan or authorize remote operations.
 Use native Git to identify both branches and registered checkouts, their tips,
 pending operations, staged/unstaged/untracked changes and task ownership. Record
 the immutable target tip as `B` and original source tip. Identify the task ID,
-associated plan copies and unique ignored files that must survive cleanup.
+associated plan copies. Cleanup deletes every ignored file in the source worktree.
 Do not infer scope from a shared dirty checkout or modify files during discovery.
 
 Select exactly one path, with pending task changes taking precedence:
@@ -29,7 +29,7 @@ Select exactly one path, with pending task changes taking precedence:
 
 Present exact branch/worktree/plan names, selected changes, merge or explicitly
 requested rebase, rewritten commits if applicable, verification location and
-scope, proposed commits, closure record and cleanup/preservation paths. Ask the
+scope, proposed commits, closure record and exact cleanup paths. Ask the
 user to approve the plan and wait. For unknown fast-forward test status, ask in
 the same exchange whether `C` is verified or working/unknown. Clear session
 evidence answers this status question, but never replaces plan approval.
@@ -110,21 +110,34 @@ before preparing the new combined result. Use `integrate recover` after interrup
 publication; preserve unexpected edits for a concrete decision.
 
 After confirmed publication and a committed closure record, remove only the
-approved closed-task plan copies from source and target. Check their paths and
-current contents before deletion; preserve unrelated or newly changed plans.
-Plans are normally ignored; tracked plan removal belongs in the verified commit
-partition. Do not archive the closed plan as an active task. Preserve needed
-reports, evidence and unique ignored material under the surviving target's
-`.agent/tmp/` before teardown.
+approved closed-task plan copies from the surviving target checkout. Check their
+paths and current contents; preserve unrelated or newly changed target plans.
+Tracked source-plan removal belongs in the verified commit partition. Ignored
+source plans are deleted with the source worktree, including unrelated local
+copies. Do not archive the closed plan as an active task. All ignored files in
+the removed worktree are discarded, including reports, evidence, local configuration,
+references and caches. Do not inventory, hash, compare, copy or archive them.
+Review the integration diff for changes to bootstrap tooling or its procedure.
+If rebuilding local assets may be needed on the primary branch, recommend the
+relevant bootstrap steps without running them automatically.
 
-Run `integrate cleanup` from the surviving target checkout. It preserves local
-material, uses `tools/worktree.ps1` for ordinary removal and conditionally deletes
+Use the recorded integration commits for this tracked-file check, then read any
+changed bootstrap instructions before recommending a command:
+
+```powershell
+git diff --name-only <B> <C> -- tools/bootstrap/ docs/developers.md .agents/skills/git-worktree/
+```
+
+Run `integrate cleanup` from the surviving target checkout. It uses
+`tools/worktree.ps1` for ordinary removal and conditionally deletes
 only the unchanged integrated local branch. Stop for later work, changed ownership
 or active commands. Never force removal or recursively delete a leftover tree.
 Verify branch absence, worktree registration, physical directory and plan copies
-separately. Report publication separately from cleanup failure; retry cleanup
-without repeating verification or creating replacement commits.
+separately. Report publication separately from cleanup failure. If the input
+record survives, retry cleanup without repeating verification or commits.
+Otherwise inspect the remaining Git and directory state before finishing cleanup;
+do not create a replacement archive or rerun verification to reconstruct deleted evidence.
 
 Report original/final commits, actual verification or its confirmation source,
-remaining limitations, preserved artifacts and each cleanup outcome. Narrower
+remaining limitations, any bootstrap recommendation and each cleanup outcome. Narrower
 commit-only or merge-only requests retain their stated scope.

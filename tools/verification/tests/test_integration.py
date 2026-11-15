@@ -9,7 +9,9 @@ import sys
 import tempfile
 import time
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
+
+import psutil
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import commands
@@ -472,19 +474,20 @@ integration.git=git
                     self.git(self.target, "update-ref", "refs/heads/master", self.base, commit)
                 self.record.write_bytes(sealed)
 
-    def test_cleanup_preserves_unique_ignored_material_and_removes_only_source(self):
+    def test_cleanup_discards_all_source_ignored_files_and_removes_only_source(self):
         commit = self.prepare()
         integration.publish(self.source, self.record)
         self.write(self.source, ".agent/tasks/plan.md", "active evidence\n")
         self.write(self.source, ".env", "unique local configuration\n")
+        self.write(self.source, "target/build-output", "generated output\n")
+        self.write(self.target, ".env", "primary local configuration\n")
         with patch.object(integration_cleanup, "stopped"):
             integration_cleanup.cleanup(self.target, self.record)
         self.assertFalse(self.source.exists())
         self.assertEqual(self.git(self.target, "rev-parse", "HEAD"), commit)
-        archive = next((self.target / ".agent/tmp/integration-archives").iterdir())
-        self.assertEqual((archive / "files/.env").read_text(), "unique local configuration\n")
-        self.assertTrue((archive / "files/.agent/tasks/plan.md").is_file())
-        self.assertEqual(integration.read(archive / "integration.json")["state"], "cleaned")
+        self.assertFalse(self.record.exists(), "Source verification evidence is discarded too")
+        self.assertFalse((self.target / ".agent/tmp/integration-archives").exists())
+        self.assertEqual((self.target / ".env").read_text(), "primary local configuration\n")
         self.assertEqual(self.git(self.target, "branch", "--list", "task"), "")
 
     def test_cleanup_refuses_later_work_and_an_active_command(self):
@@ -503,7 +506,19 @@ integration.git=git
             process.wait(timeout=10)
         self.assertTrue(self.source.exists())
 
-    def test_failed_removal_retains_publication_and_can_retry_archived_record(self):
+    def test_cleanup_ignores_inaccessible_system_processes_but_blocks_source_commands(self):
+        system = Mock(pid=288)
+        system.cwd.side_effect = psutil.AccessDenied(pid=288)
+        system.username.side_effect = AssertionError("Process owners are not needed")
+        command = Mock(pid=123)
+        command.cwd.return_value = str(self.source)
+        with patch.object(psutil, "process_iter", return_value=[system]):
+            integration_cleanup.stopped(self.source)
+        with patch.object(psutil, "process_iter", return_value=[system, command]):
+            with self.assertRaisesRegex(ValueError, "source checkout"):
+                integration_cleanup.stopped(self.source)
+
+    def test_failed_cleanup_retains_publication_and_can_retry_original_record(self):
         commit = self.prepare()
         integration.publish(self.source, self.record)
         native_run = subprocess.run
@@ -516,12 +531,24 @@ integration.git=git
                 integration_cleanup.cleanup(self.target, self.record)
         self.assertTrue(self.source.exists())
         self.assertEqual(self.git(self.target, "rev-parse", "HEAD"), commit)
-        archive = next((self.target / ".agent/tmp/integration-archives").iterdir())
-        # Simulate interruption after safe native removal, before phase recording.
-        self.git(self.target, "worktree", "remove", str(self.source))
-        integration_cleanup.cleanup(self.target, archive / "integration.json")
-        self.assertEqual(integration.read(archive / "integration.json")["state"], "cleaned")
+        self.assertTrue(self.record.exists())
+        self.assertFalse((self.target / ".agent/tmp/integration-archives").exists())
+        with patch.object(integration_cleanup, "stopped"):
+            integration_cleanup.cleanup(self.target, self.record)
+        self.assertFalse(self.source.exists())
         self.assertEqual(self.git(self.target, "branch", "--list", "task"), "")
+
+    def test_cleanup_can_finish_branch_removal_with_an_external_input_record(self):
+        commit = self.prepare()
+        integration.publish(self.source, self.record)
+        record = self.parent / "published-input.json"
+        record.write_bytes(self.record.read_bytes())
+        self.git(self.target, "worktree", "remove", str(self.source))
+        integration_cleanup.cleanup(self.target, record)
+        self.assertEqual(self.git(self.target, "branch", "--list", "task"), "")
+        self.assertEqual(self.git(self.target, "rev-parse", "HEAD"), commit)
+        self.assertEqual(integration.read(record)["state"], "published")
+        integration_cleanup.cleanup(self.target, record)
 
 
 if __name__ == "__main__":

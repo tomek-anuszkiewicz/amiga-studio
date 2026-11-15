@@ -21,7 +21,7 @@ A disposable detached worktree is allowed without a location question for a
 bounded test or diagnostic. Keep the real implementation and final commits in
 the selected checkout. Reproduce the intended dirty files and fixtures when
 testing a dirty candidate; baseline HEAD alone does not identify it. Report the
-experiment, preserve useful results, check ownership and remove the test checkout.
+experiment and useful conclusions, check ownership and remove the test checkout.
 Its results cannot replace canonical acceptance evidence from the selected
 checkout. Failed cleanup remains outstanding work.
 
@@ -108,9 +108,12 @@ are not. Locks coordinate publishers and reference writers, not arbitrary editor
 Observed interference blocks publication or recovery.
 
 After confirmed publication, revalidate the exact source tip, ancestry, ownership,
-pending changes and active commands. Preserve logs, review records and unique
-ignored files under the surviving checkout's `.agent/tmp/`. A reused checkout
-with later work remains intact. Run teardown from the surviving checkout; protect
+pending changes and active commands. Remove all ignored files with the source
+worktree, including local configuration, references, caches, reports and verification
+records. Do not inventory, hash, compare, copy or archive them during cleanup.
+Review the integration diff for bootstrap procedure changes and recommend any
+needed bootstrap steps on the primary branch; do not run bootstrap automatically.
+A reused checkout with later work remains intact. Run teardown from the surviving checkout; protect
 the primary checkout and unrelated paths. Use safe native removal, check exit
 codes and confirm both directory and registration removal. Never force removal,
 prune unrelated registrations or recursively delete a leftover directory after
