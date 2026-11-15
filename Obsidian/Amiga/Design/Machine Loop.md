@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "machine_loop"
 status: "active"
 created: 2026-08-31
-updated: 2026-11-14
+updated: 2026-11-15
 related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[DMA.md](DMA.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)", "[RTC.md](RTC.md)"]
 tracked_paths:
   - "crates/machine_loop"
@@ -142,8 +142,8 @@ not retrigger after ICR acknowledgment. The serial connector is unconnected,
 with no serial pin state or transport: Paula retains idle-high RXD in SERDATR
 and CIA-B receives inactive CTS/DSR/CD. UART registers and CIA-B port logic
 remain available. Keyboard, CIA, UART and quadrature engines consume these
-inputs locally; their full guest exchanges remain in
-[guest verification](../../../ROADMAP.md#cpu-memory-gary-verification).
+inputs locally. Selected guest-visible interactions are checked in
+[native disk verification](../../../ROADMAP.md#native-disk-verification).
 Attached serial/parallel devices, connector transport and full communication
 verification remain deferred to [12.4](../../../ROADMAP.md#serial-parallel-device-support).
 

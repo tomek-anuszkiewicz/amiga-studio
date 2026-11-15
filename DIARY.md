@@ -1469,3 +1469,27 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Initial language, frontmatter, formatting, architecture, hardware, code quality and Clippy checks passed
   - The initial profile was stopped during coverage to reconcile documentation findings
   - Final canonical verification and independent review are pending
+---
+
+### [2026-11-15 09:34 CET] — Prioritize native disk execution and plan shared player workflows
+- **Affected Subsystems**:
+  - `ROADMAP.md`
+  - `Design documentation`
+- **What Was Changed (The Concrete Reality)**:
+  - Add linked contents and reorder remaining Step 2 work as native disk bring-up then native vAmigaTS verification then optional lockstep diagnosis
+  - Withdraw BOOK-GUEST-PROGRAM-TESTS-20261111 and delete its obsolete ignored plan by explicit user direction without claiming guest acceptance
+  - Retain missing media-stream and DMA checks in disk bring-up and move examples/m68k retirement into native verification
+  - Plan shared configuration and recognized ROM selection plus persistent unnamed save catalogs and portable game profiles
+  - Plan WASM bundles and desktop game libraries plus video capture and both detailed debugger rewind and checkpoint/event replay
+  - Update incoming roadmap references while retaining timing and coverage limits
+- **Architectural Rationale & Trade-Offs**:
+  - Prioritize running original ADF software over a standalone guest-program campaign
+  - Record future player capabilities without implementing them or settling open packaging and layout choices
+- **Verification & Test Results**:
+  - Roadmap retention and navigation checks passed
+  - Vault audit passed for 35 Design notes and 1083 links
+  - Source inspection confirmed existing quick slots and preview support plus the zero timestamp and missing runtime media stream
+  - Initial English scan reported the valid term gameplay as unknown and the reviewed software vocabulary now includes it
+  - Independent review identified three plain-text references to the withdrawn stage and these now point to native bring-up or verification
+  - Documentation-only change with no production coverage measurement required
+  - Canonical commit verification and independent review are pending

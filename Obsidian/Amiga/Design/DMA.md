@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "agnus"
 status: "draft"
 created: 2026-09-19
-updated: 2026-11-14
+updated: 2026-11-15
 related: ["[Agnus.md](Agnus.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)", "[MemoryBus.md](MemoryBus.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)"]
 tracked_paths:
   - "crates/agnus/src/dma.rs"
@@ -232,8 +232,11 @@ requested, matching the captured A500 frame. A disk read advances DSKPT after
 Paula supplies a word and RAM accepts it; a write advances it when Agnus fetches
 the word into the retained common output. Audio/sprite and deterministic disk
 exchange tests cover these paths and snapshot continuation.
-Working bitplane/Copper routes keep their existing queues. Full program exchanges remain named 2.5 work; disk-media and
-firmware execution are later work and are not required to test those pins.
+Working bitplane/Copper routes keep their existing queues.
+[Native disk bring-up](../../../ROADMAP.md#native-disk-bring-up) owns the missing
+media stream and firmware execution; selected
+[native tests](../../../ROADMAP.md#native-disk-verification) check program-level
+exchanges. Deterministic pin tests do not require firmware or certify media boot.
 
 ## Reference Documentation & Upstream Ground Truth
 

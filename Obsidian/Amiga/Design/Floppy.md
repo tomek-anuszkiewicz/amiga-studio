@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "floppy"
 status: "active"
 created: 2026-09-06
-updated: 2026-11-12
+updated: 2026-11-15
 related: ["[CIA.md](CIA.md)", "[Paula.md](Paula.md)", "[Agnus.md](Agnus.md)", "[DMA.md](DMA.md)", "[MemoryBus.md](MemoryBus.md)", "[Machine Loop.md](Machine%20Loop.md)"]
 tracked_paths:
   - "crates/floppy"
@@ -78,7 +78,7 @@ preservation. The old decoded-word/media bridge has been removed. Image buffers
 and pure sector encoding utilities remain available, but no runtime image stream
 is generated. [Paula](Paula.md#reconstructed-disk-engine-contract) owns the reconstructed
 data separator, FIFO, synchronization and write serializer. Media/flux generation
-remains in the [native disk verification track](../../../ROADMAP.md#native-disk-verification).
+remains in [native disk bring-up](../../../ROADMAP.md#native-disk-bring-up).
 
 ## References
 

@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "cia"
 status: "active"
 created: 2026-09-06
-updated: 2026-11-12
+updated: 2026-11-15
 related: ["[Machine Loop.md](Machine%20Loop.md)", "[MemoryBus.md](MemoryBus.md)", "[Keyboard.md](Keyboard.md)", "[Floppy.md](Floppy.md)", "[Paula.md](Paula.md)"]
 tracked_paths:
   - "crates/cia"
@@ -253,9 +253,11 @@ setup-time specification.
 Focused regressions verify the wait counts at all five represented CCK phases,
 accepted read effects and falling-edge write capture. They do not establish
 complete production CPU bus-cycle durations against Motorola Figures B-4/B-5,
-nor resolve all ten individual CPU-clock positions within E. The remaining
-[production CPU integration](../../../ROADMAP.md#cpu-memory-gary-verification)
-own that verification; these tests do not certify the hardware 10-19-clock range.
+nor resolve all ten individual CPU-clock positions within E. Full production
+CPU timing validation remains unverified.
+[Native disk verification](../../../ROADMAP.md#native-disk-verification) can expose
+guest-visible integration faults, but does not itself certify the hardware
+10-19-clock range.
 
 The [replacement-project CIA](../../../ref_src/amiga_replacement_project/cia/cia8520.v)
 (revision `143ad5f1b5acae093ea66186e832a8ab4fb1bc0f`) models timer counting

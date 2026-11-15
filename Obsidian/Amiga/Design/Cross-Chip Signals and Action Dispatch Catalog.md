@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "general"
 status: "draft"
 created: 2026-09-14
-updated: 2026-11-12
+updated: 2026-11-15
 related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[Machine Loop.md](Machine%20Loop.md)", "[Agnus.md](Agnus.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)", "[CIA.md](CIA.md)", "[Floppy.md](Floppy.md)", "[DMA.md](DMA.md)", "[Interrupts.md](Interrupts.md)", "[Game Ports.md](Game%20Ports.md)", "[Keyboard.md](Keyboard.md)"]
 ---
 
@@ -113,9 +113,10 @@ owns the complete software contract and existing tests.
 This verifies ordering in the CCK abstraction, not all ten CPU-clock entry
 positions, half-clock VPA/VMA transitions, Gary propagation, or the complete
 physical best/worst bus-cycle durations in Motorola's diagrams. The hardware
-requirements remain authoritative; production timing comparisons belong to
-[2.5](../../../ROADMAP.md#cpu-memory-gary-verification), and finer silicon
-calibration remains separately scheduled. Minimig's Gary uses synchronized
+requirements remain authoritative; full production timing validation remains
+unverified. Selected [native test cases](../../../ROADMAP.md#native-disk-verification)
+can expose integration faults; finer silicon calibration remains separately
+scheduled. Minimig's Gary uses synchronized
 `ecpu`/`cpuok` gating instead of reproducing the original handshake pins;
 the replacement-project Gary exposes `nVPA` while its separate CIA module
 models E edges. Neither is evidence that the Rust countdown simulates those
@@ -184,7 +185,7 @@ For disk reads, a queue with one, two, or three waiting words asserts the last r
 
 The coordinator needs distinct paths for **requests** (`DMAL`, interrupt inputs), **granted transfers** (RAM address, data direction, `RGA` destination), **sampled inputs** (CIA ports, Denise movement, Paula `POT`, disk read data), and **continuous timing** (clocks, sync, TOD). A pending DMA request is not itself a completed word transfer. The [audio state-machine description](../Reference/Hardware%20Reference%20Manual/05%20-%20Chapter%205%20-%20Audio%20Hardware.md#state-machine-signal-summary) names per-channel requests such as `AUDxDR` and `AUDxDSR`, while the board drawing shows one Paula-to-Agnus `DMAL` line; those names must not become invented per-channel motherboard wires. An interrupt generated within Paula need not become a synthetic motherboard wire merely because software observes it in `INTREQ`. Shared interrupt lines can have more than one source.
 
-Timing and revision limits are recorded in the comparison below; production CPU timing verification remains in [2.5](../../../ROADMAP.md#cpu-memory-gary-verification).
+Timing and revision limits are recorded in the comparison below; selected [native test cases](../../../ROADMAP.md#native-disk-verification) do not establish complete production CPU timing validation.
 This catalog does not establish a dedicated Agnus-to-Paula vertical-blank wire.
 See [Interrupts](Interrupts.md), [CIA](CIA.md), [Floppy](Floppy.md) and
 [Game Ports](Game%20Ports.md) for receiver behavior.
@@ -213,7 +214,7 @@ The following source prefixes identify exact local reference trees:
 | RGA and shared data, fan-out: S2/S4/S5, P/F/B | `AgnusEvents.cpp` dispatches delayed register changes to owners. | `Agnus.v` selects register/address/data outputs; `Minimig1.v` shares them. | `denise/src/top.v` captures RGA and data in different CPU-clock portions, then synchronizes to its FPGA clock; `paula/Paula.v` has its own bus decode. | Existing MemoryBus atomic fan-out and owner queues remain. Copper, bitplane and retained audio/sprite/disk RGA outputs issue after all custom-chip steps. Their positive queue delays are provisional receiver settings, not a second coordinator wire delay. |
 | DMAL, request identity and restart: S2/S4, P/F, measured disk frame | `AgnusEvents.cpp` tests audio requests, reloads `audpt` on special requests and calls `doAudioDmaRead`; it abstracts the serial wire. | `Audio.v` sends `dmareq/dmaspc` in selected beam slots; `Agnus.v::auddma_engine` uses `dmas` to select reload address. This is an FPGA-specific split. | `paula/Paula.v` loads a serialized disk/audio request frame after a decoded strobe. The selected ReAgnus stub provides no matching receiver; alternate ICE code is not a verified board target. | `dmal_output_high` -> Agnus incoming DMAL -> `receive_dmal` before Agnus steps. Paula now encodes FIFO/audio requests and Agnus decodes and grants them; see [DMA](DMA.md#paula-request-framing-and-state-ownership). The decoded disk/audio bridges have been removed. STREQU/STRVBL/STRHOR each anchor the request frame during active and blanked lines; STRLONG leaves it unchanged under the approved [Paula model](Paula.md#rga-synchronization-and-vertb). No extra grant wire is introduced. |
 | Audio word and restart: H5, F | `AgnusDma.cpp` owns address/read/increment; `StateMachine.cpp` owns playback requests and count state. | `auddma_engine` outputs AUDxDAT/RAM address; `Audio.v` receives words and owns playback. | `Paula.v` implements request/restart qualifiers and audio latches; its UART is incomplete. | Agnus `pending_dma_write` -> MemoryBus -> named Paula AUDxDAT setter. Retained output survives refusal; accepted payload starts its existing queue delay once. Distinct successive words check transport, not the preceding playback algorithm. |
-| Bitplane delivery, no return request: H3, F, S2/S5 | `AgnusEvents.cpp::serviceBPLEvent` reads a word then calls Denise `setBPLxDAT`. | `Bitplanes.v`/`Agnus.v` select fetches and BPL registers; Denise receives the bus. | `denise/src/denise.v` decodes BPL data; ReAgnus stub supplies no complete scheduler. | Existing pending bitplane output -> Denise setter is retained. Denise has no DMAL/grant return connection; shared BPLCON0/DIW writes reach their separate owners. The reconstructed scheduler supplies fetched words and Denise consumes them; full guest display acceptance remains in 2.5. |
+| Bitplane delivery, no return request: H3, F, S2/S5 | `AgnusEvents.cpp::serviceBPLEvent` reads a word then calls Denise `setBPLxDAT`. | `Bitplanes.v`/`Agnus.v` select fetches and BPL registers; Denise receives the bus. | `denise/src/denise.v` decodes BPL data; ReAgnus stub supplies no complete scheduler. | Existing pending bitplane output -> Denise setter is retained. Denise has no DMAL/grant return connection; shared BPLCON0/DIW writes reach their separate owners. The reconstructed scheduler supplies fetched words and Denise consumes them; selected [native test cases](../../../ROADMAP.md#native-disk-verification) check guest-visible display results without establishing complete display coverage. |
 | Sprite pair/control/data: H4, F | `AgnusDma.cpp` owns read/increment, Agnus events select position/control/data writes. | Sprite DMA engine in `Agnus.v` owns pointer/state and RGA; `Sprites.v` consumes data. | Active Denise source decodes sprite registers; unused mouse modules do not establish sprite or DMA behavior. | The retained RGA/data route accepts all named sprite receivers, including fan-out of POS/CTL. Deterministic bus words verify delivery; old pointer-only sprite scheduling is not reconstructed or certified. |
 | Copper/Blitter/CPU contention and completion: H2/H6, F, S2/S4 | Copper comparator and Agnus bus allocation consult internal Blitter state; INT3 completion feeds Paula. | `reqdma/ackdma`, `bbusy` and Copper comparator are internal to `Agnus.v`; comments disclose different Blitter timing. | Agnus stub is insufficient; Gary's `nDBR/nBLS` and specification distinguish request from slowdown. | Existing internal Agnus engines and CPU WaitState contract are retained. No Copper-to-Blitter board wire. BLIT/DBR request and BLISS/BLS slowdown have matching roles/directions, not proven identical revision timing. Reconstruction/calibration must not treat M's choices as measurements. |
 | Denise beam/sync and CIA TOD: A/P/F/S2/S5/S6 | Agnus events and beam drive Denise/video/TOD at model phases. | `Beamcounter.v` exposes beam, `sol/sof/strhor` to consumers. | Active Denise source decodes RGA strobes; `CSYNC_n` is explicitly ignored by its top. `Paula.v` also decodes alternate horizontal strobes, beyond Appendix B's explicit STRHOR listing. | Agnus owns the current beam counters and field/line state directly. Its refresh-slot RGA strobe event is captured after producer work and delivered before receiver work: all four codes reach both Denise and Paula under the approved receiver model; the manual explicitly lists Paula only for STRHOR. Receiver-local synchronization state and pending events serialize separately. CPU sync address strobes apply the same local operations immediately at accepted selection, without a register queue entry. CIA TOD receives captured timing levels and counts positive edges in the receiver. The current one-CCK low line/frame marker is a provisional projection of old timing events, not the physical HSYNC/VSYNC pulse waveform. Receiver field/equalization state is implemented; exact silicon edges remain uncalibrated; no VERTB wire is invented. |
@@ -228,9 +229,11 @@ The comparison establishes the required connector/receiver boundaries, not
 equivalence of the three models. Original-board edges, Gary delays, capacitor
 thresholds, reset pulse width and audio pair details remain unmeasured. In
 particular the early Rust device engines must not be used as independent
-expectations. The remaining full-exchange scenarios
-are retained in [guest verification](../../../ROADMAP.md#cpu-memory-gary-verification);
-firmware/media and host adapters retain their later owners.
+expectations. [Native disk bring-up](../../../ROADMAP.md#native-disk-bring-up)
+owns the missing media stream and production disk transfers; selected
+[native test cases](../../../ROADMAP.md#native-disk-verification) check guest-visible
+interactions. Attached serial/parallel devices retain their
+[deferred scope](../../../ROADMAP.md#serial-parallel-device-support).
 
 ## Inspected source identity
 

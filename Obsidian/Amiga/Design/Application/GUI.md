@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "gui"
 status: "active"
 created: 2026-09-05
-updated: 2026-11-14
+updated: 2026-11-15
 related: ["[egui Guidelines.md](../egui%20Guidelines.md)", "[Debugger.md](Debugger.md)", "[General Architecture.md](../General%20Architecture.md)", "[Keyboard.md](../Keyboard.md)", "[Mouse.md](../Mouse.md)", "[Audio.md](../Audio.md)", "[Denise.md](../Denise.md)", "[RTC.md](../RTC.md)"]
 tracked_paths:
   - "crates/gui"
@@ -55,7 +55,7 @@ Above 1x, both views execute batches of complete fields and upload only the late
 
 Ordinary pause finishes the current field, and Step Frame advances to the next completed field, including while the CPU is stopped. Instruction/CCK stepping, breakpoints and CPU halts can still expose a partial field. Snapshot restoration replaces the displayed pixels on the next UI frame. Host timing, texture allocation and upload belong to the frontend. For sound, the GUI is intended to deliver samples produced by the [audio subsystem](../Audio.md) to the host playback device. Emulated audio generation remains in the core.
 
-The shared `live_stripes` guest fixture supplies the live-frame smoke check without firmware. Full guest display acceptance remains [guest verification](../../../../ROADMAP.md#cpu-memory-gary-verification) work. Host audio/input remain incomplete; see [native test prerequisites](../../../../ROADMAP.md#native-disk-verification).
+The shared `live_stripes` guest fixture supplies the live-frame smoke check without firmware. Broader display comparisons remain in [native disk verification](../../../../ROADMAP.md#native-disk-verification) and its later subsystem suites. Host audio/input remain incomplete; see [native test prerequisites](../../../../ROADMAP.md#native-disk-verification).
 
 The frontend supplies UTC seconds to the [RTC](../RTC.md) before each first UI
 pass, including paused inspection and resuming execution. Native uses the system

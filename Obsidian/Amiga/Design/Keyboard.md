@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "cia"
 status: "active"
 created: 2026-09-02
-updated: 2026-11-12
+updated: 2026-11-15
 related: ["[CIA.md](CIA.md)", "[Machine Loop.md](Machine%20Loop.md)", "[General Architecture.md](General%20Architecture.md)"]
 tracked_paths:
   - "crates/keyboard"
@@ -71,8 +71,9 @@ press/release codes on presses only. A500 reset directly asserts the separate
 line and never queues the A1000/A2000 reset-warning protocol. The old whole-byte
 step/acknowledgment shortcut is removed. Current state includes partial wire
 phases, timeout/acknowledgment counters, queued and retransmitted codes, and
-startup progress. Complete guest exchanges belong to 2.5; the frontend key
-adapter remains 6.2 work.
+startup progress. Guest-visible keyboard integration is scheduled with
+[input-dependent native cases](../../../ROADMAP.md#native-disk-verification);
+the frontend key adapter remains 6.2 work.
 
 ## Power LED and audio filter
 

@@ -463,6 +463,7 @@ functor
 fwd
 gamepad
 gamepads
+gameplay
 gatekeeping
 gb
 genai

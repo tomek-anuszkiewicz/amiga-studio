@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "memory_bus"
 status: "active"
 created: 2026-09-14
-updated: 2026-11-12
+updated: 2026-11-15
 related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[Agnus.md](Agnus.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)", "[Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
 ---
 
@@ -104,8 +104,9 @@ reads act immediately rather than entering the write queue. Other addresses
 use the fallback; opposite-direction silicon disturbances are not modeled.
 
 The owning chip specifications describe reconstructed register effects.
-The [guest verification work](../../../ROADMAP.md#cpu-memory-gary-verification)
-retains the final register-wide access and observable-effect audit.
+[Native disk verification](../../../ROADMAP.md#native-disk-verification) checks
+the effects exercised by selected programs; it does not establish an exhaustive
+register-wide access and observable-effect audit.
 
 ## Address map
 

@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "memory_bus"
 status: "active"
 created: 2026-08-31
-updated: 2026-11-14
+updated: 2026-11-15
 related: ["[General Architecture.md](General%20Architecture.md)", "[Physical Memory.md](Physical%20Memory.md)", "[Machine Loop.md](Machine%20Loop.md)", "[DMA.md](DMA.md)", "[Agnus.md](Agnus.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)", "[CIA.md](CIA.md)", "[RTC.md](RTC.md)", "[Custom Chip Register Ownership and Access Matrix.md](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md)", "[Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
 tracked_paths:
   - "crates/memory_bus"
@@ -152,8 +152,9 @@ catalog is required. Agnus's queue is the owning interface for Copper and
 Blitter register requests. A returned due `(offset, value)` proves that the
 owner consumed its event; functional correctness needs engine observations.
 
-Complete guest observation of reconstructed register and receiver effects
-remains in [guest verification](../../../ROADMAP.md#cpu-memory-gary-verification).
+[Native disk verification](../../../ROADMAP.md#native-disk-verification) exercises
+selected reconstructed register and receiver effects through guest programs;
+complete register-wide behavioral coverage is not established by those cases.
 
 All pending custom events live in serializable chip state, along with retained
 Copper/bitplane outputs that have not yet entered a destination queue. Reset
