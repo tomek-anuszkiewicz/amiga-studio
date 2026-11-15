@@ -452,3 +452,6 @@ backquote
 intl
 kp
 enqueueing
+executables
+hostx
+vctip

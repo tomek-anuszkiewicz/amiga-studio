@@ -312,7 +312,11 @@ before their code runs. Normal descendants inherit membership, including after
 their parents exit. Nested verifiers create nested jobs, so an outer attempt also
 tracks inner commands. Neither breakaway nor kill-on-close is enabled. Recovery
 queries the job's active-process count, never the system PID list or process
-environments. A successful parent cannot complete a batch while descendants remain.
+environments. After commands finish, confirmed `vctip.exe` telemetry processes
+from the MSVC toolchain path are stopped automatically when they are the only
+remaining members of that job. Membership and executable identity are checked
+through open process handles. Other surviving descendants still block completion
+and recovery; unrelated processes and same-named executables outside MSVC are untouched.
 
 A separate guardian inherits the job handle and a read-only control pipe. It
 retains the handle until the owner closes the pipe or dies and the job becomes
@@ -324,7 +328,8 @@ even while processes survive. Missing or corrupt confirmation, access/query
 errors, unsupported platforms and incompatible `active.lock` metadata fail
 closed. Losing the guardian or rebooting without a drain confirmation can
 therefore require manual ownership investigation; the verifier never terminates
-orphan commands or automatically discards uncertain ownership. Commands launched
+orphan commands other than the explicit MSVC telemetry exception or automatically
+discards uncertain ownership. Commands launched
 through external brokers such as WMI are outside normal child-process inheritance.
 POSIX retains its existing conservative environment-marker ownership scan,
 including its refusal when process snapshots change. No new package is required.

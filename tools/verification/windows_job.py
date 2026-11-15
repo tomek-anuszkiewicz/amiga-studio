@@ -34,6 +34,11 @@ duplicate_handle = api("DuplicateHandle", w.BOOL, w.HANDLE, w.HANDLE, w.HANDLE,
 get_std_handle = api("GetStdHandle", w.HANDLE, w.DWORD)
 wait_handle = api("WaitForSingleObject", w.DWORD, w.HANDLE, w.DWORD)
 exit_code = api("GetExitCodeProcess", w.BOOL, w.HANDLE, c.POINTER(w.DWORD))
+open_process = api("OpenProcess", w.HANDLE, w.DWORD, w.BOOL, w.DWORD)
+process_in_job = api("IsProcessInJob", w.BOOL, w.HANDLE, w.HANDLE, c.POINTER(w.BOOL))
+process_image = api("QueryFullProcessImageNameW", w.BOOL, w.HANDLE, w.DWORD,
+                    w.LPWSTR, c.POINTER(w.DWORD))
+terminate_process = api("TerminateProcess", w.BOOL, w.HANDLE, w.UINT)
 
 
 class StartupInfo(c.Structure):
@@ -82,6 +87,57 @@ def active_processes(handle):
     return information.active
 
 
+def job_process_ids(handle):
+    capacity = 16
+    while True:
+        buffer = c.create_string_buffer(8 + c.sizeof(c.c_size_t) * capacity)
+        if query_job(handle, 3, buffer, c.sizeof(buffer), None):
+            count = w.DWORD.from_buffer(buffer, 4).value
+            return list((c.c_size_t * count).from_buffer(buffer, 8))
+        if c.get_last_error() != 234:  # ERROR_MORE_DATA
+            check(False)
+        capacity *= 2
+
+
+def is_msvc_telemetry(image):
+    parts = tuple(part.lower() for part in Path(image).parts)
+    return (len(parts) >= 8 and parts[-8:-5] == ("vc", "tools", "msvc")
+            and parts[-4] == "bin" and parts[-3].startswith("host")
+            and parts[-1] == "vctip.exe")
+
+
+def stop_msvc_telemetry(handle):
+    """Stop only confirmed telemetry when no other job members remain."""
+    with contextlib.ExitStack() as resources:
+        telemetry = []
+        for pid in job_process_ids(handle):
+            # QUERY_LIMITED_INFORMATION | TERMINATE | SYNCHRONIZE. Holding the
+            # original handle keeps PID reuse from targeting another process.
+            process = open_process(0x1000 | 0x0001 | 0x100000, False, pid)
+            if not process:
+                if c.get_last_error() == 87:  # The process already exited.
+                    continue
+                return
+            resources.callback(close_handle, process)
+            member = w.BOOL()
+            check(process_in_job(process, handle, c.byref(member)))
+            if not member.value:
+                continue
+            image = c.create_unicode_buffer(32768)
+            length = w.DWORD(len(image))
+            if not process_image(process, 0, image, c.byref(length)) or not is_msvc_telemetry(image.value):
+                return
+            telemetry.append((pid, process))
+        for pid, process in telemetry:
+            if wait_handle(process, 0) == 0:
+                continue
+            if not terminate_process(process, 0) and wait_handle(process, 0) != 0:
+                check(False)
+            if wait_handle(process, 5000) != 0:
+                raise RuntimeError("MSVC telemetry did not stop; verification remains active.")
+            print(f"[INFO] Stopped verification-owned MSVC telemetry (PID {pid}).", flush=True)
+
+
 def ensure_stopped(directory, token):
     handle = open_job(0x0004, False, job_name(token))  # JOB_OBJECT_QUERY
     if not handle:
@@ -96,6 +152,7 @@ def ensure_stopped(directory, token):
                                "and its guardian did not confirm that all commands stopped.")
         return
     try:
+        stop_msvc_telemetry(handle)
         if active_processes(handle):
             raise RuntimeError("Previous verification command is still active in its Job Object; "
                                "retry after it stops.")
@@ -203,6 +260,7 @@ class WindowsJob:
                 process.close()
 
     def complete(self):
+        stop_msvc_telemetry(self.handle)
         if active_processes(self.handle):
             raise RuntimeError("Previous verification command is still active in its Job Object; "
                                "results cannot be completed until all descendants stop.")

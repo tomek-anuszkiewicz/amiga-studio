@@ -129,8 +129,10 @@ the same command resumes only after the previous verifier and its child commands
 have stopped, retaining completed groups and rerunning unfinished work. Windows
 tracks command trees with a named Job Object assigned during process creation;
 a guardian retains ownership until all descendants drain. POSIX keeps the
-conservative environment-marker scan. Unknown ownership fails closed, and
-recovery never kills orphan commands. The [continuation reference](../../../../tools/verification/README.md#completion-verification)
+conservative environment-marker scan. Unknown ownership fails closed. Completion
+and recovery may stop confirmed MSVC `vctip.exe` telemetry only when it is the
+only remaining kind of process in the verification job; other orphan commands
+remain protected. The [continuation reference](../../../../tools/verification/README.md#completion-verification)
 owns platform requirements and recovery limits.
 Python contract selection remains unchanged below.
 Performance measurements remain explicit diagnostics; benchmark workload contracts

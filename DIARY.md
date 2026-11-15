@@ -1837,3 +1837,18 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Reviewed cleanup data flow and updated behavioral assertions
   - git diff --check passed before diary preparation
   - Canonical verification and independent review are pending
+---
+
+### [2026-11-15 22:08 CET] — Stop verification-owned MSVC telemetry at job completion
+- **Affected Subsystems**:
+  - `Windows verification process ownership`
+- **What Was Changed (The Concrete Reality)**:
+  - Identify vctip.exe by its MSVC toolchain path and verify job membership through retained process handles
+  - Stop telemetry only when no other kind of job member remains
+  - Cover isolated telemetry completion and mixed-member refusal
+- **Architectural Rationale & Trade-Offs**:
+  - Allow verification completion without repeated manual telemetry termination while protecting real commands and unrelated processes
+- **Verification & Test Results**:
+  - Reviewed process-handle ownership and telemetry identity checks
+  - Updated the testing specification to describe the approved exception
+  - Canonical verification and independent review are pending

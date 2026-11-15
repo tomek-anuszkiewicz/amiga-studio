@@ -161,6 +161,56 @@ class WindowsJobTests(unittest.TestCase):
         self.wait_for(ready)
         return psutil.Process(int(ready.read_text()))
 
+    def test_telemetry_identity_requires_the_msvc_toolchain_path(self):
+        self.assertTrue(windows_job.is_msvc_telemetry(
+            r"C:\Program Files\Microsoft Visual Studio\VC\Tools\MSVC\14.44\bin\HostX64\x64\VCTIP.EXE"))
+        for image in (r"C:\unrelated\vctip.exe",
+                      r"C:\VC\Tools\MSVC\14.44\bin\Hostx64\x64\rustc.exe"):
+            with self.subTest(image=image):
+                self.assertFalse(windows_job.is_msvc_telemetry(image))
+
+    def test_completion_stops_confirmed_telemetry_only_inside_its_own_job(self):
+        lock = BatchLock(self.root)
+        lock.acquire()
+        ready, release = self.root / "ready", self.root / "release"
+        survivor = None
+        unrelated = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"],
+                                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        try:
+            survivor = self.detached_command(lock, ready, release)
+            # Identify this controlled Python fixture as telemetry; the separate
+            # identity test retains the actual MSVC path contract.
+            with patch.object(windows_job, "is_msvc_telemetry", return_value=True):
+                lock.complete()
+            survivor.wait(timeout=5)
+            self.assertIsNone(unrelated.poll(), "A process outside the job must survive")
+            self.assertFalse(lock.record["active"])
+        finally:
+            release.touch()
+            lock.release()
+            unrelated.terminate()
+            unrelated.wait(timeout=5)
+            if survivor is not None and survivor.is_running():
+                survivor.wait(timeout=5)
+
+    def test_live_command_prevents_telemetry_cleanup(self):
+        lock = BatchLock(self.root)
+        lock.acquire()
+        release = self.root / "release"
+        survivors = []
+        try:
+            for number in range(2):
+                survivors.append(self.detached_command(lock, self.root / f"ready-{number}", release))
+            with patch.object(windows_job, "is_msvc_telemetry", side_effect=[True, False]):
+                with self.assertRaisesRegex(RuntimeError, "all descendants stop"):
+                    lock.complete()
+            self.assertTrue(all(process.is_running() for process in survivors))
+        finally:
+            release.touch()
+            for process in survivors:
+                process.wait(timeout=5)
+            lock.release()
+
     def test_successful_parent_cannot_complete_while_detached_child_writes(self):
         lock = BatchLock(self.root)
         lock.acquire()
