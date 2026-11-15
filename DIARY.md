@@ -1711,3 +1711,18 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Skill validation passed and 179 local Markdown targets resolved
   - Vault audit passed for 35 Design notes and 1098 links
   - Canonical commit verification and final independent review are pending
+---
+
+### [2026-11-15 19:14 CET] — Remove the module splitting skill
+- **Affected Subsystems**:
+  - `Agent skills`
+  - `Rust module guidance`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove refactor-split-module and its two supporting references
+  - Remove incoming links and retain module cohesion and workspace boundary rules
+- **Architectural Rationale & Trade-Offs**:
+  - Retire the requested procedure while preserving the existing architecture constraints and neighboring-code guidance
+- **Verification & Test Results**:
+  - No Rust production code or architecture checker was changed
+  - No retired skill references remained in active instructions or documentation
+  - Combined batch verification and independent review are pending

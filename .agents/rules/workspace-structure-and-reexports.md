@@ -8,4 +8,4 @@
 - Follow the neighboring facade and module export pattern.
 - Structural refactors update all consumers without stale aliases or compatibility wrappers per [Compatibility and Internal Refactoring](../../AGENTS.md#compatibility-and-internal-refactoring).
 
-Read [General Architecture](../../Obsidian/Amiga/Design/General%20Architecture.md) and [Configuration](../../Obsidian/Amiga/Design/Configuration.md) for ownership and dependencies. The [refactor-split-module](../skills/refactor-split-module/SKILL.md) procedure links [workspace examples](../skills/refactor-split-module/references/workspace-layout.md).
+Read [General Architecture](../../Obsidian/Amiga/Design/General%20Architecture.md) and [Configuration](../../Obsidian/Amiga/Design/Configuration.md) for ownership and dependencies.
