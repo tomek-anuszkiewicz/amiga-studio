@@ -149,6 +149,24 @@ impl EmulatorApp {
             }
             Err(error) => {
                 self.file_error = Some(format!("Could not load {}: {error}", source.name()));
+                #[cfg(not(target_arch = "wasm32"))]
+                if let BinarySource::File(path) = &source {
+                    if error.kind() == std::io::ErrorKind::NotFound
+                        && self
+                            .file_history
+                            .binaries
+                            .iter()
+                            .any(|entry| entry.path == *path)
+                    {
+                        self.file_history
+                            .binaries
+                            .retain(|entry| entry.path != *path);
+                        self.file_error = Some(format!(
+                            "{} no longer exists. Removed from recent binaries.",
+                            path.display()
+                        ));
+                    }
+                }
                 if self.load_binary_modal_open {
                     self.pending_binary = Some(source);
                 }
@@ -318,8 +336,8 @@ impl EmulatorApp {
             .set_title(action.title())
             .add_filter("Supported files", action.extensions());
         let directory = match action {
-            FileAction::Binary => self.file_history.binary_directory.as_deref(),
-            FileAction::Rom => self.file_history.rom_directory.as_deref(),
+            FileAction::Binary => self.file_history.picker_directory(true),
+            FileAction::Rom => self.file_history.picker_directory(false),
             FileAction::State => None,
         };
         if let Some(directory) = directory {
@@ -355,6 +373,15 @@ impl EmulatorApp {
             ),
             Err(error) => {
                 self.file_error = Some(format!("Could not read {}: {error}", path.display()));
+                if error.kind() == std::io::ErrorKind::NotFound
+                    && self.file_history.roms.iter().any(|entry| entry == path)
+                {
+                    self.file_history.roms.retain(|entry| entry != path);
+                    self.file_error = Some(format!(
+                        "{} no longer exists. Removed from recent ROMs.",
+                        path.display()
+                    ));
+                }
             }
         }
     }

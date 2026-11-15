@@ -57,6 +57,47 @@ try {
     catch (error) { rejected = error.message === "Read denied"; }
     check(rejected, "Picker failures must reach the GUI");
 
+    const notices = [];
+    window.alert = message => notices.push(message);
+    const missing = await directory.getFileHandle("deleted.bin", { create: true });
+    await restored.remember_file("binary", missing.name, missing);
+    await directory.removeEntry(missing.name);
+    window.showOpenFilePicker = () => Promise.reject(new DOMException("Canceled", "AbortError"));
+    check(await restored.pick_file("binary", "Load binary", [".bin"], 0) === null, "Missing recent file must still allow cancellation");
+    check(!restored.recent_names("binary").includes(missing.name), "Missing file must be removed even when the picker is canceled");
+    check(notices.length === 1 && notices[0].includes(missing.name), "Missing file needs an explanatory message");
+
+    const removedDirectory = await directory.getDirectoryHandle("removed-folder", { create: true });
+    const missingRom = await removedDirectory.getFileHandle("deleted.rom", { create: true });
+    await restored.remember_file("rom", missingRom.name, missingRom);
+    await removedDirectory.removeEntry(missingRom.name);
+    await directory.removeEntry(removedDirectory.name);
+    const pickerCalls = [];
+    window.showOpenFilePicker = settings => {
+        pickerCalls.push({ ...settings });
+        return settings.startIn
+            ? Promise.reject(new DOMException("Folder was deleted", "NotFoundError"))
+            : Promise.resolve([rom]);
+    };
+    const replacement = await restored.pick_file("rom", "Load ROM", [".rom"], 0);
+    check(pickerCalls.length === 2 && !pickerCalls[1].startIn, "Missing folder must retry with the browser's default location");
+    check(replacement[0].name === rom.name, "A selection from the default location must still be returned");
+    check(!restored.recent_names("rom").includes(missingRom.name), "Entry in a deleted folder must be removed");
+    check(notices.length === 2 && notices[1].includes("recent ROMs"), "Deleted ROM folder needs an explanatory message");
+    check(restored.recent_names("rom").includes(rom.name), "Other ROM entries must remain");
+
+    const denied = await directory.getFileHandle("denied.bin", { create: true });
+    await restored.remember_file("binary", denied.name, denied);
+    denied.getFile = () => Promise.reject(new DOMException("Read denied", "NotAllowedError"));
+    window.showOpenFilePicker = () => Promise.reject(new DOMException("Canceled", "AbortError"));
+    await restored.pick_file("binary", "Load binary", [".bin"], 0);
+    check(restored.recent_names("binary").includes(denied.name), "Denied access must not delete a recent entry");
+    check(notices.length === 2, "Denied access must not be reported as a missing file");
+    const afterRemoval = await import("../src/file_actions/browser_files.js?afterRemoval");
+    await afterRemoval.restore_history();
+    check(!afterRemoval.recent_names("binary").includes(missing.name), "Binary removal must persist");
+    check(!afterRemoval.recent_names("rom").includes(missingRom.name), "ROM removal must persist");
+
     window.showOpenFilePicker = undefined;
     const originalClick = HTMLInputElement.prototype.click;
     HTMLInputElement.prototype.click = function () {
@@ -76,7 +117,7 @@ try {
     await restored.remember_file("binary", "fallback.bin", null);
     check(restored.recent_names("binary").filter(name => name === "fallback.bin").length === 1, "Fallback filenames must be deduplicated");
     check(!document.querySelector("input"), "Completed fallback input must be removed");
-    result.textContent = "PASS: history limit, ordering, deduplication, category separation, IndexedDB restoration, starting folders, activation, cancellation, errors and fallback";
+    result.textContent = "PASS: history limit, ordering, deduplication, category separation, IndexedDB restoration, starting folders, activation, cancellation, errors, missing files and folders, removal persistence, denied access and fallback";
 } catch (error) {
     result.textContent = `FAIL: ${error.stack}`;
 }

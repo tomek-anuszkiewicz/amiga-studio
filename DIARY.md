@@ -1377,3 +1377,21 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - subsequent coverage review identified reachable migration gaps and added grouped behavioral regressions
   - focused instruction/hex/breakpoint, persistence, history, continuation and corrected warm-reset tests pass
   - final combined verification and review remain pending
+---
+
+### [2026-11-15 10:53 CET] — Recover missing recent files and picker folders
+- **Affected Subsystems**:
+  - `gui file actions`
+  - `native history`
+  - `browser history`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove unavailable recent binaries and ROMs after selection with an explanatory message
+  - choose the nearest existing native parent folder
+  - use the browser default folder when unavailable
+  - preserve entries after access denial or ordinary cancellation
+- **Architectural Rationale & Trade-Offs**:
+  - Keep load options and category histories independent
+  - record successful owner replies before updating file labels or history
+- **Verification & Test Results**:
+  - The originating session reported seven Rust tests and a Chromium history regression passing
+  - final combined verification remains pending

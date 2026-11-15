@@ -147,7 +147,17 @@ fn recent_menu_reloads_current_bytes_with_saved_options_and_reports_missing_file
     common::settle_harness(&mut harness);
     assert!(harness.state().file_error.is_some());
     assert_eq!(common::snapshot(harness.state_mut()), before);
-    assert_eq!(harness.state().file_history.binaries.len(), 1);
+    assert!(harness.state().file_history.binaries.is_empty());
+    assert!(harness
+        .state()
+        .file_error
+        .as_ref()
+        .unwrap()
+        .contains("Removed from recent binaries"));
+    let mut storage = MemoryStorage::default();
+    harness.state_mut().save(&mut storage);
+    let restored: FileHistory = eframe::get_value(&storage, "file_history").unwrap();
+    assert!(restored.binaries.is_empty());
 }
 
 #[test]
@@ -195,8 +205,41 @@ fn game_menu_reloads_rom_and_keeps_binary_directory_separate() {
     harness.run_steps(2);
     common::settle_harness(&mut harness);
     assert!(harness.state().file_error.is_some());
-    assert_eq!(harness.state().file_history.roms.len(), 1);
+    assert!(harness
+        .state()
+        .file_error
+        .as_ref()
+        .unwrap()
+        .contains("Removed from recent ROMs"));
+    assert!(harness.state().file_history.roms.is_empty());
     assert_eq!(harness.state().file_history.binaries[0].path, binary);
     assert_eq!(common::snapshot(harness.state_mut()), before);
     std::fs::remove_file(binary).unwrap();
+}
+
+#[test]
+fn picker_uses_nearest_existing_parent_without_changing_the_other_category() {
+    let path = fixture("picker-directory/removed/nested/program.bin", &[0x4e, 0x71]);
+    let directory = path.parent().unwrap();
+    let parent = directory.parent().unwrap();
+    let existing = parent.parent().unwrap();
+    let mut history = FileHistory {
+        binary_directory: Some(directory.to_owned()),
+        rom_directory: Some(existing.to_owned()),
+        ..FileHistory::default()
+    };
+    assert_eq!(history.picker_directory(true), Some(directory));
+    std::fs::remove_file(&path).unwrap();
+    std::fs::remove_dir(directory).unwrap();
+    assert_eq!(history.picker_directory(true), Some(parent));
+    std::fs::remove_dir(parent).unwrap();
+    assert_eq!(history.picker_directory(true), Some(existing));
+    assert_eq!(history.picker_directory(false), Some(existing));
+    // An ancestor replaced by a file must also be skipped.
+    std::fs::write(parent, []).unwrap();
+    assert_eq!(history.picker_directory(true), Some(existing));
+    std::fs::remove_file(parent).unwrap();
+    history.binary_directory = None;
+    assert_eq!(history.picker_directory(true), None);
+    assert_eq!(history.picker_directory(false), Some(existing));
 }
