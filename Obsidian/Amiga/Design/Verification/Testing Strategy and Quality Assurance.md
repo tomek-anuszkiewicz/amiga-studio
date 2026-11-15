@@ -100,7 +100,12 @@ therefore preserves their successful results. Other documents, specifications
 and unknown groups remain conservative; a Markdown extension alone never proves
 independence. Process ownership protects the results directory: after interruption,
 the same command resumes only after the previous verifier and its child commands
-have stopped, retaining completed groups and rerunning unfinished work.
+have stopped, retaining completed groups and rerunning unfinished work. Windows
+tracks command trees with a named Job Object assigned during process creation;
+a guardian retains ownership until all descendants drain. POSIX keeps the
+conservative environment-marker scan. Unknown ownership fails closed, and
+recovery never kills orphan commands. The [continuation reference](../../../../tools/verification/README.md#completion-verification)
+owns platform requirements and recovery limits.
 Python contract selection remains unchanged below.
 Performance measurements remain explicit diagnostics; benchmark workload contracts
 are ordinary standard harness tests. Build caches are retained.

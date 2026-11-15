@@ -283,11 +283,42 @@ the verifier never searches old logs or other tasks. A changed `HEAD` starts a n
 batch and executes all required groups. Missing, corrupt or incompatible records
 also require execution and cannot produce a reused pass. Repeat the same command
 and results directory after interruption. A process-held lock rejects simultaneous
-owners; abandoned runs resume only after their tagged child processes have stopped.
+owners; abandoned runs resume only after their child processes have stopped.
 The lock file stays in place; its existence alone does not mean a run is active.
 Unknown ownership blocks automatic recovery. Completed, matching groups survive;
 an interrupted group never counts as passed. Do not change output directories just
 to recover an interrupted run, because a new directory has no prior evidence.
+
+On Windows 10 / Windows Server 2016 or newer, each attempt owns a named Job Object.
+Commands enter it inside `CreateProcessW` through `PROC_THREAD_ATTRIBUTE_JOB_LIST`,
+before their code runs. Normal descendants inherit membership, including after
+their parents exit. Nested verifiers create nested jobs, so an outer attempt also
+tracks inner commands. Neither breakaway nor kill-on-close is enabled. Recovery
+queries the job's active-process count, never the system PID list or process
+environments. A successful parent cannot complete a batch while descendants remain.
+
+A separate guardian inherits the job handle and a read-only control pipe. It
+retains the handle until the owner closes the pipe or dies and the job becomes
+empty. This keeps the name available for recovery without relying on arbitrary
+descendants to inherit handles. The guardian then atomically publishes
+`job-<token>.drained` before closing the handle. A missing job is safe only with
+that matching confirmation: its name can disappear after last-handle closure
+even while processes survive. Missing or corrupt confirmation, access/query
+errors, unsupported platforms and incompatible `active.lock` metadata fail
+closed. Losing the guardian or rebooting without a drain confirmation can
+therefore require manual ownership investigation; the verifier never terminates
+orphan commands or automatically discards uncertain ownership. Commands launched
+through external brokers such as WMI are outside normal child-process inheritance.
+POSIX retains its existing conservative environment-marker ownership scan,
+including its refusal when process snapshots change. No new package is required.
+
+The Windows API contracts are documented in Microsoft's
+[Job Objects](https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects),
+[Nested Jobs](https://learn.microsoft.com/en-us/windows/win32/procthread/nested-jobs),
+and [process creation attributes](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-updateprocthreadattribute).
+Microsoft also explains why
+[creating the process directly in the job](https://devblogs.microsoft.com/oldnewthing/20230209-00/?p=107812)
+closes the suspended-process assignment race.
 
 Coverage test execution, export and summary form one reuse group. The three
 reports are retained together beside the original logs; reuse does not invoke
@@ -303,7 +334,7 @@ and `.env`. Generated build and diagnostic directories are excluded. SHA-256
 content checks at attempt boundaries complement source/index checks and file
 metadata checks at each group boundary. Environment values are hashed rather than
 stored. The agent's per-call `CODEX_TOOL_CALL_ID` and the verifier's inherited
-`AMIGA_VERIFICATION_RUNS` process markers are correlation metadata and are
+`AMIGA_VERIFICATION_RUNS` process markers used on POSIX are correlation metadata and are
 excluded; other environment keys remain inputs. Tool versions, Python packages and parent/user Cargo configuration also
 participate. Changed source/index or execution conditions reject the attempt.
 Input ownership must be reviewed when a suite acquires another ignored or external

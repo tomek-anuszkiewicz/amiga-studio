@@ -429,3 +429,15 @@ toolchains
 unpark
 wbindgen
 webgl
+getcwd
+wintypes
+lpcwstr
+lpwstr
+tid
+longlong
+creationflags
+startf
+unqueryable
+usestdhandles
+rdonly
+eof

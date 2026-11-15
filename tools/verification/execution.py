@@ -54,7 +54,7 @@ def diagnostic_level(line):
     return None
 
 
-def run_cmd(cmd, cwd=None, env=None, log_level="warn", log_dir=None):
+def run_cmd(cmd, cwd=None, env=None, log_level="warn", log_dir=None, job=None):
     cwd = REPO_ROOT if cwd is None else cwd
     print(f"[CMD] {subprocess.list2cmdline(cmd)}", flush=True)
     isolated_log = log_dir is not None
@@ -72,9 +72,10 @@ def run_cmd(cmd, cwd=None, env=None, log_level="warn", log_dir=None):
         context_left = 0
         error_seen = False
         exact_test_count = None
-        with subprocess.Popen(cmd, cwd=cwd, env=env, stdout=subprocess.PIPE,
-                              stderr=subprocess.STDOUT, text=True, encoding="utf-8",
-                              errors="replace") as process:
+        child = (job.popen(cmd, cwd=cwd, env=env) if job is not None else
+                 subprocess.Popen(cmd, cwd=cwd, env=env, stdout=subprocess.PIPE,
+                                  stderr=subprocess.STDOUT, text=True, encoding="utf-8", errors="replace"))
+        with child as process:
             for line in process.stdout:
                 log.write(line)
                 if cmd[:2] == ["cargo", "test"] and "--exact" in cmd:
@@ -119,7 +120,7 @@ def run_cmd(cmd, cwd=None, env=None, log_level="warn", log_dir=None):
         print(f"[LOG] {display_path}", flush=True)
     return code, elapsed
 
-def execute_command(command, overrides, log_level="warn", log_dir=None):
+def execute_command(command, overrides, log_level="warn", log_dir=None, job=None):
     env = os.environ.copy()
     env["PYTHONIOENCODING"] = "utf-8"
     env["PYTHONUNBUFFERED"] = "1"
@@ -128,7 +129,7 @@ def execute_command(command, overrides, log_level="warn", log_dir=None):
     if overrides:
         print(f"[ENV] {' '.join(f'{key}={value}' for key, value in overrides.items())}", flush=True)
     try:
-        code, elapsed = run_cmd(command, env=env, log_level=log_level, log_dir=log_dir)
+        code, elapsed = run_cmd(command, env=env, log_level=log_level, log_dir=log_dir, job=job)
     except OSError as error:
         return False, f"Cannot launch command: {error}", 0
     detail = f"command exited with code {code}"

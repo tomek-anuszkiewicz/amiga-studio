@@ -217,7 +217,7 @@ def execute_batch(args, phases, batch, before):
             for title, command, overrides in commands:
                 print(f"[RUN] {title}", flush=True)
                 ok, detail, seconds = execute_command(command, lock.command_environment(overrides),
-                                                      log_level=args.log_level, log_dir=directory)
+                                                      log_level=args.log_level, log_dir=directory, job=lock.job)
                 elapsed += seconds
                 success = success and ok
                 print(f"{result_label(ok)} {title} ({seconds:.2f}s): {detail}", flush=True)

@@ -3,6 +3,7 @@ import json
 import os
 import time
 import uuid
+import re
 
 import psutil
 
@@ -10,8 +11,16 @@ import psutil
 RUN_MARKERS = "AMIGA_VERIFICATION_RUNS"
 
 
-def ensure_commands_stopped(record):
+def ensure_commands_stopped(record, directory):
     """Fail closed when a previous command or uncertain process ownership remains."""
+    if os.name == "nt":
+        from windows_job import ensure_stopped
+        return ensure_stopped(directory, record["token"])
+    # Preserve the existing conservative ownership check on POSIX. Environment
+    # markers are not used for Windows command containment or recovery.
+    if (not isinstance(record.get("started"), (int, float)) or record["started"] <= 0
+            or not isinstance(record.get("user"), str) or not record["user"]):
+        raise ValueError("Incomplete process ownership record")
     for _ in range(3):
         before = set(psutil.pids())
         for pid in before:
@@ -38,6 +47,7 @@ class BatchLock:
         self.path = directory / "active.lock"
         self.handle = None
         self.token = uuid.uuid4().hex
+        self.job = None
 
     def acquire(self):
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -59,17 +69,24 @@ class BatchLock:
             raw = self.handle.read()
             if raw:
                 record = json.loads(raw)
-                if (not isinstance(record, dict) or not isinstance(record.get("active"), bool)
-                        or not isinstance(record.get("token"), str) or len(record["token"]) != 32
-                        or not isinstance(record.get("started"), (int, float)) or record["started"] <= 0
-                        or not isinstance(record.get("user"), str) or not record["user"]):
+                backend = "windows-job" if os.name == "nt" else "process-markers"
+                if (not isinstance(record, dict) or record.get("version") != 2
+                        or record.get("backend") != backend
+                        or not isinstance(record.get("active"), bool)
+                        or not isinstance(record.get("token"), str)
+                        or not re.fullmatch("[0-9a-f]{32}", record["token"])):
                     raise ValueError("Incomplete process ownership record")
                 if record["active"]:
-                    ensure_commands_stopped(record)
+                    ensure_commands_stopped(record, self.path.parent)
                     print("[INFO] Resuming an interrupted batch in the same results directory.")
-            self.record = {"active": True, "token": self.token, "started": time.time(),
-                           "user": psutil.Process().username()}
+            self.record = {"version": 2, "active": True, "token": self.token,
+                           "backend": "windows-job" if os.name == "nt" else "process-markers"}
+            if os.name != "nt":
+                self.record.update(started=time.time(), user=psutil.Process().username())
             self.save()
+            if os.name == "nt":
+                from windows_job import WindowsJob
+                self.job = WindowsJob(self.path.parent, self.token)
         except (ValueError, KeyError, TypeError, psutil.Error) as error:
             self.release()
             raise RuntimeError("Cannot establish previous batch ownership from active.lock.") from error
@@ -84,17 +101,25 @@ class BatchLock:
         self.handle.flush()
 
     def command_environment(self, overrides):
+        if self.job is not None:
+            return overrides
         # Keep ancestor markers when a contract test starts a nested verifier.
         ancestors = os.environ.get(RUN_MARKERS, "")
         return {**overrides, RUN_MARKERS: ",".join(filter(None, (ancestors, self.token)))}
 
     def complete(self):
+        if self.job is not None:
+            self.job.complete()
         self.record["active"] = False
         self.save()
 
     def release(self):
-        if self.handle is not None:
-            # Closing releases the kernel lock even after an exception. Keep the
-            # file in place so concurrent openers always lock the same file.
-            self.handle.close()
-            self.handle = None
+        try:
+            if self.job is not None:
+                self.job.release()
+                self.job = None
+        finally:
+            if self.handle is not None:
+                # Keep the file in place so concurrent openers lock the same file.
+                self.handle.close()
+                self.handle = None

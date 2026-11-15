@@ -2,11 +2,13 @@
 import contextlib
 import io
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import time
+import threading
 import unittest
 from unittest.mock import patch
 
@@ -17,6 +19,7 @@ import repository
 import verify
 import commands
 import psutil
+import batch_lock
 from batch_lock import BatchLock, RUN_MARKERS
 from impact import RustScope
 
@@ -157,6 +160,37 @@ class ContinuationTests(unittest.TestCase):
             lock.release()
 
     def test_killed_verifier_waits_for_surviving_command_then_reuses_success(self):
+        self.check_killed_verifier()
+
+    @unittest.skipUnless(os.name == "nt", "Windows Job Object recovery")
+    def test_killed_verifier_recovers_during_unrelated_process_traffic(self):
+        stop, started = threading.Event(), threading.Event()
+        traffic = []
+        failures = []
+        def churn():
+            try:
+                while not stop.is_set():
+                    with subprocess.Popen([sys.executable, "-c", "pass"]) as child:
+                        traffic.append(child.pid)
+                        started.set()
+                        child.wait(timeout=5)
+            except BaseException as error:
+                failures.append(error)
+        thread = threading.Thread(target=churn)
+        thread.start()
+        try:
+            self.assertTrue(started.wait(5), "Unrelated process traffic did not start")
+            with patch.object(batch_lock.psutil, "pids", side_effect=AssertionError(
+                    "Windows recovery must not enumerate system processes")):
+                self.check_killed_verifier()
+        finally:
+            stop.set()
+            thread.join(timeout=10)
+        self.assertFalse(thread.is_alive())
+        self.assertEqual(failures, [])
+        self.assertGreater(len(traffic), 1)
+
+    def check_killed_verifier(self):
         ready = self.root / ".agent/tmp/ready"
         release = self.root / ".agent/tmp/release"
         command = self.phases[1][1][0][1]
@@ -206,11 +240,17 @@ class ContinuationTests(unittest.TestCase):
     def test_unknown_lock_ownership_blocks_without_discarding_evidence(self):
         self.assertEqual(self.run_profile(), 0, self.output)
         previous = self.record()
-        for raw in ("old-attempt-id", "{}", '{"active": null}'):
+        valid = json.loads((self.directory / "active.lock").read_text())
+        invalid = ["old-attempt-id", "{}", '{"active": null}']
+        for key, value in (("version", 1), ("backend", "unknown"), ("active", 1),
+                           ("token", "z" * 32), ("token", None)):
+            invalid.append(json.dumps({**valid, key: value}))
+        for raw in invalid:
             (self.directory / "active.lock").write_text(raw)
             self.assertEqual(self.run_profile(), 1)
             self.assertIn("Cannot establish previous batch ownership", self.output)
             self.assertEqual(self.record(), previous)
+            self.assertEqual((self.directory / "active.lock").read_text(), raw)
 
     def test_early_failure_defers_coverage_and_remains_failure_on_retry(self):
         self.phases.insert(1, ("Build checks", [("Clippy Invariants", self.child("clippy"), {})]))

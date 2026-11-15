@@ -1448,3 +1448,22 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - workspace compilation and 165 machine-loop tests passed on the updated Stable
   - required compiler identity still invalidates test evidence
   - final combined verification remains pending
+---
+
+### [2026-11-15 10:53 CET] — Track verifier command trees with Windows Job Objects
+- **Affected Subsystems**:
+  - `tools/verification`
+  - `Windows process ownership`
+- **What Was Changed (The Concrete Reality)**:
+  - Assign commands to a named Job Object during process creation
+  - retain the job with a guardian until descendants drain
+  - preserve nested verifier containment, result-directory locking and fail-closed recovery
+  - retain the conservative POSIX marker scan
+- **Architectural Rationale & Trade-Offs**:
+  - Replace unstable Windows PID-list comparisons without killing orphan commands
+  - port the reviewed repair from the separate verification-job-tracking worktree without changing that source checkout
+  - archive only completed legacy lock metadata under its kernel lock after establishing that no tagged descendants remain
+- **Verification & Test Results**:
+  - Six integrated real Windows tests pass
+  - prior completed batch evidence stays in its original directory
+  - full combined canonical verification and independent review remain pending
