@@ -265,6 +265,16 @@ nonignored new changes against the current `HEAD`, including earlier pending
 edits even when only a vocabulary correction changed since the last attempt.
 `--plan` selects and displays commands without executing or writing records.
 
+Each actual `commit` invocation also checks official Rust Stable metadata with a
+five-second network timeout. It compares the installed `stable` channel with the
+published version numerically and shows the active verification compiler
+separately. An available update suggests `rustup update stable`; unavailable or
+invalid metadata produces an informational notice. Neither result blocks tests
+or changes their reuse identity. The check runs even when all test evidence is
+reused, saves its notice in `verify/<attempt>/stable-update.log` beside the batch
+logs, and never updates toolchains. `--plan` makes no network request. Actual
+compiler changes still invalidate evidence through execution conditions.
+
 The per-profile JSON record identifies the batch, `HEAD`, checkout, command lists,
 required groups, source and input identities, execution conditions, outcomes,
 elapsed command time and hashed evidence artifacts. Records and original logs

@@ -1428,3 +1428,23 @@ Every authorized repository commit adds a concise entry here. Logging and compac
 - **Verification & Test Results**:
   - The retained performance report records measured A/B comparisons and behavioral checks
   - final combined verification remains pending
+---
+
+### [2026-11-15 10:53 CET] — Report Stable release updates during commit verification
+- **Affected Subsystems**:
+  - `tools/verification`
+  - `Rust toolchain`
+- **What Was Changed (The Concrete Reality)**:
+  - Check official Stable metadata once per actual commit invocation including evidence reuse
+  - show the active compiler and log the advisory result
+  - retain a five-second timeout and offline plan previews
+  - do not automatically update or gate tests on release availability
+- **Architectural Rationale & Trade-Offs**:
+  - The account default Stable changed from Rust and Cargo 1.98.1 with LLVM 22.1.8 to Rust and Cargo 1.100.0 with LLVM 23.1.5
+  - the experimental named toolchain was removed
+  - Nightly and installed targets/components remain available without a repository pin
+- **Verification & Test Results**:
+  - Eight update contracts and the final 164-test tooling run passed before preparation
+  - workspace compilation and 165 machine-loop tests passed on the updated Stable
+  - required compiler identity still invalidates test evidence
+  - final combined verification remains pending

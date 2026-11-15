@@ -41,6 +41,8 @@ class ContinuationTests(unittest.TestCase):
             ("Verification", [("Verification CLI contracts", self.child("contracts"), {})]),
         ]
         self.condition = "environment-one"
+        self.notice = self.enterContext(patch.object(verify, "stable_update_notice", return_value=
+            "[INFO] Stable is up to date (latest release: 1.100.0).\n"))
 
     def write(self, name, text):
         path = self.root / name
@@ -169,6 +171,7 @@ class ContinuationTests(unittest.TestCase):
                 f"verify.REPO_ROOT = execution.REPO_ROOT = Path({str(self.root)!r})\n"
                 f"verify.select_phases = lambda *args: {self.phases!r}\n"
                 f"verify.execution_conditions = lambda root: {self.condition!r}\n"
+                "verify.stable_update_notice = lambda root: '[INFO] Stable fixture\\n'\n"
                 "sys.exit(verify.main(['commit']))\n")
         with tempfile.TemporaryFile() as log:
             process = subprocess.Popen([sys.executable, "-c", code], cwd=self.root, stdout=log, stderr=log)
@@ -404,6 +407,38 @@ class ContinuationTests(unittest.TestCase):
     def test_completion_plan_writes_no_evidence_or_logs(self):
         self.assertEqual(self.run_profile(extra=("--plan",)), 0, self.output)
         self.assertFalse((self.root / ".agent").exists())
+        self.notice.assert_not_called()
+
+    def test_stable_notice_runs_once_per_attempt_even_with_reused_tests(self):
+        self.assertEqual(self.run_profile(), 0, self.output)
+        previous = self.record()
+        events = self.events()
+        update = "[INFO] Stable update available: 1.99.0 -> 1.100.0. Run: rustup update stable\n"
+        self.notice.return_value = update
+        self.assertEqual(self.run_profile(), 0, self.output)
+        self.assertEqual(self.notice.call_count, 2)
+        self.assertEqual(self.events(), events)
+        current = self.record()
+        self.assertEqual(current["groups"], previous["groups"])
+        self.assertEqual(current["conditions"], previous["conditions"])
+        self.assertTrue(all(item["status"] == "reused" for item in current["results"].values()))
+        log = self.directory / "verify" / current["attempt"] / "stable-update.log"
+        self.assertEqual(log.read_text(encoding="utf-8"), update)
+        self.assertIn(update.strip(), self.output)
+
+    def test_stable_notice_cannot_hide_required_gate_failure(self):
+        self.write(self.words, "invalid\n")
+        for notice in ("[INFO] Stable update available. Run: rustup update stable\n",
+                       "[INFO] Could not check Stable updates: timed out\n"):
+            self.notice.return_value = notice
+            self.assertEqual(self.run_profile(), 1, self.output)
+            self.assertEqual(self.record()["outcome"], "failed")
+            self.assertIn(notice.strip(), self.output)
+
+    def test_unavailable_stable_notice_does_not_block_required_tests(self):
+        self.notice.return_value = "[INFO] Could not check Stable updates: timed out\n"
+        self.assertEqual(self.run_profile(), 0, self.output)
+        self.assertEqual(self.events(), ["english", "coverage", "contracts"])
 
     def test_singlestep_reports_are_retained_and_corruption_requires_execution(self):
         command = self.child("singlestep")

@@ -82,7 +82,12 @@ through [tools/web.ps1](../../../../tools/web.ps1), using its Nightly shared-mem
 configuration. Cargo lint warnings fail that build. Native and Nightly compiler,
 Trunk and launcher versions participate in execution conditions.
 
-Cheap blocking gates precede coverage and expensive suites;
+Each actual commit-profile invocation checks official Stable release metadata,
+including when test evidence is reused. This informational check has a five-second
+network timeout, compares only the installed Stable channel, and separately shows
+the active verification compiler. Network or metadata failure does not block tests.
+The notice is logged without becoming a gate or an evidence input; actual compiler
+changes still invalidate execution conditions. `--plan` performs no network query. Cheap blocking gates precede coverage and expensive suites;
 a failure pauses that work. Clippy follows static gates before coverage so its
 findings also prevent avoidable test execution. Repeating the canonical command
 automatically combines new results with valid successful groups for the same `HEAD`. It reruns failed,

@@ -419,11 +419,13 @@ globals
 instanceof
 nonblocking
 notin
+pkg
 pwsh
 reuploaded
 reuploads
 runtimeprobe
 suppressions
+toolchains
 unpark
 wbindgen
 webgl
