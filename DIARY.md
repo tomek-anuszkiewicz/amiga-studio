@@ -1869,3 +1869,17 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - PowerShell parser and usage checks passed
   - Status reports five books and no pending renders or errors for the two opened books
   - Invalid actions return a nonzero exit code
+---
+
+### [2026-11-15 23:32 CET] — Record the accepted M68000 user manual recipe
+- **Affected Subsystems**:
+  - `tools/bootstrap/books/m68000-users-manual-rev8/e41cbe7e14dc`
+- **What Was Changed (The Concrete Reality)**:
+  - Add the accepted source-backed reconstruction recipe
+- **Architectural Rationale & Trade-Offs**:
+  - Preserve the current accepted recipe alongside its existing source identity and OCR data
+- **Verification & Test Results**:
+  - Recipe matches local Accepted
+  - Accepted input resolves one chapter with 1343 elements and 100 assets
+  - Source PDF SHA-256 matches source.json
+  - Whole-book transcription and layout quality were not assessed
