@@ -12,6 +12,39 @@ use egui_kittest::{
 };
 use gui::{EmulatorApp, ScreenScale, ViewMode};
 
+#[test]
+fn conversion_respects_visible_rows_and_argb_alpha() {
+    let info = host_video::FrameInfo {
+        width: 3,
+        height: 2,
+        row_stride: 5,
+        field_number: 0,
+        publication: 1,
+        cck: 0,
+        generation: 1,
+        interlaced: false,
+        field_odd: false,
+        complete: true,
+    };
+    let raw = [
+        0xff123456, 0x80102030, 0x00112233, 0xff00ff00, 0xff00ff00, 0xffabcdef, 0xffffffff,
+        0xff000000, 0xffff0000, 0xffff0000,
+    ];
+    let image = screen::ScreenTexture::convert(info, &raw);
+    assert_eq!(image.size, [3, 2]);
+    assert_eq!(
+        image.pixels,
+        [
+            Color32::from_rgb(0x12, 0x34, 0x56),
+            Color32::from_rgba_unmultiplied(0x10, 0x20, 0x30, 0x80),
+            Color32::TRANSPARENT,
+            Color32::from_rgb(0xab, 0xcd, 0xef),
+            Color32::WHITE,
+            Color32::BLACK,
+        ]
+    );
+}
+
 fn render(app: &mut EmulatorApp, ctx: &Context, width: f32, dpi: f32) -> egui::FullOutput {
     let mut input = RawInput {
         screen_rect: Some(Rect::from_min_size(pos2(0.0, 0.0), vec2(width, 900.0))),

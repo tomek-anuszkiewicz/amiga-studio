@@ -1413,3 +1413,18 @@ Every authorized repository commit adds a concise entry here. Logging and compac
 - **Verification & Test Results**:
   - The originating session reported the actual browser build and architecture checks passing
   - final combined verification remains pending
+---
+
+### [2026-11-15 10:53 CET] — Reserve the visible pixel count during screen conversion
+- **Affected Subsystems**:
+  - `gui screen texture`
+  - `screen scaling tests`
+- **What Was Changed (The Concrete Reality)**:
+  - Allocate the visible pixel count once and convert each visible row without stride padding
+  - preserve ARGB alpha and image dimensions
+- **Architectural Rationale & Trade-Offs**:
+  - The retained WP01 experiment reduced local conversion time by about half
+  - it did not establish a large whole-application FPS improvement
+- **Verification & Test Results**:
+  - The retained performance report records measured A/B comparisons and behavioral checks
+  - final combined verification remains pending

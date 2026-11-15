@@ -88,15 +88,13 @@ impl ScreenTexture {
 
     pub(crate) fn convert(info: crate::host_video::FrameInfo, raw: &[u32]) -> egui::ColorImage {
         let size = [info.width, info.height];
-        let pixels = raw
-            .chunks_exact(info.row_stride)
-            .take(info.height)
-            .flat_map(|row| &row[..info.width])
-            .map(|pixel| {
+        let mut pixels = Vec::with_capacity(info.width * info.height);
+        for row in raw.chunks_exact(info.row_stride).take(info.height) {
+            pixels.extend(row[..info.width].iter().map(|pixel| {
                 let [alpha, red, green, blue] = pixel.to_be_bytes();
                 Color32::from_rgba_unmultiplied(red, green, blue, alpha)
-            })
-            .collect();
+            }));
+        }
         egui::ColorImage { size, pixels }
     }
 
