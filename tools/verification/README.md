@@ -29,6 +29,7 @@ includes a module path.
 | `check english [files PATH...]` | Full language audit or explicit files; task plans under `.agent/tasks/` are always excluded |
 | `check code|hardware|formatting|clippy` | One quality gate |
 | `check build [crate NAME]` | Cargo compilation check; workspace by default |
+| `check web` | Build the browser application through Trunk and nightly; Cargo lint warnings fail |
 | `runner build` | Compile release test and benchmark targets without running them |
 | `runner bench [case ID\|mnemonic NAME\|opcode XXXX] [duration-ms N] [series N]` | CPU performance test measurement |
 | `runner gui -- OPTIONS` | GUI inspector capture |
@@ -80,6 +81,23 @@ The dedicated SingleStep sentence explicitly chooses full or sampled execution.
 Skill-owned scripts remain owned by their skills. Bootstrap, conversion,
 indexing, worktree management, diary appending, tool installation and baseline
 recording remain workflow operations with their own entry points.
+
+## Browser build verification
+
+Run `python tools/verification/verify.py check web` during changes to GUI code,
+workspace manifests or the browser build pipeline. Every `commit` profile selects
+the same `WebAssembly build` gate after preflight and before coverage. It invokes
+`tools/web.ps1 build`, including Trunk asset processing and the production shared
+memory flags. The launcher sets `CARGO_BUILD_WARNINGS=deny`, so Cargo lint warnings
+such as unused workspace dependencies fail both ordinary web builds and the gate.
+This does not change the centrally reviewed Clippy permissions. Non-lint Cargo
+warnings are outside this Cargo setting's scope.
+
+The build requires Trunk, PowerShell, and nightly Rust with `rust-src` and the
+`wasm32-unknown-unknown` target, as described in the [launch instructions](../../README.md).
+Missing tools or a failed build block commit verification. Batch continuation
+fingerprints nightly Cargo/Rust, Trunk and PowerShell versions as well as source
+inputs; changed build tools invalidate successful evidence.
 
 ## Saved SingleStep reports
 
@@ -247,6 +265,16 @@ nonignored new changes against the current `HEAD`, including earlier pending
 edits even when only a vocabulary correction changed since the last attempt.
 `--plan` selects and displays commands without executing or writing records.
 
+Each actual `commit` invocation also checks official Rust Stable metadata with a
+five-second network timeout. It compares the installed `stable` channel with the
+published version numerically and shows the active verification compiler
+separately. An available update suggests `rustup update stable`; unavailable or
+invalid metadata produces an informational notice. Neither result blocks tests
+or changes their reuse identity. The check runs even when all test evidence is
+reused, saves its notice in `verify/<attempt>/stable-update.log` beside the batch
+logs, and never updates toolchains. `--plan` makes no network request. Actual
+compiler changes still invalidate evidence through execution conditions.
+
 The per-profile JSON record identifies the batch, `HEAD`, checkout, command lists,
 required groups, source and input identities, execution conditions, outcomes,
 elapsed command time and hashed evidence artifacts. Records and original logs
@@ -255,11 +283,42 @@ the verifier never searches old logs or other tasks. A changed `HEAD` starts a n
 batch and executes all required groups. Missing, corrupt or incompatible records
 also require execution and cannot produce a reused pass. Repeat the same command
 and results directory after interruption. A process-held lock rejects simultaneous
-owners; abandoned runs resume only after their tagged child processes have stopped.
+owners; abandoned runs resume only after their child processes have stopped.
 The lock file stays in place; its existence alone does not mean a run is active.
 Unknown ownership blocks automatic recovery. Completed, matching groups survive;
 an interrupted group never counts as passed. Do not change output directories just
 to recover an interrupted run, because a new directory has no prior evidence.
+
+On Windows 10 / Windows Server 2016 or newer, each attempt owns a named Job Object.
+Commands enter it inside `CreateProcessW` through `PROC_THREAD_ATTRIBUTE_JOB_LIST`,
+before their code runs. Normal descendants inherit membership, including after
+their parents exit. Nested verifiers create nested jobs, so an outer attempt also
+tracks inner commands. Neither breakaway nor kill-on-close is enabled. Recovery
+queries the job's active-process count, never the system PID list or process
+environments. A successful parent cannot complete a batch while descendants remain.
+
+A separate guardian inherits the job handle and a read-only control pipe. It
+retains the handle until the owner closes the pipe or dies and the job becomes
+empty. This keeps the name available for recovery without relying on arbitrary
+descendants to inherit handles. The guardian then atomically publishes
+`job-<token>.drained` before closing the handle. A missing job is safe only with
+that matching confirmation: its name can disappear after last-handle closure
+even while processes survive. Missing or corrupt confirmation, access/query
+errors, unsupported platforms and incompatible `active.lock` metadata fail
+closed. Losing the guardian or rebooting without a drain confirmation can
+therefore require manual ownership investigation; the verifier never terminates
+orphan commands or automatically discards uncertain ownership. Commands launched
+through external brokers such as WMI are outside normal child-process inheritance.
+POSIX retains its existing conservative environment-marker ownership scan,
+including its refusal when process snapshots change. No new package is required.
+
+The Windows API contracts are documented in Microsoft's
+[Job Objects](https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects),
+[Nested Jobs](https://learn.microsoft.com/en-us/windows/win32/procthread/nested-jobs),
+and [process creation attributes](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-updateprocthreadattribute).
+Microsoft also explains why
+[creating the process directly in the job](https://devblogs.microsoft.com/oldnewthing/20230209-00/?p=107812)
+closes the suspended-process assignment race.
 
 Coverage test execution, export and summary form one reuse group. The three
 reports are retained together beside the original logs; reuse does not invoke
@@ -275,7 +334,7 @@ and `.env`. Generated build and diagnostic directories are excluded. SHA-256
 content checks at attempt boundaries complement source/index checks and file
 metadata checks at each group boundary. Environment values are hashed rather than
 stored. The agent's per-call `CODEX_TOOL_CALL_ID` and the verifier's inherited
-`AMIGA_VERIFICATION_RUNS` process markers are correlation metadata and are
+`AMIGA_VERIFICATION_RUNS` process markers used on POSIX are correlation metadata and are
 excluded; other environment keys remain inputs. Tool versions, Python packages and parent/user Cargo configuration also
 participate. Changed source/index or execution conditions reject the attempt.
 Input ownership must be reviewed when a suite acquires another ignored or external
@@ -295,6 +354,18 @@ batch, not a persistent test cache or a relaxation of final acceptance criteria.
 
 Verification orchestration and coverage result processing live in `tools/verification/`;
 worktree management lives in `tools/worktree.ps1`. The shared diary appender lives in `tools/log_diary.py`. Concrete project audits and checks live in `tools/verification/checks/`. Run these scripts from the repository root. Task selection uses subcommands; the former selection switches are rejected.
+
+The `Clippy Invariants` gate runs through `python tools/verification/verify.py check clippy`.
+It obtains native workspace/all-target and Wasm workspace/library diagnostics from
+Clippy, forcing only `disallowed_types` and `disallowed_methods` to warnings.
+The checker then enforces exact source-file/lint/symbol permissions from
+[`clippy_permissions.json`](checks/clippy_permissions.json). Every unapproved use,
+unused or malformed permission, unsupported policy diagnostic and compiler failure
+fails the gate. Local lint suppressions cannot hide forced warnings. All other
+lint levels and verification gates retain their existing behavior. Direct
+`cargo clippy` does not apply the central permissions and remains a strict
+diagnostic command. Changes to these permissions require explicit approval under
+[protected verification](../../.agents/rules/unit-testing-policy.md#protected-verification).
 
 The `test_runner` suites retain emulator execution checks and reference-result invariants. The decoder inventory has a targeted test; Python tests check CPU performance test selection, analysis and command contracts. Empirical anomaly reports use stored results and do not establish fresh performance measurements.
 

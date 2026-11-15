@@ -2,11 +2,13 @@
 import contextlib
 import io
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import time
+import threading
 import unittest
 from unittest.mock import patch
 
@@ -17,6 +19,7 @@ import repository
 import verify
 import commands
 import psutil
+import batch_lock
 from batch_lock import BatchLock, RUN_MARKERS
 from impact import RustScope
 
@@ -41,6 +44,8 @@ class ContinuationTests(unittest.TestCase):
             ("Verification", [("Verification CLI contracts", self.child("contracts"), {})]),
         ]
         self.condition = "environment-one"
+        self.notice = self.enterContext(patch.object(verify, "stable_update_notice", return_value=
+            "[INFO] Stable is up to date (latest release: 1.100.0).\n"))
 
     def write(self, name, text):
         path = self.root / name
@@ -155,6 +160,37 @@ class ContinuationTests(unittest.TestCase):
             lock.release()
 
     def test_killed_verifier_waits_for_surviving_command_then_reuses_success(self):
+        self.check_killed_verifier()
+
+    @unittest.skipUnless(os.name == "nt", "Windows Job Object recovery")
+    def test_killed_verifier_recovers_during_unrelated_process_traffic(self):
+        stop, started = threading.Event(), threading.Event()
+        traffic = []
+        failures = []
+        def churn():
+            try:
+                while not stop.is_set():
+                    with subprocess.Popen([sys.executable, "-c", "pass"]) as child:
+                        traffic.append(child.pid)
+                        started.set()
+                        child.wait(timeout=5)
+            except BaseException as error:
+                failures.append(error)
+        thread = threading.Thread(target=churn)
+        thread.start()
+        try:
+            self.assertTrue(started.wait(5), "Unrelated process traffic did not start")
+            with patch.object(batch_lock.psutil, "pids", side_effect=AssertionError(
+                    "Windows recovery must not enumerate system processes")):
+                self.check_killed_verifier()
+        finally:
+            stop.set()
+            thread.join(timeout=10)
+        self.assertFalse(thread.is_alive())
+        self.assertEqual(failures, [])
+        self.assertGreater(len(traffic), 1)
+
+    def check_killed_verifier(self):
         ready = self.root / ".agent/tmp/ready"
         release = self.root / ".agent/tmp/release"
         command = self.phases[1][1][0][1]
@@ -169,6 +205,7 @@ class ContinuationTests(unittest.TestCase):
                 f"verify.REPO_ROOT = execution.REPO_ROOT = Path({str(self.root)!r})\n"
                 f"verify.select_phases = lambda *args: {self.phases!r}\n"
                 f"verify.execution_conditions = lambda root: {self.condition!r}\n"
+                "verify.stable_update_notice = lambda root: '[INFO] Stable fixture\\n'\n"
                 "sys.exit(verify.main(['commit']))\n")
         with tempfile.TemporaryFile() as log:
             process = subprocess.Popen([sys.executable, "-c", code], cwd=self.root, stdout=log, stderr=log)
@@ -203,11 +240,17 @@ class ContinuationTests(unittest.TestCase):
     def test_unknown_lock_ownership_blocks_without_discarding_evidence(self):
         self.assertEqual(self.run_profile(), 0, self.output)
         previous = self.record()
-        for raw in ("old-attempt-id", "{}", '{"active": null}'):
+        valid = json.loads((self.directory / "active.lock").read_text())
+        invalid = ["old-attempt-id", "{}", '{"active": null}']
+        for key, value in (("version", 1), ("backend", "unknown"), ("active", 1),
+                           ("token", "z" * 32), ("token", None)):
+            invalid.append(json.dumps({**valid, key: value}))
+        for raw in invalid:
             (self.directory / "active.lock").write_text(raw)
             self.assertEqual(self.run_profile(), 1)
             self.assertIn("Cannot establish previous batch ownership", self.output)
             self.assertEqual(self.record(), previous)
+            self.assertEqual((self.directory / "active.lock").read_text(), raw)
 
     def test_early_failure_defers_coverage_and_remains_failure_on_retry(self):
         self.phases.insert(1, ("Build checks", [("Clippy Invariants", self.child("clippy"), {})]))
@@ -225,7 +268,8 @@ class ContinuationTests(unittest.TestCase):
         with patch.object(commands, "select_rust_scope", return_value=RustScope(("config",), "fixture")):
             selected = commands.select_phases(args, {"crates/config/src/config.rs"})
         self.assertEqual([phase for phase, _ in selected][:3], ["Preflight", "Build checks", "Coverage"])
-        self.assertEqual([name for name, _, _ in selected[1][1]], ["Clippy Invariants"])
+        self.assertEqual([name for name, _, _ in selected[1][1]],
+                         ["Clippy Invariants", "WebAssembly build"])
         command = self.child("clippy")
         command[-1] += "sys.exit(1)"
         self.phases.insert(1, ("Build checks", [("Clippy Invariants", command, {})]))
@@ -242,6 +286,20 @@ class ContinuationTests(unittest.TestCase):
                 before = len(self.events())
                 self.assertEqual(self.run_profile(extra=("--results-dir", f".agent/tmp/{failing}")), 1)
                 self.assertEqual(self.events()[before:], names[:names.index(failing) + 1] + ["gate"])
+
+    def test_failed_web_build_blocks_commit_and_cannot_be_reused_as_success(self):
+        command = self.child("web")
+        successful_script = command[-1]
+        command[-1] += "sys.exit(1)"
+        self.phases.insert(1, ("Build checks", [("WebAssembly build", command, {})]))
+        self.assertEqual(self.run_profile(), 1)
+        self.assertEqual(self.events(), ["english", "web"])
+        self.assertEqual(self.record()["groups"]["WebAssembly build"]["status"], "failed")
+        self.assertEqual(self.run_profile(), 1)
+        self.assertEqual(self.events(), ["english", "web", "web"])
+        command[-1] = successful_script
+        self.assertEqual(self.run_profile(), 0, self.output)
+        self.assertEqual(self.events(), ["english", "web", "web", "web", "coverage", "contracts"])
 
     def test_commit_captures_source_before_change_selection(self):
         events = []
@@ -294,6 +352,26 @@ class ContinuationTests(unittest.TestCase):
                 self.assertEqual(evidence.execution_conditions(self.root), original)
             evidence.os.environ["RUSTFLAGS"] = "-C opt-level=1"
             self.assertNotEqual(evidence.execution_conditions(self.root), original)
+
+    def test_browser_tool_versions_invalidate_execution_conditions(self):
+        changed = {}
+
+        def version(command, **kwargs):
+            return subprocess.CompletedProcess(command, 0, stdout=changed.get(tuple(command), b"version"),
+                                               stderr=b"")
+
+        with patch.object(evidence.subprocess, "run", side_effect=version), \
+             patch.object(evidence.importlib.metadata, "distributions", return_value=[]), \
+             patch.object(evidence, "file_digest", return_value="content"):
+            original = evidence.execution_conditions(self.root)
+            shell = "powershell" if evidence.os.name == "nt" else "pwsh"
+            for command in (("cargo", "+nightly", "--version"), ("rustc", "+nightly", "-vV"),
+                            ("trunk", "--version"),
+                            (shell, "-NoProfile", "-Command", "$PSVersionTable.PSVersion.ToString()")):
+                with self.subTest(command=command):
+                    changed[command] = b"new version"
+                    self.assertNotEqual(evidence.execution_conditions(self.root), original)
+                    changed.clear()
 
     def test_missing_and_corrupt_coverage_artifacts_require_the_whole_bundle(self):
         self.assertEqual(self.run_profile(), 0, self.output)
@@ -369,6 +447,38 @@ class ContinuationTests(unittest.TestCase):
     def test_completion_plan_writes_no_evidence_or_logs(self):
         self.assertEqual(self.run_profile(extra=("--plan",)), 0, self.output)
         self.assertFalse((self.root / ".agent").exists())
+        self.notice.assert_not_called()
+
+    def test_stable_notice_runs_once_per_attempt_even_with_reused_tests(self):
+        self.assertEqual(self.run_profile(), 0, self.output)
+        previous = self.record()
+        events = self.events()
+        update = "[INFO] Stable update available: 1.99.0 -> 1.100.0. Run: rustup update stable\n"
+        self.notice.return_value = update
+        self.assertEqual(self.run_profile(), 0, self.output)
+        self.assertEqual(self.notice.call_count, 2)
+        self.assertEqual(self.events(), events)
+        current = self.record()
+        self.assertEqual(current["groups"], previous["groups"])
+        self.assertEqual(current["conditions"], previous["conditions"])
+        self.assertTrue(all(item["status"] == "reused" for item in current["results"].values()))
+        log = self.directory / "verify" / current["attempt"] / "stable-update.log"
+        self.assertEqual(log.read_text(encoding="utf-8"), update)
+        self.assertIn(update.strip(), self.output)
+
+    def test_stable_notice_cannot_hide_required_gate_failure(self):
+        self.write(self.words, "invalid\n")
+        for notice in ("[INFO] Stable update available. Run: rustup update stable\n",
+                       "[INFO] Could not check Stable updates: timed out\n"):
+            self.notice.return_value = notice
+            self.assertEqual(self.run_profile(), 1, self.output)
+            self.assertEqual(self.record()["outcome"], "failed")
+            self.assertIn(notice.strip(), self.output)
+
+    def test_unavailable_stable_notice_does_not_block_required_tests(self):
+        self.notice.return_value = "[INFO] Could not check Stable updates: timed out\n"
+        self.assertEqual(self.run_profile(), 0, self.output)
+        self.assertEqual(self.events(), ["english", "coverage", "contracts"])
 
     def test_singlestep_reports_are_retained_and_corruption_requires_execution(self):
         command = self.child("singlestep")

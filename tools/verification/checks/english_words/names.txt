@@ -1,4 +1,5 @@
 # Reviewed names vocabulary. One explicit term per line.
+swiftshader
 amd
 amigados
 amigatestkit
@@ -106,3 +107,4 @@ tf
 userio
 hann
 sci
+wmi

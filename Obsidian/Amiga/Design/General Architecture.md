@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "general"
 status: "active"
 created: 2026-08-31
-updated: 2026-11-14
+updated: 2026-11-15
 related: ["[Machine Loop.md](Machine%20Loop.md)", "[Game Ports.md](Game%20Ports.md)", "[MemoryBus.md](MemoryBus.md)", "[Physical Memory.md](Physical%20Memory.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md)", "[Agnus.md](Agnus.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)", "[Interrupts.md](Interrupts.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)", "[Custom Chip Register Ownership and Access Matrix.md](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md)", "[Testing Strategy and Quality Assurance.md](Verification/Testing%20Strategy%20and%20Quality%20Assurance.md)"]
 ---
 
@@ -106,8 +106,8 @@ can pass verification. Re-exports count as dependencies; removing an unused
 dependency does not require keeping its declaration.
 
 The [save format](Application/SaveState.md) is a higher-level consumer of the
-[Machine Loop](Machine%20Loop.md). It owns JSON, file access and PNG previews;
-the core owns pure snapshots and signal transport. No subsystem depends on the
+[Machine Loop](Machine%20Loop.md). It owns JSON and PNG previews; frontends own file access.
+The core owns pure snapshots and signal transport. No subsystem depends on the
 save format. Beam counters belong to Agnus; receiver synchronization travels
 as RGA events rather than an Agnus counter projection.
 

@@ -1493,3 +1493,175 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Independent review identified three plain-text references to the withdrawn stage and these now point to native bring-up or verification
   - Documentation-only change with no production coverage measurement required
   - Canonical commit verification and independent review are pending
+---
+
+### [2026-11-15 09:48 CET] — Normalize math angle entities during book import
+- **Affected Subsystems**:
+  - `Book-to-Markdown importer`
+  - `PDF source recipes`
+- **What Was Changed (The Concrete Reality)**:
+  - Decode named and numeric HTML angle entities inside parsed Markdown math before source alignment
+  - Preserve code and preformatted text plus entities outside math
+  - Add import-to-render regression coverage without changing PDF conversion prompts
+  - Locate math by parser source spans and apply heading prefixes once
+- **Architectural Rationale & Trade-Offs**:
+  - Prevent HTML angle entities from reaching KaTeX as invalid math while keeping PDF references and exports consistent
+- **Verification & Test Results**:
+  - The new regression failed before the fix and passed afterward
+  - All 41 text recipe tests and 33 source alignment tests passed
+  - Reimported 5334 elements from 646 pages of the M68000 Programmer reference manual
+  - Rendering completed and Working matches Accepted
+  - Editor and document endpoints returned HTTP 200 with no pending render or error
+---
+
+### [2026-11-15 10:07 CET] — Store prepared Motorola manual artifacts
+- **Affected Subsystems**:
+  - `Reference manual recipes`
+  - `PDF preparation metadata`
+- **What Was Changed (The Concrete Reality)**:
+  - Store the M68000 Programmer reference manual book recipe
+  - Store the M68000 User manual revision 8 OCR provenance
+- **Architectural Rationale & Trade-Offs**:
+  - Record the remaining local book artifacts at the user-requested commit point
+- **Verification & Test Results**:
+  - No tests or verification were run for this commit at the explicit user request
+  - Earlier importer verification does not certify whole-book transcription quality
+---
+
+### [2026-11-15 10:53 CET] — Run the machine on an independent native and browser owner
+- **Affected Subsystems**:
+  - `gui`
+  - `debugger`
+  - `frame_builder`
+  - `save_state`
+  - `host runtime policy`
+- **What Was Changed (The Concrete Reality)**:
+  - Move the complete session to one host worker
+  - exchange seeded reusable pixel allocations through synchronized ownership
+  - migrate commands and stopped inspection
+  - retire direct-session file and ROM wrappers
+  - recognize production JavaScript callers in code-quality reference discovery
+  - preserve debugger ROM patching and 24-bit address wrapping through the owner command boundary
+  - bound the absent-image playback test failure path
+  - add grouped regressions for owner history and stack/reset commands, unfinished-field continuation, GUI ROM/RAM byte edits and breakpoint submission, and actual snapshot file save/error completion
+- **Architectural Rationale & Trade-Offs**:
+  - HOST-SHARED-MEMORY-PRESENTATION-20261113 keeps deterministic CCK execution independent of GUI repaint
+  - six exact Clippy permissions and the JavaScript corpus change have explicit user approval
+  - host audio and guest input endpoints remain open
+- **Verification & Test Results**:
+  - The initial five-concern candidate passed the canonical commit profile with CARGO_BUILD_JOBS=1
+  - subsequent coverage review identified reachable migration gaps and added grouped behavioral regressions
+  - focused instruction/hex/breakpoint, persistence, history, continuation and corrected warm-reset tests pass
+  - final combined verification and review remain pending
+---
+
+### [2026-11-15 10:53 CET] — Recover missing recent files and picker folders
+- **Affected Subsystems**:
+  - `gui file actions`
+  - `native history`
+  - `browser history`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove unavailable recent binaries and ROMs after selection with an explanatory message
+  - choose the nearest existing native parent folder
+  - use the browser default folder when unavailable
+  - preserve entries after access denial or ordinary cancellation
+- **Architectural Rationale & Trade-Offs**:
+  - Keep load options and category histories independent
+  - record successful owner replies before updating file labels or history
+- **Verification & Test Results**:
+  - The originating session reported seven Rust tests and a Chromium history regression passing
+  - final combined verification remains pending
+---
+
+### [2026-11-15 10:53 CET] — Require optimized browser builds without Cargo lint warnings
+- **Affected Subsystems**:
+  - `tools/web.ps1`
+  - `verification`
+  - `frontend setup`
+- **What Was Changed (The Concrete Reality)**:
+  - Build and serve Release WebAssembly with the existing Nightly shared-memory configuration
+  - require the real browser build in commit verification
+  - reject Cargo lint warnings and restore the caller environment
+  - include browser build tools in execution conditions
+- **Architectural Rationale & Trade-Offs**:
+  - Catch browser build failures and manifest warnings during development and before a commit
+  - keep the global default compiler independent of the browser launcher
+- **Verification & Test Results**:
+  - The originating session reported the actual browser build and architecture checks passing
+  - final combined verification remains pending
+---
+
+### [2026-11-15 10:53 CET] — Reserve the visible pixel count during screen conversion
+- **Affected Subsystems**:
+  - `gui screen texture`
+  - `screen scaling tests`
+- **What Was Changed (The Concrete Reality)**:
+  - Allocate the visible pixel count once and convert each visible row without stride padding
+  - preserve ARGB alpha and image dimensions
+- **Architectural Rationale & Trade-Offs**:
+  - The retained WP01 experiment reduced local conversion time by about half
+  - it did not establish a large whole-application FPS improvement
+- **Verification & Test Results**:
+  - The retained performance report records measured A/B comparisons and behavioral checks
+  - final combined verification remains pending
+---
+
+### [2026-11-15 10:53 CET] — Report Stable release updates during commit verification
+- **Affected Subsystems**:
+  - `tools/verification`
+  - `Rust toolchain`
+- **What Was Changed (The Concrete Reality)**:
+  - Check official Stable metadata once per actual commit invocation including evidence reuse
+  - show the active compiler and log the advisory result
+  - retain a five-second timeout and offline plan previews
+  - do not automatically update or gate tests on release availability
+- **Architectural Rationale & Trade-Offs**:
+  - The account default Stable changed from Rust and Cargo 1.98.1 with LLVM 22.1.8 to Rust and Cargo 1.100.0 with LLVM 23.1.5
+  - the experimental named toolchain was removed
+  - Nightly and installed targets/components remain available without a repository pin
+- **Verification & Test Results**:
+  - Eight update contracts and the final 164-test tooling run passed before preparation
+  - workspace compilation and 165 machine-loop tests passed on the updated Stable
+  - required compiler identity still invalidates test evidence
+  - final combined verification remains pending
+---
+
+### [2026-11-15 10:53 CET] — Track verifier command trees with Windows Job Objects
+- **Affected Subsystems**:
+  - `tools/verification`
+  - `Windows process ownership`
+- **What Was Changed (The Concrete Reality)**:
+  - Assign commands to a named Job Object during process creation
+  - retain the job with a guardian until descendants drain
+  - preserve nested verifier containment, result-directory locking and fail-closed recovery
+  - retain the conservative POSIX marker scan
+- **Architectural Rationale & Trade-Offs**:
+  - Replace unstable Windows PID-list comparisons without killing orphan commands
+  - port the reviewed repair from the separate verification-job-tracking worktree without changing that source checkout
+  - archive only completed legacy lock metadata under its kernel lock after establishing that no tagged descendants remain
+- **Verification & Test Results**:
+  - Six integrated real Windows tests pass
+  - prior completed batch evidence stays in its original directory
+  - full combined canonical verification and independent review remain pending
+---
+
+### [2026-11-15 11:26 CET] — Integrate bootstrap and shared-memory host work into master
+- **Affected Subsystems**:
+  - `Bootstrap importer and manual recipes`
+  - `GUI host runtime`
+  - `Frame buffer and save state`
+  - `Verification tooling`
+- **What Was Changed (The Concrete Reality)**:
+  - Combine both source histories with master in one explicit merge
+  - Preserve both diary histories and all reviewed vocabulary additions
+  - Inventory 24 changed Markdown paths across the three branch histories and the affected general architecture note
+  - Retain master roadmap priorities alongside independent host execution and current book import behavior
+  - Correct browser toolchain instructions and stale file-access ownership descriptions in the integrated documentation
+- **Architectural Rationale & Trade-Offs**:
+  - Verify the complete integrated candidate in one batch before synchronizing and publishing branches
+- **Verification & Test Results**:
+  - All worktrees were clean before integration
+  - Fast-forward attempts confirmed divergent histories
+  - Native Git merge preparation and diff whitespace checks completed
+  - Vault metadata and link audit passed for 35 Design notes and 1096 links
+  - Canonical verification and independent review are pending

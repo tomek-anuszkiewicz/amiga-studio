@@ -1,6 +1,12 @@
 [build]
 target = "index.html"
-dist = "dist"
+dist = "../../.agent/tmp/web-dist"
+filehash = false
+inject_scripts = false
+
+[serve.headers]
+Cross-Origin-Opener-Policy = "same-origin"
+Cross-Origin-Embedder-Policy = "require-corp"
 
 [watch]
-watch = ["src"]
+watch = ["src", "main.js", "machine_worker.js", "host_bridge.js", "index.html"]

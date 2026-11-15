@@ -3,6 +3,10 @@
 import subprocess
 import sys
 import json
+import http.client
+import re
+import tomllib
+import urllib.request
 
 from cli import parse_args
 from commands import select_phases
@@ -14,6 +18,43 @@ from batch_lock import BatchLock
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
+
+STABLE_MANIFEST = "https://static.rust-lang.org/dist/channel-rust-stable.toml"
+
+
+def stable_update_notice(root):
+    """Describe Stable freshness without making it a verification requirement."""
+    lines = []
+    try:
+        active = subprocess.check_output(["rustc", "--version"], cwd=root, text=True,
+                                         encoding="utf-8", stderr=subprocess.STDOUT, timeout=5).strip()
+        lines.append(f"[INFO] Active verification compiler: {active}")
+    except (OSError, subprocess.SubprocessError, UnicodeError) as error:
+        lines.append(f"[INFO] Active verification compiler unavailable: {error}")
+    try:
+        installed = subprocess.check_output(["rustup", "run", "stable", "rustc", "--version"],
+                                            cwd=root, text=True, encoding="utf-8",
+                                            stderr=subprocess.STDOUT, timeout=5).strip()
+        lines.append(f"[INFO] Installed Stable compiler: {installed}")
+        with urllib.request.urlopen(STABLE_MANIFEST, timeout=5) as response:
+            manifest = tomllib.loads(response.read().decode("utf-8"))
+        latest = manifest["pkg"]["rust"]["version"]
+        local_match = re.fullmatch(r"rustc (\d+)\.(\d+)\.(\d+)(?: \([^\r\n]+\))?", installed)
+        remote_match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)(?: \([^\r\n]+\))?", latest)
+        if local_match is None or remote_match is None:
+            raise ValueError("Invalid Stable version")
+        local_version = tuple(map(int, local_match.groups()))
+        remote_version = tuple(map(int, remote_match.groups()))
+        version = ".".join(map(str, remote_version))
+        if remote_version > local_version:
+            lines.append(f"[INFO] Stable update available: {installed.split()[1]} -> {version}. "
+                         "Run: rustup update stable")
+        else:
+            lines.append(f"[INFO] Stable is up to date (latest release: {version}).")
+    except (OSError, subprocess.SubprocessError, http.client.HTTPException, ValueError, KeyError, TypeError) as error:
+        lines.append(f"[INFO] Could not check Stable updates: {error}")
+    return "\n".join(lines) + "\n"
 
 
 def main(argv=None):
@@ -141,6 +182,13 @@ def execute_batch(args, phases, batch, before):
         batch.record["inputs"] = manifest.relative_to(batch.directory).as_posix()
         batch.record["conditions"] = conditions
         batch.save()
+        if args.command == "commit":
+            notice = stable_update_notice(REPO_ROOT)
+            print(notice, end="", flush=True)
+            try:
+                (manifest.parent / "stable-update.log").write_text(notice, encoding="utf-8")
+            except OSError as error:
+                print(f"[INFO] Could not save Stable update notice: {error}")
         results = batch.record["results"]
         blocked = False
         for phase, name, commands in groups:
@@ -169,7 +217,7 @@ def execute_batch(args, phases, batch, before):
             for title, command, overrides in commands:
                 print(f"[RUN] {title}", flush=True)
                 ok, detail, seconds = execute_command(command, lock.command_environment(overrides),
-                                                      log_level=args.log_level, log_dir=directory)
+                                                      log_level=args.log_level, log_dir=directory, job=lock.job)
                 elapsed += seconds
                 success = success and ok
                 print(f"{result_label(ok)} {title} ({seconds:.2f}s): {detail}", flush=True)

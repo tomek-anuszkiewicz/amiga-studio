@@ -75,7 +75,19 @@ measurement. Full executable-code coverage is the goal; there is no
 percentage gate or coverage exception list.
 
 Formatting, Clippy, architecture, hardware/code audits, frontmatter and English
-retain their full scope. Cheap blocking gates precede coverage and expensive suites;
+retain their full scope. Code-quality reference discovery includes production and
+test JavaScript callers, preserving the distinction between host browser entry
+points and test-only APIs. Commit also builds the production WebAssembly application
+through [tools/web.ps1](../../../../tools/web.ps1), using its Nightly shared-memory
+configuration. Cargo lint warnings fail that build. Native and Nightly compiler,
+Trunk and launcher versions participate in execution conditions.
+
+Each actual commit-profile invocation checks official Stable release metadata,
+including when test evidence is reused. This informational check has a five-second
+network timeout, compares only the installed Stable channel, and separately shows
+the active verification compiler. Network or metadata failure does not block tests.
+The notice is logged without becoming a gate or an evidence input; actual compiler
+changes still invalidate execution conditions. `--plan` performs no network query. Cheap blocking gates precede coverage and expensive suites;
 a failure pauses that work. Clippy follows static gates before coverage so its
 findings also prevent avoidable test execution. Repeating the canonical command
 automatically combines new results with valid successful groups for the same `HEAD`. It reruns failed,
@@ -88,7 +100,12 @@ therefore preserves their successful results. Other documents, specifications
 and unknown groups remain conservative; a Markdown extension alone never proves
 independence. Process ownership protects the results directory: after interruption,
 the same command resumes only after the previous verifier and its child commands
-have stopped, retaining completed groups and rerunning unfinished work.
+have stopped, retaining completed groups and rerunning unfinished work. Windows
+tracks command trees with a named Job Object assigned during process creation;
+a guardian retains ownership until all descendants drain. POSIX keeps the
+conservative environment-marker scan. Unknown ownership fails closed, and
+recovery never kills orphan commands. The [continuation reference](../../../../tools/verification/README.md#completion-verification)
+owns platform requirements and recovery limits.
 Python contract selection remains unchanged below.
 Performance measurements remain explicit diagnostics; benchmark workload contracts
 are ordinary standard harness tests. Build caches are retained.

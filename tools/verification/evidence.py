@@ -20,7 +20,7 @@ VERSION = 3
 # These commands do not consume the root changelog. Unknown commands retain it.
 DIARY_INDEPENDENT_GROUPS = frozenset({
     "Obsidian Frontmatter", "Formatting", "Architecture Rules", "Hardware Quality",
-    "Code Quality", "Clippy Invariants", "Coverage", "All standard harness tests",
+    "Code Quality", "Clippy Invariants", "WebAssembly build", "Coverage", "All standard harness tests",
     "Full SingleStepTests", "RAG MCP contracts", "Artifact report contracts",
     "Verification CLI contracts", "Bootstrap contracts", "Conversion contracts",
     "HTML conversion contracts", "PDF conversion contracts", "Book review contracts",
@@ -74,7 +74,11 @@ def capture_inputs(root, contents=True):
 def execution_conditions(root):
     """Store hashes, never environment values or private configuration contents."""
     versions = {}
-    for command in (["cargo", "--version"], ["rustc", "-vV"], ["cargo", "llvm-cov", "--version"]):
+    for command in (["cargo", "--version"], ["rustc", "-vV"], ["cargo", "llvm-cov", "--version"],
+                    ["cargo", "+nightly", "--version"], ["rustc", "+nightly", "-vV"],
+                    ["trunk", "--version"],
+                    ["powershell" if os.name == "nt" else "pwsh", "-NoProfile", "-Command",
+                     "$PSVersionTable.PSVersion.ToString()"]):
         result = subprocess.run(command, cwd=root, capture_output=True, check=True)
         versions[" ".join(command)] = digest([result.stdout.hex(), result.stderr.hex()])
     cargo_home = Path(os.environ.get("CARGO_HOME", Path.home() / ".cargo"))

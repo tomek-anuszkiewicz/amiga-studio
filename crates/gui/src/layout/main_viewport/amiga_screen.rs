@@ -86,19 +86,19 @@ impl ScreenTexture {
         }
     }
 
-    pub(crate) fn update(&mut self, ctx: &egui::Context, session: &debugger::DebuggerSession) {
-        let frame = &session.machine.denise.frame_builder;
-        let size = [frame.width as usize, frame.height as usize];
-        let pixels = frame
-            .frame_buffer()
-            .chunks_exact(frame.row_stride())
-            .flat_map(|row| &row[..frame.width as usize])
-            .map(|pixel| {
+    pub(crate) fn convert(info: crate::host_video::FrameInfo, raw: &[u32]) -> egui::ColorImage {
+        let size = [info.width, info.height];
+        let mut pixels = Vec::with_capacity(info.width * info.height);
+        for row in raw.chunks_exact(info.row_stride).take(info.height) {
+            pixels.extend(row[..info.width].iter().map(|pixel| {
                 let [alpha, red, green, blue] = pixel.to_be_bytes();
                 Color32::from_rgba_unmultiplied(red, green, blue, alpha)
-            })
-            .collect();
-        let image = egui::ColorImage { size, pixels };
+            }));
+        }
+        egui::ColorImage { size, pixels }
+    }
+
+    pub(crate) fn update(&mut self, ctx: &egui::Context, image: egui::ColorImage) {
         self.first_pixel = image.pixels.first().copied().unwrap_or(Color32::BLACK);
         if let Some(texture) = self.texture.as_mut() {
             texture.set(image, self.options);

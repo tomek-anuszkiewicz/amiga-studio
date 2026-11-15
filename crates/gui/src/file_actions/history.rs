@@ -22,6 +22,16 @@ pub struct FileHistory {
 }
 
 impl FileHistory {
+    /// Starting folder for host pickers, falling back through missing parents.
+    pub fn picker_directory(&self, binary: bool) -> Option<&Path> {
+        let directory = if binary {
+            &self.binary_directory
+        } else {
+            &self.rom_directory
+        };
+        directory.as_deref()?.ancestors().find(|path| path.is_dir())
+    }
+
     pub(super) fn remember_binary(&mut self, path: &Path, target: u32, auto_prime: bool) {
         let path = absolute_path(path);
         self.binary_directory = path.parent().map(Path::to_owned);

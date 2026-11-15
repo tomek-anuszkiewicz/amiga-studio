@@ -13,7 +13,6 @@ use crate::layout::right_dock::{
 #[derive(Debug, Default)]
 pub struct Inspection {
     pub(crate) ready: bool,
-    pub(crate) start_after_preparation: bool,
     pub(crate) frozen: bool,
     pub(crate) registers: RegisterPresentation,
     pub(crate) engine: EnginePresentation,
@@ -30,10 +29,10 @@ pub struct Inspection {
 }
 
 impl Inspection {
-    pub(crate) fn refresh_status(&mut self, session: &debugger::DebuggerSession) {
-        self.cck_label = format!("CCK: {}", session.machine.cck);
+    pub(crate) fn refresh_status(&mut self, session: &crate::host_inspection::HostInspection) {
+        self.cck_label = format!("CCK: {}", session.cck);
         self.instruction_label = format!("Inst: {}", session.instructions_executed);
-        self.halted = session.machine.cpu.state.is_halted();
-        self.stopped = session.machine.cpu.state.is_stopped();
+        self.halted = session.cpu.is_halted();
+        self.stopped = session.cpu.is_stopped();
     }
 }

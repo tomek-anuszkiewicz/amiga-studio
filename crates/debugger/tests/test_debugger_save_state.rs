@@ -123,16 +123,16 @@ fn test_debugger_session_json_and_file() {
     let temp_dir = std::env::temp_dir();
     let temp_file = temp_dir.join("dbg_session_test.json");
 
-    session
-        .save_state_to_file(&temp_file)
-        .expect("Failed to save state to file");
+    std::fs::write(&temp_file, &json_str).expect("Failed to save state to file");
 
     let mut file_session = DebuggerSession::from_config(A500Config::from_preset(
         A500Preset::Bare512k,
         VideoStandard::Pal,
     ));
     file_session
-        .load_state_from_file(&temp_file)
+        .load_state_from_json(
+            &std::fs::read_to_string(&temp_file).expect("Failed to read state file"),
+        )
         .expect("Failed to load state from file");
     assert_eq!(file_session.machine.cck, 180);
     assert_eq!(file_session.debugger.current_cck, 180);

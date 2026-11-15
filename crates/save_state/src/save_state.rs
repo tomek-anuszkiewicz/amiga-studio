@@ -3,7 +3,6 @@
 use machine_loop::{A500Machine, A500State};
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use std::path::Path;
 
 /// Active schema format version for A500 save states
 pub const SAVE_STATE_VERSION: u32 = 8;
@@ -35,8 +34,6 @@ pub enum SaveStateError {
     SerializationFailed(String),
     /// Deserialization error
     DeserializationFailed(String),
-    /// File I/O error
-    IoError(String),
     /// Corrupted or truncated payload
     CorruptedData(String),
 }
@@ -54,7 +51,6 @@ impl fmt::Display for SaveStateError {
             Self::DeserializationFailed(msg) => {
                 write!(f, "Save state deserialization failed: {msg}")
             }
-            Self::IoError(msg) => write!(f, "Save state I/O error: {msg}"),
             Self::CorruptedData(msg) => write!(f, "Save state corrupted: {msg}"),
         }
     }
@@ -104,10 +100,7 @@ impl SaveState {
 
     /// Deserializes a save file from a JSON string
     pub fn from_json(json_str: &str) -> Result<Self, SaveStateError> {
-        let saved: Self = serde_json::from_str(json_str)
-            .map_err(|e| SaveStateError::DeserializationFailed(e.to_string()))?;
-        saved.validate_version()?;
-        Ok(saved)
+        Self::from_bytes(json_str.as_bytes())
     }
 
     /// Deserializes a save file from raw JSON bytes
@@ -116,20 +109,6 @@ impl SaveState {
             .map_err(|e| SaveStateError::DeserializationFailed(e.to_string()))?;
         saved.validate_version()?;
         Ok(saved)
-    }
-
-    /// Saves the snapshot to a JSON file
-    pub fn save_to_file(&self, path: impl AsRef<Path>) -> Result<(), SaveStateError> {
-        let path = path.as_ref();
-        let json_pretty = self.to_json_pretty()?;
-        std::fs::write(path, json_pretty).map_err(|e| SaveStateError::IoError(e.to_string()))
-    }
-
-    /// Loads a snapshot from a JSON file
-    pub fn load_from_file(path: impl AsRef<Path>) -> Result<Self, SaveStateError> {
-        let path = path.as_ref();
-        let bytes = std::fs::read(path).map_err(|e| SaveStateError::IoError(e.to_string()))?;
-        Self::from_bytes(&bytes)
     }
 }
 

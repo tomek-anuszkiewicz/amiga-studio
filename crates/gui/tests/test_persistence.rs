@@ -6,7 +6,9 @@
 //! roundtrip cleanly across application lifecycles, while emulation state (RAM, Registers,
 //! Trace, Execution count) remains strictly clean and transient.
 
+mod common;
 use eframe::Storage;
+use gui::host_commands::HostCommand;
 use gui::{AppTheme, EmulatorApp, ScreenScale, UserPreferences, ViewMode};
 use std::collections::HashMap;
 
@@ -40,7 +42,12 @@ fn test_user_preferences_roundtrip_via_storage() {
     let mut storage = MemoryStorage::new();
 
     // 1. Create app with modified user preferences
-    let mut app = EmulatorApp::default();
+    let mut session = Box::new(gui::DebuggerSession::new());
+    session.temporal.set_capacity(50_000);
+    session.load_binary(0x001000, &[0x4E, 0x71], true).unwrap();
+    session.machine.cpu.state.set_d_long(0, 0x12345678);
+    session.instructions_executed = 42;
+    let mut app = EmulatorApp::with_session(session);
     app.theme = AppTheme::ClassicWorkbench;
     app.view_mode = ViewMode::ScreenOnly;
     app.screen_scale = ScreenScale::Two;
@@ -49,15 +56,6 @@ fn test_user_preferences_roundtrip_via_storage() {
     app.disasm_pane_width = 520.0;
     app.crt_pane_height = 520.0;
     app.right_dock_bottom_height = 310.0;
-    app.session.temporal.set_capacity(50_000);
-
-    // Also run some guest code to alter CPU/RAM state
-    app.session
-        .load_binary(0x001000, &[0x4E, 0x71], true)
-        .unwrap();
-    app.session.machine.cpu.state.set_d_long(0, 0x12345678);
-    app.session.instructions_executed = 42;
-
     // 2. Persist state via eframe::App::save
     use eframe::App;
     app.save(&mut storage);
@@ -96,23 +94,25 @@ fn test_user_preferences_roundtrip_via_storage() {
     assert_eq!(new_app.right_dock_bottom_height, 310.0);
 
     // 5. Assert Guest Emulation State is CLEAN & TRANSIENT (never persisted)
-    let fresh_app = EmulatorApp::default();
+    let mut fresh_app = EmulatorApp::default();
+    let fresh = common::inspect(&mut fresh_app);
+    let restored = common::inspect(&mut new_app);
     assert_eq!(
-        new_app.session.machine.cpu.state.d_long(0),
-        fresh_app.session.machine.cpu.state.d_long(0),
+        restored.cpu.d_long(0),
+        fresh.cpu.d_long(0),
         "Guest registers must not be persisted"
     );
     assert_eq!(
-        new_app.session.instructions_executed, 0,
+        restored.instructions_executed, 0,
         "Instruction count must start at 0"
     );
     assert_eq!(
-        new_app.session.machine.cpu.state.pc(),
-        fresh_app.session.machine.cpu.state.pc(),
+        restored.cpu.pc(),
+        fresh.cpu.pc(),
         "PC must remain fresh default on restart"
     );
     assert_ne!(
-        new_app.session.machine.cpu.state.pc(),
+        restored.cpu.pc(),
         0x001000,
         "Loaded binary PC must not be persisted"
     );
@@ -143,23 +143,34 @@ fn test_persist_egui_memory_enabled() {
 
 #[test]
 fn test_app_session_save_state_file_json_roundtrip() {
-    let mut app = EmulatorApp::default();
-    app.session.machine.step_cycles(100);
-
-    let temp_dir = std::env::temp_dir();
-    let temp_file = temp_dir.join("gui_test_save_state.json");
-
-    app.session
-        .save_state_to_file(&temp_file)
-        .expect("Saving state from GUI app session must succeed");
-
+    let mut session = Box::new(gui::DebuggerSession::new());
+    session.machine.step_cycles(100);
+    let mut app = EmulatorApp::with_session(session);
+    let temp_file = std::env::temp_dir().join("gui_test_save_state.json");
+    app.save_state_file(&temp_file);
+    common::settle(&mut app, &egui::Context::default());
+    assert!(app.file_error.is_none());
+    assert!(app
+        .toast_message
+        .as_ref()
+        .unwrap()
+        .0
+        .contains("State saved to"));
     let mut new_app = EmulatorApp::default();
-    new_app
-        .session
-        .load_state_from_file(&temp_file)
-        .expect("Loading state into GUI app session must succeed");
-
-    assert_eq!(app.session.machine.cck, new_app.session.machine.cck);
+    new_app.load_state_file(&temp_file);
+    common::settle(&mut new_app, &egui::Context::default());
+    assert!(new_app.file_error.is_none());
+    assert_eq!(app.host.status.cck, new_app.host.status.cck);
+    assert_eq!(common::snapshot(&mut app), common::snapshot(&mut new_app));
+    let saved = std::fs::read(&temp_file).unwrap();
+    app.save_state_file(&temp_file.join("unavailable.json"));
+    common::settle(&mut app, &egui::Context::default());
+    assert!(app
+        .file_error
+        .as_ref()
+        .unwrap()
+        .contains("Could not save state"));
+    assert_eq!(std::fs::read(&temp_file).unwrap(), saved);
     let _ = std::fs::remove_file(&temp_file);
 }
 
@@ -168,10 +179,13 @@ fn battery_offset_persists_separately_and_ui_refreshes_host_utc() {
     use eframe::App;
     let mut storage = MemoryStorage::new();
     let mut app = EmulatorApp::default();
-    app.session.machine.rtc.load_battery(rtc::RtcBattery {
-        offset_seconds: -123,
-    });
-    let snapshot = app.session.machine.save_state();
+    common::command(
+        &mut app,
+        HostCommand::LoadRtcBattery(rtc::RtcBattery {
+            offset_seconds: -123,
+        }),
+    );
+    let snapshot = common::snapshot_json(&mut app);
     app.save(&mut storage);
     let battery: rtc::RtcBattery = eframe::get_value(&storage, "rtc_battery").unwrap();
     assert_eq!(battery.offset_seconds, -123);
@@ -181,12 +195,17 @@ fn battery_offset_persists_separately_and_ui_refreshes_host_utc() {
     let mut context = eframe::CreationContext::_new_kittest(egui::Context::default());
     context.storage = Some(&storage);
     let mut restarted = EmulatorApp::new(&context);
-    assert_eq!(restarted.session.machine.rtc.battery_data(), battery);
-    restarted.session.machine.load_state(&snapshot);
-    assert_eq!(restarted.session.machine.rtc.battery_data(), battery);
+    common::settle(&mut restarted, &context.egui_ctx);
+    assert_eq!(restarted.host.status.battery, battery);
+    assert!(
+        common::command(&mut restarted, HostCommand::LoadSnapshot(snapshot))
+            .value
+            .is_ok()
+    );
+    assert_eq!(restarted.host.status.battery, battery);
     // Model an old sample while the UI is paused, then refresh without stepping.
-    restarted.session.machine.rtc.supply_host_utc(631152000);
-    let before_cck = restarted.session.machine.cck;
+    common::command(&mut restarted, HostCommand::SupplyUtc(631152000));
+    let before_cck = restarted.host.status.cck;
     let lower = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
@@ -194,10 +213,11 @@ fn battery_offset_persists_separately_and_ui_refreshes_host_utc() {
     let _ = context
         .egui_ctx
         .run(egui::RawInput::default(), |ctx| restarted.update_ui(ctx));
+    common::command(&mut restarted, HostCommand::ReadCpu);
     let upper = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
         .as_secs() as i64;
-    assert!((lower - 123..=upper - 123).contains(&restarted.session.machine.rtc.time()));
-    assert_eq!(restarted.session.machine.cck, before_cck);
+    assert!((lower - 123..=upper - 123).contains(&restarted.host.status.rtc_time));
+    assert_eq!(restarted.host.status.cck, before_cck);
 }

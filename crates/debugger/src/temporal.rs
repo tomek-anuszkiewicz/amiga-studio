@@ -313,17 +313,6 @@ impl TemporalHistory {
         }
     }
 
-    /// Sets the scrub cursor to a specific chronological index and returns the target frame
-    pub fn scrub_to_index(&mut self, index: usize) -> Option<&TemporalFrame> {
-        let count = self.len();
-        if index < count {
-            self.scrub_cursor = Some(index);
-            self.get_chronological(index)
-        } else {
-            None
-        }
-    }
-
     /// Finds chronological indexes and CCK timestamps for historical passes of `target_pc`
     pub fn find_matches_by_pc(&self, target_pc: u32, max_matches: usize) -> Vec<(usize, u64)> {
         let count = self.len();

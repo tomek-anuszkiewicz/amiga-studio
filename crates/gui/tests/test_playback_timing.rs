@@ -156,3 +156,101 @@ fn unfinished_slices_keep_the_previous_image_and_stops_end_a_batch() {
     assert_eq!(session.machine.denise.frame_builder.frame_number, 0);
     assert_eq!(playback.fps(), 0.0);
 }
+
+#[test]
+fn run_uses_host_time_and_measures_fields_independently_of_gui_repaints() {
+    for (standard, updates_per_second) in [(VideoStandard::Pal, 120), (VideoStandard::Ntsc, 240)] {
+        let mut session = running(standard);
+        let mut playback = Playback::default();
+        assert!(playback.advance(0.0, &mut session, || 0.0));
+        let first_cck = session.machine.cck;
+        let first_field = session.machine.denise.frame_builder.frame_number;
+        assert_eq!(first_field, 1);
+        for _ in 0..3 {
+            assert!(!playback.advance(0.0, &mut session, || 0.0));
+            assert_eq!(session.machine.cck, first_cck);
+        }
+        let mut prior_field = first_field;
+        for tick in 1..=updates_per_second {
+            playback.advance(
+                f64::from(tick) / f64::from(updates_per_second),
+                &mut session,
+                || 0.0,
+            );
+            let field = session.machine.denise.frame_builder.frame_number;
+            assert!(
+                field == prior_field || field == prior_field + 1,
+                "a presented field was skipped"
+            );
+            prior_field = field;
+        }
+        let clock = f64::from(standard.color_clock_hz());
+        let elapsed_cck = session.machine.cck - first_cck;
+        assert!((elapsed_cck as f64 - clock).abs() < first_cck as f64);
+        let expected_fps = match standard {
+            VideoStandard::Pal => 50.0,
+            VideoStandard::Ntsc => 60.0,
+        };
+        assert!(
+            (playback.fps() - expected_fps).abs() <= 1.0,
+            "{standard:?}: {} FPS",
+            playback.fps()
+        );
+        session.request_pause();
+        let paused_cck = session.machine.cck;
+        playback.advance(30.0, &mut session, || 0.0);
+        assert_eq!(playback.fps(), 0.0);
+        session.toggle_run();
+        playback.advance(30.0, &mut session, || 0.0);
+        assert!(session.machine.cck - paused_cck <= first_cck);
+    }
+}
+
+#[test]
+fn speed_controls_change_emulated_time_without_skipping_fields() {
+    for speed in [0.25, 0.5, 2.0, 4.0] {
+        let mut session = running(VideoStandard::Pal);
+        let mut playback = Playback::default();
+        while playback.speed() > speed {
+            playback.slower();
+        }
+        while playback.speed() < speed {
+            playback.faster();
+        }
+        playback.advance(0.0, &mut session, || 0.0);
+        let first_cck = session.machine.cck;
+        for tick in 1..=100 {
+            playback.advance(f64::from(tick) / 1000.0, &mut session, || 0.0);
+        }
+        let elapsed_cck = session.machine.cck - first_cck;
+        let expected = f64::from(VideoStandard::Pal.color_clock_hz()) * speed * 0.1;
+        assert!(
+            (elapsed_cck as f64 - expected).abs() < first_cck as f64,
+            "speed {speed}"
+        );
+    }
+}
+
+#[test]
+fn accelerated_fps_counts_emulated_fields_in_both_views() {
+    for view in [gui::ViewMode::ScreenOnly, gui::ViewMode::Developer] {
+        let mut session = Box::new(DebuggerSession::from_config(A500Config::standard_1mb(
+            VideoStandard::Pal,
+        )));
+        session.load_binary(0x1000, &[0x60, 0xfe], true).unwrap();
+        session.set_debugger_enabled(view == gui::ViewMode::Developer);
+        session.toggle_run();
+        let mut playback = Playback::default();
+        playback.faster();
+        playback.advance(0.0, &mut session, || 0.0);
+        let mut publications = 0;
+        let mut measured_fields = 0;
+        for tick in 1..=50 {
+            measured_fields = session.machine.denise.frame_builder.frame_number;
+            publications +=
+                usize::from(playback.advance(f64::from(tick) / 50.0, &mut session, || 0.0));
+        }
+        assert_eq!(publications, 50);
+        assert_eq!(playback.fps(), measured_fields as f64, "{view:?}");
+    }
+}

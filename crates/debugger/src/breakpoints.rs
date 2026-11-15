@@ -133,7 +133,7 @@ pub struct MemoryWatchpoint {
 }
 
 /// Breakpoint and Watchpoint Manager
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct BreakpointManager {
     /// Detailed PC execution breakpoints
     pub pc_breakpoints: Vec<PcBreakpoint>,

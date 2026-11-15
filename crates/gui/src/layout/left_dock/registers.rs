@@ -2,10 +2,10 @@
 //!
 //! Live D0-D7, A0-A7, PC, SR, CCR condition code LED toggles, interactive editing, and diff highlighting.
 
+use crate::host_commands::HostCommand;
 use crate::theme::ColorTokens;
-use cpu::{Cpu, CpuState};
+use cpu::CpuState;
 use egui::{Color32, RichText, Ui};
-use physical_memory::PhysicalMemory;
 
 /// Register identifier for interactive inline editing
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -103,18 +103,17 @@ pub(crate) fn render_registers(
     refresh: bool,
     interactive: bool,
     tokens: &ColorTokens,
-    cpu: &mut Cpu,
-    bus: &mut PhysicalMemory,
+    state: &CpuState,
+    commands: &mut Vec<HostCommand>,
     prev_state: Option<&CpuState>,
     active_reg_edit: &mut Option<(EditRegister, String)>,
-) -> bool {
+) {
     if refresh {
-        presentation.refresh(&cpu.state, prev_state);
+        presentation.refresh(state, prev_state);
     }
     ui.heading("CPU Registers");
 
     let mut pc_to_set: Option<u32> = None;
-    let state = &mut cpu.state;
 
     // Helper to pick text color based on whether value mutated since previous step
     let diff_color = |changed: bool| -> Color32 {
@@ -187,7 +186,10 @@ pub(crate) fn render_registers(
                                         resp.surrender_focus();
                                         let clean = buf.trim().trim_start_matches('$');
                                         if let Ok(new_val) = u32::from_str_radix(clean, 16) {
-                                            state.set_d_long(i, new_val);
+                                            commands.push(HostCommand::SetRegister {
+                                                register: EditRegister::D(i),
+                                                value: new_val,
+                                            });
                                         }
                                         *active_reg_edit = None;
                                     }
@@ -288,7 +290,10 @@ pub(crate) fn render_registers(
                                         resp.surrender_focus();
                                         let clean = buf.trim().trim_start_matches('$');
                                         if let Ok(new_val) = u32::from_str_radix(clean, 16) {
-                                            state.set_a_long(i, new_val);
+                                            commands.push(HostCommand::SetRegister {
+                                                register: EditRegister::A(i),
+                                                value: new_val,
+                                            });
                                         }
                                         *active_reg_edit = None;
                                     }
@@ -382,9 +387,15 @@ pub(crate) fn render_registers(
                                 let clean = buf.trim().trim_start_matches('$');
                                 if let Ok(new_val) = u32::from_str_radix(clean, 16) {
                                     if is_supervisor {
-                                        state.set_usp(new_val);
+                                        commands.push(HostCommand::SetRegister {
+                                            register: EditRegister::USP,
+                                            value: new_val,
+                                        });
                                     } else {
-                                        state.set_ssp(new_val);
+                                        commands.push(HostCommand::SetRegister {
+                                            register: EditRegister::SSP,
+                                            value: new_val,
+                                        });
                                     }
                                 }
                                 *active_reg_edit = None;
@@ -516,7 +527,7 @@ pub(crate) fn render_registers(
                                 resp.surrender_focus();
                                 let clean = buf.trim().trim_start_matches('$');
                                 if let Ok(new_sr) = u16::from_str_radix(clean, 16) {
-                                    state.set_sr(new_sr);
+                                    commands.push(HostCommand::SetRegister { register: EditRegister::SR, value: u32::from(new_sr) });
                                 }
                                 *active_reg_edit = None;
                             }
@@ -598,7 +609,7 @@ pub(crate) fn render_registers(
                         }
 
                         if ui.add(btn).on_hover_text(desc).clicked() {
-                            state.set_sr(state.sr() ^ mask); // Toggle bit
+                            commands.push(HostCommand::ToggleStatusFlag(mask));
                         }
                     }
                 });
@@ -615,7 +626,9 @@ pub(crate) fn render_registers(
     });
 
     if let Some(target_pc) = pc_to_set {
-        cpu.set_pc_and_prime_prefetch(target_pc, bus);
+        commands.push(HostCommand::SetRegister {
+            register: EditRegister::PC,
+            value: target_pc,
+        });
     }
-    pc_to_set.is_some()
 }

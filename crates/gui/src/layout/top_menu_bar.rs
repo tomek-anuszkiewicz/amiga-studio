@@ -3,6 +3,9 @@
 //! File management, execution controls, status badges, and visual preferences.
 
 use crate::app::EmulatorApp;
+use crate::app_host::HostEffect;
+use crate::file_actions::FileCompletion;
+use crate::host_commands::{HistoryCommand, HostCommand};
 use crate::theme::AppTheme;
 
 const ZOOM_SELECTION_TOLERANCE: f32 = 0.01;
@@ -36,13 +39,13 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
                     ui.separator();
 
                     if ui.button("🔄 Reset (Ctrl+R)").clicked() {
-                        app.session.reset();
+                        app.host.queue(HostCommand::Reset);
                         app.inspection.ready = false;
                         ui.close_menu();
                     }
 
                     if ui.button("⚡ Reset Warm").clicked() {
-                        app.session.reset_warm();
+                        app.host.queue(HostCommand::ResetWarm);
                         app.inspection.ready = false;
                         ui.close_menu();
                     }
@@ -67,14 +70,14 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
                         ui.close_menu();
                     }
 
-                    let slot1_label = if app.session.has_quick_slot(1) {
+                    let slot1_label = if app.host.status.quick_slots[0] {
                         "🔄 Quick Load Slot 1 (F9)"
                     } else {
                         "🔄 Quick Load Slot 1 (Empty)"
                     };
                     if ui
                         .add_enabled(
-                            app.session.has_quick_slot(1),
+                            app.host.status.quick_slots[0],
                             egui::Button::new(slot1_label),
                         )
                         .clicked()
@@ -91,7 +94,7 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
                                 if ui.button(format!("Save #{slot}")).clicked() {
                                     quick_save_slot(app, slot);
                                 }
-                                let loaded = app.session.has_quick_slot(slot);
+                                let loaded = app.host.status.quick_slots[slot - 1];
                                 let btn = egui::Button::new(if loaded {
                                     format!("Load #{slot}")
                                 } else {
@@ -108,88 +111,88 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
                 ui.separator();
 
                 // --- 2. Execution Controls ---
-                let run_label = if app.session.pause_pending() {
+                let run_label = if app.host.status.pause_pending {
                     "Pausing..."
-                } else if app.session.is_running {
+                } else if app.host.status.running {
                     if developer { "⏸ Pause (F5)" } else { "⏹ Stop (F5)" }
                 } else {
                     "▶ Run (F5)"
                 };
-                let run_button = egui::Button::new(run_label).fill(if app.session.is_running {
+                let run_button = egui::Button::new(run_label).fill(if app.host.status.running {
                     egui::Color32::from_rgb(180, 140, 20)
                 } else {
                     egui::Color32::from_rgb(34, 139, 34)
                 });
-                if ui.add_enabled(!app.session.pause_pending(), run_button)
+                if ui.add_enabled(!app.host.status.pause_pending, run_button)
                     .on_hover_text("Run at the selected PAL/NTSC speed, or pause after the current video field completes (F5).")
                     .clicked() {
-                    app.session.toggle_run();
+                    app.toggle_run();
                 }
 
                 if developer {
-                    if ui.add_enabled(!app.session.is_running, egui::Button::new("⏭ Step Inst (F10)"))
+                    if ui.add_enabled(!app.host.status.running && app.host.can_edit(), egui::Button::new("⏭ Step Inst (F10)"))
                         .on_hover_text("Execute the current CPU instruction, even at a breakpoint. The image may be partway through a field.")
                         .clicked() {
                         app.disassembly_view_addr = None;
-                        app.session.step_instruction();
+                        app.host.queue(HostCommand::StepInstruction);
                     }
 
-                    if ui.add_enabled(!app.session.is_running, egui::Button::new("⏯ Step CCK (F11)"))
+                    if ui.add_enabled(!app.host.status.running && app.host.can_edit(), egui::Button::new("⏯ Step CCK (F11)"))
                         .on_hover_text("Advance the entire machine by one Color Clock. The image may be partway through a field.")
                         .clicked() {
                         app.disassembly_view_addr = None;
-                        app.session.step_cck();
+                        app.host.queue(HostCommand::StepCck);
                     }
 
-                    if ui.add_enabled(!app.session.is_running, egui::Button::new("Step Frame (Shift+F11)"))
+                    if ui.add_enabled(!app.host.status.running && app.host.can_edit(), egui::Button::new("Step Frame (Shift+F11)"))
                         .on_hover_text("Advance to the next completed PAL/NTSC video field and pause, including while the CPU is stopped. Breakpoints and CPU halts take precedence.")
                         .clicked() {
                         app.disassembly_view_addr = None;
-                        app.session.step_frame();
+                        app.host.queue(HostCommand::StepField);
                     }
 
-                    if ui.add_enabled(!app.session.is_running, egui::Button::new("⏮ Rewind (Shift+F10)")).clicked() {
+                    if ui.add_enabled(!app.host.status.running && app.host.can_edit(), egui::Button::new("⏮ Rewind (Shift+F10)")).clicked() {
                         app.disassembly_view_addr = None;
-                        app.session.step_backward();
+                        app.host.queue(HostCommand::History(HistoryCommand::Backward));
                     }
                 }
 
                 ui.separator();
 
-                if ui.add_enabled(app.playback.can_slow_down(), egui::Button::new("Slower"))
+                if ui.add_enabled(app.host.status.speed > crate::playback::MIN_SPEED, egui::Button::new("Slower"))
                     .on_hover_text("Halve the requested emulation speed, down to 0.25x.")
                     .clicked() {
-                    app.playback.slower();
+                    app.host.queue(HostCommand::Slower);
                 }
-                ui.label(format!("{:.2}x", app.playback.speed()))
+                ui.label(format!("{:.2}x", app.host.status.speed))
                     .on_hover_text("Requested speed relative to the configured PAL/NTSC color clock.");
-                if ui.add_enabled(app.playback.can_speed_up(), egui::Button::new("Faster"))
+                if ui.add_enabled(app.host.status.speed < crate::playback::MAX_SPEED, egui::Button::new("Faster"))
                     .on_hover_text("Double the requested emulation speed, up to 4x. Actual speed depends on host capacity; presentation targets 50 Hz PAL or 60 Hz NTSC using the latest completed field.")
                     .clicked() {
-                    app.playback.faster();
+                    app.host.queue(HostCommand::Faster);
                 }
                 if ui.button("1x").on_hover_text("Restore normal PAL/NTSC emulation speed.").clicked() {
-                    app.playback.normal_speed();
+                    app.host.queue(HostCommand::NormalSpeed);
                 }
                 ui.checkbox(&mut app.show_fps, "FPS")
                     .on_hover_text("Show or hide the measured emulated video fields per second.");
                 if app.show_fps {
-                    ui.label(format!("FPS: {:.1}", app.playback.fps()))
+                    ui.label(format!("FPS: {:.1}", app.host.status.fps))
                     .on_hover_text("Completed emulated video fields per host second, sampled over one second. This is not the GUI repaint rate. Paused execution shows zero.");
                 }
             });
             ui.horizontal_wrapped(|ui| {
                 ui.visuals_mut().button_frame = true;
 
-                if developer && (!app.session.continuous_run() || (!app.inspection.ready && !app.session.pause_pending())) {
-                    app.inspection.refresh_status(&app.session);
+                if developer && (!app.host.continuous_requested() || (!app.inspection.ready && !app.host.status.pause_pending)) {
+                    if let Some(data) = &app.host.data { app.inspection.refresh_status(data); }
                 }
                 // --- 3. Machine Status Badge ---
-                let (status_text, bg_color) = if if developer { app.inspection.halted } else { app.session.machine.cpu.state.is_halted() } {
+                let (status_text, bg_color) = if if developer { app.inspection.halted } else { app.host.status.halted } {
                     ("HALTED", egui::Color32::from_rgb(180, 40, 40))
                 } else if developer && app.inspection.stopped {
                     ("STOPPED", egui::Color32::from_rgb(40, 90, 180))
-                } else if app.session.is_running {
+                } else if app.host.status.running {
                     ("RUNNING", egui::Color32::from_rgb(40, 160, 60))
                 } else {
                     ("PAUSED", egui::Color32::from_rgb(160, 130, 30))
@@ -319,17 +322,16 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
 
 /// Saves snapshot to an in-memory quick-save slot (1..=5)
 pub(crate) fn quick_save_slot(app: &mut EmulatorApp, slot: usize) {
-    if let Ok(()) = app.session.save_quick_slot(slot) {
-        app.toast_message = Some((
-            format!("Quick-saved to Slot #{slot}"),
-            TOAST_DURATION_FRAMES,
-        ));
-    }
+    app.host.queue_effect(
+        HostCommand::SaveQuickSlot(slot),
+        HostEffect::File(FileCompletion::QuickSave(slot)),
+    );
 }
 
 /// Restores snapshot from an in-memory quick-save slot (1..=5)
 pub(crate) fn quick_load_slot(app: &mut EmulatorApp, slot: usize) {
-    if let Ok(()) = app.session.load_quick_slot(slot) {
-        app.state_loaded(format!("Restored from Slot #{slot}"));
-    }
+    app.host.queue_effect(
+        HostCommand::LoadQuickSlot(slot),
+        HostEffect::File(FileCompletion::State(format!("Restored from Slot #{slot}"))),
+    );
 }

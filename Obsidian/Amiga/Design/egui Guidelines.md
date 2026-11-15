@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "gui"
 status: "active"
 created: 2026-09-10
-updated: 2026-11-13
+updated: 2026-11-15
 related: ["[GUI.md](Application/GUI.md)", "[Rust Guidelines.md](Rust%20Guidelines.md)"]
 ---
 
@@ -30,21 +30,41 @@ related: ["[GUI.md](Application/GUI.md)", "[Rust Guidelines.md](Rust%20Guideline
 
 ---
 
-## 2. Synchronous Direct-State Pull (Zero Async / Zero Callbacks)
+## 2. Coherent Owner Data and Retained Inspection
 
-To prevent architectural complexity, concurrency bugs, and UI stalls:
-1. **Synchronous Preparation:** Outside continuous Run, panels prepare visible register values, labels, decoded instructions and memory/trace rows directly from emulator state. Paused edits and navigation refresh through this same UI path.
-2. **Retained Presentation During Run:** Inspector drawing uses the last prepared contents, including toolbar counters. It performs no new inspection, decoding or diagnostic formatting until execution actually stops, including while Stop is pending. Retain displayed data only, without bitmap captures, saved meshes or machine snapshots. Game view does not prepare or draw inspectors. The core never fires change notifications or sends messages to the GUI.
-3. **Synchronous Mutations:** User interactions (typing a new hex value into memory, toggling a CCR flag, clicking a breakpoint) execute synchronously against the underlying state in the same frame tick.
+The complete session belongs to the [host worker](Application/GUI.md#input-and-output).
+GUI widgets never execute or mutate a live machine directly.
+
+1. **Stopped Preparation:** Panels format coherent CPU, memory, breakpoint, trace
+   and timeline data obtained at a stopped owner boundary. Historical CPU snapshots
+   remain on the worker; the GUI receives the positions and PCs needed for navigation.
+2. **Retained Presentation During Run:** Inspectors draw the last prepared contents,
+   including their CCK and instruction counters. Before Run, the owner supplies a
+   coherent snapshot for preparation. Continuous Run and a pending Pause perform
+   no new inspection or diagnostic formatting. Game neither requests nor draws
+   inspectors. Core chips have no GUI callbacks, shared runtime handles or messages.
+3. **Ordered Mutations:** Register edits, flag toggles, memory patches, breakpoints,
+   history and execution controls become typed owner commands. The GUI applies
+   owned replies asynchronously and rejects obsolete generations. File histories
+   and success labels update only after the corresponding successful reply.
 
 ---
 
-## 3. Single-Threaded Time-Slice Execution Model
+## 3. Independent Execution and Presentation
 
-To ensure seamless compilation to **WebAssembly (`wasm32-unknown-unknown`)** where native OS threads are not readily available:
-- **Bounded Cycle Slices:** Run (F5) advances through bounded CCK slices ending at completed video fields. Accelerated playback batches fields until its time budget is consumed or the presentation deadline is reached. If a field is unfinished, a later UI update continues it while retaining the previous image. The [GUI playback contract](Application/GUI.md#input-and-output) defines host pacing, speed selection and presentation.
-- **Responsive UI Under Load:** Because execution is bounded per frame, the host window never freezes. If guest code enters an infinite loop (`BRA *`), the user can still hit Pause (Space / F5) or click buttons without lag.
-- **Frame Rate Synchronization:** Schedule repaints for the next playback deadline, accounting for time already spent executing and rendering. Additional input-driven repaints must not start work before its deadline. Accelerated playback accumulates a separate presentation deadline. When paused, `egui` renders on user interaction or UI animation.
+- **One Machine Owner:** A native thread or browser Web Worker runs bounded CCK
+  slices. All chips remain synchronous within that owner. Guest execution does
+  not depend on GUI repaint cadence.
+- **Responsive UI:** GUI reads only try shared locks. A full video slot stops new
+  image publication without preventing the owner from servicing controls. The
+  [playback contract](Application/GUI.md#input-and-output) defines field selection,
+  speed, host deadlines and image ownership.
+- **Event-Driven Repaint:** Images, replies and shutdown wake the GUI. The GUI
+  converts a claimed image into owned presentation data and releases it before
+  texture upload. Repeated layout consumes no second image in the same UI frame.
+  Native execution parks until work is due; browser execution yields to worker
+  messages between slices. Idle GUI updates do not generate a repeated clock
+  command/reply repaint cycle.
 
 ---
 
@@ -77,7 +97,7 @@ Interfaces must look sharp and properly proportioned across monitors and browser
 - **Visual Feedback & State Diffing:**
   - When stepping through code, mutated registers and memory cells are highlighted using `tokens.accent_diff` (`#67E8F9`) with subtle background pill `tokens.accent_diff_bg` ([`registers.rs`](../../../crates/gui/src/layout/left_dock/registers.rs)).
   - Active instruction pointer (PC) is highlighted with `tokens.accent_pc` (`#38BDF8`) and soft luminous fill `tokens.accent_pc_bg` ([`disassembly.rs`](../../../crates/gui/src/layout/left_dock/disassembly.rs)).
-  - Condition Code Register (CCR) flags render as high-contrast LED badges (`tokens.ccr_active_bg` emerald `#059669` vs `tokens.ccr_inactive_bg` dark slate `#2A3241`) with clickable toggle states directly mutating `state.sr`.
+  - Condition Code Register (CCR) flags render as high-contrast LED badges (`tokens.ccr_active_bg` emerald `#059669` vs `tokens.ccr_inactive_bg` dark slate `#2A3241`) with clickable toggles sending typed status-flag commands to the machine owner.
   - Breakpoints render as distinct colored markers (red dot `●`) in the disassembly margin.
 
 ---

@@ -39,8 +39,7 @@ export function recent_names(kind) {
 }
 
 export function remember_file(kind, name, handle) {
-    const write = pendingWrite.then(async () => {
-        await restore_history();
+    return update_history(async () => {
         const entries = history[kind];
         const retained = [];
         for (const entry of entries) {
@@ -50,6 +49,13 @@ export function remember_file(kind, name, handle) {
             if (!same) retained.push(entry);
         }
         history[kind] = [{ name, handle }, ...retained].slice(0, RECENT_FILE_LIMIT);
+    });
+}
+
+function update_history(update) {
+    const write = pendingWrite.then(async () => {
+        await restore_history();
+        await update();
         const db = await openDatabase();
         await new Promise((resolve, reject) => {
             const transaction = db.transaction("history", "readwrite");
@@ -73,13 +79,38 @@ export function pick_file(kind, title, extensions, recentIndex) {
         };
         const entry = history[kind]?.[recentIndex];
         if (entry?.handle) options.startIn = entry.handle;
+        // Check independently: a picker may silently ignore a deleted starting folder.
+        // Denied access does not prove that a file has been deleted.
+        const missing = entry?.handle
+            ? entry.handle.getFile().then(() => false, error => error.name === "NotFoundError")
+            : Promise.resolve(false);
         // Call before any await so the browser still has the user's activation.
-        return window.showOpenFilePicker(options).then(async handles => {
+        let missingStart = false;
+        const selection = window.showOpenFilePicker(options).catch(error => {
+            if (entry?.handle && error.name === "NotFoundError") {
+                missingStart = true;
+                delete options.startIn;
+                return window.showOpenFilePicker(options);
+            }
+            throw error;
+        });
+        return Promise.all([
+            selection.then(handles => ({ handles }), error => ({ error })), missing,
+        ]).then(async ([outcome, unavailable]) => {
+            if (unavailable || missingStart) {
+                await update_history(() => {
+                    history[kind] = history[kind].filter(candidate => candidate !== entry);
+                });
+                const category = kind === "binary" ? "binaries" : "ROMs";
+                window.alert(`"${entry.name}" or its folder no longer exists. Removed from recent ${category}. If the folder is unavailable, the file picker uses the browser's default location.`);
+            }
+            if (outcome.error) {
+                if (outcome.error.name === "AbortError") return null;
+                throw outcome.error;
+            }
+            const handles = outcome.handles;
             const handle = handles[0];
             return [await handle.getFile(), handle];
-        }).catch(error => {
-            if (error.name === "AbortError") return null;
-            throw error;
         });
     }
 

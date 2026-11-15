@@ -274,6 +274,9 @@
     "tools/bootstrap/pdf-to-markdown/tests/test_pdf_proofreading.py": [
       "audovol",
       "hardw"
+    ],
+    "tools/verification/tests/test_windows_job.py": [
+      "\u03bb"
     ]
   }
 }

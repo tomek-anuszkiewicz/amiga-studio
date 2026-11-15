@@ -389,10 +389,15 @@ impl DebuggerSession {
 
     /// Finishes the current field before pausing, unless already at its boundary.
     pub fn request_pause(&mut self) {
-        if self.frame_boundary_cck == Some(self.machine.cck) {
+        if self.at_frame_boundary() {
             self.finish_run();
         }
         self.pause_at_frame = self.is_running;
+    }
+
+    /// Whether execution is at the last acknowledged completed video field.
+    pub fn at_frame_boundary(&self) -> bool {
+        self.frame_boundary_cck == Some(self.machine.cck)
     }
 
     pub fn pause_pending(&self) -> bool {
@@ -506,24 +511,6 @@ impl DebuggerSession {
     /// Deserializes machine state from JSON
     pub fn load_state_from_json(&mut self, json_str: &str) -> Result<(), SaveStateError> {
         let saved = SaveState::from_json(json_str)?;
-        self.load_state(&saved.state);
-        Ok(())
-    }
-
-    /// Saves machine state directly to a file as JSON
-    pub fn save_state_to_file(
-        &self,
-        path: impl AsRef<std::path::Path>,
-    ) -> Result<(), SaveStateError> {
-        SaveState::capture(&self.machine).save_to_file(path)
-    }
-
-    /// Loads machine state directly from a file
-    pub fn load_state_from_file(
-        &mut self,
-        path: impl AsRef<std::path::Path>,
-    ) -> Result<(), SaveStateError> {
-        let saved = SaveState::load_from_file(path)?;
         self.load_state(&saved.state);
         Ok(())
     }

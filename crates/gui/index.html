@@ -20,6 +20,9 @@
         }
     </style>
     <link rel="rust" data-trunk href="Cargo.toml" data-target-name="gui" />
+    <link data-trunk rel="copy-file" href="main.js" />
+    <link data-trunk rel="copy-file" href="machine_worker.js" />
+    <script type="module" src="main.js"></script>
 </head>
 <body>
     <canvas id="amiga_canvas"></canvas>

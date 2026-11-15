@@ -5,6 +5,47 @@ use machine_loop::A500Machine;
 use save_state::{SaveState, SaveStateError, SAVE_STATE_VERSION};
 
 #[test]
+fn snapshot_after_video_handoff_keeps_the_current_partial_image_and_continuation() {
+    use machine_loop::denise::frame_builder::FrameBuilder;
+
+    let mut machine = A500Machine::new(A500Config::default());
+    let frame = &mut machine.denise.frame_builder;
+    frame.set_field_mode(true, false);
+    frame.write_pixel_pair(0, 0, [0xffff_0000; 2]);
+    frame.write_pixel_pair(0, 2, [0xff88_0000; 2]);
+    frame.finish_field(2, 2);
+    let mut published = FrameBuilder::new_buffer();
+    assert!(frame.exchange_buffer(&mut published));
+    frame.set_field_mode(true, true);
+    frame.write_pixel_pair(0, 1, [0xff00_00ff; 2]);
+
+    let saved = SaveState::capture(&machine);
+    let preview = image::load_from_memory(&saved.header.screenshot_png)
+        .unwrap()
+        .to_rgba8();
+    assert_eq!(preview.get_pixel(0, 0).0, [255, 0, 0, 255]);
+    assert_eq!(preview.get_pixel(0, 1).0, [0, 0, 255, 255]);
+    assert_eq!(published[0], 0xffff_0000);
+    assert_eq!(published[840], 0xff00_0000);
+
+    let restored = SaveState::from_json(&saved.to_json().unwrap()).unwrap();
+    let mut resumed = A500Machine::new(A500Config::default());
+    resumed.load_state(&restored.state);
+    assert_eq!(machine.denise, resumed.denise);
+    for target in [&mut machine, &mut resumed] {
+        target
+            .denise
+            .frame_builder
+            .write_pixel_pair(0, 3, [0xff00_0088; 2]);
+        target.denise.frame_builder.finish_field(2, 2);
+        target.step_cycles(300);
+    }
+    assert_eq!(machine.cck, resumed.cck);
+    assert_eq!(machine.denise, resumed.denise);
+    assert_eq!(published[840], 0xff00_0000);
+}
+
+#[test]
 fn frame_coordinates_resume_at_visible_and_blanking_boundaries() {
     use machine_loop::denise::{Denise, DeniseModel};
 
@@ -182,15 +223,15 @@ fn test_save_state_file_persistence() {
     let temp_dir = std::env::temp_dir();
     let temp_path = temp_dir.join("test_save_state_amiga.json");
 
-    SaveState::capture(&machine)
-        .save_to_file(&temp_path)
-        .expect("Failed to write save state file");
+    let json = SaveState::capture(&machine).to_json_pretty().unwrap();
+    std::fs::write(&temp_path, json).expect("Failed to write save state file");
 
     let mut restored_machine = A500Machine::new(A500Config::from_preset(
         A500Preset::Bare512k,
         VideoStandard::Pal,
     ));
-    let saved = SaveState::load_from_file(&temp_path).expect("Failed to read save state file");
+    let json = std::fs::read_to_string(&temp_path).expect("Failed to read save state file");
+    let saved = SaveState::from_json(&json).expect("Failed to decode save state file");
     restored_machine.load_state(&saved.state);
 
     assert_eq!(machine.cck, restored_machine.cck);

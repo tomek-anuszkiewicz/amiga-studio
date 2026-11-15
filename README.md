@@ -35,8 +35,14 @@ Run the WebAssembly build in a browser using [Trunk](https://trunkrs.dev):
 
 ```powershell
 cargo install --locked trunk
-trunk serve crates/gui/index.html --open
+rustup toolchain install nightly --component rust-src --target wasm32-unknown-unknown
+./tools/web.ps1 serve
 ```
+
+The browser build uses a shared Wasm memory and a dedicated machine worker. The
+[web launcher](tools/web.ps1) rebuilds the atomic Rust standard library and serves
+the required cross-origin isolation headers. `./tools/web.ps1 build` writes an
+independent build under `.agent/tmp/web-dist`. Open the address printed by Trunk.
 
 For the complete controls reference, step-by-step shortcuts, and debugging workflows, see:
 👉 [**Developer Studio & Debugger Guide**](docs/debugger.md)

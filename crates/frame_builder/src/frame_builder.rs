@@ -105,9 +105,34 @@ impl FrameBuilder {
             frame_number: 0,
             interlaced: false,
             field_odd: false,
-            buffer: vec![OPAQUE_BLACK; FRAME_BUFFER_CAPACITY],
+            buffer: Self::new_buffer(),
             field_lines: [0; 2],
         }
+    }
+
+    /// Allocates one reusable host image buffer at the fixed storage capacity.
+    pub fn new_buffer() -> Vec<u32> {
+        vec![OPAQUE_BLACK; FRAME_BUFFER_CAPACITY]
+    }
+
+    /// Full allocation length, including rows outside the current visible image.
+    #[inline]
+    pub fn storage_len(&self) -> usize {
+        self.buffer.len()
+    }
+
+    /// Hands the current allocation to the caller and continues in its replacement.
+    ///
+    /// Seed the replacement before exchanging ownership so opposite-field and
+    /// unfinished-field pixels remain current. The caller must exclusively own
+    /// the replacement. An incorrect length leaves both buffers unchanged.
+    pub fn exchange_buffer(&mut self, replacement: &mut Vec<u32>) -> bool {
+        if replacement.len() != FRAME_BUFFER_CAPACITY {
+            return false;
+        }
+        replacement.copy_from_slice(&self.buffer);
+        std::mem::swap(&mut self.buffer, replacement);
+        true
     }
 
     pub fn reset(&mut self) {

@@ -11,7 +11,7 @@ This operational reference contains setup commands and provisioning details. Sta
 <a id="1-build-run"></a><a id="1-build--run"></a><a id="1-zero-setup-build-execution"></a>
 ## 1. Build & Run
 
-A freshly cloned repository is **100% self-contained for compilation and execution** using the standard stable Rust toolchain ([rustup.rs](https://rustup.rs)). No bootstrapping, external downloads, or database services are required to run the emulator.
+Native builds use the standard Stable Rust toolchain ([rustup.rs](https://rustup.rs)). The shared-memory browser build additionally requires Nightly with `rust-src`, the Wasm target and Trunk. Neither frontend requires the documentation database services.
 
 <a id="standalone-native-gui-release"></a>
 ### Standalone Native GUI (Release)
@@ -34,8 +34,11 @@ Run the emulator directly inside a web browser using WebAssembly and [Trunk](htt
 # Install Trunk (first-time only):
 cargo install --locked trunk
 
-# Serve and open the WebAssembly canvas in your default browser:
-trunk serve crates/gui/index.html --open
+# Install the browser toolchain components:
+rustup toolchain install nightly --component rust-src --target wasm32-unknown-unknown
+
+# Build and serve the optimized application with shared-memory settings:
+./tools/web.ps1 serve
 ```
 
 ---
@@ -137,7 +140,7 @@ Due to copyright preservation and multi-gigabyte dataset exclusion (`.gitignore`
 <a id="4-bootstrapping-overview-toolsbootstrapbootstrapps1"></a><a id="4-bootstrapping-overview--toolsbootstrapbootstrapps1"></a><a id="5-bootstrapping-overview-toolsbootstrapbootstrapps1"></a><a id="5-bootstrapping-overview--toolsbootstrapbootstrapps1"></a><a id="4-external-reference-downloads-provisioning"></a><a id="4-external-reference-downloads--provisioning"></a><a id="4-archival-documentation-reference-downloads"></a><a id="4-archival-documentation--reference-downloads"></a><a id="2-optional-bootstrapping-overview"></a><a id="bootstrapping-overview"></a>
 ## 4. Bootstrapping & External Reference Provisioning (`tools/bootstrap/bootstrap.ps1`)
 
-Bootstrapping is **strictly optional**. A freshly cloned repository compiles and runs the standalone desktop GUI or WebAssembly canvas out of the box using only the stable Rust toolchain.
+Reference provisioning is **optional** for running the emulator. The desktop GUI uses Stable Rust; the shared-memory browser application requires Nightly with `rust-src`, the Wasm target and Trunk, as described in [Build & Run](#1-build-run).
 
 However, specialized development and verification workflows—such as running exhaustive 124-suite M68000 SingleStep tests, validating against golden vAmigaTS visual viewports, querying the offline Qdrant RAG vector database, or exploring cross-codebase call graphs—require external reference assets, technical literature, or tooling services.
 

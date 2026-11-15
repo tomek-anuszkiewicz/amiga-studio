@@ -3,8 +3,11 @@
 //! M68000 instruction disassembly stream, execution cursor tracking, breakpoints,
 //! and in-place instruction editing with byte size invariance enforcement.
 
+use crate::host_commands::{HistoryCommand, HostCommand};
+use crate::host_inspection::HistoryInspection;
 use crate::theme::ColorTokens;
-use cpu::Cpu;
+use crate::EditRegister;
+use cpu::CpuState;
 use debugger::{assemble_instruction, disassemble, find_aligned_disassembly_start, Debugger};
 use egui::{RichText, Ui};
 use physical_memory::PhysicalMemory;
@@ -47,17 +50,17 @@ pub(crate) fn render_disassembly(
     data: &mut DisassemblyPresentation,
     refresh: bool,
     interactive: bool,
-    cpu: &mut Cpu,
-    bus: &mut PhysicalMemory,
+    cpu: &CpuState,
+    bus: &PhysicalMemory,
     debugger: &mut Debugger,
-    temporal: &mut debugger::temporal::TemporalHistory,
+    temporal: &HistoryInspection,
+    commands: &mut Vec<HostCommand>,
     goto_addr_str: &mut String,
     view_addr: &mut Option<u32>,
     selected_addr: &mut Option<u32>,
     active_edit: &mut Option<DisasmEditState>,
     tokens: &ColorTokens,
-) -> bool {
-    let mut execution_replaced = false;
+) {
     ui.scope(|ui| {
     if !interactive { ui.disable(); }
     let start_pos = ui.cursor().min;
@@ -68,7 +71,7 @@ pub(crate) fn render_disassembly(
     ui.heading("Disassembly");
 
     if refresh {
-        data.current_pc = cpu.state.instruction_pc() & physical_memory::MASK_PHYSICAL_ADDRESS;
+        data.current_pc = cpu.instruction_pc() & physical_memory::MASK_PHYSICAL_ADDRESS;
     }
     let current_pc = data.current_pc;
 
@@ -87,8 +90,7 @@ pub(crate) fn render_disassembly(
             let clean = goto_addr_str.trim().trim_start_matches('$');
             if let Ok(addr) = u32::from_str_radix(clean, 16) {
                 let target = addr & physical_memory::MASK_PHYSICAL_ADDRESS;
-                cpu.set_pc_and_prime_prefetch(target, bus);
-                execution_replaced = true;
+                commands.push(HostCommand::SetRegister { register: EditRegister::PC, value: target });
                 *view_addr = None;
                 *selected_addr = Some(target);
             }
@@ -361,16 +363,13 @@ pub(crate) fn render_disassembly(
                                                         new_len / 2
                                                     ));
                                                 } else {
-                                                    // Commit words to physical memory
-                                                    for (i, word) in words.iter().enumerate() {
-                                                        let w_addr = cur_addr.wrapping_add((i * 2) as u32);
-                                                        bus.write_word_debug(w_addr, *word);
-                                                    }
-
-                                                    // If this is the current instruction, re-prime prefetch
+                                                    commands.push(HostCommand::WriteMemory {
+                                                        address: cur_addr,
+                                                        bytes: words.iter().flat_map(|word| word.to_be_bytes()).collect(),
+                                                        restart_instruction: is_current,
+                                                    });
                                                     if is_current {
-                                                        cpu.set_pc_and_prime_prefetch(cur_addr, bus);
-                                                        execution_replaced = true;
+                                                        commands.push(HostCommand::SetRegister { register: EditRegister::PC, value: cur_addr });
                                                     }
                                                     *active_edit = None;
                                                 }
@@ -464,10 +463,7 @@ pub(crate) fn render_disassembly(
                                     .clicked()
                                 {
                                     if let Some((last_idx, _)) = historical_passes.last() {
-                                        if let Some(target_frame) = temporal.scrub_to_index(*last_idx) {
-                                            cpu.restore_state(target_frame.state.clone());
-                                            execution_replaced = true;
-                                        }
+                                        commands.push(HostCommand::History(HistoryCommand::Index(*last_idx)));
                                     }
                                 }
                             }
@@ -475,8 +471,7 @@ pub(crate) fn render_disassembly(
                             // Right-click Context Menu
                             line_label.context_menu(|ui| {
                                 if ui.button("📍 Set PC here").clicked() {
-                                    cpu.set_pc_and_prime_prefetch(cur_addr, bus);
-                                    execution_replaced = true;
+                                    commands.push(HostCommand::SetRegister { register: EditRegister::PC, value: cur_addr });
                                     *view_addr = None;
                                     *selected_addr = Some(cur_addr);
                                     ui.close_menu();
@@ -510,10 +505,7 @@ pub(crate) fn render_disassembly(
                                     for (pass_num, (hist_idx, cck)) in historical_passes.iter().enumerate() {
                                         let item_label = format!("Pass #{} (CCK: {})", pass_num + 1, cck);
                                         if ui.button(item_label).clicked() {
-                                            if let Some(target_frame) = temporal.scrub_to_index(*hist_idx) {
-                                                cpu.restore_state(target_frame.state.clone());
-                                                execution_replaced = true;
-                                            }
+                                            commands.push(HostCommand::History(HistoryCommand::Index(*hist_idx)));
                                             ui.close_menu();
                                         }
                                     }
@@ -540,7 +532,6 @@ pub(crate) fn render_disassembly(
     );
     ui.data_mut(|d| d.insert_temp(disasm_rect_id, total_rect));
     });
-    execution_replaced
 }
 
 /// Interactive vertical scrollbar mapping 24-bit Amiga address space ($000000..=$00FFFFFE)
