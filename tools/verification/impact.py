@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import json
 from pathlib import Path
 import subprocess
+from repository import TIMING_REPORT
 
 
 # Execution and continuation have Python process/fixture contracts. Selection,
@@ -108,6 +109,9 @@ def select_rust_scope(root, changes, python_inputs=()):
     changes = sorted(changes)
     if not changes:
         return RustScope(None, "Clean tree: no change boundary, so run the full Rust scope.")
+    changes = [path for path in changes if path != TIMING_REPORT]
+    if not changes:
+        return RustScope((), "Only generated timing output changed.")
     broad = [path for path in changes if full_scope_input(path)]
     if broad:
         return RustScope(None, "Shared build, verification or specification input changed: " + ", ".join(broad))

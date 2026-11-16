@@ -21,6 +21,7 @@ import integration_cleanup
 import integration_state
 import repository
 import verify
+import timing_report
 from cli import parse_args
 from evidence import digest
 
@@ -48,6 +49,30 @@ class IntegrationTests(unittest.TestCase):
         self.phases = [("Preflight", [("Fixture check", [sys.executable, "-c", "print('verified fixture')"], {})])]
         self.enterContext(patch.object(commands, "select_phases", return_value=self.phases))
         self.enterContext(patch.object(verify, "select_phases", return_value=self.phases))
+        # These publication fixtures do not need generated report content. The
+        # dedicated output-boundary test below exercises the actual publisher.
+        self.report_publisher = self.enterContext(patch.object(verify, "publish", return_value={}))
+
+    def test_report_creation_and_updates_preserve_evidence_before_freeze(self):
+        self.report_publisher.side_effect = timing_report.publish
+        self.write(self.source, "value.txt", "candidate\n")
+        with patch.object(verify, "REPO_ROOT", self.source), patch.object(execution, "REPO_ROOT", self.source), \
+             patch.object(verify, "stable_update_notice", return_value=""), contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(verify.main(["commit", "--integration-base", self.base]), 0, output.getvalue())
+        evidence, _ = integration.validate_evidence(self.source, self.directory)
+        self.write(self.source, repository.TIMING_REPORT, "Updated generated data.\n")
+        integration.validate_evidence(self.source, self.directory)
+        tree = repository.candidate_tree(self.source)
+        partition = [{"message": "feat: candidate", "tree": tree}]
+        review = {"verdict": "APPROVED", "reviewer": "independent fixture reviewer", "source": evidence["source"],
+                  "integration_base": self.base, "partition": digest(partition)}
+        partition_path = self.write(self.source, ".agent/tmp/partition.json", json.dumps(partition))
+        review_path = self.write(self.source, ".agent/tmp/review.json", json.dumps(review))
+        integration.freeze(self.source, self.directory, review_path, partition_path, "master")
+        self.assertEqual(integration.read(self.record)["tree"], tree)
+        self.write(self.source, "value.txt", "Changed source after verification.\n")
+        with self.assertRaisesRegex(ValueError, "current candidate"):
+            integration.validate_evidence(self.source, self.directory)
 
     def write(self, root, name, content):
         path = root / name

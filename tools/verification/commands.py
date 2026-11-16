@@ -29,6 +29,8 @@ def select_tests(root, mode, verify_singlestep=False, changes=(), rust_scope=Non
     if completion:
         commands.extend(python_commands(
             include_bootstrap=any(path.startswith("tools/bootstrap/") for path in changes)))
+        if not any(verification_contract_input(path) for path in changes):
+            commands = [item for item in commands if item[0] != "Verification CLI contracts"]
     return commands
 
 
@@ -141,8 +143,18 @@ PYTHON_INPUTS = {
     ),
     "RAG MCP contracts": ("tools/amiga-rag-mcp-server/", ".codex/config.toml"),
     "Artifact report contracts": ("tools/artifacts/",),
-    "Verification CLI contracts": ("tools/verification/", "tools/web.ps1", "tools/worktree.ps1"),
+    "Verification CLI contracts": ("tools/verification/", "tools/web.ps1", "tools/worktree.ps1", "tools/graphify_query.py",
+                                   ".agents/skills/obsidian-vault-linking/scripts/"),
 }
+
+
+def verification_contract_input(path):
+    """Inputs consumed by contracts of verification and its shared launchers."""
+    from impact import language_data_input
+    return (not path.endswith(".md")
+            and (path == "tools/verification/checks/check_english.json" or not language_data_input(path))
+            and any(path.startswith(owned) if owned.endswith("/") else path == owned
+                    for owned in PYTHON_INPUTS["Verification CLI contracts"]))
 
 
 def python_commands(directory=None, pattern=None, case=None, changes=None, include_bootstrap=True):
@@ -154,6 +166,8 @@ def python_commands(directory=None, pattern=None, case=None, changes=None, inclu
         selections = [(name, target) for name, target in selections
                       if any(path.startswith(owned) if owned.endswith("/") else path == owned
                              for path in changes for owned in PYTHON_INPUTS[name])]
+        if not any(verification_contract_input(path) for path in changes):
+            selections = [(name, target) for name, target in selections if name != "Verification CLI contracts"]
     result = []
     for name, target in selections:
         path = Path(target)

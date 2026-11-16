@@ -7,6 +7,7 @@ import http.client
 import re
 import tomllib
 import urllib.request
+import time
 
 from cli import parse_args
 from commands import select_phases
@@ -14,6 +15,7 @@ from execution import execute_command, print_info, result_label
 from repository import REPO_ROOT, collect_changes, snapshot, resolve_base, divergent_integration, candidate_tree
 from evidence import BatchEvidence, capture_inputs, execution_conditions, group_identity
 from batch_lock import BatchLock
+from timing_report import measurement, publish, omissions
 
 
 if hasattr(sys.stdout, "reconfigure"):
@@ -58,6 +60,7 @@ def stable_update_notice(root):
 
 
 def main(argv=None):
+    started = time.perf_counter()
     parser, args = parse_args(sys.argv[1:] if argv is None else argv)
     if args is None:
         return 0
@@ -141,25 +144,31 @@ def main(argv=None):
             print(f"{result_label(False)} Cannot capture source snapshot: {error}")
             return 1
     if batch is not None:
-        return execute_batch(args, phases, batch, before)
+        return execute_batch(args, phases, batch, before, started)
     results = []
+    timings = []
     blocked = False
     for phase, commands in phases:
         if phase != "Preflight" and blocked:
             print("[MISSING] Expensive checks deferred until preliminary blockers pass.")
-            break
+            timings.extend(measurement(phase, name, name, "missing") for name, _, _ in commands)
+            continue
         if phase == "Coverage":
             print_info("Building/reusing Cargo tests WITH coverage instrumentation.")
         elif any(command[0] == "cargo" for _, command, _ in commands):
             print_info("Building/reusing Cargo artifacts WITHOUT coverage instrumentation.")
-        for name, command, overrides in commands:
+        for index, (name, command, overrides) in enumerate(commands):
             print(f"[RUN] {name}", flush=True)
             ok, detail, elapsed = execute_command(command, overrides, log_level=args.log_level,
                                                   log_dir=results_dir / "verify" if results_dir else None)
             results.append(ok)
+            timings.append(measurement(phase, name, name, "executed" if ok else "failed", elapsed,
+                                       commands=[command]))
             blocked = blocked or phase in ("Preflight", "Build checks") and not ok
             print(f"{result_label(ok)} {name} ({elapsed:.2f}s): {detail}", flush=True)
             if phase == "Coverage" and not ok:
+                timings.extend(measurement(phase, title, title, "missing")
+                               for title, _, _ in commands[index + 1:])
                 break
             if args.command == "runner" and args.action in ("bench", "profile") and not ok:
                 break
@@ -170,14 +179,22 @@ def main(argv=None):
     if not unchanged:
         print(f"{result_label(False)} Source or index changed during verification. Verify the current snapshot again.")
         results.append(False)
+        timings.append(measurement("Stability", "Source and index", "Source and index", "failed"))
+    if not produces_reports:
+        try:
+            publish(REPO_ROOT, args.command, timings, time.perf_counter() - started)
+        except OSError as error:
+            print(f"{result_label(False)} Cannot write timing report: {error}")
+            results.append(False)
     print(f"{result_label(all(results))} {args.command} verification")
     return 0 if all(results) else 1
 
 
 
-def execute_batch(args, phases, batch, before):
+def execute_batch(args, phases, batch, before, started):
     """Execute the full selected profile, retaining only matching successful groups."""
     batch.directory.mkdir(parents=True, exist_ok=True)
+    timings = omissions(phases)
     lock = BatchLock(batch.directory)
     try:
         lock.acquire()
@@ -221,6 +238,7 @@ def execute_batch(args, phases, batch, before):
             reason = batch.reason(name, identity)
             if phase != "Preflight" and blocked:
                 results[name] = {"status": "missing", "reason": "preliminary blocker"}
+                timings.append(measurement(phase, name, name, "missing"))
                 print(f"[MISSING] {name}: preliminary blocker")
                 continue
             if snapshot(REPO_ROOT) != source:
@@ -232,6 +250,9 @@ def execute_batch(args, phases, batch, before):
             if reason is None:
                 item = batch.record["groups"][name]
                 results[name] = {"status": "reused", "attempt": item["attempt"]}
+                timings.append(measurement(phase, name, name, "reused",
+                                           previous_seconds=item.get("elapsed_seconds"),
+                                           commands=[command for _, command, _ in commands]))
                 print(f"[REUSED] {name}: matching inputs and artifacts; attempt {item['attempt']}")
                 continue
             old = batch.record["groups"].get(name)
@@ -239,14 +260,18 @@ def execute_batch(args, phases, batch, before):
             print(f"[{label}] {name}: {reason}")
             directory = batch.start(name, identity, commands, source)
             success, elapsed = True, 0
-            for title, command, overrides in commands:
+            for index, (title, command, overrides) in enumerate(commands):
                 print(f"[RUN] {title}", flush=True)
                 ok, detail, seconds = execute_command(command, lock.command_environment(overrides),
                                                       log_level=args.log_level, log_dir=directory, job=lock.job)
                 elapsed += seconds
+                timings.append(measurement(phase, name, title, "executed" if ok else "failed", seconds,
+                                           commands=[command]))
                 success = success and ok
                 print(f"{result_label(ok)} {title} ({seconds:.2f}s): {detail}", flush=True)
                 if phase == "Coverage" and not ok:
+                    timings.extend(measurement(phase, name, title, "missing")
+                                   for title, _, _ in commands[index + 1:])
                     break
             if snapshot(REPO_ROOT) != source:
                 raise ValueError("Source or index changed during verification")
@@ -261,8 +286,15 @@ def execute_batch(args, phases, batch, before):
         if snapshot(REPO_ROOT) != source or capture_inputs(REPO_ROOT) != inputs or execution_conditions(REPO_ROOT) != conditions:
             raise ValueError("Source, index or execution conditions changed during verification")
         success = all(item["status"] in ("executed", "reused") for item in results.values())
-        batch.record["outcome"] = "passed" if success else "failed"
         batch.record["source"] = source
+        try:
+            batch.record["timing_report"] = publish(REPO_ROOT, args.command, timings,
+                                                     time.perf_counter() - started)
+        except OSError as error:
+            batch.record["timing_report"] = {"error": str(error)}
+            print(f"{result_label(False)} Cannot write timing report: {error}")
+            success = False
+        batch.record["outcome"] = "passed" if success else "failed"
         batch.record["tree"] = candidate_tree(REPO_ROOT)
         batch.save()
         lock.complete()

@@ -66,6 +66,12 @@ class ImpactTests(unittest.TestCase):
         self.assertEqual(self.select(["DIARY.md", "docs/guide.md", ".agents/rules/git-commits.md",
                                       "tools/verification/README.md", "tools/artifacts/report.py"]).packages, ())
 
+    def test_generated_report_does_not_expand_real_source_or_report_only_scope(self):
+        report = "tests/test-runtime-report.md"
+        self.assertEqual(self.select([report]).packages, ())
+        self.assertEqual(self.select([report, "crates/gui/src/gui.rs"]).packages, ("gui",))
+        self.assertIsNone(self.select(["tests/real-input.md"]).packages)
+
     def test_language_data_does_not_select_rust_or_expand_package_scope(self):
         paths = ["tools/verification/checks/check_english.json",
                  *[f"tools/verification/checks/english_words/{name}.txt"

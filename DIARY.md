@@ -1961,3 +1961,23 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Twenty-seven focused GUI input and host cases passed
   - Browser build and formatting passed
   - No whole-commit speedup or hardware agreement is established
+---
+
+### [2026-11-16 09:42 CET] — TEST-RUNTIME-AND-VALUE-20261116: report verification timings without invalidating inputs
+- **Affected Subsystems**:
+  - `tools/verification`
+  - `tests/test-runtime-report.md`
+  - `verification instructions and specifications`
+- **What Was Changed (The Concrete Reality)**:
+  - Generate a versioned timing report and grouped console summary from existing command timers
+  - Exclude this exact output from selection source stability input identities and language scans while sealing it in the candidate tree
+  - Select verification-tool contracts only for their owning code tests policies and consumed shared tooling
+- **Architectural Rationale & Trade-Offs**:
+  - Expose executed reused failed missing and skipped work without repeating tests to measure them
+  - Preserve required repository gates and detect real source edits
+- **Verification & Test Results**:
+  - All 218 focused tooling contracts passed after the separate PID fixture correction
+  - Six alternating reused fixture pairs measured median generation 24.608 ms and writing 0.528 ms with a noisy 87 ms end-to-end difference
+  - Input fixture profiling found 5.671 s of machine advance and 13 roughly 26 MB snapshots with 6.313 s acquisition plus 3.311 s decoding
+  - Emulator production code is unchanged and changed-code coverage review is inapplicable
+  - Canonical batch verification and independent review are recorded in the commit message

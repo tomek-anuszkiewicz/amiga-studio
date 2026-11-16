@@ -175,22 +175,22 @@ class SelectionTests(unittest.TestCase):
         commands = selected("commit", ["tools/bootstrap/book-to-markdown/review/service.py"])
         self.assertFalse(any("llvm-cov" in item[1] or item[1][:2] == ["cargo", "test"] for item in commands))
         self.assertTrue(any(any(part.endswith("checks/check_architecture.py") for part in item[1]) for item in commands))
-        self.assertEqual(sum("discover" in item[1] for item in commands), 7)
+        self.assertEqual(sum("discover" in item[1] for item in commands), 6)
         self.assertTrue(any("tools/bootstrap/book-to-markdown/run_tests.py" in item[1] for item in commands))
 
     def test_language_data_keeps_commit_gates_without_expanding_rust(self):
         docs = selected("commit", ["docs/testing.md"])
         gui = selected("commit", ["crates/gui/src/lib.rs"])
         names = {name for name, _, _ in docs}
-        self.assertTrue({"Strict English Policy", "Architecture Rules", "Clippy Invariants",
-                         "Verification CLI contracts"} <= names)
+        self.assertTrue({"Strict English Policy", "Architecture Rules", "Clippy Invariants"} <= names)
         self.assertFalse(any("llvm-cov" in command or command[:2] == ["cargo", "test"]
                              for _, command, _ in docs))
         for path in ("tools/verification/checks/english_words/programming.txt",
                      "tools/verification/checks/check_english.json"):
             with self.subTest(path=path):
-                self.assertEqual(selected("commit", [path]), docs)
-                self.assertEqual(selected("commit", ["crates/gui/src/lib.rs", path]), gui)
+                extra = selection.python_commands(changes=[path], include_bootstrap=False)
+                self.assertEqual(selected("commit", [path]), docs + extra)
+                self.assertEqual(selected("commit", ["crates/gui/src/lib.rs", path]), gui + extra)
 
     def test_partial_coverage_runs_once_and_exports_the_same_packages(self):
         with patch.object(selection, "select_rust_scope", return_value=RustScope(("cpu", "gui", "test_runner"), "fixture")):
@@ -217,13 +217,15 @@ class SelectionTests(unittest.TestCase):
                      "tools/verification/evidence.py", "tools/verification/batch_lock.py",
                      "tools/verification/tests/test_evidence.py"):
             with self.subTest(path=path):
-                self.assertEqual(selected("commit", [path]), docs)
-                self.assertEqual(selected("commit", ["crates/gui/src/lib.rs", path]), gui)
+                expected = docs + selection.python_commands(changes=[path], include_bootstrap=False)
+                self.assertEqual(selected("commit", [path]), expected)
+                expected = gui + selection.python_commands(changes=[path], include_bootstrap=False)
+                self.assertEqual(selected("commit", ["crates/gui/src/lib.rs", path]), expected)
         names = {name for name, _, _ in docs}
         self.assertTrue({"Strict English Policy", "Obsidian Frontmatter", "Formatting",
                          "Clippy Invariants", "Architecture Rules", "Hardware Quality",
-                         "Code Quality", "RAG MCP contracts", "Artifact report contracts",
-                         "Verification CLI contracts"} <= names)
+                         "Code Quality", "RAG MCP contracts", "Artifact report contracts"} <= names)
+        self.assertNotIn("Verification CLI contracts", names)
         for path in ("tools/verification/commands.py", "tools/verification/impact.py",
                      "tools/verification/repository.py", "tools/verification/new_module.py"):
             with self.subTest(path=path):
@@ -273,7 +275,8 @@ class SelectionTests(unittest.TestCase):
                 self.assertFalse(names & bootstrap)
                 self.assertIn("RAG MCP contracts", names)
                 self.assertIn("Artifact report contracts", names)
-                self.assertIn("Verification CLI contracts", names)
+                self.assertEqual("Verification CLI contracts" in names,
+                                 any(selection.verification_contract_input(path) for path in changes))
         for path in ("tools/bootstrap/conversion/client.py",
                      "tools/bootstrap/books/new/source.json"):
             with self.subTest(path=path):
