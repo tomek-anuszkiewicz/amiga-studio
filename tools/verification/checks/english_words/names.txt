@@ -109,3 +109,4 @@ hann
 sci
 wmi
 rdev
+dependabot

@@ -2287,9 +2287,25 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Pin KaTeX 0.18.2 in the npm manifest and lockfile
   - Update the renderer cache version to match the installed math library
 - **Architectural Rationale & Trade-Offs**:
-  - Address GHSA-238p-pmpm-9mq7 and Dependabot alert 1
+  - Address the [KaTeX security advisory](https://github.com/advisories/GHSA-238p-pmpm-9mq7) and Dependabot alert 1
 - **Verification & Test Results**:
   - cargo build --workspace --locked passed with unused dependency warnings for bitflags and serde_json
   - tools/web.ps1 build passed
   - Python byte compilation and Node syntax checks for the installed KaTeX JavaScript and module passed
   - Automated tests independent reviews and the canonical commit profile were skipped at the explicit user request
+---
+
+### [2026-11-16 17:05 CET] — Clarify game library, input and player roadmap
+- **Affected Subsystems**:
+  - `ROADMAP.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Unify reusable input mappings with named emulator configurations
+  - define desktop directory games and player controls
+  - separate current manual WASM setup from future bundles and persistent save catalogs
+  - Update related roadmap terminology and recognize the Dependabot name in the English vocabulary
+- **Architectural Rationale & Trade-Offs**:
+  - Record the selected frontend scope and verification gates without claiming implementation or milestone completion
+- **Verification & Test Results**:
+  - Roadmap structure check and git diff --check passed
+  - no production code changed
+  - Initial canonical preflight found vocabulary in the preceding diary entry; link its advisory identifier and register the established service name before retrying
