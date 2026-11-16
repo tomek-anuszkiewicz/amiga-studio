@@ -1981,3 +1981,16 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Input fixture profiling found 5.671 s of machine advance and 13 roughly 26 MB snapshots with 6.313 s acquisition plus 3.311 s decoding
   - Emulator production code is unchanged and changed-code coverage review is inapplicable
   - Canonical batch verification and independent review are recorded in the commit message
+---
+
+### [2026-11-16 09:42 CET] — Publish Windows Job Object fixture readiness atomically
+- **Affected Subsystems**:
+  - `tools/verification/tests/test_windows_job.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Write the complete PID to a temporary file and atomically replace the ready signal before the parent reads it
+- **Architectural Rationale & Trade-Offs**:
+  - The full tooling run demonstrated an empty-PID read and cleanup failure when file existence became visible before its contents
+  - Preserve every containment and cleanup assertion
+- **Verification & Test Results**:
+  - The initial 216-case run failed in this fixture
+  - All nine Windows Job Object cases and the corrected 218-case tooling suite passed
