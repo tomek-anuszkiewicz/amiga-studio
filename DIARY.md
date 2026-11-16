@@ -1945,3 +1945,23 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Bootstrap catalog contracts and recipe checks are historical results recorded by the original commits
   - No recipe was regenerated and whole-book quality was not reassessed
   - Integrated canonical verification and four independent review lanes are pending
+---
+
+### [2026-11-16 09:41 CET] — GUI-MONITOR-IMAGE-FAILURE-20261116: wait for the monitor image before checking its upload
+- **Affected Subsystems**:
+  - `GUI integration tests`
+- **What Was Changed (The Concrete Reality)**:
+  - Capture the expected stopped CCK before transferring the session to the host
+  - Wait for the presented image to match the current generation and expected CCK and dimensions
+  - Retain every full-image, pixel, geometry, centering, UV and unchanged-framebuffer assertion
+- **Architectural Rationale & Trade-Offs**:
+  - Command replies and video use independent paths, so idle commands do not prove that the GUI has received an image
+  - Keep the command-idle predicate and existing timeout unchanged
+- **Verification & Test Results**:
+  - The unchanged test passed once and then reproduced the texture lookup failure naturally
+  - Controlled mailbox contention reproduced the same failure in all eight PAL/NTSC, interlace and view combinations
+  - All eight paired cases using the repaired waiting block passed the original assertions
+  - The complete GUI package passed 120 tests without failures or ignored tests
+  - The browser build and focused formatting checks passed
+  - Canonical commit verification is pending
+  - The historical failure logs remain unavailable, so the exact historical thread schedule is unverified
