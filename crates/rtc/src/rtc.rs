@@ -39,6 +39,7 @@ const MASK_REGISTER_DATA: u8 = 0x0F;
 const BIT_CONTROL_D_HOLD: u8 = 0x01;
 const BIT_CONTROL_D_ADJUST: u8 = 0x08;
 const MASK_CONTROL_D_READ: u8 = 0x0D;
+const CONTROL_D_RUNNING: u8 = 0;
 const CONTROL_D_NOT_BUSY: u8 = 0;
 const BIT_CONTROL_D_BUSY_SHIFT: u8 = 1;
 const BIT_CONTROL_F_STOP: u8 = 0x02;
@@ -108,7 +109,7 @@ impl RtcMsm6242b {
             model,
             registers: [0; REGISTER_COUNT],
             // Start with readable seconds ticking for software clock detection.
-            control_d: 0,
+            control_d: CONTROL_D_RUNNING,
             control_e: 0x00,
             control_f: BIT_CONTROL_F_24_HOUR,
             // Default baseline date: 1990-01-01 00:00:00 (Amiga Kickstart 1.3 / 2.0 era)

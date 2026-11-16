@@ -2425,3 +2425,26 @@ Every authorized repository commit adds a concise entry here. Logging and compac
 - **Verification & Test Results**:
   - The previous canonical failure differed only in header timestamp
   - The corrected focused host runtime test passed
+---
+
+### [2026-11-16 22:56 CET] — RTC-WB13-01: restore Workbench clock detection and close the task
+- **Affected Subsystems**:
+  - `crates/rtc`
+  - `crates/machine_loop/tests/test_rtc.rs`
+  - `Obsidian/Amiga/Design/RTC.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Start the installed MSM6242B with HOLD clear so readable seconds advance before guest initialization
+  - Add a machine-bus startup regression and explicitly engage HOLD in the existing calendar-write fixture
+  - Document seconds-based detection and the SetClock 34.3 update for original Workbench dates after 1999
+  - Record working commit 38f8fd624d36260af86edf9bb84f8486e389af4a as awaiting combined integration verification against 34f04bf1585c329d886f895650a5e4ed28c84ec4
+- **Architectural Rationale & Trade-Offs**:
+  - The clock was present but its startup HOLD latch kept the seconds register fixed and caused SetClock to report no battery clock
+  - Preserve two BCD year digits and use the guest SetClock update for its independent year 2000 defect
+  - The user approved local integration into master and removal of rtc-workbench-detection after verification, without remote publication
+- **Verification & Test Results**:
+  - The new startup regression failed on the original code and passed after the fix
+  - cargo test -p rtc -p machine_loop -p memory_bus passed, including 20 RTC tests
+  - cargo check -p rtc --target wasm32-unknown-unknown passed
+  - Paced headless boots with local Kickstart 1.3 and Workbench 34.20 reproduced the original missing-clock message and read the date after the fix
+  - A diagnostic disk copy with SetClock 34.3 displayed 2026 in this emulator, and WinUAE 6.0.3 displayed 2026 with both SetClock versions
+  - Canonical integration verification and four independent review lanes remain pending, and no roadmap milestone is claimed
