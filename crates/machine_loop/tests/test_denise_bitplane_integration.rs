@@ -229,7 +229,7 @@ fn test_denise_frame_builder_raster_scanline_generation() {
         .machine
         .denise
         .frame_builder
-        .get_pixel(56, (30 - 26) * 2);
+        .get_pixel(4, (30 - 28) * 2);
     assert_eq!(
         pixel, expected_argb,
         "FrameBuilder should contain rendered backdrop pixels on active scanlines"

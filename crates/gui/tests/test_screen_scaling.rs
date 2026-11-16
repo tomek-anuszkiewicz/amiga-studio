@@ -221,11 +221,12 @@ fn switching_filters_keeps_the_published_image_until_the_next_field() {
         .textures_delta
         .set
         .iter()
-        .find(|(_, delta)| delta.image.width() == 836)
+        .find(|(_, delta)| delta.image.width() == 720)
         .unwrap();
     let ImageData::Color(image) = &delta.image else {
         panic!("Expected color texture");
     };
+    assert_eq!(image.size, [720, 568]);
     let published_first_pixel = image.pixels[0];
     let field = session.machine.denise.frame_builder.frame_number;
     session.machine.step_cycles(40);

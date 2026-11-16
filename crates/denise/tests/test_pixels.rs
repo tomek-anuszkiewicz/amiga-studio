@@ -4,11 +4,11 @@ fn visible() -> Denise {
     let mut d = Denise::new(DeniseModel::Ocs8362);
     d.sync.synchronized = true;
     d.sync.vertical_blank = false;
-    d.sync.hpos = 40;
-    d.sync.vpos = 100;
+    d.sync.hpos = 60;
+    d.sync.vpos = 28;
     d.strobe_strhor();
-    d.sync.hpos = 40;
-    d.sync.vpos = 100;
+    d.sync.hpos = 60;
+    d.sync.vpos = 28;
     d.hflop = true;
     d.diwstrt = 0x0081;
     d.diwstop = 0x00c1;
@@ -20,13 +20,13 @@ fn all_plane_collision_enable_and_match_values_use_current_serialized_bits() {
     let mut d = visible();
     d.bplcon0 = (0x6000).into();
     for sprite in [0, 2, 4, 6] {
-        d.sprites.write_pos(sprite, 40);
+        d.sprites.write_pos(sprite, 60);
         d.sprites.write_data(sprite, 0xffff);
     }
     for control in 0..0x1000u16 {
         d.clxcon = control.into();
         for planes in 0..64u8 {
-            d.sync.hpos = 40;
+            d.sync.hpos = 60;
             d.hflop = true;
             d.bpl_armed = true;
             d.sprites.step_cck(0);
@@ -61,7 +61,7 @@ fn repeated_collision_controls_preserve_accumulation_and_read_clear() {
     d.bplcon0 = 0x1000.into();
     d.bpl_armed = true;
     d.shifters[0] = 0xffff;
-    d.sprites.write_pos(0, 40);
+    d.sprites.write_pos(0, 60);
     d.sprites.write_data(0, 0xffff);
     for (value, expected_before, expected_after) in [
         (0, 0x23, 0x23),
@@ -85,7 +85,7 @@ fn mid_line_sprite_commits_arm_reload_and_disarm_without_stopping_serialization(
     let mut d = visible();
     d.step_cck();
     assert_eq!(d.sprites.channels()[0].pixel_counter, 0);
-    assert!(d.set_sprpos(0, 42));
+    assert!(d.set_sprpos(0, 62));
     assert!(d.set_sprdata(0, 0xffff));
     d.step_cck();
     assert!(d.sprites.channels()[0].is_armed);
@@ -97,7 +97,7 @@ fn mid_line_sprite_commits_arm_reload_and_disarm_without_stopping_serialization(
     d.step_cck();
     assert!(!d.sprites.channels()[0].is_armed);
     assert_eq!(d.sprites.channels()[0].pixel_counter, 12);
-    assert!(d.set_sprpos(0, 46));
+    assert!(d.set_sprpos(0, 66));
     d.step_cck();
     assert_eq!(d.sprites.channels()[0].pixel_counter, 10);
     assert!(d.set_sprdata(0, 0));
@@ -251,16 +251,16 @@ fn supported_normal_resolutions_and_plane_counts_render_independent_palette_valu
             for _ in 0..3 {
                 d.step_cck();
             }
-            assert_eq!(d.frame_builder.get_pixel(22, 0), 0xffff0000);
+            assert_eq!(d.frame_builder.get_pixel(50, 0), 0xffff0000);
             assert_eq!(
-                d.frame_builder.get_pixel(23, 0),
+                d.frame_builder.get_pixel(51, 0),
                 if resolution == 0 {
                     0xffff0000
                 } else {
                     0xff000000
                 }
             );
-            assert_eq!(d.frame_builder.get_pixel(24, 0), 0xff000000);
+            assert_eq!(d.frame_builder.get_pixel(52, 0), 0xff000000);
         }
     }
 }
@@ -281,6 +281,11 @@ fn special_modes_render_book_colors_in_both_interlaced_fields() {
         for ntsc in [false, true] {
             for (lace, odd) in [(false, false), (true, false), (true, true)] {
                 let mut d = visible();
+                d.frame_builder.set_video_standard(if ntsc {
+                    config::VideoStandard::Ntsc
+                } else {
+                    config::VideoStandard::Pal
+                });
                 d.bplcon0 = (mode | if lace { 4 } else { 0 }).into();
                 d.color[1] = 0xf00;
                 d.color[5] = 0xf97;
@@ -290,8 +295,8 @@ fn special_modes_render_book_colors_in_both_interlaced_fields() {
                 d.step_cck();
                 d.sync.field_odd = odd;
                 d.strobe_strhor();
-                d.sync.hpos = 40;
-                d.sync.vpos = 100;
+                d.sync.hpos = 60;
+                d.sync.vpos = if ntsc { 21 } else { 28 };
                 for plane in (0..6).rev() {
                     let word = codes.iter().enumerate().fold(0, |word, (pixel, code)| {
                         word | (u16::from((code >> plane) & 1) << (15 - pixel))
@@ -305,7 +310,7 @@ fn special_modes_render_book_colors_in_both_interlaced_fields() {
                 let stride = if mode & 0x8000 == 0 { 2 } else { 1 };
                 for (pixel, expected) in expected.iter().enumerate() {
                     assert_eq!(
-                        d.frame_builder.get_pixel(22 + pixel * stride, row),
+                        d.frame_builder.get_pixel(50 + pixel * stride, row),
                         denise::frame_builder::rgb444_to_argb32(*expected),
                         "mode {mode:x}, lace {lace}, odd {odd}, pixel {pixel}"
                     );
@@ -329,8 +334,8 @@ fn palette_and_resolution_changes_take_effect_during_the_line() {
     for _ in 0..3 {
         d.step_cck();
     }
-    assert_eq!(d.frame_builder.get_pixel(22, 0), 0xffff0000);
-    assert_eq!(d.frame_builder.get_pixel(38, 0), 0xff00ff00);
+    assert_eq!(d.frame_builder.get_pixel(50, 0), 0xffff0000);
+    assert_eq!(d.frame_builder.get_pixel(66, 0), 0xff00ff00);
     assert!(d.is_hires());
 }
 
@@ -354,7 +359,7 @@ fn switching_to_lores_preserves_the_distinct_hires_pixels_already_in_flight() {
         .enumerate()
     {
         for row in 0..2 {
-            assert_eq!(d.frame_builder.get_pixel(24 + x, row), color);
+            assert_eq!(d.frame_builder.get_pixel(52 + x, row), color);
         }
     }
 }
@@ -370,13 +375,13 @@ fn normal_playfield_uses_pf2_priority_and_hidden_sprites_still_collide() {
             d.shifters[0] = 0xffff;
             d.color[1] = 0x0f00;
             d.color[17 + pair * 4] = 0x00f0;
-            d.sprites.write_pos(pair * 2, 42);
+            d.sprites.write_pos(pair * 2, 62);
             d.sprites.write_data(pair * 2, 0x8000);
             for _ in 0..4 {
                 d.step_cck();
             }
             assert_eq!(
-                d.frame_builder.get_pixel(26, 0),
+                d.frame_builder.get_pixel(54, 0),
                 if pair < priority as usize {
                     0xff00ff00
                 } else {
@@ -408,7 +413,7 @@ fn all_collision_groups_use_enable_and_match_values_before_visual_priority() {
             };
         }
         for sprite in 0..8 {
-            d.sprites.write_pos(sprite, 40);
+            d.sprites.write_pos(sprite, 60);
             d.sprites.write_data(sprite, 0x8000);
         }
         d.step_cck();
@@ -437,13 +442,13 @@ fn dual_playfield_priority_retains_the_books_invisible_sprite_boundary() {
                 0
             };
         }
-        d.sprites.write_pos(0, 42);
+        d.sprites.write_pos(0, 62);
         d.sprites.write_data(0, 0x8000);
         for _ in 0..4 {
             d.step_cck();
         }
         assert_eq!(
-            d.frame_builder.get_pixel(26, 0),
+            d.frame_builder.get_pixel(54, 0),
             denise::frame_builder::rgb444_to_argb32(expected),
             "playfield occupancy {planes}"
         );
@@ -473,7 +478,7 @@ fn blanking_skips_framebuffer_writes_while_registers_and_receiver_clocks_continu
 fn blanking_advances_serializers_window_and_sprite_collisions() {
     for hires in [false, true] {
         for (horizontal, vertical, closing) in
-            [(18, false, false), (40, true, false), (127, true, true)]
+            [(18, false, false), (40, true, false), (126, true, true)]
         {
             let mut d = visible();
             d.sync.hpos = horizontal;
@@ -523,6 +528,12 @@ fn horizontal_blanking_cannot_leak_black_into_the_visible_pixel_pipeline() {
         d.bplcon0 = (if hires { 0x8000 } else { 0 }).into();
         d.color[0] = 0x0f00;
         for _ in 18..36 {
+            d.step_cck();
+        }
+        assert_eq!(d.pipeline_pixels, [0xffff0000; 2]);
+        // The presentation origin is later than HBLANK. No blanking sample
+        // may enter the pipeline before the first stored output pair either.
+        for _ in 36..49 {
             d.step_cck();
         }
         // Change the color at the visible edge. The already composed pair must

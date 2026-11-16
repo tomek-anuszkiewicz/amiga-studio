@@ -28,6 +28,13 @@ fn field_boundaries_follow_received_strobes_for_both_standards_and_interlace() {
     for base_lines in [262u16, 312] {
         for interlaced in [false, true] {
             let mut denise = Denise::new(DeniseModel::Ocs8362);
+            denise
+                .frame_builder
+                .set_video_standard(if base_lines == 262 {
+                    config::VideoStandard::Ntsc
+                } else {
+                    config::VideoStandard::Pal
+                });
             denise.bplcon0 = (if interlaced { 4 } else { 0 }).into();
             // Joining a field in progress must not publish a short frame.
             for _ in 0..20 {
@@ -69,20 +76,28 @@ fn field_boundaries_follow_received_strobes_for_both_standards_and_interlace() {
                 assert_eq!(denise.frame_builder.frame_number, field + 1);
                 assert_eq!(
                     denise.frame_builder.height,
-                    if interlaced {
-                        if field > 0 {
-                            u32::from(base_lines - 26) * 2
-                        } else {
-                            u32::from(base_lines - 26 - 1) * 2 - 1
-                        }
-                    } else {
-                        u32::from(base_lines - 26 - 1) * 2
-                    }
+                    if base_lines == 262 { 480 } else { 568 }
                 );
             }
             denise.reset();
             assert!(!denise.sync.field_locked);
             assert_eq!(denise.frame_builder.frame_number, 0);
+            assert_eq!(
+                [
+                    denise.frame_builder.width as usize,
+                    denise.frame_builder.height as usize,
+                    denise.frame_builder.row_stride()
+                ],
+                [720, if base_lines == 262 { 480 } else { 568 }, 720]
+            );
+            denise.color[0] = 0x0f00;
+            denise.strobe_strhor();
+            denise.sync.vpos = if base_lines == 262 { 21 } else { 28 };
+            for _ in 0..50 {
+                denise.step_cck();
+            }
+            assert_eq!(denise.frame_cursor.frame_y, Some(0));
+            assert_eq!(denise.frame_builder.get_pixel(0, 0), 0xffff0000);
         }
     }
 }

@@ -66,8 +66,19 @@ Palette, dual-playfield, HAM6 and Extra Half-Brite decoding applies to the curre
 pixel and current committed mode. HAM modifies one component of the preceding
 color; EHB halves each four-bit component separately. Sprites advance once per
 low-resolution pixel regardless of bitplane resolution. The existing horizontal
-window comparisons, blanking region and two-high-resolution-pixel output delay
+window counter phase, blanking region and two-high-resolution-pixel output delay
 are retained model timing, without a claim of calibrated silicon edge offsets.
+The horizontal DIW comparisons preserve all eight programmed bits, including
+H0; OCS supplies H8=0 for start and H8=1 for stop (HRM Appendix A). Forcing
+an odd start discards one low-resolution period, or two hires samples, when
+the programmed start is even. The window clips serialized pixels for their
+delayed output phase; it does not alter the shifter's progress. The receiver's
+two-period DIW counter origin and the one-low-resolution-period output pair
+delay are separate model phases. Comparing the current composition phase
+without that output delay clips the first two hires samples of the ordinary
+Workbench window. The counter origin agrees with the
+[ARP Denise reconstruction](../../../ref_src/amiga_replacement_project/denise/src/denise.v);
+the exact relationship to this emulator's CCK delivery remains a model choice.
 
 HAM and Extra Half-Brite require six low-resolution planes; BPU=7 remains a
 distinct decoding case. Pending BPLCON0 writes must not affect the active mode.
@@ -125,9 +136,9 @@ long-line marker and whether synchronization has begun. CPU sync writes use
 the same local operations immediately at accepted selection, without a queue entry.
 
 A transition into equalization begins a field; successive line strobes advance
-the local vertical cursor. The first partial field is discarded for geometry
-measurement. Subsequent complete fields determine PAL/NTSC height and alternate
-interlaced buffer rows. STRLONG marks the current long line without adding a
+the local vertical cursor. The first partial field is not published. Subsequent
+complete fields alternate interlaced buffer rows; the configured video standard
+selects the fixed presentation rectangle described by [Frame Buffer](Frame%20Buffer.md). STRLONG marks the current long line without adding a
 line. Repeated identical strobes remain distinct events. Snapshot restoration
 preserves the cursor, unconsumed input, pixel pipeline and partially drawn
 buffer. These receiver counters and retained edge offsets are a functional
@@ -165,6 +176,8 @@ restoration must preserve their relationship with subsequent connector samples.
 - [General Architecture](General%20Architecture.md): Places Denise and its crates in the machine architecture.
 - [Amiga Hardware Reference Manual, Chapter 3](../Reference/Hardware%20Reference%20Manual/03%20-%20Chapter%203%20-%20Playfield%20Hardware.md): Explains bitplanes, fetch and display windows, resolution, dual playfields, and HAM.
 - [Amiga Hardware Reference Manual, Chapter 7](../Reference/Hardware%20Reference%20Manual/07%20-%20Chapter%207%20-%20System%20Control%20Hardware.md): Describes video priority and collision detection.
+- [Hardware Reference Manual, Appendix A](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md#diwstop-diwstrt): Defines all eight programmable horizontal DIW bits and the OCS H8 extensions.
+- [ARP Denise reconstruction](../../../ref_src/amiga_replacement_project/denise/src/denise.v): Reference-model counter restart and window comparison, separate from the emulator delivery phase.
 - [`crates/denise/src/denise.rs`](../../../crates/denise/src/denise.rs): Living implementation of the Denise coordinator.
 - [Register matrix](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md): Register meanings, named accessors, recipient sets and missing effects.
 - [`denise/pins.rs`](../../../crates/denise/src/pins.rs): Serializable motherboard-facing signal state and its input boundary.

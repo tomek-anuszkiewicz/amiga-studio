@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "frame_builder"
 status: "active"
 created: 2026-09-19
-updated: 2026-11-16
+updated: 2026-11-17
 related: ["[Denise.md](Denise.md)", "[Agnus.md](Agnus.md)", "[GUI.md](Application/GUI.md)"]
 tracked_paths:
   - "crates/frame_builder"
@@ -25,21 +25,29 @@ unused upper four bits. It does not apply gamma or CRT correction.
 
 ## Visible storage
 
-The framebuffer contains the complete visible border and playfield, independently
-of DIW registers, pixel colors or firmware. Horizontal and vertical blanking
-samples are not stored. Scanlines that span a vertical blanking transition are
-excluded at both ends of the field, so their partial output cannot form a step
-at the image edge. The existing receiver blanking phases are retained; this
-storage change does not calibrate physical chip timing.
+The framebuffer contains a fixed presentation rectangle, independently of DIW
+registers, pixel colors, firmware and short or long scanlines and fields.
+PAL publishes 720 x 568 samples; NTSC publishes 720 x 480, selected explicitly
+for this project's presentation. These dimensions are not digital-raster
+requirements of the analog video standards. PAL matches the measured WinUAE
+viewport; NTSC uses the separately selected 720 x 480 WinUAE configuration.
+
+The rectangle starts at receiver CCK 49. PAL starts at receiver line 28;
+NTSC starts at receiver line 21. With OCS NTSC, hires/double-line output and
+centering disabled, the selected rectangle matches WinUAE 6.0.3's unfiltered
+Kickstart 1.3 image exactly: 720 x 480 samples starting at (16, 0) in its
+752 x 484 native capture, without resizing. These coordinates describe this receiver model,
+not calibrated physical beam offsets. Samples before and after the rectangle
+still advance all chip pipelines and collisions. Blanked portions inside it
+are black. The right edge crosses the horizontal counter wrap: the first two
+CCKs of the following short line, or one CCK after a long line, finish the row.
 
 A fixed high-resolution, interlaced spatial grid preserves mixed-resolution
 content, including changes within a line. Low-resolution pixels occupy two
 horizontal samples; non-interlaced lines occupy two rows. Interlaced fields
-occupy alternate rows. Storage reserves the maximum visible capacity once,
-with a fixed row stride of 840 pixels. The exposed slice contains `height`
-rows at that stride; only the first `width` pixels of each row are visible.
-PAL rows therefore retain four unused storage pixels after their visible edge.
-The row stride does not change when a long NTSC line establishes a wider image.
+occupy alternate rows. Storage reserves the PAL capacity once, with a fixed
+row stride of 720 samples. The exposed slice contains exactly `width * height`
+samples, without row padding. NTSC reuses the allocation's first 480 rows.
 There is no raw raster buffer or separate cropped/expanded presentation image.
 
 Denise's [frame cursor](../../../crates/denise/src/frame_cursor.rs) translates
@@ -48,8 +56,8 @@ the preceding row across counter wrap until HBLANK finishes that row; the
 frame builder receives final coordinates and owns storage and published geometry.
 Completed ARGB samples go directly
 to their final columns and, without interlace, both destination rows. Finished
-rows are never moved. Short-line tails and rows invalidated by a shorter field
-are cleared; unchanged unused capacity needs no repeated clearing.
+rows are never moved. Missing row tails and rows not painted by a shorter field
+are cleared in the current parity; the opposite interlaced field remains intact.
 
 Denise collects the four high-resolution output samples of each CCK before
 storing them together. Pixel composition and the two-sample pipeline still
@@ -66,8 +74,9 @@ from DIW or colors.
 Denise derives field and visible-line boundaries from received equalization,
 blank and horizontal strobes. Counter positions before HBLANK complete the
 preceding visible line; its field parity survives the counter wrap. The first
-partial field does not publish measured geometry. Completed visible lines
-determine the extent; frame completion increments the host refresh generation.
+partial field does not publish a completed frame. Machine configuration selects
+the fixed standard-specific geometry before execution; frame completion
+increments the host refresh generation without changing its dimensions.
 The opposite interlaced field remains available, while changing interlace mode
 clears incompatible rows.
 
@@ -79,7 +88,7 @@ The host can allocate a reusable spare with `FrameBuilder::new_buffer` and
 hand off the current allocation through `exchange_buffer`. The replacement must
 have the complete fixed storage length. Before swapping allocations, the builder
 seeds the replacement with the current pixels, including the opposite field,
-unfinished rows and padding. Logical image and assembly state remain unchanged;
+unfinished rows and unused NTSC capacity. Logical image and assembly state remain unchanged;
 subsequent drawing cannot change the handed-off image. The host must exclusively
 own the spare throughout the operation. This API contains no synchronization or
 host handles, and snapshots continue to capture the builder's current allocation.

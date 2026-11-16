@@ -3,6 +3,7 @@
 //! Stores 32-bit ARGB pixels, combines interlaced fields and exposes the buffer
 //! to host display frontends. Denise owns pixel composition and display gating.
 
+use config::VideoStandard;
 use serde::{Deserialize, Serialize};
 
 pub const MASK_RGB444_COMPONENT: u16 = 0xF;
@@ -14,19 +15,20 @@ const OPAQUE_ALPHA: u32 = 0xFF00_0000;
 pub const OPAQUE_BLACK: u32 = OPAQUE_ALPHA;
 pub const HIRES_PIXELS_PER_CCK: usize = 4;
 pub const LORES_PIXELS_PER_CCK: usize = 2;
+pub const ROWS_PER_FIELD_LINE: usize = 2;
 /// Retained receiver blanking phase; counters continue through this interval.
 pub const HBLANK_START_CCK: u16 = 18;
 pub const HBLANK_STOP_CCK: u16 = 35;
-const HBLANK_CCKS: usize = (HBLANK_STOP_CCK - HBLANK_START_CCK + 1) as usize;
-const PAL_LINE_CCKS: usize = 227;
-const MAX_LINE_CCKS: usize = 228;
 /// Initial receiver timing before a complete field has been measured.
 pub const PAL_MAX_RASTER_LINES: usize = 313;
-/// Maximum complete visible lines per field in the retained OCS receiver model.
-pub const MAX_VISIBLE_FIELD_LINES: usize = 286;
-/// Maximum visible width, including the border, at high resolution.
-pub const MAX_FRAME_WIDTH: usize = (MAX_LINE_CCKS - HBLANK_CCKS) * HIRES_PIXELS_PER_CCK;
-pub const MAX_FRAME_HEIGHT: usize = MAX_VISIBLE_FIELD_LINES * 2;
+/// Fixed presentation width on the high-resolution sample grid.
+pub const MAX_FRAME_WIDTH: usize = 720;
+pub const MAX_FRAME_HEIGHT: usize = 568;
+const NTSC_FRAME_HEIGHT: usize = 480;
+/// Receiver output phase at the first stored sample, independent of DIW.
+pub const FRAME_START_CCK: u16 = 49;
+const PAL_FRAME_START_LINE: u16 = 28;
+const NTSC_FRAME_START_LINE: u16 = 21;
 const FRAME_BUFFER_CAPACITY: usize = MAX_FRAME_WIDTH * MAX_FRAME_HEIGHT;
 pub const BIT_HSTOP_EXTENSION: u16 = 0x100;
 
@@ -87,7 +89,7 @@ pub struct FrameBuilder {
     pub interlaced: bool,
     pub field_odd: bool,
     buffer: Vec<u32>,
-    field_lines: [usize; 2],
+    standard: VideoStandard,
 }
 
 impl Default for FrameBuilder {
@@ -99,14 +101,14 @@ impl Default for FrameBuilder {
 impl FrameBuilder {
     pub fn new() -> Self {
         Self {
-            width: ((PAL_LINE_CCKS - HBLANK_CCKS) * HIRES_PIXELS_PER_CCK) as u32,
+            width: MAX_FRAME_WIDTH as u32,
             height: MAX_FRAME_HEIGHT as u32,
             frame_ready: false,
             frame_number: 0,
             interlaced: false,
             field_odd: false,
             buffer: Self::new_buffer(),
-            field_lines: [0; 2],
+            standard: VideoStandard::Pal,
         }
     }
 
@@ -137,41 +139,43 @@ impl FrameBuilder {
 
     pub fn reset(&mut self) {
         self.buffer.fill(OPAQUE_BLACK);
-        self.width = ((PAL_LINE_CCKS - HBLANK_CCKS) * HIRES_PIXELS_PER_CCK) as u32;
-        self.height = MAX_FRAME_HEIGHT as u32;
+        self.width = MAX_FRAME_WIDTH as u32;
+        self.height = self.standard_height() as u32;
         self.frame_ready = false;
         self.frame_number = 0;
         self.interlaced = false;
         self.field_odd = false;
-        self.field_lines = [0; 2];
     }
 
-    /// Expands the stored width when Denise observes a complete longer line.
-    pub fn observe_line_length(&mut self, ccks: usize) {
-        if ccks <= MAX_LINE_CCKS {
-            let width = ccks.saturating_sub(HBLANK_CCKS) * HIRES_PIXELS_PER_CCK;
-            self.width = self.width.max(width as u32);
+    /// Selects the machine's presentation profile before receiver execution.
+    pub fn set_video_standard(&mut self, standard: VideoStandard) {
+        if self.standard != standard {
+            self.standard = standard;
+            self.reset();
         }
     }
 
-    /// Publishes the completed field and clears partial or retired rows.
-    pub fn finish_field(&mut self, complete_lines: usize, painted_lines: usize) {
-        let parity = usize::from(self.field_odd);
-        let previous_lines = self.field_lines[parity];
-        for line in complete_lines..previous_lines.max(painted_lines) {
-            let row = line * 2 + if self.interlaced { parity } else { 0 };
+    fn standard_height(&self) -> usize {
+        match self.standard {
+            VideoStandard::Pal => MAX_FRAME_HEIGHT,
+            VideoStandard::Ntsc => NTSC_FRAME_HEIGHT,
+        }
+    }
+
+    /// First stored receiver line; field parity selects alternate image rows.
+    pub fn first_line(&self) -> u16 {
+        match self.standard {
+            VideoStandard::Pal => PAL_FRAME_START_LINE,
+            VideoStandard::Ntsc => NTSC_FRAME_START_LINE,
+        }
+    }
+
+    /// Publishes fixed geometry and clears rows absent from the completed field.
+    pub fn finish_field(&mut self, complete_lines: usize) {
+        for line in complete_lines..self.height as usize / ROWS_PER_FIELD_LINE {
+            let row = line * ROWS_PER_FIELD_LINE + usize::from(self.interlaced && self.field_odd);
             self.clear_row_tail(row, 0);
         }
-        self.field_lines[parity] = complete_lines;
-        let rows = if self.interlaced {
-            self.field_lines[0]
-                .saturating_mul(2)
-                .saturating_sub(1)
-                .max(self.field_lines[1] * 2)
-        } else {
-            complete_lines * 2
-        };
-        self.height = rows.clamp(1, MAX_FRAME_HEIGHT) as u32;
         self.frame_number = self.frame_number.wrapping_add(1);
         self.frame_ready = true;
     }
@@ -180,8 +184,6 @@ impl FrameBuilder {
     pub fn set_field_mode(&mut self, interlaced: bool, odd: bool) {
         if interlaced != self.interlaced {
             self.buffer.fill(OPAQUE_BLACK);
-            self.field_lines = [0; 2];
-            self.height = MAX_FRAME_HEIGHT as u32;
         }
         self.interlaced = interlaced;
         self.field_odd = odd;
@@ -196,10 +198,10 @@ impl FrameBuilder {
         frame_y: usize,
         pixels: [u32; HIRES_PIXELS_PER_CCK],
     ) {
-        if frame_x + HIRES_PIXELS_PER_CCK <= self.width as usize && frame_y < MAX_FRAME_HEIGHT {
+        if frame_x + HIRES_PIXELS_PER_CCK <= self.width as usize && frame_y < self.height as usize {
             let start = frame_y * MAX_FRAME_WIDTH + frame_x;
             self.buffer[start..start + HIRES_PIXELS_PER_CCK].copy_from_slice(&pixels);
-            if !self.interlaced && frame_y + 1 < MAX_FRAME_HEIGHT {
+            if !self.interlaced && frame_y + 1 < self.height as usize {
                 let start = start + MAX_FRAME_WIDTH;
                 self.buffer[start..start + HIRES_PIXELS_PER_CCK].copy_from_slice(&pixels);
             }
@@ -212,10 +214,10 @@ impl FrameBuilder {
     /// Stores two hires samples at their final visible coordinates.
     #[inline]
     pub fn write_pixel_pair(&mut self, frame_x: usize, frame_y: usize, pixels: [u32; 2]) {
-        if frame_x < self.width as usize - 1 && frame_y < MAX_FRAME_HEIGHT {
+        if frame_x < self.width as usize - 1 && frame_y < self.height as usize {
             let start = frame_y * MAX_FRAME_WIDTH + frame_x;
             self.buffer[start..start + 2].copy_from_slice(&pixels);
-            if !self.interlaced && frame_y + 1 < MAX_FRAME_HEIGHT {
+            if !self.interlaced && frame_y + 1 < self.height as usize {
                 let start = start + MAX_FRAME_WIDTH;
                 self.buffer[start..start + 2].copy_from_slice(&pixels);
             }
@@ -224,10 +226,10 @@ impl FrameBuilder {
 
     pub fn clear_row_tail(&mut self, row: usize, first: usize) {
         let width = self.width as usize;
-        if row < MAX_FRAME_HEIGHT && first < width {
+        if row < self.height as usize && first < width {
             self.buffer[row * MAX_FRAME_WIDTH + first..row * MAX_FRAME_WIDTH + width]
                 .fill(OPAQUE_BLACK);
-            if !self.interlaced && row + 1 < MAX_FRAME_HEIGHT {
+            if !self.interlaced && row + 1 < self.height as usize {
                 self.buffer
                     [(row + 1) * MAX_FRAME_WIDTH + first..(row + 1) * MAX_FRAME_WIDTH + width]
                     .fill(OPAQUE_BLACK);
@@ -243,13 +245,13 @@ impl FrameBuilder {
         }
     }
 
-    /// Fixed storage stride; each row starts with width visible ARGB pixels.
+    /// Fixed storage stride, equal to the published image width.
     #[inline]
     pub fn row_stride(&self) -> usize {
         MAX_FRAME_WIDTH
     }
 
-    /// Returns height rows at row_stride; only each row's first width pixels are visible.
+    /// Returns exactly the published rectangle, without row padding.
     pub fn frame_buffer(&self) -> &[u32] {
         &self.buffer[..MAX_FRAME_WIDTH * self.height as usize]
     }

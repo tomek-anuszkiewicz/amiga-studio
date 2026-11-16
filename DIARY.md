@@ -2448,3 +2448,36 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Paced headless boots with local Kickstart 1.3 and Workbench 34.20 reproduced the original missing-clock message and read the date after the fix
   - A diagnostic disk copy with SetClock 34.3 displayed 2026 in this emulator, and WinUAE 6.0.3 displayed 2026 with both SetClock versions
   - Canonical integration verification and four independent review lanes remain pending, and no roadmap milestone is claimed
+---
+
+### [2026-11-17 00:26 CET] — Recover the DIW edge and store a fixed video rectangle
+- **Affected Subsystems**:
+  - `Denise`
+  - `frame_builder`
+  - `machine_loop`
+  - `save_state`
+  - `GUI`
+- **What Was Changed (The Concrete Reality)**:
+  - VIDEO-FRAME-RECT-20261116: compare DIW against the delayed output pair and preserve H0
+  - store PAL 720 x 568 and selected NTSC 720 x 480 directly at a 720-sample stride, without a second cropped image
+  - retain parity, clear missing tails and absent rows including blank lines between painted lines, select geometry at construction and retain it on reset
+  - advance save schema to 11 with no compatibility parser
+  - adapt component, machine, preview, exchange and texture regressions to the fixed rectangle
+- **Architectural Rationale & Trade-Offs**:
+  - The original renderer discards the first pair of an ordinary bitplane word stream before composition. The independent reproduction fails on the original renderer and passes after the phase correction. Presentation dimensions are a project choice
+  - they do not claim analog PAL/NTSC raster dimensions or silicon edge calibration.
+- **Verification & Test Results**:
+  - Focused Denise, frame-builder, Agnus fetch, machine display/state, save persistence and GUI exchange/scaling checks passed during development
+  - the original-renderer word-stream regression fails at its first expected sample
+  - Workbench Clock width is 170 and its directory remains 428 samples, with exactly 420 recovered samples in the old saved scene
+  - final PAL equals the corrected old image cropped at (52, 4), and Cross1 matches the previous corrected-DMA crop across three identical fields
+  - PAL and NTSC Kickstart captures are 720 x 568 and 720 x 480
+  - vault audit passed 35 Design notes and 1079 links
+  - a headless Game view shows the complete rectangle under uniform Fit scaling. WinUAE 6.0.3 displayed the selected NTSC configuration at 59.8 Hz
+  - the first canonical attempt exposed one GUI fixture still computing the retired raster size; its expectation now uses the independently specified fixed dimensions
+  - independent review reproduced old pixels on a blank middle line; the corrected mapping clears those rows after completing the previous row, preserving opposite interlaced parity
+  - reset-profile and blank-row regressions pass, and coverage review restored explicit black queries outside the rectangle
+  - NTSC origin is confirmed against WinUAE 6.0.3 before-filtering output: the selected 720 x 480 rectangle at (16, 0) in its 752 x 484 native capture matches all 345600 RGB samples exactly, without scaling, tolerance or masks
+  - canonical code verification passed 837 ordinary tests (3 existing skips), 9 standard-harness tests, native Clippy and the actual WASM build; changed-runtime coverage has no unresolved in-scope gap
+  - the selected presentation origins are receiver CCK 49, PAL line 28 and NTSC line 21; analog timing calibration and broader native-display fidelity remain outside this task
+  - no milestone or broader roadmap closure is claimed.

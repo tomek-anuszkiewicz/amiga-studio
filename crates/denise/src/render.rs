@@ -3,8 +3,14 @@
 use crate::{decode, Denise};
 use frame_builder::{rgb444_to_argb32, HBLANK_START_CCK, HBLANK_STOP_CCK, LORES_PIXELS_PER_CCK};
 
-const BIT_DIW_HORIZONTAL_LOW: u16 = 1;
-const DIW_COUNT_LEAD: u16 = 2;
+// The receiver counter restarts at two lores periods (ARP Denise counter).
+// Composition feeds the following output pair, so compare its output phase.
+const RECEIVER_DIW_COUNT_ORIGIN: u16 = 2;
+const HIRES_SAMPLES_PER_LORES_PIXEL: usize =
+    frame_builder::HIRES_PIXELS_PER_CCK / LORES_PIXELS_PER_CCK;
+const DIW_COUNT_LEAD: u16 =
+    RECEIVER_DIW_COUNT_ORIGIN + (crate::PIPELINE_PIXELS / HIRES_SAMPLES_PER_LORES_PIXEL) as u16;
+const MASK_DIW_HORIZONTAL: u16 = 0x00ff;
 const MASK_PRIORITY: u16 = 0x0007;
 const BIT_SECOND_PRIORITY_SHIFT: u16 = 3;
 
@@ -106,9 +112,8 @@ impl Denise {
     }
 
     fn horizontal_window(&mut self, count: u16) -> bool {
-        let start = (self.diwstrt & 0xff) | BIT_DIW_HORIZONTAL_LOW;
-        let stop =
-            (self.diwstop & 0xff) | BIT_DIW_HORIZONTAL_LOW | frame_builder::BIT_HSTOP_EXTENSION;
+        let start = self.diwstrt & MASK_DIW_HORIZONTAL;
+        let stop = (self.diwstop & MASK_DIW_HORIZONTAL) | frame_builder::BIT_HSTOP_EXTENSION;
         if count == start {
             self.hflop = true;
         }

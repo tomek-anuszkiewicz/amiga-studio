@@ -78,7 +78,10 @@ impl A500Machine {
         let mut physical_memory = PhysicalMemory::from_config(config.clone());
         cpu.reset(&mut physical_memory);
         let agnus = agnus::Agnus::new(config.agnus_model());
-        let denise = denise::Denise::new(config.denise_model());
+        let mut denise = denise::Denise::new(config.denise_model());
+        denise
+            .frame_builder
+            .set_video_standard(config.video_standard());
         let paula = paula::Paula::new(config.video_standard());
         let cia_a = cia::Cia::new();
         let cia_b = cia::Cia::new();

@@ -13,7 +13,7 @@ fn snapshot_after_video_handoff_keeps_the_current_partial_image_and_continuation
     frame.set_field_mode(true, false);
     frame.write_pixel_pair(0, 0, [0xffff_0000; 2]);
     frame.write_pixel_pair(0, 2, [0xff88_0000; 2]);
-    frame.finish_field(2, 2);
+    frame.finish_field(2);
     let mut published = FrameBuilder::new_buffer();
     assert!(frame.exchange_buffer(&mut published));
     frame.set_field_mode(true, true);
@@ -26,7 +26,7 @@ fn snapshot_after_video_handoff_keeps_the_current_partial_image_and_continuation
     assert_eq!(preview.get_pixel(0, 0).0, [255, 0, 0, 255]);
     assert_eq!(preview.get_pixel(0, 1).0, [0, 0, 255, 255]);
     assert_eq!(published[0], 0xffff_0000);
-    assert_eq!(published[840], 0xff00_0000);
+    assert_eq!(published[720], 0xff00_0000);
 
     let restored = SaveState::from_json(&saved.to_json().unwrap()).unwrap();
     let mut resumed = A500Machine::new(A500Config::default());
@@ -37,12 +37,12 @@ fn snapshot_after_video_handoff_keeps_the_current_partial_image_and_continuation
             .denise
             .frame_builder
             .write_pixel_pair(0, 3, [0xff00_0088; 2]);
-        target.denise.frame_builder.finish_field(2, 2);
+        target.denise.frame_builder.finish_field(2);
         target.step_cycles(300);
     }
     assert_eq!(machine.cck, resumed.cck);
     assert_eq!(machine.denise, resumed.denise);
-    assert_eq!(published[840], 0xff00_0000);
+    assert_eq!(published[720], 0xff00_0000);
 }
 
 #[test]
@@ -56,10 +56,15 @@ fn frame_coordinates_resume_at_visible_and_blanking_boundaries() {
             denise.sync.field_odd = interlaced;
             denise.color[0] = 0xf00;
             denise.strobe_strhor();
+            denise.sync.vpos = 28;
             for _ in 0..ccks {
                 denise.step_cck();
             }
-            for hpos in [0, 17, 18, 35, 36, 100] {
+            assert_eq!(
+                denise.frame_builder.get_pixel(0, usize::from(interlaced)),
+                0xffff0000
+            );
+            for hpos in [0, 1, 2, 17, 18, 35, 36, 48, 49, 50, 100] {
                 let mut original = denise.clone();
                 original.strobe_strhor();
                 for _ in 0..hpos {
@@ -149,25 +154,31 @@ fn test_save_state_metadata_and_header() {
 }
 
 #[test]
-fn screenshot_preserves_visible_row_edges_and_excludes_storage_padding() {
-    for width in [836, 840] {
-        let mut machine = A500Machine::new(A500Config::default());
+fn screenshot_preserves_the_complete_fixed_rectangle_for_each_standard() {
+    for (standard, height) in [(VideoStandard::Pal, 568), (VideoStandard::Ntsc, 480)] {
+        let mut machine = A500Machine::new(A500Config::standard_1mb(standard));
         let frame = &mut machine.denise.frame_builder;
-        frame.width = width;
-        frame.height = 2;
-        let stride = frame.row_stride();
-        frame.frame_buffer_mut().fill(0xff00ff00);
-        for (row, color) in [0xffff0000, 0xff0000ff].into_iter().enumerate() {
-            frame.frame_buffer_mut()[row * stride..row * stride + width as usize].fill(color);
+        assert_eq!([frame.width, frame.height], [720, height]);
+        assert_eq!(frame.row_stride(), 720);
+        for (y, row) in frame.frame_buffer_mut().chunks_exact_mut(720).enumerate() {
+            row.fill(if y % 2 == 0 { 0xffff0000 } else { 0xff0000ff });
         }
         let saved = SaveState::capture(&machine);
         let preview = image::load_from_memory(&saved.header.screenshot_png)
             .unwrap()
             .to_rgba8();
-        assert_eq!(preview.dimensions(), (width, 2));
-        for x in 0..width {
-            assert_eq!(preview.get_pixel(x, 0).0, [255, 0, 0, 255]);
-            assert_eq!(preview.get_pixel(x, 1).0, [0, 0, 255, 255]);
+        assert_eq!(preview.dimensions(), (720, height));
+        for y in 0..height {
+            for x in 0..720 {
+                assert_eq!(
+                    preview.get_pixel(x, y).0,
+                    if y % 2 == 0 {
+                        [255, 0, 0, 255]
+                    } else {
+                        [0, 0, 255, 255]
+                    }
+                );
+            }
         }
     }
 }
@@ -274,7 +285,7 @@ fn dma_registers_roundtrip_in_their_single_owner() {
     assert_eq!(machine.agnus.dma.planecount(), 2);
     let saved = SaveState::capture(&machine);
     let json = serde_json::to_value(&saved).unwrap();
-    assert_eq!(json["header"]["version"], 10);
+    assert_eq!(json["header"]["version"], 11);
     for (name, value) in [
         ("dmacon", 0x0300),
         ("bplcon0", 0x2004),
@@ -453,7 +464,7 @@ fn file_roundtrip_preserves_drawn_pixels_and_resumes_active_display() {
         machine
             .denise
             .frame_builder
-            .get_pixel(300 - 144, (100 - 26) * 2),
+            .get_pixel(300 - 196, (100 - 28) * 2),
         0xff000000
     );
     assert!(machine.denise.bpl_armed);
@@ -476,7 +487,7 @@ fn file_roundtrip_preserves_drawn_pixels_and_resumes_active_display() {
         restored
             .denise
             .frame_builder
-            .get_pixel(600 - 144, (120 - 26) * 2),
+            .get_pixel(600 - 196, (120 - 28) * 2),
         0xff000000
     );
 }

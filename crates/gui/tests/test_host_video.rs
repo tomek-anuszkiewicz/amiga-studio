@@ -150,35 +150,47 @@ fn concurrent_exchange_keeps_metadata_pixels_and_publication_order_coherent() {
 
 #[test]
 fn real_frame_builder_handoff_leaves_published_pixels_and_drawing_independent() {
-    let mut session = gui::DebuggerSession::new();
-    let frame = &mut session.machine.denise.frame_builder;
-    let exchange = VideoExchange::new(frame.frame_buffer().to_vec());
-    frame.set_field_mode(true, false);
-    frame.write_pixel_pair(0, 0, [0xffff_0000; 2]);
-    frame.finish_field(2, 2);
-    let metadata = FrameInfo {
-        width: frame.width as usize,
-        height: frame.height as usize,
-        row_stride: frame.row_stride(),
-        field_number: frame.frame_number,
-        ..info(1)
-    };
-    assert!(exchange
-        .try_publish(|pixels| frame.exchange_buffer(pixels).then_some(metadata))
-        .unwrap());
-    frame.set_field_mode(true, true);
-    frame.write_pixel_pair(0, 1, [0xff00_00ff; 2]);
-    assert_eq!(
-        exchange
-            .try_consume(1, |received, pixels| {
-                assert_eq!(received, metadata);
-                assert_eq!(pixels.len(), 3 * 840);
-                assert_eq!(pixels[0], 0xffff_0000);
-                assert_eq!(pixels[840], 0xff00_0000);
-            })
-            .unwrap(),
-        VideoRead::Frame(())
-    );
-    assert_eq!(frame.get_pixel(0, 0), 0xffff_0000);
-    assert_eq!(frame.get_pixel(0, 1), 0xff00_00ff);
+    for (standard, height) in [
+        (config::VideoStandard::Pal, 568),
+        (config::VideoStandard::Ntsc, 480),
+    ] {
+        let mut session = gui::DebuggerSession::new();
+        let frame = &mut session.machine.denise.frame_builder;
+        frame.set_video_standard(standard);
+        let exchange = VideoExchange::new(vec![0; frame.storage_len()]);
+        frame.set_field_mode(true, false);
+        frame.write_pixel_pair(0, 0, [0xffff_0000; 2]);
+        frame.write_pixel_pair(718, height - 2, [0xff11_2233; 2]);
+        frame.finish_field(height / 2);
+        let metadata = FrameInfo {
+            width: frame.width as usize,
+            height: frame.height as usize,
+            row_stride: frame.row_stride(),
+            field_number: frame.frame_number,
+            ..info(1)
+        };
+        assert!(exchange
+            .try_publish(|pixels| frame.exchange_buffer(pixels).then_some(metadata))
+            .unwrap());
+        frame.set_field_mode(true, true);
+        frame.write_pixel_pair(0, 1, [0xff00_00ff; 2]);
+        assert_eq!(
+            exchange
+                .try_consume(1, |received, pixels| {
+                    assert_eq!(received, metadata);
+                    assert_eq!(
+                        [received.width, received.height, received.row_stride],
+                        [720, height, 720]
+                    );
+                    assert_eq!(pixels[720 * height - 721], 0xff11_2233);
+                    assert_eq!(pixels.len(), 720 * height);
+                    assert_eq!(pixels[0], 0xffff_0000);
+                    assert_eq!(pixels[720], 0xff00_0000);
+                })
+                .unwrap(),
+            VideoRead::Frame(())
+        );
+        assert_eq!(frame.get_pixel(0, 0), 0xffff_0000);
+        assert_eq!(frame.get_pixel(0, 1), 0xff00_00ff);
+    }
 }

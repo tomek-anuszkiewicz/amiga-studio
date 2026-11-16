@@ -5,7 +5,7 @@ fn exchange_moves_the_allocation_and_preserves_progressive_partial_output() {
     let mut frame = FrameBuilder::new();
     frame.write_pixel_pair(0, 0, [0xff12_3456, 0xff65_4321]);
     frame.write_pixel_pair(2, 2, [0xffab_cdef, 0xfffe_dcba]);
-    frame.finish_field(2, 2);
+    frame.finish_field(2);
     frame.frame_buffer_mut()[MAX_FRAME_WIDTH - 1] = 0xff11_2233;
     let original = frame.clone();
     let published_address = frame.frame_buffer().as_ptr();
@@ -36,7 +36,7 @@ fn alternating_exchange_keeps_the_latest_opposite_interlaced_field() {
     frame.set_field_mode(true, false);
     frame.write_pixel_pair(0, 0, [0xffff_0000; 2]);
     frame.write_pixel_pair(0, 2, [0xff88_0000; 2]);
-    frame.finish_field(2, 2);
+    frame.finish_field(2);
     assert!(frame.exchange_buffer(&mut published));
     assert_eq!(published[0], 0xffff_0000);
     assert_eq!(published[MAX_FRAME_WIDTH], OPAQUE_BLACK);
@@ -44,7 +44,7 @@ fn alternating_exchange_keeps_the_latest_opposite_interlaced_field() {
     frame.set_field_mode(true, true);
     frame.write_pixel_pair(0, 1, [0xff00_ff00; 2]);
     frame.write_pixel_pair(0, 3, [0xff00_8800; 2]);
-    frame.finish_field(2, 2);
+    frame.finish_field(2);
     assert!(frame.exchange_buffer(&mut published));
     assert_eq!(published[0], 0xffff_0000);
     assert_eq!(published[MAX_FRAME_WIDTH], 0xff00_ff00);
@@ -62,8 +62,8 @@ fn alternating_exchange_keeps_the_latest_opposite_interlaced_field() {
     let mut restored = frame.clone();
     restored.write_pixel_pair(0, 2, [0xff00_0088; 2]);
     frame.write_pixel_pair(0, 2, [0xff00_0088; 2]);
-    restored.finish_field(2, 2);
-    frame.finish_field(2, 2);
+    restored.finish_field(2);
+    frame.finish_field(2);
     assert_eq!(frame, restored);
     assert_eq!(frame.frame_number, 3);
 }

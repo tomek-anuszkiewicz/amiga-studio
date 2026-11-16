@@ -44,7 +44,7 @@ old layouts have no
 compatibility parser. Frontends and the debugger use this crate for persistence;
 in-memory quick slots retain only the machine value.
 
-Schema version 10 records active CPU sequence identity, physical drive attachment
+Schema version 11 records active CPU sequence identity, physical drive attachment
 and player association, and embeds usable floppy raw tracks and spindle phase, including
 mid-transfer connector state; restoring requires no original ADF file. It also
 retains the CPU bus-admission phases and active shared Chip RAM budget. Clone
@@ -55,8 +55,9 @@ It excludes the live RTC and its independent battery offset.
 It stores Denise's frame cursor alongside the
 [frame buffer](../Frame%20Buffer.md), preserving the write position across
 visible and blanking boundaries. The buffer uses a fixed
-row stride and retains destination addresses for pending line output. PNG
-previews contain only the visible pixels of each row. Chipset engines remain
+720-sample row stride and the selected PAL/NTSC presentation profile, retaining
+destination addresses for pending line output. PNG previews contain exactly
+the same 720 x 568 PAL or 720 x 480 NTSC rectangle as the host image. Chipset engines remain
 inside their owning crates; DMACON, BPLCON0, DDFSTRT and DDFSTOP have their sole
 values in `state.agnus.dma`. Earlier files are unsupported; no
 migration or default-state fallback is provided. This does not remove files

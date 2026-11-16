@@ -13,7 +13,7 @@ fn framebuffer_keeps_visible_dimensions_with_a_fixed_row_stride() {
     }
     frame.begin_line(false, false, true, true);
     frame.step_cck(18, 0);
-    assert_eq!([frame.width, frame.height], [836, 572]);
-    assert_eq!(frame.row_stride(), 840);
-    assert_eq!(frame.frame_buffer().len(), frame.row_stride() * 572);
+    assert_eq!([frame.width, frame.height], [720, 568]);
+    assert_eq!(frame.row_stride(), 720);
+    assert_eq!(frame.frame_buffer().len(), frame.row_stride() * 568);
 }

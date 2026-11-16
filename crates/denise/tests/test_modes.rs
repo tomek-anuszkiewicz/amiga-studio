@@ -30,7 +30,7 @@ fn restored_control_word_retains_ham_ehb_and_seven_plane_distinctions(
 #[test]
 fn decoded_modes_change_only_when_the_register_write_applies() {
     let mut denise = Denise::new(DeniseModel::Ocs8362);
-    denise.sync.hpos = 40;
+    denise.sync.hpos = 60;
     denise.color[2] = 0x246;
     denise.color[9] = 0x579;
     denise.color[31] = 0xdef;
@@ -67,10 +67,15 @@ fn display_mode_matrix_masks_planes_and_places_pixels_in_both_standard_fields() 
                     for dual in [false, true] {
                         for second_first in [false, true] {
                             let mut denise = Denise::new(DeniseModel::Ocs8362);
+                            denise.frame_builder.set_video_standard(if ntsc {
+                                config::VideoStandard::Ntsc
+                            } else {
+                                config::VideoStandard::Pal
+                            });
                             denise.sync.synchronized = true;
                             denise.sync.vertical_blank = false;
-                            denise.sync.hpos = 40;
-                            denise.sync.vpos = 100;
+                            denise.sync.hpos = 60;
+                            denise.sync.vpos = if ntsc { 21 } else { 28 };
                             denise.hflop = true;
                             denise.bplcon0 = (resolution
                                 | (count << 12)
@@ -82,8 +87,8 @@ fn display_mode_matrix_masks_planes_and_places_pixels_in_both_standard_fields() 
                             denise.step_cck();
                             denise.sync.field_odd = odd;
                             denise.strobe_strhor();
-                            denise.sync.hpos = 40;
-                            denise.sync.vpos = 100;
+                            denise.sync.hpos = 60;
+                            denise.sync.vpos = if ntsc { 21 } else { 28 };
                             for (index, color) in denise.color.iter_mut().enumerate() {
                                 *color = 0x800 | index as u16 * 0x11;
                             }
@@ -112,7 +117,7 @@ fn display_mode_matrix_masks_planes_and_places_pixels_in_both_standard_fields() 
                             };
                             let row = if lace { usize::from(odd) } else { 0 };
                             assert_eq!(
-                                denise.frame_builder.get_pixel(22, row),
+                                denise.frame_builder.get_pixel(50, row),
                                 denise::frame_builder::rgb444_to_argb32(expected),
                                 "NTSC {ntsc}, lace {lace}, odd {odd}, resolution {resolution:x}, count {count}, dual {dual}, second {second_first}"
                             );

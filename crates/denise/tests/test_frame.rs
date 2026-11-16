@@ -20,24 +20,25 @@ fn output_coordinates_follow_visible_lines_across_the_hardware_counter_wrap() {
             denise.bplcon0 = (if lace { 4 } else { 0 }).into();
             denise.sync.field_odd = odd;
             denise.strobe_strhor();
+            denise.sync.vpos = 28;
             let row = usize::from(lace && odd);
             for hpos in 0..ccks {
                 denise.step_cck();
                 let cursor = &denise.frame_cursor;
-                assert_eq!(cursor.active, hpos >= 36);
-                if hpos >= 36 {
-                    assert_eq!(cursor.frame_x, (hpos - 36 + 1) * 4);
+                assert_eq!(cursor.active, hpos >= 49);
+                if hpos >= 49 {
+                    assert_eq!(cursor.frame_x, (hpos - 49 + 1) * 4);
                     assert_eq!(cursor.frame_y, Some(row));
                 }
             }
             denise.strobe_strhor();
-            assert_eq!(denise.frame_cursor.frame_x, (ccks - 36) * 4);
-            for hpos in 0..36 {
+            assert_eq!(denise.frame_cursor.frame_x, (ccks - 49) * 4);
+            for hpos in 0..49 {
                 denise.step_cck();
                 let cursor = &denise.frame_cursor;
                 assert_eq!(cursor.active, hpos < 18);
                 if hpos < 18 {
-                    assert_eq!(cursor.frame_x, (ccks - 36 + hpos + 1) * 4);
+                    assert_eq!(cursor.frame_x, (ccks - 49 + hpos + 1) * 4);
                     assert_eq!(cursor.frame_y, Some(row));
                 }
             }

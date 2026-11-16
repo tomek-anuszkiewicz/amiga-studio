@@ -96,19 +96,26 @@ fn snapshot_between_field_strobe_and_hblank_finishes_the_previous_display_row() 
         assert_eq!(machine.denise.frame_builder.frame_number, 1);
         assert!(machine.denise.frame_builder.field_odd);
         let frame = &machine.denise.frame_builder;
-        let blank_lines = if standard == VideoStandard::Pal {
-            26
+        let height = if standard == VideoStandard::Pal {
+            568
         } else {
-            21
+            480
         };
-        let complete_lines = usize::from(machine.denise.sync.field_lines) - blank_lines - 1;
-        assert_eq!(frame.height as usize, complete_lines * 2 - 1);
-        let row = complete_lines * 2 - 2;
-        // Blanking suppresses storage without injecting black into the retained pair.
-        assert_eq!(frame.get_pixel(0, row), 0xffff0000);
-        assert_eq!(frame.get_pixel(1, row), 0xffff0000);
-        assert_eq!(frame.get_pixel(2, row), 0xffff0000);
-        assert_eq!(frame.get_pixel(835, row), 0xffff0000);
+        assert_eq!([frame.width, frame.height], [720, height]);
+        let row = height as usize - 2;
+        for x in [0, 1, 2, 711] {
+            assert_eq!(frame.get_pixel(x, row), 0xffff0000);
+        }
+        for x in 712..720 {
+            assert_eq!(
+                frame.get_pixel(x, row),
+                if standard == VideoStandard::Pal {
+                    0xff000000
+                } else {
+                    0xffff0000
+                }
+            );
+        }
         assert_eq!(
             frame.frame_buffer().len(),
             frame.row_stride() * frame.height as usize

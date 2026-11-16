@@ -40,8 +40,12 @@ fn screen_uploads_the_visible_framebuffer_unchanged_and_preserves_its_geometry()
                 let frame = &mut denise.frame_builder;
                 let stride = frame.row_stride();
                 let height = frame.height as usize;
-                let image_width = ccks as usize * 4 - 72;
-                let image_height = (lines - blanks - 1) as usize * 2;
+                let image_width = 720;
+                let image_height = if standard == config::VideoStandard::Pal {
+                    568
+                } else {
+                    480
+                };
                 frame.frame_buffer_mut().fill(0xff00ff00);
                 for y in 0..height {
                     let color = if y % 2 == 0 { 0xff0000ff } else { 0xffff0000 };
