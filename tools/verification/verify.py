@@ -7,9 +7,10 @@ import http.client
 import re
 import tomllib
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from cli import parse_args
-from commands import select_phases
+from commands import independent_contract, select_phases
 from execution import execute_command, print_info, result_label
 from repository import REPO_ROOT, collect_changes, snapshot, resolve_base, divergent_integration, candidate_tree
 from evidence import BatchEvidence, capture_inputs, execution_conditions, group_identity
@@ -175,6 +176,42 @@ def main(argv=None):
 
 
 
+def execution_waves(groups):
+    """Keep builds and harness writers separate from the audited concurrent work."""
+    preflight = [group for group in groups if group[0] == "Preflight"]
+    if preflight:
+        yield preflight
+    for group in groups:
+        if group[0] == "Build checks":
+            yield [group]
+    remaining = [group for group in groups if group[0] not in {"Preflight", "Build checks"}]
+    # Multiple coverage bundles would share counters: retain serial execution.
+    coverage = [group for group in remaining if group[0] == "Coverage"]
+    parallel = [group for group in remaining if independent_contract(group[1], group[2])]
+    if len(coverage) == 1:
+        parallel = coverage + parallel
+    if parallel:
+        yield parallel
+    for group in remaining:
+        if group not in parallel:
+            yield [group]
+
+
+def execute_group(phase, commands, lock, args, directory):
+    """Workers own command logs; the coordinator owns all evidence mutations."""
+    success, elapsed = True, 0
+    for title, command, overrides in commands:
+        print(f"[RUN] {title}", flush=True)
+        ok, detail, seconds = execute_command(command, lock.command_environment(overrides),
+                                              log_level=args.log_level, log_dir=directory, job=lock.job)
+        elapsed += seconds
+        success = success and ok
+        print(f"{result_label(ok)} {title} ({seconds:.2f}s): {detail}", flush=True)
+        if phase == "Coverage" and not ok:
+            break
+    return success, elapsed
+
+
 def execute_batch(args, phases, batch, before):
     """Execute the full selected profile, retaining only matching successful groups."""
     batch.directory.mkdir(parents=True, exist_ok=True)
@@ -216,48 +253,53 @@ def execute_batch(args, phases, batch, before):
                 print(f"[INFO] Could not save Stable update notice: {error}")
         results = batch.record["results"]
         blocked = False
-        for phase, name, commands in groups:
-            identity = group_identity(name, commands, inputs, conditions)
-            reason = batch.reason(name, identity)
-            if phase != "Preflight" and blocked:
-                results[name] = {"status": "missing", "reason": "preliminary blocker"}
-                print(f"[MISSING] {name}: preliminary blocker")
-                continue
+        def guard_inputs():
+            nonlocal input_state
             if snapshot(REPO_ROOT) != source:
                 raise ValueError("Source or index changed during verification")
             current_state = capture_inputs(REPO_ROOT, contents=False)
             if current_state != input_state and capture_inputs(REPO_ROOT) != inputs:
                 raise ValueError("Source or index changed during verification")
             input_state = current_state
-            if reason is None:
-                item = batch.record["groups"][name]
-                results[name] = {"status": "reused", "attempt": item["attempt"]}
-                print(f"[REUSED] {name}: matching inputs and artifacts; attempt {item['attempt']}")
-                continue
-            old = batch.record["groups"].get(name)
-            label = "INVALIDATED" if old and old.get("status") == "passed" else "MISSING"
-            print(f"[{label}] {name}: {reason}")
-            directory = batch.start(name, identity, commands, source)
-            success, elapsed = True, 0
-            for title, command, overrides in commands:
-                print(f"[RUN] {title}", flush=True)
-                ok, detail, seconds = execute_command(command, lock.command_environment(overrides),
-                                                      log_level=args.log_level, log_dir=directory, job=lock.job)
-                elapsed += seconds
-                success = success and ok
-                print(f"{result_label(ok)} {title} ({seconds:.2f}s): {detail}", flush=True)
-                if phase == "Coverage" and not ok:
-                    break
-            if snapshot(REPO_ROOT) != source:
-                raise ValueError("Source or index changed during verification")
-            current_state = capture_inputs(REPO_ROOT, contents=False)
-            if current_state != input_state and capture_inputs(REPO_ROOT) != inputs:
-                raise ValueError("Source or index changed during verification")
-            input_state = current_state
-            success = batch.finish(name, directory, success, elapsed)
-            results[name] = {"status": "executed" if success else "failed", "reason": reason,
-                             "attempt": batch.attempt}
-            blocked = blocked or phase in ("Preflight", "Build checks") and not success
+
+        pool = ThreadPoolExecutor(max_workers=2)
+        pending = {}
+        try:
+            for wave in execution_waves(groups):
+                if wave[0][0] != "Preflight" and blocked:
+                    for _, name, _ in wave:
+                        results[name] = {"status": "missing", "reason": "preliminary blocker"}
+                        print(f"[MISSING] {name}: preliminary blocker")
+                    continue
+                guard_inputs()
+                pending = {}
+                for phase, name, commands in wave:
+                    identity = group_identity(name, commands, inputs, conditions)
+                    reason = batch.reason(name, identity)
+                    if reason is None:
+                        item = batch.record["groups"][name]
+                        results[name] = {"status": "reused", "attempt": item["attempt"]}
+                        print(f"[REUSED] {name}: matching inputs and artifacts; attempt {item['attempt']}")
+                        continue
+                    old = batch.record["groups"].get(name)
+                    label = "INVALIDATED" if old and old.get("status") == "passed" else "MISSING"
+                    print(f"[{label}] {name}: {reason}")
+                    directory = batch.start(name, identity, commands, source)
+                    future = pool.submit(execute_group, phase, commands, lock, args, directory)
+                    pending[future] = (phase, name, directory, reason)
+                for future in as_completed(pending):
+                    phase, name, directory, reason = pending[future]
+                    success, elapsed = future.result()
+                    success = batch.finish(name, directory, success, elapsed)
+                    results[name] = {"status": "executed" if success else "failed", "reason": reason,
+                                     "attempt": batch.attempt}
+                    blocked = blocked or phase in ("Preflight", "Build checks") and not success
+                # Inspect inputs only after all writers in this wave have stopped.
+                guard_inputs()
+        finally:
+            for future in pending:
+                future.cancel()
+            pool.shutdown(wait=True, cancel_futures=True)
         if snapshot(REPO_ROOT) != source or capture_inputs(REPO_ROOT) != inputs or execution_conditions(REPO_ROOT) != conditions:
             raise ValueError("Source, index or execution conditions changed during verification")
         success = all(item["status"] in ("executed", "reused") for item in results.values())

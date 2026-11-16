@@ -151,7 +151,8 @@ class WindowsJobTests(unittest.TestCase):
 
     def detached_command(self, lock, ready, release):
         leaf = ("from pathlib import Path; import time,os; "
-                f"Path({str(ready)!r}).write_text(str(os.getpid()))\n"
+                f"ready=Path({str(ready)!r}); pending=ready.with_name(ready.name+'.pending'); "
+                "pending.write_text(str(os.getpid())); pending.replace(ready)\n"
                 f"while not Path({str(release)!r}).exists(): time.sleep(.01)\n")
         parent = ("import subprocess,sys; "
                   f"subprocess.Popen([sys.executable,'-c',{leaf!r}], "

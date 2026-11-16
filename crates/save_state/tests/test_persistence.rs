@@ -221,7 +221,7 @@ fn test_save_state_file_persistence() {
     machine.step_cycles(150);
 
     let temp_dir = std::env::temp_dir();
-    let temp_path = temp_dir.join("test_save_state_amiga.json");
+    let temp_path = temp_dir.join(format!("test_save_state_amiga_{}.json", std::process::id()));
 
     let json = SaveState::capture(&machine).to_json_pretty().unwrap();
     std::fs::write(&temp_path, json).expect("Failed to write save state file");

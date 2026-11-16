@@ -307,6 +307,63 @@ fn register_and_memory_commands_report_coherent_owned_results() {
 }
 
 #[test]
+fn obsolete_generation_rejects_memory_writes_without_advancing_the_machine() {
+    use gui::host_commands::HostRequest;
+
+    let mut owner = MachineOwner::new(session());
+    let original_generation = owner.status().generation;
+    let reset = owner.execute(HostRequest {
+        id: 1,
+        generation: original_generation,
+        command: HostCommand::ResetWarm,
+    });
+    assert!(reset.value.is_ok());
+    assert_eq!(reset.status.generation, original_generation + 1);
+    assert!(owner
+        .execute(HostRequest {
+            id: 2,
+            generation: reset.status.generation,
+            command: HostCommand::WriteMemory {
+                address: 0xfc2000,
+                bytes: vec![0xab],
+                restart_instruction: false,
+            },
+        })
+        .value
+        .is_ok());
+    let before = owner.status();
+    let rejected = owner.execute(HostRequest {
+        id: 3,
+        generation: original_generation,
+        command: HostCommand::WriteMemory {
+            address: 0xfc2000,
+            bytes: vec![0xcd],
+            restart_instruction: false,
+        },
+    });
+    assert_eq!(rejected.id, 3);
+    assert_eq!(
+        rejected.value.unwrap_err(),
+        "Command belongs to an obsolete runtime generation"
+    );
+    assert_eq!(rejected.status.generation, before.generation);
+    assert_eq!(rejected.status.cck, before.cck);
+    let read = owner.execute(HostRequest {
+        id: 4,
+        generation: reset.status.generation,
+        command: HostCommand::ReadMemory {
+            address: 0xfc2000,
+            length: 1,
+        },
+    });
+    let Ok(HostValue::Memory { address, bytes }) = read.value else {
+        panic!("Missing retained memory");
+    };
+    assert_eq!(address, 0xfc2000);
+    assert_eq!(bytes, [0xab]);
+}
+
+#[test]
 fn reset_changes_generation_and_releases_old_output_without_displaying_it() {
     let mut host = start_host();
     let before = host.status().generation;

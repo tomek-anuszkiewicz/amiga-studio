@@ -121,7 +121,7 @@ fn test_debugger_session_json_and_file() {
 
     // File roundtrip
     let temp_dir = std::env::temp_dir();
-    let temp_file = temp_dir.join("dbg_session_test.json");
+    let temp_file = temp_dir.join(format!("dbg_session_test_{}.json", std::process::id()));
 
     std::fs::write(&temp_file, &json_str).expect("Failed to save state to file");
 

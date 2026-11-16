@@ -146,7 +146,8 @@ fn test_app_session_save_state_file_json_roundtrip() {
     let mut session = Box::new(gui::DebuggerSession::new());
     session.machine.step_cycles(100);
     let mut app = EmulatorApp::with_session(session);
-    let temp_file = std::env::temp_dir().join("gui_test_save_state.json");
+    let temp_file =
+        std::env::temp_dir().join(format!("gui_test_save_state_{}.json", std::process::id()));
     app.save_state_file(&temp_file);
     common::settle(&mut app, &egui::Context::default());
     assert!(app.file_error.is_none());

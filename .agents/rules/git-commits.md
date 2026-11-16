@@ -96,8 +96,9 @@ Do not edit validated inputs, run competing graph writers, or launch duplicate
 test commands beside a canonical profile that already selects them. Serialize
 commands sharing Cargo targets or coverage reports. Limit Graphify extraction
 workers when it competes with compilation, and compare elapsed time before
-claiming an improvement. The verifier's internal groups currently run serially;
-subagents do not change that scheduling or replace its final verdict.
+claiming an improvement. The verifier owns bounded internal scheduling and its
+resource exclusions, documented in the [verification reference](../../tools/verification/README.md#bounded-parallel-execution).
+Subagents do not replace its coordinator or final verdict.
 
 Compatible documentation and in-scope audit corrections belong to this same
 preparation; they do not create a second approval channel. Optional behavior,

@@ -717,6 +717,7 @@ neq
 newline
 newlines
 newv
+nextest
 nfl
 nflg
 nid

@@ -75,6 +75,7 @@ def execution_conditions(root):
     """Store hashes, never environment values or private configuration contents."""
     versions = {}
     for command in (["cargo", "--version"], ["rustc", "-vV"], ["cargo", "llvm-cov", "--version"],
+                    ["cargo", "nextest", "--version"],
                     ["cargo", "+nightly", "--version"], ["rustc", "+nightly", "-vV"],
                     ["trunk", "--version"],
                     ["powershell" if os.name == "nt" else "pwsh", "-NoProfile", "-Command",
