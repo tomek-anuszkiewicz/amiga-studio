@@ -939,7 +939,7 @@ fn runtime_input_capture_pause_reset_and_load_release_obsolete_controls() {
     };
     let capture = |enabled| {
         let deadline = Instant::now() + Duration::from_secs(10);
-        while !sender.set_enabled(enabled) {
+        while !sender.set_enabled(enabled, false) {
             assert!(Instant::now() < deadline);
             std::thread::yield_now();
         }

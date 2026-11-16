@@ -26,16 +26,23 @@ struct Mailboxes {
     input: InputQueue,
     input_enabled: bool,
     frontend_enabled: bool,
+    gamepad_enabled: bool,
     mapping: crate::input_mapping::InputMapping,
     input_generation: u64,
     capture_epoch: u64,
     #[cfg(not(target_arch = "wasm32"))]
     capture_started_at: std::time::SystemTime,
+    #[cfg(not(target_arch = "wasm32"))]
+    gamepads_started_at: std::time::SystemTime,
 }
 
 impl Mailboxes {
     fn input_active(&self) -> bool {
         self.input_enabled && self.status.running && !self.status.pause_pending
+    }
+
+    fn gamepads_active(&self) -> bool {
+        self.gamepad_enabled && self.status.running && !self.status.pause_pending
     }
 
     fn sample_gamepads(
@@ -80,6 +87,7 @@ impl Mailboxes {
             HostInputEvent::MouseMotion { .. } | HostInputEvent::MouseButtons { .. } => {
                 self.mapping.pointer(event)
             }
+            HostInputEvent::ReleaseCapture { .. } => vec![self.mapping.release_capture()],
             HostInputEvent::ReleaseAll => {
                 self.mapping.release();
                 vec![event]
@@ -146,8 +154,8 @@ pub(crate) fn collect_native_gamepad(
     let Ok(mut mailboxes) = sender.shared.mailboxes.lock() else {
         return;
     };
-    let active = mailboxes.input_active() && observed >= mailboxes.capture_started_at;
-    let fresh = observed >= mailboxes.capture_started_at;
+    let fresh = observed >= mailboxes.gamepads_started_at;
+    let active = mailboxes.gamepads_active() && fresh;
     if mailboxes.sample_gamepads(gamepads.samples(), active, fresh) {
         sender.repaint.request_repaint();
     }
@@ -172,99 +180,6 @@ pub struct HostBusy(pub HostCommand);
 pub struct HostInputSender {
     shared: Arc<SharedHost>,
     repaint: egui::Context,
-}
-
-impl HostInputSender {
-    pub fn configure(
-        &self,
-        configuration: &crate::player_config::NamedConfiguration,
-        catalog: &crate::player_config::ConfigurationCatalog,
-    ) -> bool {
-        let Ok(mut mailboxes) = self.shared.mailboxes.try_lock() else {
-            return false;
-        };
-        if mailboxes.mapping.configure(configuration, catalog) {
-            mailboxes.push_input(HostInputEvent::ReleaseAll);
-        }
-        true
-    }
-
-    pub fn gamepads(&self) -> Option<Vec<crate::input_mapping::GamepadInfo>> {
-        self.shared
-            .mailboxes
-            .try_lock()
-            .ok()
-            .map(|m| m.mapping.available.clone())
-    }
-
-    #[cfg(target_arch = "wasm32")]
-    fn browser_gamepads(&self, json: &str, generation: u64, allowed: bool) -> bool {
-        let Ok(mut mailboxes) = self.shared.mailboxes.try_lock() else {
-            return false;
-        };
-        if generation != mailboxes.status.generation {
-            return true;
-        }
-        #[derive(serde::Deserialize)]
-        struct BrowserGamepads {
-            devices: Vec<crate::input_mapping::GamepadSample>,
-            focused: bool,
-        }
-        if let Ok(sample) = serde_json::from_str::<BrowserGamepads>(json) {
-            let active = allowed && mailboxes.input_active();
-            if mailboxes.sample_gamepads(sample.devices, active, sample.focused) {
-                self.repaint.request_repaint();
-            }
-        }
-        true
-    }
-
-    pub fn frontend_actions(
-        &self,
-        enabled: bool,
-    ) -> Option<Vec<crate::player_config::FrontendAction>> {
-        let Ok(mut mailboxes) = self.shared.mailboxes.try_lock() else {
-            return None;
-        };
-        mailboxes.frontend_enabled = enabled;
-        let actions = std::mem::take(&mut mailboxes.mapping.actions);
-        Some(if enabled { actions } else { Vec::new() })
-    }
-
-    pub fn try_host_event(&self, event: HostInputEvent, generation: u64) -> bool {
-        let Ok(mut mailboxes) = self.shared.mailboxes.try_lock() else {
-            return false;
-        };
-        if generation == mailboxes.status.generation
-            && (mailboxes.input_active() || event == HostInputEvent::ReleaseAll)
-        {
-            mailboxes.resolve_input(event);
-        }
-        true
-    }
-
-    pub fn set_enabled(&self, enabled: bool) -> bool {
-        let Ok(mut mailboxes) = self.shared.mailboxes.try_lock() else {
-            return false;
-        };
-        if mailboxes.input_enabled != enabled {
-            mailboxes.input_enabled = enabled;
-            mailboxes.mapping.release();
-            mailboxes.capture_epoch = mailboxes.capture_epoch.wrapping_add(1);
-            #[cfg(not(target_arch = "wasm32"))]
-            {
-                mailboxes.capture_started_at = std::time::SystemTime::now();
-            }
-            mailboxes.push_input(HostInputEvent::ReleaseAll);
-        }
-        #[cfg(target_arch = "wasm32")]
-        set_host_input_enabled(
-            enabled,
-            mailboxes.status.input_poll_seconds * 1000.0,
-            mailboxes.status.generation,
-        );
-        true
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -300,11 +215,14 @@ impl HostRuntime {
                 input: Default::default(),
                 input_enabled: false,
                 frontend_enabled: false,
+                gamepad_enabled: false,
                 mapping: Default::default(),
                 input_generation: status.generation,
                 capture_epoch: 0,
                 #[cfg(not(target_arch = "wasm32"))]
                 capture_started_at: std::time::SystemTime::now(),
+                #[cfg(not(target_arch = "wasm32"))]
+                gamepads_started_at: std::time::SystemTime::now(),
             }),
             video: VideoExchange::new(spare),
             stop: AtomicBool::new(false),
@@ -674,6 +592,7 @@ impl WorkerLoop {
                 #[cfg(not(target_arch = "wasm32"))]
                 if mailboxes.status.generation != status.generation {
                     mailboxes.capture_started_at = std::time::SystemTime::now();
+                    mailboxes.gamepads_started_at = mailboxes.capture_started_at;
                     mailboxes.capture_epoch = mailboxes.capture_epoch.wrapping_add(1);
                     mailboxes.input.clear();
                 }
@@ -763,3 +682,5 @@ mod browser;
 pub(crate) use browser::take_pointer_capture_loss;
 #[cfg(target_arch = "wasm32")]
 use browser::{set_host_input_enabled, start_web};
+
+mod input;

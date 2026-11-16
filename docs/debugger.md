@@ -23,14 +23,13 @@ This guide introduces the Developer Studio for users and developers who want to 
 | Shortcut | Action | Description |
 | :--- | :--- | :--- |
 | **`F12`** | **Toggle Screen Mode** | Switches between Clean Game Screen and Developer Studio. Pauses emulation on entry. |
-| **`F5` / `Space`** | **Run / Pause** | Runs at the selected speed; pause finishes the current video field. |
+| **`F5`** | **Run / Pause** | Runs at the selected speed; pause finishes the current video field. |
 | **`F10`** | **Step Instruction** | Executes exactly 1 M68000 instruction, recording trace and history. |
 | **`Shift + F10`** | **Step Backward (Rewind)** | Restores a recorded CPU state; full-machine rewind remains pending. |
 | **`F11`** | **Step CCK** | Steps 1 Color Clock phase (2 CPU clocks, CCK1 / CCK2). |
 | **`Shift + F11`** | **Step Frame** | Advances to the next completed PAL/NTSC video field and pauses. Breakpoints and CPU halts take precedence. |
 | **`Alt + T`** | **Toggle Recording** | Activates or pauses temporal execution history recording. |
 | **`Ctrl + O`** | **Load Binary** | Opens file dialog to load compiled machine code at an arbitrary RAM address. |
-| **`Ctrl + R`** | **Reset Cold** | Restores initial hardware state and reloads CPU vectors. |
 | **Drag & Drop** | **Binary Loading** | Opens the binary injection dialog for the dropped bytes. Use File > Load ROM from File to boot firmware. |
 
 The **Slower** and **Faster** buttons select 0.25x, 0.5x, 1x, 2x or 4x;
@@ -57,7 +56,9 @@ explicit file selection. Snapshot loading uses the ROM stored in the snapshot an
 labels it **ROM: from saved state**.
 
 Game View keeps File, State, Run/Stop, speed, FPS visibility, theme and zoom
-controls. **Debug View** or F2/F12 returns to inspection. Escape releases input capture. While in Game
+controls. **Debug View** or the fixed F12 key returns to inspection. The middle
+mouse button releases input capture without pausing; an optional keyboard release
+binding starts unassigned in Configurations. Reset has no keyboard shortcut. While in Game
 View, debugger panels and shortcuts, breakpoints, disassembly, trace collection,
 CPU history and memory diff capture are disconnected. The CPU's STOP instruction
 still allows the chips to run and deliver interrupts. State saves occur only when

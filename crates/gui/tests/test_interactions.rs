@@ -1215,16 +1215,16 @@ fn test_memory_hex_vertical_scrollbar_interaction() {
 }
 
 #[test]
-fn test_f2_toggles_views_and_escape_releases_capture() {
+fn test_f12_toggles_views_and_middle_mouse_releases_capture() {
     let ctx = egui::Context::default();
     let mut app = EmulatorApp::default();
     common::settle(&mut app, &egui::Context::default());
     assert_eq!(app.view_mode, ViewMode::Developer);
 
-    // 1. Press F2 -> Switch to ScreenOnly
-    let input_f2 = RawInput {
+    // 1. Press F12 -> Switch to ScreenOnly
+    let input_f12 = RawInput {
         events: vec![Event::Key {
-            key: Key::F2,
+            key: Key::F12,
             physical_key: None,
             pressed: true,
             repeat: false,
@@ -1232,15 +1232,15 @@ fn test_f2_toggles_views_and_escape_releases_capture() {
         }],
         ..Default::default()
     };
-    let _ = ctx.run(input_f2, |ctx| app.update_ui(ctx));
+    let _ = ctx.run(input_f12, |ctx| app.update_ui(ctx));
     common::settle(&mut app, &ctx);
     assert_eq!(app.view_mode, ViewMode::ScreenOnly);
 
-    // Release F2: a later press must be a new edge, not keyboard repeat.
+    // Release F12: a later press must be a new edge, not keyboard repeat.
     let _ = ctx.run(
         RawInput {
             events: vec![Event::Key {
-                key: Key::F2,
+                key: Key::F12,
                 physical_key: None,
                 pressed: false,
                 repeat: false,
@@ -1251,14 +1251,13 @@ fn test_f2_toggles_views_and_escape_releases_capture() {
         |ctx| app.update_ui(ctx),
     );
 
-    // 2. Escape releases capture and leaves player controls reachable.
+    // 2. Middle mouse releases capture and leaves player controls reachable.
     app.player.captured = true;
     let input_esc = RawInput {
-        events: vec![Event::Key {
-            key: Key::Escape,
-            physical_key: None,
+        events: vec![Event::PointerButton {
+            pos: egui::pos2(400.0, 250.0),
+            button: egui::PointerButton::Middle,
             pressed: true,
-            repeat: false,
             modifiers: Modifiers::NONE,
         }],
         ..Default::default()
@@ -1268,10 +1267,10 @@ fn test_f2_toggles_views_and_escape_releases_capture() {
     assert_eq!(app.view_mode, ViewMode::ScreenOnly);
     assert!(!app.player.captured);
 
-    // 3. Press F2 again -> Developer
-    let input_f2_again = RawInput {
+    // 3. Press F12 again -> Developer
+    let input_f12_again = RawInput {
         events: vec![Event::Key {
-            key: Key::F2,
+            key: Key::F12,
             physical_key: None,
             pressed: true,
             repeat: false,
@@ -1279,22 +1278,22 @@ fn test_f2_toggles_views_and_escape_releases_capture() {
         }],
         ..Default::default()
     };
-    let _ = ctx.run(input_f2_again, |ctx| app.update_ui(ctx));
+    let _ = ctx.run(input_f12_again, |ctx| app.update_ui(ctx));
     common::settle(&mut app, &ctx);
     assert_eq!(app.view_mode, ViewMode::Developer);
 
-    // 4. Release F2 and press it again to toggle back -> ScreenOnly.
-    let input_f2_back = RawInput {
+    // 4. Release F12 and press it again to toggle back -> ScreenOnly.
+    let input_f12_back = RawInput {
         events: vec![
             Event::Key {
-                key: Key::F2,
+                key: Key::F12,
                 physical_key: None,
                 pressed: false,
                 repeat: false,
                 modifiers: Modifiers::NONE,
             },
             Event::Key {
-                key: Key::F2,
+                key: Key::F12,
                 physical_key: None,
                 pressed: true,
                 repeat: false,
@@ -1303,7 +1302,7 @@ fn test_f2_toggles_views_and_escape_releases_capture() {
         ],
         ..Default::default()
     };
-    let _ = ctx.run(input_f2_back, |ctx| app.update_ui(ctx));
+    let _ = ctx.run(input_f12_back, |ctx| app.update_ui(ctx));
     common::settle(&mut app, &ctx);
     assert_eq!(app.view_mode, ViewMode::ScreenOnly);
 }
@@ -2190,7 +2189,7 @@ fn test_simulated_quick_save_and_load_shortcuts() {
 }
 
 #[test]
-fn test_ctrl_r_shortcut_triggers_reset() {
+fn test_ctrl_r_leaves_machine_unchanged() {
     let ctx = egui::Context::default();
     let mut app = EmulatorApp::default();
     common::settle(&mut app, &egui::Context::default());
@@ -2217,8 +2216,8 @@ fn test_ctrl_r_shortcut_triggers_reset() {
     });
     common::settle(&mut app, &ctx);
 
-    assert_eq!(app.host.status.cck, 0);
-    assert_eq!(common::inspect(&mut app).debugger.current_cck, 0);
+    assert_eq!(app.host.status.cck, 100);
+    assert_eq!(common::inspect(&mut app).debugger.current_cck, 100);
 }
 
 #[test]

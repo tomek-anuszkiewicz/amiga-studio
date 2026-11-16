@@ -257,7 +257,6 @@ impl EmulatorApp {
             self.player.captured = false;
             self.set_view_mode(ViewMode::Developer);
         }
-        ui.small("Click the Amiga display to capture input. Release with the configured key (Escape by default).");
     }
 
     #[cfg(not(target_arch = "wasm32"))]

@@ -34,14 +34,16 @@ export function start_machine_worker(module, memory, notify, finished, input) {
 }
 
 let inputEnabled = false;
+let gamepadsEnabled = false;
 let resetInput;
 let captureLost = false;
 export function take_pointer_capture_loss() { const lost = captureLost; captureLost = false; return lost; }
 let updateInputTimer;
 let pollMilliseconds = 0;
 let inputGeneration = 0n;
-export function set_host_input_enabled(enabled, interval_ms, generation) {
+export function set_host_input_enabled(enabled, gamepads, interval_ms, generation) {
     const changed = inputEnabled !== enabled || inputGeneration !== generation;
+    const controllersChanged = gamepadsEnabled !== gamepads;
     if (changed) resetInput?.();
     if (changed && enabled) {
         const canvas = document.getElementById('amiga_canvas');
@@ -51,9 +53,10 @@ export function set_host_input_enabled(enabled, interval_ms, generation) {
         } catch { captureLost = true; }
     } else if (!enabled && document.pointerLockElement) document.exitPointerLock();
     inputEnabled = enabled;
+    gamepadsEnabled = gamepads;
     pollMilliseconds = interval_ms;
     inputGeneration = generation;
-    if (changed) updateInputTimer?.();
+    if (changed || controllersChanged) updateInputTimer?.();
 }
 
 function startInput(collect) {
@@ -77,7 +80,11 @@ function startInput(collect) {
         if (pending.length) retry = setTimeout(flush, 1);
     };
     const push = event => {
-        if (pending.length === MAX_EVENTS || event[0] === 'release') pending = [['release', '', 0, 0, 0, inputGeneration]];
+        if (event[0] === 'capture-release') {
+            const fullRelease = pending.find(queued => queued[0] === 'release');
+            pending = [fullRelease || [...event, inputGeneration]];
+        }
+        else if (pending.length === MAX_EVENTS || event[0] === 'release') pending = [['release', '', 0, 0, 0, inputGeneration]];
         else pending.push([...event, inputGeneration]);
         flush();
     };
@@ -91,7 +98,7 @@ function startInput(collect) {
         if (type === 'keydown') keys.add(event.code);
         else keys.delete(event.code);
         // Application command shortcuts retain their existing meaning.
-        if (type === 'keydown' && (event.ctrlKey || event.metaKey) && ['KeyR', 'KeyO', 'KeyS', 'KeyL', 'KeyT', 'Equal', 'Minus', 'Digit0'].includes(event.code)) return;
+        if (type === 'keydown' && (event.ctrlKey || event.metaKey) && ['KeyO', 'KeyS', 'KeyL', 'KeyT', 'Equal', 'Minus', 'Digit0'].includes(event.code)) return;
         if (type === 'keyup' && (event.code === 'ControlLeft' || event.code === 'ControlRight')
             && (keys.has('ControlLeft') || keys.has('ControlRight'))) return;
         push([type, event.code, 0, 0, 0]);
@@ -102,6 +109,15 @@ function startInput(collect) {
     });
     for (const type of ['pointerdown', 'pointerup']) listen(canvas, type, event => {
         if (!active()) return;
+        if (event.button === 1) {
+            if (type === 'pointerdown') {
+                captureLost = true;
+                releaseCapture();
+                document.exitPointerLock();
+            }
+            event.preventDefault();
+            return;
+        }
         buttons = event.buttons;
         push(['mouse', '', 0, 0, buttons]);
     });
@@ -111,12 +127,17 @@ function startInput(collect) {
 
         push(['release', '', 0, 0, 0]);
     };
-    resetInput = release;
+    const releaseCapture = () => {
+        buttons = 0;
+        keys.clear();
+        push(['capture-release', '', 0, 0, 0]);
+    };
+    resetInput = releaseCapture;
     listen(window, 'blur', () => { release(); updateInputTimer(); });
     listen(window, 'focus', () => updateInputTimer());
     listen(document, 'visibilitychange', () => { if (document.hidden) release(); updateInputTimer(); });
-    listen(document, 'pointerlockchange', () => { if (document.pointerLockElement !== canvas) { captureLost = true; release(); } });
-    listen(document, 'pointerlockerror', () => { captureLost = true; release(); });
+    listen(document, 'pointerlockchange', () => { if (document.pointerLockElement !== canvas) { captureLost = true; releaseCapture(); } });
+    listen(document, 'pointerlockerror', () => { captureLost = true; releaseCapture(); });
     listen(canvas, 'contextmenu', event => { if (active()) event.preventDefault(); });
     // Sampling runs on its own host timer, independently of requestAnimationFrame.
     const poll = () => {
@@ -129,7 +150,7 @@ function startInput(collect) {
             }
             return {identity: `${connection.token}:${pad.index}:${pad.id}`, name: pad.id, axes: Array.from(pad.axes), buttons: pad.buttons.map(button => button.pressed)};
         });
-        push(['pads', JSON.stringify({devices: samples, focused: document.hasFocus() && !document.hidden}), 0, 0, Number(active())]);
+        push(['pads', JSON.stringify({devices: samples, focused: document.hasFocus() && !document.hidden}), 0, 0, 0]);
     };
     listen(window, 'gamepadconnected', event => {
         controllerConnections.set(event.gamepad.index, {id: event.gamepad.id, token: crypto.randomUUID()});
@@ -151,7 +172,7 @@ function startInput(collect) {
     sampling.port1.onmessage = event => {
         if (event.data !== schedule || document.hidden) return;
         poll();
-        nextPoll = Math.max(nextPoll + (active() ? pollMilliseconds : 250), performance.now());
+        nextPoll = Math.max(nextPoll + ((active() || gamepadsEnabled) ? pollMilliseconds : 250), performance.now());
         const token = schedule;
         // Keep timer nesting independent of the sampling task.
         timer = setTimeout(() => sampling.port2.postMessage(token), Math.max(0, Math.ceil(nextPoll - performance.now())));

@@ -2425,3 +2425,26 @@ Every authorized repository commit adds a concise entry here. Logging and compac
 - **Verification & Test Results**:
   - The previous canonical failure differed only in header timestamp
   - The corrected focused host runtime test passed
+---
+
+### [2026-11-16 23:15 CET] — Make input capture explicit and reserve F12
+- **Affected Subsystems**:
+  - `crates/gui`
+  - `docs/debugger.md`
+  - `docs/game-library.md`
+  - `Obsidian/Amiga/Design/Application/GUI.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Reserve F12 for Game/Debug
+  - replace the default Escape release with fixed middle mouse and an optional unassigned keyboard key
+  - remove Ctrl+R
+  - separate gamepad gameplay from pointer capture
+  - retain controller contacts on capture release and release all inputs on focus loss
+  - show shared capture guidance
+- **Architectural Rationale & Trade-Offs**:
+  - Keep Amiga keys available and allow controllers to play without capturing the desktop pointer
+- **Verification & Test Results**:
+  - GUI suite passed before final review corrections
+  - focused capture and view suites passed after text-focus and shared-guidance corrections
+  - browser adapter contention regression passed
+  - actual WASM build and vault audit passed
+  - configuration screenshot rendered and inspected. Canonical verification and final independent approvals pending. Physical controllers and Linux/macOS were not exercised.

@@ -32,6 +32,9 @@ pub enum HostInputEvent {
         fire1: bool,
         fire2: bool,
     },
+    ReleaseCapture {
+        joysticks: [Option<[bool; 6]>; 2],
+    },
     ReleaseAll,
 }
 
@@ -44,6 +47,16 @@ pub struct InputQueue {
 
 impl InputQueue {
     pub fn push(&mut self, event: HostInputEvent) {
+        if matches!(event, HostInputEvent::ReleaseCapture { .. }) {
+            let release = if self.events.contains(&HostInputEvent::ReleaseAll) {
+                HostInputEvent::ReleaseAll
+            } else {
+                event
+            };
+            self.events.clear();
+            self.events.push_back(release);
+            return;
+        }
         if self.events.len() == INPUT_QUEUE_CAPACITY || event == HostInputEvent::ReleaseAll {
             self.events.clear();
             self.overflow_count = self
@@ -128,6 +141,15 @@ impl InputConsumer {
                     .machine
                     .game_ports
                     .set_joystick(port, [up, down, left, right, fire1, fire2]),
+                HostInputEvent::ReleaseCapture { joysticks } => {
+                    Self::release_controls(session);
+                    // Restore controller contacts before the next electrical sample.
+                    for (port, contacts) in joysticks.into_iter().enumerate() {
+                        if let Some(contacts) = contacts {
+                            session.machine.game_ports.set_joystick(port, contacts);
+                        }
+                    }
+                }
                 HostInputEvent::ReleaseAll => Self::release_controls(session),
             }
             let previous_cck = session.machine.cck;

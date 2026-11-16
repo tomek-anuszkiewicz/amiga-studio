@@ -69,6 +69,7 @@ deserializes
 dfrac
 dict
 dicts
+dirname
 docstrings
 doctype
 dollarmath

@@ -60,7 +60,7 @@ fn game_toolbar_supports_files_manual_states_speed_fps_and_return_to_debug() {
         "Faster",
         "1x",
         "FPS",
-        "Debug View (F2 / F12)",
+        "Debug View (F12)",
     ] {
         let bounds = harness.get_by_label(label).raw_bounds().unwrap();
         assert!(bounds.x0 >= 0.0 && bounds.x1 <= 1024.0);
@@ -138,7 +138,7 @@ fn game_toolbar_supports_files_manual_states_speed_fps_and_return_to_debug() {
     harness.get_by_label("125%").click();
     common::settle_harness(&mut harness);
     assert_eq!(harness.ctx.zoom_factor(), 1.25);
-    harness.get_by_label("Debug View (F2 / F12)").click();
+    harness.get_by_label("Debug View (F12)").click();
     common::settle_harness(&mut harness);
     assert_eq!(harness.state().view_mode, ViewMode::Developer);
     harness.get_by_label("Step Frame (Shift+F11)");
@@ -211,4 +211,19 @@ fn game_shortcuts_cannot_start_debugger_work() {
         .entries()
         .is_empty());
     assert!(app.show_microcode);
+}
+
+#[test]
+fn capture_guidance_remains_visible_in_both_views_and_compact_windows() {
+    for view in [ViewMode::ScreenOnly, ViewMode::Developer] {
+        let mut app = EmulatorApp::default();
+        app.set_view_mode(view);
+        let mut harness = Harness::builder()
+            .with_size(egui::vec2(720.0, 600.0))
+            .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
+        common::settle_harness(&mut harness);
+        let bounds = harness.get_by_label("Input free. Click the Amiga display to capture keyboard and mouse. F12 switches Game/Debug.").raw_bounds().unwrap();
+        assert!(bounds.y0 >= 0.0 && bounds.y1 < 150.0);
+        assert!(bounds.x0 >= 0.0 && bounds.x1 <= 720.0);
+    }
 }

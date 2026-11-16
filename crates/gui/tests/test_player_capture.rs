@@ -81,3 +81,182 @@ fn long_disk_names_keep_the_wide_player_panel_compact() {
         "Long media label stretched the player panel: {save:?}"
     );
 }
+
+#[test]
+fn escape_and_f2_remain_guest_keys_and_optional_release_surrenders_focus() {
+    let (mut app, ctx) = running();
+    for key in [egui::Key::Escape, egui::Key::F2] {
+        draw(&mut app, &ctx, Some(key));
+        assert!(app.player.captured);
+        assert_eq!(app.view_mode, ViewMode::ScreenOnly);
+    }
+    app.player
+        .active_configuration
+        .as_mut()
+        .unwrap()
+        .frontend
+        .release = "F4".into();
+    draw(&mut app, &ctx, Some(egui::Key::F4));
+    assert!(!app.player.captured);
+    assert!(!ctx.memory(|m| m.has_focus(egui::Id::new("amiga-screen-input"))));
+    assert!(app.host.status.running);
+}
+
+#[test]
+fn middle_mouse_releases_capture_without_pause_or_keyboard_configuration() {
+    let (mut app, ctx) = running();
+    ctx.data_mut(|data| data.insert_temp(egui::Id::new("capture_requested"), true));
+    let _ = ctx.run(
+        egui::RawInput {
+            events: vec![egui::Event::PointerButton {
+                pos: egui::pos2(400.0, 250.0),
+                button: egui::PointerButton::Middle,
+                pressed: true,
+                modifiers: egui::Modifiers::NONE,
+            }],
+            ..Default::default()
+        },
+        |ctx| app.update_ui(ctx),
+    );
+    assert!(!app.player.captured);
+    assert!(app.host.status.running);
+    assert!(!ctx.memory(|m| m.has_focus(egui::Id::new("amiga-screen-input"))));
+    draw(&mut app, &ctx, None);
+    assert!(
+        !app.player.captured,
+        "Window activation must not recapture input"
+    );
+}
+
+fn pad(sender: &gui::host_runtime::HostInputSender, generation: u64, pressed: bool) {
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    loop {
+        let sample = gui::input_mapping::GamepadSample {
+            identity: "pad".into(),
+            name: "Test controller".into(),
+            axes: vec![0.0, 0.0],
+            buttons: vec![pressed; 16],
+        };
+        if sender.try_gamepads(vec![sample], generation, true) {
+            return;
+        }
+        assert!(std::time::Instant::now() < deadline);
+        std::thread::yield_now();
+    }
+}
+fn delivered(app: &mut EmulatorApp, ctx: &egui::Context) {
+    let before = app.host.status.input_deliveries;
+    common::wait(app, ctx, |app| {
+        app.host.status.input_deliveries >= before + 2
+    });
+}
+fn fire(app: &mut EmulatorApp) -> bool {
+    common::snapshot(app).game_ports.sample_ciaa_port_a_inputs() & 0x80 == 0
+}
+
+#[test]
+fn gamepad_plays_without_capture_survives_mouse_release_and_stops_outside_session() {
+    let (mut app, ctx) = running();
+    app.player.active_configuration.as_mut().unwrap().ports[1].source =
+        gui::player_config::InputSource::Gamepad {
+            identity: "pad".into(),
+            mapping: "arrows".into(),
+        };
+    app.player.captured = false;
+    draw(&mut app, &ctx, None);
+    let sender = app.host.runtime.as_ref().unwrap().input_sender();
+    let generation = app.host.status.generation;
+    delivered(&mut app, &ctx);
+    pad(&sender, generation, false);
+    pad(&sender, generation, true);
+    delivered(&mut app, &ctx);
+    assert!(fire(&mut app));
+    assert!(!app.player.captured);
+    let _ = ctx.run(egui::RawInput::default(), |ctx| {
+        egui::Window::new("Session control").show(ctx, |ui| {
+            ui.button("Ordinary button").request_focus();
+        });
+        app.update_ui(ctx);
+    });
+    delivered(&mut app, &ctx);
+    assert!(
+        fire(&mut app),
+        "A focused session button must not disable the gamepad"
+    );
+    for captured in [true, false] {
+        app.player.captured = captured;
+        draw(&mut app, &ctx, None);
+        delivered(&mut app, &ctx);
+        assert!(
+            fire(&mut app),
+            "Pointer capture changes must preserve controller contacts"
+        );
+    }
+    pad(&sender, generation.wrapping_add(1), false);
+    delivered(&mut app, &ctx);
+    assert!(
+        fire(&mut app),
+        "Obsolete-generation controller samples must be discarded"
+    );
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    while !sender.try_host_event(
+        gui::host_input::HostInputEvent::ReleaseCapture {
+            joysticks: [None; 2],
+        },
+        generation,
+    ) {
+        assert!(std::time::Instant::now() < deadline);
+        std::thread::yield_now();
+    }
+    delivered(&mut app, &ctx);
+    assert!(
+        fire(&mut app),
+        "Browser capture-loss ingress must retain the held controller after capture is disabled"
+    );
+    let mut text = String::new();
+    let text_id = egui::Id::new("session-text");
+    let _ = ctx.run(egui::RawInput::default(), |ctx| {
+        egui::Window::new("Session editor").show(ctx, |ui| {
+            ui.add(egui::TextEdit::singleline(&mut text).id(text_id))
+                .request_focus();
+        });
+        app.update_ui(ctx);
+    });
+    pad(&sender, generation, true);
+    delivered(&mut app, &ctx);
+    assert!(
+        !fire(&mut app),
+        "Text editing must release and suppress gamepad contacts"
+    );
+    ctx.memory_mut(|memory| memory.surrender_focus(text_id));
+    draw(&mut app, &ctx, None);
+    pad(&sender, generation, false);
+    pad(&sender, generation, true);
+    delivered(&mut app, &ctx);
+    assert!(fire(&mut app));
+    app.player.screen = gui::player::PlayerScreen::Configuration;
+    draw(&mut app, &ctx, None);
+    pad(&sender, generation, true);
+    delivered(&mut app, &ctx);
+    assert!(!fire(&mut app));
+    app.player.screen = gui::player::PlayerScreen::Session;
+    draw(&mut app, &ctx, None);
+    pad(&sender, generation, true);
+    delivered(&mut app, &ctx);
+    assert!(!fire(&mut app), "Held controls must not replay on return");
+    pad(&sender, generation, false);
+    pad(&sender, generation, true);
+    delivered(&mut app, &ctx);
+    assert!(fire(&mut app));
+    let _ = ctx.run(
+        egui::RawInput {
+            focused: false,
+            ..Default::default()
+        },
+        |ctx| app.update_ui(ctx),
+    );
+    pad(&sender, generation, true);
+    // Let the release reach the owner without reactivating the GUI.
+    std::thread::sleep(std::time::Duration::from_millis(30));
+    assert!(!fire(&mut app));
+}

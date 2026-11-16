@@ -11,11 +11,17 @@ external drives are optional. Configure devices before their host sources.
 Keyboard mappings use physical Amiga key positions in hexadecimal. The default
 joystick uses arrows, numpad 0 and numpad decimal. Controller choices name a
 specific connection; unavailable choices require reassignment. After reconnect
-or capture loss, release held controller inputs before using them again.
+or application focus loss, release held controller inputs before using them again.
 
-Click the Amiga display to capture input. Escape releases it by default. F5
-pauses/resumes, F6/F9 save/load slot 1, and F2/F12 switch to Debug. Editing a host
-text field takes priority over guest input. The right player panel supplies four
+Click the Amiga display to capture keyboard and mouse input. The middle mouse
+button always releases capture without pausing. An optional release key can be
+assigned in Configurations; it starts empty. F12 always switches Game/Debug and
+cannot be reassigned. F5 pauses/resumes and F6/F9 save/load slot 1; these three
+bindings are configurable. Reset is available through the interface without a
+keyboard shortcut. Escape and F2 otherwise reach the Amiga. Browser pointer lock
+retains its own Escape release behavior. Editing a host text field takes priority
+over guest input. Gamepads work in an active, running session without capture;
+configuration screens and inactive application windows disable gameplay input. The right player panel supplies four
 disk dropdowns, eject, activity, pause/resume, reset and save/load. Small windows
 collapse these controls below the display. Debug uses the same machine.
 

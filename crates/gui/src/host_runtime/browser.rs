@@ -21,7 +21,12 @@ extern "C" {
         input: wasm_bindgen::JsValue,
     ) -> Result<web_sys::Worker, wasm_bindgen::JsValue>;
     pub(crate) fn take_pointer_capture_loss() -> bool;
-    pub(super) fn set_host_input_enabled(enabled: bool, interval_ms: f64, generation: u64);
+    pub(super) fn set_host_input_enabled(
+        enabled: bool,
+        gamepads: bool,
+        interval_ms: f64,
+        generation: u64,
+    );
     fn host_now() -> f64;
     fn notify_gui();
     fn report_machine_failure(message: &str);
@@ -63,7 +68,7 @@ pub(super) fn start_web(
     let input = Closure::<dyn FnMut(String, String, i32, i32, u32, u64) -> bool>::new(
         move |kind: String, code: String, dx, dy, bits, generation| {
             if kind == "pads" {
-                return sender.browser_gamepads(&code, generation, bits != 0);
+                return sender.browser_gamepads(&code, generation);
             }
             let event = match kind.as_str() {
                 "keydown" | "keyup" => {
@@ -83,6 +88,9 @@ pub(super) fn start_web(
                     middle: bits & BIT_MOUSE_MIDDLE != 0,
                 },
                 "release" => HostInputEvent::ReleaseAll,
+                "capture-release" => HostInputEvent::ReleaseCapture {
+                    joysticks: [None; 2],
+                },
                 _ => return true,
             };
             sender.try_host_event(event, generation)

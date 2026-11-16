@@ -113,17 +113,15 @@ pub struct FrontendBindings {
     pub pause: String,
     pub save: String,
     pub load: String,
-    pub debug: String,
 }
 
 impl Default for FrontendBindings {
     fn default() -> Self {
         Self {
-            release: "Escape".into(),
+            release: String::new(),
             pause: "F5".into(),
             save: "F6".into(),
             load: "F9".into(),
-            debug: "F2".into(),
         }
     }
 }
@@ -279,13 +277,15 @@ impl ConfigurationCatalog {
             &configuration.frontend.pause,
             &configuration.frontend.save,
             &configuration.frontend.load,
-            &configuration.frontend.debug,
         ];
         let mut assigned = Vec::new();
         for (index, key) in shortcuts.iter().enumerate() {
+            if index == 0 && key.is_empty() {
+                continue;
+            }
             let resolved = crate::host_keys::frontend_key(key)
                 .ok_or_else(|| format!("Choose a physical frontend key: {key}"))?;
-            if resolved == egui::Key::F12 && index + 1 != shortcuts.len() {
+            if resolved == egui::Key::F12 {
                 return Err("F12 remains reserved for Debug access".into());
             }
             if assigned.contains(&resolved) {
