@@ -709,6 +709,10 @@ fn invalid_rom_does_not_mutate_any_running_machine_state_at_the_command_boundary
     else {
         panic!("Missing complete machine snapshots");
     };
+    let before = debugger::SaveState::from_json(&before).unwrap();
+    let mut after = debugger::SaveState::from_json(&after).unwrap();
+    // Separate saves can cross a UTC second without advancing the machine.
+    after.header.timestamp = before.header.timestamp;
     assert_eq!(
         before, after,
         "Rejected ROM load modified the running machine"

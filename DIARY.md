@@ -2411,3 +2411,17 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - cargo test -p agnus passed after the repair
   - Native Workbench text and window borders are straight after the repair
   - Native Kickstart and Cross1 captures are byte-identical before and after the repair
+---
+
+### [2026-11-16 22:10 CET] — Compare rejected-ROM snapshots independently of save creation time
+- **Affected Subsystems**:
+  - `gui tests`
+- **What Was Changed (The Concrete Reality)**:
+  - Deserialize both snapshots and normalize only their creation timestamp before comparing their complete values
+  - Preserve machine state and all other snapshot metadata assertions
+- **Architectural Rationale & Trade-Offs**:
+  - Separate saves can cross a UTC second while the machine remains unchanged
+  - The user explicitly approved this single-field comparison exception after the canonical test exposed the mismatch
+- **Verification & Test Results**:
+  - The previous canonical failure differed only in header timestamp
+  - The corrected focused host runtime test passed
