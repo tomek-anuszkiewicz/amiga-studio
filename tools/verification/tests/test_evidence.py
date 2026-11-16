@@ -462,7 +462,7 @@ class ContinuationTests(unittest.TestCase):
     def test_changed_source_test_criterion_and_configuration_invalidate_execution(self):
         self.assertEqual(self.run_profile(), 0, self.output)
         for name in ("source.rs", "tests/assertions.rs", "tools/verification/checks/check_architecture.py",
-                     "Cargo.toml", "Obsidian/Amiga/Design/Contract.md", "unknown.input"):
+                     "Cargo.toml", ".config/nextest.toml", "Obsidian/Amiga/Design/Contract.md", "unknown.input"):
             self.write(name, "new input\n")
             before = self.events().count("coverage")
             self.assertEqual(self.run_profile(), 0, self.output)
@@ -486,7 +486,7 @@ class ContinuationTests(unittest.TestCase):
             evidence.os.environ["RUSTFLAGS"] = "-C opt-level=1"
             self.assertNotEqual(evidence.execution_conditions(self.root), original)
 
-    def test_browser_tool_versions_invalidate_execution_conditions(self):
+    def test_runner_and_browser_tool_versions_invalidate_execution_conditions(self):
         changed = {}
 
         def version(command, **kwargs):
@@ -498,7 +498,8 @@ class ContinuationTests(unittest.TestCase):
              patch.object(evidence, "file_digest", return_value="content"):
             original = evidence.execution_conditions(self.root)
             shell = "powershell" if evidence.os.name == "nt" else "pwsh"
-            for command in (("cargo", "+nightly", "--version"), ("rustc", "+nightly", "-vV"),
+            for command in (("cargo", "nextest", "--version"),
+                            ("cargo", "+nightly", "--version"), ("rustc", "+nightly", "-vV"),
                             ("trunk", "--version"),
                             (shell, "-NoProfile", "-Command", "$PSVersionTable.PSVersion.ToString()")):
                 with self.subTest(command=command):
@@ -632,6 +633,91 @@ class ContinuationTests(unittest.TestCase):
         self.write(self.words, "more\n")
         self.write("pending.rs", "pending input\n")
         self.assertEqual(repository.collect_changes(self.root), {self.words, "pending.rs"})
+
+    def barrier_child(self, kind, own, peer):
+        command = self.child(kind)
+        command[-1] += (
+            f"\nimport time; Path('.agent/tmp/{own}').touch(); deadline=time.monotonic()+3\n"
+            f"while not Path('.agent/tmp/{peer}').exists():\n"
+            " if time.monotonic()>deadline: raise RuntimeError('Independent command did not overlap')\n"
+            " time.sleep(0.01)\n"
+        )
+        return command
+
+    def test_parallel_preflight_finishes_before_builds_and_preserves_blockers(self):
+        for failing in (False, True):
+            with self.subTest(failing=failing):
+                left = self.barrier_child("left", f"left-{failing}", f"right-{failing}")
+                right = self.barrier_child("right", f"right-{failing}", f"left-{failing}")
+                if failing:
+                    left[-1] += "sys.exit(1)\n"
+                self.phases = [
+                    ("Preflight", [("Left gate", left, {}), ("Right gate", right, {})]),
+                    ("Build checks", [("Build gate", self.child("build"), {})]),
+                ]
+                before = len(self.events())
+                self.assertEqual(self.run_profile(("--results-dir", f".agent/tmp/parallel-{failing}")), int(failing), self.output)
+                events = self.events()[before:]
+                self.assertCountEqual(events[:2], ["left", "right"])
+                self.assertEqual(events[2:], [] if failing else ["build"])
+
+    def test_parallel_coverage_and_contract_failure_reuse_only_completed_groups(self):
+        coverage = self.barrier_child("coverage", "coverage-ready", "contracts-ready")
+        contracts = self.barrier_child("contracts", "contracts-ready", "coverage-ready")
+        contracts[-1] += "sys.exit(1)\n"
+        self.phases = [("Coverage", [("Fixture coverage", coverage, {})]),
+                       ("Verification", [("Verification CLI contracts", contracts, {})])]
+        with patch.object(verify, "independent_contract", side_effect=lambda name, items: name == "Verification CLI contracts"):
+            self.assertEqual(self.run_profile(), 1, self.output)
+            self.assertEqual(self.record()["groups"]["Coverage"]["status"], "passed")
+            self.assertEqual(self.record()["groups"]["Verification CLI contracts"]["status"], "failed")
+            before = self.events().count("coverage")
+            contracts[-1] = contracts[-1].replace("sys.exit(1)\n", "")
+            self.assertEqual(self.run_profile(), 0, self.output)
+            self.assertEqual(self.events().count("coverage"), before)
+            self.assertEqual(self.record()["results"]["Coverage"]["status"], "reused")
+
+    def test_parallel_coverage_failure_stops_export_and_preserves_contract_outcome(self):
+        failed = self.child("tests")
+        failed[-1] += "sys.exit(1)"
+        self.phases = [("Coverage", [("Prepare", self.child("prepare"), {}),
+                                     ("Tests", failed, {}), ("Export", self.child("export"), {})]),
+                       ("Verification", [("Verification CLI contracts", self.child("contracts"), {})])]
+        with patch.object(verify, "independent_contract", side_effect=lambda name, items: name == "Verification CLI contracts"):
+            self.assertEqual(self.run_profile(), 1, self.output)
+        self.assertCountEqual(self.events(), ["prepare", "tests", "contracts"])
+        self.assertEqual(self.record()["groups"]["Coverage"]["status"], "failed")
+        self.assertEqual(self.record()["groups"]["Verification CLI contracts"]["status"], "passed")
+
+    def test_parallel_source_edit_invalidates_the_combined_attempt(self):
+        edit = self.barrier_child("edit", "edit-ready", "peer-ready")
+        edit[-1] += "Path('source.rs').write_text('changed during parallel work')\n"
+        peer = self.barrier_child("peer", "peer-ready", "edit-ready")
+        self.phases = [("Preflight", [("Editing gate", edit, {}), ("Peer gate", peer, {})]),
+                       ("Coverage", [("Fixture coverage", self.child("coverage"), {})])]
+        self.assertEqual(self.run_profile(), 1, self.output)
+        self.assertIn("Source or index changed", self.output)
+        self.assertNotIn("coverage", self.events())
+        self.assertTrue(all(group["status"] != "passed" for group in self.record()["groups"].values()))
+
+    def test_parallel_interrupt_never_marks_unfinished_coverage_passed(self):
+        coverage = self.child("coverage")
+        self.phases = [("Coverage", [("Fixture coverage", coverage, {})]),
+                       ("Verification", [("Verification CLI contracts", self.child("contracts"), {})])]
+        execute = verify.execute_command
+
+        def interrupt(command, *args, **kwargs):
+            if command == coverage:
+                raise KeyboardInterrupt
+            return execute(command, *args, **kwargs)
+
+        with patch.object(verify, "independent_contract", side_effect=lambda name, items: name == "Verification CLI contracts"):
+            with patch.object(verify, "execute_command", side_effect=interrupt):
+                self.assertEqual(self.run_profile(), 130, self.output)
+            self.assertEqual(self.record()["outcome"], "interrupted")
+            self.assertNotEqual(self.record()["groups"]["Coverage"]["status"], "passed")
+            self.assertEqual(self.run_profile(), 0, self.output)
+        self.assertEqual(self.events().count("coverage"), 1)
 
     def test_scope_catalog_change_is_distinct_from_exact_file_words(self):
         name = "tools/verification/checks/check_english.json"

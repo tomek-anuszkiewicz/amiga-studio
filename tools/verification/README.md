@@ -394,6 +394,34 @@ The `test_runner` suites retain emulator execution checks and reference-result i
 
 Commit verification runs selected ordinary crate tests once under LLVM coverage instrumentation, excluding `test_runner`. There is no second uninstrumented run of those tests. The remaining quality gates and selected harness suites use normal Cargo artifacts. `cargo-llvm-cov` uses its separate `target/llvm-cov-target` cache, while normal Cargo commands retain their usual target directory. Raw measurement counters and the previous summary are cleared before each measurement, without deleting build caches. Yellow `[INFO]` messages identify the phases and summarize line, function and region coverage. Data is saved to `.agent/tmp/coverage/summary.json`, with `verification_scope` recording the test packages. Report totals include only current source files in those packages; retired files from old cached objects are excluded. A partial result is not a workspace-wide baseline. When Rust tests are skipped, no coverage is measured and any previous summary is not evidence for that run. There is no percentage threshold. Coverage does not measure performance or prove assertion quality. Stable coverage does not include doctest execution; branch coverage is not enabled.
 
+### Bounded parallel execution
+
+Ordinary coverage uses `cargo llvm-cov nextest` with
+[the project configuration](../../.config/nextest.toml): sixteen test slots and
+at most four GUI cases. The RTC persistence case reserves all test slots because
+its real constructor starts native input listeners. The sample-binary generator
+and trace reader share a one-slot group because they write and read the same
+example files. Other ordinary cases may run across binaries. Retries are disabled,
+failures do not stop selection early, and an empty selection fails. Focused Rust
+diagnostics retain Cargo and their existing doctest and exact-selection behavior.
+Stable coverage continues to exclude doctests.
+
+The batch coordinator uses two workers for independent preflight gates. All
+preflight and build gates must pass before expensive suites start; Clippy and
+the web build remain serial. Coverage may overlap the audited RAG MCP, artifact
+report and verification Python directories, with at most one Python directory
+active beside coverage. Bootstrap setup, standard harness writers and full
+SingleStep remain separate. Coverage preparation, reset, tests, export and summary
+stay ordered, and a failure stops the remaining coverage steps.
+
+Workers write isolated logs and return outcomes. Only the coordinator updates
+evidence. Source and index guards run at wave boundaries after all started
+commands stop; a failed guard invalidates the combined attempt. Interruption
+cancels queued work and drains active work before releasing ownership. Completed
+matching groups remain reusable. The nextest version and project configuration
+participate in evidence identity. See [nextest groups](https://nexte.st/docs/configuration/test-groups/)
+for the scheduler's resource limits.
+
 ### Coverage-guided testing
 
 For an identified diagnostic need or an explicit coverage request, measure without completion gates:
@@ -497,6 +525,7 @@ Install the required tooling once:
 ```powershell
 rustup component add llvm-tools-preview
 cargo install cargo-llvm-cov --locked
+cargo install cargo-nextest --version 0.9.152 --locked
 ```
 
 Run `python tools/verification/verify.py` without arguments (or with `--help`) to display the full command tree, verification sets, milestone CPU-suite scope, plan behavior and command examples. This prints instructions and exits successfully without running verification.

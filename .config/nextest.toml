@@ -1,0 +1,22 @@
+[profile.default]
+test-threads = 16
+retries = 0
+fail-fast = false
+
+[test-groups.gui]
+max-threads = 4
+
+[test-groups.sample-binaries]
+max-threads = 1
+
+[[profile.default.overrides]]
+filter = 'package(gui) and test(=battery_offset_persists_separately_and_ui_refreshes_host_utc)'
+threads-required = 'num-test-threads'
+
+[[profile.default.overrides]]
+filter = 'package(debugger) and (binary(=test_sample_binaries) or binary(=test_instruction_trace))'
+test-group = 'sample-binaries'
+
+[[profile.default.overrides]]
+filter = 'package(gui)'
+test-group = 'gui'

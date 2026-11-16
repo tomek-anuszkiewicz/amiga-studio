@@ -195,6 +195,11 @@ class SelectionTests(unittest.TestCase):
         with patch.object(selection, "select_rust_scope", return_value=RustScope(("cpu", "gui", "test_runner"), "fixture")):
             commands = selected("commit", ["crates/cpu/src/cpu.rs"])
         run = next(command for _, command, _ in commands if "--no-report" in command)
+        self.assertEqual(run[:3], ["cargo", "llvm-cov", "nextest"])
+        self.assertIn("--no-fail-fast", run)
+        for option, value in (("--profile", "default"), ("--retries", "0"), ("--no-tests", "fail"),
+                              ("--config-file", ".config/nextest.toml")):
+            self.assertEqual(run[run.index(option) + 1], value)
         export = next(command for _, command, _ in commands if "--json" in command)
         self.assertNotIn("--summary-only", export)
         self.assertEqual(export[-2:], ["--output-path", ".agent/tmp/coverage/coverage.json"])
@@ -232,6 +237,14 @@ class SelectionTests(unittest.TestCase):
                 run = next(command for _, command, _ in commands if "--no-report" in command)
                 self.assertIn("--workspace", run)
                 self.assertIn("All standard harness tests", {name for name, _, _ in commands})
+
+    def test_only_audited_directory_commands_can_overlap_coverage(self):
+        for item in selection.python_commands(include_bootstrap=True):
+            name, command, overrides = item
+            self.assertEqual(selection.independent_contract(name, [item]),
+                             name in {"RAG MCP contracts", "Artifact report contracts", "Verification CLI contracts"})
+        fake = ("Verification CLI contracts", [sys.executable, "-c", "pass"], {})
+        self.assertFalse(selection.independent_contract(fake[0], [fake]))
 
     def test_development_coverage_reuses_pipeline_without_completion_gates(self):
         for sentence, package in (("test coverage crate cpu", "cpu"),

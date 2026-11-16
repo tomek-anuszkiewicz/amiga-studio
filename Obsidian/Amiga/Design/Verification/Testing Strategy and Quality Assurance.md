@@ -9,6 +9,7 @@ created: 2026-09-14
 updated: 2026-11-16
 related: ["[General Architecture.md](../General%20Architecture.md)", "[CPU SingleStepTests.md](CPU%20SingleStepTests.md)", "[CPU Instruction Benchmarking.md](../Performance/CPU%20Instruction%20Benchmarking.md)", "[Machine Loop.md](../Machine%20Loop.md)", "[Platform Quirks and Invariants Catalog.md](../Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
 tracked_paths:
+  - ".config/nextest.toml"
   - "crates/test_runner/tests"
   - "tools/verification"
   - "tools/bootstrap/tests"
@@ -130,6 +131,19 @@ findings also prevent avoidable test execution. Repeating the canonical command
 automatically combines new results with valid successful groups for the same `HEAD`. It reruns failed,
 missing or invalidated groups and rejects edits during execution. Coverage remains
 one execution/export/summary bundle; no partial-report merging is performed.
+Ordinary coverage uses nextest with [project resource groups](../../../../.config/nextest.toml):
+sixteen test slots, four GUI slots, exclusive execution of the native-listener
+RTC case, and mutual exclusion between the sample-binary writer and trace reader.
+The coordinator runs independent preflight gates with two workers, awaits all
+blocking gates, and keeps Cargo build checks serial. It may overlap the coverage
+bundle with audited non-bootstrap Python directories; standard harness writers
+and full SingleStep remain separate. Workers own isolated logs, while only the
+coordinator changes evidence. Input guards run after each complete wave and at
+final aggregation. Interruptions cancel queued work and drain active commands.
+The nextest version and configuration join execution identity; retries remain
+disabled and every selected case retains its assertions. Focused Cargo diagnostics
+and their doctest behavior remain unchanged. The [verification reference](../../../../tools/verification/README.md#bounded-parallel-execution)
+owns the detailed ordering and resource exclusions.
 The final verdict covers the complete current candidate, while each group's
 reuse identity covers its inputs. `DIARY.md` is an editorial input to the English
 gate, not to the known build, test and static-check groups. A diary-only correction

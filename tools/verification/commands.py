@@ -48,7 +48,9 @@ def select_coverage_commands(mode, rust_scope=None):
         ("Prepare coverage report", [sys.executable, "tools/verification/coverage_report.py", "--prepare"], {}),
         ("Reset coverage counters", ["cargo", "llvm-cov", "clean", "--profraw-only"], {}),
         ("Ordinary crate tests" if packages is not None else "All ordinary crate tests",
-         ["cargo", "llvm-cov", "--no-report", "--no-fail-fast", *test_args, "--", "--quiet"], {}),
+         ["cargo", "llvm-cov", "nextest", "--no-report", "--no-fail-fast", *test_args,
+          "--config-file", ".config/nextest.toml", "--profile", "default",
+          "--retries", "0", "--no-tests", "fail"], {}),
         ("Export ordinary crate coverage", ["cargo", "llvm-cov", "report", "--json",
                                             *package_args,
                                             "--ignore-filename-regex", r"[/\\]test_runner[/\\]",
@@ -119,6 +121,19 @@ PYTHON_SUITES = (
     ("Artifact report contracts", "tools/artifacts/tests"),
     ("Verification CLI contracts", "tools/verification/tests"),
 )
+
+
+INDEPENDENT_PYTHON_SUITES = frozenset({
+    "RAG MCP contracts", "Artifact report contracts", "Verification CLI contracts",
+})
+
+
+def independent_contract(name, commands):
+    """Only audited directory commands may overlap coverage or each other."""
+    if name not in INDEPENDENT_PYTHON_SUITES or len(commands) != 1:
+        return False
+    return any(label == name and commands[0] == (label, command, overrides)
+               for label, command, overrides in python_commands(include_bootstrap=False))
 
 
 PYTHON_INPUTS = {

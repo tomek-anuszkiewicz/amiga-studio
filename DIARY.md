@@ -1990,3 +1990,39 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - git diff --check passed
   - POSIX execution is unrun
   - Canonical commit verification and four independent reviews are pending
+---
+
+### [2026-11-16 12:03 CET] — PARALLEL-TEST-EXECUTION-PILOT-20261116: bound parallel verification without changing selected protection
+- **Affected Subsystems**:
+  - `Verification coordinator`
+  - `Rust coverage runner`
+  - `Persistence and GUI test fixtures`
+- **What Was Changed (The Concrete Reality)**:
+  - Use nextest 0.9.152 for ordinary coverage with sixteen slots and four GUI cases
+  - Serialize the native-listener RTC case and the shared sample-binary writer and reader
+  - Use PID-scoped persistence files and the existing monitor-image readiness repair from a2f604b with all original assertions
+  - Add deterministic obsolete-generation rejection protection
+  - Overlap audited Python directories with coverage and independent preliminary gates with two coordinator workers
+  - Preserve serial builds and harness writers and coordinator-owned evidence with ordered coverage failure handling
+- **Architectural Rationale & Trade-Offs**:
+  - Preserve selected identities and assertions without retries or changed timeouts
+  - Retain focused Cargo diagnostics and doctests
+  - Include runner version and configuration in evidence identity
+  - Keep bootstrap setup and full SingleStep separate
+  - The user stopped additional timing campaigns after the measured benefit was clear
+- **Verification & Test Results**:
+  - Base bb68537 with identical fixture repairs in both arms selected 790 cases with 788 active and two asset-dependent ignored cases
+  - Warm ordinary coverage reset plus tests plus export took 280.403 seconds with Cargo and 134.418 seconds with nextest which is 52.06 percent less elapsed time and 2.09 times as fast
+  - A second nextest arm passed in 135.350 seconds
+  - Sampled peak process-tree working sets were 523.6 MiB baseline and 392.8 MiB nextest with mean host CPU 28.9 and 26.9 percent
+  - Four executing GUI cases were observed and ten RTC samples had no competing test
+  - Source coverage compared across 207 files with identical function and line totals and one changed stop-loop break span versus one changed toast-expiration span reflecting asynchronous timing
+  - No coverage exclusion or acceptance threshold changed
+  - Earlier failed or interrupted trials remain diagnostics under .agent/tmp/parallel-tests and are not passing evidence
+  - The full verifier speedup and Linux or macOS execution were not measured
+  - Existing continuation contracts passed 34 cases and the focused new parallel and selection contracts passed
+  - The browser build and the 35-specification vault audit with 1114 links passed
+  - The first canonical profile passed twelve groups but failed Windows process contracts when a ready file existed before its PID had been written
+  - Publish the complete PID through an owned pending file and atomic replacement without changing process-lifetime assertions or deadlines
+  - All nine focused Windows process contracts passed after that fixture correction
+  - Final canonical commit verification and four independent review verdicts are pending
