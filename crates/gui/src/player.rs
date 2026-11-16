@@ -23,6 +23,7 @@ pub struct SessionDisk {
 
 #[derive(Debug, Default)]
 pub struct PlayerState {
+    pub(crate) drive_activity: [crate::player_drive::DriveActivity; config::FLOPPY_DRIVE_COUNT],
     pub screen: PlayerScreen,
     pub catalog: ConfigurationCatalog,
     pub(crate) settings_dirty: bool,

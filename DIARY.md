@@ -2425,3 +2425,28 @@ Every authorized repository commit adds a concise entry here. Logging and compac
 - **Verification & Test Results**:
   - The previous canonical failure differed only in header timestamp
   - The corrected focused host runtime test passed
+---
+
+### [2026-11-16 22:56 CET] — Show disk activity in the player panel
+- **Affected Subsystems**:
+  - `crates/config`
+  - `crates/floppy`
+  - `crates/paula`
+  - `crates/machine_loop`
+  - `crates/gui`
+  - `Obsidian/Amiga/Design/Application/GUI.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Replaced motor-based Active text with a fixed-position green activity light.
+  - Retained head steps and consumed disk data between host publications.
+  - Held the light for 120 ms and cleared its baseline on restore or any drive reset, including guest RESET and stepped keyboard reset.
+  - Shared the existing drive-count limit through config without adding dependencies.
+  - Added behavioral protection for head steps, byte reads, DMA reads, serialized writes, timing and reset/restore.
+  - Added the valid egui API namespace epaint to the programming vocabulary.
+- **Architectural Rationale & Trade-Offs**:
+  - Confirm real drive work without a track display or a light held on by the spindle motor.
+  - Activity and reset counters and the pending controller observation are required serialized fields, so older snapshots without them are unsupported.
+- **Verification & Test Results**:
+  - Focused floppy, Paula and GUI crate tests passed, as did machine-loop activity and autonomous ADF DMA suites, architecture checks and the browser build.
+  - The revised GUI activity suite passed guest RESET and stepped keyboard reset checks.
+  - Headless wide and compact game panels were visually inspected.
+  - Canonical batch coverage and independent review are pending.
