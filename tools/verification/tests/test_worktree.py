@@ -1,5 +1,6 @@
 """Detached diagnostics and safe teardown through the actual PowerShell tool."""
 import os
+import json
 from pathlib import Path
 import shutil
 import subprocess
@@ -53,6 +54,7 @@ class WorktreeToolTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         target = self.parent / "primary-probe"
         self.assertTrue(target.is_dir())
+        self.assertIn(str(self.tool.parent / "graphify/refresh.py"), result.stdout)
         self.assertEqual(self.git("branch", "--list", "probe"), "")
         self.assertIn("detached", self.git("worktree", "list", "--porcelain"))
         (target / "tracked.txt").write_text("diagnostic changes\n")
@@ -84,6 +86,30 @@ class WorktreeToolTests(unittest.TestCase):
         result = self.run_tool("remove", "task")
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertTrue(neighbor.exists())
+
+    def test_graph_refresh_uses_the_invoking_checkout_script_in_the_target_root(self):
+        wrapper = self.parent / "refresh-probe.ps1"
+        wrapper.write_text("""param([string]$ToolPath)
+function graphify {}
+function python {
+    param([string]$ScriptPath)
+    @{ script = $ScriptPath; root = (Get-Location).Path } |
+        ConvertTo-Json | Set-Content -LiteralPath $env:GRAPHIFY_PROBE_LOG -Encoding UTF8
+    $global:LASTEXITCODE = 0
+}
+& $ToolPath add refresh-probe -Base HEAD
+""", encoding="utf-8")
+        log = self.parent / "refresh.json"
+        environment = dict(os.environ, GRAPHIFY_PROBE_LOG=str(log))
+        result = subprocess.run([shutil.which(self.shell), "-NoProfile", "-File", str(wrapper), str(self.tool)],
+                                cwd=self.root, env=environment, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        observed = json.loads(log.read_text(encoding="utf-8-sig"))
+        target = self.parent / "primary-refresh-probe"
+        self.assertEqual(Path(observed["root"]), target)
+        self.assertEqual(Path(observed["script"]), self.tool.parent / "graphify/refresh.py")
+        self.assertFalse((target / "tools/graphify/refresh.py").exists())
+        self.assertEqual(self.run_tool("remove", str(target)).returncode, 0)
 
 
 if __name__ == "__main__":

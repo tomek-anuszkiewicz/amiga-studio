@@ -14,10 +14,10 @@ This repository keeps its unified knowledge graph in `graphify-out/`, connecting
 - When the user types `/graphify` or invokes `$graphify`, read this skill before selecting the command or workflow.
 - Choose direct source inspection, `rg`, or Graphify to suit the question; Graphify is useful for callers, dependencies, and cross-file relationships. When using an existing `graphify-out/graph.json`, use `graphify query "<question>"`, `graphify path "<A>" "<B>"`, or `graphify explain "<concept>"`. The corresponding optional MCP tools are `query_graph`, `shortest_path`, and `get_node`.
 - If `graphify-out/wiki/index.md` exists, use it for broad navigation. Read `graphify-out/GRAPH_REPORT.md` only for broad architecture reviews or when query/path/explain provide insufficient context.
-- During batch preparation when indexed code changed, run `graphify update .` once from the repository root for the stable candidate. It may run in the background alongside the canonical verifier and independent review under [batch preparation](../../rules/git-commits.md#prepare-one-stable-batch), because its outputs are ignored. Await its successful result before freeze or using refreshed graph evidence. Run it earlier only when current graph data is needed for the task or refresh is requested. Stale graph results are not current evidence. The update reuses cached AST extraction without LLM calls or API cost, but still scans the corpus and reconciles the unified graph; it does not perform semantic document extraction or establish automatic lifecycle refresh.
+- During batch preparation when indexed code changed, run `python tools/graphify/refresh.py` once from the repository root for the stable candidate. This [repository command](../../../tools/graphify/README.md) uses Graphify 0.9.74 with path memoization scoped to one rebuild. It may run in the background alongside the canonical verifier and independent review under [batch preparation](../../rules/git-commits.md#prepare-one-stable-batch), because its outputs are ignored. Await its successful result before freeze or using refreshed graph evidence. Run it earlier only when current graph data is needed for the task or refresh is requested. Stale graph results are not current evidence. The update reuses cached AST extraction without LLM calls or API cost, but still scans the corpus and reconciles the unified graph; it does not perform semantic document extraction or establish automatic lifecycle refresh.
 - Keep the repository root as the refresh anchor. Query scopes in `tools/graphify_query.py` filter an existing graph; they are not separate refresh modes. Do not use `update crates` or `extract crates` with the shared output as a shortcut: Graphify 0.9.74 changes node and manifest path anchors, which can break existing reference relationships. Separate source graphs require a coordinated change to graph production and consumers.
 - Preserve the selected source corpus when optimizing `.graphifyignore`. Its explicit `**/` patterns use segment matching; ASCII letter classes keep generated-directory and binary-format exclusions case-insensitive, including on Windows. Confirm both file selection and graph content when changing these rules. Do not exclude reference sources or skip clustering merely to obtain a faster timing.
-- When asked to run or update Graphify, execute the appropriate command. If the user wants to run the code refresh themselves, provide `graphify update .` for their terminal.
+- When asked to run or update Graphify, execute the appropriate command. If the user wants to run the code refresh themselves, provide `python tools/graphify/refresh.py` for their terminal.
 - Run commands explicitly. Do not install, configure, or use lifecycle, code, or Git hooks.
 
 For existing-graph traversal details, load [references/query.md](references/query.md). Use the build and semantic extraction workflows below only when the requested operation calls for them.
@@ -101,12 +101,12 @@ fi
 if [ -z "$PYTHON" ]; then PYTHON="python3"; fi
 if ! "$PYTHON" -c "import graphify" 2>/dev/null; then
     if command -v uv >/dev/null 2>&1; then
-        uv tool install --upgrade graphifyy -q 2>&1 | tail -3
+        uv tool install --upgrade graphifyy==0.9.74 -q 2>&1 | tail -3
         _UV_PY=$(uv tool run --from graphifyy python -c "import sys; print(sys.executable)" 2>/dev/null)
         if [ -n "$_UV_PY" ]; then PYTHON="$_UV_PY"; fi
     else
-        "$PYTHON" -m pip install graphifyy -q 2>/dev/null \
-          || "$PYTHON" -m pip install graphifyy -q --break-system-packages 2>&1 | tail -3
+        "$PYTHON" -m pip install graphifyy==0.9.74 -q 2>/dev/null \
+          || "$PYTHON" -m pip install graphifyy==0.9.74 -q --break-system-packages 2>&1 | tail -3
     fi
 fi
 # Write interpreter path for all subsequent steps (persists across invocations)

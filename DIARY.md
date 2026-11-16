@@ -1950,43 +1950,28 @@ Every authorized repository commit adds a concise entry here. Logging and compac
 
 ---
 
-### [2026-11-16 11:04 CET] — Batch task integration with recoverable source cleanup
+### [2026-11-16 09:47 CET] — GRAPHIFY-REFRESH-PERFORMANCE-20261116: cache source paths within each refresh
 - **Affected Subsystems**:
-  - `tools/verification`
-  - `.agents/rules`
-  - `.agents/skills/git-close-task`
-  - `Obsidian/Amiga/Design/Verification`
+  - `tools/graphify`
+  - `tools/worktree.ps1`
+  - `tools/bootstrap/bootstrap_graphify.ps1`
+  - `agent refresh procedures`
 - **What Was Changed (The Concrete Reality)**:
-  - Completed task git-close-task-batch-integration-20261116
-  - Extend the existing integration record with approved immutable sources and all-source publication locks
-  - Assemble real intermediate merges before one combined verification and bind their history through the recorded HEAD
-  - Retain operation-specific control records in the surviving checkout and report independently retryable source cleanup
-  - Update the owning rules and procedures plus affected reviewer criteria
+  - Use a local Graphify 0.9.74 refresh command with per-instance path memoization
+  - Route bootstrap and worktree refresh callers through the command
+  - Retain full corpus extraction and resolver context
+  - Preserve deterministic default hash seeds and UTF-8 output across interpreter restarts
+  - Keep immutable reference freezing and unchanged-project preflight as active unfinished work
 - **Architectural Rationale & Trade-Offs**:
-  - Preserve original task commits and single-source behavior while accepting only one combined target transition
-  - Keep cleanup recoverable after assembly removal and distinguish operations reaching the same commit
-  - This implements the workflow without integrating any live task branches
+  - Avoid repeated lexical path calculations without changing persisted graph semantics or the installed tool
+  - The reference-layer prototype still needs complete dependency invalidation before production use
 - **Verification & Test Results**:
-  - Focused integration suite passed all 36 tests before the record-isolation correction
-  - The additional record-isolation regression passed and independently cleaned both source selections
-  - Skill validation passed
-  - Vault audit passed for 35 specifications and 1113 links
-  - Canonical commit verification and four final review verdicts follow in batch preparation
-  - Git fixtures establish tool behavior and process protections rather than hardware behavior
----
-
-### [2026-11-16 11:35 CET] — Wait for the expected monitor image in the upload test
-- **Affected Subsystems**:
-  - `crates/gui/tests/test_interactions.rs`
-- **What Was Changed (The Concrete Reality)**:
-  - Apply the exact test correction from a2f604b with explicit user approval
-  - Wait for a presented image at the current generation and original stopped CCK with the expected dimensions before examining the texture
-  - Preserve every pixel and geometry assertion plus the existing timeout and command-idle checks
-- **Architectural Rationale & Trade-Offs**:
-  - The initial canonical profile failed the unchanged upload test because command replies may arrive before the independent video handoff
-  - Scope expansion is limited to this existing synchronization correction and does not change GUI runtime behavior
-- **Verification & Test Results**:
-  - The original canonical failure is retained in the batch evidence
-  - The corrected exact upload test passed all eight PAL and NTSC combinations with interlace and view selection
-  - The previous canonical attempt passed all 216 verification-tool contracts including 37 integration tests
-  - A complete canonical rerun and renewed four-lane review will cover the final two-commit batch
+  - Ten refresh contracts and four worktree contracts pass
+  - PowerShell parsing and usage checks pass
+  - Comparable four-worker unchanged pair: 42.155 to 34.367 seconds
+  - Comparable four-worker one-function Rust pair: 54.128 to 46.910 seconds
+  - The original baseline uses the unmodified Graphify module CLI to retain importable worker startup
+  - Earlier console-launcher timings mixed sequential and parallel extraction and cannot attribute savings to memoization
+  - Both final pairs preserve the entire graph including attributes and communities
+  - These shared-host observations do not establish typical speedup
+  - The 24 existing partial-extraction warnings remain visible
