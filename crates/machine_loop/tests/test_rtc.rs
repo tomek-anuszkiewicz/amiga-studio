@@ -23,6 +23,34 @@ fn running_clock() -> A500Machine {
 }
 
 #[test]
+fn startup_rtc_seconds_tick_without_guest_initialization() {
+    // The A500/A2000 TRM, section 7.1, describes SetClock detecting a clock
+    // by observing its seconds register tick before writing clock controls.
+    let mut machine = A500Machine::new(A500Config::standard_1mb(VideoStandard::Pal));
+    machine.rtc.supply_host_utc(UTC + 8);
+    machine.rtc.load_battery(Default::default());
+
+    assert_eq!(
+        machine.memory_bus().read_byte(0xDC0001),
+        BusResult::Ready(8)
+    );
+    machine.rtc.supply_host_utc(UTC + 9);
+    assert_eq!(
+        machine.memory_bus().read_byte(0xDC0001),
+        BusResult::Ready(9)
+    );
+    machine.rtc.supply_host_utc(UTC + 10);
+    assert_eq!(
+        machine.memory_bus().read_byte(0xDC0001),
+        BusResult::Ready(0)
+    );
+    assert_eq!(
+        machine.memory_bus().read_byte(0xDC0005),
+        BusResult::Ready(1)
+    );
+}
+
+#[test]
 fn rtc_uses_host_time_and_reads_do_not_change_state() {
     let mut machine = running_clock();
     let before = machine.rtc.clone();

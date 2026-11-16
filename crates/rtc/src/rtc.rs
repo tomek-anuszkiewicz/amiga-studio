@@ -107,8 +107,8 @@ impl RtcMsm6242b {
         let mut rtc = Self {
             model,
             registers: [0; REGISTER_COUNT],
-            // Hard reset defaults: HOLD = 1, 24-hour mode enabled
-            control_d: BIT_CONTROL_D_HOLD,
+            // Start with readable seconds ticking for software clock detection.
+            control_d: 0,
             control_e: 0x00,
             control_f: BIT_CONTROL_F_24_HOUR,
             // Default baseline date: 1990-01-01 00:00:00 (Amiga Kickstart 1.3 / 2.0 era)
