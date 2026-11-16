@@ -42,7 +42,7 @@ Use --integration-base COMMIT for complete integration scope, including committe
 task work. COMMIT must be a full immutable commit ID.
 After rebase, add --integration-source COMMIT naming the original task tip to
 preserve its pre-rebase divergence and full integration verification scope.
-Local integration: integrate freeze review PATH partition PATH target BRANCH;
+Local integration: integrate freeze review PATH partition PATH target BRANCH [sources PATH];
 integrate accept-tested confirmation PATH target BRANCH;
 integrate seal|publish|cleanup record PATH; integrate recover.
 Only runner gui uses -- to pass native program options.

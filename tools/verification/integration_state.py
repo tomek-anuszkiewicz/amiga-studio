@@ -101,7 +101,7 @@ def collisions(root, commit):
 
 class RefTransaction:
     """Keep prepared native reference locks alive through the checkout transition."""
-    def __init__(self, root, target, base, source, commit, delete=False, verify_only=False):
+    def __init__(self, root, target, base, source, commit, delete=False, verify_only=False, sources=()):
         self.process = subprocess.Popen(
             ["git", "update-ref", "-m", "local integration " + base + " -> " + commit, "--stdin"],
             cwd=root, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -110,6 +110,7 @@ class RefTransaction:
             changes = (f"verify {target} {base}\n" if verify_only else
                        f"verify {target} {base}\ndelete {source} {commit}\n" if delete else
                        f"update {target} {commit} {base}\nverify {source} {commit}\n")
+            changes += "".join(f"verify {branch} {tip}\n" for branch, tip in sources)
             self.process.stdin.write(changes.encode("utf-8"))
             self.send("prepare")
         except BaseException:

@@ -808,6 +808,43 @@ history and use `commit --integration-base <B> --integration-source <S>`.
 The retained original commit preserves divergence classification through both
 canonical execution and freeze-time selection revalidation.
 
+### Selected source set
+
+For several sources, assemble real merges before canonical verification. Local
+intermediate merge commits await the final combined verdict; their exact history
+is bound by the canonical record's immutable HEAD. The partition below covers
+only commits still pending after assembly.
+
+Pass `sources PATH` to `integrate freeze` with a JSON list recorded before
+assembly, containing every approved source, including the assembly branch:
+
+```json
+[
+  {"ref": "refs/heads/task-a", "root": "<absolute source checkout A>", "tip": "<original full immutable S_a>"},
+  {"ref": "refs/heads/task-b", "root": "<absolute source checkout B>", "tip": "<original full immutable S_b>"}
+]
+```
+
+Each item has exactly `ref`, `root` and `tip`. Branches and checkout paths must be
+unique, registered in the same repository and exclude the target branch. Original
+tips must be ancestors of the assembled HEAD or its pending merge parents. Other
+sources must remain clean at their original tips. The assembly checkout may
+advance through the approved real merges and prepared commits. Consolidated
+review approval adds `sources: digest(source_list)` using the same digest
+function as the partition. Freeze retains the source artifact and its hash.
+
+```powershell
+python tools/verification/verify.py integrate freeze review .agent/tmp/review.json partition .agent/tmp/partition.json target master sources .agent/tmp/sources.json
+```
+
+Several sources require canonical combined evidence. `accept-tested` accepts only
+one unchanged source, with no source-list selector. Omitting `sources` from
+`freeze` retains the single-source workflow; the record internally stores one
+source. Record version 2 stores `sources` alongside the assembly `source_ref`
+and `source_root`. Publication locks every selected reference and checks each
+source's current state. The assembly cleanup tip is final `C`; other cleanup tips
+remain the recorded original tips.
+
 Prepare a JSON partition under `.agent/tmp/`: a list of objects with `message`
 (the exact complete commit message) and `tree` (the prepared Git tree ID after
 that commit). A temporary Git index can construct intermediate trees without
@@ -926,17 +963,32 @@ For an authorized complete integration, run from the surviving target checkout:
 python tools/verification/verify.py integrate cleanup record <source-checkout>/.agent/tmp/verification/commit/integration.json
 ```
 
+Publication also retains its control record at
+`.agent/tmp/integration/<batch-id>/integration.json` in the target checkout and prints
+that path. Prefer that surviving record for cleanup and retries:
+
+`batch-id` is `digest([B, C, source_ref, sources])`. Different source selections
+ending at the same commit retain separate control records, so a later integration
+cannot overwrite an unfinished cleanup operation.
+
+```powershell
+python tools/verification/verify.py integrate cleanup record .agent/tmp/integration/<batch-id>/integration.json
+```
+
 Cleanup rechecks tip, ancestry, registration, pending work and local command
-ownership. All ignored files in the source worktree are discarded, including
+ownership separately for each selected source, trying the assembly checkout last.
+All ignored files in removed source worktrees are discarded, including
 `.env`, references, caches, plans, reports and verification evidence. Cleanup does
-not inventory, hash, compare, copy or archive them. The input integration record
-is consumed in memory and is also deleted if it resides in the removed worktree.
-Ordinary
+not inventory, hash, compare, copy or archive them. Its surviving control record
+is operation state, not an ignored-file archive. It stores per-source directory,
+registration and branch outcomes, including failures. The source copy of the
+record disappears with its worktree. Ordinary
 Git removal runs through `tools/worktree.ps1`, never forced or followed by
 recursive fallback deletion or unrelated pruning. Prepared reference locks protect
 conditional deletion of the unchanged source branch. Cleanup failure leaves
-publication intact. Retry with the original record if it still exists; otherwise
-inspect the remaining directory, registration and branch before completing cleanup.
+publication intact and does not prevent independent sources from being cleaned.
+Retry from the surviving target record even after the assembly checkout has been
+removed. Already removed sources can be checked again safely; later work is preserved.
 Do not rerun verification or recreate deleted evidence merely to finish removal.
 Review the integration diff for bootstrap procedure changes and recommend any
 needed bootstrap steps on the primary branch; cleanup does not run bootstrap.

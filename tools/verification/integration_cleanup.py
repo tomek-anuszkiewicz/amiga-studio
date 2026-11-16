@@ -5,7 +5,8 @@ import subprocess
 
 import psutil
 
-from integration_state import ancestor, clean, common, publication_lock, RefTransaction, value, worktrees
+from integration_state import ancestor, checkout, clean, common, publication_lock, RefTransaction, save, value, worktrees
+from integration_sources import cleanup_record
 
 
 def stopped(source):
@@ -18,20 +19,15 @@ def stopped(source):
         except (psutil.NoSuchProcess, psutil.ZombieProcess, psutil.AccessDenied):
             continue
 
-
-
-def cleanup(root, path):
-    from integration import read
-    frozen = read(path)
-    if frozen["state"] != "published":
-        raise ValueError("Cleanup requires confirmed publication")
-    source = Path(frozen["source_root"]).resolve()
+def remove_source(root, frozen, selected):
+    source = Path(selected["root"]).resolve()
     target = Path(frozen["target_root"]).resolve()
     if root.resolve() != target or root.resolve() == source:
         raise ValueError("Run cleanup from the recorded surviving target checkout")
     if source == common(root).parent or source.parent != target.parent:
         raise ValueError("Refusing to remove the primary checkout or a non-sibling directory")
-    branch, commit = frozen["source_ref"], frozen["commit"]
+    branch = selected["ref"]
+    commit = frozen["commit"] if branch == frozen["source_ref"] else selected["tip"]
     with publication_lock(root):
         if (common(root) / "local-integration.json").exists():
             raise ValueError("Recover the unfinished publication before cleanup")
@@ -76,3 +72,48 @@ def cleanup(root, path):
             transaction.close()
         if subprocess.run(["git", "show-ref", "--verify", "--quiet", branch], cwd=root).returncode != 1:
             raise ValueError("Integrated branch remains after conditional deletion")
+
+
+def cleanup(root, path):
+    from integration import read
+    frozen = read(path)
+    target = Path(frozen["target_root"]).resolve()
+    if frozen["state"] != "published":
+        raise ValueError("Cleanup requires confirmed publication")
+    if root.resolve() != target or checkout(root, frozen["target_ref"]) != target:
+        raise ValueError("Run cleanup from the recorded surviving target checkout")
+    durable = cleanup_record(frozen)
+    with publication_lock(root):
+        if durable.exists():
+            retained = read(durable)
+            if ({key: item for key, item in retained.items() if key != "cleanup"}
+                    != {key: item for key, item in frozen.items() if key != "cleanup"}):
+                raise ValueError("Surviving integration record differs from the input")
+            frozen = retained
+        save(durable, frozen)
+    print("[INFO] Surviving cleanup record: " + str(durable))
+    failures = []
+    # Retain the assembly checkout until the other selected sources have been tried.
+    sources = sorted(frozen["sources"], key=lambda item: item["ref"] == frozen["source_ref"])
+    for selected in sources:
+        branch, source = selected["ref"], Path(selected["root"]).resolve()
+        error = None
+        try:
+            remove_source(root, frozen, selected)
+        except (ValueError, RuntimeError, OSError) as failure:
+            error = str(failure)
+            failures.append(branch + ": " + error)
+        entries = worktrees(root)
+        outcome = {"directory": "present" if source.exists() else "removed",
+                   "registration": "present" if any(Path(item["worktree"]).resolve() == source for item in entries) else "removed",
+                   "branch": "present" if any(item.get("branch") == branch for item in entries) or
+                   subprocess.run(["git", "show-ref", "--verify", "--quiet", branch], cwd=root).returncode != 1 else "removed"}
+        if error:
+            outcome["error"] = error
+        frozen.setdefault("cleanup", {})[branch] = outcome
+        with publication_lock(root):
+            save(durable, frozen)
+        print(("[BLOCKED] " if error else "[PASS] ") + branch + ": " +
+              ", ".join(key + "=" + item for key, item in outcome.items()))
+    if failures:
+        raise ValueError("Integration succeeded; cleanup remains incomplete: " + "; ".join(failures))

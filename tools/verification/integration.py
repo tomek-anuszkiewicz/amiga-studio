@@ -7,6 +7,7 @@ from evidence import BatchEvidence, capture_inputs, digest, execution_conditions
 from repository import candidate_tree, collect_changes, git, merge_heads, resolve_base, snapshot
 from integration_state import (ancestor, checkout, clean, collisions, common, no_operation,
                                publication_lock, RefTransaction, represents, save, value)
+from integration_sources import cleanup_record, source_locks, validate_sources
 
 
 def read(path):
@@ -52,7 +53,7 @@ def validate_evidence(root, directory):
     return record, inputs
 
 
-def freeze(root, directory, review_path, partition_path, target):
+def freeze(root, directory, review_path, partition_path, target, sources_path=None):
     record, inputs = validate_evidence(root, directory)
     review, partition = read(review_path), read(partition_path)
     if (review.get("verdict") != "APPROVED" or not review.get("reviewer")
@@ -66,6 +67,11 @@ def freeze(root, directory, review_path, partition_path, target):
         raise ValueError("Primary-branch work uses ordinary preparation, without self-integration")
     target_root = checkout(root, target_ref)
     base = record["integration_base"]
+    sources = (read(sources_path) if sources_path else
+               [{"ref": source_ref, "root": str(root.resolve()), "tip": record["head"]}])
+    validate_sources(root, sources, source_ref, target_ref, record["head"], merge_heads(root))
+    if sources_path and review.get("sources") != digest(sources):
+        raise ValueError("Independent approval must identify the selected source set")
     if value(root, "rev-parse", target_ref) != base:
         raise ValueError("Target advanced; synchronize and prepare against its new immutable baseline")
     if not isinstance(partition, list):
@@ -86,13 +92,14 @@ def freeze(root, directory, review_path, partition_path, target):
     start = value(root, "rev-parse", start + "^{tree}" )
     if start != candidate_tree(root) or start != record["tree"] or (pending and not commits):
         raise ValueError("Partition does not consume the complete verified candidate")
-    frozen = {"version": 1, "verification": "canonical", "base": base, "head": record["head"], "source_ref": source_ref,
+    frozen = {"version": 2, "verification": "canonical", "base": base, "head": record["head"], "source_ref": source_ref,
+              "sources": sources, "sources_explicit": sources_path is not None,
               "source_root": str(root.resolve()), "target_ref": target_ref, "target_root": str(target_root),
               "tree": start, "merge_heads": merge_heads(root), "commits": commits,
               "review": review, "evidence": record, "inputs": inputs, "state": "frozen",
               "evidence_directory": str(directory.resolve()),
               "review_artifacts": {str(path.resolve()): file_digest(path)
-                                   for path in (review_path, partition_path)}}
+                                   for path in (review_path, partition_path, *([sources_path] if sources_path else []))}}
     if snapshot(root) != record["source"] or capture_inputs(root) != inputs:
         raise ValueError("Candidate changed during freeze")
     path = directory / "integration.json"
@@ -133,9 +140,10 @@ def accept_tested(root, directory, confirmation_path, target):
     target_root = checkout(root, target_ref)
     if checkout(root, source_ref) != root.resolve():
         raise ValueError("Expected the selected source checkout")
-    frozen = {"version": 1, "verification": "confirmed-fast-forward", "state": "sealed",
+    frozen = {"version": 2, "verification": "confirmed-fast-forward", "state": "sealed",
               "base": confirmation["base"], "commit": confirmation["commit"], "tree": confirmation["tree"],
               "source_ref": source_ref, "source_root": str(root.resolve()),
+              "sources": [{"ref": source_ref, "root": str(root.resolve()), "tip": confirmation["commit"]}],
               "target_ref": target_ref, "target_root": str(target_root),
               "confirmation": confirmation, "confirmation_path": str(confirmation_path.resolve()),
               "confirmation_digest": file_digest(confirmation_path)}
@@ -152,6 +160,8 @@ def verify_seal(root, frozen):
     if Path(frozen["source_root"]).resolve() != root.resolve():
         raise ValueError("Mechanical completion must run in the selected source checkout")
     review = frozen["review"]
+    if frozen["sources_explicit"] and review.get("sources") != digest(frozen["sources"]):
+        raise ValueError("Frozen selected source approval changed")
     if (review.get("verdict") != "APPROVED" or not review.get("reviewer")
             or review.get("source") != frozen["evidence"]["source"]
             or review.get("integration_base") != frozen["base"]
@@ -182,6 +192,7 @@ def verify_seal(root, frozen):
     if value(root, "rev-parse", current + "^{tree}") != frozen["tree"]:
         raise ValueError("Final commit differs from the frozen tree")
     ancestor(root, frozen["base"], current)
+    validate_sources(root, frozen["sources"], frozen["source_ref"], frozen["target_ref"], current)
     actual = capture_inputs(root)
     expected = {name: content for name, content in frozen["inputs"].items() if content is not None}
     if {name: content for name, content in actual.items() if content is not None} != expected:
@@ -206,6 +217,7 @@ def check_source(root, frozen):
     if source != Path(frozen["source_root"]).resolve():
         raise ValueError("Source checkout changed after sealing")
     if frozen["verification"] == "confirmed-fast-forward":
+        validate_sources(source, frozen["sources"], frozen["source_ref"], frozen["target_ref"], frozen["commit"])
         verify_confirmation(source, frozen)
         return
     if frozen["verification"] != "canonical" or verify_seal(source, frozen) != frozen["commit"]:
@@ -241,7 +253,8 @@ def publish(root, path):
         if value(root, "rev-parse", frozen["target_ref"]) != frozen["base"]:
             raise ValueError("Target advanced; synchronize and verify the new integration baseline")
         collisions(target, frozen["commit"])
-        transaction = RefTransaction(root, frozen["target_ref"], frozen["base"], frozen["source_ref"], frozen["commit"])
+        transaction = RefTransaction(root, frozen["target_ref"], frozen["base"], frozen["source_ref"], frozen["commit"],
+                                     sources=source_locks(frozen))
         try:
             clean(target, untracked=False)
             if value(target, "symbolic-ref", "HEAD") != frozen["target_ref"]:
@@ -257,6 +270,7 @@ def publish(root, path):
                     or not represents(target, frozen["tree"])):
                 raise ValueError("Publication committed; target checkout needs recovery")
             frozen["state"] = "published"
+            save(cleanup_record(frozen), frozen)
             save(path, frozen)
             phase_path.unlink()
         finally:
@@ -288,6 +302,7 @@ def recover(root):
                 if file_digest(path) != phase["record_digest"] and read(path) != {**frozen, "state": "published"}:
                     raise ValueError("Recovery evidence changed; preserve files and request a decision")
                 frozen["state"] = "published"
+                save(cleanup_record(frozen), frozen)
                 save(path, frozen)
             else:
                 if represents(target, frozen["tree"]):
@@ -312,14 +327,15 @@ def dispatch(root, args):
         raise ValueError("Integration operations do not accept preview, exact or comparison options")
     if args.action in {"freeze", "accept-tested"}:
         keys = ("review", "partition", "target") if args.action == "freeze" else ("confirmation", "target")
-        values = keyword_values(args.words, keys)
-        if set(values) != set(keys):
+        values = keyword_values(args.words, (*keys, "sources") if args.action == "freeze" else keys)
+        if set(values) - {"sources"} != set(keys):
             raise ValueError("Use integrate " + args.action + " " + " ".join(key + " VALUE" for key in keys))
         directory = (root / (args.results_dir or ".agent/tmp/verification/commit")).resolve()
         if not directory.is_relative_to(root / ".agent/tmp"):
             raise ValueError("Integration records belong under .agent/tmp in the source checkout")
         if args.action == "freeze":
-            path = freeze(root, directory, root / values["review"], root / values["partition"], values["target"])
+            path = freeze(root, directory, root / values["review"], root / values["partition"], values["target"],
+                          root / values["sources"] if "sources" in values else None)
             print("[PASS] Frozen integration candidate: " + str(path))
         else:
             path = accept_tested(root, directory, root / values["confirmation"], values["target"])
@@ -340,5 +356,7 @@ def dispatch(root, args):
             cleanup(root, path)
         else:
             {"seal": seal, "publish": publish}[args.action](root, path)
+            if args.action == "publish":
+                print("[INFO] Surviving cleanup record: " + str(cleanup_record(read(path))))
         print("[PASS] Local integration " + args.action)
     return 0

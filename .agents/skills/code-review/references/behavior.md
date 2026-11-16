@@ -13,6 +13,8 @@ Own reachable behavior in the assigned change. Use the common contract in
   contracts. Do not infer correctness solely from the implementation or passing tests.
 - Check concurrency, process lifetime, publication and recovery where relevant.
   A successful parent command alone does not prove unrelated writers have stopped.
+  For batch integration, trace the immutable source set, all reference locks,
+  one target publication and per-source cleanup retry after assembly removal.
 - Identify missing behavioral assertions and hand them to the tests/evidence lane.
   Leave detailed coverage accounting, style and documentation checks to their owners.
 

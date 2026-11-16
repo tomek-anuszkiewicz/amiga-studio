@@ -25,6 +25,9 @@ common contract in [code-review](../SKILL.md#assigned-reviewer-common-contract).
   Do not turn ordinary implementation review into unrequested batch preparation.
 - Inspect partition coherence and claims about intermediate commits and unrun
   hardware, platform or performance checks. Report limitations accurately.
+  Batch integration evidence must cover the assembled history and complete
+  candidate; source-only passes do not verify their combination. Check preservation
+  of original tips, failed-publication safety and partial-cleanup recovery.
 
 Read [testing policy](../../../rules/unit-testing-policy.md),
 [commit policy](../../../rules/git-commits.md) and the relevant

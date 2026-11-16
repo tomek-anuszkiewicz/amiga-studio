@@ -1947,6 +1947,31 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Integrated canonical verification and four independent review lanes are pending
 ---
 
+### [2026-11-16 11:04 CET] — Batch task integration with recoverable source cleanup
+- **Affected Subsystems**:
+  - `tools/verification`
+  - `.agents/rules`
+  - `.agents/skills/git-close-task`
+  - `Obsidian/Amiga/Design/Verification`
+- **What Was Changed (The Concrete Reality)**:
+  - Completed task git-close-task-batch-integration-20261116
+  - Extend the existing integration record with approved immutable sources and all-source publication locks
+  - Assemble real intermediate merges before one combined verification and bind their history through the recorded HEAD
+  - Retain operation-specific control records in the surviving checkout and report independently retryable source cleanup
+  - Update the owning rules and procedures plus affected reviewer criteria
+- **Architectural Rationale & Trade-Offs**:
+  - Preserve original task commits and single-source behavior while accepting only one combined target transition
+  - Keep cleanup recoverable after assembly removal and distinguish operations reaching the same commit
+  - This implements the workflow without integrating any live task branches
+- **Verification & Test Results**:
+  - Focused integration suite passed all 36 tests before the record-isolation correction
+  - The additional record-isolation regression passed and independently cleaned both source selections
+  - Skill validation passed
+  - Vault audit passed for 35 specifications and 1113 links
+  - Canonical commit verification and four final review verdicts follow in batch preparation
+  - Git fixtures establish tool behavior and process protections rather than hardware behavior
+---
+
 ### [2026-11-16 11:35 CET] — Wait for the expected monitor image in the upload test
 - **Affected Subsystems**:
   - `crates/gui/tests/test_interactions.rs`
