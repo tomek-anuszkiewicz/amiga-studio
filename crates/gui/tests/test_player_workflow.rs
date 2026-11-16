@@ -186,3 +186,179 @@ fn manual_setup_navigation_keeps_the_running_sessions_disk_assignments() {
     assert!(!app.host.status.running);
     assert!(!app.player.captured);
 }
+
+#[test]
+fn library_continue_restores_selected_games_save_instead_of_active_game() {
+    use egui_kittest::{kittest::Queryable, Harness};
+    let (root, library) = library();
+    let mut app = EmulatorApp::default();
+    app.set_view_mode(ViewMode::ScreenOnly);
+    app.player.catalog.library_root = root.to_string_lossy().into_owned();
+    app.player.catalog.configurations[0].rom = root.join("kick.rom").to_string_lossy().into_owned();
+    app.start_library_game(library.games[0].clone(), None, false);
+    common::command(&mut app, HostCommand::Pause);
+    common::command(
+        &mut app,
+        HostCommand::SetRegister {
+            register: gui::EditRegister::D(7),
+            value: 0x12345678,
+        },
+    );
+    let saved = common::snapshot_json(&mut app);
+    gui::game_library::persist_save(&library.games[0], &saved, None).unwrap();
+    app.start_library_game(library.games[1].clone(), None, false);
+    common::command(&mut app, HostCommand::Pause);
+    let before = common::snapshot(&mut app);
+    app.navigate_player(PlayerScreen::Library);
+    app.player.library = GameLibrary::discover(&root).unwrap();
+    app.player.selected_game = None;
+    let mut h = Harness::builder()
+        .with_size(egui::vec2(1280.0, 900.0))
+        .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
+    common::settle_harness(&mut h);
+    h.get_by_label("one").click();
+    common::settle_harness(&mut h);
+    assert_eq!(h.state().player.saves.len(), 1);
+    h.get_by_label_contains("Continue - ").click();
+    common::settle_harness(&mut h);
+    h.get_by_label("Keep current session").click();
+    common::settle_harness(&mut h);
+    assert_eq!(common::snapshot(h.state_mut()), before);
+    h.get_by_label_contains("Continue - ").click();
+    common::settle_harness(&mut h);
+    h.get_by_label("Replace session").click();
+    common::settle_harness(&mut h);
+    assert_eq!(
+        h.state().player.active_game.as_ref().unwrap().manifest.id,
+        "one"
+    );
+    assert_eq!(h.state().player.screen, PlayerScreen::Session);
+    common::command(h.state_mut(), HostCommand::Pause);
+    let restored = debugger::SaveState::from_json(&common::snapshot_json(h.state_mut())).unwrap();
+    assert_eq!(restored.state.cpu.d_long(7), 0x12345678);
+    assert_eq!(restored.header.association.game_id.as_deref(), Some("one"));
+    assert_eq!(
+        restored.header.association.mounted[0].as_deref(),
+        Some("disk-one")
+    );
+}
+
+#[test]
+fn player_disk_selection_and_ejection_publish_only_acknowledged_mounts() {
+    use egui_kittest::{kittest::Queryable, Harness};
+    fn open_df0(h: &mut Harness<'_, EmulatorApp>) {
+        let row = h
+            .get_all_by_value("DF0:")
+            .find(|n| n.role() == egui::accesskit::Role::Label)
+            .unwrap()
+            .bounding_box()
+            .unwrap();
+        h.get_all_by_role(egui::accesskit::Role::ComboBox)
+            .find(|n| {
+                n.bounding_box()
+                    .is_some_and(|b| b.x0 >= row.x1 && b.y0 < row.y1 && b.y1 > row.y0)
+            })
+            .unwrap()
+            .simulate_click();
+        h.step();
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+        while h.query_by_label("Eject / Empty").is_none() {
+            h.step();
+            assert!(
+                std::time::Instant::now() < deadline,
+                "DF0 menu did not open"
+            );
+        }
+    }
+    let (root, mut library) = library();
+    let game = &mut library.games[0];
+    std::fs::write(game.directory.join("second.adf"), vec![0x33; 901120]).unwrap();
+    game.manifest.disks.push(GameDisk {
+        id: "disk-two".into(),
+        label: "Disk 2".into(),
+        path: "second.adf".into(),
+    });
+    let mut app = EmulatorApp::default();
+    app.set_view_mode(ViewMode::ScreenOnly);
+    app.player.catalog.configurations[0].rom = root.join("kick.rom").to_string_lossy().into_owned();
+    app.start_library_game(game.clone(), None, false);
+    common::command(&mut app, HostCommand::Pause);
+    let mut h = Harness::builder()
+        .with_size(egui::vec2(1280.0, 900.0))
+        .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
+    common::settle_harness(&mut h);
+    open_df0(&mut h);
+    h.get_by_label("2 - Disk 2").simulate_click();
+    h.step();
+    assert_eq!(h.state().player.mounted[0].as_deref(), Some("disk-one"));
+    common::settle_harness(&mut h);
+    assert_eq!(h.state().player.mounted[0].as_deref(), Some("disk-two"));
+    assert!(h.state().host.status.drives[0].inserted);
+    let state = common::snapshot(h.state_mut());
+    let mut expected = debugger::DebuggerSession::new();
+    assert!(expected.machine.floppy.drives[0].insert_disk(&vec![0x33; 901120]));
+    assert_eq!(
+        serde_json::to_value(&state.floppy.drives[0]).unwrap()["track_data"],
+        serde_json::to_value(&expected.machine.floppy.drives[0]).unwrap()["track_data"]
+    );
+    common::settle_harness(&mut h);
+    open_df0(&mut h);
+    h.get_by_label("Eject / Empty").simulate_click();
+    h.step();
+    assert_eq!(h.state().player.mounted[0].as_deref(), Some("disk-two"));
+    common::settle_harness(&mut h);
+    assert!(h.state().player.mounted[0].is_none());
+    assert!(!h.state().host.status.drives[0].inserted);
+    assert!(!common::snapshot(h.state_mut()).floppy.drives[0].disk_inserted);
+}
+
+#[test]
+fn manual_start_requires_valid_rom_media_attachment_and_available_sources() {
+    use egui_kittest::{kittest::Queryable, Harness};
+    use gui::player::{PlayerScreen, SessionDisk};
+    let root = root();
+    let rom_path = root.join("kick.rom");
+    let mut app = EmulatorApp::default();
+    app.navigate_player(PlayerScreen::Setup);
+    app.player.catalog.configurations[0].rom = rom_path.to_string_lossy().into_owned();
+    let mut h = Harness::builder()
+        .with_size(egui::vec2(1280.0, 900.0))
+        .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
+    common::settle_harness(&mut h);
+    assert!(h.get_by_label("Start").is_disabled());
+    std::fs::write(&rom_path, b"invalid ROM").unwrap();
+    h.run_steps(2);
+    assert!(h.get_by_label("Start").is_disabled());
+    std::fs::write(&rom_path, rom()).unwrap();
+    h.run_steps(2);
+    assert!(!h.get_by_label("Start").is_disabled());
+    h.state_mut().player.setup_disks = vec![SessionDisk {
+        id: "draft".into(),
+        label: "Draft".into(),
+        bytes: Some(vec![0; 12]),
+    }];
+    h.state_mut().player.setup_mounted[0] = Some("draft".into());
+    h.run_steps(2);
+    assert!(h.get_by_label("Start").is_disabled());
+    h.state_mut().player.setup_disks[0].bytes = Some(vec![0; 901120]);
+    h.run_steps(2);
+    assert!(!h.get_by_label("Start").is_disabled());
+    h.state_mut().player.setup_mounted = [None, Some("draft".into()), None, None];
+    h.run_steps(2);
+    assert!(h.get_by_label("Start").is_disabled());
+    h.state_mut().player.catalog.configurations[0].drives[1] = true;
+    h.run_steps(2);
+    assert!(!h.get_by_label("Start").is_disabled());
+    h.state_mut().player.setup_mounted[1] = Some("missing".into());
+    h.run_steps(2);
+    assert!(h.get_by_label("Start").is_disabled());
+    h.state_mut().player.setup_mounted = [None, None, None, None];
+    h.state_mut().player.catalog.configurations[0].ports[1].source =
+        gui::player_config::InputSource::Gamepad {
+            identity: "missing".into(),
+            mapping: "arrows".into(),
+        };
+    h.run_steps(2);
+    assert!(h.get_by_label("Start").is_disabled());
+    assert_eq!(h.state().host.status.cck, 0);
+}

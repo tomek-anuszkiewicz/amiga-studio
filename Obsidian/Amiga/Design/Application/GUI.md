@@ -26,6 +26,9 @@ stable IDs and compose the supported hardware presets, ROM choice, connected
 drives, both port devices and reusable host mappings. Games reference one
 configuration and own ordered disks, descriptions, artwork, initial state and
 player saves. Configuration editing has its own screen.
+Returning to the session applies edited host bindings from its named configuration
+when the emulated port devices match. The paused machine keeps its hardware, ROM
+and media; hardware changes require a confirmed replacement launch.
 
 The desktop library provides Add game and Edit game forms for a name, optional
 description, named configuration and individually selected ADF imports. Saving

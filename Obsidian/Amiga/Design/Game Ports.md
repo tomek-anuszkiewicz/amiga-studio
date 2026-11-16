@@ -77,7 +77,7 @@ levels must hold through the input phase; later changes appear at the next input
 phase. Sub-CCK pulses and analog
 capacitor charging are not modeled by that interface. Proportional devices and
 four-player adapters remain 12.2 work. The [frontend](Application/GUI.md#input-and-output)
-now supplies physical mouse and gamepad events; configurable profiles remain 6.2 work. Tests cover digital direction/data/button combinations, quadrature wrapping,
+now supplies physical mouse and gamepad events through named host configurations. Physical-controller diagnostics and keyboard matrix fidelity remain 6.2 work. Tests cover digital direction/data/button combinations, quadrature wrapping,
 JOYTEST and continuation of queued movement after snapshot restore.
 
 ## References

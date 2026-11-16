@@ -469,3 +469,12 @@ xf
 dont
 pythondontwritebytecode
 multigraph
+jpeg
+crypto
+pointerlockchange
+pointerlockerror
+gamepadconnected
+gamepaddisconnected
+questionmark
+exclamationmark
+submenu

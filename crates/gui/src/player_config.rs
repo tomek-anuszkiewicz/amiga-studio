@@ -4,6 +4,11 @@ use config::{A500Preset, VideoStandard};
 use serde::{Deserialize, Serialize};
 
 pub const CONFIG_STORAGE_KEY: &str = "player_configurations";
+pub(crate) const MIN_MOUSE_SENSITIVITY: f32 = 0.1;
+pub(crate) const MAX_MOUSE_SENSITIVITY: f32 = 4.0;
+pub(crate) const MAX_CONTROLLER_AXIS: usize = 15;
+pub(crate) const MIN_CONTROLLER_THRESHOLD: f32 = 0.1;
+pub(crate) const MAX_CONTROLLER_THRESHOLD: f32 = 1.0;
 
 pub(crate) const PAD_SOUTH: usize = 0;
 pub(crate) const PAD_EAST: usize = 1;
@@ -236,7 +241,9 @@ impl ConfigurationCatalog {
                         .mapping(mapping)
                         .ok_or("Select an existing controller mapping")?;
                     pad_buttons.extend(mapping.buttons.map(|button| (identity.clone(), button)));
-                    if !(0.1..=1.0).contains(&mapping.threshold) {
+                    if !(MIN_CONTROLLER_THRESHOLD..=MAX_CONTROLLER_THRESHOLD)
+                        .contains(&mapping.threshold)
+                    {
                         return Err("Controller threshold must be between 0.1 and 1".into());
                     }
                 }

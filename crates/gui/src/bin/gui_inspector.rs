@@ -26,7 +26,7 @@ fn print_usage() {
     eprintln!(
         "Usage: gui-inspector [OPTIONS]\n\
          Options:\n\
-           --scenario <NAME>       Scenario: baseline, clean_startup, live_display, live_display_studio, mixed_scene, hover_splitter, hover_scrollbar, hover_register, hover_ccr, hover_memory, game_mode, library, library_editor, manual_setup, configurations, workbench_theme, edit_register, edit_disasm, small_window (default: baseline)\n\
+           --scenario <NAME>       Scenario: baseline, clean_startup, live_display, live_display_studio, mixed_scene, hover_splitter, hover_scrollbar, hover_register, hover_ccr, hover_memory, game_mode, library, library_editor, manual_setup, replace_session, configurations, workbench_theme, edit_register, edit_disasm, small_window (default: baseline)\n\
            --width <PIXELS>        Viewport width in points/pixels (default: 1280)\n\
            --height <PIXELS>       Viewport height in points/pixels (default: 720)\n\
            --output <PATH>         Target PNG output file path (default: target/gui_captures/baseline.png)\n\
@@ -210,10 +210,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 std::thread::sleep(std::time::Duration::from_millis(1));
             }
         }
-        "library" | "library_editor" | "manual_setup" | "configurations" => {
+        "library" | "library_editor" | "manual_setup" | "replace_session" | "configurations" => {
             let screen = match scenario.as_str() {
                 "library" | "library_editor" => gui::player::PlayerScreen::Library,
-                "manual_setup" => gui::player::PlayerScreen::Setup,
+                "manual_setup" | "replace_session" => gui::player::PlayerScreen::Setup,
                 _ => gui::player::PlayerScreen::Configuration,
             };
             harness.state_mut().navigate_player(screen);
@@ -223,6 +223,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 draft.description = "Optional notes about the game and its disks.".into();
                 harness.state_mut().player.catalog.library_root = "GameLibrary".into();
                 harness.state_mut().player.library_editor = Some(draft);
+            }
+            if scenario == "replace_session" {
+                let app = harness.state_mut();
+                app.player.active_configuration = Some(Default::default());
+                app.player.catalog.configurations[0].rom = "preview.rom".into();
+                app.player.rom = Some(vec![0; physical_memory::KICKSTART_ROM_SIZE]);
+                app.player.rom_configuration_id = Some("standard".into());
+                app.player.rom_reference = Some("preview.rom".into());
+                harness.step();
+                harness.step();
+                harness.get_by_label("Start").click();
+                harness.step();
+                harness.step();
+                harness.get_by_label("Replace session");
             }
             harness.step();
         }

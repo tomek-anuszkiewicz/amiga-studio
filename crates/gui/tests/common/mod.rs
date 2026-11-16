@@ -56,6 +56,20 @@ pub fn settle_harness(harness: &mut Harness<'_, EmulatorApp>) {
     }
 }
 
+pub fn confirm_replacement(app: &mut EmulatorApp) {
+    use egui_kittest::kittest::Queryable;
+    let mut harness = Harness::builder()
+        .with_size(egui::vec2(1024.0, 600.0))
+        .build_state(
+            |ctx, app: &mut EmulatorApp| app.update_ui(ctx),
+            std::mem::take(app),
+        );
+    settle_harness(&mut harness);
+    harness.get_by_label("Replace session").click();
+    settle_harness(&mut harness);
+    *app = std::mem::take(harness.state_mut());
+}
+
 /// Uses the production command boundary while the GUI has no outstanding replies.
 pub fn command(app: &mut EmulatorApp, command: HostCommand) -> HostReply {
     settle(app, &Context::default());

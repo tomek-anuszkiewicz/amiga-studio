@@ -151,3 +151,68 @@ fn four_owner_mounted_disks_supply_distinct_guest_dma_data_and_resume_in_flight(
         cia_write(&mut session, 0xbfd100, 0xff);
     }
 }
+
+#[test]
+fn rejected_player_restore_preserves_machine_generation_and_game_association() {
+    let mut owner = MachineOwner::new(Box::new(DebuggerSession::new()));
+    execute(
+        &mut owner,
+        HostCommand::Launch {
+            setup: MachineSetup {
+                config: config::A500Config::default(),
+                ports: [DeviceKind::Mouse, DeviceKind::Joystick],
+                drives: [true, false, false, false],
+                rom: rom(),
+                disks: std::array::from_fn(|_| None),
+            },
+            association: debugger::SaveAssociation {
+                game_id: Some("current".into()),
+                mounted: [None, None, None, None],
+            },
+        },
+    );
+    execute(&mut owner, HostCommand::Reset);
+    execute(
+        &mut owner,
+        HostCommand::SetRegister {
+            register: gui::EditRegister::D(7),
+            value: 0x12345678,
+        },
+    );
+    let HostValue::Snapshot(before) = execute(&mut owner, HostCommand::SaveSnapshot) else {
+        panic!("snapshot");
+    };
+    let generation = owner.status().generation;
+    for (game_id, ports, expected) in [
+        (
+            Some("foreign".into()),
+            [DeviceKind::Mouse, DeviceKind::Joystick],
+            "different game",
+        ),
+        (
+            Some("current".into()),
+            [DeviceKind::Joystick, DeviceKind::Joystick],
+            "port devices",
+        ),
+    ] {
+        let reply = owner.execute(HostRequest {
+            id: 2,
+            generation,
+            command: HostCommand::RestorePlayer {
+                json: before.clone(),
+                game_id,
+                ports,
+            },
+        });
+        assert!(reply.value.unwrap_err().contains(expected));
+        assert_eq!(owner.status().generation, generation);
+        let HostValue::Snapshot(after) = execute(&mut owner, HostCommand::SaveSnapshot) else {
+            panic!("snapshot");
+        };
+        let before = debugger::SaveState::from_json(&before).unwrap();
+        let after = debugger::SaveState::from_json(&after).unwrap();
+        assert_eq!(after.state, before.state);
+        assert_eq!(after.header.association, before.header.association);
+        assert!(!owner.status().running);
+    }
+}

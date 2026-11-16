@@ -257,6 +257,10 @@ fn breakpoint_refreshes_the_first_stopped_frame_and_reset_load_invalidate_data()
     assert!(app.host.status.cck > 0);
     assert!(texts(&output).contains(&"CCK: 0".to_string()));
     assert!(!texts(&output).contains(&"$00112233".to_string()));
+    common::command(&mut app, HostCommand::Pause);
+    let loaded = common::snapshot(&mut app);
+    assert_eq!(loaded.cpu.instruction_pc(), 0xfc0008);
+    assert_eq!(&loaded.physical_memory.kickstart_rom()[..10], &rom[..10]);
 }
 
 #[test]
@@ -334,6 +338,11 @@ fn run_keeps_an_open_editor_inactive_across_keyboard_input_and_resize() {
         .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
     common::settle_harness(&mut harness);
     harness.press_key(Key::F5);
+    harness.run_steps(2);
+    common::settle_harness(&mut harness);
+    assert!(!harness.state().host.status.running);
+    assert_eq!(common::snapshot(harness.state_mut()).cpu.d_long(7), 0);
+    harness.get_by_label("▶ Run (F5)").click();
     harness.run_steps(2);
     common::settle_harness(&mut harness);
     assert!(harness.state().host.status.running);

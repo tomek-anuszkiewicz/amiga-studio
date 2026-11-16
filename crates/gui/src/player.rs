@@ -28,6 +28,7 @@ pub struct PlayerState {
     pub(crate) settings_dirty: bool,
     pub rom: Option<Vec<u8>>,
     pub rom_configuration_id: Option<String>,
+    pub rom_reference: Option<String>,
     pub disks: Vec<SessionDisk>,
     pub setup_disks: Vec<SessionDisk>,
     pub setup_mounted: [Option<String>; 4],
@@ -37,7 +38,7 @@ pub struct PlayerState {
     #[cfg(not(target_arch = "wasm32"))]
     pub(crate) pending_pointer: crate::host_input::InputQueue,
     pub show_saves: bool,
-    pub confirm_launch: bool,
+    pub(crate) pending_launch: Option<PendingLaunch>,
     pub initial_error: bool,
     pub busy: bool,
     pub gamepads: Vec<crate::input_mapping::GamepadInfo>,
@@ -45,6 +46,8 @@ pub struct PlayerState {
     pub library: crate::game_library::GameLibrary,
     #[cfg(not(target_arch = "wasm32"))]
     pub library_editor: Option<crate::library_edit::GameDraft>,
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) game_slots: [bool; debugger::session::QUICK_SLOT_COUNT],
     #[cfg(not(target_arch = "wasm32"))]
     pub(crate) dialog: Option<crate::file_actions::NativeDialog>,
     #[cfg(not(target_arch = "wasm32"))]
@@ -75,6 +78,30 @@ pub(crate) enum PlayerEffect {
     },
 }
 
+#[derive(Debug)]
+pub(crate) enum PendingLaunch {
+    Manual,
+    Rom {
+        bytes: Vec<u8>,
+        completion: crate::file_actions::FileCompletion,
+    },
+    #[cfg(not(target_arch = "wasm32"))]
+    Library {
+        game: crate::game_library::LibraryGame,
+        save: Option<std::path::PathBuf>,
+        normal_boot: bool,
+    },
+}
+
+impl PlayerState {
+    pub(crate) fn selected_rom(&self, configuration: &NamedConfiguration) -> Option<&[u8]> {
+        self.rom.as_deref().filter(|_| {
+            self.rom_configuration_id.as_deref() == Some(&configuration.id)
+                && self.rom_reference.as_deref() == Some(&configuration.rom)
+        })
+    }
+}
+
 impl EmulatorApp {
     pub(crate) fn apply_frontend_action(&mut self, action: crate::player_config::FrontendAction) {
         use crate::player_config::FrontendAction;
@@ -91,12 +118,80 @@ impl EmulatorApp {
     pub fn navigate_player(&mut self, screen: PlayerScreen) {
         self.player.captured = false;
         self.host.queue(HostCommand::Pause);
-        self.player.screen = screen;
+        self.player.screen = if screen == PlayerScreen::Session {
+            match self.refresh_active_bindings() {
+                Ok(()) => screen,
+                Err(error) => {
+                    self.file_error = Some(error);
+                    PlayerScreen::Configuration
+                }
+            }
+        } else {
+            screen
+        };
         #[cfg(not(target_arch = "wasm32"))]
         if screen == PlayerScreen::Session {
             self.refresh_player_saves();
         }
         self.set_view_mode(crate::ViewMode::ScreenOnly);
+    }
+
+    fn refresh_active_bindings(&mut self) -> Result<(), String> {
+        let Some(active) = &self.player.active_configuration else {
+            return Ok(());
+        };
+        let configuration = self
+            .player
+            .catalog
+            .configurations
+            .iter()
+            .find(|c| c.id == active.id)
+            .ok_or("The active input configuration is missing")?
+            .clone();
+        if configuration.ports.each_ref().map(|port| port.device) != self.host.status.ports {
+            return Err("Port devices differ from the current machine; start a new session to change hardware".into());
+        }
+        self.player.catalog.validate(&configuration)?;
+        self.host_sources_available(&configuration)?;
+        if let Some(active) = &mut self.player.active_configuration {
+            active.ports = configuration.ports;
+            active.keyboard = configuration.keyboard;
+            active.frontend = configuration.frontend;
+            active.mouse_sensitivity = configuration.mouse_sensitivity;
+            active.gamepad_shortcuts = configuration.gamepad_shortcuts;
+        }
+        Ok(())
+    }
+
+    pub(crate) fn request_player_launch(&mut self, launch: PendingLaunch) {
+        let valid_rom = !matches!(&launch, PendingLaunch::Rom { bytes, .. } if bytes.len() != physical_memory::KICKSTART_ROM_SIZE);
+        if valid_rom
+            && (self.player.active_configuration.is_some()
+                || self.loaded_rom_name.is_some()
+                || self.host.status.cck != 0
+                || self.host.status.running)
+        {
+            self.player.captured = false;
+            self.host.queue(HostCommand::Pause);
+            self.player.pending_launch = Some(launch);
+        } else {
+            self.confirm_player_launch(launch);
+        }
+    }
+
+    pub(crate) fn confirm_player_launch(&mut self, launch: PendingLaunch) {
+        match launch {
+            PendingLaunch::Manual => self.start_manual(),
+            PendingLaunch::Rom { bytes, completion } => self
+                .host
+                .queue_effect(HostCommand::LoadRom(bytes), HostEffect::File(completion)),
+            #[cfg(not(target_arch = "wasm32"))]
+            PendingLaunch::Library {
+                game,
+                save,
+                normal_boot,
+            } => self.start_library_game(game, save, normal_boot),
+        }
     }
 
     pub(crate) fn complete_player(
@@ -191,9 +286,7 @@ impl EmulatorApp {
         }
         let rom_selected = self
             .player
-            .rom
-            .as_ref()
-            .filter(|_| self.player.rom_configuration_id.as_deref() == Some(&configuration.id))
+            .selected_rom(configuration)
             .is_some_and(|bytes| bytes.len() == physical_memory::KICKSTART_ROM_SIZE);
         #[cfg(not(target_arch = "wasm32"))]
         let rom_selected = rom_selected
@@ -232,13 +325,8 @@ impl EmulatorApp {
             self.file_error = Some(error);
             return;
         }
-        let rom = match self
-            .player
-            .rom
-            .as_ref()
-            .filter(|_| self.player.rom_configuration_id.as_deref() == Some(&configuration.id))
-        {
-            Some(bytes) => bytes.clone(),
+        let rom = match self.player.selected_rom(&configuration) {
+            Some(bytes) => bytes.to_vec(),
             None => {
                 #[cfg(not(target_arch = "wasm32"))]
                 {
@@ -325,6 +413,7 @@ impl EmulatorApp {
                 return;
             }
             self.player.settings_dirty = true;
+            self.player.rom_reference = Some(name.clone());
             if let Some(configuration) = self
                 .player
                 .catalog
@@ -387,7 +476,11 @@ impl EmulatorApp {
                 .and_then(|name| {
                     crate::game_library::relative_asset(&game.directory.join("saves"), name.trim())
                 }) {
-                Ok(path) => self.start_library_game(game, Some(path), false),
+                Ok(path) => self.request_player_launch(PendingLaunch::Library {
+                    game,
+                    save: Some(path),
+                    normal_boot: false,
+                }),
                 Err(error) => self.file_error = Some(format!("Quick slot unavailable: {error}")),
             }
         }
@@ -425,7 +518,26 @@ impl EmulatorApp {
         });
         if let Some(game) = game {
             match crate::game_library::saves(game) {
-                Ok(saves) => self.player.saves = saves,
+                Ok(saves) => {
+                    self.player.game_slots = std::array::from_fn(|index| {
+                        self.player.active_game.as_ref().is_some_and(|active| {
+                            std::fs::read_to_string(
+                                active
+                                    .directory
+                                    .join(format!("saves/slot-{}.txt", index + 1)),
+                            )
+                            .ok()
+                            .is_some_and(|name| {
+                                saves.iter().any(|save| {
+                                    save.path
+                                        .file_name()
+                                        .is_some_and(|file| file == name.trim())
+                                })
+                            })
+                        })
+                    });
+                    self.player.saves = saves;
+                }
                 Err(error) => self.file_error = Some(error),
             }
         }

@@ -20,6 +20,12 @@ impl EmulatorApp {
         if self.player.screen != crate::player::PlayerScreen::Session {
             return;
         }
+        let host_text_focus = ctx
+            .memory(|memory| memory.focused())
+            .is_some_and(|id| egui::TextEdit::load_state(ctx, id).is_some());
+        if (host_text_focus && !screen_focus) || self.player.pending_launch.is_some() {
+            return;
+        }
         let bindings = self
             .player
             .active_configuration

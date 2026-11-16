@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "floppy"
 status: "active"
 created: 2026-09-06
-updated: 2026-11-15
+updated: 2026-11-16
 related: ["[CIA.md](CIA.md)", "[Paula.md](Paula.md)", "[Agnus.md](Agnus.md)", "[DMA.md](DMA.md)", "[MemoryBus.md](MemoryBus.md)", "[Machine Loop.md](Machine%20Loop.md)"]
 tracked_paths:
   - "crates/floppy"

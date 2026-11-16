@@ -339,10 +339,10 @@ impl EmulatorApp {
             FileAction::SetupRom => self.select_setup_asset(None, name, data),
             FileAction::SetupDisk(drive) => self.select_setup_asset(Some(drive), name, data),
             FileAction::Binary => self.select_binary(BinarySource::Bytes { name, data, handle }),
-            FileAction::Rom => self.host.queue_effect(
-                HostCommand::LoadRom(data),
-                HostEffect::File(FileCompletion::Rom { name, handle }),
-            ),
+            FileAction::Rom => self.request_player_launch(crate::player::PendingLaunch::Rom {
+                bytes: data,
+                completion: FileCompletion::Rom { name, handle },
+            }),
             FileAction::State => match String::from_utf8(data) {
                 Ok(json) => {
                     if let Err(error) = self.validate_state_bindings(&json) {
@@ -452,13 +452,13 @@ impl EmulatorApp {
 
     pub fn load_rom_file(&mut self, path: &std::path::Path) {
         match std::fs::read(path) {
-            Ok(data) => self.host.queue_effect(
-                HostCommand::LoadRom(data),
-                HostEffect::File(FileCompletion::Rom {
+            Ok(data) => self.request_player_launch(crate::player::PendingLaunch::Rom {
+                bytes: data,
+                completion: FileCompletion::Rom {
                     name: file_name(path),
                     path: path.to_owned(),
-                }),
-            ),
+                },
+            }),
             Err(error) => {
                 self.file_error = Some(format!("Could not read {}: {error}", path.display()));
                 if error.kind() == std::io::ErrorKind::NotFound

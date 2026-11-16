@@ -246,3 +246,54 @@ fn named_hardware_and_input_catalog_survives_framework_storage_without_media_byt
         "Renamed preset"
     );
 }
+
+#[test]
+fn configuration_creation_mapping_and_hardware_edits_persist_through_real_controls() {
+    use eframe::App;
+    use egui_kittest::{kittest::Queryable, Harness};
+    let mut app = EmulatorApp::default();
+    app.navigate_player(gui::player::PlayerScreen::Configuration);
+    let mut h = Harness::builder()
+        .with_size(egui::vec2(1280.0, 1800.0))
+        .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
+    common::settle_harness(&mut h);
+    h.get_by_label("Create configuration").click();
+    common::settle_harness(&mut h);
+    assert_eq!(h.state().player.catalog.configurations.len(), 2);
+    let selected = h.state().player.catalog.selected.clone();
+    assert_ne!(selected, "standard");
+    h.get_all_by_value("New configuration")
+        .into_iter()
+        .find(|node| node.role() == egui::accesskit::Role::TextInput)
+        .unwrap()
+        .type_text(" edited");
+    common::settle_harness(&mut h);
+    assert!(h
+        .state()
+        .player
+        .catalog
+        .selected()
+        .unwrap()
+        .name
+        .contains("edited"));
+    h.get_by_label("DF1: connected").click();
+    h.get_by_label("Create mapping").click();
+    common::settle_harness(&mut h);
+    assert!(h.state().player.catalog.selected().unwrap().drives[1]);
+    assert_eq!(h.state().player.catalog.mappings.len(), 2);
+    assert_ne!(
+        h.state().player.catalog.mappings[0].id,
+        h.state().player.catalog.mappings[1].id
+    );
+    let mut storage = MemoryStorage::new();
+    h.state_mut().save(&mut storage);
+    let restored: gui::player_config::ConfigurationCatalog =
+        eframe::get_value(&storage, gui::player_config::CONFIG_STORAGE_KEY).unwrap();
+    assert_eq!(restored, h.state().player.catalog);
+    assert_eq!(restored.selected, selected);
+    assert_eq!(
+        restored.mappings[1].keys,
+        [0x11, 0x21, 0x20, 0x22, 0x40, 0x33]
+    );
+    assert!(!restored.configurations[0].drives[1]);
+}

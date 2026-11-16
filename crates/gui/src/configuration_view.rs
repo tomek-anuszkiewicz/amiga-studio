@@ -70,8 +70,12 @@ impl EmulatorApp {
             }
         });
         ui.add(
-            egui::Slider::new(&mut configuration.mouse_sensitivity, 0.1..=4.0)
-                .text("Mouse sensitivity"),
+            egui::Slider::new(
+                &mut configuration.mouse_sensitivity,
+                crate::player_config::MIN_MOUSE_SENSITIVITY
+                    ..=crate::player_config::MAX_MOUSE_SENSITIVITY,
+            )
+            .text("Mouse sensitivity"),
         );
         for port in 0..2 {
             ui.separator();
@@ -278,12 +282,19 @@ impl EmulatorApp {
                     ui.horizontal(|ui| {
                         ui.label("X / Y axis");
                         for axis in &mut mapping.axes {
-                            ui.add(egui::DragValue::new(axis).range(0..=15));
+                            ui.add(
+                                egui::DragValue::new(axis)
+                                    .range(0..=crate::player_config::MAX_CONTROLLER_AXIS),
+                            );
                         }
                     });
                     ui.add(
-                        egui::Slider::new(&mut mapping.threshold, 0.1..=1.0)
-                            .text("Axis threshold / deadzone"),
+                        egui::Slider::new(
+                            &mut mapping.threshold,
+                            crate::player_config::MIN_CONTROLLER_THRESHOLD
+                                ..=crate::player_config::MAX_CONTROLLER_THRESHOLD,
+                        )
+                        .text("Axis threshold / deadzone"),
                     );
                 });
             });

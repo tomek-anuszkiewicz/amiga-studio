@@ -70,14 +70,14 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
                         ui.close_menu();
                     }
 
-                    let slot1_label = if app.host.status.quick_slots[0] {
+                    let slot1_label = if quick_slot_available(app, 1) {
                         "🔄 Quick Load Slot 1 (F9)"
                     } else {
                         "🔄 Quick Load Slot 1 (Empty)"
                     };
                     if ui
                         .add_enabled(
-                            app.host.status.quick_slots[0],
+                            quick_slot_available(app, 1),
                             egui::Button::new(slot1_label),
                         )
                         .clicked()
@@ -94,7 +94,7 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
                                 if ui.button(format!("Save #{slot}")).clicked() {
                                     quick_save_slot(app, slot);
                                 }
-                                let loaded = app.host.status.quick_slots[slot - 1];
+                                let loaded = quick_slot_available(app, slot);
                                 let btn = egui::Button::new(if loaded {
                                     format!("Load #{slot}")
                                 } else {
@@ -307,7 +307,7 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
                 // --- 6. View Mode Toggle ---
                 if ui
                     .button(if developer { "🎮 Game View (F2 / F12)" } else { "Debug View (F2 / F12)" })
-                    .on_hover_text("Switch between Game and Debug views. Returning to Debug requests a pause at the next completed field. F2/F12 toggle; Escape returns to Debug.")
+                    .on_hover_text("Switch between Game and Debug views. Returning to Debug requests a pause at the next completed field. F2/F12 toggle; Escape releases input capture.")
                     .clicked()
                 {
                     app.set_view_mode(if developer { crate::ViewMode::ScreenOnly } else { crate::ViewMode::Developer });
@@ -344,4 +344,12 @@ pub(crate) fn quick_load_slot(app: &mut EmulatorApp, slot: usize) {
         HostCommand::LoadQuickSlot(slot),
         HostEffect::File(FileCompletion::State(format!("Restored from Slot #{slot}"))),
     );
+}
+
+fn quick_slot_available(app: &EmulatorApp, slot: usize) -> bool {
+    #[cfg(not(target_arch = "wasm32"))]
+    if app.player.active_game.is_some() {
+        return app.player.game_slots[slot - 1];
+    }
+    app.host.status.quick_slots[slot - 1]
 }

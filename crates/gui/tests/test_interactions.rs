@@ -1236,7 +1236,7 @@ fn test_f2_toggles_views_and_escape_releases_capture() {
     common::settle(&mut app, &ctx);
     assert_eq!(app.view_mode, ViewMode::ScreenOnly);
 
-    // Release F2: a later press must be a new edge, not keyboard autorepeat.
+    // Release F2: a later press must be a new edge, not keyboard repeat.
     let _ = ctx.run(
         RawInput {
             events: vec![Event::Key {

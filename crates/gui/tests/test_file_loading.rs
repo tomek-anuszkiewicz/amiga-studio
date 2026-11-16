@@ -97,6 +97,11 @@ fn firmware_load_boots_reset_vectors_and_preserves_the_active_rom_on_failure() {
     let mut app = EmulatorApp::with_session(session);
     app.set_view_mode(gui::ViewMode::ScreenOnly);
     app.load_rom_file(&path);
+    assert!(
+        app.loaded_rom_name.is_none(),
+        "ROM changes require confirmation before resetting the current program"
+    );
+    common::confirm_replacement(&mut app);
     common::settle(&mut app, &egui::Context::default());
     let name = path.file_name().unwrap().to_str().unwrap();
     assert_eq!(app.loaded_rom_name.as_deref(), Some(name));

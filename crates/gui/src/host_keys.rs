@@ -257,6 +257,10 @@ pub fn frontend_key_code(name: &str) -> Option<u8> {
         Key::CloseBracket => "BracketRight",
         Key::Backtick => "Backquote",
         Key::Equals => "Equal",
+        Key::ArrowUp => "ArrowUp",
+        Key::ArrowDown => "ArrowDown",
+        Key::ArrowLeft => "ArrowLeft",
+        Key::ArrowRight => "ArrowRight",
         _ => key.name(),
     })
 }

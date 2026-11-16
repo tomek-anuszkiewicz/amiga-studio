@@ -39,6 +39,17 @@ fn rom() -> Vec<u8> {
     data
 }
 
+fn select_rom(app: &mut EmulatorApp, path: &std::path::Path) {
+    let confirmation =
+        app.loaded_rom_name.is_some() || app.host.status.cck != 0 || app.host.status.running;
+    app.load_rom_file(path);
+    if confirmation {
+        common::confirm_replacement(app);
+    } else {
+        common::settle(app, &egui::Context::default());
+    }
+}
+
 #[test]
 fn separate_histories_keep_five_successful_files_and_persist_load_options() {
     let mut app = EmulatorApp::default();
@@ -49,7 +60,7 @@ fn separate_histories_keep_five_successful_files_and_persist_load_options() {
         let firmware = fixture(&format!("firmware-{index}.rom"), &rom());
         app.load_binary_file(&binary, 0x1000, true);
         common::settle(&mut app, &egui::Context::default());
-        app.load_rom_file(&firmware);
+        select_rom(&mut app, &firmware);
         common::settle(&mut app, &egui::Context::default());
         binaries.push(binary);
         roms.push(firmware);
@@ -66,7 +77,7 @@ fn separate_histories_keep_five_successful_files_and_persist_load_options() {
     app.load_binary_file(&binaries[2], 0x2000, false);
 
     common::settle(&mut app, &egui::Context::default());
-    app.load_rom_file(&roms[3]);
+    select_rom(&mut app, &roms[3]);
     common::settle(&mut app, &egui::Context::default());
     assert_eq!(app.file_history.binaries.len(), 5);
     assert_eq!(app.file_history.binaries[0].path, binaries[2]);
@@ -188,6 +199,12 @@ fn game_menu_reloads_rom_and_keeps_binary_directory_separate() {
     common::settle_harness(&mut harness);
     harness.get_by_label("menu-firmware.rom").click();
     harness.run_steps(2);
+    common::settle_harness(&mut harness);
+    assert!(
+        harness.state().host.status.cck > 0,
+        "ROM replacement needs confirmation"
+    );
+    harness.get_by_label("Replace session").click();
     common::settle_harness(&mut harness);
     assert_eq!(harness.state().host.status.cck, 0);
     assert_eq!(

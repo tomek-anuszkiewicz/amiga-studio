@@ -224,3 +224,180 @@ fn two_selected_gamepads_keep_player_states_and_frontend_edges_independent() {
     mapping.frontend_gamepad("player-two", &buttons, false);
     assert!(mapping.actions.is_empty());
 }
+
+#[test]
+fn system_mouse_targets_second_port_with_scaling_and_unassigned_input_is_dropped() {
+    let catalog = ConfigurationCatalog::default();
+    let mut configuration = catalog.configurations[0].clone();
+    configuration.ports.swap(0, 1);
+    configuration.mouse_sensitivity = 1.5;
+    let mut mapping = InputMapping::default();
+    mapping.configure(&configuration, &catalog);
+    assert_eq!(
+        mapping.pointer(HostInputEvent::MouseMotion {
+            port: 0,
+            dx: 4,
+            dy: -2
+        }),
+        vec![HostInputEvent::MouseMotion {
+            port: 1,
+            dx: 6,
+            dy: -3
+        }]
+    );
+    assert_eq!(
+        mapping.pointer(HostInputEvent::MouseButtons {
+            port: 0,
+            left: true,
+            right: false,
+            middle: true
+        }),
+        vec![HostInputEvent::MouseButtons {
+            port: 1,
+            left: true,
+            right: false,
+            middle: true
+        }]
+    );
+    configuration.ports[1].device = DeviceKind::Disconnected;
+    configuration.ports[1].source = InputSource::None;
+    mapping.configure(&configuration, &catalog);
+    assert!(mapping
+        .pointer(HostInputEvent::MouseMotion {
+            port: 0,
+            dx: 9,
+            dy: 4
+        })
+        .is_empty());
+}
+
+#[test]
+fn keyboard_aliases_release_the_guest_key_only_after_both_physical_keys_release() {
+    let catalog = ConfigurationCatalog::default();
+    let mut configuration = catalog.configurations[0].clone();
+    configuration.keyboard = vec![(0x20, 0x63), (0x21, 0x63)];
+    let mut mapping = InputMapping::default();
+    mapping.configure(&configuration, &catalog);
+    for (code, pressed, held) in [
+        (0x20, true, true),
+        (0x21, true, true),
+        (0x20, false, true),
+        (0x21, false, false),
+    ] {
+        assert_eq!(
+            mapping.keyboard(code, pressed),
+            vec![HostInputEvent::Key {
+                code: 0x63,
+                pressed: held
+            }]
+        );
+    }
+}
+
+#[test]
+fn configuration_rejects_ambiguous_devices_keys_and_frontend_actions() {
+    use gui::player_config::{FrontendAction, GamepadShortcut};
+    fn rejected(
+        change: impl FnOnce(&mut ConfigurationCatalog, &mut gui::player_config::NamedConfiguration),
+        expected: &str,
+    ) {
+        let mut catalog = ConfigurationCatalog::default();
+        let mut configuration = catalog.selected().unwrap().clone();
+        change(&mut catalog, &mut configuration);
+        assert!(
+            catalog
+                .validate(&configuration)
+                .err()
+                .unwrap_or_else(|| panic!("Accepted invalid configuration: {expected}"))
+                .contains(expected),
+            "{expected}"
+        );
+    }
+    rejected(|_, c| c.drives[0] = false, "DF0");
+    rejected(|_, c| c.name.clear(), "configuration name");
+    rejected(|_, c| c.ports[1] = c.ports[0].clone(), "one system mouse");
+    rejected(|_, c| c.ports[0].source = InputSource::None, "compatible");
+    rejected(
+        |_, c| c.ports[0] = c.ports[1].clone(),
+        "conflicting destinations",
+    );
+    rejected(
+        |_, c| c.ports[1].source = InputSource::Keyboard("missing".into()),
+        "existing input mapping",
+    );
+    let pad = PortBinding {
+        device: DeviceKind::Joystick,
+        source: InputSource::Gamepad {
+            identity: "pad".into(),
+            mapping: "arrows".into(),
+        },
+    };
+    rejected(
+        |_, c| c.ports = [pad.clone(), pad.clone()],
+        "different available controller",
+    );
+    rejected(
+        |catalog, c| {
+            c.ports[1] = pad.clone();
+            catalog.mappings[0].threshold = 0.05;
+        },
+        "threshold",
+    );
+    rejected(
+        |_, c| {
+            c.ports[1] = pad.clone();
+            c.gamepad_shortcuts.push(GamepadShortcut {
+                identity: "pad".into(),
+                button: 0,
+                action: FrontendAction::Pause,
+            });
+        },
+        "conflicting frontend/joystick",
+    );
+    rejected(
+        |_, c| {
+            let s = GamepadShortcut {
+                identity: "other".into(),
+                button: 9,
+                action: FrontendAction::Pause,
+            };
+            c.gamepad_shortcuts = vec![s.clone(), s];
+        },
+        "conflicting frontend/joystick",
+    );
+    rejected(|_, c| c.keyboard = vec![(0x20, 0x80)], "7-bit");
+    rejected(
+        |_, c| c.keyboard = vec![(0x20, 0x21), (0x20, 0x22)],
+        "unique physical",
+    );
+    rejected(|_, c| c.keyboard = vec![(0x4c, 0x20)], "joystick key");
+    rejected(
+        |_, c| c.frontend.pause = "missing-key".into(),
+        "physical frontend key",
+    );
+    rejected(|_, c| c.frontend.pause = "F12".into(), "reserved");
+    rejected(
+        |_, c| c.frontend.pause = c.frontend.save.clone(),
+        "different keys",
+    );
+    rejected(
+        |_, c| {
+            c.frontend.pause = "A".into();
+            c.keyboard = vec![(0x20, 0x21)];
+        },
+        "keyboard override",
+    );
+    for key in ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"] {
+        rejected(|_, c| c.frontend.pause = key.into(), "joystick mapping");
+    }
+    let catalog = ConfigurationCatalog::default();
+    let mut valid = catalog.selected().unwrap().clone();
+    valid.frontend.debug = "F12".into();
+    valid.ports[1] = pad;
+    valid.gamepad_shortcuts.push(GamepadShortcut {
+        identity: "pad".into(),
+        button: 9,
+        action: FrontendAction::Pause,
+    });
+    assert!(catalog.validate(&valid).is_ok());
+}

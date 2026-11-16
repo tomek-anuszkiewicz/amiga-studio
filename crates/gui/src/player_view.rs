@@ -22,8 +22,10 @@ impl EmulatorApp {
                     self.navigate_player(PlayerScreen::Session);
                 }
                 if ui.button("Debug").clicked() {
-                    self.player.screen = PlayerScreen::Session;
-                    self.set_view_mode(ViewMode::Developer);
+                    self.navigate_player(PlayerScreen::Session);
+                    if self.player.screen == PlayerScreen::Session {
+                        self.set_view_mode(ViewMode::Developer);
+                    }
                 }
             });
         });
@@ -86,9 +88,7 @@ impl EmulatorApp {
                 &configuration.rom
             });
             #[cfg(target_arch = "wasm32")]
-            if self.player.rom.is_none()
-                || self.player.rom_configuration_id.as_deref() != Some(&configuration.id)
-            {
+            if self.player.selected_rom(&configuration).is_none() {
                 ui.label("Select the ROM again for this session");
             }
         });
@@ -120,23 +120,30 @@ impl EmulatorApp {
             )
             .clicked()
         {
-            if self.player.active_configuration.is_some() {
-                self.player.confirm_launch = true;
-            } else {
-                self.start_manual();
-            }
+            self.request_player_launch(crate::player::PendingLaunch::Manual);
         }
-        if self.player.confirm_launch {
-            ui.group(|ui| {
-                ui.label("Replace the current machine with this hardware, ROM and media?");
-                if ui.button("Replace and start").clicked() {
-                    self.player.confirm_launch = false;
-                    self.start_manual();
-                }
-                if ui.button("Cancel").clicked() {
-                    self.player.confirm_launch = false;
-                }
+    }
+
+    pub(crate) fn render_player_confirmation(&mut self, ctx: &egui::Context) {
+        if self.player.pending_launch.is_none() {
+            return;
+        }
+        let mut replace = false;
+        let mut keep = false;
+        egui::Modal::new(egui::Id::new("replace-player-session")).show(ctx, |ui| {
+            ui.heading("Replace current session?");
+            ui.label("This action resets or replaces the current machine. Save progress first if needed.");
+            ui.horizontal(|ui| {
+                replace = ui.button("Replace session").clicked();
+                keep = ui.button("Keep current session").clicked();
             });
+        });
+        if replace {
+            if let Some(launch) = self.player.pending_launch.take() {
+                self.confirm_player_launch(launch);
+            }
+        } else if keep {
+            self.player.pending_launch = None;
         }
     }
 
@@ -355,10 +362,18 @@ impl EmulatorApp {
             .add_enabled(!self.player.busy, egui::Button::new("Start game"))
             .clicked()
         {
-            self.start_library_game(game.clone(), None, false);
+            self.request_player_launch(crate::player::PendingLaunch::Library {
+                game: game.clone(),
+                save: None,
+                normal_boot: false,
+            });
         }
         if self.player.initial_error && ui.button("Boot normally without initial state").clicked() {
-            self.start_library_game(game, None, true);
+            self.request_player_launch(crate::player::PendingLaunch::Library {
+                game,
+                save: None,
+                normal_boot: true,
+            });
         }
         self.render_save_catalog(ui, false);
     }
@@ -404,7 +419,11 @@ impl EmulatorApp {
                     .cloned()
             };
             if let Some(game) = game {
-                self.start_library_game(game, Some(path), false);
+                self.request_player_launch(crate::player::PendingLaunch::Library {
+                    game,
+                    save: Some(path),
+                    normal_boot: false,
+                });
                 self.player.show_saves = false;
             }
         }

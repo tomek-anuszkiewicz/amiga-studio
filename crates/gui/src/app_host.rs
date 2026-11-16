@@ -328,6 +328,7 @@ impl crate::EmulatorApp {
             self.host.refresh_utc(crate::host_clock::utc_now());
             self.handle_keyboard_shortcuts(ctx);
         }
+        self.render_player_confirmation(ctx);
     }
 }
 
@@ -390,7 +391,8 @@ impl crate::EmulatorApp {
             let actions = sender.frontend_actions(
                 focused
                     && (!ctx.wants_keyboard_input() || screen_focus)
-                    && self.player.screen == crate::player::PlayerScreen::Session,
+                    && self.player.screen == crate::player::PlayerScreen::Session
+                    && self.player.pending_launch.is_none(),
             );
             if let Some(configuration) = &self.player.active_configuration {
                 if !sender.configure(configuration, &self.player.catalog) {

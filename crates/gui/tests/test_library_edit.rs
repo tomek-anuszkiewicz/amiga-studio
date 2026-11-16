@@ -278,3 +278,137 @@ fn editor_cancel_does_not_write_and_save_updates_the_active_games_path_without_r
         vec![0x55; 901120]
     );
 }
+
+#[test]
+fn invalid_manifests_and_duplicate_ids_are_reported_without_hiding_valid_games() {
+    use gui::game_library::relative_asset;
+    let root = root();
+    let mut draft = GameDraft::new("standard".into());
+    draft.name = "Valid".into();
+    add_disk(&mut draft, &root, 0x11);
+    let game = draft.save(&root).unwrap();
+    let valid = game.manifest.clone();
+    for (manifest, expected) in [
+        (
+            {
+                let mut m = valid.clone();
+                m.title.clear();
+                m
+            },
+            "title",
+        ),
+        (
+            {
+                let mut m = valid.clone();
+                m.disks[0].id.clear();
+                m
+            },
+            "unique",
+        ),
+        (
+            {
+                let mut m = valid.clone();
+                m.disks.push(m.disks[0].clone());
+                m
+            },
+            "unique",
+        ),
+        (
+            {
+                let mut m = valid.clone();
+                m.disks[0].path = "../escape.adf".into();
+                m
+            },
+            "relative path",
+        ),
+        (
+            {
+                let mut m = valid.clone();
+                m.mounted[1] = Some("unknown".into());
+                m
+            },
+            "Unknown mounted",
+        ),
+        (
+            {
+                let mut m = valid.clone();
+                m.artwork = Some("../cover.png".into());
+                m
+            },
+            "relative path",
+        ),
+    ] {
+        assert!(manifest.validate().unwrap_err().contains(expected));
+    }
+    assert!(relative_asset(&root, "").is_err());
+    assert!(relative_asset(&root, "disks/disk.adf")
+        .unwrap()
+        .starts_with(&root));
+    let association = debugger::SaveAssociation {
+        game_id: Some(valid.id.clone()),
+        mounted: [Some("unknown".into()), None, None, None],
+    };
+    assert!(valid
+        .validate_association(&association)
+        .unwrap_err()
+        .contains("unknown disk"));
+    let duplicate = root.join("Duplicate");
+    std::fs::create_dir(&duplicate).unwrap();
+    std::fs::write(
+        duplicate.join("game.json"),
+        serde_json::to_vec(&valid).unwrap(),
+    )
+    .unwrap();
+    let malformed = root.join("Malformed");
+    std::fs::create_dir(&malformed).unwrap();
+    std::fs::write(malformed.join("game.json"), b"{").unwrap();
+    let library = GameLibrary::discover(&root).unwrap();
+    assert_eq!(library.games.len(), 1);
+    assert_eq!(library.games[0].manifest.id, valid.id);
+    assert_eq!(library.errors.len(), 2);
+    assert!(library
+        .errors
+        .iter()
+        .any(|e| e.contains("Duplicate game ID")));
+    assert!(library.errors.iter().any(|e| e.contains("Malformed")));
+}
+
+#[test]
+fn stale_edit_rejects_external_manifest_and_description_changes_without_writes() {
+    let root = root();
+    let mut draft = GameDraft::new("standard".into());
+    draft.name = "Original".into();
+    draft.description = "Original description".into();
+    let game = draft.save(&root).unwrap();
+    for manifest_change in [false, true] {
+        let mut edit = GameDraft::edit(game.clone());
+        edit.name = "Rename must fail".into();
+        edit.description = "Must not overwrite".into();
+        let mut current = game.manifest.clone();
+        if manifest_change {
+            current.configuration = "external-configuration".into();
+        }
+        let manifest = serde_json::to_vec(&current).unwrap();
+        std::fs::write(game.directory.join("game.json"), &manifest).unwrap();
+        let description = if manifest_change {
+            "Original description"
+        } else {
+            "External description"
+        };
+        std::fs::write(
+            game.directory.join(current.description.as_ref().unwrap()),
+            description,
+        )
+        .unwrap();
+        assert!(edit.save(&root).unwrap_err().contains("changed on disk"));
+        assert_eq!(
+            std::fs::read(game.directory.join("game.json")).unwrap(),
+            manifest
+        );
+        assert_eq!(
+            std::fs::read_to_string(game.directory.join(current.description.unwrap())).unwrap(),
+            description
+        );
+        assert!(!root.join("Rename must fail").exists());
+    }
+}

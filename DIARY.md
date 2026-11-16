@@ -2353,3 +2353,43 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - reference parser reported 24 files with syntax errors and partial extraction
   - canonical verification and independent review remain preparation gates
   - no performance or hardware correctness claim
+---
+
+### [2026-11-16 19:53 CET] — GAME-LIBRARY-INPUT-PLAYER-20261116: desktop library and player task closure
+- **Affected Subsystems**:
+  - `crates/gui`
+  - `crates/cpu`
+  - `crates/save_state`
+  - `crates/debugger`
+  - `crates/floppy`
+  - `crates/game_ports`
+  - `Obsidian/Amiga/Design`
+- **What Was Changed (The Concrete Reality)**:
+  - Deliver desktop game discovery and Add game / Edit game with copied ADF media and JPEG/PNG covers
+  - Add named hardware and input configurations with explicit independent Amiga port routing
+  - Provide a compact player panel with four drives and one session shared with Debug
+  - Preserve active CPU execution-sequence identity in version 10 snapshots with game/media associations and durable desktop progress
+  - Retain manual browser setup and explicit snapshot import/export with persistent settings but no media cache
+  - Prepare the user-selected external library with Amiga Test Kit, Workbench, Cadaver and a vAmigaTS diagnostic, preserving original source media
+- **Architectural Rationale & Trade-Offs**:
+  - The user requested a usable setup-to-disk path and library/player prototype, then authorized task closure with a rebase onto the current local master
+  - Static microcode arrays and host pointers are reconstructed from a serialized execution identity because opcode decoding alone loses redirected branch and exception sequences
+  - Host controls remain outside deterministic CCK execution and both game ports release on loss of capture or device availability
+  - Record only the delivered task scope, retaining broader roadmap acceptance and deferred physical-controller trials
+- **Verification & Test Results**:
+  - Before integration, the combined ordinary Cargo run passed 551 tests, and the later library/player GUI regressions passed 53 cases
+  - Native cross1 booted twice with identical milestones and a no-disk negative control, and Amiga Test Kit 1.21 reached its main menu
+  - Real-guest snapshots during floppy DMA resumed identically for 20000 CCK and the browser export/import retained exact CPU and CCK values
+  - Native and actual WASM builds, focused quality gates and wide/narrow visual checks passed before the rebase
+  - Source checkpoints ca665ac9e5a011db9392d0df2dd5ffd23542954f and 853f7aba7b9ae3ee54e11ab7f2c324c8e650ab6f were explicitly unverified integration working commits and became 1f9976389b6fa6c750896398da60323b4cb4d95a and aa3ab645a400fd7ec84a7414bb0cf88d0dd0a786 after the user-approved rebase onto de52e8efe3062e818cc1ec422e984e057eb7b72b
+  - Final combined acceptance is gated by the canonical commit profile, changed-code coverage review and four independent lanes, with final verdicts recorded in the closing commit
+  - Physical controller and real permission-dialog trials remain deferred, Workbench rendering artifacts also occur on the baseline, and complete Cadaver startup is unverified
+  - User approved the complete-state CPU architecture-test fixture and exactly Arc/Mutex permissions for the existing browser worker bootstrap
+  - No milestone or full SingleStep claim is made, and no remote publication was authorized
+
+  - Integration review reproduced and corrected stale host bindings after controller reassignment, durable game-slot menu availability, missing replacement confirmation, stale ROM selection and shortcuts escaping focused host text.
+  - Focused correction checks passed 55 GUI cases and three CPU continuation cases, including interrupt entry with wait states, short untaken branches and condition-true DBcc. Mouse port/sensitivity and keyboard-alias release assertions were added. The original slot-menu implementation was separately confirmed to report a persisted slot as empty.
+  - Direct and recent-ROM file operations now use the same reset confirmation, while invalid ROMs retain their original non-mutating error path. Tests preserve the existing load/history assertions after explicit confirmation.
+  - Confirmation rendering was checked across repeated GUI layout passes and visually inspected at 1024x600. The ROM/file regression group passed all 13 cases after the correction.
+  - The combined run exposed an older F5 fixture conflicting with focused-text priority. The test now verifies that F5 leaves the editor paused, then starts through Run and retains every frozen-editor assertion; all five frozen-inspection cases passed.
+  - Coverage review added behavioral protection for malformed library metadata and duplicate IDs, concurrent edit preservation, configuration conflicts and creation controls, selected-game Continue, disk switch/ejection acknowledgments, manual launch readiness and atomic rejection of incompatible player restores. A new assertion reproduced missing arrow-key frontend conflict detection; explicit physical-name normalization fixes all four directions.

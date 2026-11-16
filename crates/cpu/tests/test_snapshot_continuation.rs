@@ -40,6 +40,8 @@ fn redirected_branch_survives_every_cck_snapshot() {
 fn branches_exceptions_early_prefetch_and_partial_transfers_continue_exactly() {
     // Each case crosses dispatch, internal redirection, bus phases and retirement.
     for (program, d0, sr) in [
+        (vec![0x66fe], 0, 0x2704),         // short branch not taken
+        (vec![0x50c8, 0xfffc], 0, 0x2700), // DBT condition true
         (vec![0x6600, 0xfffc], 0, 0x2700),
         (vec![0x6600, 0xfffc], 0, 0x2704),
         (vec![0x51c8, 0xfffc], 0, 0x2700),
@@ -113,6 +115,50 @@ struct TracedBus {
     memory: PhysicalMemory,
     cck: u64,
     trace: Vec<(u64, u32, bool, u16, bool)>,
+}
+
+#[test]
+fn accepted_interrupt_entry_restores_with_waits_and_exact_future_transfers() {
+    let mut bus = TracedBus::new();
+    bus.memory
+        .write_bytes_debug(0x1000, &[0x4e, 0x71, 0x60, 0xfe])
+        .unwrap();
+    bus.memory
+        .write_bytes_debug(28 * 4, &0x2000u32.to_be_bytes())
+        .unwrap();
+    bus.memory.write_bytes_debug(0x2000, &[0x60, 0xfe]).unwrap();
+    let mut cpu = Cpu::new();
+    cpu.state.set_ssp(0x70000);
+    cpu.set_pc_and_prime_prefetch(0x1000, &mut bus);
+    cpu.state.set_sr(0x2000);
+    cpu.state.set_ipl(4);
+    assert!(cpu.check_and_trigger_interrupt());
+    assert!(serde_json::to_string(&cpu.state)
+        .unwrap()
+        .contains("\"Interrupt\""));
+    for boundary in 0..48 {
+        let encoded = serde_json::to_string(&cpu.state).unwrap();
+        let mut restored = Cpu::new();
+        restored.restore_state(serde_json::from_str(&encoded).unwrap());
+        let mut reference = cpu.clone();
+        let mut reference_bus = bus.clone();
+        let mut restored_bus = bus.clone();
+        reference_bus.trace.clear();
+        restored_bus.trace.clear();
+        for offset in 0..28 {
+            assert_eq!(
+                reference.step_cck(&mut reference_bus),
+                restored.step_cck(&mut restored_bus)
+            );
+            assert_eq!(
+                reference.state, restored.state,
+                "IRQ boundary {boundary}, offset {offset}"
+            );
+            assert_eq!(reference_bus.trace, restored_bus.trace);
+        }
+        assert_eq!(reference_bus.memory, restored_bus.memory);
+        cpu.step_cck(&mut bus);
+    }
 }
 impl TracedBus {
     fn new() -> Self {
