@@ -31,6 +31,7 @@ mod library_editor;
 pub mod playback;
 pub mod player;
 pub mod player_config;
+mod player_drive;
 mod player_view;
 mod shortcuts;
 pub mod theme;

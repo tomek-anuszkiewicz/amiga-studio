@@ -71,12 +71,13 @@ impl MachineOwner {
             halted: self.session.machine.cpu.state.is_halted(),
             stopped: self.session.machine.cpu.state.is_stopped(),
             ports: debugger::launch::port_kinds(&self.session),
+            drive_reset_sequence: self.session.machine.floppy.reset_sequence,
             drives: std::array::from_fn(|index| {
                 let drive = &self.session.machine.floppy.drives[index];
                 crate::host_commands::DriveStatus {
                     connected: drive.connected,
                     inserted: drive.disk_inserted,
-                    active: drive.motor_on,
+                    activity_sequence: drive.activity_sequence,
                 }
             }),
             quick_slots: std::array::from_fn(|index| self.session.has_quick_slot(index + 1)),

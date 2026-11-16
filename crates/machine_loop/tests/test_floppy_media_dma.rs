@@ -83,6 +83,10 @@ fn image_alone_supplies_exact_words_on_both_surfaces_and_video_clocks() {
             assert_eq!(actual, expected);
             assert_eq!(m.floppy.drives[0].side, side);
             assert_eq!(m.agnus.dskpt, 0x2018);
+            assert_eq!(m.floppy.drives[0].activity_sequence, 12);
+            assert!(m.floppy.drives[1..]
+                .iter()
+                .all(|drive| drive.activity_sequence == 0));
             assert_eq!(m.physical_memory.read_chip_word_debug(0x2018), 0);
             assert_eq!(m.paula.dsklen & 0x3fff, 0);
             assert_eq!(m.paula.interrupts.intreq & 0x1002, 0x1002);

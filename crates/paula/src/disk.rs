@@ -37,6 +37,8 @@ pub struct DiskEngine {
     was_writing: bool,
     /// One-CCK internal source pulses, sampled after due INTREQ writes.
     pub irq_pending: u16,
+    /// Retained observation for the machine owner, independent of raw flux pulses.
+    pub activity_pending: bool,
 }
 
 impl Default for DiskEngine {
@@ -59,6 +61,7 @@ impl Default for DiskEngine {
             write_draining: false,
             was_writing: false,
             irq_pending: 0,
+            activity_pending: false,
         }
     }
 }
@@ -153,6 +156,7 @@ impl Paula {
             return None;
         }
         let word = self.disk.pop()?;
+        self.disk.activity_pending = true;
         self.dskdat = word;
         self.count_disk_word();
         Some(word)
@@ -242,6 +246,7 @@ impl Paula {
                 return;
             };
             self.disk.write_shift = word;
+            self.disk.activity_pending = true;
             self.disk.write_bits = WORD_BITS;
         }
         self.pins.disk_write_enable = true;

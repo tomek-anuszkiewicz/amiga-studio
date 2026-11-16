@@ -479,3 +479,4 @@ gamepaddisconnected
 questionmark
 exclamationmark
 submenu
+epaint
