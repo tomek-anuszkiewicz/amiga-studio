@@ -8,10 +8,12 @@ use std::{fs, path::Path};
 
 const CONTROL_PERIOD: u16 = 4096;
 const CARRIER_PERIOD: u16 = 256;
-const PLATEAU_WORDS: usize = 64;
+const PLATEAU_WORDS: usize = 16;
 const PLATEAU_CCK: u64 = PLATEAU_WORDS as u64 * 2 * CONTROL_PERIOD as u64;
-const ANALYSIS_SAMPLES: usize = 4096;
-const CARRIER_HARMONIC: usize = 11;
+const ANALYSIS_SAMPLES: usize = 1024;
+// The higher carrier retains at least twenty crossings in each short plateau,
+// including the doubled-period case, with the same frequency and ratio bounds.
+const CARRIER_HARMONIC: usize = 37;
 
 #[derive(Clone, Copy)]
 enum Attachment {

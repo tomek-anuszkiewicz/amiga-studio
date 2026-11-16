@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "testing"
 status: "active"
 created: 2026-09-14
-updated: 2026-11-15
+updated: 2026-11-16
 related: ["[General Architecture.md](../General%20Architecture.md)", "[CPU SingleStepTests.md](CPU%20SingleStepTests.md)", "[CPU Instruction Benchmarking.md](../Performance/CPU%20Instruction%20Benchmarking.md)", "[Machine Loop.md](../Machine%20Loop.md)", "[Platform Quirks and Invariants Catalog.md](../Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
 tracked_paths:
   - "crates/test_runner/tests"
@@ -166,6 +166,15 @@ describes commands and environment settings. Staging is optional, and completion
 evidence must match the final committed source. Ordinary `test python` runs only
 contracts affected by changed tool inputs or shared dependencies; explicit
 directory selection runs that suite regardless of changed paths.
+
+Host pacing, FPS, presentation independence, speed/overload behavior and pause
+presentation are evaluated manually. Dedicated graphical-program execution and
+image assertion campaigns have been removed. Graphical guest programs remain
+available for manual observation and FPS measurements. Independent correctness
+tests may still use them as fixtures, including display-state persistence and
+continuation. CPU, chip, bus, input correctness and host command/lifecycle contracts
+retain their independent automated checks. Audio captures use short useful
+signals while retaining their stated spectral and attachment acceptance limits.
 
 Scoped design review, vault checks and workflow maintenance use their owning
 skills. Milestone semantic review follows [audit-semantic-parity](../../../../.agents/skills/audit-semantic-parity/SKILL.md).

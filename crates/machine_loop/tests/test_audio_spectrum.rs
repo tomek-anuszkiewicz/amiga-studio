@@ -18,8 +18,10 @@ mod cia;
 const RATE: f64 = 44_100.0;
 const PERIOD: u16 = 128;
 const TABLE_SIZE: usize = 256;
-const SETTLING: usize = 4410;
-const WINDOW: usize = 16384;
+const SETTLING: usize = 441;
+const WINDOW: usize = 4096;
+// Retain the original frequency acceptance bound when shortening the capture.
+const PEAK_TOLERANCE_HZ: f64 = RATE / 16384.0 / 4.0;
 const RIGHT_TONES: [(usize, f64); 3] = [(5, 36.0), (37, 28.0), (83, 20.0)];
 const LEFT_TONES: [(usize, f64); 1] = [(11, 48.0)];
 
@@ -217,9 +219,11 @@ struct Spectrum {
 
 impl Spectrum {
     fn passes(&self) -> bool {
-        self.tones.iter().chain(&self.images).all(|tone| {
-            tone.error_db.abs() < 0.5 && tone.peak_offset_hz.abs() <= RATE / WINDOW as f64 / 4.0
-        }) && self.residual_db < -35.0
+        self.tones
+            .iter()
+            .chain(&self.images)
+            .all(|tone| tone.error_db.abs() < 0.5 && tone.peak_offset_hz.abs() <= PEAK_TOLERANCE_HZ)
+            && self.residual_db < -35.0
             && self.alias_db < -45.0
             && self.foreign_tone_db < -42.0
     }
@@ -256,7 +260,7 @@ fn analyze(
             let phase = TAU * frequency * n as f64 / RATE;
             *value -= cosine * phase.cos() + sine * phase.sin();
         }
-        let quarter_bin = RATE / samples.len() as f64 / 4.0;
+        let quarter_bin = PEAK_TOLERANCE_HZ;
         let mut peak = (measured, 0.0);
         for offset in [-4, -3, -2, -1, 1, 2, 3, 4] {
             let delta = f64::from(offset) * quarter_bin;
@@ -331,7 +335,7 @@ fn dma_waveforms_reconstruct_expected_spectra_in_exported_wav() {
                     !analyze(&left, &right_source, &RIGHT_TONES, 11, dac_rate, filter).passes()
                 );
                 let mut missing = right.clone();
-                missing.drain(4000..4882);
+                missing.drain(1000..1882);
                 missing.resize(WINDOW, 0.0);
                 assert!(
                     !analyze(&missing, &right_source, &RIGHT_TONES, 11, dac_rate, filter).passes()

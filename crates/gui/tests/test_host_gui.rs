@@ -8,33 +8,6 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
-#[test]
-fn paused_gui_settles_without_clock_reply_repaint_or_repeated_video_upload() {
-    let context = Context::default();
-    let mut app = EmulatorApp::default();
-    common::settle(&mut app, &context);
-    let deadline = Instant::now() + Duration::from_secs(10);
-    loop {
-        let output = context.run(RawInput::default(), |context| app.update_ui(context));
-        if app.host.is_idle()
-            && output.viewport_output[&ViewportId::ROOT].repaint_delay > Duration::from_millis(10)
-        {
-            assert!(
-                output.textures_delta.set.is_empty(),
-                "Paused GUI reuploaded video"
-            );
-            break;
-        }
-        assert!(
-            Instant::now() < deadline,
-            "Paused GUI continuously requested repaint"
-        );
-        std::thread::sleep(Duration::from_millis(1));
-    }
-    assert!(!app.host.status.running);
-    assert_eq!(app.host.status.cck, 0);
-}
-
 #[derive(Default)]
 struct Storage(HashMap<String, String>);
 

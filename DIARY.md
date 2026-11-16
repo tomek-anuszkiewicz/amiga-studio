@@ -1945,3 +1945,19 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Bootstrap catalog contracts and recipe checks are historical results recorded by the original commits
   - No recipe was regenerated and whole-book quality was not reassessed
   - Integrated canonical verification and four independent review lanes are pending
+---
+
+### [2026-11-16 09:42 CET] — TEST-RUNTIME-AND-VALUE-20261116: shorten audio captures and retire presentation campaigns
+- **Affected Subsystems**:
+  - `crates/gui/tests`
+  - `crates/machine_loop/tests`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove thirteen pacing and graphical-program assertion cases while preserving guest assets and manual measurement examples
+  - Shorten PAL and NTSC audio WAV captures to about 120 ms without widening acceptance bounds
+- **Architectural Rationale & Trade-Offs**:
+  - Apply the recorded user decision to evaluate presentation and FPS manually while retaining CPU chip bus input and host command correctness checks
+- **Verification & Test Results**:
+  - Three audio cases passed before and after with execution falling from 6.88 s to 1.76 s outside compilation
+  - Twenty-seven focused GUI input and host cases passed
+  - Browser build and formatting passed
+  - No whole-commit speedup or hardware agreement is established
