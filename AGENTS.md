@@ -60,8 +60,7 @@ Read applicable domain rules before editing that domain. Choose direct source in
 | Merge or worktree | [Merge policy and required procedures](.agents/rules/git-merge-commits.md) |
 | Reference conversion bootstrap | Read [bootstrap instructions](tools/bootstrap/AGENTS.md), then the applicable [PDF](tools/bootstrap/pdf-to-markdown/README.md) or [HTML](tools/bootstrap/html-to-markdown/README.md) program README and [converter testing scope](.agents/rules/unit-testing-policy.md#bootstrap-converter-scope) |
 
-Skill names and descriptions in `.agents/skills/` guide selection. Read the selected
-`SKILL.md` and execute required procedures; discovery alone does not execute a skill.
+Read the selected `SKILL.md` and execute required procedures; discovery alone does not execute a skill.
 
 Roles live in `.codex/agents/*.toml`; delegate only when requested by the user or
 applicable instructions. Batches require four `code_reviewer` instances

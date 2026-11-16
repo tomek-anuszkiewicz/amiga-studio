@@ -19,12 +19,12 @@ fn reading(standard: VideoStandard, side: u8, words: u16) -> A500Machine {
     common::cia::configure_drive_control_outputs(m);
     assert!(m
         .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_DSKPTL, 0x2000));
+        .write_custom_word(custom_reg::agnus::REGISTER_DSKPTL, 0x2000, "DMA"));
     assert!(m.paula.set_dsksync(0x4489));
     assert!(m.paula.set_adkcon(0x8500));
     assert!(m
         .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_DMACON, 0x8210));
+        .write_custom_word(custom_reg::agnus::REGISTER_DMACON, 0x8210, "DMA"));
     assert!(m.paula.set_dsklen(0x8000 | words));
     m.step_cycles(3);
     assert!(!m.paula.dma_active);
@@ -44,7 +44,10 @@ fn complete(machine: &mut A500Machine) -> Vec<(u64, u16)> {
         machine.step_cck();
         if machine.agnus.dskpt != pointer {
             assert_eq!(machine.agnus.dskpt, pointer + 2);
-            transfers.push((machine.cck, machine.physical_memory.read_chip_word(pointer)));
+            transfers.push((
+                machine.cck,
+                machine.physical_memory.read_chip_word_debug(pointer),
+            ));
             pointer += 2;
         }
         if !machine.paula.dma_active {
@@ -80,7 +83,7 @@ fn image_alone_supplies_exact_words_on_both_surfaces_and_video_clocks() {
             assert_eq!(actual, expected);
             assert_eq!(m.floppy.drives[0].side, side);
             assert_eq!(m.agnus.dskpt, 0x2018);
-            assert_eq!(m.physical_memory.read_chip_word(0x2018), 0);
+            assert_eq!(m.physical_memory.read_chip_word_debug(0x2018), 0);
             assert_eq!(m.paula.dsklen & 0x3fff, 0);
             assert_eq!(m.paula.interrupts.intreq & 0x1002, 0x1002);
             assert!(m.cpu.state.d_long(0) > 0);
@@ -120,7 +123,7 @@ fn raw_dma_crosses_track_gap_and_wrap_without_restarting_the_spindle() {
     // Keep the acquired alignment, then retain subsequent sync words as raw data.
     assert!(m.paula.set_adkcon(0x0400));
     complete(&mut m);
-    let word = |i: u32| m.physical_memory.read_chip_word(0x2000 + i * 2);
+    let word = |i: u32| m.physical_memory.read_chip_word_debug(0x2000 + i * 2);
     assert_eq!(
         (word(0), word(1), word(2), word(3)),
         (0x552a, 0xaaa5, 0x552a, 0xaaa9)

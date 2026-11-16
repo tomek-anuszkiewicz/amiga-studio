@@ -3,6 +3,7 @@ import contextlib
 import io
 from pathlib import Path
 import sys
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -367,6 +368,12 @@ class ExecutionTests(unittest.TestCase):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name)
+        subprocess.run(["git", "init", "-q"], cwd=self.root, check=True)
+        tree = subprocess.check_output(["git", "mktree"], input=b"", cwd=self.root).decode().strip()
+        revision = subprocess.check_output(
+            ["git", "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid",
+             "commit-tree", tree, "-m", "fixture"], cwd=self.root).decode().strip()
+        subprocess.run(["git", "update-ref", "HEAD", revision], cwd=self.root, check=True)
         self.enterContext(patch.object(verify, "REPO_ROOT", self.root))
 
     def test_exact_rust_run_rejects_zero_matching_tests(self):

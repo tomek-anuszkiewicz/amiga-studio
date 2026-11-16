@@ -359,7 +359,8 @@ class ContinuationTests(unittest.TestCase):
         self.phases[1][1][0][1][-1] += (
             "\nimport os,time\n"
             "if not Path('.agent/tmp/ready').exists():\n"
-            "    Path('.agent/tmp/ready').write_text(str(os.getpid()))\n"
+            "    ready = Path('.agent/tmp/ready'); pending = ready.with_suffix('.pending')\n"
+            "    pending.write_text(str(os.getpid())); pending.replace(ready)\n"
             "    deadline = time.monotonic() + 20\n"
             "    while not Path('.agent/tmp/release').exists() and time.monotonic() < deadline: time.sleep(0.02)\n")
         with tempfile.TemporaryFile() as log, subprocess.Popen(
@@ -478,6 +479,7 @@ class ContinuationTests(unittest.TestCase):
         version = subprocess.CompletedProcess([], 0, stdout=b"version", stderr=b"")
         with patch.dict(evidence.os.environ, {"CODEX_TOOL_CALL_ID": "first", "RUSTFLAGS": ""}), \
              patch.object(evidence.subprocess, "run", return_value=version), \
+             patch.object(evidence.platform, "platform", return_value="fixture-platform"), \
              patch.object(evidence.importlib.metadata, "distributions", return_value=[]), \
              patch.object(evidence, "file_digest", return_value="content"):
             original = evidence.execution_conditions(self.root)
@@ -494,6 +496,7 @@ class ContinuationTests(unittest.TestCase):
                                                stderr=b"")
 
         with patch.object(evidence.subprocess, "run", side_effect=version), \
+             patch.object(evidence.platform, "platform", return_value="fixture-platform"), \
              patch.object(evidence.importlib.metadata, "distributions", return_value=[]), \
              patch.object(evidence, "file_digest", return_value="content"):
             original = evidence.execution_conditions(self.root)
@@ -671,11 +674,20 @@ class ContinuationTests(unittest.TestCase):
             self.assertEqual(self.run_profile(), 1, self.output)
             self.assertEqual(self.record()["groups"]["Coverage"]["status"], "passed")
             self.assertEqual(self.record()["groups"]["Verification CLI contracts"]["status"], "failed")
+            rows = self.record()["timing_report"]["rows"]
+            self.assertTrue(any(row["group"] == "Coverage" and row["status"] == "executed" for row in rows))
+            self.assertTrue(any(row["group"] == "Verification CLI contracts" and row["status"] == "failed"
+                                for row in rows))
             before = self.events().count("coverage")
             contracts[-1] = contracts[-1].replace("sys.exit(1)\n", "")
             self.assertEqual(self.run_profile(), 0, self.output)
             self.assertEqual(self.events().count("coverage"), before)
             self.assertEqual(self.record()["results"]["Coverage"]["status"], "reused")
+            rows = self.record()["timing_report"]["rows"]
+            self.assertTrue(any(row["group"] == "Coverage" and row["status"] == "reused"
+                                and row["seconds"] is None for row in rows))
+            self.assertTrue(any(row["group"] == "Verification CLI contracts" and row["status"] == "executed"
+                                for row in rows))
 
     def test_parallel_coverage_failure_stops_export_and_preserves_contract_outcome(self):
         failed = self.child("tests")
@@ -688,6 +700,9 @@ class ContinuationTests(unittest.TestCase):
         self.assertCountEqual(self.events(), ["prepare", "tests", "contracts"])
         self.assertEqual(self.record()["groups"]["Coverage"]["status"], "failed")
         self.assertEqual(self.record()["groups"]["Verification CLI contracts"]["status"], "passed")
+        rows = self.record()["timing_report"]["rows"]
+        self.assertTrue(any(row["title"] == "Tests" and row["status"] == "failed" for row in rows))
+        self.assertTrue(any(row["title"] == "Export" and row["status"] == "missing" for row in rows))
 
     def test_parallel_source_edit_invalidates_the_combined_attempt(self):
         edit = self.barrier_child("edit", "edit-ready", "peer-ready")

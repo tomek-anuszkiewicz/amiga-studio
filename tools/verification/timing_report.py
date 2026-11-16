@@ -49,7 +49,8 @@ def render(root, profile, revision, rows, wall_seconds):
         scope = "; ".join(command_scope(root, command) for command in row["commands"])
         scope = scope.replace("|", "\\|").replace("\n", " ").replace("<", "&lt;").replace(">", "&gt;")
         lines.append(f"| {row['phase']} | {label} | {scope} | {row['status']} | {current} | {retained} |")
-    lines += ["", "Command durations are sequential wall times, not summed parallel test-case CPU time.",
+    lines += ["", "Each command duration is wall time. Concurrent commands overlap, so their durations",
+              "must not be added to obtain invocation wall time or test-case CPU time.",
               "This report is output only; it is not a verification input or a replacement for logs.", ""]
     return "\n".join(lines)
 

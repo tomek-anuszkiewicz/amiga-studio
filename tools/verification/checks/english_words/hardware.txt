@@ -1,6 +1,5 @@
 # Reviewed hardware vocabulary. One explicit term per line.
 abcd
-ackdma
 adc
 adda
 addq
@@ -19,7 +18,6 @@ asl
 asr
 aud
 auddat
-auddma
 audlc
 audlch
 audlcl
@@ -44,7 +42,6 @@ bcd
 bchg
 bclr
 bcs
-beamcounter
 beq
 berr
 bgt
@@ -91,7 +88,6 @@ brite
 bset
 bsr
 btst
-busen
 bvc
 bvs
 bzero
@@ -125,7 +121,6 @@ copen
 copint
 copjmp
 cpu
-cpuok
 cra
 crb
 csync
@@ -170,9 +165,6 @@ dma
 dmacon
 dmaen
 dmal
-dmareq
-dmas
-dmaspc
 dmod
 dn
 dpc
@@ -193,7 +185,6 @@ dtr
 eclk
 eclock
 eclocks
-ecpu
 ecs
 ehb
 eor
@@ -204,7 +195,6 @@ exg
 exram
 extick
 fastram
-fci
 ff
 fff
 fffc
@@ -239,7 +229,6 @@ kbclock
 kbdata
 kbits
 kbreset
-keycodes
 lch
 lds
 lof
@@ -262,7 +251,6 @@ movem
 movep
 moveq
 msb
-msbsync
 msw
 muls
 mulu
@@ -283,7 +271,6 @@ pbon
 pcm
 playfield
 playfields
-pll
 postincrement
 postincrements
 potdat
@@ -298,11 +285,9 @@ pth
 ptl
 ras
 rdy
-reqdma
 resync
 rga
 rol
-roms
 ror
 roxl
 roxr
@@ -324,8 +309,6 @@ sls
 slt
 smi
 sne
-sof
-spi
 spl
 sprctl
 sprdata
@@ -360,11 +343,8 @@ tpi
 trackdisk
 trapv
 trk
-ttl
 txd
-uartbrk
 uds
-unclocked
 undriven
 unlk
 usea
@@ -385,3 +365,24 @@ xtal
 β
 δ
 δmode
+ackdma
+auddma
+beamcounter
+busen
+cpuok
+dmareq
+dmas
+dmaspc
+ecpu
+pll
+reqdma
+sof
+spi
+ttl
+fci
+uartbrk
+msbsync
+roms
+keycodes
+vbi
+unclocked

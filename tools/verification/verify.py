@@ -73,10 +73,10 @@ def main(argv=None):
             print(f"{result_label(False)} {error}")
             return 1
     if args.plan:
-        return run_verification(parser, args)
+        return run_verification(parser, args, started)
     try:
         with VerificationLock(REPO_ROOT):
-            return run_verification(parser, args)
+            return run_verification(parser, args, started)
     except BlockingIOError as error:
         print(f"{result_label(False)} {error}")
         return 1
@@ -88,7 +88,7 @@ def main(argv=None):
         return 130
 
 
-def run_verification(parser, args):
+def run_verification(parser, args, started):
     """Select and execute work under the entry-point lock, or preview it without one."""
     before = None
     batch = None

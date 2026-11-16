@@ -1647,7 +1647,6 @@ Every authorized repository commit adds a concise entry here. Logging and compac
 ---
 
 ### [2026-11-15 10:53 CET] — Track verifier command trees with Windows Job Objects
-
 > Historical: This mechanism is unavailable after VERIFICATION-LOCK-SIMPLIFICATION-20261116. Checkout-level locking replaces command-tree ownership and telemetry cleanup.
 - **Affected Subsystems**:
   - `tools/verification`
@@ -1862,7 +1861,6 @@ Every authorized repository commit adds a concise entry here. Logging and compac
 ---
 
 ### [2026-11-15 22:08 CET] — Stop verification-owned MSVC telemetry at job completion
-
 > Historical: This mechanism is unavailable after VERIFICATION-LOCK-SIMPLIFICATION-20261116. Checkout-level locking replaces command-tree ownership and telemetry cleanup.
 - **Affected Subsystems**:
   - `Windows verification process ownership`
@@ -1878,58 +1876,40 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Canonical verification and independent review are pending
 ---
 
-
----
-
-### [2026-11-16 01:03 CET] — MEMORY-ACCESS-INVARIANTS-20261115 / MUTATION-QUEUE-OVERFLOW-20261115: enforce fatal runtime invariants
+### [2026-11-15 23:15 CET] — NATIVE-DISK-BRING-UP-20261115: native disk execution and closure
 - **Affected Subsystems**:
-  - `CPU`
-  - `Physical memory`
-  - `Custom chips and CIA`
+  - `Floppy`
   - `Machine loop`
-  - `Native and browser GUI`
-  - `Save states`
+  - `Save state`
+  - `Roadmap and specifications`
 - **What Was Changed (The Concrete Reality)**:
-  - Make Chip RAM private and count CPU and DMA transfers against one serialized budget per CCK
-  - Guard CPU attempts and read/write phases in both execution engines, including waits and TAS
-  - Make mutation queue overflow and earlier shared-register/CIA preflights fatal before partial delivery
-  - Report the original diagnostic at the native owner or browser worker boundary, reject later work and finish shutdown without waiting for the failed owner
-  - Migrate fixtures and the benchmark bus to explicit cycles and require admission state in save format 9
-  - Apply the approved function-scoped panic permission, CPU dependency on config and removal of the obsolete empty raw-buffer test while retaining open-bus address behavior
-  - Reject instruction retirement before read completion, preserve rejected disk requests, and retain the first native diagnostic across flag/completion and poisoned-mailbox races
-  - Remove the unused block-injection helper, reuse physical byte inspection in the debug bank paths and reconcile active retry/dependency descriptions
+  - Generate circular timed ADF tracks through production pins and DMA
+  - preserve media on electronic reset and serialize usable tracks
+  - prove original cross1 startup and repeated Copper results
+  - record the separate Workbench attempt
+  - prepare roadmap pruning and integrate settled chipset closure into Chapters 15 and 16
 - **Architectural Rationale & Trade-Offs**:
-  - Stop internal violations before rejected side effects while preserving guest exceptions, ordinary waits, queue capacities and propagation timing
-  - Keep both checks enabled in optimized builds
-  - User approved the narrow panic and dependency permissions and the one obsolete test removal
-  - Older snapshot formats are unsupported under the existing pre-release policy
+  - Complete native guest startup without injected payloads or substituted system services
+  - retain independent hardware ownership and evidence boundaries
 - **Verification & Test Results**:
-  - Focused owning suites passed, including 200 component tests, 124 GUI tests and 20 persistence tests
-  - Seven CPU admission tests and physical admission tests passed in debug and release
-  - Sampled SingleStep verification passed 6350 vectors with state, clocks and bus comparisons retained
-  - Current architecture, Clippy, formatting, real browser build and actual Rust/Wasm fatal delivery passed
-  - All 11 TAS benchmark cases executed after fixture migration
-  - Final interleaved original/candidate comparison measured 123.442 to 119.584 FPS mixed and 211.130 to 198.452 FPS CPU/Fast RAM, reductions of 3.13 and 6.00 percent
-  - Native worker timing spread overlaps and no browser throughput or full hardware capture result is claimed
-  - Final optimized profiles and matching source/binary identities remain in task artifacts
-  - New CPU retirement and disk-admission regressions failed before their fixes and pass afterward; deterministic native failure classification passes in debug and release
-  - Reviewed changed coverage spans after extending repeated-clock, pending-retirement, replacement-preflight and unavailable-disk-data tests
-  - Native coverage omits source-owning test modules and Wasm, which have separate direct and browser evidence; poisoned-mailbox forwarding branches were not exercised
+  - Focused floppy and autonomous DMA suites pass
+  - cross1 boots twice at CCK 14752752 and no-disk control lacks its signature
+  - Workbench bootblock DOS and named task observed within 60 seconds with corrupted frame
+  - full image agreement and media writes remain unverified
+  - canonical closure profiles and independent review pending
 ---
 
-### [2026-11-16 08:26 CET] — Publish Windows verification fixture readiness atomically
+### [2026-11-15 23:32 CET] — Review imported books through one catalog server
 - **Affected Subsystems**:
-  - `Verification CLI test fixtures`
+  - `tools/bootstrap/book-to-markdown`
 - **What Was Changed (The Concrete Reality)**:
-  - Write the detached test child PID to a temporary file and atomically rename it to the ready marker after closing the complete payload
-  - Preserve all process ownership assertions, timeouts, telemetry identity checks and required gates
+  - Discover imported book variants in a browser catalog
+  - Bind editor requests and render queues to the selected book
+  - Keep PDF page and pane width per book
+  - Replace per-book server arguments with browser selection
 - **Architectural Rationale & Trade-Offs**:
-  - Two canonical attempts reproduced reading an empty ready file before write_text finished, followed by cleanup sharing errors
-  - Readiness must mean the complete PID is available rather than only that a file was opened
+  - Allow separate browser tabs to review books without redirecting edits to another book
 - **Verification & Test Results**:
-
----
-
   - Book library contracts passed
   - PowerShell parser and usage checks passed
   - Status reports five books and no pending renders or errors for the two opened books
@@ -1969,9 +1949,90 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Integrated canonical verification and four independent review lanes are pending
 ---
 
+### [2026-11-16 12:12 CET] — Plan debugger register and chip-state screen layout
+- **Affected Subsystems**:
+  - `ROADMAP.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Add planned item 5.5 linking custom-chip and CIA register inspection with internal chip-state views and screen layout
+  - Consider tabs and grouped panels while leaving the final layout undecided
+- **Architectural Rationale & Trade-Offs**:
+  - Make hardware activity inspectable within the debugger's available screen space
+- **Verification & Test Results**:
+  - Tests and automated verification and independent review were not run at the user's explicit request
 
+### [2026-11-13 00:08 CET] — Complete book-derived chipset reconstruction
+- **Affected Subsystems**:
+  - `chipset`
+  - `peripherals`
+  - `machine loop`
+  - `GUI`
+  - `save state`
+  - `verification`
+  - `design specifications`
+- **What Was Changed (The Concrete Reality)**:
+  - Close CHIPSET-BOOK-REBUILD-20261111 and Roadmap 2.4
+  - Consolidate the completed stage in Chapter 15 and retain guest acceptance in 2.5
+  - Repair the isolated WASM build
+- **Architectural Rationale & Trade-Offs**:
+  - Preserve register transport
+  - hardware ownership and independent verification while replacing engines
+- **Verification & Test Results**:
+  - Previous final-source commit and milestone profiles passed, including 128 SingleStep groups and 1002737 current vectors
+  - The isolated WASM check initially failed on two unused GUI parameters and passed after the repair
+  - Prior live GUI inspection and extended source review passed
+  - Renewed final-source profile and review outcomes are recorded in the closing commit
 ---
 
+### [2026-11-16 01:03 CET] — MEMORY-ACCESS-INVARIANTS-20261115 / MUTATION-QUEUE-OVERFLOW-20261115: enforce fatal runtime invariants
+- **Affected Subsystems**:
+  - `CPU`
+  - `Physical memory`
+  - `Custom chips and CIA`
+  - `Machine loop`
+  - `Native and browser GUI`
+  - `Save states`
+- **What Was Changed (The Concrete Reality)**:
+  - Make Chip RAM private and count CPU and DMA transfers against one serialized budget per CCK
+  - Guard CPU attempts and read/write phases in both execution engines, including waits and TAS
+  - Make mutation queue overflow and earlier shared-register/CIA preflights fatal before partial delivery
+  - Report the original diagnostic at the native owner or browser worker boundary, reject later work and finish shutdown without waiting for the failed owner
+  - Migrate fixtures and the benchmark bus to explicit cycles and require admission state in save format 9
+  - Apply the approved function-scoped panic permission, CPU dependency on config and removal of the obsolete empty raw-buffer test while retaining open-bus address behavior
+  - Reject instruction retirement before read completion, preserve rejected disk requests, and retain the first native diagnostic across flag/completion and poisoned-mailbox races
+  - Remove the unused block-injection helper, reuse physical byte inspection in the debug bank paths and reconcile active retry/dependency descriptions
+- **Architectural Rationale & Trade-Offs**:
+  - Stop internal violations before rejected side effects while preserving guest exceptions, ordinary waits, queue capacities and propagation timing
+  - Keep both checks enabled in optimized builds
+  - User approved the narrow panic and dependency permissions and the one obsolete test removal
+  - Older snapshot formats are unsupported under the existing pre-release policy
+- **Verification & Test Results**:
+  - Focused owning suites passed, including 200 component tests, 124 GUI tests and 20 persistence tests
+  - Seven CPU admission tests and physical admission tests passed in debug and release
+  - Sampled SingleStep verification passed 6350 vectors with state, clocks and bus comparisons retained
+  - Current architecture, Clippy, formatting, real browser build and actual Rust/Wasm fatal delivery passed
+  - All 11 TAS benchmark cases executed after fixture migration
+  - Final interleaved original/candidate comparison measured 123.442 to 119.584 FPS mixed and 211.130 to 198.452 FPS CPU/Fast RAM, reductions of 3.13 and 6.00 percent
+  - Native worker timing spread overlaps and no browser throughput or full hardware capture result is claimed
+  - Final optimized profiles and matching source/binary identities remain in task artifacts
+  - New CPU retirement and disk-admission regressions failed before their fixes and pass afterward; deterministic native failure classification passes in debug and release
+  - Reviewed changed coverage spans after extending repeated-clock, pending-retirement, replacement-preflight and unavailable-disk-data tests
+  - Native coverage omits source-owning test modules and Wasm, which have separate direct and browser evidence; poisoned-mailbox forwarding branches were not exercised
+---
+
+### [2026-11-16 08:26 CET] — Publish Windows verification fixture readiness atomically
+> Historical: The Windows Job Object fixture and its process-ownership protection are unavailable after VERIFICATION-LOCK-SIMPLIFICATION-20261116.
+- **Affected Subsystems**:
+  - `Verification CLI test fixtures`
+- **What Was Changed (The Concrete Reality)**:
+  - Write the detached test child PID to a temporary file and atomically rename it to the ready marker after closing the complete payload
+  - Preserve all process ownership assertions, timeouts, telemetry identity checks and required gates
+- **Architectural Rationale & Trade-Offs**:
+  - Two canonical attempts reproduced reading an empty ready file before write_text finished, followed by cleanup sharing errors
+  - Readiness must mean the complete PID is available rather than only that a file was opened
+- **Verification & Test Results**:
+  - Existing Windows Job fixture suite passed all nine tests after the change
+  - Canonical attempts before the fixture correction failed with empty-PID ValueError and cleanup sharing errors
+  - Emulator production code and reference values are unchanged by this prerequisite fix
 ### [2026-11-16 09:28 CET] — VERIFICATION-LOCK-SIMPLIFICATION-20261116: simplify verifier ownership
 - **Affected Subsystems**:
   - `tools/verification`
@@ -1990,8 +2051,137 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - git diff --check passed
   - POSIX execution is unrun
   - Canonical commit verification and four independent reviews are pending
+### [2026-11-16 09:41 CET] — GUI-MONITOR-IMAGE-FAILURE-20261116: wait for the monitor image before checking its upload
+- **Affected Subsystems**:
+  - `GUI integration tests`
+- **What Was Changed (The Concrete Reality)**:
+  - Capture the expected stopped CCK before transferring the session to the host
+  - Wait for the presented image to match the current generation and expected CCK and dimensions
+  - Retain every full-image, pixel, geometry, centering, UV and unchanged-framebuffer assertion
+- **Architectural Rationale & Trade-Offs**:
+  - Command replies and video use independent paths, so idle commands do not prove that the GUI has received an image
+  - Keep the command-idle predicate and existing timeout unchanged
+- **Verification & Test Results**:
+  - The unchanged test passed once and then reproduced the texture lookup failure naturally
+  - Controlled mailbox contention reproduced the same failure in all eight PAL/NTSC, interlace and view combinations
+  - All eight paired cases using the repaired waiting block passed the original assertions
+  - The complete GUI package passed 120 tests without failures or ignored tests
+  - The browser build and focused formatting checks passed
+  - Canonical commit verification is pending
+  - The historical failure logs remain unavailable, so the exact historical thread schedule is unverified
+### [2026-11-16 09:42 CET] — Publish Windows Job Object fixture readiness atomically
+> Historical: The Windows Job Object fixture and its process-ownership protection are unavailable after VERIFICATION-LOCK-SIMPLIFICATION-20261116.
+- **Affected Subsystems**:
+  - `tools/verification/tests/test_windows_job.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Write the complete PID to a temporary file and atomically replace the ready signal before the parent reads it
+- **Architectural Rationale & Trade-Offs**:
+  - The full tooling run demonstrated an empty-PID read and cleanup failure when file existence became visible before its contents
+  - Preserve every containment and cleanup assertion
+- **Verification & Test Results**:
+  - The initial 216-case run failed in this fixture
+  - All nine Windows Job Object cases and the corrected 218-case tooling suite passed
+### [2026-11-16 09:42 CET] — TEST-RUNTIME-AND-VALUE-20261116: report verification timings without invalidating inputs
+- **Affected Subsystems**:
+  - `tools/verification`
+  - `tests/test-runtime-report.md`
+  - `verification instructions and specifications`
+- **What Was Changed (The Concrete Reality)**:
+  - Generate a versioned timing report and grouped console summary from existing command timers
+  - Exclude this exact output from selection source stability input identities and language scans while sealing it in the candidate tree
+  - Select verification-tool contracts only for their owning code tests policies and consumed shared tooling
+- **Architectural Rationale & Trade-Offs**:
+  - Expose executed reused failed missing and skipped work without repeating tests to measure them
+  - Preserve required repository gates and detect real source edits
+- **Verification & Test Results**:
+  - All 218 focused tooling contracts passed after the separate PID fixture correction
+  - Six alternating reused fixture pairs measured median generation 24.608 ms and writing 0.528 ms with a noisy 87 ms end-to-end difference
+  - Input fixture profiling found 5.671 s of machine advance and 13 roughly 26 MB snapshots with 6.313 s acquisition plus 3.311 s decoding
+  - Emulator production code is unchanged and changed-code coverage review is inapplicable
+  - Canonical batch verification and independent review are recorded in the commit message
 ---
 
+### [2026-11-16 09:42 CET] — TEST-RUNTIME-AND-VALUE-20261116: shorten audio captures and retire presentation campaigns
+- **Affected Subsystems**:
+  - `crates/gui/tests`
+  - `crates/machine_loop/tests`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove thirteen pacing and graphical-program assertion cases while preserving guest assets and manual measurement examples
+  - Shorten PAL and NTSC audio WAV captures to about 120 ms without widening acceptance bounds
+- **Architectural Rationale & Trade-Offs**:
+  - Apply the recorded user decision to evaluate presentation and FPS manually while retaining CPU chip bus input and host command correctness checks
+- **Verification & Test Results**:
+  - Three audio cases passed before and after with execution falling from 6.88 s to 1.76 s outside compilation
+  - Twenty-seven focused GUI input and host cases passed
+  - Browser build and formatting passed
+  - No whole-commit speedup or hardware agreement is established
+---
+
+### [2026-11-16 09:47 CET] — GRAPHIFY-REFRESH-PERFORMANCE-20261116: cache source paths within each refresh
+- **Affected Subsystems**:
+  - `tools/graphify`
+  - `tools/worktree.ps1`
+  - `tools/bootstrap/bootstrap_graphify.ps1`
+  - `agent refresh procedures`
+- **What Was Changed (The Concrete Reality)**:
+  - Use a local Graphify 0.9.74 refresh command with per-instance path memoization
+  - Route bootstrap and worktree refresh callers through the command
+  - Retain full corpus extraction and resolver context
+  - Preserve deterministic default hash seeds and UTF-8 output across interpreter restarts
+  - Keep immutable reference freezing and unchanged-project preflight as active unfinished work
+- **Architectural Rationale & Trade-Offs**:
+  - Avoid repeated lexical path calculations without changing persisted graph semantics or the installed tool
+  - The reference-layer prototype still needs complete dependency invalidation before production use
+- **Verification & Test Results**:
+  - Ten refresh contracts and four worktree contracts pass
+  - PowerShell parsing and usage checks pass
+  - Comparable four-worker unchanged pair: 42.155 to 34.367 seconds
+  - Comparable four-worker one-function Rust pair: 54.128 to 46.910 seconds
+  - The original baseline uses the unmodified Graphify module CLI to retain importable worker startup
+  - Earlier console-launcher timings mixed sequential and parallel extraction and cannot attribute savings to memoization
+  - Both final pairs preserve the entire graph including attributes and communities
+  - These shared-host observations do not establish typical speedup
+  - The 24 existing partial-extraction warnings remain visible
+### [2026-11-16 11:04 CET] — Batch task integration with recoverable source cleanup
+- **Affected Subsystems**:
+  - `tools/verification`
+  - `.agents/rules`
+  - `.agents/skills/git-close-task`
+  - `Obsidian/Amiga/Design/Verification`
+- **What Was Changed (The Concrete Reality)**:
+  - Completed task git-close-task-batch-integration-20261116
+  - Extend the existing integration record with approved immutable sources and all-source publication locks
+  - Assemble real intermediate merges before one combined verification and bind their history through the recorded HEAD
+  - Retain operation-specific control records in the surviving checkout and report independently retryable source cleanup
+  - Update the owning rules and procedures plus affected reviewer criteria
+- **Architectural Rationale & Trade-Offs**:
+  - Preserve original task commits and single-source behavior while accepting only one combined target transition
+  - Keep cleanup recoverable after assembly removal and distinguish operations reaching the same commit
+  - This implements the workflow without integrating any live task branches
+- **Verification & Test Results**:
+  - Focused integration suite passed all 36 tests before the record-isolation correction
+  - The additional record-isolation regression passed and independently cleaned both source selections
+  - Skill validation passed
+  - Vault audit passed for 35 specifications and 1113 links
+  - Canonical commit verification and four final review verdicts follow in batch preparation
+  - Git fixtures establish tool behavior and process protections rather than hardware behavior
+---
+
+### [2026-11-16 11:35 CET] — Wait for the expected monitor image in the upload test
+- **Affected Subsystems**:
+  - `crates/gui/tests/test_interactions.rs`
+- **What Was Changed (The Concrete Reality)**:
+  - Apply the exact test correction from a2f604b with explicit user approval
+  - Wait for a presented image at the current generation and original stopped CCK with the expected dimensions before examining the texture
+  - Preserve every pixel and geometry assertion plus the existing timeout and command-idle checks
+- **Architectural Rationale & Trade-Offs**:
+  - The initial canonical profile failed the unchanged upload test because command replies may arrive before the independent video handoff
+  - Scope expansion is limited to this existing synchronization correction and does not change GUI runtime behavior
+- **Verification & Test Results**:
+  - The original canonical failure is retained in the batch evidence
+  - The corrected exact upload test passed all eight PAL and NTSC combinations with interlace and view selection
+  - The previous canonical attempt passed all 216 verification-tool contracts including 37 integration tests
+  - A complete canonical rerun and renewed four-lane review will cover the final two-commit batch
 ### [2026-11-16 12:03 CET] — PARALLEL-TEST-EXECUTION-PILOT-20261116: bound parallel verification without changing selected protection
 - **Affected Subsystems**:
   - `Verification coordinator`
@@ -2026,3 +2216,32 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Publish the complete PID through an owned pending file and atomic replacement without changing process-lifetime assertions or deadlines
   - All nine focused Windows process contracts passed after that fixture correction
   - Final canonical commit verification and four independent review verdicts are pending
+---
+
+### [2026-11-16 12:49 CET] — INTEGRATION-ALL-20261116: integrate seven source branches and close completed tasks
+- **Affected Subsystems**:
+  - `Emulator memory and host failure handling`
+  - `GUI regression protection`
+  - `Verification and local integration tooling`
+  - `Graphify refresh`
+- **What Was Changed (The Concrete Reality)**:
+  - Close MEMORY-ACCESS-INVARIANTS-20261115 and MUTATION-QUEUE-OVERFLOW-20261115 with their committed CPU bus guards shared Chip RAM budget fatal mutation preflights and native/browser failure reporting
+  - Close GUI-MONITOR-IMAGE-FAILURE-20261116 while preserving both source histories and one effective upload synchronization fix
+  - Integrate the delivered GRAPHIFY-REFRESH-PERFORMANCE-20261116 path memoization and caller updates while retaining its active plan and source checkout for unfinished reference-layer and preflight work
+  - Close TEST-RUNTIME-AND-VALUE-20261116 with the approved presentation-test retirement shorter audio captures scoped tooling contracts and generated timing data
+  - Close VERIFICATION-LOCK-SIMPLIFICATION-20261116 and PARALLEL-TEST-EXECUTION-PILOT-20261116 with one checkout lock bounded concurrent groups and nextest resource limits
+  - Close git-close-task-batch-integration-20261116 with immutable source selections conditional all-source publication and independently retryable cleanup
+  - Preserve f38576a and all eleven original task commits through local assembly merges 1152b01 3abe385 50cf735 8077e0c 2d86aef 5f6467a and cddb03b awaiting this combined verification
+  - Reconcile overlapping timing and lock changes and retain native disk snapshot requirements alongside CPU admission state; migrate the native disk DMA fixture to explicit producer labels and observational debug reads without changing assertions
+  - Remove completed plan copies and integrated source checkouts only after accepted local publication while retaining DOCUMENTATION-KNOWLEDGE-PRUNING-20261116 and unfinished Graphify work
+- **Architectural Rationale & Trade-Offs**:
+  - Verify one complete candidate against immutable target f38576a9d0cdad720b731f11c00531cd78ea16a0 rather than treating source-only results as acceptance
+  - Preserve approved test retirements without restoring obsolete Windows process-ownership code or tests
+  - Distinguish concurrent command durations from invocation wall time and preserve failed missing executed and reused report rows
+  - No roadmap stage completion or remote operation is implied
+- **Verification & Test Results**:
+  - Pinned FPGA manifests and hashes verified in primary and integration checkouts
+  - Focused continuation contracts passed 46 tests after correcting timer propagation across the entry-point lock wrapper
+  - Initial focused execution exposed that combined wrapper defect and failed before correction
+  - Added report assertions for concurrent failure continuation reuse and skipped coverage export; publish the rewritten lock fixture PID atomically and keep diagnostic report Git fixtures and platform-version mocks isolated
+  - Canonical combined commit verification coverage-span review vault audit graph refresh and four independent approvals are pending and their final outcome belongs in the integration commit
