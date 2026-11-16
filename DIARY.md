@@ -1945,3 +1945,20 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Bootstrap catalog contracts and recipe checks are historical results recorded by the original commits
   - No recipe was regenerated and whole-book quality was not reassessed
   - Integrated canonical verification and four independent review lanes are pending
+---
+
+### [2026-11-16 11:35 CET] — Wait for the expected monitor image in the upload test
+- **Affected Subsystems**:
+  - `crates/gui/tests/test_interactions.rs`
+- **What Was Changed (The Concrete Reality)**:
+  - Apply the exact test correction from a2f604b with explicit user approval
+  - Wait for a presented image at the current generation and original stopped CCK with the expected dimensions before examining the texture
+  - Preserve every pixel and geometry assertion plus the existing timeout and command-idle checks
+- **Architectural Rationale & Trade-Offs**:
+  - The initial canonical profile failed the unchanged upload test because command replies may arrive before the independent video handoff
+  - Scope expansion is limited to this existing synchronization correction and does not change GUI runtime behavior
+- **Verification & Test Results**:
+  - The original canonical failure is retained in the batch evidence
+  - The corrected exact upload test passed all eight PAL and NTSC combinations with interlace and view selection
+  - The previous canonical attempt passed all 216 verification-tool contracts including 37 integration tests
+  - A complete canonical rerun and renewed four-lane review will cover the final two-commit batch
