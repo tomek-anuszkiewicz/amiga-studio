@@ -109,18 +109,19 @@ function Update-WorktreeGraph {
         [string]$WorktreeRoot
     )
 
+    $refreshScript = Join-Path $PSScriptRoot 'graphify/refresh.py'
     $graphifyCommand = Get-Command graphify -ErrorAction SilentlyContinue
     if (-not $graphifyCommand) {
-        Write-Warning "graphify CLI is not available; copied graphify-out was not refreshed. Run 'graphify update .' inside the worktree when Graphify is available."
+        Write-Warning "graphify CLI is not available; copied graphify-out was not refreshed. After provisioning Graphify, run python `"$refreshScript`" from `"$WorktreeRoot`"."
         return
     }
 
     Write-Host ">> Refreshing Graphify knowledge graph in $WorktreeRoot..." -ForegroundColor Cyan
     Push-Location $WorktreeRoot
     try {
-        & $graphifyCommand.Path update .
+        & python $refreshScript
         if ($LASTEXITCODE -ne 0) {
-            Write-Warning "graphify update exited with code $LASTEXITCODE in $WorktreeRoot."
+            Write-Warning "Graphify refresh exited with code $LASTEXITCODE in $WorktreeRoot."
         }
     } finally {
         Pop-Location

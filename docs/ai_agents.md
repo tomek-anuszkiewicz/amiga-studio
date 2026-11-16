@@ -89,7 +89,7 @@ graphify path "Cpu" "BusResult"
 ```
 
 The graph helps locate source; the implementation and tests provide the behavior.
-The agent refreshes changed code once during batch preparation using `graphify update .`, or earlier when current graph data is needed for the task.
+The agent refreshes changed code once during batch preparation using `python tools/graphify/refresh.py`, or earlier when current graph data is needed for the task. The [refresh command](../tools/graphify/README.md) retains Graphify's full rebuild and memoizes path calculations within that rebuild.
 Setup and traversal details are in the
 [Graphify skill](../.agents/skills/graphify/SKILL.md).
 

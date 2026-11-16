@@ -459,6 +459,7 @@ frontends
 frontmatter
 ftp
 func
+functools
 functor
 fwd
 gamepad
@@ -647,6 +648,9 @@ mdash
 mediabox
 megachip
 mem
+memoization
+memoized
+memoizes
 metadata
 microarchitectural
 microbenchmarks
@@ -839,6 +843,7 @@ pseudocode
 pthread
 pwd
 px
+pythonhashseed
 pythonioencoding
 pythonunbuffered
 qa
@@ -953,6 +958,7 @@ serdatr
 serializable
 serper
 setaffinity
+setattr
 setclock
 sf
 sha

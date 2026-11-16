@@ -1945,3 +1945,30 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Bootstrap catalog contracts and recipe checks are historical results recorded by the original commits
   - No recipe was regenerated and whole-book quality was not reassessed
   - Integrated canonical verification and four independent review lanes are pending
+---
+
+### [2026-11-16 09:47 CET] — GRAPHIFY-REFRESH-PERFORMANCE-20261116: cache source paths within each refresh
+- **Affected Subsystems**:
+  - `tools/graphify`
+  - `tools/worktree.ps1`
+  - `tools/bootstrap/bootstrap_graphify.ps1`
+  - `agent refresh procedures`
+- **What Was Changed (The Concrete Reality)**:
+  - Use a local Graphify 0.9.74 refresh command with per-instance path memoization
+  - Route bootstrap and worktree refresh callers through the command
+  - Retain full corpus extraction and resolver context
+  - Preserve deterministic default hash seeds and UTF-8 output across interpreter restarts
+  - Keep immutable reference freezing and unchanged-project preflight as active unfinished work
+- **Architectural Rationale & Trade-Offs**:
+  - Avoid repeated lexical path calculations without changing persisted graph semantics or the installed tool
+  - The reference-layer prototype still needs complete dependency invalidation before production use
+- **Verification & Test Results**:
+  - Ten refresh contracts and four worktree contracts pass
+  - PowerShell parsing and usage checks pass
+  - Comparable four-worker unchanged pair: 42.155 to 34.367 seconds
+  - Comparable four-worker one-function Rust pair: 54.128 to 46.910 seconds
+  - The original baseline uses the unmodified Graphify module CLI to retain importable worker startup
+  - Earlier console-launcher timings mixed sequential and parallel extraction and cannot attribute savings to memoization
+  - Both final pairs preserve the entire graph including attributes and communities
+  - These shared-host observations do not establish typical speedup
+  - The 24 existing partial-extraction warnings remain visible

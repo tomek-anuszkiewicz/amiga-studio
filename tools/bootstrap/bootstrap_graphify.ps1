@@ -55,7 +55,7 @@ if (-not $GraphifyCmd) {
     Write-Host "  and dependencies across the codebase for semantic code queries and architectural navigation."
     Write-Host ""
     Write-Host "How to install Graphify:" -ForegroundColor Cyan
-    Write-Host "  pip install graphify" -ForegroundColor White
+    Write-Host "  uv tool install graphifyy==0.9.74" -ForegroundColor White
     Write-Host "  or see: https://github.com/graphify/graphify" -ForegroundColor White
     Write-Host ""
     Write-Host "NOTE: Graphify is optional and only used for AI code structure navigation." -ForegroundColor DarkGray
@@ -84,7 +84,7 @@ try {
     }
 
     if ($IncludesIgnoredSources) {
-        graphify update .
+        python tools/graphify/refresh.py
     } else {
         graphify extract . --no-gitignore --code-only --force
     }

@@ -33,7 +33,7 @@ Activate this skill whenever:
      - `tools/AmigaTestKit/` (test floppy ADFs)
      - `.agent/tmp/singlestep/` & `.agent/tmp/benchmarks/` (local execution snapshots and benchmark outputs)
      - `.env` (environment configuration, `RAG_CACHE_FILE`)
-   - **Local Knowledge Graphs:** Physically copy `graphify-out/` into each new worktree as a fast initial graph seed. Never link or share it. Immediately run `graphify update .` in the target worktree so the copied graph reflects that checkout.
+   - **Local Knowledge Graphs:** Physically copy `graphify-out/` into each new worktree as a fast initial graph seed. Never link or share it. The worktree script immediately refreshes the graph using the invoking checkout's `tools/graphify/refresh.py` with the target worktree as its root.
    - **Mandatory Script Use:** Always use `.\tools\worktree.ps1` to create and tear down worktrees. The script automatically executes multi-threaded physical copying of necessary test assets into standalone directories.
 
 3. **Isolated Cargo Build Cache:**
@@ -66,7 +66,7 @@ The script will:
 1. Determine the main repository root.
 2. Create the worktree at the sibling path `../<repo_name>-<branch_name>`.
 3. Copy test fixtures, reference documentation, and `graphify-out/` into independent physical directories.
-4. Copy `.env` and run `graphify update .` in the new worktree.
+4. Copy `.env` and run `python tools/graphify/refresh.py` in the new worktree, using the invoking checkout's refresh script when the target predates it.
 
 ### Step 2: Working Within the Worktree
 Inform the user of the created path. When executing commands in the worktree, pass the worktree path as the working directory (`Cwd`):
