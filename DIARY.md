@@ -1852,3 +1852,17 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Reviewed process-handle ownership and telemetry identity checks
   - Updated the testing specification to describe the approved exception
   - Canonical verification and independent review are pending
+
+### [2026-11-16 08:26 CET] — Publish Windows verification fixture readiness atomically
+- **Affected Subsystems**:
+  - `Verification CLI test fixtures`
+- **What Was Changed (The Concrete Reality)**:
+  - Write the detached test child PID to a temporary file and atomically rename it to the ready marker after closing the complete payload
+  - Preserve all process ownership assertions, timeouts, telemetry identity checks and required gates
+- **Architectural Rationale & Trade-Offs**:
+  - Two canonical attempts reproduced reading an empty ready file before write_text finished, followed by cleanup sharing errors
+  - Readiness must mean the complete PID is available rather than only that a file was opened
+- **Verification & Test Results**:
+  - Existing Windows Job fixture suite passed all nine tests after the change
+  - Canonical attempts before the fixture correction failed with empty-PID ValueError and cleanup sharing errors
+  - Emulator production code and reference values are unchanged by this prerequisite fix
