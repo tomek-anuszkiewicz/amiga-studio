@@ -44,10 +44,19 @@ impl BinarySource {
 }
 
 #[derive(Clone, Copy, Debug)]
-enum FileAction {
+pub(crate) enum FileAction {
     Binary,
     Rom,
     State,
+    SetupRom,
+    SetupDisk(usize),
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum NativeDialog {
+    Open(FileAction),
+    Save,
 }
 
 impl FileAction {
@@ -56,6 +65,8 @@ impl FileAction {
             Self::Binary => "Load Binary from File",
             Self::Rom => "Load ROM from File",
             Self::State => "Load State from File",
+            Self::SetupRom => "Select Kickstart for Setup",
+            Self::SetupDisk(_) => "Select ADF for Setup",
         }
     }
 
@@ -64,6 +75,8 @@ impl FileAction {
             Self::Binary => &["bin", "exe", "dat", "rom"],
             Self::Rom => &["rom", "bin"],
             Self::State => &["json"],
+            Self::SetupRom => &["rom", "bin"],
+            Self::SetupDisk(_) => &["adf"],
         }
     }
 }
@@ -100,6 +113,28 @@ pub(crate) enum FileCompletion {
 }
 
 impl EmulatorApp {
+    fn validate_state_bindings(&self, json: &str) -> Result<(), String> {
+        let saved = debugger::SaveState::from_json(json).map_err(|e| e.to_string())?;
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Some(game) = &self.player.active_game {
+            game.manifest
+                .validate_association(&saved.header.association)?;
+        }
+        if let Some(configuration) = self.player.catalog.selected() {
+            if debugger::launch::state_port_kinds(&saved.state.game_ports)
+                != configuration.ports.each_ref().map(|p| p.device)
+            {
+                return Err("Saved port devices differ from the selected configuration. Select compatible bindings in Configurations before loading.".into());
+            }
+        }
+        Ok(())
+    }
+
+    pub(crate) fn open_setup_asset(&mut self, drive: Option<usize>) {
+        self.player.captured = false;
+        self.open_file_dialog(drive.map_or(FileAction::SetupRom, FileAction::SetupDisk));
+    }
+
     pub(crate) fn open_load_binary_dialog(&mut self) {
         self.open_file_dialog(FileAction::Binary);
     }
@@ -109,6 +144,11 @@ impl EmulatorApp {
     }
 
     pub(crate) fn open_load_state_dialog(&mut self) {
+        #[cfg(not(target_arch = "wasm32"))]
+        if self.player.active_game.is_some() {
+            self.load_player();
+            return;
+        }
         self.open_file_dialog(FileAction::State);
     }
 
@@ -188,6 +228,10 @@ impl EmulatorApp {
             }
             return;
         }
+        if let Ok(HostValue::PlayerRestored(association)) = &value {
+            self.player.mounted = association.mounted.clone();
+            self.player.captured = false;
+        }
         self.file_error = None;
         match action {
             FileCompletion::Rom {
@@ -240,7 +284,10 @@ impl EmulatorApp {
                     target & crate::layout::right_dock::memory_hex::MASK_ROW_ADDRESS;
                 self.load_binary_modal_open = false;
             }
-            FileCompletion::State(message) => self.state_loaded(message),
+            FileCompletion::State(message) => {
+                self.player.active_configuration = self.player.catalog.selected().cloned();
+                self.state_loaded(message);
+            }
             FileCompletion::QuickSave(slot) => {
                 self.toast_message = Some((
                     format!("Quick-saved to Slot #{slot}"),
@@ -289,16 +336,26 @@ impl EmulatorApp {
         handle: wasm_bindgen::JsValue,
     ) {
         match action {
+            FileAction::SetupRom => self.select_setup_asset(None, name, data),
+            FileAction::SetupDisk(drive) => self.select_setup_asset(Some(drive), name, data),
             FileAction::Binary => self.select_binary(BinarySource::Bytes { name, data, handle }),
             FileAction::Rom => self.host.queue_effect(
                 HostCommand::LoadRom(data),
                 HostEffect::File(FileCompletion::Rom { name, handle }),
             ),
             FileAction::State => match String::from_utf8(data) {
-                Ok(json) => self.host.queue_effect(
-                    HostCommand::LoadSnapshot(json),
-                    HostEffect::File(FileCompletion::State(format!("State loaded from {name}"))),
-                ),
+                Ok(json) => {
+                    if let Err(error) = self.validate_state_bindings(&json) {
+                        self.file_error = Some(error);
+                        return;
+                    }
+                    self.host.queue_effect(
+                        HostCommand::LoadSnapshot(json),
+                        HostEffect::File(FileCompletion::State(format!(
+                            "State loaded from {name}"
+                        ))),
+                    )
+                }
                 Err(error) => self.file_error = Some(format!("Could not load {name}: {error}")),
             },
         }
@@ -332,13 +389,23 @@ impl EmulatorApp {
 #[cfg(not(target_arch = "wasm32"))]
 impl EmulatorApp {
     fn open_file_dialog(&mut self, action: FileAction) {
+        self.player.captured = false;
+        if self
+            .host
+            .runtime
+            .as_ref()
+            .is_some_and(|runtime| !runtime.input_sender().set_enabled(false))
+        {
+            self.player.dialog = Some(NativeDialog::Open(action));
+            return;
+        }
         let mut dialog = rfd::FileDialog::new()
             .set_title(action.title())
             .add_filter("Supported files", action.extensions());
         let directory = match action {
             FileAction::Binary => self.file_history.picker_directory(true),
             FileAction::Rom => self.file_history.picker_directory(false),
-            FileAction::State => None,
+            FileAction::State | FileAction::SetupRom | FileAction::SetupDisk(_) => None,
         };
         if let Some(directory) = directory {
             dialog = dialog.set_directory(directory);
@@ -352,12 +419,33 @@ impl EmulatorApp {
                 FileAction::Rom => {
                     self.file_history.rom_directory = path.parent().map(std::path::Path::to_owned)
                 }
-                FileAction::State => {}
+                FileAction::State | FileAction::SetupRom | FileAction::SetupDisk(_) => {}
             }
             match action {
                 FileAction::Binary => self.select_binary(BinarySource::File(path)),
                 FileAction::Rom => self.load_rom_file(&path),
                 FileAction::State => self.load_state_file(&path),
+                FileAction::SetupRom | FileAction::SetupDisk(_) => match std::fs::read(&path) {
+                    Ok(bytes) => {
+                        let drive = match action {
+                            FileAction::SetupDisk(drive) => Some(drive),
+                            _ => None,
+                        };
+                        self.select_setup_asset(drive, file_name(&path), bytes);
+                        if drive.is_none() {
+                            if let Some(configuration) = self
+                                .player
+                                .catalog
+                                .configurations
+                                .iter_mut()
+                                .find(|c| c.id == self.player.catalog.selected)
+                            {
+                                configuration.rom = path.to_string_lossy().into_owned();
+                            }
+                        }
+                    }
+                    Err(error) => self.file_error = Some(format!("Could not read asset: {error}")),
+                },
             }
         }
     }
@@ -392,13 +480,19 @@ impl EmulatorApp {
 
     pub fn load_state_file(&mut self, path: &std::path::Path) {
         match std::fs::read_to_string(path) {
-            Ok(json) => self.host.queue_effect(
-                HostCommand::LoadSnapshot(json),
-                HostEffect::File(FileCompletion::State(format!(
-                    "State loaded from {}",
-                    path.display()
-                ))),
-            ),
+            Ok(json) => {
+                if let Err(error) = self.validate_state_bindings(&json) {
+                    self.file_error = Some(error);
+                    return;
+                }
+                self.host.queue_effect(
+                    HostCommand::LoadSnapshot(json),
+                    HostEffect::File(FileCompletion::State(format!(
+                        "State loaded from {}",
+                        path.display()
+                    ))),
+                )
+            }
             Err(error) => {
                 self.file_error = Some(format!("Could not load {}: {error}", path.display()))
             }
@@ -406,6 +500,16 @@ impl EmulatorApp {
     }
 
     pub(crate) fn open_save_state_dialog(&mut self) {
+        self.player.captured = false;
+        if self
+            .host
+            .runtime
+            .as_ref()
+            .is_some_and(|runtime| !runtime.input_sender().set_enabled(false))
+        {
+            self.player.dialog = Some(NativeDialog::Save);
+            return;
+        }
         if let Some(path) = rfd::FileDialog::new()
             .set_title("Save Amiga 500 State")
             .add_filter("Amiga Save State", &["json"])
@@ -424,7 +528,17 @@ impl EmulatorApp {
         );
     }
 
-    pub(crate) fn poll_file_dialog(&mut self, _ctx: &egui::Context) {}
+    pub(crate) fn poll_file_dialog(&mut self, ctx: &egui::Context) {
+        if let Some(dialog) = self.player.dialog.take() {
+            match dialog {
+                NativeDialog::Open(action) => self.open_file_dialog(action),
+                NativeDialog::Save => self.open_save_state_dialog(),
+            }
+            if self.player.dialog.is_some() {
+                ctx.request_repaint_after(crate::host_runtime::HOST_RETRY_DELAY);
+            }
+        }
+    }
 }
 
 #[cfg(target_arch = "wasm32")]

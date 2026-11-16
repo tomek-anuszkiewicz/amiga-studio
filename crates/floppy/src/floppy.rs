@@ -40,6 +40,8 @@ pub const FORMATTED_DISK_BYTES: usize = TRACKS_PER_DISK * SECTORS_PER_TRACK * SE
 /// Individual 3.5-inch floppy disk drive (DF0: to DF3:)
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FloppyDrive {
+    /// Physical attachment, independent of whether media is inserted.
+    pub connected: bool,
     /// Active cylinder head position (0..79)
     pub cylinder: u8,
     /// Active head/surface (0 = Lower, 1 = Upper)
@@ -64,6 +66,7 @@ pub struct FloppyDrive {
 impl Default for FloppyDrive {
     fn default() -> Self {
         Self {
+            connected: true,
             cylinder: 0,
             side: LOWER_SIDE,
             motor_on: false,
@@ -168,7 +171,10 @@ impl Default for FloppyController {
     fn default() -> Self {
         Self {
             pins: FloppyPins::default(),
-            drives: core::array::from_fn(|_| FloppyDrive::default()),
+            drives: core::array::from_fn(|index| FloppyDrive {
+                connected: index == 0,
+                ..FloppyDrive::default()
+            }),
             prev_ciab_prb: CONTROL_RELEASED,
             clock_hz: config::VideoStandard::Pal.color_clock_hz(),
             media_output_active: false,
@@ -182,6 +188,21 @@ impl FloppyController {
             clock_hz: video.color_clock_hz(),
             ..Self::default()
         }
+    }
+
+    /// Configure physical attachments before launch; DF0 is the internal drive.
+    pub fn set_connections(&mut self, connected: [bool; DRIVE_COUNT]) -> Result<(), String> {
+        if !connected[0] {
+            return Err("The internal DF0 drive must remain connected".into());
+        }
+        for (drive, connected) in self.drives.iter_mut().zip(connected) {
+            drive.connected = connected;
+            if !connected {
+                drive.reset();
+                drive.eject_disk();
+            }
+        }
+        Ok(())
     }
 
     pub fn reset(&mut self) {
@@ -203,7 +224,7 @@ impl FloppyController {
         }
         for (index, drive) in self.drives.iter_mut().enumerate() {
             let select = BIT_CONTROL_SELECT_FIRST << index;
-            drive.selected = current & select == 0;
+            drive.selected = drive.connected && current & select == 0;
             if drive.selected && previous & select != 0 {
                 // MOTOR must already be established before the select edge.
                 drive.motor_on = previous & BIT_CONTROL_MOTOR == 0;
@@ -230,7 +251,7 @@ impl FloppyController {
         let mut index_high = true;
         for drive in &mut self.drives {
             let (transition, index) = drive.step_rotation(self.clock_hz);
-            if drive.selected {
+            if drive.connected && drive.selected {
                 read_high &= !transition;
                 index_high &= !index;
             }
@@ -246,9 +267,13 @@ impl FloppyController {
     pub fn sample_ciaa_port_a_inputs(&self) -> u8 {
         self.drives
             .iter()
-            .filter(|drive| drive.selected)
-            .fold(STATUS_RELEASED, |levels, drive| {
-                let asserted = (u8::from(drive.is_ready()) << BIT_STATUS_READY_SHIFT)
+            .enumerate()
+            .filter(|(_, drive)| drive.connected && drive.selected)
+            .fold(STATUS_RELEASED, |levels, (index, drive)| {
+                // Every bit of the supported external DD drive ID is one,
+                // active low on READY while the motor is off (TRM section 1).
+                let ready = drive.is_ready() || (index != 0 && !drive.motor_on);
+                let asserted = (u8::from(ready) << BIT_STATUS_READY_SHIFT)
                     | (u8::from(drive.is_track0()) << BIT_STATUS_TRACK_ZERO_SHIFT)
                     | (u8::from(drive.is_write_protected()) << BIT_STATUS_WRITE_PROTECT_SHIFT)
                     | (u8::from(drive.is_disk_changed()) << BIT_STATUS_CHANGED_SHIFT);

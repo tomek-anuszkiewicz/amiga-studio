@@ -17,10 +17,37 @@ The GUI is the host-facing layer of the emulator. It presents the Amiga display 
 
 The same frontend targets a native desktop application and a browser build. It presents the same emulated machine in two views:
 
-- **Game view** gives the framed Amiga screen the available space below a compact toolbar. File and State menus, Run/Stop, optional FPS display, speed ratio and Slower/Faster controls, theme, zoom and a Debug View switch remain available. Inspection panels and debugger shortcuts are disconnected.
+- **Game view** gives the framed Amiga screen the available space beside a compact player panel. File and State menus, Run/Stop, optional FPS display, speed ratio and Slower/Faster controls, theme, zoom and a Debug View switch remain available. Inspection panels and debugger shortcuts are disconnected.
 - **Developer Studio** places the screen in a debugging workspace with execution controls and state inspection. The [debugger specification](Debugger.md) defines the behavior behind those controls.
 
-The views share one machine. F2 or F12 switches between them; Escape returns from the game view to the Developer Studio. Returning requests a pause at the field boundary and keeps instrumentation disconnected until that pause completes. Game execution bypasses breakpoints, disassembly, trace collection, CPU history and memory diff snapshots. Previously collected history remains available when returning, but no automatic snapshots or progress recording run in Game view. Manual State operations remain available. A stopped CPU still allows chip clocks, video and interrupts to advance in both views; a halted CPU ends Run.
+Desktop startup opens the game library. Browser startup opens manual
+setup, with no bundle probe or browser library. Global named configurations have
+stable IDs and compose the supported hardware presets, ROM choice, connected
+drives, both port devices and reusable host mappings. Games reference one
+configuration and own ordered disks, descriptions, artwork, initial state and
+player saves. Configuration editing has its own screen.
+
+The desktop library provides Add game and Edit game forms for a name, optional
+description, named configuration and individually selected ADF imports. Saving
+copies imported disks into the game directory. The game name is also its folder
+name; renaming preserves game/disk IDs, saves, initial states and other files.
+Invalid names and existing destination folders are rejected without overwriting
+another game. Cancel leaves files unchanged. A running session remains the same
+machine when its library metadata changes.
+
+Optional covers use the declared artwork path, or cover.jpg, cover.jpeg or
+cover.png in the game directory when no path is declared. JPEG and PNG are
+supported. The editor explains this convention; Refresh reloads cover changes.
+
+Manual setup accepts a supported ROM and zero to four disks. Launch validates
+all assets before replacing the active machine. Returning to setup or library
+pauses and releases capture. A hardware/ROM replacement requires confirmation.
+The player panel has four disk dropdowns with eject, connection/activity status,
+pause/resume, reset, save/load, Library/Setup and Debug access. Narrow windows
+collapse the same controls. Debug does not duplicate this panel. Screen scaling
+continues to preserve the complete framebuffer aspect ratio.
+
+The views share one machine. F2 or F12 switches between them by default; Escape releases capture so player controls remain reachable. Frontend bindings are configurable. Returning requests a pause at the field boundary and keeps instrumentation disconnected until that pause completes. Game execution bypasses breakpoints, disassembly, trace collection, CPU history and memory diff snapshots. Previously collected history remains available when returning, but no automatic snapshots or progress recording run in Game view. Manual State operations remain available. A stopped CPU still allows chip clocks, video and interrupts to advance in both views; a halted CPU ends Run.
 
 Continuous Developer Run retains the last prepared inspector contents, including register and CPU status values, disassembly, memory, history and toolbar CCK/instruction labels. The Amiga image, FPS and execution controls remain live. Editing, browsing new inspection data and history navigation are inactive until paused. Repaints and resizing lay out retained data without rereading the machine or rebuilding diagnostic text. Stop pending retains the same freeze; a real stop refreshes current data. Explicit instruction, CCK and frame steps retain their diagnostic collection and show their resulting state. Reset, state loading and paused edits refresh after their coherent owner replies. Enabled breakpoints use current CPU state and stop before their matching instruction, even before a field completes.
 
@@ -47,9 +74,19 @@ In browsers with the File System Access API, each file category has its own pick
 
 ## Input and output
 
-Host physical key positions map to the [Amiga keyboard](../Keyboard.md), relative mouse movement and buttons reach the [mouse and game port](../Mouse.md), and a host gamepad supplies digital [joystick](../Joystick.md) directions and two fire buttons. Desktop input uses blocking rdev keyboard/mouse and gilrs controller listeners outside the machine owner. Browser DOM callbacks and standard-gamepad sampling remain on the main thread; the gamepad timer targets three samples per field independently of repaint. The basic adapter forwards host-reported transitions; it does not reconstruct missing host events or A500 matrix ghosting. Combination fidelity, configurable mappings and profiles remain [6.2 work](../../../../ROADMAP.md#task-6-2).
+Host physical key positions map to the [Amiga keyboard](../Keyboard.md), relative mouse movement and buttons reach the [mouse and game port](../Mouse.md), and a host gamepad supplies digital [joystick](../Joystick.md) directions and two fire buttons. Desktop input uses blocking rdev keyboard/mouse and gilrs controller listeners outside the machine owner. Browser DOM callbacks and standard-gamepad sampling remain on the main thread; the gamepad timer targets three samples per field independently of repaint. The basic adapter forwards host-reported transitions; it does not reconstruct missing host events or A500 matrix ghosting. Original keyboard combination fidelity remains [6.2 work](../../../../ROADMAP.md#task-6-2).
 
-Clicking the Amiga image gives it input focus in Developer Studio. Game view accepts input while the application has focus; text controls suspend capture. Frontend shortcuts retain their existing actions. Ordered, bounded queues publish input immediately, and the owner admits it at three evenly spaced opportunities per emulated field, derived from current PAL/NTSC and interlace geometry. Initialization aligns the first grid with the receiver field origin; synchronization suppressed by guest code has a bounded nominal-period fallback. Guest beam writes that prolong a field retain nominal-period input opportunities. Every delivered edge gets a CCK sample before its successor; a short electrical pulse does not guarantee a guest software read. Keyboard bytes still traverse the controller queue and serial pins, and mouse quadrature continues at its existing CCK rate without smoothing.
+Clicking the Amiga image captures relative pointer input and gives it keyboard
+focus. Capture release remains available. Focused host text controls take
+priority, then configured frontend actions, keyboard joystick bindings, and
+remaining guest keys. Consumed keys never also reach the guest keyboard. Both
+hosts use this resolution policy. Each event carries its destination port.
+A configuration selects mouse, joystick or disconnected independently per port,
+then the source: one system pointer, a reusable keyboard mapping or a selected
+individual gamepad. Two system mice are not offered. Controller connections are
+explicit; unavailable or ambiguous identities require reassignment. Reconnection
+must not replay stale held input. Configuration/source changes, disconnect,
+focus/capture loss, pause, reset and load release affected controls. Ordered, bounded queues publish input immediately, and the owner admits it at three evenly spaced opportunities per emulated field, derived from current PAL/NTSC and interlace geometry. Initialization aligns the first grid with the receiver field origin; synchronization suppressed by guest code has a bounded nominal-period fallback. Guest beam writes that prolong a field retain nominal-period input opportunities. Every delivered edge gets a CCK sample before its successor; a short electrical pulse does not guarantee a guest software read. Keyboard bytes still traverse the controller queue and serial pins, and mouse quadrature continues at its existing CCK rate without smoothing.
 
 Capture loss, pause and queue overflow discard pending input and release controls. Reset, successful load and keyboard reset invalidate the old input generation. Native backend timestamps reject events older than capture; fresh controller events re-establish its state after resume. Host queues and listeners are runtime handles outside serialized machine state. Physical controller freshness and Linux/macOS execution remain unverified; the interactive checks belong to [8.2](../../../../ROADMAP.md#task-8-2).
 

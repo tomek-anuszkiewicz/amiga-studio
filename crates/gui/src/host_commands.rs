@@ -57,9 +57,23 @@ pub enum HostCommand {
         bytes: Vec<u8>,
         prime: bool,
     },
+    Launch {
+        setup: debugger::launch::MachineSetup,
+        association: debugger::SaveAssociation,
+    },
+    MountDisk {
+        drive: usize,
+        bytes: Option<Vec<u8>>,
+        disk_id: Option<String>,
+    },
     LoadRom(Vec<u8>),
     SaveSnapshot,
     LoadSnapshot(String),
+    RestorePlayer {
+        json: String,
+        game_id: Option<String>,
+        ports: [debugger::launch::DeviceKind; 2],
+    },
     SaveQuickSlot(usize),
     LoadQuickSlot(usize),
     SupplyUtc(i64),
@@ -94,6 +108,8 @@ pub struct HostStatus {
     pub shutdown: bool,
     pub halted: bool,
     pub stopped: bool,
+    pub drives: [DriveStatus; 4],
+    pub ports: [debugger::launch::DeviceKind; 2],
     pub quick_slots: [bool; debugger::session::QUICK_SLOT_COUNT],
 }
 
@@ -103,6 +119,7 @@ pub enum HostValue {
     Cpu(Box<CpuState>),
     Memory { address: u32, bytes: Vec<u8> },
     Snapshot(String),
+    PlayerRestored(debugger::SaveAssociation),
     Inspection(Box<crate::host_inspection::HostInspection>),
 }
 
@@ -111,4 +128,11 @@ pub struct HostReply {
     pub id: u64,
     pub status: HostStatus,
     pub value: Result<HostValue, String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DriveStatus {
+    pub connected: bool,
+    pub inserted: bool,
+    pub active: bool,
 }

@@ -35,12 +35,21 @@ export function start_machine_worker(module, memory, notify, finished, input) {
 
 let inputEnabled = false;
 let resetInput;
+let captureLost = false;
+export function take_pointer_capture_loss() { const lost = captureLost; captureLost = false; return lost; }
 let updateInputTimer;
 let pollMilliseconds = 0;
 let inputGeneration = 0n;
 export function set_host_input_enabled(enabled, interval_ms, generation) {
     const changed = inputEnabled !== enabled || inputGeneration !== generation;
     if (changed) resetInput?.();
+    if (changed && enabled) {
+        const canvas = document.getElementById('amiga_canvas');
+        try {
+            const request = canvas.requestPointerLock();
+            request?.catch(() => { captureLost = true; resetInput?.(); });
+        } catch { captureLost = true; }
+    } else if (!enabled && document.pointerLockElement) document.exitPointerLock();
     inputEnabled = enabled;
     pollMilliseconds = interval_ms;
     inputGeneration = generation;
@@ -49,11 +58,11 @@ export function set_host_input_enabled(enabled, interval_ms, generation) {
 
 function startInput(collect) {
     const MAX_EVENTS = 1024;
-    const AXIS_THRESHOLD = 0.5;
+    const controllerConnections = new Map();
     const canvas = document.getElementById('amiga_canvas');
     const listeners = [];
     let pending = [];
-    let lastPad = 0;
+
     let buttons = 0;
     const keys = new Set();
     let retry;
@@ -61,7 +70,7 @@ function startInput(collect) {
     let schedule = 0;
     let nextPoll = 0;
     const sampling = new MessageChannel();
-    const active = () => inputEnabled && document.hasFocus() && !document.hidden;
+    const active = () => inputEnabled && document.hasFocus() && !document.hidden && document.pointerLockElement === canvas;
     const flush = () => {
         clearTimeout(retry);
         while (pending.length && collect(...pending[0])) pending.shift();
@@ -76,7 +85,7 @@ function startInput(collect) {
         target.addEventListener(type, callback, capture);
         listeners.push(() => target.removeEventListener(type, callback, capture));
     };
-    const reserved = new Set(['F2', 'F5', 'F6', 'F9', 'F10', 'F11', 'F12', 'Escape']);
+    const reserved = new Set(['F11', 'F12']);
     for (const type of ['keydown', 'keyup']) listen(window, type, event => {
         if (!active() || reserved.has(event.code) || event.repeat) return;
         if (type === 'keydown') keys.add(event.code);
@@ -99,47 +108,50 @@ function startInput(collect) {
     const release = () => {
         buttons = 0;
         keys.clear();
-        lastPad = 0;
+
         push(['release', '', 0, 0, 0]);
     };
     resetInput = release;
     listen(window, 'blur', () => { release(); updateInputTimer(); });
     listen(window, 'focus', () => updateInputTimer());
     listen(document, 'visibilitychange', () => { if (document.hidden) release(); updateInputTimer(); });
-    listen(canvas, 'pointerleave', release);
+    listen(document, 'pointerlockchange', () => { if (document.pointerLockElement !== canvas) { captureLost = true; release(); } });
+    listen(document, 'pointerlockerror', () => { captureLost = true; release(); });
     listen(canvas, 'contextmenu', event => { if (active()) event.preventDefault(); });
     // Sampling runs on its own host timer, independently of requestAnimationFrame.
     const poll = () => {
-        if (!active()) return;
-        const pads = navigator.getGamepads?.() || [];
-        const pad = Array.from(pads).find(pad => pad?.connected && pad.mapping === 'standard');
-        let state = 0;
-        if (pad) {
-            const pressed = index => Boolean(pad.buttons[index]?.pressed);
-            const x = pad.axes[0] || 0, y = pad.axes[1] || 0;
-            state = Number(y < -AXIS_THRESHOLD || pressed(12))
-                | Number(y > AXIS_THRESHOLD || pressed(13)) << 1
-                | Number(x < -AXIS_THRESHOLD || pressed(14)) << 2
-                | Number(x > AXIS_THRESHOLD || pressed(15)) << 3
-                | Number(pressed(0)) << 4 | Number(pressed(1)) << 5;
-        }
-        if (state !== lastPad) {
-            push(['joystick', '', 0, 0, state]);
-            lastPad = state;
-        }
+        const pads = Array.from(navigator.getGamepads?.() || []).filter(pad => pad?.connected);
+        const samples = pads.map(pad => {
+            let connection = controllerConnections.get(pad.index);
+            if (!connection || connection.id !== pad.id) {
+                connection = {id: pad.id, token: crypto.randomUUID()};
+                controllerConnections.set(pad.index, connection);
+            }
+            return {identity: `${connection.token}:${pad.index}:${pad.id}`, name: pad.id, axes: Array.from(pad.axes), buttons: pad.buttons.map(button => button.pressed)};
+        });
+        push(['pads', JSON.stringify({devices: samples, focused: document.hasFocus() && !document.hidden}), 0, 0, Number(active())]);
     };
+    listen(window, 'gamepadconnected', event => {
+        controllerConnections.set(event.gamepad.index, {id: event.gamepad.id, token: crypto.randomUUID()});
+        poll();
+    });
+    listen(window, 'gamepaddisconnected', event => {
+        controllerConnections.delete(event.gamepad.index);
+        release();
+        poll();
+    });
     updateInputTimer = () => {
         clearTimeout(timer);
         schedule++;
-        if (active()) {
+        if (!document.hidden) {
             nextPoll = performance.now();
             sampling.port2.postMessage(schedule);
         }
     };
     sampling.port1.onmessage = event => {
-        if (event.data !== schedule || !active()) return;
+        if (event.data !== schedule || document.hidden) return;
         poll();
-        nextPoll = Math.max(nextPoll + pollMilliseconds, performance.now());
+        nextPoll = Math.max(nextPoll + (active() ? pollMilliseconds : 250), performance.now());
         const token = schedule;
         // Keep timer nesting independent of the sampling task.
         timer = setTimeout(() => sampling.port2.postMessage(token), Math.max(0, Math.ceil(nextPoll - performance.now())));

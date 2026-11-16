@@ -274,7 +274,7 @@ fn dma_registers_roundtrip_in_their_single_owner() {
     assert_eq!(machine.agnus.dma.planecount(), 2);
     let saved = SaveState::capture(&machine);
     let json = serde_json::to_value(&saved).unwrap();
-    assert_eq!(json["header"]["version"], 9);
+    assert_eq!(json["header"]["version"], 10);
     for (name, value) in [
         ("dmacon", 0x0300),
         ("bplcon0", 0x2004),

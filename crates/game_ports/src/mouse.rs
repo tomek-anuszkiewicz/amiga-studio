@@ -31,6 +31,12 @@ impl Mouse {
         *self = Self::default();
     }
 
+    /// Cancels pending host motion while preserving the electrical position.
+    pub fn release_motion(&mut self) {
+        self.pending_x = 0;
+        self.pending_y = 0;
+    }
+
     /// Applies relative motion deltas from host mouse movement
     #[inline]
     pub fn move_rel(&mut self, dx: i32, dy: i32) {

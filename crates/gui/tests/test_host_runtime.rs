@@ -847,15 +847,17 @@ fn developer_image_click_admits_input_and_window_focus_loss_releases_it() {
     draw(&mut app, true, vec![]);
     common::settle(&mut app, &context);
     let sender = app.host.runtime.as_ref().unwrap().input_sender();
+    let generation = app.host.status.generation;
     let press = || {
         let deadline = Instant::now() + Duration::from_secs(10);
-        while !sender.try_send(
+        while !sender.try_host_event(
             HostInputEvent::MouseButtons {
+                port: 0,
                 left: true,
                 right: true,
                 middle: true,
             },
-            None,
+            generation,
         ) {
             assert!(Instant::now() < deadline);
             std::thread::yield_now();
@@ -919,13 +921,14 @@ fn runtime_input_capture_pause_reset_and_load_release_obsolete_controls() {
     let neutral = snapshot(&mut host).to_json().unwrap();
     let sender = host.input_sender();
     let buttons = HostInputEvent::MouseButtons {
+        port: 0,
         left: true,
         right: true,
         middle: true,
     };
     let send = |event, generation| {
         let deadline = Instant::now() + Duration::from_secs(10);
-        while !sender.try_send(event, generation) {
+        while !sender.try_host_event(event, generation) {
             assert!(Instant::now() < deadline);
             std::thread::yield_now();
         }
@@ -939,7 +942,7 @@ fn runtime_input_capture_pause_reset_and_load_release_obsolete_controls() {
     };
     assert!(wait_reply(&mut host, HostCommand::Run).value.is_ok());
     // Disabled capture must discard presses at runtime ingress.
-    send(buttons, None);
+    send(buttons, host.status().generation);
     let before = host.status().input_deliveries;
     wait_status(&mut host, |status| status.input_deliveries >= before + 2);
     assert_eq!(
@@ -951,7 +954,7 @@ fn runtime_input_capture_pause_reset_and_load_release_obsolete_controls() {
         0x40
     );
     capture(true);
-    send(buttons, None);
+    send(buttons, host.status().generation);
     let before = host.status().input_deliveries;
     wait_status(&mut host, |status| status.input_deliveries >= before + 2);
     assert_eq!(
@@ -974,10 +977,10 @@ fn runtime_input_capture_pause_reset_and_load_release_obsolete_controls() {
         0x40
     );
     capture(true);
-    send(buttons, None);
+    send(buttons, host.status().generation);
     assert!(wait_reply(&mut host, HostCommand::Pause).value.is_ok());
     wait_status(&mut host, |status| !status.running);
-    send(buttons, None); // Paused input must not survive resume.
+    send(buttons, host.status().generation); // Paused input must not survive resume.
     assert!(wait_reply(&mut host, HostCommand::Run).value.is_ok());
     let before = host.status().input_deliveries;
     wait_status(&mut host, |status| status.input_deliveries >= before + 2);
@@ -990,7 +993,7 @@ fn runtime_input_capture_pause_reset_and_load_release_obsolete_controls() {
         0x40
     );
     for command in [HostCommand::ResetWarm, HostCommand::LoadSnapshot(neutral)] {
-        send(buttons, None);
+        send(buttons, host.status().generation);
         let generation = host.status().generation;
         let reply = wait_reply(&mut host, command);
         assert!(reply.value.is_ok());
@@ -1026,7 +1029,7 @@ fn runtime_input_capture_pause_reset_and_load_release_obsolete_controls() {
         assert!(wait_reply(&mut host, HostCommand::Run).value.is_ok());
         let before = host.status().input_deliveries;
         wait_status(&mut host, |status| status.input_deliveries >= before + 2);
-        send(buttons, Some(generation)); // Capture is active: only the generation check rejects this.
+        send(buttons, generation); // Capture is active: only the generation check rejects this.
         let before = host.status().input_deliveries;
         wait_status(&mut host, |status| status.input_deliveries >= before + 2);
         assert_eq!(

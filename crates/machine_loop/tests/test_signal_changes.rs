@@ -31,10 +31,10 @@ fn assert_level_delivery(machine: &A500Machine) {
 fn unchanged_levels_remain_delivered_with_buttons_held() {
     for standard in [VideoStandard::Pal, VideoStandard::Ntsc] {
         let mut machine = idle(standard);
-        machine.game_ports.set_mouse_buttons(true, true, true);
+        machine.game_ports.set_mouse_buttons(0, true, true, true);
         machine
             .game_ports
-            .set_joystick(true, false, false, true, true, true);
+            .set_joystick(1, [true, false, false, true, true, true]);
         machine.cia_b.ddrb = 0xff;
         machine.cia_b.prb = 0x77; // Select DF0; allow both connector hops to settle.
         machine.step_cycles(4);
@@ -116,7 +116,7 @@ fn restored_quiet_inputs_accept_new_edges_at_the_original_phase() {
             target.keyboard.pins.data_high = false;
             target.keyboard.pins.clock_high = false;
             target.floppy.pins.index_high = false;
-            target.game_ports.set_mouse_buttons(true, true, false);
+            target.game_ports.set_mouse_buttons(0, true, true, false);
             target.step_cck();
             assert!(target.cia_a.pins.sp_input_high);
             assert!(target.cia_a.pins.cnt_input_high);

@@ -34,5 +34,17 @@
     "lint": "clippy::disallowed_methods",
     "symbol": "std::thread::spawn",
     "reason": "Start the machine-owning worker and native OS input listeners; input listeners never access the machine."
+  },
+  {
+    "file": "crates/gui/src/host_runtime/browser.rs",
+    "lint": "clippy::disallowed_types",
+    "symbol": "std::sync::Arc",
+    "reason": "Preserve existing shared-memory worker bootstrap ownership after separating browser code from the host runtime."
+  },
+  {
+    "file": "crates/gui/src/host_runtime/browser.rs",
+    "lint": "clippy::disallowed_types",
+    "symbol": "std::sync::Mutex",
+    "reason": "Preserve existing shared-memory worker bootstrap ownership after separating browser code from the host runtime."
   }
 ]

@@ -6,7 +6,10 @@
 
 pub mod app;
 pub mod app_host;
+mod app_lifecycle;
+mod configuration_view;
 pub mod file_actions;
+pub mod game_library;
 mod host_clock;
 pub mod host_commands;
 mod host_failure;
@@ -18,9 +21,17 @@ pub mod host_native_input;
 pub mod host_owner;
 pub mod host_runtime;
 pub mod host_video;
+pub mod input_mapping;
 mod inspection;
 pub mod layout;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod library_edit;
+#[cfg(not(target_arch = "wasm32"))]
+mod library_editor;
 pub mod playback;
+pub mod player;
+pub mod player_config;
+mod player_view;
 mod shortcuts;
 pub mod theme;
 

@@ -174,11 +174,11 @@ fn cross1_boots_from_kickstart_twice_and_no_disk_cannot_produce_its_signature() 
 }
 fn long(m: &A500Machine, a: u32) -> u32 {
     (u32::from(m.physical_memory.read_word_debug(a)) << 16)
-        | u32::from(m.physical_memory.read_word_debug(a + 2))
+        | u32::from(m.physical_memory.read_word_debug(a.wrapping_add(2)))
 }
 fn name(m: &A500Machine, a: u32) -> String {
     (0..128)
-        .map(|i| m.physical_memory.read_byte_debug(a + i))
+        .map(|i| m.physical_memory.read_byte_debug(a.wrapping_add(i)))
         .take_while(|b| *b != 0)
         .map(char::from)
         .collect()
@@ -190,7 +190,7 @@ fn list_names(m: &A500Machine, list: u32) -> Vec<String> {
         if node == 0 || long(m, node) == 0 {
             break;
         }
-        names.push(name(m, long(m, node + 10)));
+        names.push(name(m, long(m, node.wrapping_add(10))));
         node = long(m, node);
     }
     names
@@ -215,10 +215,13 @@ fn workbench13_startup_attempt() {
         }
         if tick % (SECOND / 10) == 0 {
             let exec = long(&m, 4);
-            let libraries = list_names(&m, exec + 378);
-            let mut tasks = list_names(&m, exec + 406);
-            tasks.extend(list_names(&m, exec + 420));
-            tasks.push(name(&m, long(&m, long(&m, exec + 276) + 10)));
+            let libraries = list_names(&m, exec.wrapping_add(378));
+            let mut tasks = list_names(&m, exec.wrapping_add(406));
+            tasks.extend(list_names(&m, exec.wrapping_add(420)));
+            tasks.push(name(
+                &m,
+                long(&m, long(&m, exec.wrapping_add(276)).wrapping_add(10)),
+            ));
             if libraries.iter().any(|n| n == "dos.library") {
                 stages[2].get_or_insert(m.cck);
             }

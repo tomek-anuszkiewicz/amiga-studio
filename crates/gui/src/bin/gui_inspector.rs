@@ -26,7 +26,7 @@ fn print_usage() {
     eprintln!(
         "Usage: gui-inspector [OPTIONS]\n\
          Options:\n\
-           --scenario <NAME>       Scenario: baseline, clean_startup, live_display, live_display_studio, mixed_scene, hover_splitter, hover_scrollbar, hover_register, hover_ccr, hover_memory, game_mode, workbench_theme, edit_register, edit_disasm, small_window (default: baseline)\n\
+           --scenario <NAME>       Scenario: baseline, clean_startup, live_display, live_display_studio, mixed_scene, hover_splitter, hover_scrollbar, hover_register, hover_ccr, hover_memory, game_mode, library, library_editor, manual_setup, configurations, workbench_theme, edit_register, edit_disasm, small_window (default: baseline)\n\
            --width <PIXELS>        Viewport width in points/pixels (default: 1280)\n\
            --height <PIXELS>       Viewport height in points/pixels (default: 720)\n\
            --output <PATH>         Target PNG output file path (default: target/gui_captures/baseline.png)\n\
@@ -210,6 +210,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 std::thread::sleep(std::time::Duration::from_millis(1));
             }
         }
+        "library" | "library_editor" | "manual_setup" | "configurations" => {
+            let screen = match scenario.as_str() {
+                "library" | "library_editor" => gui::player::PlayerScreen::Library,
+                "manual_setup" => gui::player::PlayerScreen::Setup,
+                _ => gui::player::PlayerScreen::Configuration,
+            };
+            harness.state_mut().navigate_player(screen);
+            if scenario == "library_editor" {
+                let mut draft = gui::library_edit::GameDraft::new("standard".into());
+                draft.name = "Example game".into();
+                draft.description = "Optional notes about the game and its disks.".into();
+                harness.state_mut().player.catalog.library_root = "GameLibrary".into();
+                harness.state_mut().player.library_editor = Some(draft);
+            }
+            harness.step();
+        }
         "baseline" | "clean_startup" | "mixed_scene" => {
             // Settle layout with another step
             harness.step();
@@ -259,6 +275,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             // Standalone ScreenOnly mode with retro CRT framing
             harness.state_mut().view_mode = gui::ViewMode::ScreenOnly;
             harness.step();
+            if width < 850.0 {
+                // Capture the expanded controls without an intermediate animation frame.
+                harness.ctx.style_mut(|style| style.animation_time = 0.0);
+                harness.get_by_label("Game controls").click();
+                harness.step();
+                harness.step();
+            }
         }
         "workbench_theme" => {
             // Classic Amiga Workbench color palette

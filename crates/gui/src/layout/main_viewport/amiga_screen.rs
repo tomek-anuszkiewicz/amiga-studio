@@ -145,8 +145,10 @@ pub(crate) fn render_amiga_screen(
         egui::Id::new(SCREEN_INPUT_ID),
         egui::Sense::click(),
     );
-    if input.clicked() {
+    if input.clicked_by(egui::PointerButton::Primary) {
         input.request_focus();
+        ui.ctx()
+            .data_mut(|data| data.insert_temp(egui::Id::new("capture_requested"), true));
     }
     input.on_hover_text(
         "Click to send keyboard and mouse input to the Amiga. Frontend shortcuts remain available.",

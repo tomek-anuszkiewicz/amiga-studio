@@ -171,7 +171,7 @@ fn keyboard_reset_does_not_bypass_capture() {
 #[test]
 fn digital_pot_buttons_are_current_while_counter_delivery_and_snapshots_are_preserved() {
     let mut machine = idle();
-    machine.game_ports.set_mouse_buttons(false, true, false);
+    machine.game_ports.set_mouse_buttons(0, false, true, false);
     machine.game_ports.state.pot0dat = 0x1234;
     machine.game_ports.state.pot1dat = 0x5678;
     machine.step_cck();
@@ -184,7 +184,7 @@ fn digital_pot_buttons_are_current_while_counter_delivery_and_snapshots_are_pres
     assert_eq!((machine.paula.pot0dat(), machine.paula.pot1dat()), (0, 0));
 
     // Save a new source level before sampling it; loading must not deliver it.
-    machine.game_ports.set_mouse_buttons(false, false, false);
+    machine.game_ports.set_mouse_buttons(0, false, false, false);
     let json = serde_json::to_string(&machine.save_state()).unwrap();
     let state = serde_json::from_str::<machine_loop::A500State>(&json).unwrap();
     let mut restored = idle();

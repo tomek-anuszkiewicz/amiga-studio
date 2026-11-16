@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "game_ports"
 status: "active"
 created: 2026-09-13
-updated: 2026-11-15
+updated: 2026-11-16
 related: ["[Mouse.md](Mouse.md)", "[Joystick.md](Joystick.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)", "[CIA.md](CIA.md)", "[Machine Loop.md](Machine%20Loop.md)", "[General Architecture.md](General%20Architecture.md)"]
 tracked_paths:
   - "crates/game_ports"
@@ -21,6 +21,15 @@ Game port signals do not belong to a single chip. The corresponding registers an
 The `game_ports` crate owns the `mouse.rs` and `joystick.rs` device modules and exposes their primary types. [Mouse](Mouse.md) and [Joystick](Joystick.md) remain detailed chapters of this subsystem's design. Device signals continue through the machine's connector routing; Denise retains its JOY counters and Paula retains its chip-side POT state.
 
 [MachineLoop](Machine%20Loop.md) owns the game ports alongside the chips. It samples the port signals and passes them to the appropriate chip, so the devices and chips communicate through the machine rather than through direct references to one another.
+
+## Host destinations
+
+Every mouse or joystick event names a physical destination port. Helpers do not
+search for a matching device. An event for a disconnected or different device
+has no effect. Releasing host input neutralizes both ports and the keyboard;
+release preserves attached device types and mouse quadrature position. Host
+source selection and reusable mappings belong to the [GUI](Application/GUI.md),
+not serialized controller handles.
 
 ## Connector delivery
 

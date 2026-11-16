@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "cia"
 status: "active"
 created: 2026-09-02
-updated: 2026-11-15
+updated: 2026-11-16
 related: ["[CIA.md](CIA.md)", "[Machine Loop.md](Machine%20Loop.md)", "[General Architecture.md](General%20Architecture.md)"]
 tracked_paths:
   - "crates/keyboard"
@@ -77,7 +77,7 @@ same CCK without restarting the guard. This phase is serialized for snapshot
 continuation. Guest-visible keyboard integration is scheduled with
 [input-dependent native cases](../../../ROADMAP.md#native-disk-verification);
 the [frontend](Application/GUI.md#input-and-output) now supplies physical key events,
-while configurable mappings remain 6.2 work. The basic adapter forwards reported
+with configurable mappings owned by that frontend. The basic adapter forwards reported
 physical transitions without reproducing keyboard-matrix blocking or ghosting.
 Original A500 combination fidelity and host rollover limits remain explicitly
 open in [6.2](../../../ROADMAP.md#task-6-2), independently of adapter delivery.

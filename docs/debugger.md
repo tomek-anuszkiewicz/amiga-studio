@@ -57,7 +57,7 @@ explicit file selection. Snapshot loading uses the ROM stored in the snapshot an
 labels it **ROM: from saved state**.
 
 Game View keeps File, State, Run/Stop, speed, FPS visibility, theme and zoom
-controls. **Debug View**, F2/F12 or Escape returns to inspection. While in Game
+controls. **Debug View** or F2/F12 returns to inspection. Escape releases input capture. While in Game
 View, debugger panels and shortcuts, breakpoints, disassembly, trace collection,
 CPU history and memory diff capture are disconnected. The CPU's STOP instruction
 still allows the chips to run and deliver interrupts. State saves occur only when

@@ -12,23 +12,46 @@ impl EmulatorApp {
     pub(crate) fn handle_keyboard_shortcuts(&mut self, ctx: &egui::Context) {
         let input = ctx.input(|i| i.clone());
 
-        let toggle_view_mode = input.key_pressed(egui::Key::F12)
-            || input.key_pressed(egui::Key::F2)
-            || (self.view_mode == ViewMode::ScreenOnly && input.key_pressed(egui::Key::Escape));
-
-        if toggle_view_mode {
-            if self.view_mode == ViewMode::ScreenOnly {
-                self.set_view_mode(ViewMode::Developer);
-            } else {
-                self.set_view_mode(ViewMode::ScreenOnly);
-            }
+        let screen_focus = ctx.memory(|memory| {
+            memory.has_focus(egui::Id::new(
+                crate::layout::main_viewport::amiga_screen::SCREEN_INPUT_ID,
+            ))
+        });
+        if self.player.screen != crate::player::PlayerScreen::Session {
+            return;
         }
-
-        // F5 or Space: Toggle Run / Pause
-        let should_toggle_run = input.key_pressed(egui::Key::F5)
-            || (input.key_pressed(egui::Key::Space) && !input.focused);
-        if should_toggle_run {
+        let bindings = self
+            .player
+            .active_configuration
+            .as_ref()
+            .map(|c| c.frontend.clone())
+            .unwrap_or_default();
+        let pressed = |name: &str| {
+            crate::host_keys::frontend_key(name).is_some_and(|key| {
+                input.events.iter().any(|event| matches!(event, egui::Event::Key {key: logical, physical_key, pressed: true, repeat: false, ..} if physical_key.unwrap_or(*logical) == key))
+                && (!ctx.wants_keyboard_input() || screen_focus || key.name().starts_with('F') || key == egui::Key::Escape)
+            })
+        };
+        if pressed(&bindings.release) {
+            self.player.captured = false;
+        }
+        if pressed(&bindings.debug) || input.key_pressed(egui::Key::F12) {
+            self.player.captured = false;
+            self.set_view_mode(if self.view_mode == ViewMode::ScreenOnly {
+                ViewMode::Developer
+            } else {
+                ViewMode::ScreenOnly
+            });
+        }
+        if pressed(&bindings.pause) {
+            self.player.captured = false;
             self.toggle_run();
+        }
+        if pressed(&bindings.save) {
+            self.save_player(Some(1));
+        }
+        if pressed(&bindings.load) {
+            crate::layout::top_menu_bar::quick_load_slot(self, 1);
         }
 
         if self.view_mode == ViewMode::Developer {
@@ -99,16 +122,6 @@ impl EmulatorApp {
         // Ctrl + O: Load Binary
         if input.modifiers.command && input.key_pressed(egui::Key::O) {
             self.open_load_binary_dialog();
-        }
-
-        // F6: Quick Save Slot 1
-        if input.key_pressed(egui::Key::F6) {
-            crate::layout::top_menu_bar::quick_save_slot(self, 1);
-        }
-
-        // F9: Quick Load Slot 1
-        if input.key_pressed(egui::Key::F9) {
-            crate::layout::top_menu_bar::quick_load_slot(self, 1);
         }
 
         // Ctrl + S: Save State to File

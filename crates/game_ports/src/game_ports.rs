@@ -252,46 +252,49 @@ impl GamePorts {
 
     // --- Host Input Routing Helpers ---
 
-    /// Applies relative mouse movement deltas to whichever port holds a mouse (default: Port 1)
-    pub fn apply_mouse_delta(&mut self, dx: i32, dy: i32) {
-        if let PortDevice::Mouse(ref mut m) = self.state.port1 {
-            m.move_rel(dx, dy);
-        } else if let PortDevice::Mouse(ref mut m) = self.state.port2 {
-            m.move_rel(dx, dy);
+    /// Applies relative movement to the explicitly selected physical port.
+    pub fn apply_mouse_delta(&mut self, port: usize, dx: i32, dy: i32) {
+        if let Some(PortDevice::Mouse(mouse)) = self.device_mut(port) {
+            mouse.move_rel(dx, dy);
         }
     }
 
-    /// Sets mouse button states on whichever port holds a mouse (default: Port 1)
-    pub fn set_mouse_buttons(&mut self, left: bool, right: bool, middle: bool) {
-        if let PortDevice::Mouse(ref mut m) = self.state.port1 {
-            m.set_left_button(left);
-            m.set_right_button(right);
-            m.set_middle_button(middle);
-        } else if let PortDevice::Mouse(ref mut m) = self.state.port2 {
-            m.set_left_button(left);
-            m.set_right_button(right);
-            m.set_middle_button(middle);
+    /// Sets mouse buttons only on the addressed device.
+    pub fn set_mouse_buttons(&mut self, port: usize, left: bool, right: bool, middle: bool) {
+        if let Some(PortDevice::Mouse(mouse)) = self.device_mut(port) {
+            mouse.set_left_button(left);
+            mouse.set_right_button(right);
+            mouse.set_middle_button(middle);
         }
     }
 
-    /// Sets joystick directional switches and fire buttons on whichever port holds a joystick (default: Port 2)
-    pub fn set_joystick(
-        &mut self,
-        up: bool,
-        down: bool,
-        left: bool,
-        right: bool,
-        fire1: bool,
-        fire2: bool,
-    ) {
-        if let PortDevice::Joystick(ref mut j) = self.state.port2 {
-            j.set_directions(up, down, left, right);
-            j.set_fire1(fire1);
-            j.set_fire2(fire2);
-        } else if let PortDevice::Joystick(ref mut j) = self.state.port1 {
-            j.set_directions(up, down, left, right);
-            j.set_fire1(fire1);
-            j.set_fire2(fire2);
+    /// Sets the six digital joystick contacts on one physical port.
+    pub fn set_joystick(&mut self, port: usize, contacts: [bool; 6]) {
+        if let Some(PortDevice::Joystick(joystick)) = self.device_mut(port) {
+            let [up, down, left, right, fire1, fire2] = contacts;
+            joystick.set_directions(up, down, left, right);
+            joystick.set_fire1(fire1);
+            joystick.set_fire2(fire2);
+        }
+    }
+
+    /// Returns the destination without searching or substituting another port.
+    pub fn device_mut(&mut self, port: usize) -> Option<&mut PortDevice> {
+        match port {
+            0 => Some(&mut self.state.port1),
+            1 => Some(&mut self.state.port2),
+            _ => None,
+        }
+    }
+
+    /// Releases host controls without resetting quadrature phases or device types.
+    pub fn release_controls(&mut self) {
+        for port in 0..2 {
+            self.set_mouse_buttons(port, false, false, false);
+            self.set_joystick(port, [false; 6]);
+            if let Some(PortDevice::Mouse(mouse)) = self.device_mut(port) {
+                mouse.release_motion();
+            }
         }
     }
 }

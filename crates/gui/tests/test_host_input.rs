@@ -23,8 +23,16 @@ fn queue_preserves_edges_and_opposing_motion_and_releases_on_overflow() {
             code: 0x20,
             pressed: true,
         },
-        HostInputEvent::MouseMotion { dx: 4, dy: -2 },
-        HostInputEvent::MouseMotion { dx: -4, dy: 2 },
+        HostInputEvent::MouseMotion {
+            port: 0,
+            dx: 4,
+            dy: -2,
+        },
+        HostInputEvent::MouseMotion {
+            port: 0,
+            dx: -4,
+            dy: 2,
+        },
         HostInputEvent::Key {
             code: 0x20,
             pressed: false,
@@ -52,11 +60,13 @@ fn rapid_buttons_reach_distinct_cck_samples_and_new_events_survive_release() {
     let mut input = InputConsumer::default();
     for event in [
         HostInputEvent::MouseButtons {
+            port: 0,
             left: true,
             right: true,
             middle: true,
         },
         HostInputEvent::MouseButtons {
+            port: 0,
             left: false,
             right: false,
             middle: false,
@@ -80,6 +90,7 @@ fn rapid_buttons_reach_distinct_cck_samples_and_new_events_survive_release() {
     );
     input.pending.push(HostInputEvent::ReleaseAll);
     input.pending.push(HostInputEvent::MouseButtons {
+        port: 0,
         left: true,
         right: false,
         middle: false,
@@ -132,7 +143,11 @@ fn delivery_boundaries_are_spaced_and_input_arrivals_do_not_postpone_them() {
                 let mut previous_field = 0;
                 for tick in 0..1000 {
                     let field_before = owner.status().field_number;
-                    owner.collect_input(HostInputEvent::MouseMotion { dx: 1, dy: 0 });
+                    owner.collect_input(HostInputEvent::MouseMotion {
+                        port: 0,
+                        dx: 1,
+                        dy: 0,
+                    });
                     owner.advance(tick as f64 / 10_000.0, || 0.0);
                     let status = owner.status();
                     if status.input_deliveries != previous_deliveries {
@@ -190,7 +205,11 @@ fn guest_beam_restarts_do_not_starve_host_input_and_keyboard_reset_changes_gener
         command: HostCommand::Run,
     });
     for tick in 0..100 {
-        owner.collect_input(HostInputEvent::MouseMotion { dx: 1, dy: 0 });
+        owner.collect_input(HostInputEvent::MouseMotion {
+            port: 0,
+            dx: 1,
+            dy: 0,
+        });
         owner.advance(tick as f64 / 1000.0, || 0.0);
     }
     assert_eq!(owner.status().field_number, 0);
@@ -202,6 +221,7 @@ fn guest_beam_restarts_do_not_starve_host_input_and_keyboard_reset_changes_gener
         });
     }
     owner.collect_input(HostInputEvent::MouseButtons {
+        port: 0,
         left: true,
         right: true,
         middle: true,
@@ -257,7 +277,11 @@ fn native_physical_modifiers_repeats_and_mouse_edges_preserve_their_meaning() {
     );
     assert_eq!(
         events.translate(EventType::MouseMove { x: 103.0, y: 198.0 }, true),
-        Some(HostInputEvent::MouseMotion { dx: 3, dy: -2 })
+        Some(HostInputEvent::MouseMotion {
+            port: 0,
+            dx: 3,
+            dy: -2
+        })
     );
     for (button, index) in [(Button::Left, 0), (Button::Right, 1), (Button::Middle, 2)] {
         for pressed in [true, false] {
@@ -269,6 +293,7 @@ fn native_physical_modifiers_repeats_and_mouse_edges_preserve_their_meaning() {
             assert_eq!(
                 events.translate(raw, true),
                 Some(HostInputEvent::MouseButtons {
+                    port: 0,
                     left: pressed && index == 0,
                     right: pressed && index == 1,
                     middle: pressed && index == 2
@@ -287,6 +312,7 @@ fn admitted_key_releases_and_joystick_events_reach_device_pins() {
         input.pending.push(HostInputEvent::Key { code, pressed });
     }
     input.pending.push(HostInputEvent::Joystick {
+        port: 1,
         up: true,
         down: false,
         left: false,
@@ -322,6 +348,7 @@ fn a_field_boundary_preserves_the_remaining_ordered_input_for_the_next_slice() {
     let mut input = InputConsumer::default();
     for left in [true, false] {
         input.pending.push(HostInputEvent::MouseButtons {
+            port: 0,
             left,
             right: false,
             middle: false,
@@ -383,7 +410,13 @@ fn native_shortcuts_disabled_capture_and_key_groups_keep_their_contracts() {
             })
         );
     }
-    assert_eq!(events.translate(EventType::KeyPress(Key::F2), true), None);
+    assert_eq!(
+        events.translate(EventType::KeyPress(Key::F2), true),
+        Some(HostInputEvent::Key {
+            code: 0x51,
+            pressed: true
+        })
+    );
     assert_eq!(
         events.translate(EventType::ButtonPress(Button::Unknown(9)), true),
         None

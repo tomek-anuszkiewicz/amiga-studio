@@ -201,10 +201,10 @@ fn current_game_port_levels_and_captured_signals_resume_at_their_input_phases() 
         let mut machine = idle(standard);
         machine.keyboard.pins.data_high = false;
         machine.keyboard.pins.clock_high = false;
-        machine.game_ports.apply_mouse_delta(1, -1);
+        machine.game_ports.apply_mouse_delta(0, 1, -1);
         machine
             .game_ports
-            .set_joystick(true, false, false, true, false, false);
+            .set_joystick(1, [true, false, false, true, false, false]);
         // Supply the bit that the active producer emits before the capture phase.
         machine.paula.sync.dmal_frame = 1 << 3;
         machine.floppy.drives[0].selected = true;
@@ -233,10 +233,10 @@ fn current_game_port_levels_and_captured_signals_resume_at_their_input_phases() 
             // Change the source after capture. The pending delivery must retain its values.
             target.keyboard.pins.data_high = true;
             target.paula.sync.dmal_frame = 0;
-            target.game_ports.apply_mouse_delta(-1, -1);
+            target.game_ports.apply_mouse_delta(0, -1, -1);
             target
                 .game_ports
-                .set_joystick(false, true, false, true, false, false);
+                .set_joystick(1, [false, true, false, true, false, false]);
             target.floppy.drives[0].selected = false;
             target.floppy.pins.index_high = true;
             target.step_cck();

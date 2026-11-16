@@ -14,6 +14,7 @@ pub(crate) enum HostEffect {
     Command,
     Inspection,
     File(FileCompletion),
+    Player(crate::player::PlayerEffect),
 }
 
 #[derive(Debug)]
@@ -280,6 +281,7 @@ impl crate::EmulatorApp {
         for (effect, reply) in completed {
             match effect {
                 HostEffect::File(action) => self.complete_file_action(action, reply.value),
+                HostEffect::Player(action) => self.complete_player(action, reply.value),
                 HostEffect::Command | HostEffect::Run => {
                     if let Err(error) = reply.value {
                         self.file_error = Some(error);
@@ -307,6 +309,9 @@ impl crate::EmulatorApp {
                 }
             }
         }
+        if previous.generation != self.host.status.generation {
+            self.player.captured = false;
+        }
         if previous.running && !self.host.status.running {
             self.disassembly_view_addr = None;
         }
@@ -327,7 +332,7 @@ impl crate::EmulatorApp {
 }
 
 impl crate::EmulatorApp {
-    pub(crate) fn update_input_capture(&self, ctx: &egui::Context) {
+    pub(crate) fn update_input_capture(&mut self, ctx: &egui::Context) {
         if self.host.error.is_some() {
             return;
         }
@@ -338,17 +343,105 @@ impl crate::EmulatorApp {
                     crate::layout::main_viewport::amiga_screen::SCREEN_INPUT_ID,
                 ))
             });
-            let enabled = self.host.status.running
-                && !self.host.status.pause_pending
-                && focused
-                && (!ctx.wants_keyboard_input() || screen_focus)
-                && (self.view_mode == crate::ViewMode::ScreenOnly || screen_focus);
-            if !runtime.input_sender().set_enabled(enabled) {
+            if ctx
+                .data_mut(|data| data.remove_temp::<bool>(egui::Id::new("capture_requested")))
+                .unwrap_or(false)
+            {
+                self.player.captured = true;
+            }
+            if !focused
+                || self.host.status.pause_pending
+                || !self.host.status.running
+                || self.player.screen != crate::player::PlayerScreen::Session
+                || (ctx.wants_keyboard_input() && !screen_focus)
+            {
+                self.player.captured = false;
+            }
+            if self.player.captured {
+                if let Some(error) = self
+                    .player
+                    .active_configuration
+                    .as_ref()
+                    .and_then(|configuration| self.player.catalog.validate(configuration).err())
+                {
+                    self.player.captured = false;
+                    self.file_error = Some(format!(
+                        "Correct input configuration before capture: {error}"
+                    ));
+                }
+            }
+            #[cfg(target_arch = "wasm32")]
+            if crate::host_runtime::take_pointer_capture_loss() {
+                self.player.captured = false;
+            }
+            let enabled = self.player.captured;
+            ctx.memory_mut(|memory| {
+                memory.set_focus_lock_filter(
+                    egui::Id::new(crate::layout::main_viewport::amiga_screen::SCREEN_INPUT_ID),
+                    egui::EventFilter {
+                        tab: enabled,
+                        horizontal_arrows: enabled,
+                        vertical_arrows: enabled,
+                        escape: enabled,
+                    },
+                )
+            });
+            let sender = runtime.input_sender();
+            let actions = sender.frontend_actions(
+                focused
+                    && (!ctx.wants_keyboard_input() || screen_focus)
+                    && self.player.screen == crate::player::PlayerScreen::Session,
+            );
+            if let Some(configuration) = &self.player.active_configuration {
+                if !sender.configure(configuration, &self.player.catalog) {
+                    ctx.request_repaint_after(crate::host_runtime::HOST_RETRY_DELAY);
+                }
+            }
+            if let Some(pads) = sender.gamepads() {
+                self.player.gamepads = pads;
+            }
+            if !sender.set_enabled(enabled) {
                 ctx.request_repaint_after(crate::host_runtime::HOST_RETRY_DELAY);
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                ctx.send_viewport_cmd(egui::ViewportCommand::CursorGrab(if enabled {
+                    egui::CursorGrab::Locked
+                } else {
+                    egui::CursorGrab::None
+                }));
+                ctx.send_viewport_cmd(egui::ViewportCommand::CursorVisible(!enabled));
+                if enabled {
+                    for event in ctx.input(|input| input.events.clone()) {
+                        if let egui::Event::MouseMoved(delta) = event {
+                            self.player.pending_pointer.push(
+                                crate::host_input::HostInputEvent::MouseMotion {
+                                    port: 0,
+                                    dx: delta.x.round() as i32,
+                                    dy: delta.y.round() as i32,
+                                },
+                            );
+                        }
+                    }
+                    while let Some(event) = self.player.pending_pointer.first() {
+                        if !sender.try_host_event(event, self.host.status.generation) {
+                            ctx.request_repaint_after(crate::host_runtime::HOST_RETRY_DELAY);
+                            break;
+                        }
+                        self.player.pending_pointer.pop();
+                    }
+                } else {
+                    self.player.pending_pointer.clear();
+                }
             }
             #[cfg(not(target_arch = "wasm32"))]
             if self.host.native_input && !runtime.start_native_input() {
                 ctx.request_repaint_after(crate::host_runtime::HOST_RETRY_DELAY);
+            }
+            if let Some(actions) = actions {
+                for action in actions {
+                    self.apply_frontend_action(action);
+                }
             }
         }
     }

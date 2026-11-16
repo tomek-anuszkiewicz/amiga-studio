@@ -6,6 +6,7 @@
 
 pub mod assembler;
 pub mod breakpoints;
+pub mod launch;
 pub mod loader;
 pub mod session;
 pub mod stepping;
@@ -23,7 +24,9 @@ pub use disassembler::{
 };
 pub use loader::{inject_binary, DEFAULT_TARGET_ADDRESS};
 pub use machine_loop::A500State;
-pub use save_state::{SaveState, SaveStateError, SaveStateHeader, SAVE_STATE_VERSION};
+pub use save_state::{
+    SaveAssociation, SaveState, SaveStateError, SaveStateHeader, SAVE_STATE_VERSION,
+};
 pub use session::DebuggerSession;
 pub use stepping::{Debugger, StepMode};
 pub use temporal::{TemporalFrame, TemporalHistory, DEFAULT_TEMPORAL_CAPACITY, PAL_FRAME_CCK};

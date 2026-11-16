@@ -9,6 +9,7 @@ fn control(floppy: &mut FloppyController, pins: u8) {
 fn each_drive_latches_motor_on_selection_and_steps_only_on_edges() {
     for index in 0..4 {
         let mut floppy = FloppyController::new(config::VideoStandard::Pal);
+        assert!(floppy.set_connections([true; 4]).is_ok());
         let select = 1 << (index + 3);
         control(&mut floppy, 0x7f); // MOTOR setup before SELECT.
         control(&mut floppy, 0x7f & !select);
@@ -33,6 +34,7 @@ fn each_drive_latches_motor_on_selection_and_steps_only_on_edges() {
 #[test]
 fn selected_sense_lines_are_low_dominant_and_steps_clear_inserted_change() {
     let mut floppy = FloppyController::new(config::VideoStandard::Pal);
+    assert!(floppy.set_connections([true; 4]).is_ok());
     assert_eq!(floppy.sample_ciaa_port_a_inputs(), 0x3c);
     // Supplied status only: no image is loaded, read or written.
     floppy.drives[0].disk_inserted = true;

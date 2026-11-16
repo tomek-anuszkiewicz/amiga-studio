@@ -13,15 +13,18 @@ pub enum HostInputEvent {
         pressed: bool,
     },
     MouseMotion {
+        port: usize,
         dx: i32,
         dy: i32,
     },
     MouseButtons {
+        port: usize,
         left: bool,
         right: bool,
         middle: bool,
     },
     Joystick {
+        port: usize,
         up: bool,
         down: bool,
         left: bool,
@@ -56,6 +59,10 @@ impl InputQueue {
         self.events.clear();
     }
 
+    pub fn first(&self) -> Option<HostInputEvent> {
+        self.events.front().copied()
+    }
+
     pub fn pop(&mut self) -> Option<HostInputEvent> {
         self.events.pop_front()
     }
@@ -79,14 +86,7 @@ impl InputConsumer {
 
     fn release_controls(session: &mut DebuggerSession) {
         session.machine.keyboard.release_keys();
-        session
-            .machine
-            .game_ports
-            .set_mouse_buttons(false, false, false);
-        session
-            .machine
-            .game_ports
-            .set_joystick(false, false, false, false, false, false);
+        session.machine.game_ports.release_controls();
     }
 
     pub fn run_slice(&mut self, session: &mut DebuggerSession, budget: usize) {
@@ -104,18 +104,20 @@ impl InputConsumer {
                         session.machine.keyboard.key_up(code);
                     }
                 }
-                HostInputEvent::MouseMotion { dx, dy } => {
-                    session.machine.game_ports.apply_mouse_delta(dx, dy)
+                HostInputEvent::MouseMotion { port, dx, dy } => {
+                    session.machine.game_ports.apply_mouse_delta(port, dx, dy)
                 }
                 HostInputEvent::MouseButtons {
+                    port,
                     left,
                     right,
                     middle,
                 } => session
                     .machine
                     .game_ports
-                    .set_mouse_buttons(left, right, middle),
+                    .set_mouse_buttons(port, left, right, middle),
                 HostInputEvent::Joystick {
+                    port,
                     up,
                     down,
                     left,
@@ -125,7 +127,7 @@ impl InputConsumer {
                 } => session
                     .machine
                     .game_ports
-                    .set_joystick(up, down, left, right, fire1, fire2),
+                    .set_joystick(port, [up, down, left, right, fire1, fire2]),
                 HostInputEvent::ReleaseAll => Self::release_controls(session),
             }
             let previous_cck = session.machine.cck;

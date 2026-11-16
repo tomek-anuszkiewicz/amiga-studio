@@ -111,6 +111,8 @@ impl FileAction {
             Self::Binary => "binary",
             Self::Rom => "rom",
             Self::State => "state",
+            Self::SetupRom => "setup-rom",
+            Self::SetupDisk(_) => "setup-disk",
         }
     }
 }

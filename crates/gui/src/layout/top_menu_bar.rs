@@ -322,6 +322,11 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
 
 /// Saves snapshot to an in-memory quick-save slot (1..=5)
 pub(crate) fn quick_save_slot(app: &mut EmulatorApp, slot: usize) {
+    #[cfg(not(target_arch = "wasm32"))]
+    if app.player.active_game.is_some() {
+        app.save_player(Some(slot));
+        return;
+    }
     app.host.queue_effect(
         HostCommand::SaveQuickSlot(slot),
         HostEffect::File(FileCompletion::QuickSave(slot)),
@@ -330,6 +335,11 @@ pub(crate) fn quick_save_slot(app: &mut EmulatorApp, slot: usize) {
 
 /// Restores snapshot from an in-memory quick-save slot (1..=5)
 pub(crate) fn quick_load_slot(app: &mut EmulatorApp, slot: usize) {
+    #[cfg(not(target_arch = "wasm32"))]
+    if app.player.active_game.is_some() {
+        app.load_player_quick(slot);
+        return;
+    }
     app.host.queue_effect(
         HostCommand::LoadQuickSlot(slot),
         HostEffect::File(FileCompletion::State(format!("Restored from Slot #{slot}"))),

@@ -17,9 +17,9 @@ Focused on the authentic floppy disk gaming experience (`DF0:`, `.adf`) without 
 
 ## Current Runnable Demo
 
-The emulator is still under active development and does not yet provide a playable Amiga system. The current interactive entry point is the **Developer Studio & M68000 Debugger**, where you can load and inspect small standalone processor programs. Remaining implementation gaps are tracked in the [development roadmap](ROADMAP.md).
+The emulator is still under active development and does not yet provide a playable Amiga system. Desktop opens the game library and the browser opens manual setup; see [Game library and manual setup](docs/game-library.md). Both provide access to the **Developer Studio & M68000 Debugger** for standalone processor programs. Remaining implementation gaps are tracked in the [development roadmap](ROADMAP.md).
 
-Example programs are available under [`examples/m68k/`](examples/m68k). After launching the Developer Studio, select **File → Load Binary** and open one of the `.bin` files from that directory. The examples are designed to load at address `$001000`.
+Example programs are available under [`examples/m68k/`](examples/m68k). After launching, choose **Debug**, then select **File → Load Binary** and open one of the `.bin` files from that directory. The examples are designed to load at address `$001000`.
 
 ### Native Desktop Application
 

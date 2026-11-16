@@ -330,7 +330,8 @@ impl RtcMsm6242b {
 // =============================================================================
 
 /// Decomposes a Unix timestamp (seconds since 1970-01-01) into (year, month, day, hour, min, sec, wday)
-fn decompose_timestamp(mut ts: i64) -> (i32, u32, u32, u32, u32, u32, u32) {
+/// Gregorian UTC calendar components shared with host save-time presentation.
+pub fn decompose_timestamp(mut ts: i64) -> (i32, u32, u32, u32, u32, u32, u32) {
     if ts < 0 {
         ts = 0;
     }

@@ -64,6 +64,21 @@ Because the emulator core is system-agnostic and decoupled from the host filesys
 
 ---
 
+## Named frontend configurations
+
+The frontend composes these three presets with ROM selection, four drive
+connection choices and two independent game-port devices. Peripheral attachment
+is separate from memory/chipset selection. Each global configuration has a stable
+ID, editable name and reusable keyboard/controller mapping references. Renaming
+it preserves game associations. No per-game inheritance or hardware overrides
+are provided. Desktop settings persist on the host; browser settings persist in
+browser storage without caching ROM or disk contents. Reopening the browser
+requires explicit reselection of unavailable assets.
+
+The [GUI](Application/GUI.md) owns configuration editing and launch validation.
+Saved machine hardware is authoritative on restore; current host bindings apply
+only to compatible port devices. A mismatch requires configuration selection.
+
 ## 5. Deferred Peripheral Extension
 
 Extended peripherals remain deferred; see the [deferred peripheral work](../../../ROADMAP.md#deferred-bus-and-peripherals).

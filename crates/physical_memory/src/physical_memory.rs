@@ -31,7 +31,7 @@ pub const MASK_WORD_ADDRESS: u32 = MASK_PHYSICAL_ADDRESS & !1;
 pub const MASK_PHYSICAL_ADDRESS: u32 = 0x00FF_FFFF;
 
 /// Fixed factory A500 Kickstart capacity, in bytes.
-const KICKSTART_ROM_SIZE: usize = 256 * 1024;
+pub const KICKSTART_ROM_SIZE: usize = 256 * 1024;
 const MASK_KICKSTART_ADDRESS: usize = KICKSTART_ROM_SIZE - 1;
 
 /// Maximum size of physical memory regions

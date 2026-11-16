@@ -44,7 +44,8 @@ old layouts have no
 compatibility parser. Frontends and the debugger use this crate for persistence;
 in-memory quick slots retain only the machine value.
 
-Schema version 9 embeds usable floppy raw tracks and spindle phase, including
+Schema version 10 records active CPU sequence identity, physical drive attachment
+and player association, and embeds usable floppy raw tracks and spindle phase, including
 mid-transfer connector state; restoring requires no original ADF file. It also
 retains the CPU bus-admission phases and active shared Chip RAM budget. Clone
 and restore preserve an occupied cycle; neither creates another transfer
@@ -79,11 +80,9 @@ mutation or a list of the last four synchronization values.
 
 A snapshot at CCK T must resume with the same subsequent state as uninterrupted
 execution, including a signal captured but not delivered and an unaccepted
-register word. The [CPU's in-flight restoration limitation](../CPU%20Micro-Step%20State%20Machine.md#internal-registers-and-execution-state)
-remains an unresolved gap against this continuation requirement: restoration
-rebuilds the execution slice from the opcode, which may not identify a redirected
-sequence. [Roadmap 7.3](../../../../ROADMAP.md#task-7-3) retains its resolution.
-This is a known limit, not a waiver of the requirement. Construction/reset defines
+register word. The [CPU execution identity](../CPU%20Micro-Step%20State%20Machine.md#internal-registers-and-execution-state)
+preserves redirected sequences and partial bus transfers independently of the
+current instruction register. Construction/reset defines
 released levels. Current snapshots
 require their complete state fields; there are no legacy defaults or host handles.
 The deliberate exception is the [RTC](../RTC.md): its time, battery offset,
@@ -92,6 +91,18 @@ presence follows the saved configuration, while the live clock continues from
 current host UTC and its independently persisted offset.
 
 ---
+
+## Player progress
+
+Save files carry actual host creation time and a PNG preview, with optional game
+ID and four stable mounted-disk IDs. ROM and media bytes remain embedded in the
+machine. Host handles and library paths are never machine state. Desktop games
+have durable save catalogs and per-game quick slots; manual browser mode retains
+file import/export and session slots. Initial states are immutable launch assets,
+separate from user saves. Invalid initial states offer explicit normal boot and
+never silently fall back. Loads validate version, game/media association and port
+compatibility before replacing a live session. Continuing restores first and
+resumes without booting or applying today's hardware preset.
 
 ## 3. Differential Save States (`A500DiffState`)
 

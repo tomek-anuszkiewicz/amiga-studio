@@ -1215,7 +1215,7 @@ fn test_memory_hex_vertical_scrollbar_interaction() {
 }
 
 #[test]
-fn test_f2_and_escape_view_mode_toggle() {
+fn test_f2_toggles_views_and_escape_releases_capture() {
     let ctx = egui::Context::default();
     let mut app = EmulatorApp::default();
     common::settle(&mut app, &egui::Context::default());
@@ -1236,7 +1236,23 @@ fn test_f2_and_escape_view_mode_toggle() {
     common::settle(&mut app, &ctx);
     assert_eq!(app.view_mode, ViewMode::ScreenOnly);
 
-    // 2. Press Escape from ScreenOnly -> Return to Developer
+    // Release F2: a later press must be a new edge, not keyboard autorepeat.
+    let _ = ctx.run(
+        RawInput {
+            events: vec![Event::Key {
+                key: Key::F2,
+                physical_key: None,
+                pressed: false,
+                repeat: false,
+                modifiers: Modifiers::NONE,
+            }],
+            ..Default::default()
+        },
+        |ctx| app.update_ui(ctx),
+    );
+
+    // 2. Escape releases capture and leaves player controls reachable.
+    app.player.captured = true;
     let input_esc = RawInput {
         events: vec![Event::Key {
             key: Key::Escape,
@@ -1249,9 +1265,10 @@ fn test_f2_and_escape_view_mode_toggle() {
     };
     let _ = ctx.run(input_esc, |ctx| app.update_ui(ctx));
     common::settle(&mut app, &ctx);
-    assert_eq!(app.view_mode, ViewMode::Developer);
+    assert_eq!(app.view_mode, ViewMode::ScreenOnly);
+    assert!(!app.player.captured);
 
-    // 3. Press F2 again -> ScreenOnly
+    // 3. Press F2 again -> Developer
     let input_f2_again = RawInput {
         events: vec![Event::Key {
             key: Key::F2,
@@ -1264,22 +1281,31 @@ fn test_f2_and_escape_view_mode_toggle() {
     };
     let _ = ctx.run(input_f2_again, |ctx| app.update_ui(ctx));
     common::settle(&mut app, &ctx);
-    assert_eq!(app.view_mode, ViewMode::ScreenOnly);
+    assert_eq!(app.view_mode, ViewMode::Developer);
 
-    // 4. Press F2 to toggle back -> Developer
+    // 4. Release F2 and press it again to toggle back -> ScreenOnly.
     let input_f2_back = RawInput {
-        events: vec![Event::Key {
-            key: Key::F2,
-            physical_key: None,
-            pressed: true,
-            repeat: false,
-            modifiers: Modifiers::NONE,
-        }],
+        events: vec![
+            Event::Key {
+                key: Key::F2,
+                physical_key: None,
+                pressed: false,
+                repeat: false,
+                modifiers: Modifiers::NONE,
+            },
+            Event::Key {
+                key: Key::F2,
+                physical_key: None,
+                pressed: true,
+                repeat: false,
+                modifiers: Modifiers::NONE,
+            },
+        ],
         ..Default::default()
     };
     let _ = ctx.run(input_f2_back, |ctx| app.update_ui(ctx));
     common::settle(&mut app, &ctx);
-    assert_eq!(app.view_mode, ViewMode::Developer);
+    assert_eq!(app.view_mode, ViewMode::ScreenOnly);
 }
 
 #[test]

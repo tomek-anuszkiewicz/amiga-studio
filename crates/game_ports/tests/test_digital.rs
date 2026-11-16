@@ -60,12 +60,12 @@ fn every_pot_line_resolves_direction_data_and_button_pull_down() {
 #[test]
 fn mouse_outputs_one_gray_transition_per_count_and_reverses_direction() {
     let mut ports = GamePorts::new();
-    ports.apply_mouse_delta(4, 0);
+    ports.apply_mouse_delta(0, 4, 0);
     for pins in [0x0d, 0x05, 0x07, 0x0f] {
         ports.step_cck();
         assert_eq!(ports.pins.direction_pins[0], pins);
     }
-    ports.apply_mouse_delta(0, -4);
+    ports.apply_mouse_delta(0, 0, -4);
     for pins in [0x0b, 0x0a, 0x0e, 0x0f] {
         ports.step_cck();
         assert_eq!(ports.pins.direction_pins[0], pins);

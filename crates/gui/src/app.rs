@@ -23,7 +23,7 @@ use crate::theme::AppTheme;
 use debugger::temporal::DEFAULT_TEMPORAL_CAPACITY;
 use debugger::DebuggerSession;
 
-const RTC_BATTERY_STORAGE_KEY: &str = "rtc_battery";
+pub(crate) const RTC_BATTERY_STORAGE_KEY: &str = "rtc_battery";
 
 const WIDE_LAYOUT_MIN_WIDTH: f32 = 1680.0;
 const DESKTOP_LAYOUT_MIN_WIDTH: f32 = 1200.0;
@@ -107,6 +107,7 @@ pub struct EmulatorApp {
     screen_texture: ScreenTexture,
     pub(crate) inspection: Box<crate::inspection::Inspection>,
     pub show_fps: bool,
+    pub player: Box<crate::player::PlayerState>,
     pub loaded_rom_name: Option<String>,
     #[cfg(not(target_arch = "wasm32"))]
     pub file_history: crate::file_actions::FileHistory,
@@ -179,6 +180,7 @@ impl Default for EmulatorApp {
             screen_texture: ScreenTexture::default(),
             inspection: Box::default(),
             show_fps: true,
+            player: Default::default(),
             loaded_rom_name: None,
             #[cfg(not(target_arch = "wasm32"))]
             file_history: crate::file_actions::FileHistory::default(),
@@ -257,6 +259,23 @@ impl EmulatorApp {
             if let Some(prefs) = eframe::get_value::<UserPreferences>(storage, eframe::APP_KEY) {
                 app.apply_preferences(&prefs);
             }
+        }
+        if let Some(storage) = cc.storage {
+            if let Some(catalog) =
+                eframe::get_value(storage, crate::player_config::CONFIG_STORAGE_KEY)
+            {
+                app.player.catalog = catalog;
+            }
+        }
+        app.player.screen = if cfg!(target_arch = "wasm32") {
+            crate::player::PlayerScreen::Setup
+        } else {
+            crate::player::PlayerScreen::Library
+        };
+        app.set_view_mode(ViewMode::ScreenOnly);
+        #[cfg(not(target_arch = "wasm32"))]
+        if !app.player.catalog.library_root.is_empty() {
+            app.refresh_library();
         }
         app.theme.apply(&cc.egui_ctx);
         app
@@ -347,7 +366,21 @@ impl EmulatorApp {
                 }
             }
         }
+        if self.player.screen != crate::player::PlayerScreen::Session {
+            self.render_player_screen(ctx);
+            if first_pass {
+                self.poll_file_dialog(ctx);
+                self.update_input_capture(ctx);
+            }
+            crate::layout::file_dialogs::render(self, ctx);
+            self.host.flush();
+            self.host.request_submission_retry(ctx);
+            return;
+        }
         render_top_menu_bar(self, ctx);
+        if self.view_mode == ViewMode::ScreenOnly {
+            self.render_player_controls(ctx);
+        }
         self.inspection.frozen = (self.host.continuous_requested()
             || (self.host.inspector_revision.is_none() && self.host.data.is_some()))
             && (self.inspection.ready || self.host.status.pause_pending);
@@ -763,26 +796,5 @@ impl EmulatorApp {
         if first_pass {
             self.update_input_capture(ctx);
         }
-    }
-}
-
-impl eframe::App for EmulatorApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        self.update_ui(ctx);
-    }
-
-    fn save(&mut self, storage: &mut dyn eframe::Storage) {
-        eframe::set_value(storage, RTC_BATTERY_STORAGE_KEY, &self.host.status.battery);
-        eframe::set_value(storage, eframe::APP_KEY, &self.preferences());
-        #[cfg(not(target_arch = "wasm32"))]
-        eframe::set_value(
-            storage,
-            crate::file_actions::HISTORY_STORAGE_KEY,
-            &self.file_history,
-        );
-    }
-
-    fn persist_egui_memory(&self) -> bool {
-        true
     }
 }

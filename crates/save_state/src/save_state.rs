@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 /// Active schema format version for A500 save states
-pub const SAVE_STATE_VERSION: u32 = 9;
+pub const SAVE_STATE_VERSION: u32 = 10;
 
 /// Metadata header identifying state compatibility, creation time, and display preview
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -16,6 +16,14 @@ pub struct SaveStateHeader {
     pub timestamp: u64,
     /// PNG-encoded screenshot bytes captured from Denise frame builder
     pub screenshot_png: Vec<u8>,
+    pub association: SaveAssociation,
+}
+
+/// Portable player association; media contents still belong to the machine.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SaveAssociation {
+    pub game_id: Option<String>,
+    pub mounted: [Option<String>; 4],
 }
 
 /// File metadata and pure machine state are separate values.
@@ -66,6 +74,7 @@ impl SaveState {
             header: SaveStateHeader {
                 version: SAVE_STATE_VERSION,
                 timestamp: 0,
+                association: SaveAssociation::default(),
                 screenshot_png: encode_screenshot_png(
                     frame.frame_buffer(),
                     frame.width,
@@ -105,6 +114,22 @@ impl SaveState {
 
     /// Deserializes a save file from raw JSON bytes
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, SaveStateError> {
+        #[derive(Deserialize)]
+        struct VersionHeader {
+            version: u32,
+        }
+        #[derive(Deserialize)]
+        struct VersionEnvelope {
+            header: VersionHeader,
+        }
+        let envelope: VersionEnvelope = serde_json::from_slice(bytes)
+            .map_err(|e| SaveStateError::DeserializationFailed(e.to_string()))?;
+        if envelope.header.version != SAVE_STATE_VERSION {
+            return Err(SaveStateError::IncompatibleVersion {
+                found: envelope.header.version,
+                supported: SAVE_STATE_VERSION,
+            });
+        }
         let saved: Self = serde_json::from_slice(bytes)
             .map_err(|e| SaveStateError::DeserializationFailed(e.to_string()))?;
         saved.validate_version()?;

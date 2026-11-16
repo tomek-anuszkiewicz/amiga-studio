@@ -25,3 +25,13 @@ pub fn utc_seconds(timestamp: std::time::SystemTime) -> i64 {
         }
     }
 }
+
+/// Readable save time, independent of the guest RTC battery offset.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn format_utc(timestamp: u64) -> String {
+    let Ok(timestamp) = i64::try_from(timestamp) else {
+        return "Invalid save time".into();
+    };
+    let (year, month, day, hour, minute, second, _) = rtc::decompose_timestamp(timestamp);
+    format!("{year:04}-{month:02}-{day:02} {hour:02}:{minute:02}:{second:02} UTC")
+}

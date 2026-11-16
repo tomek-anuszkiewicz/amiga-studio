@@ -76,6 +76,20 @@ It retains mounted media, write protection, disk-change state, head cylinder and
 angular position; insertion/ejection are separate host operations. Cold, warm and
 guest RESET use that same drive contract.
 
+## Physical drive attachment and discovery
+
+DF0 is the internal drive; DF1 through DF3 can be connected independently of
+inserted media. Disconnected drives supply no data, INDEX or sense output. An
+empty connected external DD drive still identifies itself. The [Technical
+Reference Manual, external disk identification](../Reference/A500%20A2000%20Technical%20Reference%20Manual/01%20-%20Section%201%20Summary%20of%20Differences.md#external-disk-connector-identification-mode)
+requires motor-on/off initialization, followed by 32 select/read/deselect cycles
+on READY, most significant bit first. The inverted stream is `$FFFFFFFF` for a
+standard Amiga DD drive and `$00000000` for no drive. For this single supported
+external device ID every bit is identical: selected motor-off READY is asserted
+regardless of media presence. No additional shifting state is needed. With the
+motor on, READY retains its media/speed meaning; spindle acceleration remains
+outside this model. Attachments persist in snapshots and through reset.
+
 ## Autonomous ADF reads and continuation
 
 Insertion accepts only a standard 901,120-byte DD ADF and prepares all 160 raw

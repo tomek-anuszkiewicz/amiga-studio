@@ -25,6 +25,8 @@ struct Mailboxes {
     status: HostStatus,
     input: InputQueue,
     input_enabled: bool,
+    frontend_enabled: bool,
+    mapping: crate::input_mapping::InputMapping,
     input_generation: u64,
     capture_epoch: u64,
     #[cfg(not(target_arch = "wasm32"))]
@@ -34,6 +36,59 @@ struct Mailboxes {
 impl Mailboxes {
     fn input_active(&self) -> bool {
         self.input_enabled && self.status.running && !self.status.pause_pending
+    }
+
+    fn sample_gamepads(
+        &mut self,
+        samples: Vec<crate::input_mapping::GamepadSample>,
+        active: bool,
+        frontend_allowed: bool,
+    ) -> bool {
+        let actions_before = self.mapping.actions.len();
+        let devices = samples
+            .iter()
+            .map(|pad| crate::input_mapping::GamepadInfo {
+                identity: pad.identity.clone(),
+                name: pad.name.clone(),
+            })
+            .collect();
+        let devices_changed = self.mapping.available != devices;
+        for event in self.mapping.update_devices(devices) {
+            self.push_input(event);
+        }
+        for sample in samples {
+            self.mapping.frontend_gamepad(
+                &sample.identity,
+                &sample.buttons,
+                self.frontend_enabled && frontend_allowed,
+            );
+            if active {
+                for event in self
+                    .mapping
+                    .gamepad(&sample.identity, &sample.axes, &sample.buttons)
+                {
+                    self.push_input(event);
+                }
+            }
+        }
+        devices_changed || self.mapping.actions.len() != actions_before
+    }
+
+    fn resolve_input(&mut self, event: HostInputEvent) {
+        let events = match event {
+            HostInputEvent::Key { code, pressed } => self.mapping.keyboard(code, pressed),
+            HostInputEvent::MouseMotion { .. } | HostInputEvent::MouseButtons { .. } => {
+                self.mapping.pointer(event)
+            }
+            HostInputEvent::ReleaseAll => {
+                self.mapping.release();
+                vec![event]
+            }
+            _ => vec![event],
+        };
+        for event in events {
+            self.push_input(event);
+        }
     }
 
     fn push_input(&mut self, event: HostInputEvent) {
@@ -69,8 +124,11 @@ pub(crate) fn collect_native_event(
     };
     events.capture((mailboxes.status.generation, mailboxes.capture_epoch));
     let enabled = mailboxes.input_active() && raw.time >= mailboxes.capture_started_at;
+    if matches!(raw.event_type, rdev::EventType::MouseMove { .. }) {
+        return;
+    }
     if let Some(event) = events.translate(raw.event_type, enabled) {
-        mailboxes.push_input(event);
+        mailboxes.resolve_input(event);
     }
 }
 
@@ -83,22 +141,15 @@ pub(crate) fn collect_native_gamepad(
         return;
     };
     let Some(sender) = &*target else {
-        gamepads.release();
         return;
     };
     let Ok(mut mailboxes) = sender.shared.mailboxes.lock() else {
         return;
     };
-    if !mailboxes.input_active() || observed < mailboxes.capture_started_at {
-        gamepads.release();
-        return;
-    }
-    for event in gamepads
-        .changed_events((mailboxes.status.generation, mailboxes.capture_epoch))
-        .into_iter()
-        .flatten()
-    {
-        mailboxes.push_input(event);
+    let active = mailboxes.input_active() && observed >= mailboxes.capture_started_at;
+    let fresh = observed >= mailboxes.capture_started_at;
+    if mailboxes.sample_gamepads(gamepads.samples(), active, fresh) {
+        sender.repaint.request_repaint();
     }
 }
 
@@ -120,18 +171,74 @@ pub struct HostBusy(pub HostCommand);
 #[derive(Debug, Clone)]
 pub struct HostInputSender {
     shared: Arc<SharedHost>,
+    repaint: egui::Context,
 }
 
 impl HostInputSender {
-    pub fn try_send(&self, event: HostInputEvent, generation: Option<u64>) -> bool {
+    pub fn configure(
+        &self,
+        configuration: &crate::player_config::NamedConfiguration,
+        catalog: &crate::player_config::ConfigurationCatalog,
+    ) -> bool {
         let Ok(mut mailboxes) = self.shared.mailboxes.try_lock() else {
             return false;
         };
-        if generation.is_some_and(|generation| generation != mailboxes.status.generation) {
+        if mailboxes.mapping.configure(configuration, catalog) {
+            mailboxes.push_input(HostInputEvent::ReleaseAll);
+        }
+        true
+    }
+
+    pub fn gamepads(&self) -> Option<Vec<crate::input_mapping::GamepadInfo>> {
+        self.shared
+            .mailboxes
+            .try_lock()
+            .ok()
+            .map(|m| m.mapping.available.clone())
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn browser_gamepads(&self, json: &str, generation: u64, allowed: bool) -> bool {
+        let Ok(mut mailboxes) = self.shared.mailboxes.try_lock() else {
+            return false;
+        };
+        if generation != mailboxes.status.generation {
             return true;
         }
-        if event == HostInputEvent::ReleaseAll || mailboxes.input_active() {
-            mailboxes.push_input(event);
+        #[derive(serde::Deserialize)]
+        struct BrowserGamepads {
+            devices: Vec<crate::input_mapping::GamepadSample>,
+            focused: bool,
+        }
+        if let Ok(sample) = serde_json::from_str::<BrowserGamepads>(json) {
+            let active = allowed && mailboxes.input_active();
+            if mailboxes.sample_gamepads(sample.devices, active, sample.focused) {
+                self.repaint.request_repaint();
+            }
+        }
+        true
+    }
+
+    pub fn frontend_actions(
+        &self,
+        enabled: bool,
+    ) -> Option<Vec<crate::player_config::FrontendAction>> {
+        let Ok(mut mailboxes) = self.shared.mailboxes.try_lock() else {
+            return None;
+        };
+        mailboxes.frontend_enabled = enabled;
+        let actions = std::mem::take(&mut mailboxes.mapping.actions);
+        Some(if enabled { actions } else { Vec::new() })
+    }
+
+    pub fn try_host_event(&self, event: HostInputEvent, generation: u64) -> bool {
+        let Ok(mut mailboxes) = self.shared.mailboxes.try_lock() else {
+            return false;
+        };
+        if generation == mailboxes.status.generation
+            && (mailboxes.input_active() || event == HostInputEvent::ReleaseAll)
+        {
+            mailboxes.resolve_input(event);
         }
         true
     }
@@ -142,6 +249,7 @@ impl HostInputSender {
         };
         if mailboxes.input_enabled != enabled {
             mailboxes.input_enabled = enabled;
+            mailboxes.mapping.release();
             mailboxes.capture_epoch = mailboxes.capture_epoch.wrapping_add(1);
             #[cfg(not(target_arch = "wasm32"))]
             {
@@ -191,6 +299,8 @@ impl HostRuntime {
                 status,
                 input: Default::default(),
                 input_enabled: false,
+                frontend_enabled: false,
+                mapping: Default::default(),
                 input_generation: status.generation,
                 capture_epoch: 0,
                 #[cfg(not(target_arch = "wasm32"))]
@@ -227,6 +337,7 @@ impl HostRuntime {
     pub fn input_sender(&self) -> HostInputSender {
         HostInputSender {
             shared: self.shared.clone(),
+            repaint: self.repaint.clone(),
         }
     }
 
@@ -271,6 +382,8 @@ impl HostRuntime {
             HostCommand::Reset
                 | HostCommand::ResetWarm
                 | HostCommand::LoadSnapshot(_)
+                | HostCommand::Launch { .. }
+                | HostCommand::RestorePlayer { .. }
                 | HostCommand::LoadQuickSlot(_)
                 | HostCommand::LoadRom(_)
                 | HostCommand::LoadBinary { .. }
@@ -645,148 +758,8 @@ fn run_native(
 }
 
 #[cfg(target_arch = "wasm32")]
-static WEB_OWNER: Mutex<Option<WorkerLoop>> = Mutex::new(None);
-
+mod browser;
 #[cfg(target_arch = "wasm32")]
-#[wasm_bindgen::prelude::wasm_bindgen(module = "/host_bridge.js")]
-extern "C" {
-    #[wasm_bindgen(catch)]
-    fn start_machine_worker(
-        module: wasm_bindgen::JsValue,
-        memory: wasm_bindgen::JsValue,
-        notify: wasm_bindgen::JsValue,
-        finished: wasm_bindgen::JsValue,
-        input: wasm_bindgen::JsValue,
-    ) -> Result<web_sys::Worker, wasm_bindgen::JsValue>;
-    fn set_host_input_enabled(enabled: bool, interval_ms: f64, generation: u64);
-    fn host_now() -> f64;
-    fn notify_gui();
-    fn report_machine_failure(message: &str);
-}
-
-/// Installed once by the browser worker before it enters any machine work.
+pub(crate) use browser::take_pointer_capture_loss;
 #[cfg(target_arch = "wasm32")]
-#[wasm_bindgen::prelude::wasm_bindgen]
-pub fn host_worker_start() {
-    std::panic::set_hook(Box::new(|info| {
-        report_machine_failure(&info.to_string());
-    }));
-}
-
-#[cfg(target_arch = "wasm32")]
-fn start_web(
-    owner: MachineOwner,
-    shared: Arc<SharedHost>,
-    context: egui::Context,
-) -> Result<web_sys::Worker, HostRuntimeError> {
-    use wasm_bindgen::closure::Closure;
-    const BIT_MOUSE_LEFT: u32 = 1;
-    const BIT_MOUSE_RIGHT: u32 = 1 << 1;
-    const BIT_MOUSE_MIDDLE: u32 = 1 << 2;
-    const BIT_JOYSTICK_UP: u32 = 1;
-    const BIT_JOYSTICK_DOWN: u32 = 1 << 1;
-    const BIT_JOYSTICK_LEFT: u32 = 1 << 2;
-    const BIT_JOYSTICK_RIGHT: u32 = 1 << 3;
-    const BIT_JOYSTICK_FIRE1: u32 = 1 << 4;
-    const BIT_JOYSTICK_FIRE2: u32 = 1 << 5;
-
-    let mut slot = WEB_OWNER
-        .try_lock()
-        .map_err(|_| HostRuntimeError::StartupFailed)?;
-    if slot.is_some() {
-        return Err(HostRuntimeError::StartupFailed);
-    }
-    let notify_context = context.clone();
-    let notify = Closure::<dyn FnMut()>::new(move || notify_context.request_repaint());
-    let finished_shared = shared.clone();
-    let sender = HostInputSender {
-        shared: shared.clone(),
-    };
-    let input = Closure::<dyn FnMut(String, String, i32, i32, u32, u64) -> bool>::new(
-        move |kind: String, code: String, dx, dy, bits, generation| {
-            let event = match kind.as_str() {
-                "keydown" | "keyup" => {
-                    let Some(code) = crate::host_keys::amiga_key_code(&code) else {
-                        return true;
-                    };
-                    HostInputEvent::Key {
-                        code,
-                        pressed: kind == "keydown",
-                    }
-                }
-                "motion" => HostInputEvent::MouseMotion { dx, dy },
-                "mouse" => HostInputEvent::MouseButtons {
-                    left: bits & BIT_MOUSE_LEFT != 0,
-                    right: bits & BIT_MOUSE_RIGHT != 0,
-                    middle: bits & BIT_MOUSE_MIDDLE != 0,
-                },
-                "joystick" => HostInputEvent::Joystick {
-                    up: bits & BIT_JOYSTICK_UP != 0,
-                    down: bits & BIT_JOYSTICK_DOWN != 0,
-                    left: bits & BIT_JOYSTICK_LEFT != 0,
-                    right: bits & BIT_JOYSTICK_RIGHT != 0,
-                    fire1: bits & BIT_JOYSTICK_FIRE1 != 0,
-                    fire2: bits & BIT_JOYSTICK_FIRE2 != 0,
-                },
-                "release" => HostInputEvent::ReleaseAll,
-                _ => return true,
-            };
-            sender.try_send(event, Some(generation))
-        },
-    );
-    let finished =
-        Closure::<dyn FnMut(bool, String)>::new(move |success: bool, message: String| {
-            if !success {
-                finished_shared.failure.record(message);
-            }
-            finished_shared.stopped.store(true, Ordering::Release);
-            context.request_repaint();
-        });
-    *slot = Some(WorkerLoop {
-        owner,
-        shared,
-        pending_reply: None,
-    });
-    drop(slot);
-    // JavaScript owns the callbacks until it receives the worker's final message.
-    match start_machine_worker(
-        wasm_bindgen::module(),
-        wasm_bindgen::memory(),
-        notify.into_js_value(),
-        finished.into_js_value(),
-        input.into_js_value(),
-    ) {
-        Ok(worker) => Ok(worker),
-        Err(_) => {
-            if let Ok(mut slot) = WEB_OWNER.try_lock() {
-                *slot = None;
-            }
-            Err(HostRuntimeError::StartupFailed)
-        }
-    }
-}
-
-/// Called only by the worker. Negative delays mean event wait or final teardown.
-#[cfg(target_arch = "wasm32")]
-#[wasm_bindgen::prelude::wasm_bindgen]
-pub fn host_worker_tick() -> Result<f64, wasm_bindgen::JsValue> {
-    let mut slot = WEB_OWNER
-        .try_lock()
-        .map_err(|_| wasm_bindgen::JsValue::from_str("Machine owner is busy"))?;
-    let worker = slot
-        .as_mut()
-        .ok_or_else(|| wasm_bindgen::JsValue::from_str("Machine owner is missing"))?;
-    let started = host_now();
-    let (notify, wait) = worker.tick(started, || host_now() - started);
-    if notify {
-        notify_gui();
-    }
-    match wait {
-        WorkerWait::Event => Ok(WEB_WAIT_FOR_EVENT),
-        WorkerWait::Delay(delay) => Ok(delay.as_secs_f64() * 1000.0),
-        WorkerWait::Stop => {
-            *slot = None;
-            Ok(WEB_STOPPED)
-        }
-    }
-}
+use browser::{set_host_input_enabled, start_web};

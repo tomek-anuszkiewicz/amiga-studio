@@ -528,7 +528,7 @@ fn test_game_ports_fire_buttons_ciaa_pra_polling() {
     );
 
     // Press mouse left button (Port 1 /FIR0)
-    machine.game_ports.set_mouse_buttons(true, false, false);
+    machine.game_ports.set_mouse_buttons(0, true, false, false);
     machine.step_cycles(2);
     assert_eq!(
         machine.cia_a.pra() & game_ports::MASK_CIAA_PRA_FIRE,
@@ -538,7 +538,7 @@ fn test_game_ports_fire_buttons_ciaa_pra_polling() {
     // Press joystick fire (Port 2 /FIR1)
     machine
         .game_ports
-        .set_joystick(false, false, false, false, true, false);
+        .set_joystick(1, [false, false, false, false, true, false]);
     machine.step_cycles(2);
     assert_eq!(machine.cia_a.pra() & game_ports::MASK_CIAA_PRA_FIRE, 0);
 }

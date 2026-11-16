@@ -16,9 +16,9 @@ const SCANCODE_DIGIT0: u8 = 0x0a;
 const SCANCODE_MINUS: u8 = 0x0b;
 const SCANCODE_EQUAL: u8 = 0x0c;
 const SCANCODE_BACKSLASH: u8 = 0x0d;
-const SCANCODE_NUMPAD0: u8 = 0x0f;
+pub(crate) const SCANCODE_NUMPAD0: u8 = 0x0f;
 const SCANCODE_KEY_Q: u8 = 0x10;
-const SCANCODE_KEY_W: u8 = 0x11;
+pub(crate) const SCANCODE_KEY_W: u8 = 0x11;
 const SCANCODE_KEY_E: u8 = 0x12;
 const SCANCODE_KEY_R: u8 = 0x13;
 const SCANCODE_KEY_T: u8 = 0x14;
@@ -32,9 +32,9 @@ const SCANCODE_BRACKET_RIGHT: u8 = 0x1b;
 const SCANCODE_NUMPAD1: u8 = 0x1d;
 const SCANCODE_NUMPAD2: u8 = 0x1e;
 const SCANCODE_NUMPAD3: u8 = 0x1f;
-const SCANCODE_KEY_A: u8 = 0x20;
-const SCANCODE_KEY_S: u8 = 0x21;
-const SCANCODE_KEY_D: u8 = 0x22;
+pub(crate) const SCANCODE_KEY_A: u8 = 0x20;
+pub(crate) const SCANCODE_KEY_S: u8 = 0x21;
+pub(crate) const SCANCODE_KEY_D: u8 = 0x22;
 const SCANCODE_KEY_F: u8 = 0x23;
 const SCANCODE_KEY_G: u8 = 0x24;
 const SCANCODE_KEY_H: u8 = 0x25;
@@ -49,7 +49,7 @@ const SCANCODE_NUMPAD5: u8 = 0x2e;
 const SCANCODE_NUMPAD6: u8 = 0x2f;
 const SCANCODE_KEY_Z: u8 = 0x31;
 const SCANCODE_KEY_X: u8 = 0x32;
-const SCANCODE_KEY_C: u8 = 0x33;
+pub(crate) const SCANCODE_KEY_C: u8 = 0x33;
 const SCANCODE_KEY_V: u8 = 0x34;
 const SCANCODE_KEY_B: u8 = 0x35;
 const SCANCODE_KEY_N: u8 = 0x36;
@@ -57,11 +57,11 @@ const SCANCODE_KEY_M: u8 = 0x37;
 const SCANCODE_COMMA: u8 = 0x38;
 const SCANCODE_PERIOD: u8 = 0x39;
 const SCANCODE_SLASH: u8 = 0x3a;
-const SCANCODE_NUMPAD_DECIMAL: u8 = 0x3c;
+pub(crate) const SCANCODE_NUMPAD_DECIMAL: u8 = 0x3c;
 const SCANCODE_NUMPAD7: u8 = 0x3d;
 const SCANCODE_NUMPAD8: u8 = 0x3e;
 const SCANCODE_NUMPAD9: u8 = 0x3f;
-const SCANCODE_SPACE: u8 = 0x40;
+pub(crate) const SCANCODE_SPACE: u8 = 0x40;
 const SCANCODE_BACKSPACE: u8 = 0x41;
 const SCANCODE_TAB: u8 = 0x42;
 const SCANCODE_NUMPAD_ENTER: u8 = 0x43;
@@ -69,10 +69,10 @@ const SCANCODE_ENTER: u8 = 0x44;
 const SCANCODE_ESCAPE: u8 = 0x45;
 const SCANCODE_DELETE: u8 = 0x46;
 const SCANCODE_NUMPAD_SUBTRACT: u8 = 0x4a;
-const SCANCODE_ARROW_UP: u8 = 0x4c;
-const SCANCODE_ARROW_DOWN: u8 = 0x4d;
-const SCANCODE_ARROW_RIGHT: u8 = 0x4e;
-const SCANCODE_ARROW_LEFT: u8 = 0x4f;
+pub(crate) const SCANCODE_ARROW_UP: u8 = 0x4c;
+pub(crate) const SCANCODE_ARROW_DOWN: u8 = 0x4d;
+pub(crate) const SCANCODE_ARROW_RIGHT: u8 = 0x4e;
+pub(crate) const SCANCODE_ARROW_LEFT: u8 = 0x4f;
 const SCANCODE_F1: u8 = 0x50;
 const SCANCODE_F2: u8 = 0x51;
 const SCANCODE_F3: u8 = 0x52;
@@ -91,6 +91,8 @@ const SCANCODE_SHIFT_LEFT: u8 = 0x60;
 const SCANCODE_SHIFT_RIGHT: u8 = 0x61;
 const SCANCODE_ALT_LEFT: u8 = 0x64;
 const SCANCODE_ALT_RIGHT: u8 = 0x65;
+
+pub(crate) const MAX_AMIGA_KEYCODE: u8 = 0x7f;
 
 pub fn amiga_key_code(code: &str) -> Option<u8> {
     Some(match code {
@@ -188,5 +190,73 @@ pub fn amiga_key_code(code: &str) -> Option<u8> {
         "MetaLeft" => SCANCODE_L_AMIGA,
         "MetaRight" => SCANCODE_R_AMIGA,
         _ => return None,
+    })
+}
+
+/// Frontend bindings name physical key positions, excluding derived text commands.
+pub fn frontend_key(name: &str) -> Option<egui::Key> {
+    use egui::Key;
+    let key = Key::from_name(name)?;
+    match key {
+        Key::Copy
+        | Key::Cut
+        | Key::Paste
+        | Key::Colon
+        | Key::Plus
+        | Key::Pipe
+        | Key::Questionmark
+        | Key::Exclamationmark
+        | Key::OpenCurlyBracket
+        | Key::CloseCurlyBracket => None,
+        _ => Some(key),
+    }
+}
+
+/// Normalize egui binding names and DOM/native positions through the same codes.
+pub fn frontend_key_code(name: &str) -> Option<u8> {
+    use egui::Key;
+    let key = frontend_key(name)?;
+    amiga_key_code(match key {
+        Key::A => "KeyA",
+        Key::B => "KeyB",
+        Key::C => "KeyC",
+        Key::D => "KeyD",
+        Key::E => "KeyE",
+        Key::F => "KeyF",
+        Key::G => "KeyG",
+        Key::H => "KeyH",
+        Key::I => "KeyI",
+        Key::J => "KeyJ",
+        Key::K => "KeyK",
+        Key::L => "KeyL",
+        Key::M => "KeyM",
+        Key::N => "KeyN",
+        Key::O => "KeyO",
+        Key::P => "KeyP",
+        Key::Q => "KeyQ",
+        Key::R => "KeyR",
+        Key::S => "KeyS",
+        Key::T => "KeyT",
+        Key::U => "KeyU",
+        Key::V => "KeyV",
+        Key::W => "KeyW",
+        Key::X => "KeyX",
+        Key::Y => "KeyY",
+        Key::Z => "KeyZ",
+        Key::Num0 => "Digit0",
+        Key::Num1 => "Digit1",
+        Key::Num2 => "Digit2",
+        Key::Num3 => "Digit3",
+        Key::Num4 => "Digit4",
+        Key::Num5 => "Digit5",
+        Key::Num6 => "Digit6",
+        Key::Num7 => "Digit7",
+        Key::Num8 => "Digit8",
+        Key::Num9 => "Digit9",
+        Key::OpenBracket => "BracketLeft",
+        Key::CloseBracket => "BracketRight",
+        Key::Backtick => "Backquote",
+        Key::Equals => "Equal",
+        _ => key.name(),
     })
 }

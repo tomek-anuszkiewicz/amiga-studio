@@ -19,6 +19,8 @@ pub struct MachineOwner {
     pending_image: bool,
     shutdown: bool,
     revision: u64,
+    association: debugger::SaveAssociation,
+    quick_associations: [debugger::SaveAssociation; debugger::session::QUICK_SLOT_COUNT],
 }
 
 impl MachineOwner {
@@ -35,6 +37,8 @@ impl MachineOwner {
             pending_image: true,
             shutdown: false,
             revision: 0,
+            association: debugger::SaveAssociation::default(),
+            quick_associations: std::array::from_fn(|_| debugger::SaveAssociation::default()),
         }
     }
 
@@ -66,6 +70,15 @@ impl MachineOwner {
             shutdown: self.shutdown,
             halted: self.session.machine.cpu.state.is_halted(),
             stopped: self.session.machine.cpu.state.is_stopped(),
+            ports: debugger::launch::port_kinds(&self.session),
+            drives: std::array::from_fn(|index| {
+                let drive = &self.session.machine.floppy.drives[index];
+                crate::host_commands::DriveStatus {
+                    connected: drive.connected,
+                    inserted: drive.disk_inserted,
+                    active: drive.motor_on,
+                }
+            }),
             quick_slots: std::array::from_fn(|index| self.session.has_quick_slot(index + 1)),
         }
     }
@@ -141,27 +154,78 @@ impl MachineOwner {
                 self.shutdown = true;
             }
             HostCommand::SaveSnapshot => {
-                return self
-                    .session
-                    .save_state_to_json()
+                let mut saved = debugger::SaveState::capture(&self.session.machine);
+                saved.header.timestamp = crate::host_clock::utc_now().max(0) as u64;
+                saved.header.association = self.association.clone();
+                return saved
+                    .to_json()
                     .map(HostValue::Snapshot)
-                    .map_err(|error| error.to_string());
+                    .map_err(|e| e.to_string());
+            }
+            HostCommand::RestorePlayer {
+                json,
+                game_id,
+                ports,
+            } => {
+                let saved = debugger::SaveState::from_json(&json).map_err(|e| e.to_string())?;
+                if saved.header.association.game_id != game_id {
+                    return Err("This save belongs to a different game".into());
+                }
+                // Validate host binding compatibility before replacing any live value.
+                let kinds = debugger::launch::state_port_kinds(&saved.state.game_ports);
+                if kinds != ports {
+                    return Err("Saved port devices differ from this configuration. Select compatible input bindings.".into());
+                }
+                self.session.load_state(&saved.state);
+                self.association = saved.header.association;
+                self.new_generation();
+                self.session.toggle_run();
+                return Ok(HostValue::PlayerRestored(self.association.clone()));
             }
             HostCommand::LoadSnapshot(json) => {
-                self.session
-                    .load_state_from_json(&json)
-                    .map_err(|error| error.to_string())?;
+                let saved = debugger::SaveState::from_json(&json).map_err(|e| e.to_string())?;
+                self.session.load_state(&saved.state);
+                self.association = saved.header.association;
                 self.new_generation();
+                return Ok(HostValue::PlayerRestored(self.association.clone()));
             }
-            HostCommand::SaveQuickSlot(slot) => self
-                .session
-                .save_quick_slot(slot)
-                .map_err(|error| error.to_string())?,
+            HostCommand::SaveQuickSlot(slot) => {
+                self.session
+                    .save_quick_slot(slot)
+                    .map_err(|e| e.to_string())?;
+                self.quick_associations[slot - 1] = self.association.clone();
+            }
             HostCommand::LoadQuickSlot(slot) => {
                 self.session
                     .load_quick_slot(slot)
-                    .map_err(|error| error.to_string())?;
+                    .map_err(|e| e.to_string())?;
+                self.association = self.quick_associations[slot - 1].clone();
                 self.new_generation();
+                return Ok(HostValue::PlayerRestored(self.association.clone()));
+            }
+            HostCommand::Launch { setup, association } => {
+                let mut replacement = setup.prepare()?;
+                replacement
+                    .machine
+                    .rtc
+                    .supply_host_utc(crate::host_clock::utc_now());
+                replacement
+                    .machine
+                    .rtc
+                    .load_battery(self.session.machine.rtc.battery_data());
+                replacement.set_debugger_enabled(false);
+                replacement.toggle_run();
+                self.session = replacement;
+                self.association = association;
+                self.new_generation();
+            }
+            HostCommand::MountDisk {
+                drive,
+                bytes,
+                disk_id,
+            } => {
+                debugger::launch::mount(&mut self.session, drive, bytes.as_deref())?;
+                self.association.mounted[drive] = disk_id;
             }
             HostCommand::LoadRom(bytes) => {
                 self.session

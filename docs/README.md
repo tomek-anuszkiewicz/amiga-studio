@@ -8,6 +8,7 @@ question you want to answer:
 | Question | Start here |
 | --- | --- |
 | How does the emulator model an Amiga? | [Architecture](architecture.md) |
+| How do I configure input, start disks or prepare a game library? | [Game library and manual setup](game-library.md) |
 | How do I inspect or step through execution? | [Developer Studio and debugger](debugger.md) |
 | How do I run the project and find the relevant code? | [Developer orientation](developers.md) |
 | What do the tests establish? | [Verification overview](testing.md) |

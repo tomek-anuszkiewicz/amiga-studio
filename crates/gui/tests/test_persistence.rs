@@ -222,3 +222,27 @@ fn battery_offset_persists_separately_and_ui_refreshes_host_utc() {
     assert!((lower - 123..=upper - 123).contains(&restarted.host.status.rtc_time));
     assert_eq!(restarted.host.status.cck, before_cck);
 }
+
+#[test]
+fn named_hardware_and_input_catalog_survives_framework_storage_without_media_bytes() {
+    use eframe::App;
+    let mut app = EmulatorApp::default();
+    app.player.catalog.configurations[0].name = "Renamed preset".into();
+    app.player.catalog.configurations[0].rom = "kick.rom".into();
+    app.player.catalog.mappings[0].threshold = 0.7;
+    app.player.rom = Some(vec![1; 262144]);
+    let mut storage = MemoryStorage::new();
+    app.save(&mut storage);
+    let restored: gui::player_config::ConfigurationCatalog =
+        eframe::get_value(&storage, gui::player_config::CONFIG_STORAGE_KEY).unwrap();
+    assert_eq!(restored, app.player.catalog);
+    assert_eq!(restored.configurations[0].id, "standard");
+    let mut reopened = EmulatorApp::default();
+    reopened.player.catalog = restored;
+    assert!(reopened.player.rom.is_none());
+    assert!(reopened.player.setup_disks.is_empty());
+    assert_eq!(
+        reopened.player.catalog.selected().unwrap().name,
+        "Renamed preset"
+    );
+}
