@@ -77,7 +77,7 @@ under [commit policy](.agents/rules/git-commits.md). MCP configuration is
 - State snapshots remain queryable and serializable with `serde::Serialize` and `serde::Deserialize`, separate from runtime handles.
 - Follow physical dependencies when planning: bus arbitration and clocks, autonomous DMA, display, peripherals, then firmware integration.
 - Guest memory is big-endian. Use explicit endian conversion, never host-endian pointer casts or `transmute`. Bitwise operations and raw transfers may bypass swaps only when their semantics commute with byte reversal.
-- Guest execution must not panic the host. Unmapped reads return `$FF` / `$FFFF` (configurable); odd-address word/long accesses raise Address Error, Vector 3. Runtime emulation uses no `unwrap` or `expect`.
+- Guest errors remain emulated: unmapped reads return `$FF`/`$FFFF` (configurable); odd word/long accesses raise Address Error, Vector 3. Runtime uses no `unwrap`/`expect`. Internal invariant failures use the [sole fatal helper](.agents/rules/rust-best-practices.md).
 - ALU operations and cycle counters use explicit wrapping arithmetic. Execution, memory access, and interrupt hot paths allocate no heap memory. Project rules prohibit custom `macro_rules!` and const-generic instruction handlers.
 
 ## Verification and Completion

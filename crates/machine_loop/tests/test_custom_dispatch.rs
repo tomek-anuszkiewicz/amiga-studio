@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use config::{custom_reg, A500Config, VideoStandard};
-use machine_loop::{A500Machine, A500State, AddressBus, BusResult};
+use machine_loop::{A500Machine, A500State, AddressBus};
 
 fn idle_machine() -> A500Machine {
     let mut machine = A500Machine::new(A500Config::bare_512k(VideoStandard::Pal));
@@ -15,7 +15,7 @@ fn palette_write_waits_for_next_custom_chip_step() {
     machine.cpu.state.set_stopped(true);
     machine
         .memory_bus()
-        .write_custom_word(custom_reg::denise::REGISTER_COLOR00, 0x0abc);
+        .write_custom_word(custom_reg::denise::REGISTER_COLOR00, 0x0abc, "DMA");
     assert_eq!(
         machine.denise.color[0], 0,
         "pending palette must remain invisible"
@@ -39,7 +39,7 @@ fn every_simultaneously_matured_paula_write_is_applied() {
         (custom_reg::paula::REGISTER_AUD2PER, 102),
         (custom_reg::paula::REGISTER_POTGO, 0xabcd),
     ] {
-        machine.memory_bus().write_custom_word(offset, value);
+        machine.memory_bus().write_custom_word(offset, value, "DMA");
     }
     machine.step_cycles(2);
     assert_eq!(
@@ -112,9 +112,11 @@ fn address_strobes_act_immediately_without_register_queue_entries() {
     let mut machine = idle_machine();
     machine.agnus.copper.cop1lc = 0x2000;
     machine.agnus.copper.cop2lc = 0x3000;
-    assert!(machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_COPJMP1, 0xffff));
+    assert!(machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_COPJMP1,
+        0xffff,
+        "DMA"
+    ));
     assert_eq!(machine.agnus.copper.cop_pc, 0x2000);
     assert_eq!(
         machine
@@ -131,7 +133,9 @@ fn address_strobes_act_immediately_without_register_queue_entries() {
         custom_reg::denise::REGISTER_STRHOR,
         custom_reg::denise::REGISTER_STRLONG,
     ] {
-        assert!(machine.memory_bus().write_custom_word(offset, 0x1234));
+        assert!(machine
+            .memory_bus()
+            .write_custom_word(offset, 0x1234, "DMA"));
     }
     assert!(machine.denise.mutations.is_empty());
     assert!(machine.paula.mutations.is_empty());
@@ -142,41 +146,53 @@ fn address_strobes_act_immediately_without_register_queue_entries() {
 }
 
 #[test]
-fn full_receiver_rejects_shared_transfer_atomically_without_blocking_unrelated_chip() {
-    let mut machine = idle_machine();
-    // Keep register-delivery assertions outside reserved refresh slots.
-    machine.agnus.hpos = 0x3f;
-    for value in 0..agnus::Agnus::MUTATION_CAPACITY as u16 {
-        assert!(machine.agnus.set_bltadat(value));
+fn shared_queue_overflow_is_fatal_before_either_recipient_changes() {
+    let offsets = [0x096u16, 0x100, 0x08e, 0x090]
+        .into_iter()
+        .chain((0..8).flat_map(|sprite| [0x140 + sprite * 8, 0x142 + sprite * 8]));
+    for offset in offsets {
+        for full_first in [true, false] {
+            for byte in [true, false] {
+                let mut machine = idle_machine();
+                machine.agnus.hpos = 0x3f;
+                if full_first {
+                    for value in 0..agnus::Agnus::MUTATION_CAPACITY as u16 {
+                        assert!(machine.agnus.set_bltadat(value));
+                    }
+                } else if offset == 0x096 {
+                    for _ in 0..machine_loop::paula::Paula::MUTATION_CAPACITY {
+                        assert!(machine.paula.set_serdat(0));
+                    }
+                } else {
+                    for _ in 0..machine_loop::denise::Denise::MUTATION_CAPACITY {
+                        assert!(machine.denise.set_bpldat(0, 0));
+                    }
+                }
+                let agnus = machine.agnus.mutations.pending().to_vec();
+                let denise = machine.denise.mutations.pending().to_vec();
+                let paula = machine.paula.mutations.pending().to_vec();
+                let error = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    if byte {
+                        machine
+                            .memory_bus()
+                            .write_byte(0xdff000 + u32::from(offset), 0x82);
+                    } else {
+                        machine
+                            .memory_bus()
+                            .write_word(0xdff000 + u32::from(offset), 0x8200);
+                    }
+                }))
+                .unwrap_err();
+                let message = error.downcast_ref::<String>().unwrap();
+                assert!(message.contains("Mutation queue overflow"), "{message}");
+                assert!(message.contains("CCK=Some(0), producer=CPU"), "{message}");
+                assert_eq!(machine.agnus.mutations.pending(), agnus);
+                assert_eq!(machine.denise.mutations.pending(), denise);
+                assert_eq!(machine.paula.mutations.pending(), paula);
+                assert_eq!(machine.agnus.dma.dmacon, 0);
+            }
+        }
     }
-    assert!(!machine.agnus.set_dmacon(0x8200));
-    for _ in 0..2 {
-        assert_eq!(
-            machine.memory_bus().write_word(0xdff096, 0x8200),
-            BusResult::WaitState
-        );
-        assert!(machine.paula.mutations.is_empty());
-        assert_eq!(machine.agnus.dma.dmacon, 0);
-    }
-    assert_eq!(
-        machine.memory_bus().write_byte(0xdff181, 0x33),
-        BusResult::Ready(())
-    );
-    assert_eq!(machine.denise.color[0], 0);
-    machine.step_cck();
-    assert_eq!(machine.denise.color[0], 0x333);
-    assert_eq!(machine.agnus.blitter.bltadat, 63);
-    assert_eq!(
-        machine.memory_bus().write_word(0xdff096, 0x8200),
-        BusResult::Ready(())
-    );
-    assert_eq!(machine.agnus.mutations.len(), 1);
-    assert_eq!(machine.paula.mutations.len(), 1);
-    machine.step_cycles(2);
-    assert_eq!(machine.agnus.dma.dmacon, 0x200);
-    assert!(machine.paula.dma_master);
-    assert!(machine.agnus.mutations.is_empty());
-    assert!(machine.paula.mutations.is_empty());
 }
 
 #[test]
@@ -186,7 +202,11 @@ fn full_capacity_register_replay_does_not_block_interrupt_pins() {
         assert!(machine.agnus.set_bltadat(value));
         assert!(machine.denise.set_bpldat(0, value));
     }
-    let agnus_due = machine.agnus.step_cck();
+    machine.cck = machine.cck.wrapping_add(1);
+    machine
+        .physical_memory
+        .begin_cck(machine.cck, machine.cpu.state.instruction_pc());
+    let agnus_due = machine.agnus.step_cck(&mut machine.physical_memory);
     let denise_due = machine.denise.step_cck();
     assert_eq!(agnus_due.len(), agnus::Agnus::MUTATION_CAPACITY);
     assert_eq!(denise_due.len(), denise::Denise::MUTATION_CAPACITY);
@@ -201,7 +221,15 @@ fn full_capacity_register_replay_does_not_block_interrupt_pins() {
     for value in 0..paula::Paula::MUTATION_CAPACITY as u16 - 1 {
         assert!(machine.paula.set_audper(0, value));
     }
-    assert!(!machine.paula.set_serdat(0x1234));
+    let mut overflow = machine.paula.clone();
+    assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        overflow.set_serdat(0x1234);
+    }))
+    .is_err());
+    assert_eq!(
+        overflow.mutations.pending(),
+        machine.paula.mutations.pending()
+    );
     machine.paula.pins.int2_high = false;
     machine.paula.pins.int6_high = false;
     assert_eq!(
@@ -259,9 +287,11 @@ fn copper_and_cpu_shared_writes_start_from_the_same_receiver_boundary() {
             .write_word_debug(0x2000 + index as u32 * 2, word);
     }
     assert!(copper.agnus.set_cop1lcl(0x2000));
-    assert!(copper
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_DMACON, 0x8280));
+    assert!(copper.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_DMACON,
+        0x8280,
+        "DMA"
+    ));
     copper.step_cycles(2);
     copper.agnus.strobe_copjmp1();
     let mut issued = false;
@@ -282,9 +312,11 @@ fn copper_and_cpu_shared_writes_start_from_the_same_receiver_boundary() {
     assert_eq!(copper.agnus.dma.bplcon0, 0);
     assert_eq!(copper.denise.bplcon0.value(), 0);
     let mut cpu_bus = idle_machine();
-    assert!(cpu_bus
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_BPLCON0, 0x1000));
+    assert!(cpu_bus.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_BPLCON0,
+        0x1000,
+        "DMA"
+    ));
     for step in 1..=4 {
         copper.step_cck();
         cpu_bus.step_cck();
@@ -305,12 +337,16 @@ fn copper_and_cpu_shared_writes_start_from_the_same_receiver_boundary() {
 #[test]
 fn pending_registers_and_unconsumed_bus_outputs_resume_after_serialization() {
     let mut machine = idle_machine();
-    assert!(machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_BPLCON0, 0x1000));
-    assert!(machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_DMACON, 0x8200));
+    assert!(machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_BPLCON0,
+        0x1000,
+        "DMA"
+    ));
+    assert!(machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_DMACON,
+        0x8200,
+        "DMA"
+    ));
     assert!(machine.denise.set_color(2, 0x0abc));
     assert!(machine.paula.set_adkcon(0x8001));
     machine.paula.pins.int2_high = false;
@@ -351,12 +387,16 @@ fn authored_cpu_byte_write_propagates_once_while_dma_competes_for_chip_ram() {
                 .write_word_debug(0x1000 + index as u32 * 2, word);
         }
         machine.cpu.state.set_stopped(true);
-        assert!(machine
-            .memory_bus()
-            .write_custom_word(custom_reg::agnus::REGISTER_DMACON, 0x8300));
-        assert!(machine
-            .memory_bus()
-            .write_custom_word(custom_reg::agnus::REGISTER_BPLCON0, 0x6000));
+        assert!(machine.memory_bus().write_custom_word(
+            custom_reg::agnus::REGISTER_DMACON,
+            0x8300,
+            "DMA"
+        ));
+        assert!(machine.memory_bus().write_custom_word(
+            custom_reg::agnus::REGISTER_BPLCON0,
+            0x6000,
+            "DMA"
+        ));
         machine.step_cycles(4);
         machine.agnus.hpos = 0x36;
         machine.agnus.vpos = 100;
@@ -396,12 +436,16 @@ fn authored_cpu_byte_write_propagates_once_while_dma_competes_for_chip_ram() {
 fn dma_disable_retains_accepted_bitplane_word_and_enable_restores_fetches() {
     let mut machine = idle_machine();
     machine.physical_memory.map_chip_ram_to_low_memory();
-    assert!(machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_BPLCON0, 0x1000));
-    assert!(machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_DMACON, 0x8300));
+    assert!(machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_BPLCON0,
+        0x1000,
+        "DMA"
+    ));
+    assert!(machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_DMACON,
+        0x8300,
+        "DMA"
+    ));
     machine.step_cycles(4);
     machine.physical_memory.write_word_debug(0x2000, 0xabcd);
     machine.physical_memory.write_word_debug(0x2002, 0x5678);
@@ -412,9 +456,11 @@ fn dma_disable_retains_accepted_bitplane_word_and_enable_restores_fetches() {
     assert!(machine.physical_memory.chip_ram_blocked);
     assert_eq!(machine.agnus.bplpt[0], 0x2002);
     assert_eq!(machine.denise.bpldat[0], 0);
-    assert!(machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_DMACON, 0x0100));
+    assert!(machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_DMACON,
+        0x0100,
+        "DMA"
+    ));
     machine.step_cck();
     assert_eq!(
         machine.denise.bpldat[0], 0xabcd,
@@ -427,9 +473,11 @@ fn dma_disable_retains_accepted_bitplane_word_and_enable_restores_fetches() {
     machine.step_cck();
     assert_eq!(machine.agnus.bplpt[0], 0x2002);
     assert!(!machine.physical_memory.chip_ram_blocked);
-    assert!(machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_DMACON, 0x8100));
+    assert!(machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_DMACON,
+        0x8100,
+        "DMA"
+    ));
     machine.step_cycles(2);
     machine.agnus.hpos = 0x3e;
     machine.step_cck();

@@ -184,15 +184,14 @@ impl Agnus {
     /// Advances raster beam position, steps embedded coprocessors and schedulers,
     /// and processes in-flight register mutations by 1 Color Clock.
     /// Borrows all writes committed this cycle until the next mutable chip access.
-    #[inline]
-    pub fn step_cck(&mut self) -> &[(u16, u16)] {
-        self.step_cck_ram(&mut [])
-    }
 
     /// Advances raster beam position, steps embedded coprocessors and schedulers with Chip RAM access,
     /// and processes in-flight register mutations by 1 Color Clock.
     /// Borrows all writes committed this cycle until the next mutable chip access.
-    pub fn step_cck_ram(&mut self, chip_ram: &mut [u8]) -> &[(u16, u16)] {
+    pub fn step_cck(
+        &mut self,
+        chip_ram: &mut impl config::chip_ram::ChipRamAccess,
+    ) -> &[(u16, u16)] {
         self.advance_beam();
         self.sample_audio_request();
         self.sample_disk_request();
@@ -223,22 +222,20 @@ impl Agnus {
 
         match owner {
             dma::DmaChannel::Copper => {
-                if !chip_ram.is_empty() {
-                    let word = config::chip_ram::read_u16(chip_ram, self.copper.cop_pc);
-                    self.pending_copper_write = self.copper.receive_dma_word(
-                        word,
-                        self.hpos,
-                        self.vpos,
-                        self.blitter.is_busy,
-                    );
-                }
+                let word = chip_ram
+                    .read_chip_word(self.copper.cop_pc, config::chip_ram::ChipRamOwner::Copper);
+                self.pending_copper_write =
+                    self.copper
+                        .receive_dma_word(word, self.hpos, self.vpos, self.blitter.is_busy);
             }
             dma::DmaChannel::Disk => self.grant_disk_word(chip_ram),
             dma::DmaChannel::Bitplane(plane) => {
                 let p = plane as usize;
-                if p < OCS_BITPLANE_COUNT && !chip_ram.is_empty() && self.pending_bpl_dma.is_none()
-                {
-                    let word = config::chip_ram::read_u16(chip_ram, self.bplpt[p]);
+                if p < OCS_BITPLANE_COUNT && self.pending_bpl_dma.is_none() {
+                    let word = chip_ram.read_chip_word(
+                        self.bplpt[p],
+                        config::chip_ram::ChipRamOwner::Bitplane(plane),
+                    );
                     self.pending_bpl_dma = Some((plane, word));
                     let mod_inc = if self.dma.is_last_bpl_block(self.hpos) {
                         if p % 2 == 0 {
@@ -259,7 +256,7 @@ impl Agnus {
         }
 
         self.blitter
-            .step_cck_ram(chip_ram, owner == dma::DmaChannel::Blitter);
+            .step_cck(chip_ram, owner == dma::DmaChannel::Blitter);
 
         // 3. Process and commit due register mutations
         self.mutations.tick();

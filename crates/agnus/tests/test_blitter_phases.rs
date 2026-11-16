@@ -1,4 +1,6 @@
+mod common;
 use agnus::blitter::{Blitter, BlitterPhase};
+use common::TestChipRam;
 
 fn phase_code(phase: BlitterPhase) -> u8 {
     match phase {
@@ -26,7 +28,7 @@ fn channel_sequences_preserve_idle_cycles_waits_and_destination_drain() {
             blitter.bltcon1 = fill;
             blitter.set_dma_enabled(true);
             blitter.trigger_blit(0x0042);
-            let mut ram = [0; 64];
+            let mut ram = TestChipRam::from(vec![0; 64]);
             let mut word = sequence.to_vec();
             if fill != 0 && channels & 3 == 1 {
                 word.push(b'I');
@@ -49,19 +51,23 @@ fn channel_sequences_preserve_idle_cycles_waits_and_destination_drain() {
                 assert_eq!(blitter.wants_bus(), transfer);
                 blitter.set_dma_enabled(false);
                 let paused = blitter.clone();
-                blitter.step_cck_ram(&mut ram, true);
+                ram.next_cck();
+                blitter.step_cck(&mut ram, true);
                 assert_eq!(blitter, paused);
                 blitter.set_dma_enabled(true);
                 if transfer {
                     let waiting = blitter.clone();
-                    let memory = ram;
-                    blitter.step_cck_ram(&mut ram, false);
+                    let memory = ram.clone();
+                    ram.next_cck();
+                    blitter.step_cck(&mut ram, false);
                     assert_eq!(blitter, waiting);
                     assert_eq!(ram, memory);
-                    blitter.step_cck_ram(&mut [], true);
+                    ram.next_cck();
+                    blitter.step_cck(&mut ram, false);
                     assert_eq!(blitter, waiting);
                 }
-                blitter.step_cck_ram(&mut ram, transfer);
+                ram.next_cck();
+                blitter.step_cck(&mut ram, transfer);
             }
             assert!(!blitter.is_busy);
             assert!(blitter.poll_blit_irq());
@@ -78,27 +84,35 @@ fn phase_selection_observes_current_controls_during_an_active_word() {
     blitter.bltcon0 = 0x0f96;
     blitter.set_dma_enabled(true);
     blitter.trigger_blit(0x0042);
-    let mut ram = [0; 64];
-    blitter.step_cck_ram(&mut ram, false);
-    blitter.step_cck_ram(&mut ram, true); // A consumed; next phase is B.
+    let mut ram = TestChipRam::from(vec![0; 64]);
+    ram.next_cck();
+    blitter.step_cck(&mut ram, false);
+    ram.next_cck();
+    blitter.step_cck(&mut ram, true); // A consumed; next phase is B.
     assert_eq!(blitter.current_phase(), BlitterPhase::FetchB);
 
     blitter.bltcon0 = 0x0b96; // A/C/D: current index now selects C.
     assert_eq!(blitter.current_phase(), BlitterPhase::FetchC);
-    blitter.step_cck_ram(&mut ram, true);
+    ram.next_cck();
+    blitter.step_cck(&mut ram, true);
     blitter.bltcon0 = 0x0996; // A/D: clamp index 2 to the final phase.
     assert_eq!(blitter.current_phase(), BlitterPhase::BusIdle);
     blitter.bltcon1 = 0x08; // Fill extends this word with an internal phase.
-    blitter.step_cck_ram(&mut ram, false);
+    ram.next_cck();
+    blitter.step_cck(&mut ram, false);
     assert_eq!((blitter.phase_index, blitter.cur_col), (0, 1));
     assert_eq!(blitter.current_phase(), BlitterPhase::FetchA);
-    blitter.step_cck_ram(&mut ram, true);
+    ram.next_cck();
+    blitter.step_cck(&mut ram, true);
     assert_eq!(blitter.current_phase(), BlitterPhase::WriteD);
-    blitter.step_cck_ram(&mut ram, true);
+    ram.next_cck();
+    blitter.step_cck(&mut ram, true);
     assert_eq!(blitter.current_phase(), BlitterPhase::BusIdle);
-    blitter.step_cck_ram(&mut ram, false);
+    ram.next_cck();
+    blitter.step_cck(&mut ram, false);
     assert_eq!(blitter.current_phase(), BlitterPhase::WriteD);
-    blitter.step_cck_ram(&mut ram, true);
+    ram.next_cck();
+    blitter.step_cck(&mut ram, true);
     assert!(!blitter.is_busy);
     assert!(blitter.poll_blit_irq());
 }

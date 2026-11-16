@@ -122,7 +122,7 @@ impl A500Machine {
     /// Routes the retained Agnus RGA/data output, acknowledging only acceptance.
     pub(super) fn deliver_dma_register(&mut self) {
         if let Some((reg, word)) = self.agnus.pending_dma_write {
-            if self.memory_bus().write_custom_word(reg, word) {
+            if self.memory_bus().write_custom_word(reg, word, "DMA") {
                 self.agnus.pending_dma_write = None;
             }
         }

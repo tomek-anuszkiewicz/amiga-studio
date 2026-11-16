@@ -27,42 +27,48 @@ fn test_blitter_nasty_blocks_chip_ram_and_allows_fast_ram() {
 
     // Setup Blitter for a 20-word transfer in Chip RAM
     // BLTCON0: Minterm 0xCA (D = A), use channel A and D (0x09CA)
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_BLTCON0,
+        0x09CA,
+        "DMA",
+    );
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_BLTCON1,
+        0x0000,
+        "DMA",
+    ); // BLTCON1
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_BLTAPTH,
+        0x001000,
+        "DMA",
+    ); // BLTAPTH/L
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_BLTDPTH,
+        0x002000,
+        "DMA",
+    ); // BLTDPTH/L
     harness
         .machine
         .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_BLTCON0, 0x09CA);
+        .write_custom_word(custom_reg::agnus::REGISTER_BLTAMOD, 0, "DMA"); // BLTAMOD
     harness
         .machine
         .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_BLTCON1, 0x0000); // BLTCON1
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_BLTAPTH, 0x001000); // BLTAPTH/L
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_BLTDPTH, 0x002000); // BLTDPTH/L
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_BLTAMOD, 0); // BLTAMOD
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_BLTDMOD, 0); // BLTDMOD
+        .write_custom_word(custom_reg::agnus::REGISTER_BLTDMOD, 0, "DMA"); // BLTDMOD
 
     // Enable Blitter Nasty in DMACON: SET | DMAEN | BLTEN | BLTPRI -> 0x8640
     harness.machine.memory_bus().write_custom_word(
         custom_reg::agnus::REGISTER_DMACON,
         0x8000 | 0x0200 | 0x0040 | 0x0400,
+        "CPU",
     );
 
     // Start Blitter: 10 lines x 2 words = 20 words
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_BLTSIZE, (10 << 6) | 2);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_BLTSIZE,
+        (10 << 6) | 2,
+        "CPU",
+    );
 
     // Step 2 CCKs for registers to commit and Blitter to engage
     harness.step_cck(2);
@@ -143,26 +149,31 @@ fn test_blitter_nasty_fast_ram_cpu_concurrency() {
     harness.machine.cpu.state.set_d_long(0, 0);
 
     // Setup a long Blitter transfer in Chip RAM: 200 lines x 2 words = 400 words
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_BLTCON0, 0x09CA);
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_BLTAPTH, 0x001000);
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_BLTDPTH, 0x002000);
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_DMACON, 0x8640); // SET + DMAEN + BLTEN + BLTPRI
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_BLTSIZE, (200 << 6) | 2);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_BLTCON0,
+        0x09CA,
+        "DMA",
+    );
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_BLTAPTH,
+        0x001000,
+        "DMA",
+    );
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_BLTDPTH,
+        0x002000,
+        "DMA",
+    );
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_DMACON,
+        0x8640,
+        "DMA",
+    ); // SET + DMAEN + BLTEN + BLTPRI
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_BLTSIZE,
+        (200 << 6) | 2,
+        "CPU",
+    );
     harness.step_cck(2);
 
     assert!(harness.machine.agnus.blitter.is_busy);

@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "general"
 status: "active"
 created: 2026-08-31
-updated: 2026-11-15
+updated: 2026-11-16
 related: ["[Machine Loop.md](Machine%20Loop.md)", "[Game Ports.md](Game%20Ports.md)", "[MemoryBus.md](MemoryBus.md)", "[Physical Memory.md](Physical%20Memory.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md)", "[Agnus.md](Agnus.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)", "[Interrupts.md](Interrupts.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)", "[Custom Chip Register Ownership and Access Matrix.md](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md)", "[Testing Strategy and Quality Assurance.md](Verification/Testing%20Strategy%20and%20Quality%20Assurance.md)"]
 ---
 
@@ -92,6 +92,9 @@ flowchart TD
    - Granted RGA/data words use the existing MemoryBus and register queues, retaining an output until acceptance. Disk and audio requests pass through DMAL, with register data accepted by the target chip. No chip notifies or mutates a peer directly.
 
 ---
+
+CPU bus invariant guards call the foundational `config::fatal_emulation_error`
+helper directly; CPU therefore depends on both `physical_memory` and `config`.
 
 ## 2. Workspace Crate Architecture & Dependencies
 
@@ -202,6 +205,7 @@ graph TD
     PMEM --> RTC
     MBUS --> PMEM
     CPU --> PMEM
+    CPU --> CFG
 
     %% Tooling Dependencies
     DBG --> CPU
@@ -232,7 +236,7 @@ The diagram shows ownership and selected connections. Internal module nodes are 
 | **rtc** | [crates/rtc](../../../crates/rtc) | OKI MSM6242B Real-Time Clock & Calendar emulation, BCD latches, civil calendar arithmetic. | config |
 | **physical_memory** | [crates/physical_memory](../../../crates/physical_memory) | 24-bit physical address space, 256-entry 64KB bank table (`addr >> 16`), 2-phase CCK arbitration, open bus emulation. | config, rtc |
 | **memory_bus** | [crates/memory_bus](../../../crates/memory_bus) | Routes CPU memory and register access through the actual chips and physical memory. | agnus, cia, config, denise, paula, physical_memory, rtc |
-| **m68000** | [crates/cpu](../../../crates/cpu) | Cycle-exact Motorola 68000 CPU core, 65,536-entry compile-time static dispatch table, registers, ALU, prefetch queue. | physical_memory |
+| **m68000** | [crates/cpu](../../../crates/cpu) | Cycle-exact Motorola 68000 CPU core, 65,536-entry compile-time static dispatch table, registers, ALU, prefetch queue. | physical_memory, config |
 | **machine_loop** | [crates/machine_loop](../../../crates/machine_loop) | Owns chips and peripherals, advances the master CCK and routes motherboard signals and shared-bus transfers. | agnus, cia, config, cpu, denise, floppy, game_ports, keyboard, memory_bus, paula, physical_memory, rtc |
 | **disassembler** | [crates/disassembler](../../../crates/disassembler) | Cycle-exact M68000 instruction disassembler. | *None* |
 | **debugger** | [crates/debugger](../../../crates/debugger) | Headless inspection and debugging subsystem, temporal time-travel engine, breakpoints, and watchpoints. | config, cpu, disassembler, machine_loop, physical_memory, save_state |

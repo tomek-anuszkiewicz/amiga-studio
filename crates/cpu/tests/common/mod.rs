@@ -66,7 +66,7 @@ impl RecordingBus {
         );
         assert_eq!(
             self.refusals,
-            self.script.iter().map(|entry| entry.1 as u64).sum()
+            self.script.iter().map(|entry| entry.1 as u64).sum::<u64>()
         );
         assert_eq!(
             self.attempts.iter().filter(|attempt| attempt.ready).count(),
@@ -76,6 +76,11 @@ impl RecordingBus {
 }
 
 impl AddressBus for RecordingBus {
+    fn begin_cpu_cck(&mut self, cck: u64, pc: u32) -> u64 {
+        self.memory.begin_cck(cck, pc);
+        cck
+    }
+
     fn read_byte(&mut self, addr: u32) -> BusResult<u8> {
         if self.accept(Access::ReadByte(addr)) {
             self.memory.read_byte(addr)
@@ -119,6 +124,34 @@ pub fn without_clocks(state: &CpuState) -> CpuState {
     snapshot
 }
 
+/// Account for the independently expected clock tick and refused scripted
+/// operation while retaining strict comparison of all guest and guard state.
+fn after_refusal(state: &CpuState, access: Access) -> CpuState {
+    let mut value = serde_json::to_value(state).expect("serializable CPU fixture");
+    let timing = &mut value["bus_timing"];
+    let next = timing["cpu_cck"].as_u64().expect("CPU clock") + 1;
+    timing["cpu_cck"] = next.into();
+    timing["last_cck"] = next.into();
+    for phase in ["read_delay", "write_delay"] {
+        timing[phase] = timing[phase]
+            .as_u64()
+            .expect("bus phase")
+            .saturating_sub(1)
+            .into();
+    }
+    let (address, bytes, write, payload) = match access {
+        Access::ReadByte(a) => (a, 1, false, 0),
+        Access::ReadWord(a) => (a, 2, false, 0),
+        Access::WriteByte(a, v) => (a, 1, true, u16::from(v)),
+        Access::WriteWord(a, v) => (a, 2, true, v),
+    };
+    timing["pending"] =
+        serde_json::json!({"address":address, "bytes":bytes, "write":write, "value":payload});
+    let mut expected: CpuState = serde_json::from_value(value).expect("valid CPU fixture");
+    expected.micro_mut().current_steps = state.micro().current_steps;
+    expected
+}
+
 /// Expected transfers/times come from each fixture, never from a discovery run.
 pub fn run_instruction(cpu: &mut Cpu, bus: &mut RecordingBus, base_clocks: u64) {
     run_next_instruction(cpu, bus, base_clocks);
@@ -156,6 +189,7 @@ pub fn run_next_instruction(cpu: &mut Cpu, bus: &mut RecordingBus, base_clocks: 
                     if step.base_clocks == 0 && snapshot.micro().movem_state == dummy_read_pending {
                         expected.micro_mut().movem_state = dummy_read_pending;
                     }
+                    let expected = after_refusal(&expected, bus.script[bus.completed].0);
                     assert_eq!(snapshot, expected, "refused transfer changed active state");
                 }
             }
@@ -165,7 +199,8 @@ pub fn run_next_instruction(cpu: &mut Cpu, bus: &mut RecordingBus, base_clocks: 
                         snapshot.micro().current_steps,
                         previous.micro().current_steps
                     ));
-                    assert_eq!(&snapshot, previous, "repeated wait changed active state");
+                    let expected = after_refusal(previous, bus.script[bus.completed].0);
+                    assert_eq!(snapshot, expected, "repeated wait changed active state");
                 }
             }
             waiting = Some((bus.completed, snapshot));

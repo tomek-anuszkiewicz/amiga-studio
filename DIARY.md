@@ -1874,97 +1874,55 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Canonical verification and independent review are pending
 ---
 
-### [2026-11-15 23:15 CET] — NATIVE-DISK-BRING-UP-20261115: native disk execution and closure
+
+---
+
+### [2026-11-16 01:03 CET] — MEMORY-ACCESS-INVARIANTS-20261115 / MUTATION-QUEUE-OVERFLOW-20261115: enforce fatal runtime invariants
 - **Affected Subsystems**:
-  - `Floppy`
+  - `CPU`
+  - `Physical memory`
+  - `Custom chips and CIA`
   - `Machine loop`
-  - `Save state`
-  - `Roadmap and specifications`
+  - `Native and browser GUI`
+  - `Save states`
 - **What Was Changed (The Concrete Reality)**:
-  - Generate circular timed ADF tracks through production pins and DMA
-  - preserve media on electronic reset and serialize usable tracks
-  - prove original cross1 startup and repeated Copper results
-  - record the separate Workbench attempt
-  - prepare roadmap pruning and integrate settled chipset closure into Chapters 15 and 16
+  - Make Chip RAM private and count CPU and DMA transfers against one serialized budget per CCK
+  - Guard CPU attempts and read/write phases in both execution engines, including waits and TAS
+  - Make mutation queue overflow and earlier shared-register/CIA preflights fatal before partial delivery
+  - Report the original diagnostic at the native owner or browser worker boundary, reject later work and finish shutdown without waiting for the failed owner
+  - Migrate fixtures and the benchmark bus to explicit cycles and require admission state in save format 9
+  - Apply the approved function-scoped panic permission, CPU dependency on config and removal of the obsolete empty raw-buffer test while retaining open-bus address behavior
+  - Reject instruction retirement before read completion, preserve rejected disk requests, and retain the first native diagnostic across flag/completion and poisoned-mailbox races
+  - Remove the unused block-injection helper, reuse physical byte inspection in the debug bank paths and reconcile active retry/dependency descriptions
 - **Architectural Rationale & Trade-Offs**:
-  - Complete native guest startup without injected payloads or substituted system services
-  - retain independent hardware ownership and evidence boundaries
+  - Stop internal violations before rejected side effects while preserving guest exceptions, ordinary waits, queue capacities and propagation timing
+  - Keep both checks enabled in optimized builds
+  - User approved the narrow panic and dependency permissions and the one obsolete test removal
+  - Older snapshot formats are unsupported under the existing pre-release policy
 - **Verification & Test Results**:
-  - Focused floppy and autonomous DMA suites pass
-  - cross1 boots twice at CCK 14752752 and no-disk control lacks its signature
-  - Workbench bootblock DOS and named task observed within 60 seconds with corrupted frame
-  - full image agreement and media writes remain unverified
-  - canonical closure profiles and independent review pending
+  - Focused owning suites passed, including 200 component tests, 124 GUI tests and 20 persistence tests
+  - Seven CPU admission tests and physical admission tests passed in debug and release
+  - Sampled SingleStep verification passed 6350 vectors with state, clocks and bus comparisons retained
+  - Current architecture, Clippy, formatting, real browser build and actual Rust/Wasm fatal delivery passed
+  - All 11 TAS benchmark cases executed after fixture migration
+  - Final interleaved original/candidate comparison measured 123.442 to 119.584 FPS mixed and 211.130 to 198.452 FPS CPU/Fast RAM, reductions of 3.13 and 6.00 percent
+  - Native worker timing spread overlaps and no browser throughput or full hardware capture result is claimed
+  - Final optimized profiles and matching source/binary identities remain in task artifacts
+  - New CPU retirement and disk-admission regressions failed before their fixes and pass afterward; deterministic native failure classification passes in debug and release
+  - Reviewed changed coverage spans after extending repeated-clock, pending-retirement, replacement-preflight and unavailable-disk-data tests
+  - Native coverage omits source-owning test modules and Wasm, which have separate direct and browser evidence; poisoned-mailbox forwarding branches were not exercised
 ---
 
-### [2026-11-15 23:32 CET] — Review imported books through one catalog server
+### [2026-11-16 08:26 CET] — Publish Windows verification fixture readiness atomically
 - **Affected Subsystems**:
-  - `tools/bootstrap/book-to-markdown`
+  - `Verification CLI test fixtures`
 - **What Was Changed (The Concrete Reality)**:
-  - Discover imported book variants in a browser catalog
-  - Bind editor requests and render queues to the selected book
-  - Keep PDF page and pane width per book
-  - Replace per-book server arguments with browser selection
+  - Write the detached test child PID to a temporary file and atomically rename it to the ready marker after closing the complete payload
+  - Preserve all process ownership assertions, timeouts, telemetry identity checks and required gates
 - **Architectural Rationale & Trade-Offs**:
-  - Allow separate browser tabs to review books without redirecting edits to another book
+  - Two canonical attempts reproduced reading an empty ready file before write_text finished, followed by cleanup sharing errors
+  - Readiness must mean the complete PID is available rather than only that a file was opened
 - **Verification & Test Results**:
-  - Book library contracts passed
-  - PowerShell parser and usage checks passed
-  - Status reports five books and no pending renders or errors for the two opened books
-  - Invalid actions return a nonzero exit code
----
-
-### [2026-11-15 23:32 CET] — Record the accepted M68000 user manual recipe
-- **Affected Subsystems**:
-  - `tools/bootstrap/books/m68000-users-manual-rev8/e41cbe7e14dc`
-- **What Was Changed (The Concrete Reality)**:
-  - Add the accepted source-backed reconstruction recipe
-- **Architectural Rationale & Trade-Offs**:
-  - Preserve the current accepted recipe alongside its existing source identity and OCR data
-- **Verification & Test Results**:
-  - Recipe matches local Accepted
-  - Accepted input resolves one chapter with 1343 elements and 100 assets
-  - Source PDF SHA-256 matches source.json
-  - Whole-book transcription and layout quality were not assessed
----
-
-### [2026-11-16 00:49 CET] — BOOTSTRAP-NATIVE-INTEGRATION-20261116: integrate book catalog with native disk execution
-- **Affected Subsystems**:
-  - `Local integration`
-  - `Book review catalog`
-  - `Native disk documentation`
-- **What Was Changed (The Concrete Reality)**:
-  - Combine Bootstrap commits fb5a48b and bccaee1 with native tip c7563f4 without rewriting their history
-  - Preserve native Chapter 16 and roadmap boundaries together with both book entries
-  - Retain vocabulary from both branches
-- **Architectural Rationale & Trade-Offs**:
-  - Keep independent book review sessions and the accepted manual recipe alongside the unchanged native disk implementation
-  - Reconcile all changed Markdown against the common base and both branches
-- **Verification & Test Results**:
-  - Native c7563f4 was published unchanged using its confirmed final-source verification
-  - Bootstrap catalog contracts and recipe checks are historical results recorded by the original commits
-  - No recipe was regenerated and whole-book quality was not reassessed
-  - Integrated canonical verification and four independent review lanes are pending
----
-
-
----
-
-### [2026-11-16 09:41 CET] — GUI-MONITOR-IMAGE-FAILURE-20261116: wait for the monitor image before checking its upload
-- **Affected Subsystems**:
-  - `GUI integration tests`
-- **What Was Changed (The Concrete Reality)**:
-  - Capture the expected stopped CCK before transferring the session to the host
-  - Wait for the presented image to match the current generation and expected CCK and dimensions
-  - Retain every full-image, pixel, geometry, centering, UV and unchanged-framebuffer assertion
-- **Architectural Rationale & Trade-Offs**:
-  - Command replies and video use independent paths, so idle commands do not prove that the GUI has received an image
-  - Keep the command-idle predicate and existing timeout unchanged
-- **Verification & Test Results**:
-  - The unchanged test passed once and then reproduced the texture lookup failure naturally
-  - Controlled mailbox contention reproduced the same failure in all eight PAL/NTSC, interlace and view combinations
-  - All eight paired cases using the repaired waiting block passed the original assertions
-  - The complete GUI package passed 120 tests without failures or ignored tests
-  - The browser build and focused formatting checks passed
-  - Canonical commit verification is pending
-  - The historical failure logs remain unavailable, so the exact historical thread schedule is unverified
+  - Existing Windows Job fixture suite passed all nine tests after the change
+  - Canonical attempts before the fixture correction failed with empty-PID ValueError and cleanup sharing errors
+  - Emulator production code and reference values are unchanged by this prerequisite fix

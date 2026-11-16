@@ -41,38 +41,44 @@ fn test_floppy_dma_stream_into_chip_ram_and_interrupt() {
     assert!(harness.machine.floppy.drives[0].motor_on);
 
     // 3. Configure Chip RAM destination DSKPTH/DSKPTL = $002000
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_DSKPTH, 0x0000);
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_DSKPTL, 0x2000);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_DSKPTH,
+        0x0000,
+        "DMA",
+    );
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_DSKPTL,
+        0x2000,
+        "DMA",
+    );
 
     // 4. Set DSKSYNC = $4489 ($DFF07E)
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::paula::REGISTER_DSKSYNC, 0x4489);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::paula::REGISTER_DSKSYNC,
+        0x4489,
+        "DMA",
+    );
 
     // 5. Enable WORDSYNC and FAST in ADKCON ($DFF09E): SET_CLR | WORDSYNC | FAST = 0x8500
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::paula::REGISTER_ADKCON, 0x8500);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::paula::REGISTER_ADKCON,
+        0x8500,
+        "DMA",
+    );
 
     // 6. Enable master DMA and Disk DMA in DMACON ($DFF096): SET_CLR | DMAEN | DSKEN = 0x8210
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::paula::REGISTER_DMACON, 0x8210);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::paula::REGISTER_DMACON,
+        0x8210,
+        "DMA",
+    );
 
     // 7. Enable master INTENA and DSKBLK in INTENA ($DFF09A): SET_CLR | INTEN | DSKBLK = 0xC002
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::paula::REGISTER_INTENA, 0xC002);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::paula::REGISTER_INTENA,
+        0xC002,
+        "DMA",
+    );
 
     // Step 2 CCKs to commit initial register mutations
     harness.machine.step_cck();
@@ -82,19 +88,21 @@ fn test_floppy_dma_stream_into_chip_ram_and_interrupt() {
     // 8. Arm and start Disk DMA in DSKLEN ($DFF024): 4 words
     let dsklen_val = 0x8000 | 4;
     // Write 1: Arm DMA
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::paula::REGISTER_DSKLEN, dsklen_val);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::paula::REGISTER_DSKLEN,
+        dsklen_val,
+        "DMA",
+    );
     harness.machine.step_cck();
     harness.machine.step_cck();
     assert!(harness.machine.paula.dma_armed);
 
     // Write 2: Activate DMA
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::paula::REGISTER_DSKLEN, dsklen_val);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::paula::REGISTER_DSKLEN,
+        dsklen_val,
+        "DMA",
+    );
     harness.machine.step_cck();
     harness.machine.step_cck();
     assert!(harness.machine.paula.dma_active);
@@ -124,7 +132,7 @@ fn test_floppy_dma_stream_into_chip_ram_and_interrupt() {
     assert_eq!(harness.machine.agnus.dskpt, 0x0000_2008);
 
     // Chip RAM at $002000 must contain non-zero MFM data streamed from disk
-    let word0 = harness.machine.physical_memory.read_chip_word(0x2000);
+    let word0 = harness.machine.physical_memory.read_chip_word_debug(0x2000);
     assert_ne!(word0, 0, "Chip RAM should have received MFM data");
 
     // Paula INTREQ must have bit 1 (DSKBLK) asserted

@@ -10,44 +10,75 @@ pub const MASK_OCS_DMA_HIGH: u16 = (MASK_OCS_DMA_ADDRESS >> 16) as u16;
 /// Significant bits of an OCS DMA pointer's low register word.
 pub const MASK_OCS_DMA_LOW: u16 = MASK_OCS_DMA_ADDRESS as u16;
 
-/// Reads a 16-bit Big-Endian word from Chip RAM at the given byte address.
-///
-/// Hardware invariants:
-/// - Addresses are automatically word-aligned (bit 0 cleared).
-/// - OCS Agnus DMA addresses are limited to the lower 512 KB.
-/// - Out-of-bounds addresses wrap around within the power-of-two Chip RAM allocation mask.
-/// - Returns `$FFFF` on empty or inaccessible memory (floating open bus pulled high).
-#[inline(always)]
-pub fn read_u16(ram: &[u8], addr: u32) -> u16 {
-    if ram.is_empty() {
-        return crate::OPEN_BUS_WORD;
+/// Owner of a completed physical Chip RAM transfer.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum ChipRamOwner {
+    Cpu,
+    Copper,
+    Blitter,
+    Bitplane(u8),
+    Sprite(u8),
+    Audio(u8),
+    Disk,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum TransferDirection {
+    Read,
+    Write,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct ChipRamTransfer {
+    pub owner: ChipRamOwner,
+    pub address: u32,
+    pub direction: TransferDirection,
+    pub bytes: u8,
+}
+
+/// Admission belongs to storage, so CPU and every DMA family share this state.
+#[derive(Debug, Default, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct ChipRamBudget {
+    cck: u64,
+    cpu_pc: u32,
+    first: Option<ChipRamTransfer>,
+}
+
+impl ChipRamBudget {
+    /// Current cycle of this queryable, serializable admission state.
+    #[inline]
+    pub fn cck(&self) -> u64 {
+        self.cck
     }
-    let mask = ram.len().wrapping_sub(1);
-    let offset = (addr & MASK_OCS_DMA_ADDRESS) as usize & mask;
-    if offset + 1 < ram.len() {
-        u16::from_be_bytes([ram[offset], ram[offset + 1]])
-    } else {
-        crate::OPEN_BUS_WORD
+
+    /// Reset the machine clock origin without granting a transfer at reset.
+    pub fn rebase_cck(&mut self, cck: u64) {
+        self.cck = cck;
+    }
+
+    /// Re-entering an active CCK cannot grant another transfer.
+    #[inline]
+    pub fn begin_cck(&mut self, cck: u64, cpu_pc: u32) {
+        if self.cck != cck {
+            self.cck = cck;
+            self.first = None;
+        }
+        self.cpu_pc = cpu_pc;
+    }
+
+    #[inline]
+    pub fn admit(&mut self, operation: ChipRamTransfer) {
+        if let Some(first) = self.first {
+            crate::fatal_emulation_error(format_args!(
+                "Chip RAM access invariant: CCK={}, CPU PC=${:06X}, first={first:?}, rejected={operation:?}",
+                self.cck, self.cpu_pc));
+        }
+        self.first = Some(operation);
     }
 }
 
-/// Writes a 16-bit Big-Endian word to Chip RAM at the given byte address.
-///
-/// Hardware invariants:
-/// - Addresses are automatically word-aligned (bit 0 cleared).
-/// - OCS Agnus DMA addresses are limited to the lower 512 KB.
-/// - Out-of-bounds addresses wrap around within the power-of-two Chip RAM allocation mask.
-/// - Writes to empty memory buffers are silently ignored.
-#[inline(always)]
-pub fn write_u16(ram: &mut [u8], addr: u32, val: u16) {
-    if ram.is_empty() {
-        return;
-    }
-    let mask = ram.len().wrapping_sub(1);
-    let offset = (addr & MASK_OCS_DMA_ADDRESS) as usize & mask;
-    if offset + 1 < ram.len() {
-        let bytes = val.to_be_bytes();
-        ram[offset] = bytes[0];
-        ram[offset + 1] = bytes[1];
-    }
+/// DMA cannot inspect raw storage, use CPU decoding or reopen a memory cycle.
+pub trait ChipRamAccess {
+    fn read_chip_word(&mut self, address: u32, owner: ChipRamOwner) -> u16;
+    fn write_chip_word(&mut self, address: u32, value: u16, owner: ChipRamOwner);
 }

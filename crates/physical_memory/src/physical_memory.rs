@@ -4,6 +4,7 @@
 //! DMA wait-state stalling, and hardware quirks per Obsidian/Amiga/Design/MemoryBus.md.
 
 pub mod address_bus;
+mod chip_access;
 pub mod map;
 pub mod presets;
 
@@ -84,7 +85,9 @@ pub struct PhysicalMemory {
     pub bank_map: [BankHandler; config::address_map::MEMORY_BANK_COUNT],
 
     /// Physical Chip RAM buffer (512 KB)
-    pub chip_ram: Vec<u8>,
+    chip_ram: Vec<u8>,
+
+    chip_budget: config::chip_ram::ChipRamBudget,
 
     /// Slow / Pseudo-fast RAM at $C00000 (512 KB, trapdoor expansion)
     pub slow_ram: Option<Vec<u8>>,
@@ -141,6 +144,7 @@ impl PhysicalMemory {
             config,
             bank_map,
             chip_ram: vec![0x00; chip_ram_size],
+            chip_budget: config::chip_ram::ChipRamBudget::default(),
             slow_ram,
             fast_ram,
             kickstart_rom,
@@ -175,13 +179,13 @@ impl PhysicalMemory {
 
     /// Reads an 8-bit byte from the 24-bit physical address space, delegating directly to the bank handler.
     #[inline(always)]
-    pub fn read_byte(&self, addr: u32) -> BusResult<u8> {
+    pub fn read_byte(&mut self, addr: u32) -> BusResult<u8> {
         (self.bank_map[((addr >> 16) & 0xFF) as usize].read_byte)(self, addr)
     }
 
     /// Reads a 16-bit Big-Endian word from the 24-bit physical address space, delegating directly to the bank handler.
     #[inline(always)]
-    pub fn read_word(&self, addr: u32) -> BusResult<u16> {
+    pub fn read_word(&mut self, addr: u32) -> BusResult<u16> {
         (self.bank_map[((addr >> 16) & 0xFF) as usize].read_word)(self, addr)
     }
 
@@ -197,18 +201,6 @@ impl PhysicalMemory {
     pub fn write_word(&mut self, addr: u32, val: u16) -> BusResult<()> {
         let write_fn = self.bank_map[((addr >> 16) & 0xFF) as usize].write_word;
         write_fn(self, addr, val)
-    }
-
-    /// Reads a 16-bit word directly from Chip RAM (Agnus DMA bus access, bypassing CPU wait states and overlay).
-    #[inline(always)]
-    pub fn read_chip_word(&self, addr: u32) -> u16 {
-        config::chip_ram::read_u16(&self.chip_ram, addr)
-    }
-
-    /// Writes a 16-bit word directly to Chip RAM (Agnus DMA bus access, bypassing CPU wait states and overlay).
-    #[inline(always)]
-    pub fn write_chip_word(&mut self, addr: u32, val: u16) {
-        config::chip_ram::write_u16(&mut self.chip_ram, addr, val);
     }
 
     /// Direct debug/injection byte block writer into physical memory.
@@ -284,6 +276,13 @@ impl PhysicalMemory {
 }
 
 impl AddressBus for PhysicalMemory {
+    #[inline]
+    fn begin_cpu_cck(&mut self, _cck: u64, pc: u32) -> u64 {
+        let cck = self.memory_cck().wrapping_add(1);
+        self.begin_cck(cck, pc);
+        cck
+    }
+
     #[inline(always)]
     fn read_byte(&mut self, addr: u32) -> BusResult<u8> {
         PhysicalMemory::read_byte(self, addr)

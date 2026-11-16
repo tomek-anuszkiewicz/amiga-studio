@@ -2,7 +2,7 @@
 
 Applies to Rust workspace code; [Rust Guidelines](../../Obsidian/Amiga/Design/Rust%20Guidelines.md) provides design rationale. Compiler and Clippy configuration own mechanical lint settings.
 
-- Guest execution must not panic the host. Runtime emulation uses no `unwrap`, `expect`, `panic!`, or `unreachable!`; tests may explicitly allow panic-oriented assertions.
+- Runtime emulation uses no `unwrap`, `expect`, `panic!`, or `unreachable!`, except for the function-scoped `clippy::panic` permission on `config::fatal_emulation_error` for internal memory-access, CPU bus-timing or mutation-capacity violations. Guest errors retain their emulated behavior. The host must terminate the failed owner and report the diagnostic without resuming execution; tests may catch the fatal panic to inspect failure but must never resume the failed fixture.
 - Use explicit wrapping arithmetic for ALU operations and cycle counters, and mask hardware fields and addresses deliberately. Use lazy fallbacks when evaluating the alternative would do work.
 - Convert guest bytes explicitly as big-endian; never pointer-cast or transmute guest buffers.
 - Keep subsystems directly owned by the machine. Do not introduce circular handles, interior-mutability/shared-threading backchannels, or core thread spawning; follow [hardware topology](hardware-bus-topology.md).

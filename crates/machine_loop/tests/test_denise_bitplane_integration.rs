@@ -19,14 +19,16 @@ fn test_display_window_register_configuration_and_geometry() {
     let diwstrt = 0x2C81;
     let diwstop = 0x2CC1;
 
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::denise::REGISTER_DIWSTRT, diwstrt);
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::denise::REGISTER_DIWSTOP, diwstop);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::denise::REGISTER_DIWSTRT,
+        diwstrt,
+        "DMA",
+    );
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::denise::REGISTER_DIWSTOP,
+        diwstop,
+        "DMA",
+    );
     harness.step_cck(2);
 
     assert_eq!(harness.machine.denise.diwstrt, diwstrt);
@@ -67,22 +69,26 @@ fn test_display_window_vertical_bounds_gate_bitplane_dma() {
     let diwstrt = 0x6481; // VSTART = 100, HSTART = 129
     let diwstop = 0xC8C1; // VSTOP = 200, HSTOP = 449
 
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::denise::REGISTER_DIWSTRT, diwstrt);
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::denise::REGISTER_DIWSTOP, diwstop);
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::denise::REGISTER_BPLCON0, 0x1000);
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_DMACON, 0x8300);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::denise::REGISTER_DIWSTRT,
+        diwstrt,
+        "DMA",
+    );
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::denise::REGISTER_DIWSTOP,
+        diwstop,
+        "DMA",
+    );
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::denise::REGISTER_BPLCON0,
+        0x1000,
+        "DMA",
+    );
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_DMACON,
+        0x8300,
+        "DMA",
+    );
     harness.step_cck(5);
 
     assert_eq!(harness.machine.denise.diwstrt, diwstrt);
@@ -95,8 +101,14 @@ fn test_display_window_vertical_bounds_gate_bitplane_dma() {
     assert_eq!(dma.bitplane_channel_for_slot(fetch_slot, 199), Some(0));
     assert_eq!(dma.bitplane_channel_for_slot(fetch_slot, 200), None);
 
-    harness.machine.physical_memory.chip_ram[0x1000] = 0xBE;
-    harness.machine.physical_memory.chip_ram[0x1001] = 0xEF;
+    harness
+        .machine
+        .physical_memory
+        .write_chip_byte_debug((0x1000) as u32, 0xBE);
+    harness
+        .machine
+        .physical_memory
+        .write_chip_byte_debug((0x1001) as u32, 0xEF);
     harness.machine.agnus.bplpt[0] = 0x1000;
     harness.machine.agnus.hpos = fetch_slot - 1;
     harness.machine.agnus.vpos = 99;
@@ -113,14 +125,16 @@ fn test_display_window_vertical_bounds_gate_bitplane_dma() {
     assert_eq!(harness.machine.denise.bpldat[0], 0xBEEF);
 
     // Denise sees the horizontal window earlier than Agnus updates the DMA boundary.
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::denise::REGISTER_DIWSTRT, 0x2C81);
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::denise::REGISTER_DIWSTOP, 0x2CC1);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::denise::REGISTER_DIWSTRT,
+        0x2C81,
+        "DMA",
+    );
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::denise::REGISTER_DIWSTOP,
+        0x2CC1,
+        "DMA",
+    );
     harness.step_cck(1);
     assert_eq!(harness.machine.denise.diwstrt, 0x2C81);
     assert_eq!(harness.machine.agnus.diwstrt, diwstrt);
@@ -141,20 +155,23 @@ fn test_denise_bitplane_mode_and_serialization() {
     let mut harness = MachineHarness::new();
 
     // Configure 1 bitplane in Low-Res (BPU = 1 -> 0x1200)
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::denise::REGISTER_BPLCON0, 0x1200);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::denise::REGISTER_BPLCON0,
+        0x1200,
+        "DMA",
+    );
 
     // Setup COLOR00 = Black ($000), COLOR01 = Green ($0F0)
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::denise::REGISTER_COLOR00, 0x0000);
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::denise::REGISTER_COLOR01, 0x00F0);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::denise::REGISTER_COLOR00,
+        0x0000,
+        "DMA",
+    );
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::denise::REGISTER_COLOR01,
+        0x00F0,
+        "DMA",
+    );
     harness.step_cck(2);
 
     assert_eq!(harness.machine.denise.bplcon0.value(), 0x1200);
@@ -165,10 +182,11 @@ fn test_denise_bitplane_mode_and_serialization() {
     assert_eq!(harness.machine.denise.decode_pixel(0b111111), 0x00F0);
 
     // Write Bitplane 1 data latch (0x8000 -> first pixel 1, next 15 pixels 0)
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::denise::REGISTER_BPL1DAT, 0x8000);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::denise::REGISTER_BPL1DAT,
+        0x8000,
+        "DMA",
+    );
     harness.step_cck(2);
 
     // Load bitplane data into Denise shifters
@@ -191,10 +209,11 @@ fn test_denise_frame_builder_raster_scanline_generation() {
     let mut harness = MachineHarness::new();
 
     // Set background COLOR00 to Blue ($00F)
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::denise::REGISTER_COLOR00, 0x000F);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::denise::REGISTER_COLOR00,
+        0x000F,
+        "DMA",
+    );
     harness.step_cck(2);
 
     // Step across to line 30 (active visible scanline outside VBlank lines 0..25)
@@ -222,21 +241,29 @@ fn test_machine_loop_agnus_bpl_dma_routed_to_denise() {
     let mut harness = MachineHarness::new();
 
     // Prepare test pattern in Chip RAM at $1000
-    harness.machine.physical_memory.chip_ram[0x1000] = 0xBE;
-    harness.machine.physical_memory.chip_ram[0x1001] = 0xEF;
+    harness
+        .machine
+        .physical_memory
+        .write_chip_byte_debug((0x1000) as u32, 0xBE);
+    harness
+        .machine
+        .physical_memory
+        .write_chip_byte_debug((0x1001) as u32, 0xEF);
 
     // Point BPL1PTH/L to $1000
     harness.machine.agnus.bplpt[0] = 0x1000;
     // Enable Master DMA + Bitplane DMA ($8300)
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_DMACON, 0x8300);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_DMACON,
+        0x8300,
+        "DMA",
+    );
     // 1 bitplane in BPLCON0 ($1200)
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::denise::REGISTER_BPLCON0, 0x1200);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::denise::REGISTER_BPLCON0,
+        0x1200,
+        "DMA",
+    );
     harness.step_cck(4);
 
     harness.machine.agnus.dma.ddfstrt = 0x38;

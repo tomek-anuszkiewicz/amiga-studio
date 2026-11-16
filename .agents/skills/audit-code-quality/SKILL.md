@@ -51,7 +51,7 @@ This is an agent review; the deterministic auditor has no condition scanner.
 - **Review Method:** Interpret accessor findings from existing verification results; assess naming and return types against actual semantics before recommending changes.
 
 ### Pillar 5: Compiler-Grade AST Invariants & Workspace Lints
-- **Zero Host Panics on Guest Code:** Denied in production code via `clippy::unwrap_used = "deny"`, `clippy::expect_used = "deny"`, and `clippy::panic = "deny"`. (Integration tests exempt via `#![allow(...)]`).
+- **Zero Host Panics on Guest Code:** Denied in production code via `clippy::unwrap_used = "deny"`, `clippy::expect_used = "deny"`, and `clippy::panic = "deny"`. The sole production exception is the function-scoped fatal-helper permission in [Rust practices](../../rules/rust-best-practices.md); other runtime panics remain prohibited. Integration tests may use explicit panic assertions.
 - **Disallowed Abstractions & Concurrency:** Blocked via `clippy::disallowed_types` (`Rc`, `RefCell`, `Arc`, `Mutex`, `RwLock`, `mpsc::Sender`, `mpsc::Receiver`) and `clippy::disallowed_methods` (`std::thread::spawn`).
 - **Borrow Views over Containers:** Functions inspecting buffers or sequences must accept borrowed slices (`&[T]`, `&mut [T]`) rather than concrete heap containers (`&Vec<T>`, `&mut Vec<T>`), and accept `&str` instead of `&String`. Enforced via `clippy::ptr_arg = "deny"`.
 - **Constructor & Derives Discipline:** Enforced via `clippy::new_without_default = "deny"`, `clippy::new_ret_no_self = "deny"`, `clippy::expl_impl_clone_on_copy = "deny"`, and `missing_debug_implementations = "warn"`.

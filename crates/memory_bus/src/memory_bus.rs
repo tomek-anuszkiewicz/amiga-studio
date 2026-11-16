@@ -21,6 +21,7 @@ mod custom_registers;
 /// Zero-cost stack-allocated router implementing `AddressBus` across all subsystems
 #[derive(Debug)]
 pub struct MemoryBus<'a> {
+    pub cck: u64,
     pub mem: &'a mut PhysicalMemory,
     pub agnus: &'a mut Agnus,
     pub denise: &'a mut Denise,
@@ -51,6 +52,11 @@ impl<'a> MemoryBus<'a> {
 }
 
 impl<'a> AddressBus for MemoryBus<'a> {
+    #[inline]
+    fn begin_cpu_cck(&mut self, _cck: u64, _pc: u32) -> u64 {
+        self.cck
+    }
+
     #[inline(always)]
     fn read_byte(&mut self, addr: u32) -> BusResult<u8> {
         let addr = addr & physical_memory::MASK_PHYSICAL_ADDRESS;
@@ -186,7 +192,7 @@ impl<'a> AddressBus for MemoryBus<'a> {
             CUSTOM_BANK_FIRST..=CUSTOM_BANK_LAST => {
                 let offset = (addr & config::MASK_CUSTOM_REG_OFFSET as u32) as u16;
                 let waiting = self.mem.chip_ram_blocked;
-                let result = if waiting || !self.write_custom_word(offset, val) {
+                let result = if waiting || !self.write_custom_word(offset, val, "CPU") {
                     BusResult::WaitState
                 } else {
                     BusResult::Ready(())

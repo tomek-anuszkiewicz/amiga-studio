@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "physical_memory"
 status: "active"
 created: 2026-10-12
-updated: 2026-11-12
+updated: 2026-11-16
 related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[Configuration.md](Configuration.md)", "[Machine Loop.md](Machine%20Loop.md)", "[DMA.md](DMA.md)", "[RTC.md](RTC.md)", "[Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
 tracked_paths:
   - "crates/physical_memory"
@@ -38,9 +38,29 @@ This table describes the emulator's installed handlers, not a promise that every
 
 ## Boot overlay and reset
 
-Construction and both reset paths engage the ROM overlay by changing banks `$00-$07` from Chip RAM handlers to Kickstart handlers. CPU reads of the reset vectors at `$000000` and `$000004` therefore see ROM. When a queued CIA-A `PRA` or `DDRA` write commits, the [machine loop](Machine%20Loop.md) routes its generic port change through [`MemoryBus`](MemoryBus.md#cia-and-boot-overlay) in that same phase and applies the PA0 output level: OVL high selects Kickstart ROM, and OVL low selects Chip RAM. An input PA0 is pulled high. A pending CIA write leaves the map intact; routing the committed pin introduces no extra propagation stage. Switching handlers does not copy or erase Chip RAM. Direct Agnus DMA reads and writes use `read_chip_word()` and `write_chip_word()` on the Chip RAM buffer, so they bypass the CPU overlay.
+Construction and both reset paths engage the ROM overlay by changing banks `$00-$07` from Chip RAM handlers to Kickstart handlers. CPU reads of the reset vectors at `$000000` and `$000004` therefore see ROM. When a queued CIA-A `PRA` or `DDRA` write commits, the [machine loop](Machine%20Loop.md) routes its generic port change through [`MemoryBus`](MemoryBus.md#cia-and-boot-overlay) in that same phase and applies the PA0 output level: OVL high selects Kickstart ROM, and OVL low selects Chip RAM. An input PA0 is pulled high. A pending CIA write leaves the map intact; routing the committed pin introduces no extra propagation stage. Switching handlers does not copy or erase Chip RAM. Direct Agnus DMA reads and writes use the counted `ChipRamAccess` word methods, so they bypass the CPU overlay.
 
 `reset()` clears installed Chip, Slow, and Fast RAM to zero, clears `chip_ram_blocked`, and restores the overlay. `reset_warm()` preserves RAM while clearing the contention flag and restoring the overlay. Both retain the ROM image. When no ROM has been injected, construction supplies a 256 KB `$FF` image with synthetic initial stack-pointer and program-counter vectors for headless startup; this is an emulator fallback, not a Kickstart ROM.
+
+## Runtime access admission
+
+Chip RAM bytes and their access budget are private. Agnus, its Copper, Blitter,
+bitplane, sprite, audio and disk engines use the foundational `ChipRamAccess`
+word interface. It supplies no raw storage or budget-reset operation. CPU storage
+handlers participate in the same budget after ordinary contention has granted
+access. One completed byte or word transfer is permitted in a machine CCK,
+regardless of direction or producer; a second transfer is fatal before reading
+or changing storage. Register delivery and refresh are not RAM transfers.
+Independent Fast RAM, ROM and device accesses do not consume this shared budget.
+
+The machine opens the budget once before all subsystem and CPU work. Re-entering
+that CCK does not clear it. A subsystem-only step advances the master CCK too.
+Clone and serialization preserve the active budget; restore cannot create a
+second opportunity in the saved CCK. Reset does not clear admission bookkeeping;
+the next explicit CCK establishes the next opportunity, including counter wrap.
+Standalone CPU/storage execution opens its own CCK through `AddressBus`, whereas
+the production router uses the machine's already opened cycle. Debug access,
+injection and reset/prefetch setup consume no runtime budget.
 
 ## Access semantics
 

@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "general"
 status: "active"
 created: 2026-09-10
-updated: 2026-10-12
+updated: 2026-11-16
 related: ["[General Architecture.md](General%20Architecture.md)", "[egui Guidelines.md](egui%20Guidelines.md)", "[PowerShell tooling skill](../../../.agents/skills/write-powershell/SKILL.md)"]
 ---
 
@@ -30,7 +30,7 @@ related: ["[General Architecture.md](General%20Architecture.md)", "[egui Guideli
 - **Prohibition of Const-Generic Handlers:** Generic functions with constant parameters (e.g. `fn op_foo<const S: usize, const M: usize>(...)`) are forbidden for instruction handlers and execution paths. Code generation and specialized functions are cheap and keep execution paths concrete and debuggable.
 
 ### 1.2 Zero Host Panics on Emulated Code
-- Emulated guest code must **never crash or panic the host process**.
+- Guest errors retain their emulated behavior. Only the shared `config::fatal_emulation_error` helper may panic for internal memory-access, CPU bus-timing or mutation-capacity violations under [the machine invariants](../../../AGENTS.md#machine-invariants). Its function-scoped lint permission does not authorize other runtime panics. The native host unwinds to the owner boundary; the browser forwards the diagnostic before trapping and terminating the worker. Neither path may resume the failed machine.
 - Strictly forbid `.unwrap()` and `.expect()` in runtime emulation paths (`step()`, memory accesses, interrupt handling, chip simulation).
 - Use defensive defaults or formal error propagation:
   - Unmapped memory reads simulate open bus (`$FF` / `$FFFF`).

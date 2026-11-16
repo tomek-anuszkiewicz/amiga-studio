@@ -145,8 +145,12 @@ impl Agnus {
         }
     }
 
-    pub(super) fn fetch_sprite_word(&mut self, sprite: usize, ram: &[u8]) {
-        if ram.is_empty() || self.pending_dma_write.is_some() {
+    pub(super) fn fetch_sprite_word(
+        &mut self,
+        sprite: usize,
+        ram: &mut impl config::chip_ram::ChipRamAccess,
+    ) {
+        if self.pending_dma_write.is_some() {
             return;
         }
         let control =
@@ -160,7 +164,10 @@ impl Agnus {
             (false, false) => reg::REGISTER_SPR0DATA,
             (false, true) => reg::REGISTER_SPR0DATB,
         };
-        let word = chip_ram::read_u16(ram, self.sprpt[sprite]);
+        let word = ram.read_chip_word(
+            self.sprpt[sprite],
+            config::chip_ram::ChipRamOwner::Sprite(sprite as u8),
+        );
         self.sprpt[sprite] =
             self.sprpt[sprite].wrapping_add(WORD_BYTES) & chip_ram::MASK_OCS_DMA_ADDRESS;
         self.pending_dma_write = Some((base + sprite as u16 * SPRITE_REGISTER_STRIDE, word));

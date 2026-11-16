@@ -8,6 +8,7 @@ license.workspace = true
 path = "src/cpu.rs"
 
 [dependencies]
+config = { workspace = true }
 physical_memory = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }

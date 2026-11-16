@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "general"
 status: "active"
 created: 2026-08-31
-updated: 2026-11-15
+updated: 2026-11-16
 related: ["[General Architecture.md](../General%20Architecture.md)", "[MemoryBus.md](../MemoryBus.md)", "[CPU Motorola M68000.md](../CPU%20Motorola%20M68000.md)", "[Machine Loop.md](../Machine%20Loop.md)", "[Agnus.md](../Agnus.md)", "[RTC.md](../RTC.md)"]
 tracked_paths:
   - "crates/machine_loop/src/state.rs"
@@ -45,77 +45,7 @@ compatibility parser. Frontends and the debugger use this crate for persistence;
 in-memory quick slots retain only the machine value.
 
 Schema version 9 embeds usable floppy raw tracks and spindle phase, including
-mid-transfer connector state; restoring requires no original ADF file. Version 8
-grouped sprite coordinates and vertical DMA latches under
-`state.agnus.sprite_dma`; derived comparison results are rebuilt after restore.
-It excludes the live RTC and its independent battery offset.
-It stores Denise's frame cursor alongside the
-[frame buffer](../Frame%20Buffer.md), preserving the write position across
-visible and blanking boundaries. The buffer uses a fixed
-row stride and retains destination addresses for pending line output. PNG
-previews contain only the visible pixels of each row. Chipset engines remain
-inside their owning crates; DMACON, BPLCON0, DDFSTRT and DDFSTOP have their sole
-values in `state.agnus.dma`. Earlier files are unsupported; no
-migration or default-state fallback is provided. This does not remove files
-from the host. Copper still stores instruction progress and the pending SKIP
-decision. A restored partial instruction must consume its remaining word only
-after the next granted Copper DMA opportunity.
-
-Subsystems retain their own Serde implementations. The shared fixed-array
-serializer in `config::big_array` remains below them; it must not depend on
-this high-level save format. Agnus beam counters and field/line state, receiver
-timing state and RGA events are serialized at their respective owners.
-
-## 2. Full snapshot contents
-
-`A500State` includes the CPU's micro-execution state, physical memory and ROM,
-Agnus, Denise, Paula, both CIAs, floppy, keyboard and game ports. Custom
-chips are already value containers, so no duplicate per-chip snapshot wrappers
-are introduced. Their registers, input levels and pending changes are retained.
-Each receiver stores its incoming inputs alongside sampled levels and local
-synchronization state. This includes IRQ/TOD, disk control/data, game-port drive
-and RGA events. CIA TOD/FLAG history and Paula interrupt levels remain local.
-The machine retains a single pending `keyboard_reset_asserted` boolean;
-CPU IPL is stored by the CPU. There is no shared pending input frame or parallel
-connector model. Pending delivery is state, not a register
-mutation or a list of the last four synchronization values.
-
-A snapshot at CCK T must resume with the same subsequent state as uninterrupted
-execution, including a signal captured but not delivered and an unaccepted
-register word. Construction/reset defines released levels. Current snapshots
-require their complete state fields; there are no legacy defaults or host handles.
-The deliberate exception is the [RTC](../RTC.md): its time, battery offset,
-calendar latches and controls are neither captured nor restored. Its hardware
-presence follows the saved configuration, while the live clock continues from
-current host UTC and its independently persisted offset.
-
----
-
-## 3. Differential Save States (`A500DiffState`)
-
-Differential full-machine rewind remains a design proposal; its pending work
-and proposed format are collected in the
-[debugger work](../../../../ROADMAP.md#debugger-execution-control).
-
----
-
-## 4. File loading and restoration
-
-The save_state crate decodes the envelope and rejects an unsupported version.
-Physical-memory deserialization also rejects any Kickstart buffer whose length
-is not exactly 256 KiB (262144 bytes), before restoring the machine.
-The frontend then passes its pure `state` value to `A500Machine::load_state`.
-Restoration adopts the saved configuration, RAM/ROM, CPU micro-execution state,
-chip values, receiver-owned incoming inputs and board reset state. It performs no routing during
-loading. Current files embed physical memory, including ROM; alternate ROM
-reference modes and differential rewind remain proposals rather than active APIs.
-
----
-
-## 5. Reference Documentation & Upstream Ground Truth
-
-- [vAmiga Snapshot Component Implementation](../../../../ref_src/vAmiga/Core/Media/Snapshot.cpp): Snapshot serializer for Amiga hardware state, block headers, and uncompressed RAM payloads.
-- [CPU State Snapshot Implementation Source](../../../../crates/cpu/src/state.rs): Living Rust `CpuState` data structures implementing Serde serialization and deserialization.
-
-- [Pure state](../../../../crates/machine_loop/src/state.rs): Defines the core snapshot schema.
-- [Save format](../../../../crates/save_state/src/save_state.rs): Implements the file envelope, JSON and PNG persistence.
+mid-transfer connector state; restoring requires no original ADF file. It also
+retains the CPU bus-admission phases and active shared Chip RAM budget. Clone
+and restore preserve an occupied cycle; neither creates another transfer
+opportunity. Sprite coordinates and vertical DMA latches are grouped under

@@ -10,9 +10,11 @@ fn active(standard: VideoStandard, length: u16, control: u16) -> A500Machine {
     machine.agnus.vpos = 100;
     machine.agnus.hpos = 40;
     machine.agnus.dskpt = 0x2000;
-    assert!(machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_DMACON, 0x8210));
+    assert!(machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_DMACON,
+        0x8210,
+        "DMA"
+    ));
     assert!(machine.paula.set_adkcon(0x8000 | control));
     assert!(machine.paula.set_dsklen(length));
     machine.step_cycles(3);
@@ -53,7 +55,10 @@ fn read_dma_resumes_partial_input_and_transfers_distinct_fifo_words_once() {
                 (0x2004, 0xcc33),
                 (0x2006, 0),
             ] {
-                assert_eq!(target.physical_memory.read_chip_word(address), expected);
+                assert_eq!(
+                    target.physical_memory.read_chip_word_debug(address),
+                    expected
+                );
             }
             assert_eq!(target.paula.dsklen & 0x3fff, 0);
             assert!(!target.paula.dma_active);
@@ -72,7 +77,7 @@ fn write_dma_fetches_ram_into_paula_and_serializes_all_buffered_words() {
         for (index, word) in words.into_iter().enumerate() {
             machine
                 .physical_memory
-                .write_chip_word(0x2000 + index as u32 * 2, word);
+                .write_chip_word_debug(0x2000 + index as u32 * 2, word);
         }
         let mut serial = Vec::new();
         let mut bit_phase = None;
@@ -108,4 +113,29 @@ fn write_dma_fetches_ram_into_paula_and_serializes_all_buffered_words() {
             .iter()
             .all(|drive| !drive.disk_inserted));
     }
+}
+
+#[test]
+fn stale_disk_grant_without_data_does_not_transfer_or_advance_counts() {
+    use config::chip_ram::{ChipRamAccess, ChipRamOwner};
+    let mut machine = A500Machine::new(A500Config::default());
+    machine.cpu.state.set_stopped(true);
+    machine.agnus.dskpt = 0x100;
+    machine.agnus.pending_dsk_dma_slot = Some(0x100);
+    machine.physical_memory.write_chip_word_debug(0x100, 0xabcd);
+    let before = (machine.paula.dsklen, machine.paula.disk.buffered_words());
+    machine.step_subsystems_cck();
+    assert_eq!(machine.agnus.dskpt, 0x100);
+    assert_eq!(
+        (machine.paula.dsklen, machine.paula.disk.buffered_words()),
+        before
+    );
+    assert_eq!(machine.physical_memory.read_chip_word_debug(0x100), 0xabcd);
+    // No storage access was admitted by the stale grant in this same CCK.
+    assert_eq!(
+        machine
+            .physical_memory
+            .read_chip_word(0x100, ChipRamOwner::Copper),
+        0xabcd
+    );
 }

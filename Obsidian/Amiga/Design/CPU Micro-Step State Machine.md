@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "m68000"
 status: "active"
 created: 2026-09-08
-updated: 2026-10-25
+updated: 2026-11-16
 related: ["[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[CPU SingleStepTests.md](Verification/CPU%20SingleStepTests.md)", "[MemoryBus.md](MemoryBus.md)", "[Machine Loop.md](Machine%20Loop.md)"]
 tracked_paths:
   - "crates/cpu/src/micro"
@@ -78,6 +78,25 @@ refused. A refusal neither repeats the entry ALU nor advances the step, reduces
 its countdown, or commits the rejected transfer. A data-dependent internal
 interval uses the countdown without a memory callback. A dynamic handler such
 as `MOVEM` can hold the same step while its own transfer cursor advances.
+
+## Bus admission guard
+
+The shared execution primitive used by CCK and instruction stepping wraps the
+address bus with one admission record per CCK. Every normal byte/word attempt,
+including waits and suppressed TAS stores, is counted before dispatch. Debug
+prefetch/setup reads remain outside this budget. Duplicate attempts fail before
+the second dispatch, even when the first attempt was refused.
+
+The CPU retains read-completion and write-setup intervals across CCKs and
+snapshots. A completed read reserves its following CCK for completion; a new
+write additionally needs a distinct setup CCK. A completed write can be followed
+by a read in the next CCK, while successive reads or writes need two CCKs.
+Waits retain the attempted address, width, direction and write value until
+acceptance. Replacing a pending transaction or shortening its cycle is a fatal
+internal invariant failure. Retirement also checks that the final read has
+consumed its completion CCK and no transfer remains unaccepted, before advancing
+the instruction boundary. These checks preserve the callback placement below;
+they do not replace ordinary arbitration waits or establish silicon strobe timing.
 
 ## Bus transfer and contention
 

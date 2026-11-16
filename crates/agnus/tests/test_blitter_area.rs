@@ -1,6 +1,8 @@
+mod common;
 use agnus::blitter::{apply_fill, eval_minterm, Blitter, BlitterPhase};
+use common::TestChipRam;
 
-fn put(ram: &mut [u8], address: usize, word: u16) {
+fn put(ram: &mut TestChipRam, address: usize, word: u16) {
     ram[address..address + 2].copy_from_slice(&word.to_be_bytes());
 }
 
@@ -17,9 +19,10 @@ fn configured(control: u16) -> Blitter {
     b
 }
 
-fn finish(b: &mut Blitter, ram: &mut [u8]) {
+fn finish(b: &mut Blitter, ram: &mut TestChipRam) {
     for _ in 0..256 {
-        b.step_cck_ram(ram, true);
+        ram.next_cck();
+        b.step_cck(ram, true);
         if !b.is_busy {
             return;
         }
@@ -41,7 +44,7 @@ fn all_256_truth_tables_select_the_eight_source_inputs() {
 fn all_channel_combinations_use_dma_or_held_source_and_compute_zero_without_d() {
     for channels in 0..16u16 {
         let mut b = configured((channels << 8) | 0x96); // A XOR B XOR C
-        let mut ram = [0u8; 256];
+        let mut ram = TestChipRam::from(vec![0u8; 256]);
         b.bltapt = 0;
         b.bltbpt = 32;
         b.bltcpt = 64;
@@ -89,7 +92,7 @@ fn all_channel_combinations_use_dma_or_held_source_and_compute_zero_without_d() 
 fn next_sources_are_read_before_previous_destination_in_overlapping_copy() {
     let mut b = configured(0x09f0);
     b.bltdpt = 2;
-    let mut ram = [0; 32];
+    let mut ram = TestChipRam::from(vec![0; 32]);
     for (i, word) in [0x1234, 0x5678, 0x9abc, 0xdef0].into_iter().enumerate() {
         put(&mut ram, i * 2, word);
     }
@@ -113,7 +116,7 @@ fn masks_precede_all_shifts_and_source_carry_survives_row_change() {
             b.bltapt = 32;
             b.bltdpt = 128;
             b.bltamod = -2; // One-word rows revisit the same masked input.
-            let mut ram = [0; 256];
+            let mut ram = TestChipRam::from(vec![0; 256]);
             put(&mut ram, 32, 0xabcd);
             b.trigger_blit(0x0081);
             finish(&mut b, &mut ram);
@@ -145,7 +148,7 @@ fn cpu_b_data_write_captures_shift_before_blit_and_disabled_b_reuses_it() {
     b.bltcon1 = 4 << 12;
     b.write_bltbdat(0x1234);
     b.bltcon1 = 0;
-    let mut ram = [0; 16];
+    let mut ram = TestChipRam::from(vec![0; 16]);
     b.trigger_blit(0x0042);
     finish(&mut b, &mut ram);
     assert_eq!([get(&ram, 0), get(&ram, 2)], [0x0123; 2]);
@@ -167,7 +170,7 @@ fn fill_matches_manual_boundaries_and_reloads_carry_per_row() {
         b.bltcon1 = mode | 2;
         b.bltapt = 6;
         b.bltdpt = 22;
-        let mut ram = [0u8; 32];
+        let mut ram = TestChipRam::from(vec![0u8; 32]);
         // Descending order: one boundary starts carry; next row resets it.
         put(&mut ram, 6, 0x8000);
         put(&mut ram, 2, 0x8000);
@@ -192,19 +195,22 @@ fn denied_grants_and_dma_disable_preserve_the_pending_operation() {
     let mut b = configured(0x09f0);
     b.bltapt = 0;
     b.bltdpt = 8;
-    let mut ram = [0; 16];
+    let mut ram = TestChipRam::from(vec![0; 16]);
     put(&mut ram, 0, 0x1234);
     b.trigger_blit(0x0041);
-    b.step_cck_ram(&mut ram, false); // Internal startup.
+    ram.next_cck();
+    b.step_cck(&mut ram, false); // Internal startup.
     assert!(b.wants_bus());
     let waiting = b.clone();
-    b.step_cck_ram(&mut ram, false);
+    ram.next_cck();
+    b.step_cck(&mut ram, false);
     assert_eq!(b, waiting);
     for _ in 0..8 {
         if b.current_phase() == BlitterPhase::WriteD {
             break;
         }
-        b.step_cck_ram(&mut ram, true);
+        ram.next_cck();
+        b.step_cck(&mut ram, true);
     }
     assert_eq!(b.current_phase(), BlitterPhase::WriteD);
     assert_eq!(get(&ram, 8), 0);
@@ -212,16 +218,20 @@ fn denied_grants_and_dma_disable_preserve_the_pending_operation() {
     assert!(!b.poll_blit_irq());
     b.set_dma_enabled(false);
     let paused = b.clone();
-    b.step_cck_ram(&mut ram, true);
+    ram.next_cck();
+    b.step_cck(&mut ram, true);
     assert_eq!(b, paused);
     b.set_dma_enabled(true);
-    b.step_cck_ram(&mut ram, false);
+    ram.next_cck();
+    b.step_cck(&mut ram, false);
     assert_eq!(get(&ram, 8), 0);
-    b.step_cck_ram(&mut ram, true);
+    ram.next_cck();
+    b.step_cck(&mut ram, true);
     assert_eq!(get(&ram, 8), 0x1234);
     assert!(!b.is_busy);
     assert!(b.poll_blit_irq());
-    b.step_cck_ram(&mut ram, true);
+    ram.next_cck();
+    b.step_cck(&mut ram, true);
     assert!(!b.poll_blit_irq());
     b.trigger_blit(0);
     assert_eq!((b.total_cols, b.total_rows), (64, 1024));
@@ -236,11 +246,12 @@ fn zero_encoded_area_size_completes_all_65536_destination_words() {
     let mut blitter = configured(0x01f0);
     blitter.bltadat = 0xa55a;
     blitter.trigger_blit(0);
-    let mut ram = vec![0; 0x20000];
+    let mut ram = TestChipRam::from(vec![0; 0x20000]);
     let mut transfers = 0;
     for _ in 0..300_000 {
         let writes = blitter.current_phase() == BlitterPhase::WriteD;
-        blitter.step_cck_ram(&mut ram, true);
+        ram.next_cck();
+        blitter.step_cck(&mut ram, true);
         transfers += usize::from(writes);
         if !blitter.is_busy {
             break;

@@ -35,7 +35,7 @@ APPROVED_CRATE_DEPENDENCIES = {
     "blep_generator": {},
     "cia": {"normal": {"config"}},
     "config": {},
-    "cpu": {"normal": {"physical_memory"}},
+    "cpu": {"normal": {"physical_memory", "config"}},
     "debugger": {"normal": {"config", "cpu", "disassembler", "machine_loop", "physical_memory", "save_state"}},
     "denise": {"normal": {"config", "frame_builder"}},
     "disassembler": {},

@@ -15,7 +15,7 @@
 
 use config::cia_reg;
 use config::A500Config;
-use machine_loop::{A500Machine, AddressBus};
+use machine_loop::A500Machine;
 
 mod common;
 use common::continuation::{
@@ -37,7 +37,9 @@ fn press_reset_keys(machine: &mut A500Machine) {
 fn hardware_resets_execute_boot_beyond_the_initial_queue() {
     for reset_kind in 0..4 {
         let mut machine = rom_machine(BOOT_CODE);
-        machine.physical_memory.chip_ram[0x41000] = 0x77;
+        machine
+            .physical_memory
+            .write_chip_byte_debug((0x41000) as u32, 0x77);
         machine.denise.color[0] = 0x0F00;
         machine.cpu.state.set_d_long(3, 0x12345678);
         machine.cpu.state.set_usp(0x60000);
@@ -66,7 +68,9 @@ fn hardware_resets_execute_boot_beyond_the_initial_queue() {
         assert_boot_entry(&machine);
         assert_eq!(machine.denise.color[0], 0);
         assert_eq!(
-            machine.physical_memory.chip_ram[0x41000],
+            machine
+                .physical_memory
+                .read_chip_byte_debug((0x41000) as u32),
             if reset_kind == 0 { 0 } else { 0x77 }
         );
         assert_eq!(
@@ -120,7 +124,9 @@ fn keyboard_reset_replaces_stopped_and_partial_instruction_state() {
         assert_boot_entry(&machine);
         execute_boot(&mut machine);
         assert_eq!(
-            &machine.physical_memory.chip_ram[0x41000..0x41004],
+            &(0x41000..0x41004)
+                .map(|address| machine.physical_memory.read_chip_byte_debug(address as u32))
+                .collect::<Vec<_>>(),
             &[0; 4],
             "abandoned store executed after reset"
         );
@@ -147,7 +153,9 @@ fn separate_reset_opcodes_each_clear_the_post_pulse_device_marker_once() {
         0x60FE,
     ];
     let mut machine = rom_machine(&code);
-    machine.physical_memory.chip_ram[0x41000] = 0x77;
+    machine
+        .physical_memory
+        .write_chip_byte_debug((0x41000) as u32, 0x77);
     machine.cpu.state.set_d_long(3, 0x12345678);
     for (reset_pc, after_store, after_marker) in [
         (BOOT_PC, BOOT_PC + 10, BOOT_PC + 14),
@@ -170,7 +178,12 @@ fn separate_reset_opcodes_each_clear_the_post_pulse_device_marker_once() {
         assert_eq!(machine.cpu.cycle_counter() - start, 132);
         assert!(!machine.cpu.state.is_reset_line_asserted());
         assert_eq!(machine.denise.color[0], 0);
-        assert_eq!(machine.physical_memory.chip_ram[0x41000], 0x77);
+        assert_eq!(
+            machine
+                .physical_memory
+                .read_chip_byte_debug((0x41000) as u32),
+            0x77
+        );
         assert_eq!(machine.cpu.state.d_long(3), 0x12345678);
         assert_eq!(machine.cpu.state.ssp(), BOOT_SSP);
         retire(&mut machine, after_store);
@@ -191,8 +204,8 @@ fn test_cold_reset_full_flow() {
     machine.physical_memory.map_chip_ram_to_low_memory();
 
     // 1. Pre-populate RAM buffers
-    let _ = machine.memory_bus().write_byte(0x001000, 0xAA);
-    let _ = machine.memory_bus().write_byte(0x002000, 0xBB);
+    machine.physical_memory.write_byte_debug(0x001000, 0xAA);
+    machine.physical_memory.write_byte_debug(0x002000, 0xBB);
     assert_eq!(machine.physical_memory.read_byte_debug(0x001000), 0xAA);
     assert_eq!(machine.physical_memory.read_byte_debug(0x002000), 0xBB);
 
@@ -293,8 +306,8 @@ fn test_warm_reset_full_flow() {
     machine.physical_memory.map_chip_ram_to_low_memory();
 
     // 1. Pre-populate RAM buffers
-    let _ = machine.memory_bus().write_byte(0x001000, 0x42);
-    let _ = machine.memory_bus().write_byte(0x002000, 0x84);
+    machine.physical_memory.write_byte_debug(0x001000, 0x42);
+    machine.physical_memory.write_byte_debug(0x002000, 0x84);
     assert_eq!(machine.physical_memory.read_byte_debug(0x001000), 0x42);
     assert_eq!(machine.physical_memory.read_byte_debug(0x002000), 0x84);
 
@@ -411,11 +424,11 @@ fn test_cpu_reset_instruction_external_propagation() {
     let code: [u16; 3] = [0x4E70, 0x4E71, 0x702A];
     for (idx, &word) in code.iter().enumerate() {
         let addr = 0x001000 + (idx as u32 * 2);
-        let _ = machine.memory_bus().write_word(addr, word);
+        machine.physical_memory.write_word_debug(addr, word);
     }
 
     // Pre-populate RAM data at $003000
-    let _ = machine.memory_bus().write_byte(0x003000, 0x77);
+    machine.physical_memory.write_byte_debug(0x003000, 0x77);
     assert_eq!(machine.physical_memory.read_byte_debug(0x003000), 0x77);
 
     // Modify custom chip registers
@@ -466,7 +479,10 @@ fn test_cpu_reset_instruction_external_propagation() {
 
     // 3. Verify Chip RAM was NOT touched
     assert_eq!(
-        machine.physical_memory.chip_ram[0x003000], 0x77,
+        machine
+            .physical_memory
+            .read_chip_byte_debug((0x003000) as u32),
+        0x77,
         "RAM must remain undisturbed by M68000 RESET instruction"
     );
 
@@ -508,7 +524,7 @@ fn test_cpu_reset_instruction_privilege_violation() {
     machine.physical_memory.map_chip_ram_to_low_memory();
 
     // Code at $001000: RESET ($4E70)
-    let _ = machine.memory_bus().write_word(0x001000, 0x4E70);
+    machine.physical_memory.write_word_debug(0x001000, 0x4E70);
     for (offset, word) in [(2, 0x722A), (4, 0x5281), (6, 0x7435)] {
         machine
             .physical_memory
@@ -573,7 +589,7 @@ fn test_keyboard_ctrl_amiga_amiga_warm_reset() {
     machine.physical_memory.map_chip_ram_to_low_memory();
 
     // 1. Pre-populate RAM and custom chips
-    let _ = machine.memory_bus().write_byte(0x001000, 0x99);
+    machine.physical_memory.write_byte_debug(0x001000, 0x99);
     machine.agnus.dma.write_dmacon(0x8200);
     machine.denise.color[0] = 0x000F; // Blue background
 

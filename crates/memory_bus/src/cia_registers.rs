@@ -16,6 +16,7 @@ impl CiaSelection {
     const BIT_SELECT_A: u32 = 1 << 12;
     const BIT_SELECT_B: u32 = 1 << 13;
     const MASK_REGISTER: u32 = 0x0F00;
+    const BIT_REGISTER_SHIFT: u32 = 8;
     const REGISTER_UNCONNECTED: u32 = 0x0B00;
 
     fn decode(addr: u32) -> Self {
@@ -44,27 +45,28 @@ impl CiaSelection {
 }
 
 impl MemoryBus<'_> {
-    fn accept_cia_access(&mut self, selected: &CiaSelection) -> bool {
+    fn cia_access_ready(&mut self, selected: &CiaSelection) -> bool {
         // Prepare both independently: short circuiting would delay the second chip.
         let ready_a = selected.a.is_none() || self.cia_a.synchronize_bus_access();
         let ready_b = selected.b.is_none() || self.cia_b.synchronize_bus_access();
-        if !ready_a || !ready_b {
-            return false;
-        }
+        ready_a && ready_b
+    }
+
+    fn finish_cia_access(&mut self, selected: &CiaSelection) {
         if selected.a.is_some() {
             self.cia_a.finish_bus_access();
         }
         if selected.b.is_some() {
             self.cia_b.finish_bus_access();
         }
-        true
     }
 
     pub(super) fn read_cia_byte(&mut self, addr: u32) -> BusResult<u8> {
         let selected = CiaSelection::read_byte(addr);
-        if !self.accept_cia_access(&selected) {
+        if !self.cia_access_ready(&selected) {
             return BusResult::WaitState;
         }
+        self.finish_cia_access(&selected);
         BusResult::Ready(match selected.a.or(selected.b) {
             Some(canonical) => self.read_cia_register(canonical),
             None => OPEN_BUS_BYTE,
@@ -73,9 +75,10 @@ impl MemoryBus<'_> {
 
     pub(super) fn read_cia_word(&mut self, addr: u32) -> BusResult<u16> {
         let selected = CiaSelection::decode(addr);
-        if !self.accept_cia_access(&selected) {
+        if !self.cia_access_ready(&selected) {
             return BusResult::WaitState;
         }
+        self.finish_cia_access(&selected);
         let high = selected
             .b
             .map_or(OPEN_BUS_BYTE, |reg| self.read_cia_register(reg));
@@ -102,10 +105,29 @@ impl MemoryBus<'_> {
 
     pub(super) fn write_cia_word(&mut self, addr: u32, val: u16) -> BusResult<()> {
         let selected = CiaSelection::decode(addr);
-        if !self.accept_cia_access(&selected) {
+        if !self.cia_access_ready(&selected) {
             return BusResult::WaitState;
         }
         let [high, low] = val.to_be_bytes();
+        if let Some(reg) = selected.a {
+            self.cia_a
+                .mutations
+                .set_issue_context(self.cck, "CIA-A", "CPU");
+            self.cia_a.require_register_capacity(
+                ((reg & CiaSelection::MASK_REGISTER) >> CiaSelection::BIT_REGISTER_SHIFT) as u16,
+                low,
+            );
+        }
+        if let Some(reg) = selected.b {
+            self.cia_b
+                .mutations
+                .set_issue_context(self.cck, "CIA-B", "CPU");
+            self.cia_b.require_register_capacity(
+                ((reg & CiaSelection::MASK_REGISTER) >> CiaSelection::BIT_REGISTER_SHIFT) as u16,
+                high,
+            );
+        }
+        self.finish_cia_access(&selected);
         if let Some(reg) = selected.b {
             self.write_cia_register(reg, high);
         }

@@ -29,43 +29,48 @@ fn test_audio_dma_playback_and_interrupt_propagation() {
     harness.machine.memory_bus().write_custom_word(
         custom_reg::agnus::REGISTER_AUD0LCH,
         (sample_addr >> 16) as u16,
+        "CPU",
     );
     harness.machine.memory_bus().write_custom_word(
         custom_reg::agnus::REGISTER_AUD0LCL,
         (sample_addr & 0xFFFF) as u16,
+        "CPU",
     );
     // AUD0LEN ($DFF0A4): 4 words
     harness
         .machine
         .memory_bus()
-        .write_custom_word(custom_reg::paula::REGISTER_AUD0LEN, 4);
+        .write_custom_word(custom_reg::paula::REGISTER_AUD0LEN, 4, "DMA");
     // AUD0PER ($DFF0A6): Period = 5 CCKs per sample byte
     harness
         .machine
         .memory_bus()
-        .write_custom_word(custom_reg::paula::REGISTER_AUD0PER, 5);
+        .write_custom_word(custom_reg::paula::REGISTER_AUD0PER, 5, "DMA");
     // AUD0VOL ($DFF0A8): Full volume = 64
     harness
         .machine
         .memory_bus()
-        .write_custom_word(custom_reg::paula::REGISTER_AUD0VOL, 64);
+        .write_custom_word(custom_reg::paula::REGISTER_AUD0VOL, 64, "DMA");
     // Initial sample word write to prime DAT (AUD0DAT at $DFF0AA)
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::paula::REGISTER_AUD0DAT, 0x7F80);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::paula::REGISTER_AUD0DAT,
+        0x7F80,
+        "DMA",
+    );
 
     // 3. Enable Audio 0 Level 4 Interrupt in INTENA ($DFF09A): Master + AUD0 bit 7 -> $C080
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::paula::REGISTER_INTENA, 0xC080);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::paula::REGISTER_INTENA,
+        0xC080,
+        "DMA",
+    );
 
     // 4. Enable Audio 0 DMA in DMACON ($DFF096): Master + AUD0EN bit 0 -> $8201
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::paula::REGISTER_DMACON, 0x8201);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::paula::REGISTER_DMACON,
+        0x8201,
+        "DMA",
+    );
     harness.step_cck(2); // Commit pipeline mutations
 
     // Verify channel is active and configured
@@ -120,11 +125,11 @@ fn test_audio_register_modifications_with_pipeline_delay() {
     harness
         .machine
         .memory_bus()
-        .write_custom_word(custom_reg::paula::REGISTER_AUD1PER, 120);
+        .write_custom_word(custom_reg::paula::REGISTER_AUD1PER, 120, "DMA");
     harness
         .machine
         .memory_bus()
-        .write_custom_word(custom_reg::paula::REGISTER_AUD1VOL, 45);
+        .write_custom_word(custom_reg::paula::REGISTER_AUD1VOL, 45, "DMA");
 
     // Before stepping CCK, values are not committed
     harness.step_cck(2);

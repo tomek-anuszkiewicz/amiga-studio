@@ -9,6 +9,7 @@ pub mod app_host;
 pub mod file_actions;
 mod host_clock;
 pub mod host_commands;
+mod host_failure;
 pub mod host_input;
 pub mod host_inspection;
 pub mod host_keys;

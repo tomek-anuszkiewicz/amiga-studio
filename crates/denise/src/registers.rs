@@ -72,8 +72,10 @@ impl From<BitplaneControl> for u16 {
 impl Denise {
     /// Capacity preflight for an atomic transfer with multiple receivers.
     #[inline]
-    pub fn can_accept_register_write(&self) -> bool {
-        !self.mutations.is_full()
+    pub fn require_register_capacity(&self, offset: u16, value: u16) {
+        let delay = PROVISIONAL_CUSTOM_WRITE_DELAY_CCK;
+        self.mutations
+            .require_capacity(offset, value, delay, MutationMode::Pipeline);
     }
 
     /// Applies STREQU at accepted selection.

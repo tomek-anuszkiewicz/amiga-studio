@@ -20,14 +20,19 @@ fn check_tas_memory_region(base: u32, suppress_write: bool) {
                 let neighbor = addr ^ 1;
                 // Prove ordinary writes reach installed RAM; disable the boot overlay
                 // through the existing harness and leave DMA/interrupt sources disabled.
-                assert_eq!(
-                    harness.machine.memory_bus().write_byte(addr, original),
-                    BusResult::Ready(())
-                );
-                assert_eq!(
-                    harness.machine.memory_bus().write_byte(neighbor, 0x5a),
-                    BusResult::Ready(())
-                );
+                for (address, value) in [(addr, original), (neighbor, 0x5a)] {
+                    let mut written = false;
+                    for _ in 0..16 {
+                        harness.machine.step_subsystems_cck();
+                        if harness.machine.memory_bus().write_byte(address, value)
+                            == BusResult::Ready(())
+                        {
+                            written = true;
+                            break;
+                        }
+                    }
+                    assert!(written, "ordinary RAM write did not receive a bus grant");
+                }
                 assert_eq!(
                     harness.machine.physical_memory.read_byte_debug(addr),
                     original

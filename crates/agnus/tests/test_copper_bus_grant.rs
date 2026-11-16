@@ -1,4 +1,6 @@
+mod common;
 use agnus::{Agnus, AgnusModel};
+use common::TestChipRam;
 
 #[test]
 fn copper_fetch_waits_while_four_hires_planes_own_the_bus() {
@@ -6,7 +8,7 @@ fn copper_fetch_waits_while_four_hires_planes_own_the_bus() {
     // HRM 2: both Copper instruction words require their own DMA opportunity.
     for model in [AgnusModel::OcsPal8371, AgnusModel::OcsNtsc8370] {
         let mut agnus = Agnus::new(model);
-        let mut ram = vec![0; 0x1000];
+        let mut ram = TestChipRam::from(vec![0; 0x1000]);
         ram[..4].copy_from_slice(&[0x01, 0x80, 0x0F, 0x00]);
         agnus.dma.write_dmacon(0x8380);
         agnus.dma.set_bplcon0(0xC000);
@@ -18,7 +20,8 @@ fn copper_fetch_waits_while_four_hires_planes_own_the_bus() {
         agnus.vpos = 100;
 
         for _ in 0..8 {
-            agnus.step_cck_ram(&mut ram);
+            ram.next_cck();
+            agnus.step_cck(&mut ram);
             assert_eq!(agnus.copper.cop_pc, 0, "denied fetch advanced the PC");
             assert_eq!(agnus.pending_copper_write, None);
             agnus.poll_bpl_dma();

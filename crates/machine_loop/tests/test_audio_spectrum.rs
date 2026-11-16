@@ -51,17 +51,19 @@ fn capture(standard: VideoStandard, filter: bool, right: &[i8], left: &[i8]) -> 
     for (channel, samples) in [right, left].into_iter().enumerate() {
         let address = 0x1000 + channel * TABLE_SIZE;
         for (offset, &sample) in samples.iter().enumerate() {
-            machine.physical_memory.chip_ram[address + offset] = sample as u8;
+            machine
+                .physical_memory
+                .write_chip_byte_debug((address + offset) as u32, sample as u8);
         }
         let register = 0xa0 + channel as u16 * 16;
         for (offset, value) in [(0, 0), (2, address as u16), (4, 128), (6, PERIOD), (8, 64)] {
             assert!(machine
                 .memory_bus()
-                .write_custom_word(register + offset, value));
+                .write_custom_word(register + offset, value, "DMA"));
         }
     }
     // No AUDxDAT injection: every sample word must arrive through real DMA.
-    assert!(machine.memory_bus().write_custom_word(0x96, 0x8203));
+    assert!(machine.memory_bus().write_custom_word(0x96, 0x8203, "DMA"));
     let mut result = Vec::new();
     while result.len() < SETTLING + WINDOW {
         machine.step_frame();

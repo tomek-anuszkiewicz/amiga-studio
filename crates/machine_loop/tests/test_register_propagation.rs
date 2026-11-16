@@ -186,7 +186,7 @@ fn test_write_custom_word_and_byte_methods() {
     // Test write_custom_word directly on MemoryBus
     machine
         .memory_bus()
-        .write_custom_word(custom_reg::denise::REGISTER_COLOR00, 0x0F00);
+        .write_custom_word(custom_reg::denise::REGISTER_COLOR00, 0x0F00, "DMA");
     assert_eq!(machine.denise.color[0], 0);
     machine.step_cck();
     assert_eq!(machine.denise.color[0], 0x0F00);
@@ -211,7 +211,7 @@ fn test_dmacon_write_propagation_delay() {
     // Write DMACON = SET DMAEN (bit 9) + SPREN (bit 5) + BPLEN (bit 8) -> 0x8320
     machine
         .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_DMACON, 0x8320);
+        .write_custom_word(custom_reg::agnus::REGISTER_DMACON, 0x8320, "DMA");
 
     // After 1 CCK: in-flight in mutation pipeline, not yet committed in Agnus (2 CCKs delay)
     machine.step_cck();
@@ -224,7 +224,7 @@ fn test_dmacon_write_propagation_delay() {
     // Clear SPREN (bit 5)
     machine
         .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_DMACON, 0x0020);
+        .write_custom_word(custom_reg::agnus::REGISTER_DMACON, 0x0020, "DMA");
     machine.step_cck();
     assert_eq!(machine.agnus.dma.dmacon, 0x0320);
 

@@ -2,7 +2,7 @@
 
 use cpu::Cpu;
 use debugger::{Debugger, DebuggerSession};
-use physical_memory::{BusResult, PhysicalMemory};
+use physical_memory::PhysicalMemory;
 
 #[test]
 fn test_debugger_stepping_and_breakpoints() {
@@ -187,9 +187,9 @@ fn test_session_bus_access() {
     let bus = session.bus();
     // In unpopulated mode with boot overlay active, offset 0..3 is synthetic boot vector (SSP = $00080000),
     // and unmapped ROM space beyond the vector table returns open bus ($FF).
-    assert_eq!(bus.read_byte(0x000000), BusResult::Ready(0x00));
-    assert_eq!(bus.read_byte(0x000001), BusResult::Ready(0x08));
-    assert_eq!(bus.read_byte(0x000008), BusResult::Ready(0xFF));
+    assert_eq!(bus.read_byte_debug(0x000000), 0x00);
+    assert_eq!(bus.read_byte_debug(0x000001), 0x08);
+    assert_eq!(bus.read_byte_debug(0x000008), 0xFF);
 }
 
 #[test]

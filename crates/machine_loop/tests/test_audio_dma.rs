@@ -10,16 +10,25 @@ fn playing(standard: VideoStandard) -> A500Machine {
     for channel in 0..4usize {
         let address = 0x1000 + channel * 16;
         let word = 0x1234 + channel as u16 * 0x1010;
-        machine.physical_memory.chip_ram[address..address + 2].copy_from_slice(&word.to_be_bytes());
-        machine.physical_memory.chip_ram[address + 2..address + 4]
-            .copy_from_slice(&0x7f80u16.to_be_bytes());
+        for (offset, byte) in word.to_be_bytes().iter().copied().enumerate() {
+            machine
+                .physical_memory
+                .write_chip_byte_debug(((address) as u32).wrapping_add(offset as u32), byte);
+        }
+        for (offset, byte) in 0x7f80u16.to_be_bytes().iter().copied().enumerate() {
+            machine
+                .physical_memory
+                .write_chip_byte_debug(((address + 2) as u32).wrapping_add(offset as u32), byte);
+        }
         let register = 0x00a0 + channel as u16 * 16;
         let mut bus = machine.memory_bus();
         for (offset, value) in [(0, 0), (2, address as u16), (4, 2), (6, 400), (8, 64)] {
-            assert!(bus.write_custom_word(register + offset, value));
+            assert!(bus.write_custom_word(register + offset, value, "DMA"));
         }
     }
-    assert!(machine.memory_bus().write_custom_word(0x0096, 0x820f));
+    assert!(machine
+        .memory_bus()
+        .write_custom_word(0x0096, 0x820f, "DMA"));
     machine
 }
 
@@ -59,7 +68,9 @@ fn four_serial_request_pairs_supply_real_words_and_restart_addresses() {
             }
             assert_eq!(machine.paula.interrupts.intreq & 0x0780, 0x0780);
             // Updating the next block's location must not redirect an active fetch.
-            assert!(machine.memory_bus().write_custom_word(0x00a2, 0x3000));
+            assert!(machine
+                .memory_bus()
+                .write_custom_word(0x00a2, 0x3000, "DMA"));
             machine.step_cycles(2);
             assert_eq!(machine.agnus.audlc[0], 0x3000);
             assert_eq!(machine.agnus.audpt[0], 0x1002);

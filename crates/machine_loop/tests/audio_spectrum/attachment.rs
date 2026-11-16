@@ -43,12 +43,17 @@ fn capture(standard: VideoStandard, mode: Attachment) -> Vec<StereoSample> {
     for (index, &value) in mode.values().iter().enumerate() {
         for word in 0..PLATEAU_WORDS {
             let address = 0x1000 + 2 * (index * PLATEAU_WORDS + word);
-            machine.physical_memory.chip_ram[address..address + 2]
-                .copy_from_slice(&value.to_be_bytes());
+            for (offset, byte) in value.to_be_bytes().iter().copied().enumerate() {
+                machine
+                    .physical_memory
+                    .write_chip_byte_debug(((address) as u32).wrapping_add(offset as u32), byte);
+            }
         }
     }
     for (offset, sample) in source.into_iter().enumerate() {
-        machine.physical_memory.chip_ram[0x2000 + offset] = sample as u8;
+        machine
+            .physical_memory
+            .write_chip_byte_debug((0x2000 + offset) as u32, sample as u8);
     }
     let initial_volume = match mode {
         Attachment::Volume => 0,
@@ -68,15 +73,15 @@ fn capture(standard: VideoStandard, mode: Attachment) -> Vec<StereoSample> {
         for (offset, value) in [(0, 0), (2, address), (4, length), (6, period), (8, volume)] {
             assert!(machine
                 .memory_bus()
-                .write_custom_word(register + offset, value));
+                .write_custom_word(register + offset, value, "DMA"));
         }
     }
     let control = match mode {
         Attachment::Volume => 0x8001,
         Attachment::Period => 0x8010,
     };
-    assert!(machine.memory_bus().write_custom_word(0x9e, control));
-    assert!(machine.memory_bus().write_custom_word(0x96, 0x8203));
+    assert!(machine.memory_bus().write_custom_word(0x9e, control, "DMA"));
+    assert!(machine.memory_bus().write_custom_word(0x96, 0x8203, "DMA"));
     // Three plateaus exercise both transition directions and the DMA block loop.
     // Once started, only DMA supplies control words and carrier bytes.
     let mut samples = Vec::new();

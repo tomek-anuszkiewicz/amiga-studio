@@ -1,5 +1,10 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
+use config::chip_ram::{ChipRamAccess, ChipRamOwner};
+
+mod common;
+use common::MemoryCycle;
+
 use physical_memory::{A500Config, A500Preset, BusResult, PhysicalMemory};
 
 #[test]
@@ -40,29 +45,41 @@ fn test_chip_ram_contention_and_direct_rw() {
     bus.map_chip_ram_to_low_memory();
 
     // 1. Direct word write and read
-    assert_eq!(bus.write_word(0x001000, 0xCAFE), BusResult::Ready(()));
-    assert_eq!(bus.read_word(0x001000), BusResult::Ready(0xCAFE));
+    assert_eq!(
+        bus.next_cck().write_word(0x001000, 0xCAFE),
+        BusResult::Ready(())
+    );
+    assert_eq!(bus.next_cck().read_word(0x001000), BusResult::Ready(0xCAFE));
 
     // 2. Direct byte write and read
-    assert_eq!(bus.write_byte(0x001002, 0x42), BusResult::Ready(()));
-    assert_eq!(bus.read_byte(0x001002), BusResult::Ready(0x42));
+    assert_eq!(
+        bus.next_cck().write_byte(0x001002, 0x42),
+        BusResult::Ready(())
+    );
+    assert_eq!(bus.next_cck().read_byte(0x001002), BusResult::Ready(0x42));
 
     // 3. Contention query: Chip RAM and Slow RAM
-    assert_eq!(bus.read_word(0x001000), BusResult::Ready(0xCAFE));
-    assert_eq!(bus.read_word(0xC00000), BusResult::Ready(0x0000));
-    assert_eq!(bus.read_word(0x200000), BusResult::Ready(0xFFFF)); // Fast RAM open bus returns 0xFFFF
+    assert_eq!(bus.next_cck().read_word(0x001000), BusResult::Ready(0xCAFE));
+    assert_eq!(bus.next_cck().read_word(0xC00000), BusResult::Ready(0x0000));
+    assert_eq!(bus.next_cck().read_word(0x200000), BusResult::Ready(0xFFFF)); // Fast RAM open bus returns 0xFFFF
 
     bus.chip_ram_blocked = true;
     assert!(bus.chip_ram_blocked);
-    assert_eq!(bus.read_word(0x001000), BusResult::WaitState);
-    assert_eq!(bus.write_word(0x001000, 0x1234), BusResult::WaitState);
-    assert_eq!(bus.read_word(0xC00000), BusResult::WaitState);
-    assert_eq!(bus.write_word(0xC00000, 0x1234), BusResult::WaitState);
-    assert_eq!(bus.read_word(0x200000), BusResult::Ready(0xFFFF)); // Fast RAM unaffected
+    assert_eq!(bus.next_cck().read_word(0x001000), BusResult::WaitState);
+    assert_eq!(
+        bus.next_cck().write_word(0x001000, 0x1234),
+        BusResult::WaitState
+    );
+    assert_eq!(bus.next_cck().read_word(0xC00000), BusResult::WaitState);
+    assert_eq!(
+        bus.next_cck().write_word(0xC00000, 0x1234),
+        BusResult::WaitState
+    );
+    assert_eq!(bus.next_cck().read_word(0x200000), BusResult::Ready(0xFFFF)); // Fast RAM unaffected
 
     bus.chip_ram_blocked = false;
     assert!(!bus.chip_ram_blocked);
-    assert_eq!(bus.read_word(0x001000), BusResult::Ready(0xCAFE));
+    assert_eq!(bus.next_cck().read_word(0x001000), BusResult::Ready(0xCAFE));
 }
 
 #[test]
@@ -83,27 +100,39 @@ fn test_bus_direct_read_write_and_byte_accesses() {
     bus.map_chip_ram_to_low_memory();
 
     // 1. Direct word write and read
-    assert_eq!(bus.write_word(0x004000, 0x1234), BusResult::Ready(()));
-    assert_eq!(bus.read_word(0x004000), BusResult::Ready(0x1234));
+    assert_eq!(
+        bus.next_cck().write_word(0x004000, 0x1234),
+        BusResult::Ready(())
+    );
+    assert_eq!(bus.next_cck().read_word(0x004000), BusResult::Ready(0x1234));
 
     // 2. Direct byte reads (Upper byte at even address vs Lower byte at odd address)
-    assert_eq!(bus.read_byte(0x004000), BusResult::Ready(0x12));
-    assert_eq!(bus.read_byte(0x004001), BusResult::Ready(0x34));
+    assert_eq!(bus.next_cck().read_byte(0x004000), BusResult::Ready(0x12));
+    assert_eq!(bus.next_cck().read_byte(0x004001), BusResult::Ready(0x34));
 
     // 3. Individual byte writes
-    assert_eq!(bus.write_byte(0x004000, 0xAB), BusResult::Ready(()));
-    assert_eq!(bus.read_word(0x004000), BusResult::Ready(0xAB34));
+    assert_eq!(
+        bus.next_cck().write_byte(0x004000, 0xAB),
+        BusResult::Ready(())
+    );
+    assert_eq!(bus.next_cck().read_word(0x004000), BusResult::Ready(0xAB34));
 
-    assert_eq!(bus.write_byte(0x004001, 0xCD), BusResult::Ready(()));
-    assert_eq!(bus.read_word(0x004000), BusResult::Ready(0xABCD));
+    assert_eq!(
+        bus.next_cck().write_byte(0x004001, 0xCD),
+        BusResult::Ready(())
+    );
+    assert_eq!(bus.next_cck().read_word(0x004000), BusResult::Ready(0xABCD));
 
     // 4. Contention Handling on Chip RAM
-    assert_eq!(bus.read_word(0x004000), BusResult::Ready(0xABCD));
+    assert_eq!(bus.next_cck().read_word(0x004000), BusResult::Ready(0xABCD));
     bus.chip_ram_blocked = true;
-    assert_eq!(bus.read_word(0x004000), BusResult::WaitState);
-    assert_eq!(bus.write_word(0x004000, 0x9999), BusResult::WaitState);
+    assert_eq!(bus.next_cck().read_word(0x004000), BusResult::WaitState);
+    assert_eq!(
+        bus.next_cck().write_word(0x004000, 0x9999),
+        BusResult::WaitState
+    );
     bus.chip_ram_blocked = false;
-    assert_eq!(bus.read_word(0x004000), BusResult::Ready(0xABCD));
+    assert_eq!(bus.next_cck().read_word(0x004000), BusResult::Ready(0xABCD));
 }
 
 #[test]
@@ -117,15 +146,15 @@ fn test_physical_memory_reset_and_kickstart_direct_access() {
     bus.write_bytes_debug(0xF80000, &rom).unwrap();
 
     // Verify kickstart read handlers via public bus interface
-    assert_eq!(bus.read_byte(0xF80000), BusResult::Ready(0x12));
-    assert_eq!(bus.read_byte(0xF80001), BusResult::Ready(0x34));
-    assert_eq!(bus.read_word(0xF80000), BusResult::Ready(0x1234));
-    assert_eq!(bus.read_word(0xF80002), BusResult::Ready(0x5678));
+    assert_eq!(bus.next_cck().read_byte(0xF80000), BusResult::Ready(0x12));
+    assert_eq!(bus.next_cck().read_byte(0xF80001), BusResult::Ready(0x34));
+    assert_eq!(bus.next_cck().read_word(0xF80000), BusResult::Ready(0x1234));
+    assert_eq!(bus.next_cck().read_word(0xF80002), BusResult::Ready(0x5678));
 
     // Modify memory and disengage overlay
     bus.map_chip_ram_to_low_memory();
     assert!(!bus.is_low_memory_overlay_active());
-    let _ = bus.write_word(0x000000, 0x9999);
+    let _ = bus.next_cck().write_word(0x000000, 0x9999);
     bus.chip_ram_blocked = true;
 
     // Reset clears RAM, unblocks chip RAM, and re-engages overlay
@@ -234,14 +263,21 @@ fn test_chip_ram_direct_dma_word_access_bypasses_contention_and_overlay() {
     bus.chip_ram_blocked = true;
 
     // Standard CPU access returns WaitState under contention
-    assert_eq!(bus.write_word(0x002000, 0x1234), BusResult::WaitState);
-    assert_eq!(bus.read_word(0x002000), BusResult::WaitState);
+    assert_eq!(
+        bus.next_cck().write_word(0x002000, 0x1234),
+        BusResult::WaitState
+    );
+    assert_eq!(bus.next_cck().read_word(0x002000), BusResult::WaitState);
 
     // Hardware DMA direct access writes directly into physical Chip RAM despite contention
-    bus.write_chip_word(0x002000, 0xABCD);
-    assert_eq!(bus.read_chip_word(0x002000), 0xABCD);
-    assert_eq!(bus.chip_ram[0x2000], 0xAB);
-    assert_eq!(bus.chip_ram[0x2001], 0xCD);
+    bus.next_cck()
+        .write_chip_word(0x002000, 0xABCD, ChipRamOwner::Disk);
+    assert_eq!(
+        bus.next_cck().read_chip_word(0x002000, ChipRamOwner::Disk),
+        0xABCD
+    );
+    assert_eq!(bus.read_chip_byte_debug(0x2000), 0xAB);
+    assert_eq!(bus.read_chip_byte_debug(0x2001), 0xCD);
 
     // 2. Test overlay bypass: re-engage overlay (_OVL = true)
     bus.map_kickstart_to_low_memory();
@@ -251,10 +287,14 @@ fn test_chip_ram_direct_dma_word_access_bypasses_contention_and_overlay() {
     assert_eq!(bus.read_word_debug(0x000000), 0x0008); // default Kickstart SSP
 
     // DMA write targets physical Chip RAM, completely bypassing CPU ROM overlay
-    bus.write_chip_word(0x000000, 0x5678);
-    assert_eq!(bus.read_chip_word(0x000000), 0x5678);
-    assert_eq!(bus.chip_ram[0], 0x56);
-    assert_eq!(bus.chip_ram[1], 0x78);
+    bus.next_cck()
+        .write_chip_word(0x000000, 0x5678, ChipRamOwner::Disk);
+    assert_eq!(
+        bus.next_cck().read_chip_word(0x000000, ChipRamOwner::Disk),
+        0x5678
+    );
+    assert_eq!(bus.read_chip_byte_debug(0), 0x56);
+    assert_eq!(bus.read_chip_byte_debug(1), 0x78);
 
     // CPU still sees Kickstart ROM at $000000 because overlay is still engaged
     assert_eq!(bus.read_word_debug(0x000000), 0x0008);

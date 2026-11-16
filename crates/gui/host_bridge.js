@@ -5,24 +5,24 @@ export function start_machine_worker(module, memory, notify, finished, input) {
     }
     const worker = new Worker(new URL('machine_worker.js', document.baseURI), {type: 'module'});
     const stopInput = startInput(input);
-    const complete = success => {
+    const complete = (success, message = '') => {
         worker.onmessage = null;
         worker.onerror = null;
         worker.terminate();
         stopInput();
-        finished(success);
+        finished(success, message);
     };
     worker.onmessage = event => {
         if (event.data.type === 'output') notify();
         else if (event.data.type === 'stopped') complete(true);
         else if (event.data.type === 'failed') {
             console.error(event.data.message);
-            complete(false);
+            complete(false, event.data.message);
         }
     };
     worker.onerror = event => {
         console.error(event.message);
-        complete(false);
+        complete(false, event.message);
     };
     try {
         worker.postMessage({module, memory});
@@ -154,4 +154,14 @@ export function host_now() {
 
 export function notify_gui() {
     postMessage({type: 'output'});
+}
+
+// Called by the panic hook before panic_abort traps. Worker-local JS storage
+// survives the trap and needs no Rust owner, mailbox, stack or TLS cleanup.
+export function report_machine_failure(message) {
+    if (typeof document === 'undefined') {
+        globalThis.machineFailureMessage ??= message;
+    } else {
+        console.error(message);
+    }
 }

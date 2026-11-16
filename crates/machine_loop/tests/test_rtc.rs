@@ -58,8 +58,15 @@ fn guest_cpu_rtc_read_uses_latest_host_sample() {
     let mut machine = running_clock();
     machine.physical_memory.map_chip_ram_to_low_memory();
     // MOVE.B $DC0001,D0; STOP #$2700.
-    machine.physical_memory.chip_ram[0x1000..0x100A]
-        .copy_from_slice(&[0x10, 0x39, 0x00, 0xDC, 0x00, 0x01, 0x4E, 0x72, 0x27, 0x00]);
+    for (offset, byte) in [0x10, 0x39, 0x00, 0xDC, 0x00, 0x01, 0x4E, 0x72, 0x27, 0x00]
+        .iter()
+        .copied()
+        .enumerate()
+    {
+        machine
+            .physical_memory
+            .write_chip_byte_debug(((0x1000) as u32).wrapping_add(offset as u32), byte);
+    }
     machine.cpu.state.set_sr(0x2700);
     machine.rtc.supply_host_utc(UTC + 1);
     machine.set_pc_and_prime_prefetch(0x1000);

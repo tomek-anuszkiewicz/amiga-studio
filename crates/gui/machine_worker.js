@@ -1,4 +1,4 @@
-import init, {host_worker_tick} from './gui.js';
+import init, {host_worker_start, host_worker_tick} from './gui.js';
 
 let wasm;
 let timer;
@@ -29,7 +29,7 @@ function tick() {
             timer = setTimeout(() => immediate.port2.postMessage(token), Math.ceil(delay));
         }
     } catch (error) {
-        postMessage({type: 'failed', message: String(error.stack || error)});
+        postMessage({type: 'failed', message: globalThis.machineFailureMessage || String(error.stack || error)});
         close();
     }
 }
@@ -40,10 +40,11 @@ onmessage = async event => {
     onmessage = () => {};
     try {
         wasm = await init({module_or_path: event.data.module, memory: event.data.memory});
+        host_worker_start();
         onmessage = tick;
         tick();
     } catch (error) {
-        postMessage({type: 'failed', message: String(error.stack || error)});
+        postMessage({type: 'failed', message: globalThis.machineFailureMessage || String(error.stack || error)});
         close();
     }
 };

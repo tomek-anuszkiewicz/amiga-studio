@@ -1,11 +1,14 @@
+mod common;
 use agnus::{Agnus, AgnusModel};
+use common::TestChipRam;
 
-fn line(a: &mut Agnus, ram: &mut [u8], vertical: u16) -> Vec<(u16, u16)> {
+fn line(a: &mut Agnus, ram: &mut TestChipRam, vertical: u16) -> Vec<(u16, u16)> {
     a.vpos = vertical;
     a.hpos = 0;
     let mut output = Vec::new();
     for _ in 0..53 {
-        a.step_cck_ram(ram);
+        ram.next_cck();
+        a.step_cck(ram);
         if let Some((register, word)) = a.pending_dma_write.take() {
             let sprite = usize::from((register - 0x140) / 8);
             match (register - 0x140) % 8 {
@@ -24,7 +27,7 @@ fn all_eight_channels_fetch_controls_data_reuse_and_terminator() {
     for (model, initial_line) in [(AgnusModel::OcsPal8371, 25), (AgnusModel::OcsNtsc8370, 19)] {
         let mut a = Agnus::new(model);
         a.dma.write_dmacon(0x8220);
-        let mut ram = [0; 1024];
+        let mut ram = TestChipRam::from(vec![0; 1024]);
         for sprite in 0..8 {
             a.sprpt[sprite] = sprite as u32 * 64;
             let words = [
@@ -71,18 +74,21 @@ fn nine_bit_positions_disable_and_retained_output_control_memory_advancement() {
     let mut a = Agnus::new(AgnusModel::OcsPal8371);
     a.sprite_dma.set_position(0, 0x2c40);
     a.sprite_dma.set_control(0, 0x2e06);
-    let mut ram = [0x12; 64];
+    let mut ram = TestChipRam::from(vec![0x12; 64]);
     assert!(line(&mut a, &mut ram, 299).is_empty());
     assert!(line(&mut a, &mut ram, 300).is_empty()); // DMA disabled, comparator still active.
     assert_eq!(a.sprpt[0], 0);
     a.dma.write_dmacon(0x8220);
     a.vpos = 301;
     a.hpos = 20;
-    a.step_cck_ram(&mut ram);
+    ram.next_cck();
+    a.step_cck(&mut ram);
     assert_eq!(a.pending_dma_write, Some((0x144, 0x1212)));
     assert_eq!(a.sprpt[0], 2);
-    a.step_cck_ram(&mut ram);
-    a.step_cck_ram(&mut ram); // Second opportunity cannot overwrite pending output.
+    ram.next_cck();
+    a.step_cck(&mut ram);
+    ram.next_cck();
+    a.step_cck(&mut ram); // Second opportunity cannot overwrite pending output.
     assert_eq!(a.pending_dma_write, Some((0x144, 0x1212)));
     assert_eq!(a.sprpt[0], 2);
     assert!(!a.chip_ram_blocked);
@@ -105,8 +111,9 @@ fn overlapping_bitplane_grant_prevents_sprite_fetch_and_pointer_increment() {
     a.dma.set_bplcon0(0xc000);
     a.dma.set_ddfstrt(20);
     a.dma.set_ddfstop(28);
-    let mut ram = [0; 64];
-    a.step_cck_ram(&mut ram);
+    let mut ram = TestChipRam::from(vec![0; 64]);
+    ram.next_cck();
+    a.step_cck(&mut ram);
     assert!(a.pending_bpl_dma.is_some());
     assert_eq!(a.pending_dma_write, None);
     assert_eq!(a.sprpt[0], 0);
@@ -116,6 +123,7 @@ fn overlapping_bitplane_grant_prevents_sprite_fetch_and_pointer_increment() {
 fn comparators_update_outside_slots_while_dma_and_output_are_blocked() {
     for (model, control_line) in [(AgnusModel::OcsPal8371, 25), (AgnusModel::OcsNtsc8370, 19)] {
         let mut a = Agnus::new(model);
+        let mut step_ram_a = TestChipRam::default();
         a.vpos = 100;
         a.hpos = 70;
         a.pending_dma_write = Some((0x00a0, 0xcafe));
@@ -126,7 +134,8 @@ fn comparators_update_outside_slots_while_dma_and_output_are_blocked() {
             sprctl: [101, 100, 101, 100, 101, 100, 101, 100].map(|v| v << 8),
         }
         .into();
-        a.step_cck();
+        step_ram_a.next_cck();
+        a.step_cck(&mut step_ram_a);
         assert_eq!(
             a.sprite_dma.state().sprite_dma_active,
             [false, false, true, false, true, false, true, false]
@@ -135,10 +144,11 @@ fn comparators_update_outside_slots_while_dma_and_output_are_blocked() {
         assert_eq!(a.sprpt, [0; 8]);
         a.pending_dma_write = None;
         a.dma.write_dmacon(0x8220);
-        let mut ram = [0x12; 64];
+        let mut ram = TestChipRam::from(vec![0x12; 64]);
         for sprite in 0..8u16 {
             a.hpos = 20 + sprite * 4;
-            a.step_cck_ram(&mut ram);
+            ram.next_cck();
+            a.step_cck(&mut ram);
             let expected = if sprite == 0 {
                 None
             } else {
@@ -149,7 +159,8 @@ fn comparators_update_outside_slots_while_dma_and_output_are_blocked() {
         }
         a.pending_dma_write = Some((0x00a0, 0xcafe));
         a.vpos = control_line;
-        a.step_cck();
+        step_ram_a.next_cck();
+        a.step_cck(&mut step_ram_a);
         assert_eq!(a.sprite_dma.state().sprite_dma_active, [false; 8]);
         assert_eq!(a.pending_dma_write, Some((0x00a0, 0xcafe)));
     }
@@ -158,27 +169,34 @@ fn comparators_update_outside_slots_while_dma_and_output_are_blocked() {
 #[test]
 fn midline_position_control_and_beam_writes_reach_the_next_comparison() {
     let mut a = Agnus::new(AgnusModel::OcsPal8371);
+    let mut step_ram_a = TestChipRam::default();
     a.vpos = 100;
     a.hpos = 70;
     a.sprite_dma.set_position(0, 0x6340);
     a.sprite_dma.set_control(0, 0x6500);
     assert!(a.set_sprpos(0, 0x6440));
-    a.step_cck();
+    step_ram_a.next_cck();
+    a.step_cck(&mut step_ram_a);
     assert!(!a.sprite_dma.state().sprite_dma_active[0]); // Write commits after this comparison.
-    a.step_cck();
+    step_ram_a.next_cck();
+    a.step_cck(&mut step_ram_a);
     assert!(a.sprite_dma.state().sprite_dma_active[0]);
     assert!(a.set_sprctl(0, 0x6400));
-    a.step_cck();
+    step_ram_a.next_cck();
+    a.step_cck(&mut step_ram_a);
     assert!(a.sprite_dma.state().sprite_dma_active[0]);
-    a.step_cck();
+    step_ram_a.next_cck();
+    a.step_cck(&mut step_ram_a);
     assert!(!a.sprite_dma.state().sprite_dma_active[0]); // Simultaneous start/stop leaves the latch clear.
 
     a.sprite_dma.set_position(0, 0x6640);
     a.sprite_dma.set_control(0, 0x6700);
     assert!(a.set_vhposw(0x6646));
-    a.step_cck();
+    step_ram_a.next_cck();
+    a.step_cck(&mut step_ram_a);
     assert!(!a.sprite_dma.state().sprite_dma_active[0]);
-    a.step_cck();
+    step_ram_a.next_cck();
+    a.step_cck(&mut step_ram_a);
     assert!(a.sprite_dma.state().sprite_dma_active[0]);
 }
 
@@ -189,14 +207,17 @@ fn enabling_dma_midline_uses_the_latch_updated_while_disabled() {
     a.hpos = 20;
     a.sprite_dma.set_position(0, 0x6440);
     a.sprite_dma.set_control(0, 0x6600);
-    let mut ram = [0x12; 64];
-    a.step_cck_ram(&mut ram);
+    let mut ram = TestChipRam::from(vec![0x12; 64]);
+    ram.next_cck();
+    a.step_cck(&mut ram);
     assert!(a.sprite_dma.state().sprite_dma_active[0]);
     assert_eq!(a.pending_dma_write, None);
     assert_eq!(a.sprpt[0], 0);
     a.dma.write_dmacon(0x8220);
-    a.step_cck_ram(&mut ram);
-    a.step_cck_ram(&mut ram);
+    ram.next_cck();
+    a.step_cck(&mut ram);
+    ram.next_cck();
+    a.step_cck(&mut ram);
     assert_eq!(a.pending_dma_write, Some((0x146, 0x1212)));
     assert_eq!(a.sprpt[0], 2);
 }

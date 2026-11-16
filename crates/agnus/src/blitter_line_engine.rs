@@ -2,7 +2,6 @@
 
 use super::{eval_minterm, Blitter, BlitterPhase};
 use crate::register_bits::{blitter_fields as field, bltcon};
-use config::chip_ram;
 
 const PHASE_READ: u8 = 0;
 const PHASE_LOGIC: u8 = 1;
@@ -18,11 +17,12 @@ impl Blitter {
         }
     }
 
-    pub(crate) fn step_line_cycle(&mut self, ram: &mut [u8]) {
+    pub(crate) fn step_line_cycle(&mut self, ram: &mut impl config::chip_ram::ChipRamAccess) {
         match self.phase_index {
             PHASE_READ => {
                 if self.bltcon0 & bltcon::BIT_USEC != 0 {
-                    self.bltcdat = chip_ram::read_u16(ram, self.bltcpt);
+                    self.bltcdat =
+                        ram.read_chip_word(self.bltcpt, config::chip_ram::ChipRamOwner::Blitter);
                 }
             }
             PHASE_LOGIC => {
@@ -38,7 +38,11 @@ impl Blitter {
             }
             PHASE_WRITE => {
                 if self.line_write_enabled {
-                    chip_ram::write_u16(ram, self.bltdpt, self.dhold);
+                    ram.write_chip_word(
+                        self.bltdpt,
+                        self.dhold,
+                        config::chip_ram::ChipRamOwner::Blitter,
+                    );
                 }
             }
             PHASE_ADVANCE => {

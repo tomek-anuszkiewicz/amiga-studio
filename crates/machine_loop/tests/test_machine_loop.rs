@@ -2,7 +2,7 @@
 
 use config::custom_reg;
 use config::A500Config;
-use machine_loop::{A500Machine, AddressBus};
+use machine_loop::A500Machine;
 
 #[test]
 fn test_machine_creation_and_stepping() {
@@ -30,7 +30,7 @@ fn test_machine_interrupt_arbitration() {
     // 0x8000 (SET) | 0x4000 (INTEN) | 0x2000 (EXTER) | 0x0008 (PORTS) = 0xE008
     machine
         .memory_bus()
-        .write_custom_word(custom_reg::paula::REGISTER_INTENA, 0xE008);
+        .write_custom_word(custom_reg::paula::REGISTER_INTENA, 0xE008, "DMA");
     machine.step_cycles(2);
 
     // Trigger CIA-A interrupt -> IPL 2
@@ -64,7 +64,7 @@ fn test_machine_cold_and_warm_reset() {
     machine.agnus.dma.write_dmacon(0x8200); // Enable DMA
     machine.paula.set_intena(0x8080); // Enable Audio 0 IRQ
     machine.paula.step_cck();
-    let _ = machine.memory_bus().write_byte(0x001000, 0x42);
+    machine.physical_memory.write_byte_debug(0x001000, 0x42);
     assert_eq!(machine.physical_memory.read_byte_debug(0x001000), 0x42);
 
     // 2. Perform warm reset: preserves RAM, re-engages boot overlay, resets CCK to 0, resets chips

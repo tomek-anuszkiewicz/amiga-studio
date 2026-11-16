@@ -46,6 +46,156 @@ fn start_host() -> HostRuntime {
     HostRuntime::start(MachineOwner::new(session()), egui::Context::default()).unwrap()
 }
 
+// Inject through the existing bank dispatch rather than adding a production
+// crash command or corrupting machine state. This is a forced host-boundary
+// failure, not evidence of a naturally occurring memory invariant violation.
+fn invariant_read(
+    memory: &mut physical_memory::PhysicalMemory,
+    address: u32,
+) -> physical_memory::BusResult<u16> {
+    use config::chip_ram::{ChipRamAccess, ChipRamOwner};
+    memory.read_chip_word(address, ChipRamOwner::Copper);
+    physical_memory::BusResult::Ready(memory.read_chip_word(address, ChipRamOwner::Cpu))
+}
+
+#[test]
+fn fatal_owner_failure_wakes_gui_rejects_commands_and_requires_no_shutdown_reply() {
+    use gui::host_runtime::HostRuntimeError;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    static REPAINTS: AtomicUsize = AtomicUsize::new(0);
+
+    for command in [
+        HostCommand::Run,
+        HostCommand::StepInstruction,
+        HostCommand::StepCck,
+        HostCommand::StepField,
+    ] {
+        let single_cck = matches!(command, HostCommand::StepCck);
+        let mut session = session();
+        session.machine.physical_memory.bank_map[0].read_word = invariant_read;
+        let context = egui::Context::default();
+        context.set_request_repaint_callback(|_| {
+            REPAINTS.fetch_add(1, Ordering::SeqCst);
+        });
+        let mut host = HostRuntime::start(MachineOwner::new(session), context.clone()).unwrap();
+        wait_reply(&mut host, HostCommand::ReadCpu);
+        host.try_consume(|_, _, _| ()).unwrap();
+        // Consume outstanding egui repaint requests before checking the failure
+        // wakeup. egui coalesces requests until its next frame.
+        for _ in 0..2 {
+            let _ = context.run(egui::RawInput::default(), |_| {});
+        }
+        REPAINTS.store(0, Ordering::SeqCst);
+        host.submit(command).unwrap();
+        // Fill the command path before the worker runs. Even a single-CCK
+        // command must eventually reach the injected normal CPU read.
+        if single_cck {
+            for _ in 0..16 {
+                let _ = host.submit(HostCommand::StepCck);
+            }
+        }
+        let deadline = Instant::now() + Duration::from_secs(10);
+        let message = loop {
+            match host.poll() {
+                Err(HostRuntimeError::Fatal(message)) => break message,
+                Err(error) => panic!("Lost fatal diagnostic: {error:?}"),
+                Ok(_) => {}
+            }
+            assert!(Instant::now() < deadline, "Fatal owner did not stop");
+            std::thread::sleep(Duration::from_millis(1));
+        };
+        assert!(
+            message.starts_with("Chip RAM access invariant:"),
+            "{message}"
+        );
+        while REPAINTS.load(Ordering::SeqCst) == 0 {
+            assert!(Instant::now() < deadline, "Failure did not wake the GUI");
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        let failure = HostRuntimeError::Fatal(message);
+        assert!(!host.status().running);
+        let cck = host.status().cck;
+        for command in [HostCommand::Run, HostCommand::Reset, HostCommand::Shutdown] {
+            assert!(host.submit(command).is_err());
+            assert_eq!(host.poll().unwrap_err(), failure);
+            assert_eq!(host.status().cck, cck);
+            assert_eq!(host.status().field_number, 0);
+        }
+        assert_eq!(host.try_consume(|_, _, _| ()).unwrap(), VideoRead::Pending);
+        // The failed worker has no Shutdown acknowledgment. Completion must
+        // return the original failure immediately, and Drop must join it.
+        assert_eq!(host.finish_shutdown().unwrap_err(), failure);
+        drop(host);
+        assert!(
+            Instant::now() < deadline,
+            "Shutdown waited for a dead owner"
+        );
+    }
+}
+
+#[test]
+fn shutdown_completion_publishes_final_status_without_a_final_poll() {
+    let mut host = start_host();
+    host.submit(HostCommand::Shutdown).unwrap();
+    let deadline = Instant::now() + Duration::from_secs(10);
+    loop {
+        if host.finish_shutdown().unwrap().is_some() {
+            break;
+        }
+        assert!(Instant::now() < deadline);
+        std::thread::yield_now();
+    }
+    assert!(host.status().shutdown);
+    assert!(!host.status().running);
+}
+
+#[test]
+fn actual_queue_overflow_reaches_the_owner_boundary_for_run_and_manual_steps() {
+    use gui::host_runtime::HostRuntimeError;
+    for command in [
+        HostCommand::Run,
+        HostCommand::StepInstruction,
+        HostCommand::StepCck,
+        HostCommand::StepField,
+    ] {
+        let mut session = session();
+        for index in 0..32 {
+            session.machine.paula.mutations.stage(
+                config::custom_reg::paula::REGISTER_AUD0PER,
+                index,
+                200,
+                config::MutationMode::Pipeline,
+            );
+        }
+        session.machine.agnus.pending_dma_write =
+            Some((config::custom_reg::paula::REGISTER_AUD1DAT, 0x4567));
+        let mut host =
+            HostRuntime::start(MachineOwner::new(session), egui::Context::default()).unwrap();
+        wait_reply(&mut host, HostCommand::ReadCpu);
+        host.submit(command).unwrap();
+        let deadline = Instant::now() + Duration::from_secs(10);
+        let failure = loop {
+            match host.poll() {
+                Err(HostRuntimeError::Fatal(message)) => break message,
+                Err(error) => panic!("Lost queue failure: {error:?}"),
+                Ok(_) => {}
+            }
+            assert!(Instant::now() < deadline);
+            std::thread::yield_now();
+        };
+        assert!(
+            failure.contains("queue=Paula, CCK=Some(1), producer=DMA"),
+            "{failure}"
+        );
+        assert_eq!(host.status().field_number, 0);
+        assert!(host.submit(HostCommand::Run).is_err());
+        assert!(matches!(
+            host.finish_shutdown(),
+            Err(HostRuntimeError::Fatal(_))
+        ));
+    }
+}
+
 #[test]
 fn owner_history_navigation_restores_cpu_and_clears_trace() {
     let mut session = session();
@@ -135,7 +285,7 @@ fn stack_register_commands_and_warm_reset_preserve_native_owner_contracts() {
         panic!("Missing retained RAM");
     };
     // Warm reset re-enables the ROM overlay; inspect retained physical Chip RAM.
-    assert_eq!(state.memory.chip_ram[0x2000], 0xab);
+    assert_eq!(state.memory.read_chip_byte_debug((0x2000) as u32), 0xab);
 }
 
 #[test]

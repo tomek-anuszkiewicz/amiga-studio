@@ -428,9 +428,11 @@ fn test_audio_restart_reloads_audpt_and_asserts_level4_ipl() {
         .write_word_debug(0x0002_5100, 0x5678);
     machine.paula.audio.set_len(0, 1);
     machine.paula.audio.set_per(0, 200);
-    assert!(machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_DMACON, 0x8201));
+    assert!(machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_DMACON,
+        0x8201,
+        "DMA"
+    ));
     machine.step_cycles(3);
     assert_eq!(machine.agnus.audpt[0], 0x0002_5100);
     for _ in 0..600 {

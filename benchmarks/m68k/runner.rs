@@ -1,5 +1,7 @@
 //! Shared runner for M68000 CPU performance tests.
 
+mod platform_bus;
+
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Write as _;
 use std::fs;
@@ -737,7 +739,7 @@ fn prepare(
             .checked_mul(2)
             .and_then(|bytes| address.checked_add(bytes))
             .ok_or("fixed word region exceeds the address space")?;
-        let in_chip_ram = end <= bus.chip_ram.len();
+        let in_chip_ram = end <= bus.chip_ram_len();
         let in_fast_ram = address >= FAST_RAM_BASE as usize
             && bus
                 .fast_ram
@@ -814,7 +816,8 @@ fn execute_program(
     peripherals: &mut Option<Peripherals>,
 ) -> Result<ExecutionCounts, String> {
     if let Some(peripherals) = peripherals {
-        let mut platform_bus = MemoryBus {
+        let mut platform_bus = platform_bus::BenchmarkPlatformBus(MemoryBus {
+            cck: bus.memory_cck(),
             mem: bus,
             agnus: &mut peripherals.agnus,
             denise: &mut peripherals.denise,
@@ -822,7 +825,7 @@ fn execute_program(
             cia_a: &mut peripherals.cia_a,
             cia_b: &mut peripherals.cia_b,
             rtc: &mut peripherals.rtc,
-        };
+        });
         execute_on_bus(fixture, cpu, &mut platform_bus)
     } else {
         execute_on_bus(fixture, cpu, bus)

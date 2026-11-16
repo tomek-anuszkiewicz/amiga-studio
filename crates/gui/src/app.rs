@@ -316,7 +316,8 @@ impl EmulatorApp {
         }
 
         self.screen_texture.set_scale(self.screen_scale);
-        if let Some(runtime) = self.host.runtime.as_mut().filter(|_| first_pass) {
+        let consume_image = first_pass && self.host.error.is_none();
+        if let Some(runtime) = self.host.runtime.as_mut().filter(|_| consume_image) {
             let result = runtime.try_consume(|info, status, pixels| {
                 if !status.running && info.cck != status.cck {
                     return None;

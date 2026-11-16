@@ -114,6 +114,7 @@ fn delivery_boundaries_are_spaced_and_input_arrivals_do_not_postpone_them() {
                     assert!(source.machine.memory_bus().write_custom_word(
                         config::custom_reg::denise::REGISTER_BPLCON0,
                         config::mask::bplcon0::BIT_LACE,
+                        "CPU"
                     ));
                 }
                 let mut owner = MachineOwner::new(source);

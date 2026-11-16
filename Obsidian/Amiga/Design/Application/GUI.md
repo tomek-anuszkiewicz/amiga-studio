@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "gui"
 status: "active"
 created: 2026-09-05
-updated: 2026-11-15
+updated: 2026-11-16
 related: ["[egui Guidelines.md](../egui%20Guidelines.md)", "[Debugger.md](Debugger.md)", "[General Architecture.md](../General%20Architecture.md)", "[Keyboard.md](../Keyboard.md)", "[Mouse.md](../Mouse.md)", "[Audio.md](../Audio.md)", "[Denise.md](../Denise.md)", "[RTC.md](../RTC.md)"]
 tracked_paths:
   - "crates/gui"
@@ -83,6 +83,22 @@ previous image until a matching CCK image arrives.
 
 Image publication, command replies and shutdown wake the native GUI through
 `request_repaint`; browser worker messages request the corresponding GUI repaint.
+
+Fatal internal invariants use the shared
+[`config::fatal_emulation_error`](../../../../crates/config/src/fatal.rs) helper.
+On native hosts, one outer unwind boundary covers the complete owner loop,
+including Run, commands, manual steps and replay. The boundary preserves the
+first diagnostic, wakes the GUI and terminates the owner without publishing the
+failed slice. Native builds require `panic=unwind` for this contract.
+
+The browser retains `panic_abort`. Before the trap, the host panic hook forwards
+its diagnostic to worker-local JavaScript storage. The outer worker handler
+sends that text to the main thread and terminates the worker without Rust stack
+or TLS teardown. Main-thread reporting does not acquire the failed owner's
+locks. Both hosts retain the first diagnostic in the GUI, cancel queued commands
+and reject further execution. Native closing does not wait for a Shutdown reply
+from a failed owner. Browser failure leaves the error visible on the page.
+Neither path resumes or saves the partially advanced machine as a valid snapshot.
 Releasing an image slot wakes the producer. A paused GUI does not poll for frames
 or repeatedly submit an unchanged UTC sample. Native workers park while waiting for events and use short sleeps between timed
 execution deadlines. Browser workers return to their event loop between bounded slices;

@@ -29,19 +29,21 @@ fn test_copper_skip_taken_when_beam_past_target() {
     harness.load_copper_list(copper_list_addr, &copper_words);
 
     // Enable Copper DMA in DMACON (0x8280 = SET + DMAEN + COPEN)
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_DMACON, 0x8280);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_DMACON,
+        0x8280,
+        "DMA",
+    );
 
     // Advance beam to line 6 (past line 5)
     harness.step_scanlines(6);
 
     // Jump to list 1 to start executing at current beam position
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_COPJMP1, 0x0000); // COPJMP1
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_COPJMP1,
+        0x0000,
+        "DMA",
+    ); // COPJMP1
 
     // Step a few CCKs to execute SKIP and the succeeding MOVE
     harness.step_cck(20);
@@ -70,16 +72,18 @@ fn test_copper_skip_not_taken_when_beam_before_target() {
     ];
 
     harness.load_copper_list(copper_list_addr, &copper_words);
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_DMACON, 0x8280);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_DMACON,
+        0x8280,
+        "DMA",
+    );
 
     // Beam starts at line 0 (well before line 50)
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_COPJMP1, 0x0000); // COPJMP1
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_COPJMP1,
+        0x0000,
+        "DMA",
+    ); // COPJMP1
     harness.step_cck(20);
 
     // Because beam is at line 0 (< 50), the Red write must NOT be skipped
@@ -103,17 +107,19 @@ fn test_copper_cdang_danger_mode_protection() {
     ];
 
     harness.load_copper_list(copper_list_addr, &copper_words);
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_DMACON, 0x8280);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_DMACON,
+        0x8280,
+        "DMA",
+    );
 
     // Case 1: CDANG is 0 (default COPCON = 0)
     assert!(!harness.machine.agnus.copper.is_danger_enabled());
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_COPJMP1, 0x0000); // COPJMP1
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_COPJMP1,
+        0x0000,
+        "DMA",
+    ); // COPJMP1
     harness.step_cck(20);
 
     assert_eq!(
@@ -122,18 +128,20 @@ fn test_copper_cdang_danger_mode_protection() {
     );
 
     // Case 2: Enable CDANG in COPCON ($02E) by setting bit 1
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_COPCON, 0x0002);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_COPCON,
+        0x0002,
+        "DMA",
+    );
     harness.step_cck(2);
     assert!(harness.machine.agnus.copper.is_danger_enabled());
 
     // Restart list with CDANG active
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_COPJMP1, 0x0000); // COPJMP1
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_COPJMP1,
+        0x0000,
+        "DMA",
+    ); // COPJMP1
     harness.step_cck(20);
 
     assert_eq!(

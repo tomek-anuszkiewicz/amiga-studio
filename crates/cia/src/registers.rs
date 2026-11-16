@@ -183,14 +183,29 @@ impl Cia {
         (self.tod >> 16) as u8
     }
 
-    /// Retains the last pending write per selector until the next falling E edge.
-    /// Recomputing the remaining interval preserves the original capture boundary.
-    fn schedule_register(&mut self, selector: u16, value: u8) -> bool {
-        let delay = if self.eclock_phase < E_WRITE_CAPTURE_PHASE {
+    fn register_capture_delay(&self) -> u8 {
+        if self.eclock_phase < E_WRITE_CAPTURE_PHASE {
             E_WRITE_CAPTURE_PHASE - self.eclock_phase
         } else {
             CCK_PER_ECLOCK + E_WRITE_CAPTURE_PHASE - self.eclock_phase
-        };
+        }
+    }
+
+    /// Preflights a synchronized fan-out without modifying either receiver.
+    #[inline]
+    pub fn require_register_capacity(&self, selector: u16, value: u8) {
+        self.mutations.require_capacity(
+            selector,
+            u16::from(value),
+            self.register_capture_delay(),
+            MutationMode::OverwritePending,
+        );
+    }
+
+    /// Retains the last pending write per selector until the next falling E edge.
+    /// Recomputing the remaining interval preserves the original capture boundary.
+    fn schedule_register(&mut self, selector: u16, value: u8) -> bool {
+        let delay = self.register_capture_delay();
         self.mutations.stage(
             selector,
             u16::from(value),
@@ -199,7 +214,7 @@ impl Cia {
         )
     }
 
-    /// Queues PRA; returns false when capacity is exhausted.
+    /// Queues PRA; attempted overflow is fatal.
     #[inline]
     pub fn set_pra(&mut self, value: u8) -> bool {
         self.schedule_register(REGISTER_PRA, value)
@@ -211,7 +226,7 @@ impl Cia {
         self.pra_mutated = true;
     }
 
-    /// Queues PRB; returns false when capacity is exhausted.
+    /// Queues PRB; attempted overflow is fatal.
     #[inline]
     pub fn set_prb(&mut self, value: u8) -> bool {
         self.schedule_register(REGISTER_PRB, value)
@@ -224,7 +239,7 @@ impl Cia {
         self.schedule_port_handshake();
     }
 
-    /// Queues DDRA; returns false when capacity is exhausted.
+    /// Queues DDRA; attempted overflow is fatal.
     #[inline]
     pub fn set_ddra(&mut self, value: u8) -> bool {
         self.schedule_register(REGISTER_DDRA, value)
@@ -235,7 +250,7 @@ impl Cia {
         self.pra_mutated = true;
     }
 
-    /// Queues DDRB; returns false when capacity is exhausted.
+    /// Queues DDRB; attempted overflow is fatal.
     #[inline]
     pub fn set_ddrb(&mut self, value: u8) -> bool {
         self.schedule_register(REGISTER_DDRB, value)
@@ -246,7 +261,7 @@ impl Cia {
         self.prb_mutated = true;
     }
 
-    /// Queues TALO; returns false when capacity is exhausted.
+    /// Queues TALO; attempted overflow is fatal.
     #[inline]
     pub fn set_talo(&mut self, value: u8) -> bool {
         self.schedule_register(REGISTER_TALO, value)
@@ -256,7 +271,7 @@ impl Cia {
         self.ta_latch = (self.ta_latch & 0xFF00) | (val as u16)
     }
 
-    /// Queues TAHI; returns false when capacity is exhausted.
+    /// Queues TAHI; attempted overflow is fatal.
     #[inline]
     pub fn set_tahi(&mut self, value: u8) -> bool {
         self.schedule_register(REGISTER_TAHI, value)
@@ -275,7 +290,7 @@ impl Cia {
         }
     }
 
-    /// Queues TBLO; returns false when capacity is exhausted.
+    /// Queues TBLO; attempted overflow is fatal.
     #[inline]
     pub fn set_tblo(&mut self, value: u8) -> bool {
         self.schedule_register(REGISTER_TBLO, value)
@@ -285,7 +300,7 @@ impl Cia {
         self.tb_latch = (self.tb_latch & 0xFF00) | (val as u16)
     }
 
-    /// Queues TBHI; returns false when capacity is exhausted.
+    /// Queues TBHI; attempted overflow is fatal.
     #[inline]
     pub fn set_tbhi(&mut self, value: u8) -> bool {
         self.schedule_register(REGISTER_TBHI, value)
@@ -304,7 +319,7 @@ impl Cia {
         }
     }
 
-    /// Queues TODLO; returns false when capacity is exhausted.
+    /// Queues TODLO; attempted overflow is fatal.
     #[inline]
     pub fn set_todlo(&mut self, value: u8) -> bool {
         self.schedule_register(REGISTER_TODLO, value)
@@ -319,7 +334,7 @@ impl Cia {
         }
     }
 
-    /// Queues TODMID; returns false when capacity is exhausted.
+    /// Queues TODMID; attempted overflow is fatal.
     #[inline]
     pub fn set_todmid(&mut self, value: u8) -> bool {
         self.schedule_register(REGISTER_TODMID, value)
@@ -335,7 +350,7 @@ impl Cia {
         }
     }
 
-    /// Queues TODHI; returns false when capacity is exhausted.
+    /// Queues TODHI; attempted overflow is fatal.
     #[inline]
     pub fn set_todhi(&mut self, value: u8) -> bool {
         self.schedule_register(REGISTER_TODHI, value)
@@ -350,7 +365,7 @@ impl Cia {
         }
     }
 
-    /// Queues SDR; returns false when capacity is exhausted.
+    /// Queues SDR; attempted overflow is fatal.
     #[inline]
     pub fn set_sdr(&mut self, value: u8) -> bool {
         self.schedule_register(REGISTER_SDR, value)
@@ -363,7 +378,7 @@ impl Cia {
         }
     }
 
-    /// Queues ICR; returns false when capacity is exhausted.
+    /// Queues ICR; attempted overflow is fatal.
     #[inline]
     pub fn set_icr(&mut self, value: u8) -> bool {
         self.schedule_register(REGISTER_ICR, value)
@@ -381,7 +396,7 @@ impl Cia {
         }
     }
 
-    /// Queues CRA; returns false when capacity is exhausted.
+    /// Queues CRA; attempted overflow is fatal.
     #[inline]
     pub fn set_cra(&mut self, value: u8) -> bool {
         self.schedule_register(REGISTER_CRA, value)
@@ -402,7 +417,7 @@ impl Cia {
         }
     }
 
-    /// Queues CRB; returns false when capacity is exhausted.
+    /// Queues CRB; attempted overflow is fatal.
     #[inline]
     pub fn set_crb(&mut self, value: u8) -> bool {
         self.schedule_register(REGISTER_CRB, value)

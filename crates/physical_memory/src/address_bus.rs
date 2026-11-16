@@ -40,6 +40,12 @@ impl<T> BusResult<T> {
 /// Enables the M68000 CPU core to operate interchangeably with either the
 /// production Amiga 500 backplane (`MemoryBus`) or synthetic test harnesses (`TestMemoryBus`).
 pub trait AddressBus {
+    /// Starts standalone CPU storage accounting, or returns the already opened
+    /// motherboard CCK. Synthetic buses keep the CPU-local clock domain.
+    fn begin_cpu_cck(&mut self, cck: u64, _pc: u32) -> u64 {
+        cck
+    }
+
     /// Reads a single byte from the 24-bit address space
     fn read_byte(&mut self, addr: u32) -> BusResult<u8>;
 

@@ -1,4 +1,6 @@
+mod common;
 use agnus::blitter::{Blitter, BlitterPhase};
+use common::TestChipRam;
 
 fn line(octant: u16, single: bool, texture: u16) -> Blitter {
     let mut b = Blitter::new();
@@ -20,9 +22,10 @@ fn line(octant: u16, single: bool, texture: u16) -> Blitter {
     b
 }
 
-fn finish(b: &mut Blitter, ram: &mut [u8]) {
+fn finish(b: &mut Blitter, ram: &mut TestChipRam) {
     for _ in 0..64 {
-        b.step_cck_ram(ram, true);
+        ram.next_cck();
+        b.step_cck(ram, true);
         if !b.is_busy {
             return;
         }
@@ -51,7 +54,7 @@ fn eight_documented_octants_follow_independent_pixel_coordinates() {
         (7, true, -1, -1),
     ] {
         let mut b = line(octant, false, 0xffff);
-        let mut ram = [0; 1024];
+        let mut ram = TestChipRam::from(vec![0; 1024]);
         finish(&mut b, &mut ram);
         let minor = [0, 1, 1, 2, 2];
         let points: Vec<_> = (0..5)
@@ -64,7 +67,7 @@ fn eight_documented_octants_follow_independent_pixel_coordinates() {
                 (32 + dx * x, 32 + dy * y)
             })
             .collect();
-        assert_eq!(ram, image(&points), "octant {octant}");
+        assert_eq!(&*ram, &image(&points), "octant {octant}");
         assert!(b.poll_blit_irq());
         assert!(!b.poll_blit_irq());
     }
@@ -77,9 +80,9 @@ fn single_dot_and_rotating_texture_select_pixels_without_stopping_coordinates() 
         (false, 0x5001, vec![(32, 32), (34, 33), (36, 34)]),
     ] {
         let mut b = line(4, single, texture);
-        let mut ram = [0; 1024];
+        let mut ram = TestChipRam::from(vec![0; 1024]);
         finish(&mut b, &mut ram);
-        assert_eq!(ram, image(&points));
+        assert_eq!(&*ram, &image(&points));
         assert_eq!(b.line_pixels_left, 0);
     }
 }
@@ -87,19 +90,25 @@ fn single_dot_and_rotating_texture_select_pixels_without_stopping_coordinates() 
 #[test]
 fn line_read_and_write_use_separate_grants() {
     let mut b = line(4, false, 0xffff);
-    let mut ram = [0; 1024];
-    b.step_cck_ram(&mut ram, false);
+    let mut ram = TestChipRam::from(vec![0; 1024]);
+    ram.next_cck();
+    b.step_cck(&mut ram, false);
     assert_eq!(b.current_phase(), BlitterPhase::FetchC);
     let before = b.clone();
-    b.step_cck_ram(&mut ram, false);
+    ram.next_cck();
+    b.step_cck(&mut ram, false);
     assert_eq!(b, before);
-    b.step_cck_ram(&mut ram, true);
-    assert_eq!(ram, [0; 1024]);
+    ram.next_cck();
+    b.step_cck(&mut ram, true);
+    assert_eq!(&*ram, &[0; 1024]);
     assert!(!b.wants_bus());
-    b.step_cck_ram(&mut ram, false);
+    ram.next_cck();
+    b.step_cck(&mut ram, false);
     assert_eq!(b.current_phase(), BlitterPhase::WriteD);
-    b.step_cck_ram(&mut ram, false);
-    assert_eq!(ram, [0; 1024]);
-    b.step_cck_ram(&mut ram, true);
-    assert_eq!(ram, image(&[(32, 32)]));
+    ram.next_cck();
+    b.step_cck(&mut ram, false);
+    assert_eq!(&*ram, &[0; 1024]);
+    ram.next_cck();
+    b.step_cck(&mut ram, true);
+    assert_eq!(&*ram, &image(&[(32, 32)]));
 }

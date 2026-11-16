@@ -10,9 +10,9 @@ fn machine(standard: VideoStandard) -> A500Machine {
     for channel in 0..4 {
         let reg = 0xa0 + channel * 16;
         let mut bus = machine.memory_bus();
-        assert!(bus.write_custom_word(reg + 6, 300));
-        assert!(bus.write_custom_word(reg + 8, 64));
-        assert!(bus.write_custom_word(reg + 10, 0x4080));
+        assert!(bus.write_custom_word(reg + 6, 300, "DMA"));
+        assert!(bus.write_custom_word(reg + 8, 64, "DMA"));
+        assert!(bus.write_custom_word(reg + 10, 0x4080, "DMA"));
     }
     machine
 }
@@ -22,9 +22,11 @@ fn one_frame_drains_fit_the_ring_for_pal_ntsc_and_interlaced_fields() {
     for standard in [VideoStandard::Pal, VideoStandard::Ntsc] {
         for interlace in [false, true] {
             let mut machine = machine(standard);
-            assert!(machine
-                .memory_bus()
-                .write_custom_word(0x100, if interlace { 4 } else { 0 }));
+            assert!(machine.memory_bus().write_custom_word(
+                0x100,
+                if interlace { 4 } else { 0 },
+                "DMA"
+            ));
             let mut drained = 0;
             let mut nonzero = false;
             for _ in 0..6 {
@@ -53,9 +55,11 @@ fn full_pcm_ring_dense_blep_history_and_fractional_phase_survive_machine_restore
         machine.step_cycles(90_000);
         // More changes than the entire retained BLEP tail, including wraparound.
         for tick in 0..3000 {
-            assert!(machine
-                .memory_bus()
-                .write_custom_word(0x9e, if tick % 2 == 0 { 0x800f } else { 0x000f }));
+            assert!(machine.memory_bus().write_custom_word(
+                0x9e,
+                if tick % 2 == 0 { 0x800f } else { 0x000f },
+                "DMA"
+            ));
             machine.step_cck();
         }
         assert_eq!(machine.paula.audio.samples_available(), 1024);

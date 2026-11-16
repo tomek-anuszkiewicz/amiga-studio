@@ -34,73 +34,86 @@ fn test_blitter_copy_and_interrupt_propagation() {
     }
 
     // 2. Enable Master DMA + Blitter DMA in DMACON ($DFF096): $8240
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_DMACON, 0x8240);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_DMACON,
+        0x8240,
+        "DMA",
+    );
     // Enable Paula Blitter IRQ in INTENA ($DFF09A): Master + Blit IRQ bit 6 -> $C040
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::paula::REGISTER_INTENA, 0xC040);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::paula::REGISTER_INTENA,
+        0xC040,
+        "DMA",
+    );
     harness.step_cck(2); // Commit pipeline mutations
 
     // 3. Program Blitter registers:
     // BLTCON0 ($040): USEA (bit 11), USED (bit 8), minterm $F0 (copy A to D) -> $09F0
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_BLTCON0, 0x09F0);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_BLTCON0,
+        0x09F0,
+        "DMA",
+    );
     // BLTCON1 ($042): 0
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_BLTCON1, 0x0000);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_BLTCON1,
+        0x0000,
+        "DMA",
+    );
     // BLTAFWM / BLTALWM ($044 / $046): $FFFF
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_BLTAFWM, 0xFFFF);
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_BLTALWM, 0xFFFF);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_BLTAFWM,
+        0xFFFF,
+        "DMA",
+    );
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_BLTALWM,
+        0xFFFF,
+        "DMA",
+    );
     // Modulos ($064, $066): 0
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_BLTAMOD, 0x0000);
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_BLTDMOD, 0x0000);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_BLTAMOD,
+        0x0000,
+        "DMA",
+    );
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_BLTDMOD,
+        0x0000,
+        "DMA",
+    );
     // BLTAPTH / BLTAPTL ($050 / $052)
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_BLTAPTH, (src_addr >> 16) as u16);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_BLTAPTH,
+        (src_addr >> 16) as u16,
+        "CPU",
+    );
     harness.machine.memory_bus().write_custom_word(
         custom_reg::agnus::REGISTER_BLTAPTL,
         (src_addr & 0xFFFF) as u16,
+        "CPU",
     );
     // BLTDPTH / BLTDPTL ($054 / $056)
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_BLTDPTH, (dst_addr >> 16) as u16);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_BLTDPTH,
+        (dst_addr >> 16) as u16,
+        "CPU",
+    );
     harness.machine.memory_bus().write_custom_word(
         custom_reg::agnus::REGISTER_BLTDPTL,
         (dst_addr & 0xFFFF) as u16,
+        "CPU",
     );
 
     harness.step_cck(2); // Commit setup
 
     // 4. Start Blit by writing BLTSIZE ($058): 4 rows x 4 words = 16 words
     // HSIZE in bits 5..0 (4), VSIZE in bits 15..6 (4) -> (4 << 6) | 4 = $0104
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_BLTSIZE, 0x0104);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_BLTSIZE,
+        0x0104,
+        "DMA",
+    );
     harness.step_cck(2);
 
     // Assert Blitter is running
@@ -162,41 +175,48 @@ fn test_blitter_fill_operation_mutates_ram() {
     }
 
     // Enable Master DMA + Blitter DMA
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_DMACON, 0x8240);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_DMACON,
+        0x8240,
+        "DMA",
+    );
     harness.step_cck(2);
 
     // Program Blitter to Fill with 1s (USED only, LF = $FF)
     // BLTCON0: USED (bit 8), LF = $FF -> $01FF
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_BLTCON0, 0x01FF);
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_BLTCON1, 0x0000);
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_BLTDMOD, 0x0000); // D modulo = 0
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_BLTDPTH, (dst_addr >> 16) as u16);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_BLTCON0,
+        0x01FF,
+        "DMA",
+    );
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_BLTCON1,
+        0x0000,
+        "DMA",
+    );
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_BLTDMOD,
+        0x0000,
+        "DMA",
+    ); // D modulo = 0
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_BLTDPTH,
+        (dst_addr >> 16) as u16,
+        "CPU",
+    );
     harness.machine.memory_bus().write_custom_word(
         custom_reg::agnus::REGISTER_BLTDPTL,
         (dst_addr & 0xFFFF) as u16,
+        "CPU",
     );
     harness.step_cck(2);
 
     // Start Blit: 2 rows of 4 words
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_BLTSIZE, 0x0084);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_BLTSIZE,
+        0x0084,
+        "DMA",
+    );
     harness.step_cck(2);
 
     // Step until complete

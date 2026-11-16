@@ -1,5 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
+mod common;
+use common::MemoryCycle;
+
 use physical_memory::{BusResult, MemoryBank, PhysicalMemory};
 
 #[test]
@@ -45,7 +48,7 @@ fn test_boot_overlay_mechanics() {
     assert!(!bus.is_low_memory_overlay_active());
 
     // Address $000000 now accesses physical Chip RAM
-    let _ = bus.write_word(0x000000, 0x9988);
+    let _ = bus.next_cck().write_word(0x000000, 0x9988);
     assert_eq!(bus.read_word_debug(0x000000), 0x9988);
 
     // Re-engage overlay
@@ -60,11 +63,14 @@ fn test_chip_ram_bounds_and_open_bus() {
     bus.map_chip_ram_to_low_memory();
 
     // Write at physical Chip RAM offset $1000
-    assert_eq!(bus.write_word(0x001000, 0x55AA), BusResult::Ready(()));
-    assert_eq!(bus.read_word(0x001000), BusResult::Ready(0x55AA));
+    assert_eq!(
+        bus.next_cck().write_word(0x001000, 0x55AA),
+        BusResult::Ready(())
+    );
+    assert_eq!(bus.next_cck().read_word(0x001000), BusResult::Ready(0x55AA));
 
     // Beyond 512KB ($080000..$1FFFFF, bank 0x08+), standard unexpanded machine has open bus
-    assert_eq!(bus.read_word(0x081000), BusResult::Ready(0xFFFF));
+    assert_eq!(bus.next_cck().read_word(0x081000), BusResult::Ready(0xFFFF));
 }
 
 #[test]
