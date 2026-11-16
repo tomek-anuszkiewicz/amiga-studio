@@ -14,6 +14,7 @@ tracked_paths:
   - "crates/agnus/src/dma_disk.rs"
   - "crates/agnus/src/dma_sprite.rs"
   - "crates/agnus/tests/test_dma_arbitration.rs"
+  - "crates/agnus/tests/test_bitplane_scanlines.rs"
 ---
 # Agnus DMA Scheduling
 
@@ -161,10 +162,22 @@ arbitration counts held requests once per CCK. Paula generates audio/disk reques
 when granted words arrive through the shared bus.
 
 Bitplane allocation follows HRM Figures 6-11 and 6-12. An eight-CCK group fetches
-one word per low-resolution plane or two per high-resolution plane. DDFSTOP
-finishes the final group; modulo applies only to each plane's last word.
+one word per low-resolution plane or two per high-resolution plane. In the
+retained DMA model, DDFSTOP requests a final complete group at the next
+group boundary, including that boundary when the comparison falls exactly on it.
+Modulo applies only to each plane's last word in that final group.
 The Chapter 3 standard windows `$38/$D0` and `$3C/$D4` consequently fetch 20
-and 40 words per plane. The Copper uses its separate alternate opportunities
+and 40 words per plane. Workbench 1.3 also uses `$3C/$D0`: stopping at the group
+containing that comparison fetches only 38 words and advances each row by 76
+bytes instead of 80, producing a progressively displaced image. The final-group
+rule follows [vAmiga's stop-request and last-unit state](../../../ref_src/vAmiga/Core/Components/Agnus/Sequencer/SequencerBpl.cpp),
+and restores the native Workbench image while preserving the `$38/$D0`
+Kickstart disk prompt. This comparison establishes the reproduced firmware cases,
+not measured silicon phase for every unusual DDF combination. The Chapter 3
+register summary says H3 is respected only in hires, whereas the selected
+reference model handles a mid-group stop in both modes. That difference remains
+a hardware verification limit; the source manual is unchanged.
+The Copper uses its separate alternate opportunities
 as described in [Copper](Copper.md#fetch-and-suspension-contract), and cannot
 fetch a word in a slot awarded to bitplanes.
 
@@ -251,3 +264,4 @@ tests alone do not certify media boot.
 - [Amiga Hardware Reference Manual, Appendix B](../Reference/Hardware%20Reference%20Manual/10%20-%20Appendix%20B%20-%20Register%20Summary%20%28Address%20Order%29.md): Identifies the chips selected by `DMACON` writes and `DMACONR` reads.
 - [DMA scheduler source](../../../crates/agnus/src/dma.rs): Implements the current arbitration model.
 - [vAmiga Agnus register handling](../../../ref_src/vAmiga/Core/Components/Agnus/AgnusRegs.cpp) and [DMA events](../../../ref_src/vAmiga/Core/Components/Agnus/AgnusEvents.cpp): Reference implementation of `DMACON` gating and scheduled bitplane transfers.
+- [vAmiga bitplane sequencer](../../../ref_src/vAmiga/Core/Components/Agnus/Sequencer/SequencerBpl.cpp): Reference-model distinction between a stop request and its final complete fetch group.

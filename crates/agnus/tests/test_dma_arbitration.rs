@@ -177,12 +177,14 @@ fn fetch_sequences_match_the_two_book_diagrams() {
 }
 
 #[test]
-fn final_fetch_block_contains_the_stop_comparison() {
+fn a_mid_group_stop_requests_one_final_complete_fetch_group() {
     let mut dma = DmaScheduler::new();
     dma.set_ddfstrt(0x38);
     dma.set_ddfstop(0x3C);
-    assert!(dma.is_last_bpl_block(0x3F));
-    assert!(!dma.is_in_ddf_window(0x40));
+    assert!(!dma.is_last_bpl_block(0x3F));
+    assert!(dma.is_in_ddf_window(0x40));
+    assert!(dma.is_last_bpl_block(0x47));
+    assert!(!dma.is_in_ddf_window(0x48));
 }
 
 #[test]

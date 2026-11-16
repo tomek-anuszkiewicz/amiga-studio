@@ -2393,3 +2393,21 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Confirmation rendering was checked across repeated GUI layout passes and visually inspected at 1024x600. The ROM/file regression group passed all 13 cases after the correction.
   - The combined run exposed an older F5 fixture conflicting with focused-text priority. The test now verifies that F5 leaves the editor paused, then starts through Run and retains every frozen-editor assertion; all five frozen-inspection cases passed.
   - Coverage review added behavioral protection for malformed library metadata and duplicate IDs, concurrent edit preservation, configuration conflicts and creation controls, selected-game Continue, disk switch/ejection acknowledgments, manual launch readiness and atomic rejection of incompatible player restores. A new assertion reproduced missing arrow-key frontend conflict detection; explicit physical-name normalization fixes all four directions.
+---
+
+### [2026-11-16 21:46 CET] — Correct final bitplane DMA group for Workbench rows
+- **Affected Subsystems**:
+  - `agnus`
+  - `DMA specification`
+- **What Was Changed (The Concrete Reality)**:
+  - Request the final complete fetch group at the boundary after DDFSTOP and apply modulo only on its last word
+  - Add ROM-free component regressions for Kickstart and Workbench across consecutive rows with zero and signed modulos
+  - Correct the existing mid-group stop expectation with explicit user approval
+- **Architectural Rationale & Trade-Offs**:
+  - Workbench used 76 rather than 80 bytes per row
+  - The selected final-group rule follows vAmiga and retains the hardware evidence limits in the DMA specification
+- **Verification & Test Results**:
+  - On the original code the Kickstart regression passed and the Workbench regression failed
+  - cargo test -p agnus passed after the repair
+  - Native Workbench text and window borders are straight after the repair
+  - Native Kickstart and Cross1 captures are byte-identical before and after the repair

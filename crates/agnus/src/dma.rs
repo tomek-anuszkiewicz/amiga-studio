@@ -210,14 +210,14 @@ impl DmaScheduler {
         (self.bplcon0 & bplcon0::BIT_HIRES) != 0
     }
 
-    /// DDFSTOP finishes an eight-CCK fetch group (two words per plane in hires).
+    /// DDFSTOP requests a final full eight-CCK group at the next group boundary.
     #[inline]
     pub fn is_in_ddf_window(&self, hpos: u16) -> bool {
         if hpos < self.ddfstrt || self.ddfstop < self.ddfstrt {
             return false;
         }
         let group_start = hpos - (hpos - self.ddfstrt) % LORES_FETCH_PERIOD_CCK;
-        group_start <= self.ddfstop
+        group_start < self.ddfstop.wrapping_add(LORES_FETCH_PERIOD_CCK)
     }
 
     /// Modulo belongs to each plane's final word, not the first hires half-group.
@@ -228,8 +228,7 @@ impl DmaScheduler {
         }
         let phase = (hpos - self.ddfstrt) % LORES_FETCH_PERIOD_CCK;
         let group_start = hpos - phase;
-        group_start.wrapping_add(LORES_FETCH_PERIOD_CCK) > self.ddfstop
-            && (!self.is_hires() || phase >= HIRES_FETCH_PERIOD_CCK)
+        group_start >= self.ddfstop && (!self.is_hires() || phase >= HIRES_FETCH_PERIOD_CCK)
     }
 
     /// Returns true if the vertical position is inside the DIW bitplane DMA window.
