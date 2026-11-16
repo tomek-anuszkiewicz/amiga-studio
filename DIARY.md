@@ -2278,3 +2278,18 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - No runtime repair hardware certification or milestone closure is claimed
   - The first commit preflight found two dictionary entries and the AGENTS byte ceiling; shortened routing and resolved language findings under the standing language policy
   - A later preparation run passed preliminary checks and Clippy but its browser build was interrupted to correct structural-test ownership wording before final verification
+---
+
+### [2026-11-16 17:03 CET] — Update KaTeX to patched version 0.18.2
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown`
+- **What Was Changed (The Concrete Reality)**:
+  - Pin KaTeX 0.18.2 in the npm manifest and lockfile
+  - Update the renderer cache version to match the installed math library
+- **Architectural Rationale & Trade-Offs**:
+  - Address GHSA-238p-pmpm-9mq7 and Dependabot alert 1
+- **Verification & Test Results**:
+  - cargo build --workspace --locked passed with unused dependency warnings for bitflags and serde_json
+  - tools/web.ps1 build passed
+  - Python byte compilation and Node syntax checks for the installed KaTeX JavaScript and module passed
+  - Automated tests independent reviews and the canonical commit profile were skipped at the explicit user request

@@ -33,7 +33,7 @@ class Renderer:
             raise FileNotFoundError("Install local math assets with npm install in book-to-markdown")
         self.style = (HERE / "document.css").read_text(encoding="utf-8")
         self.settings = {"width": width, "channel": channel, "style": digest(self.style.encode()),
-                         "renderer": digest(Path(__file__).read_bytes()), "katex": "0.16.22",
+                         "renderer": digest(Path(__file__).read_bytes()), "katex": "0.18.2",
                          "line_breaks": digest((HERE / "markdown.py").read_bytes()),
                          "element_markup": digest((HERE / "model.py").read_bytes()),
                          "presentation": "html"}
