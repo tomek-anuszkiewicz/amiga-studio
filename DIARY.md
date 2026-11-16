@@ -1950,28 +1950,21 @@ Every authorized repository commit adds a concise entry here. Logging and compac
 
 ---
 
-### [2026-11-16 09:47 CET] — GRAPHIFY-REFRESH-PERFORMANCE-20261116: cache source paths within each refresh
+### [2026-11-16 09:41 CET] — GUI-MONITOR-IMAGE-FAILURE-20261116: wait for the monitor image before checking its upload
 - **Affected Subsystems**:
-  - `tools/graphify`
-  - `tools/worktree.ps1`
-  - `tools/bootstrap/bootstrap_graphify.ps1`
-  - `agent refresh procedures`
+  - `GUI integration tests`
 - **What Was Changed (The Concrete Reality)**:
-  - Use a local Graphify 0.9.74 refresh command with per-instance path memoization
-  - Route bootstrap and worktree refresh callers through the command
-  - Retain full corpus extraction and resolver context
-  - Preserve deterministic default hash seeds and UTF-8 output across interpreter restarts
-  - Keep immutable reference freezing and unchanged-project preflight as active unfinished work
+  - Capture the expected stopped CCK before transferring the session to the host
+  - Wait for the presented image to match the current generation and expected CCK and dimensions
+  - Retain every full-image, pixel, geometry, centering, UV and unchanged-framebuffer assertion
 - **Architectural Rationale & Trade-Offs**:
-  - Avoid repeated lexical path calculations without changing persisted graph semantics or the installed tool
-  - The reference-layer prototype still needs complete dependency invalidation before production use
+  - Command replies and video use independent paths, so idle commands do not prove that the GUI has received an image
+  - Keep the command-idle predicate and existing timeout unchanged
 - **Verification & Test Results**:
-  - Ten refresh contracts and four worktree contracts pass
-  - PowerShell parsing and usage checks pass
-  - Comparable four-worker unchanged pair: 42.155 to 34.367 seconds
-  - Comparable four-worker one-function Rust pair: 54.128 to 46.910 seconds
-  - The original baseline uses the unmodified Graphify module CLI to retain importable worker startup
-  - Earlier console-launcher timings mixed sequential and parallel extraction and cannot attribute savings to memoization
-  - Both final pairs preserve the entire graph including attributes and communities
-  - These shared-host observations do not establish typical speedup
-  - The 24 existing partial-extraction warnings remain visible
+  - The unchanged test passed once and then reproduced the texture lookup failure naturally
+  - Controlled mailbox contention reproduced the same failure in all eight PAL/NTSC, interlace and view combinations
+  - All eight paired cases using the repaired waiting block passed the original assertions
+  - The complete GUI package passed 120 tests without failures or ignored tests
+  - The browser build and focused formatting checks passed
+  - Canonical commit verification is pending
+  - The historical failure logs remain unavailable, so the exact historical thread schedule is unverified
