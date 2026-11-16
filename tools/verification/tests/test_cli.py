@@ -88,6 +88,11 @@ class SelectionTests(unittest.TestCase):
     def test_default_python_selection_covers_owned_code_and_shared_dependencies(self):
         cases = (
             ("tools/bootstrap/ensure_qdrant.ps1", {"Bootstrap contracts"}),
+            ("tools/bootstrap/bootstrap_graphify.ps1", {"Bootstrap contracts"}),
+            ("tools/graphify/refresh.py", {"Graphify contracts"}),
+            ("tools/graphify/semantic.py", {"Graphify contracts"}),
+            ("tools/graphify/read.py", {"Graphify contracts"}),
+            ("tools/graphify/tests/test_corpora.py", {"Graphify contracts"}),
             ("tools/bootstrap/tests/test_bootstrap_contract.py", {"Bootstrap contracts"}),
             ("tools/bootstrap/html-to-markdown/pipeline.py", {"Conversion contracts", "HTML conversion contracts"}),
             ("tools/bootstrap/conversion/client.py", {"Conversion contracts", "HTML conversion contracts", "PDF conversion contracts",
@@ -175,7 +180,10 @@ class SelectionTests(unittest.TestCase):
         commands = selected("commit", ["tools/bootstrap/book-to-markdown/review/service.py"])
         self.assertFalse(any("llvm-cov" in item[1] or item[1][:2] == ["cargo", "test"] for item in commands))
         self.assertTrue(any(any(part.endswith("checks/check_architecture.py") for part in item[1]) for item in commands))
-        self.assertEqual(sum("discover" in item[1] for item in commands), 6)
+        self.assertEqual([name for name, command, _ in commands if "discover" in command],
+                         ["Bootstrap contracts", "Graphify contracts", "Conversion contracts",
+                          "HTML conversion contracts", "PDF conversion contracts", "RAG MCP contracts",
+                          "Artifact report contracts"])
         self.assertTrue(any("tools/bootstrap/book-to-markdown/run_tests.py" in item[1] for item in commands))
 
     def test_language_data_keeps_commit_gates_without_expanding_rust(self):

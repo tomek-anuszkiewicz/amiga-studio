@@ -35,3 +35,5 @@ common contract in [code-review](../SKILL.md#assigned-reviewer-common-contract).
 Read [testing policy](../../../rules/unit-testing-policy.md),
 [commit policy](../../../rules/git-commits.md) and the relevant
 [verification contract](../../../../tools/verification/README.md).
+
+For Graphify changes, require behavioral evidence for corpus isolation, saved ignore settings, semantic preservation/removal, query provenance and read-only behavior, explicit bootstrap updates to both graphs and project-only worktree refresh with tracked configuration preserved. Exercise real native traversal and compare every graph artifact plus any configured query log; unchanged graph.json alone does not establish read-only behavior.

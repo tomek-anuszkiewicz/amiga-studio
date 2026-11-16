@@ -104,7 +104,7 @@ coordinator (`paula` or `agnus`) and state the selected scope.
 When executing an audit:
 
 1. **Step 1: Extract Code Signatures:**
-   - Query Graphify first, then read the identified definitions in the crate root and key submodules.
+   - Query the `project` Graphify graph first (reference comparisons query `reference` separately), then read the identified definitions in the crate root and key submodules.
    - Use relevant structs, fields, constants and hardware action methods to locate the reviewed contracts and interactions; do not build an exhaustive symbol inventory.
 2. **Step 2: Extract Specification Claims:**
    - Read `Obsidian/Amiga/Design/<Spec>.md`.

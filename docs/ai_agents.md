@@ -79,13 +79,13 @@ and the agent checks relevant source sections or diagrams when needed. See the
 [retrieval rule](../.agents/rules/amiga-rag.md) and
 [developer guide](developers.md) for scope and setup.
 
-**Graphify navigates source relationships.** Its graph connects the active Rust
-workspace with external reference implementations, helping locate symbols,
-callers and dependencies. For example:
+**Graphify navigates source relationships.** Its `project` graph covers our code and allowed documents; its independent
+`reference` graph covers imported source code. Compare results separately and
+use them to locate symbols, callers and dependencies. For example:
 
 ```powershell
-graphify query "How does the CPU handle a blocked bus access?"
-graphify path "Cpu" "BusResult"
+python tools/graphify/read.py query "How does the CPU handle a blocked bus access?" --graph graphify-out/graph.json
+python tools/graphify/read.py path "Cpu" "BusResult" --graph graphify-out/graph.json
 ```
 
 The graph helps locate source; the implementation and tests provide the behavior.

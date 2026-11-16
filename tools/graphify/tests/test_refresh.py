@@ -93,7 +93,7 @@ class RefreshTests(unittest.TestCase):
              patch.object(Path, "is_file", return_value=True), \
              patch.object(refresh, "import_module") as load, \
              patch.object(refresh.metadata, "version", return_value="other"), \
-             patch.object(refresh, "refresh") as rebuild:
+             patch.object(refresh, "build") as rebuild:
             self.assertEqual(refresh.main(), 1)
             rebuild.assert_not_called()
             load.assert_called_once_with("graphify.watch")
@@ -113,13 +113,14 @@ class RefreshTests(unittest.TestCase):
     def test_relaunch_preserves_arguments_and_failure_status(self):
         missing = ModuleNotFoundError("graphify is absent", name="graphify")
         interpreter = Path("environment with spaces/python.exe")
-        with patch.object(refresh.sys, "argv", ["refresh.py"]), \
+        with patch.object(refresh.sys, "argv", ["refresh.py", "--graph", "reference", "--root", "target"]), \
              patch.object(Path, "is_file", return_value=True), \
              patch.object(refresh, "import_module", side_effect=missing), \
              patch.object(refresh, "installed_python", return_value=interpreter), \
              patch.object(refresh.subprocess, "run", return_value=SimpleNamespace(returncode=7)) as run:
             self.assertEqual(refresh.main(), 7)
-            self.assertEqual(run.call_args.args, ([str(interpreter), str(Path(refresh.__file__).resolve())],))
+            self.assertEqual(run.call_args.args, ([str(interpreter), str(Path(refresh.__file__).resolve()),
+                                                   "--graph", "reference", "--root", "target"],))
             self.assertEqual(run.call_args.kwargs["env"]["PYTHONHASHSEED"], refresh.os.environ.get("PYTHONHASHSEED", "0"))
 
     def test_default_seed_requires_a_waited_child_but_explicit_seeds_rebuild_in_place(self):
@@ -127,7 +128,7 @@ class RefreshTests(unittest.TestCase):
              patch.object(Path, "is_file", return_value=True), \
              patch.object(refresh, "import_module"), \
              patch.object(refresh.metadata, "version", return_value=refresh.GRAPHIFY_VERSION), \
-             patch.object(refresh, "refresh", return_value=True) as rebuild, \
+             patch.object(refresh, "build", return_value=True) as rebuild, \
              patch.object(refresh.subprocess, "run", return_value=SimpleNamespace(returncode=7)) as run, \
              patch.dict(refresh.os.environ):
             refresh.os.environ.pop("PYTHONHASHSEED", None)
@@ -152,7 +153,7 @@ class RefreshTests(unittest.TestCase):
                 "Scripts/python.exe" if refresh.sys.platform == "win32" else "bin/python")
             self.assertEqual(refresh.installed_python(), expected)
 
-    def test_subdirectory_invocation_fails_before_loading_graphify(self):
+    def test_missing_target_configuration_fails_before_loading_graphify(self):
         with patch.object(refresh.sys, "argv", ["refresh.py"]), \
              patch.object(Path, "is_file", return_value=False), \
              patch.object(refresh, "import_module") as load:
@@ -169,6 +170,10 @@ class RefreshTests(unittest.TestCase):
             package.mkdir()
             (package / "__init__.py").write_text("", encoding="utf-8")
             (package / "watch.py").write_text('''import json, os, sys
+from contextlib import contextmanager
+@contextmanager
+def _rebuild_lock(*args, **kwargs):
+    yield True
 class _StoredSourcePaths:
     pass
 def _rebuild_code(*args, **kwargs):
@@ -177,6 +182,7 @@ def _rebuild_code(*args, **kwargs):
     print(chr(0x3c0))
     return True
 ''', encoding="utf-8")
+            (package / "detect.py").write_text("", encoding="utf-8")
             metadata = root / "graphifyy-0.9.74.dist-info"
             metadata.mkdir()
             (metadata / "METADATA").write_text("Metadata-Version: 2.1\nName: graphifyy\nVersion: 0.9.74\n", encoding="utf-8")
@@ -184,7 +190,7 @@ def _rebuild_code(*args, **kwargs):
             environment.pop("PYTHONHASHSEED", None)
             observed = []
             for _ in range(2):
-                result = subprocess.run([sys.executable, str(Path(refresh.__file__).resolve())],
+                result = subprocess.run([sys.executable, str(Path(refresh.__file__).resolve()), "--root", str(root)],
                                         cwd=root, env=environment, capture_output=True, encoding="utf-8")
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 self.assertIn(chr(0x3c0), result.stdout)

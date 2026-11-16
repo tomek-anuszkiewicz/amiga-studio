@@ -22,8 +22,8 @@
     Delegates to tools/bootstrap_sources.ps1 -All.
 
 .PARAMETER Graphify
-    Generates and updates one AST-level code graph in graphify-out/ for project
-    sources and the selected vAmiga, MiniMig, and Amiga Replacement Project code.
+    Creates or refreshes project code in graphify-out/ and reference code in
+    ref_src/graphify-out/. Project document semantics use the Graphify skill.
     Delegates to tools/bootstrap_graphify.ps1.
 
 .PARAMETER Rag
@@ -56,7 +56,7 @@
 
 .EXAMPLE
     .\tools\bootstrap\bootstrap.ps1 -Graphify
-    Update AST code knowledge graph in graphify-out/.
+    Create or refresh project and reference code graphs.
 
 .EXAMPLE
     .\tools\bootstrap\bootstrap.ps1 -Rag
@@ -103,7 +103,7 @@ function Show-Usage {
     Write-Host ""
     Write-Host "Usage:" -ForegroundColor White
     Write-Host "  .\tools\bootstrap\bootstrap.ps1 -Sources         : Provision external sources (reference emulators, test suites & vectors)"
-    Write-Host "  .\tools\bootstrap\bootstrap.ps1 -Graphify        : Provision code knowledge graph (Graphify AST extraction)"
+    Write-Host "  .\tools\bootstrap\bootstrap.ps1 -Graphify        : Create/refresh both independent Graphify code graphs"
     Write-Host "  .\tools\bootstrap\bootstrap.ps1 -Documentation   : Provision external reference materials (PDFs, HTML crawls)"
     Write-Host "  .\tools\bootstrap\bootstrap.ps1 -Rag             : Provision AI knowledge & RAG (Commodore HRM, PRMs, Obsidian)"
     Write-Host "  .\tools\bootstrap\bootstrap.ps1 -Assembler       : Provision the M68000 assembler"
@@ -111,7 +111,7 @@ function Show-Usage {
     Write-Host ""
     Write-Host "Options:" -ForegroundColor White
     Write-Host "  -Sources                 : Verify & provision external sources (reference emulators, test suites & vectors)"
-    Write-Host "  -Graphify                : Update AST code knowledge graph"
+    Write-Host "  -Graphify                : Create/refresh project and reference code graphs"
     Write-Host "  -Documentation           : Download external reference materials into Reference/"
     Write-Host "  -Markdown                : Convert downloaded materials into publication-grade Markdown"
     Write-Host "  -Publish                 : With -Markdown, copy output into an empty sibling book directory"

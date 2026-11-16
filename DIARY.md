@@ -2326,3 +2326,30 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Python compilation passed for 93 tracked bootstrap source files
   - Book image smoke checks could not run because this checkout contains no local book PNG assets
   - Automated test suites and independent reviews and the canonical commit profile were skipped at the explicit user request
+---
+
+### [2026-11-16 18:51 CET] — Separate project and reference Graphify datasets
+- **Affected Subsystems**:
+  - `tools/graphify`
+  - `tools/graphify_query.py`
+  - `tools/bootstrap`
+  - `tools/worktree.ps1`
+  - `agent instructions`
+- **What Was Changed (The Concrete Reality)**:
+  - Complete GRAPHIFY-TWO-GRAPHS-20261116 with independent project and reference roots and outputs
+  - make bootstrap create or refresh both datasets while preparation and worktree refresh only project code
+  - require explicit query selection and source provenance
+  - retain project documentation and host-agent semantic extraction with attributed caching
+  - exclude vAmigaTS by user decision and retire the copied general skill pipelines
+  - Run native traversal through a process-local adapter that suppresses the pinned CLI query stamp and query log without changing the installed package
+- **Architectural Rationale & Trade-Offs**:
+  - Keep project relationships separate from imported models without duplicating the installed Graphify package or adding an external LLM service
+  - preserve physical worktree isolation and tracked reference configuration
+  - unchanged-project preflight remains separate future work
+- **Verification & Test Results**:
+  - Fresh project and reference structural builds succeeded
+  - focused real Graphify corpus tests passed for Git-ignore settings and semantic preservation and source removal and output isolation
+  - bootstrap contract tests passed
+  - reference parser reported 24 files with syntax errors and partial extraction
+  - canonical verification and independent review remain preparation gates
+  - no performance or hardware correctness claim

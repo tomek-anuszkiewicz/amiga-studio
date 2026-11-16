@@ -56,7 +56,8 @@ target/
 
 # Physical 68000 silicon test vectors (SingleStepTests, 6.5 GB) & clean-room
 # reference emulators (vAmiga, Musashi, MAME, WinUAE).
-/ref_src/
+/ref_src/*
+!/ref_src/.graphifyignore
 
 # Ingested Commodore hardware manuals and technical specifications
 # (Explicitly ignored per item to ensure visibility of any new or untracked files):
@@ -71,7 +72,7 @@ Obsidian/Amiga/Reference/Motorola 68000 DIVU & DIVS Cycle-Accurate Timing Analys
 /Obsidian/Amiga/Reference/.cache/
 
 # Graphify AST knowledge graph database, semantic indices, and architecture maps.
-# Physically copied as a seed for new worktrees, then refreshed locally with graphify update.
+# Physically copied as independent seeds; only the project graph is refreshed in worktrees.
 /graphify-out/
 
 # Shared completed-response and PDF preparation caches for bootstrap tools.

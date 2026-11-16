@@ -70,7 +70,9 @@ remains in the [roadmap](../ROADMAP.md#step-11-four-manual-pdf-to-book-json-conv
 ## Navigate with RAG and Graphify
 
 RAG searches hardware and project documentation; Graphify follows source symbols,
-call relationships and dependencies. Both help an agent locate focused context
+call relationships and dependencies. Select its `project` graph for our code and
+allowed documents, or `reference` for imported source code. Bootstrap creates or
+refreshes both graphs; worktree operations refresh only project code. Both help an agent locate focused context
 for a question such as which phase commits a write or which tests exercise a
 blocked bus access. Their answers still need to be checked against the relevant
 source and evidence.

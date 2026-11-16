@@ -28,12 +28,3 @@
 **/*.[jJ][sS][oO][nN]
 tools/bootstrap/books/
 tools/bootstrap/.cache/
-
-# Keep one code graph for the project and three selected reference sources.
-ref_src/*
-!ref_src/minimig/
-!ref_src/minimig/**
-!ref_src/amiga_replacement_project/
-!ref_src/amiga_replacement_project/**
-!ref_src/vAmiga/
-!ref_src/vAmiga/**

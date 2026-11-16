@@ -58,7 +58,7 @@ The emulator uses external test suites, hardware measurements, and reference imp
 - **[Techtravels.org](https://www.techtravels.org/):** Amiga hardware investigations, including logic-analyzer measurements and Paula circuit analysis; distinguish measured pins from inferred internal behavior.
 
 > [!NOTE]
-> **Graphify Code Knowledge Graph Integration:** The single repository graph (`graphify-out/`) covers project code plus the bootstrapped `ref_src/vAmiga/`, `ref_src/minimig/`, and `ref_src/amiga_replacement_project/`. The bootstrap disables Git ignore rules for extraction, while `.graphifyignore` limits the reference set and excludes generated data. Use graph results to find source locations, then verify the original code; FPGA code is a model, not a hardware measurement. See [Chapter 6](#6-code-structure-relationships-graphify).
+> **Graphify navigation:** Use independent project and reference datasets, then verify source definitions. Bootstrap creates or refreshes both; preparation and worktree operations refresh only project code. See [Chapter 6](#6-code-structure-relationships-graphify).
 
 Because these test assets comprise multi-gigabyte datasets (~6.5 GB uncompressed), they reside outside Git history in `ref_src/` and `tools/`.
 
@@ -161,7 +161,7 @@ To provision the repository-managed reference assets and tooling indexes in a si
 | **Verification Testbeds** | `-Sources` | Provision local test and research references | Downloads external test suites, software-generated M68000 vectors (`SingleStepTests-680x0`), vAmiga/vAmigaTS, Amiga Test Kit, MiniMig, and Amiga Replacement Project |
 | **External Reference Scans** | `-Documentation` | External reference scans and manual archives | Downloads original archival PDF scans and OEM technical reference manuals (HRM, TRM, PRM, UM, and technical articles) |
 | **Documentation & RAG** | `-Rag` | Legacy repository-managed Qdrant bootstrap | Starts its own Qdrant container and indexes the Amiga documentation scopes through the external `rag_qdrant` CLI; it does not install or configure the separate RAG service. |
-| **Code Knowledge Graph** | `-Graphify` | Codebase structural navigation, call hierarchy, and symbol dependency analysis | Builds or updates one graph in `graphify-out/` with project code and the three selected reference implementations |
+| **Code Knowledge Graph** | `-Graphify` | Codebase structural navigation, call hierarchy, and symbol dependency analysis | Creates or refreshes independent project and reference code graphs; project document semantics use the Graphify skill |
 
 ---
 
@@ -266,18 +266,16 @@ Set `RAG_INDEX_JSON` to the service's canonical writable state file for indexing
 <a id="code-knowledge-graph-setup-graphify"></a>
 #### 4. Code Knowledge Graph Setup (`-Graphify`)
 
-Generates one Abstract Syntax Tree (AST) code graph connecting project sources and the three selected reference implementations:
+Creates or refreshes both independent code graphs:
 
 ```powershell
 .\tools\bootstrap\bootstrap.ps1 -Graphify
 ```
 
-**What It Does:**
-- Parses code under `crates/`, `tools/`, `tests/`, `benchmarks/`, and `examples/`, together with vAmiga 4.5, MiniMig, and Amiga Replacement Project under `ref_src/`.
-- Excludes SingleStep, vAmigaTS, other reference trees, generated book data, and JSON test vectors through `.graphifyignore`. The first extraction uses `--no-gitignore` so Git-ignored reference files are included; subsequent updates reuse this setting.
-- Maps code symbols and relationships into `graphify-out/graph.json`; the separate documentation RAG remains the route for hardware manuals.
-- Enables cross-codebase structural queries, call hierarchies, and architectural validation.
-- For query tools and incremental update commands, see [Chapter 6: Code Structure & Relationships: Graphify](#6-code-structure-relationships-graphify).
+Project document semantics use the host-agent procedure separately. Corpus selection,
+manual reference refresh and query commands are described in
+[Chapter 6](#6-code-structure-relationships-graphify); the owning
+[tool README](../../tools/graphify/README.md) explains command mechanics.
 
 ---
 
@@ -311,12 +309,9 @@ Generates one Abstract Syntax Tree (AST) code graph connecting project sources a
 
 <a id="7-code-structure-relationships-graphify"></a><a id="7-code-structure--relationships-graphify"></a><a id="6-code-structure-relationships-graphify"></a><a id="6-code-structure--relationships-graphify"></a><a id="b-code-structure-relationships-ast-knowledge-graph-graphify"></a>
 ## 6. Code Structure & Relationships: Graphify
-- **What is Indexed:** One graph at `graphify-out/graph.json` holds code from `crates/`, `tools/`, `tests/`, `benchmarks/`, and `examples/`, plus `ref_src/vAmiga/` (release 4.5), `ref_src/minimig/`, and `ref_src/amiga_replacement_project/`. SingleStep and vAmigaTS are excluded. Graphify recognizes Rust, Python, PowerShell, C++, and Verilog source files, but JSON test vectors are excluded and some source files may yield partial symbols after parser errors.
-- **Updates ([Graphify skill](../skills/graphify/SKILL.md)):** Run `.\tools\bootstrap\bootstrap.ps1 -Graphify` to build or update the one graph. The first run extracts with `--no-gitignore --code-only`; later runs use `python tools/graphify/refresh.py` with the saved setting. The [refresh command](../../tools/graphify/README.md) requires Graphify 0.9.74 and preserves the configured corpus. No LLM calls are needed for code extraction.
-- **Query Tools:**
-  - `graphify query "<question>"`: Query the full graph; it does not strictly restrict results to a source directory.
-  - `python tools/graphify_query.py "Paula" --scope minimig`: Query only MiniMig nodes and edges. Repeat `--scope` to compare `project`, `vamiga`, `minimig`, and `arp`; filtering occurs before Graphify traverses the graph. The wrapper creates only a disposable filtered view under `.agent/tmp/`, leaving the one stored graph intact.
-  - `graphify path "<A>" "<B>"`: Trace the shortest dependency or call path between two types or functions.
-  - `graphify explain "<concept>"`: Extract a focused subgraph explaining a subsystem or module.
+- **Datasets:** `project` stores code and allowed project documents in `graphify-out/graph.json`; it honors Git exclusions and excludes imported sources. `reference` stores supported code throughout `ref_src/` in `ref_src/graphify-out/graph.json`, with Git exclusions disabled and Graphify exclusions retained. JSON vectors, generated data and vAmigaTS assembly are excluded; parser errors can leave partial symbols.
+- **Production:** `.\tools\bootstrap\bootstrap.ps1 -Graphify` and the Graphify stage of `-All` create or refresh both graphs. Worktree operations and preparation refresh project code only. The dedicated manual reference operation is `python tools/graphify/refresh.py --graph reference`. Structural refresh preserves valid project semantic content; initial or needed document semantics use the host-agent procedure in the [Graphify skill](../skills/graphify/SKILL.md). Keep the repository-owned skill when installing/upgrading Graphify.
+- **Queries:** Use the read-only repository entry point with an explicit native graph selector, such as `python tools/graphify/read.py query "Cpu BusResult" --graph graphify-out/graph.json` or `python tools/graphify/read.py explain "Paula" --graph ref_src/graphify-out/graph.json`. The same `--graph` selection applies to `path`. Compare graphs separately and verify source definitions; reference paths resolve under `ref_src/`.
+- **Optional filtering:** `python tools/graphify_query.py "Paula" --graph reference --scope minimig` filters nodes and edges before traversal using a disposable view under `.agent/tmp/`. Scopes are directories within the selected root. Missing graphs are reported without substitution or automatic builds. See the [tool README](../../tools/graphify/README.md) for roots, creation, caching and freshness.
 
 ---

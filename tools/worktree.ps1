@@ -5,7 +5,7 @@
 .DESCRIPTION
     Creates, removes, or synchronizes Git worktrees located as sibling directories in the
     parent folder. Copies required test assets, .env, and the Graphify graph seed into independent
-    physical directories, then refreshes the graph in the target worktree. It strictly avoids NTFS
+    physical directories, then refreshes only the project graph in the target worktree. It strictly avoids NTFS
     directory junctions or symbolic links to preserve total repository isolation.
 
 .EXAMPLE
@@ -47,7 +47,8 @@ Usage: .\tools\worktree.ps1 <add|test|remove|sync|list> [Name] [-Base COMMIT] [-
   -Path        Explicit sibling directory for add/test (default: <repo>-<Name>).
 
 Creation and sync copy independent fixtures, .env and graph data from the primary
-checkout; Cargo caches remain independent. Task worktrees require the user's
+checkout (the reference graph travels inside ref_src/); refresh only project code.
+Preserve the target's tracked ref_src/.graphifyignore. Cargo caches remain independent. Task worktrees require the user's
 location choice. Detached tests keep implementation in that selected checkout.
 Removal discards all ignored files in the worktree without preservation.
 Stop commands using the checkout before removal.
@@ -112,14 +113,14 @@ function Update-WorktreeGraph {
     $refreshScript = Join-Path $PSScriptRoot 'graphify/refresh.py'
     $graphifyCommand = Get-Command graphify -ErrorAction SilentlyContinue
     if (-not $graphifyCommand) {
-        Write-Warning "graphify CLI is not available; copied graphify-out was not refreshed. After provisioning Graphify, run python `"$refreshScript`" from `"$WorktreeRoot`"."
+        Write-Warning "graphify CLI is not available; copied graphify-out was not refreshed. After provisioning Graphify, run python `"$refreshScript`" --graph project --root `"$WorktreeRoot`"."
         return
     }
 
-    Write-Host ">> Refreshing Graphify knowledge graph in $WorktreeRoot..." -ForegroundColor Cyan
+    Write-Host ">> Refreshing Graphify project code graph in $WorktreeRoot..." -ForegroundColor Cyan
     Push-Location $WorktreeRoot
     try {
-        & python $refreshScript
+        & python $refreshScript --graph project --root $WorktreeRoot
         if ($LASTEXITCODE -ne 0) {
             Write-Warning "Graphify refresh exited with code $LASTEXITCODE in $WorktreeRoot."
         }
@@ -153,7 +154,11 @@ function Copy-WorktreeAssets {
                 New-Item -ItemType Directory -Path $dstPath -Force | Out-Null
             }
             Write-Host "  [COPYING] $rel ..." -ForegroundColor Cyan
-            $exitCode = (Start-Process -FilePath $toolBin -ArgumentList "`"$srcPath`"", "`"$dstPath`"", "/E", "/R:1", "/W:1", "/MT:8", "/NFL", "/NDL" -Wait -Passthru -NoNewWindow).ExitCode
+            $copyArguments = @("`"$srcPath`"", "`"$dstPath`"", "/E", "/R:1", "/W:1", "/MT:8", "/NFL", "/NDL")
+            if ($rel -eq 'ref_src') {
+                $copyArguments += @('/XF', "`"$(Join-Path $srcPath '.graphifyignore')`"")
+            }
+            $exitCode = (Start-Process -FilePath $toolBin -ArgumentList $copyArguments -Wait -Passthru -NoNewWindow).ExitCode
             if ($exitCode -ge 8) {
                 throw "Asset copy failed with exit code $exitCode for $rel"
             } else {

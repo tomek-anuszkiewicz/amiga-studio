@@ -1,101 +1,42 @@
 <#
 .SYNOPSIS
-    AST-level code knowledge graph bootstrapper for the Amiga 500 emulator.
-
-.DESCRIPTION
-    Generates one AST-level code graph in graphify-out/ for project code and the
-    selected reference sources under ref_src/. The first run extracts Git-ignored
-    references according to .graphifyignore; later runs update that same graph.
-
-    Graphify is optional and only used for AI code structure navigation.
-
+    Build or refresh the independent project and reference Graphify datasets.
 .PARAMETER CheckOnly
-    Only verifies if the graphify CLI tool is installed on PATH without running an update.
-
-.EXAMPLE
-    .\tools\bootstrap_graphify.ps1
-    Builds or updates the project and selected reference code graph in graphify-out/.
-
-.EXAMPLE
-    .\tools\bootstrap_graphify.ps1 -CheckOnly
-    Verifies graphify tool installation and status.
+    Check Graphify availability without changing either graph.
 #>
-
 [CmdletBinding()]
-param(
-    [switch]$CheckOnly
-)
+param([switch]$CheckOnly)
+
+Write-Host @'
+Usage: .\tools\bootstrap\bootstrap_graphify.ps1 [-CheckOnly]
+
+Default: create or refresh both project and reference code graphs.
+         Project document semantics use the Graphify skill separately.
+-CheckOnly: check Graphify availability; change neither graph.
+
+Examples:
+  .\tools\bootstrap\bootstrap_graphify.ps1
+  .\tools\bootstrap\bootstrap_graphify.ps1 -CheckOnly
+'@
 
 $RepoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
-
-function Show-Usage {
-    Write-Host ""
-    Write-Host "Amiga 500 Code Knowledge Graph Bootstrapper (Graphify)" -ForegroundColor Cyan
-    Write-Host "=====================================================" -ForegroundColor Cyan
-    Write-Host ""
-    Write-Host "Usage:" -ForegroundColor White
-    Write-Host "  .\tools\bootstrap_graphify.ps1                   : Build/update one code graph for project sources and selected ref_src/ repositories"
-    Write-Host "  .\tools\bootstrap_graphify.ps1 -CheckOnly        : Verify graphify CLI installation"
-    Write-Host ""
-    Write-Host "Options:" -ForegroundColor White
-    Write-Host "  -CheckOnly               : Only check graphify availability without updating"
-    Write-Host ""
-}
-
-Write-Host ""
-Write-Host "Bootstrapping Code Knowledge Graph (Graphify AST)..." -ForegroundColor Green
-Write-Host "-----------------------------------------------------------------" -ForegroundColor DarkGray
-
 $GraphifyCmd = Get-Command graphify -ErrorAction SilentlyContinue
 if (-not $GraphifyCmd) {
-    Write-Warning "graphify CLI is not found on PATH."
-    Write-Host ""
-    Write-Host "What is Graphify?" -ForegroundColor Cyan
-    Write-Host "  Graphify generates an AST-level code knowledge graph. It maps modules, functions, structs,"
-    Write-Host "  and dependencies across the codebase for semantic code queries and architectural navigation."
-    Write-Host ""
-    Write-Host "How to install Graphify:" -ForegroundColor Cyan
-    Write-Host "  uv tool install graphifyy==0.9.74" -ForegroundColor White
-    Write-Host "  or see: https://github.com/graphify/graphify" -ForegroundColor White
-    Write-Host ""
-    Write-Host "NOTE: Graphify is optional and only used for AI code structure navigation." -ForegroundColor DarkGray
-    Write-Host ""
+    Write-Error "Graphify is missing. Install with: uv tool install graphifyy==0.9.74. Preserve the repository-owned Graphify skill."
     exit 1
 }
+Write-Host "[OK] Graphify is available."
+if ($CheckOnly) { exit 0 }
 
-Write-Host "[OK] graphify CLI found at: $($GraphifyCmd.Source)" -ForegroundColor Green
-
-if ($CheckOnly) {
-    exit 0
-}
-
-Write-Host "Building/updating the unified code graph in graphify-out/..." -ForegroundColor Cyan
-Push-Location $RepoRoot
-try {
-    $BuildConfigPath = Join-Path $RepoRoot "graphify-out\.graphify_build.json"
-    $IncludesIgnoredSources = $false
-    if (Test-Path -LiteralPath $BuildConfigPath) {
-        try {
-            $BuildConfig = Get-Content -LiteralPath $BuildConfigPath -Raw | ConvertFrom-Json
-            $IncludesIgnoredSources = $BuildConfig.gitignore -eq $false
-        } catch {
-            Write-Warning "Graphify build configuration is unreadable; rebuilding the selected source graph."
-        }
-    }
-
-    if ($IncludesIgnoredSources) {
-        python tools/graphify/refresh.py
+$Result = 0
+foreach ($Graph in @('project', 'reference')) {
+    Write-Host "Building/updating $Graph graph..."
+    & python (Join-Path $RepoRoot 'tools/graphify/refresh.py') --graph $Graph --root $RepoRoot
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning "$Graph graph failed with exit code $LASTEXITCODE."
+        $Result = 1
     } else {
-        graphify extract . --no-gitignore --code-only --force
+        Write-Host "[OK] $Graph code refreshed. Project semantics require the Graphify skill."
     }
-    $GraphifyExitCode = $LASTEXITCODE
-} finally {
-    Pop-Location
 }
-
-if ($GraphifyExitCode -eq 0) {
-    Write-Host "Code knowledge graph updated successfully in graphify-out/." -ForegroundColor Green
-} else {
-    Write-Error "Graphify exited with code $GraphifyExitCode."
-    exit $GraphifyExitCode
-}
+exit $Result

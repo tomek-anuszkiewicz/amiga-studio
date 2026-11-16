@@ -42,7 +42,7 @@ Backward compatibility is not the default for internal APIs, schemas, configurat
 
 ## Task-Specific Rules and Navigation
 
-Read applicable domain rules before editing that domain. Choose direct source inspection, `rg`, or [Graphify](.agents/skills/graphify/SKILL.md) to suit the navigation question. Follow [amiga-rag.md](.agents/rules/amiga-rag.md) for domain/reference retrieval.
+Read domain rules before editing. Use [Graphify](.agents/skills/graphify/SKILL.md) for cross-file navigation: project graph for our code, reference graph for imports. Read definitions directly; use `rg` as fallback. Domain retrieval follows [amiga-rag.md](.agents/rules/amiga-rag.md).
 
 | Task | Rules and procedures |
 | --- | --- |

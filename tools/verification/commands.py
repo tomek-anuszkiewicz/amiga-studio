@@ -113,6 +113,7 @@ def select_diagnostic_commands(unit=False, integration=False):
 
 PYTHON_SUITES = (
     ("Bootstrap contracts", "tools/bootstrap/tests"),
+    ("Graphify contracts", "tools/graphify/tests"),
     ("Conversion contracts", "tools/bootstrap/conversion/tests"),
     ("HTML conversion contracts", "tools/bootstrap/html-to-markdown/tests"),
     ("PDF conversion contracts", "tools/bootstrap/pdf-to-markdown/tests"),
@@ -140,7 +141,9 @@ PYTHON_INPUTS = {
     "Bootstrap contracts": (
         "tools/bootstrap/tests/", "tools/bootstrap/bootstrap.ps1",
         "tools/bootstrap/bootstrap_rag.ps1", "tools/bootstrap/ensure_qdrant.ps1",
+        "tools/bootstrap/bootstrap_graphify.ps1",
     ),
+    "Graphify contracts": ("tools/graphify/",),
     "Conversion contracts": (
         "tools/bootstrap/conversion/", "tools/bootstrap/html-to-markdown/",
         "tools/bootstrap/pdf-to-markdown/",

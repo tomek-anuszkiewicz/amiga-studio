@@ -87,13 +87,38 @@ class WorktreeToolTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertTrue(neighbor.exists())
 
+    def test_asset_copy_preserves_target_configuration_and_copies_reference_graph(self):
+        (self.root / ".gitignore").write_text("/ref_src/*\n!/ref_src/.graphifyignore\n.agent/\n")
+        (self.root / "ref_src").mkdir()
+        config = self.root / "ref_src/.graphifyignore"
+        config.write_text("target-specific/\n")
+        self.git("add", ".gitignore", "ref_src/.graphifyignore")
+        tree = self.git("write-tree")
+        commit = self.git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid",
+                          "commit-tree", tree, "-p", "HEAD", "-m", "configuration fixture")
+        self.git("update-ref", "HEAD", commit)
+        nested = self.root / "ref_src/graphify-out"
+        nested.mkdir()
+        (nested / "graph.json").write_text("reference seed")
+        created = self.run_tool("add", "assets", "-Base", "HEAD")
+        self.assertEqual(created.returncode, 0, created.stdout + created.stderr)
+        target = self.parent / "primary-assets"
+        config.write_text("source-only/\n")
+        result = self.run_tool("sync", root=target)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual((target / "ref_src/.graphifyignore").read_text(), "target-specific/\n")
+        self.assertEqual((target / "ref_src/graphify-out/graph.json").read_text(), "reference seed")
+        (nested / "graph.json").write_text("changed reference seed")
+        self.assertEqual((target / "ref_src/graphify-out/graph.json").read_text(), "reference seed")
+        self.assertEqual(self.run_tool("remove", str(target)).returncode, 0)
+
     def test_graph_refresh_uses_the_invoking_checkout_script_in_the_target_root(self):
         wrapper = self.parent / "refresh-probe.ps1"
         wrapper.write_text("""param([string]$ToolPath)
 function graphify {}
 function python {
     param([string]$ScriptPath)
-    @{ script = $ScriptPath; root = (Get-Location).Path } |
+    @{ script = $ScriptPath; root = (Get-Location).Path; selectors = $args } |
         ConvertTo-Json | Set-Content -LiteralPath $env:GRAPHIFY_PROBE_LOG -Encoding UTF8
     $global:LASTEXITCODE = 0
 }
@@ -109,6 +134,7 @@ function python {
         self.assertEqual(Path(observed["root"]), target)
         self.assertEqual(Path(observed["script"]), self.tool.parent / "graphify/refresh.py")
         self.assertFalse((target / "tools/graphify/refresh.py").exists())
+        self.assertEqual(observed["selectors"], ["--graph", "project", "--root", str(target)])
         self.assertEqual(self.run_tool("remove", str(target)).returncode, 0)
 
 

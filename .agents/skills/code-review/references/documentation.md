@@ -27,6 +27,10 @@ Use the common contract in [code-review](../SKILL.md#assigned-reviewer-common-co
   Ask the coordinator to route other affected checklist checks to their owning
   reviewers and consolidate the results. Missing synchronization is a finding;
   unaffected checklists need no cosmetic edit.
+- For Graphify changes, check explicit project/reference selection, source roots,
+  read-only research, project-only preparation/worktree refresh and explicit
+  bootstrap/manual reference production. Keep structural and semantic freshness
+  claims distinct and preserve the repository-owned skill during installation.
 - Check repository language, portable paths, relevant links, and any triggered
   diary/roadmap closure duties. Preserve unrelated and historical material.
 - Leave runtime correctness, numeric-definition inspection and detailed test/gate

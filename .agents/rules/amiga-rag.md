@@ -6,3 +6,5 @@
 - If retrieval fails or is insufficient, report the gap and use targeted local evidence. Source navigation options are in [AGENTS.md](../../AGENTS.md#task-specific-rules-and-navigation).
 - Use the canonical `rag_qdrant` CLI or its optional MCP adapter. Query examples, status commands, and configured fallback are in [developer documentation](../references/developer-setup.md#5-domain-hardware-knowledge-local-vector-rag-amiga-rag).
 - Index only accepted, validated project documentation through [index-amiga-rag](../skills/index-amiga-rag/SKILL.md).
+
+- For code relationships select the `project` Graphify graph for our implementation and the separate `reference` graph for imported sources; compare them separately. Use the [Graphify skill](../skills/graphify/SKILL.md), then verify source definitions. RAG remains the documentation retrieval route.

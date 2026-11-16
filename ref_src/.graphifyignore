@@ -1,0 +1,3 @@
+# Common generated-directory and binary exclusions are inherited from the root.
+# Graphify 0.9.74 cannot parse the assembly tests; inspect them directly.
+vAmigaTS/

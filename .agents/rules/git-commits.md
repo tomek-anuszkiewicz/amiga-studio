@@ -88,7 +88,7 @@ those closure points, the user controls commit timing.
    candidate and complete commit partition. Freeze them together.
 
 After candidate edits stop, overlap independent work: start the independent review lanes,
-the required Graphify refresh and the canonical verifier in the background when
+the required project-only Graphify refresh (`python tools/graphify/refresh.py --graph project`) and the canonical verifier in the background when
 their outputs are isolated. Graphify may overlap verification when it writes only
 ignored `graphify-out/` artifacts; finish it before freeze. Review may inspect the
 stable candidate while checks run, then assess their final evidence. Await every
