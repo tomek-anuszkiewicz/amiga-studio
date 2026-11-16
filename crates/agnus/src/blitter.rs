@@ -215,21 +215,25 @@ impl Blitter {
     }
 
     /// Advances internal work without supplying a memory grant.
-    #[inline]
-    pub fn step_cck(&mut self) {
-        self.step_cck_ram(&mut [], false);
-    }
 
     /// One CCK, with at most one word transferred when Agnus grants the bus.
     #[inline]
-    pub fn step_cck_ram(&mut self, chip_ram: &mut [u8], bus_granted: bool) {
+    pub fn step_cck(
+        &mut self,
+        chip_ram: &mut impl config::chip_ram::ChipRamAccess,
+        bus_granted: bool,
+    ) {
         if !self.is_busy || !self.dma_enabled {
             return;
         }
-        self.step_active_cck_ram(chip_ram, bus_granted);
+        self.step_active_cck(chip_ram, bus_granted);
     }
 
-    fn step_active_cck_ram(&mut self, chip_ram: &mut [u8], bus_granted: bool) {
+    fn step_active_cck(
+        &mut self,
+        chip_ram: &mut impl config::chip_ram::ChipRamAccess,
+        bus_granted: bool,
+    ) {
         if self.startup_cycles != 0 {
             self.startup_cycles = self.startup_cycles.wrapping_sub(1);
             return;
@@ -240,7 +244,7 @@ impl Blitter {
         } else {
             self.current_phase()
         };
-        if phase.requires_bus() && (!bus_granted || chip_ram.is_empty()) {
+        if phase.requires_bus() && !bus_granted {
             return;
         }
         if line_mode {

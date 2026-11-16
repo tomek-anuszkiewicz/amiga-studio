@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "agnus"
 status: "draft"
 created: 2026-09-19
-updated: 2026-11-15
+updated: 2026-11-16
 related: ["[Agnus.md](Agnus.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)", "[MemoryBus.md](MemoryBus.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)"]
 tracked_paths:
   - "crates/agnus/src/dma.rs"
@@ -115,7 +115,7 @@ sequenceDiagram
         RAM-->>Agnus: Read word, or accept supplied write word
         Agnus->>Bus: Retain selected RGA and data output
         Bus->>Latch: Accept into the named receiving interface
-        Latch-->>Bus: Accepted, or retain source for retry
+        Latch-->>Bus: Accepted; queue overflow stops the owner
         Note over Latch: Existing capture delay, then local processing
     else Higher-priority or ineligible
         Note over Req,Agnus: No word/pointer completion merely from requesting

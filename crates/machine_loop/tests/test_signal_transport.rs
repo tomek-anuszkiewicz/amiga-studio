@@ -45,7 +45,7 @@ fn disk_request_crosses_dmal_before_the_granted_ram_transfer() {
             machine.step_cck();
             assert_eq!(machine.agnus.hpos, 11);
             assert_eq!(machine.agnus.dskpt, 0x2002);
-            assert_eq!(machine.physical_memory.read_chip_word(0x2000), 0x5a42);
+            assert_eq!(machine.physical_memory.read_chip_word_debug(0x2000), 0x5a42);
             assert_eq!(machine.paula.disk.buffered_words(), 0);
             assert!(!machine.paula.dma_active);
             assert_eq!(machine.paula.disk.irq_pending & 2, 0);
@@ -345,7 +345,7 @@ fn granted_audio_and_sprite_bus_words_use_receiver_queues_once() {
 }
 
 #[test]
-fn refused_dma_output_survives_a_snapshot_until_capacity_returns() {
+fn dma_overflow_stops_before_later_cck_work_and_retains_the_rejected_output() {
     let mut machine = idle(VideoStandard::Pal);
     for _ in 0..machine_loop::paula::Paula::MUTATION_CAPACITY {
         assert!(machine.paula.set_auddat(0, 0x1111));
@@ -363,29 +363,38 @@ fn refused_dma_output_survives_a_snapshot_until_capacity_returns() {
     }
     let output = Some((custom_reg::paula::REGISTER_AUD1DAT, 0x4567));
     machine.agnus.pending_dma_write = output;
-    machine.step_cck();
+    let cia_phase = machine.cia_a.eclock_phase;
+    let error = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        machine.step_cck();
+    }))
+    .unwrap_err();
+    let message = error.downcast_ref::<String>().unwrap();
+    assert!(
+        message.contains("queue=Paula, CCK=Some(1), producer=DMA"),
+        "{message}"
+    );
     assert_eq!(machine.agnus.pending_dma_write, output);
     assert_eq!(machine.paula.audio.channels[1].dat, 0);
+    assert_eq!(machine.cia_a.eclock_phase, cia_phase);
+    assert_eq!(machine.cck, 1);
+}
+
+#[test]
+fn valid_pending_dma_output_continues_identically_after_a_snapshot() {
+    let mut machine = idle(VideoStandard::Pal);
+    machine.agnus.pending_dma_write = Some((custom_reg::paula::REGISTER_AUD1DAT, 0x4567));
     let state =
         serde_json::from_str::<A500State>(&serde_json::to_string(&machine.save_state()).unwrap())
             .unwrap();
     let mut restored = idle(VideoStandard::Pal);
     restored.load_state(&state);
-    for cycle in 1..=6 {
+    for _ in 0..6 {
         machine.step_cck();
         restored.step_cck();
-        assert!(
-            machine.save_state() == restored.save_state(),
-            "cycle {cycle}"
-        );
-        if cycle < 4 {
-            assert_eq!(machine.agnus.pending_dma_write, output);
-            assert_eq!(machine.paula.audio.channels[1].dat, 0);
-        }
+        assert!(machine.save_state() == restored.save_state());
     }
     assert!(machine.agnus.pending_dma_write.is_none());
     assert_eq!(machine.paula.audio.channels[1].dat, 0x4567);
-    assert!(machine.paula.mutations.is_empty());
 }
 
 #[test]

@@ -138,6 +138,15 @@ impl Paula {
         }
     }
 
+    /// Presents the bus word without consuming it before RAM admission succeeds.
+    pub fn disk_dma_word(&self) -> Option<u16> {
+        if !self.disk_dma_enabled() || self.is_dsk_write() || self.disk.count == 0 {
+            None
+        } else {
+            Some(self.disk.fifo[self.disk.head])
+        }
+    }
+
     /// Supplies the early-read bus word only for a selected disk DMA transfer.
     pub fn take_disk_dma_word(&mut self) -> Option<u16> {
         if !self.disk_dma_enabled() || self.is_dsk_write() {

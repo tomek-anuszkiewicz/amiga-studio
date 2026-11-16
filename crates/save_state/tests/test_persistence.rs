@@ -274,7 +274,7 @@ fn dma_registers_roundtrip_in_their_single_owner() {
     assert_eq!(machine.agnus.dma.planecount(), 2);
     let saved = SaveState::capture(&machine);
     let json = serde_json::to_value(&saved).unwrap();
-    assert_eq!(json["header"]["version"], 8);
+    assert_eq!(json["header"]["version"], 9);
     for (name, value) in [
         ("dmacon", 0x0300),
         ("bplcon0", 0x2004),
@@ -346,8 +346,15 @@ fn file_roundtrip_resumes_a_partial_copper_instruction_after_a_denied_fetch() {
     for standard in [VideoStandard::Pal, VideoStandard::Ntsc] {
         let mut machine = A500Machine::new(A500Config::bare_512k(standard));
         machine.cpu.state.set_stopped(true);
-        machine.physical_memory.chip_ram[..8]
-            .copy_from_slice(&[0x01, 0x80, 0x0F, 0x00, 0xFF, 0xFF, 0xFF, 0xFE]);
+        for (offset, byte) in [0x01, 0x80, 0x0F, 0x00, 0xFF, 0xFF, 0xFF, 0xFE]
+            .iter()
+            .copied()
+            .enumerate()
+        {
+            machine
+                .physical_memory
+                .write_chip_byte_debug(((0) as u32).wrapping_add(offset as u32), byte);
+        }
         machine.agnus.dma.write_dmacon(0x8280);
         machine.agnus.copper.set_dma_enabled(true);
         machine.agnus.copper.restart_list1();
@@ -390,7 +397,11 @@ fn file_roundtrip_resumes_blitter_source_carry_and_pending_destination() {
         b.bltdpt = 16;
         b.set_dma_enabled(true);
         b.trigger_blit(0x0042);
-        machine.physical_memory.chip_ram[..4].copy_from_slice(&[0x12, 0x34, 0x56, 0x78]);
+        for (offset, byte) in [0x12, 0x34, 0x56, 0x78].iter().copied().enumerate() {
+            machine
+                .physical_memory
+                .write_chip_byte_debug(((0) as u32).wrapping_add(offset as u32), byte);
+        }
         for _ in 0..4 {
             machine.step_cck();
         }
@@ -406,7 +417,11 @@ fn file_roundtrip_resumes_blitter_source_carry_and_pending_destination() {
             assert_eq!(machine.save_state(), restored.save_state());
         }
         assert_eq!(
-            &restored.physical_memory.chip_ram[16..20],
+            &(16..20)
+                .map(|address| restored
+                    .physical_memory
+                    .read_chip_byte_debug(address as u32))
+                .collect::<Vec<_>>(),
             &[0x01, 0x23, 0x45, 0x67]
         );
         assert!(!restored.agnus.blitter.is_busy);
@@ -420,7 +435,11 @@ fn file_roundtrip_preserves_drawn_pixels_and_resumes_active_display() {
         include_bytes!("../../machine_loop/tests/programs/display/live_stripes/program.bin");
     let mut machine = A500Machine::new(A500Config::bare_512k(VideoStandard::Pal));
     machine.physical_memory.map_chip_ram_to_low_memory();
-    machine.physical_memory.chip_ram[0x1000..0x1000 + program.len()].copy_from_slice(program);
+    for (offset, byte) in program.iter().copied().enumerate() {
+        machine
+            .physical_memory
+            .write_chip_byte_debug(((0x1000) as u32).wrapping_add(offset as u32), byte);
+    }
     machine.cpu.state.set_sr(0x2700);
     machine.set_pc_and_prime_prefetch(0x1000);
     for _ in 0..(313 * 228) {
@@ -585,4 +604,48 @@ fn file_roundtrip_resumes_disk_write_fifo_and_partial_bit_cell() {
     assert!(!restored.paula.pins.disk_write_enable);
     restored.paula.reset();
     assert_eq!(restored.paula, machine_loop::paula::Paula::default());
+}
+
+#[test]
+fn malformed_admission_state_is_a_load_error_without_defaulting_or_runtime_overflow() {
+    let mut machine = A500Machine::new(A500Config::default());
+    assert!(machine.paula.set_audper(0, 0x1234));
+    let before = machine.save_state();
+    let original = serde_json::to_value(SaveState::capture(&machine)).unwrap();
+    for missing_cpu_timing in [false, true] {
+        let mut malformed = original.clone();
+        if missing_cpu_timing {
+            malformed["state"]["cpu"]
+                .as_object_mut()
+                .unwrap()
+                .remove("bus_timing");
+        } else {
+            malformed["state"]["physical_memory"]
+                .as_object_mut()
+                .unwrap()
+                .remove("chip_budget");
+        }
+        let json = serde_json::to_string(&malformed).unwrap();
+        assert!(matches!(
+            SaveState::from_json(&json),
+            Err(SaveStateError::DeserializationFailed(_))
+        ));
+    }
+    let mut wrong_type = original.clone();
+    wrong_type["state"]["paula"]["mutations"] = serde_json::json!("not a mutation sequence");
+    assert!(matches!(
+        SaveState::from_json(&serde_json::to_string(&wrong_type).unwrap()),
+        Err(SaveStateError::DeserializationFailed(_))
+    ));
+    let mut oversized = original.clone();
+    let mutation = oversized["state"]["paula"]["mutations"][0].clone();
+    oversized["state"]["paula"]["mutations"] = serde_json::json!(vec![mutation; 33]);
+    let json = serde_json::to_string(&oversized).unwrap();
+    let loaded = std::panic::catch_unwind(|| SaveState::from_json(&json));
+    assert!(matches!(
+        loaded.unwrap(),
+        Err(SaveStateError::DeserializationFailed(_))
+    ));
+    assert_eq!(machine.paula.mutations.len(), 1);
+    assert_eq!(machine.save_state(), before);
 }

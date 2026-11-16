@@ -71,6 +71,7 @@ impl A500Machine {
     #[inline]
     pub fn memory_bus(&mut self) -> MemoryBus<'_> {
         MemoryBus {
+            cck: self.cck,
             mem: &mut self.physical_memory,
             agnus: &mut self.agnus,
             denise: &mut self.denise,
@@ -124,6 +125,7 @@ impl A500Machine {
         self.keyboard_reset_asserted = false;
         self.physical_memory.reset();
         self.cck = 0;
+        self.physical_memory.rebase_cck(self.cck);
         self.agnus.reset();
         self.denise.reset();
         self.paula.reset();
@@ -142,6 +144,7 @@ impl A500Machine {
         self.keyboard_reset_asserted = false;
         self.physical_memory.reset_warm();
         self.cck = 0;
+        self.physical_memory.rebase_cck(self.cck);
         self.agnus.reset();
         self.denise.reset();
         self.paula.reset();
@@ -174,15 +177,25 @@ impl A500Machine {
     /// Advances all peer custom chips, coprocessors, and peripheral subsystems by exactly 1 Color Clock (~280 ns),
     /// dispatching matured actions and arbitrating interrupts.
     pub fn step_subsystems_cck(&mut self) {
+        self.cck = self.cck.wrapping_add(1);
+        self.physical_memory
+            .begin_cck(self.cck, self.cpu.state.instruction_pc());
         // Start of subsystem CCK: sample inputs before receiver work, even while waiting.
         self.sample_signal_pins_start_cck();
         // 1. Advance Agnus (steps copper, blitter, dma, raster beam counters, and mutation pipeline)
-        self.agnus.step_cck_ram(&mut self.physical_memory.chip_ram);
-        if let Some(address) = self.agnus.pending_dsk_dma_slot.take() {
-            if let Some(word) = self.paula.take_disk_dma_word() {
-                self.physical_memory.write_chip_word(address, word);
+        self.agnus.step_cck(&mut self.physical_memory);
+        if let Some(address) = self.agnus.pending_dsk_dma_slot {
+            if let Some(word) = self.paula.disk_dma_word() {
+                config::chip_ram::ChipRamAccess::write_chip_word(
+                    &mut self.physical_memory,
+                    address,
+                    word,
+                    config::chip_ram::ChipRamOwner::Disk,
+                );
+                self.paula.take_disk_dma_word();
                 self.agnus.complete_disk_read();
             }
+            self.agnus.pending_dsk_dma_slot = None;
         }
         self.physical_memory.chip_ram_blocked = self.agnus.chip_ram_blocked;
 
@@ -193,11 +206,14 @@ impl A500Machine {
         self.paula.step_cck();
         // Common register issue boundary: every receiver has completed this CCK.
         if let Some((reg, val)) = self.agnus.pending_copper_write {
-            if self.memory_bus().write_custom_word(reg, val) {
+            if self.memory_bus().write_custom_word(reg, val, "Copper") {
                 self.agnus.poll_copper_write();
             }
         }
         if let Some((plane, word)) = self.agnus.pending_bpl_dma {
+            self.denise
+                .mutations
+                .set_issue_context(self.cck, "Denise", "bitplane DMA");
             if self.denise.set_bpldat(plane as usize, word) {
                 self.agnus.poll_bpl_dma();
             }
@@ -227,9 +243,6 @@ impl A500Machine {
     pub fn step_cck(&mut self) -> bool {
         // Retain the previous capture before subsystem routing samples the source again.
         let keyboard_reset_asserted = self.keyboard_reset_asserted;
-        // 1. Advance master monotonic Color Clock counter
-        self.cck = self.cck.wrapping_add(1);
-
         // 2. Advance non-CPU subsystems
         self.step_subsystems_cck();
 
@@ -245,6 +258,7 @@ impl A500Machine {
 
         // 5. Step CPU Color Clock phase with bus reference
         let mut bus = MemoryBus {
+            cck: self.cck,
             mem: &mut self.physical_memory,
             agnus: &mut self.agnus,
             denise: &mut self.denise,
@@ -299,6 +313,7 @@ impl A500Machine {
     #[inline]
     pub fn set_pc_and_prime_prefetch(&mut self, target_pc: u32) {
         let mut bus = MemoryBus {
+            cck: self.cck,
             mem: &mut self.physical_memory,
             agnus: &mut self.agnus,
             denise: &mut self.denise,

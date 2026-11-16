@@ -34,15 +34,17 @@ fn test_copper_beam_wait_and_palette_mutation() {
     assert_eq!(harness.machine.denise.color[0], 0x0000);
 
     // Enable DMA: Master Enable (bit 9) | Copper Enable (bit 7) -> $8280
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_DMACON, 0x8280);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_DMACON,
+        0x8280,
+        "DMA",
+    );
     // Strobe COPJMP1 ($088) to start execution of list 1
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_COPJMP1, 0x0000);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_COPJMP1,
+        0x0000,
+        "DMA",
+    );
 
     // Step across first 10 scanlines: beam hasn't reached line 15 yet
     harness.step_scanlines(10);
@@ -82,21 +84,24 @@ fn test_copper_dma_toggle_stops_and_resumes_execution() {
     harness.load_copper_list(0x003000, &copper_list);
 
     // Start with Copper DMA enabled
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_DMACON, 0x8280);
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_COPJMP1, 0x0000);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_DMACON,
+        0x8280,
+        "DMA",
+    );
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_COPJMP1,
+        0x0000,
+        "DMA",
+    );
 
     // Step to line 5, then DISABLE Copper DMA ($0080 clears bit 7)
     harness.step_until_vpos(5, 2000);
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_DMACON, 0x0080);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_DMACON,
+        0x0080,
+        "DMA",
+    );
     harness.step_cck(2);
     assert!(!harness.machine.agnus.copper.dma_enabled);
 
@@ -108,14 +113,16 @@ fn test_copper_dma_toggle_stops_and_resumes_execution() {
     );
 
     // Re-enable Copper DMA ($8080 sets bit 7) and restart list
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_DMACON, 0x8080);
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_COPJMP1, 0x0000);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_DMACON,
+        0x8080,
+        "DMA",
+    );
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_COPJMP1,
+        0x0000,
+        "DMA",
+    );
     harness.step_cck(2);
     assert!(harness.machine.agnus.copper.dma_enabled);
 
@@ -141,19 +148,22 @@ fn test_copper_triggers_interrupt_to_cpu() {
     harness.load_copper_list(0x004000, &copper_list);
 
     // Enable Paula Level 3 Interrupts: INTENA ($09A) = $C010 (Master + Copper)
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::paula::REGISTER_INTENA, 0xC010);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::paula::REGISTER_INTENA,
+        0xC010,
+        "DMA",
+    );
     // Enable Copper DMA
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_DMACON, 0x8280);
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_COPJMP1, 0x0000);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_DMACON,
+        0x8280,
+        "DMA",
+    );
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_COPJMP1,
+        0x0000,
+        "DMA",
+    );
 
     // Initial interrupt priority line should be 0
     assert_eq!(harness.machine.paula.pending_interrupt_level(), 0);

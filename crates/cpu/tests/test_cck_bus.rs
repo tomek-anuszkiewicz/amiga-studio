@@ -739,12 +739,16 @@ fn test_engine_does_not_repeat_entry_alu_during_write_retries() {
     fn increment(state: &mut cpu::CpuState, _: u8, _: u8) {
         state.set_d_long(0, state.d_long(0).wrapping_add(1));
     }
-    static FUSED: [MicroStep; 1] = [MicroStep {
-        bus_fn: Some(Cpu::step_bus_write_dst_word),
-        alu_fn: Some(increment),
-        base_clocks: 2,
-    }];
-    static ZERO_CLOCK: [MicroStep; 2] = [
+    static FUSED: [MicroStep; 2] = [
+        MicroStep::cck_idle(),
+        MicroStep {
+            bus_fn: Some(Cpu::step_bus_write_dst_word),
+            alu_fn: Some(increment),
+            base_clocks: 2,
+        },
+    ];
+    static ZERO_CLOCK: [MicroStep; 3] = [
+        MicroStep::cck_idle(),
         MicroStep::alu(increment),
         MicroStep::cck(Cpu::step_bus_write_dst_word),
     ];
@@ -754,7 +758,7 @@ fn test_engine_does_not_repeat_entry_alu_during_write_retries() {
         let mut memory = PhysicalMemory::new();
         memory.map_chip_ram_to_low_memory();
         let mut bus = RecordingBus::new(memory, vec![(Access::WriteWord(0x2000, 0x7788), 3)]);
-        common::run_instruction(&mut cpu, &mut bus, 2);
+        common::run_instruction(&mut cpu, &mut bus, 4);
         assert_eq!(cpu.state.d_long(0), 1);
     }
 }

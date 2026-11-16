@@ -15,18 +15,14 @@ const MASK_PAULA_DMA: u16 = dmacon::BIT_DSKEN | dmacon::MASK_AUD_ALL;
 impl Paula {
     /// Capacity preflight for an atomic transfer with multiple receivers.
     #[inline]
-    pub fn can_accept_register_write(&self) -> bool {
-        !self.mutations.is_full()
-    }
-
-    fn schedule_register(
-        &mut self,
-        offset: u16,
-        value: u16,
-        delay: u8,
-        mode: MutationMode,
-    ) -> bool {
-        self.can_accept_register_write() && self.mutations.stage(offset, value, delay, mode)
+    pub fn require_register_capacity(&self, offset: u16, value: u16) {
+        let delay = if offset == reg::REGISTER_DMACON {
+            DMACON_WRITE_DELAY_CCK
+        } else {
+            PROVISIONAL_CUSTOM_WRITE_DELAY_CCK
+        };
+        self.mutations
+            .require_capacity(offset, value, delay, MutationMode::Pipeline);
     }
 
     /// Applies a CPU-selected RGA sync address without using the data-write queue.
@@ -40,7 +36,7 @@ impl Paula {
     /// Queues DMACON; active state changes only when due.
     #[inline]
     pub fn set_dmacon(&mut self, val: u16) -> bool {
-        self.schedule_register(
+        self.mutations.stage(
             reg::REGISTER_DMACON,
             val,
             DMACON_WRITE_DELAY_CCK,
@@ -51,7 +47,7 @@ impl Paula {
     /// Queues INTENA; active state changes only when due.
     #[inline]
     pub fn set_intena(&mut self, val: u16) -> bool {
-        self.schedule_register(
+        self.mutations.stage(
             reg::REGISTER_INTENA,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
@@ -62,7 +58,7 @@ impl Paula {
     /// Queues INTREQ; active state changes only when due.
     #[inline]
     pub fn set_intreq(&mut self, val: u16) -> bool {
-        self.schedule_register(
+        self.mutations.stage(
             reg::REGISTER_INTREQ,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
@@ -73,7 +69,7 @@ impl Paula {
     /// Queues ADKCON; active state changes only when due.
     #[inline]
     pub fn set_adkcon(&mut self, val: u16) -> bool {
-        self.schedule_register(
+        self.mutations.stage(
             reg::REGISTER_ADKCON,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
@@ -84,7 +80,7 @@ impl Paula {
     /// Queues DSKDAT; active state changes only when due.
     #[inline]
     pub fn set_dskdat(&mut self, val: u16) -> bool {
-        self.schedule_register(
+        self.mutations.stage(
             reg::REGISTER_DSKDAT,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
@@ -95,7 +91,7 @@ impl Paula {
     /// Queues DSKLEN; active state changes only when due.
     #[inline]
     pub fn set_dsklen(&mut self, val: u16) -> bool {
-        self.schedule_register(
+        self.mutations.stage(
             reg::REGISTER_DSKLEN,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
@@ -106,7 +102,7 @@ impl Paula {
     /// Queues DSKSYNC; active state changes only when due.
     #[inline]
     pub fn set_dsksync(&mut self, val: u16) -> bool {
-        self.schedule_register(
+        self.mutations.stage(
             reg::REGISTER_DSKSYNC,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
@@ -117,7 +113,7 @@ impl Paula {
     /// Queues SERDAT; active state changes only when due.
     #[inline]
     pub fn set_serdat(&mut self, val: u16) -> bool {
-        self.schedule_register(
+        self.mutations.stage(
             reg::REGISTER_SERDAT,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
@@ -128,7 +124,7 @@ impl Paula {
     /// Queues SERPER; active state changes only when due.
     #[inline]
     pub fn set_serper(&mut self, val: u16) -> bool {
-        self.schedule_register(
+        self.mutations.stage(
             reg::REGISTER_SERPER,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
@@ -139,7 +135,7 @@ impl Paula {
     /// Queues POTGO; active state changes only when due.
     #[inline]
     pub fn set_potgo(&mut self, val: u16) -> bool {
-        self.schedule_register(
+        self.mutations.stage(
             reg::REGISTER_POTGO,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
@@ -153,7 +149,7 @@ impl Paula {
         if index >= config::AUDIO_CHANNEL_COUNT {
             return false;
         }
-        self.schedule_register(
+        self.mutations.stage(
             reg::REGISTER_AUD0LEN + (index as u16) * config::AUDIO_REGISTER_STRIDE,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
@@ -167,7 +163,7 @@ impl Paula {
         if index >= config::AUDIO_CHANNEL_COUNT {
             return false;
         }
-        self.schedule_register(
+        self.mutations.stage(
             reg::REGISTER_AUD0PER + (index as u16) * config::AUDIO_REGISTER_STRIDE,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
@@ -181,7 +177,7 @@ impl Paula {
         if index >= config::AUDIO_CHANNEL_COUNT {
             return false;
         }
-        self.schedule_register(
+        self.mutations.stage(
             reg::REGISTER_AUD0VOL + (index as u16) * config::AUDIO_REGISTER_STRIDE,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
@@ -195,7 +191,7 @@ impl Paula {
         if index >= config::AUDIO_CHANNEL_COUNT {
             return false;
         }
-        self.schedule_register(
+        self.mutations.stage(
             reg::REGISTER_AUD0DAT + (index as u16) * config::AUDIO_REGISTER_STRIDE,
             val,
             PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,

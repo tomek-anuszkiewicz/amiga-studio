@@ -63,8 +63,17 @@ impl MemoryBus<'_> {
     }
 
     /// Applies address strobes immediately and queues accepted data transfers.
-    /// False means no receiver accepted it; the producer must retry.
-    pub fn write_custom_word(&mut self, offset: u16, val: u16) -> bool {
+    /// Capacity failure is fatal before any recipient accepts the write.
+    pub fn write_custom_word(&mut self, offset: u16, val: u16, producer: &'static str) -> bool {
+        self.agnus
+            .mutations
+            .set_issue_context(self.cck, "Agnus", producer);
+        self.denise
+            .mutations
+            .set_issue_context(self.cck, "Denise", producer);
+        self.paula
+            .mutations
+            .set_issue_context(self.cck, "Paula", producer);
         let offset = offset & config::MASK_CUSTOM_REG_OFFSET;
         match offset {
             custom_reg::denise::REGISTER_STREQU => {
@@ -88,163 +97,103 @@ impl MemoryBus<'_> {
                 true
             }
             custom_reg::agnus::REGISTER_DMACON => {
-                if !self.agnus.can_accept_register_write()
-                    || !self.paula.can_accept_register_write()
-                {
-                    return false;
-                }
+                self.agnus.require_register_capacity(offset, val);
+                self.paula.require_register_capacity(offset, val);
                 self.agnus.set_dmacon(val) && self.paula.set_dmacon(val)
             }
             custom_reg::denise::REGISTER_BPLCON0 => {
-                if !self.agnus.can_accept_register_write()
-                    || !self.denise.can_accept_register_write()
-                {
-                    return false;
-                }
+                self.agnus.require_register_capacity(offset, val);
+                self.denise.require_register_capacity(offset, val);
                 self.agnus.set_bplcon0(val) && self.denise.set_bplcon0(val)
             }
             custom_reg::agnus::REGISTER_DIWSTRT => {
-                if !self.agnus.can_accept_register_write()
-                    || !self.denise.can_accept_register_write()
-                {
-                    return false;
-                }
+                self.agnus.require_register_capacity(offset, val);
+                self.denise.require_register_capacity(offset, val);
                 self.agnus.set_diwstrt(val) && self.denise.set_diwstrt(val)
             }
             custom_reg::agnus::REGISTER_DIWSTOP => {
-                if !self.agnus.can_accept_register_write()
-                    || !self.denise.can_accept_register_write()
-                {
-                    return false;
-                }
+                self.agnus.require_register_capacity(offset, val);
+                self.denise.require_register_capacity(offset, val);
                 self.agnus.set_diwstop(val) && self.denise.set_diwstop(val)
             }
             custom_reg::denise::REGISTER_SPR0POS => {
-                if !self.agnus.can_accept_register_write()
-                    || !self.denise.can_accept_register_write()
-                {
-                    return false;
-                }
+                self.agnus.require_register_capacity(offset, val);
+                self.denise.require_register_capacity(offset, val);
                 self.agnus.set_sprpos(0, val) && self.denise.set_sprpos(0, val)
             }
             custom_reg::denise::REGISTER_SPR0CTL => {
-                if !self.agnus.can_accept_register_write()
-                    || !self.denise.can_accept_register_write()
-                {
-                    return false;
-                }
+                self.agnus.require_register_capacity(offset, val);
+                self.denise.require_register_capacity(offset, val);
                 self.agnus.set_sprctl(0, val) && self.denise.set_sprctl(0, val)
             }
             custom_reg::denise::REGISTER_SPR1POS => {
-                if !self.agnus.can_accept_register_write()
-                    || !self.denise.can_accept_register_write()
-                {
-                    return false;
-                }
+                self.agnus.require_register_capacity(offset, val);
+                self.denise.require_register_capacity(offset, val);
                 self.agnus.set_sprpos(1, val) && self.denise.set_sprpos(1, val)
             }
             custom_reg::denise::REGISTER_SPR1CTL => {
-                if !self.agnus.can_accept_register_write()
-                    || !self.denise.can_accept_register_write()
-                {
-                    return false;
-                }
+                self.agnus.require_register_capacity(offset, val);
+                self.denise.require_register_capacity(offset, val);
                 self.agnus.set_sprctl(1, val) && self.denise.set_sprctl(1, val)
             }
             custom_reg::denise::REGISTER_SPR2POS => {
-                if !self.agnus.can_accept_register_write()
-                    || !self.denise.can_accept_register_write()
-                {
-                    return false;
-                }
+                self.agnus.require_register_capacity(offset, val);
+                self.denise.require_register_capacity(offset, val);
                 self.agnus.set_sprpos(2, val) && self.denise.set_sprpos(2, val)
             }
             custom_reg::denise::REGISTER_SPR2CTL => {
-                if !self.agnus.can_accept_register_write()
-                    || !self.denise.can_accept_register_write()
-                {
-                    return false;
-                }
+                self.agnus.require_register_capacity(offset, val);
+                self.denise.require_register_capacity(offset, val);
                 self.agnus.set_sprctl(2, val) && self.denise.set_sprctl(2, val)
             }
             custom_reg::denise::REGISTER_SPR3POS => {
-                if !self.agnus.can_accept_register_write()
-                    || !self.denise.can_accept_register_write()
-                {
-                    return false;
-                }
+                self.agnus.require_register_capacity(offset, val);
+                self.denise.require_register_capacity(offset, val);
                 self.agnus.set_sprpos(3, val) && self.denise.set_sprpos(3, val)
             }
             custom_reg::denise::REGISTER_SPR3CTL => {
-                if !self.agnus.can_accept_register_write()
-                    || !self.denise.can_accept_register_write()
-                {
-                    return false;
-                }
+                self.agnus.require_register_capacity(offset, val);
+                self.denise.require_register_capacity(offset, val);
                 self.agnus.set_sprctl(3, val) && self.denise.set_sprctl(3, val)
             }
             custom_reg::denise::REGISTER_SPR4POS => {
-                if !self.agnus.can_accept_register_write()
-                    || !self.denise.can_accept_register_write()
-                {
-                    return false;
-                }
+                self.agnus.require_register_capacity(offset, val);
+                self.denise.require_register_capacity(offset, val);
                 self.agnus.set_sprpos(4, val) && self.denise.set_sprpos(4, val)
             }
             custom_reg::denise::REGISTER_SPR4CTL => {
-                if !self.agnus.can_accept_register_write()
-                    || !self.denise.can_accept_register_write()
-                {
-                    return false;
-                }
+                self.agnus.require_register_capacity(offset, val);
+                self.denise.require_register_capacity(offset, val);
                 self.agnus.set_sprctl(4, val) && self.denise.set_sprctl(4, val)
             }
             custom_reg::denise::REGISTER_SPR5POS => {
-                if !self.agnus.can_accept_register_write()
-                    || !self.denise.can_accept_register_write()
-                {
-                    return false;
-                }
+                self.agnus.require_register_capacity(offset, val);
+                self.denise.require_register_capacity(offset, val);
                 self.agnus.set_sprpos(5, val) && self.denise.set_sprpos(5, val)
             }
             custom_reg::denise::REGISTER_SPR5CTL => {
-                if !self.agnus.can_accept_register_write()
-                    || !self.denise.can_accept_register_write()
-                {
-                    return false;
-                }
+                self.agnus.require_register_capacity(offset, val);
+                self.denise.require_register_capacity(offset, val);
                 self.agnus.set_sprctl(5, val) && self.denise.set_sprctl(5, val)
             }
             custom_reg::denise::REGISTER_SPR6POS => {
-                if !self.agnus.can_accept_register_write()
-                    || !self.denise.can_accept_register_write()
-                {
-                    return false;
-                }
+                self.agnus.require_register_capacity(offset, val);
+                self.denise.require_register_capacity(offset, val);
                 self.agnus.set_sprpos(6, val) && self.denise.set_sprpos(6, val)
             }
             custom_reg::denise::REGISTER_SPR6CTL => {
-                if !self.agnus.can_accept_register_write()
-                    || !self.denise.can_accept_register_write()
-                {
-                    return false;
-                }
+                self.agnus.require_register_capacity(offset, val);
+                self.denise.require_register_capacity(offset, val);
                 self.agnus.set_sprctl(6, val) && self.denise.set_sprctl(6, val)
             }
             custom_reg::denise::REGISTER_SPR7POS => {
-                if !self.agnus.can_accept_register_write()
-                    || !self.denise.can_accept_register_write()
-                {
-                    return false;
-                }
+                self.agnus.require_register_capacity(offset, val);
+                self.denise.require_register_capacity(offset, val);
                 self.agnus.set_sprpos(7, val) && self.denise.set_sprpos(7, val)
             }
             custom_reg::denise::REGISTER_SPR7CTL => {
-                if !self.agnus.can_accept_register_write()
-                    || !self.denise.can_accept_register_write()
-                {
-                    return false;
-                }
+                self.agnus.require_register_capacity(offset, val);
+                self.denise.require_register_capacity(offset, val);
                 self.agnus.set_sprctl(7, val) && self.denise.set_sprctl(7, val)
             }
             custom_reg::denise::REGISTER_BPLCON1 => self.denise.set_bplcon1(val),
@@ -422,6 +371,6 @@ impl MemoryBus<'_> {
     pub fn write_custom_byte(&mut self, addr: u32, val: u8) -> bool {
         let offset = (addr & config::MASK_CUSTOM_REG_OFFSET as u32) as u16;
         let word_val = ((val as u16) << 8) | (val as u16);
-        self.write_custom_word(offset, word_val)
+        self.write_custom_word(offset, word_val, "CPU")
     }
 }

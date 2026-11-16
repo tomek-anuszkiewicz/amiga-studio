@@ -117,6 +117,7 @@ pub struct CpuState {
 
     /// Master cycle counter
     cycle_counter: u64,
+    bus_timing: crate::bus_guard::BusTiming,
 }
 
 impl Default for CpuState {
@@ -138,11 +139,21 @@ impl Default for CpuState {
             reset_line_asserted: false,
             micro: crate::micro::CpuMicroState::default(),
             cycle_counter: 0,
+            bus_timing: crate::bus_guard::BusTiming::default(),
         }
     }
 }
 
 impl CpuState {
+    #[inline]
+    pub(crate) fn take_bus_timing(&mut self) -> crate::bus_guard::BusTiming {
+        core::mem::take(&mut self.bus_timing)
+    }
+    #[inline]
+    pub(crate) fn set_bus_timing(&mut self, timing: crate::bus_guard::BusTiming) {
+        self.bus_timing = timing;
+    }
+
     #[inline(always)]
     pub fn pc(&self) -> u32 {
         self.pc

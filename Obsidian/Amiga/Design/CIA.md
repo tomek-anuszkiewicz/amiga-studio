@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "cia"
 status: "active"
 created: 2026-09-06
-updated: 2026-11-15
+updated: 2026-11-16
 related: ["[Machine Loop.md](Machine%20Loop.md)", "[MemoryBus.md](MemoryBus.md)", "[Keyboard.md](Keyboard.md)", "[Floppy.md](Floppy.md)", "[Paula.md](Paula.md)"]
 tracked_paths:
   - "crates/cia"
@@ -219,8 +219,8 @@ instances. CIA's public register interface has no motherboard address or chip
 identity. [`registers.rs`](../../../crates/cia/src/registers.rs) owns these
 accessors and private application methods. Reads expose active state; each
 setter returns whether its write entered the fixed inline mutation buffer.
-A rejected full-buffer write changes neither the active register nor pending
-work. A successful setter never applies its payload immediately.
+An insertion requiring an unavailable slot stops the owner before changing
+the active register or pending work; replacement at capacity remains valid. A successful setter never applies its payload immediately.
 
 The current CCK model separates bus synchronization from register capture:
 
@@ -283,12 +283,14 @@ nor acquire/release TOD latches or advance pending work.
 Under the user-approved policy of 2026-11-11, pending writes retain the last value per selector until the next capture edge. Replacement recomputes the remaining time to that same edge rather than postponing capture. Writes to different selectors remain ordered; once captured, effects are not canceled by a later write. The sixteen-slot buffer exceeds
 production CPU demand: each CIA accepts at most one transfer per E period,
 and a phase-1 write commits at phase 2, before another transfer can be accepted.
-CPU bus acceptance therefore checks E-clock synchronization without a queue
-capacity check or a queue-related wait state. Direct callers must respect the
-setter's acceptance result and drain injected writes before resuming CPU bus
-traffic; direct writes are not a second concurrent producer on that bus path.
+CPU bus acceptance checks E-clock synchronization first, then preflights every
+selected queue before consuming either receiver's synchronization or staging data.
+An unavailable slot is fatal, never a queue-related wait state. Direct injected
+writes must drain before CPU bus traffic resumes; they are not a second
+concurrent producer on that bus path.
 Valid direct setters retain at most one pending operation per connected selector. A due buffer of the same capacity applies all retained operations at capture; an operation replaced before capture has no effect.
-The shared staging helper rejects overflow without immediate application.
+The shared staging helper treats attempted overflow as a fatal internal failure,
+without immediate application or a queue-related retry.
 
 The serialized CIA value contains its divider phase, pending bus countdown,
 chip-local register selectors `0..15`, write values/countdowns/modes, active

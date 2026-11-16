@@ -32,21 +32,18 @@ impl Agnus {
                 .is_some_and(|slot| self.disk_dma_requests[slot])
     }
 
-    pub(super) fn grant_disk_word(&mut self, ram: &[u8]) {
+    pub(super) fn grant_disk_word(&mut self, ram: &mut impl config::chip_ram::ChipRamAccess) {
         let Some(slot) = self.disk_slot() else {
             return;
         };
-        self.disk_dma_requests[slot] = false;
         if self.disk_dma_write[slot] {
-            if ram.is_empty() {
-                return;
-            }
-            let word = chip_ram::read_u16(ram, self.dskpt);
+            let word = ram.read_chip_word(self.dskpt, config::chip_ram::ChipRamOwner::Disk);
             self.pending_dma_write = Some((custom_reg::paula::REGISTER_DSKDAT, word));
             self.dskpt = self.dskpt.wrapping_add(2) & chip_ram::MASK_OCS_DMA_ADDRESS;
         } else {
             self.pending_dsk_dma_slot = Some(self.dskpt);
         }
+        self.disk_dma_requests[slot] = false;
     }
 
     /// Completes a granted DSKDATR-to-RAM word, after the supplier accepted it.

@@ -1852,6 +1852,43 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Reviewed process-handle ownership and telemetry identity checks
   - Updated the testing specification to describe the approved exception
   - Canonical verification and independent review are pending
+---
+
+### [2026-11-16 01:03 CET] — MEMORY-ACCESS-INVARIANTS-20261115 / MUTATION-QUEUE-OVERFLOW-20261115: enforce fatal runtime invariants
+- **Affected Subsystems**:
+  - `CPU`
+  - `Physical memory`
+  - `Custom chips and CIA`
+  - `Machine loop`
+  - `Native and browser GUI`
+  - `Save states`
+- **What Was Changed (The Concrete Reality)**:
+  - Make Chip RAM private and count CPU and DMA transfers against one serialized budget per CCK
+  - Guard CPU attempts and read/write phases in both execution engines, including waits and TAS
+  - Make mutation queue overflow and earlier shared-register/CIA preflights fatal before partial delivery
+  - Report the original diagnostic at the native owner or browser worker boundary, reject later work and finish shutdown without waiting for the failed owner
+  - Migrate fixtures and the benchmark bus to explicit cycles and require admission state in save format 9
+  - Apply the approved function-scoped panic permission, CPU dependency on config and removal of the obsolete empty raw-buffer test while retaining open-bus address behavior
+  - Reject instruction retirement before read completion, preserve rejected disk requests, and retain the first native diagnostic across flag/completion and poisoned-mailbox races
+  - Remove the unused block-injection helper, reuse physical byte inspection in the debug bank paths and reconcile active retry/dependency descriptions
+- **Architectural Rationale & Trade-Offs**:
+  - Stop internal violations before rejected side effects while preserving guest exceptions, ordinary waits, queue capacities and propagation timing
+  - Keep both checks enabled in optimized builds
+  - User approved the narrow panic and dependency permissions and the one obsolete test removal
+  - Older snapshot formats are unsupported under the existing pre-release policy
+- **Verification & Test Results**:
+  - Focused owning suites passed, including 200 component tests, 124 GUI tests and 20 persistence tests
+  - Seven CPU admission tests and physical admission tests passed in debug and release
+  - Sampled SingleStep verification passed 6350 vectors with state, clocks and bus comparisons retained
+  - Current architecture, Clippy, formatting, real browser build and actual Rust/Wasm fatal delivery passed
+  - All 11 TAS benchmark cases executed after fixture migration
+  - Final interleaved original/candidate comparison measured 123.442 to 119.584 FPS mixed and 211.130 to 198.452 FPS CPU/Fast RAM, reductions of 3.13 and 6.00 percent
+  - Native worker timing spread overlaps and no browser throughput or full hardware capture result is claimed
+  - Final optimized profiles and matching source/binary identities remain in task artifacts
+  - New CPU retirement and disk-admission regressions failed before their fixes and pass afterward; deterministic native failure classification passes in debug and release
+  - Reviewed changed coverage spans after extending repeated-clock, pending-retirement, replacement-preflight and unavailable-disk-data tests
+  - Native coverage omits source-owning test modules and Wasm, which have separate direct and browser evidence; poisoned-mailbox forwarding branches were not exercised
+---
 
 ### [2026-11-16 08:26 CET] — Publish Windows verification fixture readiness atomically
 - **Affected Subsystems**:

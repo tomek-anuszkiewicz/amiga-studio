@@ -44,6 +44,13 @@ fn test_fixed_dma_slot_cpu_wait_states() {
         machine.physical_memory.read_word(0x001000),
         BusResult::Ready(_)
     ));
+    // Complete the read and give the independent write its setup CCK.
+    // The write-data callback then occurs in a genuinely later machine CCK.
+    for _ in 0..3 {
+        machine.step_subsystems_cck();
+    }
+    assert_eq!(machine.agnus.hpos, 53);
+    assert!(!machine.physical_memory.chip_ram_blocked);
     assert_eq!(
         machine.physical_memory.write_word(0x001000, 0x5678),
         BusResult::Ready(())
@@ -115,7 +122,11 @@ fn test_bitplane_contention_scaling() {
     // Case 1: LoRes 4 Planes (BPLCON0 = 0x4000)
     machine.agnus.set_bplcon0(0x4000);
     for _ in 0..4 {
-        machine.agnus.step_cck();
+        machine.cck = machine.cck.wrapping_add(1);
+        machine
+            .physical_memory
+            .begin_cck(machine.cck, machine.cpu.state.instruction_pc());
+        machine.agnus.step_cck(&mut machine.physical_memory);
     }
 
     // Slot 1: Plane 4 fetches -> Chip RAM blocked
@@ -133,7 +144,11 @@ fn test_bitplane_contention_scaling() {
     // Case 2: LoRes 6 Planes (BPLCON0 = 0x6000) -> cycle stealing on slots 6 and 2
     machine.agnus.set_bplcon0(0x6000);
     for _ in 0..4 {
-        machine.agnus.step_cck();
+        machine.cck = machine.cck.wrapping_add(1);
+        machine
+            .physical_memory
+            .begin_cck(machine.cck, machine.cpu.state.instruction_pc());
+        machine.agnus.step_cck(&mut machine.physical_memory);
     }
 
     // Slot 6: Plane 5 steals cycle -> Chip RAM blocked!
@@ -157,7 +172,11 @@ fn test_bitplane_contention_scaling() {
     // Case 3: HiRes 4 Planes (BPLCON0 = 0xC000) -> 100% CPU lock-out in DDF window
     machine.agnus.set_bplcon0(0xC000);
     for _ in 0..4 {
-        machine.agnus.step_cck();
+        machine.cck = machine.cck.wrapping_add(1);
+        machine
+            .physical_memory
+            .begin_cck(machine.cck, machine.cpu.state.instruction_pc());
+        machine.agnus.step_cck(&mut machine.physical_memory);
     }
     for phase in 0..8 {
         machine.agnus.hpos = base + phase - 1;
@@ -197,7 +216,7 @@ fn test_blitter_nasty_cpu_lockout_integration() {
         let transferred = machine.agnus.blitter.bltdpt != before;
         if transferred {
             transferred_words += 1;
-            assert_eq!(machine.physical_memory.read_chip_word(before), 0xFFFF);
+            assert_eq!(machine.physical_memory.read_chip_word_debug(before), 0xFFFF);
             assert!(machine.physical_memory.chip_ram_blocked);
             assert_eq!(
                 machine.physical_memory.read_word(0x1000),
@@ -232,7 +251,10 @@ fn test_cpu_three_cycle_starvation_yield_integration() {
     machine.agnus.blitter.bltcon0 = 0x0E00;
     machine.agnus.blitter.set_dma_enabled(true);
     machine.agnus.blitter.trigger_blit(0x0048);
-    machine.agnus.blitter.step_cck();
+    machine
+        .agnus
+        .blitter
+        .step_cck(&mut machine.physical_memory, false);
     machine.agnus.hpos = 50;
 
     // Cycles 1..3: Blitter takes the bus, starving the CPU
@@ -267,7 +289,10 @@ fn blitter_does_not_yield_for_stopped_cpu_or_private_memory_traffic() {
     machine.agnus.blitter.bltcon0 = 0x0e00;
     machine.agnus.blitter.set_dma_enabled(true);
     machine.agnus.blitter.trigger_blit(0x0048);
-    machine.agnus.blitter.step_cck();
+    machine
+        .agnus
+        .blitter
+        .step_cck(&mut machine.physical_memory, false);
     for _ in 0..12 {
         machine.step_cck();
         assert!(machine.physical_memory.chip_ram_blocked);

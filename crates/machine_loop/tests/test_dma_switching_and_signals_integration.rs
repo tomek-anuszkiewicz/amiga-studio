@@ -26,10 +26,11 @@ fn test_dmacon_bitwise_set_and_clear_across_subsystems() {
 
     // 2. Set Master DMA (bit 9) + Copper (bit 7) + Blitter (bit 6) + Sprite (bit 5)
     // $8000 | $0200 | $0080 | $0040 | $0020 = $82E0
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_DMACON, 0x82E0);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_DMACON,
+        0x82E0,
+        "DMA",
+    );
     harness.step_cck(2); // Physical propagation delay
 
     assert_eq!(harness.machine.agnus.dma.dmacon & 0x02E0, 0x02E0);
@@ -41,10 +42,11 @@ fn test_dmacon_bitwise_set_and_clear_across_subsystems() {
         .is_dma_enabled(config::mask::dmacon::BIT_SPREN));
 
     // 3. Clear only Copper DMA: write $0080 (bit 15 is 0 -> clear bit 7)
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_DMACON, 0x0080);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_DMACON,
+        0x0080,
+        "DMA",
+    );
     harness.step_cck(2);
 
     assert_eq!(harness.machine.agnus.dma.dmacon & 0x0080, 0);
@@ -57,10 +59,11 @@ fn test_dmacon_bitwise_set_and_clear_across_subsystems() {
         .is_dma_enabled(config::mask::dmacon::BIT_SPREN));
 
     // 4. Clear Master DMA (DMAEN bit 9): write $0200
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_DMACON, 0x0200);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_DMACON,
+        0x0200,
+        "DMA",
+    );
     harness.step_cck(2);
 
     // Master DMA disabled: all individual channel activities must cease
@@ -82,10 +85,11 @@ fn test_register_write_electronic_propagation_delay() {
     assert_eq!(harness.machine.denise.diwstrt, 0x0000);
 
     // Dispatch write to DIWSTRT ($DFF08E) = $2C81
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::denise::REGISTER_DIWSTRT, 0x2C81);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::denise::REGISTER_DIWSTRT,
+        0x2C81,
+        "DMA",
+    );
 
     // Cycle 0: Write has just been staged into the mutation pipeline, NOT yet committed
     assert_eq!(

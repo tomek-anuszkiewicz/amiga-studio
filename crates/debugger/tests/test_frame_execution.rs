@@ -208,10 +208,11 @@ fn stopped_cpu_wakes_from_cia_timer_and_breakpoints_resume_with_execution() {
             false,
         )
         .unwrap();
-    session
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::paula::REGISTER_INTENA, 0xc008);
+    session.machine.memory_bus().write_custom_word(
+        custom_reg::paula::REGISTER_INTENA,
+        0xc008,
+        "CPU",
+    );
     session.machine.cia_a.set_talo(40);
     session.machine.cia_a.set_tahi(0);
     session.machine.cia_a.set_icr(0x81);

@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "agnus"
 status: "active"
 created: 2026-09-06
-updated: 2026-11-12
+updated: 2026-11-16
 related: ["[Copper.md](Copper.md)", "[Blitter.md](Blitter.md)", "[DMA.md](DMA.md)", "[Denise.md](Denise.md)"]
 tracked_paths:
   - "crates/agnus"
@@ -59,7 +59,7 @@ Source files remain flat under `agnus/src/`. Supporting files carry the subsyste
 
 ## Register propagation
 
-Custom bus writes enter concrete queued setters in [registers.rs](../../../crates/agnus/src/registers.rs), [blitter_registers.rs](../../../crates/agnus/src/blitter_registers.rs) and [copper_registers.rs](../../../crates/agnus/src/copper_registers.rs). These modules share the Agnus queue; the child modules do not own separate propagation queues. Register reads remain in `registers.rs`, while [register_apply.rs](../../../crates/agnus/src/register_apply.rs) applies DMA set/clear bits, pointer masks and child Copper/Blitter changes only when due. Pending configuration leaves active DMA requests under the existing scheduler contract; commitment changes enables before later engine steps. Autonomous pointer reloads and increments remain engine operations. [MemoryBus](MemoryBus.md#custom-registers-and-specialized-chips) owns the shared propagation contract and provisional delays. The 64-entry queue exceeds two accepted CPU/Copper writes per CCK over the maximum four-CCK delay (eight entries); unsupported bursts are rejected rather than applied early. All matured events are applied and returned without an eight-event truncation.
+Custom bus writes enter concrete queued setters in [registers.rs](../../../crates/agnus/src/registers.rs), [blitter_registers.rs](../../../crates/agnus/src/blitter_registers.rs) and [copper_registers.rs](../../../crates/agnus/src/copper_registers.rs). These modules share the Agnus queue; the child modules do not own separate propagation queues. Register reads remain in `registers.rs`, while [register_apply.rs](../../../crates/agnus/src/register_apply.rs) applies DMA set/clear bits, pointer masks and child Copper/Blitter changes only when due. Pending configuration leaves active DMA requests under the existing scheduler contract; commitment changes enables before later engine steps. Autonomous pointer reloads and increments remain engine operations. [MemoryBus](MemoryBus.md#custom-registers-and-specialized-chips) owns the shared propagation contract and provisional delays. The 64-entry queue exceeds two accepted CPU/Copper writes per CCK over the maximum four-CCK delay (eight entries); an attempted overflow stops the owner rather than applying data early. All matured events are applied and returned without an eight-event truncation.
 
 Committed VPOSW writes update V8 and LOF; VHPOSW updates V7-V0 and the
 horizontal counter, preserving the other vertical bit. These follow HRM 7,
@@ -86,8 +86,8 @@ eligible transfers; capturing the line is not a bus grant.
 `pending_dma_write` holds an already granted audio/sprite/disk RGA/data word until
 MemoryBus accepts all recipients at the common post-custom-chip issue phase.
 The existing pending bitplane and Copper outputs retain their established
-routes. These outputs serialize and survive receiver refusal; reset cancels
-them. [DMA](DMA.md) owns address, pointer/count and request completion contracts.
+routes. These outputs serialize until delivery; reset cancels them. Receiver queue
+overflow stops the owner rather than retrying the pending output. [DMA](DMA.md) owns address, pointer/count and request completion contracts.
 
 [The beam engine](../../../crates/agnus/src/beam.rs) uses 312/313 PAL or
 262/263 NTSC lines according to LOF. BPLCON0 LACE toggles LOF at field completion;

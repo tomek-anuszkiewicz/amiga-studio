@@ -3,6 +3,7 @@
 //! Provides cycle-exact micro-step state machine execution, effective address resolution,
 //! condition code evaluation, and a 65,536-entry compile-time static opcode descriptor table.
 
+mod bus_guard;
 pub(crate) mod instructions;
 pub mod micro {
     pub mod common;
@@ -71,6 +72,7 @@ impl Cpu {
     }
 
     fn reset_internal(&mut self, bus: &mut dyn AddressBus) {
+        self.state.set_bus_timing(bus_guard::BusTiming::default());
         self.state.set_sr(crate::state::SR_RESET_DEFAULT);
         self.state.set_stopped(false);
         self.state.set_halted(false);
@@ -177,6 +179,17 @@ impl Cpu {
     /// Executes the active micro-step without repeating instruction-boundary setup.
     #[inline(always)]
     fn step_cck_internal(&mut self, bus: &mut dyn AddressBus) -> bool {
+        let pc = self.state.instruction_pc();
+        let mut timing = self.state.take_bus_timing();
+        let cck = bus.begin_cpu_cck(timing.next_cpu_cck(), pc);
+        let mut guarded = bus_guard::GuardedBus::new(bus, timing, cck, pc);
+        let completed = self.execute_cck(&mut guarded);
+        self.state.set_bus_timing(guarded.finish());
+        completed
+    }
+
+    #[inline(always)]
+    fn execute_cck(&mut self, bus: &mut bus_guard::GuardedBus<'_>) -> bool {
         // Every active CCK phase step advances global and instruction clocks by 2 CPU clocks (1 CCK)
         self.advance_clocks(MicroStep::CCK_CLOCKS as u32);
 
@@ -224,6 +237,7 @@ impl Cpu {
                 None => BusResult::Ready(()),
             };
             if self.state.micro().current_steps.is_empty() {
+                bus.require_instruction_completion();
                 if self.state.is_trace_pending() {
                     self.trigger_trace();
                 }
@@ -261,6 +275,7 @@ impl Cpu {
                         >= self.state.micro().current_steps.len();
 
                     if instruction_steps_completed {
+                        bus.require_instruction_completion();
                         self.retire_current_instruction();
                         return true;
                     }
@@ -270,6 +285,7 @@ impl Cpu {
             }
         }
 
+        bus.require_instruction_completion();
         self.retire_current_instruction();
         true
     }
@@ -421,6 +437,7 @@ impl Cpu {
     /// execution in unit tests or synthetic debugger harnesses.
     #[inline]
     pub fn set_pc_and_prime_prefetch(&mut self, target_pc: u32, bus: &mut dyn AddressBus) {
+        self.state.set_bus_timing(bus_guard::BusTiming::default());
         self.state.set_instruction_pc(target_pc);
         self.state.set_pc(target_pc);
         self.state

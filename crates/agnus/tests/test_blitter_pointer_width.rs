@@ -1,9 +1,11 @@
+mod common;
 use agnus::blitter::{Blitter, LineDrawer};
+use common::TestChipRam;
 
 #[test]
 fn area_source_pointer_wraps_within_512k_chip_ram() {
     let mut blitter = Blitter::new();
-    let mut chip_ram = vec![0; 512 * 1024];
+    let mut chip_ram = TestChipRam::from(vec![0; 512 * 1024]);
     chip_ram[0x7FFFE..0x80000].copy_from_slice(&0x1234u16.to_be_bytes());
     chip_ram[0..2].copy_from_slice(&0x5678u16.to_be_bytes());
 
@@ -12,7 +14,8 @@ fn area_source_pointer_wraps_within_512k_chip_ram() {
     blitter.set_dma_enabled(true);
     blitter.trigger_blit((1 << 6) | 2);
     for _ in 0..16 {
-        blitter.step_cck_ram(&mut chip_ram, true);
+        chip_ram.next_cck();
+        blitter.step_cck(&mut chip_ram, true);
     }
 
     assert!(!blitter.is_busy);

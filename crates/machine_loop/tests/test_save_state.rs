@@ -65,7 +65,7 @@ fn snapshot_between_field_strobe_and_hblank_finishes_the_previous_display_row() 
         machine.denise.color[0] = 0x0f00;
         machine
             .memory_bus()
-            .write_custom_word(custom_reg::denise::REGISTER_BPLCON0, 4);
+            .write_custom_word(custom_reg::denise::REGISTER_BPLCON0, 4, "DMA");
         let mut boundary = false;
         for _ in 0..(3 * 313 * 228) {
             machine.step_subsystems_cck();
@@ -181,12 +181,16 @@ fn snapshots_resume_reset_stop_and_a_refused_second_operand_half() {
         }
         if boundary == 1 {
             for target in [&mut machine, &mut restored] {
-                target
-                    .memory_bus()
-                    .write_custom_word(custom_reg::paula::REGISTER_INTENA, 0xC040);
-                target
-                    .memory_bus()
-                    .write_custom_word(custom_reg::paula::REGISTER_INTREQ, 0x8040);
+                target.memory_bus().write_custom_word(
+                    custom_reg::paula::REGISTER_INTENA,
+                    0xC040,
+                    "DMA",
+                );
+                target.memory_bus().write_custom_word(
+                    custom_reg::paula::REGISTER_INTREQ,
+                    0x8040,
+                    "DMA",
+                );
             }
         }
         let mut finished = false;

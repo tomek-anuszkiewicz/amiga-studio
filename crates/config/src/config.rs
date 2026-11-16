@@ -7,9 +7,11 @@ pub mod address_map;
 pub mod big_array;
 pub mod chip_ram;
 pub mod dmal;
+mod fatal;
 pub mod mutation;
 pub mod registers;
 
+pub use fatal::fatal_emulation_error;
 pub use mutation::{
     DelayedMutation, MutationMode, MutationQueue, DMACON_WRITE_DELAY_CCK,
     PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,

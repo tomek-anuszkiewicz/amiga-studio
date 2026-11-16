@@ -14,10 +14,11 @@ fn test_cia_a_timer_underflow_triggers_level2_interrupt() {
     let mut harness = MachineHarness::new();
 
     // 1. Unmask Level 2 PORTS interrupt in Paula INTENA (bit 3 + master bit 14 = 0x4008)
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::paula::REGISTER_INTENA, 0xC008); // SET/CLR + INTEN + PORTS
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::paula::REGISTER_INTENA,
+        0xC008,
+        "DMA",
+    ); // SET/CLR + INTEN + PORTS
 
     // 2. Configure CIA-A Timer A:
     // Latch = 5 E-Clocks (each E-Clock = 5 CCKs -> 25 CCKs total)
@@ -67,10 +68,11 @@ fn test_cia_b_timer_underflow_triggers_level6_interrupt() {
     let mut harness = MachineHarness::new();
 
     // 1. Unmask Level 6 EXTER interrupt in Paula INTENA (bit 13 + master bit 14 = 0x6000)
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::paula::REGISTER_INTENA, 0xE000); // SET/CLR + INTEN + EXTER
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::paula::REGISTER_INTENA,
+        0xE000,
+        "DMA",
+    ); // SET/CLR + INTEN + EXTER
 
     // 2. Configure CIA-B Timer A for 4 E-Clocks
     harness.machine.cia_b.set_talo(4); // TALO
@@ -131,10 +133,11 @@ fn test_cia_tod_50hz_vblank_tick() {
 #[test]
 fn test_cia_interrupt_waits_for_captured_pin_delivery() {
     let mut harness = MachineHarness::new();
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::paula::REGISTER_INTENA, 0xC008);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::paula::REGISTER_INTENA,
+        0xC008,
+        "DMA",
+    );
     harness.machine.cia_a.set_talo(1);
     harness.machine.cia_a.set_tahi(0);
     harness.machine.cia_a.set_icr(0x81);

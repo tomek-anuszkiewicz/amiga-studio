@@ -1,12 +1,16 @@
 //! Bounded host exchange and machine-owner lifetime on desktop and the web.
 
 use crate::host_commands::{HostCommand, HostReply, HostRequest, HostStatus, HOST_QUEUE_CAPACITY};
+use crate::host_failure::HostFailure;
 use crate::host_input::{HostInputEvent, InputQueue};
 use crate::host_owner::MachineOwner;
 use crate::host_video::{FrameInfo, VideoExchange, VideoExchangeError, VideoRead};
 use std::collections::VecDeque;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, TryLockError};
+
+#[cfg(all(not(target_arch = "wasm32"), panic = "abort"))]
+compile_error!("The native machine owner requires panic=unwind for fatal invariant reporting");
 
 pub(crate) const HOST_RETRY_DELAY: std::time::Duration = std::time::Duration::from_millis(1);
 #[cfg(target_arch = "wasm32")]
@@ -103,8 +107,9 @@ struct SharedHost {
     mailboxes: Mutex<Mailboxes>,
     video: VideoExchange,
     stop: AtomicBool,
-    failed: AtomicBool,
     stopped: AtomicBool,
+    // Failure publication never acquires the owner's locks.
+    failure: HostFailure,
 }
 
 /// A rejected submission retains its owned command for retry by the GUI.
@@ -154,11 +159,11 @@ impl HostInputSender {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HostRuntimeError {
-    PoisonedMailboxes,
     WorkerStopped,
     StartupFailed,
+    Fatal(String),
 }
 
 /// The GUI owns this handle; the worker exclusively owns the debugger session.
@@ -193,8 +198,8 @@ impl HostRuntime {
             }),
             video: VideoExchange::new(spare),
             stop: AtomicBool::new(false),
-            failed: AtomicBool::new(false),
             stopped: AtomicBool::new(false),
+            failure: HostFailure::default(),
         });
         let worker_shared = shared.clone();
         let repaint = context.clone();
@@ -249,14 +254,14 @@ impl HostRuntime {
             .post_message(&wasm_bindgen::JsValue::NULL)
             .is_err()
         {
-            self.shared.failed.store(true, Ordering::Release);
+            self.shared.failure.mark_failed();
         }
     }
 
     pub fn submit(&mut self, command: HostCommand) -> Result<u64, HostBusy> {
         if self.generation_barrier.is_some()
             || self.status.shutdown
-            || self.shared.failed.load(Ordering::Acquire)
+            || self.shared.failure.is_failed()
             || self.shared.stopped.load(Ordering::Acquire)
         {
             return Err(HostBusy(command));
@@ -293,26 +298,55 @@ impl HostRuntime {
         Ok(id)
     }
 
+    fn is_worker_finished(&self) -> bool {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.worker
+                .as_ref()
+                .is_some_and(|worker| worker.is_finished())
+        }
+        #[cfg(target_arch = "wasm32")]
+        {
+            self.shared.stopped.load(Ordering::Acquire)
+        }
+    }
+
     pub fn poll(&mut self) -> Result<Vec<HostReply>, HostRuntimeError> {
-        if self.shared.failed.load(Ordering::Acquire) {
-            return Err(HostRuntimeError::WorkerStopped);
+        if self.shared.failure.is_failed() {
+            self.status.running = false;
+            self.status.continuous_run = false;
+            self.status.pause_pending = false;
+            return Err(self.shared.failure.error());
         }
         let mut mailboxes = match self.shared.mailboxes.try_lock() {
             Ok(mailboxes) => mailboxes,
             Err(TryLockError::WouldBlock) => return Ok(Vec::new()),
-            Err(TryLockError::Poisoned(_)) => return Err(HostRuntimeError::PoisonedMailboxes),
+            Err(TryLockError::Poisoned(_)) => {
+                // Unwinding can poison the lock before the outer catch publishes
+                // the diagnostic. Wait for that boundary instead of latching a
+                // generic mailbox error that would hide the original failure.
+                if let Some(error) = self.shared.failure.poll(|| self.is_worker_finished()) {
+                    self.status.running = false;
+                    self.status.continuous_run = false;
+                    self.status.pause_pending = false;
+                    return Err(error);
+                }
+                self.repaint.request_repaint_after(HOST_RETRY_DELAY);
+                return Ok(Vec::new());
+            }
         };
         if mailboxes.status.revision >= self.status.revision {
             self.status = mailboxes.status;
         }
-        #[cfg(not(target_arch = "wasm32"))]
-        if self
-            .worker
-            .as_ref()
-            .is_some_and(|worker| worker.is_finished())
-            && !self.status.shutdown
+        if let Some(error) = self
+            .shared
+            .failure
+            .poll(|| self.is_worker_finished() && !self.status.shutdown)
         {
-            return Err(HostRuntimeError::WorkerStopped);
+            self.status.running = false;
+            self.status.continuous_run = false;
+            self.status.pause_pending = false;
+            return Err(error);
         }
         let replies: Vec<HostReply> = mailboxes.replies.drain(..).collect();
         for reply in &replies {
@@ -337,6 +371,9 @@ impl HostRuntime {
         &mut self,
         read: impl FnOnce(FrameInfo, HostStatus, &[u32]) -> T,
     ) -> Result<VideoRead<T>, VideoExchangeError> {
+        if self.shared.failure.is_failed() {
+            return Ok(VideoRead::Pending);
+        }
         if self.generation_barrier.is_some() {
             return Ok(VideoRead::Pending);
         }
@@ -350,7 +387,11 @@ impl HostRuntime {
                 self.repaint.request_repaint_after(HOST_RETRY_DELAY);
                 return Ok(VideoRead::Pending);
             }
-            Err(TryLockError::Poisoned(_)) => return Err(VideoExchangeError::PoisonedStorage),
+            Err(TryLockError::Poisoned(_)) => {
+                // Terminal reporting belongs to poll, after the owner boundary.
+                self.repaint.request_repaint_after(HOST_RETRY_DELAY);
+                return Ok(VideoRead::Pending);
+            }
         };
         if let Some(mailboxes) = &mailboxes {
             if mailboxes.status.revision >= self.status.revision {
@@ -374,8 +415,8 @@ impl HostRuntime {
 
     /// Finishes an acknowledged shutdown without waiting on an active worker.
     pub fn finish_shutdown(&mut self) -> Result<Option<rtc::RtcBattery>, HostRuntimeError> {
-        if self.shared.failed.load(Ordering::Acquire) {
-            return Err(HostRuntimeError::WorkerStopped);
+        if self.shared.failure.is_failed() {
+            return Err(self.shared.failure.error());
         }
         #[cfg(target_arch = "wasm32")]
         return Ok(self
@@ -393,7 +434,19 @@ impl HostRuntime {
                 return Ok(None);
             }
             match self.worker.take().map(|worker| worker.join()) {
-                Some(Ok(battery)) => Ok(Some(battery)),
+                Some(Ok(battery)) => {
+                    // Completion can race the GUI's last nonblocking poll. A
+                    // caught fatal panic also returns normally from the thread.
+                    if self.shared.failure.is_failed() {
+                        return Err(self.shared.failure.error());
+                    }
+                    self.status.shutdown = true;
+                    self.status.running = false;
+                    self.status.continuous_run = false;
+                    self.status.pause_pending = false;
+                    self.status.battery = battery;
+                    Ok(Some(battery))
+                }
                 Some(Err(_)) => Err(HostRuntimeError::WorkerStopped),
                 None => Ok(None),
             }
@@ -533,7 +586,7 @@ impl WorkerLoop {
     }
 
     fn fail(shared: &SharedHost) -> (bool, WorkerWait) {
-        shared.failed.store(true, Ordering::Release);
+        shared.failure.mark_failed();
         (true, WorkerWait::Stop)
     }
 }
@@ -550,7 +603,10 @@ fn run_native(
         shared,
         pending_reply: None,
     };
-    loop {
+    // The battery belongs to the last healthy owner boundary. Never inspect or
+    // publish the partially advanced machine after a fatal failure.
+    let battery = worker.owner.status().battery;
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| loop {
         let started = std::time::Instant::now();
         let (notify, wait) = worker.tick(clock.elapsed().as_secs_f64(), || {
             started.elapsed().as_secs_f64()
@@ -566,12 +622,26 @@ fn run_native(
                 std::thread::sleep(delay.min(MAX_NATIVE_SLEEP))
             }
             WorkerWait::Delay(_) => {}
-            WorkerWait::Stop => break,
+            WorkerWait::Stop => return worker.owner.status().battery,
         }
-    }
+    }));
+    let battery = match result {
+        Ok(battery) => battery,
+        Err(payload) => {
+            let message = if let Some(message) = payload.downcast_ref::<String>() {
+                message.clone()
+            } else if let Some(message) = payload.downcast_ref::<&str>() {
+                (*message).to_owned()
+            } else {
+                "Machine owner panicked without a text diagnostic".to_owned()
+            };
+            worker.shared.failure.record(message);
+            battery
+        }
+    };
     worker.shared.stopped.store(true, Ordering::Release);
     context.request_repaint();
-    worker.owner.status().battery
+    battery
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -591,6 +661,16 @@ extern "C" {
     fn set_host_input_enabled(enabled: bool, interval_ms: f64, generation: u64);
     fn host_now() -> f64;
     fn notify_gui();
+    fn report_machine_failure(message: &str);
+}
+
+/// Installed once by the browser worker before it enters any machine work.
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen::prelude::wasm_bindgen]
+pub fn host_worker_start() {
+    std::panic::set_hook(Box::new(|info| {
+        report_machine_failure(&info.to_string());
+    }));
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -654,13 +734,14 @@ fn start_web(
             sender.try_send(event, Some(generation))
         },
     );
-    let finished = Closure::<dyn FnMut(bool)>::new(move |success: bool| {
-        if !success {
-            finished_shared.failed.store(true, Ordering::Release);
-        }
-        finished_shared.stopped.store(true, Ordering::Release);
-        context.request_repaint();
-    });
+    let finished =
+        Closure::<dyn FnMut(bool, String)>::new(move |success: bool, message: String| {
+            if !success {
+                finished_shared.failure.record(message);
+            }
+            finished_shared.stopped.store(true, Ordering::Release);
+            context.request_repaint();
+        });
     *slot = Some(WorkerLoop {
         owner,
         shared,

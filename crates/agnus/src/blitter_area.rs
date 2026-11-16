@@ -9,18 +9,26 @@ use config::chip_ram;
 const WORD_BYTES: u32 = 2;
 
 impl Blitter {
-    pub(crate) fn step_area_cycle(&mut self, ram: &mut [u8], phase: BlitterPhase) {
+    pub(crate) fn step_area_cycle(
+        &mut self,
+        ram: &mut impl config::chip_ram::ChipRamAccess,
+        phase: BlitterPhase,
+    ) {
         match phase {
             BlitterPhase::FetchA => {
-                self.bltadat = chip_ram::read_u16(ram, self.bltapt);
+                self.bltadat =
+                    ram.read_chip_word(self.bltapt, config::chip_ram::ChipRamOwner::Blitter);
                 self.bltapt = self.advance_pointer(self.bltapt, WORD_BYTES);
             }
             BlitterPhase::FetchB => {
-                self.write_bltbdat(chip_ram::read_u16(ram, self.bltbpt));
+                self.write_bltbdat(
+                    ram.read_chip_word(self.bltbpt, config::chip_ram::ChipRamOwner::Blitter),
+                );
                 self.bltbpt = self.advance_pointer(self.bltbpt, WORD_BYTES);
             }
             BlitterPhase::FetchC => {
-                self.bltcdat = chip_ram::read_u16(ram, self.bltcpt);
+                self.bltcdat =
+                    ram.read_chip_word(self.bltcpt, config::chip_ram::ChipRamOwner::Blitter);
                 self.bltcpt = self.advance_pointer(self.bltcpt, WORD_BYTES);
             }
             BlitterPhase::WriteD => self.write_pending_word(ram),
@@ -86,9 +94,14 @@ impl Blitter {
         }
     }
 
-    fn write_pending_word(&mut self, ram: &mut [u8]) {
-        if let Some(word) = self.pending_word.take() {
-            chip_ram::write_u16(ram, self.bltdpt, word.data);
+    fn write_pending_word(&mut self, ram: &mut impl config::chip_ram::ChipRamAccess) {
+        if let Some(word) = self.pending_word {
+            ram.write_chip_word(
+                self.bltdpt,
+                word.data,
+                config::chip_ram::ChipRamOwner::Blitter,
+            );
+            self.pending_word = None;
             self.bltdpt = self.advance_pointer(self.bltdpt, WORD_BYTES);
             if word.last_in_row {
                 self.bltdpt = self.advance_pointer(self.bltdpt, self.bltdmod as i32 as u32);

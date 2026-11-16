@@ -130,7 +130,12 @@ pub fn render(app: &mut EmulatorApp, ctx: &egui::Context) {
                 });
             });
     } else if let Some(error) = app.file_error.clone() {
-        egui::Window::new("File loading failed")
+        let title = if app.host.error.is_some() {
+            "Emulation stopped"
+        } else {
+            "File loading failed"
+        };
+        egui::Window::new(title)
             .collapsible(false)
             .resizable(false)
             .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])

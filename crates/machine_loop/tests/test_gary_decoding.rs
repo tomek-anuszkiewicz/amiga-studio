@@ -92,11 +92,11 @@ fn every_cia_a_bank_alias_routes_only_committed_pa0_to_overlay() {
             let mut machine = A500Machine::new(A500Config::from_preset(preset, standard));
             machine.cpu.state.set_stopped(true);
             machine.physical_memory.write_word_debug(0xf80000, 0x1234);
-            machine.physical_memory.write_chip_word(0, 0x5678);
+            machine.physical_memory.write_chip_word_debug(0, 0x5678);
             for bank in 0xa0..=0xbf {
                 let base = bank << 16;
                 assert_eq!(machine.memory_bus().read_word_debug(0), 0x1234);
-                assert_eq!(machine.physical_memory.read_chip_word(0), 0x5678);
+                assert_eq!(machine.physical_memory.read_chip_word_debug(0), 0x5678);
                 // Dual-select even DDRA write: the byte reaches CIA-A as well.
                 assert_eq!(
                     common::cia::accept_write(&mut machine, base | 0x42fe, 1),

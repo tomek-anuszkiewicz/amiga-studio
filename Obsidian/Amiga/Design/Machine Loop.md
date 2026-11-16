@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "machine_loop"
 status: "active"
 created: 2026-08-31
-updated: 2026-11-15
+updated: 2026-11-16
 related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[DMA.md](DMA.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)", "[RTC.md](RTC.md)"]
 tracked_paths:
   - "crates/machine_loop"
@@ -21,7 +21,7 @@ The machine owns the CPU, physical memory, Agnus, Denise, Paula, both CIAs, the 
 
 `A500Machine::step_cck()` is the common path used by the stepping APIs. It performs these operations in order:
 
-1. Retain the previously captured `keyboard_reset_asserted` locally, increment the wrapping `cck` counter and call `step_subsystems_cck()`.
+1. Retain the previously captured `keyboard_reset_asserted` locally and call `step_subsystems_cck()`, which increments the wrapping master `cck` and opens the shared memory budget before any subsystem work.
 2. If the delivered motherboard keyboard reset input is asserted, perform a warm reset and return `false` without stepping the CPU in that call.
 3. Otherwise, record the CPU's current `RESET` output, create a `MemoryBus` over the machine components, and advance the CPU by one CCK phase.
 4. If that CPU phase newly asserted `RESET`, reset external devices while preserving the CPU's registers and program counter.
@@ -150,8 +150,10 @@ verification remain deferred to [12.4](../../../ROADMAP.md#serial-parallel-devic
 Register delivery has a separate acceptance contract: Copper, bitplane and
 audio/sprite RGA outputs remain in their source until every required receiver
 accepts. Queue insertion acknowledges the source, while commitment occurs only
-after the existing recipient delay. A receiver with no capacity leaves the
-output untouched; other chips, incoming inputs and CPU waiting still advance.
+after the existing recipient delay. An attempted delivery requiring an unavailable queue slot stops the owner
+immediately, leaving the source and every recipient unchanged by that delivery.
+No later CCK work or completed-field publication is permitted after detection.
+Earlier work in the CCK is not rolled back.
 No extra input delay is added to those register queues. The shared
 CPU/Copper fan-out and live-read retry protection from [MemoryBus](MemoryBus.md)
 remain unchanged. Tests use distinct granted words when a DMA producer is still

@@ -31,13 +31,13 @@ pub enum MemoryBank {
 }
 
 /// Function pointer signature for an 8-bit memory bank read handler
-pub type BankReadByteFn = fn(&PhysicalMemory, u32) -> BusResult<u8>;
+pub type BankReadByteFn = fn(&mut PhysicalMemory, u32) -> BusResult<u8>;
 
 /// Function pointer signature for an 8-bit memory bank write handler
 pub type BankWriteByteFn = fn(&mut PhysicalMemory, u32, u8) -> BusResult<()>;
 
 /// Function pointer signature for a 16-bit memory bank read handler
-pub type BankReadWordFn = fn(&PhysicalMemory, u32) -> BusResult<u16>;
+pub type BankReadWordFn = fn(&mut PhysicalMemory, u32) -> BusResult<u16>;
 
 /// Function pointer signature for a 16-bit memory bank write handler
 pub type BankWriteWordFn = fn(&mut PhysicalMemory, u32, u16) -> BusResult<()>;
@@ -138,12 +138,12 @@ fn read_chip_ram_internal(bus: &PhysicalMemory, addr: u32) -> u8 {
 
 #[inline]
 fn read_chip_ram_debug(bus: &PhysicalMemory, addr: u32) -> u8 {
-    read_chip_ram_internal(bus, addr)
+    bus.read_chip_byte_debug(addr)
 }
 
 #[inline]
 fn read_chip_ram_word_internal(bus: &PhysicalMemory, addr: u32) -> u16 {
-    bus.read_chip_word(addr)
+    bus.read_chip_word_debug(addr)
 }
 
 #[inline]
@@ -158,12 +158,12 @@ fn write_chip_ram_internal(bus: &mut PhysicalMemory, addr: u32, val: u8) {
 
 #[inline]
 fn write_chip_ram_debug(bus: &mut PhysicalMemory, addr: u32, val: u8) {
-    write_chip_ram_internal(bus, addr, val);
+    bus.write_chip_byte_debug(addr, val);
 }
 
 #[inline]
 fn write_chip_ram_word_internal(bus: &mut PhysicalMemory, addr: u32, val: u16) {
-    bus.write_chip_word(addr, val);
+    bus.write_chip_word_debug(addr, val);
 }
 
 #[inline]
@@ -172,19 +172,21 @@ fn write_chip_ram_word_debug(bus: &mut PhysicalMemory, addr: u32, val: u16) {
 }
 
 #[inline]
-fn read_chip_ram(bus: &PhysicalMemory, addr: u32) -> BusResult<u8> {
+fn read_chip_ram(bus: &mut PhysicalMemory, addr: u32) -> BusResult<u8> {
     if bus.chip_ram_blocked {
         BusResult::WaitState
     } else {
+        bus.admit_cpu_chip_transfer(addr, 1, config::chip_ram::TransferDirection::Read);
         BusResult::Ready(read_chip_ram_internal(bus, addr))
     }
 }
 
 #[inline]
-fn read_chip_ram_word(bus: &PhysicalMemory, addr: u32) -> BusResult<u16> {
+fn read_chip_ram_word(bus: &mut PhysicalMemory, addr: u32) -> BusResult<u16> {
     if bus.chip_ram_blocked {
         BusResult::WaitState
     } else {
+        bus.admit_cpu_chip_transfer(addr, 2, config::chip_ram::TransferDirection::Read);
         BusResult::Ready(read_chip_ram_word_internal(bus, addr))
     }
 }
@@ -194,6 +196,7 @@ fn write_chip_ram(bus: &mut PhysicalMemory, addr: u32, val: u8) -> BusResult<()>
     if bus.chip_ram_blocked {
         BusResult::WaitState
     } else {
+        bus.admit_cpu_chip_transfer(addr, 1, config::chip_ram::TransferDirection::Write);
         write_chip_ram_internal(bus, addr, val);
         BusResult::Ready(())
     }
@@ -204,6 +207,7 @@ fn write_chip_ram_word(bus: &mut PhysicalMemory, addr: u32, val: u16) -> BusResu
     if bus.chip_ram_blocked {
         BusResult::WaitState
     } else {
+        bus.admit_cpu_chip_transfer(addr, 2, config::chip_ram::TransferDirection::Write);
         write_chip_ram_word_internal(bus, addr, val);
         BusResult::Ready(())
     }
@@ -268,12 +272,12 @@ fn write_fast_ram_word_debug(bus: &mut PhysicalMemory, addr: u32, val: u16) {
 }
 
 #[inline]
-fn read_fast_ram(bus: &PhysicalMemory, addr: u32) -> BusResult<u8> {
+fn read_fast_ram(bus: &mut PhysicalMemory, addr: u32) -> BusResult<u8> {
     BusResult::Ready(read_fast_ram_internal(bus, addr))
 }
 
 #[inline]
-fn read_fast_ram_word(bus: &PhysicalMemory, addr: u32) -> BusResult<u16> {
+fn read_fast_ram_word(bus: &mut PhysicalMemory, addr: u32) -> BusResult<u16> {
     BusResult::Ready(read_fast_ram_word_internal(bus, addr))
 }
 
@@ -348,7 +352,7 @@ fn write_slow_ram_word_debug(bus: &mut PhysicalMemory, addr: u32, val: u16) {
 }
 
 #[inline]
-fn read_slow_ram(bus: &PhysicalMemory, addr: u32) -> BusResult<u8> {
+fn read_slow_ram(bus: &mut PhysicalMemory, addr: u32) -> BusResult<u8> {
     if bus.chip_ram_blocked {
         BusResult::WaitState
     } else {
@@ -357,7 +361,7 @@ fn read_slow_ram(bus: &PhysicalMemory, addr: u32) -> BusResult<u8> {
 }
 
 #[inline]
-fn read_slow_ram_word(bus: &PhysicalMemory, addr: u32) -> BusResult<u16> {
+fn read_slow_ram_word(bus: &mut PhysicalMemory, addr: u32) -> BusResult<u16> {
     if bus.chip_ram_blocked {
         BusResult::WaitState
     } else {
@@ -441,12 +445,12 @@ fn write_kickstart_rom_word_debug(bus: &mut PhysicalMemory, addr: u32, val: u16)
 }
 
 #[inline]
-fn read_kickstart_rom(bus: &PhysicalMemory, addr: u32) -> BusResult<u8> {
+fn read_kickstart_rom(bus: &mut PhysicalMemory, addr: u32) -> BusResult<u8> {
     BusResult::Ready(read_kickstart_rom_internal(bus, addr))
 }
 
 #[inline]
-fn read_kickstart_rom_word(bus: &PhysicalMemory, addr: u32) -> BusResult<u16> {
+fn read_kickstart_rom_word(bus: &mut PhysicalMemory, addr: u32) -> BusResult<u16> {
     BusResult::Ready(read_kickstart_rom_word_internal(bus, addr))
 }
 
@@ -497,12 +501,12 @@ fn write_open_bus_word_debug(bus: &mut PhysicalMemory, addr: u32, val: u16) {
 }
 
 #[inline]
-fn read_open_bus(bus: &PhysicalMemory, addr: u32) -> BusResult<u8> {
+fn read_open_bus(bus: &mut PhysicalMemory, addr: u32) -> BusResult<u8> {
     BusResult::Ready(read_open_bus_internal(bus, addr))
 }
 
 #[inline]
-fn read_open_bus_word(bus: &PhysicalMemory, addr: u32) -> BusResult<u16> {
+fn read_open_bus_word(bus: &mut PhysicalMemory, addr: u32) -> BusResult<u16> {
     BusResult::Ready(read_open_bus_word_internal(bus, addr))
 }
 

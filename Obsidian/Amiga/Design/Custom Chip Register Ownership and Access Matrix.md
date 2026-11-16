@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "memory_bus"
 status: "active"
 created: 2026-09-14
-updated: 2026-11-15
+updated: 2026-11-16
 related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[Agnus.md](Agnus.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)", "[Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
 ---
 
@@ -39,7 +39,7 @@ CIA aliases, dual selection and lane behavior.
 
 The final column records the production write interface in
 [`custom_registers.rs`](../../../crates/memory_bus/src/custom_registers.rs).
-`A`, `D`, `P` name Agnus, Denise and Paula. A number followed by `P` is the delay in subsequent owner CCK steps and `Pipeline` mode, preserving each accepted data operation. Concrete reference timings recorded in the timing research are retained; unresolved custom data writes use a one-CCK fallback. Address strobes act immediately at accepted selection and allocate no queue entry. Shared data writes require every recipient to accept atomically. This is the user-approved model policy of 2026-11-11; the hardware `Delay` column remains unknown. A committed write can still wait for a later engine consumer. [MemoryBus](MemoryBus.md#custom-registers-and-specialized-chips) owns acceptance, retry and issue boundaries.
+`A`, `D`, `P` name Agnus, Denise and Paula. A number followed by `P` is the delay in subsequent owner CCK steps and `Pipeline` mode, preserving each accepted data operation. Concrete reference timings recorded in the timing research are retained; unresolved custom data writes use a one-CCK fallback. Address strobes act immediately at accepted selection and allocate no queue entry. Shared data writes require every recipient to accept atomically. This is the user-approved model policy of 2026-11-11; the hardware `Delay` column remains unknown. A committed write can still wait for a later engine consumer. [MemoryBus](MemoryBus.md#custom-registers-and-specialized-chips) owns acceptance, arbitration waits and issue boundaries.
 
 The named setters live in [Agnus registers](../../../crates/agnus/src/registers.rs),
 [Blitter register staging](../../../crates/agnus/src/blitter_registers.rs),
@@ -56,7 +56,8 @@ CPU writes and legal Copper MOVE destinations use the same setters. The
 [Copper](Copper.md) applies the manual's address restrictions before emitting
 its retained request: offsets below `$040` are prohibited, `$040–$07E` require
 `COPCON.CDANG`, and `$080` upward are available. Direct calls to the router do
-not enforce a Copper policy on CPU writes. A rejected request is retried;
+not enforce a Copper policy on CPU writes. Arbitration waits retain requests;
+an attempted receiver queue overflow stops the owner before partial delivery.
 Reset cancels unaccepted Copper output and queued events; DMA enable changes
 gate the engine separately from accepted register delivery. Live CPU reads occur in CCK1 and writes in CCK2;
 owner steps precede CPU issue. Copper issue also follows all custom-chip
@@ -378,7 +379,7 @@ The register-delivery boundary is exercised through production interfaces:
 | [`test_register_wiring.rs`](../../../crates/memory_bus/tests/test_register_wiring.rs), `every_ocs_write_reaches_only_its_owners_and_is_delivered_once_when_due` | All 256 aligned slots, including 174 queued data-write offsets and six immediate address strobes; word and both byte writes on PAL and NTSC (1,536 transfers). Checks every recipient's offset, payload, mode and remaining delay, no early due event, exactly one due event and no later duplicate. Uses real router and owner steps, without claiming later engine behavior. |
 | Same suite, `custom_live_and_debug_reads_select_the_owner_or_explicit_fallback` | All 256 slots use the intended reader or fallback; distinct readable data detects wrong selection. Debug traversal preserves complete chip/queue state. Existing dedicated tests establish live collision/disk acknowledgment and Copper read strobes. This is reader selection, not validation of all computed hardware values. |
 | [`test_router.rs`](../../../crates/memory_bus/tests/test_router.rs) | All thirty canonical CIA addresses, selected instance, selector and payload, synchronization before acceptance and falling-edge capture. Five initial E phases, inactive lanes, low-bit mirrors, byte/word lanes and OVL mapping have existing regression protection. Gary alias/dual-selection tests cover all banks and memory presets on PAL/NTSC; `test_gary_decoding.rs` exercises CPU transfers and committed OVL through the machine. |
-| [`test_custom_dispatch.rs`](../../../crates/machine_loop/tests/test_custom_dispatch.rs) | Production-machine CPU/Copper issue boundaries, shared rejection/retry, queue order and complete replay, strobe delivery, interrupt-input versus CPU ordering, DMA competition and pending-state serialization. |
+| [`test_custom_dispatch.rs`](../../../crates/machine_loop/tests/test_custom_dispatch.rs) | Production-machine CPU/Copper issue boundaries, fatal shared overflow atomicity, queue order and snapshot continuation, strobe delivery, interrupt-input versus CPU ordering, DMA competition and pending-state serialization. |
 | [`test_cia_propagation.rs`](../../../crates/machine_loop/tests/test_cia_propagation.rs) and [`test_register_propagation.rs`](../../../crates/machine_loop/tests/test_register_propagation.rs) | CPU CIA retries/read acknowledgment, pending capture/output restore, reset cancellation, and committed CIA-A PRA/DDRA polarity and overlay mapping using synthetic ROM bytes. No firmware boot is required. |
 
 Task `REGISTER-ACCESS-CLOSE-20261111` records the documentation-and-delivery

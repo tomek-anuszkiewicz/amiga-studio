@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "config"
 status: "active"
 created: 2026-09-05
-updated: 2026-11-13
+updated: 2026-11-16
 related: ["[General Architecture.md](General%20Architecture.md)", "[Physical Memory.md](Physical%20Memory.md)", "[MemoryBus.md](MemoryBus.md)", "[RTC.md](RTC.md)", "[Machine Loop.md](Machine%20Loop.md)"]
 tracked_paths:
   - "crates/config"
@@ -107,7 +107,7 @@ Extended peripherals remain deferred; see the [deferred peripheral work](../../.
 
 ## Shared propagation state
 
-The foundational crate owns the serializable [MutationQueue](../../../crates/config/src/mutation.rs), shared by custom chips and CIA. Fixed storage holds an occupied prefix in retained issue order. The queue keeps its count private and exposes pending entries through a read-only slice. Each tick scans only occupied entries; capacity checks use the count. Pipeline entries coexist. OverwritePending replaces only the same destination and mode, placing the replacement after retained entries even when the queue is full. Zero delay and insertion without available capacity are refused without applying the write early. CIA retains its separate falling-E capture and bus acceptance contract. [MemoryBus](MemoryBus.md#custom-registers-and-specialized-chips) owns custom-register delays and recipient routing.
+The foundational crate owns the serializable [MutationQueue](../../../crates/config/src/mutation.rs), shared by custom chips and CIA. Fixed storage holds an occupied prefix in retained issue order. The queue keeps its count private and exposes pending entries through a read-only slice. Each tick scans only occupied entries; capacity checks use the count. Pipeline entries coexist. OverwritePending replaces only the same destination and mode, placing the replacement after retained entries even when the queue is full. Zero delay is refused without applying the write early. Attempting an insertion that needs an unavailable slot calls the shared fatal helper before changing pending or due data. Occupying the final free slot and replacement at capacity remain valid. The host terminates the failed owner; overflow is not a retry or guest exception. CIA retains its separate falling-E capture and bus acceptance contract. [MemoryBus](MemoryBus.md#custom-registers-and-specialized-chips) owns custom-register delays and recipient routing.
 
 A tick first extracts every matured pair into reusable inline storage and compacts the pending prefix. The chip then applies those pairs at its existing phase. A newly staged write cannot join that tick's due set. Custom chip steps return all committed pairs as a borrowed slice, valid until the next mutable chip access. Staging leaves the observation intact; the next tick replaces it. No full-capacity result array is initialized, returned or scanned on an empty tick.
 

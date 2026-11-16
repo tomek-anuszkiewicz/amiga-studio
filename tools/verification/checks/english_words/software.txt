@@ -331,6 +331,7 @@ devlogs
 devnull
 df
 dfs
+dft
 diag
 diff
 differencer
@@ -399,6 +400,7 @@ endian
 endianness
 enqueue
 enqueues
+enqueuing
 entrancy
 entrypoint
 entrypoints
@@ -457,6 +459,7 @@ freqs
 frontend
 frontends
 frontmatter
+frontmost
 ftp
 func
 functor
@@ -819,6 +822,7 @@ prefetch
 prefetched
 prefetches
 prefetching
+preflights
 preformatted
 prefs
 preloaded
@@ -835,6 +839,7 @@ profilers
 profraw
 programmatically
 propto
+prunable
 pseudocode
 pthread
 pwd
@@ -865,6 +870,7 @@ rebase
 rebases
 rec
 reclip
+recreatable
 recropped
 recropping
 rect
@@ -875,10 +881,12 @@ refactoring
 refactorings
 refactors
 refetched
+reflog
 refptr
 reglist
 regs
 rehydration
+reimported
 reindexing
 rel
 rem
@@ -897,12 +905,14 @@ resp
 ret
 retrocomputer
 retrosh
+revalidated
 rfd
 rg
 rgtbut
 rightarrow
 rlib
 rm
+rms
 rmse
 rmw
 rnd
@@ -1110,6 +1120,7 @@ unrendered
 unrequested
 unreviewed
 unrotated
+unrouted
 unrun
 unshifted
 unsimulated
@@ -1169,6 +1180,7 @@ wasd
 wasm
 watchpoint
 watchpoints
+wav
 wc
 wday
 webcounters
@@ -1215,14 +1227,3 @@ yx
 yy
 yyyy
 zflg
-enqueuing
-unrouted
-frontmost
-dft
-rms
-wav
-reimported
-prunable
-recreatable
-reflog
-revalidated

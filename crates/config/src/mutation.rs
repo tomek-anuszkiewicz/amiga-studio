@@ -47,6 +47,9 @@ pub struct MutationQueue<const N: usize> {
     len: usize,
     due: [(u16, u16); N],
     due_len: usize,
+    issue_cck: Option<u64>,
+    issue_queue: &'static str,
+    issue_producer: &'static str,
 }
 
 impl<const N: usize> Default for MutationQueue<N> {
@@ -61,6 +64,9 @@ impl<const N: usize> Default for MutationQueue<N> {
             len: 0,
             due: [(0, 0); N],
             due_len: 0,
+            issue_cck: None,
+            issue_queue: "direct queue",
+            issue_producer: "direct setter",
         }
     }
 }
@@ -70,6 +76,9 @@ impl<const N: usize> Clone for MutationQueue<N> {
         Self {
             entries: self.entries,
             len: self.len,
+            issue_cck: self.issue_cck,
+            issue_queue: self.issue_queue,
+            issue_producer: self.issue_producer,
             ..Self::default()
         }
     }
@@ -84,6 +93,40 @@ impl<const N: usize> PartialEq for MutationQueue<N> {
 impl<const N: usize> Eq for MutationQueue<N> {}
 
 impl<const N: usize> MutationQueue<N> {
+    /// Diagnostic context supplied at the actual motherboard write, never polled.
+    #[inline]
+    pub fn set_issue_context(&mut self, cck: u64, queue: &'static str, producer: &'static str) {
+        self.issue_cck = Some(cck);
+        self.issue_queue = queue;
+        self.issue_producer = producer;
+    }
+
+    /// Atomic fan-out preflight; use the same replacement rule as insertion.
+    #[inline]
+    #[track_caller]
+    pub fn require_capacity(&self, reg: u16, value: u16, delay: u8, mode: MutationMode) {
+        if delay != 0
+            && self.is_full()
+            && !(mode == MutationMode::OverwritePending
+                && self
+                    .pending()
+                    .iter()
+                    .any(|item| item.reg_offset == reg && item.mode == mode))
+        {
+            self.overflow(reg, value, delay, mode);
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn overflow(&self, reg: u16, value: u16, delay: u8, mode: MutationMode) -> ! {
+        crate::fatal_emulation_error(format_args!(
+            "Mutation queue overflow: queue={}, CCK={:?}, producer={}, capacity={N}, occupancy={}, register=${reg:04X}, value=${value:04X}, delay={delay}, mode={mode:?}, site={}",
+            self.issue_queue, self.issue_cck, self.issue_producer, self.len, std::panic::Location::caller()
+        ));
+    }
+
     /// Pending writes; callers cannot invalidate the occupied prefix.
     #[inline]
     pub fn pending(&self) -> &[DelayedMutation] {
@@ -112,8 +155,9 @@ impl<const N: usize> MutationQueue<N> {
         self.due_len = 0;
     }
 
-    /// Stages a write in issue order; zero delay and full capacity reject it.
+    /// Stages in issue order. Zero delay rejects; attempted overflow is fatal.
     /// An overwrite is a new issue event after all retained entries, even at capacity.
+    #[track_caller]
     pub fn stage(
         &mut self,
         reg_offset: u16,
@@ -135,7 +179,7 @@ impl<const N: usize> MutationQueue<N> {
             }
         }
         if self.is_full() {
-            return false;
+            self.overflow(reg_offset, value, delay_cck, mode);
         }
         self.entries[self.len] = DelayedMutation {
             reg_offset,

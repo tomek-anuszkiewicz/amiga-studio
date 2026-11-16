@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "general"
 status: "active"
 created: 2026-08-31
-updated: 2026-11-15
+updated: 2026-11-16
 related: ["[General Architecture.md](../General%20Architecture.md)", "[MemoryBus.md](../MemoryBus.md)", "[CPU Motorola M68000.md](../CPU%20Motorola%20M68000.md)", "[Machine Loop.md](../Machine%20Loop.md)", "[Agnus.md](../Agnus.md)", "[RTC.md](../RTC.md)"]
 tracked_paths:
   - "crates/machine_loop/src/state.rs"
@@ -44,7 +44,9 @@ old layouts have no
 compatibility parser. Frontends and the debugger use this crate for persistence;
 in-memory quick slots retain only the machine value.
 
-Schema version 8 groups sprite coordinates and vertical DMA latches under
+Schema version 9 retains the CPU bus-admission phases and active shared Chip RAM
+budget. Clone and restore preserve an occupied cycle; neither creates another
+transfer opportunity. It also groups sprite coordinates and vertical DMA latches under
 `state.agnus.sprite_dma`; derived comparison results are rebuilt after restore.
 It excludes the live RTC and its independent battery offset.
 It stores Denise's frame cursor alongside the

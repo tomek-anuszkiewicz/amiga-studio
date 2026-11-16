@@ -93,7 +93,7 @@ fn test_denise_full_32_color_palette_batch_mutation() {
         harness
             .machine
             .memory_bus()
-            .write_custom_word(reg_offset, color_val);
+            .write_custom_word(reg_offset, color_val, "DMA");
     }
 
     // 2. Step 2 Color Clocks to allow the delayed mutation pipeline to mature and commit
@@ -118,14 +118,16 @@ fn test_manual_sprite_repeats_outside_dma_vertical_window() {
     // Sprite 0: VSTART = 40, VSTOP = 55, HSTART = 120 ($78)
     // SPR0POS ($140): VSTART in bits 15..8 (40 = $28), HSTART in bits 7..0 ($78) -> $2878
     // SPR0CTL ($142): VSTOP in bits 15..8 (55 = $37), bits 7..0 = 0 -> $3700
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::denise::REGISTER_SPR0POS, 0x2878);
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::denise::REGISTER_SPR0CTL, 0x3700);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::denise::REGISTER_SPR0POS,
+        0x2878,
+        "DMA",
+    );
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::denise::REGISTER_SPR0CTL,
+        0x3700,
+        "DMA",
+    );
     harness.step_cck(2);
 
     assert_eq!(harness.machine.denise.sprites.channels()[0].vstart(), 40);
@@ -136,14 +138,16 @@ fn test_manual_sprite_repeats_outside_dma_vertical_window() {
     assert!(!harness.machine.denise.sprites.channels()[0].is_armed);
 
     // Arm Sprite 0 by writing image data (SPR0DATA at $144, SPR0DATB at $146)
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::denise::REGISTER_SPR0DATA, 0xCCCC);
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::denise::REGISTER_SPR0DATB, 0x3333);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::denise::REGISTER_SPR0DATA,
+        0xCCCC,
+        "DMA",
+    );
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::denise::REGISTER_SPR0DATB,
+        0x3333,
+        "DMA",
+    );
     harness.step_cck(2);
 
     // Channel should now be armed
@@ -169,10 +173,11 @@ fn test_sprite_dma_toggle_disarms_channels() {
     let mut harness = MachineHarness::new();
 
     // Enable Sprite DMA via DMACON: Master Enable + SPREN -> $8220
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_DMACON, 0x8220);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_DMACON,
+        0x8220,
+        "DMA",
+    );
     harness.step_cck(2);
     assert!(harness
         .machine
@@ -180,22 +185,25 @@ fn test_sprite_dma_toggle_disarms_channels() {
         .is_dma_enabled(config::mask::dmacon::BIT_SPREN));
 
     // Arm Sprite 0
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::denise::REGISTER_SPR0POS, 0x1020);
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::denise::REGISTER_SPR0DATA, 0xAAAA);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::denise::REGISTER_SPR0POS,
+        0x1020,
+        "DMA",
+    );
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::denise::REGISTER_SPR0DATA,
+        0xAAAA,
+        "DMA",
+    );
     harness.step_cck(2);
     assert!(harness.machine.denise.sprites.channels()[0].is_armed);
 
     // Disable Sprite DMA via DMACON ($DFF096): write $0020 (clear SPREN)
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::agnus::REGISTER_DMACON, 0x0020);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::agnus::REGISTER_DMACON,
+        0x0020,
+        "DMA",
+    );
     harness.step_cck(2);
     assert!(!harness
         .machine
@@ -203,10 +211,11 @@ fn test_sprite_dma_toggle_disarms_channels() {
         .is_dma_enabled(config::mask::dmacon::BIT_SPREN));
 
     // Writing SPR0CTL ($DFF142) disarms Sprite 0 per hardware silicon spec
-    harness
-        .machine
-        .memory_bus()
-        .write_custom_word(custom_reg::denise::REGISTER_SPR0CTL, 0x0000);
+    harness.machine.memory_bus().write_custom_word(
+        custom_reg::denise::REGISTER_SPR0CTL,
+        0x0000,
+        "DMA",
+    );
     harness.step_cck(2);
     assert!(
         !harness.machine.denise.sprites.channels()[0].is_armed,

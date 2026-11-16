@@ -10,7 +10,21 @@ fn full_queue_overwrite_reissues_after_retained_entries_without_losing_capacity(
     assert!(queue.stage(3, 30, 2, MutationMode::Pipeline));
     assert!(queue.is_full());
     assert!(!queue.stage(1, 99, 0, MutationMode::OverwritePending));
-    assert!(!queue.stage(4, 40, 1, MutationMode::OverwritePending));
+    let mut overflow = queue.clone();
+    assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        overflow.stage(4, 40, 1, MutationMode::OverwritePending);
+    }))
+    .is_err());
+    assert_eq!(overflow.pending(), queue.pending());
+    // Same register alone does not permit replacement of a Pipeline entry.
+    let mismatch = queue.clone();
+    assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        mismatch.require_capacity(2, 22, 2, MutationMode::OverwritePending);
+    }))
+    .is_err());
+    assert_eq!(mismatch.pending(), queue.pending());
+    assert_eq!(mismatch.due(), queue.due());
+    queue.require_capacity(1, 11, 2, MutationMode::OverwritePending);
     assert!(queue.stage(1, 11, 2, MutationMode::OverwritePending));
     assert!(queue.is_full());
     queue.tick();
@@ -121,7 +135,7 @@ fn test_stage_and_tick_overwrite_pending_mode() {
 }
 
 #[test]
-fn test_zero_delay_and_full_queue_reject_without_commit() {
+fn zero_delay_rejects_and_overflow_is_fatal_without_changing_accepted_data() {
     let mut buffer = MutationQueue::<2>::default();
 
     // Delay zero is rejected; the utility never applies a write
@@ -132,9 +146,18 @@ fn test_zero_delay_and_full_queue_reject_without_commit() {
     assert!(buffer.stage(0x010, 1, 2, MutationMode::Pipeline));
     assert!(buffer.stage(0x020, 2, 2, MutationMode::Pipeline));
 
-    // A full queue rejects a new write and retains every accepted entry
-    let staged_overflow = buffer.stage(0x030, 3, 2, MutationMode::Pipeline);
-    assert!(!staged_overflow);
+    let pending = buffer.pending().to_vec();
+    let due = buffer.due().to_vec();
+    let error = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        buffer.stage(0x030, 3, 2, MutationMode::Pipeline);
+    }))
+    .unwrap_err();
+    assert!(error
+        .downcast_ref::<String>()
+        .unwrap()
+        .contains("capacity=2, occupancy=2"));
+    assert_eq!(buffer.pending(), pending);
+    assert_eq!(buffer.due(), due);
 }
 
 #[test]

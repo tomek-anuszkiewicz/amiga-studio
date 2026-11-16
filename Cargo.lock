@@ -858,6 +858,7 @@ name = "cpu"
 version = "0.1.0"
 dependencies = [
  "bitflags 2.13.1",
+ "config",
  "physical_memory",
  "serde",
  "serde_json",

@@ -35,6 +35,17 @@ pub struct AppHost {
 }
 
 impl AppHost {
+    fn fail(&mut self, error: HostRuntimeError) {
+        self.error.get_or_insert(error);
+        self.queued.clear();
+        self.pending.clear();
+        self.commands.clear();
+        self.inspector_request = false;
+        self.status.running = false;
+        self.status.continuous_run = false;
+        self.status.pause_pending = false;
+    }
+
     pub(crate) fn accept_status(&mut self, status: HostStatus) {
         if status.generation != self.status.generation {
             if !status.continuous_run {
@@ -83,9 +94,11 @@ impl AppHost {
     }
 
     pub(crate) fn can_edit(&self) -> bool {
-        self.queued
-            .iter()
-            .all(|(_, effect)| matches!(effect, HostEffect::Clock))
+        self.error.is_none()
+            && self
+                .queued
+                .iter()
+                .all(|(_, effect)| matches!(effect, HostEffect::Clock))
             && self
                 .pending
                 .values()
@@ -123,6 +136,9 @@ impl AppHost {
     }
 
     pub(crate) fn queue_effect(&mut self, command: HostCommand, effect: HostEffect) {
+        if self.error.is_some() {
+            return;
+        }
         self.queued.push_back((command, effect));
     }
 
@@ -169,6 +185,9 @@ impl AppHost {
         context: &egui::Context,
         developer: bool,
     ) -> Vec<(HostEffect, HostReply)> {
+        if self.error.is_some() {
+            return Vec::new();
+        }
         if let Some(owner) = self.startup.take() {
             match HostRuntime::start(owner, context.clone()) {
                 Ok(runtime) => {
@@ -180,7 +199,10 @@ impl AppHost {
                         self.inspector_request = true;
                     }
                 }
-                Err(error) => self.error = Some(error),
+                Err(error) => {
+                    self.fail(error);
+                    return Vec::new();
+                }
             }
         }
         let mut completed = Vec::new();
@@ -213,7 +235,9 @@ impl AppHost {
                         }
                     }
                 }
-                Err(error) => self.error = Some(error),
+                Err(error) => {
+                    self.fail(error);
+                }
             }
         }
         self.flush();
@@ -269,6 +293,7 @@ impl crate::EmulatorApp {
             if let Some(runtime) = &mut self.host.runtime {
                 match runtime.finish_shutdown() {
                     Ok(Some(battery)) => {
+                        self.host.status = runtime.status();
                         self.host.status.battery = battery;
                         self.close_ready = true;
                         ctx.send_viewport_cmd(egui::ViewportCommand::Close);
@@ -288,8 +313,11 @@ impl crate::EmulatorApp {
         if previous.generation != self.host.status.generation && self.host.data.is_none() {
             self.inspection.ready = false;
         }
-        if let Some(error) = self.host.error {
-            self.file_error = Some(format!("Machine worker failed: {error:?}"));
+        if let Some(error) = &self.host.error {
+            self.file_error = Some(match error {
+                HostRuntimeError::Fatal(message) => message.clone(),
+                error => format!("Machine worker failed: {error:?}"),
+            });
         }
         if first_pass {
             self.host.refresh_utc(crate::host_clock::utc_now());
@@ -300,6 +328,9 @@ impl crate::EmulatorApp {
 
 impl crate::EmulatorApp {
     pub(crate) fn update_input_capture(&self, ctx: &egui::Context) {
+        if self.host.error.is_some() {
+            return;
+        }
         if let Some(runtime) = &self.host.runtime {
             let focused = ctx.input(|input| input.focused);
             let screen_focus = ctx.memory(|memory| {

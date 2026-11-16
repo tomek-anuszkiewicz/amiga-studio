@@ -11,8 +11,18 @@ const DISPLAY_CONTROL_WRITE_DELAY_CCK: u8 = 4;
 impl Agnus {
     /// Capacity preflight for an atomic transfer with multiple receivers.
     #[inline]
-    pub fn can_accept_register_write(&self) -> bool {
-        !self.mutations.is_full()
+    pub fn require_register_capacity(&self, offset: u16, value: u16) {
+        let delay = match offset {
+            reg::REGISTER_DMACON => DMACON_WRITE_DELAY_CCK,
+            reg::REGISTER_BPLCON0
+            | reg::REGISTER_DIWSTRT
+            | reg::REGISTER_DIWSTOP
+            | reg::REGISTER_DDFSTRT
+            | reg::REGISTER_DDFSTOP => DISPLAY_CONTROL_WRITE_DELAY_CCK,
+            _ => PROVISIONAL_CUSTOM_WRITE_DELAY_CCK,
+        };
+        self.mutations
+            .require_capacity(offset, value, delay, MutationMode::Pipeline);
     }
 
     /// Queues DMACON; active state changes only when due.

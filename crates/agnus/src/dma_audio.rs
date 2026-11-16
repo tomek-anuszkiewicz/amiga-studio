@@ -27,8 +27,12 @@ impl Agnus {
         }
     }
 
-    pub(super) fn fetch_audio_word(&mut self, channel: usize, ram: &[u8]) {
-        if ram.is_empty() || self.pending_dma_write.is_some() {
+    pub(super) fn fetch_audio_word(
+        &mut self,
+        channel: usize,
+        ram: &mut impl config::chip_ram::ChipRamAccess,
+    ) {
+        if self.pending_dma_write.is_some() {
             return;
         }
         let address = if self.audio_dma_restart[channel] {
@@ -36,7 +40,10 @@ impl Agnus {
         } else {
             self.audpt[channel]
         };
-        let word = chip_ram::read_u16(ram, address);
+        let word = ram.read_chip_word(
+            address,
+            config::chip_ram::ChipRamOwner::Audio(channel as u8),
+        );
         let register =
             custom_reg::paula::REGISTER_AUD0DAT + channel as u16 * config::AUDIO_REGISTER_STRIDE;
         self.pending_dma_write = Some((register, word));

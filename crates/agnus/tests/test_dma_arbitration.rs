@@ -1,3 +1,5 @@
+mod common;
+
 use agnus::dma::{DmaChannel, DmaScheduler};
 
 #[test]
@@ -207,4 +209,28 @@ fn standard_display_fetches_twenty_lores_or_forty_hires_words_per_plane() {
             assert_eq!(modulos[plane], 1);
         }
     }
+}
+
+#[test]
+fn rejected_disk_ram_read_preserves_the_selected_request() {
+    use config::chip_ram::{ChipRamAccess, ChipRamOwner};
+    let mut ram = common::TestChipRam::default();
+    ram.next_cck();
+    ram.read_chip_word(0x100, ChipRamOwner::Copper);
+    let mut agnus = agnus::Agnus::new(agnus::AgnusModel::OcsPal8371);
+    agnus.hpos = 6;
+    agnus.dskpt = 0x100;
+    agnus.disk_dma_requests[0] = true;
+    agnus.disk_dma_write[0] = true;
+    agnus.dma.write_dmacon(0x8210);
+    let failure = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        agnus.step_cck(&mut ram);
+    }));
+    assert!(failure.is_err());
+    assert!(
+        agnus.disk_dma_requests[0],
+        "Rejected RAM admission consumed the disk request"
+    );
+    assert_eq!(agnus.dskpt, 0x100);
+    assert!(agnus.pending_dma_write.is_none());
 }

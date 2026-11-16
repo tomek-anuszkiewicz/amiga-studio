@@ -9,6 +9,63 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
 #[test]
+fn fatal_diagnostic_cancels_gui_commands_and_allows_closing_without_owner_reply() {
+    fn fail(_: &mut physical_memory::PhysicalMemory, _: u32) -> physical_memory::BusResult<u16> {
+        config::fatal_emulation_error(format_args!("Injected internal invariant for GUI shutdown"));
+    }
+    for command in [
+        gui::host_commands::HostCommand::StepInstruction,
+        gui::host_commands::HostCommand::Run,
+    ] {
+        let mut session = Box::new(gui::DebuggerSession::new());
+        session
+            .load_binary(0x1000, &[0x4e, 0x71, 0x60, 0xfc], true)
+            .unwrap();
+        session.machine.physical_memory.bank_map[0].read_word = fail;
+        let mut app = EmulatorApp::with_session(session);
+        let context = Context::default();
+        common::settle(&mut app, &context);
+        app.host.queue(command);
+        app.host.queue(gui::host_commands::HostCommand::StepField);
+        let deadline = Instant::now() + Duration::from_secs(10);
+        loop {
+            let _ = context.run(RawInput::default(), |context| app.update_ui(context));
+            if app.file_error.as_deref() == Some("Injected internal invariant for GUI shutdown") {
+                break;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "Fatal diagnostic did not reach the GUI"
+            );
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        assert!(app.host.is_idle(), "Queued commands survived the failure");
+        assert!(!app.host.status.running);
+        let cck = app.host.status.cck;
+        for command in [
+            gui::host_commands::HostCommand::Run,
+            gui::host_commands::HostCommand::Reset,
+        ] {
+            app.host.queue(command);
+            let _ = context.run(RawInput::default(), |context| app.update_ui(context));
+            assert!(app.host.is_idle());
+            assert_eq!(app.host.status.cck, cck);
+        }
+        let mut input = RawInput::default();
+        input
+            .viewports
+            .get_mut(&ViewportId::ROOT)
+            .unwrap()
+            .events
+            .push(ViewportEvent::Close);
+        let output = context.run(input, |context| app.update_ui(context));
+        assert!(output.viewport_output[&ViewportId::ROOT]
+            .commands
+            .contains(&ViewportCommand::Close));
+    }
+}
+
+#[test]
 fn paused_gui_settles_without_clock_reply_repaint_or_repeated_video_upload() {
     let context = Context::default();
     let mut app = EmulatorApp::default();

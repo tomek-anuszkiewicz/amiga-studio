@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "paula"
 status: "active"
 created: 2026-09-06
-updated: 2026-11-12
+updated: 2026-11-16
 related: ["[Audio.md](Audio.md)", "[Interrupts.md](Interrupts.md)", "[Floppy.md](Floppy.md)", "[Game Ports.md](Game%20Ports.md)", "[Agnus.md](Agnus.md)", "[DMA.md](DMA.md)", "[Machine Loop.md](Machine%20Loop.md)"]
 tracked_paths:
   - "crates/paula"
@@ -38,8 +38,8 @@ Concrete queued setters in [registers.rs](../../../crates/paula/src/registers.rs
 levels are sampled after due writes, independently of register queue capacity.
 An asserted input wins a coincident clear under the explicit CCK phase policy;
 release preserves the request latch. The 32-entry queue serves only register writes; no synthetic interrupt selector
-or reserved input slot remains. Full capacity rejects writes without early
-application, and replay applies and returns every matured register entry. [MemoryBus](MemoryBus.md#custom-registers-and-specialized-chips) defines modes, provisional timing and acceptance. Autonomous audio transitions and disk counters retain their separate engine interfaces.
+or reserved input slot remains. Attempted insertion beyond capacity stops the owner without early
+application or retry, and replay applies and returns every matured register entry. [MemoryBus](MemoryBus.md#custom-registers-and-specialized-chips) defines modes, provisional timing and acceptance. Autonomous audio transitions and disk counters retain their separate engine interfaces.
 
 The [register matrix](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md#state-owners-and-hardware-meaning)
 identifies the register families, children and accessors. Live `read_dskbytr`

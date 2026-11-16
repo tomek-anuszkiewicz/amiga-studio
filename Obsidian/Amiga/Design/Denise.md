@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "denise"
 status: "active"
 created: 2026-09-06
-updated: 2026-11-15
+updated: 2026-11-16
 related: ["[Sprites.md](Sprites.md)", "[Frame Buffer.md](Frame%20Buffer.md)", "[Agnus.md](Agnus.md)", "[Game Ports.md](Game%20Ports.md)"]
 tracked_paths:
   - "crates/denise"
@@ -155,8 +155,9 @@ Its position and pending line survive snapshots with the pixel pipeline.
 [game ports](Game%20Ports.md#connector-delivery). The motherboard no longer
 assigns JOY registers from device counters. Counting/decoding belongs to
 Denise's receiver, not to motherboard transport. Sprite RGA/data words enter
-the same named queued setters as bus writes, retain the source on refusal,
-and begin receiver delay after the common issue phase. Distinct endpoint words
+the same named queued setters as bus writes and begin receiver delay after
+the common issue phase. Queue overflow stops the owner before admission; it
+does not defer delivery or retry a failed machine. Distinct endpoint words
 prove latch delivery without claiming that the old sprite scheduler or pixel
 pipeline is correct.
 

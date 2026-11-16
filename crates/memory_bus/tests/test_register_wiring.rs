@@ -5,6 +5,9 @@
 //! Validates live composite read path (DSKBYTR, CLXDAT), open-bus $FFFF enforcement
 //! on write-only registers, and proper routing of DSKPT and AUDxLC.
 
+mod common;
+use common::BusCycle;
+
 use agnus::Agnus;
 use cia::Cia;
 use config::custom_reg;
@@ -90,9 +93,9 @@ fn every_ocs_write_reaches_only_its_owners_and_is_delivered_once_when_due() {
                 mb.agnus = Agnus::new(A500Config::bare_512k(video).agnus_model());
                 let address = 0xdff000 + u32::from(offset);
                 let result = match lane {
-                    0 => mb.router().write_word(address, 0xa55a),
-                    1 => mb.router().write_byte(address, 0x5a),
-                    _ => mb.router().write_byte(address + 1, 0x5a),
+                    0 => mb.router().next_cck().write_word(address, 0xa55a),
+                    1 => mb.router().next_cck().write_byte(address, 0x5a),
+                    _ => mb.router().next_cck().write_byte(address + 1, 0x5a),
                 };
                 assert_eq!(result, BusResult::Ready(()), "{video:?} {offset:03x}");
                 let value = match offset {
@@ -126,7 +129,7 @@ fn every_ocs_write_reaches_only_its_owners_and_is_delivered_once_when_due() {
                 }
                 for elapsed in 1..=5 {
                     let due = [
-                        mb.agnus.step_cck().to_vec(),
+                        mb.step_agnus().to_vec(),
                         mb.denise.step_cck().to_vec(),
                         mb.paula.step_cck().to_vec(),
                     ];
@@ -152,6 +155,11 @@ fn every_ocs_write_reaches_only_its_owners_and_is_delivered_once_when_due() {
 }
 
 impl TestMotherboard {
+    fn step_agnus(&mut self) -> &[(u16, u16)] {
+        self.mem.begin_cck(self.mem.memory_cck().wrapping_add(1), 0);
+        self.agnus.step_cck(&mut self.mem)
+    }
+
     fn new() -> Self {
         let mut mem = PhysicalMemory::new();
         mem.map_chip_ram_to_low_memory();
@@ -168,6 +176,7 @@ impl TestMotherboard {
 
     fn router(&mut self) -> MemoryBus<'_> {
         MemoryBus {
+            cck: 0,
             mem: &mut self.mem,
             agnus: &mut self.agnus,
             denise: &mut self.denise,
@@ -192,21 +201,21 @@ fn test_dskbytr_composite_assembly_and_clear_on_read() {
 
     // 2. Enable Disk DMA in Agnus DMACON: SET (bit 15) | DMAEN (bit 9) | DSKEN (bit 4) = 0x8210
     assert_eq!(
-        mb.router().write_word(
+        mb.router().next_cck().write_word(
             0xDFF000 + u32::from(custom_reg::agnus::REGISTER_DMACON),
             0x8210
         ),
         BusResult::Ready(())
     );
     // Step 2 CCK cycles for DMACON to mature in Agnus and Paula
-    let _ = mb.agnus.step_cck();
-    let _ = mb.agnus.step_cck();
+    let _ = mb.step_agnus();
+    let _ = mb.step_agnus();
     let _ = mb.paula.step_cck();
     let _ = mb.paula.step_cck();
 
     // 3. Set Paula DSKLEN to write mode: bit 14 (WRITE)
     mb.router()
-        .write_custom_word(custom_reg::paula::REGISTER_DSKLEN, 0x4000);
+        .write_custom_word(custom_reg::paula::REGISTER_DSKLEN, 0x4000, "CPU");
     mb.paula.step_cck();
     mb.paula.step_cck();
 
@@ -254,7 +263,7 @@ fn custom_live_and_debug_reads_select_the_owner_or_explicit_fallback() {
     let mut mb = TestMotherboard::new();
     mb.agnus.dma.dmacon = 0x0123;
     mb.agnus.lof = true;
-    mb.agnus.step_cck();
+    mb.step_agnus();
     mb.denise.joy0dat = 0x2345;
     mb.denise.joy1dat = 0x3456;
     mb.denise.clxdat = 0x4567;
@@ -307,7 +316,9 @@ fn custom_live_and_debug_reads_select_the_owner_or_explicit_fallback() {
             .find(|&&(reg, _)| reg == offset)
             .map_or(0xffff, |&(_, value)| value);
         assert_eq!(
-            mb.router().read_word(0xdff000 + u32::from(offset)),
+            mb.router()
+                .next_cck()
+                .read_word(0xdff000 + u32::from(offset)),
             BusResult::Ready(expected),
             "live {offset:03x}"
         );
@@ -323,24 +334,24 @@ fn test_open_bus_on_early_dma_and_write_only_registers() {
 
     // Populate various internal registers with non-zero values
     mb.router()
-        .write_custom_word(custom_reg::agnus::REGISTER_BLTDDAT, 0x1234); // BLTDDAT
+        .write_custom_word(custom_reg::agnus::REGISTER_BLTDDAT, 0x1234, "CPU"); // BLTDDAT
     mb.router()
-        .write_custom_word(custom_reg::agnus::REGISTER_BLTCON0, 0x09F0); // BLTCON0
+        .write_custom_word(custom_reg::agnus::REGISTER_BLTCON0, 0x09F0, "CPU"); // BLTCON0
     mb.router()
-        .write_custom_word(custom_reg::agnus::REGISTER_COP1LCH, 0x0003); // COP1LCH
+        .write_custom_word(custom_reg::agnus::REGISTER_COP1LCH, 0x0003, "CPU"); // COP1LCH
     mb.router()
-        .write_custom_word(custom_reg::agnus::REGISTER_COP1LCL, 0x8000); // COP1LCL
+        .write_custom_word(custom_reg::agnus::REGISTER_COP1LCL, 0x8000, "CPU"); // COP1LCL
     mb.router()
-        .write_custom_word(custom_reg::agnus::REGISTER_BPL1MOD, 0x0028); // BPL1MOD
+        .write_custom_word(custom_reg::agnus::REGISTER_BPL1MOD, 0x0028, "CPU"); // BPL1MOD
     mb.router()
-        .write_custom_word(custom_reg::denise::REGISTER_COLOR00, 0x0F00); // COLOR00 (Red)
+        .write_custom_word(custom_reg::denise::REGISTER_COLOR00, 0x0F00, "CPU"); // COLOR00 (Red)
     mb.router()
-        .write_custom_word(custom_reg::paula::REGISTER_AUD0LEN, 0x0100); // AUD0LEN
+        .write_custom_word(custom_reg::paula::REGISTER_AUD0LEN, 0x0100, "CPU"); // AUD0LEN
     mb.router()
-        .write_custom_word(custom_reg::paula::REGISTER_AUD0VOL, 0x0040); // AUD0VOL
+        .write_custom_word(custom_reg::paula::REGISTER_AUD0VOL, 0x0040, "CPU"); // AUD0VOL
 
     for _ in 0..2 {
-        mb.agnus.step_cck();
+        mb.step_agnus();
         mb.denise.step_cck();
         mb.paula.step_cck();
     }
@@ -413,14 +424,14 @@ fn test_dskpt_routed_to_agnus() {
 
     // Write DSKPTH ($DFF020) = 0x0004 and DSKPTL ($DFF022) = 0x2000
     assert_eq!(
-        mb.router().write_word(
+        mb.router().next_cck().write_word(
             0xDFF000 + u32::from(custom_reg::agnus::REGISTER_DSKPTH),
             0x0004
         ),
         BusResult::Ready(())
     );
     assert_eq!(
-        mb.router().write_word(
+        mb.router().next_cck().write_word(
             0xDFF000 + u32::from(custom_reg::agnus::REGISTER_DSKPTL),
             0x2000
         ),
@@ -428,8 +439,8 @@ fn test_dskpt_routed_to_agnus() {
     );
 
     // Step 2 CCK cycles for writes to mature in Agnus
-    let _ = mb.agnus.step_cck();
-    let _ = mb.agnus.step_cck();
+    let _ = mb.step_agnus();
+    let _ = mb.step_agnus();
 
     // Verify Agnus holds pointer $00042000
     assert_eq!(mb.agnus.dskpt, 0x0004_2000);
@@ -441,14 +452,14 @@ fn test_aud0lch_aud0lcl_routed_to_agnus() {
 
     // Write AUD0LCH ($DFF0A0) = 0x0002 and AUD0LCL ($DFF0A2) = 0x8000
     assert_eq!(
-        mb.router().write_word(
+        mb.router().next_cck().write_word(
             0xDFF000 + u32::from(custom_reg::agnus::REGISTER_AUD0LCH),
             0x0002
         ),
         BusResult::Ready(())
     );
     assert_eq!(
-        mb.router().write_word(
+        mb.router().next_cck().write_word(
             0xDFF000 + u32::from(custom_reg::agnus::REGISTER_AUD0LCL),
             0x8000
         ),
@@ -456,8 +467,8 @@ fn test_aud0lch_aud0lcl_routed_to_agnus() {
     );
 
     // Step 2 CCK cycles for writes to mature in Agnus
-    let _ = mb.agnus.step_cck();
-    let _ = mb.agnus.step_cck();
+    let _ = mb.step_agnus();
+    let _ = mb.step_agnus();
 
     // Verify Agnus audlc[0] and audpt[0] hold $00028000
     assert_eq!(mb.agnus.audlc[0], 0x0002_8000);
@@ -495,17 +506,21 @@ fn test_ocs_agnus_pointer_writes_ignore_bits_above_512k_chip_ram() {
         ),
     ] {
         assert_eq!(
-            mb.router().write_word(0xDFF000 + u32::from(high), 0x001D),
+            mb.router()
+                .next_cck()
+                .write_word(0xDFF000 + u32::from(high), 0x001D),
             BusResult::Ready(())
         );
         assert_eq!(
-            mb.router().write_word(0xDFF000 + u32::from(low), 0x2345),
+            mb.router()
+                .next_cck()
+                .write_word(0xDFF000 + u32::from(low), 0x2345),
             BusResult::Ready(())
         );
     }
 
-    let _ = mb.agnus.step_cck();
-    let _ = mb.agnus.step_cck();
+    let _ = mb.step_agnus();
+    let _ = mb.step_agnus();
 
     let expected = 0x0005_2344;
     assert_eq!(mb.agnus.copper.cop1lc, expected);
@@ -523,7 +538,7 @@ fn test_dmacon_routing_to_agnus_and_paula() {
 
     // Write DMACON ($DFF096): SET (bit 15) | Master Enable (bit 9) | DSKEN (bit 4) | AUD0EN (bit 0) -> $8211
     assert_eq!(
-        mb.router().write_word(
+        mb.router().next_cck().write_word(
             0xDFF000 + u32::from(custom_reg::agnus::REGISTER_DMACON),
             0x8211
         ),
@@ -531,8 +546,8 @@ fn test_dmacon_routing_to_agnus_and_paula() {
     );
 
     // Step 2 CCKs for Agnus and Paula mutations to mature
-    let _ = mb.agnus.step_cck();
-    let _ = mb.agnus.step_cck();
+    let _ = mb.step_agnus();
+    let _ = mb.step_agnus();
     let _ = mb.paula.step_cck();
     let _ = mb.paula.step_cck();
 
@@ -570,6 +585,7 @@ fn test_copjmp1_and_copjmp2_strobe_on_read() {
     // Reading COPJMP1 ($DFF088) must strobe jump1 and return open-bus 0xFFFF
     let res1 = mb
         .router()
+        .next_cck()
         .read_word(0xDFF000 + u32::from(custom_reg::agnus::REGISTER_COPJMP1));
     assert_eq!(res1, BusResult::Ready(0xFFFF));
     assert_eq!(mb.agnus.copper.cop_pc, 0x0001_0000);
@@ -577,6 +593,7 @@ fn test_copjmp1_and_copjmp2_strobe_on_read() {
     // Reading COPJMP2 ($DFF08A) must strobe jump2 and return open-bus 0xFFFF
     let res2 = mb
         .router()
+        .next_cck()
         .read_word(0xDFF000 + u32::from(custom_reg::agnus::REGISTER_COPJMP2));
     assert_eq!(res2, BusResult::Ready(0xFFFF));
     assert_eq!(mb.agnus.copper.cop_pc, 0x0002_0000);
@@ -588,7 +605,7 @@ fn test_custom_byte_write_duplicates_byte_lanes() {
 
     // Writing a byte 0x42 to even address $DFF180 (COLOR00) must duplicate to 0x4242
     assert_eq!(
-        mb.router().write_byte(
+        mb.router().next_cck().write_byte(
             0xDFF000 + u32::from(custom_reg::denise::REGISTER_COLOR00),
             0x42
         ),
@@ -601,7 +618,7 @@ fn test_custom_byte_write_duplicates_byte_lanes() {
 
     // Writing a byte 0x55 to odd address $DFF181 (COLOR00) must also duplicate to 0x5555
     assert_eq!(
-        mb.router().write_byte(
+        mb.router().next_cck().write_byte(
             0xDFF000 + u32::from(custom_reg::denise::REGISTER_COLOR00) + 1,
             0x55
         ),
@@ -642,6 +659,7 @@ fn test_debug_read_and_register_method_conventions() {
     // Live read clears it
     assert_eq!(
         mb.router()
+            .next_cck()
             .read_word(0xDFF000 + u32::from(custom_reg::denise::REGISTER_CLXDAT)),
         BusResult::Ready(0x00A5)
     );
@@ -668,9 +686,9 @@ fn test_chip_namespaced_custom_register_dispatch() {
 
     // 1. Multi-chip decoded write: DMACON to Agnus and Paula
     mb.router()
-        .write_custom_word(custom_reg::agnus::REGISTER_DMACON, 0x8201);
-    let _ = mb.agnus.step_cck();
-    let _ = mb.agnus.step_cck();
+        .write_custom_word(custom_reg::agnus::REGISTER_DMACON, 0x8201, "CPU");
+    let _ = mb.step_agnus();
+    let _ = mb.step_agnus();
     let _ = mb.paula.step_cck();
     let _ = mb.paula.step_cck();
     assert_eq!(mb.agnus.dma.dmacon & 0x0201, 0x0201);
@@ -678,14 +696,14 @@ fn test_chip_namespaced_custom_register_dispatch() {
 
     // 2. Denise-specific write: COLOR00
     mb.router()
-        .write_custom_word(custom_reg::denise::REGISTER_COLOR00, 0x0ABC);
+        .write_custom_word(custom_reg::denise::REGISTER_COLOR00, 0x0ABC, "CPU");
     assert_eq!(mb.denise.color[0], 0);
     mb.denise.step_cck();
     assert_eq!(mb.denise.color[0], 0x0ABC);
 
     // 3. Paula-specific write: INTENA
     mb.router()
-        .write_custom_word(custom_reg::paula::REGISTER_INTENA, 0xC004);
+        .write_custom_word(custom_reg::paula::REGISTER_INTENA, 0xC004, "CPU");
     let _ = mb.paula.step_cck();
     assert_eq!(mb.paula.interrupts.intena & 0x4004, 0x4004);
 
@@ -714,7 +732,7 @@ fn test_chip_namespaced_custom_register_dispatch() {
 
     // 7. Additional custom word dispatch: COLOR01 write and debug readback
     mb.router()
-        .write_custom_word(custom_reg::denise::REGISTER_COLOR01, 0x0F00);
+        .write_custom_word(custom_reg::denise::REGISTER_COLOR01, 0x0F00, "CPU");
     assert_eq!(mb.denise.color[1], 0);
     mb.denise.step_cck();
     assert_eq!(mb.denise.color[1], 0x0F00);
@@ -736,7 +754,7 @@ fn test_agnus_writes_are_explicit_and_reserved_offset_is_ignored() {
     ];
 
     for (offset, value) in agnus_writes {
-        mb.router().write_custom_word(offset, value);
+        mb.router().write_custom_word(offset, value, "CPU");
         assert!(mb
             .agnus
             .mutations
@@ -746,7 +764,7 @@ fn test_agnus_writes_are_explicit_and_reserved_offset_is_ignored() {
     }
 
     // $07C is reserved and must not consume an Agnus mutation slot.
-    mb.router().write_custom_word(0x07C, 0x9ABC);
+    mb.router().write_custom_word(0x07C, 0x9ABC, "CPU");
     assert!(mb
         .agnus
         .mutations
@@ -762,10 +780,10 @@ fn test_sprite_position_and_control_writes_reach_both_chips() {
     for sprite in 0..8 {
         for (register, value) in [(0, 0x2100 + sprite), (2, 0x4300 + sprite)] {
             let offset = custom_reg::denise::REGISTER_SPR0POS + sprite * 8 + register;
-            mb.router().write_custom_word(offset, value);
+            mb.router().write_custom_word(offset, value, "CPU");
 
-            let first = mb.agnus.step_cck().to_vec();
-            let second = mb.agnus.step_cck();
+            let first = mb.step_agnus().to_vec();
+            let second = mb.step_agnus();
             assert!(first
                 .into_iter()
                 .chain(second.iter().copied())
@@ -794,7 +812,7 @@ fn test_sprite_position_and_control_writes_reach_both_chips() {
 fn ocs_reserved_diwhigh_offset_does_not_change_denise_state() {
     let mut mb = TestMotherboard::new();
     let untouched = mb.denise.clone();
-    assert!(mb.router().write_custom_word(0x1e4, 0x2020));
+    assert!(mb.router().write_custom_word(0x1e4, 0x2020, "CPU"));
     assert_eq!(mb.denise, untouched, "OCS Denise ignores reserved $1E4");
 }
 
@@ -806,12 +824,12 @@ fn successive_set_clear_writes_preserve_each_accepted_custom_operation() {
         (custom_reg::paula::REGISTER_ADKCON, [0x8001, 0x8010]),
     ] {
         for value in values {
-            assert!(mb.router().write_custom_word(offset, value));
+            assert!(mb.router().write_custom_word(offset, value, "CPU"));
         }
     }
     assert_eq!(mb.agnus.dma.dmacon, 0);
     assert_eq!(mb.paula.adkcon, 0);
-    mb.agnus.step_cck();
+    mb.step_agnus();
     mb.paula.step_cck();
     assert_eq!(
         mb.agnus.dma.dmacon, 0,
@@ -821,7 +839,7 @@ fn successive_set_clear_writes_preserve_each_accepted_custom_operation() {
         mb.paula.adkcon, 0x11,
         "both fallback writes compose after one CCK"
     );
-    mb.agnus.step_cck();
+    mb.step_agnus();
     mb.paula.step_cck();
     assert_eq!(mb.agnus.dma.dmacon & 0x300, 0x300);
     assert!(mb.paula.dma_master);
@@ -843,12 +861,12 @@ fn address_strobes_do_not_wait_for_full_data_queues() {
     mb.agnus.copper.cop1lc = 0x2000;
     mb.agnus.copper.cop2lc = 0x3000;
     for (offset, expected) in [(0x088, 0x2000), (0x08a, 0x3000)] {
-        assert!(mb.router().write_custom_word(offset, 0xffff));
+        assert!(mb.router().write_custom_word(offset, 0xffff, "CPU"));
         assert_eq!(mb.agnus.copper.cop_pc, expected);
     }
     for offset in [0x038, 0x03a, 0x03e, 0x03c] {
         mb.paula.sync.cck_since_horizontal = 20;
-        assert!(mb.router().write_custom_word(offset, 0xffff));
+        assert!(mb.router().write_custom_word(offset, 0xffff, "CPU"));
         assert_eq!(
             mb.paula.sync.cck_since_horizontal,
             if offset == 0x03e { 20 } else { 0 }
