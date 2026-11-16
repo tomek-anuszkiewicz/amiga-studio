@@ -9,5 +9,8 @@
     "/graphify-out": true,
     "**/.git": true,
     "**/target": true
-  }
+  },
+  "git.detectWorktrees": true,
+  "scm.alwaysShowRepositories": true,
+  "scm.repositories.selectionMode": "multiple"
 }
