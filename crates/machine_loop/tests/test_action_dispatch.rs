@@ -234,7 +234,7 @@ fn test_end_to_end_floppy_bus_control_and_sensor_readback() {
     common::cia::configure_drive_control_outputs(&mut machine);
 
     // Insert formatted disk into DF0
-    machine.floppy.drives[0].insert_disk(&[0; 100]);
+    assert!(machine.floppy.drives[0].insert_disk(&vec![0; floppy::FORMATTED_DISK_BYTES]));
 
     // Initially, DF0 head is at cylinder 0, disk inserted
     assert_eq!(machine.floppy.drives[0].cylinder, 0);

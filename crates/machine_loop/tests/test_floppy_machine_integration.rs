@@ -30,8 +30,7 @@ fn test_floppy_dma_stream_into_chip_ram_and_interrupt() {
         }
     }
 
-    // Insert into DF0:
-    harness.machine.floppy.drives[0].insert_disk(&adf_image);
+    // This fixture supplies connector pulses itself. Leave the media endpoint empty.
 
     // 2. Select DF0: with motor ON via CIA-B PRB ($BFD100) write
     // _SEL0 = bit 3 (0), _MTR = bit 7 (0) -> 0b0111_0111 = 0x77

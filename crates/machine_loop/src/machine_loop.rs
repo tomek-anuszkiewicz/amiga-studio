@@ -94,7 +94,7 @@ impl A500Machine {
         let cia_b = cia::Cia::new();
         let rtc = rtc::RtcMsm6242b::new(config.rtc());
 
-        let floppy = floppy::FloppyController::new();
+        let floppy = floppy::FloppyController::new(config.video_standard());
         let keyboard = keyboard::Keyboard::new(config.video_standard().color_clock_hz());
         let game_ports = game_ports::GamePorts::new();
 

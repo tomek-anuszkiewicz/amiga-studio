@@ -384,3 +384,4 @@ uartbrk
 msbsync
 roms
 keycodes
+vbi

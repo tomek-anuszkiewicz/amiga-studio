@@ -451,6 +451,49 @@ The closure review ran the commit and milestone profiles, native/WASM compilatio
 
 ---
 
+## 16. Native Kickstart and Disk Program Execution
+
+On November 15, 2026, NATIVE-DISK-BRING-UP-20261115 supplied the missing autonomous
+ADF read stream. The baseline Kickstart reached disk DMA but never the original
+cross1 body within 30 emulated seconds. Focused reproductions also showed that
+reset ejected mounted disks and that the sector helper lacked a leading preamble.
+The repair prepares complete circular tracks at insertion, masks checksum data
+positions and carries MFM clocks between longwords and sectors. An ideal 300 RPM
+spindle emits 500,000 raw cells per second through the existing captured connector;
+PAL/NTSC rational phase accumulation prevents rounding drift. Selection and side
+changes preserve angular phase. The sampled INDEX and data pulses are CCK events,
+not measured analog pulse widths or spindle acceleration.
+
+The drive owns media and mechanics, Paula separates raw words and frames DMAL,
+Agnus arbitrates and supplies addresses, and the machine commits words to Chip RAM.
+No sector decoder or host OS substitute enters that execution path. Electronic
+reset stops motors and cancels pending signals while retaining physical media,
+protection and head position. Snapshot version 9 embeds usable raw tracks and
+rotation state; serialized mid-transfer execution resumes with the same words,
+completion CCK and future machine state. No old-format parser was added.
+
+The original cross1 bootblock reads its payload to $70000. Kickstart reset,
+overlay removal, production disk DMA, bootblock execution, original graphics.library
+startup and the actual body were observed in order. Both clean runs reached the
+loop at CCK 14,752,752. The independently identified Copper list at $70214 produced
+its complete 83-color sequence repeatedly, including actual palette commitment,
+over multiple full fields. A 30-second no-disk control lacked the program signature.
+The machine test guide records exact input hashes, startup bytes, commands and
+milestones. Focused drive and machine tests verify raw words on both surfaces,
+track wrap, CPU contention, reset and serialized continuation.
+
+The separately supplied Workbench 1.3 OFS disk executed its bootblock and DOS
+startup. Its original scripts use StartupII, resident commands and LoadWB delay.
+The named Workbench task appeared within the separate 60-second budget, but the
+saved frame was visibly corrupted. Desktop visual acceptance and broader original
+vAmigaTS image comparison remain with native verification; this single-case boot
+neither closes that track nor establishes universal AmigaDOS support. The read
+workloads needed no media writes, host input or invented companion disk.
+Canonical closure gates and independent review are recorded by the closing commit;
+the focused evidence above does not substitute for those gates.
+
+---
+
 ## Rolling Changelog
 
 This final, unnumbered section holds work awaiting resolution or integration into the numbered chapters. Historical results belong to their recorded source and scope. Settled history through November 12, 2026 has been integrated above; no unfinished investigation entries remain from that set.
@@ -458,29 +501,6 @@ This final, unnumbered section holds work awaiting resolution or integration int
 ### Entry Format
 
 Every authorized repository commit adds a concise entry here. Logging and compaction follow [diary-maintenance.md](.agents/rules/diary-maintenance.md) and [compact-diary](.agents/skills/compact-diary/SKILL.md). Record the timestamp, affected components, delivered change, rationale and actual verification, including failures and unrun checks. At compaction, retain lasting decisions and evidence in the owning chapter and leave routine details in Git.
----
-
-### [2026-11-13 00:08 CET] — Complete book-derived chipset reconstruction
-- **Affected Subsystems**:
-  - `chipset`
-  - `peripherals`
-  - `machine loop`
-  - `GUI`
-  - `save state`
-  - `verification`
-  - `design specifications`
-- **What Was Changed (The Concrete Reality)**:
-  - Close CHIPSET-BOOK-REBUILD-20261111 and Roadmap 2.4
-  - Consolidate the completed stage in Chapter 15 and retain guest acceptance in 2.5
-  - Repair the isolated WASM build
-- **Architectural Rationale & Trade-Offs**:
-  - Preserve register transport
-  - hardware ownership and independent verification while replacing engines
-- **Verification & Test Results**:
-  - Previous final-source commit and milestone profiles passed, including 128 SingleStep groups and 1002737 current vectors
-  - The isolated WASM check initially failed on two unused GUI parameters and passed after the repair
-  - Prior live GUI inspection and extended source review passed
-  - Renewed final-source profile and review outcomes are recorded in the closing commit
 ---
 
 ### [2026-11-13 00:19 CET] — Defer English audits to authorized commit workflows
@@ -1694,40 +1714,6 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Automatic cleanup conservatively refuses inaccessible Windows process ownership; successful teardown contracts isolate process discovery while exercising real Git and PowerShell removal
 ---
 
-### [2026-11-15 19:13 CET] — TASK-CLOSURE-20261115: approve and complete local task integrations
-- **Affected Subsystems**:
-  - `Agent rules`
-  - `Task closure skill`
-  - `Verification tooling`
-- **What Was Changed (The Concrete Reality)**:
-  - Replace the merge procedure with git-close-task and require approval of an exact integration and cleanup plan
-  - Allow an explicitly unverified working commit before one combined integration verification
-  - Accept an unchanged clean fast-forward after confirmation of the exact tested tip without fabricating canonical evidence
-  - Preserve original divergent verification scope through explicitly requested rebase and freeze revalidation
-- **Architectural Rationale & Trade-Offs**:
-  - Keep commit-only requests scoped and avoid duplicate preparation while retaining exact conditional publication and safe cleanup
-- **Verification & Test Results**:
-  - 202 verification tool tests passed before preparation
-  - Skill validation passed and 179 local Markdown targets resolved
-  - Vault audit passed for 35 Design notes and 1098 links
-  - Canonical commit verification and final independent review are pending
----
-
-### [2026-11-15 19:14 CET] — Remove the module splitting skill
-- **Affected Subsystems**:
-  - `Agent skills`
-  - `Rust module guidance`
-- **What Was Changed (The Concrete Reality)**:
-  - Remove refactor-split-module and its two supporting references
-  - Remove incoming links and retain module cohesion and workspace boundary rules
-- **Architectural Rationale & Trade-Offs**:
-  - Retire the requested procedure while preserving the existing architecture constraints and neighboring-code guidance
-- **Verification & Test Results**:
-  - No Rust production code or architecture checker was changed
-  - No retired skill references remained in active instructions or documentation
-  - Combined batch verification and independent review are pending
----
-
 ### [2026-11-15 17:31 CET] — Reduce repeated idle input work
 - **Affected Subsystems**:
   - `crates/keyboard`
@@ -1775,6 +1761,40 @@ Every authorized repository commit adds a concise entry here. Logging and compac
 - **Verification & Test Results**:
   - Reviewed future prerequisites and verification scope
   - no roadmap stage closed or advanced profile feature implemented.
+---
+
+### [2026-11-15 19:13 CET] — TASK-CLOSURE-20261115: approve and complete local task integrations
+- **Affected Subsystems**:
+  - `Agent rules`
+  - `Task closure skill`
+  - `Verification tooling`
+- **What Was Changed (The Concrete Reality)**:
+  - Replace the merge procedure with git-close-task and require approval of an exact integration and cleanup plan
+  - Allow an explicitly unverified working commit before one combined integration verification
+  - Accept an unchanged clean fast-forward after confirmation of the exact tested tip without fabricating canonical evidence
+  - Preserve original divergent verification scope through explicitly requested rebase and freeze revalidation
+- **Architectural Rationale & Trade-Offs**:
+  - Keep commit-only requests scoped and avoid duplicate preparation while retaining exact conditional publication and safe cleanup
+- **Verification & Test Results**:
+  - 202 verification tool tests passed before preparation
+  - Skill validation passed and 179 local Markdown targets resolved
+  - Vault audit passed for 35 Design notes and 1098 links
+  - Canonical commit verification and final independent review are pending
+---
+
+### [2026-11-15 19:14 CET] — Remove the module splitting skill
+- **Affected Subsystems**:
+  - `Agent skills`
+  - `Rust module guidance`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove refactor-split-module and its two supporting references
+  - Remove incoming links and retain module cohesion and workspace boundary rules
+- **Architectural Rationale & Trade-Offs**:
+  - Retire the requested procedure while preserving the existing architecture constraints and neighboring-code guidance
+- **Verification & Test Results**:
+  - No Rust production code or architecture checker was changed
+  - No retired skill references remained in active instructions or documentation
+  - Combined batch verification and independent review are pending
 ---
 
 ### [2026-11-15 19:40 CET] — HOST-INPUT-DELIVERY-20261113: close host input delivery after local integration
@@ -1854,6 +1874,29 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Canonical verification and independent review are pending
 ---
 
+### [2026-11-15 23:15 CET] — NATIVE-DISK-BRING-UP-20261115: native disk execution and closure
+- **Affected Subsystems**:
+  - `Floppy`
+  - `Machine loop`
+  - `Save state`
+  - `Roadmap and specifications`
+- **What Was Changed (The Concrete Reality)**:
+  - Generate circular timed ADF tracks through production pins and DMA
+  - preserve media on electronic reset and serialize usable tracks
+  - prove original cross1 startup and repeated Copper results
+  - record the separate Workbench attempt
+  - prepare roadmap pruning and integrate settled chipset closure into Chapters 15 and 16
+- **Architectural Rationale & Trade-Offs**:
+  - Complete native guest startup without injected payloads or substituted system services
+  - retain independent hardware ownership and evidence boundaries
+- **Verification & Test Results**:
+  - Focused floppy and autonomous DMA suites pass
+  - cross1 boots twice at CCK 14752752 and no-disk control lacks its signature
+  - Workbench bootblock DOS and named task observed within 60 seconds with corrupted frame
+  - full image agreement and media writes remain unverified
+  - canonical closure profiles and independent review pending
+---
+
 ### [2026-11-15 23:32 CET] — Review imported books through one catalog server
 - **Affected Subsystems**:
   - `tools/bootstrap/book-to-markdown`
@@ -1883,3 +1926,22 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Accepted input resolves one chapter with 1343 elements and 100 assets
   - Source PDF SHA-256 matches source.json
   - Whole-book transcription and layout quality were not assessed
+---
+
+### [2026-11-16 00:49 CET] — BOOTSTRAP-NATIVE-INTEGRATION-20261116: integrate book catalog with native disk execution
+- **Affected Subsystems**:
+  - `Local integration`
+  - `Book review catalog`
+  - `Native disk documentation`
+- **What Was Changed (The Concrete Reality)**:
+  - Combine Bootstrap commits fb5a48b and bccaee1 with native tip c7563f4 without rewriting their history
+  - Preserve native Chapter 16 and roadmap boundaries together with both book entries
+  - Retain vocabulary from both branches
+- **Architectural Rationale & Trade-Offs**:
+  - Keep independent book review sessions and the accepted manual recipe alongside the unchanged native disk implementation
+  - Reconcile all changed Markdown against the common base and both branches
+- **Verification & Test Results**:
+  - Native c7563f4 was published unchanged using its confirmed final-source verification
+  - Bootstrap catalog contracts and recipe checks are historical results recorded by the original commits
+  - No recipe was regenerated and whole-book quality was not reassessed
+  - Integrated canonical verification and four independent review lanes are pending

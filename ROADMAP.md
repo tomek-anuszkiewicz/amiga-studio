@@ -3,7 +3,6 @@
 ## Contents
 
 - [Step 2: Native Disk Bring-Up and Verification](#step-2)
-  - [2.5: Kickstart ROM & Floppy Subsystem Bring-Up for Native Program Execution](#task-2-5)
   - [2.6: vAmigaTS Native Disk-Based Verification & Self-Testing](#task-2-6)
   - [2.7: Lockstep Differential Tracer vs. vAmiga (Contingency)](#task-2-7)
 - [Step 3: Developer Studio GUI, Recording and Rewind (Ongoing Companion Track)](#step-3)
@@ -70,30 +69,14 @@ existing component and machine tests; add focused regressions for concrete
 bring-up failures. Light-pen/gun input (12.5), external genlock synchronization
 (12.6), and expansion-connector INT2/INT6 sources (12.3) retain their deferred scope.
 
-<a id="native-disk-bring-up"></a>
-
-<a id="task-2-5"></a>
-
-- **2.5: Kickstart ROM & Floppy Subsystem Bring-Up for Native Program Execution**
-  - **Objective:** Complete the native disk/Kickstart/OS path and its remaining boot prerequisites so genuine Amiga programs execute from ADF disk images. Reuse the existing ROM loader, reset/overlay path, drive controls, MFM utilities and chipset DMA engines.
-  - **Actionable Scope:**
-    - **Missing media stream:** `FloppyController::step_cck()` currently applies drive-control edges but does not generate a runtime image stream. Image insertion and sector encoding helpers exist; the machine DMA test supplies raw pulses itself. Implement the missing production path rather than treating that fixture as a working drive.
-    - **Drive and track execution:** Complete DF0: rotation, track/side selection, INDEX and timed MFM read-data generation from the selected ADF track through the existing connector pins. Preserve CIA-B motor/selection/STEP control and CIA-A sense routing. Keep media buffers and host loading outside core filesystem I/O; advance the drive from emulated CCKs.
-    - **Complete disk DMA path:** Connect the autonomous drive stream to Paula's data separator, synchronization and FIFO, then through Paula DMAL requests and Agnus arbitration/address generation into Chip RAM. The guest interprets raw MFM words and sectors. Keep disk write-data/write-enable routing distinct and implement the media-write path when required by the selected native workloads.
-    - **Transfer correctness:** Verify independently expected successive data, DSKSYNC/DSKBYTR behavior, DMA direction, pointer/count progression, block completion and interrupts. Exercise CPU/shared-bus contention, pending transfers and exactly-once effects. Reuse valid deterministic pin tests to isolate failures, while end-to-end runs obtain data from the inserted image. Include disk-operation reset and serialized continuation checks without extending this into a register-wide chipset campaign.
-    - **Firmware and program startup:** Validate reset vectors and CIA-controlled ROM overlay through actual Kickstart execution, then boot a suitable ADF and verify the required system services, program launch and applicable return behavior. Resolve firmware, media and model failures through the production path; host-filled RAM or substituted OS initialization does not establish boot support.
-  - **Verification Gate:**
-    - Focused drive/MFM tests in `crates/floppy/tests/` and production DMA/boot integration tests in `crates/machine_loop/tests/` pass for the selected configurations.
-    - An inserted ADF supplies expected data through autonomous drive execution, Paula and Agnus into Chip RAM, with correct completion and guest progress under contention.
-    - Kickstart boots a selected ADF and its native program reaches an independently identified result within a bounded emulated-time budget. Record ROM, image, machine preset and actual result; the insert-disk screen alone does not establish media boot support.
-
 <a id="native-disk-verification"></a>
 
 <a id="task-2-6"></a>
 
 - **2.6: vAmigaTS Native Disk-Based Verification & Self-Testing**
-  - **Objective:** After 2.5, execute original native vAmigaTS ADF programs through the verified disk/firmware/OS path, validating drive control, floppy DMA, CPU coordination and required operating-system interactions.
+  - **Objective:** Execute original native vAmigaTS ADF programs through the verified disk/firmware/OS path, validating drive control, floppy DMA, CPU coordination and required operating-system interactions.
   - **Actionable Scope:**
+    - Confirm the Workbench 1.3 desktop through screen/window state and a readable saved frame; investigate display corruption without treating DOS or Workbench task creation as visual acceptance.
     - Execute selected disk-based vAmigaTS cases, preserving their original startup and tested operation. Record source/revision, applicable OCS configuration, ROM/image, observation point and expected result; compare output with the applicable reference captures or data.
     - **Audio readiness:** Check independently expected digital sample sequences for the selected audio cases. Complete the basic host-playback portion of 6.1 before or during 2.6, before running those cases, so their sound can be heard as well as checked automatically. Keep native/WASM frontend audio boundaries; later presentation shaders do not gate these tests.
     - **Host input readiness:** Complete the basic keyboard, mouse and joystick/gamepad routing from 6.2 before or during 2.6, before executing tests that require those inputs. Identify each selected test's required controls and verify host key presses/releases, mouse motion/buttons and joystick directions/fire through the frontend boundary into the emulated devices and guest-visible behavior. Preserve native/WASM separation and core ownership. Advanced controller features and the deferred 12.2 peripherals are not prerequisites for ordinary input tests. See the [GUI specification](Obsidian/Amiga/Design/Application/GUI.md).
@@ -168,7 +151,7 @@ bring-up failures. Light-pen/gun input (12.5), external genlock synchronization
 - **3.5: Deterministic Session Recording and Replay**
   - Record a playable session in Game and Debug views from an identified initial machine state, hardware configuration, ROM and disk contents. Capture keyboard press/release, mouse movement/buttons and joystick/gamepad input as delivered emulated-device events, together with disk insert/eject/swap actions, resets, state loads and other machine-affecting controls.
   - Timestamp events at their actual emulated CCK delivery boundaries and preserve ordering. Playback feeds the same production input/control paths at those boundaries. Define how external inputs such as host-supplied RTC updates are recorded or reproduced; the live RTC is currently excluded from snapshots. Keep event capture, asset loading and storage outside the core stepping loop.
-  - Keep initial media contents and any subsequent guest writes reproducible, including the currently inserted disk. A machine snapshot alone does not currently serialize the host-owned ADF buffers. Use the same session/event model for standalone replay and checkpoint rewind rather than separate recording mechanisms.
+  - Keep initial media contents, subsequent swaps and any future guest writes reproducible. Snapshots embed the currently inserted raw tracks; replay must also retain later media events and their contents. Use the same session/event model for standalone replay and checkpoint rewind rather than separate recording mechanisms.
   - **Gate:** On native and WASM, replay a recorded session from its declared starting point and compare machine progress, relevant state and outputs at selected checkpoints. Include held-key releases, mouse actions and disk swaps. Distinguish executable input replay from video capture in 7.7.
 
 <a id="task-3-6"></a>

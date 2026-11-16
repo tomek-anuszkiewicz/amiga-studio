@@ -71,18 +71,48 @@ in the [signal catalog](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog
 establish the buffering/polarity; electrical rise times remain unknown.
 
 The controller serializes sampled connector levels and its own incoming inputs.
-Reset cancels pending edges and releases the write gate. Deterministic tests
-drive status, INDEX and data/gate levels without inserting a disk. Their
-success does not certify drive rotation, media writes or round-trip image
-preservation. The old decoded-word/media bridge has been removed. Image buffers
-and pure sector encoding utilities remain available, but no runtime image stream
-is generated. [Paula](Paula.md#reconstructed-disk-engine-contract) owns the reconstructed
-data separator, FIFO, synchronization and write serializer. Media/flux generation
-remains in [native disk bring-up](../../../ROADMAP.md#native-disk-bring-up).
+Electronic reset cancels pending edges, releases the write gate and stops motors.
+It retains mounted media, write protection, disk-change state, head cylinder and
+angular position; insertion/ejection are separate host operations. Cold, warm and
+guest RESET use that same drive contract.
+
+## Autonomous ADF reads and continuation
+
+Insertion accepts only a standard 901,120-byte DD ADF and prepares all 160 raw
+tracks before execution. Invalid size leaves the current medium unchanged.
+Each sector has four preamble bytes, two $4489 sync words, odd/even header and
+label data, masked XOR checksums and odd/even payload. Clock bits carry the
+preceding data bit across boundaries. Eleven 1,088-byte sectors and a 532-byte
+gap form a circular 12,500-byte track. This is an ideal 300 RPM, 500,000 raw-cell
+per second read model; the HRM FAST setting specifies two microseconds per cell.
+
+The [media engine](../../../crates/floppy/src/media.rs) advances every running
+spindle, even when deselected. Its rational phase accumulator uses the configured
+PAL/NTSC CCK frequency, retaining the fraction rather than rounding every cell to
+seven CCK. Selection, side changes and STEP do not restart angular phase.
+Selected transitions and INDEX resolve low dominant at the connector. Pulses
+are one-CCK sampled event markers, not calibrated analog widths. Spindle
+acceleration, head settling and magnetic write behavior are not modeled.
+
+Snapshots embed usable raw tracks and retain spindle phase, mechanics, controls
+and pending pins. They require no host image file to resume. [Paula](Paula.md#reconstructed-disk-engine-contract)
+owns separation, FIFO, synchronization and write serialization; the drive never
+interprets sectors during execution. Write-data/gate routing remains intact,
+but neither media writes nor host ADF persistence are established by read boot.
+
+The [autonomous DMA tests](../../../crates/machine_loop/tests/test_floppy_media_dma.rs)
+check exact successive raw words, track wrap, CPU contention, reset and serialized
+mid-transfer continuation. [Native boot tests](../../../crates/machine_loop/tests/test_native_disk_boot.rs)
+use the original cross1 bootblock and Kickstart startup. Invocation and evidence
+limits are in the [machine test guide](../../../crates/machine_loop/tests/README.md).
+Full image comparisons and broader guest coverage remain in
+[native verification](../../../ROADMAP.md#native-disk-verification).
 
 ## References
 
-- [Signal comparison](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md#three-reference-comparison-and-selected-transport) and [Machine Loop transport](Machine%20Loop.md#captured-connector-transport-and-pending-bus-words): Distinguish deterministic register/pin checks from deferred media/bitstream behavior.
+- [Signal comparison](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md#three-reference-comparison-and-selected-transport) and [Machine Loop transport](Machine%20Loop.md#captured-connector-transport-and-pending-bus-words): Define captured connector ordering independently of drive mechanics.
+- [Commodore disk format](https://amigadev.elowar.com/read/ADCD_2.1/Devices_Manual_guide/node015B.html): Original sector layout and odd/even organization.
+- [vAmiga sector encoder](../../../ref_src/vAmiga/Core/RetroVault/Images/Encoders/AmigaEncoder.cpp): Independent format/checksum and boundary-clock comparison; its longer default track is not the selected 300 RPM model.
 
 - [CIA.md](CIA.md): Drive control and status register ownership.
 - [Paula.md](Paula.md): Disk data and control register ownership.
