@@ -1,6 +1,6 @@
 //! Complete 24-bit physical memory map, address decoders, and hardware quirks
 //!
-//! Provides single-instruction O(1) memory bank dispatch using a 256-entry table
+//! Dispatches memory banks using a 256-entry table
 //! of direct function pointers to bank read/write handler methods.
 
 use super::{BusResult, PhysicalMemory, OPEN_BUS_BYTE, OPEN_BUS_WORD};
@@ -57,23 +57,14 @@ pub type BankWriteWordDebugFn = fn(&mut PhysicalMemory, u32, u16);
 /// Memory bank handler containing method pointers for direct dispatch
 #[derive(Clone, Copy)]
 pub struct BankHandler {
-    /// Associated memory bank classification
     pub bank: MemoryBank,
-    /// Direct read byte handler method pointer
     pub read_byte: BankReadByteFn,
-    /// Direct write byte handler method pointer
     pub write_byte: BankWriteByteFn,
-    /// Direct read word handler method pointer
     pub read_word: BankReadWordFn,
-    /// Direct write word handler method pointer
     pub write_word: BankWriteWordFn,
-    /// Direct uncontended debug read byte handler method pointer
     pub read_byte_debug: BankReadByteDebugFn,
-    /// Direct uncontended debug write byte handler method pointer
     pub write_byte_debug: BankWriteByteDebugFn,
-    /// Direct uncontended debug read word handler method pointer
     pub read_word_debug: BankReadWordDebugFn,
-    /// Direct uncontended debug write word handler method pointer
     pub write_word_debug: BankWriteWordDebugFn,
 }
 

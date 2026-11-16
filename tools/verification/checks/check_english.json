@@ -74,6 +74,9 @@
     "english_words/names.txt"
   ],
   "file_words": {
+    "docs/developers.md": [
+      "bookjson"
+    ],
     "crates/agnus/tests/test_blitter_phases.rs": [
       "abi",
       "abc",

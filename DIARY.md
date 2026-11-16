@@ -15,7 +15,7 @@ This document records the architectural evolution, human-AI co-design methodolog
 Before a single line of Rust code was written, the human spent the final week of August 2026 establishing the physical ground truth of the Amiga 500 hardware:
 - **Analog Low-Pass Audio Simulation (LTspice):** The human modeled Paula's analog audio reconstruction circuit in LTspice (`0b2777fa`), extracting the exact resistor (ohms) and capacitor (farads) values from original Commodore schematics (`c448cd14`). This captured both the fixed 2-pole Sallen-Key low-pass filter and the switchable "LED filter" controlled by CIA-A port A bit 1.
 - **Band-Limited Step (BLEP) Table Generation:** In a dedicated C# prototype (`9057f4a8`, `7783f1e2`), the human derived and verified the continuous-time impulse response and step response tables needed for alias-free audio interpolation, parameterizing them directly against physical component physics rather than arbitrary digital filters.
-- **Reference Emulator Ingestion:** To prevent speculative design, five verified open-source reference emulators were imported into `ref_src/` for cross-validation: MAME, Moira, Musashi, vAmiga, and WinUAE.
+- **Reference Emulator Ingestion:** To prevent speculative design, five open-source reference emulators were imported into `ref_src/` for cross-validation: MAME, Moira, Musashi, vAmiga, and WinUAE.
 - **Decoded Single-Step Vectors:** Over one million software-generated SingleStep cases were imported and structured (`a31518dc`), providing reference state and bus sequences before CPU implementation. Later work clarified that agreement with these vectors did not constitute a physical hardware capture.
 
 ### The RAG Knowledge Base & Reference Documentation Sprint (September 1–4, 2026)
@@ -23,7 +23,7 @@ Between September 1 and September 4, a massive documentation ingestion sprint to
 - Hundreds of pages from the **Amiga Hardware Reference Manual (HRM)**, **Motorola 68000 Programmer's Reference Manual (PRM)**, **Amiga Guru Book**, and **A500/A2000 Technical Reference Manual** were ingested and converted into clean, semantically structured Markdown.
 - Vector SVGs and timing schematics were extracted from original PDFs, register layouts and bitmasks were normalized into tables, and Appendix B clock transition diagrams were recropped and cleaned.
 - A local **Qdrant vector database** (`tools/rag/`) with a custom FastMCP server (`amiga_rag`) and **Graphify** AST knowledge graph (`graphify-out/`) were deployed.
-- **The Core Strategy:** An AI agent prompted in a vacuum will hallucinate register addresses, flag behaviors, and bus cycle timings. By arming the agent with instant, offline vector retrieval over the official hardware manuals, the human ensured that every generated instruction and bus cycle was anchored in historical hardware reality.
+- **The Core Strategy:** An AI agent prompted in a vacuum will hallucinate register addresses, flag behaviors, and bus cycle timings. By arming the agent with instant, offline vector retrieval over the official hardware manuals, the human made source evidence available for checking generated behavior. Retrieval alone did not establish that every instruction or bus cycle matched hardware.
 
 ### Language & Framework Deliberations: Why Rust & egui
 Once the reference foundations were secured, the human and agent evaluated the systems programming language and UI framework:
@@ -69,14 +69,15 @@ To achieve mechanical sympathy with Rust's ownership model and the host CPU's in
   3. The main loop steps each chip for that CCK phase, and chips advance their internal sub-components accordingly.
   4. Interrupt lines (IPL 1–6) and DMA bus locks flow strictly through the top-level orchestration loop and `MemoryBus`.
 
-### Host Hardware Reality: Mechanical Sympathy Over Micro-Optimizations
-Taking into account the immense speed of modern host processors (3.5–5.0+ GHz), expansive L1/L2/L3 caches, and abundant system RAM, the human established a foundational premise: **traditional, cryptic micro-optimizations are completely unnecessary**.
+### Host Performance: Locality, Allocation and Measurement
 
-Rather than cluttering code with premature bit-twiddling hacks, pointer casting, or opaque abstractions, the design focuses entirely on **mechanical sympathy** with the host processor:
-- **Maximizing Cache Locality & Linear Execution:** Modern superscalar CPUs execute instructions at staggering throughput as long as code execution is predictable, contiguous, and linear.
-- **Eliminating Branch Mispredictions:** Deep host CPU instruction pipelines (14–20+ stages) suffer severe penalties (15–20 CPU cycles) on mispredicted branches. Eliminating cascaded runtime branches in the hot emulation loop (e.g. replacing runtime `match opcode`, `match ea_mode`, and `match size` checks with a direct 65,536-entry static dispatch table of specialized, concrete handlers) allows the host branch predictor to operate with near-zero ambiguity.
-- **Zero Dynamic Heap Allocations During Emulation:** A non-negotiable mandate: during active emulation, **virtually zero heap memory allocations** (`Vec::new`, `Box::new`, `format!`, `String`) may take place in hot paths (`step()`, `step_cck()`, bus access, interrupt polling). All guest memory buffers (Chip RAM, Fast RAM, ROMs), microcode state registers, execution trace ring buffers, and pipeline latches are fixed-size and pre-allocated upfront. Avoiding runtime allocator locks and heap churn eliminates latency jitter, prevents cache line eviction, and guarantees deterministic performance across desktop and WebAssembly.
-- **Natural Blazing Speed:** When code is flat, linear, cache-dense, and allocation-free, the host CPU executes it almost effortlessly at peak throughput.
+The early design preferred straightforward, predictable execution and preallocated
+storage over opaque arithmetic tricks. Direct opcode dispatch and allocation-free
+hot paths were chosen to keep host overhead visible and avoid allocator work during
+emulation. Those choices are design intentions, not throughput measurements or a
+guarantee of branch prediction, cache behavior or deterministic host latency.
+The [optimization examples](.agents/skills/optimize-emulation/references/project-examples.md)
+record later measurements and cases where active-work costs changed the conclusion.
 
 ---
 
@@ -94,10 +95,10 @@ From the inception of the codebase on September 6 (`8ed5eaca`), a clean workspac
 
 ### The Evolution of the Memory Bus: From Dynamic Branching to $O(1)$ Direct Bank Handlers
 The memory bus (`crates/memory_bus`) underwent a radical performance evolution across several pivotal commits:
-1. **Initial Range Checking (`179fa5d2`):** Early iterations evaluated memory access via cascaded `if/else` checks matching 24-bit addresses against address boundaries (`$000000-$07FFFF`, `$DF0000-$DFFFFF`, `$F80000-$FFFFFF`). This produced significant branch overhead on every single byte and word transfer.
+1. **Initial Range Checking (`179fa5d2`):** Early iterations evaluated memory access via cascaded `if/else` checks matching 24-bit addresses against address boundaries (`$000000-$07FFFF`, `$DF0000-$DFFFFF`, `$F80000-$FFFFFF`). This placed range selection on every byte and word transfer.
 2. **The $O(1)$ Bank Mapping Breakthrough (`4c799770`, `3b30e894`):** The human directed a complete redesign: the entire 16 MB 24-bit physical address space is sliced into **256 static banks of 64 KB each**.
    - A 256-entry lookup table (`[BankHandler; 256]`) maps each 64 KB block directly to function pointers: `read_byte`, `read_word`, `write_byte`, and `write_word`.
-   - Accessing any address requires only a single byte shift (`address >> 16`) and an indirect call, delivering pure $O(1)$ dispatch with zero branching in the hot loop.
+   - Accessing any address requires only a single byte shift (`address >> 16`) and an indirect call, providing direct bank selection. The selected handler still performs its own access checks; this description is not a measured host-latency result.
 3. **Early Address-Space Model:**
    - **Unmapped Reads:** The initial model returned configurable `$FF` / `$FFFF` values. October consolidation replaced the configuration with shared fixed placeholders; neither version established physical bus retention or decay.
    - **Kickstart Overlay:** CIA-A port A bit 0 controls the overlay latch. On cold boot, bank 0 (`$000000-$07FFFF`) mirrors Kickstart ROM until the first hardware write flips the latch to expose physical Chip RAM.
@@ -119,11 +120,11 @@ The CPU crate was renamed from `m68000` to `cpu` on September 19 (`9ec915c`). Ea
 
 ## 4. Physical Circuit Simulation: Standalone BLEP Audio Synthesis
 
-A dedicated engineering effort was devoted to modeling the physical analog sound output of the Amiga Paula chip with pristine accuracy:
+A dedicated engineering effort was devoted to modeling the physical analog sound output of the Amiga Paula chip using circuit-derived response curves:
 - **WinUAE Parameterization & Circuit Derivation:** The Band-Limited Step (BLEP) synthesis engine was modeled and parameterized based on verified reference implementations in WinUAE.
 - **Pure Mathematical Standalone Module:** Rather than hardcoding magic sound samples, the BLEP synthesis is implemented as an independent, decoupled module containing all the underlying physics and signal-processing mathematics (`crates/paula/src/blep_tables.rs`).
 - **Analog RC Component Values:** The step response and frequency roll-off tables are computed directly from the physical component values of the Amiga motherboard circuit—the precise resistance (resistors in ohms) and capacitance (capacitors in farads) forming the analog low-pass filter network (including dynamic CIA-A LED filter switching).
-- This ensures alias-free, cycle-accurate analog audio reconstruction directly from first physical principles.
+- The resulting curves model the selected circuit assumptions; they do not by themselves establish physical output accuracy or eliminate every aliasing source.
 
 The November 8 regression work protected retained numerical curves without establishing physical audio output. Its offline reference checks and optional WinUAE comparison belong to the verification history in Chapter 14.
 
@@ -245,30 +246,35 @@ The living performance specification and benchmark README own the executable wor
 
 In parallel with the CPU benchmarking suite, the frontend was developed on the dedicated `feat/gui` worktree (`315c602c`):
 
-### From "Make Me a GUI" to a Full Developer Studio
-- **The First Iteration:** Initiated with a simple voice prompt: *"Make me a GUI"*. The agent initially produced a basic, single-panel window displaying raw register text.
-- **The Human-Driven Transformation:** Through relentless review, the human pushed the frontend to become a world-class emulator workbench:
-  - **Left Dock:** Live register inspector with visual delta highlighting (green for values mutated on the last cycle), glowing condition code register LEDs (`X`, `N`, `Z`, `V`, `C`), collapsible microcode inspector (`F8`), and cycle-accurate disassembly stream with CISC address alignment.
-  - **Main Viewport:** CRT-accurate Amiga display (`F12` for clean screen-only mode) paired with an interactive **Temporal Scrub Bar** for time-travel debugging.
-  - **Right Dock:** Memory hex editor with inline ASCII inspection, live memory search, condition breakpoint manager (PC, address ranges, register expressions), and step-by-step bus transaction trace log.
+### From "Make Me a GUI" to a Developer Studio
 
-### In-Process Headless GUI Testing Superpower (`crates/gui/tests/test_interactions.rs`)
-One of the most consequential architectural decisions made during GUI development was rejecting external, fragile UI test tools:
-- Because `egui` is an immediate-mode library, the entire interface pipeline runs **100% in-process** without opening OS windows, requiring display servers, or spawning heavy headless browser drivers.
-- **Direct Event Simulation:** Headless integration tests directly invoke:
-  ```rust
-  let mut app = AmigaApp::new_test();
-  ctx.run(raw_input, |ctx| app.update_ui(ctx));
-  ```
-- Tests programmatically simulate keyboard shortcuts (`F5` run/pause, `F8` microcode toggle, `F10` step over, `F11` step into, `F12` screen mode), mouse clicks, drag-and-drop resizing, text box edits, and Enter/Escape commits directly in Rust code.
-- Over 25 headless integration tests assert dock widths, focus transitions, memory mutations, and view mode switches in milliseconds, with zero rendering jitter and zero flakiness.
+The first voice request produced a basic register window. Iterative review expanded
+it into register and microcode inspection, disassembly, an Amiga image, memory
+editing, breakpoints and an execution-history control. The important choice was to
+make machine activity inspectable while retaining a separate presentation view;
+current shortcuts and layouts belong to the living GUI documentation.
 
-### The Debugger Engine (`crates/debugger`) & Standalone Disassembler (`crates/disassembler`)
-The backend driving the Developer Studio was modularized to strictly adhere to the 800-line single-responsibility guideline:
-- **Temporal Reverse Debugger (`temporal.rs`):** A fixed-capacity, zero-allocation ring buffer records CPU and memory bus states on every instruction. Users can scrub backwards through execution history, replaying cycles in reverse to isolate the exact instruction that corrupted a register.
-- **In-Memory Mini-Assembler (`assembler.rs`):** A lightweight 650-line M68000 assembler built directly into the debugger, allowing developers to type assembly instructions directly into the GUI to patch guest memory live during execution.
-- **Conditional Breakpoint Evaluator (`breakpoints.rs`):** Evaluates complex address boundaries, memory access watchpoints (read/write), and register conditional expressions (`D0 == $0000`, `A7 < $00070000`).
-- **Standalone Disassembler Engine (`crates/disassembler`):** Completely decoupled and extracted from `crates/debugger` into its own standalone, zero-dependency crate. The disassembler is structured into clean, flat submodules (`types.rs`, `ea.rs`, `alu.rs`, `branch.rs`, `data.rs`, `align.rs`, `lib.rs`), with every file under 380 lines. This permanently eliminated the historical 800-line exception for `disassembler.rs` from architecture tests while providing instruction decoding and heuristic stream alignment across debugger, tracer, and GUI modules.
+### Headless Interaction Testing
+
+Because egui accepts explicit input and context state, interaction tests could run
+in process without an OS window. This supported repeatable checks of focus,
+keyboard commands, edits and panel geometry without external UI automation. Such
+checks do not prove native event delivery, GPU output or browser behavior. Later
+worker ownership also introduced asynchronous image delivery: command completion
+alone did not establish that a new frame had reached the GUI.
+
+### Debugger and Disassembler Boundaries
+
+CPU history uses bounded storage and restores CPU snapshots; it does not
+restore guest memory or the complete machine. The original time-travel description
+was broader than the implemented capability. Full rewind and replay remain separate
+roadmap work.
+
+The embedded mini-assembler permits guest-memory patches. Conditional breakpoints
+inspect execution and memory activity. Extracting disassembly into its own crate
+made decoding reusable by the debugger, tracer and GUI and retired the former
+large-file exception. The separation and its rationale matter beyond the current
+file names or line counts.
 
 ---
 
@@ -282,7 +288,7 @@ The enforcement mechanisms changed with the project. Early Rust architecture tes
 
 ## 9. The Ultimate Goal: The Clean-Room Re-Generation Experiment
 
-Every bug fix, architectural decision, and hardware quirk in this project has been continuously documented in `Obsidian/Amiga/Design/`.
+The design notes retain hardware contracts, consequential decisions and known limits; Git and this diary retain the development history.
 
 This serves a larger, ambitious vision:
 - Once the complete, working Amiga 500 emulator is finished and verified against all reference suites,
@@ -291,7 +297,7 @@ This serves a larger, ambitious vision:
   - The curated, de-duplicated design documentation (`Obsidian/Amiga/Design/`).
   - The automated test suites (SingleStepTests, vAmigaTS).
 - **The Experiment:** Can an AI agent, armed with the lessons, rules, and architecture recorded during this project, autonomously re-synthesize the complete cycle-exact emulator from scratch?
-- The separately scheduled scope is recorded in [Roadmap Step 9](ROADMAP.md#step-9-documentation-to-code-regeneration-experiment).
+- That was the original ambition, not an instruction to delete the working repository. The currently scheduled experiment is an isolated, single-subsystem trial in [Roadmap Step 9](ROADMAP.md#step-9-documentation-to-code-regeneration-experiment).
 
 This diary stands as the living record of how those foundations were built.
 
@@ -501,6 +507,29 @@ This final, unnumbered section holds work awaiting resolution or integration int
 ### Entry Format
 
 Every authorized repository commit adds a concise entry here. Logging and compaction follow [diary-maintenance.md](.agents/rules/diary-maintenance.md) and [compact-diary](.agents/skills/compact-diary/SKILL.md). Record the timestamp, affected components, delivered change, rationale and actual verification, including failures and unrun checks. At compaction, retain lasting decisions and evidence in the owning chapter and leave routine details in Git.
+---
+
+### [2026-11-13 00:08 CET] — Complete book-derived chipset reconstruction
+- **Affected Subsystems**:
+  - `chipset`
+  - `peripherals`
+  - `machine loop`
+  - `GUI`
+  - `save state`
+  - `verification`
+  - `design specifications`
+- **What Was Changed (The Concrete Reality)**:
+  - Close CHIPSET-BOOK-REBUILD-20261111 and Roadmap 2.4
+  - Consolidate the completed stage in Chapter 15 and retain guest acceptance in 2.5
+  - Repair the isolated WASM build
+- **Architectural Rationale & Trade-Offs**:
+  - Preserve register transport
+  - hardware ownership and independent verification while replacing engines
+- **Verification & Test Results**:
+  - Previous final-source commit and milestone profiles passed, including 128 SingleStep groups and 1002737 current vectors
+  - The isolated WASM check initially failed on two unused GUI parameters and passed after the repair
+  - Prior live GUI inspection and extended source review passed
+  - Renewed final-source profile and review outcomes are recorded in the closing commit
 ---
 
 ### [2026-11-13 00:19 CET] — Defer English audits to authorized commit workflows
@@ -1949,40 +1978,6 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Integrated canonical verification and four independent review lanes are pending
 ---
 
-### [2026-11-16 12:12 CET] — Plan debugger register and chip-state screen layout
-- **Affected Subsystems**:
-  - `ROADMAP.md`
-- **What Was Changed (The Concrete Reality)**:
-  - Add planned item 5.5 linking custom-chip and CIA register inspection with internal chip-state views and screen layout
-  - Consider tabs and grouped panels while leaving the final layout undecided
-- **Architectural Rationale & Trade-Offs**:
-  - Make hardware activity inspectable within the debugger's available screen space
-- **Verification & Test Results**:
-  - Tests and automated verification and independent review were not run at the user's explicit request
-
-### [2026-11-13 00:08 CET] — Complete book-derived chipset reconstruction
-- **Affected Subsystems**:
-  - `chipset`
-  - `peripherals`
-  - `machine loop`
-  - `GUI`
-  - `save state`
-  - `verification`
-  - `design specifications`
-- **What Was Changed (The Concrete Reality)**:
-  - Close CHIPSET-BOOK-REBUILD-20261111 and Roadmap 2.4
-  - Consolidate the completed stage in Chapter 15 and retain guest acceptance in 2.5
-  - Repair the isolated WASM build
-- **Architectural Rationale & Trade-Offs**:
-  - Preserve register transport
-  - hardware ownership and independent verification while replacing engines
-- **Verification & Test Results**:
-  - Previous final-source commit and milestone profiles passed, including 128 SingleStep groups and 1002737 current vectors
-  - The isolated WASM check initially failed on two unused GUI parameters and passed after the repair
-  - Prior live GUI inspection and extended source review passed
-  - Renewed final-source profile and review outcomes are recorded in the closing commit
----
-
 ### [2026-11-16 01:03 CET] — MEMORY-ACCESS-INVARIANTS-20261115 / MUTATION-QUEUE-OVERFLOW-20261115: enforce fatal runtime invariants
 - **Affected Subsystems**:
   - `CPU`
@@ -2218,6 +2213,17 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Final canonical commit verification and four independent review verdicts are pending
 ---
 
+### [2026-11-16 12:12 CET] — Plan debugger register and chip-state screen layout
+- **Affected Subsystems**:
+  - `ROADMAP.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Add planned item 5.5 linking custom-chip and CIA register inspection with internal chip-state views and screen layout
+  - Consider tabs and grouped panels while leaving the final layout undecided
+- **Architectural Rationale & Trade-Offs**:
+  - Make hardware activity inspectable within the debugger's available screen space
+- **Verification & Test Results**:
+  - Tests and automated verification and independent review were not run at the user's explicit request
+
 ### [2026-11-16 12:49 CET] — INTEGRATION-ALL-20261116: integrate seven source branches and close completed tasks
 - **Affected Subsystems**:
   - `Emulator memory and host failure handling`
@@ -2245,3 +2251,30 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Initial focused execution exposed that combined wrapper defect and failed before correction
   - Added report assertions for concurrent failure continuation reuse and skipped coverage export; publish the rewritten lock fixture PID atomically and keep diagnostic report Git fixtures and platform-version mocks isolated
   - Canonical combined commit verification coverage-span review vault audit graph refresh and four independent approvals are pending and their final outcome belongs in the integration commit
+---
+
+### [2026-11-16 15:23 CET] — DOCUMENTATION-KNOWLEDGE-PRUNING-20261116: retain valuable knowledge and remove code narration
+- **Affected Subsystems**:
+  - `Agent governance`
+  - `Design specifications`
+  - `Reader and tool documentation`
+  - `Rust source documentation`
+  - `Roadmap and engineering history`
+- **What Was Changed (The Concrete Reality)**:
+  - Adopt one documentation-value criterion and reconcile its review and enrichment consumers
+  - Remove duplicate field and module catalogs plus copied procedures while retaining hardware contracts and rationale
+  - Correct CPU-history and evidence claims and preserve the known in-flight restoration gap
+  - Replace Roadmap 5.2 timing assumptions with the owning Agnus and DMA specifications under explicit user approval
+  - Preserve all 89 historical changelog records and restore chronological order
+- **Architectural Rationale & Trade-Offs**:
+  - Retain independent hardware evidence and costly knowledge without transcribing implementation
+  - Keep source books conversion prompts executable code test bodies and protected references unchanged
+- **Verification & Test Results**:
+  - Focused vault checks passed for 35 specifications and 1069 links
+  - Roadmap structure formatting and configured semantic-sync checks passed
+  - Exact comparison preserves seven hardware columns across 256 register rows and executable text plus fenced examples in 21 Rust files
+  - Local link and anchor checks passed for 1208 links after the approved roadmap correction
+  - Canonical commit verification and four independent review lanes are pending
+  - No runtime repair hardware certification or milestone closure is claimed
+  - The first commit preflight found two dictionary entries and the AGENTS byte ceiling; shortened routing and resolved language findings under the standing language policy
+  - A later preparation run passed preliminary checks and Clippy but its browser build was interrupted to correct structural-test ownership wording before final verification

@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "frame_builder"
 status: "active"
 created: 2026-09-19
-updated: 2026-11-15
+updated: 2026-11-16
 related: ["[Denise.md](Denise.md)", "[Agnus.md](Agnus.md)", "[GUI.md](Application/GUI.md)"]
 tracked_paths:
   - "crates/frame_builder"
@@ -22,8 +22,6 @@ The frame buffer holds the pixels of a rendered video frame. In the emulator, `F
 RGB444 channels expand from 0..15 to 0..255 by multiplication by 17, with
 opaque alpha. This host normalization preserves channel order and ignores the
 unused upper four bits. It does not apply gamma or CRT correction.
-The 4096 ARGB values are prepared at compile time in a 16 KiB lookup table;
-rendering indexes it with the twelve color bits.
 
 ## Visible storage
 
@@ -55,8 +53,7 @@ are cleared; unchanged unused capacity needs no repeated clearing.
 
 Denise collects the four high-resolution output samples of each CCK before
 storing them together. Pixel composition and the two-sample pipeline still
-advance in their original order. The shared write resolves destination rows
-once; at the visible edge, only complete pairs within the row are stored.
+advance in their original order. At the visible edge, only complete pairs within the row are stored.
 
 The [GUI](Application/GUI.md#scaling-and-appearance) reads the visible prefix of
 each stored row for texture upload and applies the selected uniform scale.

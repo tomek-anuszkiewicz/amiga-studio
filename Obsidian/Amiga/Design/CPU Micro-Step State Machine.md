@@ -127,26 +127,11 @@ exactly two CPU clocks or expose individual bus strobes.
 
 ## Internal registers and execution state
 
-[`CpuState`](../../../crates/cpu/src/state.rs) holds programmer-visible Dn,
-An, PC, and SR alongside execution state. `ir` is the executing opcode,
-`prefetch` the staged next word, and `micro.irc` an incoming word.
-`instruction_pc` identifies the current opcode for relative addresses and
-fault capture; `cycle_counter` counts elapsed CPU clocks. `stopped`, `halted`,
-`trace_pending`, and `ipl` affect instruction-boundary behavior. These fields
-are emulator state, not a claim about one-to-one silicon registers.
-
-[`CpuMicroState`](../../../crates/cpu/src/micro/engine.rs) carries values
-between CCKs:
-
-| Fields | Purpose |
-| --- | --- |
-| `current_steps`, `micro_step`, `clocks_remaining` | Active sequence, position, and remaining time. |
-| `reg_src`, `reg_dst` | Decoded register indices. |
-| `source`, `destination` | Staged operands and result; exception entry can reuse them for captured values. |
-| `ea_addr`, `ea_high`, `addr1`, `addr2` | Resolved address, partial high word, and addresses for multi-operand or split transfers. |
-| `irc`, `target_refill`, `prefetch_retired` | Incoming instruction word and controls for prefetch retirement. |
-| `movem_mask`, `movem_state` | Register mask and transfer-loop progress. |
-| `fault_addr`, `info_word`, `ssp_base` | Address Error capture and original supervisor stack base. |
+The [programmer-visible registers](CPU%20Motorola%20M68000.md#programmer-visible-state)
+are separate from the engine's staged operands, prefetch and transfer progress.
+`instruction_pc` identifies the current opcode for relative addressing and fault
+capture; the stream cursor may already point beyond it. The living
+[micro-state](../../../crates/cpu/src/micro/engine.rs) defines the scratch storage.
 
 Sequential retirement shifts `prefetch` and `irc` and advances PC. A control
 transfer refills from its target and commits the new opcode and cursor. Some

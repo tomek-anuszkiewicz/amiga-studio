@@ -4,6 +4,10 @@
 - Rules define obligations, scope, and exceptions. Skills own execution procedures and link supporting references, scripts, and templates. Scripts and tests own mechanical checks.
 - `docs/` explains the project and provides starting points for users and developers. Keep useful launch or verification examples there; link detailed operational procedures and command options to the owning tool/test README or agent skill/reference. Change history belongs in the diary.
 - Keep each instruction or procedure in one authoritative location and link to it elsewhere. Keep `AGENTS.md` and rules concise without arbitrary size limits; preserve essential obligations and required procedure links when moving detail.
+- [Documentation Value](docs-maintenance.md#documentation-value) governs which
+  knowledge to preserve, enrich, consolidate or remove across project-authored
+  prose, including specifications, source documentation and instructions. Keep
+  that criterion at its owner rather than copying it into each procedure.
 - Discover skills by name/description; link mandatory procedures without a duplicate catalog.
 - Changes to `AGENTS.md`, rules, skills, role instructions or verification requirements
   must assess their effect on the reviewer criteria in the

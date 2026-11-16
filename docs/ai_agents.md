@@ -26,7 +26,7 @@ For example:
 
 > Investigate why this instruction takes two extra Color Clocks in the attached
 > trace. Explain the failing phase before changing code, preserve the reference
-> reference, and run the relevant verification after the fix.
+> data, and run the relevant verification after the fix.
 
 For a first session, an investigation is also useful:
 
@@ -89,7 +89,7 @@ graphify path "Cpu" "BusResult"
 ```
 
 The graph helps locate source; the implementation and tests provide the behavior.
-The agent refreshes changed code once during batch preparation using `python tools/graphify/refresh.py`, or earlier when current graph data is needed for the task. The [refresh command](../tools/graphify/README.md) retains Graphify's full rebuild and memoizes path calculations within that rebuild.
+Refresh behavior and execution options belong to the [Graphify tool reference](../tools/graphify/README.md).
 Setup and traversal details are in the
 [Graphify skill](../.agents/skills/graphify/SKILL.md).
 
@@ -122,14 +122,10 @@ Delegation happens when requested by you or required by an applicable procedure.
 Each helper receives a scoped assignment and reports back to the main session.
 The role configuration contains its current model and permissions.
 
-Each prepared batch requires four separate `code_reviewer` instances with fresh
-context. Their bounded lanes cover behavior, architecture, tests and evidence,
-and specifications and instructions for the same candidate and commit partition.
-It receives the exact patch, approved requirement sources and verification
-artifacts, without the implementation conversation or the author's explanation.
-Ordinary commits receive a focused review; milestones, substantial features and
-changes with significant correctness risks receive an extended review. The
-[code-review skill](../.agents/skills/code-review/SKILL.md) owns the procedure.
+Prepared batches receive four independent review lanes covering behavior,
+architecture, tests/evidence, and specifications/instructions. The
+[code-review skill](../.agents/skills/code-review/SKILL.md) owns their isolation,
+inputs and approval procedure.
 
 ## Review and Record the Result
 
@@ -155,39 +151,18 @@ Prepare one complete candidate against `HEAD`, then repeat the command after cor
 python tools/verification/verify.py commit
 ```
 
-Despite its name, this command verifies the current working tree; it does not
-create a commit. The [testing guide](testing.md) explains its checks, focused
-diagnostics and additional milestone requirements. Each ordinary or final
-integration commit has a corresponding `DIARY.md` entry recording the change and
-observed validation; integration working commits defer this record to closure.
-The four independent reviewers check the final intended snapshot in their lanes.
-Blocking findings and missing required evidence must be resolved before the
-batch freeze. Corrections rerun failed, missing or invalidated groups and renew
-the affected scoped verdicts; demonstrably valid evidence survives. Descriptive
-documentation corrections return only to their review lane; unchanged scoped
-approvals are carried after comparison, without invoking those reviewers again.
-After freeze, create only the
-prepared commits and compare their final tree with the candidate. No routine
-tests, audits, documentation edits or storage scans run between or after them.
-Evidence covers the combined batch; intermediate commits are not individually
-verified unless that was explicitly required and done during preparation.
+Despite its name, this command verifies the working tree; it does not create a
+commit. The [testing guide](testing.md) explains what its evidence establishes.
+[Commit policy](../.agents/rules/git-commits.md) owns preparation, diary entries,
+review, evidence continuation and freeze. Failed or missing required checks
+prevent batch readiness, and results cover the combined candidate.
 
-Use `$git-close-task <branch>` for complete local integration and task closure.
-The agent inspects state and asks you to approve a concrete plan before any
-mutation, including for fast-forward. Pending task changes first receive a local
-working commit without preliminary verification; clean divergent branches start
-with synchronization. Both paths then verify the complete combined result with
-`commit --integration-base <commit>`. The reviewed partition is frozen before
-final commits and sealed afterward. A clean unchanged fast-forward can skip new
-verification when the exact tip is already tested; the agent asks about unknown
-status and records your confirmation separately from executed checks.
-Conditional publication advances the primary checkout to exactly the approved
-result. After the closure record is committed, cleanup removes the closed task's
-plan copies and discards all ignored local files when removing its unchanged
-checkout and branch. Commit-only and merge-only requests retain their narrower
-scope. The [skill](../.agents/skills/git-close-task/SKILL.md) owns the procedure; the
+Complete local integration is a separate request: use `$git-close-task <branch>`.
+It requires approval of a concrete integration and cleanup plan. Commit-only
+requests do not authorize merging, pushing or worktree removal. The
+[skill](../.agents/skills/git-close-task/SKILL.md) owns that procedure, and the
 [integration reference](../tools/verification/README.md#local-integration)
-describes commands, recovery and concurrency limits.
+explains publication, recovery and cleanup.
 
 If you are changing the agent infrastructure itself, use
 [Maintaining Agent Tooling](../.agents/references/agent-tooling.md) for script ownership, configuration

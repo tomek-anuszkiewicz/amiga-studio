@@ -1,4 +1,7 @@
 //! Paula register reads, queued writes and private due-event application.
+//!
+//! Data writes change active state only at the owner capture boundary.
+//! Attempted queue overflow is fatal before admission; address strobes remain separate.
 
 use super::{audio, Paula, BIT_DSKLEN_WRITE_FLAG};
 use crate::register_bits::audio_disk_control as adkcon;
@@ -33,7 +36,6 @@ impl Paula {
         }
     }
 
-    /// Queues DMACON; active state changes only when due.
     #[inline]
     pub fn set_dmacon(&mut self, val: u16) -> bool {
         self.mutations.stage(
@@ -44,7 +46,6 @@ impl Paula {
         )
     }
 
-    /// Queues INTENA; active state changes only when due.
     #[inline]
     pub fn set_intena(&mut self, val: u16) -> bool {
         self.mutations.stage(
@@ -55,7 +56,6 @@ impl Paula {
         )
     }
 
-    /// Queues INTREQ; active state changes only when due.
     #[inline]
     pub fn set_intreq(&mut self, val: u16) -> bool {
         self.mutations.stage(
@@ -66,7 +66,6 @@ impl Paula {
         )
     }
 
-    /// Queues ADKCON; active state changes only when due.
     #[inline]
     pub fn set_adkcon(&mut self, val: u16) -> bool {
         self.mutations.stage(
@@ -77,7 +76,6 @@ impl Paula {
         )
     }
 
-    /// Queues DSKDAT; active state changes only when due.
     #[inline]
     pub fn set_dskdat(&mut self, val: u16) -> bool {
         self.mutations.stage(
@@ -88,7 +86,6 @@ impl Paula {
         )
     }
 
-    /// Queues DSKLEN; active state changes only when due.
     #[inline]
     pub fn set_dsklen(&mut self, val: u16) -> bool {
         self.mutations.stage(
@@ -99,7 +96,6 @@ impl Paula {
         )
     }
 
-    /// Queues DSKSYNC; active state changes only when due.
     #[inline]
     pub fn set_dsksync(&mut self, val: u16) -> bool {
         self.mutations.stage(
@@ -110,7 +106,6 @@ impl Paula {
         )
     }
 
-    /// Queues SERDAT; active state changes only when due.
     #[inline]
     pub fn set_serdat(&mut self, val: u16) -> bool {
         self.mutations.stage(
@@ -121,7 +116,6 @@ impl Paula {
         )
     }
 
-    /// Queues SERPER; active state changes only when due.
     #[inline]
     pub fn set_serper(&mut self, val: u16) -> bool {
         self.mutations.stage(
@@ -132,7 +126,6 @@ impl Paula {
         )
     }
 
-    /// Queues POTGO; active state changes only when due.
     #[inline]
     pub fn set_potgo(&mut self, val: u16) -> bool {
         self.mutations.stage(
@@ -143,7 +136,6 @@ impl Paula {
         )
     }
 
-    /// Queues the audlen family; active state changes only when due.
     #[inline]
     pub fn set_audlen(&mut self, index: usize, val: u16) -> bool {
         if index >= config::AUDIO_CHANNEL_COUNT {
@@ -157,7 +149,6 @@ impl Paula {
         )
     }
 
-    /// Queues the audper family; active state changes only when due.
     #[inline]
     pub fn set_audper(&mut self, index: usize, val: u16) -> bool {
         if index >= config::AUDIO_CHANNEL_COUNT {
@@ -171,7 +162,6 @@ impl Paula {
         )
     }
 
-    /// Queues the audvol family; active state changes only when due.
     #[inline]
     pub fn set_audvol(&mut self, index: usize, val: u16) -> bool {
         if index >= config::AUDIO_CHANNEL_COUNT {
@@ -185,7 +175,6 @@ impl Paula {
         )
     }
 
-    /// Queues the auddat family; active state changes only when due.
     #[inline]
     pub fn set_auddat(&mut self, index: usize, val: u16) -> bool {
         if index >= config::AUDIO_CHANNEL_COUNT {

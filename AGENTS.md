@@ -19,7 +19,7 @@ First identify the question and whether existing evidence resolves it. Use scrip
 
 For routine workflow steps, prefer existing tools and direct commands. Create helper scripts or extra evidence files only for a concrete task requirement those tools cannot meet.
 
-During ordinary code work, read and follow relevant specifications as implementation requirements. Handle concrete conflicts immediately under [specification compliance](.agents/rules/spec-compliance.md). Batch preparation owns scoped compliance review and compatible documentation enrichment; milestone closure owns broader semantic review. Direct documentation tasks and explicitly requested reviews remain in scope.
+During code work, read and follow specifications as requirements; handle conflicts immediately under [specification compliance](.agents/rules/spec-compliance.md). Batch preparation owns scoped review and enrichment under [Documentation Value](.agents/rules/docs-maintenance.md#documentation-value); milestone closure owns broader semantic review. Direct documentation tasks and requested reviews remain in scope.
 
 ## Development Defaults
 

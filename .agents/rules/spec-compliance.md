@@ -24,12 +24,11 @@ The specification governs implementation. It need not describe every implementat
 detail before coding begins. Choose unspecified technical details autonomously
 within the authorized scope and existing requirements.
 
-- Add significant implementation details that explain behavior, timing, state
-  transitions, subsystem interactions or constraints when they agree with the
-  specification and the authorized change. Omission alone is not a conflict.
-- Describe mechanisms needed to understand or verify the system; do not require
-  documentation for every helper, field or local algorithm. Follow the scope and
-  duplication rules in [docs-maintenance.md](docs-maintenance.md#living-design-specifications).
+- Select additions and deletions using
+  [Documentation Value](docs-maintenance.md#documentation-value), within the
+  affected scope and approved requirements. Apply its hardware-source comparison
+  and enrichment procedure; retain evidence and established intent without
+  transcribing code. A missing description alone is not a requirement conflict.
 - Existing code is evidence of implementation, not authority to change a
   requirement. Do not legitimize a contradiction or an unauthorized feature by
   documenting it. Present such cases under the conflict procedure above.

@@ -51,7 +51,7 @@ connection status; a configuration listing alone does not test a connection.
 
 The launch regression starts a real Codex app-server from an unrelated host
 directory, creates an ephemeral session at the repository root without a model
-turn, and verifies the server connects and exposes all three tools:
+turn, and verifies the server connects and exposes the required retrieval and status tools:
 
 ```powershell
 python tools/verification/verify.py test python directory tools/amiga-rag-mcp-server/tests file test_codex_mcp_launch.py

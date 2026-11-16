@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "game_ports"
 status: "active"
 created: 2026-09-04
-updated: 2026-11-12
+updated: 2026-11-16
 related: ["[Game Ports.md](Game%20Ports.md)"]
 tracked_paths:
   - "crates/game_ports/src/mouse.rs"
@@ -28,7 +28,6 @@ saturates at the signed-delta limit without allocating. Button switches travel
 on separate port lines. The [game-port model](Game%20Ports.md)
 connects these device signals to the chips that sense them.
 
-This document is a detailed chapter of [Game Ports](Game%20Ports.md). The `game_ports::mouse` module and its component tests belong to the `game_ports` crate.
 
 ## References
 

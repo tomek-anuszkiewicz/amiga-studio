@@ -1,9 +1,9 @@
 //! Headless Temporal History and Time-Travel Debugging Engine
 //!
-//! Provides a high-capacity circular execution history ring buffer storing snapshots
-//! of cycle-exact CPU states with zero heap allocations during recording.
-//! Supports dynamic capacity scaling (>=1s PAL execution, ~250,000+ frames),
-//! on/off recording toggles, multi-granularity navigation, and CCK cycle search.
+//! Records CPU snapshots, not memory or whole-machine rewind state. Storage grows
+//! lazily to the selected bound, then recording reuses the existing ring slots.
+//! Navigation and CCK search operate on the retained entries; capacity alone does
+//! not guarantee a duration because recording granularity varies.
 
 use cpu::CpuState;
 

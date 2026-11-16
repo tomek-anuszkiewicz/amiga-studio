@@ -1,11 +1,11 @@
 ---
 name: audit-docs-quality
-description: Review concise instructions and agent governance on request or at major milestone completion; route conditional checks to their owning skills.
+description: Review documentation value and agent governance on request or at major milestone completion; route conditional checks to their owning skills.
 ---
 
 # Documentation and Agent Governance Review
 
-This skill reviews instruction brevity and audits agent governance. Specification compliance review, vault integrity, semantic comparisons and workflow checks belong to the skills linked below and run only at their own triggers; this manual review does not replace those domain checks.
+This skill reviews documentation value and agent governance. Specification compliance review, vault integrity, semantic comparisons and workflow checks belong to the skills linked below and run only at their own triggers; this manual review does not replace those domain checks.
 
 ---
 
@@ -28,7 +28,12 @@ milestone closure owns broader semantic parity.
 ### Pillar 2: Obsidian Vault Linking & Graph Integrity (`--vault-links`)
 [obsidian-vault-linking](../obsidian-vault-linking/SKILL.md) owns link checks.
 
-### Instruction Brevity and Script Ownership (Manual Review)
+### Documentation Value and Script Ownership (Manual Review)
+Apply [Documentation Value](../../rules/docs-maintenance.md#documentation-value)
+to additions and deletions. Follow its hardware-source comparison and enrichment
+procedure within the reviewed scope. Check that pruning preserves requirements,
+evidence and established rationale, and that enrichment contributes independent
+knowledge rather than an inventory of code entities.
 Follow [document and instruction ownership](../../rules/information-hierarchy.md): keep instructions concise, preserve required routing, and remove duplicated procedures. There are no fixed byte ceilings.
 Review script and function ownership using actual callers and responsibilities, including individual switches in mixed scripts. Follow [agent tooling maintenance](../../references/agent-tooling.md#agent-tooling-maintenance); reference counts alone do not determine placement.
 

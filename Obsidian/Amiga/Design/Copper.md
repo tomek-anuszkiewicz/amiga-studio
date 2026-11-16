@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "agnus"
 status: "active"
 created: 2026-09-19
-updated: 2026-11-12
+updated: 2026-11-16
 related: ["[Agnus.md](Agnus.md)", "[DMA.md](DMA.md)", "[Blitter.md](Blitter.md)"]
 tracked_paths:
   - "crates/agnus/src/copper.rs"
@@ -19,7 +19,6 @@ tracked_paths:
 
 The Copper is part of [Agnus](Agnus.md). It runs a small program synchronized with the display beam, allowing the emulator to change custom chip registers at selected screen positions without the CPU handling each change.
 
-This document is a detailed chapter of [Agnus](Agnus.md). The `agnus::copper` module and its component tests belong to the `agnus` crate.
 
 ## The three instructions
 

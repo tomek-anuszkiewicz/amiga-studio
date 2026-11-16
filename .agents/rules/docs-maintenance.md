@@ -2,20 +2,63 @@
 
 Reader-facing documentation under `docs/` explains the project and provides entry points for users and developers. Follow [document and instruction ownership](information-hierarchy.md) when selecting scope and detail. Keep operational procedures with their owning tools, tests or agent references; update incoming links when moving them.
 
+## Documentation Value
+
+Preserve descriptions of actual hardware behavior confirmed by authoritative
+hardware sources, even when that behavior is easy to read from code. They provide
+an independent contract for implementation. Also preserve knowledge whose discovery
+and explanation would otherwise require substantial work: established intentions,
+decision rationale, consequential trade-offs, external evidence and non-obvious
+constraints.
+
+Before adding any other implementation description, ask whether a reader can
+establish it quickly and directly from the code. If so, omit it unless it has
+independent documentary value. Apply the same test to existing prose: remove
+straightforward code narration, consolidate duplicates at their authoritative
+owner, and retain the valuable part of mixed passages. A missing description of
+a function, field or mechanism alone is not a documentation defect. Judge the
+passage's contribution rather than its length, filename or technical detail;
+there is no line-count target or deletion quota.
+
+Approved requirements retain their value as statements of intended behavior,
+independently of current code. Preserve the minimum statement needed to retain
+that intent and its evidence. Inspect relevant decisions, history, tests or sources
+before deleting potentially unique knowledge whose value is unclear. Distinguish
+established rationale from inference; leave unknown reasons unknown rather than
+inventing them or reconstructing every historical decision.
+
+### Hardware Explanations and Evidence
+
+The owning design specification explains actual hardware behavior and constraints,
+with links to supporting manual sections, book passages or other authoritative
+hardware evidence. Preserve accurate explanations and their provenance. Within
+the scope of a documentation review, compare affected behavior with hardware
+sources; when they confirm the behavior and its explanation is missing, add it
+to the owning specification even if the code makes it obvious. Describe the
+hardware without copying incidental Rust structure or an entire manual.
+
+Code agreement alone does not establish hardware correctness. Keep source-confirmed
+behavior distinct from emulator modeling choices, assumptions and unresolved
+evidence. If code, a design claim and hardware evidence disagree, identify the
+behavior, affected code and specification, and contrary source passage under
+[specification compliance](spec-compliance.md). Do not remove a hardware requirement
+or rewrite it to match code. Preserve source books, imported references, conversion
+prompts and generated artifacts; this editorial rule applies to project-authored
+explanations, not to rewriting their sources or executable instructions.
+
 ## Living Design Specifications
 
 The following requirements apply to specifications under `Obsidian/Amiga/Design/`.
 
-- During batch preparation, use [verify-spec-compliance](../skills/verify-spec-compliance/SKILL.md) to check the intended changes against approved requirements and enrich only affected specifications with compatible implementation details. Ordinary implementation/refactoring alone does not trigger this review; milestone closure may reuse its broader audit as described by the skill. The review does not authorize a commit.
+- During batch preparation, use [verify-spec-compliance](../skills/verify-spec-compliance/SKILL.md) to check the intended changes against approved requirements and enrich affected specifications under [Documentation Value](#documentation-value). Ordinary implementation/refactoring alone does not trigger this review; milestone closure may reuse its broader audit as described by the skill. The review does not authorize a commit.
 - Select affected specifications by frontmatter `tracked_paths`, including renamed/deleted paths; report unmapped changes.
 - Establish the complete intended batch candidate and partition under [commit policy](git-commits.md). Include agreed paths/hunks and explicitly selected new files; staging alone does not isolate verification. Resolve ambiguous scope before proceeding. Include documentation corrections in the same atomic commit.
 - Leave accurate specifications and their dates unchanged.
 - Read the authoritative specification through the [design index](../../Obsidian/Amiga/Design/General%20Architecture.md) and handle conflicts through [spec-compliance.md](spec-compliance.md); do not silently align documentation to incorrect code.
-- Distinguish [compatible documentation enrichment](spec-compliance.md#compatible-documentation-enrichment) from [requirement changes before implementation](spec-compliance.md#specification-changes-before-implementation). Review changed requirements against code and tests even when only documentation changed; unresolved differences block task completion and the commit. Documentation enrichment does not require an exhaustive description of implementation details.
+- Distinguish [compatible documentation enrichment](spec-compliance.md#compatible-documentation-enrichment) from [requirement changes before implementation](spec-compliance.md#specification-changes-before-implementation). Review changed requirements against code and tests even when only documentation changed; unresolved differences block task completion and the commit.
 - Follow the explanatory style of adjacent specifications and link the implementation.
 - Keep implementation gaps and known defects to brief, truthful caveats linked to their owning [roadmap stage](../../ROADMAP.md). Keep diagnostics, remaining work, ownership and acceptance evidence together in the owning roadmap section; remove verified items there as work completes. Preserve hardware requirements and explanations of active behavior in their owning specifications.
 - Reuse existing specification structure and links for shared behavior.
-- Extend the relevant existing description using nearby conventions.
 - Update the dependency graph in General Architecture when crate relationships change. Keep specifications and references complete; they have no line-count ceiling.
 - Follow the vault metadata and link requirements below, [document and instruction ownership](information-hierarchy.md), and [writing style](practitioner-voice-and-tone.md).
 - At milestones, review bidirectional semantic parity as required by [audit-semantic-parity](../skills/audit-semantic-parity/SKILL.md); mechanical drift checks alone do not prove agreement.

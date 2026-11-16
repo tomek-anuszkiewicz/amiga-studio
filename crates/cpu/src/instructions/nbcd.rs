@@ -7,7 +7,7 @@
 //! - X = C (decimal borrow)
 //! - N = MSB of 8-bit result
 //! - Z = cleared if non-zero, unchanged if zero (allows chaining across multiple bytes)
-//! - V = undefined in Motorola PRM; on 68000 silicon matches internal decimal overflow
+//! - V = undefined in Motorola PRM; the retained model uses internal decimal overflow
 //! - C = decimal borrow
 
 use crate::instructions::sbcd::sbcd_b;

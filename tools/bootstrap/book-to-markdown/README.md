@@ -239,16 +239,9 @@ The RAG CLI and shared index state file are configured in the
    `Obsidian/Amiga/Reference/<book-directory>/`. It refuses an occupied target;
    inspect the existing publication before any replacement. Review the
    published files and add the required [reference metadata](../../../.agents/rules/docs-maintenance.md#reference-book-metadata).
-4. After validating the published Markdown, reindex the Amiga documentation
-   scopes from the repository root. The CLI skips unchanged files:
-
-   ```powershell
-   $env:RAG_INDEX_JSON = "<shared-rag-index-state-file>"
-   $RepoRoot = (Get-Location).Path
-   rag_qdrant (Join-Path $RepoRoot "docs") --repo-root $RepoRoot --source amiga --index-json $env:RAG_INDEX_JSON
-   rag_qdrant (Join-Path $RepoRoot "Obsidian/Amiga/Design") --repo-root $RepoRoot --source amiga --index-json $env:RAG_INDEX_JSON
-   rag_qdrant (Join-Path $RepoRoot "Obsidian/Amiga/Reference") --repo-root $RepoRoot --source amiga --index-json $env:RAG_INDEX_JSON
-   ```
+4. After validating the published Markdown, follow the
+   [RAG indexing procedure](../../../.agents/skills/index-amiga-rag/SKILL.md)
+   for all three Amiga documentation scopes. The CLI skips unchanged files.
 
 5. Check the index status and search for distinctive chapter text, table
    descriptions, and image descriptions under source `amiga`. Compare returned

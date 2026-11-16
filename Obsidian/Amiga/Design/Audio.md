@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "paula"
 status: "active"
 created: 2026-09-19
-updated: 2026-11-14
+updated: 2026-11-16
 related: ["[Paula.md](Paula.md)", "[Agnus.md](Agnus.md)", "[DMA.md](DMA.md)", "[Machine Loop.md](Machine%20Loop.md)"]
 tracked_paths:
   - "crates/paula/src/audio.rs"
@@ -21,7 +21,6 @@ tracked_paths:
 
 [`audio.rs`](../../../crates/paula/src/audio.rs) is part of Paula and implements its four audio channels. It turns incoming sample data into timed, volume-controlled stereo output and buffers the samples for playback.
 
-This document is a detailed chapter of [Paula](Paula.md). The `paula::audio` module and its component tests belong to the `paula` crate.
 
 ## Playback and DMA cycle
 

@@ -240,9 +240,9 @@ bring-up failures. Light-pen/gun input (12.5), external genlock synchronization
 <a id="task-5-2"></a>
 
 - **5.2: Agnus DMA Slot Scheduler & Real-Time Bus Allocation Visualizer**
-  - **Objective:** Build a horizontal scanline timeline visualizer displaying the 227 Color Clock slots per scanline (PAL) / 226 slots (NTSC).
+  - **Objective:** Build a horizontal scanline timeline visualizer for PAL and NTSC using the line lengths and beam progression defined by [Agnus](Obsidian/Amiga/Design/Agnus.md#motherboard-transport-boundary).
   - **Actionable Scope:**
-    - Fixed allocations: DRAM refresh (CCK 0..3), Disk DMA (CCK 4), Audio DMA 0–3 (CCK 5..8), Sprite pairs 0–7 (CCK 12..27).
+    - Fixed allocations: DRAM refresh, Disk DMA, Audio DMA 0–3 and Sprite pairs 0–7, using the slot coordinates, eligibility and timing conventions in the [DMA specification](Obsidian/Amiga/Design/DMA.md#arbitration-and-complete-exchange-requirements).
     - Dynamic allocations: Bitplane DMA (BPL 1–6), Blitter DMA (channels A, B, C, D), and CPU bus slots.
     - Live beam position cursor tracking horizontal ($HPOS$) and vertical ($VPOS$) raster coordinates.
     - Bus contention & wait-state indicator visually flagging cycles where CPU or Copper are stalled (BLTPRI / Blitter Nasty).

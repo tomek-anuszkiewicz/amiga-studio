@@ -1,7 +1,7 @@
 //! 65,536-Entry Compile-Time Static Micro-Step Dispatch Table
 //!
 //! Evaluated at compile time via `const fn` and placed directly in .rodata
-//! for single-cycle O(1) instruction dispatch without runtime branching.
+//! for direct opcode lookup without runtime family decoding.
 //! Represents the Microcode Archetype Baseline for the M68000 core.
 
 use super::encoding::opcode;

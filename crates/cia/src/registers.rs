@@ -1,4 +1,7 @@
 //! Named CIA register access and falling-edge capture.
+//!
+//! Data writes change active state only at the owner capture boundary.
+//! Attempted queue overflow is fatal before admission.
 
 use crate::{Cia, CCK_PER_ECLOCK, E_WRITE_CAPTURE_PHASE};
 use config::MutationMode;
@@ -51,13 +54,11 @@ const REGISTER_CRA: u16 = 14;
 const REGISTER_CRB: u16 = 15;
 
 impl Cia {
-    /// Returns the visible PRA value.
     #[inline]
     pub fn pra(&self) -> u8 {
         (self.pra & self.ddra) | (self.pins.port_a_input & !self.ddra)
     }
 
-    /// Returns the visible PRB value.
     #[inline]
     pub fn prb(&mut self) -> u8 {
         self.schedule_port_handshake();
@@ -70,55 +71,46 @@ impl Cia {
         self.timer_port_outputs(port)
     }
 
-    /// Returns the visible DDRA value.
     #[inline]
     pub fn ddra(&self) -> u8 {
         self.ddra
     }
 
-    /// Returns the visible DDRB value.
     #[inline]
     pub fn ddrb(&self) -> u8 {
         self.ddrb
     }
 
-    /// Returns the visible TALO value.
     #[inline]
     pub fn talo(&self) -> u8 {
         self.ta_counter as u8
     }
 
-    /// Returns the visible TAHI value.
     #[inline]
     pub fn tahi(&self) -> u8 {
         (self.ta_counter >> 8) as u8
     }
 
-    /// Returns the visible TBLO value.
     #[inline]
     pub fn tblo(&self) -> u8 {
         self.tb_counter as u8
     }
 
-    /// Returns the visible TBHI value.
     #[inline]
     pub fn tbhi(&self) -> u8 {
         (self.tb_counter >> 8) as u8
     }
 
-    /// Returns the visible SDR value.
     #[inline]
     pub fn sdr(&self) -> u8 {
         self.sdr
     }
 
-    /// Returns the visible CRA value.
     #[inline]
     pub fn cra(&self) -> u8 {
         self.cra & !MASK_CRA_WRITE_ONLY
     }
 
-    /// Returns the visible CRB value.
     #[inline]
     pub fn crb(&self) -> u8 {
         self.crb & !BIT_CONTROL_LOAD
@@ -214,7 +206,6 @@ impl Cia {
         )
     }
 
-    /// Queues PRA; attempted overflow is fatal.
     #[inline]
     pub fn set_pra(&mut self, value: u8) -> bool {
         self.schedule_register(REGISTER_PRA, value)
@@ -226,7 +217,6 @@ impl Cia {
         self.pra_mutated = true;
     }
 
-    /// Queues PRB; attempted overflow is fatal.
     #[inline]
     pub fn set_prb(&mut self, value: u8) -> bool {
         self.schedule_register(REGISTER_PRB, value)
@@ -239,7 +229,6 @@ impl Cia {
         self.schedule_port_handshake();
     }
 
-    /// Queues DDRA; attempted overflow is fatal.
     #[inline]
     pub fn set_ddra(&mut self, value: u8) -> bool {
         self.schedule_register(REGISTER_DDRA, value)
@@ -250,7 +239,6 @@ impl Cia {
         self.pra_mutated = true;
     }
 
-    /// Queues DDRB; attempted overflow is fatal.
     #[inline]
     pub fn set_ddrb(&mut self, value: u8) -> bool {
         self.schedule_register(REGISTER_DDRB, value)
@@ -261,7 +249,6 @@ impl Cia {
         self.prb_mutated = true;
     }
 
-    /// Queues TALO; attempted overflow is fatal.
     #[inline]
     pub fn set_talo(&mut self, value: u8) -> bool {
         self.schedule_register(REGISTER_TALO, value)
@@ -271,7 +258,6 @@ impl Cia {
         self.ta_latch = (self.ta_latch & 0xFF00) | (val as u16)
     }
 
-    /// Queues TAHI; attempted overflow is fatal.
     #[inline]
     pub fn set_tahi(&mut self, value: u8) -> bool {
         self.schedule_register(REGISTER_TAHI, value)
@@ -290,7 +276,6 @@ impl Cia {
         }
     }
 
-    /// Queues TBLO; attempted overflow is fatal.
     #[inline]
     pub fn set_tblo(&mut self, value: u8) -> bool {
         self.schedule_register(REGISTER_TBLO, value)
@@ -300,7 +285,6 @@ impl Cia {
         self.tb_latch = (self.tb_latch & 0xFF00) | (val as u16)
     }
 
-    /// Queues TBHI; attempted overflow is fatal.
     #[inline]
     pub fn set_tbhi(&mut self, value: u8) -> bool {
         self.schedule_register(REGISTER_TBHI, value)
@@ -319,7 +303,6 @@ impl Cia {
         }
     }
 
-    /// Queues TODLO; attempted overflow is fatal.
     #[inline]
     pub fn set_todlo(&mut self, value: u8) -> bool {
         self.schedule_register(REGISTER_TODLO, value)
@@ -334,7 +317,6 @@ impl Cia {
         }
     }
 
-    /// Queues TODMID; attempted overflow is fatal.
     #[inline]
     pub fn set_todmid(&mut self, value: u8) -> bool {
         self.schedule_register(REGISTER_TODMID, value)
@@ -350,7 +332,6 @@ impl Cia {
         }
     }
 
-    /// Queues TODHI; attempted overflow is fatal.
     #[inline]
     pub fn set_todhi(&mut self, value: u8) -> bool {
         self.schedule_register(REGISTER_TODHI, value)
@@ -365,7 +346,6 @@ impl Cia {
         }
     }
 
-    /// Queues SDR; attempted overflow is fatal.
     #[inline]
     pub fn set_sdr(&mut self, value: u8) -> bool {
         self.schedule_register(REGISTER_SDR, value)
@@ -378,7 +358,6 @@ impl Cia {
         }
     }
 
-    /// Queues ICR; attempted overflow is fatal.
     #[inline]
     pub fn set_icr(&mut self, value: u8) -> bool {
         self.schedule_register(REGISTER_ICR, value)
@@ -396,7 +375,6 @@ impl Cia {
         }
     }
 
-    /// Queues CRA; attempted overflow is fatal.
     #[inline]
     pub fn set_cra(&mut self, value: u8) -> bool {
         self.schedule_register(REGISTER_CRA, value)
@@ -417,7 +395,6 @@ impl Cia {
         }
     }
 
-    /// Queues CRB; attempted overflow is fatal.
     #[inline]
     pub fn set_crb(&mut self, value: u8) -> bool {
         self.schedule_register(REGISTER_CRB, value)

@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "m68000"
 status: "active"
 created: 2026-08-31
-updated: 2026-11-14
+updated: 2026-11-16
 related: ["[CPU Motorola M68000.md](../CPU%20Motorola%20M68000.md)", "[CPU Micro-Step State Machine.md](../CPU%20Micro-Step%20State%20Machine.md)", "[CPU Instruction Benchmarking.md](../Performance/CPU%20Instruction%20Benchmarking.md)"]
 tracked_paths:
   - "crates/test_runner/tests"
@@ -97,7 +97,9 @@ SingleStep provides broad, software-generated CPU cases with exact final-state a
 
 ## 8. Ordinary CPU Wait-State Tests
 
-CPU wait tests belong to the ordinary crate verification path. They author expected transfer sequences and scripted refusals, then assert retry timing, unchanged state during a refusal, and the eventual committed transfer. They do not replay the million SingleStep vectors or enumerate every memory placement and DMA schedule. Production bus arbitration requires its own integration evidence.
+The [wait-state checks described above](#4-checks-around-the-comparator) run
+with ordinary CPU crate tests. They complement SingleStep without replaying its
+vectors or enumerating production DMA schedules.
 
 ```powershell
 python tools/verification/verify.py test rust crate cpu

@@ -8,6 +8,10 @@ Use the common contract in [code-review](../SKILL.md#assigned-reviewer-common-co
   compatible detail, not an undocumented requirement change.
 - Review applicable scoped compliance evidence. At actual milestones, check the
   broader semantic-review obligations; do not repeat a current audit by default.
+- Apply [Documentation Value](../../../rules/docs-maintenance.md#documentation-value)
+  to additions and deletions, including its hardware-source comparison and
+  enrichment procedure. Check preservation of independent contracts, provenance
+  and established rationale; missing entity descriptions alone are not findings.
 - Classify documentation corrections as descriptive or requirement-changing.
   For unchanged reviewed behavior, recheck the documentation without reopening
   other lanes. Identify additional lanes only when their requirements, criteria

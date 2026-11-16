@@ -11,7 +11,9 @@ In an emulator, changing sample levels on arbitrary clock cycles produces harsh 
 
 ## 2. Mathematical Synthesis Pipeline
 
-The generator models the exact analog filtering path of the Amiga 500 and Amiga 1200 hardware through a 6-stage pipeline:
+The generator approximates the Amiga 500 and Amiga 1200 filtering paths through
+the six stages below. Its circuit parameters and numerical comparison are model
+evidence, not a measurement of every physical board:
 
 ```
 ┌─────────────────┐     ┌───────────────┐     ┌───────────────────────┐
@@ -85,8 +87,6 @@ comparison data; they are not part of the A500 runtime.
 The regression test also compares the complete generated Rust module, including
 the NTSC tables. The former `output/blep_tables.rs` artifact has been replaced by
 the module consumed directly by Paula.
-
-The largest observed difference was 0.2609% of full scale.
 
 ### Optional WinUAE Comparison Chart
 

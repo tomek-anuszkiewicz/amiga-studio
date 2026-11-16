@@ -1,4 +1,7 @@
 //! Agnus register reads and queued control and DMA pointer writes.
+//!
+//! Data writes change active state only at the owner capture boundary.
+//! Attempted queue overflow is fatal before admission; address strobes remain separate.
 
 use super::{Agnus, AgnusModel};
 use crate::register_bits::vposr;
@@ -25,7 +28,6 @@ impl Agnus {
             .require_capacity(offset, value, delay, MutationMode::Pipeline);
     }
 
-    /// Queues DMACON; active state changes only when due.
     #[inline]
     pub fn set_dmacon(&mut self, val: u16) -> bool {
         self.mutations.stage(
@@ -36,7 +38,6 @@ impl Agnus {
         )
     }
 
-    /// Queues BPLCON0; active state changes only when due.
     #[inline]
     pub fn set_bplcon0(&mut self, val: u16) -> bool {
         self.mutations.stage(
@@ -47,7 +48,6 @@ impl Agnus {
         )
     }
 
-    /// Queues DIWSTRT; active state changes only when due.
     #[inline]
     pub fn set_diwstrt(&mut self, val: u16) -> bool {
         self.mutations.stage(
@@ -58,7 +58,6 @@ impl Agnus {
         )
     }
 
-    /// Queues DIWSTOP; active state changes only when due.
     #[inline]
     pub fn set_diwstop(&mut self, val: u16) -> bool {
         self.mutations.stage(
@@ -69,7 +68,6 @@ impl Agnus {
         )
     }
 
-    /// Queues the sprpos family; active state changes only when due.
     #[inline]
     pub fn set_sprpos(&mut self, index: usize, val: u16) -> bool {
         if index >= config::SPRITE_COUNT {
@@ -83,7 +81,6 @@ impl Agnus {
         )
     }
 
-    /// Queues the sprctl family; active state changes only when due.
     #[inline]
     pub fn set_sprctl(&mut self, index: usize, val: u16) -> bool {
         if index >= config::SPRITE_COUNT {
@@ -97,7 +94,6 @@ impl Agnus {
         )
     }
 
-    /// Queues DSKPTH; active state changes only when due.
     #[inline]
     pub fn set_dskpth(&mut self, val: u16) -> bool {
         self.mutations.stage(
@@ -108,7 +104,6 @@ impl Agnus {
         )
     }
 
-    /// Queues DSKPTL; active state changes only when due.
     #[inline]
     pub fn set_dskptl(&mut self, val: u16) -> bool {
         self.mutations.stage(
@@ -119,7 +114,6 @@ impl Agnus {
         )
     }
 
-    /// Queues REFPTR; active state changes only when due.
     #[inline]
     pub fn set_refptr(&mut self, val: u16) -> bool {
         self.mutations.stage(
@@ -130,7 +124,6 @@ impl Agnus {
         )
     }
 
-    /// Queues VPOSW; active state changes only when due.
     #[inline]
     pub fn set_vposw(&mut self, val: u16) -> bool {
         self.mutations.stage(
@@ -141,7 +134,6 @@ impl Agnus {
         )
     }
 
-    /// Queues VHPOSW; active state changes only when due.
     #[inline]
     pub fn set_vhposw(&mut self, val: u16) -> bool {
         self.mutations.stage(
@@ -152,7 +144,6 @@ impl Agnus {
         )
     }
 
-    /// Queues DDFSTRT; active state changes only when due.
     #[inline]
     pub fn set_ddfstrt(&mut self, val: u16) -> bool {
         self.mutations.stage(
@@ -163,7 +154,6 @@ impl Agnus {
         )
     }
 
-    /// Queues DDFSTOP; active state changes only when due.
     #[inline]
     pub fn set_ddfstop(&mut self, val: u16) -> bool {
         self.mutations.stage(
@@ -174,7 +164,6 @@ impl Agnus {
         )
     }
 
-    /// Queues the audlch family; active state changes only when due.
     #[inline]
     pub fn set_audlch(&mut self, index: usize, val: u16) -> bool {
         if index >= config::AUDIO_CHANNEL_COUNT {
@@ -188,7 +177,6 @@ impl Agnus {
         )
     }
 
-    /// Queues the audlcl family; active state changes only when due.
     #[inline]
     pub fn set_audlcl(&mut self, index: usize, val: u16) -> bool {
         if index >= config::AUDIO_CHANNEL_COUNT {
@@ -202,7 +190,6 @@ impl Agnus {
         )
     }
 
-    /// Queues the bplpth family; active state changes only when due.
     #[inline]
     pub fn set_bplpth(&mut self, index: usize, val: u16) -> bool {
         if index >= config::OCS_BITPLANE_COUNT {
@@ -216,7 +203,6 @@ impl Agnus {
         )
     }
 
-    /// Queues the bplptl family; active state changes only when due.
     #[inline]
     pub fn set_bplptl(&mut self, index: usize, val: u16) -> bool {
         if index >= config::OCS_BITPLANE_COUNT {
@@ -230,7 +216,6 @@ impl Agnus {
         )
     }
 
-    /// Queues BPL1MOD; active state changes only when due.
     #[inline]
     pub fn set_bpl1mod(&mut self, val: u16) -> bool {
         self.mutations.stage(
@@ -241,7 +226,6 @@ impl Agnus {
         )
     }
 
-    /// Queues BPL2MOD; active state changes only when due.
     #[inline]
     pub fn set_bpl2mod(&mut self, val: u16) -> bool {
         self.mutations.stage(
@@ -252,7 +236,6 @@ impl Agnus {
         )
     }
 
-    /// Queues the sprpth family; active state changes only when due.
     #[inline]
     pub fn set_sprpth(&mut self, index: usize, val: u16) -> bool {
         if index >= config::SPRITE_COUNT {
@@ -266,7 +249,6 @@ impl Agnus {
         )
     }
 
-    /// Queues the sprptl family; active state changes only when due.
     #[inline]
     pub fn set_sprptl(&mut self, index: usize, val: u16) -> bool {
         if index >= config::SPRITE_COUNT {

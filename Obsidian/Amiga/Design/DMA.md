@@ -28,7 +28,6 @@ word on the shared data bus. [MemoryBus.md](MemoryBus.md) describes CPU contenti
 the [cross-chip signal catalog](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)
 describes the connections between chips.
 
-This document is a detailed chapter of [Agnus](Agnus.md). The `agnus::dma` module and its component tests belong to the `agnus` crate.
 
 ## From an opportunity to a transfer
 

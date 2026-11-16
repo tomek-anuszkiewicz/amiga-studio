@@ -36,61 +36,19 @@ When executing this skill:
 
 Readers start at the top and want the core takeaway immediately. Content must progress from central architectural decisions down to granular execution details:
 
-```text
-┌─────────────────────────────────────────────────────────────┐
-│ 1. CORE TAKEAWAYS & ARCHITECTURAL DECISIONS                 │
-│    The decisive architectural conclusion, key invariants,   │
-│    or primary design choices (opening 20–50 lines).         │
-├─────────────────────────────────────────────────────────────┤
-│ 2. STRATEGIC & HUMAN DIMENSIONS                             │
-│    Root problems, human bottlenecks, systemic traps         │
-│    (e.g., Unverified Generation, The Frankenstein Phase).   │
-├─────────────────────────────────────────────────────────────┤
-│ 3. CORE ARCHITECTURAL PATTERNS & SOLUTIONS                  │
-│    The primary mechanisms that solve the dilemma            │
-│    (e.g., Minimal Frame, Exploratory Pruning, Shadow-Twin). │
-├─────────────────────────────────────────────────────────────┤
-│ 4. SUBSTRATE & EXECUTION REALITIES                          │
-│    Hardware realities, cache alignment, compiler            │
-│    optimization, physical memory layout (DOD/SoA).          │
-├─────────────────────────────────────────────────────────────┤
-│ 5. TACTICAL EXECUTION & DEVELOPER WORKFLOWS                 │
-│    Granular commit sequences, test harnesses, review        │
-│    rules, and operational checklists.                       │
-├─────────────────────────────────────────────────────────────┤
-│ 6. SYNTHESIS & RELATIONSHIP TO KNOWLEDGE GRAPH              │
-│    Summary principles, key takeaways, and curated links.    │
-└─────────────────────────────────────────────────────────────┘
-```
-
----
+The layers below guide narrative order; adapt their section boundaries to the
+article rather than repeating an outline mechanically.
 
 ## 4. Layer-by-Layer Breakdown
 
-### Layer 1: The Hook & Core Thesis (Lines 1–50)
-- **Objective:** Grab the reader immediately with the most transformative, decisive conclusion, non-intuitive paradigm shift, or empirical breakthrough.
-- **Rule:** Never bury foundational conclusions, core decision matrixes, or defining mental models in trailing sections or appendices. Deliver high signal within the first 20–50 lines.
-- *Example from [`docs/how_this_emulator_was_written.md`](../../../docs/how_this_emulator_was_written.md):* Opening with *"Zero Hand-Written Code (and Zero Rust Experience)"*—setting the radical premise upfront.
-
-### Layer 2: Strategic & Human / Structural Dimensions
-- **Objective:** Frame the stakes, friction points, and human or architectural bottlenecks that forced the change.
-- **Elements:** Root causes of failure, systemic antipatterns (e.g. unverified generation, brittle prompt compounding), and the philosophical dilemma.
-
-### Layer 3: Core Architectural Patterns & Solutions
-- **Objective:** Present the overarching conceptual mechanisms that resolve the Layer 2 dilemma.
-- **Elements:** The core mental model (e.g. *The "Minimal Frame" Rule*, *Exploratory Pruning*, *Decoupled Chip Ownership*). Include architectural diagrams (Mermaid) illustrating the pattern.
-
-### Layer 4: Substrate & Execution Realities
-- **Objective:** Ground the architectural pattern in physical reality and technical constraints.
-- **Elements:** Host CPU execution models (superscalar pipelines, branch predictability, cache locality), guest silicon constraints (CCK clock phases, bus contention), or compiler optimization realities.
-
-### Layer 5: Tactical Execution & Developer Workflows
-- **Objective:** Provide concrete, reproducible steps, tooling, and day-to-day practices.
-- **Elements:** The verification harness (e.g. CPU reference vectors, architecture tests), automated gates, commit sequences, and operational recipes.
-
-### Layer 6: Synthesis & Knowledge Graph Relationships
-- **Objective:** Synthesize the overarching thesis into actionable takeaways and connect the note to the broader knowledge graph.
-- **Elements:** Axiomatic summary bullets, upstream references, and dual-layer curated links.
+| Layer | Contribution |
+| --- | --- |
+| 1. Core conclusion | Lead with the decisive result, architectural choice or mental model, normally within the opening 20-50 lines. Do not bury the thesis in an appendix. |
+| 2. Strategic and human constraints | Explain the problem, stakes, bottlenecks and failed approaches that made the decision necessary. |
+| 3. Architectural solution | Explain the mechanisms and patterns that address those constraints, using a diagram where it helps. |
+| 4. Execution realities | Ground the solution in hardware timing, host execution, memory layout or compiler constraints supported by evidence. |
+| 5. Tactical workflow | Give the relevant reproducible procedures, verification boundaries and operational guardrails, or link their authoritative owners. |
+| 6. Synthesis and references | Connect conclusions and useful source relationships without repeating the article. |
 
 ---
 
@@ -132,8 +90,7 @@ When auditing or restructuring an existing document:
    - Run a comparative diff (`git diff` or before/after inspection).
    - Verify that unique technical reasoning, evidence, caveats, formulas, and useful links remain present or reachable in explicitly moved references. Confirm that removed material is duplicated or within the authorized edit scope.
 
-5. **Step 5: Atomic Git Commit**
-   - Commit the restructured document with an atomic, intent-driven Conventional Commit:
-     ```text
-     refactor(docs): re-hierarchize [Document Title] for top-down inverted pyramid
-     ```
+5. **Step 5: Return to the Authorized Workflow**
+   - Follow [commit policy](../../rules/git-commits.md) for preparation and commit
+     timing. A documentation edit or audit alone leaves changes unstaged and
+     does not authorize a commit.

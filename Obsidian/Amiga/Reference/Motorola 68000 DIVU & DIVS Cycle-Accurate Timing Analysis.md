@@ -17,7 +17,7 @@ category: "Reference"
 subsystem: "m68000"
 status: "active"
 created: 2026-09-02
-updated: 2026-09-14
+updated: 2026-11-16
 related:
   - "[CPU Motorola M68000.md](../Design/CPU%20Motorola%20M68000.md)"
   - "[CPU Micro-Step State Machine.md](../Design/CPU%20Micro-Step%20State%20Machine.md)"
@@ -37,6 +37,15 @@ properties:
 > **Community Acknowledgments:** We gratefully acknowledge Jorge Cwik for his groundbreaking reverse-engineering of Motorola 68000 internal execution and timing dynamics.
 
 This document provides an in-depth breakdown and explanation of the cycle-counting routines for the Motorola 68000 `DIVU` (unsigned 32/16 division) and `DIVS` (signed 32/16 division) instructions, reverse-engineered by Jorge Cwik (author of Pasti).
+
+
+The C routines are the source artifact; their arithmetic and cycle tally can be
+inspected independently of the Rust implementation. The microcode phase labels
+and explanations below are interpretations of those routines, not a recovered
+Motorola control ROM or direct pin measurements. Preserve that distinction when
+using this note as evidence. Stated extrema require a demonstrated operand if
+they are to be treated as reachable hardware timings, rather than bounds from
+the tally formula.
 
 ---
 

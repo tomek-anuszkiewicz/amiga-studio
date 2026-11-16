@@ -95,7 +95,7 @@ The repository maintains an authoritative, high-fidelity documentation library u
 
 2. **Autonomous AI Pair-Programming (Direct & via RAG):**
    - **Direct Consumption:** AI coding agents inspect structured Markdown specifications, circuit diagrams, and register tables to implement cycle-exact micro-operations and verify ALU behaviors.
-   - **Local Vector RAG Retrieval (`amiga-rag`):** The entire reference library (alongside `Obsidian/Amiga/Design/` architectural specs) is indexed in Qdrant. Autonomous agents perform pre-task conceptual queries before touching code, ensuring zero silent divergence from hardware silicon.
+   - **Local Vector RAG Retrieval (`amiga-rag`):** The entire reference library (alongside `Obsidian/Amiga/Design/` architectural specs) is indexed in Qdrant. Autonomous agents perform pre-task conceptual queries before touching code, supporting source-based review; retrieval alone does not establish hardware correctness.
    - **Interactive Consultation & Change Review:** Developers can query the RAG system directly through CLI or FastMCP tools (`rag_search`) to clarify complex hardware quirks, verify register behavior, or evaluate architectural changes before editing production code.
 
 <a id="in-repository-specifications-committed-to-git"></a><a id="external-reference-documentation-bootstrapped-git-ignored"></a><a id="ingested-reference-documents-available-in-repository"></a>
@@ -106,7 +106,7 @@ Due to copyright preservation and multi-gigabyte dataset exclusion (`.gitignore`
 1. **Hardware Reference Manual (Addison-Wesley 2nd Edition, 1989)**
    - **Location:** `Obsidian/Amiga/Reference/Hardware Reference Manual/`
    - **Scope:** Primary reference for Amiga custom chipsets (OCS): Agnus (Copper, Blitter), Denise (Bitplanes, Sprites, Color palette), Paula (Audio DMA, Floppy disk controller), interrupt priority routing, and memory map.
-   - **Provenance:** Based strictly on the Addison-Wesley 2nd Edition (1989) typeset on Commodore Amiga 2500/UX (AMIX), covering pure A500 OCS hardware without ECS contamination.
+   - **Provenance:** Based strictly on the Addison-Wesley 2nd Edition (1989) typeset on Commodore Amiga 2500/UX (AMIX), with sections applicable to the selected OCS model distinguished from later-chip features.
 
 2. **A500 A2000 Technical Reference Manual (Commodore-Amiga OEM, 1987)**
    - **Location:** `Obsidian/Amiga/Reference/A500 A2000 Technical Reference Manual/`
@@ -124,7 +124,7 @@ Due to copyright preservation and multi-gigabyte dataset exclusion (`.gitignore`
    - **Location:** `Obsidian/Amiga/Reference/Instruction Prefetch on the Motorola 68000 Processor.md`
    - **Scope:** Authoritative microarchitectural prefetch queue study (Version 1.3). Establishes the 68000 two-stage `IR` (Instruction Register) and `IRC` (Instruction Register Capture) pipeline model and timing interactions.
 
-6. **DIVU & DIVS Cycle-Accurate Timing Analysis (Jorge Cwik / Pasti):**
+6. **DIVU & DIVS Cycle-Accurate Timing Analysis (project analysis based on Jorge Cwik / Pasti routines):**
    - **Location:** `Obsidian/Amiga/Reference/Motorola 68000 DIVU & DIVS Cycle-Accurate Timing Analysis.md`
    - **Scope:** Cycle-exact algorithmic analysis of 68000 non-restoring integer division. Formulates precise cycle calculations compared with software-generated SingleStep reference vectors.
 
@@ -261,7 +261,7 @@ $env:RAG_INDEX_JSON = "<shared-rag-index-state-file>"
 rag_qdrant.bat --status --json
 ```
 
-Set `RAG_INDEX_JSON` to the service's canonical writable state file for indexing. Search, status and source listing use the service configuration without a state-file argument. Add the launcher directory to your persistent user `PATH` if other shells or IDE sessions need it. Run the three Amiga indexing commands in [Chapter 5](#5-domain-hardware-knowledge-local-vector-rag-amiga-rag) from the Amiga repository root after the documentation audit succeeds. The `-Rag` and `-All` bootstrap switches still use this repository's older, independent Qdrant container helper and may conflict with the external repository's Compose container on ports 6333/6334. Use the external repository's Compose setup and the direct CLI commands for the shared database.
+Set `RAG_INDEX_JSON` to the service's canonical writable state file for indexing. Search, status and source listing use the service configuration without a state-file argument. Add the launcher directory to your persistent user `PATH` if other shells or IDE sessions need it. When indexing is explicitly requested, follow [Chapter 5](#5-domain-hardware-knowledge-local-vector-rag-amiga-rag) from the Amiga repository root after documentation validation. The `-Rag` and `-All` bootstrap switches still use this repository's older, independent Qdrant container helper and may conflict with the external repository's Compose container on ports 6333/6334. Use the external repository's Compose setup and the direct CLI commands for the shared database.
 
 <a id="code-knowledge-graph-setup-graphify"></a>
 #### 4. Code Knowledge Graph Setup (`-Graphify`)
@@ -289,17 +289,8 @@ Generates one Abstract Syntax Tree (AST) code graph connecting project sources a
   - Unified `projects_docs` collection partitioned by source tags: `amiga` for this repository's manuals and design specifications, `devnotes` for separately maintained developer notes.
   - Local FastEmbed (`BAAI/bge-small-en-v1.5`), 100% offline with zero external cloud API keys required.
   - The CLI state file named by `RAG_INDEX_JSON` tracks SHA-256 hashes of individual files, reindexing modified documents while skipping unchanged files.
-  - **Incremental Reindexing Trigger ([`amiga-rag.md`](../rules/amiga-rag.md)):**
-    - At the end of a documentation batch, run the canonical CLI commands. SHA-256 caching skips unchanged files; there is no file-save watcher.
-- **Provisioning & Manual Reindexing:**
-  ```powershell
-  # Set the shared CLI state file, then index each project Markdown scope.
-  $env:RAG_INDEX_JSON = "<shared-rag-index-state-file>"
-  $RepoRoot = (Get-Location).Path
-  rag_qdrant (Join-Path $RepoRoot "docs") --repo-root $RepoRoot --source amiga --index-json $env:RAG_INDEX_JSON
-  rag_qdrant (Join-Path $RepoRoot "Obsidian/Amiga/Design") --repo-root $RepoRoot --source amiga --index-json $env:RAG_INDEX_JSON
-  rag_qdrant (Join-Path $RepoRoot "Obsidian/Amiga/Reference") --repo-root $RepoRoot --source amiga --index-json $env:RAG_INDEX_JSON
-  ```
+  - **Indexing trigger:** [index-amiga-rag](../skills/index-amiga-rag/SKILL.md) requires an explicit indexing request; editing or auditing documentation alone does not publish it to the shared index. There is no file-save watcher.
+- **Manual Reindexing:** Follow [index-amiga-rag](../skills/index-amiga-rag/SKILL.md) for validation, source scopes, shared state and the canonical commands. Do not index another project's notes from this checkout.
 - **Query Tools & FastMCP:**
    - Query via MCP tool: `rag_search(query="<topic>", sources=["amiga", "devnotes"])`. The Amiga project only retrieves `devnotes`; its owning project indexes it.
   - Fast CLI search across hardware manuals:
@@ -321,7 +312,7 @@ Generates one Abstract Syntax Tree (AST) code graph connecting project sources a
 <a id="7-code-structure-relationships-graphify"></a><a id="7-code-structure--relationships-graphify"></a><a id="6-code-structure-relationships-graphify"></a><a id="6-code-structure--relationships-graphify"></a><a id="b-code-structure-relationships-ast-knowledge-graph-graphify"></a>
 ## 6. Code Structure & Relationships: Graphify
 - **What is Indexed:** One graph at `graphify-out/graph.json` holds code from `crates/`, `tools/`, `tests/`, `benchmarks/`, and `examples/`, plus `ref_src/vAmiga/` (release 4.5), `ref_src/minimig/`, and `ref_src/amiga_replacement_project/`. SingleStep and vAmigaTS are excluded. Graphify recognizes Rust, Python, PowerShell, C++, and Verilog source files, but JSON test vectors are excluded and some source files may yield partial symbols after parser errors.
-- **Updates ([Graphify skill](../skills/graphify/SKILL.md)):** Run `.\tools\bootstrap\bootstrap.ps1 -Graphify` to build or update the one graph. The first run extracts with `--no-gitignore --code-only`; later runs use `python tools/graphify/refresh.py` with the saved setting. The [refresh command](../../tools/graphify/README.md) requires Graphify 0.9.74 and memoizes path calculations within a rebuild. No LLM calls are needed for code extraction.
+- **Updates ([Graphify skill](../skills/graphify/SKILL.md)):** Run `.\tools\bootstrap\bootstrap.ps1 -Graphify` to build or update the one graph. The first run extracts with `--no-gitignore --code-only`; later runs use `python tools/graphify/refresh.py` with the saved setting. The [refresh command](../../tools/graphify/README.md) requires Graphify 0.9.74 and preserves the configured corpus. No LLM calls are needed for code extraction.
 - **Query Tools:**
   - `graphify query "<question>"`: Query the full graph; it does not strictly restrict results to a source directory.
   - `python tools/graphify_query.py "Paula" --scope minimig`: Query only MiniMig nodes and edges. Repeat `--scope` to compare `project`, `vamiga`, `minimig`, and `arp`; filtering occurs before Graphify traverses the graph. The wrapper creates only a disposable filtered view under `.agent/tmp/`, leaving the one stored graph intact.

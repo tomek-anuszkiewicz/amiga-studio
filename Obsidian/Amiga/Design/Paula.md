@@ -15,22 +15,10 @@ tracked_paths:
 
 Paula handles four-channel sound, system interrupts, serial communication, disk data and control, and the proportional inputs of the game ports. It receives audio and disk data through the machine's custom-chip bus; [Agnus](Agnus.md) controls the corresponding DMA transfers.
 
-## Internal components
-
-| Component | Role |
-| --- | --- |
-| [`paula`](../../../crates/paula) | Owns the Paula state, routes register access, and coordinates its components. |
-| [`audio`](../../../crates/paula/src/audio.rs) | Runs the four audio channels and produces sound samples. See [Audio](Audio.md). |
-| [`interrupts`](../../../crates/paula/src/interrupts.rs) | Holds interrupt requests and enables, and resolves the CPU interrupt level. See [Interrupts](Interrupts.md). |
-
-`audio`, `interrupts`, `disk`, `dmal` and [`serial`](../../../crates/paula/src/serial.rs) are modules of the Paula crate. Source files remain flat; the audio channel implementation is `audio_channel.rs`. [Audio](Audio.md) and [Interrupts](Interrupts.md) are detailed chapters of this chip's design. Their component tests belong to Paula. The `dmal.rs` module frames both audio and disk requests; Agnus owns the corresponding RAM addresses and transfers.
-
-## Other responsibilities in `paula`
-
-- It holds serial data and control state.
-- It holds disk data, synchronization and status registers, controls the disk DMA arming sequence, and reports transfer completion. [Floppy](Floppy.md) describes the drive and disk-stream integration.
-- It exposes the sampled proportional input and button state supplied through [Game Ports](Game%20Ports.md).
-- It coordinates delayed register changes, DMA enable signals, and interrupt requests between these functions and the rest of the machine.
+The [audio](Audio.md) and [interrupt](Interrupts.md) chapters own those circuit
+contracts. [Floppy](Floppy.md) explains the drive-side stream, while
+[Game Ports](Game%20Ports.md) owns controller connections. Paula frames audio and
+disk requests on DMAL; Agnus owns their memory addresses and transfers.
 
 ## Register propagation
 

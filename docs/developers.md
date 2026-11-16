@@ -62,7 +62,7 @@ HTML sources. It belongs to initial knowledge-base setup. See the
 [PDF converter](../tools/bootstrap/pdf-to-markdown/README.md), the
 [HTML converter](../tools/bootstrap/html-to-markdown/README.md), and the
 [book review workflow](../tools/bootstrap/book-to-markdown/README.md).
-The [documentation bootstrap sequence](../tools/bootstrap/book-to-markdown/README.md#documentation-bootstrap-from-an-accepted-book-json)
+The [documentation bootstrap sequence](../tools/bootstrap/book-to-markdown/README.md#documentation-bootstrap-from-an-accepted-bookjson)
 starts from an accepted `book.json` and matching PDF, then reviews, publishes,
 and indexes the Markdown. Preparing and committing recipes for all four manuals
 remains in the [roadmap](../ROADMAP.md#step-11-four-manual-pdf-to-book-json-conversion).

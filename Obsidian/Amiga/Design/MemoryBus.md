@@ -15,14 +15,6 @@ tracked_paths:
 
 [`MemoryBus<'a>`](../../../crates/memory_bus/src/memory_bus.rs) is the motherboard address router presented to the M68000 as an [`AddressBus`](../../../crates/physical_memory/src/address_bus.rs). It connects a CPU access to [`PhysicalMemory`](../../../crates/physical_memory/src/physical_memory.rs), a custom-chip register, a CIA, or the RTC. It is a temporary collection of mutable references, not an owner of RAM, chips, or the machine clock. [`A500Machine`](../../../crates/machine_loop/src/machine_loop.rs) owns those components and creates the router when it needs one.
 
-The implementation has three cooperating parts:
-
-| Part | Responsibility |
-| --- | --- |
-| `A500Machine` | Owns CPU, storage, chips, peripherals, and the CCK counter; orders subsystem steps, DMA delivery, signals, resets, and CPU stepping. |
-| `MemoryBus` | Implements CPU byte/word bus operations and routes them by address; connects custom-register reads and writes to the appropriate chip interfaces. |
-| [`PhysicalMemory`](Physical%20Memory.md) | Owns Chip, Slow, and Fast RAM, Kickstart ROM, the bank dispatch table, overlay, and CPU memory contention state. |
-
 The CPU knows the `AddressBus` interface, whose accesses return `BusResult::Ready(value)` or `BusResult::WaitState`. `PhysicalMemory` also implements that interface for direct or synthetic use; a production CPU step in `A500Machine::step_cck()` receives `MemoryBus`. The CPU handles instruction sequencing and address errors; the router does not decode instructions or advance time.
 
 ## A CPU access through the router
@@ -145,13 +137,12 @@ Neither Denise nor Paula owns a `PhysicalMemory` reference. [Agnus](Agnus.md) ow
 
 #### Owner delivery and functional reconstruction
 
-The [existing register matrix](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md#modeled-interfaces-and-timing)
-records each offset's named write interface, every recipient, queue mode and
-configured CCK delay. It also identifies the read/debug access classes and
-logical child owners. This is the single address catalog; no separate router
-catalog is required. Agnus's queue is the owning interface for Copper and
-Blitter register requests. A returned due `(offset, value)` proves that the
-owner consumed its event; functional correctness needs engine observations.
+The [register matrix](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md#modeled-interfaces-and-timing)
+separates documented hardware identities from modeled dispatch. The live
+[router](../../../crates/memory_bus/src/custom_registers.rs) supplies the named
+interfaces; the timing and acceptance contract is defined above. Agnus owns
+Copper and Blitter register delivery. A returned due `(offset, value)` proves
+that the owner consumed its event; functional correctness needs engine observations.
 
 [Native disk verification](../../../ROADMAP.md#native-disk-verification) exercises
 selected reconstructed register and receiver effects through guest programs;

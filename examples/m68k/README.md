@@ -2,7 +2,7 @@
 
 This directory contains standalone Motorola 68000 test programs designed specifically for interactive debugging, stepping, and inspection in the **Amiga 500 Developer Studio** (native GUI and WebAssembly).
 
-All programs are **100% pure CPU execution**: they require no Amiga OS, Kickstart ROM, or custom chip DMA. They load into RAM at `$001000` and end with an idle spin loop (`halt: BRA.S halt`, machine code `$60FE`), ensuring continuous running (`F5`) halts safely without faults.
+All programs are **100% pure CPU execution**: they require no Amiga OS, Kickstart ROM, or custom chip DMA. They load into RAM at `$001000` and end with an idle spin loop (`halt: BRA.S halt`, machine code `$60FE`), which keeps the CPU running until you pause it.
 
 ---
 
@@ -13,7 +13,7 @@ All programs are **100% pure CPU execution**: they require no Amiga OS, Kickstar
 2. Select any `.bin` file from this folder (`examples/m68k/*.bin`).
 3. Set the injection target address to `$001000` (default) and ensure **"Reset PC to injection address"** is checked.
 4. Click **"Inject & Reset PC"**.
-5. Step through instructions with **F7** (Step Instruction), Color Clock phases with **F8** (Step CCK), or run with **F5**.
+5. Step through instructions with **F10** (Step Instruction), Color Clock phases with **F11** (Step CCK), or run with **F5**.
 
 ### Command-Line Launch:
 ```powershell
@@ -42,14 +42,14 @@ cargo run -p gui -- --load examples/m68k/fibonacci.bin
 - **Description:** Copies an unsorted array of eight 16-bit words to `$002000` and sorts them in-place using bubble sort.
 - **Entry Address:** `$001000`
 - **Output Area:** `$002000` (16 bytes / 8 words)
-- **Initial Array:** `42, 10, 99, 3, 77, 25, 1, 50`
+- **Initial Array:** `$0042, $0010, $0099, $0003, $0077, $0025, $0001, $0050`
 - **Sorted Array:**
   ```
   $002000: 0001 0003 0010 0025 0042 0050 0077 0099
   ```
 - **Registers to Watch:** `A0` (walking pointer), `D0` / `D1` (compared pair), `D6` (inner pass), `D7` (outer pass).
 - **Suggested Breakpoints:** `$001028` (hits only when an in-place swap occurs!).
-- **Debugger Features Highlighted:** In-place RAM modification diffs (red highlights in Hex Viewer) and Temporal History rewind (`Alt+Left`) to replay previous sort passes.
+- **Debugger Features Highlighted:** In-place RAM modification diffs (red highlights in Hex Viewer) and CPU history (`Shift+F10`) to inspect earlier register states. Memory remains current; this is not full-machine rewind.
 
 ---
 
@@ -93,4 +93,4 @@ cargo run -p gui -- --load examples/m68k/fibonacci.bin
   - $7! = 5040$ (`$000013B0`)
   - $8! = 40320$ (`$00009D80`)
 - **Registers to Watch:** `SP` (`A7`, decrements on `BSR` and `MOVE.L D1, -(SP)`), `D0` (return value), `D2` (parameter $N$).
-- **Debugger Features Highlighted:** Step into `BSR.W` with **F7**, inspect the return address and saved registers pushed to the stack at `$007FF0..$007FFF`, and watch `MULU.W` calculate 32-bit products.
+- **Debugger Features Highlighted:** Step into `BSR.W` with **F10**, inspect the return address and saved registers pushed to the stack at `$007FF0..$007FFF`, and watch `MULU.W` calculate 32-bit products.

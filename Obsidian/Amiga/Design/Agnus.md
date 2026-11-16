@@ -53,8 +53,6 @@ The [`agnus` crate](../../../crates/agnus/src/agnus.rs) owns the beam counters a
 - [`blitter`](../../../crates/agnus/src/blitter.rs) performs block and line operations. See [Blitter.md](Blitter.md).
 - [`copper`](../../../crates/agnus/src/copper.rs) executes display lists. See [Copper.md](Copper.md).
 
-Source files remain flat under `agnus/src/`. Supporting files carry the subsystem prefix, such as `blitter_area.rs`, `blitter_line_engine.rs` and `copper_control.rs`. External consumers use the owning chip's namespaces (`agnus::blitter`, `agnus::copper`, `agnus::dma`). Component tests live in the Agnus test suite.
-
 `Agnus.dma` is the single owner of Agnus's active `DMACON`, `BPLCON0`, `DDFSTRT` and `DDFSTOP` values. Register reads, beam control and scheduling use those same fields; committing a write updates each register once. Denise and Paula retain their own hardware latches and delivery phases. The raw display-window words remain in Agnus, with their decoded vertical bounds in the scheduler. [Snapshot version 4](Application/SaveState.md#1-state-ownership-and-persistence) removes the four former outer register copies.
 
 ## Register propagation
@@ -99,10 +97,11 @@ using the active field length when it wraps. Half-line/sub-CCK calibration is
 provisional. Image weaving and receiver-local field interpretation belong to
 the [Denise](Denise.md) display pipeline.
 
-Agnus retains the current beam position directly in `hpos` and `vpos`, with
-`lof` and `lol` recording field and line state. Interlace enable remains in
-`bplcon0`, and `model` selects the video standard. Diagnostics read this state
-without a separate position structure; Denise receives synchronization events.
+The 226 allocatable memory cycles described in
+[HRM 6, Blitter Operations and System DMA](../Reference/Hardware%20Reference%20Manual/06%20-%20Chapter%206%20-%20Blitter%20Hardware.md#blitter-operations-and-system-dma)
+are an allocation budget, not the NTSC beam-counter line length. HRM 2 explicitly
+distinguishes alternating 227/228-clock lines from the display's 227.5-clock period.
+
 The `pins.rga_strobe` output supplies refresh-time STREQU/STRVBL/STRHOR and
 the optional STRLONG address to the motherboard capture phase. Both Denise and
 Paula receive the complete address set. [Paula](Paula.md#rga-synchronization-and-vertb)

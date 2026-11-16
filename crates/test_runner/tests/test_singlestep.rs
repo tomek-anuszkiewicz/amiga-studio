@@ -27,7 +27,7 @@ fn resolve_limit(explicit: usize) -> Option<usize> {
     Some(explicit)
 }
 
-/// Helper function to execute a test against Real 68k (Tom Harte) hardware test suite
+/// Executes a software-generated Tom Harte reference group.
 fn run_test(name: &str, limit: usize) {
     let effective = resolve_limit(limit);
     let harte_path = format!("ref_src/SingleStepTests-680x0/68000/v1/{}.json", name);
@@ -55,7 +55,7 @@ fn run_test(name: &str, limit: usize) {
     );
 }
 
-/// Helper function to execute a filtered test against Tom Harte hardware suite
+/// Executes a filtered software-generated Tom Harte reference group.
 fn run_test_filtered<F>(name: &str, limit: usize, filter: F)
 where
     F: Fn(&SingleStepTest) -> bool + Copy,

@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "agnus"
 status: "active"
 created: 2026-09-19
-updated: 2026-11-12
+updated: 2026-11-16
 related: ["[Agnus.md](Agnus.md)", "[DMA.md](DMA.md)", "[Paula.md](Paula.md)"]
 tracked_paths:
   - "crates/agnus/src/blitter.rs"
@@ -25,7 +25,6 @@ tracked_paths:
 
 The Blitter is part of [Agnus](Agnus.md). It performs fast block operations on graphics data and draws lines without requiring the CPU to process each pixel.
 
-This document is a detailed chapter of [Agnus](Agnus.md). The `agnus::blitter` module and its component tests belong to the `agnus` crate.
 
 ## How a blit works
 

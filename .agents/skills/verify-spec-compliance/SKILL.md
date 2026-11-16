@@ -1,6 +1,6 @@
 ---
 name: verify-spec-compliance
-description: During batch preparation, verify implementation against approved specifications using tracked_paths, enrich compatible implementation details, and block unresolved conflicts or verification gaps.
+description: During batch preparation, verify implementation against approved specifications using tracked_paths, preserve and enrich valuable knowledge, and block unresolved conflicts or verification gaps.
 ---
 
 # Specification Compliance Review Before Commit
@@ -94,15 +94,17 @@ including files with no diff. Use their versions in the intended snapshot;
 unrelated working-tree edits cannot satisfy a staged requirement change.
 Evaluate behavior, registers, timing phases,
 bus coordination, public contracts and dependency changes described by the
-specification. Compare in both directions within that scope: identify intended
-code behavior missing from the selected specifications, and identify claims in
-those specifications that the affected code does not support. This scoped review
-does not replace the broader milestone semantic audit. Extend to another subsystem
+specification. Compare in both directions within that scope: identify missing
+knowledge under [Documentation Value](../../rules/docs-maintenance.md#documentation-value)
+and claims that the affected code does not support. Apply the rule's hardware-source
+comparison and enrichment procedure; an undocumented code entity alone is not
+a finding. This scoped review does not replace the broader milestone semantic
+audit. Extend to another subsystem
 only when a concrete shared contract, dependency or interaction requires it;
 record the reason and added scope.
 
 Distinguish the approved requirements, any user-approved requirement changes,
-and compatible implementation details. When requirements changed, inspect the
+and compatible documentary additions. When requirements changed, inspect the
 previous wording and recorded user decision; matching final code and documents
 alone does not establish that a changed contract was authorized.
 
@@ -122,12 +124,11 @@ Leave the review and commit blocked until the difference is resolved and
 verified in the intended snapshot. Do not weaken or revert an approved
 requirement merely to preserve existing behavior.
 
-Enrich affected descriptions, register/timing tables and dependency diagrams
-only with significant implementation details compatible with the approved
-requirements and authorized scope. Follow
-[compatible documentation enrichment](../../rules/spec-compliance.md#compatible-documentation-enrichment);
-do not require a description of every helper or local algorithm. Missing detail
-alone does not require approval. Conflicts and unauthorized extensions require
+Enrich or prune affected descriptions under
+[Documentation Value](../../rules/docs-maintenance.md#documentation-value) and
+[compatible documentation enrichment](../../rules/spec-compliance.md#compatible-documentation-enrichment).
+Retain approved requirements and valuable evidence. Compatible additions need
+no separate approval. Conflicts and unauthorized extensions require
 the recorded user decision specified by that rule; do not silently remove a
 requirement, broaden the scope or describe divergent code as accepted behavior.
 
@@ -135,11 +136,7 @@ Prune superseded drafts and copied implementations only within the reviewed
 scope; retain concise links to living source. Update `tracked_paths` if ownership
 changed. Design specifications have no line-count ceiling.
 
-Apply the class-scope and duplication rules in
-[docs-maintenance.md](../../rules/docs-maintenance.md#living-design-specifications).
-Review does not require a new paragraph for each changed instruction.
-
-If no significant compatible detail is missing and the document describes the
+If no valuable knowledge is missing and the document describes the
 approved behavior correctly, leave the file unchanged, including its `updated`
 date. Change `updated` only alongside a real
 content correction. Never add synchronization hashes/dates, periodic stamps or
@@ -156,7 +153,7 @@ selection if intended code, ownership or the proposed snapshot changes.
 The enclosing workflow continues canonical verification for the final candidate
 and stages only authorized paths; do not repeat its gates inside this skill.
 Do not return a passing review while an unresolved requirement conflict,
-significant documentation gap or unverified changed requirement remains.
+documentation gap under the value rule or unverified changed requirement remains.
 Passing mechanical checks does not replace this semantic
 review, including for a commit containing only documentation changes.
 

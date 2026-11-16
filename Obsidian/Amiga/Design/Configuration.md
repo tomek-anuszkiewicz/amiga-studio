@@ -36,41 +36,22 @@ high-level [save format](Application/SaveState.md).
 
 To achieve cycle-exact emulation and eliminate configuration explosion, the emulator core is configured exclusively through **three canonical hardware presets**:
 
-```mermaid
-graph TD
-    classDef p1 fill:#1e3a5f,stroke:#4f9da6,stroke-width:2px,color:#fff;
-    classDef p2 fill:#2d5016,stroke:#70c1b3,stroke-width:2px,color:#fff;
-    classDef p3 fill:#4a1c40,stroke:#d16ba5,stroke-width:2px,color:#fff;
+| Preset | Installed memory | RTC |
+| --- | --- | --- |
+| `Bare512k` | 512 KB Chip RAM | None; open bus at `$DC0000` |
+| `Standard1Mb` (default) | 512 KB Chip + 512 KB Slow RAM at `$C00000` | OKI MSM6242B at `$DC0000` |
+| `ExpandedPowerUser` | 512 KB Chip + 512 KB Slow + 4 MB Auto-Config Fast RAM at `$200000` | OKI MSM6242B at `$DC0000` |
 
-    P1["Preset 1: Bare Stock A500<br/><b>512 KB Chip RAM</b><br/>• No Slow RAM<br/>• No Fast RAM<br/>• No RTC (Open bus at $DC0000)"]:::p1
-    P2["Preset 2: Standard A500 + A501 (Default)<br/><b>1 MB (512 KB Chip + 512 KB Slow) + RTC</b><br/>• 512 KB Slow RAM at $C00000<br/>• OKI MSM6242B RTC at $DC0000<br/>• No Fast RAM"]:::p2
-    P3["Preset 3: Expanded / Power User A500<br/><b>5.5 MB (512K Chip + 512K Slow + 4MB Fast) + RTC</b><br/>• 512 KB Slow RAM at $C00000<br/>• 4 MB Fast RAM at $200000<br/>• OKI MSM6242B RTC at $DC0000"]:::p3
-```
-
-1. **Preset 1 (`Bare512k`)**: Factory unexpanded 1987 A500. 512 KB Chip RAM only, no expansions, open bus `$FF` at `$DC0000`.
-2. **Preset 2 (`Standard1Mb`, Default)**: The golden standard for >90% of Amiga 500 games and demoscene productions. 512 KB Chip + 512 KB Slow RAM (`$C00000`) + OKI MSM6242B RTC at `$DC0000`.
-3. **Preset 3 (`ExpandedPowerUser`)**: 512 KB Chip + 512 KB Slow + 4 MB Auto-Config Fast RAM (`$200000`) + OKI MSM6242B RTC. Ideal for Workbench productivity, WHDLoad, and compilers.
+The standard PAL profiles use Agnus 8371 and Denise 8362, with a mouse on
+port 1 and a joystick on port 2. Kickstart 1.2/1.3 is supplied externally.
 
 ---
 
 ## 2. Configuration Immutability & Data Structure
 
-`A500Config` enforces strict encapsulation:
-* **Read-Only**: Internal fields are private and accessible solely via public getters (`active_preset()`, `chip_ram()`, `slow_ram()`, `fast_ram()`, `rtc()`, `video_standard()`).
-* **Single Mutation Vector**: Configuration can only be modified atomically via `apply_preset(preset)`.
-* **RTC Model**: Held internally as an explicit `RtcModel` enum.
-
-The master configuration is encapsulated in [`A500Config`](../../../crates/config/src/config.rs), which strictly enforces immutability and single-point mutation:
-- **Encapsulated Types (Defined directly in [`crates/config/src/config.rs`](../../../crates/config/src/config.rs)):**
-  - **`A500Preset`**: Canonical hardware presets (`Bare512k`, `Standard1Mb`, `ExpandedPowerUser`).
-  - **`VideoStandard`**: Display timing standard (`Pal` at ~50 Hz / 3.546895 MHz CCK, `Ntsc` at ~60 Hz / 3.579545 MHz CCK).
-  - **`ChipRamSize`**: Chip RAM sizing (`Kb512`).
-  - **`SlowRamSize`**: Trapdoor pseudo-fast RAM (`None`, `Kb512` at `$C00000`).
-  - **`FastRamSize`**: Auto-config expansion RAM (`None`, `Mb4` at `$200000`).
-  - **`RtcModel`**: Real-time clock hardware (`None` [floating open bus `$FF`], `Msm6242b` [OKI MSM6242B at `$DC0000`]).
-- **Constructors & Mutation**:
-  - Constructors: `A500Config::bare_512k(video)`, `standard_1mb(video)`, `expanded_power_user(video)`, or `from_preset(preset, video)`.
-  - Mutation Vector: Atomic preset application via `config.apply_preset(preset)`. All fields are accessed externally via read-only getters (`active_preset()`, `chip_ram()`, `slow_ram()`, `fast_ram()`, `rtc()`, `video_standard()`).
+[`A500Config`](../../../crates/config/src/config.rs) permits atomic preset
+changes rather than independently mutable memory and device settings. This keeps
+the supported configurations within the three deliberate profiles above.
 
 ---
 
@@ -83,22 +64,6 @@ Because the emulator core is system-agnostic and decoupled from the host filesys
 
 ---
 
-## 4. Standard Preset Profiles
-
-1. **Stock Amiga 500 (1987 baseline):**
-   - PAL 50Hz, 512 KB Chip RAM, No Slow RAM, No Fast RAM.
-   - Port 1: Mouse, Port 2: Joystick.
-   - Agnus OCS 8371, Denise OCS 8362, Kickstart 1.2 or 1.3 (256 KB).
-2. **Classic 1 MB Gaming Setup (Most common A500):**
-   - PAL 50Hz, 512 KB Chip RAM + 512 KB Slow RAM (A501 trapdoor).
-   - Port 1: Mouse, Port 2: Joystick.
-   - Agnus OCS 8371, Denise OCS 8362, Kickstart 1.3.
-3. **Productivity / Expanded Setup:**
-   - PAL 50Hz, 512 KB Chip RAM + 512 KB Slow RAM + 4 MB Fast RAM.
-   - Kickstart 1.3.
-
----
-
 ## 5. Deferred Peripheral Extension
 
 Extended peripherals remain deferred; see the [deferred peripheral work](../../../ROADMAP.md#deferred-bus-and-peripherals).
@@ -107,11 +72,20 @@ Extended peripherals remain deferred; see the [deferred peripheral work](../../.
 
 ## Shared propagation state
 
-The foundational crate owns the serializable [MutationQueue](../../../crates/config/src/mutation.rs), shared by custom chips and CIA. Fixed storage holds an occupied prefix in retained issue order. The queue keeps its count private and exposes pending entries through a read-only slice. Each tick scans only occupied entries; capacity checks use the count. Pipeline entries coexist. OverwritePending replaces only the same destination and mode, placing the replacement after retained entries even when the queue is full. Zero delay is refused without applying the write early. Attempting an insertion that needs an unavailable slot calls the shared fatal helper before changing pending or due data. Occupying the final free slot and replacement at capacity remain valid. The host terminates the failed owner; overflow is not a retry or guest exception. CIA retains its separate falling-E capture and bus acceptance contract. [MemoryBus](MemoryBus.md#custom-registers-and-specialized-chips) owns custom-register delays and recipient routing.
+The shared [MutationQueue](../../../crates/config/src/mutation.rs) preserves
+issue order. Pipeline writes coexist; OverwritePending replaces only a pending
+write with the same destination and mode and places the replacement after
+retained writes. Zero-delay writes are refused, and overflow stops the owner
+before changing pending or due data rather than applying a write early. A
+replacement at capacity remains valid. CIA retains its separate falling-E
+capture boundary; [MemoryBus](MemoryBus.md#custom-registers-and-specialized-chips)
+owns custom-register delays and routing.
 
-A tick first extracts every matured pair into reusable inline storage and compacts the pending prefix. The chip then applies those pairs at its existing phase. A newly staged write cannot join that tick's due set. Custom chip steps return all committed pairs as a borrowed slice, valid until the next mutable chip access. Staging leaves the observation intact; the next tick replaces it. No full-capacity result array is initialized, returned or scanned on an empty tick.
-
-Only the pending sequence is logical snapshot state. Serialization omits unused storage, the derived count and the last due observation. Loading derives the count and rejects excessive capacity or zero remaining delay. Clone preserves pending writes and discards the observation; reset cancels both. Equality compares pending entries, so inactive storage and already committed pairs do not affect snapshot equality. The old array of optional entries has no compatibility parser under the pre-release snapshot policy.
+All writes due at a tick are selected before chip application. Writes staged
+during application cannot join that tick's due set. Snapshots retain pending
+writes rather than the already committed observation; reset cancels both.
+Loading rejects excessive capacity or zero remaining delay. Already committed
+observations must not be delivered again after restoration or cloning.
 
 ## 6. Reference Documentation & Upstream Ground Truth
 

@@ -51,16 +51,6 @@ change one red, green, or blue component of the preceding pixel's color.
 The official playfield chapter describes these modes for the A500; this
 overview stays within the behavior supported by that source.
 
-## Components
-
-The Denise crate owns its sprite engine as an internal module. The frame builder remains a separate crate:
-
-| Crate | Role |
-| --- | --- |
-| [`denise`](../../../crates/denise) | Coordinates video generation, bitplane decoding, display controls, palette, and collision state. `render.rs` selects the final pixel color. |
-| [`denise::sprites`](../../../crates/denise/src/sprites.rs) | Models the hardware sprite channels and produces sprite pixels. See [Sprites](Sprites.md), the detailed chapter owned by Denise. |
-| [`frame_builder`](../../../crates/frame_builder) | Collects raster pixels into a frame buffer for the host display. See [Frame Buffer](Frame%20Buffer.md). |
-
 ## Reconstructed pixel processing
 
 HRM Appendix A BPLxDAT defines BPL1DAT as the parallel-to-serial trigger.
@@ -79,17 +69,13 @@ low-resolution pixel regardless of bitplane resolution. The existing horizontal
 window comparisons, blanking region and two-high-resolution-pixel output delay
 are retained model timing, without a claim of calibrated silicon edge offsets.
 
-The BPLCON0 value retains its decoded plane mask and pixel decoder
-selection locally. The selection preserves the six-plane low-resolution
-requirements of HAM and Extra Half-Brite, including the distinct BPU=7 case.
-Applied writes and deserialization derive those fields from the raw register;
-pending writes do not affect decoding. Only the raw word is serialized.
+HAM and Extra Half-Brite require six low-resolution planes; BPU=7 remains a
+distinct decoding case. Pending BPLCON0 writes must not affect the active mode.
 
 The renderer advances that two-sample output pipeline as a pair. Low resolution
 composes one color for both new samples; high resolution composes each sample
 separately. The previous pair still leaves the pipeline at the same phase,
-including across mode changes and snapshot restoration. Rendering uses the
-retained plane mask and derives the converted border color once per CCK.
+including across mode changes and snapshot restoration.
 Blanking suppresses framebuffer writes without injecting black into that
 pipeline, so the first visible pair retains the preceding border color.
 
@@ -171,11 +157,8 @@ updates the visible pin bits without inventing a direction. JOYTEST writes
 `$FCFC` on both registers and preserves the four input-derived low bits,
 following HRM Appendix A. No device-side position is copied into a JOY register.
 
-A 16-entry table decodes the connector pins into both axis phases. When those
-phases match the counter low bits, the receiver skips the counter update. The
-counters themselves retain the last phase, so this needs no additional saved
-state and remains valid after JOYTEST or snapshot restoration. Device stepping
-and connector sampling still occur every CCK.
+The counter low bits also retain the last sampled phase, so JOYTEST and snapshot
+restoration must preserve their relationship with subsequent connector samples.
 
 ## References
 

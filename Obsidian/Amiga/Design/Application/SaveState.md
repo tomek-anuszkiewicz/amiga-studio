@@ -63,11 +63,6 @@ from the host. Copper still stores instruction progress and the pending SKIP
 decision. A restored partial instruction must consume its remaining word only
 after the next granted Copper DMA opportunity.
 
-Subsystems retain their own Serde implementations. The shared fixed-array
-serializer in `config::big_array` remains below them; it must not depend on
-this high-level save format. Agnus beam counters and field/line state, receiver
-timing state and RGA events are serialized at their respective owners.
-
 ## 2. Full snapshot contents
 
 `A500State` includes the CPU's micro-execution state, physical memory and ROM,
@@ -84,7 +79,12 @@ mutation or a list of the last four synchronization values.
 
 A snapshot at CCK T must resume with the same subsequent state as uninterrupted
 execution, including a signal captured but not delivered and an unaccepted
-register word. Construction/reset defines released levels. Current snapshots
+register word. The [CPU's in-flight restoration limitation](../CPU%20Micro-Step%20State%20Machine.md#internal-registers-and-execution-state)
+remains an unresolved gap against this continuation requirement: restoration
+rebuilds the execution slice from the opcode, which may not identify a redirected
+sequence. [Roadmap 7.3](../../../../ROADMAP.md#task-7-3) retains its resolution.
+This is a known limit, not a waiver of the requirement. Construction/reset defines
+released levels. Current snapshots
 require their complete state fields; there are no legacy defaults or host handles.
 The deliberate exception is the [RTC](../RTC.md): its time, battery offset,
 calendar latches and controls are neither captured nor restored. Its hardware

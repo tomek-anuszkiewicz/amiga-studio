@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "gui"
 status: "active"
 created: 2026-09-10
-updated: 2026-11-15
+updated: 2026-11-16
 related: ["[GUI.md](Application/GUI.md)", "[Rust Guidelines.md](Rust%20Guidelines.md)"]
 ---
 
@@ -70,13 +70,10 @@ GUI widgets never execute or mutate a live machine directly.
 
 ## 4. Visual-to-Source 1:1 Layout Mapping
 
-To maintain code clarity and eliminate mystery files, the source code directory hierarchy strictly reflects the physical layout on screen:
-- [`top_menu_bar.rs`](../../../crates/gui/src/layout/top_menu_bar.rs): Top toolbar (file loader, execution controls, theme, zoom).
-- [`main_viewport/`](../../../crates/gui/src/layout/main_viewport/): Centered primary workspace (Amiga CRT canvas, temporal rewind scrubber).
-- [`left_dock/`](../../../crates/gui/src/layout/left_dock/): CPU and execution inspection (registers, microcode state, disassembly).
-- [`right_dock/`](../../../crates/gui/src/layout/right_dock/): Memory inspection, breakpoints, and history (memory hex editor, search, breakpoints panel, trace log).
-
-Each `.rs` file corresponds to a single, visually distinct dock or panel on the screen.
+Organize panels by their visible responsibility so a layout change has an obvious
+source owner. The [layout tree](../../../crates/gui/src/layout/) is the living map;
+each layout file corresponds to a visually distinct dock or panel. Follow the
+[cohesion policy](../../../.agents/rules/file-size-and-cohesion.md) within that responsibility.
 
 ---
 
@@ -94,11 +91,14 @@ Interfaces must look sharp and properly proportioned across monitors and browser
 - **Centralized Design Tokens (`ColorTokens`):**
   - All panels, surfaces, text, diffs, and condition code badges use the immutable `ColorTokens` struct ([`tokens.rs`](../../../crates/gui/src/theme/tokens.rs)).
   - Supported palettes: **Retro Studio Pro Dark** (default), **Clean Light**, and **Classic Amiga Workbench 1.3** ([`theme.rs`](../../../crates/gui/src/theme.rs)).
-- **Visual Feedback & State Diffing:**
-  - When stepping through code, mutated registers and memory cells are highlighted using `tokens.accent_diff` (`#67E8F9`) with subtle background pill `tokens.accent_diff_bg` ([`registers.rs`](../../../crates/gui/src/layout/left_dock/registers.rs)).
-  - Active instruction pointer (PC) is highlighted with `tokens.accent_pc` (`#38BDF8`) and soft luminous fill `tokens.accent_pc_bg` ([`disassembly.rs`](../../../crates/gui/src/layout/left_dock/disassembly.rs)).
-  - Condition Code Register (CCR) flags render as high-contrast LED badges (`tokens.ccr_active_bg` emerald `#059669` vs `tokens.ccr_inactive_bg` dark slate `#2A3241`) with clickable toggles sending typed status-flag commands to the machine owner.
-  - Breakpoints render as distinct colored markers (red dot `●`) in the disassembly margin.
+- **Visual Feedback & State Diffing:** Changes, the active PC, CCR state and
+  breakpoints need distinct visual cues. Use the named semantic tokens in
+  [`tokens.rs`](../../../crates/gui/src/theme/tokens.rs), preserving their roles
+  across palettes instead of copying color literals into panel code.
+  Register and memory changes retain cyan highlighting; the active PC retains
+  its blue accent and background. High-contrast CCR badges remain clickable,
+  sending typed flag commands to the machine owner. Breakpoints retain red dot
+  markers in the disassembly margin.
 
 ---
 

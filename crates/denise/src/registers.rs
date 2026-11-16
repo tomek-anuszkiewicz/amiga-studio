@@ -1,4 +1,7 @@
 //! Denise register reads, queued writes and private due-event application.
+//!
+//! Data writes change active state only at the owner capture boundary.
+//! Attempted queue overflow is fatal before admission; address strobes remain separate.
 
 use super::Denise;
 use config::custom_reg::denise as reg;
@@ -102,7 +105,6 @@ impl Denise {
         self.receive_sync_strobe(reg::REGISTER_STRHOR);
     }
 
-    /// Queues BPLCON0; active state changes only when due.
     #[inline]
     pub fn set_bplcon0(&mut self, val: u16) -> bool {
         self.mutations.stage(
@@ -113,7 +115,6 @@ impl Denise {
         )
     }
 
-    /// Queues DIWSTRT; active state changes only when due.
     #[inline]
     pub fn set_diwstrt(&mut self, val: u16) -> bool {
         self.mutations.stage(
@@ -124,7 +125,6 @@ impl Denise {
         )
     }
 
-    /// Queues DIWSTOP; active state changes only when due.
     #[inline]
     pub fn set_diwstop(&mut self, val: u16) -> bool {
         self.mutations.stage(
@@ -135,7 +135,6 @@ impl Denise {
         )
     }
 
-    /// Queues the sprpos family; active state changes only when due.
     #[inline]
     pub fn set_sprpos(&mut self, index: usize, val: u16) -> bool {
         if index >= config::SPRITE_COUNT {
@@ -149,7 +148,6 @@ impl Denise {
         )
     }
 
-    /// Queues the sprctl family; active state changes only when due.
     #[inline]
     pub fn set_sprctl(&mut self, index: usize, val: u16) -> bool {
         if index >= config::SPRITE_COUNT {
@@ -163,7 +161,6 @@ impl Denise {
         )
     }
 
-    /// Queues BPLCON1; active state changes only when due.
     #[inline]
     pub fn set_bplcon1(&mut self, val: u16) -> bool {
         self.mutations.stage(
@@ -174,7 +171,6 @@ impl Denise {
         )
     }
 
-    /// Queues CLXCON; active state changes only when due.
     #[inline]
     pub fn set_clxcon(&mut self, val: u16) -> bool {
         self.mutations.stage(
@@ -185,7 +181,6 @@ impl Denise {
         )
     }
 
-    /// Queues BPLCON2; active state changes only when due.
     #[inline]
     pub fn set_bplcon2(&mut self, val: u16) -> bool {
         self.mutations.stage(
@@ -196,7 +191,6 @@ impl Denise {
         )
     }
 
-    /// Queues the bpldat family; active state changes only when due.
     #[inline]
     pub fn set_bpldat(&mut self, index: usize, val: u16) -> bool {
         if index >= config::OCS_BITPLANE_COUNT {
@@ -210,7 +204,6 @@ impl Denise {
         )
     }
 
-    /// Queues the sprdata family; active state changes only when due.
     #[inline]
     pub fn set_sprdata(&mut self, index: usize, val: u16) -> bool {
         if index >= config::SPRITE_COUNT {
@@ -224,7 +217,6 @@ impl Denise {
         )
     }
 
-    /// Queues the sprdatb family; active state changes only when due.
     #[inline]
     pub fn set_sprdatb(&mut self, index: usize, val: u16) -> bool {
         if index >= config::SPRITE_COUNT {
@@ -238,7 +230,6 @@ impl Denise {
         )
     }
 
-    /// Queues the color family; active state changes only when due.
     #[inline]
     pub fn set_color(&mut self, index: usize, val: u16) -> bool {
         if index >= Self::COLOR_PALETTE_SIZE {
@@ -252,7 +243,6 @@ impl Denise {
         )
     }
 
-    /// Queues JOYTEST; active state changes only when due.
     #[inline]
     pub fn set_joytest(&mut self, val: u16) -> bool {
         self.mutations.stage(

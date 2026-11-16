@@ -106,13 +106,13 @@ pub struct CpuState {
     /// CPU Stopped state (halted until higher interrupt arrives)
     stopped: bool,
 
-    /// CPU Halted state (fatal double bus fault or physical HALT line)
+    /// CPU fatal halt state; an independent physical HALT input is not modeled
     halted: bool,
 
     /// Hardware RESET pin active state
     reset_line_asserted: bool,
 
-    /// Cycle-exact micro-operation engine state (not saved in basic snapshot)
+    /// In-flight micro-operation state; runtime slice pointers are rebuilt on restore
     micro: crate::micro::CpuMicroState,
 
     /// Master cycle counter

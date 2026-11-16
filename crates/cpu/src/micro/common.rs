@@ -490,7 +490,7 @@ pub static ALU_INTERRUPT_INIT: MicroStep = MicroStep {
     base_clocks: MicroStep::CCK_CLOCKS,
 };
 
-/// Microcode pipeline for Autovector Interrupt exception (Vectors 25..31, 44 CPU clocks / 22 CCKs)
+/// Microcode pipeline for Autovector Interrupt exception (supported levels 1..6, vectors 25..30, 44 CPU clocks / 22 CCKs)
 pub static STEPS_INTERRUPT: [MicroStep; 19] = [
     ALU_INTERRUPT_INIT,        // 2 clocks (internal state setup)
     ALU_IDLE_8CLK,             // 8 clocks (internal priority arbitration latency)

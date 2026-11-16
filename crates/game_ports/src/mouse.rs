@@ -21,12 +21,12 @@ pub struct Mouse {
 }
 
 impl Mouse {
-    /// Creates a new mouse initialized at coordinates (0, 0) with all buttons released
+    /// Starts with neutral quadrature phases, no queued movement and released buttons.
     pub fn new() -> Self {
         Self::default()
     }
 
-    /// Resets mouse position counters and button states
+    /// Clears queued movement, quadrature phases and buttons; Denise owns counters.
     pub fn reset(&mut self) {
         *self = Self::default();
     }

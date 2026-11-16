@@ -1,11 +1,13 @@
 //! Queued Blitter register writes through the owning Agnus.
+//!
+//! Data writes change active state only at the owner capture boundary.
+//! Attempted queue overflow is fatal before admission; address strobes remain separate.
 
 use super::Agnus;
 use config::custom_reg::agnus as reg;
 use config::{MutationMode, PROVISIONAL_CUSTOM_WRITE_DELAY_CCK};
 
 impl Agnus {
-    /// Queues BLTCON0; active state changes only when due.
     #[inline]
     pub fn set_bltcon0(&mut self, val: u16) -> bool {
         self.mutations.stage(
@@ -16,7 +18,6 @@ impl Agnus {
         )
     }
 
-    /// Queues BLTCON1; active state changes only when due.
     #[inline]
     pub fn set_bltcon1(&mut self, val: u16) -> bool {
         self.mutations.stage(
@@ -27,7 +28,6 @@ impl Agnus {
         )
     }
 
-    /// Queues BLTAFWM; active state changes only when due.
     #[inline]
     pub fn set_bltafwm(&mut self, val: u16) -> bool {
         self.mutations.stage(
@@ -38,7 +38,6 @@ impl Agnus {
         )
     }
 
-    /// Queues BLTALWM; active state changes only when due.
     #[inline]
     pub fn set_bltalwm(&mut self, val: u16) -> bool {
         self.mutations.stage(
@@ -49,7 +48,6 @@ impl Agnus {
         )
     }
 
-    /// Queues BLTCPTH; active state changes only when due.
     #[inline]
     pub fn set_bltcpth(&mut self, val: u16) -> bool {
         self.mutations.stage(
@@ -60,7 +58,6 @@ impl Agnus {
         )
     }
 
-    /// Queues BLTCPTL; active state changes only when due.
     #[inline]
     pub fn set_bltcptl(&mut self, val: u16) -> bool {
         self.mutations.stage(
@@ -71,7 +68,6 @@ impl Agnus {
         )
     }
 
-    /// Queues BLTBPTH; active state changes only when due.
     #[inline]
     pub fn set_bltbpth(&mut self, val: u16) -> bool {
         self.mutations.stage(
@@ -82,7 +78,6 @@ impl Agnus {
         )
     }
 
-    /// Queues BLTBPTL; active state changes only when due.
     #[inline]
     pub fn set_bltbptl(&mut self, val: u16) -> bool {
         self.mutations.stage(
@@ -93,7 +88,6 @@ impl Agnus {
         )
     }
 
-    /// Queues BLTAPTH; active state changes only when due.
     #[inline]
     pub fn set_bltapth(&mut self, val: u16) -> bool {
         self.mutations.stage(
@@ -104,7 +98,6 @@ impl Agnus {
         )
     }
 
-    /// Queues BLTAPTL; active state changes only when due.
     #[inline]
     pub fn set_bltaptl(&mut self, val: u16) -> bool {
         self.mutations.stage(
@@ -115,7 +108,6 @@ impl Agnus {
         )
     }
 
-    /// Queues BLTDPTH; active state changes only when due.
     #[inline]
     pub fn set_bltdpth(&mut self, val: u16) -> bool {
         self.mutations.stage(
@@ -126,7 +118,6 @@ impl Agnus {
         )
     }
 
-    /// Queues BLTDPTL; active state changes only when due.
     #[inline]
     pub fn set_bltdptl(&mut self, val: u16) -> bool {
         self.mutations.stage(
@@ -137,7 +128,6 @@ impl Agnus {
         )
     }
 
-    /// Queues BLTSIZE; active state changes only when due.
     #[inline]
     pub fn set_bltsize(&mut self, val: u16) -> bool {
         self.mutations.stage(
@@ -148,7 +138,6 @@ impl Agnus {
         )
     }
 
-    /// Queues BLTCMOD; active state changes only when due.
     #[inline]
     pub fn set_bltcmod(&mut self, val: u16) -> bool {
         self.mutations.stage(
@@ -159,7 +148,6 @@ impl Agnus {
         )
     }
 
-    /// Queues BLTBMOD; active state changes only when due.
     #[inline]
     pub fn set_bltbmod(&mut self, val: u16) -> bool {
         self.mutations.stage(
@@ -170,7 +158,6 @@ impl Agnus {
         )
     }
 
-    /// Queues BLTAMOD; active state changes only when due.
     #[inline]
     pub fn set_bltamod(&mut self, val: u16) -> bool {
         self.mutations.stage(
@@ -181,7 +168,6 @@ impl Agnus {
         )
     }
 
-    /// Queues BLTDMOD; active state changes only when due.
     #[inline]
     pub fn set_bltdmod(&mut self, val: u16) -> bool {
         self.mutations.stage(
@@ -192,7 +178,6 @@ impl Agnus {
         )
     }
 
-    /// Queues BLTCDAT; active state changes only when due.
     #[inline]
     pub fn set_bltcdat(&mut self, val: u16) -> bool {
         self.mutations.stage(
@@ -203,7 +188,6 @@ impl Agnus {
         )
     }
 
-    /// Queues BLTBDAT; active state changes only when due.
     #[inline]
     pub fn set_bltbdat(&mut self, val: u16) -> bool {
         self.mutations.stage(
@@ -214,7 +198,6 @@ impl Agnus {
         )
     }
 
-    /// Queues BLTADAT; active state changes only when due.
     #[inline]
     pub fn set_bltadat(&mut self, val: u16) -> bool {
         self.mutations.stage(

@@ -29,11 +29,8 @@ use cpu::Cpu;
 pub struct A500Machine {
     /// Captured keyboard reset level awaiting the next CCK.
     pub keyboard_reset_asserted: bool,
-    /// Active hardware configuration
     pub config: A500Config,
-    /// Motorola 68000 cycle-exact CPU core
     pub cpu: Cpu,
-    /// 24-bit physical storage and RAM/ROM buffers
     pub physical_memory: PhysicalMemory,
     /// Monotonic master 64-bit Color Clock counter (CCK)
     pub cck: u64,
@@ -41,23 +38,15 @@ pub struct A500Machine {
     pub rtc: rtc::RtcMsm6242b,
 
     // --- Custom Chipsets ---
-    /// Agnus (beam counters, copper, blitter, dma, chip RAM bus arbitration)
     pub agnus: agnus::Agnus,
-    /// Denise (video control, sprites, frame builder, palette, collision registers)
     pub denise: denise::Denise,
-    /// Paula (audio, serial UART, interrupt request / enable arbitration)
     pub paula: paula::Paula,
-    /// CIA-A (timers, TOD, port A/B, keyboard interface, overlay)
     pub cia_a: cia::Cia,
-    /// CIA-B (timers, TOD, port A/B, parallel handshakes)
     pub cia_b: cia::Cia,
 
     // --- Peripherals & Controller Devices ---
-    /// Paula 3.5" DD floppy disk drive controller & mechanics
     pub floppy: floppy::FloppyController,
-    /// MOS 6500/1 keyboard microcontroller with reset logic
     pub keyboard: keyboard::Keyboard,
-    /// Amiga dual controller game ports (Port 1 Mouse / Port 2 Joystick)
     pub game_ports: game_ports::GamePorts,
 }
 
@@ -67,7 +56,7 @@ impl A500Machine {
         self.paula.audio.read_samples(destination)
     }
 
-    /// Constructs a zero-cost stack-allocated MemoryBus router spanning all subsystems
+    /// Constructs a stack-allocated MemoryBus router spanning all subsystems
     #[inline]
     pub fn memory_bus(&mut self) -> MemoryBus<'_> {
         MemoryBus {

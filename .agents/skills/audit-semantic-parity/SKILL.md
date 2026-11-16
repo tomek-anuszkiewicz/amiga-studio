@@ -1,11 +1,13 @@
 ---
 name: audit-semantic-parity
-description: At minor roadmap point or major milestone completion, audit modified subsystems and their interactions against approved specifications; identify missing implementation, compatible documentation gaps and conflicts.
+description: At minor roadmap point or major milestone completion, audit modified subsystems and their interactions against approved specifications; identify missing implementation, valuable knowledge gaps and conflicts.
 ---
 
-# Recipe: Inference-Driven Bidirectional Semantic Parity Auditor
+# Bidirectional Semantic Parity Review
 
-This skill provides an inference-driven, qualitative architectural audit that evaluates whether living design specifications in `Obsidian/Amiga/Design/` genuinely, bidirectionally correspond to active Rust implementation in `crates/`.
+Review agreement between approved design contracts and active implementation,
+and preserve knowledge under
+[Documentation Value](../../rules/docs-maintenance.md#documentation-value).
 
 ---
 
@@ -26,8 +28,8 @@ comparison unless relevant inputs change.
 
 Both comparison directions follow
 [spec-compliance.md](../../rules/spec-compliance.md): approved requirements
-govern code, and significant compatible implementation details may enrich the
-documentation. Examine approval evidence for changed requirements; agreement
+govern code, and the documentation-value rule governs enrichment and pruning.
+Examine approval evidence for changed requirements; agreement
 between final code and documents alone does not establish authorization.
 
 Start with the workspace-wide deterministic checks, retaining their full scope:
@@ -40,58 +42,28 @@ Record failures and then assess their meaning alongside the subsystem review.
 A passing script does not establish full semantic parity. Recheck static evidence
 if remediation changes its inputs before closure.
 
-## 1. The Core Mandate: Beyond Static Heuristics
+## 1. Review Meaning and Evidence
 
-Deterministic static analysis can verify configured register offsets, memory ranges and method names. However, **static scripts cannot judge semantic comprehension**:
-- A script cannot determine whether a design specification is an exhaustive, cycle-exact hardware document or merely a 10-line high-level stub.
-- A script cannot detect **Blind Spots**: subtle silicon behaviors, edge cases, wait-state logic, or register bitfields implemented in Rust that the documentation never mentions.
-- A script cannot detect **Ghost Features & Hallucinations**: timing models, register modes, or hardware features asserted in Markdown that the Rust code never actually simulates.
+Static checks establish only their configured comparisons. Manual review must
+assess the meaning, evidence and authority of remaining claims. Apply
+[Documentation Value](../../rules/docs-maintenance.md#documentation-value), including
+its hardware-source comparison and enrichment procedure, across the owning
+specification and its linked explanations. Use code signatures and fields to
+locate relevant behavior; their absence from prose alone is not a defect.
 
-This skill leverages deep LLM reasoning and inference to evaluate true bidirectional parity.
-
-Assess completeness across the owning specification and its linked descriptions.
-Shared mechanisms or instruction semantics documented there are not blind spots
-merely because an archetype section does not repeat it. Apply the scope rules in
-[docs-maintenance.md](../../rules/docs-maintenance.md#living-design-specifications).
-Use signatures and fields to locate significant mechanisms, not as a requirement
-to document every helper or implementation detail. Missing descriptions are
-enrichment candidates only when the behavior is compatible with approved
-requirements and within the authorized scope; classify contradictions and
-unauthorized extensions separately.
+Classify missing knowledge separately from unsupported claims, unmet requirements
+and unauthorized extensions. Retain source-backed hardware explanations even
+when explicit in code, and do not infer historical rationale from implementation.
 
 ---
 
-## 2. The 3-Vector Bidirectional Evaluation Model
+## 2. Three Review Perspectives
 
-Every audit assesses a paired target `(crates/<crate>/src/, Obsidian/Amiga/Design/<Spec>.md)` across three distinct vectors:
-
-```mermaid
-flowchart TD
-    subgraph Vectors ["The 3 Evaluation Vectors"]
-        V1["Vector 1: Forward Parity (Code -> Docs)\nBlind Spot & Undocumented Logic Detector"]
-        V2["Vector 2: Reverse Parity (Docs -> Code)\nGhost Feature & Spec Drift Detector"]
-        V3["Vector 3: Silicon Depth & Rigor Score\nTechnical Completeness & Inverted Pyramid"]
-    end
-```
-
-### Vector 1: Forward Parity (Code $\to$ Docs — The "Blind Spot" Detector)
-- **Question:** *What is implemented in the Rust codebase that is missing, under-specified, or only trivially mentioned in the specification?*
-- **Audit Targets:**
-  - Public functions, trait implementations, and companion helpers.
-  - State struct fields, internal counters, phase latches, and buffers.
-  - Hardware edge cases (e.g. unaligned accesses, contention wait states, reset states).
-  - Register bitmasks, write strobe side effects, and pipeline propagation delays.
-
-### Vector 2: Reverse Parity (Docs $\to$ Code — The "Ghost Feature" Detector)
-- **Question:** *What is asserted, specified, or described in the design document that does not actually exist or is bypassed in the Rust codebase?*
-- **Audit Targets:**
-  - Speculative draft snippets or obsolete pseudo-code lingering from earlier development.
-  - Features claimed in prose (e.g. 9-bit serial parity checking, custom bus arbitration) that are simplified or omitted in code.
-  - Register ownership or access rights claimed in text that contradict memory bus router routing.
-
-### Vector 3: Silicon Depth & Architectural Rigor
-- **Question:** *Does this document read like a professional Commodore/Motorola hardware manual with mechanical sympathy, or is it a generic, shallow summary?*
-- **Assessment:** Identify which relevant register definitions, bitfields, phases, memory ranges, and edge cases are covered, missing, or contradicted. Support the assessment with concrete references; do not assign a subjective percentage without a defined denominator.
+| Perspective | Question and evidence |
+| --- | --- |
+| Code to documentation | Which source-confirmed hardware behavior or other valuable knowledge is missing? Inspect affected behavior and its sources; do not create a catalog of functions, fields or call order. |
+| Documentation to code | Which requirements are unmet or descriptive claims unsupported? Trace timing, register access, subsystem interactions and other reviewed contracts to implementation and tests. |
+| Hardware evidence and rationale | Are hardware explanations supported and traceable, and are modeling choices and established decisions distinguished from observations? Identify concrete missing evidence or lost knowledge rather than scoring prose length or resemblance to a manual. |
 
 ---
 
@@ -133,18 +105,19 @@ When executing an audit:
 
 1. **Step 1: Extract Code Signatures:**
    - Query Graphify first, then read the identified definitions in the crate root and key submodules.
-   - Note all public structs, fields, constants, bitmasks, and hardware action methods (`step_cck`, `write_*`, `read_*`, `poll_*`).
+   - Use relevant structs, fields, constants and hardware action methods to locate the reviewed contracts and interactions; do not build an exhaustive symbol inventory.
 2. **Step 2: Extract Specification Claims:**
    - Read `Obsidian/Amiga/Design/<Spec>.md`.
    - Map all section headings, register tables, timing assertions, and architectural claims.
 3. **Step 3: Execute Bidirectional Comparison:**
-   - Cross-examine each code entity against document sections.
+   - Compare affected behavior and hardware sources against retained knowledge under the documentation-value rule.
    - Cross-examine each document assertion against live Rust code.
 4. **Step 4: Emit Standardized Parity Report:**
    - Render the report using the standard template in Section 5.
 5. **Step 5: Propose Actionable Remediation:**
-   - Provide concrete Markdown additions or code adjustments to achieve parity.
-   - For `NEEDS_DOCS_ENRICHMENT`, add only significant compatible details under
+   - Provide concrete documentation corrections or code adjustments within the authorized scope.
+   - For `NEEDS_DOCS_ENRICHMENT`, apply
+     [Documentation Value](../../rules/docs-maintenance.md#documentation-value) and
      [spec-compliance.md](../../rules/spec-compliance.md#compatible-documentation-enrichment). Use
      [obsidian-vault-linking](../obsidian-vault-linking/SKILL.md) for links and metadata.
    - For `NEEDS_CODE_ALIGNMENT`, implement already approved requirements and
@@ -153,7 +126,7 @@ When executing an audit:
    - For `SPEC_DIVERGENCE`, present the requirement, contrary evidence and options
      before changing requirements or accepting divergent behavior, per
      [spec-compliance.md](../../rules/spec-compliance.md).
-   - Do not declare stage completion while significant documentation gaps,
+   - Do not declare stage completion while valuable knowledge gaps,
      unresolved conflicts or required implementation/verification gaps remain.
      After remediation, reassess affected findings on the final intended snapshot.
 
@@ -173,16 +146,14 @@ When executing an audit:
 
 ---
 
-### 1. Forward Parity: Blind Spots (In Code, Missing in Docs)
-- 🔴 **[Symbol / Feature / Quirk]:** [Description of what the code implements and why its absence from docs harms fidelity].
+### 1. Missing Valuable Knowledge
+- [Behavior or established decision; source evidence; why its absence matters; proposed owning section].
 
-### 2. Reverse Parity: Ghost Features (In Docs, Missing in Code)
-- 🟡 **[Claim / Assertion / Mode]:** [Description of what the spec claims that is unsimulated or contradicted in code].
+### 2. Unsupported Claims and Unmet Requirements
+- [Exact claim or requirement; affected implementation and tests; contrary evidence; approval status].
 
-### 3. Engineering Depth & Rigor Assessment
-- **Register & Bitfield Completeness:** [Exhaustive | Partial | Shallow]
-- **Clock Phase & Timing Fidelity:** [Cycle-Exact | Qualitative | Missing]
-- **Inverted Pyramid Structure:** [Compliant | Non-Compliant]
+### 3. Hardware Evidence and Rationale
+- [Source-confirmed behavior retained or added; modeling assumptions; established rationale; unresolved evidence and review limits].
 
 ### 4. Actionable Remediation Plan
 - [Concrete step 1: exact section to add or refine in markdown]

@@ -7,7 +7,7 @@
 //! - X = C (decimal borrow)
 //! - N = MSB of 8-bit result
 //! - Z = cleared if non-zero, unchanged if zero (allows chaining across multiple bytes)
-//! - V = undefined in Motorola PRM; on 68000 silicon matches internal decimal overflow
+//! - V = undefined in Motorola PRM; the retained model uses internal decimal overflow
 //! - C = decimal borrow
 
 use super::{BCD_DIGIT_CORRECTION, BCD_HIGH_CORRECTION, MASK_BCD_HIGH_DIGIT, MASK_BCD_LOW_DIGIT};

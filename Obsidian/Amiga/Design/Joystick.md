@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "game_ports"
 status: "active"
 created: 2026-09-04
-updated: 2026-11-12
+updated: 2026-11-16
 related: ["[Game Ports.md](Game%20Ports.md)"]
 tracked_paths:
   - "crates/game_ports/src/joystick.rs"
@@ -25,7 +25,6 @@ an encoded JOY register. Denise makes LEFT/RIGHT available in bits 9/1 and
 FORWARD/BACK through XOR of each axis's two low bits, including diagonals. [Game Ports](Game%20Ports.md) explains how those device
 signals reach the appropriate chips in the machine.
 
-This document is a detailed chapter of [Game Ports](Game%20Ports.md). The `game_ports::joystick` module and its component tests belong to the `game_ports` crate.
 
 ## References
 

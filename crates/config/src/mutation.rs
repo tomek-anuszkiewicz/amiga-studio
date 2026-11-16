@@ -13,18 +13,18 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 pub enum MutationMode {
     /// Pipelined wave: subsequent writes to the same register coexist and commit in temporal FIFO order
     Pipeline,
-    /// Overwrite pending: a subsequent write to the same register aborts any in-flight mutation and restarts the countdown
+    /// Replaces the same pending destination/mode in issue order; the owner selects its capture countdown.
     OverwritePending,
 }
 
 /// Staged register write in the physical propagation latency pipeline
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DelayedMutation {
-    /// Chip-local queued destination (custom offset, interrupt input or CIA register)
+    /// Chip-local queued destination (custom offset or CIA register)
     pub reg_offset: u16,
     /// Staged value to commit
     pub value: u16,
-    /// Remaining clock cycles (CCK or E-Clock) before committing to active silicon state
+    /// Remaining owner CCK steps before modeled register commitment
     pub remaining_cck: u8,
     /// Mutation propagation mode
     pub mode: MutationMode,

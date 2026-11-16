@@ -7,15 +7,13 @@ description: 1-shot headless screenshot capture and multimodal visual inspection
 
 This skill provides instant, 1-shot visual perception of the Amiga 500 emulator Developer Studio (`crates/gui`) directly within the main pair-programming conversation.
 
-Unlike the iterative repair loop in [`egui-vision-debugger`](../egui-vision-debugger/SKILL.md), this skill is designed for **fast, zero-overhead visual checks** whenever you or the user need to see the current UI state, evaluate layout balance, or audit themes.
+Unlike the iterative repair loop in [`egui-vision-debugger`](../egui-vision-debugger/SKILL.md), this skill is designed for **single-capture visual checks** whenever you or the user need to see the current UI state, evaluate layout balance, or audit themes.
 
 ---
 
 ## 1. Execution Mode: Main Agent Direct Execution
 
 - **Execution Host:** **Main Agent** (Runs directly in the active conversation; no subagent delegation required).
-- **Execution Time:** **~0.3 seconds** (Headless offscreen rendering via `egui_kittest` and `wgpu`).
-- **Context Footprint:** **~1,000 image tokens** (Replaces 20,000+ tokens of reading code files to guess layout).
 - **User Visibility:** Screenshots are automatically copied to the conversation artifacts directory and embedded in markdown for the user.
 
 ---
@@ -82,7 +80,7 @@ Embed the image directly into the response or artifact:
 ```markdown
 ![Amiga 500 Developer Studio (Baseline View)](file:///<ARTIFACTS_DIR>/gui_baseline.png)
 ```
-This guarantees that **both the Agent and the User have 100% synchronized visual ground truth**.
+Report what the captured frame shows and what remains outside that observation.
 
 ---
 

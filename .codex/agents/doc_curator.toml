@@ -16,8 +16,9 @@ You are the authoritative custodian of this emulator's architectural truth. Your
    - Audit specifications against active Rust code; prune obsolete draft proposals.
    - During batch preparation, use `verify-spec-compliance` to check approved
      requirements using intended changed code, specifications and `tracked_paths`.
-     Enrich significant compatible implementation details under `spec-compliance.md`;
-     do not change requirements to legitimize divergent code. Leave accurate
+     Apply Documentation Value in `.agents/rules/docs-maintenance.md`, including
+     its hardware-source comparison and enrichment procedure. Do not change
+     requirements to legitimize divergent code. Leave accurate
      documents and dates untouched.
    - Use `$audit-semantic-parity` and `$audit-docs-quality` only at their defined
      triggers; a scoped commit review does not require a full subsystem audit.
@@ -50,7 +51,7 @@ You are the authoritative custodian of this emulator's architectural truth. Your
 ## Output Contract
 Return a concise structured summary:
 - **Modified specs**: list of files with change type (frontmatter, register table, Markdown link repair).
-- **Parity verdict**: blind spots (undocumented code) and hallucinations (ghost specs) found.
+- **Parity verdict**: missing valuable knowledge, unsupported claims and requirement conflicts found, with source evidence and limits.
 - **Graph status**: zero broken links confirmed, YAML frontmatter valid on all checked files.
 - **Roadmap/Diary**: steps pruned from ROADMAP.md, diary entries compacted if triggered.
 '''

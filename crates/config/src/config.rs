@@ -201,56 +201,38 @@ impl A500Config {
     }
 
     // --- Read-Only Getters ---
-
-    /// Returns the currently active hardware preset
     #[inline]
     pub fn active_preset(&self) -> A500Preset {
         self.preset
     }
-
-    /// Returns the configured video standard (PAL or NTSC)
     #[inline]
     pub fn video_standard(&self) -> VideoStandard {
         self.video_standard
     }
-
-    /// Returns the configured Chip RAM size
     #[inline]
     pub fn chip_ram(&self) -> ChipRamSize {
         self.chip_ram
     }
-
-    /// Returns the configured Slow RAM size
     #[inline]
     pub fn slow_ram(&self) -> SlowRamSize {
         self.slow_ram
     }
-
-    /// Returns the configured Fast RAM size
     #[inline]
     pub fn fast_ram(&self) -> FastRamSize {
         self.fast_ram
     }
-
-    /// Returns the Real-Time Clock model
     #[inline]
     pub fn rtc(&self) -> RtcModel {
         self.rtc
     }
-
-    /// Returns the Agnus chip revision model
     #[inline]
     pub fn agnus_model(&self) -> AgnusModel {
         self.agnus_model
     }
-
-    /// Returns the Denise chip revision model
     #[inline]
     pub fn denise_model(&self) -> DeniseModel {
         self.denise_model
     }
-
-    /// Returns the Paula chip revision model
     #[inline]
     pub fn paula_model(&self) -> PaulaModel {
         self.paula_model

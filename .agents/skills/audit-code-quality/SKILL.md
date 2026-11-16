@@ -115,7 +115,7 @@ For each symbol reported under `[TEST-ONLY ZOMBIES]`:
 
 Using the available evidence, explicitly review the **5 Non-Negotiable Conscience Questions**:
 1. 🧠 **Spec Freshness Review:** Did code refactoring or pruning introduce behavior changes not yet updated in `Obsidian/Amiga/Design/*.md`?
-2. 🚫 **Anti-Nudge Review (`structural-root-cause.md`):** Are all clock delays, cycle counts, and beam offsets silicon-verified rather than empirical $\pm 1$ / $\pm 2$ symptom nudges?
+2. 🚫 **Anti-Nudge Review (`structural-root-cause.md`):** Do clock delays, cycle counts and beam offsets retain their documented hardware evidence or provisional model status, rather than unexplained symptom nudges?
 3. 🔬 **Assertion Density & Genuine Test Review (`unit-testing-policy.md`):** Do unit tests genuinely verify chip behavior and state changes, or do they only assert trivial boilerplate?
 4. 📢 **Spec Conflict Escalation (`spec-compliance.md`):** Were any conflicts between reference test suites and internal design specs escalated to the user before changing code?
 5. 🧹 **[Compatibility and Internal Refactoring](../../../AGENTS.md#compatibility-and-internal-refactoring):** Were old methods, legacy aliases, and temporary shims completely deleted rather than left behind?

@@ -618,7 +618,22 @@ python tools/verification/verify.py milestone --plan
 
 With no completion profile, `test runner singlestep` runs only full SingleStepTests. Standalone sets use the current working tree, require no staging, and run no quality gates, ordinary crate tests, or Python contracts. Milestone always selects full SingleStep once; its optional selector does not duplicate execution. Commit rejects CPU suite selectors. Standalone runs do not replace completion verification. Add `--plan` to inspect commands without executing checks. There are no hooks. Unknown arguments are rejected.
 
-The verifier includes formatting, Clippy, architecture rules, and per-commit hardware/code audits. Ordinary-crate coverage measures executed code; there is no public-function name-matching gate. All profiles accept clean trees, unstaged changes and new files. Change selection includes both endpoints of renames. Completion evidence must match the final combined candidate; after corrections, continue verification and rerun invalidated groups. All profiles reject results if the source or index changes during execution. Ignored diagnostics belong in `.agent/tmp/`. The verifier does not stage or commit files. It selects external commands, validates completion evidence, launches required groups and aggregates their outcomes; source/index stability is an orchestration guard. Command selection is declared in [commands.py](commands.py); [cli.py](cli.py) owns the grammar, [execution.py](execution.py) owns logging, and [repository.py](repository.py) owns source identity, and [evidence.py](evidence.py) owns bounded continuation records and dependency fingerprints. During execution, `[RUN]` identifies the active check and `[CMD]` prints its exact command immediately before launching it; explicit environment overrides appear as `[ENV]`. Full child output is saved in a unique log; focused commands default to `.agent/tmp/verify/`, while completion profiles keep logs with their [batch evidence](#completion-verification). `--log-level full|warn|error` controls child output: `full` streams everything, `warn` (default) shows warnings and errors, and `error` shows only errors. Filtered modes include up to 12 indented diagnostic context lines, limited to 300 characters per line. Commands and final results remain visible in every mode. If a failed command emits no recognized error marker, its last 12 log lines are shown as failure context; failed commands also show the full log path before the final FAIL result. There is no initial test-command preview. `--plan` starts with an explicit preview-only message and does not launch commands.
+The verifier selects and runs checks; it does not stage or commit files. Completion
+evidence must cover the final combined candidate, including both rename endpoints.
+After corrections, repeat the command: applicable successful groups survive, while
+failed, missing or invalidated groups rerun. Source and index guards reject edits
+during execution. [Completion verification](#completion-verification) owns those
+boundaries; [commands.py](commands.py) and [cli.py](cli.py) define selection and grammar.
+
+During execution, `[RUN]` identifies the active check and `[CMD]` prints its exact
+command before launch; explicit environment overrides appear as `[ENV]`. Full
+child output is saved in a unique log. Focused commands default to
+`.agent/tmp/verify/`; completion profiles keep logs with their batch evidence.
+`--log-level full|warn|error` selects streamed output; `warn` is the default.
+Commands and final results remain visible in every mode. Failure output includes
+context and the full log path, including when no recognized error marker exists.
+`--plan` announces preview mode and launches no commands. Ignored diagnostics
+belong in `.agent/tmp/`.
 
 Focused development diagnostics also use `verify.py`:
 
@@ -656,7 +671,7 @@ using real PhysicalMemory run when the CPU package is selected. The separate
 milestone set runs the full language audit and full SingleStepTests; vAmigaTS
 Cargo suites and automatic chipset/capture runs have been removed.
 
-Manual commands in the following sections and diagnostic selectors in `verify.py` validate ordinary tasks and support diagnosis; they do not replace pre-commit verification. Wall-clock microbenchmarks run explicitly. Decoder-derived CPU benchmark regression targets, the old chipset throughput workload and capture execution commands have been removed. The approved CPU baseline records the latest user-approved snapshot. During batch preparation, `verify-spec-compliance` checks the cumulative intended changes against approved specifications selected through `tracked_paths`, including implementation affected by changed requirements even when code has no diff. It permits significant compatible documentation enrichment; accurate documents and their dates stay untouched. The broader semantic milestone audit may satisfy the scoped review for the same snapshot and covered requirements. Diary compaction and roadmap pruning remain separate agent procedures.
+Manual commands in the following sections and diagnostic selectors in `verify.py` validate ordinary tasks and support diagnosis; they do not replace pre-commit verification. Wall-clock microbenchmarks run explicitly. Decoder-derived CPU benchmark regression targets, the old chipset throughput workload and capture execution commands have been removed. The approved CPU baseline records the latest user-approved snapshot. During batch preparation, `verify-spec-compliance` checks the cumulative intended changes against approved specifications selected through `tracked_paths`, including implementation affected by changed requirements even when code has no diff. Documentation enrichment and pruning follow [Documentation Value](../../.agents/rules/docs-maintenance.md#documentation-value); accurate documents and their dates stay untouched. The broader semantic milestone audit may satisfy the scoped review for the same snapshot and covered requirements. Diary compaction and roadmap pruning remain separate agent procedures.
 
 ---
 
