@@ -1945,3 +1945,15 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Bootstrap catalog contracts and recipe checks are historical results recorded by the original commits
   - No recipe was regenerated and whole-book quality was not reassessed
   - Integrated canonical verification and four independent review lanes are pending
+---
+
+### [2026-11-16 12:12 CET] — Plan debugger register and chip-state screen layout
+- **Affected Subsystems**:
+  - `ROADMAP.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Add planned item 5.5 linking custom-chip and CIA register inspection with internal chip-state views and screen layout
+  - Consider tabs and grouped panels while leaving the final layout undecided
+- **Architectural Rationale & Trade-Offs**:
+  - Make hardware activity inspectable within the debugger's available screen space
+- **Verification & Test Results**:
+  - Tests and automated verification and independent review were not run at the user's explicit request

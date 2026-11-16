@@ -22,6 +22,7 @@
   - [5.2: Agnus DMA Slot Scheduler & Real-Time Bus Allocation Visualizer](#task-5-2)
   - [5.3: Copper Coprocessor Inspector & Real-Time Execution Tracker](#task-5-3)
   - [5.4: Internal Chipset State Machines & Deep Diagnostics](#task-5-4)
+  - [5.5: Debugger Register and Chip State Views: Screen Layout](#task-5-5)
 - [Step 6: Host I/O Peripherals, Audio Playback & Controller Hub](#step-6)
   - [6.1: Host Audio Playback & Image Presentation Shaders](#task-6-1)
   - [6.2: Host Input Subsystem, Game Controller Mapping & Port Hub](#task-6-2)
@@ -270,6 +271,14 @@ bring-up failures. Light-pen/gun input (12.5), external genlock synchronization
     - *CIA Timers & Port Observability:* Live countdown of Timers A & B, TOD clock sub-second counters, serial shift register (SDR) status, and I/O port pin states.
   - **Verification Gate:**
     - Headless integration tests in `crates/gui/tests/` verifying state machine diagnostic views.
+
+<a id="task-5-5"></a>
+
+- **5.5: Debugger Register and Chip State Views: Screen Layout**
+  - **Planned scope:** Bring the register and internal-state inspectors from 5.1–5.4 into the debugger GUI so their values and activity help explain how the emulated hardware operates. Include custom-chip and CIA-A/CIA-B registers; consider other register groups when planning the views.
+  - Include internal-state views for the Blitter, Agnus and DMA scheduling, Denise rendering and sprites; decide which additional chip states are useful during layout design.
+  - Work out how these views fit on screen alongside existing debugger tools. Consider tabs or grouped panels so inspection remains readable within the available space; the final arrangement remains a design decision.
+  - **Gate when implemented:** Visually review register and chip-state views at representative window sizes, including switching between groups and interpreting hardware activity. This item records future work only.
 
 ---
 
