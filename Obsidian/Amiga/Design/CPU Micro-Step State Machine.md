@@ -142,12 +142,15 @@ can redirect the active slice without restarting the machine clock. The
 instruction behavior; the [CPU specification](CPU%20Motorola%20M68000.md)
 describes the external exception state.
 
-The micro-state is serializable except for `current_steps`, a runtime pointer
-to a static slice. [Restoration](../../../crates/cpu/src/cpu.rs) rebuilds it
-from `ir`. A snapshot taken during a redirected branch or exception, or after
-an early prefetch has changed `ir` while a write remains pending, may therefore
-restore the wrong active slice. Arbitrary in-flight restoration is not
-guaranteed.
+The active static slice has a serializable execution identity. Snapshot encoding
+records either a descriptor-table sequence or a named redirected sequence for
+branches and exceptions. Restoration retains that sequence, its step index,
+staged operands and bus admission state; it does not decode the current `ir`
+again. This matters after early prefetch retirement as well as during exceptions.
+No function address is written to disk. The [continuation tests](../../../crates/cpu/tests/test_snapshot_continuation.rs)
+compare future state, memory and timed bus transfers at matching CCK boundaries,
+including scripted wait states. This is continuation evidence, separate from
+absolute hardware timing verification.
 
 ## Reference Documentation & Upstream Ground Truth
 

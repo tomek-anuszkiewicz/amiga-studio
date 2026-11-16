@@ -20,12 +20,13 @@ fn test_m68000_public_api_surface_and_encapsulation() {
 }
 
 #[test]
-fn test_m68000_core_restore_state_and_rehydration() {
+fn test_m68000_core_restore_preserves_complete_execution_state() {
     let mut cpu = Cpu::new();
     let mut state = CpuState::default();
     state.set_ir(0x4E71); // NOP
-    cpu.restore_state(state);
-    assert!(!cpu.state.micro().current_steps.is_empty());
+    state.micro_mut().current_steps = OPCODE_DESCRIPTOR_TABLE[0x4E71].steps;
+    cpu.restore_state(state.clone());
+    assert_eq!(cpu.state, state);
 }
 
 #[test]

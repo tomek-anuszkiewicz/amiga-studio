@@ -149,8 +149,3 @@ impl Default for OpcodeDescriptor {
 
 /// Canonical empty step slice
 pub static EMPTY_STEPS: [MicroStep; 0] = [];
-
-/// Default function for serde deserialization
-pub fn default_empty_steps() -> &'static [MicroStep] {
-    &EMPTY_STEPS
-}

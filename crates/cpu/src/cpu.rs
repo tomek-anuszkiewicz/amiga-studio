@@ -11,6 +11,7 @@ pub mod micro {
     pub mod ea;
     pub mod encoding;
     pub mod engine;
+    pub(crate) mod sequence;
     pub mod step_control;
     pub mod step_execution;
     pub mod types;
@@ -358,15 +359,10 @@ impl Cpu {
         self.state.micro_mut().current_steps = &crate::micro::common::STEPS_TRACE;
     }
 
-    /// Restores the CPU architectural and micro-state from a snapshot,
-    /// re-hydrating ephemeral static execution pointers from the dispatch table.
+    /// Restores the complete execution value, including a redirected sequence.
     #[inline]
     pub fn restore_state(&mut self, state: CpuState) {
         self.state = state;
-        let desc = &crate::micro::dispatch_table::OPCODE_DESCRIPTOR_TABLE[self.state.ir() as usize];
-        if !desc.steps.is_empty() {
-            self.state.micro_mut().current_steps = desc.steps;
-        }
     }
 
     /// Triggers a cycle-exact Group 0 Address Error on unaligned word/long access (50 CPU clocks / 25 CCKs)

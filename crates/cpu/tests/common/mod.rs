@@ -127,7 +127,11 @@ pub fn without_clocks(state: &CpuState) -> CpuState {
 /// Account for the independently expected clock tick and refused scripted
 /// operation while retaining strict comparison of all guest and guard state.
 fn after_refusal(state: &CpuState, access: Access) -> CpuState {
-    let mut value = serde_json::to_value(state).expect("serializable CPU fixture");
+    // Test-local synthetic slices have no production snapshot identity. Preserve
+    // their value separately while editing only the expected bus timing fields.
+    let mut serializable = state.clone();
+    serializable.micro_mut().current_steps = &[];
+    let mut value = serde_json::to_value(&serializable).expect("serializable CPU fixture");
     let timing = &mut value["bus_timing"];
     let next = timing["cpu_cck"].as_u64().expect("CPU clock") + 1;
     timing["cpu_cck"] = next.into();

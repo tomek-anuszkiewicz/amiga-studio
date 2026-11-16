@@ -3,7 +3,7 @@
 //! Models cycle-exact 2-phase Color Clock execution (CCK1 and CCK2) per 4-clock
 //! CPU bus cycle, driving atomic MicroSteps directly from pre-compiled slices.
 
-use super::types::{default_empty_steps, MicroStep, OpcodeDescriptor, EMPTY_STEPS};
+use super::types::{MicroStep, OpcodeDescriptor, EMPTY_STEPS};
 use serde::{Deserialize, Serialize};
 
 /// Sub-cycle execution micro-state of the M68000 CPU
@@ -37,8 +37,8 @@ pub struct CpuMicroState {
     pub reg_src: u8,
     /// Pre-decoded destination register index (0..7 for Dn/An)
     pub reg_dst: u8,
-    /// Cached pointer to the active opcode's slice of MicroSteps
-    #[serde(skip, default = "default_empty_steps")]
+    /// Active execution slice, including redirected instruction and exception paths.
+    #[serde(with = "super::sequence")]
     pub current_steps: &'static [MicroStep],
     /// Indicates whether instruction retirement must perform a branch/jump target refill
     pub target_refill: bool,
@@ -54,7 +54,8 @@ pub struct CpuMicroState {
 
 impl PartialEq for CpuMicroState {
     fn eq(&self, other: &Self) -> bool {
-        self.irc == other.irc
+        self.current_steps == other.current_steps
+            && self.irc == other.irc
             && self.micro_step == other.micro_step
             && self.ea_high == other.ea_high
             && self.movem_mask == other.movem_mask
