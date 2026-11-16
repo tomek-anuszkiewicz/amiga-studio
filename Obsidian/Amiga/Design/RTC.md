@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "rtc"
 status: "active"
 created: 2026-09-06
-updated: 2026-11-14
+updated: 2026-11-16
 related: ["[MemoryBus.md](MemoryBus.md)", "[Configuration.md](Configuration.md)", "[SaveState.md](Application/SaveState.md)", "[GUI.md](Application/GUI.md)", "[Machine Loop.md](Machine%20Loop.md)"]
 tracked_paths:
   - "crates/rtc"
@@ -26,6 +26,11 @@ before the first pass of each GUI update. A headless caller supplies UTC
 explicitly; the core performs
 no wall-clock I/O. Between supplied samples, reads use the latest supplied second.
 
+Startup leaves HOLD and STOP clear so readable seconds follow supplied UTC before
+guest software initializes the controls. The [A500/A2000 technical reference](../Reference/A500%20A2000%20Technical%20Reference%20Manual/13%20-%20Section%207.1%20Clock%20calendar%20registers.md)
+describes `SetClock` detecting an installed clock by checking whether its seconds
+register ticks.
+
 Guest calendar writes and the 30-second adjustment change the offset. HOLD
 freezes readable calendar latches while time continues; releasing HOLD refreshes
 them. STOP freezes the clock itself and excludes the stopped host interval when
@@ -39,7 +44,17 @@ latches and controls are excluded from [snapshots](Application/SaveState.md).
 Restoration leaves the live clock intact; only its hardware presence follows
 the restored machine configuration. Machine resets also retain the live clock.
 
+## Workbench 1.3 dates after 1999
+
+Year registers retain two BCD digits. The original Workbench 1.2 and 1.3
+`SetClock` miscalculates dates after 1999 and can show 1978 even when the clock is
+detected. Amiga's [SetClock 34.3 update](https://www.amigaforever.com/classic/download/)
+replaces `C:SetClock` and corrects the guest software while retaining the existing
+`SetClock LOAD` startup command. The [Amiga year 2000 disclosure](https://amiga.com/diary/developers/y2k.html)
+documents the defect and its affected operating system versions.
+
 ## References
 
 - [A500/A2000 Technical Reference Manual, Section 7.1](../Reference/A500%20A2000%20Technical%20Reference%20Manual/13%20-%20Section%207.1%20Clock%20calendar%20registers.md): Identifies the optional A500 clock in the A501 expansion and its `$DC0000` address.
 - [`crates/rtc`](../../../crates/rtc): Contains the emulator's RTC implementation.
+- [Amiga year 2000 disclosure](https://amiga.com/diary/developers/y2k.html): Explains the original Workbench 1.2 and 1.3 `SetClock` date defect and its update.

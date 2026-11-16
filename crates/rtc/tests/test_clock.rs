@@ -8,6 +8,7 @@ fn guest_twelve_hour_calendar_writes_persist_as_a_host_relative_offset() {
     // 2026-11-14 at 00:34:56, 12:34:56, 03:34:56 and 15:34:56 UTC.
     for (hour_units, hour_tens, hour) in [(2, 1, 0), (2, 5, 12), (3, 0, 3), (3, 4, 15)] {
         let mut rtc = RtcMsm6242b::default();
+        rtc.write_byte(0xDC0035, 1); // Hold calendar latches during guest writes.
         rtc.supply_host_utc(UTC + 100);
         rtc.write_byte(0xDC003D, 0); // 12-hour mode; HOLD remains set.
         let digits = [6, 5, 4, 3, hour_units, hour_tens, 4, 1, 1, 1, 6, 2, 6];
