@@ -71,7 +71,7 @@ class IntegrationTests(unittest.TestCase):
         self.git(root, "update-ref", "HEAD", revision)
         return revision
 
-    def prepare(self, pending=True, message="feat: candidate", original_source=None):
+    def prepare(self, pending=True, message="feat: candidate", original_source=None, sources=None):
         if pending:
             self.write(self.source, "value.txt", "candidate\n")
         with patch.object(verify, "REPO_ROOT", self.source), patch.object(execution, "REPO_ROOT", self.source), \
@@ -86,13 +86,155 @@ class IntegrationTests(unittest.TestCase):
         self.write(self.source, ".agent/tmp/partition.json", json.dumps(partition))
         review = {"verdict": "APPROVED", "reviewer": "independent fixture reviewer", "source": evidence["source"],
                   "integration_base": self.base, "partition": digest(partition)}
+        sources_path = None
+        if sources is not None:
+            sources_path = self.write(self.source, ".agent/tmp/sources.json", json.dumps(sources))
+            review["sources"] = digest(sources)
         self.write(self.source, ".agent/tmp/review.json", json.dumps(review))
         integration.freeze(self.source, self.directory, self.source / ".agent/tmp/review.json",
-                           self.source / ".agent/tmp/partition.json", "master")
+                           self.source / ".agent/tmp/partition.json", "master", sources_path)
         if partition:
             self.commit(self.source, message)
         integration.seal(self.source, self.record)
         return self.git(self.source, "rev-parse", "HEAD")
+
+    def assemble_sources(self):
+        self.write(self.source, "task.txt", "First task\n")
+        first = self.commit(self.source, "feat: first task")
+        sources = [{"ref": "refs/heads/task", "root": str(self.source), "tip": first}]
+        for name in ("second", "third"):
+            location = self.parent / ("primary-" + name)
+            self.git(self.target, "worktree", "add", "-q", "-b", name, str(location), self.base)
+            self.write(location, name + ".txt", name + " task\n")
+            tip = self.commit(location, "feat: " + name + " task")
+            sources.append({"ref": "refs/heads/" + name, "root": str(location), "tip": tip})
+        self.write(self.target, "primary.txt", "Target work\n")
+        self.base = self.commit(self.target, "feat: primary work")
+        for tip in (self.base, *(item["tip"] for item in sources[1:])):
+            parent = self.git(self.source, "rev-parse", "HEAD")
+            self.git(self.source, "merge", "--no-ff", "--no-commit", tip)
+            self.commit(self.source, "merge: awaiting combined verification", [parent, tip])
+            Path(self.git(self.source, "rev-parse", "--path-format=absolute", "--git-path", "MERGE_HEAD")).unlink()
+        return sources
+
+    def test_batch_preserves_three_histories_and_publishes_one_combined_transition(self):
+        sources = self.assemble_sources()
+        assembled = self.git(self.source, "rev-parse", "HEAD")
+        commit = self.prepare(sources=sources)
+        evidence = integration.read(self.directory / "commit.json")
+        self.assertEqual(set(evidence["scope"]), {"task.txt", "second.txt", "third.txt", "value.txt"})
+        self.assertEqual(self.git(self.source, "rev-list", "--count", "--merges", sources[0]["tip"] + ".." + assembled), "3")
+        self.assertEqual(integration.read(self.record)["sources"], sources)
+        for item in sources:
+            integration_state.ancestor(self.source, item["tip"], commit)
+        self.assertEqual(self.git(self.target, "rev-parse", "HEAD"), self.base)
+        integration.publish(self.source, self.record)
+        self.assertEqual(self.git(self.target, "rev-parse", "HEAD"), commit)
+        self.assertEqual(self.git(self.target, "reflog", "-1", "--format=%gs", "master"),
+                         "local integration " + self.base + " -> " + commit)
+        for name in ("task", "second", "third", "primary"):
+            self.assertTrue((self.target / (name + ".txt")).is_file())
+
+    def test_batch_rejects_unselected_history_missing_assembly_and_duplicate_sources(self):
+        sources = self.assemble_sources()
+        for selected, message in ((sources[1:], "include the assembly"),
+                                  ([*sources, sources[1]], "unique local branches")):
+            with self.subTest(message=message), self.assertRaisesRegex(ValueError, message):
+                self.prepare(pending=False, sources=selected)
+        absent = {**sources[1], "tip": self.commit(Path(sources[1]["root"]), "feat: later history")}
+        with self.assertRaisesRegex(ValueError, "absent from the assembled"):
+            self.prepare(pending=False, sources=[sources[0], absent])
+        self.assertEqual(self.git(self.target, "rev-parse", "HEAD"), self.base)
+
+    def test_batch_source_approval_and_artifact_are_bound_to_freeze(self):
+        sources = self.assemble_sources()
+        self.prepare(sources=sources)
+        frozen = integration.read(self.record)
+        frozen["sources"] = sources[:1]
+        with self.assertRaisesRegex(ValueError, "selected source approval"):
+            integration.verify_seal(self.source, frozen)
+        self.assertEqual(self.git(self.target, "rev-parse", "HEAD"), self.base)
+
+    def test_batch_failed_verification_preserves_target_and_all_sources(self):
+        sources = self.assemble_sources()
+        self.phases[0][1][0] = ("Fixture check", [sys.executable, "-c", "raise SystemExit(1)"], {})
+        with self.assertRaises(AssertionError):
+            self.prepare(sources=sources)
+        self.assertFalse(self.record.exists())
+        self.assertEqual(self.git(self.target, "rev-parse", "HEAD"), self.base)
+        for item in sources:
+            self.assertTrue(Path(item["root"]).is_dir())
+            self.assertTrue(self.git(self.target, "branch", "--list", item["ref"].removeprefix("refs/heads/")))
+
+    def test_batch_dirty_source_and_advanced_tip_block_publication(self):
+        sources = self.assemble_sources()
+        self.prepare(sources=sources)
+        other = Path(sources[1]["root"])
+        later = self.write(other, "later.txt", "New work\n")
+        with self.assertRaisesRegex(ValueError, "pending changes"):
+            integration.publish(self.source, self.record)
+        self.assertEqual(later.read_text(), "New work\n")
+        self.commit(other, "feat: later work")
+        with self.assertRaisesRegex(ValueError, "Selected source advanced"):
+            integration.publish(self.source, self.record)
+        self.assertEqual(self.git(self.target, "rev-parse", "HEAD"), self.base)
+
+    def test_batch_publication_locks_every_selected_reference(self):
+        sources = self.assemble_sources()
+        commit = self.prepare(sources=sources)
+        native_git = integration.git
+        writers = []
+        def during_checkout(root, *args):
+            if args[0] == "read-tree":
+                for item in sources:
+                    writers.append(subprocess.run(["git", "update-ref", item["ref"], self.base],
+                                                  cwd=self.target, capture_output=True).returncode)
+            return native_git(root, *args)
+        with patch.object(integration, "git", side_effect=during_checkout):
+            integration.publish(self.source, self.record)
+        self.assertEqual(len(writers), 3)
+        self.assertTrue(all(code != 0 for code in writers))
+        self.assertEqual(self.git(self.target, "rev-parse", "HEAD"), commit)
+
+    def test_batch_source_writer_before_prepare_blocks_the_whole_publication(self):
+        sources = self.assemble_sources()
+        self.prepare(sources=sources)
+        native = integration.RefTransaction
+        def change_source(*args, **kwargs):
+            self.git(self.target, "update-ref", sources[1]["ref"], self.base, sources[1]["tip"])
+            return native(*args, **kwargs)
+        with patch.object(integration, "RefTransaction", side_effect=change_source):
+            with self.assertRaisesRegex(ValueError, "transaction refused"):
+                integration.publish(self.source, self.record)
+        self.assertEqual(self.git(self.target, "rev-parse", "HEAD"), self.base)
+        self.assertFalse((self.target / ".git/local-integration.json").exists())
+        for item in sources:
+            self.assertTrue(Path(item["root"]).exists())
+
+    def test_batch_partial_cleanup_survives_assembly_removal_and_retries(self):
+        sources = self.assemble_sources()
+        commit = self.prepare(sources=sources)
+        integration.publish(self.source, self.record)
+        durable = integration.cleanup_record(integration.read(self.record))
+        other = Path(sources[1]["root"])
+        later = self.write(other, "later.txt", "Preserve later work\n")
+        with patch.object(integration_cleanup, "stopped"), self.assertRaisesRegex(ValueError, "pending changes"):
+            integration_cleanup.cleanup(self.target, self.record)
+        self.assertFalse(self.source.exists())
+        self.assertFalse(Path(sources[2]["root"]).exists())
+        self.assertEqual(later.read_text(), "Preserve later work\n")
+        self.assertTrue(durable.is_file())
+        outcome = integration.read(durable)["cleanup"]
+        self.assertEqual(outcome["refs/heads/task"]["branch"], "removed")
+        self.assertEqual(outcome["refs/heads/second"]["directory"], "present")
+        later.unlink()  # Resolve only the deliberate fixture obstruction.
+        with patch.object(integration_cleanup, "stopped"):
+            integration_cleanup.cleanup(self.target, durable)
+            integration_cleanup.cleanup(self.target, durable)
+        for item in sources:
+            self.assertFalse(Path(item["root"]).exists())
+            self.assertEqual(self.git(self.target, "branch", "--list", item["ref"].removeprefix("refs/heads/")), "")
+        self.assertEqual(self.git(self.target, "rev-parse", "HEAD"), commit)
 
     def test_committed_feature_and_pending_rename_have_complete_scope(self):
         self.write(self.source, "committed.txt", "feature\n")
@@ -111,6 +253,30 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(self.git(self.target, "status", "--porcelain"), "")
         self.assertIn("local integration", self.git(self.target, "reflog", "-1", "--format=%gs", "master"))
         self.assertEqual(integration.read(self.record)["state"], "published")
+
+    def test_distinct_source_selections_at_the_same_commit_retain_both_cleanup_records(self):
+        commit = self.prepare()
+        integration.publish(self.source, self.record)
+        first = integration.cleanup_record(integration.read(self.record))
+        original = first.read_bytes()
+        other = self.parent / "primary-other"
+        self.git(self.target, "worktree", "add", "-q", "-b", "other", str(other), commit)
+        confirmation = self.write(other, ".agent/tmp/confirmation.json", json.dumps({
+            "base": commit, "commit": commit, "tree": self.git(other, "rev-parse", "HEAD^{tree}"),
+            "plan_approved": True, "tested": True, "confirmation": "Fixture approval of a second source at the same commit."}))
+        second = integration.accept_tested(other, other / ".agent/tmp/verification/commit", confirmation, "master")
+        integration.publish(other, second)
+        second_control = integration.cleanup_record(integration.read(second))
+        self.assertNotEqual(first, second_control)
+        self.assertEqual(first.read_bytes(), original)
+        self.assertEqual(integration.read(second_control)["source_ref"], "refs/heads/other")
+        with patch.object(integration_cleanup, "stopped"):
+            integration_cleanup.cleanup(self.target, first)
+            integration_cleanup.cleanup(self.target, second_control)
+        self.assertFalse(self.source.exists())
+        self.assertFalse(other.exists())
+        self.assertTrue(first.is_file())
+        self.assertTrue(second_control.is_file())
 
     def test_clean_committed_feature_requires_no_extra_commit(self):
         self.write(self.source, "value.txt", "committed feature\n")

@@ -1947,13 +1947,46 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Integrated canonical verification and four independent review lanes are pending
 ---
 
-### [2026-11-16 12:12 CET] — Plan debugger register and chip-state screen layout
+
+---
+
+### [2026-11-16 11:04 CET] — Batch task integration with recoverable source cleanup
 - **Affected Subsystems**:
-  - `ROADMAP.md`
+  - `tools/verification`
+  - `.agents/rules`
+  - `.agents/skills/git-close-task`
+  - `Obsidian/Amiga/Design/Verification`
 - **What Was Changed (The Concrete Reality)**:
-  - Add planned item 5.5 linking custom-chip and CIA register inspection with internal chip-state views and screen layout
-  - Consider tabs and grouped panels while leaving the final layout undecided
+  - Completed task git-close-task-batch-integration-20261116
+  - Extend the existing integration record with approved immutable sources and all-source publication locks
+  - Assemble real intermediate merges before one combined verification and bind their history through the recorded HEAD
+  - Retain operation-specific control records in the surviving checkout and report independently retryable source cleanup
+  - Update the owning rules and procedures plus affected reviewer criteria
 - **Architectural Rationale & Trade-Offs**:
-  - Make hardware activity inspectable within the debugger's available screen space
+  - Preserve original task commits and single-source behavior while accepting only one combined target transition
+  - Keep cleanup recoverable after assembly removal and distinguish operations reaching the same commit
+  - This implements the workflow without integrating any live task branches
 - **Verification & Test Results**:
-  - Tests and automated verification and independent review were not run at the user's explicit request
+  - Focused integration suite passed all 36 tests before the record-isolation correction
+  - The additional record-isolation regression passed and independently cleaned both source selections
+  - Skill validation passed
+  - Vault audit passed for 35 specifications and 1113 links
+  - Canonical commit verification and four final review verdicts follow in batch preparation
+  - Git fixtures establish tool behavior and process protections rather than hardware behavior
+---
+
+### [2026-11-16 11:35 CET] — Wait for the expected monitor image in the upload test
+- **Affected Subsystems**:
+  - `crates/gui/tests/test_interactions.rs`
+- **What Was Changed (The Concrete Reality)**:
+  - Apply the exact test correction from a2f604b with explicit user approval
+  - Wait for a presented image at the current generation and original stopped CCK with the expected dimensions before examining the texture
+  - Preserve every pixel and geometry assertion plus the existing timeout and command-idle checks
+- **Architectural Rationale & Trade-Offs**:
+  - The initial canonical profile failed the unchanged upload test because command replies may arrive before the independent video handoff
+  - Scope expansion is limited to this existing synchronization correction and does not change GUI runtime behavior
+- **Verification & Test Results**:
+  - The original canonical failure is retained in the batch evidence
+  - The corrected exact upload test passed all eight PAL and NTSC combinations with interlace and view selection
+  - The previous canonical attempt passed all 216 verification-tool contracts including 37 integration tests
+  - A complete canonical rerun and renewed four-lane review will cover the final two-commit batch

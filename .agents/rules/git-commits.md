@@ -19,9 +19,10 @@ before new implementation. Preparation does not authorize a new task destination
 Commit-only authorization does not include merging or removal; complete local
 integration follows [its owning rule](git-merge-commits.md#authorization-and-preparation).
 
-Approved integration has two narrow exceptions owned by that rule: a local
+Approved integration has narrow exceptions owned by that rule: a local
 working commit may precede all verification and record its status in the final
-closure diary entry; an unchanged, already verified fast-forward result may be
+closure diary entry; intermediate real batch merges may likewise await the final
+combined verification and closure record; an unchanged, already verified single-source fast-forward result may be
 published without a new preparation batch. Working commits are not acceptance
 evidence. Ordinary commit requests retain all gates and never imply integration.
 

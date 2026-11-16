@@ -27,6 +27,15 @@ checkout. Failed cleanup remains outstanding work.
 
 ## Authorization and Preparation
 
+An integration request may select one task or several branches/worktrees as one
+batch. Resolve the exact source set, stable task IDs, plan copies, dependencies
+and immutable source tips `S_i` during read-only discovery. A registered checkout
+does not establish task completion; committed-work selection excludes pending
+changes unless explicitly approved. Present one approval plan covering the full
+set, merge order, explicitly selected assembly checkout, immutable target `B`,
+combined verification, closure records and per-source cleanup. Do not relocate
+or create an assembly checkout implicitly.
+
 Distinguish ordinary work, commit authorization, merge authorization and complete
 local integration with cleanup. A commit alone permits neither integration nor
 branch/worktree removal. Use [git-close-task](../skills/git-close-task/SKILL.md)
@@ -69,6 +78,23 @@ plan identifying rewritten commits. Do not silently squash. Do not stash, reset,
 relocate work or sweep unrelated index entries into a working commit. An ambiguous
 or unrelated obstruction requires a scoped decision.
 
+For several sources, assemble every approved `S_i` and `B` in the selected
+source checkout using real merges in dependency order. Preserve original commits;
+rebase, cherry-pick or squash require explicit direction. Intermediate local merge
+commits needed to assemble the batch may precede final preparation and diary
+recording. This narrow exception does not accept those commits individually:
+mark them as awaiting combined verification, record their identities in the
+closure entry, and retain all source worktrees. Complete assembly before the
+canonical profile. Its recorded HEAD binds the exact assembled commit history;
+the frozen partition describes only the remaining mechanical commits.
+
+Prepare one combined batch against `B`, reconciling all selected histories and
+the target, with task-specific closure records and tracked plan removals.
+An explicit request for combined verification overrides the unchanged-tested
+fast-forward shortcut. Several sources always use canonical combined verification;
+source-only evidence cannot establish their combination. Integration alone does
+not close a roadmap stage or trigger milestone claims.
+
 Reconcile code, tests and every tracked Markdown path changed on either side of
 a divergent merge, including conflict-free paths and both move endpoints. Review
 the common-base version, both branches and the proposed result against the merged
@@ -86,6 +112,13 @@ review together. Mechanical commits must consume exactly that frozen partition;
 do not rerun expensive profiles solely because those commits change HEAD.
 
 ## Conditional Publication and Cleanup
+
+Freeze the approved immutable source set with its review digest. Publication
+requires every original source tip to remain in the accepted history and every
+other source branch and checkout to remain unchanged and clean. Native prepared
+reference locks cover all selected sources and the single target transition.
+The assembly branch's cleanup tip is the final accepted `C`; other cleanup tips
+remain their original `S_i`.
 
 Follow [git-close-task](../skills/git-close-task/SKILL.md) and the
 [integration command reference](../../tools/verification/README.md#local-integration).
@@ -120,3 +153,8 @@ prune unrelated registrations or recursively delete a leftover directory after
 Git failure. Delete only the unchanged integrated local branch, conditionally,
 after confirming it is not checked out elsewhere. Report publication separately
 from cleanup failure; retry cleanup without repeating verification or commits.
+Retain the published control record under `.agent/tmp/integration/<batch-id>/` in the
+surviving target checkout until cleanup is complete. This record is operation
+state, not an archive of ignored source contents. Attempt and report each selected
+source separately; preserve later work, record partial outcomes and resume from
+that surviving record without repeating verification or publication.

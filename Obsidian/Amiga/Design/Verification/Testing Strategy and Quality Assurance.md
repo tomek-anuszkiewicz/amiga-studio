@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "testing"
 status: "active"
 created: 2026-09-14
-updated: 2026-11-15
+updated: 2026-11-16
 related: ["[General Architecture.md](../General%20Architecture.md)", "[CPU SingleStepTests.md](CPU%20SingleStepTests.md)", "[CPU Instruction Benchmarking.md](../Performance/CPU%20Instruction%20Benchmarking.md)", "[Machine Loop.md](../Machine%20Loop.md)", "[Platform Quirks and Invariants Catalog.md](../Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
 tracked_paths:
   - "crates/test_runner/tests"
@@ -48,14 +48,25 @@ Conditional reference publication installs only the sealed tree; interruptions
 require recovery before source cleanup. A new primary baseline requires a newly
 prepared combined candidate and conservatively revalidated evidence.
 The [integration rule](../../../../.agents/rules/git-merge-commits.md#authorization-and-preparation)
-requires approval of a concrete plan before mutation and owns two exceptions:
+requires approval of a concrete plan before mutation and owns bounded exceptions:
 pending task changes may receive an explicitly unverified local working commit
 before synchronization, with verification deferred to the complete integrated
-result; a clean unchanged fast-forward may use affirmative confirmation that
+result; intermediate real merges may likewise await the batch's final combined
+verification and closure record; a clean unchanged single-source fast-forward may use affirmative confirmation that
 its exact tip was already tested. The latter uses `integrate accept-tested` and
 records confirmation separately from canonical test evidence. It runs no new
 verification or review and creates no commit. New content requires the canonical
 path; unknown test status is never inferred from the mere existence of a commit.
+Several selected sources use one approved immutable source set, one assembled
+candidate and one canonical profile against `B`. Intermediate merge history is
+included in the recorded HEAD before verification; the frozen partition covers
+only remaining mechanical commits. Review binds the selected source-set digest,
+and publication locks all selected refs for one conditional `B -> C` transition.
+Cleanup checks each source independently against its expected tip and retains
+per-source progress in the surviving target checkout's control record. Later work
+blocks only the affected cleanup; retry requires no new tests or commits. The
+[integration command reference](../../../../tools/verification/README.md#selected-source-set)
+owns the record and CLI details.
 Cargo metadata identifies owning workspace packages and
 their transitive consumers through normal, development and build dependencies,
 including optional and target-specific declarations. All ordinary tests of the

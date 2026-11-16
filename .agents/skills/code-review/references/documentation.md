@@ -15,6 +15,9 @@ Use the common contract in [code-review](../SKILL.md#assigned-reviewer-common-co
 - For instruction changes, walk a realistic invocation through ownership, scope,
   approvals, checks, failure handling and completion. Find contradictory routing,
   unreachable steps and active examples for removed mechanisms.
+  For several integration sources, check one explicit source-set approval,
+  selected assembly location, bounded intermediate commits, task-specific closure
+  records and a cleanup control record in the surviving checkout.
 - When AGENTS, rules, skills, role instructions or verification requirements change,
   identify affected review criteria and check this lane's checklist and role routing.
   Ask the coordinator to route other affected checklist checks to their owning

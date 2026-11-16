@@ -52,6 +52,7 @@ fn screen_uploads_the_visible_framebuffer_unchanged_and_preserves_its_geometry()
                     frame.frame_buffer_mut()[start + image_width - 1] = 0xffffffff;
                 }
                 let before = frame.clone();
+                let expected_cck = session.machine.cck;
                 let mut app = EmulatorApp::with_session(session);
                 app.view_mode = view;
                 let ctx = egui::Context::default();
@@ -64,7 +65,15 @@ fn screen_uploads_the_visible_framebuffer_unchanged_and_preserves_its_geometry()
                     },
                     |ctx| app.update_ui(ctx),
                 );
-                output.append(common::settle(&mut app, &ctx));
+                // Command replies may settle before the independent video handoff.
+                output.append(common::wait(&mut app, &ctx, |app| {
+                    app.host.presented.is_some_and(|info| {
+                        info.generation == app.host.status.generation
+                            && info.cck == expected_cck
+                            && info.width == image_width
+                            && info.height == image_height
+                    })
+                }));
                 let (texture_id, image) = output
                     .textures_delta
                     .set

@@ -96,6 +96,9 @@ directory and registration removal. It never forces removal, prunes unrelated
 registrations or recursively deletes a leftover directory. Branch deletion is
 separate. For automatic post-integration cleanup and conditional branch
 deletion, use [the integration tool](../../../tools/verification/README.md#local-integration).
+For a selected batch it retains a control record in the surviving target checkout
+and reports each source separately; retry cleanup there without recreating deleted
+verification artifacts.
 
 ### Temporary Detached Tests
 
