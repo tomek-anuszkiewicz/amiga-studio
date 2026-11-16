@@ -2309,3 +2309,20 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Roadmap structure check and git diff --check passed
   - no production code changed
   - Initial canonical preflight found vocabulary in the preceding diary entry; link its advisory identifier and register the established service name before retrying
+---
+
+### [2026-11-16 17:16 CET] — Update Pillow to patched version 13.0.0
+- **Affected Subsystems**:
+  - `tools/bootstrap/book-to-markdown`
+  - `tools/bootstrap/pdf-to-markdown`
+- **What Was Changed (The Concrete Reality)**:
+  - Pin Pillow 13.0.0 in both converter requirement files
+- **Architectural Rationale & Trade-Offs**:
+  - Address the MPO and DCX decompression-bomb protection bypass reported in Dependabot alert 39
+  - Keep the shared Python installation unchanged because installed Docling and FastEmbed packages restrict Pillow to versions below 13
+- **Verification & Test Results**:
+  - cargo build --workspace --locked passed with existing unused dependency warnings for bitflags and serde_json
+  - tools/web.ps1 build passed
+  - Python compilation passed for 93 tracked bootstrap source files
+  - Book image smoke checks could not run because this checkout contains no local book PNG assets
+  - Automated test suites and independent reviews and the canonical commit profile were skipped at the explicit user request
