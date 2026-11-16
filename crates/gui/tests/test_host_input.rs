@@ -481,3 +481,63 @@ fn full_release_survives_capture_release_and_clears_held_controller_contacts() {
         assert!(input.pending.is_empty());
     }
 }
+
+#[test]
+fn capture_release_keeps_fresh_controller_edges_after_a_full_release() {
+    let mut session = session(VideoStandard::Pal);
+    session.toggle_run();
+    let mut input = InputConsumer::default();
+    input.pending.push(HostInputEvent::ReleaseAll);
+    for pressed in [false, true] {
+        input.pending.push(HostInputEvent::Joystick {
+            port: 1,
+            up: false,
+            down: false,
+            left: false,
+            right: false,
+            fire1: pressed,
+            fire2: false,
+        });
+    }
+    input.pending.push(HostInputEvent::Key {
+        code: 0x20,
+        pressed: true,
+    });
+    input.pending.push(HostInputEvent::ReleaseCapture {
+        joysticks: [None, Some([false, false, false, false, true, false])],
+    });
+    assert_eq!(input.pending.first(), Some(HostInputEvent::ReleaseAll));
+    input.run_slice(&mut session, 3);
+    assert_eq!(
+        session.machine.game_ports.sample_ciaa_port_a_inputs() & 0x80,
+        0
+    );
+    assert!(input.pending.is_empty());
+}
+
+#[test]
+fn capture_release_drops_keyboard_joystick_edges_after_a_full_release() {
+    let mut session = session(VideoStandard::Pal);
+    session.toggle_run();
+    let mut input = InputConsumer::default();
+    input.pending.push(HostInputEvent::ReleaseAll);
+    input.pending.push(HostInputEvent::Joystick {
+        port: 1,
+        up: false,
+        down: false,
+        left: false,
+        right: false,
+        fire1: true,
+        fire2: false,
+    });
+    input.pending.push(HostInputEvent::ReleaseCapture {
+        joysticks: [None; 2],
+    });
+    input.run_slice(&mut session, 3);
+    assert_eq!(
+        session.machine.game_ports.sample_ciaa_port_a_inputs() & 0x80,
+        0x80,
+        "A keyboard joystick press must be discarded when capture ends"
+    );
+    assert!(input.pending.is_empty());
+}

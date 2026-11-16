@@ -589,12 +589,16 @@ impl WorkerLoop {
                     Err(_) => return Self::fail(shared),
                 }
                 let status = owner.status();
-                #[cfg(not(target_arch = "wasm32"))]
                 if mailboxes.status.generation != status.generation {
-                    mailboxes.capture_started_at = std::time::SystemTime::now();
-                    mailboxes.gamepads_started_at = mailboxes.capture_started_at;
-                    mailboxes.capture_epoch = mailboxes.capture_epoch.wrapping_add(1);
+                    mailboxes.mapping.release();
                     mailboxes.input.clear();
+                    mailboxes.input_generation = status.generation;
+                    #[cfg(not(target_arch = "wasm32"))]
+                    {
+                        mailboxes.capture_started_at = std::time::SystemTime::now();
+                        mailboxes.gamepads_started_at = mailboxes.capture_started_at;
+                        mailboxes.capture_epoch = mailboxes.capture_epoch.wrapping_add(1);
+                    }
                 }
                 mailboxes.status = status;
             }

@@ -2496,3 +2496,34 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - The revised GUI activity suite passed guest RESET and stepped keyboard reset checks.
   - Headless wide and compact game panels were visually inspected.
   - Canonical batch coverage and independent review are pending.
+---
+
+### [2026-11-17 00:28 CET] — Integrate input capture and floppy activity
+- **Affected Subsystems**:
+  - `crates/gui`
+  - `crates/floppy`
+  - `crates/paula`
+  - `crates/machine_loop`
+  - `GUI specification`
+- **What Was Changed (The Concrete Reality)**:
+  - Integrate task input-capture at bbdd32cab335d5a17317a8ead7e54ee66adee133 and task floppy-activity at 0cfab14e55db4f7bbab1ab408fed66b0d33353aa against primary baseline 1cc643c1833acbda53d0bfc78507f7a46ad60ab0
+  - Preserve both features and the primary RTC fix while resolving overlapping GUI requirements and diary entries
+  - Record intermediate merges 4612d23 and ca0d45c as awaiting combined verification
+  - Retain both task branches, worktrees and the input-capture working plan under the approved merge-only scope
+  - Invalidate cached controller contacts on every runtime generation change and preserve fresh gamepad edges admitted after a pending full release while discarding keyboard joystick presses on capture loss
+  - Retry a contended fatal-test command submission without weakening its failure assertions
+  - Explain the physical motor-controlled drive LED separately from GUI event feedback in the floppy specification
+- **Architectural Rationale & Trade-Offs**:
+  - Assemble both source histories before one combined acceptance pass
+  - preserve pending primary roadmap edits separately during publication
+  - no remote publication or milestone closure
+- **Verification & Test Results**:
+  - Source commit messages record passing source-only canonical checks and four review approvals for each feature
+  - merge conflict resolutions and git diff --check passed
+  - Both controller defects failed focused regressions before the runtime correction, including separate keyboard-reset and running-restore reproductions
+  - All 45 focused input, runtime, player capture and mapping tests passed after correction; the Node adapter regression also passed
+  - A further regression reproduced a keyboard joystick press retained by the initial queue correction; all 11 input tests passed after distinguishing gamepad ports
+  - The vault audit passed all 35 specifications and 1078 links
+  - Add the HRM-confirmed DSKMOTOR signal name to reviewed hardware vocabulary after the preliminary language gate identified it
+  - The first combined profile failed at a contended fatal-test command submission; final combined canonical verification and four independent review lanes are pending
+  - physical controller and live browser interaction remain outside this verification

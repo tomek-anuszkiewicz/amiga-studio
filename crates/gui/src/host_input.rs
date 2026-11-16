@@ -47,14 +47,20 @@ pub struct InputQueue {
 
 impl InputQueue {
     pub fn push(&mut self, event: HostInputEvent) {
-        if matches!(event, HostInputEvent::ReleaseCapture { .. }) {
-            let release = if self.events.contains(&HostInputEvent::ReleaseAll) {
-                HostInputEvent::ReleaseAll
-            } else {
-                event
-            };
+        if let HostInputEvent::ReleaseCapture { joysticks } = event {
+            if self.events.contains(&HostInputEvent::ReleaseAll) {
+                // Keep fresh gamepad edges, while dropping keyboard joystick input.
+                self.events.retain(|pending| match pending {
+                    HostInputEvent::ReleaseAll => true,
+                    HostInputEvent::Joystick { port, .. } => {
+                        joysticks.get(*port).is_some_and(Option::is_some)
+                    }
+                    _ => false,
+                });
+                return;
+            }
             self.events.clear();
-            self.events.push_back(release);
+            self.events.push_back(event);
             return;
         }
         if self.events.len() == INPUT_QUEUE_CAPACITY || event == HostInputEvent::ReleaseAll {

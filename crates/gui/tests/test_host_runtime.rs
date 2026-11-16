@@ -172,8 +172,17 @@ fn actual_queue_overflow_reaches_the_owner_boundary_for_run_and_manual_steps() {
         let mut host =
             HostRuntime::start(MachineOwner::new(session), egui::Context::default()).unwrap();
         wait_reply(&mut host, HostCommand::ReadCpu);
-        host.submit(command).unwrap();
         let deadline = Instant::now() + Duration::from_secs(10);
+        let mut pending = command;
+        loop {
+            match host.submit(pending) {
+                Ok(_) => break,
+                Err(busy) => pending = busy.0,
+            }
+            host.poll().unwrap();
+            assert!(Instant::now() < deadline, "Fatal trigger was not submitted");
+            std::thread::yield_now();
+        }
         let failure = loop {
             match host.poll() {
                 Err(HostRuntimeError::Fatal(message)) => break message,
@@ -1043,6 +1052,132 @@ fn runtime_input_capture_pause_reset_and_load_release_obsolete_controls() {
                 .sample_ciaa_port_a_inputs()
                 & 0x40,
             0x40
+        );
+    }
+}
+
+#[test]
+fn running_restore_and_keyboard_reset_invalidate_cached_controller_contacts() {
+    use gui::host_input::HostInputEvent;
+    use gui::player_config::{ConfigurationCatalog, InputSource, NamedConfiguration};
+    for keyboard_reset in [true, false] {
+        let mut session = session();
+        let mut rom = vec![0; 256 * 1024];
+        rom[..8].copy_from_slice(&[0, 8, 0, 0, 0, 0xf8, 0, 8]);
+        rom[8..10].copy_from_slice(&[0x60, 0xfe]);
+        session.load_rom(&rom).unwrap();
+        let mut host =
+            HostRuntime::start(MachineOwner::new(session), egui::Context::default()).unwrap();
+        let neutral = snapshot(&mut host);
+        let sender = host.input_sender();
+        let mut configuration = NamedConfiguration::default();
+        configuration.ports[1].source = InputSource::Gamepad {
+            identity: "pad".into(),
+            mapping: "arrows".into(),
+        };
+        let retry = |operation: &mut dyn FnMut() -> bool| {
+            let deadline = Instant::now() + Duration::from_secs(10);
+            while !operation() {
+                assert!(Instant::now() < deadline);
+                std::thread::yield_now();
+            }
+        };
+        retry(&mut || sender.configure(&configuration, &ConfigurationCatalog::default()));
+        retry(&mut || sender.set_enabled(true, true));
+        assert!(wait_reply(&mut host, HostCommand::Run).value.is_ok());
+        let generation = host.status().generation;
+        let sample = |generation, pressed| {
+            retry(&mut || {
+                sender.try_gamepads(
+                    vec![gui::input_mapping::GamepadSample {
+                        identity: "pad".into(),
+                        name: "Test controller".into(),
+                        axes: vec![0.0, 0.0],
+                        buttons: vec![pressed; 16],
+                    }],
+                    generation,
+                    true,
+                )
+            });
+        };
+        let delivered = |host: &mut HostRuntime| {
+            let before = host.status().input_deliveries;
+            wait_status(host, |status| status.input_deliveries >= before + 2);
+        };
+        delivered(&mut host);
+        sample(generation, false);
+        sample(generation, true);
+        delivered(&mut host);
+        assert_eq!(
+            snapshot(&mut host)
+                .state
+                .game_ports
+                .sample_ciaa_port_a_inputs()
+                & 0x80,
+            0
+        );
+        if keyboard_reset {
+            for code in [0x63, 0x66, 0x67] {
+                retry(&mut || {
+                    sender.try_host_event(
+                        HostInputEvent::Key {
+                            code,
+                            pressed: true,
+                        },
+                        generation,
+                    )
+                });
+            }
+            wait_status(&mut host, |status| status.generation != generation);
+        } else {
+            let ports = debugger::launch::state_port_kinds(&neutral.state.game_ports);
+            assert!(wait_reply(
+                &mut host,
+                HostCommand::RestorePlayer {
+                    json: neutral.to_json().unwrap(),
+                    game_id: None,
+                    ports,
+                }
+            )
+            .value
+            .is_ok());
+        }
+        let generation = host.status().generation;
+        assert!(host.status().running);
+        for captured in [false, true, false] {
+            retry(&mut || sender.set_enabled(captured, true));
+            delivered(&mut host);
+            assert_eq!(
+                snapshot(&mut host)
+                    .state
+                    .game_ports
+                    .sample_ciaa_port_a_inputs()
+                    & 0x80,
+                0x80,
+                "A capture change replayed contacts from the previous generation"
+            );
+        }
+        sample(generation, true);
+        delivered(&mut host);
+        assert_eq!(
+            snapshot(&mut host)
+                .state
+                .game_ports
+                .sample_ciaa_port_a_inputs()
+                & 0x80,
+            0x80,
+            "A held control must be released before it can play after reset or restore"
+        );
+        sample(generation, false);
+        sample(generation, true);
+        delivered(&mut host);
+        assert_eq!(
+            snapshot(&mut host)
+                .state
+                .game_ports
+                .sample_ciaa_port_a_inputs()
+                & 0x80,
+            0
         );
     }
 }
