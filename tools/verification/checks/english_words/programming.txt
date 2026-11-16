@@ -456,3 +456,10 @@ xxxx
 xzf
 yaml
 ℹ
+nullcontext
+qs
+errno
+eacces
+eagain
+ewouldblock
+eio

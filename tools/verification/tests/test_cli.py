@@ -10,7 +10,6 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from cli import parse_args
 from commands import select_phases
-from repository import REPO_ROOT
 import verify
 import commands as selection
 import execution
@@ -324,7 +323,9 @@ class SelectionTests(unittest.TestCase):
                          ["tools/verification/cpu_performance_tests.py", "refresh", "filtered_run"])
 
     def test_refresh_allows_intended_current_snapshot_change(self):
-        with patch.object(verify, "execute_command", return_value=(True, "refreshed", 0.1)), \
+        with tempfile.TemporaryDirectory() as temporary, \
+             patch.object(verify, "REPO_ROOT", Path(temporary)), \
+             patch.object(verify, "execute_command", return_value=(True, "refreshed", 0.1)), \
              patch.object(verify, "snapshot") as snapshot, \
              contextlib.redirect_stdout(io.StringIO()):
             self.assertEqual(verify.main(["runner", "refresh", "filtered_run"]), 0)
@@ -349,6 +350,12 @@ class SelectionTests(unittest.TestCase):
                 selected(sentence)
 
 class ExecutionTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        self.enterContext(patch.object(verify, "REPO_ROOT", self.root))
+
     def test_exact_rust_run_rejects_zero_matching_tests(self):
         for count, expected in ((0, 1), (1, 0)):
             process = unittest.mock.MagicMock()
@@ -371,7 +378,7 @@ class ExecutionTests(unittest.TestCase):
         execute.assert_not_called()
         self.assertIn("experiments\\add\\verify", output.getvalue())
         self.assertIn("SINGLESTEP_RESULTS_DIR", output.getvalue())
-        self.assertIn(repr(str(REPO_ROOT / ".agent/tmp/experiments/add/singlestep")),
+        self.assertIn(repr(str(self.root / ".agent/tmp/experiments/add/singlestep")),
                       output.getvalue())
 
     def test_results_directory_reaches_execution_and_singlestep_environment(self):
@@ -381,9 +388,9 @@ class ExecutionTests(unittest.TestCase):
             self.assertEqual(verify.main(["test", "runner", "singlestep", "case", "test_add_b",
                                           "--results-dir", ".agent/tmp/experiments/add"]), 0)
         self.assertEqual(execute.call_args.kwargs["log_dir"],
-                         REPO_ROOT / ".agent/tmp/experiments/add/verify")
+                         self.root / ".agent/tmp/experiments/add/verify")
         self.assertEqual(execute.call_args.args[1]["SINGLESTEP_RESULTS_DIR"],
-                         str(REPO_ROOT / ".agent/tmp/experiments/add/singlestep"))
+                         str(self.root / ".agent/tmp/experiments/add/singlestep"))
     def test_inventory_runs_without_candidate_generation(self):
         for success in (True, False):
             with self.subTest(success=success), \
@@ -407,7 +414,7 @@ class ExecutionTests(unittest.TestCase):
         with patch.object(verify, "collect_changes", return_value={"tools/amiga-rag-mcp-server/server.py"}) as collect:
             with contextlib.redirect_stdout(io.StringIO()) as output:
                 self.assertEqual(verify.main(["test", "python", "--plan"]), 0)
-        collect.assert_called_once_with(REPO_ROOT)
+        collect.assert_called_once_with(self.root)
         self.assertIn("RAG MCP contracts", output.getvalue())
         self.assertNotIn("Bootstrap contracts", output.getvalue())
 
@@ -415,7 +422,7 @@ class ExecutionTests(unittest.TestCase):
         with patch.object(verify, "collect_changes", return_value={"tools/bootstrap/conversion/client.py"}) as collect:
             with contextlib.redirect_stdout(io.StringIO()) as output:
                 self.assertEqual(verify.main(["commit", "--plan"]), 0)
-        collect.assert_called_once_with(REPO_ROOT)
+        collect.assert_called_once_with(self.root)
         self.assertIn("Book review contracts", output.getvalue())
         self.assertIn("Rust test scope: none", output.getvalue())
         self.assertIn("previous summary is not evidence", output.getvalue())

@@ -1236,7 +1236,7 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - `verification specifications`
 - **What Was Changed (The Concrete Reality)**:
   - Keep successful independent checks after root diary edits while refreshing the English gate and final candidate verdict
-  - resume interrupted runs in the same results directory after process ownership checks, including surviving descendants
+  - Historically resumed interrupted runs in the same results directory after descendant ownership checks; those checks are unavailable after VERIFICATION-LOCK-SIMPLIFICATION-20261116
   - Add reviewed API names and valid terminology reported by the language gate, including terms in the previously committed optimization guide
 - **Architectural Rationale & Trade-Offs**:
   - A diary-only commit partition repeated emulator tests despite unchanged code
@@ -1647,6 +1647,8 @@ Every authorized repository commit adds a concise entry here. Logging and compac
 ---
 
 ### [2026-11-15 10:53 CET] — Track verifier command trees with Windows Job Objects
+
+> Historical: This mechanism is unavailable after VERIFICATION-LOCK-SIMPLIFICATION-20261116. Checkout-level locking replaces command-tree ownership and telemetry cleanup.
 - **Affected Subsystems**:
   - `tools/verification`
   - `Windows process ownership`
@@ -1860,6 +1862,8 @@ Every authorized repository commit adds a concise entry here. Logging and compac
 ---
 
 ### [2026-11-15 22:08 CET] — Stop verification-owned MSVC telemetry at job completion
+
+> Historical: This mechanism is unavailable after VERIFICATION-LOCK-SIMPLIFICATION-20261116. Checkout-level locking replaces command-tree ownership and telemetry cleanup.
 - **Affected Subsystems**:
   - `Windows verification process ownership`
 - **What Was Changed (The Concrete Reality)**:
@@ -1965,50 +1969,24 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Integrated canonical verification and four independent review lanes are pending
 ---
 
-### [2026-11-16 09:42 CET] — TEST-RUNTIME-AND-VALUE-20261116: shorten audio captures and retire presentation campaigns
-- **Affected Subsystems**:
-  - `crates/gui/tests`
-  - `crates/machine_loop/tests`
-- **What Was Changed (The Concrete Reality)**:
-  - Remove thirteen pacing and graphical-program assertion cases while preserving guest assets and manual measurement examples
-  - Shorten PAL and NTSC audio WAV captures to about 120 ms without widening acceptance bounds
-- **Architectural Rationale & Trade-Offs**:
-  - Apply the recorded user decision to evaluate presentation and FPS manually while retaining CPU chip bus input and host command correctness checks
-- **Verification & Test Results**:
-  - Three audio cases passed before and after with execution falling from 6.88 s to 1.76 s outside compilation
-  - Twenty-seven focused GUI input and host cases passed
-  - Browser build and formatting passed
-  - No whole-commit speedup or hardware agreement is established
+
 ---
 
-### [2026-11-16 09:42 CET] — TEST-RUNTIME-AND-VALUE-20261116: report verification timings without invalidating inputs
+### [2026-11-16 09:28 CET] — VERIFICATION-LOCK-SIMPLIFICATION-20261116: simplify verifier ownership
 - **Affected Subsystems**:
   - `tools/verification`
-  - `tests/test-runtime-report.md`
-  - `verification instructions and specifications`
+  - `Verification requirements and commit continuation`
 - **What Was Changed (The Concrete Reality)**:
-  - Generate a versioned timing report and grouped console summary from existing command timers
-  - Exclude this exact output from selection source stability input identities and language scans while sealing it in the candidate tree
-  - Select verification-tool contracts only for their owning code tests policies and consumed shared tooling
+  - Use one nonblocking OS lock per checkout across executing verification entry points
+  - Remove command-tree supervision and its obsolete tests while retaining evidence reuse and all acceptance gates
+  - Isolate executing CLI fixtures and document the replacement contract
 - **Architectural Rationale & Trade-Offs**:
-  - Expose executed reused failed missing and skipped work without repeating tests to measure them
-  - Preserve required repository gates and detect real source edits
+  - Authorize verifier mutual exclusion without process registries or recovery machinery
+  - Surviving children may overlap a later invocation and are no longer detected or terminated
+  - Keep administrative integration transactions and psutil consumers unchanged
 - **Verification & Test Results**:
-  - All 218 focused tooling contracts passed after the separate PID fixture correction
-  - Six alternating reused fixture pairs measured median generation 24.608 ms and writing 0.528 ms with a noisy 87 ms end-to-end difference
-  - Input fixture profiling found 5.671 s of machine advance and 13 roughly 26 MB snapshots with 6.313 s acquisition plus 3.311 s decoding
-  - Emulator production code is unchanged and changed-code coverage review is inapplicable
-  - Canonical batch verification and independent review are recorded in the commit message
----
-
-### [2026-11-16 09:42 CET] — Publish Windows Job Object fixture readiness atomically
-- **Affected Subsystems**:
-  - `tools/verification/tests/test_windows_job.py`
-- **What Was Changed (The Concrete Reality)**:
-  - Write the complete PID to a temporary file and atomically replace the ready signal before the parent reads it
-- **Architectural Rationale & Trade-Offs**:
-  - The full tooling run demonstrated an empty-PID read and cleanup failure when file existence became visible before its contents
-  - Preserve every containment and cleanup assertion
-- **Verification & Test Results**:
-  - The initial 216-case run failed in this fixture
-  - All nine Windows Job Object cases and the corrected 218-case tooling suite passed
+  - Focused verification passed 200 Python tests on Windows
+  - Real subprocess tests cover contention and unchanged evidence plus release and reuse after interruption
+  - git diff --check passed
+  - POSIX execution is unrun
+  - Canonical commit verification and four independent reviews are pending

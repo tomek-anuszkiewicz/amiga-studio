@@ -123,8 +123,9 @@ command after corrections; it automatically checks evidence from the current
 batch. A changed `HEAD` starts a new batch. A diary-only correction reruns its
 language check and final aggregation while retaining valid independent results;
 other documents remain conservative inputs. After an interruption, repeat the
-same command and results directory; the verifier must first establish that the
-previous owner and its commands have stopped.
+same command and results directory to retain matching successful groups and
+rerun unfinished work. The checkout lock excludes another live verifier; surviving
+children after verifier termination are outside that guarantee.
 The verifier alone issues the complete final verdict. Reuse only evidence
 from this batch with matching inputs, commands, execution conditions, acceptance
 criteria and intact artifacts. Coverage execution, export and summary are one
