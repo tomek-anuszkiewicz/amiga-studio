@@ -1,5 +1,6 @@
 """Exercise batch continuation against real Git fixtures and child processes."""
 import contextlib
+import errno
 import io
 import json
 import os
@@ -8,7 +9,6 @@ import subprocess
 import sys
 import tempfile
 import time
-import threading
 import unittest
 from unittest.mock import patch
 
@@ -19,8 +19,7 @@ import repository
 import verify
 import commands
 import psutil
-import batch_lock
-from batch_lock import BatchLock, RUN_MARKERS
+from batch_lock import VerificationLock
 from impact import RustScope
 
 
@@ -146,111 +145,175 @@ class ContinuationTests(unittest.TestCase):
         self.assertEqual(self.events(), ["english", "coverage", "contracts"])
         self.assertEqual(self.record()["results"]["Strict English Policy"]["status"], "reused")
 
-    def test_active_owner_blocks_second_verifier_without_overwriting_evidence(self):
-        self.assertEqual(self.run_profile(), 0, self.output)
-        previous = self.record()
-        lock = BatchLock(self.directory)
-        lock.acquire()
-        try:
-            self.assertEqual(self.run_profile(), 1)
-            self.assertIn("Verification is active", self.output)
-            self.assertEqual(self.record(), previous)
-        finally:
-            lock.complete()
-            lock.release()
-
-    def test_killed_verifier_waits_for_surviving_command_then_reuses_success(self):
-        self.check_killed_verifier()
-
-    @unittest.skipUnless(os.name == "nt", "Windows Job Object recovery")
-    def test_killed_verifier_recovers_during_unrelated_process_traffic(self):
-        stop, started = threading.Event(), threading.Event()
-        traffic = []
-        failures = []
-        def churn():
-            try:
-                while not stop.is_set():
-                    with subprocess.Popen([sys.executable, "-c", "pass"]) as child:
-                        traffic.append(child.pid)
-                        started.set()
-                        child.wait(timeout=5)
-            except BaseException as error:
-                failures.append(error)
-        thread = threading.Thread(target=churn)
-        thread.start()
-        try:
-            self.assertTrue(started.wait(5), "Unrelated process traffic did not start")
-            with patch.object(batch_lock.psutil, "pids", side_effect=AssertionError(
-                    "Windows recovery must not enumerate system processes")):
-                self.check_killed_verifier()
-        finally:
-            stop.set()
-            thread.join(timeout=10)
-        self.assertFalse(thread.is_alive())
-        self.assertEqual(failures, [])
-        self.assertGreater(len(traffic), 1)
-
-    def check_killed_verifier(self):
-        ready = self.root / ".agent/tmp/ready"
-        release = self.root / ".agent/tmp/release"
-        command = self.phases[1][1][0][1]
-        command[-1] += ("\nimport os,time\nPath('.agent/tmp/ready').write_text(str(os.getpid()))\n"
-                       "while not Path('.agent/tmp/release').exists(): time.sleep(0.02)\n")
-        worker = command[-1]
-        command[-1] = ("import subprocess,sys,os\nfrom pathlib import Path\n"
-                       "Path('.agent/tmp/command').write_text(str(os.getpid()))\n"
-                       f"sys.exit(subprocess.call([sys.executable, '-c', {worker!r}]))\n")
-        code = (f"import sys\nsys.path.insert(0, {str(Path(verify.__file__).parent)!r})\n"
+    def invocation(self, args, phases=None):
+        return (f"import sys; sys.path.insert(0, {str(Path(verify.__file__).parent)!r})\n"
                 "from pathlib import Path\nimport verify, execution\n"
                 f"verify.REPO_ROOT = execution.REPO_ROOT = Path({str(self.root)!r})\n"
-                f"verify.select_phases = lambda *args: {self.phases!r}\n"
+                f"verify.select_phases = lambda *args: {self.phases if phases is None else phases!r}\n"
                 f"verify.execution_conditions = lambda root: {self.condition!r}\n"
                 "verify.stable_update_notice = lambda root: '[INFO] Stable fixture\\n'\n"
-                "sys.exit(verify.main(['commit']))\n")
-        with tempfile.TemporaryFile() as log:
-            process = subprocess.Popen([sys.executable, "-c", code], cwd=self.root, stdout=log, stderr=log)
+                f"sys.exit(verify.main({args!r}))\n")
+
+    def wait_for(self, path, process):
+        deadline = time.monotonic() + 10
+        while not path.exists() and process.poll() is None and time.monotonic() < deadline:
+            time.sleep(0.02)
+        self.assertTrue(path.exists(), f"Fixture did not become ready: {path.name}")
+
+    @contextlib.contextmanager
+    def holder(self, root=None):
+        root = self.root if root is None else root
+        ready = root / ".agent/tmp/holder-ready"
+        code = (f"import sys; sys.path.insert(0, {str(Path(verify.__file__).parent)!r})\n"
+                "from pathlib import Path\nfrom batch_lock import VerificationLock\n"
+                f"with VerificationLock(Path({str(root)!r})):\n"
+                f"    Path({str(ready)!r}).touch()\n"
+                "    sys.stdin.read()\n")
+        with tempfile.TemporaryFile() as log, subprocess.Popen(
+                [sys.executable, "-c", code], stdin=subprocess.PIPE, stdout=log, stderr=log) as process:
+            try:
+                self.wait_for(ready, process)
+                yield process
+            finally:
+                process.stdin.close()
+                try:
+                    process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    process.wait(timeout=5)
+                ready.unlink(missing_ok=True)
+
+    def test_active_owner_blocks_all_profiles_before_selection_or_evidence_writes(self):
+        self.assertEqual(self.run_profile(), 0, self.output)
+        previous = {p.relative_to(self.directory): p.read_bytes()
+                    for p in self.directory.rglob("*") if p.is_file()}
+        marker = self.root / ".agent/tmp/selected"
+        with self.holder():
+            for args in (["commit"], ["milestone", "--results-dir", ".agent/tmp/other"],
+                         ["test", "python"], ["check", "formatting"],
+                         ["runner", "bench", "inventory", "--results-dir", ".agent/tmp/focused"]):
+                code = self.invocation(args)
+                code = code.replace("verify.select_phases = lambda *args:",
+                                    f"verify.select_phases = lambda *args: Path({str(marker)!r}).touch() or")
+                code = code.replace("sys.exit(verify.main(",
+                                    f"verify.snapshot = lambda *args: Path({str(marker)!r}).touch()\nsys.exit(verify.main(")
+                with self.subTest(args=args):
+                    result = subprocess.run([sys.executable, "-c", code], cwd=self.root,
+                                            capture_output=True, text=True, timeout=10)
+                    self.assertEqual(result.returncode, 1, result.stderr)
+                    self.assertEqual(result.stdout.strip(),
+                                     "[FAIL] Verification is already running in this repository working directory.")
+            self.assertFalse(marker.exists())
+            self.assertFalse((self.root / ".agent/tmp/other").exists())
+            self.assertFalse((self.root / ".agent/tmp/focused").exists())
+            self.assertEqual(previous, {p.relative_to(self.directory): p.read_bytes()
+                                       for p in self.directory.rglob("*") if p.is_file()})
+
+    def test_independent_roots_can_hold_locks_simultaneously(self):
+        with tempfile.TemporaryDirectory() as other, self.holder(), self.holder(Path(other)):
+            for root in (self.root, Path(other)):
+                with self.assertRaises(BlockingIOError):
+                    with VerificationLock(root):
+                        self.fail("A live holder must exclude this process")
+
+    def test_help_and_plan_do_not_touch_lock_or_execute_while_held(self):
+        path = self.root / ".agent/tmp/verification.lock"
+        path.parent.mkdir(parents=True)
+        contents = b"Help and plans must leave these bytes unchanged."
+        path.write_bytes(contents)
+        with self.holder():
+            before = path.stat().st_size, path.stat().st_mtime_ns
+            for args in ([], ["--help"], ["commit", "--plan"], ["check", "formatting", "--plan"]):
+                with self.subTest(args=args):
+                    result = subprocess.run([sys.executable, "-c", self.invocation(args)],
+                                            cwd=self.root, capture_output=True, text=True, timeout=10)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual((path.stat().st_size, path.stat().st_mtime_ns), before)
+            self.assertEqual(self.events(), [])
+            self.assertFalse(self.directory.exists())
+        self.assertEqual(path.read_bytes(), contents)
+        path.unlink()
+        for args in ([], ["--help"], ["commit", "--plan"]):
+            subprocess.run([sys.executable, "-c", self.invocation(args)], cwd=self.root,
+                           capture_output=True, check=True, timeout=10)
+            self.assertFalse(path.exists())
+
+    def test_normal_failure_and_forced_exit_release_persistent_lock(self):
+        with self.holder():
+            pass
+        path = self.root / ".agent/tmp/verification.lock"
+        path.write_text("Arbitrary contents are not ownership metadata.")
+        for failed in (False, True):
+            phases = [("Verification", [("Fixture", [sys.executable, "-c", f"raise SystemExit({int(failed)})"], {})])]
+            result = subprocess.run([sys.executable, "-c", self.invocation(["check", "formatting"], phases)],
+                                    cwd=self.root, capture_output=True, timeout=10)
+            self.assertEqual(result.returncode, int(failed), result.stderr)
+            with VerificationLock(self.root) as lock:
+                self.assertFalse(os.get_inheritable(lock.handle.fileno()))
+            self.assertEqual(path.read_text(), "Arbitrary contents are not ownership metadata.")
+        result = subprocess.run([sys.executable, "-c", self.invocation(["check", "formatting"], [])],
+                                cwd=self.root, capture_output=True, timeout=10)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        with VerificationLock(self.root):
+            pass
+        with self.holder() as process:
+            process.kill()
+            process.wait(timeout=5)
+            with VerificationLock(self.root):
+                self.assertTrue(path.exists())
+
+    def test_lock_io_error_is_not_reported_as_contention_and_closes_handle(self):
+        backend = "msvcrt.locking" if os.name == "nt" else "fcntl.flock"
+        lock = VerificationLock(self.root)
+        with patch(backend, side_effect=OSError(errno.EIO, "Fixture I/O error")):
+            with self.assertRaises(OSError) as error:
+                with lock:
+                    self.fail("Lock acquisition must fail")
+            self.assertNotIsInstance(error.exception, BlockingIOError)
+            self.assertIsNone(lock.handle)
+            with patch.object(verify, "REPO_ROOT", self.root), \
+                 patch.object(verify, "snapshot") as snapshot, \
+                 contextlib.redirect_stdout(io.StringIO()) as output:
+                self.assertEqual(verify.main(["commit"]), 1)
+            snapshot.assert_not_called()
+            self.assertIn("Verification I/O error", output.getvalue())
+            self.assertNotIn("already running", output.getvalue())
+        with VerificationLock(self.root):
+            pass
+
+    def test_killed_verifier_reuses_success_while_unfinished_child_does_not_retain_lock(self):
+        ready = self.root / ".agent/tmp/ready"
+        release = self.root / ".agent/tmp/release"
+        self.phases[1][1][0][1][-1] += (
+            "\nimport os,time\n"
+            "if not Path('.agent/tmp/ready').exists():\n"
+            "    Path('.agent/tmp/ready').write_text(str(os.getpid()))\n"
+            "    deadline = time.monotonic() + 20\n"
+            "    while not Path('.agent/tmp/release').exists() and time.monotonic() < deadline: time.sleep(0.02)\n")
+        with tempfile.TemporaryFile() as log, subprocess.Popen(
+                [sys.executable, "-c", self.invocation(["commit"])], cwd=self.root, stdout=log, stderr=log) as process:
             survivor = None
             try:
-                deadline = time.monotonic() + 15
-                while not ready.exists() and process.poll() is None and time.monotonic() < deadline:
-                    time.sleep(0.02)
-                self.assertTrue(ready.exists(), "Fixture command did not start")
+                self.wait_for(ready, process)
                 survivor = psutil.Process(int(ready.read_text()))
                 process.kill()
                 process.wait(timeout=5)
-                parent = psutil.Process(int((self.root / ".agent/tmp/command").read_text()))
-                parent.kill()
-                parent.wait(timeout=5)
-                self.assertEqual(self.run_profile(), 1)
-                self.assertIn("Previous verification command is still active", self.output)
-                self.assertEqual(self.events(), ["english", "coverage"])
-                release.touch()
-                survivor.wait(timeout=10)
+                self.assertTrue(survivor.is_running())
                 self.assertEqual(self.run_profile(), 0, self.output)
                 self.assertEqual(self.events(), ["english", "coverage", "coverage", "contracts"])
                 self.assertEqual(self.record()["results"]["Strict English Policy"]["status"], "reused")
+                self.assertEqual(self.record()["results"]["Coverage"]["status"], "executed")
             finally:
                 release.touch()
                 if process.poll() is None:
                     process.kill()
                 process.wait(timeout=5)
                 if survivor is not None:
-                    survivor.wait(timeout=10)
-
-    def test_unknown_lock_ownership_blocks_without_discarding_evidence(self):
-        self.assertEqual(self.run_profile(), 0, self.output)
-        previous = self.record()
-        valid = json.loads((self.directory / "active.lock").read_text())
-        invalid = ["old-attempt-id", "{}", '{"active": null}']
-        for key, value in (("version", 1), ("backend", "unknown"), ("active", 1),
-                           ("token", "z" * 32), ("token", None)):
-            invalid.append(json.dumps({**valid, key: value}))
-        for raw in invalid:
-            (self.directory / "active.lock").write_text(raw)
-            self.assertEqual(self.run_profile(), 1)
-            self.assertIn("Cannot establish previous batch ownership", self.output)
-            self.assertEqual(self.record(), previous)
-            self.assertEqual((self.directory / "active.lock").read_text(), raw)
+                    try:
+                        survivor.wait(timeout=10)
+                    except psutil.TimeoutExpired:
+                        survivor.kill()
+                        survivor.wait(timeout=5)
 
     def test_early_failure_defers_coverage_and_remains_failure_on_retry(self):
         self.phases.insert(1, ("Build checks", [("Clippy Invariants", self.child("clippy"), {})]))
@@ -348,8 +411,6 @@ class ContinuationTests(unittest.TestCase):
             original = evidence.execution_conditions(self.root)
             evidence.os.environ["CODEX_TOOL_CALL_ID"] = "second"
             self.assertEqual(evidence.execution_conditions(self.root), original)
-            with patch.dict(evidence.os.environ, {RUN_MARKERS: "different-parent-run"}):
-                self.assertEqual(evidence.execution_conditions(self.root), original)
             evidence.os.environ["RUSTFLAGS"] = "-C opt-level=1"
             self.assertNotEqual(evidence.execution_conditions(self.root), original)
 

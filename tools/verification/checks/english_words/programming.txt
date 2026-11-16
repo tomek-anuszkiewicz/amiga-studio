@@ -457,3 +457,8 @@ hostx
 vctip
 nullcontext
 qs
+errno
+eacces
+eagain
+ewouldblock
+eio

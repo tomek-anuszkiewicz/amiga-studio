@@ -13,7 +13,7 @@ from commands import select_phases
 from execution import execute_command, print_info, result_label
 from repository import REPO_ROOT, collect_changes, snapshot, resolve_base, divergent_integration, candidate_tree
 from evidence import BatchEvidence, capture_inputs, execution_conditions, group_identity
-from batch_lock import BatchLock
+from batch_lock import VerificationLock
 
 
 if hasattr(sys.stdout, "reconfigure"):
@@ -68,6 +68,24 @@ def main(argv=None):
         except (OSError, ValueError, KeyError, TypeError, RuntimeError, subprocess.SubprocessError) as error:
             print(f"{result_label(False)} {error}")
             return 1
+    if args.plan:
+        return run_verification(parser, args)
+    try:
+        with VerificationLock(REPO_ROOT):
+            return run_verification(parser, args)
+    except BlockingIOError as error:
+        print(f"{result_label(False)} {error}")
+        return 1
+    except OSError as error:
+        print(f"{result_label(False)} Verification I/O error: {error}")
+        return 1
+    except KeyboardInterrupt:
+        print(f"{result_label(False)} Verification interrupted; repeat the same command.")
+        return 130
+
+
+def run_verification(parser, args):
+    """Select and execute work under the entry-point lock, or preview it without one."""
     before = None
     batch = None
     completion = args.command in ("commit", "milestone")
@@ -178,12 +196,6 @@ def main(argv=None):
 def execute_batch(args, phases, batch, before):
     """Execute the full selected profile, retaining only matching successful groups."""
     batch.directory.mkdir(parents=True, exist_ok=True)
-    lock = BatchLock(batch.directory)
-    try:
-        lock.acquire()
-    except (OSError, RuntimeError) as error:
-        print(f"{result_label(False)} {error}")
-        return 1
     try:
         batch.load()
         inputs = capture_inputs(REPO_ROOT)
@@ -241,8 +253,8 @@ def execute_batch(args, phases, batch, before):
             success, elapsed = True, 0
             for title, command, overrides in commands:
                 print(f"[RUN] {title}", flush=True)
-                ok, detail, seconds = execute_command(command, lock.command_environment(overrides),
-                                                      log_level=args.log_level, log_dir=directory, job=lock.job)
+                ok, detail, seconds = execute_command(command, overrides,
+                                                      log_level=args.log_level, log_dir=directory)
                 elapsed += seconds
                 success = success and ok
                 print(f"{result_label(ok)} {title} ({seconds:.2f}s): {detail}", flush=True)
@@ -265,13 +277,12 @@ def execute_batch(args, phases, batch, before):
         batch.record["source"] = source
         batch.record["tree"] = candidate_tree(REPO_ROOT)
         batch.save()
-        lock.complete()
         print(f"{result_label(success)} {args.command} verification; evidence: {batch.path}")
         return 0 if success else 1
     except KeyboardInterrupt:
         batch.record["outcome"] = "interrupted"
         batch.save()
-        print(f"{result_label(False)} Verification interrupted; repeat the same command after its commands stop.")
+        print(f"{result_label(False)} Verification interrupted; repeat the same command and results directory.")
         return 130
     except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
         for item in batch.record["groups"].values():
@@ -281,8 +292,6 @@ def execute_batch(args, phases, batch, before):
         batch.save()
         print(f"{result_label(False)} {error}")
         return 1
-    finally:
-        lock.release()
 
 
 if __name__ == "__main__":

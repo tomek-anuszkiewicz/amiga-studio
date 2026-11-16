@@ -275,9 +275,6 @@
       "audovol",
       "hardw"
     ],
-    "tools/verification/tests/test_windows_job.py": [
-      "\u03bb"
-    ],
     "tools/bootstrap/book-to-markdown/tests/test_book_library.py": [
       "aaa",
       "bbb",

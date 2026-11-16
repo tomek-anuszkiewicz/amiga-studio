@@ -1236,7 +1236,7 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - `verification specifications`
 - **What Was Changed (The Concrete Reality)**:
   - Keep successful independent checks after root diary edits while refreshing the English gate and final candidate verdict
-  - resume interrupted runs in the same results directory after process ownership checks, including surviving descendants
+  - Historically resumed interrupted runs in the same results directory after descendant ownership checks; those checks are unavailable after VERIFICATION-LOCK-SIMPLIFICATION-20261116
   - Add reviewed API names and valid terminology reported by the language gate, including terms in the previously committed optimization guide
 - **Architectural Rationale & Trade-Offs**:
   - A diary-only commit partition repeated emulator tests despite unchanged code
@@ -1647,6 +1647,8 @@ Every authorized repository commit adds a concise entry here. Logging and compac
 ---
 
 ### [2026-11-15 10:53 CET] — Track verifier command trees with Windows Job Objects
+
+> Historical: This mechanism is unavailable after VERIFICATION-LOCK-SIMPLIFICATION-20261116. Checkout-level locking replaces command-tree ownership and telemetry cleanup.
 - **Affected Subsystems**:
   - `tools/verification`
   - `Windows process ownership`
@@ -1860,6 +1862,8 @@ Every authorized repository commit adds a concise entry here. Logging and compac
 ---
 
 ### [2026-11-15 22:08 CET] — Stop verification-owned MSVC telemetry at job completion
+
+> Historical: This mechanism is unavailable after VERIFICATION-LOCK-SIMPLIFICATION-20261116. Checkout-level locking replaces command-tree ownership and telemetry cleanup.
 - **Affected Subsystems**:
   - `Windows verification process ownership`
 - **What Was Changed (The Concrete Reality)**:
@@ -1945,3 +1949,23 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Bootstrap catalog contracts and recipe checks are historical results recorded by the original commits
   - No recipe was regenerated and whole-book quality was not reassessed
   - Integrated canonical verification and four independent review lanes are pending
+---
+
+### [2026-11-16 09:28 CET] — VERIFICATION-LOCK-SIMPLIFICATION-20261116: simplify verifier ownership
+- **Affected Subsystems**:
+  - `tools/verification`
+  - `Verification requirements and commit continuation`
+- **What Was Changed (The Concrete Reality)**:
+  - Use one nonblocking OS lock per checkout across executing verification entry points
+  - Remove command-tree supervision and its obsolete tests while retaining evidence reuse and all acceptance gates
+  - Isolate executing CLI fixtures and document the replacement contract
+- **Architectural Rationale & Trade-Offs**:
+  - Authorize verifier mutual exclusion without process registries or recovery machinery
+  - Surviving children may overlap a later invocation and are no longer detected or terminated
+  - Keep administrative integration transactions and psutil consumers unchanged
+- **Verification & Test Results**:
+  - Focused verification passed 200 Python tests on Windows
+  - Real subprocess tests cover contention and unchanged evidence plus release and reuse after interruption
+  - git diff --check passed
+  - POSIX execution is unrun
+  - Canonical commit verification and four independent reviews are pending

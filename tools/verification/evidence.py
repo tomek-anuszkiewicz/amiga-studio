@@ -12,7 +12,6 @@ import uuid
 
 from impact import language_data_input
 from repository import git
-from batch_lock import RUN_MARKERS
 
 
 VERSION = 3
@@ -88,7 +87,7 @@ def execution_conditions(root):
     packages = sorted((item.metadata["Name"], item.version) for item in importlib.metadata.distributions())
     # Tool-call correlation changes without changing build or test configuration.
     environment = {key: value for key, value in os.environ.items()
-                   if key not in {"CODEX_TOOL_CALL_ID", RUN_MARKERS}}
+                   if key != "CODEX_TOOL_CALL_ID"}
     return digest([environment, versions, configuration, packages, platform.platform(),
                    sys.version, sys.executable, file_digest(Path(sys.executable))])
 

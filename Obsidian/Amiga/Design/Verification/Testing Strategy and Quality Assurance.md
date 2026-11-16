@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "testing"
 status: "active"
 created: 2026-09-14
-updated: 2026-11-15
+updated: 2026-11-16
 related: ["[General Architecture.md](../General%20Architecture.md)", "[CPU SingleStepTests.md](CPU%20SingleStepTests.md)", "[CPU Instruction Benchmarking.md](../Performance/CPU%20Instruction%20Benchmarking.md)", "[Machine Loop.md](../Machine%20Loop.md)", "[Platform Quirks and Invariants Catalog.md](../Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
 tracked_paths:
   - "crates/test_runner/tests"
@@ -124,16 +124,26 @@ reuse identity covers its inputs. `DIARY.md` is an editorial input to the Englis
 gate, not to the known build, test and static-check groups. A diary-only correction
 therefore preserves their successful results. Other documents, specifications
 and unknown groups remain conservative; a Markdown extension alone never proves
-independence. Process ownership protects the results directory: after interruption,
-the same command resumes only after the previous verifier and its child commands
-have stopped, retaining completed groups and rerunning unfinished work. Windows
-tracks command trees with a named Job Object assigned during process creation;
-a guardian retains ownership until all descendants drain. POSIX keeps the
-conservative environment-marker scan. Unknown ownership fails closed. Completion
-and recovery may stop confirmed MSVC `vctip.exe` telemetry only when it is the
-only remaining kind of process in the verification job; other orphan commands
-remain protected. The [continuation reference](../../../../tools/verification/README.md#completion-verification)
-owns platform requirements and recovery limits.
+independence. Every executing `commit`, `milestone`, `test`, `check` and `runner`
+invocation holds one nonblocking operating-system lock at
+`<checkout>/.agent/tmp/verification.lock`, acquired after argument parsing and
+before selection, source snapshots, evidence writes or checks. A competing
+invocation immediately fails with `[FAIL] Verification is already running in this
+repository working directory.` Different profiles, branches and results directories
+within one checkout share this lock; separate checkouts have independent locks.
+Help and `--plan` neither acquire the lock nor change its file. The persistent
+file's contents and existence never establish ownership. Normal exits, failures
+and forced process termination release the lock without deleting or replacing
+the file. Child commands do not inherit its handle.
+After interruption, repeat the same command and results directory to retain
+completed matching groups and rerun unfinished work. The verifier does not track,
+wait for or terminate surviving children: a command left alive after its verifier
+exits can overlap a later invocation. No process registry, ownership recovery or
+force-unlock mechanism is provided. Direct Cargo, unittest and standalone helper
+commands are outside this contract. Administrative `integrate` actions retain
+their separate transaction protocol. The
+[continuation reference](../../../../tools/verification/README.md#completion-verification)
+describes evidence reuse and execution limits.
 Python contract selection remains unchanged below.
 Performance measurements remain explicit diagnostics; benchmark workload contracts
 are ordinary standard harness tests. Build caches are retained.
