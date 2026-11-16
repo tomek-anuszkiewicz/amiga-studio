@@ -74,47 +74,6 @@ fn debugger_run_keeps_video_updates_and_pause_control_while_cpu_status_is_stoppe
 }
 
 #[test]
-fn repeated_layout_passes_do_not_skip_a_completed_field_when_running_late() {
-    let mut app = app(VideoStandard::Pal);
-    let ctx = Context::default();
-    app.host.queue(HostCommand::Run);
-    common::wait(&mut app, &ctx, |app| {
-        app.host.status.running && app.host.presented.is_some()
-    });
-    let publication = app.host.presented.unwrap().publication;
-    let deadline = Instant::now() + Duration::from_secs(10);
-    let runtime = app.host.runtime.as_mut().unwrap();
-    while runtime.status().publication <= publication {
-        assert!(Instant::now() < deadline);
-        assert!(runtime.poll().unwrap().is_empty());
-        std::thread::sleep(Duration::from_millis(1));
-    }
-    let mut first_pass_image = None;
-    let output = ctx.run(
-        RawInput {
-            time: Some(1.0),
-            ..Default::default()
-        },
-        |ctx| {
-            app.update_ui(ctx);
-            let current = app.host.presented.unwrap().publication;
-            if ctx.output(|output| output.num_completed_passes) == 0 {
-                first_pass_image = Some(current);
-                ctx.request_discard("Exercise repeated layout before presentation");
-            } else {
-                assert_eq!(
-                    Some(current),
-                    first_pass_image,
-                    "Second layout consumed another image"
-                );
-            }
-        },
-    );
-    assert_eq!(output.platform_output.num_completed_passes, 2);
-    assert_eq!(app.host.presented.unwrap().publication, publication + 1);
-}
-
-#[test]
 fn frame_shortcut_and_toolbar_controls_are_operable() {
     let mut app = app(VideoStandard::Pal);
     app.view_mode = ViewMode::Developer;

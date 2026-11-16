@@ -12,6 +12,9 @@ common contract in [code-review](../SKILL.md#assigned-reviewer-common-contract).
 - Verify the actual commands, outcomes, input identities, retained artifacts and
   evidence freshness. Matching successful groups may be reused; failed, missing
   or invalidated groups cannot count as passed.
+- Treat the versioned timing report as generated output. Verify that its updates
+  preserve selection and continuation while actual source changes remain detected;
+  report data cannot establish a passing gate.
 - Distinguish renewed reviews from carried scoped approvals. Verify the comparison
   supporting unchanged content, requirements and evidence; preserve each carried
   verdict's original identity. Descriptive documentation edits alone do not require

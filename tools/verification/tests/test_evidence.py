@@ -98,7 +98,7 @@ class ContinuationTests(unittest.TestCase):
         reports = {p.name: p.read_bytes() for p in (self.root / ".agent/tmp/coverage").iterdir()}
         self.write(self.words, "accepted\nmore\n")
         self.assertEqual(self.run_profile(), 0, self.output)
-        self.assertEqual(self.events(), ["english", "coverage", "contracts", "english", "contracts"])
+        self.assertEqual(self.events(), ["english", "coverage", "contracts", "english"])
         self.assertEqual(self.record()["results"]["Coverage"]["status"], "reused")
         self.assertEqual(reports, {p.name: p.read_bytes() for p in (self.root / ".agent/tmp/coverage").iterdir()})
 
@@ -107,6 +107,78 @@ class ContinuationTests(unittest.TestCase):
         events = self.events()
         self.assertEqual(self.run_profile(), 0, self.output)
         self.assertEqual(self.events(), events)
+
+    def test_timing_output_creation_updates_and_staging_preserve_inputs_and_reuse(self):
+        before = repository.snapshot(self.root)
+        inputs = evidence.capture_inputs(self.root)
+        self.assertEqual(self.run_profile(), 0, self.output)
+        report = repository.TIMING_REPORT
+        self.assertTrue((self.root / report).is_file())
+        self.assertEqual(repository.snapshot(self.root), before)
+        self.assertEqual(evidence.capture_inputs(self.root), inputs)
+        events = self.events()
+        self.write(report, "Updated generated timing data.\n")
+        self.git("add", report)
+        self.assertEqual(repository.snapshot(self.root), before)
+        self.assertEqual(evidence.capture_inputs(self.root), inputs)
+        self.assertEqual(self.run_profile(), 0, self.output)
+        self.assertEqual(self.events(), events)
+        self.assertTrue(all(item["status"] == "reused" for item in self.record()["results"].values()))
+        self.assertIn(report, self.git("ls-tree", "-r", "--name-only", self.record()["tree"]))
+        (self.root / report).unlink()
+        self.assertEqual(repository.snapshot(self.root), before)
+        self.assertEqual(evidence.capture_inputs(self.root), inputs)
+        self.assertEqual(self.run_profile(), 0, self.output)
+        self.assertEqual(self.events(), events)
+        self.write("source.rs", "fn changed_again() {}\n")
+        self.assertNotEqual(repository.snapshot(self.root), before)
+        self.assertNotEqual(evidence.capture_inputs(self.root), inputs)
+        self.assertEqual(self.run_profile(), 0, self.output)
+        self.assertEqual(self.events()[len(events):], ["english", "coverage"])
+
+    def test_report_created_inside_command_does_not_reject_source(self):
+        self.phases[1][1][0][1][-1] += (
+            "; p=Path('tests/test-runtime-report.md'); p.parent.mkdir(exist_ok=True); p.write_text('data')")
+        self.assertEqual(self.run_profile(), 0, self.output)
+        self.assertEqual(self.events(), ["english", "coverage", "contracts"])
+
+    def test_report_write_failure_preserves_successful_test_evidence(self):
+        with patch.object(verify, "publish", side_effect=PermissionError("Report output locked")):
+            self.assertEqual(self.run_profile(), 1, self.output)
+        self.assertEqual(self.record()["outcome"], "failed")
+        self.assertTrue(all(item["status"] == "passed" for item in self.record()["groups"].values()))
+        events = self.events()
+        self.assertEqual(self.run_profile(), 0, self.output)
+        self.assertEqual(self.events(), events)
+
+    def test_verification_contract_identity_tracks_tooling_but_not_emulator_or_vocabulary(self):
+        self.assertEqual(self.run_profile(), 0, self.output)
+        self.write("crates/example/src/example.rs", "pub fn guest() {}")
+        self.write(self.words, "accepted\nmore\n")
+        self.assertEqual(self.run_profile(), 0, self.output)
+        self.assertEqual(self.events().count("contracts"), 1)
+        self.write("tools/verification/commands.py", "# Changed selection\n")
+        self.assertEqual(self.run_profile(), 0, self.output)
+        self.assertEqual(self.events().count("contracts"), 2)
+        self.write("tools/graphify_query.py", "# Changed graph query\n")
+        self.assertEqual(self.run_profile(), 0, self.output)
+        self.assertEqual(self.events().count("contracts"), 3)
+
+    def test_batch_wall_time_includes_initial_selection(self):
+        clock = [0.0]
+        selection_seen = [False]
+        collect = verify.collect_changes
+
+        def select(*args):
+            if not selection_seen[0]:
+                clock[0] += 5.0
+                selection_seen[0] = True
+            return collect(*args)
+
+        with patch.object(verify.time, "perf_counter", side_effect=lambda: clock[0]), \
+             patch.object(verify, "collect_changes", side_effect=select):
+            self.assertEqual(self.run_profile(), 0, self.output)
+        self.assertEqual(self.record()["timing_report"]["wall_seconds_before_report"], 5.0)
 
     def test_diary_edit_preserves_known_groups_but_updates_final_candidate(self):
         self.write("DIARY.md", "First entry.\n")

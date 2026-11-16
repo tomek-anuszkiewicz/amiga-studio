@@ -11,7 +11,7 @@ import sys
 import uuid
 
 from impact import language_data_input
-from repository import git
+from repository import git, TIMING_REPORT
 from batch_lock import RUN_MARKERS
 
 
@@ -53,6 +53,8 @@ def capture_inputs(root, contents=True):
         paths.add(".env")
     result = {}
     for name in sorted(paths):
+        if name == TIMING_REPORT:
+            continue
         path = root / name
         if path.is_symlink():
             raise ValueError(f"Cannot establish input ownership through a symlink: {name}")
@@ -95,9 +97,11 @@ def execution_conditions(root):
 
 def group_identity(name, commands, inputs, conditions):
     # Vocabulary and exact-file language data are independent of emulator execution.
-    # Verification contracts consume these data, and must execute again after edits.
-    selected = inputs if name in {"Strict English Policy", "Verification CLI contracts"} else {
+    selected = inputs if name == "Strict English Policy" else {
         path: value for path, value in inputs.items() if not language_data_input(path)}
+    if name == "Verification CLI contracts":
+        from commands import verification_contract_input
+        selected = {path: value for path, value in inputs.items() if verification_contract_input(path)}
     if name in DIARY_INDEPENDENT_GROUPS:
         selected = {path: value for path, value in selected.items() if path != "DIARY.md"}
     return digest([VERSION, commands, selected, conditions])

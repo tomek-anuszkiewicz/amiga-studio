@@ -7,6 +7,7 @@ import tempfile
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+TIMING_REPORT = "tests/test-runtime-report.md"
 
 
 def git(root, *args):
@@ -71,13 +72,15 @@ def divergent_integration(root, base, source=None):
 
 
 def snapshot(root):
-    """Fingerprint source and index, excluding generated benchmark reports."""
+    """Fingerprint source and index, excluding generated report output."""
     digest = hashlib.sha256()
     for args in (("rev-parse", "HEAD"), ("diff", "--cached", "--binary"),
                  ("diff", "--binary")):
-        digest.update(git(root, *args))
+        exclusions = ("--", ".", f":(top,literal,exclude){TIMING_REPORT}") if args[0] == "diff" else ()
+        digest.update(git(root, *args, *exclusions))
     paths = [path for path in git(root, "ls-files", "--others", "--exclude-standard", "-z")
-             .decode("utf-8").split("\0") if path and not path.startswith("benchmarks/results/")]
+             .decode("utf-8").split("\0") if path and path != TIMING_REPORT
+             and not path.startswith("benchmarks/results/")]
     for path in paths:
         digest.update(path.encode("utf-8"))
         digest.update(hashlib.sha256((root / path).read_bytes()).digest())

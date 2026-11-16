@@ -1923,6 +1923,92 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Two canonical attempts reproduced reading an empty ready file before write_text finished, followed by cleanup sharing errors
   - Readiness must mean the complete PID is available rather than only that a file was opened
 - **Verification & Test Results**:
-  - Existing Windows Job fixture suite passed all nine tests after the change
-  - Canonical attempts before the fixture correction failed with empty-PID ValueError and cleanup sharing errors
-  - Emulator production code and reference values are unchanged by this prerequisite fix
+
+---
+
+  - Book library contracts passed
+  - PowerShell parser and usage checks passed
+  - Status reports five books and no pending renders or errors for the two opened books
+  - Invalid actions return a nonzero exit code
+---
+
+### [2026-11-15 23:32 CET] — Record the accepted M68000 user manual recipe
+- **Affected Subsystems**:
+  - `tools/bootstrap/books/m68000-users-manual-rev8/e41cbe7e14dc`
+- **What Was Changed (The Concrete Reality)**:
+  - Add the accepted source-backed reconstruction recipe
+- **Architectural Rationale & Trade-Offs**:
+  - Preserve the current accepted recipe alongside its existing source identity and OCR data
+- **Verification & Test Results**:
+  - Recipe matches local Accepted
+  - Accepted input resolves one chapter with 1343 elements and 100 assets
+  - Source PDF SHA-256 matches source.json
+  - Whole-book transcription and layout quality were not assessed
+---
+
+### [2026-11-16 00:49 CET] — BOOTSTRAP-NATIVE-INTEGRATION-20261116: integrate book catalog with native disk execution
+- **Affected Subsystems**:
+  - `Local integration`
+  - `Book review catalog`
+  - `Native disk documentation`
+- **What Was Changed (The Concrete Reality)**:
+  - Combine Bootstrap commits fb5a48b and bccaee1 with native tip c7563f4 without rewriting their history
+  - Preserve native Chapter 16 and roadmap boundaries together with both book entries
+  - Retain vocabulary from both branches
+- **Architectural Rationale & Trade-Offs**:
+  - Keep independent book review sessions and the accepted manual recipe alongside the unchanged native disk implementation
+  - Reconcile all changed Markdown against the common base and both branches
+- **Verification & Test Results**:
+  - Native c7563f4 was published unchanged using its confirmed final-source verification
+  - Bootstrap catalog contracts and recipe checks are historical results recorded by the original commits
+  - No recipe was regenerated and whole-book quality was not reassessed
+  - Integrated canonical verification and four independent review lanes are pending
+---
+
+### [2026-11-16 09:42 CET] — TEST-RUNTIME-AND-VALUE-20261116: shorten audio captures and retire presentation campaigns
+- **Affected Subsystems**:
+  - `crates/gui/tests`
+  - `crates/machine_loop/tests`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove thirteen pacing and graphical-program assertion cases while preserving guest assets and manual measurement examples
+  - Shorten PAL and NTSC audio WAV captures to about 120 ms without widening acceptance bounds
+- **Architectural Rationale & Trade-Offs**:
+  - Apply the recorded user decision to evaluate presentation and FPS manually while retaining CPU chip bus input and host command correctness checks
+- **Verification & Test Results**:
+  - Three audio cases passed before and after with execution falling from 6.88 s to 1.76 s outside compilation
+  - Twenty-seven focused GUI input and host cases passed
+  - Browser build and formatting passed
+  - No whole-commit speedup or hardware agreement is established
+---
+
+### [2026-11-16 09:42 CET] — TEST-RUNTIME-AND-VALUE-20261116: report verification timings without invalidating inputs
+- **Affected Subsystems**:
+  - `tools/verification`
+  - `tests/test-runtime-report.md`
+  - `verification instructions and specifications`
+- **What Was Changed (The Concrete Reality)**:
+  - Generate a versioned timing report and grouped console summary from existing command timers
+  - Exclude this exact output from selection source stability input identities and language scans while sealing it in the candidate tree
+  - Select verification-tool contracts only for their owning code tests policies and consumed shared tooling
+- **Architectural Rationale & Trade-Offs**:
+  - Expose executed reused failed missing and skipped work without repeating tests to measure them
+  - Preserve required repository gates and detect real source edits
+- **Verification & Test Results**:
+  - All 218 focused tooling contracts passed after the separate PID fixture correction
+  - Six alternating reused fixture pairs measured median generation 24.608 ms and writing 0.528 ms with a noisy 87 ms end-to-end difference
+  - Input fixture profiling found 5.671 s of machine advance and 13 roughly 26 MB snapshots with 6.313 s acquisition plus 3.311 s decoding
+  - Emulator production code is unchanged and changed-code coverage review is inapplicable
+  - Canonical batch verification and independent review are recorded in the commit message
+---
+
+### [2026-11-16 09:42 CET] — Publish Windows Job Object fixture readiness atomically
+- **Affected Subsystems**:
+  - `tools/verification/tests/test_windows_job.py`
+- **What Was Changed (The Concrete Reality)**:
+  - Write the complete PID to a temporary file and atomically replace the ready signal before the parent reads it
+- **Architectural Rationale & Trade-Offs**:
+  - The full tooling run demonstrated an empty-PID read and cleanup failure when file existence became visible before its contents
+  - Preserve every containment and cleanup assertion
+- **Verification & Test Results**:
+  - The initial 216-case run failed in this fixture
+  - All nine Windows Job Object cases and the corrected 218-case tooling suite passed

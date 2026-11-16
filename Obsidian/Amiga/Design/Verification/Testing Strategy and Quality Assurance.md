@@ -145,7 +145,9 @@ and recovery may stop confirmed MSVC `vctip.exe` telemetry only when it is the
 only remaining kind of process in the verification job; other orphan commands
 remain protected. The [continuation reference](../../../../tools/verification/README.md#completion-verification)
 owns platform requirements and recovery limits.
-Python contract selection remains unchanged below.
+Verification-tool contracts run only when their code, tests or shared tooling
+inputs change. Vocabulary and generated reports do not select these contracts.
+Other Python contract selection remains as described below.
 Performance measurements remain explicit diagnostics; benchmark workload contracts
 are ordinary standard harness tests. Build caches are retained.
 Standard harness selection runs when `test_runner` is affected or the full Rust
@@ -156,7 +158,9 @@ are standard suites. The pilot checks the verifier using selected SingleStep cas
 it does not run the full external suite. If no
 standard suites remain, it schedules no Cargo test command. Python contracts
 for the RAG MCP adapter, [artifact report](../../../../tools/artifacts/report.py)
-and verification tooling always run. Bootstrap, shared
+always run. Verification-tool contracts run for changes to verification Python
+code/tests, its policy configuration, the web/worktree launchers, graph-query
+tooling and the vault link checker used by those contracts. Bootstrap, shared
 conversion, HTML conversion, PDF conversion and book review contracts run when Git reports staged,
 unstaged or nonignored new paths under `tools/bootstrap/`. The book review suite
 shares one browser process across its browser tests while isolating each test in
@@ -177,6 +181,23 @@ describes commands and environment settings. Staging is optional, and completion
 evidence must match the final committed source. Ordinary `test python` runs only
 contracts affected by changed tool inputs or shared dependencies; explicit
 directory selection runs that suite regardless of changed paths.
+
+The generated, versioned `tests/test-runtime-report.md` records measured command
+and group times and execution/reuse/failure/omission status. It is an output:
+creating or editing this exact file does not select tests, alter source stability
+or continuation identities, or enter language scans. Neighboring source files
+retain their checks. The report remains part of the candidate Git tree; internal
+evidence determines success. Report generation reuses existing command timings,
+separates measured reporting costs and does not repeat tests for timing data.
+
+Host pacing, FPS, presentation independence, speed/overload behavior and pause
+presentation are evaluated manually. Dedicated graphical-program execution and
+image assertion campaigns have been removed. Graphical guest programs remain
+available for manual observation and FPS measurements. Independent correctness
+tests may still use them as fixtures, including display-state persistence and
+continuation. CPU, chip, bus, input correctness and host command/lifecycle contracts
+retain their independent automated checks. Audio captures use short useful
+signals while retaining their stated spectral and attachment acceptance limits.
 
 Scoped design review, vault checks and workflow maintenance use their owning
 skills. Milestone semantic review follows [audit-semantic-parity](../../../../.agents/skills/audit-semantic-parity/SKILL.md).

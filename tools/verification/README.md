@@ -362,17 +362,37 @@ participate. Changed source/index or execution conditions reject the attempt.
 Input ownership must be reviewed when a suite acquires another ignored or external
 runtime dependency; do not claim reusable evidence for an unmodeled dependency.
 
-The reuse boundary is conservative: every group includes all captured inputs
+The reuse boundary is conservative: most groups include all captured inputs
 except for reviewed independent data. Known build, test and static-check groups
 omit the root `DIARY.md`; the English gate and unknown groups retain it. The final
 candidate identity and source-stability checks still include the diary. Non-language
-groups omit vocabulary and exact-file `file_words` data; verification CLI contracts
-retain those data. Scanner logic,
+groups omit vocabulary and exact-file `file_words` data. Verification CLI contracts
+use their owning verification code/tests/policy inputs and the web/worktree,
+graph-query and vault-link tooling they exercise; unrelated emulator and vocabulary edits do not
+invalidate them. The commit profile selects those contracts only when such
+owning inputs change. Scanner logic,
 authored scan scope, test criteria, specifications, unknown inputs, build settings
 and source/test changes invalidate the broad groups. Other documentation remains a
 conservative input;
 a `.md` extension does not prove independence. This is bounded reuse within one
 batch, not a persistent test cache or a relaxation of final acceptance criteria.
+
+### Generated timing report
+
+Executed diagnostic and completion commands write
+[`tests/test-runtime-report.md`](../../tests/test-runtime-report.md) and print a
+grouped timing summary. The report records command wall times, retained execution
+times for reused groups, failures and missing work; completion reports also list
+unselected suites as skipped. Cargo test commands include compilation/reuse and
+execution; the report does not invent a split when none was measured. Coverage
+preparation, export and summary have their own command times. Generation and
+file-writing costs are measured separately and saved in completion evidence.
+
+This exact versioned file is generated output. Its creation, staged or unstaged
+updates and removal do not select Rust or verification-tool tests, change source
+stability or input fingerprints, or enter the repository language scan. Neighboring
+files retain normal ownership and checking. The final candidate tree includes the
+report, while internal evidence determines success. `--plan` writes no report.
 
 Verification orchestration and coverage result processing live in `tools/verification/`;
 worktree management lives in `tools/worktree.ps1`. The shared diary appender lives in `tools/log_diary.py`. Concrete project audits and checks live in `tools/verification/checks/`. Run these scripts from the repository root. Task selection uses subcommands; the former selection switches are rejected.
@@ -520,7 +540,9 @@ to inspect only this gate. Missing local reference books are outside its scan.
 Topic tags are selected by reviewing the chapter and are not mechanically checked.
 
 Python tool contracts live beside their owning tools. Commit verification always
-runs RAG MCP, artifact report and verification CLI contracts. It runs the four Bootstrap contract
+runs RAG MCP and artifact report contracts. Verification CLI contracts run only
+for changes to verification code/tests/policy or shared tooling that they exercise.
+Vocabulary and unrelated emulator changes do not select them. It runs the Bootstrap contract
 suites when Git reports staged, unstaged or nonignored new paths under
 `tools/bootstrap/`, including book data. Renames count at both endpoints. The
 Book Review suite checks pinned Python packages and local KaTeX assets, then uses

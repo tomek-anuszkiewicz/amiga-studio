@@ -9,7 +9,7 @@ scrolling bitplanes and raster palette changes. Visual fidelity is still explora
 The scene starts at raster line 40, leaving 14 lines above and 15 below in the
 current non-interlaced PAL image. Copper bars also cover the surrounding border;
 palette writes occur during horizontal blanking to keep each bar aligned.
-The integration test checks activity and reproducibility; it does not certify
+The native example reports activity and reproducibility; it does not certify
 the image against a physical Amiga or establish compatibility with real games.
 
 ## Run in the GUI
@@ -98,23 +98,20 @@ demonstrate activity.
 - Disk DMA remains disabled. Busy engines still have internal work/wait phases;
   a useful scene does not require every bus opportunity to be occupied.
 
-## Rebuild and Check
+## Rebuild and Observe
 
 Use the assembler provisioned by `tools/bootstrap/assembler-manifest.json`.
 For its pinned Windows release:
 
 ```powershell
 .\tools\m68k-asm\v2.4.6\x86_64-pc-windows-msvc\m68k-asm.exe crates/machine_loop/tests/programs/display/mixed_scene/program.as --origin 0x1000 -o crates/machine_loop/tests/programs/display/mixed_scene/program.bin
-python tools/verification/verify.py test rust crate machine_loop suite test_display_program
 ```
 
-The focused test runs PAL and NTSC, checks simultaneous activity and changing
-video/input, then restores the initial state and compares the entire result of
-the normal runner with the instrumented audit. It contains no timing assertions
-or golden image hashes. The scene and its bootstrap are guest code; no emulator
-timing or rendering behavior was changed to accommodate it.
+Automated execution/assertion tests for this graphical program have been removed.
+Use the native example described above for manual observation and FPS measurement.
+The scene and its bootstrap remain guest code.
 
-`host.rs` is shared by the integration test and the native example. Scene state
+`host.rs` supports the native example. Scene state
 and counters live at `$8000`, Copper at `$10000`, planes at `$20000..$33fff`,
 sprites at `$38000..$3bfff`, audio at `$3e000`, CPU scratch at `$50000`, and the
 supervisor stack starts at `$7f000`. See `program.as` for exact register values

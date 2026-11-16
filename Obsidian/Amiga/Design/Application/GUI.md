@@ -59,7 +59,14 @@ Above 1x, both views execute batches of complete fields and upload only the late
 
 Ordinary pause finishes the current field, and Step Frame advances to the next completed field, including while the CPU is stopped. Instruction/CCK stepping, breakpoints and CPU halts can still expose a partial field. Snapshot restoration replaces the displayed pixels on the next UI frame. Host timing, texture allocation and upload belong to the frontend. For sound, the GUI is intended to deliver samples produced by the [audio subsystem](../Audio.md) to the host playback device. Emulated audio generation remains in the core.
 
-The shared `live_stripes` guest fixture supplies the live-frame smoke check without firmware. Broader display comparisons remain in [native disk verification](../../../../ROADMAP.md#native-disk-verification) and its later subsystem suites. Host audio and advanced input mappings remain incomplete; see [native test prerequisites](../../../../ROADMAP.md#native-disk-verification).
+The shared `live_stripes` guest program remains available for manual observation
+without firmware. Host pacing, FPS and graphical guest output are evaluated
+manually; their dedicated automated execution and presentation campaigns have
+been removed. Independent correctness tests can still use guest programs as
+fixtures. Input correctness and host command/lifecycle checks remain automated. Broader
+display comparisons remain in [native disk verification](../../../../ROADMAP.md#native-disk-verification)
+and its later subsystem suites. Host audio and advanced input mappings remain
+incomplete; see [native test prerequisites](../../../../ROADMAP.md#native-disk-verification).
 
 The [host runtime](../../../../crates/gui/src/host_runtime.rs) moves the complete
 session to one native thread or browser Web Worker. This owner executes all CPU,

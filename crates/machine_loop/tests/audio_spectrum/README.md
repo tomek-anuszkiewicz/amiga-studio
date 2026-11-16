@@ -28,7 +28,7 @@ the left contains harmonic 11. PAL frequencies are approximately 541, 4005 and
 8984 Hz right, and 1191 Hz left. NTSC frequencies follow its different CCK rate.
 CIA-A PA1 selects the LED filter through real bus writes.
 
-After 4410 settling samples, a 16384-sample window provides about 0.372 seconds
+After 441 settling samples (10 ms), a 4096-sample window provides about 93 ms
 of stationary output. Fourier projections use a periodic Hann window and divide
 by its coherent gain. This prevents an arbitrary capture boundary from leaking
 large tone energy across the spectrum. The method follows the amplitude-scaling
@@ -52,7 +52,8 @@ must be suppressed to avoid folding into false audible tones.
 ## Acceptance and limits
 
 - Every expected tone and in-band image: amplitude error below 0.5 dB.
-- Local peak: within one quarter of a window bin, about 0.673 Hz.
+- Local peak: within the original bound of about 0.673 Hz; shortening the window
+  does not widen the accepted frequency error.
 - Residual RMS after fitting expected components: below -35 dB relative to PCM.
 - Folded first upper DAC image: below -45 dBc relative to its source tone.
 - Foreign-side tone: below -42 dBc, allowing eight-bit quantization harmonics.
@@ -86,15 +87,17 @@ parameter writes after starting playback. The two tests exercise:
 - Period attachment: 256 -> 512 -> 256 CCK, with frequency ratio 2 within 0.2%
   and return to the initial frequency within 0.2%.
 
-Each control plateau contains 64 words at a 4096-CCK source period. Three
+Each control plateau contains 16 words at a 4096-CCK source period. Three
 plateaus cover both transition directions and the control block's DMA restart.
-The 4096-sample analysis windows begin one sixth of a plateau after its expected
+The 1024-sample analysis windows begin one sixth of a plateau after its expected
 start, allowing DMA startup, destination latching and filter settling. Their
 positions follow the known stimulus clock rather than observed channel state.
 RMS measures volume, interpolated positive zero crossings measure frequency,
 and the existing Hann Fourier projection checks that the expected sine accounts
 for RMS within 2%. Each plateau's frequency must also match its configured
-period and video standard within 0.2%.
+period and video standard within 0.2%. Harmonic 37 supplies enough zero crossings
+even at the doubled period: each window still requires at least twenty crossings.
+Frame-rounded captures are approximately 0.10-0.12 seconds for both fixtures.
 
 PAL and NTSC run with the LED filter off. Every captured right-side sample must
 be exactly zero: channel 0 supplies modulation data and must never be audible,
