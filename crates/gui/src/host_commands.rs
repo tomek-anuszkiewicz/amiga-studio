@@ -136,4 +136,5 @@ pub struct DriveStatus {
     pub connected: bool,
     pub inserted: bool,
     pub activity_sequence: u64,
+    pub sustained_activity: bool,
 }

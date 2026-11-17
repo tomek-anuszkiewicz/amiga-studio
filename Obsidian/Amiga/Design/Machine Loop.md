@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "machine_loop"
 status: "active"
 created: 2026-08-31
-updated: 2026-11-16
+updated: 2026-11-17
 related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[DMA.md](DMA.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)", "[RTC.md](RTC.md)"]
 tracked_paths:
   - "crates/machine_loop"
@@ -21,7 +21,7 @@ The machine owns the CPU, physical memory, Agnus, Denise, Paula, both CIAs, the 
 
 `A500Machine::step_cck()` is the common path used by the stepping APIs. It performs these operations in order:
 
-1. Retain the previously captured `keyboard_reset_asserted` locally and call `step_subsystems_cck()`, which increments the wrapping master `cck` and opens the shared memory budget before any subsystem work.
+1. Retain the previously captured `keyboard_reset_asserted` locally and advance non-CPU subsystems, incrementing the wrapping master `cck` and opening the shared memory budget before any subsystem work.
 2. If the delivered motherboard keyboard reset input is asserted, perform a warm reset and return `false` without stepping the CPU in that call.
 3. Otherwise, record the CPU's current `RESET` output, create a `MemoryBus` over the machine components, and advance the CPU by one CCK phase.
 4. If that CPU phase newly asserted `RESET`, reset external devices while preserving the CPU's registers and program counter.
@@ -168,6 +168,16 @@ inputs before further sampling. Current JSON snapshots must contain all pin
 fields; there is no fallback for snapshots that omit them. Released levels
 come from construction/reset, not a compatibility decoder. There are no
 serialized host handles.
+
+Disk activity is observation metadata, separate from physical connector pins.
+The board reuses CIA-B's effective-output notification after the CPU phase (or
+at the non-CPU stepping boundary) to record control events and establish
+recipients for subsequent Paula transfers. Thus controls captured in CCK n do
+not relabel a CPU read during n. Control decoding shares the drive's motor
+latch and edge interpretation without applying mechanics early. Source counters
+retain events between publications; no activity collector runs each CCK.
+Host media changes refresh recipient eligibility without synthesizing control
+events. The [GUI](Application/GUI.md) owns sustained indication and hold timing.
 
 ## RGA synchronization transport
 

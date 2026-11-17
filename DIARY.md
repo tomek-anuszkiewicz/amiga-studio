@@ -2602,3 +2602,30 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Reviewed the roadmap diff and section anchors
   - git diff --check passed before this entry
   - No runtime code or acceptance references changed
+---
+
+### [2026-11-17 02:07 CET] — Observe drive activity at chipset source events
+- **Affected Subsystems**:
+  - `CIA-B board routing`
+  - `Paula disk observations`
+  - `Floppy controls`
+  - `GUI drive indicator`
+  - `SaveState`
+- **What Was Changed (The Concrete Reality)**:
+  - DISK-ACTIVITY-20261117: record effective CIA-B control events and accepted Paula transfers in wrapping per-drive observations
+  - remove both per-CCK activity collectors and presentation bookkeeping from Floppy
+  - share connector control decoding with drive mechanics and establish next-CCK transfer recipients after the CPU phase
+  - retain selected/running sustained indication and the 120 ms hold with reset/load baselines
+  - use save schema 12 without compatibility parsing
+  - update owning specifications and add production-path regressions and an inspector scenario
+  - retain the documented standalone subsystem stepping API under the user-approved single-symbol host/spec exemption in the code-quality checker
+- **Architectural Rationale & Trade-Offs**:
+  - Preserve short events and correct drive attribution across publication gaps without per-CCK activity collection, duplicated writable mechanics, chip callbacks or new dependencies
+  - observation metadata does not alter guest registers, physical signal phases or media-write support
+- **Verification & Test Results**:
+  - Original machine and GUI activity suites passed before implementation
+  - final full CIA, Floppy, Paula, SaveState, Debugger, GUI and Machine Loop suites passed, as did the actual WASM build and git diff --check
+  - GUI visual capture and integration assertions verify sustained indication, hold timing, fixed bounds, restore and reset
+  - six samples per version and workload in A-B-B-A order gave idle median 178.967 to 180.621 FPS and active byte-read median 171.221 to 172.104 FPS, within observed variation
+  - no whole-machine speedup or regression is established, and browser performance and physical hardware fidelity remain unverified
+  - canonical batch gates, changed-code coverage review and four independent review lanes are pending

@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "general"
 status: "active"
 created: 2026-08-31
-updated: 2026-11-16
+updated: 2026-11-17
 related: ["[General Architecture.md](../General%20Architecture.md)", "[MemoryBus.md](../MemoryBus.md)", "[CPU Motorola M68000.md](../CPU%20Motorola%20M68000.md)", "[Machine Loop.md](../Machine%20Loop.md)", "[Agnus.md](../Agnus.md)", "[RTC.md](../RTC.md)"]
 tracked_paths:
   - "crates/machine_loop/src/state.rs"
@@ -44,13 +44,16 @@ old layouts have no
 compatibility parser. Frontends and the debugger use this crate for persistence;
 in-memory quick slots retain only the machine value.
 
-Schema version 11 records active CPU sequence identity, physical drive attachment
+Schema version 12 records active CPU sequence identity, physical drive attachment
 and player association, and embeds usable floppy raw tracks and spindle phase, including
 mid-transfer connector state; restoring requires no original ADF file. It also
 retains the CPU bus-admission phases and active shared Chip RAM budget. Clone
 and restore preserve an occupied cycle; neither creates another transfer
 opportunity. Sprite coordinates and vertical DMA latches are grouped under
 `state.agnus.sprite_dma`; derived comparison results are rebuilt after restore.
+Chipset activity observations retain transfer attribution across the captured
+control boundary; restoring establishes a new host indication baseline as
+defined by [GUI](GUI.md). They do not serialize wall-clock hold times.
 It excludes the live RTC and its independent battery offset.
 It stores Denise's frame cursor alongside the
 [frame buffer](../Frame%20Buffer.md), preserving the write position across

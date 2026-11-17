@@ -26,7 +26,7 @@ fn print_usage() {
     eprintln!(
         "Usage: gui-inspector [OPTIONS]\n\
          Options:\n\
-           --scenario <NAME>       Scenario: baseline, clean_startup, live_display, live_display_studio, mixed_scene, hover_splitter, hover_scrollbar, hover_register, hover_ccr, hover_memory, game_mode, library, library_editor, manual_setup, replace_session, configurations, workbench_theme, edit_register, edit_disasm, small_window (default: baseline)\n\
+           --scenario <NAME>       Scenario: baseline, clean_startup, live_display, live_display_studio, mixed_scene, hover_splitter, hover_scrollbar, hover_register, hover_ccr, hover_memory, game_mode, drive_activity, library, library_editor, manual_setup, replace_session, configurations, workbench_theme, edit_register, edit_disasm, small_window (default: baseline)\n\
            --width <PIXELS>        Viewport width in points/pixels (default: 1280)\n\
            --height <PIXELS>       Viewport height in points/pixels (default: 720)\n\
            --output <PATH>         Target PNG output file path (default: target/gui_captures/baseline.png)\n\
@@ -152,6 +152,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             app.view_mode = gui::ViewMode::ScreenOnly;
         }
         app.host.queue(gui::host_commands::HostCommand::Run);
+        app
+    } else if scenario == "drive_activity" {
+        const IDLE_GUEST_CODE: [u8; 4] = [0x4e, 0x71, 0x60, 0xfc];
+        const RELEASED_CONTROLS: u8 = u8::MAX;
+        const MOTOR_READY_CONTROLS: u8 = 0x7f;
+        const RUNNING_DF0_CONTROLS: u8 = 0x77;
+        const CIA_CAPTURE_CCKS: u64 = 5;
+        const SUSTAINED_DRIVE_CCKS: u64 = 2000;
+        let mut session = Box::new(gui::DebuggerSession::new());
+        session.load_binary(debugger::DEFAULT_TARGET_ADDRESS, &IDLE_GUEST_CODE, true)?;
+        // Commit generic CIA registers, then deliver the connector normally.
+        session.machine.cia_b.set_prb(RELEASED_CONTROLS);
+        session.machine.cia_b.set_ddrb(RELEASED_CONTROLS);
+        session.machine.step_cycles(CIA_CAPTURE_CCKS);
+        session.machine.cia_b.set_prb(MOTOR_READY_CONTROLS);
+        session.machine.step_cycles(CIA_CAPTURE_CCKS);
+        session.machine.cia_b.set_prb(RUNNING_DF0_CONTROLS);
+        session.machine.step_cycles(SUSTAINED_DRIVE_CCKS);
+        let mut app = EmulatorApp::with_session(session);
+        app.view_mode = gui::ViewMode::ScreenOnly;
         app
     } else if scenario == "clean_startup" {
         EmulatorApp::default()
@@ -285,7 +305,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .push(Event::PointerMoved(pos2(width - 25.0, 300.0)));
             harness.step();
         }
-        "game_mode" => {
+        "game_mode" | "drive_activity" => {
             // Standalone ScreenOnly mode with retro CRT framing
             harness.state_mut().view_mode = gui::ViewMode::ScreenOnly;
             harness.step();

@@ -22,6 +22,8 @@ const MASK_DSKLEN_LENGTH: u16 = 0x3FFF;
 const MASK_DSKLEN_CONTROL: u16 = 0xC000;
 
 mod disk;
+mod disk_activity;
+pub use disk_activity::DiskActivity;
 mod dmal;
 pub use disk::DiskEngine;
 mod register_bits;
@@ -55,6 +57,8 @@ pub struct Paula {
     pub dskdat: u16,
     pub dsksync: u16,
     pub disk: DiskEngine,
+    /// Source observations, independent of the disk engine and physical pins.
+    pub disk_activity: DiskActivity,
     /// True if DSKLEN write 1 has armed the disk DMA sequence
     pub dma_armed: bool,
     /// True if DSKLEN write 2 has activated the disk DMA transfer
@@ -99,6 +103,7 @@ impl Paula {
             dskdat: 0,
             dsksync: DSKSYNC_RESET,
             disk: DiskEngine::default(),
+            disk_activity: DiskActivity::default(),
             dma_armed: false,
             dma_active: false,
             dma_enables: 0,
@@ -124,6 +129,7 @@ impl Paula {
         self.dskdat = 0;
         self.dsksync = DSKSYNC_RESET;
         self.disk = DiskEngine::default();
+        self.disk_activity.reset();
         self.dma_armed = false;
         self.dma_active = false;
         self.dma_enables = 0;

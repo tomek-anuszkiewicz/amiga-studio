@@ -29,6 +29,8 @@ use cpu::Cpu;
 pub struct A500Machine {
     /// Captured keyboard reset level awaiting the next CCK.
     pub keyboard_reset_asserted: bool,
+    /// Observation baseline for cold, warm and guest resets; no wall-clock state.
+    pub disk_activity_generation: u64,
     pub config: A500Config,
     pub cpu: Cpu,
     pub physical_memory: PhysicalMemory,
@@ -93,6 +95,7 @@ impl A500Machine {
 
         let mut machine = Self {
             keyboard_reset_asserted: false,
+            disk_activity_generation: 0,
             config,
             cpu,
             physical_memory,
@@ -115,6 +118,7 @@ impl A500Machine {
     /// Performs cold reset: zeroes RAM, resets all chips and devices to power-on defaults
     pub fn reset(&mut self) {
         self.keyboard_reset_asserted = false;
+        self.disk_activity_generation = self.disk_activity_generation.wrapping_add(1);
         self.physical_memory.reset();
         self.cck = 0;
         self.physical_memory.rebase_cck(self.cck);
@@ -134,6 +138,7 @@ impl A500Machine {
     /// Performs warm reset: preserves RAM, re-engages overlay, restarts execution
     pub fn reset_warm(&mut self) {
         self.keyboard_reset_asserted = false;
+        self.disk_activity_generation = self.disk_activity_generation.wrapping_add(1);
         self.physical_memory.reset_warm();
         self.cck = 0;
         self.physical_memory.rebase_cck(self.cck);
@@ -154,6 +159,7 @@ impl A500Machine {
     /// without modifying RAM or CPU registers/PC. Invoked by M68000 `RESET` instruction.
     fn reset_external_devices(&mut self) {
         self.keyboard_reset_asserted = false;
+        self.disk_activity_generation = self.disk_activity_generation.wrapping_add(1);
         self.physical_memory.map_kickstart_to_low_memory();
         self.agnus.reset();
         self.denise.reset();
@@ -169,6 +175,11 @@ impl A500Machine {
     /// Advances all peer custom chips, coprocessors, and peripheral subsystems by exactly 1 Color Clock (~280 ns),
     /// dispatching matured actions and arbitrating interrupts.
     pub fn step_subsystems_cck(&mut self) {
+        self.advance_subsystems_cck();
+        self.observe_disk_controls();
+    }
+
+    fn advance_subsystems_cck(&mut self) {
         self.cck = self.cck.wrapping_add(1);
         self.physical_memory
             .begin_cck(self.cck, self.cpu.state.instruction_pc());
@@ -213,7 +224,6 @@ impl A500Machine {
         self.deliver_dma_register();
 
         // 4. Step drive mechanics using captured connector control levels.
-        self.collect_disk_activity();
         self.floppy.step_cck();
 
         // Keyboard and CIA communicate only through captured KCLK/KDAT levels.
@@ -237,7 +247,7 @@ impl A500Machine {
         // Retain the previous capture before subsystem routing samples the source again.
         let keyboard_reset_asserted = self.keyboard_reset_asserted;
         // 2. Advance non-CPU subsystems
-        self.step_subsystems_cck();
+        self.advance_subsystems_cck();
 
         // 3. Hardware keyboard reset line (Ctrl-Amiga-Amiga)
         if keyboard_reset_asserted {
@@ -261,15 +271,49 @@ impl A500Machine {
             rtc: &mut self.rtc,
         };
         let completed = self.cpu.step_cck(&mut bus);
-        self.collect_disk_activity();
+        self.observe_disk_controls();
         self.deliver_cpu_reset_pin(reset_was_asserted);
         completed
     }
 
-    #[inline]
-    fn collect_disk_activity(&mut self) {
-        if core::mem::take(&mut self.paula.disk.activity_pending) {
-            self.floppy.record_data_activity();
+    /// Rebuilds transfer eligibility after a host media/attachment command.
+    /// This does not record control activity or advance the physical connector.
+    pub fn refresh_disk_activity_context(&mut self) {
+        let controls = self.floppy.control_states(self.cia_b.port_b_output_pins());
+        self.set_disk_activity_context(controls);
+    }
+
+    fn set_disk_activity_context(
+        &mut self,
+        controls: [floppy::DriveControl; config::FLOPPY_DRIVE_COUNT],
+    ) {
+        self.paula
+            .disk_activity
+            .set_recipients(core::array::from_fn(|index| {
+                let drive = &self.floppy.drives[index];
+                controls[index].selected && controls[index].motor_on && drive.disk_inserted
+            }));
+    }
+
+    /// Reuses the CIA output-change notification after the last source event of
+    /// this CCK. The new selection only labels transfers in the next CCK.
+    fn observe_disk_controls(&mut self) {
+        if let Some(control) = self.cia_b.poll_prb_output() {
+            if control == self.floppy.prev_ciab_prb {
+                return;
+            }
+            let controls = self.floppy.control_states(control);
+            for (index, next) in controls.iter().enumerate() {
+                let drive = &self.floppy.drives[index];
+                if drive.connected
+                    && (next.selected != drive.selected
+                        || next.motor_on != drive.motor_on
+                        || next.step.is_some())
+                {
+                    self.paula.disk_activity.record_control(index);
+                }
+            }
+            self.set_disk_activity_context(controls);
         }
     }
 
@@ -330,6 +374,7 @@ impl A500Machine {
     pub fn save_state(&self) -> A500State {
         A500State {
             keyboard_reset_asserted: self.keyboard_reset_asserted,
+            disk_activity_generation: self.disk_activity_generation,
             cck: self.cck,
             config: self.config.clone(),
             cpu: self.cpu.state.clone(),
@@ -371,6 +416,7 @@ impl A500Machine {
         self.keyboard = state.keyboard.clone();
         self.game_ports = state.game_ports.clone();
         self.keyboard_reset_asserted = state.keyboard_reset_asserted;
+        self.disk_activity_generation = state.disk_activity_generation;
 
         // Signal levels and unconsumed output changes are serialized state.
         // Routing here would consume an event before its next modeled phase.

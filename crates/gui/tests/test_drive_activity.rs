@@ -6,12 +6,31 @@ use gui::{host_commands::HostCommand, AppTheme, EmulatorApp, ViewMode};
 
 fn pending_step_session() -> gui::DebuggerSession {
     let mut session = gui::DebuggerSession::new();
-    session.machine.floppy.drives[0].motor_on = true;
-    session.machine.floppy.drives[0].selected = true;
-    session.machine.floppy.drives[0].activity_sequence = u64::MAX;
-    session.machine.floppy.prev_ciab_prb = 0x75;
-    session.machine.floppy.pins.control_input = 0x74;
-    session.machine.floppy.pins.incoming = None;
+    use physical_memory::{AddressBus, BusResult};
+    let m = &mut session.machine;
+    for (address, value) in [(0xbfd100, 0xff), (0xbfd300, 0xff), (0xbfd100, 0xf5)] {
+        loop {
+            if matches!(
+                m.memory_bus().write_byte(address, value),
+                BusResult::Ready(())
+            ) {
+                break;
+            }
+            m.step_cck();
+        }
+        m.step_cck();
+    }
+    m.step_cycles(2);
+    m.paula.disk_activity.sequences[0] = u64::MAX;
+    loop {
+        if matches!(
+            m.memory_bus().write_byte(0xbfd100, 0xf4),
+            BusResult::Ready(())
+        ) {
+            break;
+        }
+        m.step_cck();
+    }
     session
 }
 
@@ -120,4 +139,71 @@ fn guest_and_stepped_keyboard_resets_cancel_the_light_without_a_host_generation_
         )
         .is_none());
     }
+}
+
+#[test]
+fn restored_running_selection_is_sustained_and_deselection_starts_the_hold() {
+    use physical_memory::{AddressBus, BusResult};
+    let mut session = gui::DebuggerSession::new();
+    let m = &mut session.machine;
+    for (address, value) in [
+        (0xbfd100, 0xff),
+        (0xbfd300, 0xff),
+        (0xbfd100, 0x7f),
+        (0xbfd100, 0x77),
+    ] {
+        loop {
+            if matches!(
+                m.memory_bus().write_byte(address, value),
+                BusResult::Ready(())
+            ) {
+                break;
+            }
+            m.step_cck();
+        }
+        m.step_cck();
+    }
+    m.step_cycles(2);
+    assert!(m.floppy.drives[0].selected && m.floppy.drives[0].motor_on);
+    let json = session.save_state_to_json().unwrap();
+    let m = &mut session.machine;
+    // Leave a real CIA capture pending for the first explicit owner step.
+    loop {
+        if matches!(
+            m.memory_bus().write_byte(0xbfd100, 0x7f),
+            BusResult::Ready(())
+        ) {
+            break;
+        }
+        m.step_cck();
+    }
+    let mut app = EmulatorApp::with_session(Box::new(session));
+    app.view_mode = ViewMode::ScreenOnly;
+    let ctx = Context::default();
+    common::settle(&mut app, &ctx);
+    let tokens = AppTheme::Dark.tokens();
+    let active = frame(&mut app, &ctx, 1.0);
+    let bounds = indicator(&active, tokens.accent_success).unwrap();
+    assert_eq!(
+        indicator(&frame(&mut app, &ctx, 10.0), tokens.accent_success),
+        Some(bounds)
+    );
+    common::command(&mut app, HostCommand::StepCck);
+    common::command(&mut app, HostCommand::StepCck);
+    assert!(!app.host.status.drives[0].sustained_activity);
+    assert!(indicator(&frame(&mut app, &ctx, 10.01), tokens.accent_success).is_some());
+    assert!(indicator(&frame(&mut app, &ctx, 10.129), tokens.accent_success).is_some());
+    assert_eq!(
+        indicator(&frame(&mut app, &ctx, 10.131), tokens.border_subtle),
+        Some(bounds)
+    );
+    common::command(&mut app, HostCommand::LoadSnapshot(json));
+    assert!(app.host.status.drives[0].sustained_activity);
+    assert_eq!(
+        indicator(&frame(&mut app, &ctx, 10.14), tokens.accent_success),
+        Some(bounds)
+    );
+    common::command(&mut app, HostCommand::Reset);
+    assert!(!app.host.status.drives[0].sustained_activity);
+    assert!(indicator(&frame(&mut app, &ctx, 10.15), tokens.accent_success).is_none());
 }
