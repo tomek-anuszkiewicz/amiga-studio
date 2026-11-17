@@ -182,14 +182,21 @@ impl EmulatorApp {
                 ui.label(format!("DF{drive}:"));
                 if status.connected {
                     let mut selected = self.player.mounted[drive].clone();
+                    self.player.drive_activity[drive].show(
+                        ui,
+                        drive,
+                        (
+                            self.host.status.generation,
+                            self.host.status.drive_reset_sequence,
+                        ),
+                        status.activity_sequence,
+                        self.theme.tokens(),
+                    );
                     ui.add_enabled_ui(!self.player.busy, |ui| {
                         disk_dropdown(ui, ("game_drive", drive), &mut selected, &self.player.disks);
                     });
                     if selected != self.player.mounted[drive] {
                         self.mount_player_disk(drive, selected);
-                    }
-                    if status.active {
-                        ui.label("Active");
                     }
                     if status.inserted && self.player.mounted[drive].is_none() {
                         ui.label("Snapshot media");
@@ -257,7 +264,6 @@ impl EmulatorApp {
             self.player.captured = false;
             self.set_view_mode(ViewMode::Developer);
         }
-        ui.small("Click the Amiga display to capture input. Release with the configured key (Escape by default).");
     }
 
     #[cfg(not(target_arch = "wasm32"))]

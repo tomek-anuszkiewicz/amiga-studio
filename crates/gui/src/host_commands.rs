@@ -108,7 +108,8 @@ pub struct HostStatus {
     pub shutdown: bool,
     pub halted: bool,
     pub stopped: bool,
-    pub drives: [DriveStatus; 4],
+    pub drive_reset_sequence: u64,
+    pub drives: [DriveStatus; config::FLOPPY_DRIVE_COUNT],
     pub ports: [debugger::launch::DeviceKind; 2],
     pub quick_slots: [bool; debugger::session::QUICK_SLOT_COUNT],
 }
@@ -134,5 +135,5 @@ pub struct HostReply {
 pub struct DriveStatus {
     pub connected: bool,
     pub inserted: bool,
-    pub active: bool,
+    pub activity_sequence: u64,
 }

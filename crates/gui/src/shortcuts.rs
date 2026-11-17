@@ -41,7 +41,7 @@ impl EmulatorApp {
         if pressed(&bindings.release) {
             self.player.captured = false;
         }
-        if pressed(&bindings.debug) || input.key_pressed(egui::Key::F12) {
+        if input.key_pressed(egui::Key::F12) {
             self.player.captured = false;
             self.set_view_mode(if self.view_mode == ViewMode::ScreenOnly {
                 ViewMode::Developer
@@ -117,12 +117,6 @@ impl EmulatorApp {
                 self.host
                     .queue(HostCommand::History(HistoryCommand::ToggleRecording));
             }
-        }
-
-        // Ctrl + R: Reset
-        if input.modifiers.command && input.key_pressed(egui::Key::R) {
-            self.host.queue(HostCommand::Reset);
-            self.inspection.ready = false;
         }
 
         // Ctrl + O: Load Binary

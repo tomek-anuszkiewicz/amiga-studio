@@ -54,6 +54,18 @@ impl InputMapping {
             .extend(self.available.iter().map(|p| p.identity.clone()));
         self.pads.clear();
     }
+    pub fn release_capture(&mut self) -> HostInputEvent {
+        self.held.clear();
+        let mut joysticks = [None; 2];
+        if let Some((configuration, _)) = &self.configuration {
+            for (port, binding) in configuration.ports.iter().enumerate() {
+                if let InputSource::Gamepad { identity, .. } = &binding.source {
+                    joysticks[port] = self.pads.get(identity).copied();
+                }
+            }
+        }
+        HostInputEvent::ReleaseCapture { joysticks }
+    }
     pub fn keyboard(&mut self, code: u8, pressed: bool) -> Vec<HostInputEvent> {
         if pressed {
             if !self.held.insert(code) {
@@ -70,7 +82,6 @@ impl InputMapping {
             &configuration.frontend.pause,
             &configuration.frontend.save,
             &configuration.frontend.load,
-            &configuration.frontend.debug,
         ];
         if shortcuts
             .iter()
@@ -132,16 +143,11 @@ impl InputMapping {
                 dx: (dx as f32 * configuration.mouse_sensitivity).round() as i32,
                 dy: (dy as f32 * configuration.mouse_sensitivity).round() as i32,
             },
-            HostInputEvent::MouseButtons {
-                left,
-                right,
-                middle,
-                ..
-            } => HostInputEvent::MouseButtons {
+            HostInputEvent::MouseButtons { left, right, .. } => HostInputEvent::MouseButtons {
                 port,
                 left,
                 right,
-                middle,
+                middle: false,
             },
             _ => return Vec::new(),
         }]

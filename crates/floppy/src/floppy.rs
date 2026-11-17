@@ -8,6 +8,7 @@ pub mod mfm;
 pub use mfm::*;
 mod media;
 
+use config::FLOPPY_DRIVE_COUNT;
 use serde::{Deserialize, Serialize};
 
 mod pins;
@@ -15,7 +16,6 @@ pub use pins::{FloppyInputs, FloppyPins};
 
 const CONTROL_RELEASED: u8 = u8::MAX;
 
-const DRIVE_COUNT: usize = 4;
 const BIT_CONTROL_MOTOR: u8 = 0x80;
 const BIT_CONTROL_SIDE: u8 = 0x04;
 const BIT_CONTROL_STEP: u8 = 0x01;
@@ -57,6 +57,8 @@ pub struct FloppyDrive {
     /// Disk change hardware flip-flop: set when disk is removed/changed;
     /// cleared only when a disk is present AND a step pulse is received!
     pub disk_change_flip_flop: bool,
+    /// Wrapping host activity sequence: head steps and consumed controller data.
+    pub activity_sequence: u64,
     /// Prepared circular raw tracks, including usable media in serialized state.
     track_data: Option<Vec<u8>>,
     rotation_bit: u32,
@@ -74,6 +76,7 @@ impl Default for FloppyDrive {
             disk_inserted: false,
             write_protected: false,
             disk_change_flip_flop: true, // Power-on with no disk inserted
+            activity_sequence: 0,
             track_data: None,
             rotation_bit: 0,
             cell_phase: 0,
@@ -98,6 +101,7 @@ impl FloppyDrive {
     /// Action method: steps the head one cylinder inward or outward.
     /// If a disk is inserted, receiving a step pulse clears the `_CHNG` flip-flop.
     fn step_pulse(&mut self, inward: bool) {
+        self.activity_sequence = self.activity_sequence.wrapping_add(1);
         if inward {
             if self.cylinder < CYLINDERS_PER_DISK - 1 {
                 self.cylinder += 1;
@@ -160,7 +164,9 @@ impl FloppyDrive {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FloppyController {
     pub pins: FloppyPins,
-    pub drives: [FloppyDrive; DRIVE_COUNT],
+    pub drives: [FloppyDrive; FLOPPY_DRIVE_COUNT],
+    /// Wrapping reset observation, independent of host runtime generations.
+    pub reset_sequence: u64,
     /// Last applied controls, for motor-selection and step edge detection.
     pub prev_ciab_prb: u8,
     clock_hz: u32,
@@ -176,6 +182,7 @@ impl Default for FloppyController {
                 ..FloppyDrive::default()
             }),
             prev_ciab_prb: CONTROL_RELEASED,
+            reset_sequence: 0,
             clock_hz: config::VideoStandard::Pal.color_clock_hz(),
             media_output_active: false,
         }
@@ -191,7 +198,7 @@ impl FloppyController {
     }
 
     /// Configure physical attachments before launch; DF0 is the internal drive.
-    pub fn set_connections(&mut self, connected: [bool; DRIVE_COUNT]) -> Result<(), String> {
+    pub fn set_connections(&mut self, connected: [bool; FLOPPY_DRIVE_COUNT]) -> Result<(), String> {
         if !connected[0] {
             return Err("The internal DF0 drive must remain connected".into());
         }
@@ -207,10 +214,20 @@ impl FloppyController {
 
     pub fn reset(&mut self) {
         self.pins = FloppyPins::default();
+        self.reset_sequence = self.reset_sequence.wrapping_add(1);
         self.prev_ciab_prb = CONTROL_RELEASED;
         self.media_output_active = false;
         for drive in &mut self.drives {
             drive.reset();
+        }
+    }
+
+    /// Attribute controller data activity to the drives supplying the connector.
+    pub fn record_data_activity(&mut self) {
+        for drive in &mut self.drives {
+            if drive.connected && drive.selected && drive.motor_on && drive.disk_inserted {
+                drive.activity_sequence = drive.activity_sequence.wrapping_add(1);
+            }
         }
     }
 

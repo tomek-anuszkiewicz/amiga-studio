@@ -22,6 +22,8 @@ impl Denise {
             self.shifters.fill(0);
             self.scroll_history.fill(0);
             self.pipeline_pixels_valid.fill(false);
+            // Compare the restart value before advancing to the delayed pair.
+            self.horizontal_window(RECEIVER_DIW_COUNT_ORIGIN);
         }
         self.sprites.step_cck(horizontal);
         self.advance_frame_cursor(horizontal, vertical);

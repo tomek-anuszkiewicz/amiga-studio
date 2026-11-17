@@ -386,3 +386,4 @@ roms
 keycodes
 vbi
 unclocked
+dskmotor

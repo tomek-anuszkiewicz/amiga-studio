@@ -24,6 +24,8 @@ use serde::{Deserialize, Serialize};
 pub const OPEN_BUS_BYTE: u8 = 0xFF;
 /// Fixed placeholder for an undriven 16-bit data bus in the current model.
 pub const OPEN_BUS_WORD: u16 = u16::from_be_bytes([OPEN_BUS_BYTE; 2]);
+/// One internal and up to three external floppy drives.
+pub const FLOPPY_DRIVE_COUNT: usize = 4;
 
 /// Canonical hardware configuration presets
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

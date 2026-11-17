@@ -213,6 +213,7 @@ impl A500Machine {
         self.deliver_dma_register();
 
         // 4. Step drive mechanics using captured connector control levels.
+        self.collect_disk_activity();
         self.floppy.step_cck();
 
         // Keyboard and CIA communicate only through captured KCLK/KDAT levels.
@@ -260,8 +261,16 @@ impl A500Machine {
             rtc: &mut self.rtc,
         };
         let completed = self.cpu.step_cck(&mut bus);
+        self.collect_disk_activity();
         self.deliver_cpu_reset_pin(reset_was_asserted);
         completed
+    }
+
+    #[inline]
+    fn collect_disk_activity(&mut self) {
+        if core::mem::take(&mut self.paula.disk.activity_pending) {
+            self.floppy.record_data_activity();
+        }
     }
 
     /// Advances the machine by a given number of Color Clocks

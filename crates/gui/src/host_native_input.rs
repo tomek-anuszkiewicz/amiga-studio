@@ -140,8 +140,7 @@ impl NativeEvents {
                     && command
                     && matches!(
                         key,
-                        Key::KeyR
-                            | Key::KeyO
+                        Key::KeyO
                             | Key::KeyS
                             | Key::KeyL
                             | Key::KeyT
@@ -179,7 +178,6 @@ impl NativeEvents {
                 let index = match button {
                     Button::Left => 0,
                     Button::Right => 1,
-                    Button::Middle => 2,
                     _ => return None,
                 };
                 self.buttons[index] = matches!(event, EventType::ButtonPress(_));

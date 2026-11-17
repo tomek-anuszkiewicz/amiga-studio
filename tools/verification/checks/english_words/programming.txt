@@ -69,6 +69,7 @@ deserializes
 dfrac
 dict
 dicts
+dirname
 docstrings
 doctype
 dollarmath
@@ -478,3 +479,4 @@ gamepaddisconnected
 questionmark
 exclamationmark
 submenu
+epaint

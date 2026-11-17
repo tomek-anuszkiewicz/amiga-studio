@@ -256,7 +256,7 @@ fn system_mouse_targets_second_port_with_scaling_and_unassigned_input_is_dropped
             port: 1,
             left: true,
             right: false,
-            middle: true
+            middle: false
         }]
     );
     configuration.ports[1].device = DeviceKind::Disconnected;
@@ -392,7 +392,6 @@ fn configuration_rejects_ambiguous_devices_keys_and_frontend_actions() {
     }
     let catalog = ConfigurationCatalog::default();
     let mut valid = catalog.selected().unwrap().clone();
-    valid.frontend.debug = "F12".into();
     valid.ports[1] = pad;
     valid.gamepad_shortcuts.push(GamepadShortcut {
         identity: "pad".into(),
@@ -400,4 +399,39 @@ fn configuration_rejects_ambiguous_devices_keys_and_frontend_actions() {
         action: FrontendAction::Pause,
     });
     assert!(catalog.validate(&valid).is_ok());
+}
+
+#[test]
+fn optional_release_defaults_to_guest_escape_and_f2_and_reserves_f12() {
+    let catalog = ConfigurationCatalog::default();
+    let mut configuration = catalog.selected().unwrap().clone();
+    assert!(configuration.frontend.release.is_empty());
+    assert!(catalog.validate(&configuration).is_ok());
+    let mut mapping = InputMapping::default();
+    mapping.configure(&configuration, &catalog);
+    for code in [0x45, 0x51] {
+        assert_eq!(
+            mapping.keyboard(code, true),
+            vec![HostInputEvent::Key {
+                code,
+                pressed: true
+            }]
+        );
+        assert_eq!(
+            mapping.keyboard(code, false),
+            vec![HostInputEvent::Key {
+                code,
+                pressed: false
+            }]
+        );
+    }
+    configuration.frontend.release = "F12".into();
+    assert!(catalog
+        .validate(&configuration)
+        .unwrap_err()
+        .contains("reserved"));
+    configuration.frontend.release = "F4".into();
+    assert!(catalog.validate(&configuration).is_ok());
+    mapping.configure(&configuration, &catalog);
+    assert!(mapping.keyboard(0x53, true).is_empty());
 }

@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "floppy"
 status: "active"
 created: 2026-09-06
-updated: 2026-11-16
+updated: 2026-11-17
 related: ["[CIA.md](CIA.md)", "[Paula.md](Paula.md)", "[Agnus.md](Agnus.md)", "[DMA.md](DMA.md)", "[MemoryBus.md](MemoryBus.md)", "[Machine Loop.md](Machine%20Loop.md)"]
 tracked_paths:
   - "crates/floppy"
@@ -77,6 +77,11 @@ angular position; insertion/ejection are separate host operations. Cold, warm an
 guest RESET use that same drive contract.
 
 ## Physical drive attachment and discovery
+
+On the physical drive, `DSKMOTOR*` also controls the front activity light
+([HRM Chapter 8, Table 8-5](../Reference/Hardware%20Reference%20Manual/08%20-%20Chapter%208%20-%20Interface%20Hardware.md#table-8-5-disk-subsystem)).
+The [GUI activity indicator](Application/GUI.md) instead reports head steps and
+controller data transfers, independently of motor rotation.
 
 DF0 is the internal drive; DF1 through DF3 can be connected independently of
 inserted media. Disconnected drives supply no data, INDEX or sense output. An

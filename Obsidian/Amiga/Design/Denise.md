@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "denise"
 status: "active"
 created: 2026-09-06
-updated: 2026-11-16
+updated: 2026-11-17
 related: ["[Sprites.md](Sprites.md)", "[Frame Buffer.md](Frame%20Buffer.md)", "[Agnus.md](Agnus.md)", "[Game Ports.md](Game%20Ports.md)"]
 tracked_paths:
   - "crates/denise"
@@ -74,7 +74,9 @@ an odd start discards one low-resolution period, or two hires samples, when
 the programmed start is even. The window clips serialized pixels for their
 delayed output phase; it does not alter the shifter's progress. The receiver's
 two-period DIW counter origin and the one-low-resolution-period output pair
-delay are separate model phases. Comparing the current composition phase
+delay are separate model phases. The restart value is compared before advancing
+to the delayed output phase, so a programmed start of 2 still opens the window.
+Comparing the current composition phase
 without that output delay clips the first two hires samples of the ordinary
 Workbench window. The counter origin agrees with the
 [ARP Denise reconstruction](../../../ref_src/amiga_replacement_project/denise/src/denise.v);

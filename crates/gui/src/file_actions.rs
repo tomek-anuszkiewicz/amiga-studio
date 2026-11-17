@@ -394,7 +394,7 @@ impl EmulatorApp {
             .host
             .runtime
             .as_ref()
-            .is_some_and(|runtime| !runtime.input_sender().set_enabled(false))
+            .is_some_and(|runtime| !runtime.input_sender().set_enabled(false, false))
         {
             self.player.dialog = Some(NativeDialog::Open(action));
             return;
@@ -505,7 +505,7 @@ impl EmulatorApp {
             .host
             .runtime
             .as_ref()
-            .is_some_and(|runtime| !runtime.input_sender().set_enabled(false))
+            .is_some_and(|runtime| !runtime.input_sender().set_enabled(false, false))
         {
             self.player.dialog = Some(NativeDialog::Save);
             return;

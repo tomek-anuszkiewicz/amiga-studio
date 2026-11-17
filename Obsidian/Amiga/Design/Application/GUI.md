@@ -50,7 +50,17 @@ pause/resume, reset, save/load, Library/Setup and Debug access. Narrow windows
 collapse the same controls. Debug does not duplicate this panel. Screen scaling
 continues to preserve the complete framebuffer aspect ratio.
 
-The views share one machine. F2 or F12 switches between them by default; Escape releases capture so player controls remain reachable. Frontend bindings are configurable. Returning requests a pause at the field boundary and keeps instrumentation disconnected until that pause completes. Game execution bypasses breakpoints, disassembly, trace collection, CPU history and memory diff snapshots. Previously collected history remains available when returning, but no automatic snapshots or progress recording run in Game view. Manual State operations remain available. A stopped CPU still allows chip clocks, video and interrupts to advance in both views; a halted CPU ends Run.
+Each connected drive has a fixed-position activity light beside its DF label.
+Head STEP pulses, disk DMA reads, consumed DSKBYTR bytes and serialized write
+words light it for 120 ms after the latest observed activity. Motor rotation,
+raw magnetic transitions and debugger peeks alone leave it idle. This is player
+feedback, not a reproduction of the physical drive LED. Events remain observable
+between GUI updates; loading or resetting the machine establishes a fresh
+baseline and cancels an existing light. Write activity reports controller output,
+not successful modification or persistence of the disk image; see
+[Floppy](../Floppy.md#autonomous-adf-reads-and-continuation).
+
+The views share one machine. F12 always switches between them and is not configurable. The middle mouse button always releases pointer and keyboard capture without pausing and never reaches the guest. An optional keyboard release binding starts unassigned; Escape and F2 otherwise remain guest keys. Pause/resume and quick save/load remain configurable, initially F5, F6 and F9. Reset has no keyboard shortcut. Debugger stepping shortcuts are fixed and operate only in Developer Studio. Returning requests a pause at the field boundary and keeps instrumentation disconnected until that pause completes. Game execution bypasses breakpoints, disassembly, trace collection, CPU history and memory diff snapshots. Previously collected history remains available when returning, but no automatic snapshots or progress recording run in Game view. Manual State operations remain available. A stopped CPU still allows chip clocks, video and interrupts to advance in both views; a halted CPU ends Run.
 
 Continuous Developer Run retains the last prepared inspector contents, including register and CPU status values, disassembly, memory, history and toolbar CCK/instruction labels. The Amiga image, FPS and execution controls remain live. Editing, browsing new inspection data and history navigation are inactive until paused. Repaints and resizing lay out retained data without rereading the machine or rebuilding diagnostic text. Stop pending retains the same freeze; a real stop refreshes current data. Explicit instruction, CCK and frame steps retain their diagnostic collection and show their resulting state. Reset, state loading and paused edits refresh after their coherent owner replies. Enabled breakpoints use current CPU state and stop before their matching instruction, even before a field completes.
 
@@ -80,7 +90,10 @@ In browsers with the File System Access API, each file category has its own pick
 Host physical key positions map to the [Amiga keyboard](../Keyboard.md), relative mouse movement and buttons reach the [mouse and game port](../Mouse.md), and a host gamepad supplies digital [joystick](../Joystick.md) directions and two fire buttons. Desktop input uses blocking rdev keyboard/mouse and gilrs controller listeners outside the machine owner. Browser DOM callbacks and standard-gamepad sampling remain on the main thread; the gamepad timer targets three samples per field independently of repaint. The basic adapter forwards host-reported transitions; it does not reconstruct missing host events or A500 matrix ghosting. Original keyboard combination fidelity remains [6.2 work](../../../../ROADMAP.md#task-6-2).
 
 Clicking the Amiga image captures relative pointer input and gives it keyboard
-focus. Capture release remains available. Focused host text controls take
+focus; activating the application window alone does not capture either device.
+Release returns keyboard focus to the interface. A visible session reports its
+capture state and release controls. Browser pointer lock also retains the
+browser's own Escape release behavior. Focused host text controls take
 priority, then configured frontend actions, keyboard joystick bindings, and
 remaining guest keys. Consumed keys never also reach the guest keyboard. Both
 hosts use this resolution policy. Each event carries its destination port.
@@ -89,9 +102,13 @@ then the source: one system pointer, a reusable keyboard mapping or a selected
 individual gamepad. Two system mice are not offered. Controller connections are
 explicit; unavailable or ambiguous identities require reassignment. Reconnection
 must not replay stale held input. Configuration/source changes, disconnect,
-focus/capture loss, pause, reset and load release affected controls. Ordered, bounded queues publish input immediately, and the owner admits it at three evenly spaced opportunities per emulated field, derived from current PAL/NTSC and interlace geometry. Initialization aligns the first grid with the receiver field origin; synchronization suppressed by guest code has a bounded nominal-period fallback. Guest beam writes that prolong a field retain nominal-period input opportunities. Every delivered edge gets a CCK sample before its successor; a short electrical pulse does not guarantee a guest software read. Keyboard bytes still traverse the controller queue and serial pins, and mouse quadrature continues at its existing CCK rate without smoothing.
+focus loss, pause, reset and load release affected controls. Gamepads can drive
+a running session while its application window is active, without pointer or
+keyboard capture. Configuration screens, controller assignment and host text
+editing disable gameplay input. Releasing only pointer/keyboard capture preserves
+the selected gamepads' current contacts. Ordered, bounded queues publish input immediately, and the owner admits it at three evenly spaced opportunities per emulated field, derived from current PAL/NTSC and interlace geometry. Initialization aligns the first grid with the receiver field origin; synchronization suppressed by guest code has a bounded nominal-period fallback. Guest beam writes that prolong a field retain nominal-period input opportunities. Every delivered edge gets a CCK sample before its successor; a short electrical pulse does not guarantee a guest software read. Keyboard bytes still traverse the controller queue and serial pins, and mouse quadrature continues at its existing CCK rate without smoothing.
 
-Capture loss, pause and queue overflow discard pending input and release controls. Reset, successful load and keyboard reset invalidate the old input generation. Native backend timestamps reject events older than capture; fresh controller events re-establish its state after resume. Host queues and listeners are runtime handles outside serialized machine state. Physical controller freshness and Linux/macOS execution remain unverified; the interactive checks belong to [8.2](../../../../ROADMAP.md#task-8-2).
+Focus loss, pause and queue overflow discard pending input and release controls. Reset, successful load and keyboard reset invalidate the old input generation. Native backend timestamps reject events older than their input activation; fresh controller events re-establish its state after resume. Host queues and listeners are runtime handles outside serialized machine state. Physical controller freshness and Linux/macOS execution remain unverified; the interactive checks belong to [8.2](../../../../ROADMAP.md#task-8-2).
 
 For video, [Denise](../Denise.md) builds a rendered frame in the [frame buffer](../Frame%20Buffer.md). Run at 1x follows the configured PAL or NTSC color clock using host elapsed time; emulation and rendering time count toward each deadline. Slower and Faster controls select 0.25x, 0.5x, 1x, 2x or 4x; a 1x control restores normal speed. At normal or slower speed, each publication selects one completed field. If a bounded slice ends before field completion, the viewport retains the previous image.
 

@@ -2450,6 +2450,85 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Canonical integration verification and four independent review lanes remain pending, and no roadmap milestone is claimed
 ---
 
+### [2026-11-16 23:15 CET] — Make input capture explicit and reserve F12
+- **Affected Subsystems**:
+  - `crates/gui`
+  - `docs/debugger.md`
+  - `docs/game-library.md`
+  - `Obsidian/Amiga/Design/Application/GUI.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Reserve F12 for Game/Debug
+  - replace the default Escape release with fixed middle mouse and an optional unassigned keyboard key
+  - remove Ctrl+R
+  - separate gamepad gameplay from pointer capture
+  - retain controller contacts on capture release and release all inputs on focus loss
+  - show shared capture guidance
+- **Architectural Rationale & Trade-Offs**:
+  - Keep Amiga keys available and allow controllers to play without capturing the desktop pointer
+- **Verification & Test Results**:
+  - GUI suite passed before final review corrections
+  - focused capture and view suites passed after text-focus and shared-guidance corrections
+  - browser adapter contention regression passed
+  - actual WASM build and vault audit passed
+  - configuration screenshot rendered and inspected. Canonical verification and final independent approvals pending. Physical controllers and Linux/macOS were not exercised.
+---
+
+### [2026-11-16 22:56 CET] — Show disk activity in the player panel
+- **Affected Subsystems**:
+  - `crates/config`
+  - `crates/floppy`
+  - `crates/paula`
+  - `crates/machine_loop`
+  - `crates/gui`
+  - `Obsidian/Amiga/Design/Application/GUI.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Replaced motor-based Active text with a fixed-position green activity light.
+  - Retained head steps and consumed disk data between host publications.
+  - Held the light for 120 ms and cleared its baseline on restore or any drive reset, including guest RESET and stepped keyboard reset.
+  - Shared the existing drive-count limit through config without adding dependencies.
+  - Added behavioral protection for head steps, byte reads, DMA reads, serialized writes, timing and reset/restore.
+  - Added the valid egui API namespace epaint to the programming vocabulary.
+- **Architectural Rationale & Trade-Offs**:
+  - Confirm real drive work without a track display or a light held on by the spindle motor.
+  - Activity and reset counters and the pending controller observation are required serialized fields, so older snapshots without them are unsupported.
+- **Verification & Test Results**:
+  - Focused floppy, Paula and GUI crate tests passed, as did machine-loop activity and autonomous ADF DMA suites, architecture checks and the browser build.
+  - The revised GUI activity suite passed guest RESET and stepped keyboard reset checks.
+  - Headless wide and compact game panels were visually inspected.
+  - Canonical batch coverage and independent review are pending.
+---
+
+### [2026-11-17 00:28 CET] — Integrate input capture and floppy activity
+- **Affected Subsystems**:
+  - `crates/gui`
+  - `crates/floppy`
+  - `crates/paula`
+  - `crates/machine_loop`
+  - `GUI specification`
+- **What Was Changed (The Concrete Reality)**:
+  - Integrate task input-capture at bbdd32cab335d5a17317a8ead7e54ee66adee133 and task floppy-activity at 0cfab14e55db4f7bbab1ab408fed66b0d33353aa against primary baseline 1cc643c1833acbda53d0bfc78507f7a46ad60ab0
+  - Preserve both features and the primary RTC fix while resolving overlapping GUI requirements and diary entries
+  - Record intermediate merges 4612d23 and ca0d45c as awaiting combined verification
+  - Retain both task branches, worktrees and the input-capture working plan under the approved merge-only scope
+  - Invalidate cached controller contacts on every runtime generation change and preserve fresh gamepad edges admitted after a pending full release while discarding keyboard joystick presses on capture loss
+  - Retry a contended fatal-test command submission without weakening its failure assertions
+  - Explain the physical motor-controlled drive LED separately from GUI event feedback in the floppy specification
+- **Architectural Rationale & Trade-Offs**:
+  - Assemble both source histories before one combined acceptance pass
+  - preserve pending primary roadmap edits separately during publication
+  - no remote publication or milestone closure
+- **Verification & Test Results**:
+  - Source commit messages record passing source-only canonical checks and four review approvals for each feature
+  - merge conflict resolutions and git diff --check passed
+  - Both controller defects failed focused regressions before the runtime correction, including separate keyboard-reset and running-restore reproductions
+  - All 45 focused input, runtime, player capture and mapping tests passed after correction; the Node adapter regression also passed
+  - A further regression reproduced a keyboard joystick press retained by the initial queue correction; all 11 input tests passed after distinguishing gamepad ports
+  - The vault audit passed all 35 specifications and 1078 links
+  - Add the HRM-confirmed DSKMOTOR signal name to reviewed hardware vocabulary after the preliminary language gate identified it
+  - The first combined profile failed at a contended fatal-test command submission; final combined canonical verification and four independent review lanes are pending
+  - physical controller and live browser interaction remain outside this verification
+---
+
 ### [2026-11-17 00:26 CET] — Recover the DIW edge and store a fixed video rectangle
 - **Affected Subsystems**:
   - `Denise`
@@ -2481,3 +2560,31 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - canonical code verification passed 837 ordinary tests (3 existing skips), 9 standard-harness tests, native Clippy and the actual WASM build; changed-runtime coverage has no unresolved in-scope gap
   - the selected presentation origins are receiver CCK 49, PAL line 28 and NTSC line 21; analog timing calibration and broader native-display fidelity remain outside this task
   - no milestone or broader roadmap closure is claimed.
+---
+
+### [2026-11-17 00:58 CET] — Integrate fixed framebuffer geometry with the current frontend
+- **Affected Subsystems**:
+  - `Denise`
+  - `frame_builder`
+  - `machine_loop`
+  - `save_state`
+  - `GUI`
+- **What Was Changed (The Concrete Reality)**:
+  - Integrate VIDEO-FRAME-RECT-20261116 at 5f01bfcdb15180494c51c09b6c25ef70c287507f with primary baseline 51379e3d44ed8fb9cfa4892c2984434c62a2d24a
+  - preserve fixed PAL and NTSC geometry together with explicit input capture, F12 and floppy activity
+  - retain both parent diary histories and regenerate the timing report
+  - reconcile every tracked Markdown path changed from the common base
+  - retain schema 11 and the existing task closure record
+  - compare the DIW receiver restart value before the delayed output phase, preserving a programmed horizontal start of 2
+  - observe gamepad state directly at an idle owner boundary and retry inactive GUI frames until focus-loss release is visible, without a focused redraw or a fixed sleep
+- **Architectural Rationale & Trade-Offs**:
+  - Preserve the source histories and accept the combined result before conditional local publication and approved worktree removal
+  - unrelated primary roadmap edits remain outside this integration
+- **Verification & Test Results**:
+  - Source commit records 837 passing ordinary tests, 3 existing skips, 9 harness tests, four review approvals and the exact NTSC WinUAE comparison
+  - merge code paths combined without conflicts and git diff --check passed
+  - the first combined profile passed 852 ordinary tests, 3 existing skips and 9 standard-harness tests
+  - independent review identified the skipped DIW origin comparison; a new start-2 regression failed on the candidate and all four display-window tests passed after the correction, including both resolutions and consecutive lines
+  - a later combined attempt failed the gamepad focus-loss test after its fixed 30 ms sleep; direct snapshot observation and inactive-frame retries preserve the release assertion, and all six focused capture tests passed during diagnosis
+  - final canonical integration verification and independent integration reviews remain pending
+  - no milestone or remote publication is claimed

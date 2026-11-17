@@ -344,11 +344,19 @@ impl crate::EmulatorApp {
                     crate::layout::main_viewport::amiga_screen::SCREEN_INPUT_ID,
                 ))
             });
+            let host_text_focus = ctx
+                .memory(|memory| memory.focused())
+                .is_some_and(|id| egui::TextEdit::load_state(ctx, id).is_some());
             if ctx
                 .data_mut(|data| data.remove_temp::<bool>(egui::Id::new("capture_requested")))
                 .unwrap_or(false)
             {
                 self.player.captured = true;
+            }
+            if self.player.captured
+                && ctx.input(|input| input.pointer.button_pressed(egui::PointerButton::Middle))
+            {
+                self.player.captured = false;
             }
             if !focused
                 || self.host.status.pause_pending
@@ -376,6 +384,13 @@ impl crate::EmulatorApp {
                 self.player.captured = false;
             }
             let enabled = self.player.captured;
+            if !enabled && screen_focus {
+                ctx.memory_mut(|memory| {
+                    memory.surrender_focus(egui::Id::new(
+                        crate::layout::main_viewport::amiga_screen::SCREEN_INPUT_ID,
+                    ));
+                });
+            }
             ctx.memory_mut(|memory| {
                 memory.set_focus_lock_filter(
                     egui::Id::new(crate::layout::main_viewport::amiga_screen::SCREEN_INPUT_ID),
@@ -390,7 +405,7 @@ impl crate::EmulatorApp {
             let sender = runtime.input_sender();
             let actions = sender.frontend_actions(
                 focused
-                    && (!ctx.wants_keyboard_input() || screen_focus)
+                    && (!host_text_focus || screen_focus)
                     && self.player.screen == crate::player::PlayerScreen::Session
                     && self.player.pending_launch.is_none(),
             );
@@ -402,7 +417,13 @@ impl crate::EmulatorApp {
             if let Some(pads) = sender.gamepads() {
                 self.player.gamepads = pads;
             }
-            if !sender.set_enabled(enabled) {
+            let gamepads = focused
+                && (!host_text_focus || screen_focus)
+                && self.player.screen == crate::player::PlayerScreen::Session
+                && self.player.pending_launch.is_none()
+                && self.host.status.running
+                && !self.host.status.pause_pending;
+            if !sender.set_enabled(enabled, gamepads) {
                 ctx.request_repaint_after(crate::host_runtime::HOST_RETRY_DELAY);
             }
             #[cfg(not(target_arch = "wasm32"))]

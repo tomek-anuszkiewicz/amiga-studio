@@ -42,6 +42,38 @@ fn standard_window_keeps_first_and_last_word_samples_after_bpl1dat_commit() {
 }
 
 #[test]
+fn horizontal_window_matches_receiver_origin_on_consecutive_lines() {
+    // The receiver restarts at count 2. Comparing the delayed output phase
+    // must still admit that first count, for both even and odd starts.
+    for hires in [false, true] {
+        for start in [2, 3] {
+            let mut d = Denise::new(DeniseModel::Ocs8362);
+            d.diwstrt = start;
+            d.diwstop = 0xc0;
+            d.bplcon0 = (if hires { 0x9000 } else { 0x1000 }).into();
+            d.color[1] = 0x0f0;
+            for line in 0..2 {
+                d.strobe_strhor();
+                d.sync.vpos = 28 + line as u16;
+                for hpos in 0..227 {
+                    if hpos > 0 {
+                        d.bpl_armed = true;
+                        d.shifters[0] = 0xffff;
+                    }
+                    d.step_cck();
+                }
+                assert_eq!(
+                    d.frame_builder.get_pixel(60, line * 2),
+                    0xff00ff00,
+                    "hires={hires}, start={start}, line={line}"
+                );
+                assert_eq!(d.frame_builder.get_pixel(696, line * 2), 0xff000000);
+            }
+        }
+    }
+}
+
+#[test]
 fn horizontal_window_preserves_h0_at_both_edges_on_consecutive_lines() {
     // HRM Appendix A exposes H0 in both DIW registers. A low-resolution
     // counter period covers two hires samples, including an even edge.

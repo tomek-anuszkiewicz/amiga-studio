@@ -34,7 +34,7 @@ def check_workflow(browser, url, rom, disk, output):
     def observe_generation(route):
         response = route.fetch()
         source = response.text()
-        marker = "export function set_host_input_enabled(enabled, interval_ms, generation) {"
+        marker = "export function set_host_input_enabled(enabled, gamepads, interval_ms, generation) {"
         assert source.count(marker) == 1
         route.fulfill(response=response, body=source.replace(marker, marker + "\n    globalThis.observedGeneration = Number(generation);"))
 

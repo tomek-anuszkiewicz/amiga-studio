@@ -306,6 +306,7 @@ impl Paula {
     #[inline]
     pub fn read_dskbytr(&mut self) -> u16 {
         let val = self.peek_dskbytr();
+        self.disk.activity_pending |= val & BIT_DSKBYTR_DSKBYT != 0;
         self.dskbytr &= !BIT_DSKBYTR_DSKBYT;
         val
     }

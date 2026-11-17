@@ -151,17 +151,20 @@ impl EmulatorApp {
         }
         ui.separator();
         ui.strong("Frontend keys");
+        ui.small("F12 switches Game/Debug. The middle mouse button always releases capture.");
         for (label, key) in [
-            ("Release capture", &mut configuration.frontend.release),
+            (
+                "Release capture key (optional)",
+                &mut configuration.frontend.release,
+            ),
             ("Pause / Resume", &mut configuration.frontend.pause),
             ("Save", &mut configuration.frontend.save),
             ("Load", &mut configuration.frontend.load),
-            ("Debug", &mut configuration.frontend.debug),
         ] {
             ui.horizontal(|ui| {
                 ui.label(label);
                 ui.text_edit_singleline(key).on_hover_text(
-                    "Use a key name such as Escape, F5, F6 or F9. Keep a usable release key.",
+                    "Use a key name such as F5, F6 or F9. Leave release empty to use only the middle mouse button.",
                 );
             });
         }
