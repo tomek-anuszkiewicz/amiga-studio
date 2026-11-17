@@ -36,6 +36,8 @@
   - [7.6: Desktop Game Library and Portable Game Packages](#task-7-6)
   - [7.7: Gameplay Video Recording](#task-7-7)
   - [7.8: Full Frontend Control with a Gamepad (Deferred)](#task-7-8)
+  - [7.9: Turbo Floppy Mode](#task-7-9)
+  - [7.10: Automatic Disk Swapping (Deferred Exploration)](#task-7-10)
 - [Step 8: Real-World Amiga Workloads & Pipeline Optimization (Post-Boot)](#step-8)
   - [8.1: Deferred Full-OS & MFM Floppy vAmigaTS Test Suites Verification Gate](#task-8-1)
   - [8.2: End-to-End Bootable ADF Integration Testing](#task-8-2)
@@ -308,7 +310,7 @@ bring-up failures. Light-pen/gun input (12.5), external genlock synchronization
   - **Actionable Scope:**
     - **Host Keyboard Mapping:** Translation table from host keyboard events (`winit::keyboard::KeyCode` / `egui::Key`) to raw Amiga scancodes, qualifiers (Amiga keys, Alt, Ctrl, CapsLock, Help), `Ctrl + Left Amiga + Right Amiga` reset combo, and Keyboard-as-Joystick mapping.
     - **Reusable Mappings and Named Configurations:** Allow users to create, name, save and edit any number of host-to-Amiga keyboard mappings (initially configurable special keys), keyboard-as-joystick mappings, and gamepad-to-joystick mappings. Compose these into the shared named emulator configurations in 7.1, together with hardware and game-port assignments. Each game selects one configuration; its disks and saves remain separate game assets in 7.5. Include configurable frontend keyboard shortcuts and define their priority against guest keys and keyboard-as-joystick input.
-    - **Gamepad Button Assignments:** Let users choose which physical button produces joystick fire and assign other buttons to frontend actions such as pause/resume, quick save/load and opening the save/load catalog. Reuse the controls from 7.3/7.4 as they become available. Define how bindings consume or share an event between guest input and frontend actions; keep full gamepad-only interface navigation in 7.8.
+    - **Gamepad Button Assignments:** Let users choose which physical button produces joystick fire and assign other buttons to frontend actions such as pause/resume, disk selection/swapping, quick save/load and opening the save/load catalog. Reuse the controls from 7.2/7.3/7.4 as they become available. Define how bindings consume or share an event between guest input and frontend actions; keep full gamepad-only interface navigation in 7.8.
     - **Keyboard Combination Fidelity (basic host adapter accepted; hardware fidelity remains open):** Define how host key combinations produce the same guest-visible effects as an A500 keyboard. Establish the original matrix/controller behavior from documentation and hardware measurements, including simultaneous-key limits, blocked keys and phantom key detection (ghosting), then compare it with host keyboard rollover limits and native/browser event delivery. Decide how to reproduce Amiga behavior, preserve held modifiers and press/release sequences, and handle conflicts with frontend or system shortcuts. Explicitly address combinations the host never reports: document the limits and decide on alternative mappings or other workarounds without assuming missing key events can be recovered. Record the agreed behavior in the keyboard and GUI specifications before implementation.
     - **Dual Game Port Hub:** First choose the emulated device for each port (Mouse, Joystick or Disconnected), then its host source: system mouse/touchpad for a mouse, or a keyboard mapping/selected gamepad for a joystick. Address ports explicitly so two joysticks can operate independently; first-matching-device routing is insufficient. Retain hardware button routing through CIA-A `PRA` and Paula `POTGOR`. Separate physical mice, independent dual-mouse sources and the CD32 7-button protocol remain later extensions.
     - **Physical Host Mouse Capture:** Initially use one system mouse/touchpad source. Implement viewport mouse grab/lock, relative motion delta scaling into Amiga 8-bit wrap-around quadrature counters ($0..255$), sensitivity tuning and reliable capture release for frontend controls.
@@ -398,6 +400,20 @@ bring-up failures. Light-pen/gun input (12.5), external genlock synchronization
   - After the named configurations and input mappings in 6.2/7.1 and the player controls in this stage are available, provide an optional gamepad-only mode for the entire frontend, without requiring a host keyboard or mouse. Cover menu navigation, configuration, game/disk selection, save/load catalogs and session controls; plan any text-entry interaction needed by those flows.
   - Reuse configurable frontend button assignments from 6.2 and define transitions between guest control and interface navigation, including focus and return to play.
   - **Gate:** On native and WASM, complete the supported frontend flows and return to gameplay using only a physical gamepad, with no unintended guest input or stuck controls.
+
+<a id="task-7-9"></a>
+
+- **7.9: Turbo Floppy Mode**
+  - After the normal floppy path is verified, provide an optional mode that shortens disk loading. Select the acceleration mechanism and assess guest timing compatibility before implementation; keep normal drive timing available for accurate emulation and verification.
+  - Expose turbo selection through the shared configuration/player controls. Distinguish faster disk loading from general emulation speed controls.
+  - **Gate:** On native and WASM, compare loading time and successful boot/game continuation with normal mode on representative disks; verify mode switching and document compatibility limits.
+
+<a id="task-7-10"></a>
+
+- **7.10: Automatic Disk Swapping (Deferred Exploration)**
+  - Explore an optional system that recognizes a game's request for another disk and selects it from the ordered media list in 7.2/7.5. Keep this distant work separate from manual disk controls.
+  - Evaluate screen OCR for disk-request text and numbers (for example, disks 1-4), and possible game-specific memory signatures. Neither approach is selected or established as reliable; a number appearing on screen alone does not identify a disk request. Determine how recognition maps a request to the correct image and drive, and how uncertain or repeated requests are handled while retaining manual control.
+  - **Exploration gate:** Demonstrate recognition and correct swaps on selected multi-disk games, including unrelated screen numbers, ambiguous prompts and repeated requests; record supported cases, false detections and limitations before deciding whether to implement broader support.
 
 ---
 

@@ -2588,3 +2588,17 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - a later combined attempt failed the gamepad focus-loss test after its fixed 30 ms sleep; direct snapshot observation and inactive-frame retries preserve the release assertion, and all six focused capture tests passed during diagnosis
   - final canonical integration verification and independent integration reviews remain pending
   - no milestone or remote publication is claimed
+---
+
+### [2026-11-17 01:25 CET] — Plan optional floppy loading and disk controls
+- **Affected Subsystems**:
+  - `Roadmap`
+- **What Was Changed (The Concrete Reality)**:
+  - Add turbo floppy mode and deferred automatic disk swapping exploration
+  - Include disk selection and swapping in configurable gamepad actions
+- **Architectural Rationale & Trade-Offs**:
+  - Record future frontend work without selecting an acceleration or recognition mechanism or claiming implementation
+- **Verification & Test Results**:
+  - Reviewed the roadmap diff and section anchors
+  - git diff --check passed before this entry
+  - No runtime code or acceptance references changed
