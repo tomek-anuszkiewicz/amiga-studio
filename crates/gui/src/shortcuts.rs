@@ -30,7 +30,7 @@ impl EmulatorApp {
             .player
             .active_configuration
             .as_ref()
-            .map(|c| c.frontend.clone())
+            .map(|c| c.controls.host.frontend.clone())
             .unwrap_or_default();
         let pressed = |name: &str| {
             crate::host_keys::frontend_key(name).is_some_and(|key| {

@@ -39,6 +39,8 @@ pub struct Keyboard {
     startup_sync: bool,
     boot_stream: BootStream,
     held: [u64; 2],
+    /// Host release policy waits behind queued bytes without overflowing type-ahead.
+    pending_releases: [u64; 2],
     boot_keys: [u64; 2],
     queue: [u8; KEYBOARD_BUFFER_CAPACITY],
     queue_len: usize,
@@ -67,6 +69,7 @@ impl Keyboard {
             startup_sync: true,
             boot_stream: BootStream::Start,
             held: [0; 2],
+            pending_releases: [0; 2],
             boot_keys: [0; 2],
             queue: [0; KEYBOARD_BUFFER_CAPACITY],
             queue_len: 0,
@@ -105,7 +108,27 @@ impl Keyboard {
         } else if core::mem::take(&mut self.overflow) {
             Some(SCANCODE_BUFFER_OVERFLOW)
         } else {
-            None
+            self.next_pending_release()
+        }
+    }
+
+    fn next_pending_release(&mut self) -> Option<u8> {
+        for (word, pending) in self.pending_releases.iter_mut().enumerate() {
+            if *pending != 0 {
+                let bit = pending.trailing_zeros();
+                *pending &= !(1u64 << bit);
+                return Some((word * KEY_WORD_BITS + bit as usize) as u8 | BIT_KEY_RELEASE);
+            }
+        }
+        None
+    }
+
+    fn queue_pending_releases(&mut self) {
+        while self.queue_len < KEYBOARD_BUFFER_CAPACITY {
+            let Some(code) = self.next_pending_release() else {
+                break;
+            };
+            self.enqueue_scancode(code);
         }
     }
 
@@ -131,6 +154,8 @@ impl Keyboard {
     /// Records a physical press; repeat generation belongs to guest software.
     pub fn key_down(&mut self, raw_code: u8) {
         let code = raw_code & MASK_KEY_CODE;
+        // Release-before-press ordering also applies to fresh host transitions.
+        self.queue_pending_releases();
         if !self.change_key(code, true) {
             return;
         }
@@ -152,6 +177,7 @@ impl Keyboard {
 
     /// Records a physical release; Caps Lock reports only its toggling presses.
     pub fn key_up(&mut self, raw_code: u8) {
+        self.queue_pending_releases();
         let code = raw_code & MASK_KEY_CODE;
         if self.change_key(code, false) && code != SCANCODE_CAPS_LOCK && !self.startup_sync {
             self.enqueue_scancode(code | BIT_KEY_RELEASE);
@@ -160,8 +186,16 @@ impl Keyboard {
 
     /// Releases physical keys when the host loses input capture.
     pub fn release_keys(&mut self) {
+        self.queue_pending_releases();
         for code in 0..=MASK_KEY_CODE {
-            self.key_up(code);
+            if self.change_key(code, false) && code != SCANCODE_CAPS_LOCK && !self.startup_sync {
+                if self.queue_len < KEYBOARD_BUFFER_CAPACITY {
+                    self.enqueue_scancode(code | BIT_KEY_RELEASE);
+                } else {
+                    self.pending_releases[usize::from(code) / KEY_WORD_BITS] |=
+                        1u64 << (usize::from(code) % KEY_WORD_BITS);
+                }
+            }
         }
     }
 }

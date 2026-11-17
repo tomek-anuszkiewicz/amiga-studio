@@ -5,13 +5,13 @@ use super::{HostInputEvent, HostInputSender};
 impl HostInputSender {
     pub fn configure(
         &self,
-        configuration: &crate::player_config::NamedConfiguration,
-        catalog: &crate::player_config::ConfigurationCatalog,
+        configuration: &crate::player_config::ControlConfiguration,
+        mappings: &[crate::player_config::JoystickMapping],
     ) -> bool {
         let Ok(mut mailboxes) = self.shared.mailboxes.try_lock() else {
             return false;
         };
-        if mailboxes.mapping.configure(configuration, catalog) {
+        if mailboxes.mapping.configure(configuration, mappings) {
             mailboxes.push_input(HostInputEvent::ReleaseAll);
         }
         true

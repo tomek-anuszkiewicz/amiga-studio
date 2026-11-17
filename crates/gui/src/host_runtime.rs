@@ -299,10 +299,10 @@ impl HostRuntime {
             &command,
             HostCommand::Reset
                 | HostCommand::ResetWarm
-                | HostCommand::LoadSnapshot(_)
                 | HostCommand::Launch { .. }
                 | HostCommand::RestorePlayer { .. }
-                | HostCommand::LoadQuickSlot(_)
+                | HostCommand::ReconfigurePorts(_)
+                | HostCommand::LoadQuickSlot { .. }
                 | HostCommand::LoadRom(_)
                 | HostCommand::LoadBinary { .. }
         );

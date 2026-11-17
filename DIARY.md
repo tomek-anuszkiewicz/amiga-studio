@@ -2602,3 +2602,35 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Reviewed the roadmap diff and section anchors
   - git diff --check passed before this entry
   - No runtime code or acceptance references changed
+---
+
+### [2026-11-17 02:58 CET] — Commit configuration editing and current controls on progress restore
+- **Affected Subsystems**:
+  - `GUI`
+  - `debugger`
+  - `keyboard`
+  - `save_state`
+- **What Was Changed (The Concrete Reality)**:
+  - Complete CONFIG-INPUT-STATE-20261116: isolate configuration and shared-mapping drafts behind Save and Cancel, including unsaved navigation and committed-only persistence
+  - Separate launch choices, port attachment and host input values while retaining the current flat RON settings contract and stable configuration IDs
+  - Apply changed endpoints at a stopped owner boundary and restore progress with current session controls across library, file and quick-slot loads
+  - Preserve exact core restoration and observational capture, receiver-owned registers, mouse phase, embedded media and live RTC independence
+  - Retain deferred keyboard releases behind a saturated ten-code ring and preserve retry and release-before-press ordering, recording this state in snapshot schema 12
+- **Architectural Rationale & Trade-Offs**:
+  - Changing controls must allow the same game to continue without reset or replaying launch hardware
+  - A reproduced full-ring release lost key-up and emitted only overflow, requiring serializable pending releases rather than protocol flushing
+  - Earlier snapshots remain unsupported under the pre-release contract, while existing user configuration data stays readable without migration
+- **Verification & Test Results**:
+  - Original port-rejection regression passed before the approved acceptance update, and the full-ring keyboard reproduction failed on the original controller
+  - Full GUI crate tests and subsequent affected editor, import, capture, restore, runtime input and library suites passed
+  - Keyboard, save_state and debugger ordinary tests and machine keyboard/CIA integration passed, including synthetic CPU observation of key-up from partial and full-ring snapshots
+  - Architecture, Clippy and the actual WASM application build passed, with existing unused-dependency manifest warnings retained outside scope
+  - Chromium 157.0.8103.51 verified Cancel persistence, stopped port changes and importing older endpoint types with current controls, preserving CCK 2549684 and reporting no page or worker failures
+  - Inspected 1280x800 and 480x640 editor captures and the narrow unsaved dialog
+  - Independent review reproduced missing controller validation on Debug and dirty Discard entry, then shared validated session navigation and retained editor origin fixed both regressions
+  - Retired the unused LoadSnapshot owner command and implicit attachment cache, migrating existing tests to explicit restore requests without weakening assertions
+  - Added rejected Save coverage for referenced and unused blank-name mappings, catalog identity and mapping-field validation, unchanged machine/control state and Cancel recovery
+  - A parallel focused runtime run exceeded its existing GUI wait limit under host pressure, while the unchanged checks passed when serialized
+  - Initial canonical coverage compilation failed with memory allocation and Windows paging-file errors before test execution; the full suite is being retried with one Cargo build job and unchanged acceptance criteria
+  - Canonical commit verification, changed-code coverage review and final independent review approvals remain pending at entry preparation
+  - Physical controllers, private firmware boot and milestone verification were not run

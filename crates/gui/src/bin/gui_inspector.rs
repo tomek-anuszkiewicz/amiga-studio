@@ -22,11 +22,16 @@ use egui_kittest::Harness;
 use gui::{DisasmEditState, EditRegister, EmulatorApp};
 
 #[cfg(not(target_arch = "wasm32"))]
+const OWNER_REPLY_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
+#[cfg(not(target_arch = "wasm32"))]
+const OWNER_POLL_INTERVAL: std::time::Duration = std::time::Duration::from_millis(1);
+
+#[cfg(not(target_arch = "wasm32"))]
 fn print_usage() {
     eprintln!(
         "Usage: gui-inspector [OPTIONS]\n\
          Options:\n\
-           --scenario <NAME>       Scenario: baseline, clean_startup, live_display, live_display_studio, mixed_scene, hover_splitter, hover_scrollbar, hover_register, hover_ccr, hover_memory, game_mode, library, library_editor, manual_setup, replace_session, configurations, workbench_theme, edit_register, edit_disasm, small_window (default: baseline)\n\
+           --scenario <NAME>       Scenario: baseline, clean_startup, live_display, live_display_studio, mixed_scene, hover_splitter, hover_scrollbar, hover_register, hover_ccr, hover_memory, game_mode, library, library_editor, manual_setup, replace_session, configurations, configuration_dirty, workbench_theme, edit_register, edit_disasm, small_window (default: baseline)\n\
            --width <PIXELS>        Viewport width in points/pixels (default: 1280)\n\
            --height <PIXELS>       Viewport height in points/pixels (default: 720)\n\
            --output <PATH>         Target PNG output file path (default: target/gui_captures/baseline.png)\n\
@@ -172,7 +177,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
 
     // Initial render step to lay out widgets and build AccessKit tree
-    let inspection_deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    let inspection_deadline = std::time::Instant::now() + OWNER_REPLY_TIMEOUT;
     loop {
         harness.step();
         if harness.state().host.is_idle() {
@@ -181,19 +186,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if std::time::Instant::now() >= inspection_deadline {
             return Err("GUI initialization did not settle".into());
         }
-        std::thread::sleep(std::time::Duration::from_millis(1));
+        std::thread::sleep(OWNER_POLL_INTERVAL);
     }
 
     // Apply scenario-specific interactions
     match scenario.as_str() {
         "live_display" | "live_display_studio" => {
-            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+            let deadline = std::time::Instant::now() + OWNER_REPLY_TIMEOUT;
             while harness.state().host.status.field_number < 2 {
                 if std::time::Instant::now() >= deadline {
                     return Err("Display program did not produce two completed fields".into());
                 }
                 harness.step();
-                std::thread::sleep(std::time::Duration::from_millis(1));
+                std::thread::sleep(OWNER_POLL_INTERVAL);
             }
             harness
                 .state_mut()
@@ -207,16 +212,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 if std::time::Instant::now() >= deadline {
                     return Err("Display program did not pause".into());
                 }
-                std::thread::sleep(std::time::Duration::from_millis(1));
+                std::thread::sleep(OWNER_POLL_INTERVAL);
             }
         }
-        "library" | "library_editor" | "manual_setup" | "replace_session" | "configurations" => {
+        "library"
+        | "library_editor"
+        | "manual_setup"
+        | "replace_session"
+        | "configurations"
+        | "configuration_dirty" => {
             let screen = match scenario.as_str() {
                 "library" | "library_editor" => gui::player::PlayerScreen::Library,
                 "manual_setup" | "replace_session" => gui::player::PlayerScreen::Setup,
                 _ => gui::player::PlayerScreen::Configuration,
             };
             harness.state_mut().navigate_player(screen);
+            if scenario == "configuration_dirty" {
+                if let Some(editor) = &mut harness.state_mut().player.editor {
+                    editor.catalog.configurations[0].name = "Unsaved draft".into();
+                }
+                harness
+                    .state_mut()
+                    .navigate_player(gui::player::PlayerScreen::Setup);
+            }
             if scenario == "library_editor" {
                 let mut draft = gui::library_edit::GameDraft::new("standard".into());
                 draft.name = "Example game".into();
@@ -227,7 +245,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             if scenario == "replace_session" {
                 let app = harness.state_mut();
                 app.player.active_configuration = Some(Default::default());
-                app.player.catalog.configurations[0].rom = "preview.rom".into();
+                app.player.catalog.configurations[0].launch.rom = "preview.rom".into();
                 app.player.rom = Some(vec![0; physical_memory::KICKSTART_ROM_SIZE]);
                 app.player.rom_configuration_id = Some("standard".into());
                 app.player.rom_reference = Some("preview.rom".into());
@@ -328,6 +346,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             );
             harness.step();
         }
+    }
+
+    if matches!(scenario.as_str(), "configurations" | "configuration_dirty") {
+        let deadline = std::time::Instant::now() + OWNER_REPLY_TIMEOUT;
+        while !harness.state().host.is_idle() {
+            harness.step();
+            if std::time::Instant::now() >= deadline {
+                return Err("Configuration navigation did not settle".into());
+            }
+            std::thread::sleep(OWNER_POLL_INTERVAL);
+        }
+        harness.run_steps(3);
     }
 
     // Capture final offscreen image

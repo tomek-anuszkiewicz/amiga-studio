@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "gui"
 status: "active"
 created: 2026-09-05
-updated: 2026-11-16
+updated: 2026-11-17
 related: ["[egui Guidelines.md](../egui%20Guidelines.md)", "[Debugger.md](Debugger.md)", "[General Architecture.md](../General%20Architecture.md)", "[Keyboard.md](../Keyboard.md)", "[Mouse.md](../Mouse.md)", "[Audio.md](../Audio.md)", "[Denise.md](../Denise.md)", "[RTC.md](../RTC.md)"]
 tracked_paths:
   - "crates/gui"
@@ -26,9 +26,24 @@ stable IDs and compose the supported hardware presets, ROM choice, connected
 drives, both port devices and reusable host mappings. Games reference one
 configuration and own ordered disks, descriptions, artwork, initial state and
 player saves. Configuration editing has its own screen.
-Returning to the session applies edited host bindings from its named configuration
-when the emulated port devices match. The paused machine keeps its hardware, ROM
-and media; hardware changes require a confirmed replacement launch.
+The editor holds a separate draft of the complete catalog, including profile
+creation, selection and reusable mappings. Save validates the edited scope and
+applies the active session's controls at a stopped owner boundary before
+publishing committed settings. Failure leaves the draft available and the
+committed catalog unchanged. Cancel discards the draft, including invalid edits,
+and returns to the originating screen. Leaving dirty edits offers Save, Discard
+and Keep editing; clean navigation leaves directly. Shutdown persists only the
+committed catalog. Switching profiles inside the editor retains all draft edits.
+
+Saved controls update the active session's named configuration without a restart;
+selecting another profile only selects a future launch. The machine stays paused
+until resumed. RAM, ROM, video and drive choices apply only to an explicit launch.
+Changing port devices replaces only changed endpoints with neutral devices;
+unchanged mouse endpoints retain quadrature phase. Old input is released and
+invalidated before execution resumes, without resetting chip-side JOY/POT or CIA
+state. Every user load follows the same release and attachment policy, including
+Developer Studio file loads and quick slots. Capturing a save is observational
+and does not release controls or change the input generation.
 
 The desktop library provides Add game and Edit game forms for a name, optional
 description, named configuration and individually selected ADF imports. Saving

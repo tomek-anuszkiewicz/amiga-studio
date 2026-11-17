@@ -7,6 +7,7 @@
 pub mod app;
 pub mod app_host;
 mod app_lifecycle;
+pub mod configuration_edit;
 mod configuration_view;
 pub mod file_actions;
 pub mod game_library;

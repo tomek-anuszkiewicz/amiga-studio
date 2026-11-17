@@ -45,6 +45,18 @@ fn captured_tab_keeps_guest_focus_instead_of_navigating_host_controls() {
     assert!(ctx.memory(|memory| memory.has_focus(egui::Id::new("amiga-screen-input"))));
     assert!(app.player.captured);
 }
+
+#[test]
+fn quick_save_shortcut_keeps_capture_and_generation_while_running() {
+    let (mut app, ctx) = running();
+    let generation = app.host.status.generation;
+    draw(&mut app, &ctx, Some(egui::Key::F6));
+    common::settle(&mut app, &ctx);
+    assert!(app.player.captured);
+    assert!(app.host.status.quick_slots[0]);
+    assert!(app.host.status.running);
+    assert_eq!(app.host.status.generation, generation);
+}
 #[test]
 fn enter_bound_to_release_does_not_recapture_through_a_keyboard_canvas_click() {
     let (mut app, ctx) = running();
@@ -52,6 +64,8 @@ fn enter_bound_to_release_does_not_recapture_through_a_keyboard_canvas_click() {
         .active_configuration
         .as_mut()
         .unwrap()
+        .controls
+        .host
         .frontend
         .release = "Enter".into();
     draw(&mut app, &ctx, Some(egui::Key::Enter));
@@ -94,6 +108,8 @@ fn escape_and_f2_remain_guest_keys_and_optional_release_surrenders_focus() {
         .active_configuration
         .as_mut()
         .unwrap()
+        .controls
+        .host
         .frontend
         .release = "F4".into();
     draw(&mut app, &ctx, Some(egui::Key::F4));
@@ -187,11 +203,16 @@ fn fire(app: &mut EmulatorApp) -> bool {
 #[test]
 fn gamepad_plays_without_capture_survives_mouse_release_and_stops_outside_session() {
     let (mut app, ctx) = running();
-    app.player.active_configuration.as_mut().unwrap().ports[1].source =
-        gui::player_config::InputSource::Gamepad {
-            identity: "pad".into(),
-            mapping: "arrows".into(),
-        };
+    app.player
+        .active_configuration
+        .as_mut()
+        .unwrap()
+        .controls
+        .ports[1]
+        .source = gui::player_config::InputSource::Gamepad {
+        identity: "pad".into(),
+        mapping: "arrows".into(),
+    };
     app.player.captured = false;
     draw(&mut app, &ctx, None);
     let sender = app.host.runtime.as_ref().unwrap().input_sender();

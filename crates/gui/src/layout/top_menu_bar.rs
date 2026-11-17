@@ -324,8 +324,8 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
             "Input free. Click the Amiga display to capture keyboard and mouse. F12 switches Game/Debug."
         });
         if let Some(configuration) = &app.player.active_configuration {
-            if !configuration.frontend.release.is_empty() {
-                ui.small(format!("Release key: {}", configuration.frontend.release));
+            if !configuration.controls.host.frontend.release.is_empty() {
+                ui.small(format!("Release key: {}", configuration.controls.host.frontend.release));
             }
         }
             });
@@ -347,13 +347,20 @@ pub(crate) fn quick_save_slot(app: &mut EmulatorApp, slot: usize) {
 
 /// Restores snapshot from an in-memory quick-save slot (1..=5)
 pub(crate) fn quick_load_slot(app: &mut EmulatorApp, slot: usize) {
+    if let Err(error) = app.validate_current_input() {
+        app.file_error = Some(error);
+        return;
+    }
     #[cfg(not(target_arch = "wasm32"))]
     if app.player.active_game.is_some() {
         app.load_player_quick(slot);
         return;
     }
     app.host.queue_effect(
-        HostCommand::LoadQuickSlot(slot),
+        HostCommand::LoadQuickSlot {
+            slot,
+            ports: app.current_control_ports(),
+        },
         HostEffect::File(FileCompletion::State(format!("Restored from Slot #{slot}"))),
     );
 }

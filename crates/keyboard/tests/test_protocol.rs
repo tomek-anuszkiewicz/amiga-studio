@@ -45,6 +45,87 @@ fn boot(keyboard: &mut Keyboard) {
 }
 
 #[test]
+fn host_release_survives_a_full_type_ahead_queue() {
+    let mut keyboard = Keyboard::new(3_546_895);
+    boot(&mut keyboard);
+    keyboard.key_down(0x35);
+    assert_eq!(bits(&mut keyboard, 8, 3000), 0x95);
+    acknowledge(&mut keyboard, 305);
+    for _ in 0..keyboard::KEYBOARD_BUFFER_CAPACITY {
+        keyboard.enqueue_scancode(0x20);
+    }
+    keyboard.release_keys();
+    for _ in 0..keyboard::KEYBOARD_BUFFER_CAPACITY {
+        assert_eq!(bits(&mut keyboard, 8, 3000), 0xbf);
+        acknowledge(&mut keyboard, 305);
+    }
+    // Host release must deliver key-up through the serial protocol, even when
+    // the saved ten-code ring has no free entry at the release boundary.
+    assert_eq!(bits(&mut keyboard, 8, 3000), 0x94);
+}
+
+#[test]
+fn fresh_press_is_queued_after_a_deferred_release_when_space_becomes_available() {
+    let mut keyboard = Keyboard::new(3_546_895);
+    boot(&mut keyboard);
+    keyboard.key_down(0x35);
+    assert_eq!(bits(&mut keyboard, 8, 3000), 0x95);
+    acknowledge(&mut keyboard, 305);
+    for _ in 0..keyboard::KEYBOARD_BUFFER_CAPACITY {
+        keyboard.enqueue_scancode(0x20);
+    }
+    keyboard.release_keys();
+    for _ in 0..2 {
+        assert_eq!(bits(&mut keyboard, 8, 3000), 0xbf);
+        acknowledge(&mut keyboard, 305);
+    }
+    keyboard.key_down(0x35);
+    for expected in [0xbf; 8].into_iter().chain([0x94, 0x95]) {
+        assert_eq!(bits(&mut keyboard, 8, 3000), expected);
+        acknowledge(&mut keyboard, 305);
+    }
+    keyboard.key_up(0x35);
+    assert_eq!(bits(&mut keyboard, 8, 3000), 0x94);
+}
+
+#[test]
+fn release_keeps_caps_lock_and_retry_bytes_and_round_trips_pending_releases(
+) -> Result<(), Box<dyn std::error::Error>> {
+    let mut keyboard = Keyboard::new(3_546_895);
+    boot(&mut keyboard);
+    for _ in 0..3000 {
+        assert!(!step(&mut keyboard, true));
+    }
+    keyboard.key_down(SCANCODE_CAPS_LOCK);
+    assert_eq!(bits(&mut keyboard, 8, 3000), 0x3b);
+    acknowledge(&mut keyboard, 305);
+    keyboard.key_down(0x35);
+    assert_eq!(bits(&mut keyboard, 8, 3000), 0x95);
+    // Lose acknowledgment: retain both the retry and the later key-up.
+    assert_eq!(bits(&mut keyboard, 1, 520_000), 0);
+    for _ in 0..keyboard::KEYBOARD_BUFFER_CAPACITY {
+        keyboard.enqueue_scancode(0x20);
+    }
+    keyboard.release_keys();
+    assert!(keyboard.caps_lock_active);
+    let mut restored: Keyboard = serde_json::from_str(&serde_json::to_string(&keyboard)?)?;
+    for controller in [&mut keyboard, &mut restored] {
+        acknowledge(controller, 305);
+        for expected in [0x0c, 0x95]
+            .into_iter()
+            .chain([0xbf; keyboard::KEYBOARD_BUFFER_CAPACITY])
+            .chain([0x94])
+        {
+            assert_eq!(bits(controller, 8, 3000), expected);
+            acknowledge(controller, 305);
+        }
+        assert!(controller.caps_lock_active);
+    }
+    assert_eq!(keyboard, restored);
+    Ok(())
+}
+
+#[test]
 fn startup_stream_reports_held_keys_then_rotated_active_low_events() {
     for hz in [3_546_895, 3_579_545] {
         let mut keyboard = Keyboard::new(hz);

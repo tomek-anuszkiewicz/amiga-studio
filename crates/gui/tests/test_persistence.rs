@@ -198,11 +198,20 @@ fn battery_offset_persists_separately_and_ui_refreshes_host_utc() {
     let mut restarted = EmulatorApp::new(&context);
     common::settle(&mut restarted, &context.egui_ctx);
     assert_eq!(restarted.host.status.battery, battery);
-    assert!(
-        common::command(&mut restarted, HostCommand::LoadSnapshot(snapshot))
-            .value
-            .is_ok()
-    );
+    assert!(common::command(
+        &mut restarted,
+        HostCommand::RestorePlayer {
+            json: snapshot,
+            game_id: None,
+            ports: [
+                debugger::launch::DeviceKind::Mouse,
+                debugger::launch::DeviceKind::Joystick
+            ],
+            resume: false
+        }
+    )
+    .value
+    .is_ok());
     assert_eq!(restarted.host.status.battery, battery);
     // Model an old sample while the UI is paused, then refresh without stepping.
     common::command(&mut restarted, HostCommand::SupplyUtc(631152000));
@@ -228,7 +237,7 @@ fn named_hardware_and_input_catalog_survives_framework_storage_without_media_byt
     use eframe::App;
     let mut app = EmulatorApp::default();
     app.player.catalog.configurations[0].name = "Renamed preset".into();
-    app.player.catalog.configurations[0].rom = "kick.rom".into();
+    app.player.catalog.configurations[0].launch.rom = "kick.rom".into();
     app.player.catalog.mappings[0].threshold = 0.7;
     app.player.rom = Some(vec![1; 262144]);
     let mut storage = MemoryStorage::new();
@@ -248,6 +257,29 @@ fn named_hardware_and_input_catalog_survives_framework_storage_without_media_byt
 }
 
 #[test]
+fn existing_flat_user_configuration_remains_readable_without_migration() {
+    let mut storage = MemoryStorage::new();
+    storage.set_string("configuration", r#"(id:"standard",name:"My existing configuration",preset:Standard1Mb,video:Pal,rom:"kick.rom",drives:(true,false,false,false),ports:((device:Mouse,source:SystemMouse),(device:Joystick,source:Keyboard("arrows"))),mouse_sensitivity:1.5,keyboard:[(32,33)],frontend:(release:"",pause:"F5",save:"F6",load:"F9"),gamepad_shortcuts:[])"#.into());
+    let configuration: gui::player_config::NamedConfiguration =
+        eframe::get_value(&storage, "configuration").unwrap();
+    assert_eq!(configuration.id, "standard");
+    assert_eq!(configuration.name, "My existing configuration");
+    assert_eq!(configuration.launch.rom, "kick.rom");
+    assert_eq!(configuration.controls.host.keyboard, vec![(32, 33)]);
+    assert_eq!(configuration.controls.host.mouse_sensitivity, 1.5);
+    eframe::set_value(&mut storage, "configuration", &configuration);
+    assert!(storage
+        .get_string("configuration")
+        .unwrap()
+        .contains("preset:Standard1Mb"));
+    assert_eq!(
+        eframe::get_value::<gui::player_config::NamedConfiguration>(&storage, "configuration")
+            .unwrap(),
+        configuration
+    );
+}
+
+#[test]
 fn configuration_creation_mapping_and_hardware_edits_persist_through_real_controls() {
     use eframe::App;
     use egui_kittest::{kittest::Queryable, Harness};
@@ -259,8 +291,26 @@ fn configuration_creation_mapping_and_hardware_edits_persist_through_real_contro
     common::settle_harness(&mut h);
     h.get_by_label("Create configuration").click();
     common::settle_harness(&mut h);
-    assert_eq!(h.state().player.catalog.configurations.len(), 2);
-    let selected = h.state().player.catalog.selected.clone();
+    assert_eq!(
+        h.state()
+            .player
+            .editor
+            .as_ref()
+            .unwrap()
+            .catalog
+            .configurations
+            .len(),
+        2
+    );
+    let selected = h
+        .state()
+        .player
+        .editor
+        .as_ref()
+        .unwrap()
+        .catalog
+        .selected
+        .clone();
     assert_ne!(selected, "standard");
     h.get_all_by_value("New configuration")
         .into_iter()
@@ -271,6 +321,9 @@ fn configuration_creation_mapping_and_hardware_edits_persist_through_real_contro
     assert!(h
         .state()
         .player
+        .editor
+        .as_ref()
+        .unwrap()
         .catalog
         .selected()
         .unwrap()
@@ -279,12 +332,45 @@ fn configuration_creation_mapping_and_hardware_edits_persist_through_real_contro
     h.get_by_label("DF1: connected").click();
     h.get_by_label("Create mapping").click();
     common::settle_harness(&mut h);
-    assert!(h.state().player.catalog.selected().unwrap().drives[1]);
-    assert_eq!(h.state().player.catalog.mappings.len(), 2);
-    assert_ne!(
-        h.state().player.catalog.mappings[0].id,
-        h.state().player.catalog.mappings[1].id
+    assert!(
+        h.state()
+            .player
+            .editor
+            .as_ref()
+            .unwrap()
+            .catalog
+            .selected()
+            .unwrap()
+            .launch
+            .drives[1]
     );
+    assert_eq!(
+        h.state()
+            .player
+            .editor
+            .as_ref()
+            .unwrap()
+            .catalog
+            .mappings
+            .len(),
+        2
+    );
+    assert_ne!(
+        h.state().player.editor.as_ref().unwrap().catalog.mappings[0].id,
+        h.state().player.editor.as_ref().unwrap().catalog.mappings[1].id
+    );
+    let committed_before = h.state().player.catalog.clone();
+    let mut draft_storage = MemoryStorage::new();
+    h.state_mut().save(&mut draft_storage);
+    let stored_before: gui::player_config::ConfigurationCatalog =
+        eframe::get_value(&draft_storage, gui::player_config::CONFIG_STORAGE_KEY).unwrap();
+    assert_eq!(
+        stored_before, committed_before,
+        "shutdown persisted a draft"
+    );
+    h.get_by_label("Save").click();
+    common::settle_harness(&mut h);
+    assert!(h.state().player.editor.is_none());
     let mut storage = MemoryStorage::new();
     h.state_mut().save(&mut storage);
     let restored: gui::player_config::ConfigurationCatalog =
@@ -295,5 +381,5 @@ fn configuration_creation_mapping_and_hardware_edits_persist_through_real_contro
         restored.mappings[1].keys,
         [0x11, 0x21, 0x20, 0x22, 0x40, 0x33]
     );
-    assert!(!restored.configurations[0].drives[1]);
+    assert!(!restored.configurations[0].launch.drives[1]);
 }

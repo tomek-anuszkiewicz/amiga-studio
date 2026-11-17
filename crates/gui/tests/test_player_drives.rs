@@ -183,18 +183,11 @@ fn rejected_player_restore_preserves_machine_generation_and_game_association() {
         panic!("snapshot");
     };
     let generation = owner.status().generation;
-    for (game_id, ports, expected) in [
-        (
-            Some("foreign".into()),
-            [DeviceKind::Mouse, DeviceKind::Joystick],
-            "different game",
-        ),
-        (
-            Some("current".into()),
-            [DeviceKind::Joystick, DeviceKind::Joystick],
-            "port devices",
-        ),
-    ] {
+    for (game_id, ports, expected) in [(
+        Some("foreign".into()),
+        [DeviceKind::Mouse, DeviceKind::Joystick],
+        "different game",
+    )] {
         let reply = owner.execute(HostRequest {
             id: 2,
             generation,
@@ -202,6 +195,7 @@ fn rejected_player_restore_preserves_machine_generation_and_game_association() {
                 json: before.clone(),
                 game_id,
                 ports,
+                resume: true,
             },
         });
         assert!(reply.value.unwrap_err().contains(expected));
@@ -215,4 +209,40 @@ fn rejected_player_restore_preserves_machine_generation_and_game_association() {
         assert_eq!(after.header.association, before.header.association);
         assert!(!owner.status().running);
     }
+}
+
+#[test]
+fn player_restore_accepts_changed_endpoints_and_preserves_saved_progress() {
+    let mut session = DebuggerSession::new();
+    session.machine.cpu.state.set_d_long(7, 0x12345678);
+    session.machine.game_ports.apply_mouse_delta(0, 5, -3);
+    session
+        .machine
+        .game_ports
+        .set_mouse_buttons(0, true, true, false);
+    session.machine.game_ports.set_joystick(1, [true; 6]);
+    let mut saved = debugger::SaveState::capture(&session.machine);
+    saved.header.association.game_id = Some("current".into());
+    let mut owner = MachineOwner::new(Box::new(DebuggerSession::new()));
+    execute(
+        &mut owner,
+        HostCommand::RestorePlayer {
+            json: saved.to_json().unwrap(),
+            game_id: Some("current".into()),
+            ports: [DeviceKind::Joystick, DeviceKind::Disconnected],
+            resume: false,
+        },
+    );
+    assert_eq!(
+        owner.status().ports,
+        [DeviceKind::Joystick, DeviceKind::Disconnected]
+    );
+    let HostValue::Snapshot(json) = execute(&mut owner, HostCommand::SaveSnapshot) else {
+        panic!("snapshot");
+    };
+    let restored = debugger::SaveState::from_json(&json).unwrap();
+    saved.state.game_ports.state.port1 = restored.state.game_ports.state.port1;
+    saved.state.game_ports.state.port2 = restored.state.game_ports.state.port2;
+    assert_eq!(restored.state, saved.state);
+    assert_eq!(restored.header.association, saved.header.association);
 }

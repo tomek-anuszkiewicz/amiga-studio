@@ -234,7 +234,18 @@ fn breakpoint_refreshes_the_first_stopped_frame_and_reset_load_invalidate_data()
     let mut output = render(&mut app, vec![]);
     output.append(common::settle(&mut app, &ctx));
     assert!(texts(&output).contains(&"CCK: 0".to_string()));
-    common::command(&mut app, HostCommand::LoadSnapshot(saved));
+    common::command(
+        &mut app,
+        HostCommand::RestorePlayer {
+            json: saved,
+            game_id: None,
+            ports: [
+                debugger::launch::DeviceKind::Mouse,
+                debugger::launch::DeviceKind::Joystick,
+            ],
+            resume: false,
+        },
+    );
     let mut output = render(&mut app, vec![]);
     output.append(common::settle(&mut app, &ctx));
     assert!(texts(&output).contains(&"$00112233".to_string()));

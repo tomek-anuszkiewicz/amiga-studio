@@ -1,7 +1,7 @@
 //! One host action policy shared by native and browser event adapters.
 
 use crate::host_input::HostInputEvent;
-use crate::player_config::{ConfigurationCatalog, InputSource, NamedConfiguration};
+use crate::player_config::{ControlConfiguration, InputSource, JoystickMapping};
 use std::collections::{HashMap, HashSet};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -20,7 +20,7 @@ pub struct GamepadSample {
 
 #[derive(Debug, Default)]
 pub struct InputMapping {
-    configuration: Option<(NamedConfiguration, ConfigurationCatalog)>,
+    configuration: Option<(ControlConfiguration, Vec<JoystickMapping>)>,
     held: HashSet<u8>,
     pads: HashMap<String, [bool; 6]>,
     blocked_pads: HashSet<String>,
@@ -32,20 +32,20 @@ pub struct InputMapping {
 impl InputMapping {
     pub fn configure(
         &mut self,
-        configuration: &NamedConfiguration,
-        catalog: &ConfigurationCatalog,
+        configuration: &ControlConfiguration,
+        mappings: &[JoystickMapping],
     ) -> bool {
         if self
             .configuration
             .as_ref()
-            .is_some_and(|(c, all)| c == configuration && all.mappings == catalog.mappings)
+            .is_some_and(|(c, all)| c == configuration && all == mappings)
         {
             return false;
         }
         self.release();
         self.action_buttons.clear();
         self.actions.clear();
-        self.configuration = Some((configuration.clone(), catalog.clone()));
+        self.configuration = Some((configuration.clone(), mappings.to_vec()));
         true
     }
     pub fn release(&mut self) {
@@ -78,10 +78,10 @@ impl InputMapping {
             return vec![HostInputEvent::Key { code, pressed }];
         };
         let shortcuts = [
-            &configuration.frontend.release,
-            &configuration.frontend.pause,
-            &configuration.frontend.save,
-            &configuration.frontend.load,
+            &configuration.host.frontend.release,
+            &configuration.host.frontend.pause,
+            &configuration.host.frontend.save,
+            &configuration.host.frontend.load,
         ];
         if shortcuts
             .iter()
@@ -94,7 +94,7 @@ impl InputMapping {
             let InputSource::Keyboard(id) = &binding.source else {
                 continue;
             };
-            let Some(mapping) = catalog.mapping(id) else {
+            let Some(mapping) = catalog.iter().find(|mapping| &mapping.id == id) else {
                 continue;
             };
             if mapping.keys.contains(&code) {
@@ -106,6 +106,7 @@ impl InputMapping {
             return events;
         }
         let guest = configuration
+            .host
             .keyboard
             .iter()
             .find(|(key, _)| *key == code)
@@ -114,6 +115,7 @@ impl InputMapping {
         let pressed = pressed
             || self.held.iter().any(|key| {
                 configuration
+                    .host
                     .keyboard
                     .iter()
                     .find(|(host, _)| host == key)
@@ -140,8 +142,8 @@ impl InputMapping {
         vec![match event {
             HostInputEvent::MouseMotion { dx, dy, .. } => HostInputEvent::MouseMotion {
                 port,
-                dx: (dx as f32 * configuration.mouse_sensitivity).round() as i32,
-                dy: (dy as f32 * configuration.mouse_sensitivity).round() as i32,
+                dx: (dx as f32 * configuration.host.mouse_sensitivity).round() as i32,
+                dy: (dy as f32 * configuration.host.mouse_sensitivity).round() as i32,
             },
             HostInputEvent::MouseButtons { left, right, .. } => HostInputEvent::MouseButtons {
                 port,
@@ -173,7 +175,7 @@ impl InputMapping {
         let Some((configuration, _)) = &self.configuration else {
             return;
         };
-        for shortcut in &configuration.gamepad_shortcuts {
+        for shortcut in &configuration.host.gamepad_shortcuts {
             if shortcut.identity != identity {
                 continue;
             }
@@ -217,7 +219,7 @@ impl InputMapping {
             {
                 continue;
             }
-            let Some(mapping) = catalog.mapping(mapping) else {
+            let Some(mapping) = catalog.iter().find(|candidate| &candidate.id == mapping) else {
                 continue;
             };
             let mut contacts = mapping

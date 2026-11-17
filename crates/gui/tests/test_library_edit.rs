@@ -216,7 +216,7 @@ fn editor_cancel_does_not_write_and_save_updates_the_active_games_path_without_r
     rom[0x100..0x102].copy_from_slice(&[0x60, 0xfe]);
     std::fs::write(&rom_path, rom).unwrap();
     let mut app = gui::EmulatorApp::default();
-    app.player.catalog.configurations[0].rom = rom_path.to_string_lossy().into_owned();
+    app.player.catalog.configurations[0].launch.rom = rom_path.to_string_lossy().into_owned();
     app.start_library_game(game.clone(), None, false);
     common::settle(&mut app, &egui::Context::default());
     app.player.catalog.library_root = root.to_string_lossy().into_owned();

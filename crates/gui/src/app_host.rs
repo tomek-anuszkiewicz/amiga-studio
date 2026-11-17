@@ -15,6 +15,7 @@ pub(crate) enum HostEffect {
     Inspection,
     File(FileCompletion),
     Player(crate::player::PlayerEffect),
+    Configuration,
 }
 
 #[derive(Debug)]
@@ -282,6 +283,7 @@ impl crate::EmulatorApp {
             match effect {
                 HostEffect::File(action) => self.complete_file_action(action, reply.value),
                 HostEffect::Player(action) => self.complete_player(action, reply.value),
+                HostEffect::Configuration => self.complete_configuration_save(reply.value),
                 HostEffect::Command | HostEffect::Run => {
                     if let Err(error) = reply.value {
                         self.file_error = Some(error);
@@ -410,7 +412,7 @@ impl crate::EmulatorApp {
                     && self.player.pending_launch.is_none(),
             );
             if let Some(configuration) = &self.player.active_configuration {
-                if !sender.configure(configuration, &self.player.catalog) {
+                if !sender.configure(&configuration.controls, &self.player.catalog.mappings) {
                     ctx.request_repaint_after(crate::host_runtime::HOST_RETRY_DELAY);
                 }
             }

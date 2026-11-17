@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "config"
 status: "active"
 created: 2026-09-05
-updated: 2026-11-16
+updated: 2026-11-17
 related: ["[General Architecture.md](General%20Architecture.md)", "[Physical Memory.md](Physical%20Memory.md)", "[MemoryBus.md](MemoryBus.md)", "[RTC.md](RTC.md)", "[Machine Loop.md](Machine%20Loop.md)"]
 tracked_paths:
   - "crates/config"
@@ -76,8 +76,14 @@ browser storage without caching ROM or disk contents. Reopening the browser
 requires explicit reselection of unavailable assets.
 
 The [GUI](Application/GUI.md) owns configuration editing and launch validation.
-Saved machine hardware is authoritative on restore; current host bindings apply
-only to compatible port devices. A mismatch requires configuration selection.
+Saved machine hardware, ROM and drive progress are authoritative on restore.
+Launch choices are separate from game-port attachments and host input settings.
+The active session keeps its named configuration identity when another profile
+is selected for a future launch. Its committed controls determine port attachment
+and host mappings after every player load, even when the captured device types differ.
+Host paths, controller identities, mappings and presentation preferences never
+belong to the machine snapshot. Editing launch choices does not change the
+existing machine or prevent its continuation.
 
 ## 5. Deferred Peripheral Extension
 

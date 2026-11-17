@@ -124,6 +124,18 @@ impl MachineOwner {
         self.playback.reset_timing();
     }
 
+    fn validate_game(&self, association: &debugger::SaveAssociation) -> Result<(), String> {
+        if self.association.game_id.is_some() && self.association.game_id != association.game_id {
+            return Err("This save belongs to a different game".into());
+        }
+        Ok(())
+    }
+
+    fn finish_user_load(&mut self, ports: [debugger::launch::DeviceKind; 2]) {
+        self.new_generation();
+        debugger::launch::reconcile_ports(&mut self.session, ports);
+    }
+
     fn apply(&mut self, command: HostCommand) -> Result<HostValue, String> {
         match command {
             HostCommand::Run => {
@@ -167,27 +179,18 @@ impl MachineOwner {
                 json,
                 game_id,
                 ports,
+                resume,
             } => {
                 let saved = debugger::SaveState::from_json(&json).map_err(|e| e.to_string())?;
                 if saved.header.association.game_id != game_id {
                     return Err("This save belongs to a different game".into());
                 }
-                // Validate host binding compatibility before replacing any live value.
-                let kinds = debugger::launch::state_port_kinds(&saved.state.game_ports);
-                if kinds != ports {
-                    return Err("Saved port devices differ from this configuration. Select compatible input bindings.".into());
+                self.session.load_state(&saved.state);
+                self.association = saved.header.association;
+                self.finish_user_load(ports);
+                if resume {
+                    self.session.toggle_run();
                 }
-                self.session.load_state(&saved.state);
-                self.association = saved.header.association;
-                self.new_generation();
-                self.session.toggle_run();
-                return Ok(HostValue::PlayerRestored(self.association.clone()));
-            }
-            HostCommand::LoadSnapshot(json) => {
-                let saved = debugger::SaveState::from_json(&json).map_err(|e| e.to_string())?;
-                self.session.load_state(&saved.state);
-                self.association = saved.header.association;
-                self.new_generation();
                 return Ok(HostValue::PlayerRestored(self.association.clone()));
             }
             HostCommand::SaveQuickSlot(slot) => {
@@ -196,12 +199,15 @@ impl MachineOwner {
                     .map_err(|e| e.to_string())?;
                 self.quick_associations[slot - 1] = self.association.clone();
             }
-            HostCommand::LoadQuickSlot(slot) => {
+            HostCommand::LoadQuickSlot { slot, ports } => {
+                if let Some(association) = self.quick_associations.get(slot.wrapping_sub(1)) {
+                    self.validate_game(association)?;
+                }
                 self.session
                     .load_quick_slot(slot)
                     .map_err(|e| e.to_string())?;
                 self.association = self.quick_associations[slot - 1].clone();
-                self.new_generation();
+                self.finish_user_load(ports);
                 return Ok(HostValue::PlayerRestored(self.association.clone()));
             }
             HostCommand::Launch { setup, association } => {
@@ -256,6 +262,10 @@ impl MachineOwner {
 
     fn apply_paused(&mut self, command: HostCommand) -> Result<HostValue, String> {
         match command {
+            HostCommand::ReconfigurePorts(ports) => {
+                self.new_generation();
+                debugger::launch::reconcile_ports(&mut self.session, ports);
+            }
             HostCommand::Inspect => {
                 return Ok(HostValue::Inspection(Box::new(
                     crate::host_inspection::HostInspection::capture(&self.session),

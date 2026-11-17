@@ -931,7 +931,6 @@ fn developer_image_click_admits_input_and_window_focus_loss_releases_it() {
 fn runtime_input_capture_pause_reset_and_load_release_obsolete_controls() {
     use gui::host_input::HostInputEvent;
     let mut host = start_host();
-    let neutral = snapshot(&mut host).to_json().unwrap();
     let sender = host.input_sender();
     let buttons = HostInputEvent::MouseButtons {
         port: 0,
@@ -978,6 +977,17 @@ fn runtime_input_capture_pause_reset_and_load_release_obsolete_controls() {
             & 0x40,
         0
     );
+    let held = snapshot(&mut host).to_json().unwrap();
+    // Capturing while held is observational; loading must release this actual
+    // saved contact state rather than rely on a neutral fixture.
+    assert_eq!(
+        snapshot(&mut host)
+            .state
+            .game_ports
+            .sample_ciaa_port_a_inputs()
+            & 0x40,
+        0
+    );
     capture(false);
     let before = host.status().input_deliveries;
     wait_status(&mut host, |status| status.input_deliveries >= before + 2);
@@ -1005,7 +1015,18 @@ fn runtime_input_capture_pause_reset_and_load_release_obsolete_controls() {
             & 0x40,
         0x40
     );
-    for command in [HostCommand::ResetWarm, HostCommand::LoadSnapshot(neutral)] {
+    for command in [
+        HostCommand::ResetWarm,
+        HostCommand::RestorePlayer {
+            json: held,
+            game_id: None,
+            ports: [
+                debugger::launch::DeviceKind::Mouse,
+                debugger::launch::DeviceKind::Joystick,
+            ],
+            resume: false,
+        },
+    ] {
         send(buttons, host.status().generation);
         let generation = host.status().generation;
         let reply = wait_reply(&mut host, command);
@@ -1071,7 +1092,7 @@ fn running_restore_and_keyboard_reset_invalidate_cached_controller_contacts() {
         let neutral = snapshot(&mut host);
         let sender = host.input_sender();
         let mut configuration = NamedConfiguration::default();
-        configuration.ports[1].source = InputSource::Gamepad {
+        configuration.controls.ports[1].source = InputSource::Gamepad {
             identity: "pad".into(),
             mapping: "arrows".into(),
         };
@@ -1082,7 +1103,12 @@ fn running_restore_and_keyboard_reset_invalidate_cached_controller_contacts() {
                 std::thread::yield_now();
             }
         };
-        retry(&mut || sender.configure(&configuration, &ConfigurationCatalog::default()));
+        retry(&mut || {
+            sender.configure(
+                &configuration.controls,
+                &ConfigurationCatalog::default().mappings,
+            )
+        });
         retry(&mut || sender.set_enabled(true, true));
         assert!(wait_reply(&mut host, HostCommand::Run).value.is_ok());
         let generation = host.status().generation;
@@ -1137,6 +1163,7 @@ fn running_restore_and_keyboard_reset_invalidate_cached_controller_contacts() {
                     json: neutral.to_json().unwrap(),
                     game_id: None,
                     ports,
+                    resume: true,
                 }
             )
             .value
