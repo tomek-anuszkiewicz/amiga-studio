@@ -8,6 +8,7 @@
 
 mod common;
 use eframe::Storage;
+use egui_kittest::kittest::NodeT;
 use gui::host_commands::HostCommand;
 use gui::{AppTheme, EmulatorApp, ScreenScale, UserPreferences, ViewMode};
 use std::collections::HashMap;
@@ -289,7 +290,7 @@ fn configuration_creation_mapping_and_hardware_edits_persist_through_real_contro
         .with_size(egui::vec2(1280.0, 1800.0))
         .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
     common::settle_harness(&mut h);
-    h.get_by_label("Create configuration").click();
+    h.get_by_label("Create configuration").click_accesskit();
     common::settle_harness(&mut h);
     assert_eq!(
         h.state()
@@ -312,11 +313,13 @@ fn configuration_creation_mapping_and_hardware_edits_persist_through_real_contro
         .selected
         .clone();
     assert_ne!(selected, "standard");
-    h.get_all_by_value("New configuration")
+    let name_editor = h
+        .get_all_by_value("New configuration")
         .into_iter()
-        .find(|node| node.role() == egui::accesskit::Role::TextInput)
-        .unwrap()
-        .type_text(" edited");
+        .find(|node| node.accesskit_node().role() == egui::accesskit::Role::TextInput)
+        .unwrap();
+    name_editor.focus();
+    name_editor.type_text(" edited");
     common::settle_harness(&mut h);
     assert!(h
         .state()
@@ -329,8 +332,8 @@ fn configuration_creation_mapping_and_hardware_edits_persist_through_real_contro
         .unwrap()
         .name
         .contains("edited"));
-    h.get_by_label("DF1: connected").click();
-    h.get_by_label("Create mapping").click();
+    h.get_by_label("DF1: connected").click_accesskit();
+    h.get_by_label("Create mapping").click_accesskit();
     common::settle_harness(&mut h);
     assert!(
         h.state()
@@ -368,7 +371,7 @@ fn configuration_creation_mapping_and_hardware_edits_persist_through_real_contro
         stored_before, committed_before,
         "shutdown persisted a draft"
     );
-    h.get_by_label("Save").click();
+    h.get_by_label("Save").click_accesskit();
     common::settle_harness(&mut h);
     assert!(h.state().player.editor.is_none());
     let mut storage = MemoryStorage::new();

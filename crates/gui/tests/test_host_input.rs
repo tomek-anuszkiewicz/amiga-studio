@@ -1,5 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::panic)]
 
+mod common;
+
 use config::{A500Config, VideoStandard};
 use gui::host_commands::{HostCommand, HostRequest};
 use gui::host_input::{HostInputEvent, InputConsumer, InputQueue, INPUT_QUEUE_CAPACITY};
@@ -236,67 +238,54 @@ fn guest_beam_restarts_do_not_starve_host_input_and_keyboard_reset_changes_gener
     assert_eq!(owner.status().cck, 0);
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 #[test]
-fn native_physical_modifiers_repeats_and_mouse_edges_preserve_their_meaning() {
-    use gui::host_native_input::NativeEvents;
-    use rdev::{Button, EventType, Key};
-    let mut events = NativeEvents::default();
+fn window_physical_modifiers_repeats_and_mouse_edges_preserve_their_meaning() {
+    use common::keyboard::{button, translate};
+    let mut events = gui::keyboard_input::KeyboardRouter::default();
     let key = |code, pressed| Some(HostInputEvent::Key { code, pressed });
     assert_eq!(
-        events.translate(EventType::KeyPress(Key::ShiftRight), true),
+        translate(&mut events, "ShiftRight", true, true),
         key(0x61, true)
     );
+    assert_eq!(translate(&mut events, "ShiftRight", true, true), None);
     assert_eq!(
-        events.translate(EventType::KeyPress(Key::ShiftRight), true),
-        None
-    );
-    assert_eq!(
-        events.translate(EventType::KeyRelease(Key::ShiftRight), true),
+        translate(&mut events, "ShiftRight", false, true),
         key(0x61, false)
     );
+    for (physical, pressed, guest_pressed) in [
+        ("ControlLeft", true, true),
+        ("ControlRight", true, true),
+        ("ControlLeft", false, true),
+        ("ControlRight", false, false),
+    ] {
+        assert_eq!(
+            translate(&mut events, physical, pressed, true),
+            key(0x63, guest_pressed)
+        );
+    }
+    let mut pointer = gui::window_pointer::WindowPointer::default();
+    let motion = egui::Event::MouseMoved(egui::vec2(3.0, -2.0));
+    assert_eq!(pointer.translate(&motion, false), None);
     assert_eq!(
-        events.translate(EventType::KeyPress(Key::ControlLeft), true),
-        key(0x63, true)
-    );
-    assert_eq!(
-        events.translate(EventType::KeyPress(Key::ControlRight), true),
-        key(0x63, true)
-    );
-    assert_eq!(
-        events.translate(EventType::KeyRelease(Key::ControlLeft), true),
-        key(0x63, true)
-    );
-    assert_eq!(
-        events.translate(EventType::KeyRelease(Key::ControlRight), true),
-        key(0x63, false)
-    );
-    assert_eq!(
-        events.translate(EventType::MouseMove { x: 100.0, y: 200.0 }, false),
-        None
-    );
-    assert_eq!(
-        events.translate(EventType::MouseMove { x: 103.0, y: 198.0 }, true),
+        pointer.translate(&motion, true),
         Some(HostInputEvent::MouseMotion {
             port: 0,
             dx: 3,
             dy: -2
         })
     );
-    for (button, index) in [(Button::Left, 0), (Button::Right, 1)] {
+    for (raw, index) in [
+        (egui::PointerButton::Primary, 0),
+        (egui::PointerButton::Secondary, 1),
+    ] {
         for pressed in [true, false] {
-            let raw = if pressed {
-                EventType::ButtonPress(button)
-            } else {
-                EventType::ButtonRelease(button)
-            };
             assert_eq!(
-                events.translate(raw, true),
+                pointer.translate(&button(raw, pressed), true),
                 Some(HostInputEvent::MouseButtons {
                     port: 0,
                     left: pressed && index == 0,
                     right: pressed && index == 1,
-                    middle: pressed && index == 2
+                    middle: false
                 })
             );
         }
@@ -363,78 +352,50 @@ fn a_field_boundary_preserves_the_remaining_ordered_input_for_the_next_slice() {
     assert!(input.pending.is_empty());
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 #[test]
-fn native_shortcuts_disabled_capture_and_key_groups_keep_their_contracts() {
-    use gui::host_native_input::NativeEvents;
-    use rdev::{Button, EventType, Key};
-    let mut events = NativeEvents::default();
+fn window_shortcuts_disabled_capture_and_key_groups_keep_their_contracts() {
+    use common::keyboard::{button, translate};
+    let mut events = gui::keyboard_input::KeyboardRouter::default();
+    let mut pointer = gui::window_pointer::WindowPointer::default();
+    assert_eq!(translate(&mut events, "KeyA", true, false), None);
+    assert_eq!(translate(&mut events, "KeyA", false, false), None);
     assert_eq!(
-        events.translate(EventType::KeyPress(Key::KeyA), false),
+        pointer.translate(&button(egui::PointerButton::Primary, true), false),
         None
     );
+    translate(&mut events, "ControlLeft", true, true);
     assert_eq!(
-        events.translate(EventType::KeyRelease(Key::KeyA), false),
-        None
-    );
-    assert_eq!(
-        events.translate(EventType::ButtonPress(Button::Left), false),
-        None
-    );
-    events.translate(EventType::KeyPress(Key::ControlLeft), true);
-    assert_eq!(
-        events.translate(EventType::KeyPress(Key::KeyR), true),
+        translate(&mut events, "KeyR", true, true),
         Some(HostInputEvent::Key {
             code: 0x13,
             pressed: true
         })
     );
-    events.translate(EventType::KeyRelease(Key::KeyR), true);
-    events.translate(EventType::KeyRelease(Key::ControlLeft), true);
-    for (key, code) in [
-        (Key::KeyA, 0x20),
-        (Key::KeyQ, 0x10),
-        (Key::Num1, 0x01),
-        (Key::BackQuote, 0x00),
-        (Key::IntlBackslash, 0x30),
-        (Key::F1, 0x50),
-        (Key::KpReturn, 0x43),
-        (Key::AltGr, 0x65),
+    translate(&mut events, "KeyR", false, true);
+    translate(&mut events, "ControlLeft", false, true);
+    for (physical, code) in [
+        ("KeyA", 0x20),
+        ("KeyQ", 0x10),
+        ("Digit1", 0x01),
+        ("Backquote", 0x00),
+        ("IntlBackslash", 0x30),
+        ("F1", 0x50),
+        ("NumpadEnter", 0x43),
+        ("AltRight", 0x65),
+        ("F2", 0x51),
     ] {
-        assert_eq!(
-            events.translate(EventType::KeyPress(key), true),
-            Some(HostInputEvent::Key {
-                code,
-                pressed: true
-            })
-        );
-        assert_eq!(
-            events.translate(EventType::KeyRelease(key), true),
-            Some(HostInputEvent::Key {
-                code,
-                pressed: false
-            })
-        );
+        for pressed in [true, false] {
+            assert_eq!(
+                translate(&mut events, physical, pressed, true),
+                Some(HostInputEvent::Key { code, pressed })
+            );
+        }
     }
-    assert_eq!(
-        events.translate(EventType::KeyPress(Key::F2), true),
-        Some(HostInputEvent::Key {
-            code: 0x51,
-            pressed: true
-        })
-    );
-    assert_eq!(
-        events.translate(EventType::ButtonPress(Button::Middle), true),
-        None
-    );
-    assert_eq!(
-        events.translate(EventType::ButtonRelease(Button::Middle), true),
-        None
-    );
-    assert_eq!(
-        events.translate(EventType::ButtonPress(Button::Unknown(9)), true),
-        None
-    );
+    for raw in [egui::PointerButton::Middle, egui::PointerButton::Extra1] {
+        for pressed in [true, false] {
+            assert_eq!(pointer.translate(&button(raw, pressed), true), None);
+        }
+    }
     assert_eq!(gui::host_keys::amiga_key_code("UnmappedKey"), None);
 }
 

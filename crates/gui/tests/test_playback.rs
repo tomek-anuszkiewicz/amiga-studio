@@ -29,7 +29,13 @@ fn debugger_run_keeps_video_updates_and_pause_control_while_cpu_status_is_stoppe
     app.host.queue(HostCommand::Run);
     let mut harness = Harness::builder()
         .with_size(egui::vec2(1280.0, 720.0))
-        .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
+        .build_state(
+            |ctx, app: &mut EmulatorApp| {
+                common::keyboard::inject_taps(ctx, app.host.status.generation);
+                app.update_ui(ctx)
+            },
+            app,
+        );
     let deadline = Instant::now() + Duration::from_secs(10);
     let mut prior_cck = 0;
     let mut prior_field = 0;
@@ -66,7 +72,9 @@ fn debugger_run_keeps_video_updates_and_pause_control_while_cpu_status_is_stoppe
         }
         std::thread::sleep(Duration::from_millis(1));
     }
-    harness.get_by_label("\u{23f8} Pause (F5)").click();
+    harness
+        .get_by_label("\u{23f8} Pause (F5)")
+        .click_accesskit();
     common::wait_harness(&mut harness, |app| !app.host.status.running);
     assert!(!harness.state().host.status.running);
     harness.get_by_label("\u{25b6} Run (F5)");
@@ -91,7 +99,10 @@ fn frame_shortcut_and_toolbar_controls_are_operable() {
             modifiers: Modifiers::SHIFT,
             ..Default::default()
         },
-        |ctx| app.update_ui(ctx),
+        |ctx| {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        },
     );
     common::wait(&mut app, &ctx, |app| {
         !app.host.status.running && app.host.status.field_number == 1
@@ -100,18 +111,26 @@ fn frame_shortcut_and_toolbar_controls_are_operable() {
     assert!(!app.host.status.running);
     let mut harness = Harness::builder()
         .with_size(egui::vec2(1280.0, 720.0))
-        .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
+        .build_state(
+            |ctx, app: &mut EmulatorApp| {
+                common::keyboard::inject_taps(ctx, app.host.status.generation);
+                app.update_ui(ctx)
+            },
+            app,
+        );
     common::settle_harness(&mut harness);
-    harness.get_by_label("Faster").click();
+    harness.get_by_label("Faster").click_accesskit();
     common::settle_harness(&mut harness);
     assert_eq!(harness.state().host.status.speed, 2.0);
-    harness.get_by_label("Slower").click();
+    harness.get_by_label("Slower").click_accesskit();
     common::settle_harness(&mut harness);
     assert_eq!(harness.state().host.status.speed, 1.0);
-    harness.get_by_label("1x").click();
+    harness.get_by_label("1x").click_accesskit();
     common::settle_harness(&mut harness);
     assert_eq!(harness.state().host.status.speed, 1.0);
-    harness.get_by_label("Step Frame (Shift+F11)").click();
+    harness
+        .get_by_label("Step Frame (Shift+F11)")
+        .click_accesskit();
     common::wait_harness(&mut harness, |app| {
         !app.host.status.running && app.host.status.field_number == 2
     });

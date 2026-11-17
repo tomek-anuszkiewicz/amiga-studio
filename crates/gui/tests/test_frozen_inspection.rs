@@ -72,14 +72,17 @@ fn run_retains_inspector_text_and_rows_until_stop_then_steps_refresh() {
     let mut harness = Harness::builder()
         .with_size(egui::vec2(1920.0, 1080.0))
         .build_state(
-            |ctx, app: &mut EmulatorApp| app.update_ui(ctx),
+            |ctx, app: &mut EmulatorApp| {
+                common::keyboard::inject_taps(ctx, app.host.status.generation);
+                app.update_ui(ctx)
+            },
             inspection_app(),
         );
     common::settle_harness(&mut harness);
     let before = texts(harness.output());
     assert!(before.iter().any(|s| s == "$00112233"));
     assert!(before.iter().any(|s| s.starts_with("00003000:")));
-    harness.get_by_label("▶ Run (F5)").click();
+    harness.get_by_label("▶ Run (F5)").click_accesskit();
     harness.run_steps(4);
     common::settle_harness(&mut harness);
     assert!(harness.state().host.status.running);
@@ -114,8 +117,8 @@ fn run_retains_inspector_text_and_rows_until_stop_then_steps_refresh() {
         .is_empty());
 
     // Raw keyboard events must not bypass disabled inspection controls.
-    harness.press_key_modifiers(Modifiers::ALT, Key::T);
-    harness.press_key(Key::F10);
+    harness.key_press_modifiers(Modifiers::ALT, Key::T);
+    harness.key_press(Key::F10);
     harness.run_steps(2);
     common::settle_harness(&mut harness);
     assert!(harness
@@ -138,7 +141,7 @@ fn run_retains_inspector_text_and_rows_until_stop_then_steps_refresh() {
         .is_empty());
     assert_same_text(texts(harness.output()), before.clone());
 
-    harness.get_by_label("⏸ Pause (F5)").click();
+    harness.get_by_label("⏸ Pause (F5)").click_accesskit();
     harness.run_steps(2);
     common::settle_harness(&mut harness);
     common::wait_harness(&mut harness, |app| !app.host.status.running);
@@ -152,7 +155,7 @@ fn run_retains_inspector_text_and_rows_until_stop_then_steps_refresh() {
         (Key::F11, Modifiers::SHIFT),
     ] {
         let previous_cck = harness.state().host.status.cck;
-        harness.press_key_modifiers(modifiers, key);
+        harness.key_press_modifiers(modifiers, key);
         common::wait_harness(&mut harness, |app| {
             !app.host.status.running && app.host.status.cck > previous_cck
         });
@@ -201,7 +204,10 @@ fn breakpoint_refreshes_the_first_stopped_frame_and_reset_load_invalidate_data()
                 events,
                 ..Default::default()
             },
-            |ctx| app.update_ui(ctx),
+            |ctx| {
+                common::keyboard::inject_taps(ctx, app.host.status.generation);
+                app.update_ui(ctx)
+            },
         )
     };
     render(&mut app, vec![]);
@@ -287,10 +293,16 @@ fn extra_layout_pass_and_game_only_startup_do_not_inspect_live_values() {
         ..Default::default()
     };
     for _ in 0..3 {
-        let _ = ctx.run(input.clone(), |ctx| app.update_ui(ctx));
+        let _ = ctx.run(input.clone(), |ctx| {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        });
     }
     common::settle(&mut app, &ctx);
-    let before = ctx.run(input.clone(), |ctx| app.update_ui(ctx));
+    let before = ctx.run(input.clone(), |ctx| {
+        common::keyboard::inject_taps(ctx, app.host.status.generation);
+        app.update_ui(ctx)
+    });
     app.host.queue(HostCommand::Run);
     let output = ctx.run(input.clone(), |ctx| {
         app.update_ui(ctx);
@@ -346,18 +358,24 @@ fn run_keeps_an_open_editor_inactive_across_keyboard_input_and_resize() {
     app.active_reg_edit = Some((gui::EditRegister::D(7), "DEADBEEF".to_string()));
     let mut harness = Harness::builder()
         .with_size(egui::vec2(1920.0, 1080.0))
-        .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
+        .build_state(
+            |ctx, app: &mut EmulatorApp| {
+                common::keyboard::inject_taps(ctx, app.host.status.generation);
+                app.update_ui(ctx)
+            },
+            app,
+        );
     common::settle_harness(&mut harness);
-    harness.press_key(Key::F5);
+    harness.key_press(Key::F5);
     harness.run_steps(2);
     common::settle_harness(&mut harness);
     assert!(!harness.state().host.status.running);
     assert_eq!(common::snapshot(harness.state_mut()).cpu.d_long(7), 0);
-    harness.get_by_label("▶ Run (F5)").click();
+    harness.get_by_label("▶ Run (F5)").click_accesskit();
     harness.run_steps(2);
     common::settle_harness(&mut harness);
     assert!(harness.state().host.status.running);
-    harness.press_key(Key::Enter);
+    harness.key_press(Key::Enter);
     harness.set_size(egui::vec2(1280.0, 720.0));
     harness.run_steps(2);
     common::settle_harness(&mut harness);
@@ -386,11 +404,14 @@ fn binary_load_during_run_retains_inspectors_until_the_owner_stops() {
     let mut harness = Harness::builder()
         .with_size(egui::vec2(1920.0, 1080.0))
         .build_state(
-            |ctx, app: &mut EmulatorApp| app.update_ui(ctx),
+            |ctx, app: &mut EmulatorApp| {
+                common::keyboard::inject_taps(ctx, app.host.status.generation);
+                app.update_ui(ctx)
+            },
             inspection_app(),
         );
     common::settle_harness(&mut harness);
-    harness.get_by_label("\u{25b6} Run (F5)").click();
+    harness.get_by_label("\u{25b6} Run (F5)").click_accesskit();
     common::wait_harness(&mut harness, |app| app.host.status.running);
     let generation = harness.state().host.status.generation;
     harness.state_mut().pending_binary = Some(gui::BinarySource::Bytes {
@@ -401,7 +422,7 @@ fn binary_load_during_run_retains_inspectors_until_the_owner_stops() {
     harness.state_mut().load_target_addr_str = "004000".into();
     harness.state_mut().load_auto_prime = false;
     common::settle_harness(&mut harness);
-    harness.get_by_label("Load into Memory").click();
+    harness.get_by_label("Load into Memory").click_accesskit();
     common::wait_harness(&mut harness, |app| app.host.status.generation != generation);
     assert!(harness.state().host.status.running);
     assert!(
@@ -410,7 +431,9 @@ fn binary_load_during_run_retains_inspectors_until_the_owner_stops() {
     );
     assert!(!harness.state().load_binary_modal_open);
     harness.get_by_label("$00112233");
-    harness.get_by_label("\u{23f8} Pause (F5)").click();
+    harness
+        .get_by_label("\u{23f8} Pause (F5)")
+        .click_accesskit();
     common::wait_harness(&mut harness, |app| !app.host.status.running);
     let data = harness.state().host.data.as_ref().unwrap();
     assert_eq!(data.memory.read_word_debug(0x4000), 0x4e71);

@@ -435,7 +435,7 @@ pub(crate) fn render_memory_hex(
 
                                 // If user is actively editing this byte
                                 if edit_buffer.0 == byte_addr && !edit_buffer.1.is_empty() {
-                                    ui.allocate_new_ui(
+                                    ui.scope_builder(
                                         egui::UiBuilder::new().max_rect(cell_rect),
                                         |ui| {
                                             let edit_res = ui.add(
@@ -568,7 +568,7 @@ pub(crate) fn render_memory_hex(
                                                 byte_addr,
                                                 WatchAccess::Write,
                                             );
-                                            ui.close_menu();
+                                            ui.close_kind(egui::UiKind::Menu);
                                         }
                                         if ui.button("👁 Set Watchpoint Read (1 Byte)").clicked()
                                         {
@@ -577,7 +577,7 @@ pub(crate) fn render_memory_hex(
                                                 byte_addr,
                                                 WatchAccess::Read,
                                             );
-                                            ui.close_menu();
+                                            ui.close_kind(egui::UiKind::Menu);
                                         }
                                         if ui
                                             .button("⚡ Set Watchpoint Any Access (1 Byte)")
@@ -588,7 +588,7 @@ pub(crate) fn render_memory_hex(
                                                 byte_addr,
                                                 WatchAccess::Any,
                                             );
-                                            ui.close_menu();
+                                            ui.close_kind(egui::UiKind::Menu);
                                         }
                                         ui.separator();
                                         if ui
@@ -600,7 +600,7 @@ pub(crate) fn render_memory_hex(
                                                 byte_addr.wrapping_add(1) & physical_memory::MASK_PHYSICAL_ADDRESS,
                                                 WatchAccess::Write,
                                             );
-                                            ui.close_menu();
+                                            ui.close_kind(egui::UiKind::Menu);
                                         }
                                         if ui
                                             .button("Set Long Watchpoint (4 Bytes, Write)")
@@ -611,13 +611,13 @@ pub(crate) fn render_memory_hex(
                                                 byte_addr.wrapping_add(3) & physical_memory::MASK_PHYSICAL_ADDRESS,
                                                 WatchAccess::Write,
                                             );
-                                            ui.close_menu();
+                                            ui.close_kind(egui::UiKind::Menu);
                                         }
                                         if byte.watchpoint {
                                             ui.separator();
                                             if ui.button("🗑 Remove Watchpoint").clicked() {
                                                 breakpoints.remove_watchpoints_at(byte_addr);
-                                                ui.close_menu();
+                                                ui.close_kind(egui::UiKind::Menu);
                                             }
                                         }
                                     });

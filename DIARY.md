@@ -2684,6 +2684,43 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - merge resolutions retain both parent behaviors and migrate the additional activity test to explicit RestorePlayer
   - combined canonical verification and independent review are pending at preparation
   - physical controllers and private firmware remain unverified and this integration does not close a roadmap milestone
+
+---
+
+### [2026-11-17 14:39 CET] — Close window keyboard routing and integrate current configuration controls
+- **Affected Subsystems**:
+  - `GUI host input`
+  - `native window and browser adapters`
+  - `frontend configuration`
+  - `roadmap`
+- **What Was Changed (The Concrete Reality)**:
+  - KEYBOARD-DIAGNOSTICS-20261117: replace global rdev keyboard and mouse listeners with application-window input and one native/browser keyboard routing policy
+  - use upstream eframe/egui 0.32.3 through the public external-event-loop API without vendored patches
+  - remove the temporary keyboard terminal and all added tracing
+  - retain physical modifier sides, keypad identities, command edges, session generations, bounded queues and gilrs gamepads
+  - reconcile the current controls.host configuration structure, draft editor and schema 13 user-load release policy from master
+  - preserve accepted frontend bindings without guest counterparts and retain queued keys across host activation/publication delays
+  - cover obsolete generations, physical held/released keys, focus-loss ordering, inbox and cross-frame retry overflow through the GUI-to-owner path
+  - verify full frontend modifier/command routing, GUI zoom and stopped Developer recording without starting the machine
+  - expose the existing native key enqueue boundary for typed metadata and bounded-buffer regressions
+  - record deferred profiler-guided CPU reduction in roadmap 8.5
+  - working commits e162dae and 4c3eb88 await this combined verification
+- **Architectural Rationale & Trade-Offs**:
+  - Preserve master history and current configuration/save behavior while limiting keyboard observation to the application window
+  - host adapters stay outside the CCK-driven hardware models
+  - the user approved local integration, closure and removal of both keyboard experiment worktrees, including the discarded older rdev experiment
+- **Verification & Test Results**:
+  - Pre-integration source: 120 selected Rust tests, browser adapter Node test and native/WASM builds passed
+  - the user confirmed Workbench Notepad and Cadaver on the preceding window-input experiment
+  - merged GUI and all tests compile after configuration and egui API reconciliation
+  - independent review reproduced lost Home/End/F11/PageDown actions; its new regression failed before the frontend-position correction and passed afterward
+  - the new ingress regression reproduced first-key loss before host activation; the corrected activation/owner-readiness retry and both ingress regressions passed
+  - the default cargo-llvm-cov 0.9.1 wrapper omitted GUI instrumentation despite running its tests; an isolated documented non-wrapper full-GUI measurement supplied actual GUI coverage without changing enforcement
+  - GUI settlement now includes pending host mapping/capture activation; synthetic gamepad transitions after text focus resume wait for that acknowledgment while preserving all original gameplay assertions
+  - final upstream-adapter physical typing, physical gamepad freshness and Linux/macOS execution remain unverified
+  - canonical combined results and the four scoped review verdicts are required before publication and recorded by the final integration commit
+  - no roadmap implementation milestone or remote publication is claimed
+
 ---
 
 ### [2026-11-17 15:00 CET] — Simplify memory admission with CCK timestamps
@@ -2730,3 +2767,28 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - a controlled temporary reproduction demonstrated a GUI reply consumed by direct snapshot polling and a permanently non-idle AppHost
   - the diagnostic was removed
   - final combined batch validation pending
+---
+
+### [2026-11-17 16:23 CET] — Close memory invariant simplification and integrate current window input
+- **Affected Subsystems**:
+  - `CPU`
+  - `Chip RAM`
+  - `machine loop`
+  - `snapshots`
+  - `GUI input fixtures`
+- **What Was Changed (The Concrete Reality)**:
+  - Close MEMORY-INVARIANT-SIMPLIFICATION-20261117 by integrating task commits 68d908e and fb6c76f with master b17f9b3 through a real merge
+  - retain normalized CPU cycle-start spacing and shared Chip RAM timestamps
+  - preserve the GUI reply-ownership fixture repair, current window keyboard routing and deferred profiler roadmap work
+  - combine both histories in the rolling changelog and regenerate runtime evidence
+  - migrate the browser workflow's snapshot assertion to schema 14 without changing its other checks
+- **Architectural Rationale & Trade-Offs**:
+  - Source-only verification does not establish the combined result after master advances
+  - preserve all original commits and both sets of behavior, then conditionally publish the exact approved target transition
+- **Verification & Test Results**:
+  - Task source fb6c76f passed canonical verification with 890 ordinary tests and three existing private-fixture skips, WebAssembly, Clippy and four independent reviews
+  - original native PAL measurements showed median throughput +2.39 percent at matching guest progress with GUI and pacing excluded
+  - integration verification and four fresh reviews are pending
+  - the initial integrated run passed 900 ordinary tests; stale coverage executables exceeded the Windows export command limit, so workspace coverage artifacts were refreshed before repeating verification
+  - source-only performance is historical evidence and was not remeasured for the integrated frontend
+  - full SingleStep, hardware captures, private firmware and browser performance are not established

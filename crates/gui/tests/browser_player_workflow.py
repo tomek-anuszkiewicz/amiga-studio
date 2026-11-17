@@ -93,7 +93,7 @@ def check_workflow(browser, url, rom, disk, output):
         saved_path = output / "exported.json"
         download.value.save_as(saved_path)
         saved = json.loads(saved_path.read_text(encoding="utf-8"))
-        assert saved["header"]["version"] == 13
+        assert saved["header"]["version"] == 14
         assert saved["header"]["timestamp"] > 0
         assert saved["header"]["screenshot_png"]
         assert saved["state"]["floppy"]["drives"][0]["disk_inserted"]

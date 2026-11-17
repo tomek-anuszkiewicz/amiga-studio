@@ -43,7 +43,8 @@
   - [8.2: End-to-End Bootable ADF Integration Testing](#task-8-2)
   - [8.3: CPU Core Memory Footprint Audit & Compaction Assessment](#task-8-3)
   - [8.4: Cross-Architecture & Mobile Performance Projections](#task-8-4)
-  - [8.5: Fidelity & Regression Validation Gate](#task-8-5)
+  - [8.5: Profiler-Guided CPU Usage Reduction (Deferred)](#task-8-5)
+  - [8.6: Fidelity & Regression Validation Gate](#task-8-6)
 - [Step 9: Documentation-to-Code Regeneration Experiment](#step-9)
   - [9.1: Isolated Documentation-to-Code Regeneration Trial](#task-9-1)
 - [Step 10: Later Hardware and Diagnostic Extensions](#step-10)
@@ -467,7 +468,14 @@ bring-up failures. Light-pen/gun input (12.5), external genlock synchronization
 
 <a id="task-8-5"></a>
 
-- **8.5: Fidelity & Regression Validation Gate**
+- **8.5: Profiler-Guided CPU Usage Reduction (Deferred)**
+  - **Objective:** Lower host CPU usage by reducing unnecessary work in measured emulator, host runtime and frontend hot paths, while preserving machine behavior and CCK timing.
+  - Review critical code identified by representative whole-machine profiles manually, or use an interactive agent/profiler loop: profile, select a hotspot, simplify or optimize it, run relevant correctness tests, measure again, and repeat.
+  - **Verification Gate:** Compare CPU time at the same emulated progress and playback speed, plus uncapped throughput, against the original baseline under matching workloads and configurations. Cover native desktop and WASM; retain measured improvements without correctness or timing regressions.
+
+<a id="task-8-6"></a>
+
+- **8.6: Fidelity & Regression Validation Gate**
   - **Objective:** Final regression certification across all optimization and refactoring phases.
   - **Actionable Scope:**
     - Ensure every optimized handler retains 100% cycle-exact Color Clock fidelity.

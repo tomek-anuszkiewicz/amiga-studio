@@ -62,16 +62,17 @@ test('browser capture release and independent gamepad polling', async () => {
         events.length = 0;
         let prevented = false;
         window.fire('keydown', {code: 'KeyR', ctrlKey: true, preventDefault() {prevented = true;}});
-        assert.equal(events.at(-1)[0], 'keydown');
-        assert.equal(events.at(-1)[1], 'KeyR');
+        assert.equal(events.at(-1)[0], 'key');
+        assert.equal(JSON.parse(events.at(-1)[1]).physical, 'KeyR');
         assert.ok(prevented, 'Ctrl+R reaches the guest without browser reload');
         for (const code of ['Escape', 'F2']) {
             window.fire('keydown', {code, preventDefault() {}});
-            assert.equal(events.at(-1)[1], code);
+            assert.equal(JSON.parse(events.at(-1)[1]).physical, code);
         }
         const before = events.length;
         window.fire('keydown', {code: 'F12', preventDefault() {}});
-        assert.equal(events.length, before, 'F12 remains a frontend key');
+        assert.equal(events.length, before + 1, 'F12 enters the shared Rust command policy');
+        assert.equal(JSON.parse(events.at(-1)[1]).physical, 'F12');
         accepting = false;
         window.fire('keydown', {code: 'KeyA', preventDefault() {}});
         canvas.fire('pointerdown', {button: 1, buttons: 4, preventDefault() {}});
@@ -81,7 +82,7 @@ test('browser capture release and independent gamepad polling', async () => {
         accepting = true;
         bridge.set_host_input_enabled(false, true, 6, 1n);
         assert.ok(events.some(event => event[0] === 'capture-release'));
-        assert.ok(!events.some(event => event[1] === 'KeyA'), 'Capture release discards lock-contended keyboard backlog');
+        assert.ok(!events.some(event => event[0] === 'key' && JSON.parse(event[1]).physical === 'KeyA'), 'Capture release discards lock-contended keyboard backlog');
         assert.ok(!events.some(event => event[0] === 'mouse'), 'Middle mouse never reaches the guest');
         bridge.set_host_input_enabled(false, true, 6, 1n);
         poll();

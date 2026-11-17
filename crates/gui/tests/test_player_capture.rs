@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::panic)]
 mod common;
+use egui_kittest::kittest::NodeT;
 use gui::host_commands::{HostCommand, HostValue};
 use gui::{EmulatorApp, ViewMode};
 
@@ -34,7 +35,10 @@ fn draw(app: &mut EmulatorApp, ctx: &egui::Context, key: Option<egui::Key>) {
             events,
             ..Default::default()
         },
-        |ctx| app.update_ui(ctx),
+        |ctx| {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        },
     );
 }
 #[test]
@@ -44,6 +48,113 @@ fn captured_tab_keeps_guest_focus_instead_of_navigating_host_controls() {
     draw(&mut app, &ctx, Some(egui::Key::Tab));
     assert!(ctx.memory(|memory| memory.has_focus(egui::Id::new("amiga-screen-input"))));
     assert!(app.player.captured);
+}
+
+fn window_keys(app: &mut EmulatorApp, ctx: &egui::Context, edges: &[(&str, bool, u64)]) {
+    let raw: Vec<_> = edges
+        .iter()
+        .map(|(physical, pressed, generation)| {
+            (
+                (*physical).to_owned(),
+                "different logical key".to_owned(),
+                *pressed,
+                false,
+                false,
+                *generation,
+            )
+        })
+        .collect();
+    ctx.data_mut(|data| data.insert_temp(egui::Id::new("window_keyboard_events"), raw));
+    draw(app, ctx, None);
+}
+
+fn guest_key_held(app: &mut EmulatorApp, code: usize) -> bool {
+    let keyboard = serde_json::to_value(&owner_snapshot(app).keyboard).unwrap();
+    keyboard["held"][code / 64].as_u64().unwrap() & (1 << (code % 64)) != 0
+}
+
+fn wait_guest_key(app: &mut EmulatorApp, ctx: &egui::Context, code: usize, held: bool) {
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    loop {
+        common::settle(app, ctx);
+        if guest_key_held(app, code) == held {
+            return;
+        }
+        assert!(
+            std::time::Instant::now() < deadline,
+            "Guest key {code:#x} did not become held={held}"
+        );
+        std::thread::yield_now();
+    }
+}
+
+#[test]
+fn window_ingress_rejects_stale_generations_and_delivers_physical_hold_and_release() {
+    let (mut app, ctx) = running();
+    let generation = app.host.status.generation;
+    // Reproduce a GUI capture request whose host activation has not yet applied.
+    let sender = app.host.runtime.as_ref().unwrap().input_sender();
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    while !sender.set_enabled(false, true) {
+        assert!(std::time::Instant::now() < deadline);
+        std::thread::yield_now();
+    }
+    window_keys(
+        &mut app,
+        &ctx,
+        &[
+            ("KeyA", true, generation.wrapping_sub(1)),
+            ("KeyB", true, generation),
+        ],
+    );
+    wait_guest_key(&mut app, &ctx, 0x35, true);
+    assert!(!guest_key_held(&mut app, 0x20), "Stale A reached the guest");
+    assert!(app.player.captured);
+    window_keys(&mut app, &ctx, &[("KeyB", false, generation)]);
+    wait_guest_key(&mut app, &ctx, 0x35, false);
+    assert!(app.player.captured);
+    for (physical, code) in [("SuperLeft", 0x66), ("SuperRight", 0x67)] {
+        window_keys(&mut app, &ctx, &[(physical, true, generation)]);
+        wait_guest_key(&mut app, &ctx, code, true);
+        window_keys(&mut app, &ctx, &[(physical, false, generation)]);
+        wait_guest_key(&mut app, &ctx, code, false);
+    }
+}
+
+#[test]
+fn window_ingress_focus_loss_and_inbox_overflow_release_held_guest_input() {
+    let (mut app, ctx) = running();
+    let generation = app.host.status.generation;
+    window_keys(&mut app, &ctx, &[("KeyA", true, generation)]);
+    wait_guest_key(&mut app, &ctx, 0x20, true);
+    window_keys(
+        &mut app,
+        &ctx,
+        &[
+            ("__focus_lost__", false, generation),
+            ("KeyB", true, generation),
+        ],
+    );
+    wait_guest_key(&mut app, &ctx, 0x20, false);
+    assert!(!app.player.captured);
+    assert!(app.host.status.running);
+    assert!(!guest_key_held(&mut app, 0x20));
+    assert!(
+        !guest_key_held(&mut app, 0x35),
+        "B escaped focus-loss ordering"
+    );
+
+    ctx.memory_mut(|memory| memory.request_focus(egui::Id::new("amiga-screen-input")));
+    app.player.captured = true;
+    window_keys(&mut app, &ctx, &[("KeyA", true, generation)]);
+    wait_guest_key(&mut app, &ctx, 0x20, true);
+    let overflow = vec![("KeyB", true, generation); gui::host_input::INPUT_QUEUE_CAPACITY + 1];
+    window_keys(&mut app, &ctx, &overflow);
+    wait_guest_key(&mut app, &ctx, 0x20, false);
+    assert!(!app.player.captured);
+    assert!(app.host.status.running);
+    assert!(!guest_key_held(&mut app, 0x20), "Overflow left A held");
+    assert!(!guest_key_held(&mut app, 0x35), "Overflow replayed B");
 }
 
 #[test]
@@ -87,9 +198,19 @@ fn long_disk_names_keep_the_wide_player_panel_compact() {
     app.player.mounted[0] = Some("long".into());
     let mut harness = Harness::builder()
         .with_size(egui::vec2(1280.0, 800.0))
-        .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
+        .build_state(
+            |ctx, app: &mut EmulatorApp| {
+                common::keyboard::inject_taps(ctx, app.host.status.generation);
+                app.update_ui(ctx)
+            },
+            app,
+        );
     common::settle_harness(&mut harness);
-    let save = harness.get_by_label("Save").raw_bounds().unwrap();
+    let save = harness
+        .get_by_label("Save")
+        .accesskit_node()
+        .bounding_box()
+        .unwrap();
     assert!(
         save.x0 >= 1000.0 && save.x1 <= 1280.0,
         "Long media label stretched the player panel: {save:?}"
@@ -132,7 +253,10 @@ fn middle_mouse_releases_capture_without_pause_or_keyboard_configuration() {
             }],
             ..Default::default()
         },
-        |ctx| app.update_ui(ctx),
+        |ctx| {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        },
     );
     assert!(!app.player.captured);
     assert!(app.host.status.running);
@@ -161,12 +285,20 @@ fn pad(sender: &gui::host_runtime::HostInputSender, generation: u64, pressed: bo
     }
 }
 fn delivered(app: &mut EmulatorApp, ctx: &egui::Context) {
+    common::settle(app, ctx);
+    // Establish an owner barrier after submission; cached GUI telemetry may predate it.
+    let _ = fire(app);
     let before = app.host.status.input_deliveries;
     common::wait(app, ctx, |app| {
         app.host.status.input_deliveries >= before + 2
+            // Admission may occur at a zero-budget boundary; await an actual CCK sample.
+            && app.host.status.cck > app.host.status.last_input_cck
     });
 }
 fn fire(app: &mut EmulatorApp) -> bool {
+    owner_snapshot(app).game_ports.sample_ciaa_port_a_inputs() & 0x80 == 0
+}
+fn owner_snapshot(app: &mut EmulatorApp) -> Box<debugger::A500State> {
     // Observe the owner without drawing a default, focused GUI frame.
     assert!(
         app.host.is_idle(),
@@ -191,8 +323,8 @@ fn fire(app: &mut EmulatorApp) -> bool {
                     panic!("Missing machine snapshot");
                 };
                 let saved = debugger::SaveState::from_json(&json).unwrap();
-                app.host.status = runtime.status();
-                return saved.state.game_ports.sample_ciaa_port_a_inputs() & 0x80 == 0;
+                app.host.status = reply.status;
+                return saved.state;
             }
         }
         assert!(std::time::Instant::now() < deadline);
@@ -227,7 +359,10 @@ fn gamepad_plays_without_capture_survives_mouse_release_and_stops_outside_sessio
         egui::Window::new("Session control").show(ctx, |ui| {
             ui.button("Ordinary button").request_focus();
         });
-        app.update_ui(ctx);
+        {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        };
     });
     delivered(&mut app, &ctx);
     assert!(
@@ -271,7 +406,10 @@ fn gamepad_plays_without_capture_survives_mouse_release_and_stops_outside_sessio
             ui.add(egui::TextEdit::singleline(&mut text).id(text_id))
                 .request_focus();
         });
-        app.update_ui(ctx);
+        {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        };
     });
     pad(&sender, generation, true);
     delivered(&mut app, &ctx);
@@ -281,6 +419,7 @@ fn gamepad_plays_without_capture_survives_mouse_release_and_stops_outside_sessio
     );
     ctx.memory_mut(|memory| memory.surrender_focus(text_id));
     draw(&mut app, &ctx, None);
+    common::settle(&mut app, &ctx);
     pad(&sender, generation, false);
     pad(&sender, generation, true);
     delivered(&mut app, &ctx);
@@ -306,7 +445,10 @@ fn gamepad_plays_without_capture_survives_mouse_release_and_stops_outside_sessio
                 focused: false,
                 ..Default::default()
             },
-            |ctx| app.update_ui(ctx),
+            |ctx| {
+                common::keyboard::inject_taps(ctx, app.host.status.generation);
+                app.update_ui(ctx)
+            },
         );
         pad(&sender, generation, true);
         if app.host.is_idle() && !fire(&mut app) {
@@ -316,4 +458,100 @@ fn gamepad_plays_without_capture_survives_mouse_release_and_stops_outside_sessio
         std::thread::sleep(std::time::Duration::from_millis(1));
     }
     assert!(!fire(&mut app));
+}
+
+#[test]
+fn physical_zoom_commands_update_gui_without_pausing_or_releasing_capture() {
+    let (mut app, ctx) = running();
+    let generation = app.host.status.generation;
+    for (physical, zoom) in [
+        ("Equal", 1.25),
+        ("Minus", 1.0),
+        ("NumpadAdd", 1.25),
+        ("Numpad0", 1.0),
+    ] {
+        window_keys(
+            &mut app,
+            &ctx,
+            &[
+                ("ControlLeft", true, generation),
+                (physical, true, generation),
+                (physical, false, generation),
+                ("ControlLeft", false, generation),
+            ],
+        );
+        common::settle(&mut app, &ctx);
+        assert_eq!(ctx.zoom_factor(), zoom);
+        assert!(app.player.captured);
+        assert!(app.host.status.running);
+        assert_eq!(app.host.status.generation, generation);
+    }
+}
+
+#[test]
+fn stopped_developer_alt_t_toggles_recording_without_advancing_the_machine() {
+    let (mut app, ctx) = running();
+    common::command(&mut app, HostCommand::Pause);
+    common::wait(&mut app, &ctx, |app| !app.host.status.running);
+    app.set_view_mode(ViewMode::Developer);
+    common::settle(&mut app, &ctx);
+    let generation = app.host.status.generation;
+    let cck = app.host.status.cck;
+    let mut recording = common::inspect(&mut app).temporal.is_recording();
+    for modifier in ["AltLeft", "AltRight"] {
+        window_keys(
+            &mut app,
+            &ctx,
+            &[
+                (modifier, true, generation),
+                ("KeyT", true, generation),
+                ("KeyT", false, generation),
+                (modifier, false, generation),
+            ],
+        );
+        common::settle(&mut app, &ctx);
+        recording = !recording;
+        assert_eq!(common::inspect(&mut app).temporal.is_recording(), recording);
+        assert!(!app.host.status.running);
+        assert_eq!(app.host.status.cck, cck);
+    }
+}
+
+#[test]
+fn pending_keyboard_retry_overflow_across_frames_discards_backlog_and_releases_keys() {
+    let (mut app, ctx) = running();
+    let generation = app.host.status.generation;
+    window_keys(&mut app, &ctx, &[("KeyB", true, generation)]);
+    wait_guest_key(&mut app, &ctx, 0x35, true);
+    // Hold the existing owner aside so GUI frames retain their pending submissions.
+    let runtime = app.host.runtime.take().unwrap();
+    let mut first = vec![
+        ("CapsLock", true, generation),
+        ("CapsLock", false, generation),
+    ];
+    for _ in 0..255 {
+        first.extend([("KeyA", true, generation), ("KeyA", false, generation)]);
+    }
+    window_keys(&mut app, &ctx, &first);
+    let mut second = Vec::new();
+    for _ in 0..256 {
+        second.extend([("KeyA", true, generation), ("KeyA", false, generation)]);
+    }
+    window_keys(&mut app, &ctx, &second);
+    window_keys(
+        &mut app,
+        &ctx,
+        &[("KeyA", true, generation), ("KeyA", false, generation)],
+    );
+    app.host.runtime = Some(runtime);
+    draw(&mut app, &ctx, None);
+    wait_guest_key(&mut app, &ctx, 0x35, false);
+    assert!(!guest_key_held(&mut app, 0x20));
+    let keyboard = serde_json::to_value(&owner_snapshot(&mut app).keyboard).unwrap();
+    assert_eq!(
+        keyboard["caps_lock_active"], false,
+        "Discarded Caps Lock press was replayed"
+    );
+    assert!(app.player.captured);
+    assert!(app.host.status.running);
 }

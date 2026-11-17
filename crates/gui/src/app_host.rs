@@ -21,7 +21,10 @@ pub(crate) enum HostEffect {
 #[derive(Debug)]
 pub struct AppHost {
     #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) native_input: bool,
+    pub(crate) native_gamepads: bool,
+    pub(crate) keyboard_pending: VecDeque<(crate::host_input::HostInputEvent, u64)>,
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) pointer: crate::window_pointer::WindowPointer,
     pub status: HostStatus,
     pub data: Option<Box<HostInspection>>,
     pub presented: Option<crate::host_video::FrameInfo>,
@@ -30,6 +33,7 @@ pub struct AppHost {
     queued: VecDeque<(HostCommand, HostEffect)>,
     pending: HashMap<u64, HostEffect>,
     inspector_request: bool,
+    activation_pending: bool,
     pub(crate) inspector_revision: Option<u64>,
     debugger_connected: Option<bool>,
     pub(crate) commands: Vec<HostCommand>,
@@ -43,6 +47,7 @@ impl AppHost {
         self.pending.clear();
         self.commands.clear();
         self.inspector_request = false;
+        self.activation_pending = false;
         self.status.running = false;
         self.status.continuous_run = false;
         self.status.pause_pending = false;
@@ -63,7 +68,10 @@ impl AppHost {
         let owner = MachineOwner::new(session);
         Self {
             #[cfg(not(target_arch = "wasm32"))]
-            native_input: false,
+            native_gamepads: false,
+            keyboard_pending: VecDeque::new(),
+            #[cfg(not(target_arch = "wasm32"))]
+            pointer: Default::default(),
             status: owner.status(),
             data: None,
             presented: None,
@@ -72,6 +80,7 @@ impl AppHost {
             queued: VecDeque::new(),
             pending: HashMap::new(),
             inspector_request: false,
+            activation_pending: false,
             inspector_revision: None,
             debugger_connected: None,
             commands: Vec::new(),
@@ -93,6 +102,7 @@ impl AppHost {
             && self.pending.is_empty()
             && self.commands.is_empty()
             && !self.status.pause_pending
+            && !self.activation_pending
     }
 
     pub(crate) fn can_edit(&self) -> bool {
@@ -328,7 +338,7 @@ impl crate::EmulatorApp {
         }
         if first_pass {
             self.host.refresh_utc(crate::host_clock::utc_now());
-            self.handle_keyboard_shortcuts(ctx);
+            self.handle_keyboard_input(ctx);
         }
         self.render_player_confirmation(ctx);
     }
@@ -411,10 +421,15 @@ impl crate::EmulatorApp {
                     && self.player.screen == crate::player::PlayerScreen::Session
                     && self.player.pending_launch.is_none(),
             );
-            if let Some(configuration) = &self.player.active_configuration {
-                if !sender.configure(&configuration.controls, &self.player.catalog.mappings) {
-                    ctx.request_repaint_after(crate::host_runtime::HOST_RETRY_DELAY);
-                }
+            let configuration_applied =
+                self.player
+                    .active_configuration
+                    .as_ref()
+                    .is_none_or(|configuration| {
+                        sender.configure(&configuration.controls, &self.player.catalog.mappings)
+                    });
+            if !configuration_applied {
+                ctx.request_repaint_after(crate::host_runtime::HOST_RETRY_DELAY);
             }
             if let Some(pads) = sender.gamepads() {
                 self.player.gamepads = pads;
@@ -425,8 +440,20 @@ impl crate::EmulatorApp {
                 && self.player.pending_launch.is_none()
                 && self.host.status.running
                 && !self.host.status.pause_pending;
-            if !sender.set_enabled(enabled, gamepads) {
+            let capture_applied = sender.set_enabled(enabled, gamepads);
+            self.host.activation_pending = !configuration_applied || !capture_applied;
+            if !capture_applied {
                 ctx.request_repaint_after(crate::host_runtime::HOST_RETRY_DELAY);
+            }
+            // Keep keys queued until both host mapping and capture have been applied.
+            if enabled && configuration_applied && capture_applied {
+                while let Some(&(event, generation)) = self.host.keyboard_pending.front() {
+                    if !sender.try_keyboard_event(event, generation) {
+                        ctx.request_repaint_after(crate::host_runtime::HOST_RETRY_DELAY);
+                        break;
+                    }
+                    self.host.keyboard_pending.pop_front();
+                }
             }
             #[cfg(not(target_arch = "wasm32"))]
             {
@@ -438,14 +465,8 @@ impl crate::EmulatorApp {
                 ctx.send_viewport_cmd(egui::ViewportCommand::CursorVisible(!enabled));
                 if enabled {
                     for event in ctx.input(|input| input.events.clone()) {
-                        if let egui::Event::MouseMoved(delta) = event {
-                            self.player.pending_pointer.push(
-                                crate::host_input::HostInputEvent::MouseMotion {
-                                    port: 0,
-                                    dx: delta.x.round() as i32,
-                                    dy: delta.y.round() as i32,
-                                },
-                            );
+                        if let Some(event) = self.host.pointer.translate(&event, true) {
+                            self.player.pending_pointer.push(event);
                         }
                     }
                     while let Some(event) = self.player.pending_pointer.first() {
@@ -456,11 +477,12 @@ impl crate::EmulatorApp {
                         self.player.pending_pointer.pop();
                     }
                 } else {
+                    self.host.pointer.release();
                     self.player.pending_pointer.clear();
                 }
             }
             #[cfg(not(target_arch = "wasm32"))]
-            if self.host.native_input && !runtime.start_native_input() {
+            if self.host.native_gamepads && !runtime.start_native_gamepads() {
                 ctx.request_repaint_after(crate::host_runtime::HOST_RETRY_DELAY);
             }
             if let Some(actions) = actions {
@@ -469,5 +491,9 @@ impl crate::EmulatorApp {
                 }
             }
         }
+        if !self.player.captured {
+            self.host.keyboard_pending.clear();
+        }
+        self.refresh_keyboard_policy(ctx);
     }
 }

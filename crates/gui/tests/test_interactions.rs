@@ -2,6 +2,7 @@
 
 mod common;
 use egui::{Event, Key, Modifiers, RawInput};
+use egui_kittest::kittest::NodeT;
 use gui::host_commands::{HistoryCommand, HostCommand};
 use gui::{AppTheme, DisasmEditState, EditRegister, EmulatorApp, ViewMode};
 use std::path::PathBuf;
@@ -67,7 +68,10 @@ fn screen_uploads_the_visible_framebuffer_unchanged_and_preserves_its_geometry()
                         screen_rect: Some(viewport),
                         ..Default::default()
                     },
-                    |ctx| app.update_ui(ctx),
+                    |ctx| {
+                        common::keyboard::inject_taps(ctx, app.host.status.generation);
+                        app.update_ui(ctx)
+                    },
                 );
                 // Command replies may settle before the independent video handoff.
                 output.append(common::wait(&mut app, &ctx, |app| {
@@ -141,12 +145,19 @@ fn playback_toolbar_and_preferences_fit_supported_window_widths() {
         let mut harness = Harness::builder()
             .with_size(egui::vec2(width, 720.0))
             .build_state(
-                |ctx, app: &mut EmulatorApp| app.update_ui(ctx),
+                |ctx, app: &mut EmulatorApp| {
+                    common::keyboard::inject_taps(ctx, app.host.status.generation);
+                    app.update_ui(ctx)
+                },
                 EmulatorApp::default(),
             );
         common::settle_harness(&mut harness);
         for label in ["Step Frame (Shift+F11)", "Slower", "Faster", "1x"] {
-            let bounds = harness.get_by_label(label).raw_bounds().unwrap();
+            let bounds = harness
+                .get_by_label(label)
+                .accesskit_node()
+                .bounding_box()
+                .unwrap();
             assert!(
                 bounds.x0 >= 0.0 && bounds.x1 <= f64::from(width),
                 "{label} at {width}"
@@ -154,7 +165,7 @@ fn playback_toolbar_and_preferences_fit_supported_window_widths() {
         }
         let preferences = harness
             .query_all(by().role(egui::accesskit::Role::ComboBox))
-            .filter_map(|node| node.raw_bounds())
+            .filter_map(|node| node.accesskit_node().bounding_box())
             .filter(|bounds| bounds.y0 < 55.0)
             .collect::<Vec<_>>();
         assert_eq!(
@@ -188,7 +199,10 @@ fn test_simulated_f12_view_mode_toggle() {
     };
 
     let _ = ctx.run(input_f12, |ctx| {
-        app.update_ui(ctx);
+        {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        };
     });
     common::settle(&mut app, &ctx);
     assert_eq!(app.view_mode, ViewMode::ScreenOnly);
@@ -206,7 +220,10 @@ fn test_simulated_f12_view_mode_toggle() {
     };
 
     let _ = ctx.run(input_f12_back, |ctx| {
-        app.update_ui(ctx);
+        {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        };
     });
     common::settle(&mut app, &ctx);
     assert_eq!(app.view_mode, ViewMode::Developer);
@@ -248,7 +265,10 @@ fn test_simulated_run_and_step_shortcuts() {
         ..Default::default()
     };
     let _ = ctx.run(input_f10, |ctx| {
-        app.update_ui(ctx);
+        {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        };
     });
     common::settle(&mut app, &ctx);
     assert_eq!(common::inspect(&mut app).instructions_executed, 1);
@@ -267,7 +287,10 @@ fn test_simulated_run_and_step_shortcuts() {
         ..Default::default()
     };
     let _ = ctx.run(input_shift_f10, |ctx| {
-        app.update_ui(ctx);
+        {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        };
     });
     common::settle(&mut app, &ctx);
     assert_eq!(common::inspect(&mut app).temporal.scrub_cursor, Some(0));
@@ -285,7 +308,10 @@ fn test_simulated_run_and_step_shortcuts() {
         ..Default::default()
     };
     let _ = ctx.run(input_f11, |ctx| {
-        app.update_ui(ctx);
+        {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        };
     });
     common::settle(&mut app, &ctx);
     assert_eq!(common::inspect(&mut app).debugger.current_cck, prev_cck + 1);
@@ -303,7 +329,10 @@ fn test_simulated_run_and_step_shortcuts() {
         ..Default::default()
     };
     let _ = ctx.run(input_f5, |ctx| {
-        app.update_ui(ctx);
+        {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        };
     });
     common::settle(&mut app, &ctx);
     assert!(app.host.status.running);
@@ -330,7 +359,10 @@ fn test_simulated_drag_and_drop_file() {
     };
 
     let _ = ctx.run(input_drop, |ctx| {
-        app.update_ui(ctx);
+        {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        };
     });
     common::settle(&mut app, &ctx);
 
@@ -362,7 +394,10 @@ fn test_simulated_register_inline_editing() {
     };
 
     let _ = ctx.run(input_enter, |ctx| {
-        app.update_ui(ctx);
+        {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        };
     });
     common::settle(&mut app, &ctx);
 
@@ -383,7 +418,10 @@ fn test_simulated_register_inline_editing() {
         ..Default::default()
     };
     let _ = ctx.run(input_enter_sr, |ctx| {
-        app.update_ui(ctx);
+        {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        };
     });
     common::settle(&mut app, &ctx);
     assert_eq!(common::inspect(&mut app).cpu.sr(), 0x2700);
@@ -434,7 +472,10 @@ fn test_simulated_disassembly_inline_patching() {
         ..Default::default()
     };
     let _ = ctx.run(input_commit, |ctx| {
-        app.update_ui(ctx);
+        {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        };
     });
     common::settle(&mut app, &ctx);
 
@@ -462,7 +503,10 @@ fn test_simulated_disassembly_inline_patching() {
         ..Default::default()
     };
     let _ = ctx.run(input_commit_mismatch, |ctx| {
-        app.update_ui(ctx);
+        {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        };
     });
     common::settle(&mut app, &ctx);
 
@@ -513,7 +557,10 @@ fn test_simulated_breakpoint_form_and_trigger() {
     // Free-run execution
     app.host.queue(HostCommand::Run);
     let _ = ctx.run(RawInput::default(), |ctx| {
-        app.update_ui(ctx);
+        {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        };
     });
     common::settle(&mut app, &ctx);
 
@@ -568,7 +615,10 @@ fn test_simulated_temporal_time_travel_navigation() {
 
     // Render frame to ensure UI reflects scrub state without panics
     let _ = ctx.run(RawInput::default(), |ctx| {
-        app.update_ui(ctx);
+        {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        };
     });
     common::settle(&mut app, &ctx);
 
@@ -612,7 +662,10 @@ fn test_full_frame_rendering_invariance() {
     // Render multiple consecutive frames to verify zero panics and layout stability
     for _ in 0..5 {
         let mut output = ctx.run(RawInput::default(), |ctx| {
-            app.update_ui(ctx);
+            {
+                common::keyboard::inject_taps(ctx, app.host.status.generation);
+                app.update_ui(ctx)
+            };
         });
         output.append(common::settle(&mut app, &ctx));
 
@@ -667,7 +720,10 @@ fn test_ccr_led_badges_interactive_toggle() {
     ); // All CCR flags (0x1F) are 0
 
     let _ = ctx.run(RawInput::default(), |ctx| {
-        app.update_ui(ctx);
+        {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        };
     });
     common::settle(&mut app, &ctx);
 
@@ -691,7 +747,10 @@ fn test_register_edit_focus_and_dismissal_lifecycle() {
 
     // Render frame - automatically requests focus
     let _ = ctx.run(RawInput::default(), |ctx| {
-        app.update_ui(ctx);
+        {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        };
     });
     common::settle(&mut app, &ctx);
     assert!(app.active_reg_edit.is_some());
@@ -708,7 +767,10 @@ fn test_register_edit_focus_and_dismissal_lifecycle() {
         ..Default::default()
     };
     let _ = ctx.run(input_esc, |ctx| {
-        app.update_ui(ctx);
+        {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        };
     });
     common::settle(&mut app, &ctx);
     assert!(app.active_reg_edit.is_none());
@@ -823,7 +885,10 @@ fn test_clean_screen_game_mode_and_crt_text() {
     app.view_mode = ViewMode::ScreenOnly;
 
     let mut output = ctx.run(RawInput::default(), |ctx| {
-        app.update_ui(ctx);
+        {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        };
     });
     output.append(common::settle(&mut app, &ctx));
 
@@ -844,7 +909,10 @@ fn test_memory_hex_right_margin_invariance() {
         ..Default::default()
     };
     let mut output = ctx.run(raw_input, |ctx| {
-        app.update_ui(ctx);
+        {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        };
     });
     output.append(common::settle(&mut app, &ctx));
     assert!(!output.shapes.is_empty());
@@ -877,14 +945,20 @@ fn test_microcode_toggle_and_clock_metrics() {
         ..Default::default()
     };
     let _ = ctx.run(input_f8.clone(), |ctx| {
-        app.update_ui(ctx);
+        {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        };
     });
     common::settle(&mut app, &ctx);
     assert!(!app.show_microcode);
 
     // Press F8 again -> toggles microcode visibility on
     let _ = ctx.run(input_f8, |ctx| {
-        app.update_ui(ctx);
+        {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        };
     });
     common::settle(&mut app, &ctx);
     assert!(app.show_microcode);
@@ -918,7 +992,10 @@ fn test_memory_hex_edit_mode_zero_grid_shift_invariance() {
 
     // 1. First render a baseline frame where no cells are being edited
     let _ = ctx.run(RawInput::default(), |ctx| {
-        app.update_ui(ctx);
+        {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        };
     });
     common::settle(&mut app, &ctx);
 
@@ -927,7 +1004,10 @@ fn test_memory_hex_edit_mode_zero_grid_shift_invariance() {
     app.hex_edit_buffer.1 = "FF".to_string();
 
     let mut output_editing = ctx.run(RawInput::default(), |ctx| {
-        app.update_ui(ctx);
+        {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        };
     });
     output_editing.append(common::settle(&mut app, &ctx));
     assert!(!output_editing.shapes.is_empty());
@@ -935,7 +1015,10 @@ fn test_memory_hex_edit_mode_zero_grid_shift_invariance() {
     // 3. Edit with a single character "F" and verify shapes still render without shifting or panic
     app.hex_edit_buffer.1 = "F".to_string();
     let mut output_single_char = ctx.run(RawInput::default(), |ctx| {
-        app.update_ui(ctx);
+        {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        };
     });
     output_single_char.append(common::settle(&mut app, &ctx));
     assert!(!output_single_char.shapes.is_empty());
@@ -957,7 +1040,10 @@ fn test_memory_hex_mouse_wheel_infinite_scroll() {
         ..Default::default()
     };
     let _ = ctx.run(prime_input, |ctx| {
-        app.update_ui(ctx);
+        {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        };
     });
     common::settle(&mut app, &ctx);
 
@@ -975,7 +1061,10 @@ fn test_memory_hex_mouse_wheel_infinite_scroll() {
         ..Default::default()
     };
     let _ = ctx.run(scroll_down_input, |ctx| {
-        app.update_ui(ctx);
+        {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        };
     });
     common::settle(&mut app, &ctx);
     assert_eq!(
@@ -998,7 +1087,10 @@ fn test_memory_hex_mouse_wheel_infinite_scroll() {
         ..Default::default()
     };
     let _ = ctx.run(shift_scroll_input, |ctx| {
-        app.update_ui(ctx);
+        {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        };
     });
     common::settle(&mut app, &ctx);
     assert_eq!(
@@ -1021,7 +1113,10 @@ fn test_memory_hex_mouse_wheel_infinite_scroll() {
         ..Default::default()
     };
     let _ = ctx.run(ctrl_scroll_input, |ctx| {
-        app.update_ui(ctx);
+        {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        };
     });
     common::settle(&mut app, &ctx);
     assert_eq!(
@@ -1044,7 +1139,10 @@ fn test_memory_hex_mouse_wheel_infinite_scroll() {
         ..Default::default()
     };
     let _ = ctx.run(wrap_up_input, |ctx| {
-        app.update_ui(ctx);
+        {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        };
     });
     common::settle(&mut app, &ctx);
     assert_eq!(
@@ -1069,7 +1167,10 @@ fn test_memory_hex_keyboard_navigation() {
             events: vec![Event::PointerMoved(egui::pos2(900.0, 150.0))],
             ..Default::default()
         },
-        |ctx| app.update_ui(ctx),
+        |ctx| {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        },
     );
     common::settle(&mut app, &ctx);
 
@@ -1088,7 +1189,10 @@ fn test_memory_hex_keyboard_navigation() {
         ],
         ..Default::default()
     };
-    let _ = ctx.run(pagedown_input, |ctx| app.update_ui(ctx));
+    let _ = ctx.run(pagedown_input, |ctx| {
+        common::keyboard::inject_taps(ctx, app.host.status.generation);
+        app.update_ui(ctx)
+    });
     common::settle(&mut app, &ctx);
     assert_eq!(app.hex_base_addr, 0x001100);
 
@@ -1107,7 +1211,10 @@ fn test_memory_hex_keyboard_navigation() {
         ],
         ..Default::default()
     };
-    let _ = ctx.run(pageup_input, |ctx| app.update_ui(ctx));
+    let _ = ctx.run(pageup_input, |ctx| {
+        common::keyboard::inject_taps(ctx, app.host.status.generation);
+        app.update_ui(ctx)
+    });
     common::settle(&mut app, &ctx);
     assert_eq!(app.hex_base_addr, 0x001000);
 
@@ -1126,7 +1233,10 @@ fn test_memory_hex_keyboard_navigation() {
         ],
         ..Default::default()
     };
-    let _ = ctx.run(arrowdown_input, |ctx| app.update_ui(ctx));
+    let _ = ctx.run(arrowdown_input, |ctx| {
+        common::keyboard::inject_taps(ctx, app.host.status.generation);
+        app.update_ui(ctx)
+    });
     common::settle(&mut app, &ctx);
     assert_eq!(app.hex_base_addr, 0x001010);
 
@@ -1145,7 +1255,10 @@ fn test_memory_hex_keyboard_navigation() {
         ],
         ..Default::default()
     };
-    let _ = ctx.run(arrowup_input, |ctx| app.update_ui(ctx));
+    let _ = ctx.run(arrowup_input, |ctx| {
+        common::keyboard::inject_taps(ctx, app.host.status.generation);
+        app.update_ui(ctx)
+    });
     common::settle(&mut app, &ctx);
     assert_eq!(app.hex_base_addr, 0x001000);
 
@@ -1164,7 +1277,10 @@ fn test_memory_hex_keyboard_navigation() {
         ],
         ..Default::default()
     };
-    let _ = ctx.run(home_input, |ctx| app.update_ui(ctx));
+    let _ = ctx.run(home_input, |ctx| {
+        common::keyboard::inject_taps(ctx, app.host.status.generation);
+        app.update_ui(ctx)
+    });
     common::settle(&mut app, &ctx);
     assert_eq!(app.hex_base_addr, 0x000000);
 }
@@ -1184,7 +1300,10 @@ fn test_memory_hex_vertical_scrollbar_interaction() {
             screen_rect: Some(screen_rect),
             ..Default::default()
         },
-        |ctx| app.update_ui(ctx),
+        |ctx| {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        },
     );
     common::settle(&mut app, &ctx);
 
@@ -1208,7 +1327,10 @@ fn test_memory_hex_vertical_scrollbar_interaction() {
         ],
         ..Default::default()
     };
-    let _ = ctx.run(click_scrollbar_input, |ctx| app.update_ui(ctx));
+    let _ = ctx.run(click_scrollbar_input, |ctx| {
+        common::keyboard::inject_taps(ctx, app.host.status.generation);
+        app.update_ui(ctx)
+    });
     common::settle(&mut app, &ctx);
 
     // Address must advance forward from 0
@@ -1236,7 +1358,10 @@ fn test_f12_toggles_views_and_middle_mouse_releases_capture() {
         }],
         ..Default::default()
     };
-    let _ = ctx.run(input_f12, |ctx| app.update_ui(ctx));
+    let _ = ctx.run(input_f12, |ctx| {
+        common::keyboard::inject_taps(ctx, app.host.status.generation);
+        app.update_ui(ctx)
+    });
     common::settle(&mut app, &ctx);
     assert_eq!(app.view_mode, ViewMode::ScreenOnly);
 
@@ -1252,7 +1377,10 @@ fn test_f12_toggles_views_and_middle_mouse_releases_capture() {
             }],
             ..Default::default()
         },
-        |ctx| app.update_ui(ctx),
+        |ctx| {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        },
     );
 
     // 2. Middle mouse releases capture and leaves player controls reachable.
@@ -1266,7 +1394,10 @@ fn test_f12_toggles_views_and_middle_mouse_releases_capture() {
         }],
         ..Default::default()
     };
-    let _ = ctx.run(input_esc, |ctx| app.update_ui(ctx));
+    let _ = ctx.run(input_esc, |ctx| {
+        common::keyboard::inject_taps(ctx, app.host.status.generation);
+        app.update_ui(ctx)
+    });
     common::settle(&mut app, &ctx);
     assert_eq!(app.view_mode, ViewMode::ScreenOnly);
     assert!(!app.player.captured);
@@ -1282,7 +1413,10 @@ fn test_f12_toggles_views_and_middle_mouse_releases_capture() {
         }],
         ..Default::default()
     };
-    let _ = ctx.run(input_f12_again, |ctx| app.update_ui(ctx));
+    let _ = ctx.run(input_f12_again, |ctx| {
+        common::keyboard::inject_taps(ctx, app.host.status.generation);
+        app.update_ui(ctx)
+    });
     common::settle(&mut app, &ctx);
     assert_eq!(app.view_mode, ViewMode::Developer);
 
@@ -1306,7 +1440,10 @@ fn test_f12_toggles_views_and_middle_mouse_releases_capture() {
         ],
         ..Default::default()
     };
-    let _ = ctx.run(input_f12_back, |ctx| app.update_ui(ctx));
+    let _ = ctx.run(input_f12_back, |ctx| {
+        common::keyboard::inject_taps(ctx, app.host.status.generation);
+        app.update_ui(ctx)
+    });
     common::settle(&mut app, &ctx);
     assert_eq!(app.view_mode, ViewMode::ScreenOnly);
 }
@@ -1345,7 +1482,10 @@ fn test_disassembly_stepping_multi_word_invariance() {
     assert_eq!(common::inspect(&mut app).cpu.instruction_pc(), 0x001000);
 
     // Render frame 1
-    let _ = ctx.run(RawInput::default(), |ctx| app.update_ui(ctx));
+    let _ = ctx.run(RawInput::default(), |ctx| {
+        common::keyboard::inject_taps(ctx, app.host.status.generation);
+        app.update_ui(ctx)
+    });
     common::settle(&mut app, &ctx);
 
     // 2. Step 1 CCK (sub-instruction phase) via F11
@@ -1359,7 +1499,10 @@ fn test_disassembly_stepping_multi_word_invariance() {
         }],
         ..Default::default()
     };
-    let _ = ctx.run(input_f11, |ctx| app.update_ui(ctx));
+    let _ = ctx.run(input_f11, |ctx| {
+        common::keyboard::inject_taps(ctx, app.host.status.generation);
+        app.update_ui(ctx)
+    });
     common::settle(&mut app, &ctx);
 
     // Instruction PC must STILL be $001000 even though hardware prefetch PC advanced!
@@ -1380,7 +1523,10 @@ fn test_disassembly_stepping_multi_word_invariance() {
         }],
         ..Default::default()
     };
-    let _ = ctx.run(input_f10, |ctx| app.update_ui(ctx));
+    let _ = ctx.run(input_f10, |ctx| {
+        common::keyboard::inject_taps(ctx, app.host.status.generation);
+        app.update_ui(ctx)
+    });
     common::settle(&mut app, &ctx);
 
     // Instruction PC must transition to $001006 (CLR.W D0)
@@ -1402,7 +1548,10 @@ fn test_disassembly_stepping_multi_word_invariance() {
             }],
             ..Default::default()
         },
-        |ctx| app.update_ui(ctx),
+        |ctx| {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        },
     );
     common::settle(&mut app, &ctx);
     assert_eq!(
@@ -1429,7 +1578,10 @@ fn test_memory_hex_watchpoint_toggle_and_rendering() {
         .is_some());
 
     // Render frame: must draw watchpoint badges without panic
-    let mut output = ctx.run(RawInput::default(), |ctx| app.update_ui(ctx));
+    let mut output = ctx.run(RawInput::default(), |ctx| {
+        common::keyboard::inject_taps(ctx, app.host.status.generation);
+        app.update_ui(ctx)
+    });
     output.append(common::settle(&mut app, &ctx));
     assert!(
         !output.shapes.is_empty(),
@@ -1457,7 +1609,10 @@ fn test_disassembly_active_line_highlight_and_column_alignment() {
     .is_ok());
 
     // Initial render at $001000: active line must produce frame highlight shapes
-    let mut output_step0 = ctx.run(RawInput::default(), |ctx| app.update_ui(ctx));
+    let mut output_step0 = ctx.run(RawInput::default(), |ctx| {
+        common::keyboard::inject_taps(ctx, app.host.status.generation);
+        app.update_ui(ctx)
+    });
     output_step0.append(common::settle(&mut app, &ctx));
     assert!(
         !output_step0.shapes.is_empty(),
@@ -1476,12 +1631,18 @@ fn test_disassembly_active_line_highlight_and_column_alignment() {
             }],
             ..Default::default()
         },
-        |ctx| app.update_ui(ctx),
+        |ctx| {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        },
     );
     common::settle(&mut app, &ctx);
     assert_eq!(common::inspect(&mut app).cpu.instruction_pc(), 0x001006);
 
-    let mut output_step1 = ctx.run(RawInput::default(), |ctx| app.update_ui(ctx));
+    let mut output_step1 = ctx.run(RawInput::default(), |ctx| {
+        common::keyboard::inject_taps(ctx, app.host.status.generation);
+        app.update_ui(ctx)
+    });
     output_step1.append(common::settle(&mut app, &ctx));
     assert!(
         !output_step1.shapes.is_empty(),
@@ -1509,7 +1670,10 @@ fn test_register_inline_edit_focus_cancel_and_commit() {
         }],
         ..Default::default()
     };
-    let _ = ctx.run(input_esc, |ctx| app.update_ui(ctx));
+    let _ = ctx.run(input_esc, |ctx| {
+        common::keyboard::inject_taps(ctx, app.host.status.generation);
+        app.update_ui(ctx)
+    });
     common::settle(&mut app, &ctx);
     assert_eq!(app.active_reg_edit, None);
     assert_eq!(common::inspect(&mut app).cpu.d_long(3), 0);
@@ -1526,7 +1690,10 @@ fn test_register_inline_edit_focus_cancel_and_commit() {
         }],
         ..Default::default()
     };
-    let _ = ctx.run(input_enter, |ctx| app.update_ui(ctx));
+    let _ = ctx.run(input_enter, |ctx| {
+        common::keyboard::inject_taps(ctx, app.host.status.generation);
+        app.update_ui(ctx)
+    });
     common::settle(&mut app, &ctx);
     assert_eq!(app.active_reg_edit, None);
     assert_eq!(common::inspect(&mut app).cpu.a_long(2), 0x00040000);
@@ -1544,7 +1711,10 @@ fn test_register_inline_edit_focus_cancel_and_commit() {
         }],
         ..Default::default()
     };
-    let _ = ctx.run(input_enter_invalid, |ctx| app.update_ui(ctx));
+    let _ = ctx.run(input_enter_invalid, |ctx| {
+        common::keyboard::inject_taps(ctx, app.host.status.generation);
+        app.update_ui(ctx)
+    });
     common::settle(&mut app, &ctx);
     assert_eq!(app.active_reg_edit, None);
     assert_eq!(common::inspect(&mut app).cpu.d_long(1), 0);
@@ -1589,7 +1759,10 @@ fn test_disassembly_inline_patch_focus_cancel_and_commit() {
         }],
         ..Default::default()
     };
-    let _ = ctx.run(input_esc, |ctx| app.update_ui(ctx));
+    let _ = ctx.run(input_esc, |ctx| {
+        common::keyboard::inject_taps(ctx, app.host.status.generation);
+        app.update_ui(ctx)
+    });
     common::settle(&mut app, &ctx);
     assert!(app.active_disasm_edit.is_none());
     assert_eq!(
@@ -1613,7 +1786,10 @@ fn test_disassembly_inline_patch_focus_cancel_and_commit() {
         }],
         ..Default::default()
     };
-    let _ = ctx.run(input_enter, |ctx| app.update_ui(ctx));
+    let _ = ctx.run(input_enter, |ctx| {
+        common::keyboard::inject_taps(ctx, app.host.status.generation);
+        app.update_ui(ctx)
+    });
     common::settle(&mut app, &ctx);
     assert!(app.active_disasm_edit.is_none());
     assert_eq!(
@@ -1648,7 +1824,10 @@ fn test_three_column_layout_stability_and_bounds_invariance() {
         screen_rect: Some(screen_rect_hd),
         ..Default::default()
     };
-    let mut output_hd = ctx.run(raw_input_hd, |ctx| app.update_ui(ctx));
+    let mut output_hd = ctx.run(raw_input_hd, |ctx| {
+        common::keyboard::inject_taps(ctx, app.host.status.generation);
+        app.update_ui(ctx)
+    });
     output_hd.append(common::settle(&mut app, &ctx));
     assert!(!output_hd.shapes.is_empty());
     for shape in &output_hd.shapes {
@@ -1666,7 +1845,10 @@ fn test_three_column_layout_stability_and_bounds_invariance() {
         screen_rect: Some(screen_rect_compact),
         ..Default::default()
     };
-    let mut output_compact = ctx.run(raw_input_compact, |ctx| app.update_ui(ctx));
+    let mut output_compact = ctx.run(raw_input_compact, |ctx| {
+        common::keyboard::inject_taps(ctx, app.host.status.generation);
+        app.update_ui(ctx)
+    });
     output_compact.append(common::settle(&mut app, &ctx));
     assert!(!output_compact.shapes.is_empty());
     for shape in &output_compact.shapes {
@@ -1684,7 +1866,10 @@ fn test_three_column_layout_stability_and_bounds_invariance() {
             screen_rect: Some(screen_rect_compact),
             ..Default::default()
         },
-        |ctx| app.update_ui(ctx),
+        |ctx| {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        },
     );
     output_toggle.append(common::settle(&mut app, &ctx));
     assert!(!output_toggle.shapes.is_empty());
@@ -1704,7 +1889,10 @@ fn test_hover_documentation_tooltips_render_without_panics() {
         screen_rect: Some(screen_rect),
         ..Default::default()
     };
-    let _ = ctx.run(prime_input, |ctx| app.update_ui(ctx));
+    let _ = ctx.run(prime_input, |ctx| {
+        common::keyboard::inject_taps(ctx, app.host.status.generation);
+        app.update_ui(ctx)
+    });
     common::settle(&mut app, &ctx);
 
     // Hover coordinates across key inspectable UI elements
@@ -1725,7 +1913,10 @@ fn test_hover_documentation_tooltips_render_without_panics() {
             events: vec![Event::PointerMoved(pos)],
             ..Default::default()
         };
-        let mut output = ctx.run(hover_input, |ctx| app.update_ui(ctx));
+        let mut output = ctx.run(hover_input, |ctx| {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        });
         output.append(common::settle(&mut app, &ctx));
         assert!(
             !output.shapes.is_empty(),
@@ -1752,7 +1943,10 @@ fn test_memory_hex_cell_selection_and_row_wrapping_navigation() {
             events: vec![Event::PointerMoved(egui::pos2(900.0, 150.0))],
             ..Default::default()
         },
-        |ctx| app.update_ui(ctx),
+        |ctx| {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        },
     );
     common::settle(&mut app, &ctx);
 
@@ -1771,7 +1965,10 @@ fn test_memory_hex_cell_selection_and_row_wrapping_navigation() {
         ],
         ..Default::default()
     };
-    let _ = ctx.run(right_input, |ctx| app.update_ui(ctx));
+    let _ = ctx.run(right_input, |ctx| {
+        common::keyboard::inject_taps(ctx, app.host.status.generation);
+        app.update_ui(ctx)
+    });
     common::settle(&mut app, &ctx);
     assert_eq!(app.memory_selected_addr, Some(0x001010));
 
@@ -1790,7 +1987,10 @@ fn test_memory_hex_cell_selection_and_row_wrapping_navigation() {
         ],
         ..Default::default()
     };
-    let _ = ctx.run(left_input, |ctx| app.update_ui(ctx));
+    let _ = ctx.run(left_input, |ctx| {
+        common::keyboard::inject_taps(ctx, app.host.status.generation);
+        app.update_ui(ctx)
+    });
     common::settle(&mut app, &ctx);
     assert_eq!(app.memory_selected_addr, Some(0x00100F));
 
@@ -1809,7 +2009,10 @@ fn test_memory_hex_cell_selection_and_row_wrapping_navigation() {
         ],
         ..Default::default()
     };
-    let _ = ctx.run(enter_input, |ctx| app.update_ui(ctx));
+    let _ = ctx.run(enter_input, |ctx| {
+        common::keyboard::inject_taps(ctx, app.host.status.generation);
+        app.update_ui(ctx)
+    });
     common::settle(&mut app, &ctx);
     assert_eq!(app.hex_edit_buffer.0, 0x00100F);
     assert!(!app.hex_edit_buffer.1.is_empty());
@@ -1829,7 +2032,10 @@ fn test_memory_hex_cell_selection_and_row_wrapping_navigation() {
         ],
         ..Default::default()
     };
-    let _ = ctx.run(esc_input, |ctx| app.update_ui(ctx));
+    let _ = ctx.run(esc_input, |ctx| {
+        common::keyboard::inject_taps(ctx, app.host.status.generation);
+        app.update_ui(ctx)
+    });
     common::settle(&mut app, &ctx);
     assert!(app.hex_edit_buffer.1.is_empty());
 
@@ -1848,7 +2054,10 @@ fn test_memory_hex_cell_selection_and_row_wrapping_navigation() {
         ],
         ..Default::default()
     };
-    let _ = ctx.run(esc_input2, |ctx| app.update_ui(ctx));
+    let _ = ctx.run(esc_input2, |ctx| {
+        common::keyboard::inject_taps(ctx, app.host.status.generation);
+        app.update_ui(ctx)
+    });
     common::settle(&mut app, &ctx);
     assert_eq!(app.memory_selected_addr, None);
 }
@@ -1883,7 +2092,10 @@ fn test_disassembly_infinite_scroll_and_pc_snap() {
             events: vec![Event::PointerMoved(egui::pos2(500.0, 300.0))],
             ..Default::default()
         },
-        |ctx| app.update_ui(ctx),
+        |ctx| {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        },
     );
     common::settle(&mut app, &ctx);
 
@@ -1900,7 +2112,10 @@ fn test_disassembly_infinite_scroll_and_pc_snap() {
         ],
         ..Default::default()
     };
-    let _ = ctx.run(wheel_down, |ctx| app.update_ui(ctx));
+    let _ = ctx.run(wheel_down, |ctx| {
+        common::keyboard::inject_taps(ctx, app.host.status.generation);
+        app.update_ui(ctx)
+    });
     common::settle(&mut app, &ctx);
     assert!(
         app.disassembly_view_addr.is_some(),
@@ -1919,7 +2134,10 @@ fn test_disassembly_infinite_scroll_and_pc_snap() {
         }],
         ..Default::default()
     };
-    let _ = ctx.run(step_input, |ctx| app.update_ui(ctx));
+    let _ = ctx.run(step_input, |ctx| {
+        common::keyboard::inject_taps(ctx, app.host.status.generation);
+        app.update_ui(ctx)
+    });
     common::settle(&mut app, &ctx);
     assert_eq!(
         app.disassembly_view_addr, None,
@@ -1944,7 +2162,10 @@ fn test_fhd_vertical_splitter_drag_and_disassembly_resizing() {
                 screen_rect: Some(screen_rect),
                 ..Default::default()
             },
-            |ctx| app.update_ui(ctx),
+            |ctx| {
+                common::keyboard::inject_taps(ctx, app.host.status.generation);
+                app.update_ui(ctx)
+            },
         );
     }
 
@@ -1964,7 +2185,10 @@ fn test_fhd_vertical_splitter_drag_and_disassembly_resizing() {
             ],
             ..Default::default()
         },
-        |ctx| app.update_ui(ctx),
+        |ctx| {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        },
     );
 
     // 3. Drag mouse to 1000.0 while still held
@@ -1974,7 +2198,10 @@ fn test_fhd_vertical_splitter_drag_and_disassembly_resizing() {
             events: vec![Event::PointerMoved(egui::pos2(1000.0, 400.0))],
             ..Default::default()
         },
-        |ctx| app.update_ui(ctx),
+        |ctx| {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        },
     );
 
     assert!(
@@ -2001,7 +2228,10 @@ fn test_disassembly_vertical_scrollbar_interaction() {
                 screen_rect: Some(screen_rect),
                 ..Default::default()
             },
-            |ctx| app.update_ui(ctx),
+            |ctx| {
+                common::keyboard::inject_taps(ctx, app.host.status.generation);
+                app.update_ui(ctx)
+            },
         );
         common::settle(&mut app, &ctx);
     }
@@ -2021,7 +2251,10 @@ fn test_disassembly_vertical_scrollbar_interaction() {
             ],
             ..Default::default()
         },
-        |ctx| app.update_ui(ctx),
+        |ctx| {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        },
     );
     common::settle(&mut app, &ctx);
 
@@ -2031,7 +2264,10 @@ fn test_disassembly_vertical_scrollbar_interaction() {
             events: vec![Event::PointerMoved(egui::pos2(915.0, 500.0))],
             ..Default::default()
         },
-        |ctx| app.update_ui(ctx),
+        |ctx| {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        },
     );
     common::settle(&mut app, &ctx);
 
@@ -2058,7 +2294,10 @@ fn test_disassembly_mouse_wheel_scroll_up_in_blank_memory() {
             screen_rect: Some(screen_rect),
             ..Default::default()
         },
-        |ctx| app.update_ui(ctx),
+        |ctx| {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        },
     );
     common::settle(&mut app, &ctx);
 
@@ -2079,7 +2318,10 @@ fn test_disassembly_mouse_wheel_scroll_up_in_blank_memory() {
             ],
             ..Default::default()
         },
-        |ctx| app.update_ui(ctx),
+        |ctx| {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        },
     );
     common::settle(&mut app, &ctx);
 
@@ -2105,7 +2347,10 @@ fn test_right_dock_bottom_docking_and_fill() {
                 screen_rect: Some(screen_rect),
                 ..Default::default()
             },
-            |ctx| app.update_ui(ctx),
+            |ctx| {
+                common::keyboard::inject_taps(ctx, app.host.status.generation);
+                app.update_ui(ctx)
+            },
         );
         common::settle(&mut app, &ctx);
     }
@@ -2152,7 +2397,10 @@ fn test_simulated_quick_save_and_load_shortcuts() {
         ..Default::default()
     };
     let _ = ctx.run(input_f6, |ctx| {
-        app.update_ui(ctx);
+        {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        };
     });
     common::settle(&mut app, &ctx);
 
@@ -2183,7 +2431,10 @@ fn test_simulated_quick_save_and_load_shortcuts() {
         ..Default::default()
     };
     let _ = ctx.run(input_f9, |ctx| {
-        app.update_ui(ctx);
+        {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        };
     });
     common::settle(&mut app, &ctx);
 
@@ -2216,7 +2467,10 @@ fn test_ctrl_r_leaves_machine_unchanged() {
         ..Default::default()
     };
     let _ = ctx.run(ctrl_r, |ctx| {
-        app.update_ui(ctx);
+        {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        };
     });
     common::settle(&mut app, &ctx);
 

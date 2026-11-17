@@ -3,7 +3,10 @@
 
 mod common;
 use debugger::launch::DeviceKind;
-use egui_kittest::{kittest::Queryable, Harness};
+use egui_kittest::{
+    kittest::{NodeT, Queryable},
+    Harness,
+};
 use gui::host_commands::HostCommand;
 use gui::player::PlayerScreen;
 use gui::player_config::{InputSource, NamedConfiguration, PortBinding};
@@ -21,7 +24,13 @@ fn editor_with_session(session: Box<debugger::DebuggerSession>) -> Harness<'stat
     app.navigate_player(PlayerScreen::Configuration);
     let mut h = Harness::builder()
         .with_size(egui::vec2(480.0, 640.0))
-        .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
+        .build_state(
+            |ctx, app: &mut EmulatorApp| {
+                common::keyboard::inject_taps(ctx, app.host.status.generation);
+                app.update_ui(ctx)
+            },
+            app,
+        );
     common::settle_harness(&mut h);
     h
 }
@@ -31,7 +40,7 @@ fn cancel_discards_new_profile_shared_mapping_and_invalid_edits() {
     let mut h = editor();
     let catalog = h.state().player.catalog.clone();
     let machine = common::snapshot(h.state_mut());
-    h.get_by_label("Create configuration").click();
+    h.get_by_label("Create configuration").click_accesskit();
     common::settle_harness(&mut h);
     let draft = &mut h.state_mut().player.editor.as_mut().unwrap().catalog;
     draft.mappings[0].keys[0] = 0x11;
@@ -40,7 +49,7 @@ fn cancel_discards_new_profile_shared_mapping_and_invalid_edits() {
         ..Default::default()
     });
     draft.configurations[0].name.clear();
-    h.get_by_label("Cancel").click();
+    h.get_by_label("Cancel").click_accesskit();
     common::settle_harness(&mut h);
     assert_eq!(h.state().player.catalog, catalog);
     assert!(h.state().player.editor.is_none());
@@ -75,7 +84,7 @@ fn save_changes_active_identity_controls_without_applying_future_launch_choices(
     catalog.selected = "future".into();
     let committed = catalog.clone();
     let generation = h.state().host.status.generation;
-    h.get_by_label("Save").click();
+    h.get_by_label("Save").click_accesskit();
     common::settle_harness(&mut h);
     assert!(h.state().player.editor.is_none());
     assert_eq!(h.state().player.catalog, committed);
@@ -107,13 +116,13 @@ fn invalid_profile_cannot_publish_shared_mapping_or_controls() {
     });
     draft.configurations[1].name.clear();
     draft.mappings[0].keys[0] = 0x11;
-    h.get_by_label("Save").click();
+    h.get_by_label("Save").click_accesskit();
     common::settle_harness(&mut h);
     assert!(h.state().player.editor.is_some());
     h.get_by_label("Enter a configuration name");
     assert_eq!(h.state().player.catalog, committed);
     assert_eq!(common::snapshot(h.state_mut()), machine);
-    h.get_by_label("Cancel").click();
+    h.get_by_label("Cancel").click_accesskit();
     common::settle_harness(&mut h);
     assert_eq!(h.state().player.screen, PlayerScreen::Session);
 }
@@ -137,7 +146,7 @@ fn invalid_reusable_mapping_cannot_publish_even_when_no_profile_uses_it() {
             1
         };
         draft.mappings[index].name.clear();
-        h.get_by_label("Save").click();
+        h.get_by_label("Save").click_accesskit();
         common::settle_harness(&mut h);
         h.get_by_label("Mappings require unique identities and a name");
         assert!(h.state().player.editor.is_some());
@@ -145,7 +154,7 @@ fn invalid_reusable_mapping_cannot_publish_even_when_no_profile_uses_it() {
         assert_eq!(h.state().player.active_configuration, controls);
         assert_eq!(h.state().host.status.generation, generation);
         assert_eq!(common::snapshot(h.state_mut()), machine);
-        h.get_by_label("Cancel").click();
+        h.get_by_label("Cancel").click_accesskit();
         common::settle_harness(&mut h);
         assert!(h.state().player.editor.is_none());
         assert_eq!(h.state().player.screen, PlayerScreen::Session);
@@ -193,11 +202,11 @@ fn unavailable_controller_navigation(discard: bool) {
             .catalog
             .configurations[0]
             .name = "Dirty".into();
-        h.get_by_label("Return to session").click();
+        h.get_by_label("Return to session").click_accesskit();
         common::settle_harness(&mut h);
-        h.get_by_label("Discard").click();
+        h.get_by_label("Discard").click_accesskit();
     } else {
-        h.get_by_label("Debug").click();
+        h.get_by_label("Debug").click_accesskit();
     }
     common::settle_harness(&mut h);
     assert_eq!(h.state().player.screen, PlayerScreen::Configuration);
@@ -211,7 +220,7 @@ fn unavailable_controller_navigation(discard: bool) {
     assert!(h.state().player.editor.is_some());
     assert_eq!(h.state().host.status.generation, generation);
     assert_eq!(common::snapshot(h.state_mut()), machine);
-    h.get_by_label("Cancel").click();
+    h.get_by_label("Cancel").click_accesskit();
     common::settle_harness(&mut h);
     assert!(h.state().player.editor.is_none());
     assert_eq!(h.state().player.screen, PlayerScreen::Session);
@@ -239,16 +248,16 @@ fn dirty_navigation_offers_keep_discard_and_save_at_narrow_size() {
             .catalog
             .configurations[0]
             .name = "Edited".into();
-        h.get_by_label("Manual setup").click();
+        h.get_by_label("Manual setup").click_accesskit();
         common::settle_harness(&mut h);
         assert_eq!(h.state().player.screen, PlayerScreen::Configuration);
         h.get_by_label("Unsaved configuration changes");
         // The last Save belongs to the modal; the footer remains behind it.
         h.get_all_by_label(action)
-            .filter(|node| node.role() == egui::accesskit::Role::Button)
+            .filter(|node| node.accesskit_node().role() == egui::accesskit::Role::Button)
             .last()
             .unwrap()
-            .click();
+            .click_accesskit();
         common::settle_harness(&mut h);
         assert_eq!(
             h.state().player.screen,
@@ -324,7 +333,7 @@ fn developer_navigation_cannot_bypass_dirty_editor() {
     h.state_mut().set_view_mode(ViewMode::Developer);
     common::settle_harness(&mut h);
     assert_eq!(h.state().view_mode, ViewMode::ScreenOnly);
-    h.get_by_label("Discard").click();
+    h.get_by_label("Discard").click_accesskit();
     common::settle_harness(&mut h);
     assert_eq!(h.state().view_mode, ViewMode::Developer);
     assert_eq!(h.state().player.screen, PlayerScreen::Session);
@@ -333,7 +342,7 @@ fn developer_navigation_cannot_bypass_dirty_editor() {
 #[test]
 fn return_still_validates_host_sources_and_clean_debug_navigation_leaves_editor() {
     let mut h = editor();
-    h.get_by_label("Debug").click();
+    h.get_by_label("Debug").click_accesskit();
     common::settle_harness(&mut h);
     assert_eq!(h.state().player.screen, PlayerScreen::Session);
     assert_eq!(h.state().view_mode, ViewMode::Developer);
@@ -531,7 +540,7 @@ fn switching_profiles_in_dropdown_preserves_both_drafts_until_save_or_cancel() {
             .catalog
             .configurations[0]
             .name = "Edited first".into();
-        h.get_by_label("Create configuration").click();
+        h.get_by_label("Create configuration").click_accesskit();
         common::settle_harness(&mut h);
         let draft = &mut h.state_mut().player.editor.as_mut().unwrap().catalog;
         draft.configurations[1].name = "Edited second".into();
@@ -542,11 +551,15 @@ fn switching_profiles_in_dropdown_preserves_both_drafts_until_save_or_cancel() {
             // popup. Use physical pointer events for opening and selecting.
             for option in [None, Some(name)] {
                 let bounds = if let Some(name) = option {
-                    h.get_by_label(name).bounding_box().unwrap()
+                    h.get_by_label(name)
+                        .accesskit_node()
+                        .bounding_box()
+                        .unwrap()
                 } else {
                     h.get_all_by_role(egui::accesskit::Role::ComboBox)
                         .next()
                         .unwrap()
+                        .accesskit_node()
                         .bounding_box()
                         .unwrap()
                 };
@@ -581,7 +594,8 @@ fn switching_profiles_in_dropdown_preserves_both_drafts_until_save_or_cancel() {
         assert_eq!(expected.configurations[1].name, "Edited second");
         assert_eq!(expected.mappings[0].keys[0], 0x11);
         assert_eq!(h.state().player.catalog, committed);
-        h.get_by_label(if save { "Save" } else { "Cancel" }).click();
+        h.get_by_label(if save { "Save" } else { "Cancel" })
+            .click_accesskit();
         common::settle_harness(&mut h);
         assert!(h.state().player.editor.is_none());
         assert_eq!(
@@ -618,7 +632,7 @@ fn quick_load_rejects_unavailable_current_controller_without_mutation() {
         mapping: "arrows".into(),
     };
     // Exercise the real frontend shortcut, rather than the owner rejection.
-    h.press_key(egui::Key::F9);
+    h.key_press(egui::Key::F9);
     common::settle_harness(&mut h);
     assert!(h
         .state()
@@ -647,7 +661,13 @@ fn input_contention_defers_draft_publication_until_sender_recovers() {
     common::settle(&mut app, &owner_context);
     let mut h = Harness::builder()
         .with_size(egui::vec2(480.0, 640.0))
-        .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
+        .build_state(
+            |ctx, app: &mut EmulatorApp| {
+                common::keyboard::inject_taps(ctx, app.host.status.generation);
+                app.update_ui(ctx)
+            },
+            app,
+        );
     common::settle_harness(&mut h);
     let committed = h.state().player.catalog.clone();
     let controls = h.state().player.active_configuration.clone();

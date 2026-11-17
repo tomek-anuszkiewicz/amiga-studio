@@ -131,11 +131,11 @@ fn recent_menu_reloads_current_bytes_with_saved_options_and_reports_missing_file
         .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
     harness.run_steps(2);
     common::settle_harness(&mut harness);
-    harness.get_by_label("File").click();
+    harness.get_by_label("File").click_accesskit();
     harness.run_steps(2);
     common::settle_harness(&mut harness);
     harness.get_by_label("Recent binaries");
-    harness.get_by_label("menu-program.bin").click();
+    harness.get_by_label("menu-program.bin").click_accesskit();
     harness.run_steps(2);
     common::settle_harness(&mut harness);
     assert_eq!(
@@ -150,10 +150,10 @@ fn recent_menu_reloads_current_bytes_with_saved_options_and_reports_missing_file
 
     std::fs::remove_file(&path).unwrap();
     let before = common::snapshot(harness.state_mut());
-    harness.get_by_label("File").click();
+    harness.get_by_label("File").click_accesskit();
     harness.run_steps(2);
     common::settle_harness(&mut harness);
-    harness.get_by_label("menu-program.bin").click();
+    harness.get_by_label("menu-program.bin").click_accesskit();
     harness.run_steps(2);
     common::settle_harness(&mut harness);
     assert!(harness.state().file_error.is_some());
@@ -194,17 +194,17 @@ fn game_menu_reloads_rom_and_keeps_binary_directory_separate() {
         .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
     harness.run_steps(2);
     common::settle_harness(&mut harness);
-    harness.get_by_label("File").click();
+    harness.get_by_label("File").click_accesskit();
     harness.run_steps(2);
     common::settle_harness(&mut harness);
-    harness.get_by_label("menu-firmware.rom").click();
+    harness.get_by_label("menu-firmware.rom").click_accesskit();
     harness.run_steps(2);
     common::settle_harness(&mut harness);
     assert!(
         harness.state().host.status.cck > 0,
         "ROM replacement needs confirmation"
     );
-    harness.get_by_label("Replace session").click();
+    harness.get_by_label("Replace session").click_accesskit();
     common::settle_harness(&mut harness);
     assert_eq!(harness.state().host.status.cck, 0);
     assert_eq!(
@@ -215,10 +215,10 @@ fn game_menu_reloads_rom_and_keeps_binary_directory_separate() {
     assert_eq!(harness.state().file_history.roms.len(), 1);
     std::fs::remove_file(&path).unwrap();
     let before = common::snapshot(harness.state_mut());
-    harness.get_by_label("File").click();
+    harness.get_by_label("File").click_accesskit();
     harness.run_steps(2);
     common::settle_harness(&mut harness);
-    harness.get_by_label("menu-firmware.rom").click();
+    harness.get_by_label("menu-firmware.rom").click_accesskit();
     harness.run_steps(2);
     common::settle_harness(&mut harness);
     assert!(harness.state().file_error.is_some());

@@ -242,7 +242,7 @@ impl EmulatorApp {
         let mut app = Self::default();
         #[cfg(not(target_arch = "wasm32"))]
         {
-            app.host.native_input = true;
+            app.host.native_gamepads = true;
         }
         #[cfg(target_arch = "wasm32")]
         app.browser_history.restore();

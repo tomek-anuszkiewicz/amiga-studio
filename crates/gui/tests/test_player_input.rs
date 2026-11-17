@@ -1,4 +1,5 @@
 #![allow(clippy::unwrap_used)]
+mod common;
 use debugger::launch::{DeviceKind, MachineSetup};
 use gui::host_input::{HostInputEvent, InputConsumer};
 use gui::input_mapping::{GamepadInfo, InputMapping};
@@ -178,8 +179,16 @@ fn two_keyboard_mappings_consume_only_their_keys_and_detect_conflicts() {
             pressed: true
         }]
     );
-    assert!(
-        mapping.keyboard(0x54, true).is_empty(),
+    let mut router = gui::keyboard_input::KeyboardRouter::default();
+    assert_eq!(
+        router.route(
+            &common::keyboard::key("F5", true),
+            &common::keyboard::policy()
+        ),
+        gui::keyboard_input::KeyRoute::Command {
+            action: gui::keyboard_input::KeyCommand::Pause,
+            pressed: true
+        },
         "F5 belongs to frontend"
     );
     config.controls.ports[1].source = InputSource::Keyboard("arrows".into());
@@ -204,10 +213,18 @@ fn configured_letter_shortcuts_are_consumed_before_guest_keys() {
     let catalog = ConfigurationCatalog::default();
     let mut configuration = catalog.selected().unwrap().clone();
     configuration.controls.host.frontend.pause = "A".into();
-    let mut mapping = InputMapping::default();
-    mapping.configure(&configuration.controls, &catalog.mappings);
-    assert!(mapping.keyboard(0x20, true).is_empty());
-    assert!(mapping.keyboard(0x20, false).is_empty());
+    let mut router = gui::keyboard_input::KeyboardRouter::default();
+    let mut policy = common::keyboard::policy();
+    policy.bindings = configuration.controls.host.frontend;
+    for pressed in [true, false] {
+        assert_eq!(
+            router.route(&common::keyboard::key("KeyA", pressed), &policy),
+            gui::keyboard_input::KeyRoute::Command {
+                action: gui::keyboard_input::KeyCommand::Pause,
+                pressed
+            }
+        );
+    }
 }
 
 #[test]
@@ -503,5 +520,14 @@ fn optional_release_defaults_to_guest_escape_and_f2_and_reserves_f12() {
     configuration.controls.host.frontend.release = "F4".into();
     assert!(catalog.validate(&configuration).is_ok());
     mapping.configure(&configuration.controls, &catalog.mappings);
-    assert!(mapping.keyboard(0x53, true).is_empty());
+    let mut policy = common::keyboard::policy();
+    policy.bindings = configuration.controls.host.frontend;
+    let mut router = gui::keyboard_input::KeyboardRouter::default();
+    assert_eq!(
+        router.route(&common::keyboard::key("F4", true), &policy),
+        gui::keyboard_input::KeyRoute::Command {
+            action: gui::keyboard_input::KeyCommand::Release,
+            pressed: true
+        }
+    );
 }

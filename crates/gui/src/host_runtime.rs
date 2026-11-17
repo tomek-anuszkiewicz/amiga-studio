@@ -29,9 +29,6 @@ struct Mailboxes {
     gamepad_enabled: bool,
     mapping: crate::input_mapping::InputMapping,
     input_generation: u64,
-    capture_epoch: u64,
-    #[cfg(not(target_arch = "wasm32"))]
-    capture_started_at: std::time::SystemTime,
     #[cfg(not(target_arch = "wasm32"))]
     gamepads_started_at: std::time::SystemTime,
 }
@@ -109,57 +106,11 @@ impl Mailboxes {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-static NATIVE_INPUT: Mutex<Option<HostInputSender>> = Mutex::new(None);
+static NATIVE_GAMEPADS: Mutex<Option<HostInputSender>> = Mutex::new(None);
 #[cfg(not(target_arch = "wasm32"))]
-static NATIVE_LISTENER: std::sync::Once = std::sync::Once::new();
+static NATIVE_GAMEPAD_LISTENER: std::sync::Once = std::sync::Once::new();
 #[cfg(not(target_arch = "wasm32"))]
 const MAX_NATIVE_SLEEP: std::time::Duration = std::time::Duration::from_millis(1);
-
-#[cfg(not(target_arch = "wasm32"))]
-pub(crate) fn collect_native_event(
-    events: &mut crate::host_native_input::NativeEvents,
-    raw: rdev::Event,
-) {
-    let Ok(target) = NATIVE_INPUT.lock() else {
-        return;
-    };
-    let Some(sender) = &*target else {
-        events.translate(raw.event_type, false);
-        return;
-    };
-    let Ok(mut mailboxes) = sender.shared.mailboxes.lock() else {
-        return;
-    };
-    events.capture((mailboxes.status.generation, mailboxes.capture_epoch));
-    let enabled = mailboxes.input_active() && raw.time >= mailboxes.capture_started_at;
-    if matches!(raw.event_type, rdev::EventType::MouseMove { .. }) {
-        return;
-    }
-    if let Some(event) = events.translate(raw.event_type, enabled) {
-        mailboxes.resolve_input(event);
-    }
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-pub(crate) fn collect_native_gamepad(
-    gamepads: &mut crate::host_native_input::NativeGamepads,
-    observed: std::time::SystemTime,
-) {
-    let Ok(target) = NATIVE_INPUT.lock() else {
-        return;
-    };
-    let Some(sender) = &*target else {
-        return;
-    };
-    let Ok(mut mailboxes) = sender.shared.mailboxes.lock() else {
-        return;
-    };
-    let fresh = observed >= mailboxes.gamepads_started_at;
-    let active = mailboxes.gamepads_active() && fresh;
-    if mailboxes.sample_gamepads(gamepads.samples(), active, fresh) {
-        sender.repaint.request_repaint();
-    }
-}
 
 #[derive(Debug)]
 struct SharedHost {
@@ -218,9 +169,6 @@ impl HostRuntime {
                 gamepad_enabled: false,
                 mapping: Default::default(),
                 input_generation: status.generation,
-                capture_epoch: 0,
-                #[cfg(not(target_arch = "wasm32"))]
-                capture_started_at: std::time::SystemTime::now(),
                 #[cfg(not(target_arch = "wasm32"))]
                 gamepads_started_at: std::time::SystemTime::now(),
             }),
@@ -260,14 +208,13 @@ impl HostRuntime {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) fn start_native_input(&self) -> bool {
-        let Ok(mut target) = NATIVE_INPUT.try_lock() else {
+    pub(crate) fn start_native_gamepads(&self) -> bool {
+        let Ok(mut target) = NATIVE_GAMEPADS.try_lock() else {
             return false;
         };
         *target = Some(self.input_sender());
-        NATIVE_LISTENER.call_once(|| {
-            std::thread::spawn(crate::host_native_input::listen);
-            std::thread::spawn(crate::host_native_input::listen_gamepads);
+        NATIVE_GAMEPAD_LISTENER.call_once(|| {
+            std::thread::spawn(crate::host_gamepads::listen_gamepads);
         });
         true
     }
@@ -488,7 +435,7 @@ impl HostRuntime {
 impl Drop for HostRuntime {
     fn drop(&mut self) {
         #[cfg(not(target_arch = "wasm32"))]
-        if let Ok(mut target) = NATIVE_INPUT.lock() {
+        if let Ok(mut target) = NATIVE_GAMEPADS.lock() {
             if target
                 .as_ref()
                 .is_some_and(|sender| Arc::ptr_eq(&sender.shared, &self.shared))
@@ -595,9 +542,7 @@ impl WorkerLoop {
                     mailboxes.input_generation = status.generation;
                     #[cfg(not(target_arch = "wasm32"))]
                     {
-                        mailboxes.capture_started_at = std::time::SystemTime::now();
-                        mailboxes.gamepads_started_at = mailboxes.capture_started_at;
-                        mailboxes.capture_epoch = mailboxes.capture_epoch.wrapping_add(1);
+                        mailboxes.gamepads_started_at = std::time::SystemTime::now();
                     }
                 }
                 mailboxes.status = status;
@@ -688,3 +633,9 @@ pub(crate) use browser::take_pointer_capture_loss;
 use browser::{set_host_input_enabled, start_web};
 
 mod input;
+
+#[cfg(not(target_arch = "wasm32"))]
+mod gamepads;
+
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) use gamepads::collect_native_gamepad;

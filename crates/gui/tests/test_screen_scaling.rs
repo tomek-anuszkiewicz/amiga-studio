@@ -180,11 +180,11 @@ fn selector_changes_image_scale_without_changing_machine_or_interface_zoom() {
                 )
                 .next()
                 .unwrap()
-                .click();
+                .click_accesskit();
             common::settle_harness(&mut harness);
-            harness.get_by_label(label).click();
+            harness.get_by_label(label).click_accesskit();
             common::settle_harness(&mut harness);
-            assert!(!harness.ctx.memory(|m| m.any_popup_open()));
+            assert!(!egui::Popup::is_any_open(&harness.ctx));
             assert_eq!(harness.state().screen_scale, expected);
             assert_eq!(harness.state().host.status.cck, 0);
             assert_eq!(harness.ctx.zoom_factor(), 1.0);
@@ -223,9 +223,7 @@ fn switching_filters_keeps_the_published_image_until_the_next_field() {
         .iter()
         .find(|(_, delta)| delta.image.width() == 720)
         .unwrap();
-    let ImageData::Color(image) = &delta.image else {
-        panic!("Expected color texture");
-    };
+    let ImageData::Color(image) = &delta.image;
     assert_eq!(image.size, [720, 568]);
     let published_first_pixel = image.pixels[0];
     let field = session.machine.denise.frame_builder.frame_number;
@@ -250,9 +248,7 @@ fn switching_filters_keeps_the_published_image_until_the_next_field() {
         assert_eq!(delta.options, expected);
         assert_eq!(delta.pos, Some([0, 0]));
         assert_eq!(delta.image.size(), [1, 1]);
-        let ImageData::Color(image) = &delta.image else {
-            panic!("Expected color texture");
-        };
+        let ImageData::Color(image) = &delta.image;
         assert_eq!(image.pixels, [published_first_pixel]);
         assert_ne!(image.pixels[0], Color32::RED);
         assert_eq!(session.machine.cck, cck);

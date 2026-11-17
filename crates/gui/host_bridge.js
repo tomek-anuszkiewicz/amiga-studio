@@ -67,7 +67,6 @@ function startInput(collect) {
     let pending = [];
 
     let buttons = 0;
-    const keys = new Set();
     let retry;
     let timer;
     let schedule = 0;
@@ -92,17 +91,11 @@ function startInput(collect) {
         target.addEventListener(type, callback, capture);
         listeners.push(() => target.removeEventListener(type, callback, capture));
     };
-    const reserved = new Set(['F11', 'F12']);
+    // Rust's shared keyboard policy chooses GUI commands or guest input.
     for (const type of ['keydown', 'keyup']) listen(window, type, event => {
-        if (!active() || reserved.has(event.code) || event.repeat) return;
-        if (type === 'keydown') keys.add(event.code);
-        else keys.delete(event.code);
-        // Application command shortcuts retain their existing meaning.
-        if (type === 'keydown' && (event.ctrlKey || event.metaKey) && ['KeyO', 'KeyS', 'KeyL', 'KeyT', 'Equal', 'Minus', 'Digit0'].includes(event.code)) return;
-        if (type === 'keyup' && (event.code === 'ControlLeft' || event.code === 'ControlRight')
-            && (keys.has('ControlLeft') || keys.has('ControlRight'))) return;
-        push([type, event.code, 0, 0, 0]);
-        event.preventDefault();
+        const key = JSON.stringify({physical: event.code, logical: event.key || '',
+            pressed: type === 'keydown', repeat: !!event.repeat, synthetic: false});
+        if (collect('key', key, 0, 0, 0, inputGeneration)) event.preventDefault();
     }, true);
     listen(canvas, 'pointermove', event => {
         if (active()) push(['motion', '', event.movementX, event.movementY, 0]);
@@ -122,14 +115,14 @@ function startInput(collect) {
         push(['mouse', '', 0, 0, buttons]);
     });
     const release = () => {
+        collect('key', JSON.stringify({physical: '__focus_lost__', logical: '',
+            pressed: false, repeat: false, synthetic: false}), 0, 0, 0, inputGeneration);
         buttons = 0;
-        keys.clear();
 
         push(['release', '', 0, 0, 0]);
     };
     const releaseCapture = () => {
         buttons = 0;
-        keys.clear();
         push(['capture-release', '', 0, 0, 0]);
     };
     resetInput = releaseCapture;

@@ -70,16 +70,10 @@ pub(super) fn start_web(
             if kind == "pads" {
                 return sender.browser_gamepads(&code, generation);
             }
+            if kind == "key" {
+                return sender.browser_key(&code, generation);
+            }
             let event = match kind.as_str() {
-                "keydown" | "keyup" => {
-                    let Some(code) = crate::host_keys::amiga_key_code(&code) else {
-                        return true;
-                    };
-                    HostInputEvent::Key {
-                        code,
-                        pressed: kind == "keydown",
-                    }
-                }
                 "motion" => HostInputEvent::MouseMotion { port: 0, dx, dy },
                 "mouse" => HostInputEvent::MouseButtons {
                     port: 0,

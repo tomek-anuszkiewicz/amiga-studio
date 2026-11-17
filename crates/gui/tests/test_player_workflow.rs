@@ -1,6 +1,7 @@
 #![cfg(not(target_arch = "wasm32"))]
 #![allow(clippy::unwrap_used, clippy::panic)]
 mod common;
+use egui_kittest::kittest::NodeT;
 use gui::game_library::{GameDisk, GameLibrary, GameManifest};
 use gui::host_commands::HostCommand;
 use gui::player::PlayerScreen;
@@ -229,17 +230,17 @@ fn library_continue_restores_selected_games_save_instead_of_active_game() {
         .with_size(egui::vec2(1280.0, 900.0))
         .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
     common::settle_harness(&mut h);
-    h.get_by_label("one").click();
+    h.get_by_label("one").click_accesskit();
     common::settle_harness(&mut h);
     assert_eq!(h.state().player.saves.len(), 1);
-    h.get_by_label_contains("Continue - ").click();
+    h.get_by_label_contains("Continue - ").click_accesskit();
     common::settle_harness(&mut h);
-    h.get_by_label("Keep current session").click();
+    h.get_by_label("Keep current session").click_accesskit();
     common::settle_harness(&mut h);
     assert_eq!(common::snapshot(h.state_mut()), before);
-    h.get_by_label_contains("Continue - ").click();
+    h.get_by_label_contains("Continue - ").click_accesskit();
     common::settle_harness(&mut h);
-    h.get_by_label("Replace session").click();
+    h.get_by_label("Replace session").click_accesskit();
     common::settle_harness(&mut h);
     assert_eq!(
         h.state().player.active_game.as_ref().unwrap().manifest.id,
@@ -262,17 +263,19 @@ fn player_disk_selection_and_ejection_publish_only_acknowledged_mounts() {
     fn open_df0(h: &mut Harness<'_, EmulatorApp>) {
         let row = h
             .get_all_by_value("DF0:")
-            .find(|n| n.role() == egui::accesskit::Role::Label)
+            .find(|n| n.accesskit_node().role() == egui::accesskit::Role::Label)
             .unwrap()
+            .accesskit_node()
             .bounding_box()
             .unwrap();
         h.get_all_by_role(egui::accesskit::Role::ComboBox)
             .find(|n| {
-                n.bounding_box()
+                n.accesskit_node()
+                    .bounding_box()
                     .is_some_and(|b| b.x0 >= row.x1 && b.y0 < row.y1 && b.y1 > row.y0)
             })
             .unwrap()
-            .simulate_click();
+            .click();
         h.step();
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
         while h.query_by_label("Eject / Empty").is_none() {
@@ -302,7 +305,7 @@ fn player_disk_selection_and_ejection_publish_only_acknowledged_mounts() {
         .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
     common::settle_harness(&mut h);
     open_df0(&mut h);
-    h.get_by_label("2 - Disk 2").simulate_click();
+    h.get_by_label("2 - Disk 2").click();
     h.step();
     assert_eq!(h.state().player.mounted[0].as_deref(), Some("disk-one"));
     common::settle_harness(&mut h);
@@ -317,7 +320,7 @@ fn player_disk_selection_and_ejection_publish_only_acknowledged_mounts() {
     );
     common::settle_harness(&mut h);
     open_df0(&mut h);
-    h.get_by_label("Eject / Empty").simulate_click();
+    h.get_by_label("Eject / Empty").click();
     h.step();
     assert_eq!(h.state().player.mounted[0].as_deref(), Some("disk-two"));
     common::settle_harness(&mut h);
@@ -339,13 +342,13 @@ fn manual_start_requires_valid_rom_media_attachment_and_available_sources() {
         .with_size(egui::vec2(1280.0, 900.0))
         .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
     common::settle_harness(&mut h);
-    assert!(h.get_by_label("Start").is_disabled());
+    assert!(h.get_by_label("Start").accesskit_node().is_disabled());
     std::fs::write(&rom_path, b"invalid ROM").unwrap();
     h.run_steps(2);
-    assert!(h.get_by_label("Start").is_disabled());
+    assert!(h.get_by_label("Start").accesskit_node().is_disabled());
     std::fs::write(&rom_path, rom()).unwrap();
     h.run_steps(2);
-    assert!(!h.get_by_label("Start").is_disabled());
+    assert!(!h.get_by_label("Start").accesskit_node().is_disabled());
     h.state_mut().player.setup_disks = vec![SessionDisk {
         id: "draft".into(),
         label: "Draft".into(),
@@ -353,19 +356,19 @@ fn manual_start_requires_valid_rom_media_attachment_and_available_sources() {
     }];
     h.state_mut().player.setup_mounted[0] = Some("draft".into());
     h.run_steps(2);
-    assert!(h.get_by_label("Start").is_disabled());
+    assert!(h.get_by_label("Start").accesskit_node().is_disabled());
     h.state_mut().player.setup_disks[0].bytes = Some(vec![0; 901120]);
     h.run_steps(2);
-    assert!(!h.get_by_label("Start").is_disabled());
+    assert!(!h.get_by_label("Start").accesskit_node().is_disabled());
     h.state_mut().player.setup_mounted = [None, Some("draft".into()), None, None];
     h.run_steps(2);
-    assert!(h.get_by_label("Start").is_disabled());
+    assert!(h.get_by_label("Start").accesskit_node().is_disabled());
     h.state_mut().player.catalog.configurations[0].launch.drives[1] = true;
     h.run_steps(2);
-    assert!(!h.get_by_label("Start").is_disabled());
+    assert!(!h.get_by_label("Start").accesskit_node().is_disabled());
     h.state_mut().player.setup_mounted[1] = Some("missing".into());
     h.run_steps(2);
-    assert!(h.get_by_label("Start").is_disabled());
+    assert!(h.get_by_label("Start").accesskit_node().is_disabled());
     h.state_mut().player.setup_mounted = [None, None, None, None];
     h.state_mut().player.catalog.configurations[0]
         .controls
@@ -375,6 +378,6 @@ fn manual_start_requires_valid_rom_media_attachment_and_available_sources() {
         mapping: "arrows".into(),
     };
     h.run_steps(2);
-    assert!(h.get_by_label("Start").is_disabled());
+    assert!(h.get_by_label("Start").accesskit_node().is_disabled());
     assert_eq!(h.state().host.status.cck, 0);
 }
