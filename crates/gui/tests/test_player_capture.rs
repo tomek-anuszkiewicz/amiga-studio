@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::panic)]
 mod common;
+use egui_kittest::kittest::NodeT;
 use gui::host_commands::{HostCommand, HostValue};
 use gui::{EmulatorApp, ViewMode};
 
@@ -34,7 +35,10 @@ fn draw(app: &mut EmulatorApp, ctx: &egui::Context, key: Option<egui::Key>) {
             events,
             ..Default::default()
         },
-        |ctx| app.update_ui(ctx),
+        |ctx| {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        },
     );
 }
 #[test]
@@ -73,9 +77,15 @@ fn long_disk_names_keep_the_wide_player_panel_compact() {
     app.player.mounted[0] = Some("long".into());
     let mut harness = Harness::builder()
         .with_size(egui::vec2(1280.0, 800.0))
-        .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
+        .build_state(
+            |ctx, app: &mut EmulatorApp| {
+                common::keyboard::inject_taps(ctx, app.host.status.generation);
+                app.update_ui(ctx)
+            },
+            app,
+        );
     common::settle_harness(&mut harness);
-    let save = harness.get_by_label("Save").raw_bounds().unwrap();
+    let save = harness.get_by_label("Save").accesskit_node().bounding_box().unwrap();
     assert!(
         save.x0 >= 1000.0 && save.x1 <= 1280.0,
         "Long media label stretched the player panel: {save:?}"
@@ -116,7 +126,10 @@ fn middle_mouse_releases_capture_without_pause_or_keyboard_configuration() {
             }],
             ..Default::default()
         },
-        |ctx| app.update_ui(ctx),
+        |ctx| {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        },
     );
     assert!(!app.player.captured);
     assert!(app.host.status.running);
@@ -145,9 +158,14 @@ fn pad(sender: &gui::host_runtime::HostInputSender, generation: u64, pressed: bo
     }
 }
 fn delivered(app: &mut EmulatorApp, ctx: &egui::Context) {
+    common::settle(app, ctx);
+    // Establish an owner barrier after submission; cached GUI telemetry may predate it.
+    let _ = fire(app);
     let before = app.host.status.input_deliveries;
     common::wait(app, ctx, |app| {
         app.host.status.input_deliveries >= before + 2
+            // Admission may occur at a zero-budget boundary; await an actual CCK sample.
+            && app.host.status.cck > app.host.status.last_input_cck
     });
 }
 fn fire(app: &mut EmulatorApp) -> bool {
@@ -175,7 +193,7 @@ fn fire(app: &mut EmulatorApp) -> bool {
                     panic!("Missing machine snapshot");
                 };
                 let saved = debugger::SaveState::from_json(&json).unwrap();
-                app.host.status = runtime.status();
+                app.host.status = reply.status;
                 return saved.state.game_ports.sample_ciaa_port_a_inputs() & 0x80 == 0;
             }
         }
@@ -206,7 +224,10 @@ fn gamepad_plays_without_capture_survives_mouse_release_and_stops_outside_sessio
         egui::Window::new("Session control").show(ctx, |ui| {
             ui.button("Ordinary button").request_focus();
         });
-        app.update_ui(ctx);
+        {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        };
     });
     delivered(&mut app, &ctx);
     assert!(
@@ -250,7 +271,10 @@ fn gamepad_plays_without_capture_survives_mouse_release_and_stops_outside_sessio
             ui.add(egui::TextEdit::singleline(&mut text).id(text_id))
                 .request_focus();
         });
-        app.update_ui(ctx);
+        {
+            common::keyboard::inject_taps(ctx, app.host.status.generation);
+            app.update_ui(ctx)
+        };
     });
     pad(&sender, generation, true);
     delivered(&mut app, &ctx);
@@ -285,7 +309,10 @@ fn gamepad_plays_without_capture_survives_mouse_release_and_stops_outside_sessio
                 focused: false,
                 ..Default::default()
             },
-            |ctx| app.update_ui(ctx),
+            |ctx| {
+                common::keyboard::inject_taps(ctx, app.host.status.generation);
+                app.update_ui(ctx)
+            },
         );
         pad(&sender, generation, true);
         if app.host.is_idle() && !fire(&mut app) {

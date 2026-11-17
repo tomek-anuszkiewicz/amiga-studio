@@ -19,7 +19,7 @@ pub(super) fn render_recent_files(app: &mut EmulatorApp, ui: &mut egui::Ui) {
                 ui.button(name).on_hover_text("Choose a file from this file's folder. Browsers without folder support use their default location.").clicked()
             }).inner {
                 app.open_recent_browser_file(binary, index);
-                ui.close_menu();
+                ui.close_kind(egui::UiKind::Menu);
             }
         }
     }
@@ -54,7 +54,7 @@ pub(super) fn render_recent_files(app: &mut EmulatorApp, ui: &mut egui::Ui) {
     }
     if let Some(entry) = selected_binary {
         app.load_binary_file(&entry.path, entry.target, entry.auto_prime);
-        ui.close_menu();
+        ui.close_kind(egui::UiKind::Menu);
     }
 
     ui.separator();
@@ -81,7 +81,7 @@ pub(super) fn render_recent_files(app: &mut EmulatorApp, ui: &mut egui::Ui) {
     }
     if let Some(path) = selected_rom {
         app.load_rom_file(&path);
-        ui.close_menu();
+        ui.close_kind(egui::UiKind::Menu);
     }
 }
 

@@ -13,16 +13,17 @@ pub mod game_library;
 mod host_clock;
 pub mod host_commands;
 mod host_failure;
+#[cfg(not(target_arch = "wasm32"))]
+mod host_gamepads;
 pub mod host_input;
 pub mod host_inspection;
 pub mod host_keys;
-#[cfg(not(target_arch = "wasm32"))]
-pub mod host_native_input;
 pub mod host_owner;
 pub mod host_runtime;
 pub mod host_video;
 pub mod input_mapping;
 mod inspection;
+pub mod keyboard_input;
 pub mod layout;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod library_edit;
@@ -35,6 +36,9 @@ mod player_drive;
 mod player_view;
 mod shortcuts;
 pub mod theme;
+pub mod window_pointer;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod window_keyboard;
 
 pub use app::{EmulatorApp, UserPreferences, ViewMode};
 pub use debugger::DebuggerSession;

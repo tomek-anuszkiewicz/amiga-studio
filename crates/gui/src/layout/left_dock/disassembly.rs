@@ -474,7 +474,7 @@ pub(crate) fn render_disassembly(
                                     commands.push(HostCommand::SetRegister { register: EditRegister::PC, value: cur_addr });
                                     *view_addr = None;
                                     *selected_addr = Some(cur_addr);
-                                    ui.close_menu();
+                                    ui.close_kind(egui::UiKind::Menu);
                                 }
                                 let bp_label = if is_bp { "● Remove Breakpoint" } else { "● Set Breakpoint" };
                                 if ui.button(bp_label).clicked() {
@@ -483,7 +483,7 @@ pub(crate) fn render_disassembly(
                                     } else {
                                         debugger.breakpoints.add_pc_breakpoint(cur_addr);
                                     }
-                                    ui.close_menu();
+                                    ui.close_kind(egui::UiKind::Menu);
                                 }
                                 if ui.button("✏ Edit Instruction").clicked() {
                                     let initial_text = row.edit_text.clone();
@@ -492,7 +492,7 @@ pub(crate) fn render_disassembly(
                                         text: initial_text,
                                         error: None,
                                     });
-                                    ui.close_menu();
+                                    ui.close_kind(egui::UiKind::Menu);
                                 }
 
                                 if !historical_passes.is_empty() {
@@ -506,7 +506,7 @@ pub(crate) fn render_disassembly(
                                         let item_label = format!("Pass #{} (CCK: {})", pass_num + 1, cck);
                                         if ui.button(item_label).clicked() {
                                             commands.push(HostCommand::History(HistoryCommand::Index(*hist_idx)));
-                                            ui.close_menu();
+                                            ui.close_kind(egui::UiKind::Menu);
                                         }
                                     }
                                 }

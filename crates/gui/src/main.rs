@@ -49,7 +49,7 @@ fn main() -> eframe::Result<()> {
         ..Default::default()
     };
 
-    eframe::run_native(
+    gui::window_keyboard::run_native(
         "Amiga 500 Developer Studio",
         native_options,
         Box::new(move |cc| {

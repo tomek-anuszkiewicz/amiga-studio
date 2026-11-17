@@ -20,7 +20,10 @@ pub(crate) enum HostEffect {
 #[derive(Debug)]
 pub struct AppHost {
     #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) native_input: bool,
+    pub(crate) native_gamepads: bool,
+    pub(crate) keyboard_pending: VecDeque<(crate::host_input::HostInputEvent, u64)>,
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) pointer: crate::window_pointer::WindowPointer,
     pub status: HostStatus,
     pub data: Option<Box<HostInspection>>,
     pub presented: Option<crate::host_video::FrameInfo>,
@@ -62,7 +65,10 @@ impl AppHost {
         let owner = MachineOwner::new(session);
         Self {
             #[cfg(not(target_arch = "wasm32"))]
-            native_input: false,
+            native_gamepads: false,
+            keyboard_pending: VecDeque::new(),
+            #[cfg(not(target_arch = "wasm32"))]
+            pointer: Default::default(),
             status: owner.status(),
             data: None,
             presented: None,
@@ -326,7 +332,7 @@ impl crate::EmulatorApp {
         }
         if first_pass {
             self.host.refresh_utc(crate::host_clock::utc_now());
-            self.handle_keyboard_shortcuts(ctx);
+            self.handle_keyboard_input(ctx);
         }
         self.render_player_confirmation(ctx);
     }
@@ -436,14 +442,8 @@ impl crate::EmulatorApp {
                 ctx.send_viewport_cmd(egui::ViewportCommand::CursorVisible(!enabled));
                 if enabled {
                     for event in ctx.input(|input| input.events.clone()) {
-                        if let egui::Event::MouseMoved(delta) = event {
-                            self.player.pending_pointer.push(
-                                crate::host_input::HostInputEvent::MouseMotion {
-                                    port: 0,
-                                    dx: delta.x.round() as i32,
-                                    dy: delta.y.round() as i32,
-                                },
-                            );
+                        if let Some(event) = self.host.pointer.translate(&event, true) {
+                            self.player.pending_pointer.push(event);
                         }
                     }
                     while let Some(event) = self.player.pending_pointer.first() {
@@ -454,11 +454,12 @@ impl crate::EmulatorApp {
                         self.player.pending_pointer.pop();
                     }
                 } else {
+                    self.host.pointer.release();
                     self.player.pending_pointer.clear();
                 }
             }
             #[cfg(not(target_arch = "wasm32"))]
-            if self.host.native_input && !runtime.start_native_input() {
+            if self.host.native_gamepads && !runtime.start_native_gamepads() {
                 ctx.request_repaint_after(crate::host_runtime::HOST_RETRY_DELAY);
             }
             if let Some(actions) = actions {
@@ -467,5 +468,6 @@ impl crate::EmulatorApp {
                 }
             }
         }
+        self.refresh_keyboard_policy(ctx);
     }
 }

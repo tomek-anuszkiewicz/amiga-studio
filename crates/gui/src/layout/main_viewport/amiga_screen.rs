@@ -77,11 +77,11 @@ impl ScreenTexture {
         if self.options != options {
             self.options = options;
             if let Some(texture) = &mut self.texture {
-                // egui 0.31 carries sampler options in image updates. Re-send one
+                // egui carries sampler options in image updates. Re-send one
                 // unchanged texel so a filter switch cannot expose an unfinished field.
                 texture.set_partial(
                     [0, 0],
-                    egui::ColorImage::new([1, 1], self.first_pixel),
+                    egui::ColorImage::filled([1, 1], self.first_pixel),
                     options,
                 );
             }
@@ -97,7 +97,7 @@ impl ScreenTexture {
                 Color32::from_rgba_unmultiplied(red, green, blue, alpha)
             }));
         }
-        egui::ColorImage { size, pixels }
+        egui::ColorImage::new(size, pixels)
     }
 
     pub(crate) fn update(&mut self, ctx: &egui::Context, image: egui::ColorImage) {

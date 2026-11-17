@@ -77,18 +77,6 @@ impl InputMapping {
         let Some((configuration, catalog)) = &self.configuration else {
             return vec![HostInputEvent::Key { code, pressed }];
         };
-        let shortcuts = [
-            &configuration.frontend.release,
-            &configuration.frontend.pause,
-            &configuration.frontend.save,
-            &configuration.frontend.load,
-        ];
-        if shortcuts
-            .iter()
-            .any(|key| crate::host_keys::frontend_key_code(key) == Some(code))
-        {
-            return Vec::new();
-        }
         let mut events = Vec::new();
         for (port, binding) in configuration.ports.iter().enumerate() {
             let InputSource::Keyboard(id) = &binding.source else {

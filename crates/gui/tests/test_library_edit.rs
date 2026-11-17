@@ -227,7 +227,7 @@ fn editor_cancel_does_not_write_and_save_updates_the_active_games_path_without_r
         .with_size(egui::vec2(1024.0, 800.0))
         .build_state(|ctx, app: &mut gui::EmulatorApp| app.update_ui(ctx), app);
     common::settle_harness(&mut harness);
-    harness.get_by_label("Add game").click();
+    harness.get_by_label("Add game").click_accesskit();
     common::settle_harness(&mut harness);
     harness
         .state_mut()
@@ -237,10 +237,10 @@ fn editor_cancel_does_not_write_and_save_updates_the_active_games_path_without_r
         .unwrap()
         .name = "Cancelled".into();
     harness.step();
-    harness.get_by_label("Cancel").click();
+    harness.get_by_label("Cancel").click_accesskit();
     common::settle_harness(&mut harness);
     assert!(!root.join("Cancelled").exists());
-    harness.get_by_label("Edit game").click();
+    harness.get_by_label("Edit game").click_accesskit();
     common::settle_harness(&mut harness);
     harness
         .state_mut()
@@ -258,7 +258,7 @@ fn editor_cancel_does_not_write_and_save_updates_the_active_games_path_without_r
     common::settle_harness(&mut harness);
     let generation = harness.state().host.status.generation;
     let before = common::snapshot(harness.state_mut());
-    harness.get_by_label("Save game").click();
+    harness.get_by_label("Save game").click_accesskit();
     common::settle_harness(&mut harness);
     assert!(
         harness.state().file_error.is_none(),

@@ -24,14 +24,14 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
                 ui.menu_button("File", |ui| {
                     if ui.button("📁 Load Binary... (Ctrl+O)").clicked() {
                         app.open_load_binary_dialog();
-                        ui.close_menu();
+                        ui.close_kind(egui::UiKind::Menu);
                     }
 
                     if ui.button("Load ROM from File...")
                         .on_hover_text("Install a 256 KiB Kickstart ROM and reset the machine to its boot vectors. Press Run after loading.")
                         .clicked() {
                         app.open_load_rom_dialog();
-                        ui.close_menu();
+                        ui.close_kind(egui::UiKind::Menu);
                     }
 
                     crate::layout::file_dialogs::render_recent_files(app, ui);
@@ -41,13 +41,13 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
                     if ui.button("🔄 Reset").clicked() {
                         app.host.queue(HostCommand::Reset);
                         app.inspection.ready = false;
-                        ui.close_menu();
+                        ui.close_kind(egui::UiKind::Menu);
                     }
 
                     if ui.button("⚡ Reset Warm").clicked() {
                         app.host.queue(HostCommand::ResetWarm);
                         app.inspection.ready = false;
-                        ui.close_menu();
+                        ui.close_kind(egui::UiKind::Menu);
                     }
                 });
 
@@ -55,19 +55,19 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
                 ui.menu_button("State", |ui| {
                     if ui.button("💾 Save State to File... (Ctrl+S)").clicked() {
                         app.open_save_state_dialog();
-                        ui.close_menu();
+                        ui.close_kind(egui::UiKind::Menu);
                     }
 
                     if ui.button("📂 Load State from File... (Ctrl+L)").clicked() {
                         app.open_load_state_dialog();
-                        ui.close_menu();
+                        ui.close_kind(egui::UiKind::Menu);
                     }
 
                     ui.separator();
 
                     if ui.button("⚡ Quick Save Slot 1 (F6)").clicked() {
                         quick_save_slot(app, 1);
-                        ui.close_menu();
+                        ui.close_kind(egui::UiKind::Menu);
                     }
 
                     let slot1_label = if quick_slot_available(app, 1) {
@@ -83,7 +83,7 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
                         .clicked()
                     {
                         quick_load_slot(app, 1);
-                        ui.close_menu();
+                        ui.close_kind(egui::UiKind::Menu);
                     }
 
                     ui.separator();
@@ -295,7 +295,7 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
                     .show_ui(ui, |ui| {
                         for scale in crate::ScreenScale::ALL {
                             if ui.selectable_value(&mut app.screen_scale, scale, scale.label()).clicked() {
-                                ui.memory_mut(|memory| memory.close_popup());
+                                egui::Popup::close_all(ui.ctx());
                             }
                         }
                     })

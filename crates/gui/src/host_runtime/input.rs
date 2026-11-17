@@ -26,6 +26,21 @@ impl HostInputSender {
     }
 
     #[cfg(target_arch = "wasm32")]
+    pub(super) fn browser_key(&self, json: &str, generation: u64) -> bool {
+        let Ok(key) = serde_json::from_str::<crate::keyboard_input::PhysicalKey>(json) else {
+            return false;
+        };
+        let prevent_default = self.repaint.data_mut(|data| {
+            data.get_temp_mut_or_default::<crate::keyboard_input::KeyboardInbox>(egui::Id::new(
+                crate::keyboard_input::KEYBOARD_INBOX_ID,
+            ))
+            .receive(key, generation)
+        });
+        self.repaint.request_repaint();
+        prevent_default
+    }
+
+    #[cfg(target_arch = "wasm32")]
     pub(super) fn browser_gamepads(&self, json: &str, generation: u64) -> bool {
         #[derive(serde::Deserialize)]
         struct BrowserGamepads {
@@ -101,11 +116,6 @@ impl HostInputSender {
         if mailboxes.input_enabled != captured {
             mailboxes.input_enabled = captured;
             let release = mailboxes.mapping.release_capture();
-            mailboxes.capture_epoch = mailboxes.capture_epoch.wrapping_add(1);
-            #[cfg(not(target_arch = "wasm32"))]
-            {
-                mailboxes.capture_started_at = std::time::SystemTime::now();
-            }
             mailboxes.push_input(release);
         }
         #[cfg(target_arch = "wasm32")]

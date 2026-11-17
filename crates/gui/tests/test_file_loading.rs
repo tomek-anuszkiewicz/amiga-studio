@@ -26,7 +26,7 @@ fn invalid_rom_keeps_the_dialog_open_and_can_be_retried() {
         .with_size(egui::vec2(1024.0, 600.0))
         .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
     common::settle_harness(&mut harness);
-    harness.get_by_label("Load into Memory").click();
+    harness.get_by_label("Load into Memory").click_accesskit();
     common::settle_harness(&mut harness);
     assert!(harness.state().load_binary_modal_open);
     assert_eq!(common::snapshot(harness.state_mut()), before);
@@ -38,7 +38,7 @@ fn invalid_rom_keeps_the_dialog_open_and_can_be_retried() {
     assert_eq!(harness.state().file_error.as_ref(), Some(&error));
 
     std::fs::write(&path, vec![0x4E; 262144]).unwrap();
-    harness.get_by_label("Load into Memory").click();
+    harness.get_by_label("Load into Memory").click_accesskit();
     common::settle_harness(&mut harness);
     assert!(!harness.state().load_binary_modal_open);
     assert!(harness.state().file_error.is_none());
@@ -73,7 +73,7 @@ fn invalid_snapshot_rom_displays_a_dismissible_error_without_restoring() {
         .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
     common::settle_harness(&mut harness);
     harness.get_by_label(&error);
-    harness.get_by_label("Close").click();
+    harness.get_by_label("Close").click_accesskit();
     common::settle_harness(&mut harness);
     assert!(harness.state().file_error.is_none());
     assert_eq!(common::snapshot(harness.state_mut()), before);

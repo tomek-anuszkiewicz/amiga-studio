@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 mod common;
+use egui_kittest::kittest::NodeT;
 use egui_kittest::{
     kittest::{by, Queryable},
     Harness,
@@ -50,7 +51,13 @@ fn game_toolbar_supports_files_manual_states_speed_fps_and_return_to_debug() {
     app.set_view_mode(ViewMode::ScreenOnly);
     let mut harness = Harness::builder()
         .with_size(egui::vec2(1024.0, 600.0))
-        .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
+        .build_state(
+            |ctx, app: &mut EmulatorApp| {
+                common::keyboard::inject_taps(ctx, app.host.status.generation);
+                app.update_ui(ctx)
+            },
+            app,
+        );
     common::settle_harness(&mut harness);
     for label in [
         "File",
@@ -62,7 +69,11 @@ fn game_toolbar_supports_files_manual_states_speed_fps_and_return_to_debug() {
         "FPS",
         "Debug View (F12)",
     ] {
-        let bounds = harness.get_by_label(label).raw_bounds().unwrap();
+        let bounds = harness
+            .get_by_label(label)
+            .accesskit_node()
+            .bounding_box()
+            .unwrap();
         assert!(bounds.x0 >= 0.0 && bounds.x1 <= 1024.0);
     }
     for label in [
@@ -73,27 +84,29 @@ fn game_toolbar_supports_files_manual_states_speed_fps_and_return_to_debug() {
     ] {
         assert!(harness.query_by_label(label).is_none());
     }
-    harness.get_by_label("File").click();
+    harness.get_by_label("File").click_accesskit();
     common::settle_harness(&mut harness);
     harness.get_by_label("Load ROM from File...");
     harness.get_by_label("📁 Load Binary... (Ctrl+O)");
-    harness.get_by_label("File").click();
+    harness.get_by_label("File").click_accesskit();
     common::settle_harness(&mut harness);
-    harness.get_by_label("FPS").click();
+    harness.get_by_label("FPS").click_accesskit();
     common::settle_harness(&mut harness);
     assert!(!harness.state().show_fps);
     assert!(harness.query_by_label("FPS: 0.0").is_none());
-    harness.get_by_label("Faster").click();
+    harness.get_by_label("Faster").click_accesskit();
     common::settle_harness(&mut harness);
     assert_eq!(harness.state().host.status.speed, 2.0);
-    harness.get_by_label("Slower").click();
+    harness.get_by_label("Slower").click_accesskit();
     common::settle_harness(&mut harness);
     assert_eq!(harness.state().host.status.speed, 1.0);
-    harness.get_by_label("State").click();
+    harness.get_by_label("State").click_accesskit();
     common::settle_harness(&mut harness);
     harness.get_by_label("💾 Save State to File... (Ctrl+S)");
     harness.get_by_label("📂 Load State from File... (Ctrl+L)");
-    harness.get_by_label("⚡ Quick Save Slot 1 (F6)").click();
+    harness
+        .get_by_label("⚡ Quick Save Slot 1 (F6)")
+        .click_accesskit();
     common::settle_harness(&mut harness);
     assert!(harness.state().host.status.quick_slots[0]);
     common::command(
@@ -103,20 +116,22 @@ fn game_toolbar_supports_files_manual_states_speed_fps_and_return_to_debug() {
             value: 123,
         },
     );
-    harness.get_by_label("State").click();
+    harness.get_by_label("State").click_accesskit();
     common::settle_harness(&mut harness);
-    harness.get_by_label("🔄 Quick Load Slot 1 (F9)").click();
+    harness
+        .get_by_label("🔄 Quick Load Slot 1 (F9)")
+        .click_accesskit();
     common::settle_harness(&mut harness);
     assert_eq!(common::inspect(harness.state_mut()).cpu.d_long(0), 0);
     assert_eq!(
         harness.state().loaded_rom_name.as_deref(),
         Some("from saved state")
     );
-    harness.get_by_label("▶ Run (F5)").click();
+    harness.get_by_label("▶ Run (F5)").click_accesskit();
     harness.run_steps(2);
     common::settle_harness(&mut harness);
     assert!(harness.state().host.status.running);
-    harness.get_by_label("⏹ Stop (F5)").click();
+    harness.get_by_label("⏹ Stop (F5)").click_accesskit();
     harness.run_steps(2);
     common::settle_harness(&mut harness);
     assert!(!harness.state().host.status.running);
@@ -124,21 +139,21 @@ fn game_toolbar_supports_files_manual_states_speed_fps_and_return_to_debug() {
         .query_all(by().role(egui::accesskit::Role::ComboBox))
         .next()
         .unwrap()
-        .click();
+        .click_accesskit();
     common::settle_harness(&mut harness);
-    harness.get_by_label("Light").click();
+    harness.get_by_label("Light").click_accesskit();
     common::settle_harness(&mut harness);
     assert_eq!(harness.state().theme, gui::AppTheme::Light);
     harness
         .query_all(by().role(egui::accesskit::Role::ComboBox))
         .nth(1)
         .unwrap()
-        .click();
+        .click_accesskit();
     common::settle_harness(&mut harness);
-    harness.get_by_label("125%").click();
+    harness.get_by_label("125%").click_accesskit();
     common::settle_harness(&mut harness);
     assert_eq!(harness.ctx.zoom_factor(), 1.25);
-    harness.get_by_label("Debug View (F12)").click();
+    harness.get_by_label("Debug View (F12)").click_accesskit();
     common::settle_harness(&mut harness);
     assert_eq!(harness.state().view_mode, ViewMode::Developer);
     harness.get_by_label("Step Frame (Shift+F11)");
@@ -155,10 +170,16 @@ fn browser_style_binary_bytes_can_be_loaded_without_a_host_path() {
     app.load_binary_modal_open = true;
     let mut harness = Harness::builder()
         .with_size(egui::vec2(1024.0, 600.0))
-        .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
+        .build_state(
+            |ctx, app: &mut EmulatorApp| {
+                common::keyboard::inject_taps(ctx, app.host.status.generation);
+                app.update_ui(ctx)
+            },
+            app,
+        );
     common::settle_harness(&mut harness);
     harness.get_by_label("File: loop.bin");
-    harness.get_by_label("Load into Memory").click();
+    harness.get_by_label("Load into Memory").click_accesskit();
     common::settle_harness(&mut harness);
     assert!(!harness.state().load_binary_modal_open);
     assert_eq!(
@@ -200,7 +221,10 @@ fn game_shortcuts_cannot_start_debugger_work() {
                 }],
                 ..Default::default()
             },
-            |ctx| app.update_ui(ctx),
+            |ctx| {
+                common::keyboard::inject_taps(ctx, app.host.status.generation);
+                app.update_ui(ctx)
+            },
         );
     }
     assert_eq!(common::snapshot(&mut app), before);
@@ -220,9 +244,15 @@ fn capture_guidance_remains_visible_in_both_views_and_compact_windows() {
         app.set_view_mode(view);
         let mut harness = Harness::builder()
             .with_size(egui::vec2(720.0, 600.0))
-            .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
+            .build_state(
+                |ctx, app: &mut EmulatorApp| {
+                    common::keyboard::inject_taps(ctx, app.host.status.generation);
+                    app.update_ui(ctx)
+                },
+                app,
+            );
         common::settle_harness(&mut harness);
-        let bounds = harness.get_by_label("Input free. Click the Amiga display to capture keyboard and mouse. F12 switches Game/Debug.").raw_bounds().unwrap();
+        let bounds = harness.get_by_label("Input free. Click the Amiga display to capture keyboard and mouse. F12 switches Game/Debug.").accesskit_node().bounding_box().unwrap();
         assert!(bounds.y0 >= 0.0 && bounds.y1 < 150.0);
         assert!(bounds.x0 >= 0.0 && bounds.x1 <= 720.0);
     }

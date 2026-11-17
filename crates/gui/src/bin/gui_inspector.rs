@@ -15,7 +15,7 @@ use egui::{pos2, vec2, Event};
 #[cfg(not(target_arch = "wasm32"))]
 use egui_kittest::kittest::by;
 #[cfg(not(target_arch = "wasm32"))]
-use egui_kittest::kittest::Queryable;
+use egui_kittest::kittest::{NodeT, Queryable};
 #[cfg(not(target_arch = "wasm32"))]
 use egui_kittest::Harness;
 #[cfg(not(target_arch = "wasm32"))]
@@ -253,7 +253,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 app.player.rom_reference = Some("preview.rom".into());
                 harness.step();
                 harness.step();
-                harness.get_by_label("Start").click();
+                harness.get_by_label("Start").click_accesskit();
                 harness.step();
                 harness.step();
                 harness.get_by_label("Replace session");
@@ -312,7 +312,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             if width < 850.0 {
                 // Capture the expanded controls without an intermediate animation frame.
                 harness.ctx.style_mut(|style| style.animation_time = 0.0);
-                harness.get_by_label("Game controls").click();
+                harness.get_by_label("Game controls").click_accesskit();
                 harness.step();
                 harness.step();
             }
@@ -384,12 +384,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if let Some(parent) = meta_path.parent() {
             fs::create_dir_all(parent)?;
         }
-        let nodes = harness.node().query_all(by().recursive(true));
+        let nodes = harness.root().query_all(by().recursive(true));
         let mut json_nodes = Vec::new();
         for node in nodes {
-            let label = node.label().unwrap_or_default();
-            let role = format!("{:?}", node.role());
-            let rect = node.bounding_box();
+            let label = node.accesskit_node().label().unwrap_or_default();
+            let role = format!("{:?}", node.accesskit_node().role());
+            let rect = node.accesskit_node().bounding_box();
             json_nodes.push(format!(
                 "  {{\"role\": \"{}\", \"label\": \"{}\", \"rect\": {:?}}}",
                 role, label, rect

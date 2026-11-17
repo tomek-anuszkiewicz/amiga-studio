@@ -65,7 +65,7 @@ pub fn confirm_replacement(app: &mut EmulatorApp) {
             std::mem::take(app),
         );
     settle_harness(&mut harness);
-    harness.get_by_label("Replace session").click();
+    harness.get_by_label("Replace session").click_accesskit();
     settle_harness(&mut harness);
     *app = std::mem::take(harness.state_mut());
 }
@@ -183,9 +183,7 @@ impl ScreenCapture {
             if self.id != Some(*id) {
                 continue;
             }
-            let egui::ImageData::Color(image) = &delta.image else {
-                panic!("Video texture is not a color image");
-            };
+            let egui::ImageData::Color(image) = &delta.image;
             self.options = delta.options;
             if let Some([x, y]) = delta.pos {
                 for row in 0..image.size[1] {
@@ -200,3 +198,5 @@ impl ScreenCapture {
         }
     }
 }
+
+pub mod keyboard;
