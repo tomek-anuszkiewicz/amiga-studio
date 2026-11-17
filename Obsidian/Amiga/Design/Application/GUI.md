@@ -66,13 +66,22 @@ collapse the same controls. Debug does not duplicate this panel. Screen scaling
 continues to preserve the complete framebuffer aspect ratio.
 
 Each connected drive has a fixed-position activity light beside its DF label.
-Head STEP pulses, disk DMA reads, consumed DSKBYTR bytes and serialized write
-words light it for 120 ms after the latest observed activity. Motor rotation,
-raw magnetic transitions and debugger peeks alone leave it idle. This is player
-feedback, not a reproduction of the physical drive LED. Events remain observable
-between GUI updates; loading or resetting the machine establishes a fresh
-baseline and cancels an existing light. Write activity reports controller output,
-not successful modification or persistence of the disk image; see
+Effective CIA-B selection/motor changes and active STEP edges, disk DMA reads,
+consumed fresh DSKBYTR bytes and serialized write words extend a 120 ms event
+indication. A connected, selected drive with its latched motor enabled stays
+active without new events; deselected rotation, raw magnetic transitions and
+debugger peeks alone do not keep it lit. Ending sustained activity starts the
+same 120 ms hold. Control activity does not require inserted media. Transfers
+are attributed to every selected, running, connected drive with inserted media
+at the event boundary, preserving the captured connector phase.
+
+This is player feedback, not a reproduction of the physical drive LED. Wrapping
+source sequences preserve short events between owner publications and GUI updates.
+The owner publishes observations with completed fields and explicit steps or
+commands. Loading establishes a fresh event baseline and cancels the old hold;
+a restored selected/running drive may immediately show sustained activity.
+Reset stops motors and cancels the indication. Write activity reports controller
+output, not successful modification or persistence of the disk image; see
 [Floppy](../Floppy.md#autonomous-adf-reads-and-continuation).
 
 The views share one machine. F12 always switches between them and is not configurable. The middle mouse button always releases pointer and keyboard capture without pausing and never reaches the guest. An optional keyboard release binding starts unassigned; Escape and F2 otherwise remain guest keys. Pause/resume and quick save/load remain configurable, initially F5, F6 and F9. Reset has no keyboard shortcut. Debugger stepping shortcuts are fixed and operate only in Developer Studio. Returning requests a pause at the field boundary and keeps instrumentation disconnected until that pause completes. Game execution bypasses breakpoints, disassembly, trace collection, CPU history and memory diff snapshots. Previously collected history remains available when returning, but no automatic snapshots or progress recording run in Game view. Manual State operations remain available. A stopped CPU still allows chip clocks, video and interrupts to advance in both views; a halted CPU ends Run.

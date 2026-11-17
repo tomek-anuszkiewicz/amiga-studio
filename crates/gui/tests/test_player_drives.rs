@@ -246,3 +246,39 @@ fn player_restore_accepts_changed_endpoints_and_preserves_saved_progress() {
     assert_eq!(restored.state, saved.state);
     assert_eq!(restored.header.association, saved.header.association);
 }
+
+#[test]
+fn mounting_and_ejecting_while_selected_refreshes_only_transfer_eligibility() {
+    let mut session = DebuggerSession::new();
+    for (address, value) in [
+        (0xbfd100, 0xff),
+        (0xbfd300, 0xff),
+        (0xbfd100, 0x7f),
+        (0xbfd100, 0x77),
+    ] {
+        cia_write(&mut session, address, value);
+    }
+    session.machine.step_cycles(2);
+    assert!(session.machine.floppy.drives[0].motor_on);
+    let baseline = session.machine.paula.disk_activity.sequences;
+    session.machine.paula.dskbytr = 0x8001;
+    session.machine.paula.read_dskbytr();
+    assert_eq!(session.machine.paula.disk_activity.sequences, baseline);
+    debugger::launch::mount(&mut session, 0, Some(&vec![0; 901120])).unwrap();
+    assert_eq!(session.machine.paula.disk_activity.sequences, baseline);
+    session.machine.paula.dskbytr = 0x8001;
+    session.machine.paula.read_dskbytr();
+    assert_eq!(
+        session.machine.paula.disk_activity.sequences[0],
+        baseline[0] + 1
+    );
+    debugger::launch::mount(&mut session, 0, None).unwrap();
+    session.machine.paula.dskbytr = 0x8001;
+    session.machine.paula.read_dskbytr();
+    assert_eq!(
+        session.machine.paula.disk_activity.sequences[0],
+        baseline[0] + 1
+    );
+    assert!(session.machine.floppy.drives[0].selected);
+    assert!(session.machine.floppy.drives[0].motor_on);
+}

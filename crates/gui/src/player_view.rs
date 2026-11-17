@@ -177,7 +177,7 @@ impl EmulatorApp {
                             self.host.status.generation,
                             self.host.status.drive_reset_sequence,
                         ),
-                        status.activity_sequence,
+                        status,
                         self.theme.tokens(),
                     );
                     ui.add_enabled_ui(!self.player.busy, |ui| {

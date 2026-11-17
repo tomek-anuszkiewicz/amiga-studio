@@ -81,6 +81,7 @@ pub fn mount(
     } else {
         drive.eject_disk();
     }
+    session.machine.refresh_disk_activity_context();
     Ok(())
 }
 

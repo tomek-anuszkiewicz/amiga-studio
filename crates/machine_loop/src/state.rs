@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 pub struct A500State {
     /// Captured keyboard reset level awaiting the next CCK.
     pub keyboard_reset_asserted: bool,
+    pub disk_activity_generation: u64,
     /// Master monotonic Color Clock counter
     pub cck: u64,
     pub config: A500Config,

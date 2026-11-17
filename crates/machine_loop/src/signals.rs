@@ -77,7 +77,6 @@ impl A500Machine {
         self.agnus.pins.incoming_dmal_high = Some(self.paula.pins.dmal_output_high);
         self.keyboard.pins.incoming_host_data_high = Some(host_data_high);
         self.keyboard_reset_asserted = self.keyboard.pins.reset_line_asserted;
-        let _ = self.cia_b.poll_prb_output();
     }
 
     /// Samples incoming inputs at the start of the subsystem CCK, before any engine advances.

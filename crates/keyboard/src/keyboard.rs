@@ -21,6 +21,7 @@ const SCANCODE_BUFFER_OVERFLOW: u8 = 0xfa;
 const SCANCODE_POWERUP_STREAM_START: u8 = 0xfd;
 const SCANCODE_POWERUP_STREAM_END: u8 = 0xfe;
 const KEY_WORD_BITS: usize = u64::BITS as usize;
+const KEY_STATE_WORD_COUNT: usize = (MASK_KEY_CODE as usize + 1) / KEY_WORD_BITS;
 
 /// Serializable controller, with no direct access to the receiving CIA.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -38,10 +39,10 @@ pub struct Keyboard {
     synchronizing: bool,
     startup_sync: bool,
     boot_stream: BootStream,
-    held: [u64; 2],
+    held: [u64; KEY_STATE_WORD_COUNT],
     /// Host release policy waits behind queued bytes without overflowing type-ahead.
-    pending_releases: [u64; 2],
-    boot_keys: [u64; 2],
+    pending_releases: [u64; KEY_STATE_WORD_COUNT],
+    boot_keys: [u64; KEY_STATE_WORD_COUNT],
     queue: [u8; KEYBOARD_BUFFER_CAPACITY],
     queue_len: usize,
     queue_head: usize,
@@ -68,9 +69,9 @@ impl Keyboard {
             synchronizing: true,
             startup_sync: true,
             boot_stream: BootStream::Start,
-            held: [0; 2],
-            pending_releases: [0; 2],
-            boot_keys: [0; 2],
+            held: [0; KEY_STATE_WORD_COUNT],
+            pending_releases: [0; KEY_STATE_WORD_COUNT],
+            boot_keys: [0; KEY_STATE_WORD_COUNT],
             queue: [0; KEYBOARD_BUFFER_CAPACITY],
             queue_len: 0,
             queue_head: 0,

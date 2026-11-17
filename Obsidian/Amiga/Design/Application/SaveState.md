@@ -44,7 +44,7 @@ old layouts have no
 compatibility parser. Frontends and the debugger use this crate for persistence;
 in-memory quick slots retain only the machine value.
 
-Schema version 12 adds pending keyboard releases that survive a full type-ahead
+Schema version 13 adds pending keyboard releases that survive a full type-ahead
 queue, preserving release delivery across another capture and exact restoration.
 It records active CPU sequence identity, physical drive attachment
 and player association, and embeds usable floppy raw tracks and spindle phase, including
@@ -53,6 +53,9 @@ retains the CPU bus-admission phases and active shared Chip RAM budget. Clone
 and restore preserve an occupied cycle; neither creates another transfer
 opportunity. Sprite coordinates and vertical DMA latches are grouped under
 `state.agnus.sprite_dma`; derived comparison results are rebuilt after restore.
+Chipset activity observations retain transfer attribution across the captured
+control boundary; restoring establishes a new host indication baseline as
+defined by [GUI](GUI.md). They do not serialize wall-clock hold times.
 It excludes the live RTC and its independent battery offset.
 It stores Denise's frame cursor alongside the
 [frame buffer](../Frame%20Buffer.md), preserving the write position across

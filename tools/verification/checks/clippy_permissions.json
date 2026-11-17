@@ -46,5 +46,11 @@
     "lint": "clippy::disallowed_types",
     "symbol": "std::sync::Mutex",
     "reason": "Preserve existing shared-memory worker bootstrap ownership after separating browser code from the host runtime."
+  },
+  {
+    "file": "crates/gui/tests/test_configuration_edit.rs",
+    "lint": "clippy::disallowed_methods",
+    "symbol": "std::thread::spawn",
+    "reason": "Exercise bounded input-producer contention while verifying deferred configuration publication and GUI responsiveness."
   }
 ]

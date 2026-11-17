@@ -57,8 +57,6 @@ pub struct FloppyDrive {
     /// Disk change hardware flip-flop: set when disk is removed/changed;
     /// cleared only when a disk is present AND a step pulse is received!
     pub disk_change_flip_flop: bool,
-    /// Wrapping host activity sequence: head steps and consumed controller data.
-    pub activity_sequence: u64,
     /// Prepared circular raw tracks, including usable media in serialized state.
     track_data: Option<Vec<u8>>,
     rotation_bit: u32,
@@ -76,7 +74,6 @@ impl Default for FloppyDrive {
             disk_inserted: false,
             write_protected: false,
             disk_change_flip_flop: true, // Power-on with no disk inserted
-            activity_sequence: 0,
             track_data: None,
             rotation_bit: 0,
             cell_phase: 0,
@@ -101,7 +98,6 @@ impl FloppyDrive {
     /// Action method: steps the head one cylinder inward or outward.
     /// If a disk is inserted, receiving a step pulse clears the `_CHNG` flip-flop.
     fn step_pulse(&mut self, inward: bool) {
-        self.activity_sequence = self.activity_sequence.wrapping_add(1);
         if inward {
             if self.cylinder < CYLINDERS_PER_DISK - 1 {
                 self.cylinder += 1;
@@ -160,13 +156,20 @@ impl FloppyDrive {
     }
 }
 
+/// Decoded connector controls; motor latching uses the level before selection.
+#[derive(Debug, Clone, Copy)]
+pub struct DriveControl {
+    pub selected: bool,
+    pub motor_on: bool,
+    pub side: u8,
+    pub step: Option<bool>,
+}
+
 /// Four drives and the captured connector boundary; disk registers live in Paula.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FloppyController {
     pub pins: FloppyPins,
     pub drives: [FloppyDrive; FLOPPY_DRIVE_COUNT],
-    /// Wrapping reset observation, independent of host runtime generations.
-    pub reset_sequence: u64,
     /// Last applied controls, for motor-selection and step edge detection.
     pub prev_ciab_prb: u8,
     clock_hz: u32,
@@ -182,7 +185,6 @@ impl Default for FloppyController {
                 ..FloppyDrive::default()
             }),
             prev_ciab_prb: CONTROL_RELEASED,
-            reset_sequence: 0,
             clock_hz: config::VideoStandard::Pal.color_clock_hz(),
             media_output_active: false,
         }
@@ -214,7 +216,6 @@ impl FloppyController {
 
     pub fn reset(&mut self) {
         self.pins = FloppyPins::default();
-        self.reset_sequence = self.reset_sequence.wrapping_add(1);
         self.prev_ciab_prb = CONTROL_RELEASED;
         self.media_output_active = false;
         for drive in &mut self.drives {
@@ -222,13 +223,36 @@ impl FloppyController {
         }
     }
 
-    /// Attribute controller data activity to the drives supplying the connector.
-    pub fn record_data_activity(&mut self) {
-        for drive in &mut self.drives {
-            if drive.connected && drive.selected && drive.motor_on && drive.disk_inserted {
-                drive.activity_sequence = drive.activity_sequence.wrapping_add(1);
+    /// Projects the next connector control delivery from the existing mechanical state.
+    /// The motherboard can inspect these transitions without applying them early.
+    pub fn control_states(&self, control: u8) -> [DriveControl; FLOPPY_DRIVE_COUNT] {
+        let previous = self.prev_ciab_prb;
+        core::array::from_fn(|index| {
+            let drive = &self.drives[index];
+            let select = BIT_CONTROL_SELECT_FIRST << index;
+            let selected = drive.connected && control & select == 0;
+            DriveControl {
+                selected,
+                motor_on: if selected && previous & select != 0 {
+                    previous & BIT_CONTROL_MOTOR == 0
+                } else {
+                    drive.motor_on
+                },
+                side: if control & BIT_CONTROL_SIDE == 0 {
+                    UPPER_SIDE
+                } else {
+                    LOWER_SIDE
+                },
+                step: if selected
+                    && previous & BIT_CONTROL_STEP != 0
+                    && control & BIT_CONTROL_STEP == 0
+                {
+                    Some(control & BIT_CONTROL_DIRECTION == 0)
+                } else {
+                    None
+                },
             }
-        }
+        })
     }
 
     /// Advances control edges and every running spindle, including deselected drives.
@@ -239,21 +263,14 @@ impl FloppyController {
             self.step_media();
             return;
         }
-        for (index, drive) in self.drives.iter_mut().enumerate() {
-            let select = BIT_CONTROL_SELECT_FIRST << index;
-            drive.selected = drive.connected && current & select == 0;
-            if drive.selected && previous & select != 0 {
-                // MOTOR must already be established before the select edge.
-                drive.motor_on = previous & BIT_CONTROL_MOTOR == 0;
-            }
-            if drive.selected {
-                drive.set_side(if current & BIT_CONTROL_SIDE == 0 {
-                    UPPER_SIDE
-                } else {
-                    LOWER_SIDE
-                });
-                if previous & BIT_CONTROL_STEP != 0 && current & BIT_CONTROL_STEP == 0 {
-                    drive.step_pulse(current & BIT_CONTROL_DIRECTION == 0);
+        let controls = self.control_states(current);
+        for (drive, control) in self.drives.iter_mut().zip(controls) {
+            drive.selected = control.selected;
+            drive.motor_on = control.motor_on;
+            if control.selected {
+                drive.set_side(control.side);
+                if let Some(inward) = control.step {
+                    drive.step_pulse(inward);
                 }
             }
         }

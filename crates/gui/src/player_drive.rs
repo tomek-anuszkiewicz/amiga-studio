@@ -22,6 +22,7 @@ pub struct DriveActivity {
     generation: Option<(u64, u64)>,
     sequence: u64,
     until: f64,
+    sustained: bool,
 }
 
 impl DriveActivity {
@@ -30,7 +31,7 @@ impl DriveActivity {
         ui: &mut egui::Ui,
         drive: usize,
         generation: (u64, u64),
-        sequence: u64,
+        status: crate::host_commands::DriveStatus,
         tokens: &ColorTokens,
     ) {
         let now = ui.input(|input| input.time);
@@ -38,12 +39,15 @@ impl DriveActivity {
             // A restored machine is a new baseline, not new disk activity.
             self.generation = Some(generation);
             self.until = now;
-        } else if self.sequence != sequence {
+        } else if self.sequence != status.activity_sequence
+            || (self.sustained && !status.sustained_activity)
+        {
             self.until = now + ACTIVITY_SECONDS;
         }
-        self.sequence = sequence;
-        let active = now < self.until;
-        if active {
+        self.sequence = status.activity_sequence;
+        self.sustained = status.sustained_activity;
+        let active = self.sustained || now < self.until;
+        if !self.sustained && now < self.until {
             ui.ctx()
                 .request_repaint_after(std::time::Duration::from_secs_f64(self.until - now));
         }
@@ -61,7 +65,7 @@ impl DriveActivity {
                 },
             )
         });
-        response.on_hover_text("Disk activity: head steps or controller data transfers. Motor rotation alone does not light this indicator.");
+        response.on_hover_text("Disk activity: drive selection, motor control, head steps or controller transfers. A selected drive with its motor enabled stays active; deselected rotation alone does not.");
         ui.painter().circle_filled(
             rect.center(),
             height * INDICATOR_RADIUS_RATIO,

@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "paula"
 status: "active"
 created: 2026-09-06
-updated: 2026-11-16
+updated: 2026-11-17
 related: ["[Audio.md](Audio.md)", "[Interrupts.md](Interrupts.md)", "[Floppy.md](Floppy.md)", "[Game Ports.md](Game%20Ports.md)", "[Agnus.md](Agnus.md)", "[DMA.md](DMA.md)", "[Machine Loop.md](Machine%20Loop.md)"]
 tracked_paths:
   - "crates/paula"
@@ -154,6 +154,13 @@ Raw MFM words are never decoded into sectors inside Paula. The autonomous
 nominal two-microsecond cells through the existing connector; the separator
 re-anchors on transitions despite seven/eight-CCK cell quantization. Analog PLL
 calibration and media writes remain outside this read-boot evidence.
+
+The [GUI activity observation](Application/GUI.md) records only accepted source
+events: a live read consumes a fresh byte, a granted read word is consumed after
+RAM admission, or a buffered write word starts serialization. Register setup,
+empty retries and debugger peeks add no event. Recipient context is supplied
+by the [motherboard](Machine%20Loop.md) separately from physical pins; fixed
+wrapping per-drive sequences serialize without affecting guest-visible counts.
 
 ## References
 

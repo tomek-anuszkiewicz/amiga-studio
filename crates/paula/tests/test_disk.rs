@@ -42,6 +42,9 @@ fn read_requests_use_the_last_available_disk_slots() {
 fn read_fifo_resynchronizes_and_counts_only_selected_dma_words() {
     for (control, clocks) in [(0x0500, 7), (0x0400, 14)] {
         let mut paula = arm(0x8003, control);
+        paula
+            .disk_activity
+            .set_recipients([true, false, true, false]);
         send_bits(&mut paula, 0x1234, 16, clocks);
         assert_eq!(paula.disk.buffered_words(), 0);
         assert_eq!(paula.disk_dma_word(), None);
@@ -51,9 +54,12 @@ fn read_fifo_resynchronizes_and_counts_only_selected_dma_words() {
         assert_eq!(paula.disk.buffered_words(), 3);
         assert_eq!(paula.dsklen, 0x8003);
         assert_eq!(paula.interrupts.intreq & 0x1000, 0x1000);
+        assert_eq!(paula.disk_activity.sequences, [0; 4]);
         assert_eq!(paula.peek_dskbytr(), 0xc0ff);
         assert_eq!(paula.read_dskbytr(), 0xc0ff);
         assert_eq!(paula.peek_dskbytr(), 0x40ff);
+        assert_eq!(paula.read_dskbytr(), 0x40ff);
+        assert_eq!(paula.disk_activity.sequences, [1, 0, 1, 0]);
         paula.strobe_sync(0x03c);
         assert_eq!(paula.sync.dmal_frame & 0xff, 0xa8);
         for (word, remaining) in [(0x5a42, 2), (0xa55a, 1), (0xffff, 0)] {
@@ -64,11 +70,17 @@ fn read_fifo_resynchronizes_and_counts_only_selected_dma_words() {
                 (paula.disk.buffered_words(), paula.dsklen, paula.dskdat),
                 before
             );
+            let activity = paula.disk_activity.sequences;
+            assert_eq!(paula.disk_dma_word(), Some(word));
+            assert_eq!(paula.disk_activity.sequences, activity);
             assert_eq!(paula.take_disk_dma_word(), Some(word));
+            let events = 4 - u64::from(remaining);
+            assert_eq!(paula.disk_activity.sequences, [events, 0, events, 0]);
             assert_eq!(paula.dsklen & 0x3fff, remaining);
         }
         assert_eq!(paula.disk_dma_word(), None);
         assert_eq!(paula.take_disk_dma_word(), None);
+        assert_eq!(paula.disk_activity.sequences, [4, 0, 4, 0]);
         assert!(!paula.dma_active);
         paula.step_cck();
         assert_eq!(paula.interrupts.intreq & 2, 2);
@@ -135,6 +147,9 @@ fn fast_changes_preserve_mid_cell_sampling_without_dma() {
 fn write_fifo_drains_msb_first_after_dma_count_reaches_zero() {
     for (control, clocks) in [(0x0100, 7), (0, 14)] {
         let mut paula = arm(0xc003, control);
+        paula
+            .disk_activity
+            .set_recipients([false, true, false, false]);
         let words = [0xa55a, 0x8001, 0xffff];
         // All three queued register commits enter the FIFO on the next CCK.
         for word in words {
@@ -142,6 +157,7 @@ fn write_fifo_drains_msb_first_after_dma_count_reaches_zero() {
         }
         paula.step_cck();
         assert_eq!(paula.disk.buffered_words(), 3);
+        assert_eq!(paula.disk_activity.sequences, [0; 4]);
         assert_eq!(paula.dsklen & 0x3fff, 0);
         assert!(!paula.dma_active);
         assert_eq!(paula.interrupts.intreq & 2, 2);
@@ -159,6 +175,7 @@ fn write_fifo_drains_msb_first_after_dma_count_reaches_zero() {
         paula.step_cck();
         assert!(!paula.pins.disk_write_enable);
         assert_eq!(paula.disk.buffered_words(), 0);
+        assert_eq!(paula.disk_activity.sequences, [0, 3, 0, 0]);
     }
 }
 

@@ -2604,6 +2604,33 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - No runtime code or acceptance references changed
 ---
 
+### [2026-11-17 02:07 CET] — Observe drive activity at chipset source events
+- **Affected Subsystems**:
+  - `CIA-B board routing`
+  - `Paula disk observations`
+  - `Floppy controls`
+  - `GUI drive indicator`
+  - `SaveState`
+- **What Was Changed (The Concrete Reality)**:
+  - DISK-ACTIVITY-20261117: record effective CIA-B control events and accepted Paula transfers in wrapping per-drive observations
+  - remove both per-CCK activity collectors and presentation bookkeeping from Floppy
+  - share connector control decoding with drive mechanics and establish next-CCK transfer recipients after the CPU phase
+  - retain selected/running sustained indication and the 120 ms hold with reset/load baselines
+  - use save schema 12 without compatibility parsing
+  - update owning specifications and add production-path regressions and an inspector scenario
+  - retain the documented standalone subsystem stepping API under the user-approved single-symbol host/spec exemption in the code-quality checker
+- **Architectural Rationale & Trade-Offs**:
+  - Preserve short events and correct drive attribution across publication gaps without per-CCK activity collection, duplicated writable mechanics, chip callbacks or new dependencies
+  - observation metadata does not alter guest registers, physical signal phases or media-write support
+- **Verification & Test Results**:
+  - Original machine and GUI activity suites passed before implementation
+  - final full CIA, Floppy, Paula, SaveState, Debugger, GUI and Machine Loop suites passed, as did the actual WASM build and git diff --check
+  - GUI visual capture and integration assertions verify sustained indication, hold timing, fixed bounds, restore and reset
+  - six samples per version and workload in A-B-B-A order gave idle median 178.967 to 180.621 FPS and active byte-read median 171.221 to 172.104 FPS, within observed variation
+  - no whole-machine speedup or regression is established, and browser performance and physical hardware fidelity remain unverified
+  - canonical batch gates, changed-code coverage review and four independent review lanes are pending
+---
+
 ### [2026-11-17 02:58 CET] — Commit configuration editing and current controls on progress restore
 - **Affected Subsystems**:
   - `GUI`
@@ -2634,3 +2661,26 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Initial canonical coverage compilation failed with memory allocation and Windows paging-file errors before test execution; the full suite is being retried with one Cargo build job and unchanged acceptance criteria
   - Canonical commit verification, changed-code coverage review and final independent review approvals remain pending at entry preparation
   - Physical controllers, private firmware boot and milestone verification were not run
+---
+
+### [2026-11-17 10:47 CET] — Integrate current controls with chipset drive activity
+- **Affected Subsystems**:
+  - `GUI`
+  - `keyboard`
+  - `SaveState`
+  - `disk activity`
+- **What Was Changed (The Concrete Reality)**:
+  - Close CONFIG-INPUT-STATE-20261116 by integrating configuration-gameports-save-state into local master
+  - preserve the configuration and disk-activity commits through a real merge
+  - retain both restore and mount regressions and both inspector scenarios
+  - use schema 13 for the combined pending-keyboard-release and chipset-observation layout
+- **Architectural Rationale & Trade-Offs**:
+  - The two independent branches used schema 12 for incompatible state layouts
+  - current-control reconciliation must preserve captured disk observations and physical delivery phases
+  - retain existing settings data while unsupported snapshots receive an explicit version rejection
+  - User explicitly approved the single test-file std::thread::spawn permission needed to verify bounded input contention and deferred draft publication
+- **Verification & Test Results**:
+  - Source commit 902fc62 passed canonical attempt 2e60da62d2f64a47854c888126948086 with 875 ordinary tests passed and three skipped plus four independent approvals before integration
+  - merge resolutions retain both parent behaviors and migrate the additional activity test to explicit RestorePlayer
+  - combined canonical verification and independent review are pending at preparation
+  - physical controllers and private firmware remain unverified and this integration does not close a roadmap milestone
