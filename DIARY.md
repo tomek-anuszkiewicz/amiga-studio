@@ -2684,3 +2684,19 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - merge resolutions retain both parent behaviors and migrate the additional activity test to explicit RestorePlayer
   - combined canonical verification and independent review are pending at preparation
   - physical controllers and private firmware remain unverified and this integration does not close a roadmap milestone
+
+### [2026-11-17 15:13 CET] — Preserve GUI reply ownership in the host-input fixture
+- **Affected Subsystems**:
+  - `GUI host-runtime tests`
+- **What Was Changed (The Concrete Reality)**:
+  - Before direct snapshot polling, wait for the GUI to process its outstanding replies while retaining the requested window focus
+  - keep all input assertions and the existing deadline
+- **Architectural Rationale & Trade-Offs**:
+  - The direct runtime helper drains all replies and discards unrelated IDs
+  - entering it while AppHost owns a pending UTC command can strand bookkeeping and prevent later settling
+- **Verification & Test Results**:
+  - Two canonical coverage attempts timed out in the unchanged input case
+  - normal and instrumented focused cases passed
+  - a controlled temporary reproduction demonstrated a GUI reply consumed by direct snapshot polling and a permanently non-idle AppHost
+  - the diagnostic was removed
+  - final combined batch validation pending

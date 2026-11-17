@@ -882,7 +882,8 @@ fn developer_image_click_admits_input_and_window_focus_loss_releases_it() {
         loop {
             // Honor repaint retries while preserving the simulated window focus.
             draw(app, focused, vec![]);
-            if app.host.status.input_deliveries >= before + 2 {
+            // Direct snapshot polling must not consume GUI-owned command replies.
+            if app.host.status.input_deliveries >= before + 2 && app.host.is_idle() {
                 break;
             }
             assert!(Instant::now() < deadline, "Input delivery did not progress");
