@@ -76,8 +76,8 @@ impl RecordingBus {
 }
 
 impl AddressBus for RecordingBus {
-    fn begin_cpu_cck(&mut self, cck: u64, pc: u32) -> u64 {
-        self.memory.begin_cck(cck, pc);
+    fn begin_cpu_cck(&mut self, cck: u64) -> u64 {
+        self.memory.set_cck(cck);
         cck
     }
 
@@ -134,15 +134,11 @@ fn after_refusal(state: &CpuState, access: Access) -> CpuState {
     let mut value = serde_json::to_value(&serializable).expect("serializable CPU fixture");
     let timing = &mut value["bus_timing"];
     let next = timing["cpu_cck"].as_u64().expect("CPU clock") + 1;
+    if timing["last_cck"].is_null() {
+        timing["last_cycle_start"] = next.wrapping_sub(2).into();
+    }
     timing["cpu_cck"] = next.into();
     timing["last_cck"] = next.into();
-    for phase in ["read_delay", "write_delay"] {
-        timing[phase] = timing[phase]
-            .as_u64()
-            .expect("bus phase")
-            .saturating_sub(1)
-            .into();
-    }
     let (address, bytes, write, payload) = match access {
         Access::ReadByte(a) => (a, 1, false, 0),
         Access::ReadWord(a) => (a, 2, false, 0),

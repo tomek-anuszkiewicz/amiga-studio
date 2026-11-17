@@ -324,7 +324,7 @@ fn private_access_and_debug_reads_do_not_create_shared_bus_requests() {
 
 impl TestMotherboard {
     fn step_agnus(&mut self) -> &[(u16, u16)] {
-        self.mem.begin_cck(self.mem.memory_cck().wrapping_add(1), 0);
+        self.mem.set_cck(self.mem.memory_cck().wrapping_add(1));
         self.agnus.step_cck(&mut self.mem)
     }
 

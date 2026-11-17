@@ -87,5 +87,5 @@ quick slots. Named settings persist in browser storage. ROM and disk bytes do
 not: select those files again after reopening. There is no browser library,
 bundle loader or persistent browser save catalog in this iteration.
 
-Save schema 13 is explicit. Earlier snapshot files are unsupported; no migration
+Save schema 14 is explicit. Earlier snapshot files are unsupported; no migration
 or automatic deletion occurs. Media writes and ADF write-back remain unavailable.

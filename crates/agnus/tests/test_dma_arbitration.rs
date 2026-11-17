@@ -215,10 +215,10 @@ fn standard_display_fetches_twenty_lores_or_forty_hires_words_per_plane() {
 
 #[test]
 fn rejected_disk_ram_read_preserves_the_selected_request() {
-    use config::chip_ram::{ChipRamAccess, ChipRamOwner};
+    use config::chip_ram::ChipRamAccess;
     let mut ram = common::TestChipRam::default();
     ram.next_cck();
-    ram.read_chip_word(0x100, ChipRamOwner::Copper);
+    ram.read_chip_word(0x100);
     let mut agnus = agnus::Agnus::new(agnus::AgnusModel::OcsPal8371);
     agnus.hpos = 6;
     agnus.dskpt = 0x100;

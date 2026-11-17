@@ -2684,6 +2684,36 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - merge resolutions retain both parent behaviors and migrate the additional activity test to explicit RestorePlayer
   - combined canonical verification and independent review are pending at preparation
   - physical controllers and private firmware remain unverified and this integration does not close a roadmap milestone
+---
+
+### [2026-11-17 15:00 CET] — Simplify memory admission with CCK timestamps
+- **Affected Subsystems**:
+  - `CPU`
+  - `physical memory`
+  - `Agnus DMA`
+  - `machine loop`
+  - `save state`
+- **What Was Changed (The Concrete Reality)**:
+  - MEMORY-INVARIANT-SIMPLIFICATION-20261117: replace CPU admission countdowns and Chip RAM transfer descriptions with access timestamps
+  - normalize write callbacks by one CCK
+  - preserve duplicate attempts, wait identity and read completion
+  - remove owner and PC plumbing
+  - preserve access age across reset and snapshots
+  - advance save schema to 14
+  - apply explicitly approved reduced diagnostic assertions
+- **Architectural Rationale & Trade-Offs**:
+  - Keep shared CPU/DMA storage admission and two-CCK CPU cycles with less successful-path bookkeeping
+  - pending transfer identity remains functional
+  - mutation queue diagnostics remain unchanged
+- **Verification & Test Results**:
+  - Focused CPU, physical_memory, agnus and machine_loop tests pass
+  - architecture and vault checks pass
+  - twelve interleaved release samples per version show median 8.379795 to 8.184074 ms/field, 119.335 to 122.189 fields/s, throughput +2.39%
+  - CCK counts, guest progress, activity and frame bytes agree
+  - measurement excludes GUI and pacing but retains pixel/audio generation
+  - final canonical verification and independent review pending
+  - browser speed, isolated Fast RAM and real-game compatibility unmeasured
+---
 
 ### [2026-11-17 15:13 CET] — Preserve GUI reply ownership in the host-input fixture
 - **Affected Subsystems**:

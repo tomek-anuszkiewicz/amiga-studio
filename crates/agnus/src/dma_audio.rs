@@ -40,10 +40,7 @@ impl Agnus {
         } else {
             self.audpt[channel]
         };
-        let word = ram.read_chip_word(
-            address,
-            config::chip_ram::ChipRamOwner::Audio(channel as u8),
-        );
+        let word = ram.read_chip_word(address);
         let register =
             custom_reg::paula::REGISTER_AUD0DAT + channel as u16 * config::AUDIO_REGISTER_STRIDE;
         self.pending_dma_write = Some((register, word));

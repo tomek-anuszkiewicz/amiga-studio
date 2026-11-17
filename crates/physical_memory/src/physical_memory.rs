@@ -277,9 +277,9 @@ impl PhysicalMemory {
 
 impl AddressBus for PhysicalMemory {
     #[inline]
-    fn begin_cpu_cck(&mut self, _cck: u64, pc: u32) -> u64 {
+    fn begin_cpu_cck(&mut self, _cck: u64) -> u64 {
         let cck = self.memory_cck().wrapping_add(1);
-        self.begin_cck(cck, pc);
+        self.set_cck(cck);
         cck
     }
 

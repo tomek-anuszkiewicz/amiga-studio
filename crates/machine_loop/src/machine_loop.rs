@@ -181,8 +181,7 @@ impl A500Machine {
 
     fn advance_subsystems_cck(&mut self) {
         self.cck = self.cck.wrapping_add(1);
-        self.physical_memory
-            .begin_cck(self.cck, self.cpu.state.instruction_pc());
+        self.physical_memory.set_cck(self.cck);
         // Start of subsystem CCK: sample inputs before receiver work, even while waiting.
         self.sample_signal_pins_start_cck();
         // 1. Advance Agnus (steps copper, blitter, dma, raster beam counters, and mutation pipeline)
@@ -193,7 +192,6 @@ impl A500Machine {
                     &mut self.physical_memory,
                     address,
                     word,
-                    config::chip_ram::ChipRamOwner::Disk,
                 );
                 self.paula.take_disk_dma_word();
                 self.agnus.complete_disk_read();

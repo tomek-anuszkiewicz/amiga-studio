@@ -156,7 +156,7 @@ fn test_bank_handler_direct_method_pointer_dispatch() {
         (chip_handler.write_byte)(&mut bus, 0x000100, 0x42),
         physical_memory::BusResult::Ready(())
     );
-    bus.begin_cck(1, 0);
+    bus.set_cck(1);
     let val = (chip_handler.read_byte)(&mut bus, 0x000100);
     assert_eq!(val, physical_memory::BusResult::Ready(0x42));
 

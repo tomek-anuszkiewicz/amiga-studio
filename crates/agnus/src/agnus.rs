@@ -222,8 +222,7 @@ impl Agnus {
 
         match owner {
             dma::DmaChannel::Copper => {
-                let word = chip_ram
-                    .read_chip_word(self.copper.cop_pc, config::chip_ram::ChipRamOwner::Copper);
+                let word = chip_ram.read_chip_word(self.copper.cop_pc);
                 self.pending_copper_write =
                     self.copper
                         .receive_dma_word(word, self.hpos, self.vpos, self.blitter.is_busy);
@@ -232,10 +231,7 @@ impl Agnus {
             dma::DmaChannel::Bitplane(plane) => {
                 let p = plane as usize;
                 if p < OCS_BITPLANE_COUNT && self.pending_bpl_dma.is_none() {
-                    let word = chip_ram.read_chip_word(
-                        self.bplpt[p],
-                        config::chip_ram::ChipRamOwner::Bitplane(plane),
-                    );
+                    let word = chip_ram.read_chip_word(self.bplpt[p]);
                     self.pending_bpl_dma = Some((plane, word));
                     let mod_inc = if self.dma.is_last_bpl_block(self.hpos) {
                         if p % 2 == 0 {

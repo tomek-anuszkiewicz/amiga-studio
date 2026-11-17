@@ -1,9 +1,7 @@
 //! Counted runtime transfers and explicit side-effect-free physical inspection.
 
 use crate::PhysicalMemory;
-use config::chip_ram::{
-    ChipRamAccess, ChipRamOwner, ChipRamTransfer, TransferDirection, MASK_OCS_DMA_ADDRESS,
-};
+use config::chip_ram::{ChipRamAccess, MASK_OCS_DMA_ADDRESS};
 
 impl PhysicalMemory {
     /// The coordinator resets its clock origin; admission stays occupied until
@@ -18,23 +16,13 @@ impl PhysicalMemory {
     }
 
     #[inline]
-    pub fn begin_cck(&mut self, cck: u64, cpu_pc: u32) {
-        self.chip_budget.begin_cck(cck, cpu_pc);
+    pub fn set_cck(&mut self, cck: u64) {
+        self.chip_budget.set_cck(cck);
     }
 
     #[inline]
-    pub(crate) fn admit_cpu_chip_transfer(
-        &mut self,
-        address: u32,
-        bytes: u8,
-        direction: TransferDirection,
-    ) {
-        self.chip_budget.admit(ChipRamTransfer {
-            owner: ChipRamOwner::Cpu,
-            address,
-            direction,
-            bytes,
-        });
+    pub(crate) fn admit_cpu_chip_transfer(&mut self) {
+        self.chip_budget.admit();
     }
 
     pub fn chip_ram_len(&self) -> usize {
@@ -67,26 +55,14 @@ impl PhysicalMemory {
 
 impl ChipRamAccess for PhysicalMemory {
     #[inline]
-    fn read_chip_word(&mut self, address: u32, owner: ChipRamOwner) -> u16 {
-        let address = address & MASK_OCS_DMA_ADDRESS;
-        self.chip_budget.admit(ChipRamTransfer {
-            owner,
-            address,
-            direction: TransferDirection::Read,
-            bytes: 2,
-        });
+    fn read_chip_word(&mut self, address: u32) -> u16 {
+        self.chip_budget.admit();
         self.read_chip_word_debug(address)
     }
 
     #[inline]
-    fn write_chip_word(&mut self, address: u32, value: u16, owner: ChipRamOwner) {
-        let address = address & MASK_OCS_DMA_ADDRESS;
-        self.chip_budget.admit(ChipRamTransfer {
-            owner,
-            address,
-            direction: TransferDirection::Write,
-            bytes: 2,
-        });
+    fn write_chip_word(&mut self, address: u32, value: u16) {
+        self.chip_budget.admit();
         self.write_chip_word_debug(address, value);
     }
 }

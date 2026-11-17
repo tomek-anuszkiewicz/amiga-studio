@@ -117,7 +117,7 @@ fn write_dma_fetches_ram_into_paula_and_serializes_all_buffered_words() {
 
 #[test]
 fn stale_disk_grant_without_data_does_not_transfer_or_advance_counts() {
-    use config::chip_ram::{ChipRamAccess, ChipRamOwner};
+    use config::chip_ram::ChipRamAccess;
     let mut machine = A500Machine::new(A500Config::default());
     machine.cpu.state.set_stopped(true);
     machine.agnus.dskpt = 0x100;
@@ -132,10 +132,5 @@ fn stale_disk_grant_without_data_does_not_transfer_or_advance_counts() {
     );
     assert_eq!(machine.physical_memory.read_chip_word_debug(0x100), 0xabcd);
     // No storage access was admitted by the stale grant in this same CCK.
-    assert_eq!(
-        machine
-            .physical_memory
-            .read_chip_word(0x100, ChipRamOwner::Copper),
-        0xabcd
-    );
+    assert_eq!(machine.physical_memory.read_chip_word(0x100), 0xabcd);
 }

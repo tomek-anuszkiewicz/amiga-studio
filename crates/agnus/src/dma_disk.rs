@@ -37,7 +37,7 @@ impl Agnus {
             return;
         };
         if self.disk_dma_write[slot] {
-            let word = ram.read_chip_word(self.dskpt, config::chip_ram::ChipRamOwner::Disk);
+            let word = ram.read_chip_word(self.dskpt);
             self.pending_dma_write = Some((custom_reg::paula::REGISTER_DSKDAT, word));
             self.dskpt = self.dskpt.wrapping_add(2) & chip_ram::MASK_OCS_DMA_ADDRESS;
         } else {

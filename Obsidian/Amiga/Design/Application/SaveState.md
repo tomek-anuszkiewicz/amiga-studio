@@ -44,12 +44,13 @@ old layouts have no
 compatibility parser. Frontends and the debugger use this crate for persistence;
 in-memory quick slots retain only the machine value.
 
-Schema version 13 adds pending keyboard releases that survive a full type-ahead
-queue, preserving release delivery across another capture and exact restoration.
+Schema version 14 replaces CPU admission countdowns and shared Chip RAM transfer
+descriptions with access timestamps. Pending keyboard releases survive a full
+type-ahead queue, preserving release delivery across another capture and exact restoration.
 It records active CPU sequence identity, physical drive attachment
 and player association, and embeds usable floppy raw tracks and spindle phase, including
 mid-transfer connector state; restoring requires no original ADF file. It also
-retains the CPU bus-admission phases and active shared Chip RAM budget. Clone
+retains the CPU bus-cycle start, pending refused operation and last shared Chip RAM access. Clone
 and restore preserve an occupied cycle; neither creates another transfer
 opportunity. Sprite coordinates and vertical DMA latches are grouped under
 `state.agnus.sprite_dma`; derived comparison results are rebuilt after restore.

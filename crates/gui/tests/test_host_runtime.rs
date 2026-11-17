@@ -53,9 +53,9 @@ fn invariant_read(
     memory: &mut physical_memory::PhysicalMemory,
     address: u32,
 ) -> physical_memory::BusResult<u16> {
-    use config::chip_ram::{ChipRamAccess, ChipRamOwner};
-    memory.read_chip_word(address, ChipRamOwner::Copper);
-    physical_memory::BusResult::Ready(memory.read_chip_word(address, ChipRamOwner::Cpu))
+    use config::chip_ram::ChipRamAccess;
+    memory.read_chip_word(address);
+    physical_memory::BusResult::Ready(memory.read_chip_word(address))
 }
 
 #[test]

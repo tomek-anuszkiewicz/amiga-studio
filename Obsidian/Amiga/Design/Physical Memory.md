@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "physical_memory"
 status: "active"
 created: 2026-10-12
-updated: 2026-11-16
+updated: 2026-11-17
 related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md](MemoryBus.md)", "[Configuration.md](Configuration.md)", "[Machine Loop.md](Machine%20Loop.md)", "[DMA.md](DMA.md)", "[RTC.md](RTC.md)", "[Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
 tracked_paths:
   - "crates/physical_memory"
@@ -53,13 +53,17 @@ regardless of direction or producer; a second transfer is fatal before reading
 or changing storage. Register delivery and refresh are not RAM transfers.
 Independent Fast RAM, ROM and device accesses do not consume this shared budget.
 
-The machine opens the budget once before all subsystem and CPU work. Re-entering
-that CCK does not clear it. A subsystem-only step advances the master CCK too.
-Clone and serialization preserve the active budget; restore cannot create a
-second opportunity in the saved CCK. Reset does not clear admission bookkeeping;
-the next explicit CCK establishes the next opportunity, including counter wrap.
-Standalone CPU/storage execution opens its own CCK through `AddressBus`, whereas
-the production router uses the machine's already opened cycle. Debug access,
+The machine supplies its current CCK before subsystem and CPU work. Admission
+remembers only the last actual access CCK: at least one CCK must separate
+transfers, with no per-cycle clearing or producer/address history. Failure
+diagnostics identify the previous and current CCKs. A CPU access also passes
+the independent [CPU cycle-spacing guard](CPU%20Micro-Step%20State%20Machine.md#bus-admission-guard).
+A subsystem-only step advances the master CCK too. Clone and serialization
+preserve the access timestamp; restore cannot create a second opportunity in
+the saved CCK. Reset translates that timestamp with the clock origin, preserving
+its wrapping distance from the current CCK; it does not grant an extra access.
+Standalone CPU/storage execution advances its CCK through `AddressBus`, whereas
+the production router uses the existing machine CCK. Debug access,
 injection and reset/prefetch setup consume no runtime budget.
 
 ## Access semantics

@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use config::chip_ram::{ChipRamAccess, ChipRamOwner};
+use config::chip_ram::ChipRamAccess;
 
 mod common;
 use common::MemoryCycle;
@@ -270,12 +270,8 @@ fn test_chip_ram_direct_dma_word_access_bypasses_contention_and_overlay() {
     assert_eq!(bus.next_cck().read_word(0x002000), BusResult::WaitState);
 
     // Hardware DMA direct access writes directly into physical Chip RAM despite contention
-    bus.next_cck()
-        .write_chip_word(0x002000, 0xABCD, ChipRamOwner::Disk);
-    assert_eq!(
-        bus.next_cck().read_chip_word(0x002000, ChipRamOwner::Disk),
-        0xABCD
-    );
+    bus.next_cck().write_chip_word(0x002000, 0xABCD);
+    assert_eq!(bus.next_cck().read_chip_word(0x002000), 0xABCD);
     assert_eq!(bus.read_chip_byte_debug(0x2000), 0xAB);
     assert_eq!(bus.read_chip_byte_debug(0x2001), 0xCD);
 
@@ -287,12 +283,8 @@ fn test_chip_ram_direct_dma_word_access_bypasses_contention_and_overlay() {
     assert_eq!(bus.read_word_debug(0x000000), 0x0008); // default Kickstart SSP
 
     // DMA write targets physical Chip RAM, completely bypassing CPU ROM overlay
-    bus.next_cck()
-        .write_chip_word(0x000000, 0x5678, ChipRamOwner::Disk);
-    assert_eq!(
-        bus.next_cck().read_chip_word(0x000000, ChipRamOwner::Disk),
-        0x5678
-    );
+    bus.next_cck().write_chip_word(0x000000, 0x5678);
+    assert_eq!(bus.next_cck().read_chip_word(0x000000), 0x5678);
     assert_eq!(bus.read_chip_byte_debug(0), 0x56);
     assert_eq!(bus.read_chip_byte_debug(1), 0x78);
 

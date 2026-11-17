@@ -164,10 +164,7 @@ impl Agnus {
             (false, false) => reg::REGISTER_SPR0DATA,
             (false, true) => reg::REGISTER_SPR0DATB,
         };
-        let word = ram.read_chip_word(
-            self.sprpt[sprite],
-            config::chip_ram::ChipRamOwner::Sprite(sprite as u8),
-        );
+        let word = ram.read_chip_word(self.sprpt[sprite]);
         self.sprpt[sprite] =
             self.sprpt[sprite].wrapping_add(WORD_BYTES) & chip_ram::MASK_OCS_DMA_ADDRESS;
         self.pending_dma_write = Some((base + sprite as u16 * SPRITE_REGISTER_STRIDE, word));

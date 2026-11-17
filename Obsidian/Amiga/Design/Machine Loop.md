@@ -21,7 +21,7 @@ The machine owns the CPU, physical memory, Agnus, Denise, Paula, both CIAs, the 
 
 `A500Machine::step_cck()` is the common path used by the stepping APIs. It performs these operations in order:
 
-1. Retain the previously captured `keyboard_reset_asserted` locally and advance non-CPU subsystems, incrementing the wrapping master `cck` and opening the shared memory budget before any subsystem work.
+1. Retain the previously captured `keyboard_reset_asserted` locally and advance non-CPU subsystems, incrementing the wrapping master `cck` and supplying that timestamp to shared memory before any subsystem work.
 2. If the delivered motherboard keyboard reset input is asserted, perform a warm reset and return `false` without stepping the CPU in that call.
 3. Otherwise, record the CPU's current `RESET` output, create a `MemoryBus` over the machine components, and advance the CPU by one CCK phase.
 4. If that CPU phase newly asserted `RESET`, reset external devices while preserving the CPU's registers and program counter.

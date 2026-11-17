@@ -123,9 +123,7 @@ fn test_bitplane_contention_scaling() {
     machine.agnus.set_bplcon0(0x4000);
     for _ in 0..4 {
         machine.cck = machine.cck.wrapping_add(1);
-        machine
-            .physical_memory
-            .begin_cck(machine.cck, machine.cpu.state.instruction_pc());
+        machine.physical_memory.set_cck(machine.cck);
         machine.agnus.step_cck(&mut machine.physical_memory);
     }
 
@@ -145,9 +143,7 @@ fn test_bitplane_contention_scaling() {
     machine.agnus.set_bplcon0(0x6000);
     for _ in 0..4 {
         machine.cck = machine.cck.wrapping_add(1);
-        machine
-            .physical_memory
-            .begin_cck(machine.cck, machine.cpu.state.instruction_pc());
+        machine.physical_memory.set_cck(machine.cck);
         machine.agnus.step_cck(&mut machine.physical_memory);
     }
 
@@ -173,9 +169,7 @@ fn test_bitplane_contention_scaling() {
     machine.agnus.set_bplcon0(0xC000);
     for _ in 0..4 {
         machine.cck = machine.cck.wrapping_add(1);
-        machine
-            .physical_memory
-            .begin_cck(machine.cck, machine.cpu.state.instruction_pc());
+        machine.physical_memory.set_cck(machine.cck);
         machine.agnus.step_cck(&mut machine.physical_memory);
     }
     for phase in 0..8 {

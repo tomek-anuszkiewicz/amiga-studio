@@ -6,12 +6,13 @@ category: "Design"
 subsystem: "m68000"
 status: "active"
 created: 2026-09-08
-updated: 2026-11-16
+updated: 2026-11-17
 related: ["[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[CPU SingleStepTests.md](Verification/CPU%20SingleStepTests.md)", "[MemoryBus.md](MemoryBus.md)", "[Machine Loop.md](Machine%20Loop.md)"]
 tracked_paths:
   - "crates/cpu/src/micro"
   - "crates/cpu/src/instructions"
   - "crates/cpu/src/cpu.rs"
+  - "crates/cpu/src/bus_guard.rs"
 ---
 # Architecture Specification: M68000 Cycle-Exact Micro-Step State Machine
 
@@ -87,8 +88,11 @@ including waits and suppressed TAS stores, is counted before dispatch. Debug
 prefetch/setup reads remain outside this budget. Duplicate attempts fail before
 the second dispatch, even when the first attempt was refused.
 
-The CPU retains read-completion and write-setup intervals across CCKs and
-snapshots. A completed read reserves its following CCK for completion; a new
+The CPU retains the accepted bus-cycle start across CCKs and snapshots. Read
+callbacks already mark that start; write callbacks are normalized by subtracting
+one CCK with wrapping arithmetic. Accepted starts must be at least two CCKs
+apart. This is a model timestamp convention, not a measurement of silicon strobes.
+A completed read reserves its following CCK for completion; a new
 write additionally needs a distinct setup CCK. A completed write can be followed
 by a read in the next CCK, while successive reads or writes need two CCKs.
 Waits retain the attempted address, width, direction and write value until

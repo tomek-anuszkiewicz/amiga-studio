@@ -64,17 +64,17 @@ fn test_address_bus_trait_word_and_byte_accesses() {
     let trait_bus: &mut dyn AddressBus = &mut bus;
     let mut cck = 0u64;
     cck = cck.wrapping_add(1);
-    trait_bus.begin_cpu_cck(cck, 0);
+    trait_bus.begin_cpu_cck(cck);
     assert_eq!(trait_bus.write_word(0x002000, 0x1234), BusResult::Ready(()));
     cck = cck.wrapping_add(1);
-    trait_bus.begin_cpu_cck(cck, 0);
+    trait_bus.begin_cpu_cck(cck);
     assert_eq!(trait_bus.read_word(0x002000), BusResult::Ready(0x1234));
     assert_eq!(trait_bus.read_word_debug(0x002000), 0x1234);
     cck = cck.wrapping_add(1);
-    trait_bus.begin_cpu_cck(cck, 0);
+    trait_bus.begin_cpu_cck(cck);
     assert_eq!(trait_bus.write_byte(0x002000, 0x56), BusResult::Ready(()));
     cck = cck.wrapping_add(1);
-    trait_bus.begin_cpu_cck(cck, 0);
+    trait_bus.begin_cpu_cck(cck);
     assert_eq!(trait_bus.read_byte(0x002000), BusResult::Ready(0x56));
 }
 
@@ -88,16 +88,16 @@ fn test_address_bus_trait_arbitration_wait_states() {
         let trait_bus: &mut dyn AddressBus = &mut bus;
         let mut cck = 0u64;
         cck = cck.wrapping_add(1);
-        trait_bus.begin_cpu_cck(cck, 0);
+        trait_bus.begin_cpu_cck(cck);
         assert_eq!(trait_bus.read_word(0x001000), BusResult::WaitState);
         cck = cck.wrapping_add(1);
-        trait_bus.begin_cpu_cck(cck, 0);
+        trait_bus.begin_cpu_cck(cck);
         assert_eq!(trait_bus.write_word(0x001000, 0xCAFE), BusResult::WaitState);
         cck = cck.wrapping_add(1);
-        trait_bus.begin_cpu_cck(cck, 0);
+        trait_bus.begin_cpu_cck(cck);
         assert_eq!(trait_bus.read_byte(0x001000), BusResult::WaitState);
         cck = cck.wrapping_add(1);
-        trait_bus.begin_cpu_cck(cck, 0);
+        trait_bus.begin_cpu_cck(cck);
         assert_eq!(trait_bus.write_byte(0x001000, 0x42), BusResult::WaitState);
 
         // Non-intrusive debug read ignores bus lock
@@ -109,6 +109,6 @@ fn test_address_bus_trait_arbitration_wait_states() {
     let trait_bus: &mut dyn AddressBus = &mut bus;
     let mut cck = 0u64;
     cck = cck.wrapping_add(1);
-    trait_bus.begin_cpu_cck(cck, 0);
+    trait_bus.begin_cpu_cck(cck);
     assert_eq!(trait_bus.read_word(0x001000), BusResult::Ready(0x0000));
 }

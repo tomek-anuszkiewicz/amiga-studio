@@ -16,19 +16,15 @@ impl Blitter {
     ) {
         match phase {
             BlitterPhase::FetchA => {
-                self.bltadat =
-                    ram.read_chip_word(self.bltapt, config::chip_ram::ChipRamOwner::Blitter);
+                self.bltadat = ram.read_chip_word(self.bltapt);
                 self.bltapt = self.advance_pointer(self.bltapt, WORD_BYTES);
             }
             BlitterPhase::FetchB => {
-                self.write_bltbdat(
-                    ram.read_chip_word(self.bltbpt, config::chip_ram::ChipRamOwner::Blitter),
-                );
+                self.write_bltbdat(ram.read_chip_word(self.bltbpt));
                 self.bltbpt = self.advance_pointer(self.bltbpt, WORD_BYTES);
             }
             BlitterPhase::FetchC => {
-                self.bltcdat =
-                    ram.read_chip_word(self.bltcpt, config::chip_ram::ChipRamOwner::Blitter);
+                self.bltcdat = ram.read_chip_word(self.bltcpt);
                 self.bltcpt = self.advance_pointer(self.bltcpt, WORD_BYTES);
             }
             BlitterPhase::WriteD => self.write_pending_word(ram),
@@ -96,11 +92,7 @@ impl Blitter {
 
     fn write_pending_word(&mut self, ram: &mut impl config::chip_ram::ChipRamAccess) {
         if let Some(word) = self.pending_word {
-            ram.write_chip_word(
-                self.bltdpt,
-                word.data,
-                config::chip_ram::ChipRamOwner::Blitter,
-            );
+            ram.write_chip_word(self.bltdpt, word.data);
             self.pending_word = None;
             self.bltdpt = self.advance_pointer(self.bltdpt, WORD_BYTES);
             if word.last_in_row {

@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 /// Active schema format version for A500 save states
-pub const SAVE_STATE_VERSION: u32 = 13;
+pub const SAVE_STATE_VERSION: u32 = 14;
 
 /// Metadata header identifying state compatibility, creation time, and display preview
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

@@ -167,7 +167,7 @@ fn read_chip_ram(bus: &mut PhysicalMemory, addr: u32) -> BusResult<u8> {
     if bus.chip_ram_blocked {
         BusResult::WaitState
     } else {
-        bus.admit_cpu_chip_transfer(addr, 1, config::chip_ram::TransferDirection::Read);
+        bus.admit_cpu_chip_transfer();
         BusResult::Ready(read_chip_ram_internal(bus, addr))
     }
 }
@@ -177,7 +177,7 @@ fn read_chip_ram_word(bus: &mut PhysicalMemory, addr: u32) -> BusResult<u16> {
     if bus.chip_ram_blocked {
         BusResult::WaitState
     } else {
-        bus.admit_cpu_chip_transfer(addr, 2, config::chip_ram::TransferDirection::Read);
+        bus.admit_cpu_chip_transfer();
         BusResult::Ready(read_chip_ram_word_internal(bus, addr))
     }
 }
@@ -187,7 +187,7 @@ fn write_chip_ram(bus: &mut PhysicalMemory, addr: u32, val: u8) -> BusResult<()>
     if bus.chip_ram_blocked {
         BusResult::WaitState
     } else {
-        bus.admit_cpu_chip_transfer(addr, 1, config::chip_ram::TransferDirection::Write);
+        bus.admit_cpu_chip_transfer();
         write_chip_ram_internal(bus, addr, val);
         BusResult::Ready(())
     }
@@ -198,7 +198,7 @@ fn write_chip_ram_word(bus: &mut PhysicalMemory, addr: u32, val: u16) -> BusResu
     if bus.chip_ram_blocked {
         BusResult::WaitState
     } else {
-        bus.admit_cpu_chip_transfer(addr, 2, config::chip_ram::TransferDirection::Write);
+        bus.admit_cpu_chip_transfer();
         write_chip_ram_word_internal(bus, addr, val);
         BusResult::Ready(())
     }

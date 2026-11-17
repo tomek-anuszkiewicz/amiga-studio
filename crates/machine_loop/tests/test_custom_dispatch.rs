@@ -203,9 +203,7 @@ fn full_capacity_register_replay_does_not_block_interrupt_pins() {
         assert!(machine.denise.set_bpldat(0, value));
     }
     machine.cck = machine.cck.wrapping_add(1);
-    machine
-        .physical_memory
-        .begin_cck(machine.cck, machine.cpu.state.instruction_pc());
+    machine.physical_memory.set_cck(machine.cck);
     let agnus_due = machine.agnus.step_cck(&mut machine.physical_memory);
     let denise_due = machine.denise.step_cck();
     assert_eq!(agnus_due.len(), agnus::Agnus::MUTATION_CAPACITY);

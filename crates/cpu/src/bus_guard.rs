@@ -3,9 +3,8 @@
 use physical_memory::{AddressBus, BusResult};
 use serde::{Deserialize, Serialize};
 
-const READ_CYCLE_CCK: u8 = 2;
-const WRITE_TO_READ_CCK: u8 = 1;
-const WRITE_AFTER_READ_CCK: u8 = 3;
+const BUS_CYCLE_CCK: u64 = 2;
+const WRITE_CALLBACK_OFFSET_CCK: u64 = 1;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 struct Attempt {
@@ -15,32 +14,19 @@ struct Attempt {
     write: bool,
 }
 
-/// Relative phases survive snapshots and statistical clock-counter resets.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+/// Access timestamps survive snapshots and statistical clock-counter resets.
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BusTiming {
     last_cck: Option<u64>,
     cpu_cck: u64,
-    read_delay: u8,
-    write_delay: u8,
+    last_cycle_start: u64,
     pending: Option<Attempt>,
-}
-
-impl Default for BusTiming {
-    fn default() -> Self {
-        Self {
-            last_cck: None,
-            cpu_cck: 0,
-            read_delay: 0,
-            write_delay: READ_CYCLE_CCK,
-            pending: None,
-        }
-    }
 }
 
 pub struct GuardedBus<'a> {
     bus: &'a mut dyn AddressBus,
     timing: BusTiming,
-    first: Option<Attempt>,
+    attempted: bool,
     cck: u64,
     pc: u32,
 }
@@ -61,22 +47,20 @@ impl<'a> GuardedBus<'a> {
         cck: u64,
         pc: u32,
     ) -> Self {
-        let elapsed = timing
-            .last_cck
-            .map_or(1, |previous| cck.wrapping_sub(previous));
-        if elapsed == 0 {
+        if timing.last_cck == Some(cck) {
             config::fatal_emulation_error(format_args!(
                 "CPU bus timing invariant: repeated CCK={cck}, PC=${pc:06X}"
             ));
         }
-        let elapsed = elapsed.min(u64::from(WRITE_AFTER_READ_CCK)) as u8;
-        timing.read_delay = timing.read_delay.saturating_sub(elapsed);
-        timing.write_delay = timing.write_delay.saturating_sub(elapsed);
+        if timing.last_cck.is_none() {
+            // The first read may start now; a write still needs its setup CCK.
+            timing.last_cycle_start = cck.wrapping_sub(BUS_CYCLE_CCK);
+        }
         timing.last_cck = Some(cck);
         Self {
             bus,
             timing,
-            first: None,
+            attempted: false,
             cck,
             pc,
         }
@@ -85,10 +69,10 @@ impl<'a> GuardedBus<'a> {
     /// Retirement cannot discard an unaccepted transfer or its final read CCK.
     #[inline]
     pub(super) fn require_instruction_completion(&self) {
-        if self.timing.pending.is_some() || self.timing.read_delay == READ_CYCLE_CCK {
+        if self.timing.pending.is_some() || self.timing.last_cycle_start == self.cck {
             config::fatal_emulation_error(format_args!(
-                "CPU bus completion invariant: CCK={}, PC=${:06X}, pending={:?}, read phase={}",
-                self.cck, self.pc, self.timing.pending, self.timing.read_delay
+                "CPU bus completion invariant: CCK={}, PC=${:06X}, pending={:?}, cycle start CCK={}",
+                self.cck, self.pc, self.timing.pending, self.timing.last_cycle_start
             ));
         }
     }
@@ -100,23 +84,22 @@ impl<'a> GuardedBus<'a> {
 
     #[inline]
     fn admit(&mut self, operation: Attempt) {
-        if self.first.is_some()
+        // Compare before subtracting the write callback offset: a write during
+        // a read's first CCK must not underflow into an apparently long interval.
+        let required = BUS_CYCLE_CCK + u64::from(operation.write);
+        if self.attempted
             || self
                 .timing
                 .pending
                 .is_some_and(|pending| pending != operation)
             || (self.timing.pending.is_none()
-                && if operation.write {
-                    self.timing.write_delay != 0
-                } else {
-                    self.timing.read_delay != 0
-                })
+                && self.cck.wrapping_sub(self.timing.last_cycle_start) < required)
         {
             config::fatal_emulation_error(format_args!(
-                "CPU bus timing/access invariant: CCK={}, PC=${:06X}, first={:?}, pending={:?}, read phase={}, write phase={}, rejected={operation:?}",
-                self.cck, self.pc, self.first, self.timing.pending, self.timing.read_delay, self.timing.write_delay));
+                "CPU bus timing/access invariant: CCK={}, PC=${:06X}, cycle start CCK={}, pending={:?}, rejected={operation:?}",
+                self.cck, self.pc, self.timing.last_cycle_start, self.timing.pending));
         }
-        self.first = Some(operation);
+        self.attempted = true;
     }
 
     #[inline]
@@ -125,18 +108,11 @@ impl<'a> GuardedBus<'a> {
             self.timing.pending = Some(operation);
         } else {
             self.timing.pending = None;
-            // Reads reserve their following completion CCK. A write's preceding
-            // setup CCK cannot overlap that completion. Write -> read adjacency
-            // is legal because the write completes in its callback CCK.
-            self.timing.read_delay = if operation.write {
-                WRITE_TO_READ_CCK
+            // Both directions use the start of their two-CCK bus cycle.
+            self.timing.last_cycle_start = if operation.write {
+                self.cck.wrapping_sub(WRITE_CALLBACK_OFFSET_CCK)
             } else {
-                READ_CYCLE_CCK
-            };
-            self.timing.write_delay = if operation.write {
-                READ_CYCLE_CCK
-            } else {
-                WRITE_AFTER_READ_CCK
+                self.cck
             };
         }
         result

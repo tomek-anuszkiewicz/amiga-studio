@@ -182,7 +182,7 @@ impl Cpu {
     fn step_cck_internal(&mut self, bus: &mut dyn AddressBus) -> bool {
         let pc = self.state.instruction_pc();
         let mut timing = self.state.take_bus_timing();
-        let cck = bus.begin_cpu_cck(timing.next_cpu_cck(), pc);
+        let cck = bus.begin_cpu_cck(timing.next_cpu_cck());
         let mut guarded = bus_guard::GuardedBus::new(bus, timing, cck, pc);
         let completed = self.execute_cck(&mut guarded);
         self.state.set_bus_timing(guarded.finish());

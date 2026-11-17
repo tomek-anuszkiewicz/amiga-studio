@@ -5,9 +5,9 @@ use physical_memory::{AddressBus, BusResult};
 pub(super) struct BenchmarkPlatformBus<'a>(pub(super) MemoryBus<'a>);
 
 impl AddressBus for BenchmarkPlatformBus<'_> {
-    fn begin_cpu_cck(&mut self, _: u64, pc: u32) -> u64 {
+    fn begin_cpu_cck(&mut self, _: u64) -> u64 {
         let cck = self.0.mem.memory_cck().wrapping_add(1);
-        self.0.mem.begin_cck(cck, pc);
+        self.0.mem.set_cck(cck);
         self.0.cck = cck;
         cck
     }

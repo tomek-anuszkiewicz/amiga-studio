@@ -21,8 +21,7 @@ impl Blitter {
         match self.phase_index {
             PHASE_READ => {
                 if self.bltcon0 & bltcon::BIT_USEC != 0 {
-                    self.bltcdat =
-                        ram.read_chip_word(self.bltcpt, config::chip_ram::ChipRamOwner::Blitter);
+                    self.bltcdat = ram.read_chip_word(self.bltcpt);
                 }
             }
             PHASE_LOGIC => {
@@ -38,11 +37,7 @@ impl Blitter {
             }
             PHASE_WRITE => {
                 if self.line_write_enabled {
-                    ram.write_chip_word(
-                        self.bltdpt,
-                        self.dhold,
-                        config::chip_ram::ChipRamOwner::Blitter,
-                    );
+                    ram.write_chip_word(self.bltdpt, self.dhold);
                 }
             }
             PHASE_ADVANCE => {

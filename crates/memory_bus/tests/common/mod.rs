@@ -8,13 +8,13 @@ pub trait BusCycle {
 impl BusCycle for MemoryBus<'_> {
     fn next_cck(&mut self) -> &mut Self {
         self.cck = self.mem.memory_cck().wrapping_add(1);
-        self.mem.begin_cck(self.cck, 0);
+        self.mem.set_cck(self.cck);
         self
     }
 }
 impl BusCycle for PhysicalMemory {
     fn next_cck(&mut self) -> &mut Self {
-        self.begin_cck(self.memory_cck().wrapping_add(1), 0);
+        self.set_cck(self.memory_cck().wrapping_add(1));
         self
     }
 }

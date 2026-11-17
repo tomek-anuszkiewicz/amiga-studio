@@ -175,7 +175,7 @@ impl TracedBus {
     }
 }
 impl physical_memory::AddressBus for TracedBus {
-    fn begin_cpu_cck(&mut self, cck: u64, _pc: u32) -> u64 {
+    fn begin_cpu_cck(&mut self, cck: u64) -> u64 {
         self.cck = cck;
         cck
     }

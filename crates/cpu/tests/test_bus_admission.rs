@@ -14,7 +14,7 @@ struct Bus {
 }
 
 impl AddressBus for Bus {
-    fn begin_cpu_cck(&mut self, cck: u64, _: u32) -> u64 {
+    fn begin_cpu_cck(&mut self, cck: u64) -> u64 {
         self.fixed_cck.unwrap_or(cck)
     }
     fn read_byte(&mut self, _: u32) -> BusResult<u8> {
@@ -145,6 +145,91 @@ fn waiting_transaction_keeps_address_size_direction_and_value() {
         .is_err());
         drop(retry);
         assert_eq!(bus.calls, 1);
+    }
+}
+
+#[test]
+fn normalized_cycle_starts_preserve_all_direction_boundaries_and_wrap() {
+    for origin in [2, u64::MAX - 1] {
+        for (first_write, second_write, distance) in [
+            (false, false, 2),
+            (true, true, 2),
+            (true, false, 1),
+            (false, true, 3),
+        ] {
+            for extra in [0, 17] {
+                let mut bus = Bus::default();
+                let setup =
+                    GuardedBus::new(&mut bus, BusTiming::default(), origin.wrapping_sub(1), 0)
+                        .finish();
+                let mut first = GuardedBus::new(&mut bus, setup, origin, 0);
+                if first_write {
+                    assert_eq!(first.write_word(0x1000, 0x1234), BusResult::Ready(()));
+                } else {
+                    assert_eq!(first.read_word(0x1000), BusResult::Ready(0x4e71));
+                }
+                let saved = serde_json::to_string(&first.finish()).unwrap();
+                let mut second = GuardedBus::new(
+                    &mut bus,
+                    serde_json::from_str(&saved).unwrap(),
+                    origin.wrapping_add(distance + extra),
+                    0,
+                );
+                if second_write {
+                    assert_eq!(second.write_word(0x1002, 0x5678), BusResult::Ready(()));
+                } else {
+                    assert_eq!(second.read_word(0x1002), BusResult::Ready(0x4e71));
+                }
+                drop(second);
+                assert_eq!(bus.calls, 2);
+            }
+        }
+    }
+}
+
+#[test]
+fn first_write_requires_setup_and_accepted_retry_starts_spacing_at_acceptance() {
+    for origin in [0, 7, u64::MAX] {
+        let mut bus = Bus::default();
+        let mut first = GuardedBus::new(&mut bus, BusTiming::default(), origin, 0);
+        assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            first.write_word(0x1000, 0x1234);
+        }))
+        .is_err());
+        drop(first);
+        assert_eq!(bus.calls, 0);
+    }
+    for write in [false, true] {
+        let mut bus = Bus {
+            wait: true,
+            ..Bus::default()
+        };
+        let mut timing = GuardedBus::new(&mut bus, BusTiming::default(), 1, 0).finish();
+        for cck in 2..=4 {
+            let mut retry = GuardedBus::new(&mut bus, timing, cck, 0);
+            let waiting = if write {
+                retry.write_word(0x1000, 0x1234).is_wait()
+            } else {
+                retry.read_word(0x1000).is_wait()
+            };
+            assert!(waiting);
+            timing = retry.finish();
+        }
+        bus.wait = false;
+        let mut accepted = GuardedBus::new(&mut bus, timing, 5, 0);
+        if write {
+            assert_eq!(accepted.write_word(0x1000, 0x1234), BusResult::Ready(()));
+            accepted.require_instruction_completion();
+        } else {
+            assert_eq!(accepted.read_word(0x1000), BusResult::Ready(0x4e71));
+        }
+        let saved = serde_json::to_string(&accepted.finish()).unwrap();
+        let next = if write { 6 } else { 7 };
+        let mut read = GuardedBus::new(&mut bus, serde_json::from_str(&saved).unwrap(), next, 0);
+        read.require_instruction_completion();
+        assert_eq!(read.read_word(0x1002), BusResult::Ready(0x4e71));
+        drop(read);
+        assert_eq!(bus.calls, 5);
     }
 }
 

@@ -53,7 +53,7 @@ impl<'a> MemoryBus<'a> {
 
 impl<'a> AddressBus for MemoryBus<'a> {
     #[inline]
-    fn begin_cpu_cck(&mut self, _cck: u64, _pc: u32) -> u64 {
+    fn begin_cpu_cck(&mut self, _cck: u64) -> u64 {
         self.cck
     }
 

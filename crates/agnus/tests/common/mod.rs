@@ -1,9 +1,6 @@
 #![allow(dead_code)]
 
-use config::chip_ram::{
-    ChipRamAccess, ChipRamBudget, ChipRamOwner, ChipRamTransfer, TransferDirection,
-    MASK_OCS_DMA_ADDRESS,
-};
+use config::chip_ram::{ChipRamAccess, ChipRamBudget, MASK_OCS_DMA_ADDRESS};
 
 /// Explicit cycles, using the same admission state as production storage.
 #[derive(Debug, Clone)]
@@ -29,7 +26,7 @@ impl From<Vec<u8>> for TestChipRam {
 
 impl TestChipRam {
     pub fn next_cck(&mut self) {
-        self.budget.begin_cck(self.budget.cck().wrapping_add(1), 0);
+        self.budget.set_cck(self.budget.cck().wrapping_add(1));
     }
 }
 
@@ -46,25 +43,15 @@ impl std::ops::DerefMut for TestChipRam {
 }
 
 impl ChipRamAccess for TestChipRam {
-    fn read_chip_word(&mut self, address: u32, owner: ChipRamOwner) -> u16 {
+    fn read_chip_word(&mut self, address: u32) -> u16 {
         let address = address & MASK_OCS_DMA_ADDRESS;
-        self.budget.admit(ChipRamTransfer {
-            owner,
-            address,
-            direction: TransferDirection::Read,
-            bytes: 2,
-        });
+        self.budget.admit();
         let offset = address as usize & (self.bytes.len() - 1);
         u16::from_be_bytes([self.bytes[offset], self.bytes[offset + 1]])
     }
-    fn write_chip_word(&mut self, address: u32, value: u16, owner: ChipRamOwner) {
+    fn write_chip_word(&mut self, address: u32, value: u16) {
         let address = address & MASK_OCS_DMA_ADDRESS;
-        self.budget.admit(ChipRamTransfer {
-            owner,
-            address,
-            direction: TransferDirection::Write,
-            bytes: 2,
-        });
+        self.budget.admit();
         let offset = address as usize & (self.bytes.len() - 1);
         self.bytes[offset..offset + 2].copy_from_slice(&value.to_be_bytes());
     }

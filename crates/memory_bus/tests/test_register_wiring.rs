@@ -156,7 +156,7 @@ fn every_ocs_write_reaches_only_its_owners_and_is_delivered_once_when_due() {
 
 impl TestMotherboard {
     fn step_agnus(&mut self) -> &[(u16, u16)] {
-        self.mem.begin_cck(self.mem.memory_cck().wrapping_add(1), 0);
+        self.mem.set_cck(self.mem.memory_cck().wrapping_add(1));
         self.agnus.step_cck(&mut self.mem)
     }
 

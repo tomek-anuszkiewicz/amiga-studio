@@ -10,38 +10,11 @@ pub const MASK_OCS_DMA_HIGH: u16 = (MASK_OCS_DMA_ADDRESS >> 16) as u16;
 /// Significant bits of an OCS DMA pointer's low register word.
 pub const MASK_OCS_DMA_LOW: u16 = MASK_OCS_DMA_ADDRESS as u16;
 
-/// Owner of a completed physical Chip RAM transfer.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub enum ChipRamOwner {
-    Cpu,
-    Copper,
-    Blitter,
-    Bitplane(u8),
-    Sprite(u8),
-    Audio(u8),
-    Disk,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub enum TransferDirection {
-    Read,
-    Write,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub struct ChipRamTransfer {
-    pub owner: ChipRamOwner,
-    pub address: u32,
-    pub direction: TransferDirection,
-    pub bytes: u8,
-}
-
 /// Admission belongs to storage, so CPU and every DMA family share this state.
 #[derive(Debug, Default, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ChipRamBudget {
     cck: u64,
-    cpu_pc: u32,
-    first: Option<ChipRamTransfer>,
+    last_access_cck: Option<u64>,
 }
 
 impl ChipRamBudget {
@@ -53,32 +26,31 @@ impl ChipRamBudget {
 
     /// Reset the machine clock origin without granting a transfer at reset.
     pub fn rebase_cck(&mut self, cck: u64) {
+        let shift = cck.wrapping_sub(self.cck);
+        self.last_access_cck = self.last_access_cck.map(|last| last.wrapping_add(shift));
         self.cck = cck;
     }
 
-    /// Re-entering an active CCK cannot grant another transfer.
+    /// Observe the existing execution clock without clearing access history.
     #[inline]
-    pub fn begin_cck(&mut self, cck: u64, cpu_pc: u32) {
-        if self.cck != cck {
-            self.cck = cck;
-            self.first = None;
-        }
-        self.cpu_pc = cpu_pc;
+    pub fn set_cck(&mut self, cck: u64) {
+        self.cck = cck;
     }
 
     #[inline]
-    pub fn admit(&mut self, operation: ChipRamTransfer) {
-        if let Some(first) = self.first {
+    pub fn admit(&mut self) {
+        if self.last_access_cck == Some(self.cck) {
             crate::fatal_emulation_error(format_args!(
-                "Chip RAM access invariant: CCK={}, CPU PC=${:06X}, first={first:?}, rejected={operation:?}",
-                self.cck, self.cpu_pc));
+                "Chip RAM access invariant: previous CCK={}, current CCK={}",
+                self.cck, self.cck
+            ));
         }
-        self.first = Some(operation);
+        self.last_access_cck = Some(self.cck);
     }
 }
 
 /// DMA cannot inspect raw storage, use CPU decoding or reopen a memory cycle.
 pub trait ChipRamAccess {
-    fn read_chip_word(&mut self, address: u32, owner: ChipRamOwner) -> u16;
-    fn write_chip_word(&mut self, address: u32, value: u16, owner: ChipRamOwner);
+    fn read_chip_word(&mut self, address: u32) -> u16;
+    fn write_chip_word(&mut self, address: u32, value: u16);
 }
