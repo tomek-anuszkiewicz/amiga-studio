@@ -3,7 +3,7 @@
 use crate::app_host::HostEffect;
 use crate::host_commands::{HostCommand, HostValue};
 use crate::player_config::{ConfigurationCatalog, NamedConfiguration};
-use crate::EmulatorApp;
+use crate::{EmulatorApp, ViewMode};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum PlayerScreen {
@@ -26,6 +26,7 @@ pub struct PlayerState {
     pub(crate) drive_activity: [crate::player_drive::DriveActivity; config::FLOPPY_DRIVE_COUNT],
     pub screen: PlayerScreen,
     pub catalog: ConfigurationCatalog,
+    pub editor: Option<crate::configuration_edit::ConfigurationEdit>,
     pub(crate) settings_dirty: bool,
     pub rom: Option<Vec<u8>>,
     pub rom_configuration_id: Option<String>,
@@ -98,15 +99,37 @@ impl PlayerState {
     pub(crate) fn selected_rom(&self, configuration: &NamedConfiguration) -> Option<&[u8]> {
         self.rom.as_deref().filter(|_| {
             self.rom_configuration_id.as_deref() == Some(&configuration.id)
-                && self.rom_reference.as_deref() == Some(&configuration.rom)
+                && self.rom_reference.as_deref() == Some(&configuration.launch.rom)
         })
     }
 }
 
 impl EmulatorApp {
+    /// Changes presentation and connects debugger work only in Developer view.
+    pub fn set_view_mode(&mut self, mode: ViewMode) {
+        if mode == ViewMode::Developer && self.player.screen != PlayerScreen::Session {
+            if self.guard_configuration_navigation(PlayerScreen::Session) {
+                if let Some(editor) = &mut self.player.editor {
+                    editor.destination_developer = true;
+                }
+                return;
+            }
+            self.enter_player_screen(PlayerScreen::Session, mode);
+            return;
+        }
+        if self.view_mode == ViewMode::ScreenOnly && mode == ViewMode::Developer {
+            self.host.queue(HostCommand::Pause);
+        }
+        self.view_mode = mode;
+        self.host
+            .queue(HostCommand::SetDebuggerEnabled(mode == ViewMode::Developer));
+    }
+
     pub(crate) fn apply_frontend_action(&mut self, action: crate::player_config::FrontendAction) {
         use crate::player_config::FrontendAction;
-        self.player.captured = false;
+        if action != FrontendAction::Save {
+            self.player.captured = false;
+        }
         match action {
             FrontendAction::Release => {}
             FrontendAction::Pause => self.toggle_run(),
@@ -119,49 +142,36 @@ impl EmulatorApp {
     pub fn navigate_player(&mut self, screen: PlayerScreen) {
         self.player.captured = false;
         self.host.queue(HostCommand::Pause);
-        self.player.screen = if screen == PlayerScreen::Session {
-            match self.refresh_active_bindings() {
-                Ok(()) => screen,
-                Err(error) => {
-                    self.file_error = Some(error);
-                    PlayerScreen::Configuration
+        if self.guard_configuration_navigation(screen) {
+            return;
+        }
+        self.enter_player_screen(screen, ViewMode::ScreenOnly);
+    }
+
+    pub(crate) fn enter_player_screen(&mut self, screen: PlayerScreen, mode: ViewMode) {
+        if screen == PlayerScreen::Session && self.player.active_configuration.is_some() {
+            if let Err(error) = self.validate_current_input() {
+                self.file_error = Some(error);
+                if self.player.editor.is_none() {
+                    self.begin_configuration_edit();
                 }
+                self.player.screen = PlayerScreen::Configuration;
+                self.set_view_mode(crate::ViewMode::ScreenOnly);
+                return;
             }
-        } else {
-            screen
-        };
+        }
+        if screen == PlayerScreen::Configuration && self.player.editor.is_none() {
+            self.begin_configuration_edit();
+        }
+        if screen != PlayerScreen::Configuration {
+            self.player.editor = None;
+        }
+        self.player.screen = screen;
         #[cfg(not(target_arch = "wasm32"))]
         if screen == PlayerScreen::Session {
             self.refresh_player_saves();
         }
-        self.set_view_mode(crate::ViewMode::ScreenOnly);
-    }
-
-    fn refresh_active_bindings(&mut self) -> Result<(), String> {
-        let Some(active) = &self.player.active_configuration else {
-            return Ok(());
-        };
-        let configuration = self
-            .player
-            .catalog
-            .configurations
-            .iter()
-            .find(|c| c.id == active.id)
-            .ok_or("The active input configuration is missing")?
-            .clone();
-        if configuration.ports.each_ref().map(|port| port.device) != self.host.status.ports {
-            return Err("Port devices differ from the current machine; start a new session to change hardware".into());
-        }
-        self.player.catalog.validate(&configuration)?;
-        self.host_sources_available(&configuration)?;
-        if let Some(active) = &mut self.player.active_configuration {
-            active.ports = configuration.ports;
-            active.keyboard = configuration.keyboard;
-            active.frontend = configuration.frontend;
-            active.mouse_sensitivity = configuration.mouse_sensitivity;
-            active.gamepad_shortcuts = configuration.gamepad_shortcuts;
-        }
-        Ok(())
+        self.set_view_mode(mode);
     }
 
     pub(crate) fn request_player_launch(&mut self, launch: PendingLaunch) {
@@ -201,7 +211,13 @@ impl EmulatorApp {
         value: Result<HostValue, String>,
     ) {
         self.player.busy = false;
-        self.player.captured = false;
+        #[cfg(not(target_arch = "wasm32"))]
+        let capturing = matches!(&effect, PlayerEffect::Save { .. });
+        #[cfg(target_arch = "wasm32")]
+        let capturing = false;
+        if !capturing {
+            self.player.captured = false;
+        }
         let value = match value {
             Ok(value) => value,
             Err(error) => {
@@ -258,7 +274,10 @@ impl EmulatorApp {
         }
     }
 
-    fn host_sources_available(&self, configuration: &NamedConfiguration) -> Result<(), String> {
+    pub(crate) fn host_sources_available(
+        &self,
+        configuration: &crate::player_config::ControlConfiguration,
+    ) -> Result<(), String> {
         for port in &configuration.ports {
             if let crate::player_config::InputSource::Gamepad { identity, .. } = &port.source {
                 if self
@@ -281,7 +300,9 @@ impl EmulatorApp {
             return false;
         };
         if self.player.catalog.validate(configuration).is_err()
-            || self.host_sources_available(configuration).is_err()
+            || self
+                .host_sources_available(&configuration.controls)
+                .is_err()
         {
             return false;
         }
@@ -291,7 +312,7 @@ impl EmulatorApp {
             .is_some_and(|bytes| bytes.len() == physical_memory::KICKSTART_ROM_SIZE);
         #[cfg(not(target_arch = "wasm32"))]
         let rom_selected = rom_selected
-            || std::fs::metadata(&configuration.rom)
+            || std::fs::metadata(&configuration.launch.rom)
                 .is_ok_and(|metadata| metadata.len() == physical_memory::KICKSTART_ROM_SIZE as u64);
         rom_selected
             && self
@@ -301,7 +322,7 @@ impl EmulatorApp {
                 .enumerate()
                 .all(|(drive, id)| {
                     id.as_ref().is_none_or(|id| {
-                        configuration.drives[drive]
+                        configuration.launch.drives[drive]
                             && self.player.setup_disks.iter().any(|disk| {
                                 &disk.id == id
                                     && disk.bytes.as_ref().is_some_and(|bytes| {
@@ -321,7 +342,7 @@ impl EmulatorApp {
             .player
             .catalog
             .validate(&configuration)
-            .and_then(|_| self.host_sources_available(&configuration))
+            .and_then(|_| self.host_sources_available(&configuration.controls))
         {
             self.file_error = Some(error);
             return;
@@ -331,7 +352,7 @@ impl EmulatorApp {
             None => {
                 #[cfg(not(target_arch = "wasm32"))]
                 {
-                    match std::fs::read(&configuration.rom) {
+                    match std::fs::read(&configuration.launch.rom) {
                         Ok(bytes) => bytes,
                         Err(error) => {
                             self.file_error =
@@ -362,9 +383,12 @@ impl EmulatorApp {
             mounted,
         };
         let setup = debugger::launch::MachineSetup {
-            config: config::A500Config::from_preset(configuration.preset, configuration.video),
-            ports: configuration.ports.each_ref().map(|p| p.device),
-            drives: configuration.drives,
+            config: config::A500Config::from_preset(
+                configuration.launch.preset,
+                configuration.launch.video,
+            ),
+            ports: configuration.controls.ports.each_ref().map(|p| p.device),
+            drives: configuration.launch.drives,
             rom,
             disks: media,
         };
@@ -422,7 +446,7 @@ impl EmulatorApp {
                 .iter_mut()
                 .find(|c| c.id == self.player.catalog.selected)
             {
-                configuration.rom = name;
+                configuration.launch.rom = name;
             }
             self.player.rom = Some(bytes);
             self.player.rom_configuration_id = Some(self.player.catalog.selected.clone());
@@ -451,7 +475,6 @@ impl EmulatorApp {
     }
 
     pub(crate) fn save_player(&mut self, slot: Option<usize>) {
-        self.player.captured = false;
         #[cfg(not(target_arch = "wasm32"))]
         if let Some(game) = self.player.active_game.clone() {
             self.player.busy = true;
@@ -552,16 +575,32 @@ impl EmulatorApp {
         normal_boot: bool,
     ) {
         let prepared = (|| {
+            let continuing =
+                save.is_some() || (!normal_boot && game.manifest.initial_state.is_some());
+            let configuration_id = if continuing
+                && self
+                    .player
+                    .active_game
+                    .as_ref()
+                    .is_some_and(|active| active.manifest.id == game.manifest.id)
+            {
+                self.player
+                    .active_configuration
+                    .as_ref()
+                    .map_or(&game.manifest.configuration, |active| &active.id)
+            } else {
+                &game.manifest.configuration
+            };
             let configuration = self
                 .player
                 .catalog
                 .configurations
                 .iter()
-                .find(|c| c.id == game.manifest.configuration)
+                .find(|c| &c.id == configuration_id)
                 .cloned()
                 .ok_or("Select an existing named configuration for this game")?;
             self.player.catalog.validate(&configuration)?;
-            self.host_sources_available(&configuration)?;
+            self.host_sources_available(&configuration.controls)?;
             let state_path = save.or_else(|| {
                 if normal_boot {
                     None
@@ -608,10 +647,11 @@ impl EmulatorApp {
                 HostCommand::RestorePlayer {
                     json,
                     game_id: Some(game.manifest.id.clone()),
-                    ports: configuration.ports.each_ref().map(|p| p.device),
+                    ports: configuration.controls.ports.each_ref().map(|p| p.device),
+                    resume: true,
                 }
             } else {
-                let rom = std::fs::read(&configuration.rom).map_err(|e| {
+                let rom = std::fs::read(&configuration.launch.rom).map_err(|e| {
                     format!("Select a readable Kickstart ROM in configuration: {e}")
                 })?;
                 let media = std::array::from_fn(|drive| {
@@ -623,11 +663,11 @@ impl EmulatorApp {
                 HostCommand::Launch {
                     setup: debugger::launch::MachineSetup {
                         config: config::A500Config::from_preset(
-                            configuration.preset,
-                            configuration.video,
+                            configuration.launch.preset,
+                            configuration.launch.video,
                         ),
-                        ports: configuration.ports.each_ref().map(|p| p.device),
-                        drives: configuration.drives,
+                        ports: configuration.controls.ports.each_ref().map(|p| p.device),
+                        drives: configuration.launch.drives,
                         rom,
                         disks: media,
                     },

@@ -26,9 +26,24 @@ stable IDs and compose the supported hardware presets, ROM choice, connected
 drives, both port devices and reusable host mappings. Games reference one
 configuration and own ordered disks, descriptions, artwork, initial state and
 player saves. Configuration editing has its own screen.
-Returning to the session applies edited host bindings from its named configuration
-when the emulated port devices match. The paused machine keeps its hardware, ROM
-and media; hardware changes require a confirmed replacement launch.
+The editor holds a separate draft of the complete catalog, including profile
+creation, selection and reusable mappings. Save validates the edited scope and
+applies the active session's controls at a stopped owner boundary before
+publishing committed settings. Failure leaves the draft available and the
+committed catalog unchanged. Cancel discards the draft, including invalid edits,
+and returns to the originating screen. Leaving dirty edits offers Save, Discard
+and Keep editing; clean navigation leaves directly. Shutdown persists only the
+committed catalog. Switching profiles inside the editor retains all draft edits.
+
+Saved controls update the active session's named configuration without a restart;
+selecting another profile only selects a future launch. The machine stays paused
+until resumed. RAM, ROM, video and drive choices apply only to an explicit launch.
+Changing port devices replaces only changed endpoints with neutral devices;
+unchanged mouse endpoints retain quadrature phase. Old input is released and
+invalidated before execution resumes, without resetting chip-side JOY/POT or CIA
+state. Every user load follows the same release and attachment policy, including
+Developer Studio file loads and quick slots. Capturing a save is observational
+and does not release controls or change the input generation.
 
 The desktop library provides Add game and Edit game forms for a name, optional
 description, named configuration and individually selected ADF imports. Saving
@@ -105,7 +120,7 @@ capture state and release controls. Browser pointer lock also retains the
 browser's own Escape release behavior. Focused host text controls take
 priority, then configured frontend actions, keyboard joystick bindings, and
 remaining guest keys. Consumed keys never also reach the guest keyboard. Both
-hosts use this resolution policy. Each event carries its destination port.
+hosts use this resolution policy. Frontend bindings resolve host positions independently of guest keycodes, including keys without an Amiga counterpart. Each event carries its destination port.
 A configuration selects mouse, joystick or disconnected independently per port,
 then the source: one system pointer, a reusable keyboard mapping or a selected
 individual gamepad. Two system mice are not offered. Controller connections are
@@ -117,7 +132,7 @@ keyboard capture. Configuration screens, controller assignment and host text
 editing disable gameplay input. Releasing only pointer/keyboard capture preserves
 the selected gamepads' current contacts. Ordered, bounded queues publish input immediately, and the owner admits it at three evenly spaced opportunities per emulated field, derived from current PAL/NTSC and interlace geometry. Initialization aligns the first grid with the receiver field origin; synchronization suppressed by guest code has a bounded nominal-period fallback. Guest beam writes that prolong a field retain nominal-period input opportunities. Every delivered edge gets a CCK sample before its successor; a short electrical pulse does not guarantee a guest software read. Keyboard bytes still traverse the controller queue and serial pins, and mouse quadrature continues at its existing CCK rate without smoothing.
 
-Focus loss, pause and queue overflow discard pending input and release controls. Reset, successful load and keyboard reset invalidate the old input generation. Window keyboard buffers and queued inputs carry their session generation; stale generations are rejected. Native controller timestamps reject samples older than controller activation, and fresh controller events re-establish their state after resume. Host queues and listeners are runtime handles outside serialized machine state. Physical controller freshness and Linux/macOS execution remain unverified; the interactive checks belong to [8.2](../../../../ROADMAP.md#task-8-2).
+Keys received during pending host mapping or capture activation remain queued until the owner is ready to accept them. Focus loss, pause and queue overflow discard pending input and release controls. Reset, successful load and keyboard reset invalidate the old input generation. Window keyboard buffers and queued inputs carry their session generation; stale generations are rejected. Native controller timestamps reject samples older than controller activation, and fresh controller events re-establish their state after resume. Host queues and listeners are runtime handles outside serialized machine state. Physical controller freshness and Linux/macOS execution remain unverified; the interactive checks belong to [8.2](../../../../ROADMAP.md#task-8-2).
 
 For video, [Denise](../Denise.md) builds a rendered frame in the [frame buffer](../Frame%20Buffer.md). Run at 1x follows the configured PAL or NTSC color clock using host elapsed time; emulation and rendering time count toward each deadline. Slower and Faster controls select 0.25x, 0.5x, 1x, 2x or 4x; a 1x control restores normal speed. At normal or slower speed, each publication selects one completed field. If a bounded slice ends before field completion, the viewport retains the previous image.
 

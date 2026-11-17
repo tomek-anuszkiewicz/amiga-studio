@@ -2629,3 +2629,93 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - six samples per version and workload in A-B-B-A order gave idle median 178.967 to 180.621 FPS and active byte-read median 171.221 to 172.104 FPS, within observed variation
   - no whole-machine speedup or regression is established, and browser performance and physical hardware fidelity remain unverified
   - canonical batch gates, changed-code coverage review and four independent review lanes are pending
+---
+
+### [2026-11-17 02:58 CET] — Commit configuration editing and current controls on progress restore
+- **Affected Subsystems**:
+  - `GUI`
+  - `debugger`
+  - `keyboard`
+  - `save_state`
+- **What Was Changed (The Concrete Reality)**:
+  - Complete CONFIG-INPUT-STATE-20261116: isolate configuration and shared-mapping drafts behind Save and Cancel, including unsaved navigation and committed-only persistence
+  - Separate launch choices, port attachment and host input values while retaining the current flat RON settings contract and stable configuration IDs
+  - Apply changed endpoints at a stopped owner boundary and restore progress with current session controls across library, file and quick-slot loads
+  - Preserve exact core restoration and observational capture, receiver-owned registers, mouse phase, embedded media and live RTC independence
+  - Retain deferred keyboard releases behind a saturated ten-code ring and preserve retry and release-before-press ordering, recording this state in snapshot schema 12
+- **Architectural Rationale & Trade-Offs**:
+  - Changing controls must allow the same game to continue without reset or replaying launch hardware
+  - A reproduced full-ring release lost key-up and emitted only overflow, requiring serializable pending releases rather than protocol flushing
+  - Earlier snapshots remain unsupported under the pre-release contract, while existing user configuration data stays readable without migration
+- **Verification & Test Results**:
+  - Original port-rejection regression passed before the approved acceptance update, and the full-ring keyboard reproduction failed on the original controller
+  - Full GUI crate tests and subsequent affected editor, import, capture, restore, runtime input and library suites passed
+  - Keyboard, save_state and debugger ordinary tests and machine keyboard/CIA integration passed, including synthetic CPU observation of key-up from partial and full-ring snapshots
+  - Architecture, Clippy and the actual WASM application build passed, with existing unused-dependency manifest warnings retained outside scope
+  - Chromium 157.0.8103.51 verified Cancel persistence, stopped port changes and importing older endpoint types with current controls, preserving CCK 2549684 and reporting no page or worker failures
+  - Inspected 1280x800 and 480x640 editor captures and the narrow unsaved dialog
+  - Independent review reproduced missing controller validation on Debug and dirty Discard entry, then shared validated session navigation and retained editor origin fixed both regressions
+  - Retired the unused LoadSnapshot owner command and implicit attachment cache, migrating existing tests to explicit restore requests without weakening assertions
+  - Added rejected Save coverage for referenced and unused blank-name mappings, catalog identity and mapping-field validation, unchanged machine/control state and Cancel recovery
+  - A parallel focused runtime run exceeded its existing GUI wait limit under host pressure, while the unchanged checks passed when serialized
+  - Initial canonical coverage compilation failed with memory allocation and Windows paging-file errors before test execution; the full suite is being retried with one Cargo build job and unchanged acceptance criteria
+  - Canonical commit verification, changed-code coverage review and final independent review approvals remain pending at entry preparation
+  - Physical controllers, private firmware boot and milestone verification were not run
+---
+
+### [2026-11-17 10:47 CET] — Integrate current controls with chipset drive activity
+- **Affected Subsystems**:
+  - `GUI`
+  - `keyboard`
+  - `SaveState`
+  - `disk activity`
+- **What Was Changed (The Concrete Reality)**:
+  - Close CONFIG-INPUT-STATE-20261116 by integrating configuration-gameports-save-state into local master
+  - preserve the configuration and disk-activity commits through a real merge
+  - retain both restore and mount regressions and both inspector scenarios
+  - use schema 13 for the combined pending-keyboard-release and chipset-observation layout
+- **Architectural Rationale & Trade-Offs**:
+  - The two independent branches used schema 12 for incompatible state layouts
+  - current-control reconciliation must preserve captured disk observations and physical delivery phases
+  - retain existing settings data while unsupported snapshots receive an explicit version rejection
+  - User explicitly approved the single test-file std::thread::spawn permission needed to verify bounded input contention and deferred draft publication
+- **Verification & Test Results**:
+  - Source commit 902fc62 passed canonical attempt 2e60da62d2f64a47854c888126948086 with 875 ordinary tests passed and three skipped plus four independent approvals before integration
+  - merge resolutions retain both parent behaviors and migrate the additional activity test to explicit RestorePlayer
+  - combined canonical verification and independent review are pending at preparation
+  - physical controllers and private firmware remain unverified and this integration does not close a roadmap milestone
+---
+
+### [2026-11-17 14:39 CET] — Close window keyboard routing and integrate current configuration controls
+- **Affected Subsystems**:
+  - `GUI host input`
+  - `native window and browser adapters`
+  - `frontend configuration`
+  - `roadmap`
+- **What Was Changed (The Concrete Reality)**:
+  - KEYBOARD-DIAGNOSTICS-20261117: replace global rdev keyboard and mouse listeners with application-window input and one native/browser keyboard routing policy
+  - use upstream eframe/egui 0.32.3 through the public external-event-loop API without vendored patches
+  - remove the temporary keyboard terminal and all added tracing
+  - retain physical modifier sides, keypad identities, command edges, session generations, bounded queues and gilrs gamepads
+  - reconcile the current controls.host configuration structure, draft editor and schema 13 user-load release policy from master
+  - preserve accepted frontend bindings without guest counterparts and retain queued keys across host activation/publication delays
+  - cover obsolete generations, physical held/released keys, focus-loss ordering, inbox and cross-frame retry overflow through the GUI-to-owner path
+  - verify full frontend modifier/command routing, GUI zoom and stopped Developer recording without starting the machine
+  - expose the existing native key enqueue boundary for typed metadata and bounded-buffer regressions
+  - record deferred profiler-guided CPU reduction in roadmap 8.5
+  - working commits e162dae and 4c3eb88 await this combined verification
+- **Architectural Rationale & Trade-Offs**:
+  - Preserve master history and current configuration/save behavior while limiting keyboard observation to the application window
+  - host adapters stay outside the CCK-driven hardware models
+  - the user approved local integration, closure and removal of both keyboard experiment worktrees, including the discarded older rdev experiment
+- **Verification & Test Results**:
+  - Pre-integration source: 120 selected Rust tests, browser adapter Node test and native/WASM builds passed
+  - the user confirmed Workbench Notepad and Cadaver on the preceding window-input experiment
+  - merged GUI and all tests compile after configuration and egui API reconciliation
+  - independent review reproduced lost Home/End/F11/PageDown actions; its new regression failed before the frontend-position correction and passed afterward
+  - the new ingress regression reproduced first-key loss before host activation; the corrected activation/owner-readiness retry and both ingress regressions passed
+  - the default cargo-llvm-cov 0.9.1 wrapper omitted GUI instrumentation despite running its tests; an isolated documented non-wrapper full-GUI measurement supplied actual GUI coverage without changing enforcement
+  - GUI settlement now includes pending host mapping/capture activation; synthetic gamepad transitions after text focus resume wait for that acknowledgment while preserving all original gameplay assertions
+  - final upstream-adapter physical typing, physical gamepad freshness and Linux/macOS execution remain unverified
+  - canonical combined results and the four scoped review verdicts are required before publication and recorded by the final integration commit
+  - no roadmap implementation milestone or remote publication is claimed

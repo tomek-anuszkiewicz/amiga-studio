@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "game_ports"
 status: "active"
 created: 2026-09-13
-updated: 2026-11-16
+updated: 2026-11-17
 related: ["[Mouse.md](Mouse.md)", "[Joystick.md](Joystick.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)", "[CIA.md](CIA.md)", "[Machine Loop.md](Machine%20Loop.md)", "[General Architecture.md](General%20Architecture.md)"]
 tracked_paths:
   - "crates/game_ports"
@@ -30,6 +30,13 @@ has no effect. Releasing host input neutralizes both ports and the keyboard;
 release preserves attached device types and mouse quadrature position. Host
 source selection and reusable mappings belong to the [GUI](Application/GUI.md),
 not serialized controller handles.
+
+At a stopped frontend controls update or after exact core restoration, current
+committed controls choose each attachment. An unchanged device retains its
+phase while contacts and queued motion are released. A changed device is replaced
+in neutral state, leaving receiver-owned Denise, Paula and CIA values untouched.
+The normal CCK connector phases deliver its levels when execution continues;
+neither a machine reset nor immediate chip-register mutation is required.
 
 ## Connector delivery
 

@@ -70,7 +70,8 @@ fn launch_save_reopen_relocate_and_restore_embedded_media_without_original_asset
     let (root, library) = library();
     let mut app = EmulatorApp::default();
     app.set_view_mode(ViewMode::ScreenOnly);
-    app.player.catalog.configurations[0].rom = root.join("kick.rom").to_string_lossy().into_owned();
+    app.player.catalog.configurations[0].launch.rom =
+        root.join("kick.rom").to_string_lossy().into_owned();
     app.start_library_game(library.games[0].clone(), None, false);
     let ctx = egui::Context::default();
     common::settle(&mut app, &ctx);
@@ -110,7 +111,11 @@ fn launch_save_reopen_relocate_and_restore_embedded_media_without_original_asset
     let mut reopened = EmulatorApp::default();
     reopened.player.catalog = app.player.catalog.clone();
     reopened.player.catalog.configurations[0].name = "Renamed configuration".into();
-    reopened.player.catalog.configurations[0].preset = config::A500Preset::ExpandedPowerUser;
+    reopened.player.catalog.configurations[0].launch.preset = config::A500Preset::ExpandedPowerUser;
+    reopened.player.catalog.configurations[0]
+        .controls
+        .ports
+        .swap(0, 1);
     reopened.start_library_game(game, Some(saves[0].path.clone()), false);
     common::settle(&mut reopened, &ctx);
     assert!(reopened.host.status.running);
@@ -122,6 +127,13 @@ fn launch_save_reopen_relocate_and_restore_embedded_media_without_original_asset
         config::A500Preset::Standard1Mb
     );
     assert!(restored.floppy.drives[0].disk_inserted);
+    assert_eq!(
+        reopened.host.status.ports,
+        [
+            debugger::launch::DeviceKind::Joystick,
+            debugger::launch::DeviceKind::Mouse
+        ]
+    );
     assert_eq!(reopened.player.mounted[0].as_deref(), Some("disk-one"));
     // A save from the other game fails before replacing the healthy paused machine.
     let before = common::snapshot(&mut reopened);
@@ -195,7 +207,8 @@ fn library_continue_restores_selected_games_save_instead_of_active_game() {
     let mut app = EmulatorApp::default();
     app.set_view_mode(ViewMode::ScreenOnly);
     app.player.catalog.library_root = root.to_string_lossy().into_owned();
-    app.player.catalog.configurations[0].rom = root.join("kick.rom").to_string_lossy().into_owned();
+    app.player.catalog.configurations[0].launch.rom =
+        root.join("kick.rom").to_string_lossy().into_owned();
     app.start_library_game(library.games[0].clone(), None, false);
     common::command(&mut app, HostCommand::Pause);
     common::command(
@@ -283,7 +296,8 @@ fn player_disk_selection_and_ejection_publish_only_acknowledged_mounts() {
     });
     let mut app = EmulatorApp::default();
     app.set_view_mode(ViewMode::ScreenOnly);
-    app.player.catalog.configurations[0].rom = root.join("kick.rom").to_string_lossy().into_owned();
+    app.player.catalog.configurations[0].launch.rom =
+        root.join("kick.rom").to_string_lossy().into_owned();
     app.start_library_game(game.clone(), None, false);
     common::command(&mut app, HostCommand::Pause);
     let mut h = Harness::builder()
@@ -323,7 +337,7 @@ fn manual_start_requires_valid_rom_media_attachment_and_available_sources() {
     let rom_path = root.join("kick.rom");
     let mut app = EmulatorApp::default();
     app.navigate_player(PlayerScreen::Setup);
-    app.player.catalog.configurations[0].rom = rom_path.to_string_lossy().into_owned();
+    app.player.catalog.configurations[0].launch.rom = rom_path.to_string_lossy().into_owned();
     let mut h = Harness::builder()
         .with_size(egui::vec2(1280.0, 900.0))
         .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
@@ -349,18 +363,20 @@ fn manual_start_requires_valid_rom_media_attachment_and_available_sources() {
     h.state_mut().player.setup_mounted = [None, Some("draft".into()), None, None];
     h.run_steps(2);
     assert!(h.get_by_label("Start").accesskit_node().is_disabled());
-    h.state_mut().player.catalog.configurations[0].drives[1] = true;
+    h.state_mut().player.catalog.configurations[0].launch.drives[1] = true;
     h.run_steps(2);
     assert!(!h.get_by_label("Start").accesskit_node().is_disabled());
     h.state_mut().player.setup_mounted[1] = Some("missing".into());
     h.run_steps(2);
     assert!(h.get_by_label("Start").accesskit_node().is_disabled());
     h.state_mut().player.setup_mounted = [None, None, None, None];
-    h.state_mut().player.catalog.configurations[0].ports[1].source =
-        gui::player_config::InputSource::Gamepad {
-            identity: "missing".into(),
-            mapping: "arrows".into(),
-        };
+    h.state_mut().player.catalog.configurations[0]
+        .controls
+        .ports[1]
+        .source = gui::player_config::InputSource::Gamepad {
+        identity: "missing".into(),
+        mapping: "arrows".into(),
+    };
     h.run_steps(2);
     assert!(h.get_by_label("Start").accesskit_node().is_disabled());
     assert_eq!(h.state().host.status.cck, 0);

@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 mod common;
-use egui_kittest::kittest::NodeT;
 use egui::{Event, Key, Modifiers, RawInput};
+use egui_kittest::kittest::NodeT;
 use gui::host_commands::{HistoryCommand, HostCommand};
 use gui::{AppTheme, DisasmEditState, EditRegister, EmulatorApp, ViewMode};
 use std::path::PathBuf;
@@ -153,7 +153,11 @@ fn playback_toolbar_and_preferences_fit_supported_window_widths() {
             );
         common::settle_harness(&mut harness);
         for label in ["Step Frame (Shift+F11)", "Slower", "Faster", "1x"] {
-            let bounds = harness.get_by_label(label).accesskit_node().bounding_box().unwrap();
+            let bounds = harness
+                .get_by_label(label)
+                .accesskit_node()
+                .bounding_box()
+                .unwrap();
             assert!(
                 bounds.x0 >= 0.0 && bounds.x1 <= f64::from(width),
                 "{label} at {width}"

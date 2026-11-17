@@ -1,6 +1,6 @@
 //! Shared physical keyboard policy for window and browser events.
 
-use crate::host_keys::{amiga_key_code, frontend_key_code};
+use crate::host_keys::{amiga_key_code, frontend_key_position};
 use crate::player_config::FrontendBindings;
 use std::collections::{HashMap, HashSet};
 
@@ -267,8 +267,7 @@ impl KeyboardRouter {
             (&policy.bindings.save, QuickSave),
             (&policy.bindings.load, QuickLoad),
         ] {
-            if amiga_key_code(physical).is_some_and(|code| frontend_key_code(binding) == Some(code))
-            {
+            if frontend_key_position(binding) == Some(physical) {
                 return Some(action);
             }
         }

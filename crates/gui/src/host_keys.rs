@@ -212,11 +212,11 @@ pub fn frontend_key(name: &str) -> Option<egui::Key> {
     }
 }
 
-/// Normalize egui binding names and DOM/native positions through the same codes.
-pub fn frontend_key_code(name: &str) -> Option<u8> {
+/// Resolve a frontend binding independently of whether the guest has this key.
+pub fn frontend_key_position(name: &str) -> Option<&'static str> {
     use egui::Key;
     let key = frontend_key(name)?;
-    amiga_key_code(match key {
+    Some(match key {
         Key::A => "KeyA",
         Key::B => "KeyB",
         Key::C => "KeyC",
@@ -263,4 +263,9 @@ pub fn frontend_key_code(name: &str) -> Option<u8> {
         Key::ArrowRight => "ArrowRight",
         _ => key.name(),
     })
+}
+
+/// Resolve guest keycodes only for binding conflicts with guest input mappings.
+pub fn frontend_key_code(name: &str) -> Option<u8> {
+    amiga_key_code(frontend_key_position(name)?)
 }

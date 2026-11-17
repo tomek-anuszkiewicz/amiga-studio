@@ -62,7 +62,11 @@ pub(crate) fn render_trace_log(
 
                 egui::ScrollArea::both()
                     .id_salt("trace_log_scroll")
-                    .scroll_source(if app.host.status.running { egui::scroll_area::ScrollSource::NONE } else { egui::scroll_area::ScrollSource::ALL })
+                    .scroll_source(if app.host.status.running {
+                        egui::scroll_area::ScrollSource::NONE
+                    } else {
+                        egui::scroll_area::ScrollSource::ALL
+                    })
                     .max_height(260.0)
                     .auto_shrink([false, false])
                     .show_rows(ui, row_height, count, |ui, row_range| {

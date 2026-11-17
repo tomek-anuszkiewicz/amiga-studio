@@ -67,7 +67,18 @@ fn head_step_lights_fixed_indicator_for_120_ms_and_restore_clears_it() {
     app.view_mode = ViewMode::ScreenOnly;
     let session = pending_step_session();
     let json = session.save_state_to_json().unwrap();
-    common::command(&mut app, HostCommand::LoadSnapshot(json.clone()));
+    common::command(
+        &mut app,
+        HostCommand::RestorePlayer {
+            json: json.clone(),
+            game_id: None,
+            ports: [
+                debugger::launch::DeviceKind::Mouse,
+                debugger::launch::DeviceKind::Joystick,
+            ],
+            resume: false,
+        },
+    );
     let tokens = AppTheme::Dark.tokens();
     let idle = frame(&mut app, &ctx, 1.0);
     let bounds = indicator(&idle, tokens.border_subtle).unwrap();
@@ -80,14 +91,36 @@ fn head_step_lights_fixed_indicator_for_120_ms_and_restore_clears_it() {
     assert!(indicator(&frame(&mut app, &ctx, 1.129), tokens.accent_success).is_some());
     assert!(indicator(&frame(&mut app, &ctx, 1.131), tokens.accent_success).is_none());
 
-    common::command(&mut app, HostCommand::LoadSnapshot(json.clone()));
+    common::command(
+        &mut app,
+        HostCommand::RestorePlayer {
+            json: json.clone(),
+            game_id: None,
+            ports: [
+                debugger::launch::DeviceKind::Mouse,
+                debugger::launch::DeviceKind::Joystick,
+            ],
+            resume: false,
+        },
+    );
     let restored = frame(&mut app, &ctx, 1.14);
     assert!(indicator(&restored, tokens.accent_success).is_none());
     assert_eq!(indicator(&restored, tokens.border_subtle), Some(bounds));
 
     common::command(&mut app, HostCommand::StepCck);
     assert!(indicator(&frame(&mut app, &ctx, 1.15), tokens.accent_success).is_some());
-    common::command(&mut app, HostCommand::LoadSnapshot(json));
+    common::command(
+        &mut app,
+        HostCommand::RestorePlayer {
+            json: json,
+            game_id: None,
+            ports: [
+                debugger::launch::DeviceKind::Mouse,
+                debugger::launch::DeviceKind::Joystick,
+            ],
+            resume: false,
+        },
+    );
     // Restore while the light is still on must cancel its remaining hold time.
     assert!(indicator(&frame(&mut app, &ctx, 1.16), tokens.accent_success).is_none());
 }
@@ -197,7 +230,18 @@ fn restored_running_selection_is_sustained_and_deselection_starts_the_hold() {
         indicator(&frame(&mut app, &ctx, 10.131), tokens.border_subtle),
         Some(bounds)
     );
-    common::command(&mut app, HostCommand::LoadSnapshot(json));
+    common::command(
+        &mut app,
+        HostCommand::RestorePlayer {
+            json,
+            game_id: None,
+            ports: [
+                debugger::launch::DeviceKind::Mouse,
+                debugger::launch::DeviceKind::Joystick,
+            ],
+            resume: false,
+        },
+    );
     assert!(app.host.status.drives[0].sustained_activity);
     assert_eq!(
         indicator(&frame(&mut app, &ctx, 10.14), tokens.accent_success),

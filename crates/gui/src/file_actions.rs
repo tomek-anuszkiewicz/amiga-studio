@@ -113,21 +113,46 @@ pub(crate) enum FileCompletion {
 }
 
 impl EmulatorApp {
-    fn validate_state_bindings(&self, json: &str) -> Result<(), String> {
-        let saved = debugger::SaveState::from_json(json).map_err(|e| e.to_string())?;
+    fn prepare_state_import(&self, json: String) -> Result<HostCommand, String> {
+        let saved = debugger::SaveState::from_json(&json).map_err(|e| e.to_string())?;
         #[cfg(not(target_arch = "wasm32"))]
         if let Some(game) = &self.player.active_game {
             game.manifest
                 .validate_association(&saved.header.association)?;
         }
-        if let Some(configuration) = self.player.catalog.selected() {
-            if debugger::launch::state_port_kinds(&saved.state.game_ports)
-                != configuration.ports.each_ref().map(|p| p.device)
-            {
-                return Err("Saved port devices differ from the selected configuration. Select compatible bindings in Configurations before loading.".into());
-            }
+        self.validate_current_input()?;
+        Ok(HostCommand::RestorePlayer {
+            json,
+            game_id: saved.header.association.game_id,
+            ports: self.current_control_ports(),
+            resume: false,
+        })
+    }
+
+    pub(crate) fn validate_current_input(&self) -> Result<(), String> {
+        if let Some(configuration) = self.current_input_configuration() {
+            self.player
+                .catalog
+                .validate_controls(&configuration.controls)?;
+            self.host_sources_available(&configuration.controls)?;
         }
         Ok(())
+    }
+
+    pub(crate) fn current_input_configuration(
+        &self,
+    ) -> Option<&crate::player_config::NamedConfiguration> {
+        self.player
+            .active_configuration
+            .as_ref()
+            .or_else(|| self.player.catalog.selected())
+    }
+
+    pub(crate) fn current_control_ports(&self) -> [debugger::launch::DeviceKind; 2] {
+        self.current_input_configuration()
+            .map_or(self.host.status.ports, |c| {
+                c.controls.ports.each_ref().map(|p| p.device)
+            })
     }
 
     pub(crate) fn open_setup_asset(&mut self, drive: Option<usize>) {
@@ -285,7 +310,9 @@ impl EmulatorApp {
                 self.load_binary_modal_open = false;
             }
             FileCompletion::State(message) => {
-                self.player.active_configuration = self.player.catalog.selected().cloned();
+                if self.player.active_configuration.is_none() {
+                    self.player.active_configuration = self.player.catalog.selected().cloned();
+                }
                 self.state_loaded(message);
             }
             FileCompletion::QuickSave(slot) => {
@@ -345,12 +372,15 @@ impl EmulatorApp {
             }),
             FileAction::State => match String::from_utf8(data) {
                 Ok(json) => {
-                    if let Err(error) = self.validate_state_bindings(&json) {
-                        self.file_error = Some(error);
-                        return;
-                    }
+                    let command = match self.prepare_state_import(json) {
+                        Ok(command) => command,
+                        Err(error) => {
+                            self.file_error = Some(error);
+                            return;
+                        }
+                    };
                     self.host.queue_effect(
-                        HostCommand::LoadSnapshot(json),
+                        command,
                         HostEffect::File(FileCompletion::State(format!(
                             "State loaded from {name}"
                         ))),
@@ -440,7 +470,7 @@ impl EmulatorApp {
                                 .iter_mut()
                                 .find(|c| c.id == self.player.catalog.selected)
                             {
-                                configuration.rom = path.to_string_lossy().into_owned();
+                                configuration.launch.rom = path.to_string_lossy().into_owned();
                             }
                         }
                     }
@@ -481,12 +511,15 @@ impl EmulatorApp {
     pub fn load_state_file(&mut self, path: &std::path::Path) {
         match std::fs::read_to_string(path) {
             Ok(json) => {
-                if let Err(error) = self.validate_state_bindings(&json) {
-                    self.file_error = Some(error);
-                    return;
-                }
+                let command = match self.prepare_state_import(json) {
+                    Ok(command) => command,
+                    Err(error) => {
+                        self.file_error = Some(error);
+                        return;
+                    }
+                };
                 self.host.queue_effect(
-                    HostCommand::LoadSnapshot(json),
+                    command,
                     HostEffect::File(FileCompletion::State(format!(
                         "State loaded from {}",
                         path.display()

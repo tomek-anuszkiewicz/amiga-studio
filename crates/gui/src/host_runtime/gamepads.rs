@@ -2,7 +2,7 @@
 
 use super::NATIVE_GAMEPADS;
 
-pub(crate) fn collect_native_gamepad(
+pub fn collect_native_gamepad(
     gamepads: &mut crate::host_gamepads::NativeGamepads,
     observed: std::time::SystemTime,
 ) {

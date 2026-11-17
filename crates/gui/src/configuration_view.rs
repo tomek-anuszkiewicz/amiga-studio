@@ -7,63 +7,74 @@ use debugger::launch::DeviceKind;
 impl EmulatorApp {
     pub(crate) fn render_configuration_editor(&mut self, ui: &mut egui::Ui) {
         ui.heading("Configurations");
-        self.configuration_selector(ui);
+        let Some(editor) = &mut self.player.editor else {
+            return;
+        };
+        let catalog = &mut editor.catalog;
+        crate::player_view::configuration_selector(ui, catalog);
         if ui.button("Create configuration").clicked() {
             let id = format!(
                 "configuration-{}-{}",
                 crate::host_clock::utc_now(),
-                self.player.catalog.configurations.len()
+                catalog.configurations.len()
             );
             let configuration = NamedConfiguration {
                 id: id.clone(),
                 name: "New configuration".into(),
                 ..Default::default()
             };
-            self.player.catalog.configurations.push(configuration);
-            self.player.catalog.selected = id;
+            catalog.configurations.push(configuration);
+            catalog.selected = id;
         }
-        let Some(index) = self
-            .player
-            .catalog
+        let Some(index) = catalog
             .configurations
             .iter()
-            .position(|c| c.id == self.player.catalog.selected)
+            .position(|c| c.id == catalog.selected)
         else {
             return;
         };
-        let configuration = &mut self.player.catalog.configurations[index];
+        let configuration = &mut catalog.configurations[index];
         ui.monospace(format!("ID: {}", configuration.id));
         ui.label("Name");
         ui.text_edit_singleline(&mut configuration.name);
+        ui.label("Hardware, ROM and drives apply to a later launch.");
         egui::ComboBox::from_label("Hardware")
-            .selected_text(format!("{:?}", configuration.preset))
+            .selected_text(format!("{:?}", configuration.launch.preset))
             .show_ui(ui, |ui| {
                 for preset in [
                     config::A500Preset::Bare512k,
                     config::A500Preset::Standard1Mb,
                     config::A500Preset::ExpandedPowerUser,
                 ] {
-                    ui.selectable_value(&mut configuration.preset, preset, format!("{preset:?}"));
+                    ui.selectable_value(
+                        &mut configuration.launch.preset,
+                        preset,
+                        format!("{preset:?}"),
+                    );
                 }
             });
         egui::ComboBox::from_label("Video")
-            .selected_text(format!("{:?}", configuration.video))
+            .selected_text(format!("{:?}", configuration.launch.video))
             .show_ui(ui, |ui| {
-                ui.selectable_value(&mut configuration.video, config::VideoStandard::Pal, "PAL");
                 ui.selectable_value(
-                    &mut configuration.video,
+                    &mut configuration.launch.video,
+                    config::VideoStandard::Pal,
+                    "PAL",
+                );
+                ui.selectable_value(
+                    &mut configuration.launch.video,
                     config::VideoStandard::Ntsc,
                     "NTSC",
                 );
             });
         ui.label("Kickstart (256 KiB)");
-        ui.text_edit_singleline(&mut configuration.rom).on_hover_text("Native file path; browser display name only. Select browser ROM bytes again in manual setup.");
-        ui.horizontal(|ui| {
+        ui.text_edit_singleline(&mut configuration.launch.rom).on_hover_text("Native file path; browser display name only. Select browser ROM bytes again in manual setup.");
+        ui.horizontal_wrapped(|ui| {
             for drive in 0..4 {
                 ui.add_enabled(
                     drive != 0,
                     egui::Checkbox::new(
-                        &mut configuration.drives[drive],
+                        &mut configuration.launch.drives[drive],
                         format!("DF{drive}: connected"),
                     ),
                 );
@@ -71,7 +82,7 @@ impl EmulatorApp {
         });
         ui.add(
             egui::Slider::new(
-                &mut configuration.mouse_sensitivity,
+                &mut configuration.controls.host.mouse_sensitivity,
                 crate::player_config::MIN_MOUSE_SENSITIVITY
                     ..=crate::player_config::MAX_MOUSE_SENSITIVITY,
             )
@@ -80,7 +91,7 @@ impl EmulatorApp {
         for port in 0..2 {
             ui.separator();
             ui.strong(format!("Amiga port {}", port + 1));
-            let binding = &mut configuration.ports[port];
+            let binding = &mut configuration.controls.ports[port];
             let previous = binding.device;
             egui::ComboBox::from_id_salt(("port_device", port))
                 .selected_text(format!("{:?}", binding.device))
@@ -108,7 +119,7 @@ impl EmulatorApp {
                         _ => "Choose source".into(),
                     })
                     .show_ui(ui, |ui| {
-                        for mapping in &self.player.catalog.mappings {
+                        for mapping in &catalog.mappings {
                             ui.selectable_value(
                                 &mut binding.source,
                                 InputSource::Keyboard(mapping.id.clone()),
@@ -116,9 +127,7 @@ impl EmulatorApp {
                             );
                         }
                         for pad in &self.player.gamepads {
-                            let mapping = self
-                                .player
-                                .catalog
+                            let mapping = catalog
                                 .mappings
                                 .first()
                                 .map_or(String::new(), |m| m.id.clone());
@@ -142,7 +151,7 @@ impl EmulatorApp {
                     egui::ComboBox::from_id_salt(("pad_mapping", port))
                         .selected_text(mapping.as_str())
                         .show_ui(ui, |ui| {
-                            for candidate in &self.player.catalog.mappings {
+                            for candidate in &catalog.mappings {
                                 ui.selectable_value(mapping, candidate.id.clone(), &candidate.name);
                             }
                         });
@@ -155,11 +164,20 @@ impl EmulatorApp {
         for (label, key) in [
             (
                 "Release capture key (optional)",
-                &mut configuration.frontend.release,
+                &mut configuration.controls.host.frontend.release,
             ),
-            ("Pause / Resume", &mut configuration.frontend.pause),
-            ("Save", &mut configuration.frontend.save),
-            ("Load", &mut configuration.frontend.load),
+            (
+                "Pause / Resume",
+                &mut configuration.controls.host.frontend.pause,
+            ),
+            (
+                "Save progress",
+                &mut configuration.controls.host.frontend.save,
+            ),
+            (
+                "Load progress",
+                &mut configuration.controls.host.frontend.load,
+            ),
         ] {
             ui.horizontal(|ui| {
                 ui.label(label);
@@ -170,9 +188,8 @@ impl EmulatorApp {
         }
         ui.collapsing("Controller frontend shortcuts", |ui| {
             if ui.button("Add controller shortcut").clicked() {
-                configuration
-                    .gamepad_shortcuts
-                    .push(crate::player_config::GamepadShortcut {
+                configuration.controls.host.gamepad_shortcuts.push(
+                    crate::player_config::GamepadShortcut {
                         identity: self
                             .player
                             .gamepads
@@ -180,10 +197,17 @@ impl EmulatorApp {
                             .map_or(String::new(), |p| p.identity.clone()),
                         button: crate::player_config::PAD_START,
                         action: crate::player_config::FrontendAction::Release,
-                    });
+                    },
+                );
             }
             let mut remove = None;
-            for (index, shortcut) in configuration.gamepad_shortcuts.iter_mut().enumerate() {
+            for (index, shortcut) in configuration
+                .controls
+                .host
+                .gamepad_shortcuts
+                .iter_mut()
+                .enumerate()
+            {
                 ui.push_id(index, |ui| {
                     if ui.button("Remove shortcut").clicked() {
                         remove = Some(index);
@@ -224,13 +248,13 @@ impl EmulatorApp {
                 });
             }
             if let Some(index) = remove {
-                configuration.gamepad_shortcuts.remove(index);
+                configuration.controls.host.gamepad_shortcuts.remove(index);
             }
         });
         ui.collapsing("Amiga keyboard remapping", |ui| {
             ui.label("Raw physical position and guest keycode (hex). Amiga keys: left 66, right 67, Ctrl 63, left/right Alt 64/65.");
             let mut remove = None;
-            for (index,(host,guest)) in configuration.keyboard.iter_mut().enumerate() {
+            for (index,(host,guest)) in configuration.controls.host.keyboard.iter_mut().enumerate() {
                 ui.horizontal(|ui| {
                     ui.add(egui::DragValue::new(host).hexadecimal(2,false,true).range(0..=crate::host_keys::MAX_AMIGA_KEYCODE));
                     ui.label("to");
@@ -238,15 +262,15 @@ impl EmulatorApp {
                     if ui.button("Remove override").clicked() {remove=Some(index);}
                 });
             }
-            if let Some(index)=remove {configuration.keyboard.remove(index);}
-            if ui.button("Add key override").clicked() {configuration.keyboard.push((keyboard::SCANCODE_L_AMIGA,keyboard::SCANCODE_L_AMIGA));}
+            if let Some(index)=remove {configuration.controls.host.keyboard.remove(index);}
+            if ui.button("Add key override").clicked() {configuration.controls.host.keyboard.push((keyboard::SCANCODE_L_AMIGA,keyboard::SCANCODE_L_AMIGA));}
         });
         ui.separator();
         ui.heading("Reusable joystick mappings");
         ui.label("Keys use physical Amiga positions in hex; controller buttons and axes use standard host indices.");
         if ui.button("Create mapping").clicked() {
-            let id = format!("mapping-{}", self.player.catalog.mappings.len());
-            self.player.catalog.mappings.push(JoystickMapping {
+            let id = format!("mapping-{}", catalog.mappings.len());
+            catalog.mappings.push(JoystickMapping {
                 id,
                 name: "New mapping".into(),
                 keys: [
@@ -260,7 +284,7 @@ impl EmulatorApp {
                 ..JoystickMapping::default()
             });
         }
-        for mapping in &mut self.player.catalog.mappings {
+        for mapping in &mut catalog.mappings {
             ui.push_id(&mapping.id, |ui| {
                 ui.collapsing(mapping.name.clone(), |ui| {
                     ui.text_edit_singleline(&mut mapping.name);
@@ -302,10 +326,9 @@ impl EmulatorApp {
                 });
             });
         }
-        let configuration = &self.player.catalog.configurations[index];
-        if let Err(error) = self.player.catalog.validate(configuration) {
+        let configuration = &catalog.configurations[index];
+        if let Err(error) = catalog.validate(configuration) {
             ui.colored_label(ui.visuals().error_fg_color, error);
         }
-        ui.label("Settings persist in application/browser storage. Starting from setup applies hardware and ROM; the running machine remains paused while editing.");
     }
 }

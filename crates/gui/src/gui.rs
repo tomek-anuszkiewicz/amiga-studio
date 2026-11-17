@@ -7,6 +7,7 @@
 pub mod app;
 pub mod app_host;
 mod app_lifecycle;
+pub mod configuration_edit;
 mod configuration_view;
 pub mod file_actions;
 pub mod game_library;
@@ -36,9 +37,9 @@ mod player_drive;
 mod player_view;
 mod shortcuts;
 pub mod theme;
-pub mod window_pointer;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod window_keyboard;
+pub mod window_pointer;
 
 pub use app::{EmulatorApp, UserPreferences, ViewMode};
 pub use debugger::DebuggerSession;

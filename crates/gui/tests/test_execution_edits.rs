@@ -57,7 +57,9 @@ fn breakpoint_form_reaches_the_owner_and_stops_before_execution() {
         .with_size(egui::vec2(1280.0, 1000.0))
         .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
     common::settle_harness(&mut harness);
-    harness.get_by_label("➕ Add New PC Breakpoint").click_accesskit();
+    harness
+        .get_by_label("➕ Add New PC Breakpoint")
+        .click_accesskit();
     common::settle_harness(&mut harness);
     harness.get_by_label("Add PC Breakpoint").click_accesskit();
     common::settle_harness(&mut harness);

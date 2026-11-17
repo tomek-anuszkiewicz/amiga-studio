@@ -44,7 +44,9 @@ old layouts have no
 compatibility parser. Frontends and the debugger use this crate for persistence;
 in-memory quick slots retain only the machine value.
 
-Schema version 12 records active CPU sequence identity, physical drive attachment
+Schema version 13 adds pending keyboard releases that survive a full type-ahead
+queue, preserving release delivery across another capture and exact restoration.
+It records active CPU sequence identity, physical drive attachment
 and player association, and embeds usable floppy raw tracks and spindle phase, including
 mid-transfer connector state; restoring requires no original ADF file. It also
 retains the CPU bus-admission phases and active shared Chip RAM budget. Clone
@@ -104,9 +106,16 @@ machine. Host handles and library paths are never machine state. Desktop games
 have durable save catalogs and per-game quick slots; manual browser mode retains
 file import/export and session slots. Initial states are immutable launch assets,
 separate from user saves. Invalid initial states offer explicit normal boot and
-never silently fall back. Loads validate version, game/media association and port
-compatibility before replacing a live session. Continuing restores first and
-resumes without booting or applying today's hardware preset.
+never silently fall back. Loads validate version, game/media association and
+committed input settings before replacing a live session. Continuing restores
+first and resumes without booting or applying today's hardware preset. The
+frontend then releases saved controls through the normal keyboard protocol,
+discards obsolete host events and reconciles endpoints with the active session's
+current committed controls. A captured device discriminator describes emulated
+state; it neither restores host bindings nor blocks a different current attachment.
+Unchanged endpoints retain their emulated phase, and changed endpoints start
+neutral. Receiver-owned chip state and sampling phases remain intact. Initial
+states, library saves, imported files and quick slots share this policy.
 
 ## 3. Differential Save States (`A500DiffState`)
 
@@ -124,7 +133,9 @@ is not exactly 256 KiB (262144 bytes), before restoring the machine.
 The frontend then passes its pure `state` value to `A500Machine::load_state`.
 Restoration adopts the saved configuration, RAM/ROM, CPU micro-execution state,
 chip values, receiver-owned incoming inputs and board reset state. It performs no routing during
-loading. Current files embed physical memory, including ROM; alternate ROM
+loading. Exact core restoration does not release input or replace devices; that
+deliberate frontend policy runs before guest execution resumes. Capturing state
+never neutralizes the running machine. Current files embed physical memory, including ROM; alternate ROM
 reference modes and differential rewind remain proposals rather than active APIs.
 
 ---

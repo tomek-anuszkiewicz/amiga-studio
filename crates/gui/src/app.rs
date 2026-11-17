@@ -311,20 +311,11 @@ impl EmulatorApp {
             )));
     }
 
-    /// Changes presentation and connects debugger work only in Developer view.
-    pub fn set_view_mode(&mut self, mode: ViewMode) {
-        if self.view_mode == ViewMode::ScreenOnly && mode == ViewMode::Developer {
-            self.host.queue(HostCommand::Pause);
-        }
-        self.view_mode = mode;
-        self.host
-            .queue(HostCommand::SetDebuggerEnabled(mode == ViewMode::Developer));
-    }
-
     /// Renders one complete UI frame using owner replies, image notifications, and docked panels
     pub fn update_ui(&mut self, ctx: &egui::Context) {
         let first_pass = ctx.output(|output| output.num_completed_passes == 0);
         self.poll_host(ctx, first_pass);
+        self.poll_configuration_save(ctx);
 
         // Check for drag-and-dropped files onto the emulator window
         let dropped_files = ctx.input(|i| i.raw.dropped_files.clone());

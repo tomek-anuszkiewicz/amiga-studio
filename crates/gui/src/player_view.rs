@@ -22,19 +22,22 @@ impl EmulatorApp {
                     self.navigate_player(PlayerScreen::Session);
                 }
                 if ui.button("Debug").clicked() {
-                    self.navigate_player(PlayerScreen::Session);
-                    if self.player.screen == PlayerScreen::Session {
-                        self.set_view_mode(ViewMode::Developer);
-                    }
+                    self.set_view_mode(ViewMode::Developer);
                 }
             });
         });
+        if self.player.screen == PlayerScreen::Configuration {
+            self.render_configuration_actions(ctx);
+        }
         egui::CentralPanel::default().show(ctx, |ui| {
             egui::ScrollArea::vertical().show(ui, |ui| match self.player.screen {
                 PlayerScreen::Configuration => {
-                    let before = self.player.catalog.clone();
-                    self.render_configuration_editor(ui);
-                    self.player.settings_dirty |= before != self.player.catalog;
+                    let saving = self
+                        .player
+                        .editor
+                        .as_ref()
+                        .is_some_and(|editor| editor.saving);
+                    ui.add_enabled_ui(!saving, |ui| self.render_configuration_editor(ui));
                 }
                 PlayerScreen::Setup => self.render_manual_setup(ui),
                 PlayerScreen::Library => {
@@ -48,22 +51,7 @@ impl EmulatorApp {
 
     pub(crate) fn configuration_selector(&mut self, ui: &mut egui::Ui) {
         let before = self.player.catalog.selected.clone();
-        let selected = self
-            .player
-            .catalog
-            .selected()
-            .map_or("Missing configuration", |c| c.name.as_str());
-        egui::ComboBox::from_id_salt("named_configuration")
-            .selected_text(selected)
-            .show_ui(ui, |ui| {
-                for configuration in &self.player.catalog.configurations {
-                    ui.selectable_value(
-                        &mut self.player.catalog.selected,
-                        configuration.id.clone(),
-                        &configuration.name,
-                    );
-                }
-            });
+        configuration_selector(ui, &mut self.player.catalog);
         self.player.settings_dirty |= before != self.player.catalog.selected;
     }
 
@@ -82,10 +70,10 @@ impl EmulatorApp {
             if ui.button("Select Kickstart...").clicked() {
                 self.open_setup_asset(None);
             }
-            ui.label(if configuration.rom.is_empty() {
+            ui.label(if configuration.launch.rom.is_empty() {
                 "Kickstart not selected"
             } else {
-                &configuration.rom
+                &configuration.launch.rom
             });
             #[cfg(target_arch = "wasm32")]
             if self.player.selected_rom(&configuration).is_none() {
@@ -95,7 +83,7 @@ impl EmulatorApp {
         for drive in 0..4 {
             ui.horizontal_wrapped(|ui| {
                 ui.label(format!("DF{drive}:"));
-                if configuration.drives[drive] {
+                if configuration.launch.drives[drive] {
                     disk_dropdown(
                         ui,
                         ("setup_drive", drive),
@@ -492,4 +480,24 @@ fn preview(ui: &mut egui::Ui, id: impl std::hash::Hash, bytes: &[u8], width: f32
     if let Some(texture) = texture {
         ui.add(egui::Image::new(&texture).max_width(width));
     }
+}
+
+pub fn configuration_selector(
+    ui: &mut egui::Ui,
+    catalog: &mut crate::player_config::ConfigurationCatalog,
+) {
+    let selected = catalog
+        .selected()
+        .map_or("Missing configuration", |c| c.name.as_str());
+    egui::ComboBox::from_id_salt("named_configuration")
+        .selected_text(selected)
+        .show_ui(ui, |ui| {
+            for configuration in &catalog.configurations {
+                ui.selectable_value(
+                    &mut catalog.selected,
+                    configuration.id.clone(),
+                    &configuration.name,
+                );
+            }
+        });
 }

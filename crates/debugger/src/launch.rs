@@ -26,7 +26,20 @@ impl MachineSetup {
     pub fn prepare(self) -> Result<Box<DebuggerSession>, String> {
         let mut session = Box::new(DebuggerSession::from_config(self.config));
         session.load_rom(&self.rom).map_err(|e| e.to_string())?;
-        for (index, kind) in self.ports.into_iter().enumerate() {
+        reconcile_ports(&mut session, self.ports);
+        session.machine.floppy.set_connections(self.drives)?;
+        for (drive, disk) in self.disks.into_iter().enumerate() {
+            mount(&mut session, drive, disk.as_deref())?;
+        }
+        Ok(session)
+    }
+}
+
+/// Replaces changed endpoints only; receiver registers and device phases stay local.
+pub fn reconcile_ports(session: &mut DebuggerSession, kinds: [DeviceKind; 2]) {
+    let previous = port_kinds(session);
+    for (index, kind) in kinds.into_iter().enumerate() {
+        if previous[index] != kind {
             if let Some(device) = session.machine.game_ports.device_mut(index) {
                 *device = match kind {
                     DeviceKind::Disconnected => PortDevice::None,
@@ -35,11 +48,6 @@ impl MachineSetup {
                 };
             }
         }
-        session.machine.floppy.set_connections(self.drives)?;
-        for (drive, disk) in self.disks.into_iter().enumerate() {
-            mount(&mut session, drive, disk.as_deref())?;
-        }
-        Ok(session)
     }
 }
 

@@ -53,16 +53,6 @@ impl EmulatorApp {
         if !ctx.input(|i| i.focused) {
             self.host.keyboard_pending.clear();
         }
-        if let Some(runtime) = &self.host.runtime {
-            let sender = runtime.input_sender();
-            while let Some(&(event, generation)) = self.host.keyboard_pending.front() {
-                if !sender.try_host_event(event, generation) {
-                    ctx.request_repaint_after(crate::host_runtime::HOST_RETRY_DELAY);
-                    break;
-                }
-                self.host.keyboard_pending.pop_front();
-            }
-        }
     }
 
     pub(crate) fn refresh_keyboard_policy(&self, ctx: &egui::Context) {
@@ -89,7 +79,7 @@ impl EmulatorApp {
                 .player
                 .active_configuration
                 .as_ref()
-                .map(|c| c.frontend.clone())
+                .map(|c| c.controls.host.frontend.clone())
                 .unwrap_or_default(),
         };
         ctx.data_mut(|data| {

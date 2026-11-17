@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 
 #[derive(Debug)]
-pub(crate) struct NativeGamepads {
+pub struct NativeGamepads {
     context: gilrs::Gilrs,
     identities: HashMap<gilrs::GamepadId, u64>,
     serial: u64,
@@ -11,7 +11,7 @@ pub(crate) struct NativeGamepads {
 }
 
 impl NativeGamepads {
-    pub(crate) fn new() -> Option<Self> {
+    pub fn new() -> Option<Self> {
         gilrs::GilrsBuilder::new()
             .with_force_feedback(false)
             .build()
@@ -27,7 +27,7 @@ impl NativeGamepads {
             .map_err(|error| eprintln!("Native gamepad input unavailable: {error}"))
             .ok()
     }
-    pub(crate) fn samples(&mut self) -> Vec<crate::input_mapping::GamepadSample> {
+    pub fn samples(&mut self) -> Vec<crate::input_mapping::GamepadSample> {
         use crate::player_config::{
             PAD_BUTTON_COUNT, PAD_DOWN, PAD_EAST, PAD_LEFT, PAD_LEFT_SHOULDER, PAD_LEFT_THUMB,
             PAD_LEFT_TRIGGER, PAD_NORTH, PAD_RIGHT, PAD_RIGHT_SHOULDER, PAD_RIGHT_THUMB,
@@ -89,7 +89,7 @@ impl NativeGamepads {
     }
 }
 
-pub(crate) fn listen_gamepads() {
+pub fn listen_gamepads() {
     let Some(mut gamepads) = NativeGamepads::new() else {
         return;
     };

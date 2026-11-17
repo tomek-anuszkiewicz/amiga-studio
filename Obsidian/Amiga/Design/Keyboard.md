@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "cia"
 status: "active"
 created: 2026-09-02
-updated: 2026-11-16
+updated: 2026-11-17
 related: ["[CIA.md](CIA.md)", "[Machine Loop.md](Machine%20Loop.md)", "[General Architecture.md](General%20Architecture.md)"]
 tracked_paths:
   - "crates/keyboard"
@@ -66,7 +66,13 @@ so its own previously captured low cannot acknowledge a byte.
 
 The controller has a ten-keycode type-ahead ring. Full input retains queued
 codes and reports `$FA` after draining them. Key state suppresses duplicate
-physical transitions; software owns repeat. Caps Lock produces alternating
+physical transitions. Frontend capture loss and user loads release held keys
+without canceling an active or retried byte. Releases that do not fit the ring
+remain pending rather than being lost. They follow existing ring data and any
+due overflow report, or enter newly available ring entries ahead of fresh host
+transitions so key-up precedes a new press. Ordinary events retain the ten-code
+overflow behavior. Pending releases are serializable controller
+state, and Caps Lock keeps its toggle state. Software owns repeat. Caps Lock produces alternating
 press/release codes on presses only. A500 reset directly asserts the separate
 line and never queues the A1000/A2000 reset-warning protocol. The old whole-byte
 step/acknowledgment shortcut is removed. Current state includes partial wire

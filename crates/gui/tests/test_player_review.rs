@@ -45,7 +45,7 @@ fn started(root: &Path) -> EmulatorApp {
     };
     let mut app = EmulatorApp::default();
     app.player.catalog.library_root = root.to_string_lossy().into_owned();
-    app.player.catalog.configurations[0].rom = rom_path.to_string_lossy().into_owned();
+    app.player.catalog.configurations[0].launch.rom = rom_path.to_string_lossy().into_owned();
     app.start_library_game(game, None, false);
     common::settle(&mut app, &egui::Context::default());
     common::command(&mut app, HostCommand::Pause);
@@ -77,32 +77,212 @@ fn returning_from_configuration_applies_new_host_bindings_without_replacing_hard
     app.navigate_player(PlayerScreen::Configuration);
     common::settle(&mut app, &egui::Context::default());
     let before = common::snapshot(&mut app);
-    app.player.active_configuration.as_mut().unwrap().ports[1].source = InputSource::Gamepad {
+    app.player
+        .active_configuration
+        .as_mut()
+        .unwrap()
+        .controls
+        .ports[1]
+        .source = InputSource::Gamepad {
         identity: "old".into(),
         mapping: "arrows".into(),
     };
-    let edited = &mut app.player.catalog.configurations[0];
-    edited.ports[1].source = InputSource::Gamepad {
+    let edited = &mut app.player.editor.as_mut().unwrap().catalog.configurations[0];
+    edited.controls.ports[1].source = InputSource::Gamepad {
         identity: "new".into(),
         mapping: "arrows".into(),
     };
-    edited.keyboard = vec![(0x20, 0x21)];
-    edited.frontend.release = "F3".into();
-    edited.mouse_sensitivity = 1.5;
-    edited.preset = config::A500Preset::ExpandedPowerUser;
+    edited.controls.host.keyboard = vec![(0x20, 0x21)];
+    edited.controls.host.frontend.release = "F3".into();
+    edited.controls.host.mouse_sensitivity = 1.5;
+    edited.launch.preset = config::A500Preset::ExpandedPowerUser;
     app.player.gamepads = vec![gui::input_mapping::GamepadInfo {
         identity: "new".into(),
         name: "Reconnected controller".into(),
     }];
+    app.save_configuration_edit();
+    common::settle(&mut app, &egui::Context::default());
     app.navigate_player(PlayerScreen::Session);
     let active = app.player.active_configuration.as_ref().unwrap();
-    assert!(matches!(&active.ports[1].source,InputSource::Gamepad{identity,..} if identity=="new"));
-    assert_eq!(active.keyboard, vec![(0x20, 0x21)]);
-    assert_eq!(active.frontend.release, "F3");
-    assert_eq!(active.mouse_sensitivity, 1.5);
-    assert_eq!(active.preset, config::A500Preset::Standard1Mb);
+    assert!(
+        matches!(&active.controls.ports[1].source,InputSource::Gamepad{identity,..} if identity=="new")
+    );
+    assert_eq!(active.controls.host.keyboard, vec![(0x20, 0x21)]);
+    assert_eq!(active.controls.host.frontend.release, "F3");
+    assert_eq!(active.controls.host.mouse_sensitivity, 1.5);
+    assert_eq!(active.launch.preset, config::A500Preset::Standard1Mb);
     common::settle(&mut app, &egui::Context::default());
     assert_eq!(common::snapshot(&mut app), before);
+}
+
+#[test]
+fn imported_save_uses_active_identity_and_current_controls_in_developer_studio() {
+    let root = root();
+    let mut app = started(&root);
+    let saved = common::snapshot_json(&mut app);
+    let path = root.join("progress.json");
+    std::fs::write(&path, &saved).unwrap();
+    app.navigate_player(PlayerScreen::Configuration);
+    common::settle(&mut app, &egui::Context::default());
+    let draft = &mut app.player.editor.as_mut().unwrap().catalog;
+    draft.configurations[0].controls.ports.swap(0, 1);
+    draft.configurations[0].controls.host.keyboard = vec![(0x20, 0x21)];
+    draft
+        .configurations
+        .push(gui::player_config::NamedConfiguration {
+            id: "future".into(),
+            ..Default::default()
+        });
+    draft.selected = "future".into();
+    app.save_configuration_edit();
+    common::settle(&mut app, &egui::Context::default());
+    app.set_view_mode(ViewMode::Developer);
+    common::settle(&mut app, &egui::Context::default());
+    let controls = app
+        .player
+        .active_configuration
+        .as_ref()
+        .unwrap()
+        .controls
+        .clone();
+    app.load_state_file(&path);
+    common::settle(&mut app, &egui::Context::default());
+    assert!(app.file_error.is_none(), "{:?}", app.file_error);
+    assert_eq!(
+        app.player.active_configuration.as_ref().unwrap().id,
+        "standard"
+    );
+    assert_eq!(
+        app.player.active_configuration.as_ref().unwrap().controls,
+        controls
+    );
+    assert_eq!(
+        app.host.status.ports,
+        [
+            debugger::launch::DeviceKind::Joystick,
+            debugger::launch::DeviceKind::Mouse
+        ]
+    );
+    let restored = common::snapshot(&mut app);
+    let original = debugger::SaveState::from_json(&saved).unwrap();
+    assert_eq!(restored.cpu, original.state.cpu);
+    assert_eq!(restored.cck, original.state.cck);
+    assert_eq!(restored.physical_memory, original.state.physical_memory);
+    assert_eq!(restored.floppy, original.state.floppy);
+}
+
+#[test]
+fn gamepad_save_preserves_capture_generation_and_held_contacts() {
+    use gui::host_input::HostInputEvent;
+    use gui::input_mapping::GamepadSample;
+    use gui::player_config::{FrontendAction, GamepadShortcut};
+    let root = root();
+    let mut app = started(&root);
+    let ctx = egui::Context::default();
+    let sender = app.host.runtime.as_ref().unwrap().input_sender();
+    let sample = |generation, buttons: Vec<bool>, axis: f32| {
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+        while !sender.try_gamepads(
+            vec![GamepadSample {
+                identity: "save-pad".into(),
+                name: "Save controller".into(),
+                axes: vec![axis, 0.0],
+                buttons: buttons.clone(),
+            }],
+            generation,
+            true,
+        ) {
+            assert!(std::time::Instant::now() < deadline);
+            std::thread::yield_now();
+        }
+    };
+    sample(app.host.status.generation, vec![false; 16], 0.0);
+    app.navigate_player(PlayerScreen::Configuration);
+    common::settle(&mut app, &ctx);
+    let controls = &mut app.player.editor.as_mut().unwrap().catalog.configurations[0].controls;
+    controls.ports[1].source = InputSource::Gamepad {
+        identity: "save-pad".into(),
+        mapping: "arrows".into(),
+    };
+    controls.host.gamepad_shortcuts.push(GamepadShortcut {
+        identity: "save-pad".into(),
+        button: 9,
+        action: FrontendAction::Save,
+    });
+    controls.host.gamepad_shortcuts.push(GamepadShortcut {
+        identity: "save-pad".into(),
+        button: 8,
+        action: FrontendAction::Release,
+    });
+    app.save_configuration_edit();
+    common::settle(&mut app, &ctx);
+    assert!(app.player.editor.is_none());
+    common::command(&mut app, HostCommand::Run);
+    common::wait(&mut app, &ctx, |app| app.host.status.running);
+    ctx.memory_mut(|memory| memory.request_focus(egui::Id::new("amiga-screen-input")));
+    app.player.captured = true;
+    common::settle(&mut app, &ctx);
+    let generation = app.host.status.generation;
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    while !sender.set_enabled(true, true) {
+        assert!(std::time::Instant::now() < deadline);
+        std::thread::yield_now();
+    }
+    let activation = app.host.status.input_deliveries;
+    common::wait(&mut app, &ctx, |app| {
+        app.host.status.input_deliveries >= activation + 2
+    });
+    sample(generation, vec![false; 16], 0.0);
+    let mut held = vec![false; 16];
+    held[0] = true;
+    sample(generation, held.clone(), 1.0);
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    while !sender.try_host_event(
+        HostInputEvent::MouseButtons {
+            port: 0,
+            left: true,
+            right: true,
+            middle: false,
+        },
+        generation,
+    ) {
+        assert!(std::time::Instant::now() < deadline);
+        std::thread::yield_now();
+    }
+    let deliveries = app.host.status.input_deliveries;
+    common::wait(&mut app, &ctx, |app| {
+        app.host.status.input_deliveries >= deliveries + 2
+    });
+    assert!(app.player.captured);
+    let before = common::snapshot(&mut app);
+    assert!(
+        before.game_ports.fire1_port1(),
+        "mouse input must be held before Save"
+    );
+    assert!(
+        before.game_ports.fire1_port2(),
+        "joystick input must be held before Save"
+    );
+    let previous_saves = app.player.saves.len();
+    held[9] = true;
+    sample(generation, held.clone(), 1.0);
+    common::wait(&mut app, &ctx, |app| {
+        !app.player.busy && app.player.saves.len() == previous_saves + 1
+    });
+    assert!(app.player.captured);
+    assert!(app.host.status.running);
+    assert_eq!(app.host.status.generation, generation);
+    let json = std::fs::read_to_string(&app.player.saves[0].path).unwrap();
+    let saved = debugger::SaveState::from_json(&json).unwrap();
+    assert!(saved.state.game_ports.fire1_port1());
+    assert!(saved.state.game_ports.fire1_port2());
+    assert_ne!(saved.state.game_ports.pins.direction_pins[1], 0xf);
+    held[9] = false;
+    sample(generation, held.clone(), 1.0);
+    held[8] = true;
+    sample(generation, held, 1.0);
+    common::wait(&mut app, &ctx, |app| !app.player.captured);
+    assert_eq!(app.host.status.generation, generation);
 }
 #[test]
 fn editing_native_rom_reference_does_not_boot_cached_previous_rom() {
@@ -112,7 +292,7 @@ fn editing_native_rom_reference_does_not_boot_cached_previous_rom() {
     std::fs::write(&path, rom(0x22)).unwrap();
     app.player.rom = Some(rom(0x11));
     app.player.rom_configuration_id = Some("standard".into());
-    app.player.catalog.configurations[0].rom = path.to_string_lossy().into_owned();
+    app.player.catalog.configurations[0].launch.rom = path.to_string_lossy().into_owned();
     app.start_manual();
     common::settle(&mut app, &egui::Context::default());
     common::command(&mut app, HostCommand::Pause);

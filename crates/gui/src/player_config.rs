@@ -3,6 +3,10 @@
 use config::{A500Preset, VideoStandard};
 use serde::{Deserialize, Serialize};
 
+#[path = "player_config_storage.rs"]
+mod storage;
+use storage::StoredConfiguration;
+
 pub const CONFIG_STORAGE_KEY: &str = "player_configurations";
 pub(crate) const MIN_MOUSE_SENSITIVITY: f32 = 0.1;
 pub(crate) const MAX_MOUSE_SENSITIVITY: f32 = 4.0;
@@ -127,15 +131,31 @@ impl Default for FrontendBindings {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(from = "StoredConfiguration", into = "StoredConfiguration")]
 pub struct NamedConfiguration {
     pub id: String,
     pub name: String,
+    pub launch: LaunchConfiguration,
+    pub controls: ControlConfiguration,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct LaunchConfiguration {
     pub preset: A500Preset,
     pub video: VideoStandard,
     /// A native path or browser display name, never proof of browser file access.
     pub rom: String,
-    pub drives: [bool; 4],
+    pub drives: [bool; config::FLOPPY_DRIVE_COUNT],
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ControlConfiguration {
     pub ports: [PortBinding; 2],
+    pub host: HostInputSettings,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct HostInputSettings {
     pub mouse_sensitivity: f32,
     /// Host physical key position to guest raw keycode overrides.
     pub keyboard: Vec<(u8, u8)>,
@@ -148,10 +168,26 @@ impl Default for NamedConfiguration {
         Self {
             id: "standard".into(),
             name: "Standard A500".into(),
+            launch: LaunchConfiguration::default(),
+            controls: ControlConfiguration::default(),
+        }
+    }
+}
+
+impl Default for LaunchConfiguration {
+    fn default() -> Self {
+        Self {
             preset: A500Preset::Standard1Mb,
             video: VideoStandard::Pal,
             rom: String::new(),
             drives: [true, false, false, false],
+        }
+    }
+}
+
+impl Default for ControlConfiguration {
+    fn default() -> Self {
+        Self {
             ports: [
                 PortBinding {
                     device: DeviceKind::Mouse,
@@ -162,6 +198,14 @@ impl Default for NamedConfiguration {
                     source: InputSource::Keyboard("arrows".into()),
                 },
             ],
+            host: HostInputSettings::default(),
+        }
+    }
+}
+
+impl Default for HostInputSettings {
+    fn default() -> Self {
+        Self {
             gamepad_shortcuts: Vec::new(),
             mouse_sensitivity: 1.0,
             keyboard: Vec::new(),
@@ -190,6 +234,43 @@ impl Default for ConfigurationCatalog {
 }
 
 impl ConfigurationCatalog {
+    pub fn validate_all(&self) -> Result<(), String> {
+        if self.selected().is_none() {
+            return Err("Select an existing configuration".into());
+        }
+        let mut ids = Vec::new();
+        for configuration in &self.configurations {
+            if configuration.id.is_empty() || ids.contains(&configuration.id) {
+                return Err("Configuration identities must be unique".into());
+            }
+            ids.push(configuration.id.clone());
+            self.validate(configuration)?;
+        }
+        ids.clear();
+        for mapping in &self.mappings {
+            if mapping.id.is_empty() || ids.contains(&mapping.id) || mapping.name.trim().is_empty()
+            {
+                return Err("Mappings require unique identities and a name".into());
+            }
+            ids.push(mapping.id.clone());
+            if mapping
+                .keys
+                .iter()
+                .any(|key| *key > crate::host_keys::MAX_AMIGA_KEYCODE)
+                || mapping
+                    .buttons
+                    .iter()
+                    .any(|button| *button >= PAD_BUTTON_COUNT)
+                || mapping.axes.iter().any(|axis| *axis > MAX_CONTROLLER_AXIS)
+                || !(MIN_CONTROLLER_THRESHOLD..=MAX_CONTROLLER_THRESHOLD)
+                    .contains(&mapping.threshold)
+            {
+                return Err("Choose supported mapping keys, buttons, axes and threshold".into());
+            }
+        }
+        Ok(())
+    }
+
     pub fn selected(&self) -> Option<&NamedConfiguration> {
         self.configurations.iter().find(|c| c.id == self.selected)
     }
@@ -197,11 +278,20 @@ impl ConfigurationCatalog {
         self.mappings.iter().find(|m| m.id == id)
     }
     pub fn validate(&self, configuration: &NamedConfiguration) -> Result<(), String> {
-        if !configuration.drives[0] {
+        if !configuration.launch.drives[0] {
             return Err("The internal DF0 drive must remain connected".into());
         }
         if configuration.name.trim().is_empty() {
             return Err("Enter a configuration name".into());
+        }
+        self.validate_controls(&configuration.controls)
+    }
+
+    pub fn validate_controls(&self, configuration: &ControlConfiguration) -> Result<(), String> {
+        if !(MIN_MOUSE_SENSITIVITY..=MAX_MOUSE_SENSITIVITY)
+            .contains(&configuration.host.mouse_sensitivity)
+        {
+            return Err("Mouse sensitivity must be between 0.1 and 4".into());
         }
         if configuration
             .ports
@@ -249,7 +339,7 @@ impl ConfigurationCatalog {
             }
         }
         let mut frontend_buttons = Vec::new();
-        for shortcut in &configuration.gamepad_shortcuts {
+        for shortcut in &configuration.host.gamepad_shortcuts {
             let key = (shortcut.identity.clone(), shortcut.button);
             if pad_buttons.contains(&key) || frontend_buttons.contains(&key) {
                 return Err("A controller button has conflicting frontend/joystick actions".into());
@@ -257,7 +347,7 @@ impl ConfigurationCatalog {
             frontend_buttons.push(key);
         }
         let mut overridden = Vec::new();
-        for (host, guest) in &configuration.keyboard {
+        for (host, guest) in &configuration.host.keyboard {
             if *host > crate::host_keys::MAX_AMIGA_KEYCODE
                 || *guest > crate::host_keys::MAX_AMIGA_KEYCODE
                 || overridden.contains(host)
@@ -273,10 +363,10 @@ impl ConfigurationCatalog {
             overridden.push(*host);
         }
         let shortcuts = [
-            &configuration.frontend.release,
-            &configuration.frontend.pause,
-            &configuration.frontend.save,
-            &configuration.frontend.load,
+            &configuration.host.frontend.release,
+            &configuration.host.frontend.pause,
+            &configuration.host.frontend.save,
+            &configuration.host.frontend.load,
         ];
         let mut assigned = Vec::new();
         for (index, key) in shortcuts.iter().enumerate() {

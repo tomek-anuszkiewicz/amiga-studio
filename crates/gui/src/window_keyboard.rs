@@ -1,7 +1,7 @@
 //! Full physical keyboard input through eframe's public external-event-loop API.
 
-use crate::keyboard_input::{WindowKey, WINDOW_KEYS_ID, WINDOW_KEY_GENERATION_ID};
-use std::{cell::RefCell, rc::Rc};
+use crate::keyboard_input::{PhysicalKey, WindowKey, WINDOW_KEYS_ID, WINDOW_KEY_GENERATION_ID};
+use std::sync::OnceLock;
 use winit::{
     application::ApplicationHandler,
     event::{DeviceEvent, DeviceId, ElementState, StartCause, WindowEvent},
@@ -15,20 +15,20 @@ pub fn run_native(
     creator: eframe::AppCreator<'_>,
 ) -> eframe::Result {
     let event_loop = EventLoop::<eframe::UserEvent>::with_user_event().build()?;
-    let context = Rc::new(RefCell::new(None));
-    let created_context = context.clone();
+    let context = OnceLock::new();
+    let created_context = &context;
     let app = eframe::create_native(
         name,
         options,
         Box::new(move |cc| {
-            *created_context.borrow_mut() = Some(cc.egui_ctx.clone());
+            let _ = created_context.set(cc.egui_ctx.clone());
             creator(cc)
         }),
         &event_loop,
     );
     event_loop.run_app(&mut KeyboardApplication {
         app,
-        context,
+        context: &context,
         primary_window: None,
     })?;
     Ok(())
@@ -36,7 +36,7 @@ pub fn run_native(
 
 struct KeyboardApplication<'a> {
     app: eframe::EframeWinitApplication<'a>,
-    context: Rc<RefCell<Option<egui::Context>>>,
+    context: &'a OnceLock<egui::Context>,
     primary_window: Option<WindowId>,
 }
 
@@ -44,7 +44,7 @@ impl ApplicationHandler<eframe::UserEvent> for KeyboardApplication<'_> {
     fn window_event(&mut self, event_loop: &ActiveEventLoop, id: WindowId, event: WindowEvent) {
         // Eframe creates the application's primary window first.
         if *self.primary_window.get_or_insert(id) == id {
-            if let Some(ctx) = self.context.borrow().as_ref() {
+            if let Some(ctx) = self.context.get() {
                 collect_window_key(ctx, &event);
             }
         }
@@ -90,21 +90,30 @@ fn collect_window_key(ctx: &egui::Context, event: &WindowEvent) {
             event,
             is_synthetic,
             ..
-        } => (
-            match event.physical_key {
+        } => PhysicalKey {
+            physical: match event.physical_key {
                 winit::keyboard::PhysicalKey::Code(code) => format!("{code:?}"),
                 other => format!("{other:?}"),
             },
-            format!("{:?}", event.logical_key),
-            event.state == ElementState::Pressed,
-            event.repeat,
-            *is_synthetic,
-        ),
-        WindowEvent::Focused(false) => {
-            ("__focus_lost__".into(), String::new(), false, false, false)
-        }
+            logical: format!("{:?}", event.logical_key),
+            pressed: event.state == ElementState::Pressed,
+            repeat: event.repeat,
+            synthetic: *is_synthetic,
+        },
+        WindowEvent::Focused(false) => PhysicalKey {
+            physical: "__focus_lost__".into(),
+            logical: String::new(),
+            pressed: false,
+            repeat: false,
+            synthetic: false,
+        },
         _ => return,
     };
+    receive_key(ctx, key);
+}
+
+/// Queue a physical key supplied by the native window backend.
+pub fn receive_key(ctx: &egui::Context, key: PhysicalKey) {
     ctx.data_mut(|data| {
         let generation = data
             .get_temp::<u64>(egui::Id::new(WINDOW_KEY_GENERATION_ID))
@@ -121,6 +130,13 @@ fn collect_window_key(ctx: &egui::Context, event: &WindowEvent) {
                 generation,
             ));
         }
-        events.push((key.0, key.1, key.2, key.3, key.4, generation));
+        events.push((
+            key.physical,
+            key.logical,
+            key.pressed,
+            key.repeat,
+            key.synthetic,
+            generation,
+        ));
     });
 }

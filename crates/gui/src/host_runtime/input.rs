@@ -5,13 +5,13 @@ use super::{HostInputEvent, HostInputSender};
 impl HostInputSender {
     pub fn configure(
         &self,
-        configuration: &crate::player_config::NamedConfiguration,
-        catalog: &crate::player_config::ConfigurationCatalog,
+        configuration: &crate::player_config::ControlConfiguration,
+        mappings: &[crate::player_config::JoystickMapping],
     ) -> bool {
         let Ok(mut mailboxes) = self.shared.mailboxes.try_lock() else {
             return false;
         };
-        if mailboxes.mapping.configure(configuration, catalog) {
+        if mailboxes.mapping.configure(configuration, mappings) {
             mailboxes.push_input(HostInputEvent::ReleaseAll);
         }
         true
@@ -85,6 +85,15 @@ impl HostInputSender {
     }
 
     pub fn try_host_event(&self, event: HostInputEvent, generation: u64) -> bool {
+        self.try_input(event, generation, false)
+    }
+
+    /// GUI-routed keys wait for owner activation instead of being discarded on stale telemetry.
+    pub(crate) fn try_keyboard_event(&self, event: HostInputEvent, generation: u64) -> bool {
+        self.try_input(event, generation, true)
+    }
+
+    fn try_input(&self, event: HostInputEvent, generation: u64, retry_inactive: bool) -> bool {
         let Ok(mut mailboxes) = self.shared.mailboxes.try_lock() else {
             return false;
         };
@@ -96,6 +105,8 @@ impl HostInputSender {
                 ))
         {
             mailboxes.resolve_input(event);
+        } else if retry_inactive && generation == mailboxes.status.generation {
+            return false;
         }
         true
     }
