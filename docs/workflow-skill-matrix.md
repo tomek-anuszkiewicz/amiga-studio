@@ -68,6 +68,11 @@ A suggested session effort helps the user choose settings for a run.
 | 43 | `TA-profile-emulation` | Session setting |
 | 44 | `TA-create-skill` | `medium` (suggested) |
 | 45 | `TA-create-agent` | `medium` (suggested) |
+| 46 | `TA-capture-environment` | Session setting |
+| 47 | `TA-compare-environments` | Session setting |
+| 48 | `TA-register-execution` | Session setting |
+| 49 | `TA-collect-task-records` | Session setting |
+| 50 | `TA-check-task-records` | Session setting |
 
 ## Cell conditions
 
@@ -114,6 +119,11 @@ A suggested session effort helps the user choose settings for a run.
 | PRF | An unresolved performance question within the current task needs actual profiling of a named boundary and workload, and measurement is authorized. Collect comparable evidence before proposing implementation; do not start another optimization because prior work completed. |
 | SKILL | The approved workflow change needs one unfinished atomic operation with a defined result and an existing executor. Name the operation and its authorized definition and registration paths. |
 | ROLE | The approved workflow change needs one unfinished named role with a distinct responsibility, context or write boundary. Name that boundary and its authorized definition and registration paths. |
+| ENV | An adopted task needs its starting environment recorded before its input commit. |
+| CMP | A saved baseline and a separately captured inventory are available for the selected comparison. |
+| REG | The user has selected a thread, repository and execution boundary for capture. |
+| COL | A recorded execution has a closed boundary and its evidence is ready for collection. |
+| REC | A new archive revision and independent expected observations are available for assessment. |
 
 ## Destination columns 01-11
 
@@ -164,6 +174,11 @@ A suggested session effort helps the user choose settings for a run.
 | 43 `TA-profile-emulation` | PLN | - | - | - | OPT | - | - | - | - | - | - |
 | 44 `TA-create-skill` | - | - | - | - | - | - | - | - | - | - | - |
 | 45 `TA-create-agent` | - | - | - | - | - | - | - | - | - | - | - |
+| 46 `TA-capture-environment` | - | - | - | - | - | - | - | - | - | - | - |
+| 47 `TA-compare-environments` | - | - | - | - | - | - | - | - | - | - | - |
+| 48 `TA-register-execution` | - | - | - | - | - | - | - | - | - | - | - |
+| 49 `TA-collect-task-records` | - | - | - | - | - | - | - | - | - | - | - |
+| 50 `TA-check-task-records` | - | - | - | - | - | - | - | - | - | - | - |
 
 ## Destination columns 12-22
 
@@ -214,6 +229,11 @@ A suggested session effort helps the user choose settings for a run.
 | 43 `TA-profile-emulation` | - | - | - | - | - | - | - | - | - | - | - |
 | 44 `TA-create-skill` | REV | - | - | - | - | - | - | - | - | - | - |
 | 45 `TA-create-agent` | REV | - | - | - | - | - | - | - | - | - | - |
+| 46 `TA-capture-environment` | - | - | - | - | - | - | - | - | - | - | - |
+| 47 `TA-compare-environments` | - | - | - | - | - | - | - | - | - | - | - |
+| 48 `TA-register-execution` | - | - | - | - | - | - | - | - | - | - | - |
+| 49 `TA-collect-task-records` | - | - | - | - | - | - | - | - | - | - | - |
+| 50 `TA-check-task-records` | - | - | - | - | - | - | - | - | - | - | - |
 
 ## Destination columns 23-33
 
@@ -264,6 +284,11 @@ A suggested session effort helps the user choose settings for a run.
 | 43 `TA-profile-emulation` | - | - | - | - | - | - | - | - | - | - | - |
 | 44 `TA-create-skill` | - | - | - | - | - | - | BAT | - | - | - | CHK |
 | 45 `TA-create-agent` | - | - | - | - | - | - | BAT | - | - | - | CHK |
+| 46 `TA-capture-environment` | - | - | - | - | - | - | BAT | - | - | - | - |
+| 47 `TA-compare-environments` | - | - | - | - | - | - | - | - | - | - | - |
+| 48 `TA-register-execution` | - | - | - | - | - | - | - | - | - | - | - |
+| 49 `TA-collect-task-records` | - | - | - | - | - | - | - | - | - | - | - |
+| 50 `TA-check-task-records` | - | - | - | - | - | - | - | - | - | - | - |
 
 ## Destination columns 34-44
 
@@ -314,53 +339,63 @@ A suggested session effort helps the user choose settings for a run.
 | 43 `TA-profile-emulation` | - | - | - | - | - | - | - | - | - | RTY | - |
 | 44 `TA-create-skill` | - | - | - | - | - | - | - | - | - | - | RTY |
 | 45 `TA-create-agent` | - | - | - | - | - | - | - | - | - | - | SKILL |
+| 46 `TA-capture-environment` | - | - | - | - | - | - | - | - | - | - | - |
+| 47 `TA-compare-environments` | - | - | - | - | - | - | - | - | - | - | - |
+| 48 `TA-register-execution` | - | - | - | - | - | - | - | - | - | - | - |
+| 49 `TA-collect-task-records` | - | - | - | - | - | - | - | - | - | - | - |
+| 50 `TA-check-task-records` | - | - | - | - | - | - | - | - | - | - | - |
 
-## Destination columns 45-45
+## Destination columns 45-50
 
-| Source skill | 45 |
-| --- | --- |
-| 01 `TA-plan-change` | ROLE |
-| 02 `TA-design-tests` | - |
-| 03 `TA-implement-change` | - |
-| 04 `TA-fix-findings` | - |
-| 05 `TA-optimize-emulation` | - |
-| 06 `TA-write-powershell` | - |
-| 07 `TA-audit-tests` | - |
-| 08 `TA-measure-coverage` | - |
-| 09 `TA-review-behavior` | - |
-| 10 `TA-review-architecture` | - |
-| 11 `TA-review-tests-evidence` | - |
-| 12 `TA-review-docs` | - |
-| 13 `TA-review-spec-compliance` | - |
-| 14 `TA-review-semantic-parity` | - |
-| 15 `TA-audit-vault-links` | - |
-| 16 `TA-research-hardware-manuals` | - |
-| 17 `TA-research-reference-models` | - |
-| 18 `TA-research-hardware-measurements` | - |
-| 19 `TA-diagnose-cpu` | - |
-| 20 `TA-start-plan` | - |
-| 21 `TA-repair-worktree` | - |
-| 22 `TA-sync-master` | - |
-| 23 `TA-resolve-merge-conflicts` | - |
-| 24 `TA-sync-docs` | - |
-| 25 `TA-author-methodology-doc` | - |
-| 26 `TA-compact-diary` | - |
-| 27 `TA-organize-roadmap` | - |
-| 28 `TA-prune-roadmap` | - |
-| 29 `TA-prepare-batch` | - |
-| 30 `TA-commit-batch` | - |
-| 31 `TA-close-task` | - |
-| 32 `TA-cleanup-task` | - |
-| 33 `TA-verify-focused` | - |
-| 34 `TA-verify-batch` | - |
-| 35 `TA-verify-milestone` | - |
-| 36 `TA-query-graph` | - |
-| 37 `TA-find-graph-path` | - |
-| 38 `TA-explain-graph-symbol` | - |
-| 39 `TA-refresh-graph` | - |
-| 40 `TA-extract-graph-semantics` | - |
-| 41 `TA-capture-gui-screenshot` | - |
-| 42 `TA-index-amiga-rag` | - |
-| 43 `TA-profile-emulation` | - |
-| 44 `TA-create-skill` | ROLE |
-| 45 `TA-create-agent` | RTY |
+| Source skill | 45 | 46 | 47 | 48 | 49 | 50 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 01 `TA-plan-change` | ROLE | - | - | - | - | - |
+| 02 `TA-design-tests` | - | - | - | - | - | - |
+| 03 `TA-implement-change` | - | - | - | - | - | - |
+| 04 `TA-fix-findings` | - | - | - | - | - | - |
+| 05 `TA-optimize-emulation` | - | - | - | - | - | - |
+| 06 `TA-write-powershell` | - | - | - | - | - | - |
+| 07 `TA-audit-tests` | - | - | - | - | - | - |
+| 08 `TA-measure-coverage` | - | - | - | - | - | - |
+| 09 `TA-review-behavior` | - | - | - | - | - | - |
+| 10 `TA-review-architecture` | - | - | - | - | - | - |
+| 11 `TA-review-tests-evidence` | - | - | - | - | - | - |
+| 12 `TA-review-docs` | - | - | - | - | - | - |
+| 13 `TA-review-spec-compliance` | - | - | - | - | - | - |
+| 14 `TA-review-semantic-parity` | - | - | - | - | - | - |
+| 15 `TA-audit-vault-links` | - | - | - | - | - | - |
+| 16 `TA-research-hardware-manuals` | - | - | - | - | - | - |
+| 17 `TA-research-reference-models` | - | - | - | - | - | - |
+| 18 `TA-research-hardware-measurements` | - | - | - | - | - | - |
+| 19 `TA-diagnose-cpu` | - | - | - | - | - | - |
+| 20 `TA-start-plan` | - | ENV | - | REG | - | - |
+| 21 `TA-repair-worktree` | - | - | - | - | - | - |
+| 22 `TA-sync-master` | - | - | - | - | - | - |
+| 23 `TA-resolve-merge-conflicts` | - | - | - | - | - | - |
+| 24 `TA-sync-docs` | - | - | - | - | - | - |
+| 25 `TA-author-methodology-doc` | - | - | - | - | - | - |
+| 26 `TA-compact-diary` | - | - | - | - | - | - |
+| 27 `TA-organize-roadmap` | - | - | - | - | - | - |
+| 28 `TA-prune-roadmap` | - | - | - | - | - | - |
+| 29 `TA-prepare-batch` | - | - | - | - | - | - |
+| 30 `TA-commit-batch` | - | - | - | - | - | - |
+| 31 `TA-close-task` | - | - | - | - | - | - |
+| 32 `TA-cleanup-task` | - | - | - | - | - | - |
+| 33 `TA-verify-focused` | - | - | - | - | - | - |
+| 34 `TA-verify-batch` | - | - | - | - | - | - |
+| 35 `TA-verify-milestone` | - | - | - | - | - | - |
+| 36 `TA-query-graph` | - | - | - | - | - | - |
+| 37 `TA-find-graph-path` | - | - | - | - | - | - |
+| 38 `TA-explain-graph-symbol` | - | - | - | - | - | - |
+| 39 `TA-refresh-graph` | - | - | - | - | - | - |
+| 40 `TA-extract-graph-semantics` | - | - | - | - | - | - |
+| 41 `TA-capture-gui-screenshot` | - | - | - | - | - | - |
+| 42 `TA-index-amiga-rag` | - | - | - | - | - | - |
+| 43 `TA-profile-emulation` | - | - | - | - | - | - |
+| 44 `TA-create-skill` | ROLE | - | - | - | - | - |
+| 45 `TA-create-agent` | RTY | - | - | - | - | - |
+| 46 `TA-capture-environment` | - | RTY | CMP | - | - | - |
+| 47 `TA-compare-environments` | - | - | RTY | - | - | - |
+| 48 `TA-register-execution` | - | - | - | RTY | COL | - |
+| 49 `TA-collect-task-records` | - | - | - | - | RTY | REC |
+| 50 `TA-check-task-records` | - | - | - | - | - | RTY |

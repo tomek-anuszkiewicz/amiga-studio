@@ -80,7 +80,12 @@
         "TA-index-amiga-rag",
         "TA-profile-emulation",
         "TA-create-skill",
-        "TA-create-agent"
+        "TA-create-agent",
+        "TA-capture-environment",
+        "TA-compare-environments",
+        "TA-register-execution",
+        "TA-collect-task-records",
+        "TA-check-task-records"
       ]
     },
     "inputs": {
@@ -1513,6 +1518,266 @@
             "limits"
           ],
           "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "environment_inventory"
+            },
+            "unavailable_probes": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "inventory_ref": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "sha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "sha256"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "unavailable_probes",
+            "inventory_ref"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "environment_comparison"
+            },
+            "differences": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "comparison_ref": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "sha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "sha256"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "differences",
+            "comparison_ref"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "execution_registration"
+            },
+            "execution_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "action": {
+              "enum": [
+                "start",
+                "arm",
+                "include",
+                "stop",
+                "status",
+                "shutdown"
+              ]
+            },
+            "boundary_utc": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "receiver_status": {
+              "type": "string",
+              "minLength": 1
+            },
+            "receipt_ref": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "sha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "sha256"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "execution_id",
+            "action",
+            "boundary_utc",
+            "receiver_status",
+            "receipt_ref"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "execution_archive"
+            },
+            "execution_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "partial_sources": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "manifest_ref": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "sha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "sha256"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "execution_id",
+            "partial_sources",
+            "manifest_ref"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "capture_assessment"
+            },
+            "execution_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "partial_rows": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "report_ref": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "sha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "sha256"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "execution_id",
+            "partial_rows",
+            "report_ref"
+          ],
+          "additionalProperties": false
         }
       ]
     },
@@ -1745,6 +2010,49 @@
             "type": "string",
             "minLength": 1
           }
+        },
+        "capture": {
+          "type": "object",
+          "description": "Observed linkage for a registered execution. Null values denote unavailable runtime identities.",
+          "properties": {
+            "execution_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "thread_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "turn_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "stage": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "call_ids": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "required": [
+            "execution_id",
+            "thread_id",
+            "turn_id",
+            "stage",
+            "call_ids"
+          ],
+          "additionalProperties": false
         }
       },
       "required": [
@@ -2032,6 +2340,26 @@
     "TA-create-agent": {
       "agent": "main-session",
       "kind": "implementation"
+    },
+    "TA-capture-environment": {
+      "agent": "main-session",
+      "kind": "environment_inventory"
+    },
+    "TA-compare-environments": {
+      "agent": "main-session",
+      "kind": "environment_comparison"
+    },
+    "TA-register-execution": {
+      "agent": "main-session",
+      "kind": "execution_registration"
+    },
+    "TA-collect-task-records": {
+      "agent": "main-session",
+      "kind": "execution_archive"
+    },
+    "TA-check-task-records": {
+      "agent": "main-session",
+      "kind": "capture_assessment"
     }
   },
   "$defs": {
@@ -2382,7 +2710,12 @@
                           "TA-index-amiga-rag",
                           "TA-profile-emulation",
                           "TA-create-skill",
-                          "TA-create-agent"
+                          "TA-create-agent",
+                          "TA-capture-environment",
+                          "TA-compare-environments",
+                          "TA-register-execution",
+                          "TA-collect-task-records",
+                          "TA-check-task-records"
                         ]
                       },
                       "input_refs": {
@@ -2556,5 +2889,122 @@
       ],
       "additionalProperties": false
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "skill": {
+            "const": "TA-capture-environment"
+          },
+          "status": {
+            "const": "completed"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "result": {
+            "properties": {
+              "inventory_ref": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "skill": {
+            "const": "TA-compare-environments"
+          },
+          "status": {
+            "const": "completed"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "result": {
+            "properties": {
+              "comparison_ref": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "skill": {
+            "const": "TA-register-execution"
+          },
+          "status": {
+            "const": "completed"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "result": {
+            "properties": {
+              "receipt_ref": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "skill": {
+            "const": "TA-collect-task-records"
+          },
+          "status": {
+            "const": "completed"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "result": {
+            "properties": {
+              "manifest_ref": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "skill": {
+            "const": "TA-check-task-records"
+          },
+          "status": {
+            "const": "completed"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "result": {
+            "properties": {
+              "report_ref": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
 }

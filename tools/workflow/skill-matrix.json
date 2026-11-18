@@ -41,7 +41,12 @@
     "IDX": "Accepted documents within an explicitly selected supported source scope need shared RAG indexing, and publication authority, configuration and retrieval probe are available. Document editing, graph changes and audit completion alone do not authorize indexing.",
     "PRF": "An unresolved performance question within the current task needs actual profiling of a named boundary and workload, and measurement is authorized. Collect comparable evidence before proposing implementation; do not start another optimization because prior work completed.",
     "SKILL": "The approved workflow change needs one unfinished atomic operation with a defined result and an existing executor. Name the operation and its authorized definition and registration paths.",
-    "ROLE": "The approved workflow change needs one unfinished named role with a distinct responsibility, context or write boundary. Name that boundary and its authorized definition and registration paths."
+    "ROLE": "The approved workflow change needs one unfinished named role with a distinct responsibility, context or write boundary. Name that boundary and its authorized definition and registration paths.",
+    "ENV": "An adopted task needs its starting environment recorded before its input commit.",
+    "CMP": "A saved baseline and a separately captured inventory are available for the selected comparison.",
+    "REG": "The user has selected a thread, repository and execution boundary for capture.",
+    "COL": "A recorded execution has a closed boundary and its evidence is ready for collection.",
+    "REC": "A new archive revision and independent expected observations are available for assessment."
   },
   "transitions": {
     "TA-plan-change": {
@@ -557,6 +562,12 @@
       ],
       "TA-write-powershell": [
         "PSH"
+      ],
+      "TA-capture-environment": [
+        "ENV"
+      ],
+      "TA-register-execution": [
+        "REG"
       ]
     },
     "TA-repair-worktree": {
@@ -1025,6 +1036,43 @@
       ],
       "TA-prepare-batch": [
         "BAT"
+      ]
+    },
+    "TA-capture-environment": {
+      "TA-capture-environment": [
+        "RTY"
+      ],
+      "TA-compare-environments": [
+        "CMP"
+      ],
+      "TA-prepare-batch": [
+        "BAT"
+      ]
+    },
+    "TA-compare-environments": {
+      "TA-compare-environments": [
+        "RTY"
+      ]
+    },
+    "TA-register-execution": {
+      "TA-register-execution": [
+        "RTY"
+      ],
+      "TA-collect-task-records": [
+        "COL"
+      ]
+    },
+    "TA-collect-task-records": {
+      "TA-collect-task-records": [
+        "RTY"
+      ],
+      "TA-check-task-records": [
+        "REC"
+      ]
+    },
+    "TA-check-task-records": {
+      "TA-check-task-records": [
+        "RTY"
       ]
     }
   }

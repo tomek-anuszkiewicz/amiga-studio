@@ -280,6 +280,10 @@
       "bbb",
       "fvariant"
     ],
+    "tools/workflow/capture/environment.py": ["containerenv", "dockerenv", "lld", "shrinkwrap", "vv", "xhigh"],
+    "tools/workflow/capture/collector.yaml": ["bearertokenauth"],
+    "tools/workflow/capture/record_sources.py": ["aws", "gcloud", "gnupg", "kdbx", "kube", "netrc", "npmrc", "pem", "pfx", "pypirc", "rsa", "za"],
+    "tools/workflow/capture/registry.py": ["za"],
     "tools/workflow/result.schema.json": [
       "za"
     ],

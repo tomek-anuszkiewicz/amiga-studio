@@ -25,6 +25,7 @@ __pycache__/
 
 # Local agent execution plans, diagnostics, and previous tool installations.
 .agent/tasks/
+.agent/task-archives/
 .agent/tmp/
 .agent/tools/
 # Bootstrap-provisioned M68000 assembler binaries and license.

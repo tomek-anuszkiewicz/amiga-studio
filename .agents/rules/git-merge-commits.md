@@ -105,6 +105,12 @@ cleanup uses original `S_i`. Reference updates are atomic; filesystem changes ar
 not. Recover only known consistent transitions through existing phase records;
 observed interference blocks recovery. Never blindly reset or delete uncertain locks.
 
+For a task with a selected execution archive, preserve unique evidence from its
+worktree through the separately selected collection operation before teardown.
+Verify that the surviving branch includes the initial input commit and the archive
+is readable from the surviving checkout. Keep tracked approved inputs unless an
+explicit closure change authorizes their removal.
+
 After confirmed publication and committed closure, separately authorized
 [TA-cleanup-task](../skills/TA-cleanup-task/SKILL.md) rechecks exact tips, ancestry,
 ownership, pending work and active commands. Preserve later/unrelated work. Remove

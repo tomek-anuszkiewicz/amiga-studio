@@ -2911,3 +2911,14 @@ Every authorized repository commit adds a concise entry here. Logging and compac
 - **Verification & Test Results**:
   - In a limited pilot, one dedicated CLI turn produced fourteen telemetry logs with the expected conversation identifier. The collector retained the allowed control and excluded both rejected controls.
   - The planned implementation scenarios S1 through S5 remain unrun end to end.
+---
+
+### [2026-11-18 12:49 CET] — Capture selected workflow executions
+- **Affected Subsystems**:
+  - `Workflow`
+- **What Was Changed (The Concrete Reality)**:
+  - Register selected threads and UTC boundaries with a project receiver. Record portable tool inventories and compare observed environments. Preserve scoped session records in a private archive and assess each revision against independent observations.
+- **Architectural Rationale & Trade-Offs**:
+  - Keep approved inputs in Git and retain enough execution evidence to investigate individual task runs.
+- **Verification & Test Results**:
+  - The dedicated CLI emitted an explicit skill invocation. Checked root and child spans matched the collector output. The independent fixture retained its archive and both commits after its task worktree was removed.

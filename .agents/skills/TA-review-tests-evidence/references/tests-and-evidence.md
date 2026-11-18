@@ -49,3 +49,9 @@ marked edge and satisfied prerequisites. Missing cells must reject unsolicited
 official suggestions while ordinary user-directed invocation remains available.
 Distinguish data-validation probes from real agent execution and preserve original
 guidance/evidence when the format or matrix changes.
+
+For an approved-input commit, compare recoverable input bytes and the governing
+workflow with the selected plan. When assessing a recorded execution, check
+registration boundaries, thread lineage, missing evidence and archive integrity
+against independent observations. Assess software verification under its usual
+profile even if capture was partial.

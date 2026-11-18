@@ -24,6 +24,7 @@ Architectural checkers/policy data, weakened gates and protected references reta
 their [explicit approval boundaries](.agents/rules/unit-testing-policy.md#protected-verification).
 
 Use `.agent/tasks/` for active plans and `.agent/tmp/` for disposable diagnostics.
+For user-selected execution capture, follow the [capture operations](tools/workflow/capture/README.md).
 Do not trust old artifacts without checking their inputs. Run commands explicitly;
 do not install, configure or use lifecycle, code or Git hooks. Prefer existing tools
 and direct commands; create a helper only for a concrete need they cannot meet.

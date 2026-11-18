@@ -67,6 +67,15 @@ exit status, artifact identity, candidate and validity basis. Unknown time, mode
 configuration or token use is null/unavailable; never invent it. Report waiting and
 overlap honestly, and give a concrete reason for repeating expensive work.
 
+## Evidence for a selected execution
+
+Use the optional `observations.capture` object when capture is active. Keep the
+exact result pair and source task, work item, run, round and stage with observed
+thread, turn and call IDs. At an edit boundary, preserve a scoped diff or report
+only when native events omit the required evidence. Identify reversals and
+unknown attribution explicitly. Use the archive tooling from the
+[capture guide](../../tools/workflow/capture/README.md) at the selected boundaries.
+
 ## Runtime limits and interruption
 
 Round and write boundaries are behavioral instructions, not hard runtime guards.

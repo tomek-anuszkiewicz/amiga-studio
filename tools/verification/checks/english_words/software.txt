@@ -1241,3 +1241,7 @@ nextest
 scm
 mpo
 dcx
+contrib
+opentelemetry
+otel
+otlp

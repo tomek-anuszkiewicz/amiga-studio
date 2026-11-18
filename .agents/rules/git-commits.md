@@ -90,6 +90,22 @@ verified. Report actual IDs, checks/reviews and retained storage observation. Do
 repeat tests, audits or storage scans merely because mechanical commits finished.
 Publication and cleanup remain separate authorized operations.
 
+## Approved execution inputs
+
+When the user adopts an instrumented task and authorizes its starting commit,
+prepare the approved plan, scenarios, acceptance criteria, explicit decisions,
+required attachment bytes and portable environment inventory together before
+implementation. Force-add only the selected ignored task paths. Record governing
+and candidate workflow identities separately and describe dirty inputs. Verify
+that the input bytes can be recovered from Git. Record the resulting commit in
+the private execution manifest. Apply the ordinary diary, review and verification
+requirements to each prepared batch.
+
+Keep the starting commit reachable through the final implementation commit and
+a surviving authorized branch. Prepare the implementation as one commit when
+selected. Rewriting existing commits or changing the integration method requires
+a specific decision. Store stage evidence in the local execution archive.
+
 ## Execution-Plan Lifecycle
 
 Keep `.agent/tasks/` plans while active, paused or blocked. Stable task IDs identify

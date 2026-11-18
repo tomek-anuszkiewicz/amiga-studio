@@ -14,6 +14,8 @@ available reports and any selected integration/closure records.
 1. Select coherent paths/hunks and explicit new files, separating unrelated work and
    existing staged versions. Establish the actual candidate that checks execute.
    Record the immutable integration base/source set when applicable.
+   For an adopted capture baseline, use the [approved-input policy](../../rules/git-commits.md#approved-execution-inputs)
+   and identify the selected inventory, scenarios and attachment bytes.
 2. Prepare a coherent partition and English Conventional Commit messages. Use
    native Git/temporary-index mechanics from the
    [integration reference](../../../tools/verification/README.md#local-integration)

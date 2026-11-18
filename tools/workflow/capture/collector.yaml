@@ -1,0 +1,32 @@
+extensions:
+  bearertokenauth:
+    token: ${env:CAPTURE_COLLECTOR_TOKEN}
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: "0.0.0.0:4318"
+        auth:
+          authenticator: bearertokenauth
+exporters:
+  file/logs:
+    path: /capture/output/*/otel/logs.jsonl
+    append: true
+    group_by:
+      enabled: true
+      resource_attribute: capture.route
+  file/traces:
+    path: /capture/output/*/otel/traces.jsonl
+    append: true
+    group_by:
+      enabled: true
+      resource_attribute: capture.route
+service:
+  extensions: [bearertokenauth]
+  pipelines:
+    logs:
+      receivers: [otlp]
+      exporters: [file/logs]
+    traces:
+      receivers: [otlp]
+      exporters: [file/traces]
