@@ -162,7 +162,7 @@ PYTHON_INPUTS = {
     "RAG MCP contracts": ("tools/amiga-rag-mcp-server/", ".codex/config.toml"),
     "Artifact report contracts": ("tools/artifacts/",),
     "Verification CLI contracts": ("tools/verification/", "tools/web.ps1", "tools/worktree.ps1", "tools/graphify_query.py",
-                                   ".agents/skills/obsidian-vault-linking/scripts/"),
+                                   ".agents/skills/TA-audit-vault-links/scripts/"),
 }
 
 

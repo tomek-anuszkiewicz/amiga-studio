@@ -279,6 +279,23 @@
       "aaa",
       "bbb",
       "fvariant"
+    ],
+    "tools/workflow/result.schema.json": [
+      "za"
+    ],
+    "tools/workflow/skill-matrix.json": [
+      "cln", "cmt", "dia", "grf", "lnk", "mrg", "obs", "pln",
+      "prf", "psh", "qry", "rty", "spc", "syn", "ver"
+    ],
+    "docs/workflow-skill-matrix.md": [
+      "cln", "cmt", "dia", "grf", "lnk", "mrg", "obs", "pln",
+      "prf", "psh", "qry", "rty", "spc", "syn", "ver"
+    ],
+    "docs/ai_agents.md": [
+      "astra", "xhigh"
+    ],
+    ".agents/references/workflow-runtime.md": [
+      "overridable", "xhigh"
     ]
   }
 }

@@ -1,120 +1,117 @@
-# Amiga 500 Emulator: Agent Instructions
+﻿# Amiga 500 Emulator: Agent Instructions
 
-## Working Agreements
+## Shared Contract
 
-Read these shared rules before task work; linked files require explicit reads:
-- [Scoped changes and root-cause resolution](.agents/rules/structural-root-cause.md): Stay within the requested task, reuse definitions, and fix mechanisms.
-- [Specification compliance](.agents/rules/spec-compliance.md): Surface conflicts with design specifications and never silently change golden references.
-- [Path privacy](.agents/rules/no-external-paths.md): Keep committed paths portable.
-- [Commit policy](.agents/rules/git-commits.md): Required commit points, user-controlled timing, validation, and diary entries.
-- [Language policy](.agents/rules/language-policy.md): Keep repository artifacts in English, resolve language findings during batch preparation, and answer in the user's language.
+Work within the requested outcome and necessary technical changes. Inspection
+requests authorize investigation; implementation requests authorize scoped edits.
+Propose optional behavior before adding it. Preserve unrelated files, staged
+versions, user data and concurrent work. This is a private, pre-release project:
+prefer the simplest correct current implementation and complete internal migrations.
 
-Implement requested behavior and the technical changes necessary to make it work. Propose optional additions before implementing them; usefulness alone does not authorize a new feature. Leave product and editorial decisions to the user unless delegated explicitly. Before completion, review the diff against this boundary using the [scope rules](.agents/rules/structural-root-cause.md).
+Read affected requirements before design or editing; nearby code supplies examples,
+not authority over specifications or hardware evidence. Applicable result standards
+remain binding even when their detailed reviewer checklist is not loaded by the
+author. In-scope corrections complete the assignment; findings grant no unrelated
+write authority. Handle specification conflicts immediately under
+[reference integrity and requirements](.agents/rules/spec-compliance.md).
 
-Run validation commands explicitly. Do not install, configure, or use lifecycle, code, or Git hooks. Use `.agent/tasks/` for execution plans and `.agent/tmp/` for disposable diagnostics and artifacts. Treat existing temporary artifacts as unverified until their assumptions are checked.
+Before new implementation, identify the checkout and branch and establish the
+[task checkout choice](.agents/rules/git-merge-commits.md#choose-the-task-checkout).
+Reuse an explicit location choice and existing authorization. Ordinary changes stay
+unstaged; batch preparation authorizes only selected staging, and commits,
+publication, cleanup and push require their corresponding authorization.
+Architectural checkers/policy data, weakened gates and protected references retain
+their [explicit approval boundaries](.agents/rules/unit-testing-policy.md#protected-verification).
 
-Before new implementation, follow the explicit [task checkout choice](.agents/rules/git-merge-commits.md#choose-the-task-checkout), including in an existing worktree. Reuse an established choice for the same task; disposable detached tests retain their bounded exception.
+Use `.agent/tasks/` for active plans and `.agent/tmp/` for disposable diagnostics.
+Do not trust old artifacts without checking their inputs. Run commands explicitly;
+do not install, configure or use lifecycle, code or Git hooks. Prefer existing tools
+and direct commands; create a helper only for a concrete need they cannot meet.
 
-First identify the question and whether existing evidence resolves it. Use scripts for concrete measurement, verification, or data processing; do not repair a tool unless that repair is needed for the task.
+Keep committed paths portable: repository-relative paths, environment variables or
+CLI inputs. Never hardcode private host paths or disclose them unnecessarily.
+Already authorized local inputs need no second approval; missing configuration is
+an input gap, not permission to invent it.
 
-For routine workflow steps, prefer existing tools and direct commands. Create helper scripts or extra evidence files only for a concrete task requirement those tools cannot meet.
+Answer in the user's language. Keep repository artifacts in English; `.agent/tasks/`
+is exempt from language and vocabulary checks. State outcomes and actual evidence
+plainly, distinguishing assumptions, hypotheses and unrun work. Detailed language
+handling activates for [findings or an explicit audit](.agents/rules/language-policy.md).
 
-During code work, read and follow specifications as requirements; handle conflicts immediately under [specification compliance](.agents/rules/spec-compliance.md). Batch preparation owns scoped review and enrichment under [Documentation Value](.agents/rules/docs-maintenance.md#documentation-value); milestone closure owns broader semantic review. Direct documentation tasks and requested reviews remain in scope.
+Before starting or resuming mouse/keyboard control, announce it. Stop input when
+the user takes over. On finishing, including recoverable errors or interruption,
+perform the tool's documented completion/release step before unrelated work. Then
+explicitly tell the user in their language that control ended and they can work
+normally. Do not claim release unless confirmed.
 
-## Development Defaults
+## One Selected Operation
 
-This is a private, pre-release project without external users. Prefer the simplest correct implementation. Minimize code, abstractions, dependencies, and defensive behavior for hypothetical requirements; do not build speculative features or extensibility.
+Select the role and atomic `TA-` skill from the actual request. Before dispatch,
+apply the [runtime settings](.agents/references/workflow-runtime.md#model-and-reasoning-effort)
+and announce the assignment under the [invocation and dual-result contract](.agents/references/workflow-contract.md).
+Each invocation returns matching text and JSON, with an exact input identity and
+one to four declared rounds (three by default). A missing prerequisite, finding or
+limit returns control; it does not start another skill, repair or lifecycle phase.
+The receiving main session automatically explains the actual result and presents
+applicable options through [next-step guidance](.agents/references/workflow-guidance.md).
+Official suggestions use its conditional skill matrix. The user may directly choose
+another skill; an empty matrix cell is not a prohibition or a new permission gate.
+Each executable choice names its role, skill, exact scope and copyable invocation.
+Wait for the user's selection, recheck applicability, then run only that choice.
+Interpretation and recommendations do not authorize or dispatch another operation.
 
-Use the nearest relevant implementation and tests as examples for conventions, helpers, structure, and verification commands. Reuse established patterns when they fit the task. Existing code and tests do not override approved specifications or hardware evidence; investigate inconsistencies rather than copying them.
+Repository roles live in `.codex/agents/`; runtime roles and installed plugin skills
+are separate. Use fresh contexts for independent reviews. Do not claim filesystem,
+context or budget enforcement beyond the runtime controls actually observed.
 
-Add tests for meaningful behavior or identified risks, not merely because code changed. Prefer a few high-value tests over redundant edge cases or elaborate infrastructure. Simplify or remove tests whose original purpose disappears, subject to [protected verification](.agents/rules/unit-testing-policy.md#protected-verification); architectural test changes and weakening other tests or required gates need explicit user approval.
-
-### Compatibility and Internal Refactoring
-
-Backward compatibility is not the default for internal APIs, schemas, configuration, or generated formats. Internal APIs are maintained together in this workspace; refactor them completely rather than preserving obsolete interfaces for hypothetical consumers. Do not infer a compatibility requirement from existing code, tests, documentation, or possible consumers. When both approaches are correct, choose simplicity over extensibility.
-
-- Update affected callers, imports, tests, and fixtures within the requested change. Review code-driven documentation changes before an authorized commit, unless documentation work was explicitly requested earlier.
-- Migrate affected internal callers and delete replaced implementations, compatibility aliases, forwarding wrappers, obsolete re-exports, duplicate namespaces, and legacy fallback paths in the same change. Do not add migrations, legacy parsers, deprecated interfaces, adapters, or parallel implementations without a concrete requirement. Preserve compatibility only when the user explicitly requests it or a documented external contract requires it.
-- Until the first release, snapshot backward compatibility is not required.
-- Preserve external specifications. For external contracts or other user data, explain the impact and obtain direction before removing old-format support. Ask before deleting user data that cannot be recreated.
-- Before completion, search active code and tests for replaced symbols and mechanisms, review each remaining reference, and run the required checks and relevant tests. Review documentation and instruction references before an authorized commit.
-- Before an authorized commit, retire active command examples, skill procedures and ownership mappings for a removed mechanism. Retained historical descriptions must state that the capability is unavailable; future plans must identify its prerequisites rather than present retired commands as executable. An explicit user request to preserve documentation takes precedence; report the resulting debt.
+For a new repository skill, use [TA-create-skill](.agents/skills/TA-create-skill/SKILL.md).
+For a new repository role, use [TA-create-agent](.agents/skills/TA-create-agent/SKILL.md).
+Select each operation separately when the request needs both definitions.
 
 ## Task-Specific Rules and Navigation
 
-Read domain rules before editing. Use [Graphify](.agents/skills/graphify/SKILL.md) for cross-file navigation: project graph for our code, reference graph for imports. Read definitions directly; use `rg` as fallback. Domain retrieval follows [amiga-rag.md](.agents/rules/amiga-rag.md).
+Load only the relevant advance requirements and selected operation. Reviewers also
+load their assigned lane criteria; authors do not read all reviewer checklists.
+Read-only questions need only the material needed to answer them.
 
-| Task | Rules and procedures |
+| Work | Read at its trigger |
 | --- | --- |
-| Rust workspace code | [Rust practices](.agents/rules/rust-best-practices.md), [performance](.agents/rules/performance-and-readability.md) |
-| Production Rust source under `crates/*/src/` | [File cohesion](.agents/rules/file-size-and-cohesion.md) |
-| Crate boundaries or public re-exports | [Workspace boundaries](.agents/rules/workspace-structure-and-reexports.md) |
-| M68000 CPU performance tests | [Benchmark catalog and runner](benchmarks/m68k/README.md) |
-| Chip, DMA, or bus behavior | [Hardware topology](.agents/rules/hardware-bus-topology.md), [Platform Quirks and Invariants Catalog](Obsidian/Amiga/Design/Platform%20Quirks%20and%20Invariants%20Catalog.md) |
-| Tests or suspected defect investigation/repair | [Testing policy](.agents/rules/unit-testing-policy.md), [defect resolution](.agents/rules/structural-root-cause.md#defect-resolution) |
-| GUI | [egui practices and visual verification](.agents/rules/egui-best-practices.md) |
-| Documentation | [Documentation maintenance and vault links](.agents/rules/docs-maintenance.md), [document and instruction ownership](.agents/rules/information-hierarchy.md), [writing style](.agents/rules/practitioner-voice-and-tone.md) |
-| Repository skills | [Document and instruction ownership](.agents/rules/information-hierarchy.md) |
-| PowerShell tooling | Use [write-powershell](.agents/skills/write-powershell/SKILL.md) for invocation behavior, parameter descriptions, and validation. |
-| Commit or milestone | [Diary](.agents/rules/diary-maintenance.md), [roadmap](.agents/rules/roadmap-maintenance.md), [design maintenance](.agents/rules/docs-maintenance.md) |
-| Merge or worktree | [Merge policy and required procedures](.agents/rules/git-merge-commits.md) |
-| Reference conversion bootstrap | Read [bootstrap instructions](tools/bootstrap/AGENTS.md), then the applicable [PDF](tools/bootstrap/pdf-to-markdown/README.md) or [HTML](tools/bootstrap/html-to-markdown/README.md) program README and [converter testing scope](.agents/rules/unit-testing-policy.md#bootstrap-converter-scope) |
+| Rust implementation | [Rust constraints](.agents/rules/rust-best-practices.md); affected specifications through [General Architecture](Obsidian/Amiga/Design/General%20Architecture.md) |
+| Execution or performance work | [Execution semantics](.agents/rules/performance-and-readability.md) |
+| Crates, exports or CPU module layout | [Workspace boundaries](.agents/rules/workspace-structure-and-reexports.md) |
+| Chip, DMA, bus, interrupts or peripherals | [Hardware topology](.agents/rules/hardware-bus-topology.md) |
+| Test design, execution or assessment | [Testing policy](.agents/rules/unit-testing-policy.md) and the selected skill's criteria |
+| Defect investigation or repair | [Original reproduction and causal repair](.agents/references/defect-resolution.md) before mutation |
+| GUI | [GUI advance requirements](.agents/rules/egui-best-practices.md) |
+| Documentation or specifications | [Documentation value](.agents/rules/docs-maintenance.md) |
+| Rules, skills, roles or instruction ownership | [Information hierarchy](.agents/rules/information-hierarchy.md) |
+| Preparation, commits or closure | [Readiness policy](.agents/rules/git-commits.md); [diary](.agents/rules/diary-maintenance.md) and [roadmap](.agents/rules/roadmap-maintenance.md) at their triggers |
+| Synchronization, publication or cleanup | The relevant part of [integration policy](.agents/rules/git-merge-commits.md) and the separately selected skill |
+| PowerShell changes | [TA-write-powershell](.agents/skills/TA-write-powershell/SKILL.md) |
+| Reference conversion | [Nested bootstrap instructions](tools/bootstrap/AGENTS.md), then the applicable program README |
 
-Read the selected `SKILL.md` and execute required procedures; discovery alone does not execute a skill.
-
-Roles live in `.codex/agents/*.toml`; delegate only when requested by the user or
-applicable instructions. Batches require four `code_reviewer` instances
-with fresh context through [code-review](.agents/skills/code-review/SKILL.md),
-under [commit policy](.agents/rules/git-commits.md). MCP configuration is
-`.codex/config.toml`.
-
-## Machine Invariants
-
-- Native desktop and `wasm32-unknown-unknown` remain supported. Core emulation consumes external buffers; it does not perform host filesystem, thread, or wall-clock I/O.
-- The synchronization unit is the Color Clock (CCK), approximately 3.54 MHz PAL / 3.58 MHz NTSC. A 68000 bus cycle takes four CPU clocks, or two CCK cycles (CCK1 and CCK2). A blocked Chip RAM access returns `BusResult::WaitState`; the CPU waits without advancing its active micro-step.
-- The top-level machine owns CPU, memory bus, Agnus, Denise, Paula, and both CIAs, tracking master CCKs with `cck: u64`.
-- State snapshots remain queryable and serializable with `serde::Serialize` and `serde::Deserialize`, separate from runtime handles.
-- Follow physical dependencies when planning: bus arbitration and clocks, autonomous DMA, display, peripherals, then firmware integration.
-- Guest memory is big-endian. Use explicit endian conversion, never host-endian pointer casts or `transmute`. Bitwise operations and raw transfers may bypass swaps only when their semantics commute with byte reversal.
-- Guest errors remain emulated: unmapped reads return `$FF`/`$FFFF` (configurable); odd word/long accesses raise Address Error, Vector 3. Runtime uses no `unwrap`/`expect`. Internal invariant failures use the [sole fatal helper](.agents/rules/rust-best-practices.md).
-- ALU operations and cycle counters use explicit wrapping arithmetic. Execution, memory access, and interrupt hot paths allocate no heap memory. Project rules prohibit custom `macro_rules!` and const-generic instruction handlers.
+For cross-file code navigation use the selected Graphify read operation:
+[query](.agents/skills/TA-query-graph/SKILL.md),
+[path](.agents/skills/TA-find-graph-path/SKILL.md) or
+[symbol explanation](.agents/skills/TA-explain-graph-symbol/SKILL.md).
+Choose project or reference data explicitly, read source definitions, and use `rg`
+when the graph is missing, stale or insufficient. Hardware/manual retrieval follows
+[domain provenance](.agents/rules/amiga-rag.md). Manuals live under
+`Obsidian/Amiga/Reference/`; imported models and vectors under `ref_src/`.
 
 ## Verification and Completion
 
-Ordinary changes remain unstaged. An explicit batch-preparation request authorizes
-staging its selected scope; a commit request also authorizes creating the prepared
-commits. Preserve unrelated index entries, including staged versions of files
-edited later. Follow [batch lifecycle](.agents/rules/git-commits.md) for scope,
-isolation, review, freeze and mechanical completion.
+Run relevant focused checks during development. Canonical batch verification is
+`python tools/verification/verify.py commit`; milestone verification is
+`python tools/verification/verify.py milestone` at an actual closure trigger.
+The [verifier](tools/verification/README.md) owns selection, required gates and
+evidence reuse. A failed or missing required gate blocks readiness. Assessment
+results do not replace executed verification.
 
-Commits are mandatory at minor roadmap or major milestone closure. Each ordinary
-or final integration commit
-includes a prepared entry in DIARY.md's final, unnumbered Rolling Changelog.
-Prepare the complete batch once, including its partition, applicable coverage
-review, scoped compliance, language corrections and four independent review lanes.
-At closure, also compact settled diary entries and prune verified roadmap work.
-
-Canonical batch verification of pending changes against `HEAD`:
-```powershell
-python tools/verification/verify.py commit
-```
-For local integration, compare the complete candidate against the recorded immutable primary-branch commit with `commit --integration-base <commit>`. Follow [local integration](tools/verification/README.md#local-integration) for freezing, mechanical commits, conditional publication and authorized cleanup.
-Use [git-close-task](.agents/skills/git-close-task/SKILL.md) for approved task
-closure, including the integration exceptions to ordinary commit gates and diary timing.
-Repeat the same command after corrections; matching evidence is reused automatically.
-The commit profile checks frontmatter in every local Markdown file under
-`Obsidian/Amiga/`, including Git-ignored reference books. If it reports missing
-metadata, show the user the affected paths and the proposed frontmatter for
-each file, then ask for approval before editing those files. After approval,
-repair the files and continue verification with validated evidence. The verifier never edits them.
-Reference book metadata follows [Reference Book Metadata](.agents/rules/docs-maintenance.md#reference-book-metadata).
-The canonical commit profile selects standard suites and architecture checks. Run relevant focused tests during development; full SingleStepTests and additional milestone checks are selected by the verification workflow at their required trigger. Do not claim unrun checks passed.
-Outside the explicit integration exceptions above, do not freeze or commit a batch with a failed or missing required gate. After corrections, the canonical verifier reruns failed, missing or invalidated groups and retains only applicable successful evidence. Milestone completion also requires a passing milestone profile. Final evidence covers the combined batch, not unverified intermediate commits.
-
-Milestone completion requires `python tools/verification/verify.py milestone`, [semantic parity review](.agents/skills/audit-semantic-parity/SKILL.md) of modified subsystems, specification compliance and compatible documentation enrichment, checkpoint updates, diary compaction, and pruning completed roadmap steps. The broader audit may satisfy the scoped pre-commit review when its coverage and snapshot match. **Prohibition of Blind Golden Hash Modifications:** Never silently change golden hashes or cycle references; follow the conflict and approval procedure in specification-compliance rules.
-
-## Authoritative References
-
-- [General Architecture](Obsidian/Amiga/Design/General%20Architecture.md) routes to subsystem specifications under `Obsidian/Amiga/Design/`.
-- Hardware manuals and PRMs live under `Obsidian/Amiga/Reference/`.
-- Reference emulators and suites live under `ref_src/`; software-generated 68000 SingleStep vectors are under `ref_src/SingleStepTests-680x0/68000/v1`.
+Required batch review uses four fresh independent `TA-code-reviewer` instances,
+one for each fixed lane. Schedule within available slots; an author or earlier
+audit cannot replace a lane. Preparation, checks, reviews, commits, publication and
+cleanup remain separately selected operations; broad existing authorization may
+cover their scope without repeated permission requests, while guidance still waits
+for selection. Before reporting completion,
+review the diff against the requested scope and state checks and remaining limits.

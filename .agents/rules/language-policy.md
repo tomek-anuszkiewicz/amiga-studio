@@ -1,30 +1,47 @@
-# Language Policy
+﻿# Language policy
 
-- Answer in the language of the user's current request unless asked to switch.
-- Persist repository code, identifiers, comments, documentation, plans, diagnostics, commits, and PR descriptions in English.
-- Files under `.agent/tasks/` are exempt from the repository language and vocabulary requirements. Do not scan them, report language findings, or maintain vocabulary or file-specific exceptions for them. The entire directory tree is always excluded, including when a file is explicitly named on the command line.
-- Translate user concepts into idiomatic English before writing them into repository artifacts; do not quote untranslated prompt phrases or metaphors in code or comments.
-- Run required language audits and resolve findings during [batch preparation](git-commits.md), or earlier for an explicit language request. Ordinary implementation, documentation and generic validation requests do not trigger scans, cleanup or vocabulary prompts. Keep authored artifacts in English throughout. An explicit scoped audit selects the requested files and excludes unrelated pending changes.
-- Each preparation batch requires a full scan of repository-owned text files, including unchanged files and nonignored new files, through `python tools/verification/verify.py commit`. Repeating the command may reuse a matching successful gate; the final verdict still requires that full scope. The milestone profile uses the same full scan as part of preparing the required milestone completion commit. Staging is not required. Explicit scanner commands are in [agent maintenance](../references/agent-tooling.md#recording-and-validating-changes). Use no hooks.
-- Maintain the scanner's scope in [check_english.json](../../tools/verification/checks/check_english.json), the authoritative directory, file and text-format exclusions. Git-ignored untracked files are also omitted. Directory names apply at any depth; directory paths are repository-relative subtrees. Explicit file arguments bypass ordinary exclusions but always respect `always_excluded_directories`.
-- During an authorized language audit, review this scope for added or discovered generated output, caches, benchmark result trees, vendor code or imported reference collections before scanning and exclude irrelevant data at the directory boundary. Keep authored code, tests, specifications, rules and documentation covered; do not exclude authored content to hide language findings. Add new authored text formats to the extension list. Lockfiles and binary formats are not selected. The scanner itself is included; the scope catalog is excluded because it stores deliberate invalid example literals.
-- The `tools/bootstrap/books/` collection is excluded at its directory boundary by user decision. Its source records and review artifacts follow individual books; the bootstrap tool's code, tests, prompts, and documentation remain covered.
+Answer in the user's language and persist repository artifacts in English.
+`.agent/tasks/` is always excluded from language/vocabulary checks, even when named
+explicitly. Translate user concepts into idiomatic English rather than copying
+untranslated prompt wording into repository artifacts.
 
-- The English gate checks each word against `pyspellchecker` and the reviewed vocabulary in [english_words/](../../tools/verification/checks/english_words/). Unknown words are findings, not language classifications. The scanner splits identifiers, accepts possessive forms, and omits URLs and numeric literals; uppercase words are still checked. Use half the available logical CPUs, rounded down, with a minimum of one and a maximum of six scan processes; for smaller file sets, cap the process count at the number of files.
+Batch preparation requires the full repository-owned text scan through the canonical
+commit profile, including unchanged and nonignored new files. Milestone preparation
+retains that gate. Matching evidence may be reused; ordinary turns, generic validation
+and document edits do not trigger scans or vocabulary work. An explicit scoped audit
+selects its files without sweeping unrelated pending changes. Commands and dictionary
+mechanics belong to [agent tooling](../references/agent-tooling.md#recording-and-validating-changes).
+
+The authoritative scope is `tools/verification/checks/check_english.json`: generated
+outputs, caches, vendor/imported collections and `tools/bootstrap/books/` remain
+excluded at their directory boundaries, while authored code/tests/prompts/docs stay
+covered. Add newly authored text formats where appropriate; do not exclude authored
+content to hide findings. Lockfiles/binary formats are not scanned. Explicit paths
+bypass ordinary exclusions but never always-excluded directories. The scanner's
+configured word splitting, dictionary/vocabulary and worker limits remain mechanical
+requirements; a scope/logic change needs protected-verification authorization.
 
 ## Resolving Findings
 
-The user delegates routine language decisions to the agent. During an authorized
-audit, resolve clear findings without asking for approval; ask only about issues
-that remain ambiguous after contextual review. This is standing authorization for
-the corrections and vocabulary updates below.
+The user has standing authorization for clear contextual corrections and justified
+vocabulary entries. Read each finding in context: dictionary absence, uppercase or
+source occurrence alone does not establish invalidity or validity. Verify unfamiliar
+technical terms against local definitions/API usage or authoritative sources. Fix
+clear spelling/non-English/awkward prose without unrelated rewrites or meaning changes.
+Keep appropriate valid wording and add reviewed terms rather than distort it for a gate.
 
-- Read each finding in context. Use language knowledge to recognize valid English words and inflected forms missing from the dictionary. Verify unfamiliar technical terms against local definitions, API usage or authoritative references; occurrence in source, uppercase spelling or resemblance to English alone does not establish validity.
-- Correct clear spelling errors, accidental non-English prose and awkward wording when the intended meaning is clear. Prefer a small, idiomatic edit that preserves meaning; do not rewrite unrelated text. Add valid words to the reviewed vocabulary when the existing wording is appropriate, rather than replacing good English merely to satisfy the dictionary.
-- Accept established API names, proper names, register and bit names, abbreviations, and meaningful combinations of English words or technical symbols when their components and meaning are clear in context. For example, `chdir` is an API name and `RAS`/`CAS` are hardware terms. Do not rename a valid identifier merely because the dictionary lacks it. A local spelling or word-boundary correction may update an internal identifier and its callers together when it preserves behavior and data contracts.
-- Maintain one explicit reviewed term per line in the appropriate programming, hardware, software or names list. Inflected forms need their own entries. Review each candidate; never copy an entire scan output into a word list or add a misspelling to hide an error. Deliberate invalid or non-English literals needed by tests or examples may use the scope configuration's exact-file `file_words` map after verifying their purpose; never place them in a global word list.
-- Preserve API spellings, external names, source quotations, test inputs and persisted keys whose exact text matters. Resolve their language findings through a justified vocabulary or exact-file entry when appropriate. This authorization does not permit changing behavior, data contracts, golden references, test acceptance criteria, scanner logic or authored scan coverage. Other verification changes follow [protected verification](unit-testing-policy.md#protected-verification).
-- Apply clear resolutions first, then present only unresolved findings together, with each word's file, line, context, remaining uncertainty and concrete options. Ask when the intended meaning is unclear, a technical name cannot be verified, or a correction requires a behavioral or contract decision. A dictionary miss alone is not a reason to ask. Remaining findings or scan errors block completion of the language audit and batch freeze; report the blocker and continue independent work when possible.
-- The canonical profile runs its language gate before expensive suites. After corrections, resume the same batch; unchanged independent tests and coverage may retain valid evidence. Do not add a second standalone scan when the canonical gate already supplies current evidence. For an explicit language task, use the standalone scan and repeat it after corrections; a vocabulary change alone does not require emulator tests or coverage. Changed code still requires affected checks.
-- A language decision does not restart the commit authorization or invalidate unchanged evidence. Follow [commit policy](git-commits.md) and the verifier's dependency rules; a failed gate remains unresolved until it passes.
-- Briefly summarize automatic corrections and vocabulary additions with their reasons in the work report; do not request approval again for routine resolutions covered here.
+Preserve API names, register/bit terms, quotations, test literals and persisted keys
+whose spelling matters. Valid identifiers need not be renamed for a dictionary;
+behavior-preserving local word-boundary/spelling corrections may update callers.
+Maintain one explicit reviewed term per vocabulary line in the appropriate list;
+inflections need their own entries. Never bulk-copy findings or whitelist misspellings.
+Deliberate invalid/non-English examples use justified exact-file `file_words`, not
+global vocabulary. This authority does not change behavior, contracts, goldens,
+scanner logic, authored scope or other acceptance criteria.
+
+Resolve clear findings first. Report only remaining ambiguity with file, line,
+context and options; missing meaning or unverifiable terminology requires a decision.
+Unresolved findings/scan errors block readiness. Continue the same canonical batch
+after fixes, retaining valid independent evidence; do not duplicate a full scan or
+emulator tests for vocabulary-only corrections. An explicit standalone audit repeats
+its scan after corrections. Summarize automatic fixes and additions with reasons.

@@ -593,16 +593,18 @@ metadata and link audit. Instruction brevity, script ownership and procedure
 routing are reviewed manually. Scoped design review, vault links,
 static semantic comparisons, diary chronology and roadmap retention
 are run by their owning skills. Follow
-[verify-spec-compliance](../../.agents/skills/verify-spec-compliance/SKILL.md),
-[obsidian-vault-linking](../../.agents/skills/obsidian-vault-linking/SKILL.md),
-[audit-semantic-parity](../../.agents/skills/audit-semantic-parity/SKILL.md),
-[compact-diary](../../.agents/skills/compact-diary/SKILL.md) and
-[roadmap-maintenance](../../.agents/skills/roadmap-maintenance/SKILL.md) at their defined
-triggers. Semantic milestone review is required by its skill. A successful
+[TA-review-spec-compliance](../../.agents/skills/TA-review-spec-compliance/SKILL.md),
+[TA-audit-vault-links](../../.agents/skills/TA-audit-vault-links/SKILL.md),
+[TA-review-semantic-parity](../../.agents/skills/TA-review-semantic-parity/SKILL.md),
+[TA-compact-diary](../../.agents/skills/TA-compact-diary/SKILL.md) and
+[TA-prune-roadmap](../../.agents/skills/TA-prune-roadmap/SKILL.md) at their defined
+triggers. Organizing pending roadmap work uses the separate
+[TA-organize-roadmap](../../.agents/skills/TA-organize-roadmap/SKILL.md) operation.
+Semantic milestone review is required by its skill. A successful
 `verify.py milestone` alone does not certify these separate skill checks.
 
 Each prepared batch also requires four independent
-[review lanes](../../.agents/skills/code-review/SKILL.md), each in fresh agent context,
+[review lanes](../../.agents/references/review-common.md), each in fresh agent context,
 covering the cumulative candidate, proposed commit partition and final applicable
 evidence. The coordinating agent consolidates all four scoped verdicts and resolves
 findings under [commit policy](../../.agents/rules/git-commits.md).
@@ -671,7 +673,7 @@ using real PhysicalMemory run when the CPU package is selected. The separate
 milestone set runs the full language audit and full SingleStepTests; vAmigaTS
 Cargo suites and automatic chipset/capture runs have been removed.
 
-Manual commands in the following sections and diagnostic selectors in `verify.py` validate ordinary tasks and support diagnosis; they do not replace pre-commit verification. Wall-clock microbenchmarks run explicitly. Decoder-derived CPU benchmark regression targets, the old chipset throughput workload and capture execution commands have been removed. The approved CPU baseline records the latest user-approved snapshot. During batch preparation, `verify-spec-compliance` checks the cumulative intended changes against approved specifications selected through `tracked_paths`, including implementation affected by changed requirements even when code has no diff. Documentation enrichment and pruning follow [Documentation Value](../../.agents/rules/docs-maintenance.md#documentation-value); accurate documents and their dates stay untouched. The broader semantic milestone audit may satisfy the scoped review for the same snapshot and covered requirements. Diary compaction and roadmap pruning remain separate agent procedures.
+Manual commands in the following sections and diagnostic selectors in `verify.py` validate ordinary tasks and support diagnosis; they do not replace pre-commit verification. Wall-clock microbenchmarks run explicitly. Decoder-derived CPU benchmark regression targets, the old chipset throughput workload and capture execution commands have been removed. The approved CPU baseline records the latest user-approved snapshot. During batch preparation, `TA-review-spec-compliance` checks the cumulative intended changes against approved specifications selected through `tracked_paths`, including implementation affected by changed requirements even when code has no diff. Documentation enrichment and pruning follow [Documentation Value](../../.agents/rules/docs-maintenance.md#documentation-value); accurate documents and their dates stay untouched. The broader semantic milestone audit may satisfy the scoped review for the same snapshot and covered requirements. Diary compaction and roadmap pruning remain separate agent procedures.
 
 ---
 
@@ -820,7 +822,7 @@ External source provisioning remains available:
 
 Provisioning does not restore execution or certify a capture comparison.
 For future investigations, follow
-[structural-root-cause.md](../../.agents/rules/structural-root-cause.md): reproduce
+[the defect procedure](../../.agents/references/defect-resolution.md): reproduce
 the observed failure, establish the relevant clock or state transition, and
 repair its demonstrated mechanism. Coordinate or timing adjustments made solely
 to fit an image do not establish hardware behavior.
@@ -828,11 +830,22 @@ to fit an image do not establish hardware behavior.
 ## Local integration
 
 Authorization and checkout selection belong to the
-[local integration rule](../../.agents/rules/git-merge-commits.md); semantic
-preparation and full task closure belong to [git-close-task](../../.agents/skills/git-close-task/SKILL.md).
+[local integration rule](../../.agents/rules/git-merge-commits.md). The caller
+selects synchronization, conflict resolution, semantic review, selected repairs,
+preparation, verification, review and mechanical commits as separate operations.
+[TA-prepare-batch](../../.agents/skills/TA-prepare-batch/SKILL.md) establishes the
+candidate and lists missing prerequisites;
+[TA-commit-batch](../../.agents/skills/TA-commit-batch/SKILL.md) consumes complete
+readiness evidence before freeze, prepared commits and sealing.
+[TA-close-task](../../.agents/skills/TA-close-task/SKILL.md) only publishes the
+supplied sealed record, and
+[TA-cleanup-task](../../.agents/skills/TA-cleanup-task/SKILL.md) performs authorized
+cleanup after publication. None of these skills launches a missing earlier step.
 The tool does not choose the task location, merge branches, grant authorization,
-write review verdicts or create commits. Every integration first requires approval
-of its concrete plan, including its verification and cleanup scope. Pending task
+write review verdicts or create commits. Integration requires authorization of
+the concrete source set, target and selected operations, including any cleanup.
+An existing explicit authorization remains valid; the publisher does not obtain
+a second approval or choose a different verification path. Pending task
 changes may be recorded in an explicitly unverified local working commit before
 synchronization; the canonical profile then verifies the complete combined result
 once. Working commits are not passing evidence.
@@ -902,7 +915,7 @@ task changes are already committed and no merge commit remains pending.
 
 Once all four scoped approvals cover the final source, baseline, partition and
 applicable evidence, record the consolidated result. The
-[review procedure](../../.agents/skills/code-review/SKILL.md#reuse-scoped-approvals)
+[review procedure](../../.agents/references/review-common.md#reuse-scoped-approvals)
 allows carrying unchanged lane approvals after comparison, without another reviewer
 invocation. Keep their original verdicts and identities; only the consolidation
 identifies the final source. This does not change canonical test-evidence validity.
@@ -966,7 +979,9 @@ python tools/verification/verify.py integrate publish record .agent/tmp/verifica
 
 `accept-tested` creates a sealed record explicitly marked `confirmed-fast-forward`;
 it does not run checks, fabricate canonical evidence or require a new commit or
-review. The confirmation must identify the exact clean source and unchanged target
+review. The caller supplies the eligible confirmation and creates this record
+before invoking `TA-close-task`; the publisher does not choose this exception or
+prepare its evidence. The confirmation must identify the exact clean source and unchanged target
 baseline. Publication rechecks the confirmation artifact, source tip/tree, ancestry
 and clean source state. Ordinary frozen records remain marked `canonical` and
 retain their full evidence requirements. Both modes use the same conditional

@@ -1,160 +1,121 @@
-# Task Location and Local Integration
+﻿# Task location and local integration
 
 ## Choose the Task Checkout
 
-Before each new implementation task, identify the current checkout and branch
-with native Git. Ask whether to continue there or create a new task worktree,
-including on the primary branch and in an existing task worktree. Name the current
-context in the question. Without an answer, continue only read-only discovery or
-planning. Never infer relocation permission from directory names or existing
-worktrees. An explicit instruction to work here, on a named branch, or in a new
-worktree answers the question; reuse that choice for corrections and continuation.
-In a new session, ask when the prior choice cannot be established.
+Before new implementation, identify the current checkout and branch with Git.
+Establish whether to work there or in a new worktree, including when already in a
+worktree. An explicit location/new-worktree instruction answers this choice; reuse
+it for corrections and continuation. If missing, ask with the current context and
+continue only read-only discovery/planning meanwhile. Do not infer location from
+a directory name or relocate a branch implicitly.
 
-Selecting a new worktree authorizes its necessary task branch. Place it beside
-the primary checkout as `../<repo_name>-<branch_name>`; no second placement
-question is needed. Use independent physical fixtures, references, `.env`, Cargo
-caches and graph data, with no junctions or shared targets. Follow
-[git-worktree](../skills/git-worktree/SKILL.md).
+A new worktree authorizes its branch beside the primary checkout at
+`../<repo_name>-<branch_name>`, without a second placement question. Use
+[TA-start-plan](../skills/TA-start-plan/SKILL.md) and existing `tools/worktree.ps1`:
+independent physical fixtures, references, configuration and graphs; no junctions,
+shared targets or shared Cargo cache. Asset/configuration repair is the separately
+selected [TA-repair-worktree](../skills/TA-repair-worktree/SKILL.md).
 
-A disposable detached worktree is allowed without a location question for a
-bounded test or diagnostic. Keep the real implementation and final commits in
-the selected checkout. Reproduce the intended dirty files and fixtures when
-testing a dirty candidate; baseline HEAD alone does not identify it. Report the
-experiment and useful conclusions, check ownership and remove the test checkout.
-Its results cannot replace canonical acceptance evidence from the selected
-checkout. Failed cleanup remains outstanding work.
+Bounded detached diagnostics retain their existing tool exception without a new
+location question. Keep real implementation in its selected checkout, reproduce
+the intended dirty inputs/fixtures, and report useful conclusions. Such results do
+not replace canonical evidence from the real candidate. Check ownership and remove
+the diagnostic checkout; failed cleanup remains outstanding.
 
 ## Authorization and Preparation
 
-An integration request may select one task or several branches/worktrees as one
-batch. Resolve the exact source set, stable task IDs, plan copies, dependencies
-and immutable source tips `S_i` during read-only discovery. A registered checkout
-does not establish task completion; committed-work selection excludes pending
-changes unless explicitly approved. Present one approval plan covering the full
-set, merge order, explicitly selected assembly checkout, immutable target `B`,
-combined verification, closure records and per-source cleanup. Do not relocate
-or create an assembly checkout implicitly.
+Distinguish synchronization, commits, publication and cleanup. Supplied approval
+must identify exact source/target branches and checkouts, immutable target `B`,
+selected pending scope, method, verification location/scope, closure records and
+any cleanup paths. An existing concrete authorization remains valid; do not ask
+again merely because a separate atomic operation starts. Missing authorization or
+a material source/scope/method/baseline change returns to the caller for a decision.
+No local operation implies fetch, push or remote branch deletion. Work selected on
+the primary branch uses ordinary preparation, without a self-merge or removal.
 
-Distinguish ordinary work, commit authorization, merge authorization and complete
-local integration with cleanup. A commit alone permits neither integration nor
-branch/worktree removal. Use [git-close-task](../skills/git-close-task/SKILL.md)
-for complete local integration, task closure and cleanup. Before every integration,
-including fast-forward, inspect state read-only, present the concrete plan and
-wait for explicit user approval before any repository mutation. Name source and
-target branches and checkouts, selected pending changes, integration method,
-verification location and scope, commits, closure record and exact cleanup paths.
-Include any unresolved tested-commit question in this approval exchange. Approval
-covers routine corrections and the stated cleanup; material scope, method or
-baseline changes require an updated plan and approval. No local operation implies
-fetching, pushing or remote branch deletion. Work selected on the primary branch
-uses ordinary preparation without a feature branch, self-merge or removal phase.
+Synchronize exactly `B` in the selected task checkout through
+[TA-sync-master](../skills/TA-sync-master/SKILL.md). Divergent history uses a real
+merge by default; rebase needs explicit direction identifying rewritten commits.
+Do not silently squash, cherry-pick, stash, reset, relocate work or sweep unrelated
+index entries into commits. Pending conflicts return for the separately selected
+[TA-resolve-merge-conflicts](../skills/TA-resolve-merge-conflicts/SKILL.md). A narrow
+sync/conflict operation does not launch review, verification or publication.
 
-For integration between different branches, resolve the primary branch and its
-checkout, then record its immutable commit as `B`. Inspect both checkouts, index
-entries, pending Git operations and unrelated work. Select one approved path:
+The existing integration exceptions remain precise:
 
-- **Pending task changes:** create a local working commit of only the approved
-  changes without first running tests, audits, review or batch preparation. This
-  is a narrow exception to ordinary commit gates and diary timing: mark the commit
-  as awaiting integration verification and record it in the final closure entry.
-  Then synchronize exactly `B` and verify the complete result, even if the working
-  commit makes publication a fast-forward. Do not claim this commit was tested.
-- **Clean committed branch with divergent history:** synchronize exactly `B`,
-  then verify the complete result. Prior commit test status does not change this
-  requirement; do not verify the old branch separately before synchronization.
-- **Clean committed branch allowing target fast-forward:** when `B` is an
-  ancestor of the unchanged source tip `C`, establish whether exactly `C` was
-  already verified. Use clear current-session evidence or ask the user. Only an
-  affirmative determination, included in the approved plan, permits publication
-  without new tests, audits, review or commits. Unknown or working status requires
-  normal integrated verification. Any new content, including a closure diary
-  edit, returns to the verified path. Record user confirmation as confirmation,
-  not as freshly executed tests or reconstructed canonical evidence.
+- Approved pending task changes may receive an unverified local working commit
+  before tests/audits/preparation/diary. Mark it awaiting integration verification
+  and record it in final closure. Synchronize `B` and verify the full result even
+  when that commit makes publication a fast-forward. It is never a tested-tip shortcut.
+- Divergent committed history requires synchronization followed by complete
+  combined verification, regardless of source-only evidence.
+- Only one clean unchanged source tip `C` already containing `B`, with committed
+  closure content and supplied affirmative evidence/confirmation that exactly `C`
+  was tested, can use the approved unchanged fast-forward exception. Unknown or
+  working status requires canonical verification. Any new content, including a
+  diary edit, loses this exception. Confirmation is not fresh test evidence.
 
-Synchronize in the selected task checkout. Use a real merge for divergent
-histories by default; rebase requires an explicit user instruction and an approved
-plan identifying rewritten commits. Do not silently squash. Do not stash, reset,
-relocate work or sweep unrelated index entries into a working commit. An ambiguous
-or unrelated obstruction requires a scoped decision.
+A merge commit can finish before final acceptance only within the approved
+working/integration-assembly exceptions. Other synchronization returns its pending
+merge candidate when ordinary commit prerequisites are absent. A clean pending
+merge is a supported handoff to separately selected preparation, canonical
+verification/review and mechanical completion. The existing freeze record captures
+`merge_heads`; the prepared first commit must consume those parents before sealing.
+Only unresolved conflicts require the conflict-resolution operation. Neither route
+grants missing commit authority or starts the subsequent steps automatically.
+Every complete candidate requires separate semantic reconciliation of code, tests and all tracked
+Markdown changed on either side, including conflict-free paths and both move
+endpoints. Compare common-base, both branches and merged code; preserve decisions
+in diary/merge records. A clean textual merge is not semantic agreement.
 
-For several sources, assemble every approved `S_i` and `B` in the selected
-source checkout using real merges in dependency order. Preserve original commits;
-rebase, cherry-pick or squash require explicit direction. Intermediate local merge
-commits needed to assemble the batch may precede final preparation and diary
-recording. This narrow exception does not accept those commits individually:
-mark them as awaiting combined verification, record their identities in the
-closure entry, and retain all source worktrees. Complete assembly before the
-canonical profile. Its recorded HEAD binds the exact assembled commit history;
-the frozen partition describes only the remaining mechanical commits.
+## Combined Sources
 
-Prepare one combined batch against `B`, reconciling all selected histories and
-the target, with task-specific closure records and tracked plan removals.
-An explicit request for combined verification overrides the unchanged-tested
-fast-forward shortcut. Several sources always use canonical combined verification;
-source-only evidence cannot establish their combination. Integration alone does
-not close a roadmap stage or trigger milestone claims.
+The advanced protocol remains at the
+[integration tool reference](../../tools/verification/README.md#selected-source-set).
+Select the exact task IDs, plan copies, dependencies, original tips `S_i`, assembly
+checkout, merge order and `B` before mutation. Registered worktrees do not establish
+completion; committed selection excludes pending changes unless approved. Assemble
+all selected sources and `B` using real merges, preserving original commits.
+Intermediate assembly commits may precede final preparation/diary but await combined
+verification; record their identities and retain source worktrees.
 
-Reconcile code, tests and every tracked Markdown path changed on either side of
-a divergent merge, including conflict-free paths and both move endpoints. Review
-the common-base version, both branches and the proposed result against the merged
-code. Preserve decisions in the diary and merge message. A clean textual merge
-does not establish semantic agreement.
-
-Except for the approved unchanged fast-forward path, prepare the complete
-integrated candidate relative to `B`, including working commits, committed task
-work and pending changes. Follow [batch preparation](git-commits.md), with
-compliance, applicable coverage review, language resolution, diary preparation,
-independent approval and canonical verification. Divergent integration retains
-full ordinary-workspace verification. Existing milestone triggers remain intact.
-Freeze the tree, complete partition/messages, `B`, passing evidence and final
-review together. Mechanical commits must consume exactly that frozen partition;
-do not rerun expensive profiles solely because those commits change HEAD.
+Verify the assembled history and complete remaining candidate once against `B`.
+The canonical record's HEAD binds assembly; the frozen partition covers only later
+mechanical commits. Several sources always require combined canonical evidence;
+source-only passes or sequential publication cannot replace it. Explicit combined
+verification also overrides the single-source tested-tip exception. Integration
+alone is not roadmap/milestone closure. The V1 publisher accepts one selected task;
+advanced multi-source work uses its explicit combined protocol, never a hidden fallback.
 
 ## Conditional Publication and Cleanup
 
-Freeze the approved immutable source set with its review digest. Publication
-requires every original source tip to remain in the accepted history and every
-other source branch and checkout to remain unchanged and clean. Native prepared
-reference locks cover all selected sources and the single target transition.
-The assembly branch's cleanup tip is the final accepted `C`; other cleanup tips
-remain their original `S_i`.
+[TA-close-task](../skills/TA-close-task/SKILL.md) consumes already committed, reviewed,
+verified and sealed readiness or the eligible supplied tested-tip record. It
+publishes exactly `B -> C` through the existing conditional tool or refuses stale
+prerequisites. Require `B` in `C`'s ancestry, the accepted tree equal to `C^{tree}`,
+clean unchanged source state and valid evidence. A separate SHA comparison followed
+by an ordinary merge is insufficient. If master advances, return `master_changed`;
+the caller must select new synchronization/review/verification under updated authority.
+No publisher repair, new checks, commits or content edits are allowed.
 
-Follow [git-close-task](../skills/git-close-task/SKILL.md) and the
-[integration command reference](../../tools/verification/README.md#local-integration).
-Publication must change the primary branch from exactly `B` to the sealed source
-commit `C`, or refuse. Require `B` to be an ancestor of `C`, the approved tree to
-equal `C^{tree}`, clean source state and matching retained evidence or the explicit
-unchanged fast-forward confirmation. A separate
-SHA comparison followed by an ordinary merge cannot supply this guarantee.
-If the target advances, stop publication, present an updated plan and obtain
-approval before synchronizing its new immutable tip into the task branch.
-Prepare the new combined scope and review, and rerun the canonical profile.
-Reuse only demonstrably valid groups; conservative reruns are acceptable.
+For advanced combined publication, every original source tip remains in accepted
+history; other sources stay clean/unchanged. Prepared reference locks cover all
+sources and one target transition. Assembly cleanup uses final `C`; other source
+cleanup uses original `S_i`. Reference updates are atomic; filesystem changes are
+not. Recover only known consistent transitions through existing phase records;
+observed interference blocks recovery. Never blindly reset or delete uncertain locks.
 
-The tool holds a shared process lock and native prepared reference locks while
-advancing the clean target checkout and conditionally publishing the exact commit.
-An interruption leaves a recoverable phase record. Inspect actual references,
-index and files; recover a known consistent transition or stop for a concrete
-decision. Never blindly reset. Reference updates are atomic; filesystem changes
-are not. Locks coordinate publishers and reference writers, not arbitrary editors.
-Observed interference blocks publication or recovery.
+After confirmed publication and committed closure, separately authorized
+[TA-cleanup-task](../skills/TA-cleanup-task/SKILL.md) rechecks exact tips, ancestry,
+ownership, pending work and active commands. Preserve later/unrelated work. Remove
+all ignored contents with the task worktree without inventorying, hashing, comparing,
+copying or archiving them. Use existing non-forced teardown from the surviving
+checkout; confirm directory and registration removal, then conditionally delete
+only the unchanged integrated branch not checked out elsewhere. No recursive
+fallback after Git failure, unrelated pruning or implicit bootstrap execution.
 
-After confirmed publication, revalidate the exact source tip, ancestry, ownership,
-pending changes and active commands. Remove all ignored files with the source
-worktree, including local configuration, references, caches, reports and verification
-records. Do not inventory, hash, compare, copy or archive them during cleanup.
-Review the integration diff for bootstrap procedure changes and recommend any
-needed bootstrap steps on the primary branch; do not run bootstrap automatically.
-A reused checkout with later work remains intact. Run teardown from the surviving checkout; protect
-the primary checkout and unrelated paths. Use safe native removal, check exit
-codes and confirm both directory and registration removal. Never force removal,
-prune unrelated registrations or recursively delete a leftover directory after
-Git failure. Delete only the unchanged integrated local branch, conditionally,
-after confirming it is not checked out elsewhere. Report publication separately
-from cleanup failure; retry cleanup without repeating verification or commits.
-Retain the published control record under `.agent/tmp/integration/<batch-id>/` in the
-surviving target checkout until cleanup is complete. This record is operation
-state, not an archive of ignored source contents. Attempt and report each selected
-source separately; preserve later work, record partial outcomes and resume from
-that surviving record without repeating verification or publication.
+Keep the published control record under `.agent/tmp/integration/<batch-id>/` in the
+surviving target until cleanup completes. Report publication and each cleanup
+outcome separately; partial cleanup retries use that record without re-verification,
+new commits or publication. Review bootstrap procedure changes and recommend needed
+primary-checkout steps without running them automatically.

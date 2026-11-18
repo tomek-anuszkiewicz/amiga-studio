@@ -7,15 +7,17 @@ checks or configuration. For everyday collaboration, start with
 ## Agent Tooling Maintenance
 
 
-- Rules own obligations, scope, and exceptions. Skills own steps, commands,
-  diagnostics, and templates; conditional examples live in the owning skill's
-  `references/` directory. Mechanical requirements belong in scripts and tests.
+- The shared contract and advance rules own authorization, requirements and
+  exceptions. Review references own their detailed result criteria. Skills own
+  one operation's steps, commands, diagnostics and templates; supporting examples
+  live with the owning procedure. Scripts and tests own mechanical checks.
 - Keep verification orchestration and coverage result processing in `tools/verification/`,
   worktree management in `tools/worktree.ps1`, and concrete audits and checks in `tools/verification/checks/`.
   The shared diary appender lives in `tools/log_diary.py`.
-  A specialized script used by at most one skill belongs under that skill's
-  `scripts/`; a shared script uses the directory matching its role. Supporting
-  references count as part of their owning skill, not as additional consumers.
+  Keep a specialized script with its authoritative operation when closely related
+  skills only consume the same check. A genuinely shared tool uses the directory
+  matching its responsibility. Supporting references are part of their owner,
+  not additional public operations.
 - Adding, removing, or renaming a rule requires updating active links and
   affected procedure references. No manual audit registry is required.
   Historical diary references remain historical. Reach design specifications
@@ -25,9 +27,11 @@ checks or configuration. For everyday collaboration, start with
   their limits; static checks do not establish complete behavioral enforcement.
 ## Shared Verification Routing
 
-Skills select checks and diagnostics through `python tools/verification/verify.py`.
-Use its `test`, `check` and `runner` subcommands; completion uses `commit` and
-`milestone`. The command reference is [tools/verification/README.md](../../tools/verification/README.md).
+The caller selects focused, batch or milestone verification before invoking its
+atomic skill. Each uses `python tools/verification/verify.py` for its assigned
+scope: `test`, `check` and `runner` for focused work, `commit` for batch evidence,
+and `milestone` at its own trigger. The command reference is
+[tools/verification/README.md](../../tools/verification/README.md).
 Skill-owned scripts keep their own entry points. Workflow operations such as
 bootstrap, conversion, indexing, worktree management, diary appending, tool
 installation and recording approved reference baselines remain separate.
@@ -35,14 +39,14 @@ installation and recording approved reference baselines remain separate.
 ## Recording and Validating Changes
 
 Commit policy is in [git-commits.md](../rules/git-commits.md); diary policy
-is in [diary-maintenance.md](../rules/diary-maintenance.md). Inspect the
-diff, append the diary entry with verification already observed, and run the
-batch gates on the complete final candidate. Put the profile outcome
-in commit messages and the final report; continue the same batch after corrections
-using validated evidence. Prepare all entries and commit messages before freeze.
-Obtain the independent [code review](../skills/code-review/SKILL.md) required by
-commit policy on that same snapshot. Stage only the agreed paths when preparation or a commit
-is authorized, preserving unrelated index entries:
+is in [diary-maintenance.md](../rules/diary-maintenance.md). At the selected
+[preparation step](../skills/TA-prepare-batch/SKILL.md), inspect the diff and prepare
+entries with verification already observed. Verification and the four independent
+[review lanes](review-common.md) are separately selected operations; missing
+reports remain readiness prerequisites. Put the final profile outcome in commit
+messages and the completion report. Prepare all entries and messages before
+freeze, and retain only valid evidence after corrections. Stage only agreed paths
+when preparation or a commit is authorized, preserving unrelated index entries:
 
 ```powershell
 python tools/log_diary.py `
@@ -137,14 +141,23 @@ otherwise verified candidate. Test changes to this tool with
 ## Configuration and Reference Provisioning
 
 Project MCP registration is in [`.codex/config.toml`](../../.codex/config.toml).
-Agent roles, model selections and permissions are defined in
-[`.codex/agents/`](../../.codex/agents); review those files when changing a role.
-Check effective client configuration before claiming that a changed setting is
-active in a running session.
+Agent definitions live in [`.codex/agents/`](../../.codex/agents). The
+[runtime reference](workflow-runtime.md) owns registration, invocation settings and
+permission limits. Check effective configuration and actual loading before claiming
+that a definition is active. Editing a file does not replace the governing
+instructions of an existing session.
+
+Every selected TA operation uses the [invocation contract](workflow-contract.md)
+and [result tool](../../tools/workflow/README.md). Keep dual text/JSON results,
+identities, round counts and evidence limits. The validator checks the
+representation; it does not run the workflow, grant approval or certify canonical
+checks. Missing prerequisites return control to the caller. The caller applies
+[next-step guidance](workflow-guidance.md) automatically, then waits for selection.
+Existing authorization covers its stated scope; no skill selects its own next phase.
 
 The [developer guide](../../docs/developers.md) owns setup for RAG, Graphify and external
 sources. Accepted project documentation is indexed through
-[index-amiga-rag](../skills/index-amiga-rag/SKILL.md). Converted references
+[TA-index-amiga-rag](../skills/TA-index-amiga-rag/SKILL.md). Converted references
 are produced by the standalone [PDF](../../tools/bootstrap/pdf-to-markdown/README.md)
 and [HTML](../../tools/bootstrap/html-to-markdown/README.md) programs during initial
 provisioning. Routine agent work reads the resulting Markdown and assets.

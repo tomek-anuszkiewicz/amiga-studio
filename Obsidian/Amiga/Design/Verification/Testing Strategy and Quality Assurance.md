@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "testing"
 status: "active"
 created: 2026-09-14
-updated: 2026-11-16
+updated: 2026-11-17
 related: ["[General Architecture.md](../General%20Architecture.md)", "[CPU SingleStepTests.md](CPU%20SingleStepTests.md)", "[CPU Instruction Benchmarking.md](../Performance/CPU%20Instruction%20Benchmarking.md)", "[Machine Loop.md](../Machine%20Loop.md)", "[Platform Quirks and Invariants Catalog.md](../Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
 tracked_paths:
   - ".config/nextest.toml"
@@ -68,12 +68,15 @@ Retain these evidence boundaries:
   A surviving child after verifier termination is outside its checkout lock.
   No lifecycle or Git hooks are used.
 
-[Scoped compliance](../../../../.agents/skills/verify-spec-compliance/SKILL.md),
-[vault integrity](../../../../.agents/skills/obsidian-vault-linking/SKILL.md),
-[semantic milestone review](../../../../.agents/skills/audit-semantic-parity/SKILL.md)
-and [independent batch review](../../../../.agents/skills/code-review/SKILL.md)
+[Scoped compliance](../../../../.agents/skills/TA-review-spec-compliance/SKILL.md),
+[vault integrity](../../../../.agents/skills/TA-audit-vault-links/SKILL.md),
+[semantic milestone review](../../../../.agents/skills/TA-review-semantic-parity/SKILL.md)
+and [independent batch review](../../../../.agents/references/review-common.md)
 retain their own triggers. The mechanical verifier does not execute or replace
-those reviews. Diary and roadmap closure remain separate duties.
+those reviews. Each selected assessment returns findings without repairing them
+or starting another operation. Diary and roadmap closure remain separate duties.
+Required unresolved gaps still block readiness when the caller has not selected
+their repair.
 
 Host pacing, FPS and graphical guest presentation are evaluated manually;
 dedicated automated graphical execution/image campaigns are retired. Independent
@@ -238,7 +241,7 @@ temporary compensating patches.
 When exploratory changes accumulate, compare symptoms, patch locations, and
 applied mechanisms to determine whether they share an upstream cause. Scope,
 reproduction and reference conflicts follow
-[structural-root-cause.md](../../../../.agents/rules/structural-root-cause.md) and
+[defect procedure](../../../../.agents/references/defect-resolution.md) and
 [spec-compliance.md](../../../../.agents/rules/spec-compliance.md).
 
 ---
@@ -263,9 +266,9 @@ Select existing checks for the actual change. The following categories describe 
 suite placement and behavioral protection. Use `test_` names for test files and
 subdirectories for shared helpers. The
 [architecture checker](../../../../tools/verification/checks/check_architecture.py)
-enforces naming and executable existing suites;
-[file cohesion](../../../../.agents/rules/file-size-and-cohesion.md) owns production
-file limits. The architecture gate's required suite filenames do not prove
+enforces naming, executable existing suites and configured production file
+limits; [architecture criteria](../../../../.agents/references/architecture-criteria.md)
+own the semantic cohesion review. The architecture gate's required suite filenames do not prove
 behavioral coverage or require a new file for every module. Evaluate each
 fixture's independently expected behavior and failure modes.
 

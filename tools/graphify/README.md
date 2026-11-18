@@ -42,7 +42,7 @@ set `PYTHONHASHSEED=0` only when absent, and use UTF-8 output. Worker limits ret
 
 Structural refresh preserves valid project semantics and removes excluded/deleted
 sources; it does not refresh document meaning. Initial and requested semantic
-extraction uses the host agent through the [Graphify skill](../../.agents/skills/graphify/SKILL.md).
+extraction uses the host agent through the [semantic extraction skill](../../.agents/skills/TA-extract-graph-semantics/SKILL.md).
 The explicit `semantic.py prepare --graph project` / `apply --graph project --run`
 commands stage host extraction chunks with source-and-prompt freshness checks;
 the skill owns their execution procedure. No new API service, API key or background
@@ -53,7 +53,7 @@ For native traversal without query-stamp, query-log or bytecode writes, use
 `python tools/graphify/read.py query "<question>" --graph graphify-out/graph.json`.
 The pinned raw CLI writes a query stamp; the adapter suppresses that incidental
 writer only in its process and leaves the installed package unchanged. For the explicit `--graph` / optional directory
-`--scope` helper, use the [query procedure](../../.agents/skills/graphify/references/query.md).
+`--scope` helper, use the [query procedure](../../.agents/skills/TA-query-graph/references/query.md).
 Do not install the upstream skill over the maintained repository procedure.
 
 Focused checks:

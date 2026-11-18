@@ -1,168 +1,102 @@
-# Batch Preparation and Atomic Commits
+﻿# Batch authority and readiness
 
 ## Authorization and Ordinary Completion
 
-Ordinary implementation, fixes, reviews and documentation work authorize the
-requested changes and relevant focused checks. They do not authorize staging or
-commits, or trigger full coverage measurement, language scans, graph refresh,
-documentation synchronization or broad audits. Reuse context and evidence while
-their inputs remain valid. Handle requirement conflicts immediately.
+Ordinary implementation, fixes, review and documentation authorize scoped changes
+and relevant focused checks. They leave work unstaged and do not automatically
+start coverage, language scans, graph refresh, synchronization, broad audits or
+closure. Reuse context and evidence while inputs remain valid; handle requirement
+conflicts immediately.
 
-An explicit request to **prepare a batch** authorizes staging its selected scope,
-but not creating commits. A request to **commit** authorizes preparation and the
-planned commits without another confirmation. Keep the request active through
-routine in-scope corrections and user answers. Ask only for substantive unresolved
-decisions, including protected verification or reference changes.
+A batch-preparation request authorizes staging its selected scope, not commits.
+A commit request authorizes preparation and its commits. Preserve unrelated index
+entries, including staged versions of files changed later. Existing authorization
+persists through routine corrections; it does not grant protected changes,
+integration, cleanup or push. A request may explicitly cover several operations;
+narrow skills never infer the rest of the lifecycle. The
+[checkout choice](git-merge-commits.md#choose-the-task-checkout) remains required.
 
-Follow the [task checkout choice](git-merge-commits.md#choose-the-task-checkout)
-before new implementation. Preparation does not authorize a new task destination.
-Commit-only authorization does not include merging or removal; complete local
-integration follows [its owning rule](git-merge-commits.md#authorization-and-preparation).
+Commits are mandatory for actual minor-roadmap or major-milestone closure; ordinary
+work is not closure. The user otherwise controls commit timing. Partition coherent
+concerns with their implementation, tests, documentation and diary; user-selected
+scope/partition takes precedence. Session provenance is evidence, not ownership of
+all dirty paths. Integration's unverified working/intermediate-merge and unchanged
+tested-tip exceptions remain narrowly owned by [integration policy](git-merge-commits.md).
 
-Approved integration has narrow exceptions owned by that rule: a local
-working commit may precede all verification and record its status in the final
-closure diary entry; intermediate real batch merges may likewise await the final
-combined verification and closure record; an unchanged, already verified single-source fast-forward result may be
-published without a new preparation batch. Working commits are not acceptance
-evidence. Ordinary commit requests retain all gates and never imply integration.
+## Readiness Before Freeze
 
-A request to commit, including a commit required by roadmap closure, delegates
-commit partitioning to the agent. Inspect available session/task records, pending
-diffs and recent history to identify the coherent changes within the authorized
-scope. Split independent fixes or features into separate commits automatically;
-one coherent change may remain one commit. Session boundaries are evidence, not
-a requirement to separate tightly coupled work. Resolve shared files by hunks
-and order dependent commits so each is coherent. Do not include unrelated work
-merely because it is pending. Report the planned groups briefly, without asking
-for routine partition approval, then list the resulting commit count, IDs and
-scopes at completion. An explicit user-selected scope or partition takes priority.
+The caller selects preparation, required assessment, verification and repairs as
+separate operations. [TA-prepare-batch](../skills/TA-prepare-batch/SKILL.md) establishes
+the exact candidate, partition/messages, authorized staging and diary/closure content;
+missing prerequisites are reported rather than launched. Readiness requires:
 
-Commits remain mandatory when closing a minor roadmap point or major milestone.
-Do not label ordinary work as roadmap completion to trigger a commit. Outside
-those closure points, the user controls commit timing.
+- The full selected candidate, including new files and all intended hunks, isolated
+  from unrelated/concurrent work. The verifier runs the working tree, not just the
+  index. Ordinary comparison is against HEAD; integration compares the whole result
+  against immutable target base `B`.
+- Scoped specification compliance, compatible documentation enrichment, resolved
+  language findings and applicable changed-code coverage assessment. All in-scope
+  required gaps must be resolved, including new scenarios selected by the caller.
+- Every prepared commit's diary entry, ordering and English Conventional Commit
+  message before final checks/freeze. Record only already observed checks in the
+  diary; final profile outcome belongs in the commit message and final report.
+- Four fresh independent `TA-code-reviewer` instances covering behavior,
+  architecture, tests/evidence and documentation. Use their fixed lane skills and
+  [review contract](../references/review-common.md), with no inherited author history.
+  Available slots may require waves. Author self-review or a prior audit is no substitute.
+- Passing canonical commit evidence for the combined final candidate, plus milestone
+  evidence only at its actual trigger. Failed, missing, interrupted or invalidated
+  gates block freeze regardless of focused passes or environmental explanations.
+- Applicable project-only Graphify freshness, completed candidate edits and one
+  [storage observation](../references/agent-tooling.md#local-artifact-storage) after
+  builds/diagnostics and before freeze. Reference graphs never refresh implicitly.
 
-## Prepare One Stable Batch
-
-1. Select sessions, paths/hunks and commit groups, including any
-   requested milestone scope. Session provenance guides grouping; a shared dirty
-   directory does not establish authorship. Resolve dependencies and integration
-   conflicts now. Use separate worktrees for simultaneous writers only after the
-   user's location choice; follow
-   [merge policy](git-merge-commits.md) for divergent integration.
-2. Establish a candidate containing exactly that batch. The verifier executes the
-   working tree, not just staged files. Isolate mixed or actively changing work
-   using [git-worktree](../skills/git-worktree/SKILL.md) after that choice; preserve unrelated source,
-   staged entries and history. Compare pending changes against the current `HEAD`.
-   For local integration, compare the complete candidate against the recorded
-   immutable primary-branch base instead. Later edits belong to a later batch.
-3. Perform [specification compliance](../skills/verify-spec-compliance/SKILL.md),
-   compatible documentation enrichment, necessary refactoring, language resolution
-   and applicable [coverage review](unit-testing-policy.md#coverage-during-development-and-review).
-   Prepare every commit's diary entry, ordering and English Conventional Commit
-   message before starting expensive verification. Check the prepared partition
-   with lightweight Git comparisons, including `git diff --check`, first.
-   Each coherent concern includes its implementation, tests, documentation
-   and diary entry; do not split a feature merely by file category. Record checks
-   already observed in the diary, and the final profile outcome in commit messages
-   and the completion response. Do not rewrite the diary just to repeat that outcome.
-4. Arrange the four independent [review lanes](../skills/code-review/SKILL.md),
-   each with a separate `code_reviewer` started without inherited conversation
-   history. Together they cover the cumulative change, affected interactions and
-   proposed partition. Start lanes concurrently within available slots. Review may
-   begin before final tests. Route corrections only to affected lanes and carry
-   unchanged scoped approvals under the skill's comparison procedure without
-   re-invoking their reviewers. All four applicable verdicts must cover the final
-   content and evidence; a changed global fingerprint alone does not reopen a lane.
-   Author self-review is not a substitute.
-5. Finish any graph refresh that changes candidate content. Resolve cheap blockers
-   and pending requirement decisions before expensive tests where possible. Run
-   the canonical profile for the entire candidate. Use its preliminary gates;
-   do not add a duplicate standalone language pass by default. Continue after
-   corrections under the evidence rules below. Run milestone verification and
-   closure procedures only at their own [trigger](roadmap-maintenance.md).
-6. Measure [artifact storage](../references/agent-tooling.md#local-artifact-storage)
-   once after builds and diagnostics, before freeze. Record observation time and
-   limitations; reuse that observation in the completion response.
-7. Confirm all four applicable scoped **APPROVED** verdicts, renewed or validly carried,
-   all required passing evidence, exact
-   candidate and complete commit partition. Freeze them together.
-
-After candidate edits stop, overlap independent work: start the independent review lanes,
-the required project-only Graphify refresh (`python tools/graphify/refresh.py --graph project`) and the canonical verifier in the background when
-their outputs are isolated. Graphify may overlap verification when it writes only
-ignored `graphify-out/` artifacts; finish it before freeze. Review may inspect the
-stable candidate while checks run, then assess their final evidence. Await every
-required result and inspect its exit status; background launch is not completion.
-Do not edit validated inputs, run competing graph writers, or launch duplicate
-test commands beside a canonical profile that already selects them. Serialize
-commands sharing Cargo targets or coverage reports. Limit Graphify extraction
-workers when it competes with compilation, and compare elapsed time before
-claiming an improvement. The verifier owns bounded internal scheduling and its
-resource exclusions, documented in the [verification reference](../../tools/verification/README.md#bounded-parallel-execution).
-Subagents do not replace its coordinator or final verdict.
-
-Compatible documentation and in-scope audit corrections belong to this same
-preparation; they do not create a second approval channel. Optional behavior,
-requirement changes, protected checks and references retain their existing
-approval boundaries. Broader milestone audits can satisfy overlapping scoped
-work when their coverage and candidate match.
+Independent checks/reviews may overlap after candidate edits stop when their
+outputs and resources are isolated. Serialize shared Cargo/coverage targets;
+await results and exit statuses. A background launch is not completion. The
+verifier owns its internal scheduling; do not dispatch duplicate selected suites.
 
 ## Canonical Verification and Continuation
 
-Use native Git and the existing verifier. The complete required check set comes
-from all pending changes against `HEAD`, or the complete integration candidate
-against its explicit immutable base; reruns come from each successful group's
-inputs. These comparisons must remain separate.
+[TA-verify-batch](../skills/TA-verify-batch/SKILL.md) executes
+`python tools/verification/verify.py commit`; integration adds
+`--integration-base <immutable-commit>`. The
+[verification reference](../../tools/verification/README.md#completion-verification)
+owns selection, artifacts and evidence validity. Repeat the same command/results
+location after corrections or interruption: successful matching groups can remain,
+failed/missing/invalidated groups must run. HEAD changes start a new ordinary batch;
+only the existing frozen mechanical-commit protocol bridges accepted integration
+commits. Coverage execution/export/summary form one evidence bundle.
 
-```powershell
-python tools/verification/verify.py commit
-```
-
-The [verification reference](../../tools/verification/README.md#completion-verification)
-owns record format, dependency boundaries and fallback behavior. Repeat the same
-command after corrections; it automatically checks evidence from the current
-batch. A changed `HEAD` starts a new batch. A diary-only correction reruns its
-language check and final aggregation while retaining valid independent results;
-other documents remain conservative inputs. After an interruption, repeat the
-same command and results directory to retain matching successful groups and
-rerun unfinished work. The checkout lock excludes another live verifier; surviving
-children after verifier termination are outside that guarantee.
-The verifier alone issues the complete final verdict. Reuse only evidence
-from this batch with matching inputs, commands, execution conditions, acceptance
-criteria and intact artifacts. Coverage execution, export and summary are one
-bundle. Failed, missing, interrupted or invalidated groups must execute; approval,
-a question or a resumed conversation is neither a pass nor an invalidation.
-
-Integration uses `commit --integration-base <commit>`; its complete comparison
-scope is separate from HEAD/source/index stability. After freeze, the integration
-tool validates the prepared partition against the resulting commits as a narrow
-mechanical bridge. This does not permit general evidence reuse across changed HEAD.
-
-Content changes return the batch to preparation. Rerun affected checks and update
-review; retain demonstrably valid independent results. Unknown impact requires
-conservative execution, up to the full profile. Never waive a failed gate with a
-focused pass or explanation, including unrelated or environment failures. Missing
-independent review also blocks freeze. Report the blocker and leave work
-uncommitted when it cannot be resolved.
+Content corrections return the candidate to preparation and affected checks/review.
+Carry an unchanged scoped approval only after comparing its relevant content,
+requirements, criteria, partition and evidence, retaining the original identity and
+comparison basis. A global fingerprint change alone does not reopen every lane.
+Unknown impact requires conservative rechecking. Never convert confirmation,
+a resumed conversation or a report-format repair into verification evidence.
 
 ## Mechanical Completion After Freeze
 
-- Create only the planned commits, each with its already prepared diary entry.
-  Validate the intended index and tree using lightweight native Git comparisons.
-  Stage selected paths explicitly; never sweep unrelated edits into the batch.
-- Do not edit diary, documentation or code between commits. Detect interference
-  before each operation, and compare the final tree with the frozen candidate.
-  Partial failure stops the sequence; retain completed commits and pending work
-  without automatic reset or history rewriting. For integration, seal the exact
-  frozen result before conditional publication through the owning merge procedure.
-- Evidence applies to the combined final candidate. Do not describe intermediate
-  commits as individually tested unless that verification was explicitly required
-  and completed during preparation.
-- Report commit IDs and the collected verification, review and storage results.
-  Do not repeat tests, audits, cleanup or storage scans after commits as routine
-  completion. Deletion and pushing require their own authorization.
+Freeze the complete candidate/partition/messages, required passing evidence and all
+four applicable approvals together. [TA-commit-batch](../skills/TA-commit-batch/SKILL.md)
+creates only authorized prepared commits and seals readiness where applicable;
+it does not repair missing prerequisites. Use lightweight native Git comparisons
+for index/tree integrity, stage selected scope only, and detect interference before
+each operation. No content or diary edits between frozen commits. Partial failure
+preserves completed commits and pending work without automatic reset or rewriting.
 
-The verifier owns deterministic architecture and code-quality gates. Invoke the
-manual [audit-code-quality](../skills/audit-code-quality/SKILL.md) only on explicit
-request or for a major branch merge. Use no hooks, wrappers, session database or
-cross-task verdict cache. Keep diagnostic artifacts under `.agent/tmp`.
+Evidence covers the combined result, not each intermediate commit unless separately
+verified. Report actual IDs, checks/reviews and retained storage observation. Do not
+repeat tests, audits or storage scans merely because mechanical commits finished.
+Publication and cleanup remain separate authorized operations.
+
+## Execution-Plan Lifecycle
+
+Keep `.agent/tasks/` plans while active, paused or blocked. Stable task IDs identify
+work across copies and continuations. On verified completion or explicit closure,
+preserve delivered scope, decisions, actual verification and limits in the next
+required DIARY/Git closure record. Transfer remaining work to an active plan or
+roadmap unless explicitly waived. Retain the plan until its closure record is
+committed; authorized cleanup then removes only unchanged copies of that closed
+plan. Closure/deletion never turns failed or unrun checks into passes. No permanent
+plan archive, hooks, session database or cross-task verdict cache is introduced.

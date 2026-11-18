@@ -483,3 +483,9 @@ epaint
 recv
 inbox
 vendored
+virtualized
+unrecovered
+whitelist
+nonportable
+defs
+textconv

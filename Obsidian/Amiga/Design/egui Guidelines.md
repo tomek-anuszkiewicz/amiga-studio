@@ -73,7 +73,7 @@ GUI widgets never execute or mutate a live machine directly.
 Organize panels by their visible responsibility so a layout change has an obvious
 source owner. The [layout tree](../../../crates/gui/src/layout/) is the living map;
 each layout file corresponds to a visually distinct dock or panel. Follow the
-[cohesion policy](../../../.agents/rules/file-size-and-cohesion.md) within that responsibility.
+[cohesion criteria](../../../.agents/references/architecture-criteria.md) within that responsibility.
 
 ---
 

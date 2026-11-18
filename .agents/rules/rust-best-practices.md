@@ -1,19 +1,32 @@
-# Rust Engineering Rules
+﻿# Rust advance requirements
 
-Applies to Rust workspace code; [Rust Guidelines](../../Obsidian/Amiga/Design/Rust%20Guidelines.md) provides design rationale. Compiler and Clippy configuration own mechanical lint settings.
+Load for Rust implementation and affected design/test work. Specifications provide
+behavioral requirements; [Rust Guidelines](../../Obsidian/Amiga/Design/Rust%20Guidelines.md)
+provides rationale. Compiler and Clippy configuration own mechanical settings.
 
-- Runtime emulation uses no `unwrap`, `expect`, `panic!`, or `unreachable!`, except for the function-scoped `clippy::panic` permission on `config::fatal_emulation_error` for internal memory-access, CPU bus-timing or mutation-capacity violations. Guest errors retain their emulated behavior. The host must terminate the failed owner and report the diagnostic without resuming execution; tests may catch the fatal panic to inspect failure but must never resume the failed fixture.
-- Use explicit wrapping arithmetic for ALU operations and cycle counters, and mask hardware fields and addresses deliberately. Use lazy fallbacks when evaluating the alternative would do work.
-- Convert guest bytes explicitly as big-endian; never pointer-cast or transmute guest buffers.
-- Keep subsystems directly owned by the machine. Do not introduce circular handles, interior-mutability/shared-threading backchannels, or core thread spawning; follow [hardware topology](hardware-bus-topology.md).
-- Custom `macro_rules!` and const-generic handlers, decoders, or execution functions are prohibited. Use concrete functions, explicit imports, and readable hardware branches.
-- Follow the visibility conventions of neighboring code and expose only what callers need.
-- Preserve warning-free compilation. Use [file cohesion](file-size-and-cohesion.md), [workspace boundaries](workspace-structure-and-reexports.md), [performance policy](performance-and-readability.md), and [testing policy](unit-testing-policy.md) rather than duplicating those requirements here.
+- Support native desktop and `wasm32-unknown-unknown`. Core emulation consumes
+  external buffers and performs no host filesystem, thread or wall-clock I/O.
+- Keep serializable/queryable snapshots (`serde::Serialize` / `serde::Deserialize`)
+  separate from runtime handles. The machine directly owns peer subsystems;
+  no circular handles, interior-mutability/shared-threading backchannels or core
+  thread spawning. Follow [physical topology](hardware-bus-topology.md).
+- Guest errors remain emulated: configurable unmapped reads return `$FF` / `$FFFF`,
+  and odd word/long accesses raise Address Error, Vector 3. Runtime code uses no
+  `unwrap`, `expect`, `panic!` or `unreachable!`, except the function-scoped
+  `clippy::panic` permission on `config::fatal_emulation_error` for internal
+  memory-access, CPU bus-timing or mutation-capacity violations. The host terminates
+  the failed owner and reports the diagnostic without resuming it. Tests may catch
+  that fatal panic to inspect failure, never resume the failed fixture.
+- Use explicit wrapping arithmetic for ALU operations and cycle counters; mask
+  hardware fields/addresses deliberately. Preserve lazy fallbacks and evaluation
+  semantics under [execution constraints](performance-and-readability.md).
+- Guest bytes are big-endian. Use explicit endian conversion, never host-endian
+  pointer casts or `transmute`. Bitwise operations and raw transfers may bypass
+  swaps only when their semantics commute with byte reversal.
+- Custom `macro_rules!` and const-generic instruction handlers, decoders or execution
+  functions are prohibited. Preserve warning-free builds and configured lints.
 
-## Named Numeric Values
-
-- Do not use unnamed numeric literals to encode domain meaning in production logic. Use named constants or existing semantic types for register flags, field masks and shifts, encoded modes, hardware addresses, timing values and domain limits, even when used only once. Comments and hexadecimal or binary notation do not replace semantic names.
-- Name the meaning, not the number: prefer `MASK_CRB_INPUT_MODE` over `MASK_03`. Reuse authoritative definitions; place new constants in the nearest owning module and share them only where needed. Equal numeric values with different meanings do not need a shared constant.
-- Prefix constant names with `REGISTER_` for register addresses, offsets and selectors, `BIT_` for individual flags and bit positions, and `MASK_` for masks that select, clear or preserve fields or groups of bits. Use the prefix even inside a dedicated namespace, followed by the semantic name (for example, `REGISTER_CRA`, `BIT_CONTROL_START`, `BIT_CRB_INPUT_MODE_SHIFT`, `MASK_CRB_INPUT_MODE`). Choose by meaning, not by the numeric value; encoded modes, timing values and limits keep their own semantic names.
-- Keep literals whose meaning is clear from the operation, such as zero comparisons, unit increments, ordinary indexing and explicit byte/word width truncation. This exception does not cover a register flag or encoded mode merely because its value is `0` or `1`.
-- Test inputs and expected values may retain literal hardware encodings when they independently verify the contract. Do not replace an independent expected encoding with the implementation constant in a way that would hide an incorrect definition.
+For affected crate/export/CPU layout changes load [workspace boundaries](workspace-structure-and-reexports.md).
+Detailed naming, visibility, accessors, inlining and cohesion standards are owned by
+[architecture review](../references/architecture-criteria.md); consult them for an
+assigned finding or relevant design question, not as an unconditional startup read.

@@ -20,7 +20,7 @@ class SemanticTests(unittest.TestCase):
             root = Path(directory)
             repository = Path(refresh.__file__).resolve().parents[2]
             shutil.copyfile(repository / ".graphifyignore", root / ".graphifyignore")
-            prompt = root / ".agents/skills/graphify/references/extraction-spec.md"
+            prompt = root / ".agents/skills/TA-extract-graph-semantics/references/extraction-spec.md"
             prompt.parent.mkdir(parents=True)
             prompt.write_text("Fixture extraction contract.")
             doc = root / "design.md"

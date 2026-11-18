@@ -1,35 +1,24 @@
-# Performance and Readability
+﻿# Execution semantics and performance
 
-Readability principles apply to all project code. Hot-path constraints apply to
-emulation execution, memory access, and interrupt paths.
+Load for execution-path refactoring and requested performance work. Preserve
+short-circuit evaluation, evaluation order, side effects and hardware timing when
+extracting helpers or naming predicates. Do not eagerly compute an alternative
+that the original branch would skip.
 
-## Refactoring Execution Logic
+Execution, memory-access and interrupt hot paths allocate no heap memory. Use
+fixed-capacity or in-place state and contiguous arrays. Avoid cascaded runtime
+opcode/size/addressing dispatch; concrete specialized handlers and flat dispatch
+must remain traceable to hardware phases. Language prohibitions belong to the
+[Rust rule](rust-best-practices.md), and detailed readability/inlining acceptance
+belongs to [architecture criteria](../references/architecture-criteria.md).
 
-Preserve short-circuit evaluation, evaluation order, side effects, and hardware
-timing. Do not eagerly compute a named boolean when the original branch would
-skip a call or memory access. Preserve these semantics when extracting helpers.
+Requested investigation uses [TA-profile-emulation](../skills/TA-profile-emulation/SKILL.md).
+Selected implementation uses [TA-optimize-emulation](../skills/TA-optimize-emulation/SKILL.md).
+Preserve an original baseline before mutation, comparable active/idle measurements,
+correctness and a final comparison with that baseline. Distinguish host savings
+from emulated clock counts; no speedup claim without measurement. Small recurring
+savings are valid candidates even below a profiler display threshold or arbitrary
+percentage, but the assignment does not authorize unrelated optimization.
 
-## Performance and Hardware Traceability
-
-- Allocate no heap memory in hot loops. Use fixed-capacity or in-place state and contiguous arrays instead of pointer-chased dynamic structures.
-- Avoid cascaded runtime opcode/size/addressing dispatch; use flat dispatch or concrete specialized handlers. Language-level prohibitions are owned by [rust-best-practices.md](rust-best-practices.md).
-- Keep code traceable to registers, signals, and clock phases. Explain non-obvious silicon states with concise hardware rationale, and preserve lazy short-circuit evaluation when naming predicates.
-- Choose inlining for actual call paths. Use `inline(always)` for ultra-hot ALU/CCR helpers and CPU register accessors; use `inline` for small public accessors and cross-crate forwarding helpers. Use `inline(never)` for cold exception/trap handlers.
-- Do not force inline large control-flow functions (over roughly 15-20 lines) or indirect dispatch-table targets. Attribute choices must preserve the project's architecture checks for ALU, CCR, and cold exception handlers; performance conclusions require measurement.
-- Avoid clever optimizations without evidence. Use comparable benchmark measurements for performance claims and [audit-code-quality](../skills/audit-code-quality/SKILL.md) for review.
-
-## Continuous Optimization
-
-Treat measured micro-optimizations as worthwhile work in frequently executed
-emulation paths. Small savings per CCK, pixel, bus access or instruction can
-accumulate; do not dismiss a candidate because it falls below a profiler's display
-threshold or an arbitrary minimum percentage. Prefer simpler code when gains are
-equivalent, and distinguish host execution savings from emulated clock counts.
-
-For requested profiling, performance investigation or optimization, use
-[optimize-emulation](../skills/optimize-emulation/SKILL.md). Combine time profiling
-with analysis of how often work runs and whether its inputs changed. Measure
-candidate changes and preserve observable emulation behavior. This does not
-expand the task into unrelated optimization work.
-
-CPU execution phases and micro-step fusion follow the [CPU Micro-Step State Machine](../../Obsidian/Amiga/Design/CPU%20Micro-Step%20State%20Machine.md) specification.
+CPU phase and micro-step fusion requirements remain in the
+[CPU Micro-Step State Machine](../../Obsidian/Amiga/Design/CPU%20Micro-Step%20State%20Machine.md).

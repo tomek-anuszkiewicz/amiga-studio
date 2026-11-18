@@ -1,0 +1,2560 @@
+{
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": 2
+    },
+    "task_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$"
+    },
+    "work_item_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$"
+    },
+    "run_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$"
+    },
+    "previous_run_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "agent": {
+      "enum": [
+        "TA-planner",
+        "TA-test-designer",
+        "TA-implementer",
+        "TA-test-auditor",
+        "TA-code-reviewer",
+        "TA-hardware-researcher",
+        "TA-cpu-verifier",
+        "main-session"
+      ]
+    },
+    "skill": {
+      "enum": [
+        "TA-plan-change",
+        "TA-design-tests",
+        "TA-implement-change",
+        "TA-fix-findings",
+        "TA-optimize-emulation",
+        "TA-write-powershell",
+        "TA-audit-tests",
+        "TA-measure-coverage",
+        "TA-review-behavior",
+        "TA-review-architecture",
+        "TA-review-tests-evidence",
+        "TA-review-docs",
+        "TA-review-spec-compliance",
+        "TA-review-semantic-parity",
+        "TA-audit-vault-links",
+        "TA-research-hardware-manuals",
+        "TA-research-reference-models",
+        "TA-research-hardware-measurements",
+        "TA-diagnose-cpu",
+        "TA-start-plan",
+        "TA-repair-worktree",
+        "TA-sync-master",
+        "TA-resolve-merge-conflicts",
+        "TA-sync-docs",
+        "TA-author-methodology-doc",
+        "TA-compact-diary",
+        "TA-organize-roadmap",
+        "TA-prune-roadmap",
+        "TA-prepare-batch",
+        "TA-commit-batch",
+        "TA-close-task",
+        "TA-cleanup-task",
+        "TA-verify-focused",
+        "TA-verify-batch",
+        "TA-verify-milestone",
+        "TA-query-graph",
+        "TA-find-graph-path",
+        "TA-explain-graph-symbol",
+        "TA-refresh-graph",
+        "TA-extract-graph-semantics",
+        "TA-capture-gui-screenshot",
+        "TA-index-amiga-rag",
+        "TA-profile-emulation",
+        "TA-create-skill",
+        "TA-create-agent"
+      ]
+    },
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "plans": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "sha256": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            },
+            "required": [
+              "path",
+              "sha256"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "prior_results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "sha256": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            },
+            "required": [
+              "path",
+              "sha256"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "instructions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "sha256": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "exposure": {
+                "enum": [
+                  "loaded",
+                  "inherited",
+                  "unknown"
+                ]
+              }
+            },
+            "required": [
+              "path",
+              "sha256",
+              "exposure"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "candidate": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "base_commit": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "diff_sha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "untracked": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "path": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "sha256": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "pattern": "^[0-9a-f]{64}$"
+                      }
+                    },
+                    "required": [
+                      "path",
+                      "sha256"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "scope": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              },
+              "required": [
+                "base_commit",
+                "diff_sha256",
+                "untracked",
+                "scope"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "configuration_ref": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "sha256": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              },
+              "required": [
+                "path",
+                "sha256"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "identity_limits": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "required": [
+        "plans",
+        "prior_results",
+        "instructions",
+        "candidate",
+        "configuration_ref",
+        "identity_limits"
+      ],
+      "additionalProperties": false
+    },
+    "status": {
+      "enum": [
+        "completed",
+        "needs_input",
+        "limit_reached",
+        "failed",
+        "interrupted"
+      ]
+    },
+    "rounds": {
+      "type": "object",
+      "properties": {
+        "used": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4
+        },
+        "stop_reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "used",
+        "limit",
+        "stop_reason"
+      ],
+      "additionalProperties": false
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "result": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "plan"
+            },
+            "scope": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "acceptance_criteria": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "decisions": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "risks": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "plan_ref": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "sha256": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "pattern": "^[0-9a-f]{64}$"
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "sha256"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "scope",
+            "acceptance_criteria",
+            "decisions",
+            "risks",
+            "plan_ref"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "test_design"
+            },
+            "scenarios": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "requirement": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "level": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "expected": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "observation": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "existing_evidence": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                },
+                "required": [
+                  "id",
+                  "requirement",
+                  "level",
+                  "expected",
+                  "observation",
+                  "existing_evidence"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "gaps": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "plan_ref": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "sha256": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "pattern": "^[0-9a-f]{64}$"
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "sha256"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "scenarios",
+            "gaps",
+            "plan_ref"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "implementation"
+            },
+            "changes": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "selected_finding_ids": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "remaining_work": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "required": [
+            "kind",
+            "changes",
+            "selected_finding_ids",
+            "remaining_work"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "test_audit"
+            },
+            "verdict": {
+              "enum": [
+                "adequate",
+                "gaps_found",
+                "not_assessed"
+              ]
+            },
+            "assessed_scenarios": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "measurement_limits": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "required": [
+            "kind",
+            "verdict",
+            "assessed_scenarios",
+            "measurement_limits"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "review"
+            },
+            "lane": {
+              "enum": [
+                "behavior",
+                "architecture",
+                "tests_evidence",
+                "documentation",
+                "spec_compliance",
+                "semantic_parity",
+                "vault_links"
+              ]
+            },
+            "verdict": {
+              "enum": [
+                "approved",
+                "changes_requested",
+                "not_assessed"
+              ]
+            },
+            "inspected_scope": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "limits": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "required": [
+            "kind",
+            "lane",
+            "verdict",
+            "inspected_scope",
+            "limits"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "hardware_research"
+            },
+            "source_family": {
+              "enum": [
+                "manuals",
+                "reference_models",
+                "measurements"
+              ]
+            },
+            "claims": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "claim": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "source_ref": {
+                    "type": "object",
+                    "properties": {
+                      "path": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "sha256": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "pattern": "^[0-9a-f]{64}$"
+                      }
+                    },
+                    "required": [
+                      "path",
+                      "sha256"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "source_kind": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "limits": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "source_url": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "locator": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "revision": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "claim",
+                  "source_ref",
+                  "source_kind",
+                  "limits",
+                  "source_url",
+                  "locator",
+                  "revision"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "unresolved": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "required": [
+            "kind",
+            "source_family",
+            "claims",
+            "unresolved"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "cpu_diagnosis"
+            },
+            "vector": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "state_differences": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "clock_differences": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "bus_differences": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "diagnosis": {
+              "type": "string",
+              "minLength": 1
+            },
+            "limits": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "required": [
+            "kind",
+            "vector",
+            "state_differences",
+            "clock_differences",
+            "bus_differences",
+            "diagnosis",
+            "limits"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "verification"
+            },
+            "profile": {
+              "enum": [
+                "focused",
+                "commit",
+                "milestone"
+              ]
+            },
+            "verdict": {
+              "enum": [
+                "passed",
+                "failed",
+                "incomplete"
+              ]
+            },
+            "report_refs": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "sha256": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                },
+                "required": [
+                  "path",
+                  "sha256"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "limits": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "required": [
+            "kind",
+            "profile",
+            "verdict",
+            "report_refs",
+            "limits"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "measurement"
+            },
+            "scope": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "artifact_refs": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "sha256": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                },
+                "required": [
+                  "path",
+                  "sha256"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "observations": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "limits": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "required": [
+            "kind",
+            "scope",
+            "artifact_refs",
+            "observations",
+            "limits"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "worktree"
+            },
+            "branch": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "checkout": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "base_commit": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "plan_ref": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "sha256": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "pattern": "^[0-9a-f]{64}$"
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "sha256"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "outcomes": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "required": [
+            "kind",
+            "branch",
+            "checkout",
+            "base_commit",
+            "plan_ref",
+            "outcomes"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "merge"
+            },
+            "base_commit": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "candidate_commit": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "conflicts": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "outcomes": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "required": [
+            "kind",
+            "base_commit",
+            "candidate_commit",
+            "conflicts",
+            "outcomes"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "documents"
+            },
+            "documents": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "decisions": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "remaining_work": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "required": [
+            "kind",
+            "documents",
+            "decisions",
+            "remaining_work"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "batch"
+            },
+            "partition": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "paths": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                },
+                "required": [
+                  "message",
+                  "paths"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "missing_prerequisites": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "readiness_ref": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "sha256": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "pattern": "^[0-9a-f]{64}$"
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "sha256"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "partition",
+            "missing_prerequisites",
+            "readiness_ref"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "commits"
+            },
+            "commits": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "readiness_ref": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "sha256": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "pattern": "^[0-9a-f]{64}$"
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "sha256"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "missing_prerequisites": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "required": [
+            "kind",
+            "commits",
+            "readiness_ref",
+            "missing_prerequisites"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "publication"
+            },
+            "base_commit": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "source_commit": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "published": {
+              "type": "boolean"
+            },
+            "record_ref": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "sha256": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "pattern": "^[0-9a-f]{64}$"
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "sha256"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "kind",
+            "base_commit",
+            "source_commit",
+            "published",
+            "record_ref",
+            "reason"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "cleanup"
+            },
+            "published_commit": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "outcomes": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "outcome": {
+                    "enum": [
+                      "removed",
+                      "retained",
+                      "failed",
+                      "already_absent"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "path",
+                  "outcome",
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "kind",
+            "published_commit",
+            "outcomes"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "graph"
+            },
+            "graph": {
+              "enum": [
+                "project",
+                "reference"
+              ]
+            },
+            "artifact_refs": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "sha256": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                },
+                "required": [
+                  "path",
+                  "sha256"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "observations": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "freshness_limits": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "required": [
+            "kind",
+            "graph",
+            "artifact_refs",
+            "observations",
+            "freshness_limits"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "capture"
+            },
+            "image_ref": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "sha256": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "pattern": "^[0-9a-f]{64}$"
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "sha256"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "scenario": {
+              "type": "string",
+              "minLength": 1
+            },
+            "resolution": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "error": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "image_ref",
+            "scenario",
+            "resolution",
+            "error"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "indexing"
+            },
+            "scope": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "counts": {
+              "type": "object",
+              "properties": {
+                "added": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0
+                },
+                "updated": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0
+                },
+                "removed": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "added",
+                "updated",
+                "removed"
+              ],
+              "additionalProperties": false
+            },
+            "health": {
+              "type": "string",
+              "minLength": 1
+            },
+            "limits": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "required": [
+            "kind",
+            "scope",
+            "counts",
+            "health",
+            "limits"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "profile"
+            },
+            "candidate_ids": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "measurements": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "sha256": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                },
+                "required": [
+                  "path",
+                  "sha256"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "observations": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "limits": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "required": [
+            "kind",
+            "candidate_ids",
+            "measurements",
+            "observations",
+            "limits"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "category": {
+            "type": "string",
+            "minLength": 1
+          },
+          "severity": {
+            "enum": [
+              "blocking",
+              "major",
+              "minor",
+              "suggestion"
+            ]
+          },
+          "confidence": {
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ]
+          },
+          "scope": {
+            "type": "string",
+            "minLength": 1
+          },
+          "scenario": {
+            "type": "string",
+            "minLength": 1
+          },
+          "expected": {
+            "type": "string",
+            "minLength": 1
+          },
+          "observed": {
+            "type": "string",
+            "minLength": 1
+          },
+          "evidence_refs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "sha256": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              },
+              "required": [
+                "path",
+                "sha256"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "disposition": {
+            "enum": [
+              "open",
+              "repaired_pending_verification",
+              "verified",
+              "refuted",
+              "deferred"
+            ]
+          },
+          "origin": {
+            "enum": [
+              "implementation_defect",
+              "missing_planned_scenario",
+              "repair_regression",
+              "integration_only",
+              "unknown"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "category",
+          "severity",
+          "confidence",
+          "scope",
+          "scenario",
+          "expected",
+          "observed",
+          "evidence_refs",
+          "disposition",
+          "origin"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "origin": {
+            "enum": [
+              "executed",
+              "retained",
+              "inspected"
+            ]
+          },
+          "command": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "exit_code": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "artifact_ref": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "sha256": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                },
+                "required": [
+                  "path",
+                  "sha256"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "candidate_ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "validity_basis": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id",
+          "origin",
+          "command",
+          "exit_code",
+          "artifact_ref",
+          "candidate_ref",
+          "validity_basis"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "changed_paths": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "observations": {
+      "type": "object",
+      "properties": {
+        "started_at": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "finished_at": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "duration_seconds": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "model": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "configuration": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "limits": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "required": [
+        "started_at",
+        "finished_at",
+        "duration_seconds",
+        "model",
+        "configuration",
+        "limits"
+      ],
+      "additionalProperties": false
+    },
+    "recommendation": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "required": [
+    "schema_version",
+    "task_id",
+    "work_item_id",
+    "run_id",
+    "previous_run_id",
+    "agent",
+    "skill",
+    "inputs",
+    "status",
+    "rounds",
+    "summary",
+    "result",
+    "findings",
+    "evidence",
+    "changed_paths",
+    "observations",
+    "recommendation"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:amiga:workflow-ta:result:2",
+  "title": "TA invocation result",
+  "x-skill-contracts": {
+    "TA-plan-change": {
+      "agent": "TA-planner",
+      "kind": "plan"
+    },
+    "TA-design-tests": {
+      "agent": "TA-test-designer",
+      "kind": "test_design"
+    },
+    "TA-implement-change": {
+      "agent": "TA-implementer",
+      "kind": "implementation"
+    },
+    "TA-fix-findings": {
+      "agent": "TA-implementer",
+      "kind": "implementation"
+    },
+    "TA-optimize-emulation": {
+      "agent": "TA-implementer",
+      "kind": "implementation"
+    },
+    "TA-write-powershell": {
+      "agent": "TA-implementer",
+      "kind": "implementation"
+    },
+    "TA-audit-tests": {
+      "agent": "TA-test-auditor",
+      "kind": "test_audit"
+    },
+    "TA-measure-coverage": {
+      "agent": "TA-test-auditor",
+      "kind": "measurement"
+    },
+    "TA-review-behavior": {
+      "agent": "TA-code-reviewer",
+      "kind": "review",
+      "lane": "behavior"
+    },
+    "TA-review-architecture": {
+      "agent": "TA-code-reviewer",
+      "kind": "review",
+      "lane": "architecture"
+    },
+    "TA-review-tests-evidence": {
+      "agent": "TA-code-reviewer",
+      "kind": "review",
+      "lane": "tests_evidence"
+    },
+    "TA-review-docs": {
+      "agent": "TA-code-reviewer",
+      "kind": "review",
+      "lane": "documentation"
+    },
+    "TA-review-spec-compliance": {
+      "agent": "TA-code-reviewer",
+      "kind": "review",
+      "lane": "spec_compliance"
+    },
+    "TA-review-semantic-parity": {
+      "agent": "TA-code-reviewer",
+      "kind": "review",
+      "lane": "semantic_parity"
+    },
+    "TA-audit-vault-links": {
+      "agent": "TA-code-reviewer",
+      "kind": "review",
+      "lane": "vault_links",
+      "allowed_agents": [
+        "TA-code-reviewer",
+        "main-session"
+      ]
+    },
+    "TA-research-hardware-manuals": {
+      "agent": "TA-hardware-researcher",
+      "kind": "hardware_research",
+      "source_family": "manuals"
+    },
+    "TA-research-reference-models": {
+      "agent": "TA-hardware-researcher",
+      "kind": "hardware_research",
+      "source_family": "reference_models"
+    },
+    "TA-research-hardware-measurements": {
+      "agent": "TA-hardware-researcher",
+      "kind": "hardware_research",
+      "source_family": "measurements"
+    },
+    "TA-diagnose-cpu": {
+      "agent": "TA-cpu-verifier",
+      "kind": "cpu_diagnosis"
+    },
+    "TA-start-plan": {
+      "agent": "main-session",
+      "kind": "worktree"
+    },
+    "TA-repair-worktree": {
+      "agent": "main-session",
+      "kind": "worktree"
+    },
+    "TA-sync-master": {
+      "agent": "main-session",
+      "kind": "merge"
+    },
+    "TA-resolve-merge-conflicts": {
+      "agent": "main-session",
+      "kind": "merge"
+    },
+    "TA-sync-docs": {
+      "agent": "main-session",
+      "kind": "documents"
+    },
+    "TA-author-methodology-doc": {
+      "agent": "main-session",
+      "kind": "documents"
+    },
+    "TA-compact-diary": {
+      "agent": "main-session",
+      "kind": "documents"
+    },
+    "TA-organize-roadmap": {
+      "agent": "main-session",
+      "kind": "documents"
+    },
+    "TA-prune-roadmap": {
+      "agent": "main-session",
+      "kind": "documents"
+    },
+    "TA-prepare-batch": {
+      "agent": "main-session",
+      "kind": "batch"
+    },
+    "TA-commit-batch": {
+      "agent": "main-session",
+      "kind": "commits"
+    },
+    "TA-close-task": {
+      "agent": "main-session",
+      "kind": "publication"
+    },
+    "TA-cleanup-task": {
+      "agent": "main-session",
+      "kind": "cleanup"
+    },
+    "TA-verify-focused": {
+      "agent": "main-session",
+      "kind": "verification",
+      "profile": "focused",
+      "allowed_agents": [
+        "TA-planner",
+        "TA-test-designer",
+        "TA-implementer",
+        "TA-test-auditor",
+        "TA-code-reviewer",
+        "TA-hardware-researcher",
+        "TA-cpu-verifier",
+        "main-session"
+      ]
+    },
+    "TA-verify-batch": {
+      "agent": "main-session",
+      "kind": "verification",
+      "profile": "commit"
+    },
+    "TA-verify-milestone": {
+      "agent": "main-session",
+      "kind": "verification",
+      "profile": "milestone"
+    },
+    "TA-query-graph": {
+      "agent": "main-session",
+      "kind": "graph",
+      "allowed_agents": [
+        "TA-planner",
+        "TA-test-designer",
+        "TA-implementer",
+        "TA-test-auditor",
+        "TA-code-reviewer",
+        "TA-hardware-researcher",
+        "TA-cpu-verifier",
+        "main-session"
+      ]
+    },
+    "TA-find-graph-path": {
+      "agent": "main-session",
+      "kind": "graph",
+      "allowed_agents": [
+        "TA-planner",
+        "TA-test-designer",
+        "TA-implementer",
+        "TA-test-auditor",
+        "TA-code-reviewer",
+        "TA-hardware-researcher",
+        "TA-cpu-verifier",
+        "main-session"
+      ]
+    },
+    "TA-explain-graph-symbol": {
+      "agent": "main-session",
+      "kind": "graph",
+      "allowed_agents": [
+        "TA-planner",
+        "TA-test-designer",
+        "TA-implementer",
+        "TA-test-auditor",
+        "TA-code-reviewer",
+        "TA-hardware-researcher",
+        "TA-cpu-verifier",
+        "main-session"
+      ]
+    },
+    "TA-refresh-graph": {
+      "agent": "main-session",
+      "kind": "graph"
+    },
+    "TA-extract-graph-semantics": {
+      "agent": "main-session",
+      "kind": "graph"
+    },
+    "TA-capture-gui-screenshot": {
+      "agent": "main-session",
+      "kind": "capture",
+      "allowed_agents": [
+        "TA-planner",
+        "TA-test-designer",
+        "TA-implementer",
+        "TA-test-auditor",
+        "TA-code-reviewer",
+        "TA-hardware-researcher",
+        "TA-cpu-verifier",
+        "main-session"
+      ]
+    },
+    "TA-index-amiga-rag": {
+      "agent": "main-session",
+      "kind": "indexing"
+    },
+    "TA-profile-emulation": {
+      "agent": "main-session",
+      "kind": "profile"
+    },
+    "TA-create-skill": {
+      "agent": "main-session",
+      "kind": "implementation"
+    },
+    "TA-create-agent": {
+      "agent": "main-session",
+      "kind": "implementation"
+    }
+  },
+  "$defs": {
+    "guidance": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": 2
+        },
+        "kind": {
+          "const": "guidance"
+        },
+        "task_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$"
+        },
+        "work_item_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$"
+        },
+        "source_run_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$"
+        },
+        "guidance_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$"
+        },
+        "source_result": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "sha256": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              },
+              "required": [
+                "path",
+                "sha256"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source_candidate": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "base_commit": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "diff_sha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "untracked": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "path": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "sha256": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "pattern": "^[0-9a-f]{64}$"
+                      }
+                    },
+                    "required": [
+                      "path",
+                      "sha256"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "scope": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              },
+              "required": [
+                "base_commit",
+                "diff_sha256",
+                "untracked",
+                "scope"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "current_candidate": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "base_commit": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "diff_sha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "untracked": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "path": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "sha256": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "pattern": "^[0-9a-f]{64}$"
+                      }
+                    },
+                    "required": [
+                      "path",
+                      "sha256"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "scope": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              },
+              "required": [
+                "base_commit",
+                "diff_sha256",
+                "untracked",
+                "scope"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "supersedes": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "sha256": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              },
+              "required": [
+                "path",
+                "sha256"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "outcome": {
+          "type": "string",
+          "minLength": 1
+        },
+        "consequence": {
+          "type": "string",
+          "minLength": 1
+        },
+        "blockers": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "uncertainty": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "identity_limits": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "recommended_option_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "recommendation_reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1
+              },
+              "effect": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "enum": [
+                  "operation",
+                  "clarification",
+                  "approval",
+                  "stop",
+                  "defer"
+                ]
+              },
+              "availability": {
+                "enum": [
+                  "ready",
+                  "needs_input",
+                  "needs_approval"
+                ]
+              },
+              "missing_inputs": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "authorization_impact": {
+                "type": "string",
+                "minLength": 1
+              },
+              "instruction": {
+                "type": "string",
+                "minLength": 1
+              },
+              "assignment": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "executor": {
+                        "enum": [
+                          "TA-planner",
+                          "TA-test-designer",
+                          "TA-implementer",
+                          "TA-test-auditor",
+                          "TA-code-reviewer",
+                          "TA-hardware-researcher",
+                          "TA-cpu-verifier",
+                          "main-session"
+                        ]
+                      },
+                      "skill": {
+                        "enum": [
+                          "TA-plan-change",
+                          "TA-design-tests",
+                          "TA-implement-change",
+                          "TA-fix-findings",
+                          "TA-optimize-emulation",
+                          "TA-write-powershell",
+                          "TA-audit-tests",
+                          "TA-measure-coverage",
+                          "TA-review-behavior",
+                          "TA-review-architecture",
+                          "TA-review-tests-evidence",
+                          "TA-review-docs",
+                          "TA-review-spec-compliance",
+                          "TA-review-semantic-parity",
+                          "TA-audit-vault-links",
+                          "TA-research-hardware-manuals",
+                          "TA-research-reference-models",
+                          "TA-research-hardware-measurements",
+                          "TA-diagnose-cpu",
+                          "TA-start-plan",
+                          "TA-repair-worktree",
+                          "TA-sync-master",
+                          "TA-resolve-merge-conflicts",
+                          "TA-sync-docs",
+                          "TA-author-methodology-doc",
+                          "TA-compact-diary",
+                          "TA-organize-roadmap",
+                          "TA-prune-roadmap",
+                          "TA-prepare-batch",
+                          "TA-commit-batch",
+                          "TA-close-task",
+                          "TA-cleanup-task",
+                          "TA-verify-focused",
+                          "TA-verify-batch",
+                          "TA-verify-milestone",
+                          "TA-query-graph",
+                          "TA-find-graph-path",
+                          "TA-explain-graph-symbol",
+                          "TA-refresh-graph",
+                          "TA-extract-graph-semantics",
+                          "TA-capture-gui-screenshot",
+                          "TA-index-amiga-rag",
+                          "TA-profile-emulation",
+                          "TA-create-skill",
+                          "TA-create-agent"
+                        ]
+                      },
+                      "input_refs": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "path": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "sha256": {
+                              "type": [
+                                "string",
+                                "null"
+                              ],
+                              "pattern": "^[0-9a-f]{64}$"
+                            }
+                          },
+                          "required": [
+                            "path",
+                            "sha256"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "selected_findings": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "read_scope": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "write_scope": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "round_limit": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 4
+                      },
+                      "previous_run_id": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "cumulative_history": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "new_approach": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "executor",
+                      "skill",
+                      "input_refs",
+                      "selected_findings",
+                      "read_scope",
+                      "write_scope",
+                      "round_limit",
+                      "previous_run_id",
+                      "cumulative_history",
+                      "new_approach"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "transition": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "condition": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "basis": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "condition",
+                      "basis"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "label",
+              "effect",
+              "kind",
+              "availability",
+              "missing_inputs",
+              "authorization_impact",
+              "instruction",
+              "assignment",
+              "transition"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "matrix_ref": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "const": "tools/workflow/skill-matrix.json"
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          },
+          "required": [
+            "path",
+            "sha256"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "schema_version",
+        "kind",
+        "task_id",
+        "work_item_id",
+        "source_run_id",
+        "guidance_id",
+        "source_result",
+        "source_candidate",
+        "current_candidate",
+        "supersedes",
+        "outcome",
+        "consequence",
+        "blockers",
+        "uncertainty",
+        "identity_limits",
+        "recommended_option_id",
+        "recommendation_reason",
+        "options",
+        "matrix_ref"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

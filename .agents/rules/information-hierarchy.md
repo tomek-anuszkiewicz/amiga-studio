@@ -1,16 +1,27 @@
-# Document and Instruction Ownership
+﻿# Document and instruction ownership
 
-- [AGENTS.md](../../AGENTS.md) contains shared obligations, machine invariants, completion requirements, and routing to applicable rules.
-- Rules define obligations, scope, and exceptions. Skills own execution procedures and link supporting references, scripts, and templates. Scripts and tests own mechanical checks.
-- `docs/` explains the project and provides starting points for users and developers. Keep useful launch or verification examples there; link detailed operational procedures and command options to the owning tool/test README or agent skill/reference. Change history belongs in the diary.
-- Keep each instruction or procedure in one authoritative location and link to it elsewhere. Keep `AGENTS.md` and rules concise without arbitrary size limits; preserve essential obligations and required procedure links when moving detail.
-- [Documentation Value](docs-maintenance.md#documentation-value) governs which
-  knowledge to preserve, enrich, consolidate or remove across project-authored
-  prose, including specifications, source documentation and instructions. Keep
-  that criterion at its owner rather than copying it into each procedure.
-- Discover skills by name/description; link mandatory procedures without a duplicate catalog.
-- Changes to `AGENTS.md`, rules, skills, role instructions or verification requirements
-  must assess their effect on the reviewer criteria in the
-  [four review lanes](../skills/code-review/SKILL.md). Update affected checklists and
-  routing in the same change. Keep reviewer checklists concise and independently
-  usable; upstream rules remain authoritative. Unaffected lanes need no cosmetic edit.
+- Root [AGENTS.md](../../AGENTS.md) owns the small shared scope, authorization,
+  preservation, evidence, language, portability and action-time handoff contract.
+  It routes relevant work without requiring every linked file at startup.
+- Rules own retained policy and advance/domain requirements. Specifications own
+  approved behavior and architecture. Review references own detailed result
+  standards, including naming, cohesion, test adequacy and narrative criteria.
+  These standards remain enforceable even when an author has not loaded them.
+- Atomic skills own one selected operation and its stopping boundary. Shared
+  references supply detailed criteria/procedures without dispatching other skills.
+  Tools/checkers own mechanical execution, formats and acceptance conditions.
+- Keep one authoritative home per requirement, criterion or procedure. Update
+  incoming links, affected roles, skill routing and reviewer criteria together.
+  Preserve exact exceptions and earliest action-time obligations when moving text;
+  generic advice already supplied by routine competence need not be relocated.
+- Reader-facing `docs/` explains the project and provides useful entry points.
+  Operational detail belongs with tools/skills; history belongs in diary/Git.
+  [Documentation Value](docs-maintenance.md#documentation-value) governs retained
+  requirements, evidence and rationale without a deletion quota.
+- Discover operations by skill names/descriptions and accurate links; do not create
+  a permanent duplicate registry, symmetry checklist or forwarding rule files.
+  Read only the selected role/step/domain material. Reviewers use their lane and
+  relevant requirements without inheriting the author's conversation or other lanes.
+- Instruction/governance changes assess affected review criteria in the same change.
+  Unaffected lanes need no cosmetic edit. Mechanical check names alone do not prove
+  semantic coverage; report the observed enforcement and runtime limits.

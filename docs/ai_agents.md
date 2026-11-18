@@ -2,9 +2,11 @@
 
 This guide is for developers starting to work on the Amiga 500 emulator with an
 AI coding agent. It explains how to frame a task, how the agent finds relevant
-code and hardware evidence, and how to judge the result. The working pattern is
-simple: you define the desired behavior and resolve design decisions; the agent
-investigates, implements and verifies a scoped change that you can review.
+code and hardware evidence, and how to judge the result. You select a bounded
+step and its scope; the main session routes it to the appropriate role or skill
+and explains the result before the next choice. An explicit request can authorize
+several steps' scope; the receiving session still waits for your selection before
+starting the next operation.
 
 For build and environment setup, use the [developer guide](developers.md).
 For the project's development story and lessons learned, read
@@ -41,9 +43,11 @@ for implementation.
 
 ## Follow the Change from Evidence to Verification
 
-The agent first inspects the existing implementation, applicable design
-specifications and available test evidence. For a defect, it reproduces the
-failure before changing the mechanism. Expect it to explain the failing data
+Planning and test design precede implementation when the workflow handles a
+software change. The selected roles inspect requirements, existing implementation
+and reusable evidence, then define a few meaningful scenarios with independent
+expected results. Implementation follows that agreed scope. For a defect, it
+reproduces the failure before changing the mechanism. Expect it to explain the failing data
 flow, clock phase or state transition, rather than adjusting values until a test
 passes.
 
@@ -90,8 +94,11 @@ python tools/graphify/read.py path "Cpu" "BusResult" --graph graphify-out/graph.
 
 The graph helps locate source; the implementation and tests provide the behavior.
 Refresh behavior and execution options belong to the [Graphify tool reference](../tools/graphify/README.md).
-Setup and traversal details are in the
-[Graphify skill](../.agents/skills/graphify/SKILL.md).
+The caller selects [query](../.agents/skills/TA-query-graph/SKILL.md),
+[path](../.agents/skills/TA-find-graph-path/SKILL.md) or
+[symbol explanation](../.agents/skills/TA-explain-graph-symbol/SKILL.md).
+These read operations do not refresh either graph. Structural refresh and project
+semantic extraction are separate selected operations.
 
 Reference emulators and imported manuals are provisioned separately. Their
 conversion is an initial setup operation; everyday agent sessions consume the
@@ -99,35 +106,97 @@ prepared sources. The [developer guide](developers.md) explains that setup.
 
 ## Use Skills for Repeatable Procedures
 
-A skill packages a procedure: when to use it, which steps to execute, and what
-evidence to report. Project rules define obligations; skills explain how to carry
-out specialized work. Browse [`.agents/skills/`](../.agents/skills/) when you need
-a procedure, or name the skill in your request.
+A skill packages one operation with inputs, a procedure and a stopping point.
+All repository skill and role names begin with `TA-`. Browse
+[`.agents/skills/`](../.agents/skills/) or name the operation in your request.
+The shared contract and relevant advance rules define what an author needs before
+designing the change; detailed result criteria belong to the assigned review lane.
+Those standards still apply when their full checklist is outside the author's
+default reading.
 
-For example, CPU instruction work has a dedicated implementation procedure and
-SingleStep verification suite; GUI layout work uses captured frames for visual
-inspection. These procedures give the agent a repeatable way to test its work.
-The relevant `SKILL.md` is the source of truth for its scope and steps.
+For example, `TA-diagnose-cpu` reports a selected vector mismatch without repairing
+it, while `TA-fix-findings` implements explicitly selected findings. GUI capture
+returns an image and its path; interpretation and selected repairs remain separate
+assignments. The relevant `SKILL.md` defines the operation's scope and steps.
 
 You can also request focused work from the configured roles in
 [`.codex/agents/`](../.codex/agents/):
 
 | Role | Useful when you need |
 | --- | --- |
-| `code_reviewer` | An independent review of code, architecture and rule compliance. |
-| `cpu_verifier` | Diagnosis of cycle differences against generated 68000 reference vectors. |
-| `doc_curator` | Maintenance of design specifications and their links to implementation. |
+| `TA-planner` | A bounded implementation plan, acceptance criteria and unresolved decisions. |
+| `TA-test-designer` | Meaningful scenarios, independent expectations and observation methods. |
+| `TA-implementer` | Agreed implementation and tests, or selected finding repairs. |
+| `TA-test-auditor` | Test and assertion assessment, or a separately requested coverage measurement. |
+| `TA-code-reviewer` | One independent review lane or assigned specification/documentation assessment. |
+| `TA-hardware-researcher` | Evidence from the selected manuals, reference models or measured hardware sources. |
+| `TA-cpu-verifier` | Diagnosis of state, clock and bus differences in selected 68000 vectors. |
 
 Delegation happens when requested by you or required by an applicable procedure.
 Each helper receives a scoped assignment and reports back to the main session.
-The role configuration contains its current model and permissions.
+The [runtime settings tables](../.agents/references/workflow-runtime.md#model-and-reasoning-effort)
+own the default model and reasoning effort for each role and the skill overrides.
+You can choose either setting or both for one invocation. For example, you can
+request `xhigh` for one finding repair or `gpt-6.2-astra` for
+`TA-implement-change`; these are explicit user choices, not additional defaults.
+The main session reports the role, skill and resolved settings before dispatch.
+The same reference owns support checks and access limits. Declared write boundaries
+remain binding when a parent supplies full access.
 
 Prepared batches receive four independent review lanes covering behavior,
 architecture, tests/evidence, and specifications/instructions. The
-[code-review skill](../.agents/skills/code-review/SKILL.md) owns their isolation,
-inputs and approval procedure.
+[review contract](../.agents/references/review-common.md) owns their isolation,
+inputs and scoped approval rules. The main session dispatches four fresh instances
+of `TA-code-reviewer`, each using its own fixed lane skill. Seven role definitions
+do not mean seven calls on every task, and a test audit does not replace a lane.
+
+Each invocation announces its scope and round limit, normally three and never
+more than four. It returns both `result.json` and `result.md` under
+`.agent/tmp/workflow-TA/<task-id>/<work-item-id>/<run-id>/`. The
+[invocation contract](../.agents/references/workflow-contract.md) records candidate
+and instruction identities, findings, actual checks, retained evidence and limits.
+Use the [result tool](../tools/workflow/README.md) to inspect the selected skill's
+schema, validate JSON and render matching text. A missing validator dependency is
+a prerequisite gap; installation requires its own authorization.
+A completed review may request changes. Missing evidence or an exhausted budget
+returns control instead of starting repairs; a linked continuation needs actual
+user authorization or a recorded delegation. Markdown budgets and write boundaries
+are behavioral limits, not claims of hard runtime enforcement.
 
 ## Review and Record the Result
+
+After an operation returns, the main session explains what happened, what it means
+for the task and the most useful next step. It normally offers one to three
+relevant options, each with its effect, prerequisites and a complete copyable
+instruction naming the executor, skill and exact scope. Select an option by its
+label or number in the conversation, paste its instruction, defer work or give
+a different request. You do not need to read raw JSON or assemble a specialist
+assignment. Completed work may need no next operation.
+
+For example, when a focused test demonstrates a code defect, expect a repair
+option naming `TA-implementer` and `TA-fix-findings`, the actual finding ID and
+input references, affected files and round limit. The displayed instruction uses
+those real inputs. If the cause is unknown, an investigation may be more useful;
+a test audit is appropriate when the expectation itself is unresolved. A required
+failure remains visible if you defer it. Permission to repair does not approve
+weakening a test, and inability to repair is not evidence that the test is wrong.
+
+The session keeps the worker's original report and stores its own explanation in
+a linked text/JSON guidance pair. Only the current option set is selectable. Before
+executing your selection, it checks that the inputs and candidate still match;
+changed prerequisites produce refreshed choices instead of stale execution. This
+check does not rerun tests. Recommendations and silence start nothing. The shared
+[receiving procedure](../.agents/references/workflow-guidance.md) owns these steps.
+
+The [skill matrix](workflow-skill-matrix.md) defines the standard recommendation
+paths. Its source row is the skill that returned; each destination column is a
+possible next skill. Cell codes state conditions, such as a ready plan, missing
+test evidence or identified findings. The agent checks those conditions and offers
+the useful options, rather than treating every marked cell as a required step.
+An empty cell means the agent does not recommend that transition in the standard
+workflow. You can still explicitly request another skill, subject to its normal
+scope, authorization and prerequisites. The matrix is guidance, not a permission
+system. After your directly selected operation, suggestions resume from its row.
 
 Before a new implementation task, the agent names the current checkout and branch
 and asks whether to continue there or create a new task worktree. An explicit
@@ -157,12 +226,24 @@ commit. The [testing guide](testing.md) explains what its evidence establishes.
 review, evidence continuation and freeze. Failed or missing required checks
 prevent batch readiness, and results cover the combined candidate.
 
-Complete local integration is a separate request: use `$git-close-task <branch>`.
-It requires approval of a concrete integration and cleanup plan. Commit-only
-requests do not authorize merging, pushing or worktree removal. The
-[skill](../.agents/skills/git-close-task/SKILL.md) owns that procedure, and the
-[integration reference](../tools/verification/README.md#local-integration)
-explains publication, recovery and cleanup.
+Local publication is a separate operation: `TA-close-task` consumes an already
+prepared, verified, independently reviewed, committed and sealed candidate.
+It conditionally advances the recorded local target or reports a stale/missing
+prerequisite. It does not merge master, repair conflicts, run tests, create commits
+or remove the worktree. `TA-cleanup-task` handles separately authorized cleanup
+after confirmed publication and committed closure records.
+
+Earlier steps have separate owners: `TA-sync-master`,
+`TA-resolve-merge-conflicts`, `TA-sync-docs`, `TA-prepare-batch`,
+`TA-verify-batch` and `TA-commit-batch`. A broad request may authorize their concrete
+scope; existing authorization persists without repeated permission requests.
+The next operation still follows your selection from the current guidance.
+Commit-only requests do not authorize merging, pushing or worktree removal.
+The [integration rule](../.agents/rules/git-merge-commits.md) and
+[tool reference](../tools/verification/README.md#local-integration) preserve exact
+source/target selection, the narrow confirmed-tested exception, conditional
+publication and safe cleanup. Several sources still require one assembled and
+verified combined candidate; independently publishing tested branches is insufficient.
 
 If you are changing the agent infrastructure itself, use
 [Maintaining Agent Tooling](../.agents/references/agent-tooling.md) for script ownership, configuration

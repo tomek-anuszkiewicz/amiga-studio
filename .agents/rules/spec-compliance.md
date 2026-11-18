@@ -1,58 +1,59 @@
-# Specification Compliance and Reference Artifacts
+﻿# Specification compliance and references
 
-Design specifications and [AGENTS.md](../../AGENTS.md) govern implementation. Never silently contradict or bypass documented behavior, timing, memory semantics, or architectural boundaries.
+Approved Design specifications govern behavior, timing, memory semantics and
+architecture. Read affected requirements before design/editing. Handle concrete
+conflicts immediately; ordinary work does not start a broad parity audit.
 
-Read the relevant requirements before changing code and follow them throughout implementation. Handle concrete conflicts when encountered; do not defer them to a commit or milestone. This does not trigger a general code/design parity audit; scoped compliance review belongs to batch preparation, and broader semantic parity belongs to milestone closure or an explicit request.
-
-- When a requirement, test expectation, or reference emulator conflicts with the specification, stop the conflicting change and present the current rule, contrary evidence, and concrete options. Provisional register mutation parameters follow the [exception below](#provisional-register-mutation-parameters).
-- Obtain an explicit recorded user decision before changing or waiving an existing requirement or introducing behavior outside the authorized scope. Otherwise implement the documented behavior. Compatible documentation enrichment follows the rule below and does not require separate approval.
+When a requirement, expected result or reference model conflicts with a specification,
+stop that conflicting change and present the rule, contrary evidence and concrete
+options. Obtain a recorded user decision before changing/waiving a requirement or
+adding behavior outside scope, except the provisional-model case below. A review
+finding or code agreement is not such authorization.
 
 ## Provisional Register Mutation Parameters
 
-Per-register `delay_cck` values and `MutationMode` choices are provisional modeling
-decisions, including those adopted from reference emulators. They may be revised
-during authorized implementation or debugging when test results, execution traces,
-or timing analysis justify a correction. Existing code, documentation, and
-implementation-level tests do not make these choices immutable; revising them does
-not require separate requirement-change approval. Update affected code, tests,
-and design descriptions together. Hardware requirements and protected reference
-artifacts remain subject to the existing compliance rules.
+Per-register `delay_cck` and `MutationMode` choices are provisional modeling decisions,
+including values adopted from reference emulators. During authorized implementation
+or debugging, test results, traces or timing analysis may justify correction without
+separate requirement-change approval. Update affected code/tests/design together.
+Existing implementation/tests/prose do not make those choices immutable. This
+exception never extends to hardware requirements or protected references.
 
 ## Compatible Documentation Enrichment
 
-The specification governs implementation. It need not describe every implementation
-detail before coding begins. Choose unspecified technical details autonomously
-within the authorized scope and existing requirements.
-
-- Select additions and deletions using
-  [Documentation Value](docs-maintenance.md#documentation-value), within the
-  affected scope and approved requirements. Apply its hardware-source comparison
-  and enrichment procedure; retain evidence and established intent without
-  transcribing code. A missing description alone is not a requirement conflict.
-- Existing code is evidence of implementation, not authority to change a
-  requirement. Do not legitimize a contradiction or an unauthorized feature by
-  documenting it. Present such cases under the conflict procedure above.
+Specifications need not narrate every implementation detail. Choose unspecified
+technical details within existing requirements and scope. Apply
+[Documentation Value](docs-maintenance.md#documentation-value) to scoped enrichment,
+including source-backed hardware knowledge, rather than transcribing code. A missing
+description alone is not a conflict. Do not legitimize a contradiction or unauthorized
+feature by documenting it. Report-only reviewers identify findings; selected writers
+perform compatible enrichment and repairs.
 
 ## Specification Changes Before Implementation
 
-Record user-approved requirement changes in the specification before implementing
-the changed behavior. That approval authorizes the requirement change; do not ask
-for the same approval again merely because existing code behaves differently.
+Record approved requirement changes in specifications before implementing them;
+reuse that approval even when current code differs. Check affected implementation
+and tests, including unchanged files, before completion. Editorial changes need no
+code change. Resolve authorized differences together; report out-of-scope work
+without declaring completion. Never weaken an approved requirement merely to match
+existing code.
 
-- When editing requirements, check the affected implementation and tests before
-  declaring the task complete. Editorial changes do not require code changes.
-- Resolve known differences in code and relevant tests as part of the same
-  change. If implementation work exceeds the authorized scope, report the
-  difference and obtain direction before expanding it; leave completion blocked.
-- During batch preparation, use [verify-spec-compliance](../skills/verify-spec-compliance/SKILL.md)
-  to verify agreement in the intended snapshot, including changed requirements
-  whose implementation files have no diff. Block the commit while differences
-  remain or the affected implementation has not been verified. Do not revert or
-  weaken an approved requirement merely to match existing code.
+Required batch assessment uses
+[TA-review-spec-compliance](../skills/TA-review-spec-compliance/SKILL.md); milestone
+comparison uses [TA-review-semantic-parity](../skills/TA-review-semantic-parity/SKILL.md).
+A matching broader audit can satisfy overlap. Missing assessment or unresolved
+agreement blocks readiness; each operation stops at its result.
 
 ## Reference Artifact Integrity
 
-- Reference traces, CSV baselines, cycle totals, and SingleStep vectors are protected references. Never change them merely to make a failing test pass.
-- A justified reference correction requires root-cause investigation, presentation of the evidence and proposed change, and explicit user approval. Hardware-derived references also require precise hardware evidence.
-- For hardware/regression review, consult the [Platform Quirks and Invariants Catalog](../../Obsidian/Amiga/Design/Platform%20Quirks%20and%20Invariants%20Catalog.md) and relevant validated test evidence.
-- Harness normalization or masked differences require precise evidence and a condition limited to the demonstrated case, such as the specific exception frame and fields. Do not broaden comparison exceptions to obtain a pass. Report existing masks as verification limits; narrowing them must follow the defect and reference-conflict procedures rather than silently changing expectations.
+Reference traces, CSV baselines, cycle totals and SingleStep vectors are protected.
+Never change them to make a failure pass. A justified correction requires root-cause
+evidence, a proposed change and explicit approval; hardware-derived references
+additionally need precise hardware evidence. For relevant review consult
+[platform invariants](../../Obsidian/Amiga/Design/Platform%20Quirks%20and%20Invariants%20Catalog.md)
+and validated test evidence.
+
+Harness normalization/comparison masks need precise evidence and a condition limited
+to the demonstrated case, such as the exact exception frame and fields. Do not
+broaden exceptions to obtain a pass. Report existing masks as verification limits;
+narrowing them still follows defect/reference-conflict procedures.

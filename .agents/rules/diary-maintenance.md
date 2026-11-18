@@ -1,13 +1,22 @@
-# Engineering Diary
+﻿# Engineering diary
 
-- Every ordinary or final integration commit includes a new entry in [DIARY.md](../../DIARY.md)'s `Rolling Changelog`, staged with that change, including documentation, rules, tests, and merges. The approved [integration working-commit exception](git-merge-commits.md#authorization-and-preparation) defers its record to the final closure entry.
-- Prepare all entries before batch freeze, with the checks already observed. Record the final profile outcome in commit messages and the completion response; do not edit the diary between prepared commits.
-- Keep `## Rolling Changelog` as the final, unnumbered section. Append entries there regardless of how many numbered chapters precede it; do not refer to it by a section number.
-- Record affected components, changes, rationale, and actual verification. Identify failures and checks not run; a commit alone does not prove milestone completion.
-- Use the diary appender and timestamp format documented in [agent maintenance](../references/agent-tooling.md#recording-and-validating-changes), rather than reading the whole diary.
-- During preparation for closing a minor roadmap point or major milestone, use [compact-diary](../skills/compact-diary/SKILL.md) before final verification and freeze, regardless of diary size. Describe observed evidence; pending gates are not passes.
-- During compaction, review diary and Git/roadmap history for completed stages that merit a full narrative chapter. Add each distinct stage before the changelog using the next chapter number, or extend its existing chapter. Preserve dates, stable task IDs, decisions, alternatives, hardware findings, actual evidence and remaining limits. Move its settled entries into that chapter without duplicating the detailed account in the changelog.
-- Treat the changelog as a buffer for work awaiting resolution or integration into the narrative. During compaction, move durable decisions and evidence into their owning chapters, including SDLC and development-tool history. Leave routine mechanical changes and compaction statistics in Git; do not preserve a separate digest merely because an entry existed. Use a dated digest only for substantive settled history with no suitable chapter, and reconsider its placement at the next compaction.
-- Retain granular entries needed to continue unfinished work; mentioning an open roadmap stage alone is not a reason to retain a settled entry. Roadmap removal or renumbering alone does not prove completion: distinguish verified closure, user-directed scope closure and pending work. The completion commit gets one entry covering completion and compaction.
+Every ordinary or final integration commit includes a prepared entry in
+[DIARY.md](../../DIARY.md)'s final, unnumbered `## Rolling Changelog`, staged with its
+change. The narrow [integration working/assembly-commit exceptions](git-merge-commits.md#authorization-and-preparation)
+record their unverified status in the final closure entry instead.
 
-Commit validation belongs to [git-commits.md](git-commits.md); milestone obligations belong to [roadmap-maintenance.md](roadmap-maintenance.md).
+Prepare all entries before freeze. Record components, change, rationale, observed
+checks, failures and unrun work; the final profile outcome belongs in commit messages
+and the completion report. No diary edits between frozen commits or during publication.
+Appending mechanics belong to [TA-prepare-batch](../skills/TA-prepare-batch/SKILL.md)
+and the [diary appender reference](../references/agent-tooling.md#recording-and-validating-changes).
+
+Minor-roadmap/major-milestone closure requires compaction before final verification
+and freeze, regardless of size. It is a separately selected
+[TA-compact-diary](../skills/TA-compact-diary/SKILL.md) operation; ordinary appending
+is not compaction. Preserve unfinished work and unique engineering history under
+[history criteria](../references/diary-history.md). A completion commit has one entry
+covering completion and compaction; historical results are not new evidence.
+
+[Commit policy](git-commits.md) owns readiness and timing;
+[roadmap policy](roadmap-maintenance.md) owns closure obligations.

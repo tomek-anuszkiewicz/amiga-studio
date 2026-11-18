@@ -2794,6 +2794,81 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - full SingleStep, hardware captures, private firmware and browser performance are not established
 ---
 
+### [2026-11-17 20:27 CET] — Separate the manual TA workflow into bounded operations
+- **Affected Subsystems**:
+  - `.agents`
+  - `.codex/agents`
+  - `tools/workflow`
+  - `verification and Graphify consumers`
+- **What Was Changed (The Concrete Reality)**:
+  - Implement DETERMINISTIC-WORKFLOW-V1-20261116 with seven named roles and 43 atomic TA skills
+  - reduce root instructions to shared obligations and selective domain routing
+  - move detailed result criteria to review owners while preserving exact exceptions
+  - add typed text and JSON handoffs, bounded rounds and normal result validation
+  - update moved checker imports and active documentation consumers
+- **Architectural Rationale & Trade-Offs**:
+  - Keep operation selection in the interactive session and make missing prerequisites return control
+  - preserve existing verification and conditional Git publication guards without an automatic lifecycle engine
+  - inherited role permissions remain visible behavioral limits, not a claimed sandbox
+  - the migration uses a separate candidate worktree and the unchanged source harness under explicit task-scoped authorization
+- **Verification & Test Results**:
+  - The first actual fresh TA-planner completed one round and its receiver validated both results
+  - existing focused suites passed 23 architecture contracts, five timing/selection contracts and 15 Graphify contracts
+  - PowerShell parsing and safe invocation checks passed
+  - no emulator behavior, hardware/golden references or conversion prompts changed
+  - practical coverage is bounded and does not establish a speedup or exhaustive skill coverage
+---
+
+### [2026-11-17 22:57 CET] — Explain TA results and offer explicit next choices
+- **Affected Subsystems**:
+  - `.agents`
+  - `tools/workflow`
+  - `docs/ai_agents.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Implement WORKFLOW-NEXT-STEP-GUIDANCE-20261117 on the preserved pending V1 candidate
+  - add one receiving-session procedure with outcome, consequence, recommendation and source-bound options
+  - preserve worker reports and migrate their recommendation into result schema version 2
+  - render exact role, skill, inputs, findings, scope and round budget for selected operations
+  - update affected routing and four independent review criteria
+- **Architectural Rationale & Trade-Offs**:
+  - Interpretation is automatic while the next operation waits for selection
+  - current guidance retains exact source and candidate identities without an execution engine
+  - stale options and missing inputs remain explicit and criterion approval remains separate from repair authority
+  - task-specific trial delegation does not become a future default
+- **Verification & Test Results**:
+  - Initial tracked diff and all 84 V1 new-file hashes matched the recorded prior candidate
+  - Python compilation and both selected schema description commands passed
+  - canonical profile preview selected the combined V1 and extension scope
+  - practical handoff trials and final combined verification are recorded separately when executed
+  - no emulator, golden reference or conversion prompt changes
+
+---
+
+### [2026-11-18 00:08 CET] — Constrain official TA suggestions with a skill matrix
+- **Affected Subsystems**:
+  - `.agents`
+  - `tools/workflow`
+  - `docs/ai_agents.md`
+- **What Was Changed (The Concrete Reality)**:
+  - Implement WORKFLOW-SKILL-MATRIX-20261117 on the preserved pending workflow candidate
+  - define all 43 source and destination skills with shared conditions in one authoritative matrix
+  - generate a readable matrix and expose source-row lookup through the existing result tool
+  - require official guidance to identify its matrix, transition condition and actual evidence basis
+  - retain ordinary direct skill requests outside the official recommendation matrix
+- **Architectural Rationale & Trade-Offs**:
+  - Marked cells identify conditional suggestions while the receiver interprets evidence and waits for selection
+  - reuse the existing role mapping and keep worker result validation independent of recommendation membership
+  - preserve historical results and distinguish structural validation from meaningful evidence assessment
+  - no execution engine, automatic workflow test suite or default permission expansion
+- **Verification & Test Results**:
+  - Python compilation, guidance schema description, matrix rendering and coverage-row lookup passed
+  - the matrix covers 43 skills with 282 populated cells and 39 shared conditions
+  - actual read-only trial accepted a directly selected skill outside the matrix and rejected the same pair as an official suggestion
+  - the canonical commit profile passed all 19 groups; exact snapshots, independent reviews and evidence reuse are recorded in the task report
+  - no emulator, golden reference or conversion prompt changes
+
+---
+
 ### [2026-11-18 02:36 CET] — Remove obsolete browser build output
 - **Affected Subsystems**:
   - `Browser build`

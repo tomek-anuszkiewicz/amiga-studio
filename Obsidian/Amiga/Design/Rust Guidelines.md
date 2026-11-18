@@ -6,8 +6,8 @@ category: "Design"
 subsystem: "general"
 status: "active"
 created: 2026-09-10
-updated: 2026-11-16
-related: ["[General Architecture.md](General%20Architecture.md)", "[egui Guidelines.md](egui%20Guidelines.md)", "[PowerShell tooling skill](../../../.agents/skills/write-powershell/SKILL.md)"]
+updated: 2026-11-17
+related: ["[General Architecture.md](General%20Architecture.md)", "[egui Guidelines.md](egui%20Guidelines.md)", "[PowerShell tooling skill](../../../.agents/skills/TA-write-powershell/SKILL.md)"]
 ---
 
 # Rust Engineering Rationale
@@ -15,7 +15,7 @@ related: ["[General Architecture.md](General%20Architecture.md)", "[egui Guideli
 The maintained engineering obligations live in the [Rust rules](../../../.agents/rules/rust-best-practices.md),
 [performance policy](../../../.agents/rules/performance-and-readability.md),
 [workspace boundaries](../../../.agents/rules/workspace-structure-and-reexports.md),
-[file cohesion policy](../../../.agents/rules/file-size-and-cohesion.md) and
+[architecture review criteria](../../../.agents/references/architecture-criteria.md) and
 [testing policy](../../../.agents/rules/unit-testing-policy.md). This note retains
 why those choices matter rather than maintaining a second copy of their limits,
 crate lists or verification commands.
@@ -48,8 +48,10 @@ condition evaluation and hit testing. Splitting each type into its own file woul
 separate one capability without creating an independent responsibility.
 
 The [architecture](General%20Architecture.md) explains subsystem ownership.
-The rules linked above own dependency permissions, re-exports, file thresholds,
-hot-path allocation and inlining, and required verification.
+Advance rules own dependency permissions, required module layout, hot-path
+constraints and verification triggers. Architecture review owns the detailed
+cohesion, visibility, numeric naming and inlining criteria. Mechanical limits
+remain with their configured checkers; moving a criterion does not waive it.
 
 ## References
 

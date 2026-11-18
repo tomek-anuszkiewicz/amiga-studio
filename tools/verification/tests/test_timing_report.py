@@ -43,7 +43,7 @@ class TimingReportTests(unittest.TestCase):
                                ("tools/verification/checks/check_english.json", True),
                                ("tools/web.ps1", True), ("tools/worktree.ps1", True),
                                ("tools/graphify_query.py", True),
-                               (".agents/skills/obsidian-vault-linking/scripts/audit_vault.py", True),
+                               (".agents/skills/TA-audit-vault-links/scripts/audit_vault.py", True),
                                ("tools/verification/checks/english_words/software.txt", False),
                                ("crates/cpu/src/cpu.rs", False),
                                ("tools/verification/README.md", False),

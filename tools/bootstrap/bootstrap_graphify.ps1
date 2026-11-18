@@ -11,7 +11,7 @@ Write-Host @'
 Usage: .\tools\bootstrap\bootstrap_graphify.ps1 [-CheckOnly]
 
 Default: create or refresh both project and reference code graphs.
-         Project document semantics use the Graphify skill separately.
+         Project document semantics use TA-extract-graph-semantics separately.
 -CheckOnly: check Graphify availability; change neither graph.
 
 Examples:
@@ -22,7 +22,7 @@ Examples:
 $RepoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $GraphifyCmd = Get-Command graphify -ErrorAction SilentlyContinue
 if (-not $GraphifyCmd) {
-    Write-Error "Graphify is missing. Install with: uv tool install graphifyy==0.9.74. Preserve the repository-owned Graphify skill."
+    Write-Error "Graphify is missing. Install with: uv tool install graphifyy==0.9.74. Preserve the repository-owned TA graph skills."
     exit 1
 }
 Write-Host "[OK] Graphify is available."
@@ -36,7 +36,7 @@ foreach ($Graph in @('project', 'reference')) {
         Write-Warning "$Graph graph failed with exit code $LASTEXITCODE."
         $Result = 1
     } else {
-        Write-Host "[OK] $Graph code refreshed. Project semantics require the Graphify skill."
+        Write-Host "[OK] $Graph code refreshed. Project semantics require TA-extract-graph-semantics."
     }
 }
 exit $Result

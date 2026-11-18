@@ -26,7 +26,7 @@ def prepare(root):
 
     out = root / "graphify-out"
     out.mkdir(exist_ok=True)
-    prompt = root / ".agents/skills/graphify/references/extraction-spec.md"
+    prompt = root / ".agents/skills/TA-extract-graph-semantics/references/extraction-spec.md"
     detected = detect(root, gitignore=True)
     files = [f for kind in ("document", "paper", "image") for f in detected["files"][kind]]
     nodes, edges, hyperedges, uncached = check_semantic_cache(files, root=root, prompt_file=prompt)
@@ -52,7 +52,7 @@ def apply(root, run):
     if not run.is_relative_to(out) or run.parent != out:
         raise ValueError("Select a semantic run directory directly inside project graphify-out.")
     state = json.loads((run / "state.json").read_text(encoding="utf-8"))
-    prompt = root / ".agents/skills/graphify/references/extraction-spec.md"
+    prompt = root / ".agents/skills/TA-extract-graph-semantics/references/extraction-spec.md"
     detected = detect(root, gitignore=True)
     files = [f for kind in ("document", "paper", "image") for f in detected["files"][kind]]
     current = {str(Path(f).relative_to(root)): digest(Path(f)) for f in files}
