@@ -8,6 +8,50 @@ and explains the result before the next choice. An explicit request can authoriz
 several steps' scope; the receiving session still waits for your selection before
 starting the next operation.
 
+## Find your way around the skills
+
+The [workflow map](workflow-map.svg) follows a planned software change from its
+task worktree through publication on local master. The lower half groups
+additional operations by purpose.
+Open the map on its own to follow a skill name to its instructions.
+
+![Workflow from planning through the task commit, integration in the task worktree and publication on local master](workflow-map.svg)
+
+The upper path shows a planned change in an existing task worktree. The planner,
+test designer and implementer hand the candidate back to the main session.
+During preparation, check specification compliance and audit the Design vault's
+metadata and links. Existing evidence can cover matching scope. Each of the four
+batch review lanes then uses a fresh instance of the same reviewer role.
+If a review or check fails, select the repair, prepare the revised candidate
+and repeat the affected checks and reviews. A commit requires a passing canonical
+verification of the prepared changes.
+The [batch policy](../.agents/rules/git-commits.md#readiness-before-freeze)
+lists the evidence to collect for the selected change.
+
+An explicitly authorized temporary working commit can preserve pending work
+before integration checks. Record that it awaits verification. It must take the
+full integration path even if Git can advance master by fast-forward.
+
+Before integration, agree on a plan with the user and record the current local
+master commit (B). With that approval, a clean, unchanged
+task tip that contains B can take the confirmed fast-forward path when closure
+is committed and the exact tip has been confirmed as tested. If the branches
+have diverged, the default is to merge B into the task branch. An explicitly
+selected rebase also runs in the task worktree. Both routes require checking
+the integrated result against B. If the tip already contains B but lacks the
+required evidence or closure, go directly to preparation and full integration checks.
+Include any fixes or closure changes in the
+reviewed and verified candidate before creating the prepared commits. The same
+specification, vault and repair steps apply to the integrated changes.
+`TA-close-task` publishes the sealed final tip on local master, provided
+master still equals B. See the [integration policy](../.agents/rules/git-merge-commits.md)
+and [verification and publication commands](../tools/verification/README.md#local-integration).
+
+Choose `TA-start-plan` when you need a new worktree and `TA-register-execution`
+to register the task and its session for capture. The [capture guide](../tools/workflow/capture/README.md) explains how to start and control the collector and receiver.
+For the conditions under which one skill can suggest another, see the
+[recommendation matrix](workflow-skill-matrix.md).
+
 For build and environment setup, use the [developer guide](developers.md).
 For the project's development story and lessons learned, read
 [How This Emulator Was Written](how_this_emulator_was_written.md).

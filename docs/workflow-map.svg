@@ -1,0 +1,308 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1180" height="2220" viewBox="0 0 1180 2220" role="img" aria-labelledby="title desc">
+  <title id="title">Amiga workflow: skills and agents</title>
+  <desc id="desc">Follow a software change from planning to publication on local master. After the task commit, the diagram forks into unchanged fast-forward, merge and explicitly authorized rebase paths. The paths meet at conditional publication. Additional skills are grouped by purpose and primary executor.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#427069"/></marker>
+  </defs>
+  <style>
+    text { font-family: system-ui, sans-serif; fill: #17383c; }
+    .heading { font-size: 33px; font-weight: 680; }
+    .section { font-size: 22px; font-weight: 650; }
+    .caption { font-size: 15px; }
+    .name { font-family: Consolas, monospace; font-size: 16px; fill: #105467; }
+    .owner { font-size: 13px; fill: #50656b; }
+    .group { font-size: 18px; font-weight: 650; }
+    .edge { fill: none; stroke: #427069; stroke-width: 2; marker-end: url(#arrow); }
+    a:hover .name, a:focus .name { text-decoration: underline; }
+  </style>
+  <rect width="1180" height="2220" fill="#f8faf8"/>
+  <text x="38" y="52" class="heading">Amiga workflow: skills and agents</text>
+  <text x="38" y="84" class="caption">You choose an operation. The main session runs it or assigns the indicated specialist and brings back the result.</text>
+  <text x="38" y="133" class="section">A software change from plan to local master</text>
+  <text x="38" y="159" class="caption">Follow the arrows for a typical change in an existing task worktree. Preparation collects the evidence needed before commit.</text>
+  <path d="M370 237H424" class="edge"/>
+  <path d="M756 237H810" class="edge"/>
+  <path d="M976 280V302" class="edge"/>
+  <path d="M810 354H790V348H756" class="edge"/>
+  <path d="M810 354H790V439H756" class="edge"/>
+  <path d="M424 348H392V385H370" class="edge"/>
+  <path d="M424 439H392V385H370" class="edge"/>
+  <rect x="38" y="194" width="332" height="86" rx="9" fill="#e6f1ee" stroke="#b5c8c5"/>
+  <text x="54" y="219" class="group">Plan the change</text>
+  <a href="../.agents/skills/TA-plan-change/SKILL.md" xlink:href="../.agents/skills/TA-plan-change/SKILL.md" aria-label="TA-plan-change, TA-planner">
+  <text x="54" y="243" class="name">TA-plan-change</text>
+  </a>
+  <text x="54" y="265" class="owner">TA-planner</text>
+  <rect x="424" y="194" width="332" height="86" rx="9" fill="#e6f1ee" stroke="#b5c8c5"/>
+  <text x="440" y="219" class="group">Design the tests</text>
+  <a href="../.agents/skills/TA-design-tests/SKILL.md" xlink:href="../.agents/skills/TA-design-tests/SKILL.md" aria-label="TA-design-tests, TA-test-designer">
+  <text x="440" y="243" class="name">TA-design-tests</text>
+  </a>
+  <text x="440" y="265" class="owner">TA-test-designer</text>
+  <rect x="810" y="194" width="332" height="86" rx="9" fill="#e6f1ee" stroke="#b5c8c5"/>
+  <text x="826" y="219" class="group">Implement and check</text>
+  <a href="../.agents/skills/TA-implement-change/SKILL.md" xlink:href="../.agents/skills/TA-implement-change/SKILL.md" aria-label="TA-implement-change, TA-implementer">
+  <text x="826" y="243" class="name">TA-implement-change</text>
+  </a>
+  <text x="826" y="265" class="owner">TA-implementer</text>
+  <rect x="810" y="302" width="332" height="174" rx="9" fill="#e6f1ee" stroke="#b5c8c5"/>
+  <text x="826" y="327" class="group">Prepare the candidate</text>
+  <a href="../.agents/skills/TA-prepare-batch/SKILL.md" xlink:href="../.agents/skills/TA-prepare-batch/SKILL.md" aria-label="TA-prepare-batch, Main session">
+  <text x="826" y="351" class="name">TA-prepare-batch</text>
+  </a>
+  <text x="826" y="373" class="owner">Main session</text>
+  <text x="826" y="398" class="owner">Required assessments or matching evidence</text>
+  <a href="../.agents/skills/TA-review-spec-compliance/SKILL.md" xlink:href="../.agents/skills/TA-review-spec-compliance/SKILL.md"><text x="826" y="421" class="name">TA-review-spec-compliance</text></a>
+  <a href="../.agents/skills/TA-audit-vault-links/SKILL.md" xlink:href="../.agents/skills/TA-audit-vault-links/SKILL.md"><text x="826" y="443" class="name">TA-audit-vault-links</text></a>
+  <rect x="424" y="291" width="332" height="116" rx="9" fill="#efedf7" stroke="#b5c8c5"/>
+  <text x="440" y="315" class="group">Four independent reviews</text>
+  <a href="../.agents/skills/TA-review-behavior/SKILL.md" xlink:href="../.agents/skills/TA-review-behavior/SKILL.md" aria-label="TA-review-behavior, TA-code-reviewer">
+  <text x="440" y="337" class="name">TA-review-behavior</text>
+  </a>
+  <a href="../.agents/skills/TA-review-architecture/SKILL.md" xlink:href="../.agents/skills/TA-review-architecture/SKILL.md" aria-label="TA-review-architecture, TA-code-reviewer">
+  <text x="440" y="357" class="name">TA-review-architecture</text>
+  </a>
+  <a href="../.agents/skills/TA-review-tests-evidence/SKILL.md" xlink:href="../.agents/skills/TA-review-tests-evidence/SKILL.md" aria-label="TA-review-tests-evidence, TA-code-reviewer">
+  <text x="440" y="377" class="name">TA-review-tests-evidence</text>
+  </a>
+  <a href="../.agents/skills/TA-review-docs/SKILL.md" xlink:href="../.agents/skills/TA-review-docs/SKILL.md" aria-label="TA-review-docs, TA-code-reviewer">
+  <text x="440" y="397" class="name">TA-review-docs</text>
+  </a>
+  <rect x="424" y="419" width="332" height="57" rx="9" fill="#efedf7" stroke="#b5c8c5"/>
+  <a href="../.agents/skills/TA-verify-batch/SKILL.md" xlink:href="../.agents/skills/TA-verify-batch/SKILL.md" aria-label="TA-verify-batch, Main session">
+  <text x="440" y="442" class="name">TA-verify-batch</text>
+  </a>
+  <text x="440" y="463" class="owner">Main session · canonical commit profile</text>
+  <rect x="38" y="342" width="332" height="86" rx="9" fill="#e6f1ee" stroke="#b5c8c5"/>
+  <text x="54" y="367" class="group">Commit on the task branch</text>
+  <a href="../.agents/skills/TA-commit-batch/SKILL.md" xlink:href="../.agents/skills/TA-commit-batch/SKILL.md" aria-label="TA-commit-batch, Main session">
+  <text x="54" y="391" class="name">TA-commit-batch</text>
+  </a>
+  <text x="54" y="413" class="owner">Main session</text>
+  <path d="M756 380H773V493" class="edge" stroke-dasharray="5 4"/>
+  <path d="M756 452H773" fill="none" stroke="#427069" stroke-dasharray="5 4"/>
+  <rect x="424" y="493" width="718" height="74" rx="9" fill="#f5efdf" stroke="#c8b991"/>
+  <text x="440" y="521" class="group">A check fails or a reviewer requests a change</text>
+  <text x="440" y="546" class="caption">Select a repair, prepare the revised candidate and repeat affected checks and reviews.</text>
+  <path d="M1142 530H1161V355H1142" class="edge" stroke-dasharray="5 4"/>
+  <g transform="translate(0 108)" id="integration" aria-label="Integration in the task worktree and publication on local master">
+    <path d="M204 320V498" class="edge"/>
+    <rect x="38" y="498" width="1104" height="73" rx="9" fill="#eaf2f5" stroke="#a5bec7"/>
+    <text x="54" y="528" class="section">Approve the integration plan before changing either branch</text>
+    <text x="54" y="551" class="caption">Record local master (B), the task tip and the method. An authorized unverified working commit takes the full integration path below.</text>
+    <path d="M204 571V610" class="edge"/>
+    <path d="M590 571V610" class="edge"/>
+    <path d="M976 571V610" class="edge"/>
+
+    <rect x="38" y="610" width="332" height="124" rx="9" fill="#f5efdf" stroke="#c8b991"/>
+    <text x="54" y="639" class="group">Unchanged, tested fast-forward</text>
+    <text x="54" y="665" class="caption">The approved plan accepts this clean tip.</text>
+    <text x="54" y="689" class="caption">It contains B and committed closure.</text>
+    <text x="54" y="712" class="caption">Confirm that this exact tip was tested.</text>
+
+    <rect x="424" y="610" width="332" height="124" rx="9" fill="#e6f1ee" stroke="#b5c8c5"/>
+    <text x="440" y="639" class="group">Merge master into the task branch</text>
+    <a href="../.agents/skills/TA-sync-master/SKILL.md" xlink:href="../.agents/skills/TA-sync-master/SKILL.md" aria-label="TA-sync-master, Main session">
+      <text x="440" y="665" class="name">TA-sync-master</text>
+    </a>
+    <text x="440" y="689" class="caption">Default when histories have diverged.</text>
+    <text x="440" y="712" class="caption">Resolve merge conflicts if they occur.</text>
+
+    <rect x="810" y="610" width="332" height="124" rx="9" fill="#e6f1ee" stroke="#b5c8c5"/>
+    <text x="826" y="639" class="group">Rebase task commits onto B</text>
+    <text x="826" y="665" class="caption">Only by explicit choice. Record the original</text>
+    <text x="826" y="689" class="caption">task tip (S), then replay the agreed commits</text>
+    <text x="826" y="712" class="caption">and resolve any conflicts in the task worktree.</text>
+
+    <path d="M590 734V754" class="edge"/>
+    <path d="M976 734V754" class="edge"/>
+    <rect x="424" y="754" width="718" height="105" rx="9" fill="#e6f1ee" stroke="#b5c8c5"/>
+    <text x="440" y="777" class="group">Reconcile and prepare the combined candidate</text>
+    <text x="440" y="801" class="caption">Reconcile code, tests and tracked documents. Prepare fixes and closure.</text>
+    <text x="440" y="825" class="owner">Already contains B but lacks tested-tip evidence or committed closure? Start the full checks here.</text>
+    <text x="440" y="846" class="owner">Assess specification compliance and vault links. Reuse evidence where its scope still matches.</text>
+
+    <path d="M783 859V876" class="edge"/>
+    <rect x="424" y="876" width="718" height="80" rx="9" fill="#efedf7" stroke="#b5c8c5"/>
+    <text x="440" y="902" class="group">Verify the integrated result and obtain all four review approvals</text>
+    <text x="440" y="927" class="caption">Run the commit profile against B. For a rebase, also supply S as the integration source.</text>
+    <text x="440" y="948" class="owner">Select repairs for findings, then prepare again and repeat the affected checks and reviews.</text>
+    <path d="M1142 917H1161V807H1142" class="edge" stroke-dasharray="5 4"/>
+
+    <path d="M204 734V988" class="edge"/>
+    <rect x="38" y="988" width="332" height="82" rx="9" fill="#f5efdf" stroke="#c8b991"/>
+    <text x="54" y="1015" class="group">Seal the approved tested tip</text>
+    <text x="54" y="1040" class="caption">The accept-tested operation records the</text>
+    <text x="54" y="1061" class="caption">existing commit as the publishable tip (C).</text>
+
+    <path d="M783 956V988" class="edge"/>
+    <rect x="424" y="988" width="718" height="82" rx="9" fill="#e6f1ee" stroke="#b5c8c5"/>
+    <text x="440" y="1015" class="group">Freeze the verified result, finish any prepared commits and seal C</text>
+    <text x="440" y="1040" class="caption">Finish a pending merge commit or add an agreed fix or closure commit when needed.</text>
+    <text x="440" y="1061" class="owner">TA-commit-batch binds the final task tip (C) to the accepted tree and integration evidence.</text>
+
+    <path d="M204 1070V1102" class="edge"/>
+    <path d="M783 1070V1102" class="edge"/>
+    <rect x="38" y="1102" width="1104" height="98" rx="9" fill="#d1ece0" stroke="#578777" stroke-width="2"/>
+    <text x="54" y="1131" class="section">Publish on local master</text>
+    <a href="../.agents/skills/TA-close-task/SKILL.md" xlink:href="../.agents/skills/TA-close-task/SKILL.md" aria-label="TA-close-task, Main session">
+      <text x="54" y="1157" class="name">TA-close-task</text>
+    </a>
+    <text x="54" y="1181" class="caption">In the primary checkout, advance master from B to C only if master still equals B. If master moved, restart integration at its new tip.</text>
+  </g>
+  <g transform="translate(0 808)">
+  <text x="38" y="592" class="section">Find an additional skill by what you need to do</text>
+  <text x="38" y="620" class="caption">Each group shows the primary executor. Select a skill in the standalone map to open its instructions.</text>
+  <rect x="38" y="649" width="354" height="211" rx="9" fill="#ffffff" stroke="#b5c8c5"/>
+  <text x="52" y="678" class="group">Fix or tune an implementation</text>
+  <text x="52" y="701" class="owner">TA-implementer</text>
+  <a href="../.agents/skills/TA-fix-findings/SKILL.md" xlink:href="../.agents/skills/TA-fix-findings/SKILL.md" aria-label="TA-fix-findings, TA-implementer">
+  <text x="52" y="724" class="name">TA-fix-findings</text>
+  </a>
+  <a href="../.agents/skills/TA-optimize-emulation/SKILL.md" xlink:href="../.agents/skills/TA-optimize-emulation/SKILL.md" aria-label="TA-optimize-emulation, TA-implementer">
+  <text x="52" y="746" class="name">TA-optimize-emulation</text>
+  </a>
+  <a href="../.agents/skills/TA-write-powershell/SKILL.md" xlink:href="../.agents/skills/TA-write-powershell/SKILL.md" aria-label="TA-write-powershell, TA-implementer">
+  <text x="52" y="768" class="name">TA-write-powershell</text>
+  </a>
+  <text x="52" y="790" class="owner">Main session</text>
+  <a href="../.agents/skills/TA-profile-emulation/SKILL.md" xlink:href="../.agents/skills/TA-profile-emulation/SKILL.md" aria-label="TA-profile-emulation, Main session">
+  <text x="52" y="813" class="name">TA-profile-emulation</text>
+  </a>
+  <rect x="413" y="649" width="354" height="211" rx="9" fill="#ffffff" stroke="#b5c8c5"/>
+  <text x="427" y="678" class="group">Inspect tests and run checks</text>
+  <text x="427" y="701" class="owner">TA-test-auditor</text>
+  <a href="../.agents/skills/TA-audit-tests/SKILL.md" xlink:href="../.agents/skills/TA-audit-tests/SKILL.md" aria-label="TA-audit-tests, TA-test-auditor">
+  <text x="427" y="724" class="name">TA-audit-tests</text>
+  </a>
+  <a href="../.agents/skills/TA-measure-coverage/SKILL.md" xlink:href="../.agents/skills/TA-measure-coverage/SKILL.md" aria-label="TA-measure-coverage, TA-test-auditor">
+  <text x="427" y="746" class="name">TA-measure-coverage</text>
+  </a>
+  <text x="427" y="768" class="owner">Main session</text>
+  <a href="../.agents/skills/TA-verify-focused/SKILL.md" xlink:href="../.agents/skills/TA-verify-focused/SKILL.md" aria-label="TA-verify-focused, Main session">
+  <text x="427" y="791" class="name">TA-verify-focused</text>
+  </a>
+  <a href="../.agents/skills/TA-verify-milestone/SKILL.md" xlink:href="../.agents/skills/TA-verify-milestone/SKILL.md" aria-label="TA-verify-milestone, Main session">
+  <text x="427" y="813" class="name">TA-verify-milestone</text>
+  </a>
+  <a href="../.agents/skills/TA-capture-gui-screenshot/SKILL.md" xlink:href="../.agents/skills/TA-capture-gui-screenshot/SKILL.md" aria-label="TA-capture-gui-screenshot, Main session">
+  <text x="427" y="835" class="name">TA-capture-gui-screenshot</text>
+  </a>
+  <rect x="788" y="649" width="354" height="211" rx="9" fill="#ffffff" stroke="#b5c8c5"/>
+  <text x="802" y="678" class="group">Check specifications and links</text>
+  <text x="802" y="701" class="owner">TA-code-reviewer</text>
+  <a href="../.agents/skills/TA-review-spec-compliance/SKILL.md" xlink:href="../.agents/skills/TA-review-spec-compliance/SKILL.md" aria-label="TA-review-spec-compliance, TA-code-reviewer">
+  <text x="802" y="724" class="name">TA-review-spec-compliance</text>
+  </a>
+  <a href="../.agents/skills/TA-review-semantic-parity/SKILL.md" xlink:href="../.agents/skills/TA-review-semantic-parity/SKILL.md" aria-label="TA-review-semantic-parity, TA-code-reviewer">
+  <text x="802" y="746" class="name">TA-review-semantic-parity</text>
+  </a>
+  <a href="../.agents/skills/TA-audit-vault-links/SKILL.md" xlink:href="../.agents/skills/TA-audit-vault-links/SKILL.md" aria-label="TA-audit-vault-links, TA-code-reviewer">
+  <text x="802" y="768" class="name">TA-audit-vault-links</text>
+  </a>
+  <rect x="38" y="877" width="354" height="213" rx="9" fill="#ffffff" stroke="#b5c8c5"/>
+  <text x="52" y="906" class="group">Research hardware or CPU behavior</text>
+  <text x="52" y="929" class="owner">TA-hardware-researcher</text>
+  <a href="../.agents/skills/TA-research-hardware-manuals/SKILL.md" xlink:href="../.agents/skills/TA-research-hardware-manuals/SKILL.md" aria-label="TA-research-hardware-manuals, TA-hardware-researcher">
+  <text x="52" y="952" class="name">TA-research-hardware-manuals</text>
+  </a>
+  <a href="../.agents/skills/TA-research-hardware-measurements/SKILL.md" xlink:href="../.agents/skills/TA-research-hardware-measurements/SKILL.md" aria-label="TA-research-hardware-measurements, TA-hardware-researcher">
+  <text x="52" y="974" class="name">TA-research-hardware-measurements</text>
+  </a>
+  <a href="../.agents/skills/TA-research-reference-models/SKILL.md" xlink:href="../.agents/skills/TA-research-reference-models/SKILL.md" aria-label="TA-research-reference-models, TA-hardware-researcher">
+  <text x="52" y="996" class="name">TA-research-reference-models</text>
+  </a>
+  <text x="52" y="1018" class="owner">TA-cpu-verifier</text>
+  <a href="../.agents/skills/TA-diagnose-cpu/SKILL.md" xlink:href="../.agents/skills/TA-diagnose-cpu/SKILL.md" aria-label="TA-diagnose-cpu, TA-cpu-verifier">
+  <text x="52" y="1041" class="name">TA-diagnose-cpu</text>
+  </a>
+  <rect x="413" y="877" width="354" height="213" rx="9" fill="#ffffff" stroke="#b5c8c5"/>
+  <text x="427" y="906" class="group">Work in Git and publish</text>
+  <text x="427" y="929" class="owner">Main session</text>
+  <a href="../.agents/skills/TA-start-plan/SKILL.md" xlink:href="../.agents/skills/TA-start-plan/SKILL.md" aria-label="TA-start-plan, Main session">
+  <text x="427" y="952" class="name">TA-start-plan</text>
+  </a>
+  <a href="../.agents/skills/TA-repair-worktree/SKILL.md" xlink:href="../.agents/skills/TA-repair-worktree/SKILL.md" aria-label="TA-repair-worktree, Main session">
+  <text x="427" y="974" class="name">TA-repair-worktree</text>
+  </a>
+  <a href="../.agents/skills/TA-sync-master/SKILL.md" xlink:href="../.agents/skills/TA-sync-master/SKILL.md" aria-label="TA-sync-master, Main session">
+  <text x="427" y="996" class="name">TA-sync-master</text>
+  </a>
+  <a href="../.agents/skills/TA-resolve-merge-conflicts/SKILL.md" xlink:href="../.agents/skills/TA-resolve-merge-conflicts/SKILL.md" aria-label="TA-resolve-merge-conflicts, Main session">
+  <text x="427" y="1018" class="name">TA-resolve-merge-conflicts</text>
+  </a>
+  <a href="../.agents/skills/TA-close-task/SKILL.md" xlink:href="../.agents/skills/TA-close-task/SKILL.md" aria-label="TA-close-task, Main session">
+  <text x="427" y="1040" class="name">TA-close-task</text>
+  </a>
+  <a href="../.agents/skills/TA-cleanup-task/SKILL.md" xlink:href="../.agents/skills/TA-cleanup-task/SKILL.md" aria-label="TA-cleanup-task, Main session">
+  <text x="427" y="1062" class="name">TA-cleanup-task</text>
+  </a>
+  <rect x="788" y="877" width="354" height="213" rx="9" fill="#ffffff" stroke="#b5c8c5"/>
+  <text x="802" y="906" class="group">Capture a selected execution</text>
+  <text x="802" y="929" class="owner">Main session</text>
+  <a href="../.agents/skills/TA-register-execution/SKILL.md" xlink:href="../.agents/skills/TA-register-execution/SKILL.md" aria-label="TA-register-execution, Main session">
+  <text x="802" y="952" class="name">TA-register-execution</text>
+  </a>
+  <a href="../.agents/skills/TA-capture-environment/SKILL.md" xlink:href="../.agents/skills/TA-capture-environment/SKILL.md" aria-label="TA-capture-environment, Main session">
+  <text x="802" y="974" class="name">TA-capture-environment</text>
+  </a>
+  <a href="../.agents/skills/TA-compare-environments/SKILL.md" xlink:href="../.agents/skills/TA-compare-environments/SKILL.md" aria-label="TA-compare-environments, Main session">
+  <text x="802" y="996" class="name">TA-compare-environments</text>
+  </a>
+  <a href="../.agents/skills/TA-collect-task-records/SKILL.md" xlink:href="../.agents/skills/TA-collect-task-records/SKILL.md" aria-label="TA-collect-task-records, Main session">
+  <text x="802" y="1018" class="name">TA-collect-task-records</text>
+  </a>
+  <a href="../.agents/skills/TA-check-task-records/SKILL.md" xlink:href="../.agents/skills/TA-check-task-records/SKILL.md" aria-label="TA-check-task-records, Main session">
+  <text x="802" y="1040" class="name">TA-check-task-records</text>
+  </a>
+  <rect x="38" y="1107" width="354" height="213" rx="9" fill="#ffffff" stroke="#b5c8c5"/>
+  <text x="52" y="1136" class="group">Maintain project documentation</text>
+  <text x="52" y="1159" class="owner">Main session</text>
+  <a href="../.agents/skills/TA-sync-docs/SKILL.md" xlink:href="../.agents/skills/TA-sync-docs/SKILL.md" aria-label="TA-sync-docs, Main session">
+  <text x="52" y="1182" class="name">TA-sync-docs</text>
+  </a>
+  <a href="../.agents/skills/TA-author-methodology-doc/SKILL.md" xlink:href="../.agents/skills/TA-author-methodology-doc/SKILL.md" aria-label="TA-author-methodology-doc, Main session">
+  <text x="52" y="1204" class="name">TA-author-methodology-doc</text>
+  </a>
+  <a href="../.agents/skills/TA-compact-diary/SKILL.md" xlink:href="../.agents/skills/TA-compact-diary/SKILL.md" aria-label="TA-compact-diary, Main session">
+  <text x="52" y="1226" class="name">TA-compact-diary</text>
+  </a>
+  <a href="../.agents/skills/TA-organize-roadmap/SKILL.md" xlink:href="../.agents/skills/TA-organize-roadmap/SKILL.md" aria-label="TA-organize-roadmap, Main session">
+  <text x="52" y="1248" class="name">TA-organize-roadmap</text>
+  </a>
+  <a href="../.agents/skills/TA-prune-roadmap/SKILL.md" xlink:href="../.agents/skills/TA-prune-roadmap/SKILL.md" aria-label="TA-prune-roadmap, Main session">
+  <text x="52" y="1270" class="name">TA-prune-roadmap</text>
+  </a>
+  <a href="../.agents/skills/TA-index-amiga-rag/SKILL.md" xlink:href="../.agents/skills/TA-index-amiga-rag/SKILL.md" aria-label="TA-index-amiga-rag, Main session">
+  <text x="52" y="1292" class="name">TA-index-amiga-rag</text>
+  </a>
+  <rect x="413" y="1107" width="354" height="213" rx="9" fill="#ffffff" stroke="#b5c8c5"/>
+  <text x="427" y="1136" class="group">Explore or update a code graph</text>
+  <text x="427" y="1159" class="owner">Main session</text>
+  <a href="../.agents/skills/TA-query-graph/SKILL.md" xlink:href="../.agents/skills/TA-query-graph/SKILL.md" aria-label="TA-query-graph, Main session">
+  <text x="427" y="1182" class="name">TA-query-graph</text>
+  </a>
+  <a href="../.agents/skills/TA-find-graph-path/SKILL.md" xlink:href="../.agents/skills/TA-find-graph-path/SKILL.md" aria-label="TA-find-graph-path, Main session">
+  <text x="427" y="1204" class="name">TA-find-graph-path</text>
+  </a>
+  <a href="../.agents/skills/TA-explain-graph-symbol/SKILL.md" xlink:href="../.agents/skills/TA-explain-graph-symbol/SKILL.md" aria-label="TA-explain-graph-symbol, Main session">
+  <text x="427" y="1226" class="name">TA-explain-graph-symbol</text>
+  </a>
+  <a href="../.agents/skills/TA-refresh-graph/SKILL.md" xlink:href="../.agents/skills/TA-refresh-graph/SKILL.md" aria-label="TA-refresh-graph, Main session">
+  <text x="427" y="1248" class="name">TA-refresh-graph</text>
+  </a>
+  <a href="../.agents/skills/TA-extract-graph-semantics/SKILL.md" xlink:href="../.agents/skills/TA-extract-graph-semantics/SKILL.md" aria-label="TA-extract-graph-semantics, Main session">
+  <text x="427" y="1270" class="name">TA-extract-graph-semantics</text>
+  </a>
+  <rect x="788" y="1107" width="354" height="213" rx="9" fill="#ffffff" stroke="#b5c8c5"/>
+  <text x="802" y="1136" class="group">Extend the workflow</text>
+  <text x="802" y="1159" class="owner">Main session</text>
+  <a href="../.agents/skills/TA-create-skill/SKILL.md" xlink:href="../.agents/skills/TA-create-skill/SKILL.md" aria-label="TA-create-skill, Main session">
+  <text x="802" y="1182" class="name">TA-create-skill</text>
+  </a>
+  <a href="../.agents/skills/TA-create-agent/SKILL.md" xlink:href="../.agents/skills/TA-create-agent/SKILL.md" aria-label="TA-create-agent, Main session">
+  <text x="802" y="1204" class="name">TA-create-agent</text>
+  </a>
+  <text x="38" y="1365" class="caption">50 skills · 7 specialist roles · 1 main session. A role can be used several times during a task.</text>
+  </g>
+</svg>

@@ -2922,3 +2922,16 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Keep approved inputs in Git and retain enough execution evidence to investigate individual task runs.
 - **Verification & Test Results**:
   - The dedicated CLI emitted an explicit skill invocation. Checked root and child spans matched the collector output. The independent fixture retained its archive and both commits after its task worktree was removed.
+---
+
+### [2026-11-18 16:42 CET] — Workflow map and focused verification roles
+- **Affected Subsystems**:
+  - `Workflow documentation`
+  - `workflow result validation`
+- **What Was Changed (The Concrete Reality)**:
+  - Map the skills from planning through the task commit and publication on local master.
+  - Reject the test auditor as the executor of focused verification in results and guidance.
+- **Architectural Rationale & Trade-Offs**:
+  - Make the integration and repair paths visible and direct focused checks to supported roles.
+- **Verification & Test Results**:
+  - All 50 distinct skill links resolved. The map rendered in Edge. Validator probes rejected the test auditor for focused checks and accepted its test audit and coverage assignments.
