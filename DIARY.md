@@ -2899,3 +2899,15 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - The earlier pending candidate passed 19 required verification groups and exercised bounded role and handoff trials, including rejection of an off-matrix official suggestion
   - The integrated diff passed the Git whitespace check before this entry
   - Previous trial limits include named role dispatch availability, technical permission isolation and untested interruption and exhaustion paths; The present model defaults have no effective runtime evidence from those trials
+---
+
+### [2026-11-18 12:05 CET] — Record the execution capture inputs
+- **Affected Subsystems**:
+  - `Workflow`
+- **What Was Changed (The Concrete Reality)**:
+  - Recorded the approved execution capture plan, practical test scenarios, environment inventory and delivery decisions.
+- **Architectural Rationale & Trade-Offs**:
+  - Keep the implementation starting point independently recoverable from Git.
+- **Verification & Test Results**:
+  - In a limited pilot, one dedicated CLI turn produced fourteen telemetry logs with the expected conversation identifier. The collector retained the allowed control and excluded both rejected controls.
+  - The planned implementation scenarios S1 through S5 remain unrun end to end.

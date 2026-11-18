@@ -1,0 +1,561 @@
+{
+  "format_version": 1,
+  "captured_at": "2026-11-18T11:05:04.164117+00:00",
+  "governing_commit": "ba273734ee86f36012e6bc90c355345822c26f28",
+  "branch": "workflow-execution-capture",
+  "initial_git_status": [],
+  "host": {
+    "os": "Windows-11-10.0.26300-SP0",
+    "architecture": "AMD64",
+    "processors": 20,
+    "native": true,
+    "shell": "Windows PowerShell"
+  },
+  "probes": [
+    {
+      "utc": "2026-11-18T11:05:01.681702+00:00",
+      "command": [
+        "git",
+        "--version"
+      ],
+      "executable": "git.EXE",
+      "status": "observed",
+      "exit_code": 0,
+      "result": "git version 2.55.0.windows.3"
+    },
+    {
+      "utc": "2026-11-18T11:05:01.741311+00:00",
+      "command": [
+        "rustc",
+        "-Vv"
+      ],
+      "executable": "rustc.EXE",
+      "status": "observed",
+      "exit_code": 0,
+      "result": "rustc 1.100.0 (0ef1bc386 2026-11-09)\nbinary: rustc\ncommit-hash: 0ef1bc386059596dada8fb65b50425aab2ea637a\ncommit-date: 2026-11-09\nhost: x86_64-pc-windows-msvc\nrelease: 1.100.0\nLLVM version: 23.1.5"
+    },
+    {
+      "utc": "2026-11-18T11:05:01.776909+00:00",
+      "command": [
+        "cargo",
+        "--version"
+      ],
+      "executable": "cargo.EXE",
+      "status": "observed",
+      "exit_code": 0,
+      "result": "cargo 1.100.0 (3acc79c0c 2026-11-05)"
+    },
+    {
+      "utc": "2026-11-18T11:05:01.809854+00:00",
+      "command": [
+        "rustup",
+        "show",
+        "active-toolchain"
+      ],
+      "executable": "rustup.EXE",
+      "status": "observed",
+      "exit_code": 0,
+      "result": "stable-x86_64-pc-windows-msvc (default)"
+    },
+    {
+      "utc": "2026-11-18T11:05:01.829033+00:00",
+      "command": [
+        "rustup",
+        "target",
+        "list",
+        "--installed"
+      ],
+      "executable": "rustup.EXE",
+      "status": "observed",
+      "exit_code": 0,
+      "result": "wasm32-unknown-unknown\nx86_64-pc-windows-msvc"
+    },
+    {
+      "utc": "2026-11-18T11:05:01.862601+00:00",
+      "command": [
+        "rust-lld",
+        "--version"
+      ],
+      "status": "unavailable"
+    },
+    {
+      "utc": "2026-11-18T11:05:01.869123+00:00",
+      "command": [
+        "clang",
+        "--version"
+      ],
+      "status": "unavailable"
+    },
+    {
+      "utc": "2026-11-18T11:05:01.875337+00:00",
+      "command": [
+        "wasm-bindgen",
+        "--version"
+      ],
+      "status": "unavailable"
+    },
+    {
+      "utc": "2026-11-18T11:05:01.881437+00:00",
+      "command": [
+        "cargo",
+        "llvm-cov",
+        "--version"
+      ],
+      "executable": "cargo.EXE",
+      "status": "observed",
+      "exit_code": 0,
+      "result": "cargo-llvm-cov 0.9.1"
+    },
+    {
+      "utc": "2026-11-18T11:05:01.928992+00:00",
+      "command": [
+        "py",
+        "-0"
+      ],
+      "executable": "py.EXE",
+      "status": "observed",
+      "exit_code": 0,
+      "result": "-V:3.13"
+    },
+    {
+      "utc": "2026-11-18T11:05:01.954831+00:00",
+      "command": [
+        "python",
+        "--version"
+      ],
+      "executable": "python.EXE",
+      "status": "observed",
+      "exit_code": 0,
+      "result": "Python 3.13.15"
+    },
+    {
+      "utc": "2026-11-18T11:05:01.963732+00:00",
+      "command": [
+        "pip",
+        "--version"
+      ],
+      "executable": "pip.EXE",
+      "status": "observed",
+      "exit_code": 0,
+      "result": "Output contained a location; version unavailable in this probe."
+    },
+    {
+      "utc": "2026-11-18T11:05:02.307334+00:00",
+      "command": [
+        "node",
+        "--version"
+      ],
+      "executable": "node.EXE",
+      "status": "observed",
+      "exit_code": 0,
+      "result": "v24.20.0"
+    },
+    {
+      "utc": "2026-11-18T11:05:02.329351+00:00",
+      "command": [
+        "npm",
+        "--version"
+      ],
+      "executable": "npm.CMD",
+      "status": "observed",
+      "exit_code": 0,
+      "result": "12.0.2"
+    },
+    {
+      "utc": "2026-11-18T11:05:02.491796+00:00",
+      "command": [
+        "npm",
+        "ls",
+        "--global",
+        "--depth=0",
+        "--json"
+      ],
+      "executable": "npm.CMD",
+      "status": "observed",
+      "exit_code": 0,
+      "result": {
+        "corepack": "0.35.0",
+        "npm": "12.0.2",
+        "pm2-windows-startup": "1.0.3",
+        "pm2": "7.0.4"
+      }
+    },
+    {
+      "utc": "2026-11-18T11:05:03.295708+00:00",
+      "command": [
+        "docker",
+        "version",
+        "--format",
+        "{{.Client.Version}} / {{.Server.Version}}"
+      ],
+      "executable": "docker.EXE",
+      "status": "observed",
+      "exit_code": 0,
+      "result": "29.7.2 / 29.7.2"
+    },
+    {
+      "utc": "2026-11-18T11:05:03.361854+00:00",
+      "command": [
+        "docker",
+        "compose",
+        "version",
+        "--short"
+      ],
+      "executable": "docker.EXE",
+      "status": "observed",
+      "exit_code": 0,
+      "result": "5.4.0"
+    },
+    {
+      "utc": "2026-11-18T11:05:03.480196+00:00",
+      "command": [
+        "docker",
+        "image",
+        "inspect",
+        "otel/opentelemetry-collector-contrib:0.165.0",
+        "--format",
+        "{{index .RepoDigests 0}}"
+      ],
+      "executable": "docker.EXE",
+      "status": "observed",
+      "exit_code": 0,
+      "result": "otel/opentelemetry-collector-contrib@sha256:e40d61f10c9a617cca1ffd1be4d7e2b3a4b0f0001798ff07e58cabe82e618cea"
+    },
+    {
+      "utc": "2026-11-18T11:05:03.538883+00:00",
+      "command": [
+        "codex",
+        "--version"
+      ],
+      "executable": "codex.EXE",
+      "status": "observed",
+      "exit_code": 0,
+      "result": "codex-cli 0.169.0-alpha.11.1"
+    },
+    {
+      "utc": "2026-11-18T11:05:03.570826+00:00",
+      "command": [
+        "graphify",
+        "--version"
+      ],
+      "executable": "graphify.EXE",
+      "status": "observed",
+      "exit_code": 0,
+      "result": "graphify 0.9.74"
+    },
+    {
+      "utc": "2026-11-18T11:05:03.795947+00:00",
+      "command": [
+        "powershell",
+        "-NoProfile",
+        "-Command",
+        "$PSVersionTable.PSVersion.ToString()"
+      ],
+      "executable": "powershell.EXE",
+      "status": "observed",
+      "exit_code": 0,
+      "result": "5.1.26100.9818"
+    }
+  ],
+  "python": {
+    "selected": "python.exe",
+    "version": "3.13.15 (tags/v3.13.15:4061bc4, Aug  5 2026, 13:05:39) [MSC v.1944 64 bit (AMD64)]",
+    "venv": false,
+    "pip_version": "26.2.1",
+    "packages": {
+      "Authlib": "1.8.0",
+      "Faker": "40.37.0",
+      "Jinja2": "3.1.6",
+      "MarkupSafe": "3.0.3",
+      "PyJWT": "2.13.0",
+      "PyYAML": "6.0.3",
+      "Pygments": "2.21.0",
+      "accelerate": "1.14.0",
+      "aiofile": "3.12.3",
+      "annotated-doc": "0.0.5",
+      "annotated-types": "0.8.0",
+      "antlr4-python3-runtime": "4.9.3",
+      "anyio": "4.14.2",
+      "attrs": "26.1.0",
+      "beartype": "0.22.9",
+      "beautifulsoup4": "4.15.0",
+      "cachetools": "7.1.8",
+      "caio": "0.12.2",
+      "cattrs": "26.2.1",
+      "certifi": "2026.7.22",
+      "cffi": "2.1.1",
+      "charset-normalizer": "3.5.1",
+      "click": "8.5.0",
+      "colorama": "0.4.6",
+      "colorlog": "6.12.0",
+      "cryptography": "50.0.1",
+      "cyclopts": "4.24.0",
+      "defusedxml": "0.7.1",
+      "dill": "0.4.1",
+      "distro": "1.9.0",
+      "dnspython": "2.8.0",
+      "doclang": "0.7.3",
+      "docling": "2.124.0",
+      "docling-core": "2.92.0",
+      "docling-ibm-models": "4.0.0",
+      "docling-parse": "7.16.0",
+      "docling-slim": "2.124.0",
+      "docstring-to-markdown": "0.17",
+      "docstring_parser": "0.18.0",
+      "email-validator": "2.3.0",
+      "et_xmlfile": "2.0.0",
+      "exceptiongroup": "1.3.1",
+      "fastembed": "0.8.0",
+      "fastmcp": "4.0.2",
+      "fastmcp-slim": "4.0.2",
+      "filelock": "3.32.5",
+      "filetype": "1.2.0",
+      "flatbuffers": "25.12.19",
+      "fonttools": "4.66.0",
+      "fpdf2": "2.8.8",
+      "fsspec": "2026.7.0",
+      "git-filter-repo": "2.47.0",
+      "google-auth": "2.57.0",
+      "google-genai": "2.22.0",
+      "greenlet": "3.5.6",
+      "griffelib": "2.2.0",
+      "grpcio": "1.83.1",
+      "h11": "0.16.0",
+      "h2": "4.4.1",
+      "hf-xet": "1.6.0",
+      "hpack": "4.2.0",
+      "httpcore": "1.0.9",
+      "httpcore2": "2.12.0",
+      "httpx": "0.28.1",
+      "httpx2": "2.12.0",
+      "huggingface_hub": "1.29.0",
+      "hyperframe": "6.1.0",
+      "idna": "3.19",
+      "img2pdf": "0.6.3",
+      "importlib_metadata": "9.0.1",
+      "jaraco.classes": "3.4.0",
+      "jaraco.context": "6.1.2",
+      "jaraco.functools": "4.6.0",
+      "jedi": "0.20.0",
+      "jedi-language-server": "0.47.0",
+      "joserfc": "1.7.5",
+      "jsonref": "1.1.0",
+      "jsonschema": "4.26.0",
+      "jsonschema-path": "0.5.0",
+      "jsonschema-specifications": "2025.9.1",
+      "keyring": "25.7.0",
+      "langdetect": "1.0.9",
+      "latex2mathml": "3.81.0",
+      "lingua-language-detector": "2.2.0",
+      "loguru": "0.7.3",
+      "lsprotocol": "2025.0.0",
+      "lxml": "6.1.2",
+      "mail-parser": "4.6.4",
+      "markdown-it-py": "4.2.0",
+      "marko": "2.2.4",
+      "mcp": "2.1.1",
+      "mcp-types": "2.1.1",
+      "mdit-py-plugins": "0.6.0",
+      "mdurl": "0.1.2",
+      "mmh3": "5.3.0",
+      "more-itertools": "11.1.0",
+      "mpire": "2.10.2",
+      "mpmath": "1.3.0",
+      "multiprocess": "0.70.19",
+      "networkx": "3.6.1",
+      "numpy": "2.5.2",
+      "nvidia-cublas": "13.8.0.4",
+      "nvidia-cublas-cu12": "12.9.2.10",
+      "nvidia-cuda-nvrtc": "13.4.92",
+      "nvidia-cuda-nvrtc-cu12": "12.9.86",
+      "nvidia-cuda-runtime": "13.4.92",
+      "nvidia-cuda-runtime-cu12": "12.9.79",
+      "nvidia-cudnn-cu12": "9.26.0.51",
+      "nvidia-cudnn-cu13": "9.26.0.51",
+      "nvidia-cufft": "12.4.0.43",
+      "nvidia-curand": "10.4.4.72",
+      "nvidia-nvjitlink": "13.4.92",
+      "ocrmypdf": "17.12.1",
+      "olefile": "0.47",
+      "omegaconf": "2.3.1",
+      "onnxruntime-gpu": "1.30.0",
+      "openai-codex": "0.160.1",
+      "openai-codex-cli-bin": "0.160.1",
+      "openapi-pydantic": "0.5.1",
+      "opencv-python": "5.0.0.93",
+      "openpyxl": "3.1.5",
+      "opentelemetry-api": "1.44.0",
+      "packaging": "26.3",
+      "pandas": "3.0.5",
+      "parso": "0.8.7",
+      "pathable": "0.6.0",
+      "pdfminer.six": "20260107",
+      "pikepdf": "10.13.0.post1",
+      "pillow": "13.0.0",
+      "pip": "26.2.1",
+      "platformdirs": "4.11.7",
+      "playwright": "1.63.0",
+      "pluggy": "1.6.0",
+      "polyfactory": "3.3.0",
+      "portalocker": "3.2.0",
+      "protobuf": "7.36.1",
+      "psutil": "7.2.2",
+      "py-key-value-aio": "0.4.5",
+      "py_rust_stemmers": "0.1.8",
+      "pyasn1": "0.6.4",
+      "pyasn1_modules": "0.4.2",
+      "pyclipper": "1.4.0",
+      "pycparser": "3.0",
+      "pydantic": "2.13.5",
+      "pydantic-settings": "2.15.0",
+      "pydantic_core": "2.46.5",
+      "pyee": "13.0.1",
+      "pygls": "2.1.1",
+      "pylatexenc": "2.11",
+      "pymupdf": "1.28.2",
+      "pypdf": "6.19.0",
+      "pypdfium2": "5.13.0",
+      "pyperclip": "1.11.0",
+      "pyspellchecker": "0.9.0",
+      "pytesseract": "0.3.13",
+      "python-dateutil": "2.9.0.post0",
+      "python-docx": "1.2.0",
+      "python-dotenv": "1.2.3",
+      "python-multipart": "0.0.32",
+      "python-oxmsg": "0.0.2",
+      "python-pptx": "1.0.2",
+      "pywin32": "312",
+      "pywin32-ctypes": "0.2.3",
+      "qdrant-client": "1.19.0",
+      "rapidocr": "3.9.2",
+      "referencing": "0.37.0",
+      "regex": "2026.8.31",
+      "reportlab": "5.0.1",
+      "requests": "2.34.2",
+      "rich": "15.0.0",
+      "rich-rst": "2.1.0",
+      "rpds-py": "2026.6.3",
+      "rtree": "1.4.1",
+      "safetensors": "0.8.0",
+      "scipy": "1.18.1",
+      "semchunk": "3.2.5",
+      "setuptools": "84.0.0",
+      "shapely": "2.1.2",
+      "shellingham": "1.5.4",
+      "six": "1.17.0",
+      "sniffio": "1.3.1",
+      "soupsieve": "2.9.2",
+      "sse-starlette": "3.4.10",
+      "starlette": "1.6.0",
+      "sympy": "1.14.0",
+      "tabulate": "0.10.0",
+      "tenacity": "9.1.4",
+      "tokenizers": "0.23.1",
+      "torch": "2.13.0",
+      "torchvision": "0.28.0",
+      "tqdm": "4.70.0",
+      "transformers": "5.16.1",
+      "tree-sitter": "0.26.0",
+      "tree-sitter-c": "0.24.2",
+      "tree-sitter-javascript": "0.25.0",
+      "tree-sitter-python": "0.25.0",
+      "tree-sitter-typescript": "0.23.2",
+      "truststore": "0.10.4",
+      "typer": "0.26.8",
+      "typing-inspection": "0.4.4",
+      "typing_extensions": "4.16.0",
+      "tzdata": "2026.3",
+      "uharfbuzz": "0.56.2",
+      "uncalled-for": "0.4.0",
+      "urllib3": "2.7.0",
+      "uvicorn": "0.52.4",
+      "vtracer": "0.6.15",
+      "watchfiles": "1.2.0",
+      "websockets": "16.1.1",
+      "win32_setctime": "1.2.0",
+      "xlsxwriter": "3.2.9",
+      "zipp": "4.1.0"
+    }
+  },
+  "node": {
+    "local_packages": "No task-local Node package manifest at the checkout root.",
+    "used_globals": []
+  },
+  "declared_dependencies": [
+    "tools/workflow/requirements.txt",
+    "tools/verification/requirements.txt",
+    "tools/verification/checks/requirements.txt"
+  ],
+  "repository_input_hash_basis": {
+    "git_blob": "SHA-256 of raw bytes returned by git cat-file blob <governing_commit>:<path>. All listed blobs use LF line endings.",
+    "checkout": "SHA-256 of file bytes measured in the starting checkout. All listed files were checked out with CRLF line endings."
+  },
+  "repository_input_git_blob_sha256": {
+    "Cargo.lock": "17f7f667ced2ae863ebe3139c339acd9c8a921958c330e06e242bb889a2033b1",
+    "Cargo.toml": "aea0ff6d995888231536886f4468ce132bd2c1ca2115332b9b4900b9737d420a",
+    "tools/workflow/requirements.txt": "4046ca1e3a64f4ea791fb4fb3d8566242086ff1c8e2431e2c349e1052ffc6ba0",
+    "tools/verification/requirements.txt": "ce972e5602f1badf47b56ce597ebf4a3cbc516ca6c8979c95ee75c067d275840",
+    "tools/verification/checks/requirements.txt": "9156b0447e6c8e0a1ed5f91651195c05f78dcd433aa8ba02a388388581ba59d7",
+    ".agents/references/workflow-runtime.md": "88524fc3d5773e0058dbfd5bd8526b15433574072733a0c61d0c1e6d11d836f6",
+    ".agents/references/workflow-contract.md": "5bbc14eb0427320339c0d21550432469724e22dbca269e8969223e5e28665ad8",
+    ".codex/config.toml": "e4d141d6e95d852866ed0c5a347e08ed58c1fa7c225721f3eb7465bdf6b890f0",
+    "tools/workflow/result.schema.json": "6d0beeac47acbcfb25e2728a445bb50ec58587b383d99ee1d6f216e203867337",
+    "tools/workflow/skill-matrix.json": "d4a100972294c236ed255fa50724019d048698f9313fcbcdd7f93176d83b6099",
+    ".codex/agents/TA-code-reviewer.toml": "28435fef30cb797ee8e5a37bd7446013b362e1f4dd2169fb8f8d68877a65216c",
+    ".codex/agents/TA-cpu-verifier.toml": "7dd7edd99a2ebab1fa9b5f7b6d62b38a0c9664f866f09bb4fa6e1b0ad44b366d",
+    ".codex/agents/TA-hardware-researcher.toml": "437aef4248a40ba90b12d29a8323cca1cddb20813930e94535f12a55a882a331",
+    ".codex/agents/TA-implementer.toml": "42441ea7dc2e70155a558700d9d425f222a319fd93166583ccafcce38a1d9c06",
+    ".codex/agents/TA-planner.toml": "5af8c4ca5faecf687a0477f58160e08c4938f11ae4fa165f56ad54e0dba4dab7",
+    ".codex/agents/TA-test-auditor.toml": "608243f42c19eb359fb08dac25253041ee1a5cc9778fd848de47478d09310e5b",
+    ".codex/agents/TA-test-designer.toml": "1b5f8983744f873a92cd6b5bf736fb811a83efc451af34a269bb25139d1a8803"
+  },
+  "repository_input_checkout_sha256": {
+    "Cargo.lock": "a0949a5e891c78acb8c9b6e9f870ff739aeb177eb50e554f5e9f75d7b5c2fc98",
+    "Cargo.toml": "498cc35af9cf3749dca2cb49378b73ff3d34b8cee03f1a4a5ee47f85b1bdf881",
+    "tools/workflow/requirements.txt": "5cd1633794bd0b707d9630ff441b7bdf4da2b2e54be928d0d32e9fde6c5af97f",
+    "tools/verification/requirements.txt": "2733592e057a09df84a6c368f6487f701cf0c937cf05a6db9c0e89b0e815a7b8",
+    "tools/verification/checks/requirements.txt": "3f49a7899172a777f4af447d84322813f1db33b256c4b896076dbe94698578f5",
+    ".agents/references/workflow-runtime.md": "b93e0074bede31b0726d10708d6f2e6b1eaabeb53446e8b517e88c1ac2222adb",
+    ".agents/references/workflow-contract.md": "da012e1db5d5abe745168450361161af07869bb93bb21195e424fb92f8da4e85",
+    ".codex/config.toml": "c8297f919442bb7103f5836017ed060ccd97e35873446bcf8572790bc6d0f2b2",
+    "tools/workflow/result.schema.json": "36aba998635cdb547bd54f99ddfb59b544aa7508ae99541c3dd9f10dd4e02a0e",
+    "tools/workflow/skill-matrix.json": "d3d861c6521a7989103b0f5f8cd0359c6c1285d12782027653419adeba3266da",
+    ".codex/agents/TA-code-reviewer.toml": "3d8870a5746063d4c7b8c0744ac197f018b98aa8ac34c7793192afef509f600b",
+    ".codex/agents/TA-cpu-verifier.toml": "ba1f921c921e6332fb252fb38e0646d4474659537929f3af7e27b1f218d0e135",
+    ".codex/agents/TA-hardware-researcher.toml": "ce5fac25f9daa8503b4cd24d06d16c762cd2e609e1241587ab09008e702b1e9e",
+    ".codex/agents/TA-implementer.toml": "ae378892b181a76cedb4fe3bb622ec78c95198f92fae6b6ec98001c6dcef0062",
+    ".codex/agents/TA-planner.toml": "9b36b4d8f56a3a3f9314f168d15a534fd4879cb3b5d076a4d2613fe69157fc1f",
+    ".codex/agents/TA-test-auditor.toml": "e1222294c9f1d82005aae50f4138e6510e415fca604b1c9f2806f14f0bbca2ab",
+    ".codex/agents/TA-test-designer.toml": "33e47eafb6c50305cc1e6dbb06d40dabc75a2c0f0527d3ada1e43573a8b591cf"
+  },
+  "role_settings": [
+    "| `TA-planner` | `gpt-6.2-astra` | `high` |",
+    "| `TA-test-designer` | `gpt-6.2-astra` | `high` |",
+    "| `TA-implementer` | `gpt-6.2-sol` | `medium` |",
+    "| `TA-test-auditor` | `gpt-6.2-sol` | `medium` |",
+    "| `TA-code-reviewer` | `gpt-6.2-sol` | `high` |",
+    "| `TA-hardware-researcher` | `gpt-6.2-sol` | `high` |",
+    "| `TA-cpu-verifier` | `gpt-6.2-sol` | `high` |",
+    "| `TA-implement-change` | Inherit role default | `high` |",
+    "| `TA-optimize-emulation` | `gpt-6.2-astra` | `high` |",
+    "| `TA-audit-tests` | Inherit role default | `high` |",
+    "| `TA-review-behavior` | `gpt-6.2-astra` | `high` |",
+    "| `TA-review-architecture` | `gpt-6.2-astra` | `high` |",
+    "| `TA-review-semantic-parity` | `gpt-6.2-astra` | `high` |",
+    "| `TA-create-skill` | Session setting | `medium` |",
+    "| `TA-create-agent` | Session setting | `medium` |"
+  ],
+  "pilot_client": {
+    "surface": "dedicated Codex CLI",
+    "version": "0.169.0-alpha.11.1",
+    "model": "gpt-6.2-astra",
+    "effort": "high",
+    "mcp_available": [
+      "amiga-rag"
+    ],
+    "plugins": "Runtime plugin versions not independently established."
+  },
+  "limits": [
+    "Binary and SDK search-path identities are partial. The client inventory describes the dedicated CLI trial. Repository Git objects preserve committed dependency and configuration bytes."
+  ]
+}
