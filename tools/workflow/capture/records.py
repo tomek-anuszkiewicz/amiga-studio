@@ -18,7 +18,7 @@ from record_sources import (
     otlp_selection, protected_name, raw_selection, safe_file, selected_rollouts,
     Rollout, snapshot, utc,
 )
-from registry import git
+from registry import git, git_path
 
 
 FORMAT = 1
@@ -35,6 +35,9 @@ ROWS = {
 }
 KINDS = {"cli": "cli", "otel": "otel", "artifact": "artifacts"}
 SAFE_COMMIT = re.compile(r"(?:[a-f0-9]{40}|[a-f0-9]{64})\Z")
+SHA256 = re.compile(r"[a-f0-9]{64}\Z")
+ATTEMPT = re.compile(r"[a-f0-9]{32}\Z")
+TIMING_REPORT = "test-runtime-report.md"
 REVISION_ID = re.compile(r"[0-9]{8}T[0-9]{12}Z-[a-f0-9]{8}\Z")
 WINDOWS_DEVICE = re.compile(r"(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\..*)?\Z", re.I)
 
@@ -69,9 +72,12 @@ def archive_path(value):
 
 
 def archive_context(args):
-    for value in (args.task_id, args.execution_id):
-        archive_path(identifier(value))
-    primary = args.primary.absolute()
+    return private_archive(args.primary, args.task_id, archive_path(identifier(args.execution_id)))
+
+
+def private_archive(primary, task_id, namespace):
+    archive_path(identifier(task_id))
+    primary = primary.absolute()
     for path in (primary / ".agent/task-archives", primary / ".agent", primary, *primary.parents):
         if linked(path):
             raise ValueError("Private archive cannot use a linked path")
@@ -83,7 +89,7 @@ def archive_context(args):
         raise ValueError("Use the surviving primary checkout to locate the private archive")
     primary = primary.resolve()
     repository = common_dir(primary)
-    archive = primary / ".agent/task-archives" / args.task_id / args.execution_id
+    archive = primary / ".agent/task-archives" / task_id / namespace
     if any(linked(path) for path in (archive, *archive.parents)):
         raise ValueError("Private archive cannot use a linked path")
     if git(primary, "check-ignore", "--quiet", "--", str(archive / "probe")).returncode:
@@ -92,6 +98,79 @@ def archive_context(args):
     if tracked.returncode or tracked.stdout:
         raise ValueError("Private archive files must stay outside Git")
     return primary, repository, archive
+
+
+def preserve_timing(args):
+    """Copy one explicitly selected report and its identity to the primary checkout."""
+    primary, repository, archive = private_archive(args.primary, args.task_id, Path(".timing-reports"))
+    checkout = args.source_checkout.absolute()
+    if (repository is None or common_dir(checkout) != repository
+            or checkout.resolve() != git_path(checkout, "--show-toplevel")):
+        raise ValueError("The report checkout differs from the selected Git repository")
+    spec = json_object(args.input.absolute())
+    required = {"task_id", "profile", "attempt", "candidate", "outcome", "path", "sha256"}
+    profile = spec.get("profile")
+    if profile == "diagnostic":
+        required.add("invocation")
+    if (set(spec) != required or spec["task_id"] != args.task_id
+            or not all(isinstance(value, str) and value.strip() for value in spec.values())
+            or not ATTEMPT.fullmatch(spec["attempt"]) or not SHA256.fullmatch(spec["sha256"])
+            or profile not in {"commit", "milestone", "diagnostic"}):
+        raise ValueError("Expected a selected timing record with its candidate, outcome and producer digest")
+
+    report = archive_path(spec["path"])
+    parts = report.parts
+    attempt = spec["attempt"]
+    if profile == "diagnostic":
+        valid = parts == (".agent", "tmp", "verification", "diagnostics", attempt, TIMING_REPORT)
+    else:
+        valid = parts[:2] == (".agent", "tmp") and parts[-3:] == ("verify", attempt, TIMING_REPORT)
+    if not valid:
+        raise ValueError("The timing path does not identify this verification attempt")
+    source = safe_file(checkout / report, single_link=True)
+    if git(checkout, "check-ignore", "--quiet", "--", report.as_posix()).returncode:
+        raise ValueError("The selected timing report must be ignored in its checkout")
+    data, changing = snapshot(source)
+    if changing or digest(data) != spec["sha256"]:
+        raise ValueError("The timing report differs from its producer digest")
+
+    destination = archive / attempt
+    for filename in (TIMING_REPORT, "receipt.json"):
+        relative = (destination / filename).relative_to(primary).as_posix()
+        if git(primary, "check-ignore", "--quiet", "--", relative).returncode:
+            raise ValueError("Timing archive files must stay ignored")
+    archive.mkdir(parents=True, exist_ok=True)
+    receipt = {**spec, "version": FORMAT, "source_checkout": str(checkout.resolve()),
+               "git_common_dir": str(repository), "size": len(data)}
+
+    def identical():
+        return (not linked(destination) and destination.is_dir()
+                and {path.name for path in destination.iterdir()} == {TIMING_REPORT, "receipt.json"}
+                and json_object(destination / "receipt.json") == receipt
+                and safe_file(destination / TIMING_REPORT).read_bytes() == data)
+
+    reused = destination.exists() or linked(destination)
+    if not reused:
+        with TemporaryDirectory(prefix=".pending-", dir=archive) as temporary:
+            prepared = Path(temporary)
+            (prepared / TIMING_REPORT).write_bytes(data)
+            (prepared / "receipt.json").write_bytes(json_bytes(receipt))
+            try:
+                prepared.rename(destination)
+            except OSError:
+                if not (destination.exists() or linked(destination)):
+                    raise
+                reused = True
+    if reused:
+        try:
+            matching = identical()
+        except (OSError, ValueError):
+            matching = False
+        if not matching:
+            raise ValueError(f"Conflicting timing archive entry: {destination}")
+    print(json.dumps({"status": "reused" if reused else "preserved",
+                      "receipt": str(destination / "receipt.json"), "sha256": spec["sha256"]}))
+    return 0
 
 
 def check_registration(registration, args, repository):
@@ -285,6 +364,10 @@ def collect(args, primary, repository, archive):
             try:
                 safe_file(source, single_link=True)
                 data, changing = snapshot(source)
+                if kind == "artifact" and "sha256" in entry and (
+                    changing or digest(data) != entry["sha256"]
+                ):
+                    raise ValueError("Selected artifact differs from its expected digest")
                 if changing:
                     gaps.append({"source": destination, "reason": "Source changed during the bounded read",
                                  "provisional": True})
@@ -846,9 +929,16 @@ def main():
     checker.add_argument("--revision", required=True)
     checker.add_argument("--expect", type=Path, required=True, help="Independently observed data and byte expectations")
     checker.add_argument("--output", type=Path, help="Fresh ignored directory for the paired report")
+    timing = commands.add_parser("preserve-timing")
+    timing.add_argument("--primary", type=Path, required=True)
+    timing.add_argument("--source-checkout", type=Path, required=True)
+    timing.add_argument("--task-id", required=True)
+    timing.add_argument("--input", type=Path, required=True, help="Selected timing report and producer digest")
     args = parser.parse_args()
-    args.codex_home = args.codex_home.resolve()
     try:
+        if args.operation == "preserve-timing":
+            return preserve_timing(args)
+        args.codex_home = args.codex_home.resolve()
         primary, repository, archive = archive_context(args)
         if args.operation == "collect":
             return collect(args, primary, repository, archive)

@@ -60,7 +60,9 @@ class IntegrationTests(unittest.TestCase):
              patch.object(verify, "stable_update_notice", return_value=""), contextlib.redirect_stdout(io.StringIO()) as output:
             self.assertEqual(verify.main(["commit", "--integration-base", self.base]), 0, output.getvalue())
         evidence, _ = integration.validate_evidence(self.source, self.directory)
-        self.write(self.source, repository.TIMING_REPORT, "Updated generated data.\n")
+        report = self.directory / evidence["timing_report"]["path"]
+        self.assertTrue(report.is_file())
+        report.unlink()
         integration.validate_evidence(self.source, self.directory)
         tree = repository.candidate_tree(self.source)
         partition = [{"message": "feat: candidate", "tree": tree}]
@@ -70,9 +72,23 @@ class IntegrationTests(unittest.TestCase):
         review_path = self.write(self.source, ".agent/tmp/review.json", json.dumps(review))
         integration.freeze(self.source, self.directory, review_path, partition_path, "master")
         self.assertEqual(integration.read(self.record)["tree"], tree)
-        self.write(self.source, "value.txt", "Changed source after verification.\n")
-        with self.assertRaisesRegex(ValueError, "current candidate"):
-            integration.validate_evidence(self.source, self.directory)
+        retired = self.write(self.source, "tests/test-runtime-report.md", "Different verified output.\n")
+        evidence["tree"] = repository.candidate_tree(self.source)
+        retired.unlink()
+        self.write(self.source, ".agent/tmp/verification/commit/commit.json", json.dumps(evidence))
+        with self.assertRaisesRegex(ValueError, "complete verified candidate"):
+            integration.freeze(self.source, self.directory, review_path, partition_path, "master")
+        for name in ("tests/test-runtime-report.md", "tests/results/neighbor.md", "value.txt"):
+            with self.subTest(path=name):
+                path = self.write(self.source, name, "Changed source after verification.\n")
+                with self.assertRaisesRegex(ValueError, "current candidate"):
+                    integration.validate_evidence(self.source, self.directory)
+                self.git(self.source, "add", name)
+                with self.assertRaisesRegex(ValueError, "current candidate"):
+                    integration.validate_evidence(self.source, self.directory)
+                self.git(self.source, "restore", "--staged", "--", name)
+                if name not in {"value.txt"}:
+                    path.unlink()
 
     def write(self, root, name, content):
         path = root / name

@@ -105,11 +105,16 @@ cleanup uses original `S_i`. Reference updates are atomic; filesystem changes ar
 not. Recover only known consistent transitions through existing phase records;
 observed interference blocks recovery. Never blindly reset or delete uncertain locks.
 
-For a task with a selected execution archive, preserve unique evidence from its
-worktree through the separately selected collection operation before teardown.
-Verify that the surviving branch includes the initial input commit and the archive
-is readable from the surviving checkout. Keep tracked approved inputs unless an
-explicit closure change authorizes their removal.
+Before teardown, verify the required preserved inputs and selected timing reports
+from the surviving checkout under the
+[capture guide](../../tools/workflow/capture/README.md#collect-and-assess).
+For a registered execution, retain the checked archive revision, manifest digest,
+assessment and disposition of its gaps. Verify required Git ancestry and committed
+input bytes when applicable. For an unregistered timing report, verify its receipt
+and digest. Retain the source and snapshots when any required version or receipt
+is absent, unreadable, mismatched or conflicting. Unregistered required input
+preservation needs an explicit disposition. Keep tracked approved inputs unless
+an explicit closure change authorizes their removal.
 
 After confirmed publication and committed closure, separately authorized
 [TA-cleanup-task](../skills/TA-cleanup-task/SKILL.md) rechecks exact tips, ancestry,

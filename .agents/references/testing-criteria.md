@@ -74,8 +74,9 @@ and measurement limits; coverage collection is a separate selected operation.
 
 Separate behavioral tests, static architecture checks, performance measurements and
 diagnostic traces. Source-inspection checks belong in verification tooling;
-measurements in benchmark targets. Generated diagnostics stay ignored except the
-versioned `tests/test-runtime-report.md`, which is output rather than proof of a pass.
+measurements in benchmark targets. Generated diagnostics, including the per-attempt
+timing report, stay ignored. Keep the report locator and digest for archival
+provenance. The report stays outside reusable gate artifacts and supplies no pass evidence.
 
 Match actual commands, exit statuses, input identities, acceptance criteria and
 intact artifacts to the selected candidate. Distinguish newly executed checks,

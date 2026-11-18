@@ -11,7 +11,7 @@ import sys
 import uuid
 
 from impact import language_data_input
-from repository import git, TIMING_REPORT
+from repository import git
 
 
 VERSION = 3
@@ -52,8 +52,6 @@ def capture_inputs(root, contents=True):
         paths.add(".env")
     result = {}
     for name in sorted(paths):
-        if name == TIMING_REPORT:
-            continue
         path = root / name
         if path.is_symlink():
             raise ValueError(f"Cannot establish input ownership through a symlink: {name}")
@@ -115,6 +113,7 @@ class BatchEvidence:
             raise ValueError("Batch evidence must be stored under .agent/tmp in this checkout")
         self.path = self.directory / f"{profile}.json"
         self.attempt = uuid.uuid4().hex
+        self.attempt_directory = self.directory / "verify" / self.attempt
         self.record = {"version": VERSION, "batch": uuid.uuid4().hex,
                        "head": git(self.root, "rev-parse", "HEAD").decode().strip(),
                        "checkout": digest(str(self.root)), "profile": profile, "groups": {},
@@ -160,7 +159,7 @@ class BatchEvidence:
         temporary.replace(self.path)
 
     def start(self, name, identity, commands, source):
-        directory = self.directory / "verify" / self.attempt / digest(name)[:12]
+        directory = self.attempt_directory / digest(name)[:12]
         self.record["groups"][name] = {"status": "running", "identity": identity,
                                        "commands": commands, "source": source,
                                        "inputs": self.record.get("inputs"),

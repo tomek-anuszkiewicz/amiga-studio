@@ -294,6 +294,7 @@ struct
 subdir
 subdirs
 subparsers
+subpaths
 subsec
 svg
 symlink
@@ -328,6 +329,7 @@ unicodedata
 unittest
 unroute
 unshift
+unstarted
 urlparse
 urlsplit
 usize

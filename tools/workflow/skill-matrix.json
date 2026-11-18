@@ -42,7 +42,7 @@
     "PRF": "An unresolved performance question within the current task needs actual profiling of a named boundary and workload, and measurement is authorized. Collect comparable evidence before proposing implementation; do not start another optimization because prior work completed.",
     "SKILL": "The approved workflow change needs one unfinished atomic operation with a defined result and an existing executor. Name the operation and its authorized definition and registration paths.",
     "ROLE": "The approved workflow change needs one unfinished named role with a distinct responsibility, context or write boundary. Name that boundary and its authorized definition and registration paths.",
-    "ENV": "An adopted task needs its starting environment recorded before its input commit.",
+    "ENV": "An adopted task needs its starting environment recorded.",
     "CMP": "A saved baseline and a separately captured inventory are available for the selected comparison.",
     "REG": "The user has selected a thread, repository and execution boundary for capture.",
     "COL": "A recorded execution has a closed boundary and its evidence is ready for collection.",

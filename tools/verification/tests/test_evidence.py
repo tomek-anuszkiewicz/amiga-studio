@@ -107,26 +107,43 @@ class ContinuationTests(unittest.TestCase):
         self.assertEqual(self.run_profile(), 0, self.output)
         self.assertEqual(self.events(), events)
 
-    def test_timing_output_creation_updates_and_staging_preserve_inputs_and_reuse(self):
+    def test_each_attempt_preserves_its_report_without_changing_candidate_or_reuse(self):
         before = repository.snapshot(self.root)
         inputs = evidence.capture_inputs(self.root)
+        status = self.git("status", "--porcelain=v1")
+        index = self.git("write-tree")
+        candidate = repository.candidate_tree(self.root)
         self.assertEqual(self.run_profile(), 0, self.output)
-        report = repository.TIMING_REPORT
-        self.assertTrue((self.root / report).is_file())
-        self.assertEqual(repository.snapshot(self.root), before)
-        self.assertEqual(evidence.capture_inputs(self.root), inputs)
+        first = self.record()
+        timing = first["timing_report"]
+        report = self.directory / timing["path"]
+        original = report.read_bytes()
+        self.assertEqual(timing["path"], f"verify/{first['attempt']}/test-runtime-report.md")
+        self.assertEqual(timing["sha256"], evidence.file_digest(report))
+        self.assertIn(str(report), self.output)
+        self.assertTrue(all(timing["path"] not in item["artifacts"] for item in first["groups"].values()))
         events = self.events()
-        self.write(report, "Updated generated timing data.\n")
-        self.git("add", report)
-        self.assertEqual(repository.snapshot(self.root), before)
-        self.assertEqual(evidence.capture_inputs(self.root), inputs)
+        # Older completion evidence without an archival locator still supports reuse.
+        first["timing_report"].pop("path")
+        first["timing_report"].pop("sha256")
+        (self.directory / "commit.json").write_text(json.dumps(first), encoding="utf-8")
         self.assertEqual(self.run_profile(), 0, self.output)
+        current = self.record()
         self.assertEqual(self.events(), events)
-        self.assertTrue(all(item["status"] == "reused" for item in self.record()["results"].values()))
-        self.assertIn(report, self.git("ls-tree", "-r", "--name-only", self.record()["tree"]))
-        (self.root / report).unlink()
+        self.assertTrue(all(item["status"] == "reused" for item in current["results"].values()))
+        self.assertNotEqual(current["timing_report"]["path"], f"verify/{first['attempt']}/test-runtime-report.md")
+        self.assertEqual(report.read_bytes(), original)
+        latest = self.directory / current["timing_report"]["path"]
+        self.assertEqual(evidence.file_digest(latest), current["timing_report"]["sha256"])
+        self.assertIn("reused", latest.read_text(encoding="utf-8"))
         self.assertEqual(repository.snapshot(self.root), before)
         self.assertEqual(evidence.capture_inputs(self.root), inputs)
+        self.assertEqual(self.git("status", "--porcelain=v1"), status)
+        self.assertEqual(self.git("write-tree"), index)
+        self.assertEqual(repository.candidate_tree(self.root), candidate)
+        self.assertEqual(current["tree"], candidate)
+        self.assertEqual(current["scope"], first["scope"])
+        latest.unlink()
         self.assertEqual(self.run_profile(), 0, self.output)
         self.assertEqual(self.events(), events)
         self.write("source.rs", "fn changed_again() {}\n")
@@ -135,17 +152,67 @@ class ContinuationTests(unittest.TestCase):
         self.assertEqual(self.run_profile(), 0, self.output)
         self.assertEqual(self.events()[len(events):], ["english", "coverage"])
 
-    def test_report_created_inside_command_does_not_reject_source(self):
-        self.phases[1][1][0][1][-1] += (
-            "; p=Path('tests/test-runtime-report.md'); p.parent.mkdir(exist_ok=True); p.write_text('data')")
-        self.assertEqual(self.run_profile(), 0, self.output)
-        self.assertEqual(self.events(), ["english", "coverage", "contracts"])
+    def test_authored_retired_report_and_neighbor_created_during_checks_reject_source(self):
+        child = self.phases[1][1][0][1]
+        original = child[-1]
+        for path in ("tests/test-runtime-report.md", "tests/neighbor.md", "tests/results/real.txt"):
+            with self.subTest(path=path):
+                child[-1] = original + (
+                    f"; p=Path({path!r}); p.parent.mkdir(parents=True, exist_ok=True); p.write_text('data')")
+                self.assertEqual(self.run_profile(), 1, self.output)
+                self.assertIn("Source or index changed", self.output)
+                record = self.record()
+                self.assertIn(record["attempt"], record["timing_report"]["path"])
+                rows = {row["title"]: row for row in record["timing_report"]["rows"]
+                        if row["status"] != "skipped"}
+                self.assertEqual(rows["Fixture coverage"]["status"], "executed")
+                self.assertEqual(rows["Verification CLI contracts"]["status"], "missing")
+                self.assertEqual(rows["Verification CLI contracts"]["commands"], [self.phases[-1][1][0][1]])
+                self.assertEqual(rows["Complete the attempt"]["status"], "failed")
+                (self.root / path).unlink()
 
     def test_report_write_failure_preserves_successful_test_evidence(self):
         with patch.object(verify, "publish", side_effect=PermissionError("Report output locked")):
             self.assertEqual(self.run_profile(), 1, self.output)
         self.assertEqual(self.record()["outcome"], "failed")
+        failed = self.record()
+        self.assertNotIn("path", failed["timing_report"])
+        self.assertNotIn("sha256", failed["timing_report"])
         self.assertTrue(all(item["status"] == "passed" for item in self.record()["groups"].values()))
+        events = self.events()
+        self.assertEqual(self.run_profile(), 0, self.output)
+        self.assertEqual(self.events(), events)
+        self.assertNotEqual(self.record()["attempt"], failed["attempt"])
+
+    def test_input_capture_abort_keeps_the_prior_report_and_records_pending_commands(self):
+        self.assertEqual(self.run_profile(), 0, self.output)
+        first = self.record()
+        first_report = self.directory / first["timing_report"]["path"]
+        for error, exit_code, outcome in (
+                (ValueError("Input became unreadable"), 1, "failed"),
+                (KeyboardInterrupt(), 130, "interrupted")):
+            with self.subTest(outcome=outcome), patch.object(verify, "capture_inputs", side_effect=error):
+                self.assertEqual(self.run_profile(), exit_code, self.output)
+                attempt = self.record()
+                self.assertNotEqual(attempt["attempt"], first["attempt"])
+                self.assertEqual(attempt["outcome"], outcome)
+                timing = attempt["timing_report"]
+                self.assertIn(attempt["attempt"], timing["path"])
+                report = self.directory / timing["path"]
+                self.assertEqual(timing["sha256"], evidence.file_digest(report))
+                self.assertEqual(first["timing_report"]["sha256"], evidence.file_digest(first_report))
+                self.assertEqual(
+                    [(row["phase"], row["title"], row["status"], row["commands"])
+                     for row in timing["rows"] if row["status"] != "skipped"],
+                    [("Preflight", "Strict English Policy", "missing", [self.phases[0][1][0][1]]),
+                     ("Coverage", "Fixture coverage", "missing", [self.phases[1][1][0][1]]),
+                     ("Verification", "Verification CLI contracts", "missing", [self.phases[2][1][0][1]]),
+                     ("Verification", "Complete the attempt", outcome, [])])
+                report_text = report.read_text(encoding="utf-8")
+                executable = Path(sys.executable).name
+                self.assertIn(f"Coverage: Fixture coverage | {executable} -c &lt;inline command&gt; | missing |",
+                              report_text)
+                self.assertIn(f"Complete the attempt |  | {outcome} |", report_text)
         events = self.events()
         self.assertEqual(self.run_profile(), 0, self.output)
         self.assertEqual(self.events(), events)
@@ -162,6 +229,17 @@ class ContinuationTests(unittest.TestCase):
         self.write("tools/graphify_query.py", "# Changed graph query\n")
         self.assertEqual(self.run_profile(), 0, self.output)
         self.assertEqual(self.events().count("contracts"), 3)
+
+    def test_root_ignore_rule_change_invalidates_verification_contract_evidence(self):
+        self.assertEqual(self.run_profile(), 0, self.output)
+        previous = self.record()
+        self.write(".gitignore", ".agent/\nignored-fixture/\n")
+        self.assertEqual(self.run_profile(), 0, self.output)
+        current = self.record()
+        contract = "Verification CLI contracts"
+        self.assertEqual(current["results"][contract]["status"], "executed")
+        self.assertNotEqual(previous["groups"][contract]["identity"], current["groups"][contract]["identity"])
+        self.assertEqual(self.events().count("contracts"), 2)
 
     def test_batch_wall_time_includes_initial_selection(self):
         clock = [0.0]
@@ -205,16 +283,27 @@ class ContinuationTests(unittest.TestCase):
 
     def test_interrupt_preserves_completed_groups_for_same_directory_retry(self):
         execute = verify.execute_command
+        second = self.child("second coverage command")
+        self.phases[1][1].append(("Second coverage command", second, {}))
+
         def interrupt(command, *args, **kwargs):
-            if command == self.phases[1][1][0][1]:
+            if command == second:
                 raise KeyboardInterrupt
             return execute(command, *args, **kwargs)
         with patch.object(verify, "execute_command", side_effect=interrupt):
             self.assertEqual(self.run_profile(), 130)
-        self.assertEqual(self.record()["outcome"], "interrupted")
-        self.assertEqual(self.record()["groups"]["Strict English Policy"]["status"], "passed")
+        record = self.record()
+        self.assertEqual(record["outcome"], "interrupted")
+        self.assertEqual(record["groups"]["Strict English Policy"]["status"], "passed")
+        rows = {row["title"]: row for row in record["timing_report"]["rows"] if row["status"] != "skipped"}
+        self.assertEqual(rows["Strict English Policy"]["status"], "executed")
+        self.assertEqual(rows["Fixture coverage"]["status"], "executed")
+        self.assertEqual(rows["Second coverage command"]["status"], "missing")
+        self.assertEqual(rows["Second coverage command"]["commands"], [second])
+        self.assertEqual(rows["Verification CLI contracts"]["status"], "missing")
+        self.assertEqual(rows["Complete the attempt"]["status"], "interrupted")
         self.assertEqual(self.run_profile(), 0, self.output)
-        self.assertEqual(self.events(), ["english", "coverage", "contracts"])
+        self.assertEqual(self.events(), ["english", "coverage", "coverage", "second coverage command", "contracts"])
         self.assertEqual(self.record()["results"]["Strict English Policy"]["status"], "reused")
 
     def invocation(self, args, phases=None):

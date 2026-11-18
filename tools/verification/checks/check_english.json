@@ -29,7 +29,6 @@
     ".agent/tasks"
   ],
   "excluded_files": [
-    "tests/test-runtime-report.md",
     "benchmarks/m68k_benchmark_baseline.csv",
     "benchmarks/m68k_benchmark_baseline.json",
     "benchmarks/m68k_benchmark_current.csv",
@@ -280,6 +279,10 @@
       "bbb",
       "fvariant"
     ],
+    "tools/verification/tests/test_cli.py": ["xb"],
+    "tools/verification/tests/test_impact.py": ["qm"],
+    "tools/verification/timing_report.py": ["xb"],
+    "tools/workflow/capture/tests/test_records.py": ["qb", "qm"],
     "tools/workflow/capture/environment.py": ["containerenv", "dockerenv", "lld", "shrinkwrap", "vv", "xhigh"],
     "tools/workflow/capture/collector.yaml": ["bearertokenauth"],
     "tools/workflow/capture/record_sources.py": ["aws", "gcloud", "gnupg", "kdbx", "kube", "netrc", "npmrc", "pem", "pfx", "pypirc", "rsa", "za"],

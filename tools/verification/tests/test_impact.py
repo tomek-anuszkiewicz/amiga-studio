@@ -66,11 +66,39 @@ class ImpactTests(unittest.TestCase):
         self.assertEqual(self.select(["DIARY.md", "docs/guide.md", ".agents/rules/git-commits.md",
                                       "tools/verification/README.md", "tools/artifacts/report.py"]).packages, ())
 
-    def test_generated_report_does_not_expand_real_source_or_report_only_scope(self):
-        report = "tests/test-runtime-report.md"
-        self.assertEqual(self.select([report]).packages, ())
-        self.assertEqual(self.select([report, "crates/gui/src/gui.rs"]).packages, ("gui",))
-        self.assertIsNone(self.select(["tests/real-input.md"]).packages)
+    def test_retired_report_and_neighbor_paths_have_ordinary_ownership(self):
+        for path in ("tests/test-runtime-report.md", "tests/real-input.md", "tests/results/fixture.json"):
+            with self.subTest(path=path):
+                self.assertIsNone(self.select([path]).packages)
+                self.assertIsNone(self.select([path, "crates/gui/src/gui.rs"]).packages)
+
+    def test_working_inputs_do_not_change_diagnostics_or_package_scope(self):
+        git(self.root, "init", "-q")
+        git(self.root, "config", "user.name", "Test")
+        git(self.root, "config", "user.email", "test@example.invalid")
+        ignore = (Path(__file__).resolve().parents[3] / ".gitignore").read_bytes()
+        (self.root / ".gitignore").write_bytes(ignore)
+        git(self.root, "add", ".gitignore")
+        git(self.root, "commit", "-qm", "fixture")
+        inputs = ("2026-11-18-plan.md", "test-design.md", "decisions.md", "environment.json")
+        self.assertIsNone(self.select(collect_changes(self.root)).packages)
+        for name in inputs:
+            path = self.root / ".agent/tasks" / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("working input", encoding="utf-8")
+            self.assertEqual(git(self.root, "ls-files", "--", ".agent/tasks"), b"")
+            self.assertEqual(collect_changes(self.root), set())
+        self.assertIsNone(self.select(collect_changes(self.root)).packages)
+        expected = {"DIARY.md": (), "crates/gui/lib.rs": ("gui",),
+                    "crates/core/lib.rs": ("core", "gui", "machine", "test_runner")}
+        for name, packages in expected.items():
+            path = self.root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("actual change", encoding="utf-8")
+            changes = collect_changes(self.root)
+            self.assertEqual(changes, {name})
+            self.assertEqual(self.select(changes).packages, packages)
+            path.unlink()
 
     def test_language_data_does_not_select_rust_or_expand_package_scope(self):
         paths = ["tools/verification/checks/check_english.json",
@@ -113,9 +141,14 @@ class ImpactTests(unittest.TestCase):
                      "tools/verification/checks/check_english.py", "tools/verification/tests/test_english.py",
                      "tools/verification/checks/english_words/tool.py", "tools/verification/checks/other.json",
                      "Obsidian/Amiga/Design/CPU.md", "tools/new/check.py", "examples/fixture.bin",
-                     "crates/deleted/src/lib.rs", "tools/artifacts/native.rs", "tools/artifacts-old/a.py"):
+                     "crates/deleted/src/lib.rs", "tools/artifacts/native.rs", "tools/artifacts-old/a.py",
+                     ".agent/tasks/2026-11-18-plan.md", ".agent/tasks/reproduction.md",
+                     ".agent/tasks/attachments/plan.md", ".agent/tasks/attachment.png",
+                     ".agent/tasks/attachment.bin", ".agent/tasks/extract.rs", ".agent/tasks/environment.json"):
             with self.subTest(path=path):
-                self.assertIsNone(self.select([path]).packages)
+                scope = self.select([path])
+                self.assertIsNone(scope.ordinary)
+                self.assertTrue(scope.harness)
         self.assertIsNone(self.select([]).packages)
 
     def test_worktree_python_ownership_preserves_its_existing_full_rust_scope(self):

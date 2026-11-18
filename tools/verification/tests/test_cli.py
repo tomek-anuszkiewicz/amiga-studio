@@ -1,5 +1,6 @@
 """Behavioral contracts for focused selection and completion verification."""
 import contextlib
+from hashlib import sha256
 import io
 from pathlib import Path
 import sys
@@ -14,6 +15,8 @@ from commands import select_phases
 import verify
 import commands as selection
 import execution
+from timing_report import REPORT_NAME
+import timing_report
 from impact import RustScope
 
 
@@ -104,12 +107,33 @@ class SelectionTests(unittest.TestCase):
             (".codex/config.toml", {"RAG MCP contracts"}),
             ("tools/artifacts/report.py", {"Artifact report contracts"}),
             ("tools/artifacts/tests/test_report.py", {"Artifact report contracts"}),
+            ("tools/workflow/capture/records.py", {"Workflow capture contracts"}),
+            ("tools/workflow/capture/tests/test_records.py", {"Workflow capture contracts"}),
+            ("tools/workflow/result.py", set()),
             ("tools/verification/commands.py", {"Verification CLI contracts"}),
             ("tools/web.ps1", {"Verification CLI contracts"}),
         )
         for path, expected in cases:
             with self.subTest(path=path):
                 self.assertEqual({item[0] for item in selected("test python", [path])}, expected)
+
+    def test_capture_contracts_follow_owning_changes_and_keep_full_rust_fallback(self):
+        group = "Workflow capture contracts"
+        for path in ("tools/workflow/capture/records.py", "tools/workflow/capture/tests/test_records.py"):
+            with self.subTest(path=path):
+                names = {item[0] for item in selected("commit", [path])}
+                self.assertTrue({group, "All ordinary crate tests", "All standard harness tests",
+                                 "RAG MCP contracts", "Artifact report contracts"} <= names)
+        for changes in ([], ["DIARY.md"], ["tools/workflow/result.py"], ["crates/cpu/src/cpu.rs"]):
+            with self.subTest(changes=changes):
+                self.assertNotIn(group, {item[0] for item in selected("commit", changes)})
+
+    def test_root_ignore_rules_select_both_consumers_and_keep_full_rust_scope(self):
+        changes = [".gitignore"]
+        consumers = {"Verification CLI contracts", "Workflow capture contracts"}
+        self.assertEqual({name for name, _, _ in selected("test python", changes)}, consumers)
+        commit = {name for name, _, _ in selected("commit", changes)}
+        self.assertTrue(consumers | {"All ordinary crate tests", "All standard harness tests"} <= commit)
 
     def test_full_and_sampled_silicon_runs_override_inherited_selection(self):
         commands = selected("test runner singlestep case test_add_b sample 500")
@@ -382,6 +406,7 @@ class ExecutionTests(unittest.TestCase):
             ["git", "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid",
              "commit-tree", tree, "-m", "fixture"], cwd=self.root).decode().strip()
         subprocess.run(["git", "update-ref", "HEAD", revision], cwd=self.root, check=True)
+        (self.root / ".git/info/exclude").write_text(".agent/tmp/\n", encoding="utf-8")
         self.enterContext(patch.object(verify, "REPO_ROOT", self.root))
 
     def test_exact_rust_run_rejects_zero_matching_tests(self):
@@ -408,6 +433,7 @@ class ExecutionTests(unittest.TestCase):
         self.assertIn("SINGLESTEP_RESULTS_DIR", output.getvalue())
         self.assertIn(repr(str(self.root / ".agent/tmp/experiments/add/singlestep")),
                       output.getvalue())
+        self.assertFalse((self.root / ".agent/tmp/verification/diagnostics").exists())
 
     def test_results_directory_reaches_execution_and_singlestep_environment(self):
         with patch.object(verify, "execute_command", return_value=(True, "ok", 0)) as execute, \
@@ -419,6 +445,128 @@ class ExecutionTests(unittest.TestCase):
                          self.root / ".agent/tmp/experiments/add/verify")
         self.assertEqual(execute.call_args.args[1]["SINGLESTEP_RESULTS_DIR"],
                          str(self.root / ".agent/tmp/experiments/add/singlestep"))
+
+    def test_diagnostic_reports_are_unique_and_external_logs_keep_their_route(self):
+        (self.root / ".gitignore").write_text(".agent/tmp/\n", encoding="utf-8")
+        diagnostics = self.root / ".agent/tmp/verification/diagnostics"
+        with tempfile.TemporaryDirectory() as temporary, \
+             patch.object(verify, "execute_command", side_effect=[(True, "ok", 1), (False, "failed", 2)]) as execute, \
+             contextlib.redirect_stdout(io.StringIO()) as output:
+            external = Path(temporary)
+            args = ["test", "runner", "singlestep", "case", "test_add_b", "--results-dir", str(external)]
+            self.assertEqual(verify.main(args), 0, output.getvalue())
+            first, = diagnostics.glob("*/test-runtime-report.md")
+            first_bytes = first.read_bytes()
+            self.assertEqual(verify.main(args), 1, output.getvalue())
+            second, = set(diagnostics.glob("*/test-runtime-report.md")) - {first}
+            self.assertEqual(first.read_bytes(), first_bytes)
+            self.assertIn("executed", first_bytes.decode("utf-8"))
+            self.assertIn("failed", second.read_text(encoding="utf-8"))
+            self.assertIn(str(first), output.getvalue())
+            self.assertIn(str(second), output.getvalue())
+            for call in execute.call_args_list:
+                self.assertEqual(call.kwargs["log_dir"], external / "verify")
+                self.assertEqual(call.args[1]["SINGLESTEP_RESULTS_DIR"], str(external / "singlestep"))
+            self.assertEqual(list(external.rglob("test-runtime-report.md")), [])
+
+    def read_diagnostic_report(self, output):
+        diagnostics = self.root / ".agent/tmp/verification/diagnostics"
+        report, = (path for path in diagnostics.glob(f"*/{REPORT_NAME}") if str(path) in output)
+        content = report.read_bytes()
+        self.assertIn(f"[TIMING] Report SHA-256: {sha256(content).hexdigest()}", output)
+        return content.decode("utf-8")
+
+    def test_diagnostic_interrupt_retains_completed_and_interrupted_commands(self):
+        (self.root / ".gitignore").write_text(".agent/tmp/\n", encoding="utf-8")
+        with patch.object(verify, "execute_command", side_effect=[(True, "ok", 1.25), KeyboardInterrupt()]) as execute, \
+             contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(verify.main(["test", "python"]), 130)
+        self.assertEqual(execute.call_count, 2)
+        report = self.read_diagnostic_report(output.getvalue())
+        self.assertIn("tools/verification/tests -q | executed | 1.250 |", report)
+        self.assertIn("tools/workflow/capture/tests -q | interrupted |", report)
+        self.assertIn("Verification interrupted", output.getvalue())
+
+    def test_diagnostic_snapshot_failure_reports_unstarted_command(self):
+        for error in (OSError("snapshot unavailable"), RuntimeError("snapshot unavailable")):
+            with self.subTest(error=type(error).__name__), \
+                 patch.object(verify, "snapshot", side_effect=error), \
+                 patch.object(verify, "execute_command") as execute, \
+                 contextlib.redirect_stdout(io.StringIO()) as output:
+                self.assertEqual(verify.main(["check", "english"]), 1)
+            execute.assert_not_called()
+            report = self.read_diagnostic_report(output.getvalue())
+            self.assertIn("tools/verification/checks/check_english.py | missing |", report)
+            self.assertIn("| Stability | Source and index |  | failed |", report)
+            self.assertIn("Cannot capture source snapshot: snapshot unavailable", output.getvalue())
+
+    def test_diagnostic_command_error_preserves_completed_measurement(self):
+        (self.root / ".gitignore").write_text(".agent/tmp/\n", encoding="utf-8")
+        for error in (OSError("command unavailable"), RuntimeError("command unavailable")):
+            with self.subTest(error=type(error).__name__), \
+                 patch.object(verify, "execute_command", side_effect=[(True, "ok", 1.25), error]) as execute, \
+                 contextlib.redirect_stdout(io.StringIO()) as output:
+                self.assertEqual(verify.main(["test", "python"]), 1)
+            self.assertEqual(execute.call_count, 2)
+            report = self.read_diagnostic_report(output.getvalue())
+            self.assertIn("tools/verification/tests -q | executed | 1.250 |", report)
+            self.assertIn("tools/workflow/capture/tests -q | failed |", report)
+            self.assertIn("Diagnostic execution failed: command unavailable", output.getvalue())
+
+    def test_diagnostic_coverage_preparation_failure_retains_pending_scopes(self):
+        with patch.object(verify, "execute_command", return_value=(False, "preparation failed", 2)) as execute, \
+             contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(verify.main(["test", "coverage", "workspace"]), 1)
+        execute.assert_called_once()
+        report = self.read_diagnostic_report(output.getvalue())
+        self.assertIn("coverage_report.py --prepare | failed | 2.000 |", report)
+        pending = [row.split(" | ")[1:4] for row in report.splitlines() if " | missing | " in row]
+        self.assertEqual([(group, status) for group, _, status in pending], [
+            ("Reset coverage counters", "missing"),
+            ("All ordinary crate tests", "missing"),
+            ("Export ordinary crate coverage", "missing"),
+            ("Ordinary crate coverage summary", "missing"),
+        ])
+        for (_, scope, _), selector in zip(pending, ("--profraw-only", "--workspace --exclude test_runner",
+                                                    "cargo llvm-cov report --json", "coverage_report.py")):
+            self.assertIn(selector, scope)
+
+    def test_diagnostic_source_stability_failure_keeps_completed_measurement(self):
+        for final_snapshot in ("after", OSError("unreadable"), RuntimeError("unavailable")):
+            with self.subTest(final_snapshot=final_snapshot), \
+                 patch.object(verify, "snapshot", side_effect=["before", final_snapshot]), \
+                 patch.object(verify, "execute_command", return_value=(True, "ok", 3)), \
+                 contextlib.redirect_stdout(io.StringIO()) as output:
+                self.assertEqual(verify.main(["check", "english"]), 1)
+            report = self.read_diagnostic_report(output.getvalue())
+            self.assertIn("tools/verification/checks/check_english.py | executed | 3.000 |", report)
+            self.assertIn("| Stability | Source and index |  | failed |", report)
+            self.assertIn("Source or index changed during verification", output.getvalue())
+
+    def test_diagnostic_report_publication_failure_exits_without_receipt(self):
+        original_open = Path.open
+
+        def fail_report_open(path, mode="r", *args, **kwargs):
+            if path.name == REPORT_NAME and mode == "xb":
+                raise OSError("write unavailable")
+            return original_open(path, mode, *args, **kwargs)
+
+        for failure, message in (
+            (patch.object(Path, "open", fail_report_open), "write unavailable"),
+            (patch.object(timing_report, "git", side_effect=RuntimeError("revision unavailable")),
+             "revision unavailable"),
+        ):
+            with self.subTest(message=message), failure, \
+                 patch.object(verify, "execute_command", return_value=(True, "ok", 4)) as execute, \
+                 contextlib.redirect_stdout(io.StringIO()) as output:
+                self.assertEqual(verify.main(["check", "english"]), 1)
+            execute.assert_called_once()
+            self.assertIn(f"Cannot write timing report: {message}", output.getvalue())
+            self.assertNotIn("[TIMING] Report SHA-256:", output.getvalue())
+            self.assertNotIn("[TIMING] Report generation:", output.getvalue())
+            diagnostics = self.root / ".agent/tmp/verification/diagnostics"
+            self.assertEqual(list(diagnostics.glob(f"*/{REPORT_NAME}")), [])
+
     def test_inventory_runs_without_candidate_generation(self):
         for success in (True, False):
             with self.subTest(success=success), \
@@ -428,6 +576,7 @@ class ExecutionTests(unittest.TestCase):
                 self.assertEqual(verify.main(["runner", "bench", "inventory"]), 0 if success else 1)
             self.assertEqual(execute.call_count, 1)
             self.assertEqual(execute.call_args_list[0].args[0][:2], ["cargo", "bench"])
+            self.assertFalse((self.root / ".agent/tmp/verification/diagnostics").exists())
 
     def test_unrelated_changes_execute_no_python_contracts(self):
         with patch.object(verify, "collect_changes", return_value={"crates/cpu/src/state.rs"}), \
@@ -437,6 +586,7 @@ class ExecutionTests(unittest.TestCase):
         execute.assert_not_called()
         snapshot.assert_not_called()
         self.assertIn("inputs are unchanged", output.getvalue())
+        self.assertFalse((self.root / ".agent/tmp/verification/diagnostics").exists())
 
     def test_default_python_command_collects_working_tree_changes(self):
         with patch.object(verify, "collect_changes", return_value={"tools/amiga-rag-mcp-server/server.py"}) as collect:

@@ -360,20 +360,33 @@ batch, not a persistent test cache or a relaxation of final acceptance criteria.
 
 ### Generated timing report
 
-Executed diagnostic and completion commands write
-[`tests/test-runtime-report.md`](../../tests/test-runtime-report.md) and print a
-grouped timing summary. The report records command wall times, retained execution
+Each report-producing completion attempt writes
+`<results-dir>/verify/<attempt>/test-runtime-report.md`, even when every group is
+reused. The completion record's `timing_report` includes the report path relative
+to the results directory and its SHA-256. The console prints the full path and
+digest. Diagnostics write their timing reports to separate invocation directories
+under `.agent/tmp/verification/diagnostics/`. A diagnostic `--results-dir` still
+controls command logs and suite output and can point outside the checkout.
+
+The report records command wall times, retained execution
 times for reused groups, failures and missing work; completion reports also list
 unselected suites as skipped. Cargo test commands include compilation/reuse and
 execution; the report does not invent a split when none was measured. Coverage
 preparation, export and summary have their own command times. Generation and
 file-writing costs are measured separately and saved in completion evidence.
 
-This exact versioned file is generated output. Its creation, staged or unstaged
-updates and removal do not select Rust or verification-tool tests, change source
-stability or input fingerprints, or enter the repository language scan. Neighboring
-files retain normal ownership and checking. The final candidate tree includes the
-report, while internal evidence determines success. `--plan` writes no report.
+The report stays outside the Git candidate and reusable group artifacts. A write
+failure fails the invocation while preserving matching successful group evidence.
+Older completion records can still supply valid group evidence. Archival requires
+both the report locator and digest. Save the selected attempt's identity before
+the latest profile record is replaced. Follow the
+[capture guide](../workflow/capture/README.md#selected-timing-reports) to preserve
+its bytes. The report itself supplies no verification verdict.
+
+The old `tests/test-runtime-report.md` path has ordinary input ownership. Freeze
+requires the prepared tree to equal the complete verified tree. Plan previews,
+empty selections, integration commands and benchmark runners with their own
+reports produce no verifier timing report.
 
 Verification orchestration and coverage result processing live in `tools/verification/`;
 worktree management lives in `tools/worktree.ps1`. The shared diary appender lives in `tools/log_diary.py`. Concrete project audits and checks live in `tools/verification/checks/`. Run these scripts from the repository root. Task selection uses subcommands; the former selection switches are rejected.
@@ -488,7 +501,7 @@ Rust changes therefore expand the test scope, even for a documentation task.
 | Known verifier orchestration inputs: `verify.py`, `execution.py`, `evidence.py`, `batch_lock.py`, `tests/test_evidence.py` | No Rust tests or coverage; Python contracts and all quality gates still run |
 | Cargo manifests/lockfiles, build scripts, toolchain or `.cargo/` configuration | Full ordinary workspace and standard harness |
 | Other verification implementation/tests, including selection, CLI grammar, Git change discovery, commands, coverage processing and checks; Design specifications | Full ordinary workspace and standard harness |
-| `tools/worktree.ps1` | Full ordinary workspace and standard harness; Python contract ownership does not reduce its existing Rust fallback |
+| Root `.gitignore`, `tools/worktree.ps1`, and workflow capture source and tests | Full ordinary workspace and standard harness; these inputs retain full Rust scope alongside their Python contracts |
 | Unknown ownership, unavailable Cargo metadata, or a clean tree | Full ordinary workspace and standard harness |
 
 [impact.py](impact.py) reads `cargo metadata --no-deps --offline --locked`. It uses
@@ -552,7 +565,12 @@ Topic tags are selected by reviewing the chapter and are not mechanically checke
 Python tool contracts live beside their owning tools. Commit verification always
 runs RAG MCP and artifact report contracts. Verification CLI contracts run only
 for changes to verification code/tests/policy or shared tooling that they exercise.
-Vocabulary and unrelated emulator changes do not select them. It runs the Bootstrap contract
+Vocabulary and unrelated emulator changes do not select them. The root
+`.gitignore` selects both Verification CLI and Workflow capture contracts and
+requires full Rust verification. Changes under `tools/workflow/capture/` select
+the Workflow capture contracts. Capture source and test files retain the full
+Rust fallback, while independent Markdown follows the documentation rule.
+The verifier runs the Bootstrap contract
 suites when Git reports staged, unstaged or nonignored new paths under
 `tools/bootstrap/`, including book data. Renames count at both endpoints. The
 Book Review suite checks pinned Python packages and local KaTeX assets, then uses
@@ -1039,6 +1057,8 @@ python tools/verification/verify.py integrate cleanup record .agent/tmp/integrat
 
 Cleanup rechecks tip, ancestry, registration, pending work and local command
 ownership separately for each selected source, trying the assembly checkout last.
+Before cleanup, verify required preservation from the surviving checkout under
+the [cleanup policy](../../.agents/rules/git-merge-commits.md#conditional-publication-and-cleanup).
 All ignored files in removed source worktrees are discarded, including
 `.env`, references, caches, plans, reports and verification evidence. Cleanup does
 not inventory, hash, compare, copy or archive them. Its surviving control record

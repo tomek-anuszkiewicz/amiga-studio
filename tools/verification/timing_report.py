@@ -1,10 +1,14 @@
 """Render existing verification timings without executing or selecting work."""
 from collections import Counter
 from datetime import datetime, timezone
+from hashlib import sha256
 from pathlib import Path
 import time
 
-from repository import TIMING_REPORT, git
+from repository import git
+
+
+REPORT_NAME = "test-runtime-report.md"
 
 
 def measurement(phase, group, title, status, seconds=None, previous_seconds=None, commands=()):
@@ -55,24 +59,28 @@ def render(root, profile, revision, rows, wall_seconds):
     return "\n".join(lines)
 
 
-def publish(root, profile, rows, wall_seconds):
+def publish(root, output_root, directory, profile, rows, wall_seconds):
     started = time.perf_counter()
     revision = git(root, "rev-parse", "HEAD").decode().strip()
-    content = render(root, profile, revision, rows, wall_seconds)
+    content = render(root, profile, revision, rows, wall_seconds).encode("utf-8")
+    digest = sha256(content).hexdigest()
     generated = time.perf_counter() - started
     started = time.perf_counter()
-    path = root / TIMING_REPORT
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(content, encoding="utf-8")
+    path = directory / REPORT_NAME
+    directory.mkdir(parents=True, exist_ok=True)
+    with path.open("xb") as report:
+        report.write(content)
     written = time.perf_counter() - started
     counts = Counter(row["status"] for row in rows)
     print("[TIMING] " + ", ".join(f"{count} {status}" for status, count in sorted(counts.items())))
     for phase in dict.fromkeys(row["phase"] for row in rows):
         seconds = sum(row["seconds"] or 0 for row in rows if row["phase"] == phase)
         print(f"[TIMING] {phase}: {seconds:.3f}s current command wall time")
-    print(f"[TIMING] Report generation: {generated:.6f}s; file writing: {written:.6f}s; {TIMING_REPORT}")
+    print(f"[TIMING] Report generation: {generated:.6f}s; file writing: {written:.6f}s; {path}")
+    print(f"[TIMING] Report SHA-256: {digest}")
     return {"generation_seconds": generated, "write_seconds": written, "rows": rows,
-            "wall_seconds_before_report": wall_seconds}
+            "wall_seconds_before_report": wall_seconds,
+            "path": path.relative_to(output_root).as_posix(), "sha256": digest}
 
 
 def omissions(phases):

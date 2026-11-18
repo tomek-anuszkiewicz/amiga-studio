@@ -12,8 +12,10 @@ triggered, and the [verifier contract](../../../../tools/verification/README.md)
   Separate pre-existing gaps; unresolved required in-scope gaps block readiness.
 - Check actual commands/outcomes, candidate/condition identities, intact artifacts
   and retained-evidence validity. Failed, missing or invalidated groups are not passes.
-- Treat the versioned timing report as generated output. Its updates must preserve
-  selection/continuation while real source changes remain detected; it certifies no gate.
+- Check that per-attempt timing output stays outside selection, continuation and
+  the verified tree. Confirm ordinary detection of authored changes at the old
+  report path. Freeze must bind the complete verified tree. Timing output certifies
+  no gate.
 - Distinguish renewed reviews from carried scoped approvals and inspect the comparison
   supporting retained content, requirements, criteria and evidence. Canonical reuse
   remains the verifier's responsibility.

@@ -4,7 +4,7 @@ from pathlib import Path
 import subprocess
 
 from evidence import BatchEvidence, capture_inputs, digest, execution_conditions, file_digest, group_identity
-from repository import candidate_tree, collect_changes, git, merge_heads, resolve_base, snapshot, TIMING_REPORT
+from repository import candidate_tree, collect_changes, git, merge_heads, resolve_base, snapshot
 from integration_state import (ancestor, checkout, clean, collisions, common, no_operation,
                                publication_lock, RefTransaction, represents, save, value)
 from integration_sources import cleanup_record, source_locks, validate_sources
@@ -29,7 +29,7 @@ def validate_evidence(root, directory):
     conditions = execution_conditions(root)
     if record.get("conditions") != conditions or read(directory / record["inputs"]) != inputs:
         raise ValueError("Completion inputs or execution conditions changed")
-    if set(record.get("scope", ())) - {TIMING_REPORT} != collect_changes(root, base) - {TIMING_REPORT}:
+    if set(record.get("scope", ())) != collect_changes(root, base):
         raise ValueError("Integration scope changed")
     # Recompute selection, rather than accepting a truncated required list.
     from cli import parse_args
@@ -89,12 +89,9 @@ def freeze(root, directory, review_path, partition_path, target, sources_path=No
             raise ValueError("Prepared trees must partition only pending candidate paths")
         commits.append({"message": item["message"], "tree": tree})
         start = tree
-    start = value(root, "rev-parse", start + "^{tree}" )
-    changed_output = set(value(root, "diff", "--name-only", "--no-renames", "-z", record["tree"], start).split("\0")) - {""}
-    if start != candidate_tree(root) or changed_output - {TIMING_REPORT} or (pending and not commits):
+    start = value(root, "rev-parse", start + "^{tree}")
+    if start != candidate_tree(root) or start != record["tree"] or (pending and not commits):
         raise ValueError("Partition does not consume the complete verified candidate")
-    # Timing output is generated after testing; bind its approved bytes.
-    record = {**record, "tree": start}
     frozen = {"version": 2, "verification": "canonical", "base": base, "head": record["head"], "source_ref": source_ref,
               "sources": sources, "sources_explicit": sources_path is not None,
               "source_root": str(root.resolve()), "target_ref": target_ref, "target_root": str(target_root),

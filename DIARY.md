@@ -2946,3 +2946,24 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - The approved starting commit retains the original inputs. The surviving checkout keeps a private copy with its provenance record.
 - **Verification & Test Results**:
   - Compared each archived file with the starting Git blob. All four matched exactly.
+---
+
+### [2026-11-18 18:31 CET] — Preserve task inputs and per-attempt verification reports
+- **Affected Subsystems**:
+  - `Workflow capture`
+  - `Verification tooling`
+- **What Was Changed (The Concrete Reality)**:
+  - Complete WORKFLOW-ARTIFACTS-20261118 with ignored approved-input snapshots and selected-report preservation
+  - Write a distinct timing report for each verification attempt with its locator and SHA-256
+  - Remove the tracked timing report and its exact exceptions so freeze compares the complete verified tree
+  - Add capture contracts to Python selection while retaining conservative Rust scope
+- **Architectural Rationale & Trade-Offs**:
+  - Keep generated output out of authored candidate identity and retain selected original bytes before eventual worktree disposal
+- **Verification & Test Results**:
+  - Focused impact and CLI contracts passed
+  - Timing and evidence continuation contracts passed
+  - Integration and registered/unregistered preservation fixtures passed including survival after disposable worktree removal
+  - The Design audit passed for 35 documents and 1087 links
+  - This execution is unregistered and its source worktree and input snapshots remain retained
+  - Two canonical preflight attempts stopped on valid vocabulary occurrences before expensive checks. Reviewed API literals and technical terms now have justified dictionary entries
+  - The first complete canonical profile passed; Independent review then exposed missing ignore-rule dependencies and early-exit report rows, now covered by passing regression checks with corrected archival and environment guidance

@@ -92,19 +92,19 @@ Publication and cleanup remain separate authorized operations.
 
 ## Approved execution inputs
 
-When the user adopts an instrumented task and authorizes its starting commit,
-prepare the approved plan, scenarios, acceptance criteria, explicit decisions,
-required attachment bytes and portable environment inventory together before
-implementation. Force-add only the selected ignored task paths. Record governing
-and candidate workflow identities separately and describe dirty inputs. Verify
-that the input bytes can be recovered from Git. Record the resulting commit in
-the private execution manifest. Apply the ordinary diary, review and verification
-requirements to each prepared batch.
+Plans, test designs, acceptance criteria, decisions, selected attachments and
+inventories normally stay ignored in the task checkout. Record the task,
+approval/run identity, original path, version and SHA-256 at approval. Preserve
+the exact starting bytes before editing, each selected substantive revision before
+replacing it, and the selected final version with its links to the earlier
+versions. The [capture guide](../../tools/workflow/capture/README.md#starting-inputs)
+owns snapshot and archive procedures.
 
-Keep the starting commit reachable through the final implementation commit and
-a surviving authorized branch. Prepare the implementation as one commit when
-selected. Rewriting existing commits or changing the integration method requires
-a specific decision. Store stage evidence in the local execution archive.
+An explicitly selected starting input commit may retain the named ignored paths
+in Git. Apply ordinary batch readiness and verify recovery from the selected
+commit. Preserve its reachability from the delivered history and a surviving
+authorized branch. Record governing workflow, starting code, final code and
+reviewed candidate identities separately for either retention route.
 
 ## Execution-Plan Lifecycle
 
@@ -113,6 +113,7 @@ work across copies and continuations. On verified completion or explicit closure
 preserve delivered scope, decisions, actual verification and limits in the next
 required DIARY/Git closure record. Transfer remaining work to an active plan or
 roadmap unless explicitly waived. Retain the plan until its closure record is
-committed; authorized cleanup then removes only unchanged copies of that closed
-plan. Closure/deletion never turns failed or unrun checks into passes. No permanent
-plan archive, hooks, session database or cross-task verdict cache is introduced.
+committed. Before separately authorized cleanup, verify required preserved inputs
+from the surviving checkout and recheck the identity of each selected copy. For
+resumption, verify saved versions and record the continuation boundary.
+Closure/deletion never turns failed or unrun checks into passes.

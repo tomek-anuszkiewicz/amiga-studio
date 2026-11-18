@@ -6,6 +6,9 @@ from repository import REPO_ROOT
 from impact import RustScope, select_rust_scope, workspace_packages
 
 
+CAPTURE_CONTRACTS = "Workflow capture contracts"
+
+
 def singlestep_command(profile="verification", case=None, exact=False):
     command = [sys.executable, "tools/verification/run_singlestep.py", "--profile", profile]
     if case:
@@ -31,6 +34,8 @@ def select_tests(root, mode, verify_singlestep=False, changes=(), rust_scope=Non
             include_bootstrap=any(path.startswith("tools/bootstrap/") for path in changes)))
         if not any(verification_contract_input(path) for path in changes):
             commands = [item for item in commands if item[0] != "Verification CLI contracts"]
+        if not any(python_contract_input(CAPTURE_CONTRACTS, path) for path in changes):
+            commands = [item for item in commands if item[0] != CAPTURE_CONTRACTS]
     return commands
 
 
@@ -121,6 +126,7 @@ PYTHON_SUITES = (
     ("RAG MCP contracts", "tools/amiga-rag-mcp-server/tests"),
     ("Artifact report contracts", "tools/artifacts/tests"),
     ("Verification CLI contracts", "tools/verification/tests"),
+    (CAPTURE_CONTRACTS, "tools/workflow/capture/tests"),
 )
 
 
@@ -162,8 +168,14 @@ PYTHON_INPUTS = {
     "RAG MCP contracts": ("tools/amiga-rag-mcp-server/", ".codex/config.toml"),
     "Artifact report contracts": ("tools/artifacts/",),
     "Verification CLI contracts": ("tools/verification/", "tools/web.ps1", "tools/worktree.ps1", "tools/graphify_query.py",
-                                   ".agents/skills/TA-audit-vault-links/scripts/"),
+                                   ".agents/skills/TA-audit-vault-links/scripts/", ".gitignore"),
+    CAPTURE_CONTRACTS: ("tools/workflow/capture/", ".gitignore"),
 }
+
+
+def python_contract_input(name, path):
+    return any(path.startswith(owned) if owned.endswith("/") else path == owned
+               for owned in PYTHON_INPUTS[name])
 
 
 def verification_contract_input(path):
@@ -171,8 +183,7 @@ def verification_contract_input(path):
     from impact import language_data_input
     return (not path.endswith(".md")
             and (path == "tools/verification/checks/check_english.json" or not language_data_input(path))
-            and any(path.startswith(owned) if owned.endswith("/") else path == owned
-                    for owned in PYTHON_INPUTS["Verification CLI contracts"]))
+            and python_contract_input("Verification CLI contracts", path))
 
 
 def python_commands(directory=None, pattern=None, case=None, changes=None, include_bootstrap=True):
@@ -182,8 +193,7 @@ def python_commands(directory=None, pattern=None, case=None, changes=None, inclu
                       if not target.startswith("tools/bootstrap/")]
     if directory is None and changes is not None:
         selections = [(name, target) for name, target in selections
-                      if any(path.startswith(owned) if owned.endswith("/") else path == owned
-                             for path in changes for owned in PYTHON_INPUTS[name])]
+                      if any(python_contract_input(name, path) for path in changes)]
         if not any(verification_contract_input(path) for path in changes):
             selections = [(name, target) for name, target in selections if name != "Verification CLI contracts"]
     result = []
@@ -342,8 +352,10 @@ def select_phases(args, changes, explanations=None):
             raise ValueError("Completion profiles accept singlestep at most once")
         rust_scope = None
         if args.command == "commit":
-            rust_scope = select_rust_scope(REPO_ROOT, changes,
-                                           {path for inputs in PYTHON_INPUTS.values() for path in inputs})
+            # Capture suite ownership is for Python selection. Keep the existing Rust fallback.
+            rust_python_inputs = {path for name, inputs in PYTHON_INPUTS.items()
+                                  if name != CAPTURE_CONTRACTS for path in inputs}
+            rust_scope = select_rust_scope(REPO_ROOT, changes, rust_python_inputs)
             if getattr(args, "integration_divergent", False):
                 rust_scope = RustScope(None, "Divergent integration requires full ordinary workspace verification.")
             if explanations is not None:
