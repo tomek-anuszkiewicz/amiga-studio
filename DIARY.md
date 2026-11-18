@@ -2792,3 +2792,14 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - the initial integrated run passed 900 ordinary tests; stale coverage executables exceeded the Windows export command limit, so workspace coverage artifacts were refreshed before repeating verification
   - source-only performance is historical evidence and was not remeasured for the integrated frontend
   - full SingleStep, hardware captures, private firmware and browser performance are not established
+---
+
+### [2026-11-18 02:36 CET] — Remove obsolete browser build output
+- **Affected Subsystems**:
+  - `Browser build`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove the generated JavaScript, WebAssembly and HTML files from `crates/gui/dist`.
+- **Architectural Rationale & Trade-Offs**:
+  - The current Trunk configurations and documented launcher build into `.agent/tmp/web-dist`.
+- **Verification & Test Results**:
+  - Confirmed the configured output paths and checked that the tracked launcher and source files do not reference the obsolete output. Commit verification is pending.
