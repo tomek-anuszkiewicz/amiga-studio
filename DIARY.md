@@ -2935,3 +2935,14 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - Make the integration and repair paths visible and direct focused checks to supported roles.
 - **Verification & Test Results**:
   - All 50 distinct skill links resolved. The map rendered in Edge. Validator probes rejected the test auditor for focused checks and accepted its test audit and coverage assignments.
+---
+
+### [2026-11-18 17:37 CET] — Retire execution capture task inputs
+- **Affected Subsystems**:
+  - `Workflow documentation`
+- **What Was Changed (The Concrete Reality)**:
+  - Remove the four completed execution capture inputs from the active task directory.
+- **Architectural Rationale & Trade-Offs**:
+  - The approved starting commit retains the original inputs. The surviving checkout keeps a private copy with its provenance record.
+- **Verification & Test Results**:
+  - Compared each archived file with the starting Git blob. All four matched exactly.
