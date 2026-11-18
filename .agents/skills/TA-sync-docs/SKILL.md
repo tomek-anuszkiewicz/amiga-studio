@@ -27,4 +27,3 @@ implementation/evidence and write scope.
 
 Stop after document changes. Do not repair code/tests, perform an unrelated audit,
 index documentation, begin integration, stage or commit.
-

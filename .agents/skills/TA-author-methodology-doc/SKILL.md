@@ -22,4 +22,3 @@ source evidence and authorized write scope. A missing target returns `needs_inpu
 4. Return authored text/paths, decisions, actual checks and remaining uncertainty.
 
 Stop after writing. Do not launch governance audits, broad verification or a commit.
-

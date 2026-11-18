@@ -40,4 +40,3 @@ inventory, hash, compare, copy or archive ignored contents during teardown. Neve
 force removal, prune unrelated registrations or recursively delete leftovers after
 Git failure. Confirm physical directory and Git registration separately. Closed-task
 branch removal and publication checks belong to the existing integration tool.
-

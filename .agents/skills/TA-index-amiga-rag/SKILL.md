@@ -32,4 +32,3 @@ a separately authorized rebuild.
 
 Stop after indexing/health checks. Do not index `devnotes`, clear shared state,
 repair sources, broaden accepted roots or launch further workflow steps.
-

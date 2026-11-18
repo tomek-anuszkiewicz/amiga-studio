@@ -19,4 +19,3 @@ output permission. Reference graphs are ineligible.
 
 Stop after extraction/apply or a concrete blocker. Do not install a backend,
 switch corpora, rewrite source documents or begin RAG indexing.
-

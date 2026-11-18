@@ -21,4 +21,3 @@ plus applicable immutable integration selectors.
 
 Stop after verification. A pass alone does not close a stage. Do not prune roadmap
 work, compact the diary, repair source, start audits, commit or publish.
-

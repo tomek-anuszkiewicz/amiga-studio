@@ -23,4 +23,3 @@ Inputs: selected pending sections, user priorities and known dependencies.
 
 Stop after organization. Do not switch to completion-based pruning, start audits,
 compact the diary or claim stage completion.
-

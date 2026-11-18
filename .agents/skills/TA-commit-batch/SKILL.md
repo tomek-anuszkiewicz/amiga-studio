@@ -31,4 +31,3 @@ content, complete current canonical evidence and four applicable independent app
 Stop after commits/sealing. Do not repair prerequisites, edit content, publish,
 push or clean up. Confirmed-tested shortcut records are prepared by the caller
 under their existing policy, not selected as a fallback by this skill.
-

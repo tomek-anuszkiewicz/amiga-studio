@@ -29,4 +29,3 @@ creates a disposable filtered view under `.agent/tmp/`. It is not strictly
 zero-write execution: it leaves stored graphs intact but creates diagnostics.
 Use `read.py` when writes are prohibited. Never refresh, install, extract,
 reflect, or write feedback/vocabulary as part of a graph read.
-

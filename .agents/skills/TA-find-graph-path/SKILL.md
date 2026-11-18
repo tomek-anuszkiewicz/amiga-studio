@@ -17,4 +17,3 @@ Inputs: explicit graph file and source-qualified start/end identities.
 
 Stop after path discovery. Do not change graph, switch to another graph or another
 read operation, refresh data, install tools or dispatch research.
-

@@ -31,4 +31,3 @@ Use the [tool README](../../../../tools/graphify/README.md) for mechanics.
 The chunk JSON schema belongs to the internal extraction tool. The public skill
 still returns the normal text/JSON invocation result. No extra model API, automatic
 source edit, reference refresh or labeling service is introduced.
-

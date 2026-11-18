@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic checks owned by obsidian-vault-linking."""
+"""Deterministic checks owned by TA-audit-vault-links."""
 
 import argparse
 import re

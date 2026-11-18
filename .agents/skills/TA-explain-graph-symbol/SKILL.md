@@ -18,4 +18,3 @@ Inputs: explicit graph file and source-qualified symbol identity.
 
 Stop after explanation. Do not query another operation, switch corpora, refresh,
 extract semantics or write graph/query state.
-

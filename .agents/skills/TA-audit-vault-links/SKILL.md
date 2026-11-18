@@ -23,4 +23,3 @@ canonical frontmatter evidence.
 
 Stop after reporting. Do not edit notes or reference-book metadata. Selected repairs
 belong to a writer invocation with required concrete approvals already supplied.
-

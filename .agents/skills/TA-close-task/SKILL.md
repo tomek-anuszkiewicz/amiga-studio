@@ -29,4 +29,3 @@ publication authorization and an existing sealed readiness record.
 Stop after publication/refusal. No synchronization, repairs, tests, reviews, new
 commits, cleanup or push. Advanced multi-source assembly remains at its existing
 rule/tool owner; this V1 public operation does not publish sources successively.
-

@@ -50,4 +50,3 @@ The full Design checker rejects empty tags and broken links as well as metadata
 structure. The canonical checker scans every local Amiga Markdown file, including
 ignored books. Retain both actual scopes and reuse only overlapping evidence;
 neither structural success nor link counts establish hardware or semantic parity.
-

@@ -20,4 +20,3 @@ output location. Use the [verifier command reference](../../../tools/verificatio
 
 Stop after the check. Do not repair source, change acceptance, widen selection,
 measure unrequested coverage or escalate to commit/milestone verification.
-

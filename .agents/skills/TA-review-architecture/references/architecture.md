@@ -33,4 +33,3 @@ The skill recommendation matrix has one data owner and a derived readable view.
 Reuse the existing skill/role mapping; row/cell validation is data checking, not
 an authorization engine, scheduler or second role registry. Keep direct invocation
 independent from official recommendation membership.
-

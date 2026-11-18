@@ -22,4 +22,3 @@ scope. Invocation explicitly selects a new worktree; do not ask that choice agai
 
 Stop after task start. Do not implement, synchronize master, install a workflow,
 stage, commit or silently repair failed provisioning with a different operation.
-

@@ -29,4 +29,3 @@ requirement/approval evidence and relevant verification.
 Stop after assessment. No document/code/test repairs, staging, verification
 dispatch or automatic next step. Unresolved conflicts, valuable knowledge gaps and
 unverified changed requirements block readiness even when static checks pass.
-

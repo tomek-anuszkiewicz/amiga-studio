@@ -4,6 +4,7 @@ amd
 amigados
 amigatestkit
 arial
+astra
 attackwave
 azerty
 baai

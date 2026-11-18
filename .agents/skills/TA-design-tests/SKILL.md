@@ -24,4 +24,3 @@ existing evidence, authorized test-plan path and round budget.
 
 Stop after the test plan. Do not write code, execute implementation, measure
 coverage or dispatch a critique. Missing behavior/approval returns `needs_input`.
-

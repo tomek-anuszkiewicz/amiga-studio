@@ -25,4 +25,3 @@ closure decisions, checkpoint state and candidate.
 
 Stop after pruning/refusal. Do not run verification, audits, diary operations,
 commits or publication inside this operation.
-

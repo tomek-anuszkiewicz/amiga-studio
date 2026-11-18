@@ -26,4 +26,3 @@ write scope, approved scenarios and focused checks. No selected IDs means
 
 Stop after these repairs. Findings do not authorize unrelated changes, new test
 scenarios, weakened checks, broad verification or automatic reviewer dispatch.
-

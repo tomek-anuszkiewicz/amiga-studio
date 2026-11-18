@@ -24,4 +24,3 @@ measurement, output location and execution conditions.
 
 Stop after measurement. Do not add tests, interpret uncovered code as an automatic
 repair assignment, broaden the scope or launch a test audit.
-

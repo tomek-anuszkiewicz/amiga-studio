@@ -31,4 +31,3 @@ Stop after implementation/checks. No unrelated execution, installation or commit
 
 Reviewers use the [PowerShell acceptance criteria](references/acceptance.md);
 authors consult that detail for an applicable finding rather than loading it by default.
-

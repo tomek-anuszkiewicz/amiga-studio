@@ -30,4 +30,3 @@ behavior/test scenarios, original source/build baseline, workloads and write sco
 
 Stop at the assigned scope or limit. Do not select another candidate outside the
 assignment, launch broad profiling, loosen correctness criteria, stage or commit.
-

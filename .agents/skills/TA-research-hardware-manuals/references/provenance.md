@@ -19,4 +19,3 @@ Research writes only result artifacts when permitted. If the runtime prevents
 those writes, return the payload/text for the receiving session to persist.
 Report actual inherited permissions; a role label is not a hard filesystem guard.
 Do not edit source/documentation, publish indexes or refresh graphs.
-

@@ -20,4 +20,3 @@ authorized for repair. This operation does not merge master.
 
 Stop after asset repair. Do not create another task worktree, merge Git histories,
 change shared/global configuration or begin implementation.
-

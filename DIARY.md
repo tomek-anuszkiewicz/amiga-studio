@@ -2878,3 +2878,24 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - The current Trunk configurations and documented launcher build into `.agent/tmp/web-dist`.
 - **Verification & Test Results**:
   - Confirmed the configured output paths and checked that the tracked launcher and source files do not reference the obsolete output. Commit verification is pending.
+---
+
+### [2026-11-18 09:50 CET] — Close the manual TA workflow tasks
+- **Affected Subsystems**:
+  - `.agents`
+  - `.codex/agents`
+  - `tools/workflow`
+  - `verification and Graphify consumers`
+- **What Was Changed (The Concrete Reality)**:
+  - Close DETERMINISTIC-WORKFLOW-V1-20261116, including AGENT-INSTRUCTIONS-SIMPLIFICATION-20261116, WORKFLOW-NEXT-STEP-GUIDANCE-20261117 and WORKFLOW-SKILL-MATRIX-20261117
+  - Adopt seven named roles and 45 atomic skills, including agent and skill creation, with structured results, next-step guidance and the official recommendation matrix
+  - Record working commit 3f70adc4261910152e6b2318f631902b1a35ba48 as awaiting integration verification
+  - Preserve both diary histories and regenerate the timing report for this integration
+- **Architectural Rationale & Trade-Offs**:
+  - The interactive session selects operations and uses structured results to evaluate recommendations
+  - The matrix constrains official recommendations while direct skill selection remains available; Keep the role and skill model defaults already present in the selected worktree
+  - Verification and conditional Git publication retain their existing gates
+- **Verification & Test Results**:
+  - The earlier pending candidate passed 19 required verification groups and exercised bounded role and handoff trials, including rejection of an off-matrix official suggestion
+  - The integrated diff passed the Git whitespace check before this entry
+  - Previous trial limits include named role dispatch availability, technical permission isolation and untested interruption and exhaustion paths; The present model defaults have no effective runtime evidence from those trials

@@ -16,4 +16,3 @@ operation. Reference graphs are code-only, with no semantic extraction.
 Do not add a merged graph, watch service, labeling backend or optional upstream
 pipeline. Preserve tracked `ref_src/.graphifyignore` during worktree provisioning
 and the repository-owned skill when the installed package changes.
-

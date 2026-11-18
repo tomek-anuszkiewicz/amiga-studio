@@ -19,4 +19,3 @@ scope. Use [the structural procedure](references/update.md).
 
 Stop after structural refresh. Do not extract semantics, refresh the other graph,
 install/upgrade packages or start an indexing campaign.
-

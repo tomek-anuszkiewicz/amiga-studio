@@ -27,4 +27,3 @@ integration also supplies its immutable base and applicable original source iden
 
 Stop after verification. Do not fix findings, dispatch reviewers, stage, commit,
 publish or start milestone verification. Only the verifier supplies its final verdict.
-

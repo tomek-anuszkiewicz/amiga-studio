@@ -24,4 +24,3 @@ scope and supplied execution/coverage evidence.
 Stop with the assessment. Missing coverage is reported, not measured; do not add
 tests, repair code, dispatch work or claim batch approval. A completed audit may
 find required gaps that still block readiness.
-

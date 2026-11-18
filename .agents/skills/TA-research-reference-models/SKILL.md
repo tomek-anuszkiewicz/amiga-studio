@@ -24,4 +24,3 @@ manual result when available.
 Stop after the selected model investigation. C/C++/Verilog graph support may omit
 relationships; vAmigaTS assembly and JSON vectors are excluded. Do not substitute
 model behavior for hardware proof or switch to manuals/web measurements.
-

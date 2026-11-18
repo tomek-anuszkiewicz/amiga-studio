@@ -27,4 +27,3 @@ Stop after cleanup/refusal. Never force removal, prune unrelated registrations o
 recursively delete leftovers after Git failure. Ignored contents are discarded
 with the worktree; do not inventory, hash, compare, copy or archive them. A cleanup
 failure does not undo publication or start verification, commits or publication again.
-

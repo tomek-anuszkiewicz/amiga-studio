@@ -22,4 +22,3 @@ Capture has no mandatory interpretation, visual-quality checklist, diagnosis,
 repair, tests, delegation or escalation. The caller's assignment may separately
 require inspecting the image. This skill adds no renderer, wrapper or automatic
 GUI-repair workflow.
-

@@ -28,4 +28,3 @@ exact snapshot, requirements, approval evidence and verification.
 Stop with findings only. Do not enrich documents, repair code, run milestone
 verification or declare closure while required gaps remain. Report selected repair
 recommendations without dispatching them.
-

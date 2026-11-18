@@ -23,4 +23,3 @@ locations and bounded research scope.
 
 Stop after measurement research. If access is absent, report it; do not switch to
 emulator-model research, infer an unmeasured clock phase or edit project files.
-

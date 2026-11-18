@@ -32,4 +32,3 @@ verification/review and prepared commits. The existing freeze record preserves
 `merge_heads`; sealing checks the prepared first-parent merge completion. This is
 a supported handoff, not a conflict requiring the resolver or an automatic call
 to those later operations.
-

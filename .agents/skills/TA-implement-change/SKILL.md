@@ -27,4 +27,3 @@ candidate, write scope, relevant specifications and focused checks.
 Stop at the assigned result or contract boundary. Do not begin coverage measurement,
 broad review, documentation synchronization, staging, commits or another skill.
 Required unresolved gaps remain blockers; report them for an explicit next step.
-

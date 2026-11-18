@@ -25,4 +25,3 @@
 
 Read the applicable advance requirements routed by [AGENTS.md](../../../../AGENTS.md).
 Report concrete specification conflicts; reviewer preference creates no requirement.
-

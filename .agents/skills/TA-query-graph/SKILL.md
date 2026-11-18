@@ -19,4 +19,3 @@ Inputs: explicit graph file, query, scope and source snapshot/freshness if known
 
 Stop after the query. Do not select path/explain, refresh/extract, install tools or
 write feedback, vocabulary, query logs or graph data.
-

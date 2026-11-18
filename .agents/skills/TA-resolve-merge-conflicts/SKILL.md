@@ -23,4 +23,3 @@ write scope and existing authority/message for completing that merge.
 Stop after this merge. Do not start broad review, canonical verification,
 publication or cleanup. Clean textual resolution does not prove semantic agreement
 of conflict-free Markdown or of the whole combined candidate.
-

@@ -26,4 +26,3 @@ Stop after the assigned assessment. Do not select another lane, dispatch reviewe
 edit source/tests/documents, start a verification profile or treat findings as
 repair authorization. Matching prior evidence can be retained under the common
 contract; an incomplete assessment cannot approve.
-

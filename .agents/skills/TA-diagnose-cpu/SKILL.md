@@ -27,4 +27,3 @@ reproduction, requested sample/full scope and diagnostic output directory.
 Stop after diagnosis. Normal tool diagnostics/results are allowed; no source,
 test or reference repairs, new regression tests, automatic fix, full-suite
 escalation or claims that a targeted pass verifies the entire dataset.
-

@@ -25,4 +25,3 @@ Read [diary policy](../../rules/diary-maintenance.md) and
 
 Stop after compaction. Ordinary entry appending belongs to preparation. Do not
 create a commit, run a milestone suite or claim historical closure from structure.
-

@@ -49,4 +49,3 @@ marked edge and satisfied prerequisites. Missing cells must reject unsolicited
 official suggestions while ordinary user-directed invocation remains available.
 Distinguish data-validation probes from real agent execution and preserve original
 guidance/evidence when the format or matrix changes.
-

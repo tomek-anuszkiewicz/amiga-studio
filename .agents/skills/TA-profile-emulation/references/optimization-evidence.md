@@ -117,4 +117,3 @@ a selected subtree to 100%. Expansion, filtering and root changes preserve all
 denominators/percentages. Above the tree show selected root share and share outside
 it. Sampled milliseconds are estimated capture-interval time, not measured per-call
 duration or exact CPU/GPU time.
-

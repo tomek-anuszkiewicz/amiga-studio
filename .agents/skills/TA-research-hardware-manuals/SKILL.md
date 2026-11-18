@@ -23,4 +23,3 @@ round budget. The caller selects manual-first research.
 Stop after this source-family investigation. Missing evidence does not start a
 reference-model or measurement operation. No project/source/document edits,
 indexing, graph refresh or nested delegation.
-

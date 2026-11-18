@@ -28,4 +28,3 @@ as the owner of matrix use instead of copying routing policy into every skill.
 For added roles or skills, check the exact `TA-` identity, bounded operation,
 owner and result contract. Check that the matrix's displayed effort agrees with
 the runtime settings for the destination executor.
-

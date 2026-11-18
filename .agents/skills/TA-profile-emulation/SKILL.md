@@ -29,4 +29,3 @@ authorization and returns that missing prerequisite.
 
 Stop after investigation. Do not edit production code, start an optimization,
 expand to an unrelated workload campaign or choose a next skill.
-
