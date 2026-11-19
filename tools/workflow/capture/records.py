@@ -915,6 +915,27 @@ def render(report):
     return "\n".join(lines) + "\n"
 
 
+def preserve(args):
+    from preservation import copy_selected, registered_execution, selected_files
+
+    primary, _, archive = archive_context(args)
+    files = selected_files(json_object(args.input), archive_path)
+    if not args.publication:
+        registered_execution(primary, args.task_id, args.execution_id)
+        copy_selected(primary, archive, files, {}, lambda: None)
+        return 0
+
+    # The publication control record owns the serial closure stages.
+    sys.path.append(str(Path(__file__).resolve().parents[2] / "verification"))
+    from integration_closure import finish_preservation
+
+    def copy(state, progress):
+        copy_selected(primary, archive, files, state, progress)
+
+    finish_preservation(primary, args.publication, args.task_id, args.execution_id, copy)
+    return 0
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     common = argparse.ArgumentParser(add_help=False)
@@ -923,6 +944,9 @@ def main():
     common.add_argument("--execution-id", required=True)
     common.add_argument("--codex-home", type=Path, default=Path(os.environ.get("CODEX_HOME") or Path.home() / ".codex"))
     commands = parser.add_subparsers(dest="operation", required=True)
+    preserving = commands.add_parser("preserve", parents=[common])
+    preserving.add_argument("--input", type=Path, required=True, help="Known file paths and producer completion")
+    preserving.add_argument("--publication", type=Path, help="Surviving local integration record for task closure")
     collector = commands.add_parser("collect", parents=[common])
     collector.add_argument("--input", type=Path, required=True, help="Selected file and Git input identities")
     checker = commands.add_parser("check", parents=[common])
@@ -938,12 +962,14 @@ def main():
     try:
         if args.operation == "preserve-timing":
             return preserve_timing(args)
+        if args.operation == "preserve":
+            return preserve(args)
         args.codex_home = args.codex_home.resolve()
         primary, repository, archive = archive_context(args)
         if args.operation == "collect":
             return collect(args, primary, repository, archive)
         return inspect(args, primary, repository, archive)
-    except (KeyError, ValueError, TypeError, OSError) as error:
+    except (KeyError, ValueError, TypeError, OSError, RuntimeError) as error:
         print(f"{args.operation}: {error}", file=sys.stderr)
         return 2
 

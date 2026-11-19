@@ -1,6 +1,7 @@
 //! Parallel group execution and one final report inside the aggregate test.
 
 use super::reporting::{current_run_id, resolve_results_dir, update_global_summary, RunMetadata};
+use super::vector_report;
 use std::error::Error;
 use std::fs;
 use std::path::Path;
@@ -27,6 +28,7 @@ pub fn run_suite(cases: &[TestCase]) -> Result<(), Box<dyn Error>> {
             }
         })
         .collect();
+    vector_report::select_groups(selected.iter().map(|(name, _)| *name));
     if selected.is_empty() {
         return Err(format!("No SingleStep groups match '{filter}'").into());
     }
@@ -60,7 +62,10 @@ pub fn run_suite(cases: &[TestCase]) -> Result<(), Box<dyn Error>> {
                     while let Some((name, execute)) =
                         selected.get(next.fetch_add(1, Ordering::Relaxed))
                     {
-                        if std::panic::catch_unwind(*execute).is_err() {
+                        vector_report::set_group(Some(name));
+                        let outcome = std::panic::catch_unwind(*execute);
+                        vector_report::set_group(None);
+                        if outcome.is_err() {
                             failed.push(*name);
                         }
                     }

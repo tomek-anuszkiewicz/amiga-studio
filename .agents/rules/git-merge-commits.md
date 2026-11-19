@@ -2,12 +2,8 @@
 
 ## Choose the Task Checkout
 
-Before new implementation, identify the current checkout and branch with Git.
-Establish whether to work there or in a new worktree, including when already in a
-worktree. An explicit location/new-worktree instruction answers this choice; reuse
-it for corrections and continuation. If missing, ask with the current context and
-continue only read-only discovery/planning meanwhile. Do not infer location from
-a directory name or relocate a branch implicitly.
+The [advance checkout choice](../../AGENTS.md#choose-the-task-checkout)
+applies before selecting these integration and worktree procedures.
 
 A new worktree authorizes its branch beside the primary checkout at
 `../<repo_name>-<branch_name>`, without a second placement question. Use
@@ -96,7 +92,8 @@ prerequisites. Require `B` in `C`'s ancestry, the accepted tree equal to `C^{tre
 clean unchanged source state and valid evidence. A separate SHA comparison followed
 by an ordinary merge is insufficient. If master advances, return `master_changed`;
 the caller must select new synchronization/review/verification under updated authority.
-No publisher repair, new checks, commits or content edits are allowed.
+For ordinary teardown, select the existing registered capture execution at
+publication. No publisher repair, new checks, commits or content edits are allowed.
 
 For advanced combined publication, every original source tip remains in accepted
 history; other sources stay clean/unchanged. Prepared reference locks cover all
@@ -105,18 +102,26 @@ cleanup uses original `S_i`. Reference updates are atomic; filesystem changes ar
 not. Recover only known consistent transitions through existing phase records;
 observed interference blocks recovery. Never blindly reset or delete uncertain locks.
 
-Before teardown, verify the required preserved inputs and selected timing reports
-from the surviving checkout under the
-[capture guide](../../tools/workflow/capture/README.md#collect-and-assess).
-For a registered execution, retain the checked archive revision, manifest digest,
-assessment and disposition of its gaps. Verify required Git ancestry and committed
-input bytes when applicable. For an unregistered timing report, verify its receipt
-and digest. Retain the source and snapshots when any required version or receipt
-is absent, unreadable, mismatched or conflicting. Unregistered required input
-preservation needs an explicit disposition. Keep tracked approved inputs unless
-an explicit closure change authorizes their removal.
+After successful publication, the main session runs the [post-publication closure
+procedure](../../tools/verification/README.md#post-publication-closure) for the
+surviving record on primary local `master`. Resolve the one full English scan
+and record any authorized vocabulary-only child. Then select TA-refresh-graph
+for the resulting SHA. A failed scan or refresh leaves publication intact and
+closure open. After resolving a scanner error, explicitly retry it at the scan
+commit. For a source correction, independently verify and publish the linked
+successor before scanning it. Reuse completed stages for the same closure and
+final SHA.
 
-After confirmed publication and committed closure, separately authorized
+After the graph stage, complete the
+[whole-file preservation step](../../tools/workflow/capture/README.md#preserve-selected-files-at-task-closure)
+using the surviving publication record. Keep the source and retry inputs while a
+required file remains active, uncopied or unavailable. Use the established
+approved-input version evidence and confirm required Git ancestry and committed
+input bytes when applicable. Keep tracked approved inputs unless an explicit
+closure change authorizes removal. Separately selected archive analysis and
+assessment do not gate ordinary cleanup.
+
+After confirmed publication and completed closure stages, separately authorized
 [TA-cleanup-task](../skills/TA-cleanup-task/SKILL.md) rechecks exact tips, ancestry,
 ownership, pending work and active commands. Preserve later/unrelated work. Remove
 all ignored contents with the task worktree without inventorying, hashing, comparing,

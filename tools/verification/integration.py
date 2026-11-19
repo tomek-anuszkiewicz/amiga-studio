@@ -239,7 +239,7 @@ def check_source(root, frozen):
                 raise ValueError("Frozen evidence artifact changed: " + relative)
 
 
-def publish(root, path):
+def publish(root, path, *, task_id=None, execution_id=None, correction_for=None):
     frozen = read(path)
     if frozen["state"] != "sealed":
         raise ValueError("Publication requires sealed mechanical completion")
@@ -248,6 +248,10 @@ def publish(root, path):
     with publication_lock(common_directory):
         if phase_path.exists():
             raise ValueError("An unfinished publication requires integrate recover first")
+        if frozen.keys() & {"capture", "correction_for"}:
+            raise ValueError("Supply closure selectors to publication, outside the sealed record")
+        if (task_id is None) != (execution_id is None):
+            raise ValueError("Publication capture requires both task and execution selectors")
         check_source(root, frozen)
         target = checkout(root, frozen["target_ref"])
         if target != Path(frozen["target_root"]).resolve():
@@ -257,6 +261,12 @@ def publish(root, path):
         clean(target, untracked=False)
         if value(root, "rev-parse", frozen["target_ref"]) != frozen["base"]:
             raise ValueError("Target advanced; synchronize and verify the new integration baseline")
+        if task_id is not None:
+            from integration_closure import capture_binding
+            frozen["capture"] = capture_binding(target, task_id, execution_id)
+        if correction_for is not None:
+            from integration_closure import correction_origin
+            frozen["correction_for"] = correction_origin(target, correction_for, frozen)
         collisions(target, frozen["commit"])
         transaction = RefTransaction(root, frozen["target_ref"], frozen["base"], frozen["source_ref"], frozen["commit"],
                                      sources=source_locks(frozen))
@@ -353,16 +363,35 @@ def dispatch(root, args):
         recover(root)
         print("[PASS] Recovered local publication state")
     else:
-        values = keyword_values(args.words, ("record",))
-        if set(values) != {"record"} or args.results_dir:
-            raise ValueError("Use integrate " + args.action + " record PATH")
+        required = ("record", "additions") if args.action == "closure-vocabulary" else ("record",)
+        optional = {"publish": ("task", "execution", "correction-for"),
+                    "closure-language": ("retry", "correction")}.get(args.action, ())
+        values = keyword_values(args.words, required + optional)
+        if not all(key in values for key in required) or args.results_dir:
+            raise ValueError("Use integrate " + args.action + " " + " ".join(key + " PATH" for key in required))
         path = (root / values["record"]).resolve()
-        if args.action == "cleanup":
+        if args.action == "closure-language":
+            from integration_closure import scan_language
+            retry = values.get("retry")
+            if retry is not None and retry != "blocked":
+                raise ValueError("Use retry blocked to retry an English scanner error")
+            correction = (root / values["correction"]).resolve() if "correction" in values else None
+            return scan_language(root, path, retry=retry == "blocked", correction=correction)
+        if args.action == "closure-vocabulary":
+            from integration_closure import commit_vocabulary
+            commit_vocabulary(root, path, (root / values["additions"]).resolve())
+        elif args.action == "closure-graph":
+            from integration_closure import refresh_project_graph
+            return refresh_project_graph(root, path)
+        elif args.action == "cleanup":
             from integration_cleanup import cleanup
             cleanup(root, path)
+        elif args.action == "publish":
+            correction_for = (root / values["correction-for"]).resolve() if "correction-for" in values else None
+            publish(root, path, task_id=values.get("task"), execution_id=values.get("execution"),
+                    correction_for=correction_for)
+            print("[INFO] Surviving cleanup record: " + str(cleanup_record(read(path))))
         else:
-            {"seal": seal, "publish": publish}[args.action](root, path)
-            if args.action == "publish":
-                print("[INFO] Surviving cleanup record: " + str(cleanup_record(read(path))))
+            seal(root, path)
         print("[PASS] Local integration " + args.action)
     return 0

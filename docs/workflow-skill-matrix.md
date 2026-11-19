@@ -105,14 +105,14 @@ A suggested session effort helps the user choose settings for a run.
 | BAT | The current task has an explicitly selected batch scope and candidate whose partition, messages, diary or readiness record needs preparation or updating after material changes or new evidence. Preserve existing index entries and staging authority; preparation may report missing gates without obtaining them. |
 | CMT | Commit authority covers an exact prepared candidate, partition, messages and diary or closure content. All four independent review lanes approve that candidate, canonical verification and every applicable milestone or other gate pass, and no unresolved blocker remains. Freeze and create only the authorized mechanical commits. |
 | PUB | The selected task has accepted, sealed source and target identities with the required committed closure record, and exact publication authority is available. The recorded base and candidate remain current; use only the existing eligible publication protocol, without inferring push or cleanup authority. |
-| CLN | Publication is confirmed and closure is committed for the exact selected task. Cleanup authority names its plan, branch and worktree, and preservation checks are satisfied. Cleanup does not republish, recreate commits or discard unrelated work. |
+| CLN | Publication is confirmed for the exact selected task. Closure English, the project graph for its final SHA and required preservation have completed. Cleanup authority names the plan, branch and worktree. Cleanup preserves later work. |
 | CHK | A named focused check is required for the current candidate and has not completed, or relevant changes or resolved failure causes invalidate prior evidence. Supply the exact command, environment and boundary; do not repeat applicable success or expand into a broader suite. |
 | VER | An actual batch needs canonical commit-profile verification for its stable complete candidate and recorded baseline. Evidence is missing, invalidated or a failed cause has been addressed. Retain applicable successful groups and the existing results directory; a passing focused check is not canonical evidence. |
 | MIL | An actual milestone requires the canonical milestone profile for its complete stable candidate. Evidence is missing, invalidated or a failed cause has been addressed; preserve the required full scope. A passing profile alone does not establish milestone closure. |
 | QRY | A specific unanswered relationship question in the current task can be checked in an identified existing graph. The graph, source scope and query are known; the operation remains read-only and confirms relevant definitions directly. |
 | PTH | The current task has a concrete relationship question between known, source-qualified endpoints in an identified existing graph. A path or no-path result would resolve that question; do not create a new investigation merely because graph access is available. |
 | SYM | Understanding a known symbol and its relationships is necessary for the current scoped task. The symbol, graph and source snapshot are identified; read the owning definitions and do not broaden the requested analysis. |
-| GRF | A specifically identified missing or stale graph blocks the current task, or an explicit refresh request names it. The selected project or reference source, root and refresh authority are available; refresh only that graph and do not infer semantic extraction. |
+| GRF | After ordinary publication and completed closure English, select the project graph on primary local master at the final SHA, including any vocabulary commit. Reuse an intact successful receipt and select a retry only for a failed refresh. An explicit bootstrap or reference refresh keeps its selected scope. |
 | SEM | Explicitly selected project documents need their semantic relationships extracted into the project graph. The source scope, graph state and write authority are available; structural refresh and document editing alone do not authorize this separate operation. |
 | IMG | The current GUI task needs new image evidence from an identified existing capture scenario and output location. State the capture boundary; a saved image alone is not an interpreted diagnosis, accepted visual result or repair instruction. |
 | IDX | Accepted documents within an explicitly selected supported source scope need shared RAG indexing, and publication authority, configuration and retrieval probe are available. Document editing, graph changes and audit completion alone do not authorize indexing. |
@@ -269,7 +269,7 @@ A suggested session effort helps the user choose settings for a run.
 | 28 `TA-prune-roadmap` | - | - | - | DIA | - | RTY | BAT | - | - | - | - |
 | 29 `TA-prepare-batch` | - | DOC | - | - | - | - | RTY, BAT | CMT | - | - | - |
 | 30 `TA-commit-batch` | - | - | - | - | - | - | BAT | RTY | PUB | - | - |
-| 31 `TA-close-task` | - | - | - | - | - | - | BAT | - | RTY | CLN | - |
+| 31 `TA-close-task` | - | - | - | - | - | - | BAT | - | RTY | - | CHK |
 | 32 `TA-cleanup-task` | - | - | - | - | - | - | - | - | - | RTY | - |
 | 33 `TA-verify-focused` | - | - | - | - | - | - | BAT | - | - | - | RTY, CHK |
 | 34 `TA-verify-batch` | - | DOC | - | - | - | - | BAT | CMT | - | - | - |
@@ -277,7 +277,7 @@ A suggested session effort helps the user choose settings for a run.
 | 36 `TA-query-graph` | - | - | - | - | - | - | - | - | - | - | - |
 | 37 `TA-find-graph-path` | - | - | - | - | - | - | - | - | - | - | - |
 | 38 `TA-explain-graph-symbol` | - | - | - | - | - | - | - | - | - | - | - |
-| 39 `TA-refresh-graph` | - | - | - | - | - | - | - | - | - | - | - |
+| 39 `TA-refresh-graph` | - | - | - | - | - | - | - | - | - | CLN | - |
 | 40 `TA-extract-graph-semantics` | - | - | - | - | - | - | - | - | - | - | - |
 | 41 `TA-capture-gui-screenshot` | - | - | - | - | - | - | - | - | - | - | - |
 | 42 `TA-index-amiga-rag` | - | - | - | - | - | - | - | - | - | - | - |
@@ -324,9 +324,9 @@ A suggested session effort helps the user choose settings for a run.
 | 28 `TA-prune-roadmap` | - | MIL | - | - | - | - | - | - | - | - | - |
 | 29 `TA-prepare-batch` | VER | MIL | - | - | - | - | - | - | - | - | - |
 | 30 `TA-commit-batch` | VER | - | - | - | - | - | - | - | - | - | - |
-| 31 `TA-close-task` | - | - | - | - | - | - | - | - | - | - | - |
+| 31 `TA-close-task` | - | - | - | - | - | GRF | - | - | - | - | - |
 | 32 `TA-cleanup-task` | - | - | - | - | - | - | - | - | - | - | - |
-| 33 `TA-verify-focused` | - | - | - | - | - | - | - | - | - | - | - |
+| 33 `TA-verify-focused` | - | - | - | - | - | GRF | - | - | - | - | - |
 | 34 `TA-verify-batch` | RTY, VER | MIL | - | - | - | - | - | - | - | - | - |
 | 35 `TA-verify-milestone` | - | RTY, MIL | - | - | - | - | - | - | - | - | - |
 | 36 `TA-query-graph` | - | - | RTY | PTH | SYM | GRF | - | - | - | - | - |
@@ -387,7 +387,7 @@ A suggested session effort helps the user choose settings for a run.
 | 36 `TA-query-graph` | - | - | - | - | - | - |
 | 37 `TA-find-graph-path` | - | - | - | - | - | - |
 | 38 `TA-explain-graph-symbol` | - | - | - | - | - | - |
-| 39 `TA-refresh-graph` | - | - | - | - | - | - |
+| 39 `TA-refresh-graph` | - | - | - | - | COL | - |
 | 40 `TA-extract-graph-semantics` | - | - | - | - | - | - |
 | 41 `TA-capture-gui-screenshot` | - | - | - | - | - | - |
 | 42 `TA-index-amiga-rag` | - | - | - | - | - | - |

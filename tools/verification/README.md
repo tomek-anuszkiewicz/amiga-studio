@@ -15,7 +15,7 @@ includes a module path.
 | Sentence | Scope |
 | --- | --- |
 | `commit` | Required commit profile; excludes full SingleStep |
-| `milestone [singlestep]` | Full language audit and full SingleStep; the selector does not duplicate execution |
+| `milestone [singlestep]` | Full SingleStep, with or without the optional selector |
 | `integrate freeze review PATH partition PATH target BRANCH` | Freeze the approved complete integration candidate and canonical evidence |
 | `integrate accept-tested confirmation PATH target BRANCH` | Seal an unchanged clean fast-forward explicitly confirmed as already tested, without new verification |
 | `integrate seal\|publish\|cleanup record PATH` | Check prepared commits, conditionally publish, or remove the integrated source |
@@ -111,6 +111,53 @@ Missing tools or a failed build block commit verification. Batch continuation
 fingerprints nightly Cargo/Rust, Trunk and PowerShell versions as well as source
 inputs; changed build tools invalidate successful evidence.
 
+## Case reports
+
+Test and benchmark launchers print the per-invocation Markdown report at
+startup. It links the native event journal, command output and child reports.
+Each invocation retains its own case attempts and durations. A reused
+verification group links the preceding evidence and contributes zero new
+attempts. Command wall times and coverage retain their existing reports.
+
+The primary checkout retains these files when a linked worktree is removed.
+See the [archive layout](../workflow/capture/README.md#case-reports) for
+invocation metadata and interrupted-run recovery.
+
+| Entry point | Case evidence |
+| --- | --- |
+| `verify.py test rust`, `test runner standard` | Cargo test binary and case or doctest identity, outcome and native failure output. Stable libtest leaves per-case elapsed time unavailable. |
+| `verify.py test coverage`, commit coverage and direct nextest | Native nextest starts, outcomes and each reported attempt's elapsed seconds. |
+| `verify.py test python`, `run_unittest.py`, `run_tests.py` | Unittest cases, native outcomes and monotonic timing. The parallel runner also captures subtest intervals and worker output. Standard discovery retains suite fixtures. |
+| Book Review `run_tests.py` | Dependency setup, native unittest results and the suite's shared browser lifecycle. |
+| `verify.py check architecture` | Named cases in the protected checker's existing unittest suite. Build and static scans without named cases report command status. |
+| SingleStep and milestone | Original vectors, host seconds, expected guest clocks and comparator failure diagnostics. |
+| `verify.py runner bench`, CPU `measure` and `run_mixed_scene.py` | Original outer attempt seconds and native series. A CPU retry retains its reason and evidence. |
+
+These direct commands select a timed Rust case and Python discovery by file:
+
+```powershell
+python tools/verification/run_rust_tests.py -- cargo nextest run -p config --test test_config -E 'test(=test_default_config)' --no-tests fail
+python tools/verification/run_unittest.py discover -s tools/artifacts/tests -p test_report.py -q
+```
+
+The Rust launcher also accepts `cargo test` with native binary, profile,
+ignored-test and output options. Use that route for Cargo doctests and its
+scheduling behavior. The launcher uses libtest's named `pretty` format on the
+console and in the attached native log when no format is set or when the caller
+requests `--format terse`, `--format=terse`, or a libtest quiet flag. The same
+Cargo run supplies the case names and outcomes for the report. If the native
+output lacks individual results, the report retains any available suite counts
+and marks the case evidence incomplete. Explicit libtest JSON or JUnit output
+passes through to the native log with incomplete case evidence. When Cargo
+exits with a named case still running, the report records an aborted attempt
+with unavailable case duration and keeps Cargo's exit status. Nextest
+provides native elapsed time for the final attempt. Earlier retry timings use
+the precision of nextest's status lines when available, and diagnostics remain in
+the native output. The report marks missing retry timings as incomplete.
+For explicit Python IDs, pass the usual `unittest` module, class or method name
+to `run_unittest.py`. Plain external Cargo and Python commands bypass these
+repository launchers.
+
 ## Saved SingleStep reports
 
 Standalone runs default to `.agent/tmp/singlestep/`. Milestone verification uses
@@ -151,7 +198,7 @@ match exactly:
 
 ```powershell
 $env:SINGLESTEP_CASE = "test_add_b"
-cargo test -p test_runner --profile verification --test test_singlestep
+python tools/verification/run_singlestep.py --profile verification
 Remove-Item Env:SINGLESTEP_CASE
 ```
 
@@ -345,8 +392,9 @@ runtime dependency; do not claim reusable evidence for an unmodeled dependency.
 
 The reuse boundary is conservative: most groups include all captured inputs
 except for reviewed independent data. Known build, test and static-check groups
-omit the root `DIARY.md`; the English gate and unknown groups retain it. The final
-candidate identity and source-stability checks still include the diary. Non-language
+omit the root `DIARY.md`, while unknown groups retain it. The final candidate
+identity, source-stability checks and post-publication English scan still include
+the diary. Non-language
 groups omit vocabulary and exact-file `file_words` data. Verification CLI contracts
 use their owning verification code/tests/policy inputs and the web/worktree,
 graph-query and vault-link tooling they exercise; unrelated emulator and vocabulary edits do not
@@ -529,8 +577,8 @@ All ordinary unit and integration tests of selected packages run. When
 `test_runner` is selected, all its standard harness targets run, excluding the
 aggregate full SingleStep target. Performance benchmarks remain explicit
 `runner bench` diagnostics; benchmark workload contracts remain standard tests.
-Full Clippy, formatting, architecture, hardware/code audits, English, frontmatter
-and the Python contract policy are unchanged. Selection derives the full required
+The profile retains full Clippy, formatting, architecture, hardware/code audits,
+frontmatter, and the Python contract policy. Selection derives the full required
 set against HEAD, or the explicit immutable integration base. Repeating the command
 can retain successful groups under the input and artifact rules below; Cargo
 retains responsibility for incremental compilation.
@@ -552,7 +600,18 @@ python tools/verification/verify.py commit
 python tools/verification/verify.py milestone
 ```
 
-Routine commits use only the first command. The profiles are invoked separately. Commit first runs English, frontmatter, formatting and static architecture/hardware/code gates. A preliminary failure defers expensive checks. Clippy follows those static gates before coverage, so compilation findings also block expensive tests. After preliminary checks pass, it runs selected ordinary crate tests with coverage, selected standard `test_runner` suites and Python tool contracts. It never selects full SingleStepTests, even for CPU changes. Every commit scans all repository-owned text files against the English dictionary and reviewed project vocabulary, regardless of staging or changes, using `tools/verification/checks/check_english.json`. Milestone runs that language audit plus full SingleStepTests, including on a clean tree so already committed milestone work is covered. It does not repeat the other commit checks. vAmigaTS Cargo suites and chipset workload tests have been removed; capture runs and chipset throughput comparisons are excluded from automatic verification.
+Routine commits use only the first command. The profiles are invoked separately.
+Commit first runs frontmatter, formatting and static architecture, hardware and
+code gates. A preliminary failure defers expensive checks. Clippy follows those
+static gates before coverage, so compilation findings also block expensive tests.
+After preliminary checks pass, the profile runs selected ordinary crate tests
+with coverage, selected standard `test_runner` suites and Python tool contracts.
+It never selects full SingleStepTests, even for CPU changes. Milestone runs full
+SingleStepTests, including on a clean tree so already committed milestone work is
+covered. Capture runs and chipset throughput comparisons are excluded from
+automatic verification. The full English audit runs during
+[ordinary task closure](#post-publication-closure). The explicit `check english`
+and `check all` commands still run the full scan.
 
 The Architecture Rules gate resolves Design links to local hardware manuals and
 reference sources. The checkout needs those link targets under
@@ -569,7 +628,8 @@ edits files. Before an agent repairs a reported file, it presents the proposed
 frontmatter and asks the user
 for approval. Run `python tools/verification/checks/check_obsidian_frontmatter.py`
 to inspect only this gate. Missing local reference books are outside its scan.
-Topic tags are selected by reviewing the chapter and are not mechanically checked.
+The [Reference Book Metadata schema](../bootstrap/book-to-markdown/reference-book-metadata.md)
+owns chapter topic selection and the scope of source-note repairs.
 
 Python tool contracts live beside their owning tools. Commit verification always
 runs RAG MCP and artifact report contracts. Verification CLI contracts run only
@@ -584,7 +644,7 @@ suites when Git reports staged, unstaged or nonignored new paths under
 `tools/bootstrap/`, including book data. Renames count at both endpoints. The
 Book Review suite checks pinned Python packages and local KaTeX assets, then uses
 its own runner to share a browser process. Verification CLI contracts use
-`tools/verification/run_tests.py`. Other Python suites use `unittest discover`.
+`tools/verification/run_tests.py`. Other Python suites use `tools/verification/run_unittest.py discover`.
 The tools do not run these tests during normal operation. Without a
 commit, run only checks relevant
 to a coherent change, not after every edit. Repeat checks only after affected
@@ -725,10 +785,10 @@ for changed packages and their transitive consumers, with full workspace fallbac
 for shared or unknown inputs. Independent documentation and known Python tool
 changes skip Rust tests while retaining all quality gates. Ordinary CPU tests
 using real PhysicalMemory run when the CPU package is selected. The separate
-milestone set runs the full language audit and full SingleStepTests; vAmigaTS
-Cargo suites and automatic chipset/capture runs have been removed.
+milestone set runs full SingleStepTests. The full language audit belongs to
+[post-publication closure](#post-publication-closure).
 
-Manual commands in the following sections and diagnostic selectors in `verify.py` validate ordinary tasks and support diagnosis; they do not replace pre-commit verification. Wall-clock microbenchmarks run explicitly. Decoder-derived CPU benchmark regression targets, the old chipset throughput workload and capture execution commands have been removed. The approved CPU baseline records the latest user-approved snapshot. During batch preparation, `TA-review-spec-compliance` checks the cumulative intended changes against approved specifications selected through `tracked_paths`, including implementation affected by changed requirements even when code has no diff. Documentation enrichment and pruning follow [Documentation Value](../../.agents/rules/docs-maintenance.md#documentation-value); accurate documents and their dates stay untouched. The broader semantic milestone audit may satisfy the scoped review for the same snapshot and covered requirements. Diary compaction and roadmap pruning remain separate agent procedures.
+Manual commands in the following sections and diagnostic selectors in `verify.py` validate ordinary tasks and support diagnosis; they do not replace pre-commit verification. Wall-clock microbenchmarks run explicitly. Decoder-derived CPU benchmark regression targets, the old chipset throughput workload and capture execution commands have been removed. The approved CPU baseline records the latest user-approved snapshot. During batch preparation, `TA-review-spec-compliance` checks the cumulative intended changes against approved specifications selected through `tracked_paths`, including implementation affected by changed requirements even when code has no diff. Documentation enrichment and pruning follow [Documentation Value](../../.agents/references/documentation-criteria.md#documentation-value); accurate documents and their dates stay untouched. The broader semantic milestone audit may satisfy the scoped review for the same snapshot and covered requirements. Diary compaction and roadmap pruning remain separate agent procedures.
 
 ---
 
@@ -994,7 +1054,7 @@ actual scoped verdicts and evidence references in the review messages or logs.
 python tools/verification/verify.py integrate freeze review .agent/tmp/review.json partition .agent/tmp/partition.json target master
 # Create only the prepared commits, using their exact trees, parents and messages.
 python tools/verification/verify.py integrate seal record .agent/tmp/verification/commit/integration.json
-python tools/verification/verify.py integrate publish record .agent/tmp/verification/commit/integration.json
+python tools/verification/verify.py integrate publish record .agent/tmp/verification/commit/integration.json task <task-id> execution <execution-id>
 ```
 
 Use the same `--results-dir .agent/tmp/<batch>` for verification and freeze when
@@ -1004,6 +1064,10 @@ first-parent commit sequence, merge parents, messages and trees. It bridges only
 those mechanical commits to the frozen evidence, without a second expensive
 profile or general evidence reuse across changed HEAD. Publication checks retained
 artifacts again. New content or a different target baseline returns to preparation.
+Before publication, select the stable task and execution IDs from the existing
+capture registration. Supply both selectors at publication. The publisher checks
+the exact registration and records its identity before moving the reference.
+A publication with no capture selection cannot authorize preservation or teardown.
 
 ### Confirmed unchanged fast-forward
 
@@ -1029,7 +1093,7 @@ Record the actual approval and confirmation source under `.agent/tmp/`:
 
 ```powershell
 python tools/verification/verify.py integrate accept-tested confirmation .agent/tmp/confirmation.json target master
-python tools/verification/verify.py integrate publish record .agent/tmp/verification/commit/integration.json
+python tools/verification/verify.py integrate publish record .agent/tmp/verification/commit/integration.json task <task-id> execution <execution-id>
 ```
 
 `accept-tested` creates a sealed record explicitly marked `confirmed-fast-forward`;
@@ -1074,19 +1138,109 @@ The process lock coordinates participating publishers and native ref locks guard
 against ordinary Git writers. Neither protects files from arbitrary editors;
 observed interference blocks completion.
 
-For an authorized complete integration, run from the surviving target checkout:
-
-```powershell
-python tools/verification/verify.py integrate cleanup record <source-checkout>/.agent/tmp/verification/commit/integration.json
-```
-
-Publication also retains its control record at
+Publication retains its control record at
 `.agent/tmp/integration/<batch-id>/integration.json` in the target checkout and prints
-that path. Prefer that surviving record for cleanup and retries:
+that path. Use that surviving record for the separately selected stages and their
+retries.
 
 `batch-id` is `digest([B, C, source_ref, sources])`. Different source selections
 ending at the same commit retain separate control records, so a later integration
 cannot overwrite an unfinished cleanup operation.
+
+### Post-publication closure
+
+Use these commands in the recorded primary checkout on local `master`. The first
+runs the same full `check english` audit, including unchanged tracked files and
+new nonignored authored files. Its receipt names the exact publication and includes
+the scanner log and native status. A read error, unresolved term or required
+source correction leaves publication successful and closure open. Retain the
+task checkout and apply the [language policy](../../.agents/rules/language-policy.md)
+to the finding. Running the stage again reuses its recorded result. Once the
+cause of a scanner error is resolved at the same tracked commit, explicitly retry
+the blocked scan. The original status and log remain available. A completed
+scan is reused on later invocations.
+
+```powershell
+python tools/verification/verify.py integrate closure-language record <surviving-record>
+python tools/verification/verify.py integrate closure-language record <surviving-record> retry blocked
+```
+
+If resolving the blocker requires a source change, prepare and independently
+review an ordinary correction. Verify it through the canonical commit profile
+against the exact unresolved scan commit. Seal it and conditionally publish it
+from the correction worktree with a link to the original surviving publication
+record. Then resume language from the primary checkout.
+
+```powershell
+python tools/verification/verify.py integrate publish record <sealed-correction-record> correction-for <original-surviving-record>
+python tools/verification/verify.py integrate closure-language record <original-surviving-record> correction <correction-surviving-record>
+```
+
+The second command requires the linked publication and exact successor SHA on
+primary `master`. It runs the full scan of that successor and retains the earlier
+scan and initial publication. A Git advance without the linked publication
+blocks the original closure. After a successful scan, continue graph refresh,
+file preservation and teardown under the original publication. Its cleanup
+scope covers the original selected sources. The correction worktree remains
+available for a separately authorized disposition.
+
+If the only resolutions are justified vocabulary and exact-file literal additions,
+write the selected additions as an ignored JSON input. The optional objects
+`word_lists` and `file_words` map configured list names and repository-relative
+source paths, respectively, to arrays of reviewed terms. A word-list key uses
+the spelling in the scanner configuration, such as `english_words/software.txt`.
+The tool requires resolutions for every retained finding and permits only the
+selected additions. It creates one child commit from the scanned tip with
+an isolated index and expected-old reference check. It stops on conflicting
+work or a moved SHA. No additional diary entry, scan, tests or review follows.
+
+```powershell
+python tools/verification/verify.py integrate closure-vocabulary record <surviving-record> additions <reviewed-json>
+```
+
+Once language is complete, select
+[TA-refresh-graph](../../.agents/skills/TA-refresh-graph/SKILL.md) for the final
+SHA, including an accepted source correction or vocabulary commit when present. The graph stage requires sources
+at that SHA before and after its producer run. It retains the output identity in
+`closure.json` beside the publication record. A failed attempt permits a separately
+selected graph retry. A retained successful receipt for the same commit and graph
+skips the producer. An interrupted stage requires inspection of its retained state.
+
+```powershell
+python tools/verification/verify.py integrate closure-graph record <surviving-record>
+```
+
+#### Service handoff before worktree removal
+
+Before deleting a published task checkout that changed or ran an installed
+service, identify that service's running or stopped containers and their
+owning Compose files and host mounts. Report any dependency on the retiring
+checkout and any installed revision that needs the published code. A service
+whose configuration, inputs and revision already match can stay running.
+
+Use the owning procedure to present the affected services and proposed
+handoff to the user. The user chooses the service and maintenance time.
+
+- [Book Review](../bootstrap/book-to-markdown/README.md#move-book-review-to-the-primary-checkout).
+  Stop a test instance from its owning checkout. For the usual installation,
+  stop the old instance from its owning checkout and recreate it from the
+  surviving checkout with the intended library.
+- [Workflow capture](../workflow/capture/README.md#update-a-host-side-capture-installation).
+  After publishing capture changes, report the affected installation, saved
+  and published revisions, open registrations, and any stopped capture
+  container using the [capture handoff](../workflow/capture/README.md#update-a-host-side-capture-installation).
+  The user chooses the maintenance window. Then close the selected intervals,
+  upgrade from the primary checkout, and confirm a fresh record.
+
+Record the service outcome with the closure evidence. Complete a needed
+handoff while the old checkout is available, or retain the affected worktree
+until the user is ready. Use the service procedures for Compose ownership and
+container operations before invoking the Git cleanup command. Stop or recreate
+only the approved services.
+
+Once the required files are preserved under the registered execution and
+`master` still identifies the recorded final SHA, separately authorized cleanup
+can proceed:
 
 ```powershell
 python tools/verification/verify.py integrate cleanup record .agent/tmp/integration/<batch-id>/integration.json

@@ -4,7 +4,7 @@ This reference owns manual architecture and code-quality standards. Apply it to
 the assigned source and affected interactions; do not turn a review into repairs
 or repeat canonical Clippy/architecture checks. Advance constraints remain in the
 [Rust](../rules/rust-best-practices.md),
-[workspace](../rules/workspace-structure-and-reexports.md) and
+[workspace layout](../../Obsidian/Amiga/Design/General%20Architecture.md#workspace-layout) and
 [execution](../rules/performance-and-readability.md) rules.
 
 ## Named numeric values
@@ -47,7 +47,7 @@ limits do not apply to documentation or reference manuals.
 
 Inspect affected callers, exports and tests for replaced mechanisms, stale aliases,
 forwarders, wrappers, duplicate definitions and hypothetical compatibility paths.
-Apply the [internal migration contract](../rules/workspace-structure-and-reexports.md#compatibility-and-internal-refactoring).
+Apply the [internal migration contract](../rules/internal-migrations.md).
 Prefer simpler local mechanisms; unnecessary abstractions or duplicate ownership
 need a concrete requirement, not a speculative future consumer.
 

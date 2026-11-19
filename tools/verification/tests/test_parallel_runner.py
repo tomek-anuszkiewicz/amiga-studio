@@ -14,6 +14,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import run_tests
+from test_case_report import init_repository
 
 
 class WorkerCapacityTests(unittest.TestCase):
@@ -62,6 +63,7 @@ class RunnerTests(unittest.TestCase):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name).resolve()
+        init_repository(self.root)
         self.suite = self.root / "tests"
         self.suite.mkdir()
         self.report = self.root / "report.json"
@@ -89,12 +91,72 @@ class RunnerTests(unittest.TestCase):
         self.report.unlink(missing_ok=True)
         process = subprocess.run([sys.executable, "-B", *command, *arguments, *options], cwd=self.root,
                                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
-                                 encoding="utf-8", errors="replace", timeout=40, env=environment)
+                                 encoding="utf-8", errors="replace", timeout=40,
+                                 env=self.environment(environment))
         self.assertEqual(process.returncode, code, process.stdout)
         self.assertTrue(self.report.is_file(), process.stdout)
         result = json.loads(self.report.read_text(encoding="utf-8"))
         self.assertEqual(result["exit_code"], code)
         return result, process.stdout
+
+    def environment(self, extra=None):
+        return {key: value for key, value in (extra or os.environ).items()
+                if key not in run_tests.CONTEXT.values()}
+
+    def archive_report(self, output):
+        [line] = [line for line in output.splitlines() if line.startswith("[REPORT] ")]
+        markdown = Path(line.removeprefix("[REPORT] "))
+        self.assertTrue(markdown.is_relative_to(self.root / ".agent/task-archives/standalone"))
+        events = [json.loads(line) for line in markdown.with_suffix(".jsonl").read_text(
+            encoding="utf-8").splitlines()]
+        return markdown, events
+
+    def test_exact_discovery_and_nested_subtests_report_original_timings(self):
+        self.module("test_native", r"""
+            import json
+            import time
+            import unittest
+            from fixture_support import SHARED
+
+            class Cases(unittest.TestCase):
+                def test_selected(self):
+                    with (SHARED / "entered").open("a") as ledger:
+                        ledger.write("selected\n")
+                    with self.subTest(outer=True):
+                        for param, delay in (("fast", 0.01), ("slow", 0.07)):
+                            with self.subTest(param=param):
+                                started = time.perf_counter()
+                                time.sleep(delay)
+                                print(f"native marker {param}", flush=True)
+                                with (SHARED / "intervals").open("a") as ledger:
+                                    ledger.write(json.dumps([param, time.perf_counter() - started]) + "\n")
+                                self.assertEqual(17, 23 if param == "slow" else 17)
+
+                def test_decoy(self):
+                    with (SHARED / "entered").open("a") as ledger:
+                        ledger.write("decoy\n")
+            """)
+        name = "test_native.Cases.test_selected"
+        aggregate, output = self.run_tests(name, code=1)
+        self.assertEqual((self.suite / "entered").read_text().splitlines(), ["selected"])
+        intervals = dict(json.loads(line) for line in (self.suite / "intervals").read_text().splitlines())
+        markdown, rows = self.archive_report(output)
+        [case] = [row for row in rows if row["event"] == "case_finished"]
+        self.assertEqual(case["id"], name)
+        self.assertEqual(case["seconds"], aggregate["cases"][0]["seconds"])
+        subtests = {row["id"]: row for row in case["subtests"]}
+        log = (markdown.parent / case["artifact"]).read_bytes()
+        for param, observed in intervals.items():
+            subtest = subtests[f"{name} (param={param!r}, outer=True)"]
+            self.assertGreaterEqual(subtest["seconds"], observed)
+            self.assertLessEqual(subtest["seconds"], case["seconds"])
+            content = log[subtest["output_start"]:subtest["output_end"]]
+            self.assertIn(f"native marker {param}".encode(), content)
+            self.assertNotIn(b"native marker slow" if param == "fast" else b"native marker fast", content)
+        failure = subtests[f"{name} (param='slow', outer=True)"]
+        self.assertEqual(failure["outcome"], "failure")
+        self.assertIn("AssertionError: 17 != 23", failure["detail"])
+        self.assertIn("test_native.py", failure["detail"])
 
     def test_file_and_case_filters_select_one_case_and_reject_an_empty_run(self):
         (self.root / "local_fixture.py").write_text("EXPECTED = 42\n", encoding="utf-8")
@@ -422,6 +484,67 @@ class RunnerTests(unittest.TestCase):
         ])
         self.assertIn("completed case failure", output)
         self.assertNotIn("queued case ran after interruption", output)
+        _, rows = self.archive_report(output)
+        self.assertEqual({row["id"].rsplit(".", 1)[-1]: row["outcome"]
+                          for row in rows if row["event"] == "case_unfinished"},
+                         {"test_b_running": "aborted", "test_c_queued": "never started"})
+        self.assertEqual(rows[-1]["exit_code"], 130)
+        self.assertEqual([row["id"].rsplit(".", 1)[-1] for row in rows if row["event"] == "case_finished"],
+                         ["test_a_finished"])
+
+    @unittest.skipUnless(os.name == "nt" or sys.platform == "linux", "Worker ownership requires a job or supervisor")
+    def test_uncatchable_parent_exit_keeps_completed_running_and_pending_evidence(self):
+        self.module("test_kill", """
+            import time
+            import unittest
+
+            from fixture_support import SHARED, wait_for_marker
+
+            class Cases(unittest.TestCase):
+                def test_a_finished(self):
+                    print("diagnostic from the finished case")
+                    self.assertEqual(17, 23)
+
+                def test_b_running(self):
+                    print("native work began", flush=True)
+                    (SHARED / "running").touch()
+                    wait_for_marker("release")
+
+                def test_c_pending(self):
+                    (SHARED / "unexpected").touch()
+            """)
+        command = [sys.executable, "-B", str(run_tests.RUNNER), "-s", str(self.suite), "--workers", "1"]
+        with subprocess.Popen(command, cwd=self.root, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                              encoding="utf-8", errors="replace", env=self.environment()) as process:
+            try:
+                deadline = time.monotonic() + 12
+                while not (self.suite / "running").is_file() and process.poll() is None:
+                    self.assertLess(time.monotonic(), deadline, "The running case did not start")
+                    time.sleep(0.02)
+                [report] = list((self.root / ".agent/task-archives/standalone").glob("*/test-runs/*.md"))
+                before = report.read_bytes()
+                self.assertIn(b"Case finished", before)
+                self.assertIn(b"AssertionError: 17 != 23", before)
+                self.assertIsNone(process.poll())
+            finally:
+                process.kill()
+            output, _ = process.communicate(timeout=4)
+        self.assertNotEqual(process.returncode, 0)
+        recovered, rows = self.archive_report(output)
+        self.assertEqual(recovered, report)
+        self.assertEqual(recovered.read_bytes(), before)
+        self.assertFalse((self.suite / "unexpected").exists())
+        self.assertFalse(any(row["event"] == "finished" for row in rows))
+        selected = {row["id"].rsplit(".", 1)[-1]: report.parent / row["artifact"]
+                    for row in rows if row["event"] == "case_selected"}
+        first = selected["test_a_finished"]
+        active = selected["test_b_running"]
+        pending = selected["test_c_pending"]
+        self.assertTrue((first / "result.json").is_file())
+        self.assertTrue((active / "started.json").is_file())
+        self.assertFalse((active / "result.json").exists())
+        self.assertIn("native work began", (active / "worker.log").read_text())
+        self.assertFalse((pending / "started.json").exists())
 
     def child_script(self):
         self.addCleanup(self.stop_surviving_child)

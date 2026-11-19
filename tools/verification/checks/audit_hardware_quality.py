@@ -82,7 +82,7 @@ def check_bus_topology():
                             "type": "inter_chip_import",
                             "file": str(rel_path),
                             "line": idx,
-                            "message": f"Illegal direct inter-chip dependency in {rel_path}:{idx}: imports `{peer}` (violates hardware-bus-topology.md)",
+                            "message": f"Illegal direct inter-chip dependency in {rel_path}:{idx}: imports `{peer}` (violates Obsidian/Amiga/Design/General Architecture.md, section 1.1 (Physical Bus Topology & Inter-Chip Isolation Invariant))",
                         })
                     # Check for direct struct member / method call (e.g. `.denise.` or `.paula.`)
                     pattern = rf"\bself\.{peer}\b|\b{peer}\.[a-zA-Z0-9_]+\("
@@ -123,7 +123,7 @@ def check_bus_topology():
                     "type": "missing_output_pin",
                     "file": f"crates/{chip}/src/",
                     "line": 1,
-                    "message": f"Custom chip `{chip}` is missing motherboard output pin `{pin}` per hardware-bus-topology.md",
+                    "message": f"Custom chip `{chip}` is missing motherboard output pin `{pin}` per Obsidian/Amiga/Design/General Architecture.md, section 1.1 (Physical Bus Topology & Inter-Chip Isolation Invariant)",
                 })
 
     return issues

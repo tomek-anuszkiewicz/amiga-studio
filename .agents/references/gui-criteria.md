@@ -16,8 +16,10 @@ before relevant implementation; assess only the assigned UI scope.
   rows; inner grids and tooltip generators avoid heap allocation through static
   text, stack buffers or prepared labels.
 - Every inspectable hardware field and action has self-contained hover
-  documentation. Use structured `on_hover_ui` for complex fields and source tooltip
-  semantics from the owning CPU, bus or chip specification and hardware evidence.
+  documentation. Check this coverage in docks, panels and modal dialogs. Use
+  structured `on_hover_ui` for complex fields, with a heading, a short
+  explanation and aligned related fields or bits. Source tooltip semantics
+  from the owning CPU, bus or chip specification and hardware evidence.
   A callback or modeled CCK boundary is not a measured silicon timing edge.
 - Headless interaction assertions establish behavior, not complete visual quality.
   Reproduce interaction defects before mutation; for layout/resize fixes inspect

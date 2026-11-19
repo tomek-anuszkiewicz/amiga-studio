@@ -1,159 +1,194 @@
-"""Project-scoped OTLP/HTTP admission service and upstream Collector lifecycle."""
+"""Project-scoped OTLP/HTTP admission service."""
 
-import argparse
 from collections import Counter
 import gzip
-import hashlib
 import hmac
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from io import BytesIO
 import json
 import os
-from pathlib import Path
 import secrets
-import subprocess
+import stat
 import sys
 import time
-from urllib.error import HTTPError
-from urllib.request import ProxyHandler, Request, build_opener
 
 from admission import Admission, RolloutLineage, SIGNALS
-from registry import CaptureError, Project, read_json, write_json
+from compose_service import CLIENT_HEADER, COLLECTOR_OUTPUT, MOUNTED_HOME, UPSTREAM, MountedProject
+from confirmation import CHUNK, MAX_RECORD
+from control import ENDPOINT, IDENTITY, MAX_BODY, ControlBusy, authorization, control_key, mutation_claim, query
+from register import controlled_registration
+from otlp import DIAGNOSTIC_KEY, ROUTE_KEY, attributes, items
+from record_sources import safe_file
+from registry import CaptureError
 
 
-ADDRESS = "127.0.0.1"
 PORT = 4318
-UPSTREAM_PORT = 4319
-COLLECTOR_IMAGE = (
-    "otel/opentelemetry-collector-contrib@"
-    "sha256:e40d61f10c9a617cca1ffd1be4d7e2b3a4b0f0001798ff07e58cabe82e618cea"
-)
-COLLECTOR_CONFIG = Path(__file__).with_name("collector.yaml").resolve()
-PROTOCOL = 1
 MAX_REQUEST = 16 * 1024 * 1024
-HTTP = build_opener(ProxyHandler({}))
+OUTPUT_KEY = "capture.output"
+OUTPUT_WAIT_SECONDS = 2
 
 
-def port(value: str) -> int:
-    number = int(value)
-    if not 1024 <= number <= 65535:
-        raise argparse.ArgumentTypeError("Select a port between 1024 and 65535.")
-    return number
 
-
-def query(number: int, path: str, data: dict | None = None, token: str | None = None, timeout=4):
-    headers = {"Content-Type": "application/json"}
-    if token is not None:
-        headers["Authorization"] = f"Bearer {token}"
-    body = json.dumps(data).encode("utf-8") if data is not None else None
-    req = Request(f"http://{ADDRESS}:{number}{path}", data=body, headers=headers)
-    with HTTP.open(req, timeout=timeout) as response:
-        return json.load(response)
-
-
-def handler_fingerprint() -> str:
-    digest = hashlib.sha256()
-    for name in ("receiver.py", "admission.py", "otlp.py", "record_sources.py", "registry.py"):
-        digest.update(hashlib.sha256(Path(__file__).with_name(name).read_bytes()).digest())
-    return digest.hexdigest()
-
-
-def docker(*args: str, env=None, check=True):
-    try:
-        result = subprocess.run(
-            ["docker", *args],
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=20,
-            env=env,
-        )
-    except FileNotFoundError as error:
-        raise CaptureError("The Docker executable is unavailable to the capture receiver.") from error
-    if check and result.returncode:
-        detail = result.stderr.strip() or result.stdout.strip()
-        raise CaptureError(f"Collector Docker command {args[0]} failed. {detail}")
-    return result
-
-
-class Collector:
-    def __init__(self, project: Project, number: int, image: str, token: str):
+class CollectorOutput:
+    def __init__(self, project, key):
         self.project = project
-        self.number = number
-        self.image = image
-        self.token = token
-        self.name = f"amiga-capture-{project.identity[:24]}"
-        self.fingerprint = hashlib.sha256(
-            COLLECTOR_CONFIG.read_bytes() + f"\n{number}\n{image}\n{token}".encode("utf-8")
-        ).hexdigest()
+        self.directory = project.plain_path(project.control / COLLECTOR_OUTPUT)
+        self.key = key
 
-    def start(self):
-        existing = docker(
-            "container", "inspect", "--format",
-            '{{.State.Status}} {{index .Config.Labels "capture.config"}}', self.name,
-            check=False,
-        )
-        if existing.returncode:
-            docker("image", "inspect", self.image)
-            env = {**os.environ, "CAPTURE_COLLECTOR_TOKEN": self.token}
-            docker(
-                "run", "--detach", "--rm", "--pull=never", "--name", self.name,
-                "--label", f"capture.config={self.fingerprint}",
-                "--publish", f"{ADDRESS}:{self.number}:4318",
-                "--mount", f"type=bind,source={COLLECTOR_CONFIG},target=/capture/collector.yaml,readonly",
-                "--mount", f"type=bind,source={self.project.archive},target=/capture/output",
-                "--env", "CAPTURE_COLLECTOR_TOKEN", self.image, "--config=/capture/collector.yaml",
-                env=env,
-            )
-        elif existing.stdout.strip() != f"running {self.fingerprint}":
-            raise CaptureError("An existing Collector container has different capture settings.")
-        deadline = time.monotonic() + 12
-        while time.monotonic() < deadline:
+    def signature(self, endpoint, route, diagnostic, nonce):
+        binding = json.dumps([endpoint, route, diagnostic, nonce]).encode("utf-8")
+        return hmac.digest(self.key, binding, "sha256").hex()
+
+    def assign(self, endpoint, message):
+        resource_key, _, _ = SIGNALS[endpoint]
+        for group in items(message, resource_key):
+            resource = group["resource"]
+            resource["attributes"] = [item for item in items(resource, "attributes")
+                                      if item.get("key") != OUTPUT_KEY]
+            data = attributes(resource)
+            nonce = secrets.token_hex(16)
+            signature = self.signature(endpoint, data[ROUTE_KEY], DIAGNOSTIC_KEY in data, nonce)
+            ticket = f"{nonce}-{signature}"
+            resource["attributes"].append({"key": OUTPUT_KEY, "value": {"stringValue": ticket}})
+            yield f"{endpoint.rsplit('/', 1)[-1]}-{ticket}.jsonl"
+
+    def read(self, source):
+        # The Collector owns this directory. Refuse links and nonregular files
+        # before reading, including a replacement between lookup and open.
+        flags = os.O_RDONLY | getattr(os, "O_BINARY", 0)
+        flags |= getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
+        try:
+            if source.is_symlink():
+                return b""
+            with os.fdopen(os.open(source, flags), "rb") as stream:
+                metadata = os.fstat(stream.fileno())
+                if not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1:
+                    return b""
+                return stream.read(MAX_RECORD + 1)
+        except FileNotFoundError:
+            return b""
+
+    def destination(self, source, raw):
+        match = CHUNK.fullmatch(source.name)
+        endpoint = f"/v1/{match[1]}"
+        resource_key, _, _ = SIGNALS[endpoint]
+        if len(raw) > MAX_RECORD or not raw.endswith(b"\n") or raw.count(b"\n") != 1:
+            return None
+        try:
+            record = json.loads(raw)
+            groups = items(record, resource_key)
+            if len(groups) != 1 or set(record) != {resource_key}:
+                return None
+            data = attributes(groups[0].get("resource", {}))
+            route = data[ROUTE_KEY]
+            expected = self.signature(endpoint, route, DIAGNOSTIC_KEY in data, match[2])
+            if data.get(OUTPUT_KEY) != f"{match[2]}-{match[3]}" or not hmac.compare_digest(expected, match[3]):
+                return None
+            task, execution = route.split("/")
+        except (KeyError, TypeError, ValueError):
+            return None
+        registration = self.project.registration_path(task, execution)
+        if not registration.is_file():
+            raise OSError("The Collector output no longer has a matching registration.")
+        return registration.parent / "otel" / source.name
+
+    def promote(self, source):
+        raw = self.read(source)
+        target = self.destination(source, raw)
+        if target is None:
+            return False
+        self.project.require_ignored(target)
+        if target.exists():
+            if safe_file(target, single_link=True).read_bytes() != raw:
+                raise OSError("Collector output conflicts with a published archive file.")
+        else:
+            target.parent.mkdir(exist_ok=True)
+            pending = target.with_suffix(".pending")
+            self.project.require_ignored(pending)
+            pending.unlink(missing_ok=True)
             try:
-                self.send("/v1/logs", {})
-                self.send("/v1/traces", {})
-                return
-            except OSError:
-                time.sleep(0.2)
-        logs = docker("logs", "--tail", "15", self.name, check=False)
-        docker("stop", self.name, check=False)
-        raise CaptureError(f"Collector did not become ready. {logs.stdout.strip()} {logs.stderr.strip()}")
+                with pending.open("xb") as stream:
+                    stream.write(raw)
+                    stream.flush()
+                    os.fsync(stream.fileno())
+                # Publish a receiver-owned file. The Collector can still have
+                # its original file open when the completed line is readable.
+                pending.replace(target)
+            finally:
+                pending.unlink(missing_ok=True)
+        source.unlink(missing_ok=True)
+        return True
 
-    def send(self, endpoint, message):
-        result = query(self.number, endpoint, message, self.token)
-        partial = result.get("partialSuccess") or {}
-        if any(int(value) for key, value in partial.items() if key.startswith("rejected")):
-            raise OSError("Collector rejected part of an admitted request.")
+    def drain(self):
+        error = None
+        for source in self.directory.iterdir():
+            if CHUNK.fullmatch(source.name):
+                try:
+                    self.promote(source)
+                except (OSError, ValueError) as failure:
+                    error = failure
+        if error is not None:
+            raise error
 
-    def stop(self):
-        docker("stop", self.name)
+    def wait_for(self, names):
+        pending = {self.directory / name for name in names}
+        expires = time.monotonic() + OUTPUT_WAIT_SECONDS
+        while pending:
+            pending = {source for source in pending if not self.promote(source)}
+            if pending:
+                if time.monotonic() >= expires:
+                    raise OSError("Collector did not write a complete admitted record to the archive.")
+                time.sleep(0.025)
 
 
 class Receiver(HTTPServer):
-    def __init__(self, project, codex_home, number, collector):
-        self.handler_config = handler_fingerprint()
-        self.admission = Admission(project, RolloutLineage(project, codex_home))
-        super().__init__((ADDRESS, number), Handler)
-        self.timeout = 0.5
+    def __init__(self, project):
         self.project = project
-        self.collector = collector
-        self.instance = secrets.token_hex(12)
+        source = project.authority()["rollout_source"]
+        self.admission = Admission(project, RolloutLineage(project, MOUNTED_HOME, source_id=source))
+        self.token = os.environ["CAPTURE_COLLECTOR_TOKEN"]
+        self.client_token = os.environ["CAPTURE_CLIENT_TOKEN"].encode("ascii")
+        self.control_key = control_key(self.token, os.environ["CAPTURE_CLIENT_TOKEN"])
+        self.output = CollectorOutput(project, self.client_token)
+        self.output_error = False
         self.counts = Counter()
-        self.closed = False
+        self.instance = secrets.token_hex(12)
+        super().__init__(("0.0.0.0", PORT), Handler)
+
+    def forward(self, endpoint, message):
+        names = list(self.output.assign(endpoint, message))
+        result = query(f"{UPSTREAM}{endpoint}", message, self.token, timeout=1)
+        partial = result.get("partialSuccess") or {}
+        if any(int(value) for key, value in partial.items() if key.startswith("rejected")):
+            raise OSError("Collector rejected part of an admitted request.")
+        self.output.wait_for(names)
+
+    def service_actions(self):
+        # Retry complete files left by an interrupted request or archive write.
+        try:
+            self.output.drain()
+        except (OSError, ValueError):
+            if not self.output_error:
+                print("Capture processing failed while publishing Collector output.", file=sys.stderr, flush=True)
+            self.output_error = True
+        else:
+            self.output_error = False
+
+    def diagnostic(self, headers):
+        supplied = headers.get_all(CLIENT_HEADER, [])
+        return (headers.get("X-Capture-Diagnostic") is not None or len(supplied) != 1
+                or not hmac.compare_digest(supplied[0].encode("utf-8"), self.client_token))
 
     def status(self):
         return {
             "ready": True,
-            "protocol": PROTOCOL,
+            "control_version": 1,
             "project_id": self.project.identity,
+            "compose_project": os.environ["CAPTURE_COMPOSE_PROJECT"],
+            "config_id": os.environ["CAPTURE_CONFIG_ID"],
             "rollout_source": self.admission.lineage.source_id,
-            "handler_config": self.handler_config,
             "instance_id": self.instance,
-            "collector": self.collector.name,
-            "collector_image": self.collector.image,
-            "collector_port": self.collector.number,
-            "collector_config": self.collector.fingerprint,
+            "upstream": UPSTREAM,
             "counts": dict(self.admission.stats + self.counts),
         }
 
@@ -166,7 +201,7 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, *_):
         pass
 
-    def reply(self, status: int, result: dict):
+    def reply(self, status, result):
         data = json.dumps(result).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
@@ -175,20 +210,57 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def do_GET(self):
-        if self.path == "/status":
-            try:
-                self.server.collector.send("/v1/logs", {})
-                self.server.collector.send("/v1/traces", {})
-            except OSError:
-                self.reply(503, {"error": "Collector is unavailable."})
-            else:
-                self.reply(200, self.server.status())
-        else:
+        if self.path != "/status":
             self.reply(404, {"error": "Unknown capture endpoint."})
+            return
+        try:
+            self.server.project.authority()
+            self.server.forward("/v1/logs", {})
+            self.server.forward("/v1/traces", {})
+            self.server.output.drain()
+        except (OSError, KeyError, ValueError):
+            self.reply(503, {"error": "Collector or project archive is unavailable."})
+        else:
+            self.reply(200, self.server.status())
+
+    def control(self):
+        try:
+            lengths = self.headers.get_all("Content-Length", [])
+            if (self.headers.get_content_type() != "application/json"
+                    or self.headers.get("Transfer-Encoding") is not None
+                    or self.headers.get("Content-Encoding") is not None
+                    or len(lengths) != 1 or len(lengths[0]) > 4 or not lengths[0].isdecimal()
+                    or not 0 < int(lengths[0]) <= MAX_BODY):
+                raise CaptureError("Invalid capture control request format or size.")
+            supplied = self.headers.get_all("Authorization", [])
+            if len(supplied) != 1:
+                self.reply(401, {"error": "Capture control authorization is required."})
+                return
+            body = self.rfile.read(int(lengths[0]))
+            if len(body) != int(lengths[0]):
+                raise CaptureError("Incomplete capture control request.")
+            if not hmac.compare_digest(supplied[0].encode("utf-8"), authorization(self.server.control_key, body)):
+                self.reply(401, {"error": "Capture control authorization failed."})
+                return
+            request = json.loads(body)
+            current = self.server.status()
+            if not isinstance(request, dict) or any(request.get(field) != current[field] for field in IDENTITY):
+                self.reply(409, {"error": "Capture control installation or receiver instance changed."})
+                return
+            with mutation_claim(self.server.project):
+                report = controlled_registration(self.server.project, request)
+        except ControlBusy as error:
+            self.reply(409, {"error": str(error)})
+        except (CaptureError, ValueError, TimeoutError) as error:
+            self.reply(400, {"error": str(error)})
+        except (KeyError, OSError, TypeError):
+            self.reply(503, {"error": "The capture registration or project archive is unavailable."})
+        else:
+            self.reply(200, report)
 
     def do_POST(self):
-        if self.path == "/shutdown":
-            self.stop_service()
+        if self.path == ENDPOINT:
+            self.control()
             return
         if self.path not in (*SIGNALS, "/v1/metrics"):
             self.reply(404, {"error": "Unknown capture endpoint."})
@@ -199,13 +271,16 @@ class Handler(BaseHTTPRequestHandler):
                 self.server.counts["metrics_requests_discarded"] += 1
             else:
                 with self.server.project.lock():
-                    admitted = self.server.admission.filter(self.path, message)
+                    admitted = self.server.admission.filter(
+                        self.path, message, resolve_common=self.server.project.checkouts(),
+                        diagnostic=self.server.diagnostic(self.headers),
+                    )
                     if admitted:
-                        self.server.collector.send(self.path, admitted)
+                        self.server.forward(self.path, admitted)
         except (CaptureError, UnicodeError, TimeoutError, json.JSONDecodeError) as error:
             self.reply(400, {"error": str(error)})
-        except (OSError, KeyError, TypeError, ValueError) as error:
-            print(f"Capture processing failed. {error}", file=sys.stderr, flush=True)
+        except (OSError, KeyError, TypeError, ValueError):
+            print("Capture processing failed while admitting or exporting records.", file=sys.stderr, flush=True)
             self.server.counts["failed_requests"] += 1
             self.reply(503, {"error": "Could not process or export the capture request."})
         else:
@@ -236,61 +311,14 @@ class Handler(BaseHTTPRequestHandler):
             raise CaptureError("An OTLP request must be a JSON object.")
         return message
 
-    def stop_service(self):
-        expected = f"Bearer {self.server.collector.token}".encode()
-        supplied = self.headers.get("Authorization", "").encode("utf-8")
-        if not hmac.compare_digest(supplied, expected):
-            self.reply(403, {"error": "Invalid capture shutdown authorization."})
-            return
-        try:
-            with self.server.project.lock():
-                active = any(
-                    data["otel"] and data["end_utc"] is None
-                    for _, data in self.server.project.registrations()
-                )
-                if active:
-                    self.reply(409, {"error": "Close all active OTLP executions before shutdown."})
-                    return
-                self.server.collector.stop()
-                self.server.closed = True
-        except (CaptureError, OSError, ValueError, subprocess.TimeoutExpired) as error:
-            print(f"Collector shutdown failed. {error}", file=sys.stderr, flush=True)
-            self.reply(503, {"error": "Collector shutdown failed."})
-        else:
-            self.reply(200, {"stopped": True, "counts": self.server.status()["counts"]})
-
-
-def control_token(project: Project, *, create: bool = True) -> str:
-    path = project.plain_path(project.control / "control.json")
-    if path.exists():
-        return read_json(path)["token"]
-    if not create:
-        raise CaptureError("The active receiver has no project control token.")
-    project.require_ignored(path)
-    token = secrets.token_hex(32)
-    write_json(path, {"token": token})
-    return token
-
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--project", required=True, type=Path)
-    parser.add_argument("--codex-home", required=True, type=Path)
-    parser.add_argument("--port", type=port, required=True)
-    parser.add_argument("--upstream-port", type=port, required=True)
-    parser.add_argument("--collector-image", required=True)
-    args = parser.parse_args()
     try:
-        project = Project(args.project, Path.cwd())
-        project.prepare()
-        with project.lock():
-            token = control_token(project)
-        collector = Collector(project, args.upstream_port, args.collector_image, token)
-        with project.service_lock(), Receiver(project, args.codex_home, args.port, collector) as service:
-            collector.start()
-            while not service.closed:
-                service.handle_request()
-    except (CaptureError, OSError, subprocess.TimeoutExpired) as error:
+        project = MountedProject()
+        project.require_ignored(project.control / "registry.lock")
+        with project.service_lock(), Receiver(project) as service:
+            service.serve_forever()
+    except (OSError, KeyError, ValueError) as error:
         print(f"Cannot run the capture receiver. {error}", file=sys.stderr, flush=True)
         return 1
     return 0

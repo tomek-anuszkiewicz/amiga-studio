@@ -21,6 +21,22 @@ them when relevant, including selected repairs, rather than loading all lanes.
 Fresh reviewers must not inherit the author's conversation. Higher-priority runtime
 instructions remain binding. Record inherited guidance separately when observable.
 
+For cumulative review rounds, apply the receiving [human decision checkpoint](workflow-guidance.md#human-review-checkpoint)
+before any continuation, including work delegated for autonomous execution.
+
+## Telemetry startup prerequisite
+
+Before dispatching planning for a new task or starting execution of an existing
+plan, the main session identifies the task, execution and actual Codex thread.
+Follow [capture startup](../../tools/workflow/capture/README.md#confirm-telemetry-before-work)
+and obtain confirmation of a fresh archived OTLP record from that thread. A
+registration or a healthy endpoint alone does not satisfy this prerequisite.
+Give the confirmed execution and receipt to the selected operation. Until
+confirmation, limit work to startup and diagnosis within the recorded deadline.
+If export requires a completed turn, run a short control turn and resume
+confirmation with the same registration and deadline. Report the failed stage
+when startup cannot be confirmed. Preserve the existing capture after startup.
+
 ## Inputs and outputs
 
 The assignment supplies requirements/plans, authorized operations, exact candidate,
@@ -34,6 +50,10 @@ Each invocation persists fresh `result.json` and matching `result.md` under
 `.agent/tmp/workflow-TA/<task-id>/<work-item-id>/<run-id>/`. Never overwrite a prior
 run. Plans belong under `.agent/tasks/`. The receiving session may persist a
 read-only worker's returned data, preserving its claims and identity.
+The ordinary `records.py preserve` copy under TA-collect-task-records reports its
+observed outcome directly. It uses the existing publication control record for
+closure state and needs no result pair. This exception applies only to the
+ordinary copy. Separately selected archive analysis retains its typed result.
 
 [The schema](../../tools/workflow/result.schema.json) defines the envelope, typed
 payloads and skill/role pairing. It is the result-format owner, not a dispatcher.

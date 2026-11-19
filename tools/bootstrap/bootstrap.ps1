@@ -4,13 +4,13 @@
 
 .DESCRIPTION
     Coordinates the provisioning of external hardware test suites, AI code knowledge
-    graphs, local RAG vector documentation, and external reference documentation.
+    graphs, shared RAG access, and external reference documentation.
 
     Delegates execution to modular standalone bootstrap scripts:
     - Tier 1: Hardware Verification & External Sources (-Sources -> tools/bootstrap/bootstrap_sources.ps1)
     - Tier 2: AST-Level Code Knowledge Graph (-Graphify -> tools/bootstrap/bootstrap_graphify.ps1)
     - Tier 3: External Reference Documentation & Scans (-Documentation -> tools/bootstrap/bootstrap_documentation.ps1)
-    - Tier 4: AI Knowledge & Qdrant RAG Vector Index (-Rag -> tools/bootstrap/bootstrap_rag.ps1)
+    - Tier 4: Shared RAG Service and Explicit Indexing (-Rag -> tools/bootstrap/bootstrap_rag.ps1)
     - Tier 5: M68000 Assembler (-Assembler -> tools/bootstrap/bootstrap_assembler.ps1)
 
     NOTE: Bootstrapping is NOT required to build, test, or run the emulator.
@@ -27,9 +27,8 @@
     Delegates to tools/bootstrap_graphify.ps1.
 
 .PARAMETER Rag
-    Indexes Commodore hardware reference manuals, PRMs, and Obsidian architecture
-    notes into the local Qdrant vector database (http://localhost:6333, collection: amiga).
-    Delegates to tools/bootstrap_rag.ps1.
+    Starts the shared Compose RAG service, indexes Amiga documentation and
+    reports status. Delegates to tools/bootstrap_rag.ps1 -Index.
 
 .PARAMETER Documentation
     Provisions raw external reference documentation (PDF scans, microarchitectural guides,
@@ -48,7 +47,8 @@
 
 .PARAMETER All
     Executes all 5 bootstrap tiers in physical causal order:
-    (-Sources -> -Graphify -> -Documentation -> -Rag -> -Assembler).
+    Sources, Graphify, Documentation, RAG service and Assembler.
+    The RAG tier starts the shared service and reports status. Add -Rag to index.
 
 .EXAMPLE
     .\tools\bootstrap\bootstrap.ps1 -Sources
@@ -60,7 +60,7 @@
 
 .EXAMPLE
     .\tools\bootstrap\bootstrap.ps1 -Rag
-    Index Obsidian technical documentation into the local Qdrant vector database.
+    Index Amiga documentation through the shared RAG service.
 
 .EXAMPLE
     .\tools\bootstrap\bootstrap.ps1 -Documentation
@@ -105,7 +105,7 @@ function Show-Usage {
     Write-Host "  .\tools\bootstrap\bootstrap.ps1 -Sources         : Provision external sources (reference emulators, test suites & vectors)"
     Write-Host "  .\tools\bootstrap\bootstrap.ps1 -Graphify        : Create/refresh both independent Graphify code graphs"
     Write-Host "  .\tools\bootstrap\bootstrap.ps1 -Documentation   : Provision external reference materials (PDFs, HTML crawls)"
-    Write-Host "  .\tools\bootstrap\bootstrap.ps1 -Rag             : Provision AI knowledge & RAG (Commodore HRM, PRMs, Obsidian)"
+    Write-Host "  .\tools\bootstrap\bootstrap.ps1 -Rag             : Start the shared RAG service and index Amiga documentation"
     Write-Host "  .\tools\bootstrap\bootstrap.ps1 -Assembler       : Provision the M68000 assembler"
     Write-Host "  .\tools\bootstrap\bootstrap.ps1 -All             : Provision all 5 tiers in causal order (sources -> graph -> docs -> RAG -> assembler)"
     Write-Host ""
@@ -115,9 +115,9 @@ function Show-Usage {
     Write-Host "  -Documentation           : Download external reference materials into Reference/"
     Write-Host "  -Markdown                : Convert downloaded materials into publication-grade Markdown"
     Write-Host "  -Publish                 : With -Markdown, copy output into an empty sibling book directory"
-    Write-Host "  -Rag                     : Index Obsidian docs into Qdrant"
+    Write-Host "  -Rag                     : Index Amiga documentation through the shared service"
     Write-Host "  -Assembler               : Download and verify the pinned M68000 assembler"
-    Write-Host "  -All                     : Run all 5 tiers in causal order (-Sources, -Graphify, -Documentation, -Rag, -Assembler)"
+    Write-Host "  -All                     : Provision all tiers and check RAG status; add -Rag to index"
     Write-Host ""
 }
 
@@ -197,19 +197,25 @@ if ($Documentation -or $All) {
 }
 
 # -----------------------------------------------------------------------------
-# Tier 4: Knowledge & Documentation Bootstrap (-Rag / -All)
+# Tier 4: Shared RAG Service (-Rag / -All)
 # -----------------------------------------------------------------------------
 if ($Rag -or $All) {
     Write-Host ""
-    Write-Host "[$CurrentStep/$TotalSteps] Delegating to AI Documentation Bootstrapper..." -ForegroundColor Green
+    Write-Host "[$CurrentStep/$TotalSteps] Bootstrapping the shared RAG service..." -ForegroundColor Green
     Write-Host "--------------------------------------------------------" -ForegroundColor DarkGray
     $CurrentStep++
 
     $RagScript = Join-Path $PSScriptRoot "bootstrap_rag.ps1"
-    if (-not (Test-Path $RagScript)) {
-        Write-Error "bootstrap_rag.ps1 not found at: $RagScript"
+    if (-not (Test-Path -LiteralPath $RagScript -PathType Leaf)) {
+        throw "bootstrap_rag.ps1 not found at: $RagScript"
+    }
+    if ($Rag) {
+        & $RagScript -Index
     } else {
-        & $RagScript
+        & $RagScript -CheckOnly
+    }
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
     }
 }
 

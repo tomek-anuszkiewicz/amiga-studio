@@ -10,7 +10,8 @@ Executor: main session; result kind: `worktree`.
 Inputs: selected plan/task ID, source checkout, authorized branch/base and provisioning
 scope. Invocation explicitly selects a new worktree; do not ask that choice again.
 
-1. Inspect the current branch, immutable base, worktrees and selected plan identity.
+1. Confirm the [telemetry startup prerequisite](../../references/workflow-contract.md#telemetry-startup-prerequisite).
+   Inspect the current branch, immutable base, worktrees and selected plan identity.
    Preserve pending work and refuse an ambiguous branch/path collision.
 2. Run the [worktree creation command](references/provisioning.md#create-a-task-worktree)
    directly from the surviving checkout. Proceed once it succeeds.

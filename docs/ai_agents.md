@@ -124,7 +124,7 @@ adapter search project specifications and imported Commodore/Motorola references
 The `amiga` source contains project and hardware material; `devnotes` is a separate
 source of engineering guidance. Retrieved passages are evidence with provenance,
 and the agent checks relevant source sections or diagrams when needed. See the
-[retrieval rule](../.agents/rules/amiga-rag.md) and
+[source provenance](../.agents/skills/TA-research-hardware-manuals/references/provenance.md) and
 [developer guide](developers.md) for scope and setup.
 
 **Graphify navigates source relationships.** Its `project` graph covers our code and allowed documents; its independent
@@ -246,7 +246,7 @@ Before a new implementation task, the agent names the current checkout and branc
 and asks whether to continue there or create a new task worktree. An explicit
 location instruction answers that question for the task. Bounded detached test
 checkouts leave the real implementation in the selected location. The
-[location rule](../.agents/rules/git-merge-commits.md#choose-the-task-checkout)
+[location rule](../AGENTS.md#choose-the-task-checkout)
 defines this boundary.
 
 Routine task completion leaves validated changes available for review. It does

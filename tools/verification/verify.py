@@ -3,6 +3,8 @@
 import subprocess
 import sys
 import json
+import io
+from contextlib import redirect_stderr
 import http.client
 import re
 import tomllib
@@ -11,9 +13,10 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from uuid import uuid4
 
+from case_report import CaseReport, run_reported
 from cli import parse_args
 from commands import independent_contract, select_phases
-from execution import execute_command, print_info, result_label
+from execution import COMMAND_LOG, execute_command, print_info, result_label
 from repository import REPO_ROOT, collect_changes, snapshot, resolve_base, divergent_integration, candidate_tree
 from evidence import BatchEvidence, capture_inputs, execution_conditions, group_identity
 from batch_lock import VerificationLock
@@ -63,7 +66,29 @@ def stable_update_notice(root):
 
 def main(argv=None):
     started = time.perf_counter()
-    parser, args = parse_args(sys.argv[1:] if argv is None else argv)
+    argv = list(sys.argv[1:] if argv is None else argv)
+    preview = not argv or any(value in argv for value in ("--plan", "--help", "-h"))
+    if preview or (argv and argv[0] == "integrate"):
+        return select_and_run(argv, started)
+    return run_reported("Verifier", [sys.executable, str(REPO_ROOT / "tools/verification/verify.py"), *argv],
+                        lambda report: select_and_run(argv, started, report), cwd=REPO_ROOT)
+
+
+def select_and_run(argv, started, archive=None):
+    if archive:
+        archive.phase("argument selection")
+    if archive:
+        original = sys.stderr
+        with redirect_stderr(io.StringIO()) as diagnostics:
+            try:
+                parser, args = parse_args(argv)
+            except SystemExit:
+                archive.event("selection_error", detail=diagnostics.getvalue(), started=0)
+                raise
+            finally:
+                original.write(diagnostics.getvalue())
+    else:
+        parser, args = parse_args(argv)
     if args is None:
         return 0
     if args.command == "integrate":
@@ -74,23 +99,33 @@ def main(argv=None):
             print(f"{result_label(False)} {error}")
             return 1
     if args.plan:
-        return run_verification(parser, args, started)
+        return run_verification(parser, args, started, archive)
+    if archive:
+        archive.phase("entry-point lock")
     try:
         with VerificationLock(REPO_ROOT):
-            return run_verification(parser, args, started)
+            return run_verification(parser, args, started, archive)
     except BlockingIOError as error:
+        if archive:
+            archive.event("lock_rejected", detail=str(error), started=0)
         print(f"{result_label(False)} {error}")
         return 1
     except OSError as error:
+        if archive:
+            archive.event("invocation_error", detail=str(error))
         print(f"{result_label(False)} Verification I/O error: {error}")
         return 1
     except KeyboardInterrupt:
+        if archive:
+            archive.event("interrupted")
         print(f"{result_label(False)} Verification interrupted; repeat the same command.")
         return 130
 
 
-def run_verification(parser, args, started):
+def run_verification(parser, args, started, archive=None):
     """Select and execute work under the entry-point lock, or preview it without one."""
+    if archive:
+        archive.phase("work selection")
     before = None
     batch = None
     completion = args.command in ("commit", "milestone")
@@ -128,6 +163,8 @@ def run_verification(parser, args, started):
             explanations.append("Selected paths: " + ", ".join(sorted(changes)))
         phases = select_phases(args, changes, explanations)
     except (RuntimeError, OSError, ValueError) as error:
+        if archive:
+            archive.event("selection_error", detail=str(error), started=0)
         parser.error(str(error))
     for explanation in explanations:
         print(f"[INFO] {explanation}")
@@ -153,15 +190,85 @@ def run_verification(parser, args, started):
                     print(f"    Environment: {overrides}")
         return 0
     if not any(commands for _, commands in phases):
+        if archive:
+            archive.event("empty_selection", started=0)
+            archive.event("counts", started=0, completed=0)
         print("[INFO] No Python tool contracts selected: their inputs are unchanged."
                   if automatic_python else "[INFO] No checks or tests selected.")
         return 0
-    if batch is not None:
-        return execute_batch(args, phases, batch, before, started)
-    return execute_diagnostic(args, phases, results_dir, started)
+    if archive:
+        archive.phase("execution")
+        for phase, commands in phases:
+            for name, command, overrides in commands:
+                archive.event("command_selected", phase=phase, name=name, command=command, overrides=overrides)
+    try:
+        if batch is not None:
+            return execute_batch(args, phases, batch, before, started, archive)
+        return execute_diagnostic(args, phases, results_dir, started, archive)
+    finally:
+        if archive:
+            if batch is not None:
+                retain_timing(archive, batch.directory, batch.record.get("timing_report", {}))
+            archive.merge_children()
 
 
-def execute_diagnostic(args, phases, results_dir, started):
+def retain_timing(archive, root, timing):
+    if "path" in timing:
+        artifact = archive.copy(root / timing["path"], "test-runtime-report.md")
+        archive.event("command_timing", artifact=archive.link(artifact), sha256=timing["sha256"])
+
+
+def reserve_group(archive, phase, name, commands):
+    if not archive or not archive.reference():
+        return None
+    argv = commands[0][1] if len(commands) == 1 else [name]
+    group = CaseReport.reserve("Verification command group", argv, REPO_ROOT, archive.child_environment())
+    if group.reference():
+        archive.event("group_started", phase=phase, group=name, invocation_id=group.id,
+                      artifact=archive.link(group.path))
+    group.phase(phase, group=name)
+    return group
+
+
+def group_command(report, command, overrides, index, log_level, log_dir):
+    context = overrides
+    if report:
+        context = report.child_environment(overrides)
+        log = report.attachment(f"command-{index + 1}.log")
+        if log:
+            context[COMMAND_LOG] = str(log)
+        report.event("command_started", command=command, artifact=report.link(log))
+    ok, detail, seconds = execute_command(command, context, log_level=log_level, log_dir=log_dir)
+    if report:
+        report.event("command_finished", command=command, outcome="passed" if ok else "failed",
+                     detail=detail, seconds=seconds)
+        if log and not log.is_file():
+            # Tests may replace the executor. A real launch error is already returned by it.
+            if detail.startswith("Cannot launch command"):
+                report.record_error("Command log is unavailable")
+    return ok, detail, seconds
+
+
+def finish_group(report, code):
+    if report:
+        report.merge_children()
+        report.finish(code)
+
+
+def reused_group(archive, phase, name, item):
+    if not archive:
+        return
+    evidence = item.get("case_report")
+    path = None
+    if evidence and archive.reference():
+        candidate = (archive.primary / evidence["path"]).resolve()
+        if candidate.is_relative_to(archive.primary / ".agent/task-archives") and candidate.is_file():
+            path = candidate
+    archive.event("group_reused", phase=phase, group=name, prior_attempt=item["attempt"], new_attempts=0,
+                  invocation_id=evidence.get("invocation_id") if evidence else None, artifact=archive.link(path))
+
+
+def execute_diagnostic(args, phases, results_dir, started, archive=None):
     own_report = args.command == "runner" and args.action in ("bench", "analyze", "refresh")
     directory = None if own_report else REPO_ROOT / ".agent/tmp/verification/diagnostics" / uuid4().hex
     phase_timings = [
@@ -188,8 +295,17 @@ def execute_diagnostic(args, phases, results_dir, started):
             for (name, command, overrides), row in zip(commands, rows):
                 active = row
                 print(f"[RUN] {name}", flush=True)
-                ok, detail, elapsed = execute_command(command, overrides, log_level=args.log_level,
-                                                      log_dir=results_dir / "verify" if results_dir else None)
+                group = reserve_group(archive, phase, name, [(name, command, overrides)])
+                code = None
+                try:
+                    ok, detail, elapsed = group_command(group, command, overrides, 0, args.log_level,
+                                                        results_dir / "verify" if results_dir else None)
+                    code = 0 if ok else 1
+                except KeyboardInterrupt:
+                    code = 130
+                    raise
+                finally:
+                    finish_group(group, code)
                 row.update(status="executed" if ok else "failed", seconds=elapsed)
                 active = None
                 if not ok:
@@ -228,7 +344,9 @@ def execute_diagnostic(args, phases, results_dir, started):
                 timings.append(stability)
     if directory is not None:
         try:
-            publish(REPO_ROOT, REPO_ROOT, directory, args.command, timings, time.perf_counter() - started)
+            published = publish(REPO_ROOT, REPO_ROOT, directory, args.command, timings, time.perf_counter() - started)
+            if archive:
+                retain_timing(archive, REPO_ROOT, published)
         except (OSError, RuntimeError) as error:
             print(f"{result_label(False)} Cannot write timing report: {error}")
             if exit_code == 0:
@@ -258,24 +376,31 @@ def execution_waves(groups):
             yield [group]
 
 
-def execute_group(phase, name, commands, args, directory, timings):
+def execute_group(phase, name, commands, args, directory, timings, report=None):
     """Workers update their own timing rows; the coordinator saves evidence."""
     success, elapsed = True, 0
-    for index, (title, command, overrides) in enumerate(commands):
-        print(f"[RUN] {title}", flush=True)
-        ok, detail, seconds = execute_command(command, overrides,
-                                              log_level=args.log_level, log_dir=directory)
-        elapsed += seconds
-        timings[index] = measurement(phase, name, title, "executed" if ok else "failed", seconds,
-                                     commands=[command])
-        success = success and ok
-        print(f"{result_label(ok)} {title} ({seconds:.2f}s): {detail}", flush=True)
-        if phase == "Coverage" and not ok:
-            break
+    code = None
+    try:
+        for index, (title, command, overrides) in enumerate(commands):
+            print(f"[RUN] {title}", flush=True)
+            ok, detail, seconds = group_command(report, command, overrides, index, args.log_level, directory)
+            elapsed += seconds
+            timings[index] = measurement(phase, name, title, "executed" if ok else "failed", seconds,
+                                         commands=[command])
+            success = success and ok
+            print(f"{result_label(ok)} {title} ({seconds:.2f}s): {detail}", flush=True)
+            if phase == "Coverage" and not ok:
+                break
+        code = 0 if success else 1
+    except KeyboardInterrupt:
+        code = 130
+        raise
+    finally:
+        finish_group(report, code)
     return success, elapsed
 
 
-def execute_batch(args, phases, batch, before, started):
+def execute_batch(args, phases, batch, before, started, archive=None):
     """Execute the full selected profile, retaining only matching successful groups."""
     batch.directory.mkdir(parents=True, exist_ok=True)
     groups = [(phase, "Coverage" if phase == "Coverage" else items[0][0], items)
@@ -355,14 +480,18 @@ def execute_batch(args, phases, batch, before, started):
                         group_timings[name] = [measurement(
                             phase, name, name, "reused", previous_seconds=item.get("elapsed_seconds"),
                             commands=[command for _, command, _ in commands])]
+                        reused_group(archive, phase, name, item)
                         print(f"[REUSED] {name}: matching inputs and artifacts; attempt {item['attempt']}")
                         continue
                     old = batch.record["groups"].get(name)
                     label = "INVALIDATED" if old and old.get("status") == "passed" else "MISSING"
                     print(f"[{label}] {name}: {reason}")
                     directory = batch.start(name, identity, commands, source)
+                    report = reserve_group(archive, phase, name, commands)
+                    if report and report.reference():
+                        batch.record["groups"][name]["case_report"] = report.reference()
                     future = pool.submit(
-                        execute_group, phase, name, commands, args, directory, group_timings[name])
+                        execute_group, phase, name, commands, args, directory, group_timings[name], report)
                     pending[future] = (phase, name, directory, reason)
                 for future in as_completed(pending):
                     phase, name, directory, reason = pending[future]

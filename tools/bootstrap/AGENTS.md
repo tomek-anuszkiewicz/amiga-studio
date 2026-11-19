@@ -62,7 +62,8 @@ changes retain [protected verification](../../.agents/rules/unit-testing-policy.
 Collection is an authoring prerequisite, not ordinary chapter generation. Requested
 acquisition follows [variant layout and full-hash checks](book-to-markdown/README.md#source-catalog-and-variant-layout).
 Test Book reconstruction uses the linked page tracker to preserve source mapping
-and assembly order.
+and assembly order. Before publishing a chapter, apply the
+[Reference Book Metadata schema](book-to-markdown/reference-book-metadata.md).
 
 ## Review server during development
 

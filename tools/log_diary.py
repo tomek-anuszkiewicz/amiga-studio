@@ -5,7 +5,7 @@ Deterministic CLI Appender for DIARY.md's Rolling Changelog.
 
 Eliminates the need for the LLM to read 90+ KB of DIARY.md into its context window.
 Directly formats and appends timestamped architectural entries adhering strictly
-to .agents/rules/diary-maintenance.md.
+to .agents/skills/TA-prepare-batch/SKILL.md.
 """
 
 import sys

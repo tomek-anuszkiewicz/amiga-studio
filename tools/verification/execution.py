@@ -1,4 +1,5 @@
 """Shared command execution, filtered diagnostics and persistent logs."""
+from contextlib import ExitStack
 import os
 import re
 import subprocess
@@ -7,7 +8,33 @@ import tempfile
 import time
 from collections import deque
 from pathlib import Path
+from case_report import CONTEXT
 from repository import REPO_ROOT
+from run_rust_tests import is_rust_test
+
+
+COMMAND_LOG = "AMIGA_TEST_COMMAND_LOG"
+
+
+def open_command_log(stack, path):
+    if not path:
+        return None
+    try:
+        return stack.enter_context(Path(path).open("x", encoding="utf-8"))
+    except OSError as error:
+        print(f"[ERROR] Case report command log is unavailable: {error}", flush=True)
+        return None
+
+
+def mirror_output(stream, line):
+    if stream:
+        try:
+            stream.write(line)
+            stream.flush()
+        except OSError as error:
+            print(f"[ERROR] Case report command log is incomplete: {error}", flush=True)
+            return None
+    return stream
 
 
 def color_label(label, color, stream=None):
@@ -54,17 +81,20 @@ def diagnostic_level(line):
     return None
 
 
-def run_cmd(cmd, cwd=None, env=None, log_level="warn", log_dir=None):
+def run_cmd(cmd, cwd=None, env=None, log_level="warn", log_dir=None, native=None):
     cwd = REPO_ROOT if cwd is None else cwd
     print(f"[CMD] {subprocess.list2cmdline(cmd)}", flush=True)
     isolated_log = log_dir is not None
     log_dir = Path(log_dir) if log_dir is not None else REPO_ROOT / ".agent/tmp/verify"
     log_dir.mkdir(parents=True, exist_ok=True)
     start = time.time()
-    with tempfile.NamedTemporaryFile(
-        mode="w", encoding="utf-8", dir=log_dir,
-        prefix=f"{Path(cmd[0]).stem}-", suffix=".log", delete=False,
-    ) as log:
+    with ExitStack() as stack:
+        log = stack.enter_context(tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", dir=log_dir,
+            prefix=f"{Path(cmd[0]).stem}-", suffix=".log", delete=False,
+        ))
+        mirror = open_command_log(stack, env.get(COMMAND_LOG) if env else None)
+        mirror = mirror_output(mirror, f"Command: {subprocess.list2cmdline(native or cmd)}\n")
         log_path = Path(log.name)
         log.write(f"Command: {subprocess.list2cmdline(cmd)}\n")
         log.flush()
@@ -72,11 +102,12 @@ def run_cmd(cmd, cwd=None, env=None, log_level="warn", log_dir=None):
         context_left = 0
         error_seen = False
         exact_test_count = None
-        with subprocess.Popen(cmd, cwd=cwd, env=env, stdout=subprocess.PIPE,
+        with subprocess.Popen(native or cmd, cwd=cwd, env=env, stdout=subprocess.PIPE,
                               stderr=subprocess.STDOUT, text=True, encoding="utf-8",
                               errors="replace") as process:
             for line in process.stdout:
                 log.write(line)
+                mirror = mirror_output(mirror, line)
                 if cmd[:2] == ["cargo", "test"] and "--exact" in cmd:
                     count = re.fullmatch(r"running (\d+) tests?", line.strip())
                     if count:
@@ -125,10 +156,23 @@ def execute_command(command, overrides, log_level="warn", log_dir=None):
     env["PYTHONUNBUFFERED"] = "1"
     env["VERIFICATION_LOG_LEVEL"] = log_level
     env.update(overrides)
-    if overrides:
-        print(f"[ENV] {' '.join(f'{key}={value}' for key, value in overrides.items())}", flush=True)
+    visible = {key: value for key, value in overrides.items()
+               if key not in (*CONTEXT.values(), COMMAND_LOG)}
+    if visible:
+        print(f"[ENV] {' '.join(f'{key}={value}' for key, value in visible.items())}", flush=True)
+    native = None
+    if env.get(CONTEXT["parent_invocation_id"]):
+        if is_rust_test(command):
+            runner = Path(__file__).with_name("run_rust_tests.py")
+            native = [sys.executable, str(runner), "--", *command]
+        elif command[1:2] == ["tools/verification/checks/check_architecture.py"]:
+            runner = Path(__file__).with_name("run_unittest.py")
+            native = [sys.executable, str(runner), "--architecture", *command[2:]]
     try:
-        code, elapsed = run_cmd(command, env=env, log_level=log_level, log_dir=log_dir)
+        options = {"env": env, "log_level": log_level, "log_dir": log_dir}
+        if native:
+            options["native"] = native
+        code, elapsed = run_cmd(command, **options)
     except OSError as error:
         return False, f"Cannot launch command: {error}", 0
     detail = f"command exited with code {code}"

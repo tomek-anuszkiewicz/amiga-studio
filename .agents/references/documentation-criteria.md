@@ -1,10 +1,40 @@
 # Documentation and governance criteria
 
-Apply [Documentation Value](../rules/docs-maintenance.md#documentation-value) to
-additions and deletions: preserve approved requirements, source-backed hardware
-explanations, provenance, established rationale and non-obvious constraints.
-Missing descriptions of code entities alone are not defects. Existing code is
-implementation evidence, not authority to rewrite a requirement.
+## Documentation Value
+
+Preserve actual hardware behavior confirmed by authoritative sources, even when it
+is easy to read from code: it remains an independent implementation contract.
+Preserve knowledge whose discovery/explanation would otherwise require substantial
+work: established intent, decisions, consequential trade-offs, external evidence and
+non-obvious constraints.
+
+For other implementation descriptions, ask whether the reader can establish the
+fact quickly and directly from code. If so, omit it unless it adds independent
+value. Remove straightforward code narration, consolidate duplicates at their
+owner, and retain valuable parts of mixed passages. Missing entity descriptions
+alone are not defects. There is no size target or deletion quota.
+
+Approved requirements retain intended behavior independently of current code.
+Before deleting potentially unique knowledge, inspect relevant decisions, history,
+tests or sources. Preserve minimum intent and evidence; distinguish established
+rationale from inference and leave unknown reasons unknown.
+
+### Hardware Explanations and Evidence
+
+The owning specification explains hardware behavior with links to manual sections,
+book passages or authoritative observations. Scoped review compares affected
+behavior with those sources. Source-confirmed behavior missing its explanation
+requires compatible enrichment at the owning specification, even when code makes
+it obvious. Report-only review identifies that work; the caller assigns
+[TA-sync-docs](../skills/TA-sync-docs/SKILL.md) before readiness where required.
+
+Code agreement alone does not establish hardware correctness. Distinguish hardware
+facts from modeling choices, assumptions and unresolved evidence. Report contrary
+behavior, code, specification and source passages under
+[specification compliance](../rules/spec-compliance.md); never remove a requirement to match
+incorrect code. Preserve source books, imported references, conversion prompts and
+generated artifacts. This editorial policy applies to project-authored explanations,
+not rewriting their sources or executable instructions.
 
 ## Select the complete intended scope
 
@@ -75,8 +105,8 @@ verification or new commits. Keep advanced multi-source acceptance at its rule/t
 owner; successive publication of separately tested sources is not combined review.
 
 Graph criteria include explicit project/reference roots, read-only queries,
-worktree copies of existing graphs, project-only preparation refresh, explicit
-reference production and
+worktree copies of existing graphs, one closure refresh bound to the final
+published project SHA, explicit reference production and
 distinct structural/semantic freshness. Preserve the repository-owned skill on
 installation. Relevant vault metadata/link semantics use the
 [shared vault reference](../skills/TA-audit-vault-links/references/vault-metadata.md).

@@ -591,6 +591,226 @@
                 "type": "string",
                 "minLength": 1
               }
+            },
+            "routing": {
+              "type": "object",
+              "properties": {
+                "input": {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "sha256": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "pattern": "^[0-9a-f]{64}$"
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "sha256"
+                  ],
+                  "additionalProperties": false
+                },
+                "context": {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "sha256": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "pattern": "^[0-9a-f]{64}$"
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "sha256"
+                  ],
+                  "additionalProperties": false
+                },
+                "comparisons": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "finding": {
+                        "type": "object",
+                        "properties": {
+                          "lane": {
+                            "enum": [
+                              "behavior",
+                              "architecture",
+                              "tests_evidence",
+                              "documentation",
+                              "spec_compliance",
+                              "semantic_parity"
+                            ]
+                          },
+                          "id": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "required": [
+                          "lane",
+                          "id"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "trigger": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "parent": {
+                        "type": "object",
+                        "properties": {
+                          "outcome": {
+                            "enum": [
+                              "pass",
+                              "fail",
+                              "unavailable"
+                            ]
+                          },
+                          "evidence": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "path": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "sha256": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ],
+                                  "pattern": "^[0-9a-f]{64}$"
+                                }
+                              },
+                              "required": [
+                                "path",
+                                "sha256"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "minItems": 0
+                          },
+                          "candidate_ref": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "pattern": "^[0-9a-f]{64}$"
+                          }
+                        },
+                        "required": [
+                          "outcome",
+                          "evidence",
+                          "candidate_ref"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "current": {
+                        "type": "object",
+                        "properties": {
+                          "outcome": {
+                            "enum": [
+                              "pass",
+                              "fail",
+                              "unavailable"
+                            ]
+                          },
+                          "evidence": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "path": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "sha256": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ],
+                                  "pattern": "^[0-9a-f]{64}$"
+                                }
+                              },
+                              "required": [
+                                "path",
+                                "sha256"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "minItems": 0
+                          },
+                          "candidate_ref": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "pattern": "^[0-9a-f]{64}$"
+                          }
+                        },
+                        "required": [
+                          "outcome",
+                          "evidence",
+                          "candidate_ref"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "parent_scope": {
+                        "enum": [
+                          "covered",
+                          "documented_gap",
+                          "unknown"
+                        ]
+                      },
+                      "change": {
+                        "enum": [
+                          "none",
+                          "requirements",
+                          "scope",
+                          "new_evidence"
+                        ]
+                      },
+                      "disposition": {
+                        "enum": [
+                          "verified",
+                          "refuted"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "finding",
+                      "trigger",
+                      "parent",
+                      "current",
+                      "parent_scope",
+                      "change"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "minItems": 0
+                }
+              },
+              "required": [
+                "input",
+                "context",
+                "comparisons"
+              ],
+              "additionalProperties": false
             }
           },
           "required": [
@@ -2855,6 +3075,27 @@
             },
             "sha256": {
               "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          },
+          "required": [
+            "path",
+            "sha256"
+          ],
+          "additionalProperties": false
+        },
+        "review_route_ref": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sha256": {
+              "type": [
+                "string",
+                "null"
+              ],
               "pattern": "^[0-9a-f]{64}$"
             }
           },

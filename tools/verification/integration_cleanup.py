@@ -40,7 +40,7 @@ def source_outcome(root, source, branch, *, confirm_deletion=False):
             "branch": "present" if branch_present else "removed"}
 
 
-def remove_source(root, common_directory, frozen, selected):
+def remove_source(root, common_directory, frozen, selected, *, closure_commit=None):
     """Remove one source under the caller's publication lock and report its current state."""
     source = Path(selected["root"]).resolve()
     target = Path(frozen["target_root"]).resolve()
@@ -53,6 +53,8 @@ def remove_source(root, common_directory, frozen, selected):
     if (common_directory / "local-integration.json").exists():
         raise ValueError("Recover the unfinished publication before cleanup")
     target_tip = value(root, "rev-parse", frozen["target_ref"])
+    if closure_commit is not None and target_tip != closure_commit:
+        raise ValueError("Master differs from the recorded closure commit")
     ancestor(root, commit, target_tip)
     entries = worktrees(root)
     registered = [entry for entry in entries if entry.get("branch") == branch]
@@ -123,7 +125,13 @@ def cleanup(root, path):
     with publication_lock(common_directory):
         if durable.exists():
             frozen = retained_record(durable, frozen)
-        else:
+        closure_commit = None
+        if frozen["target_ref"] == "refs/heads/master":
+            from integration_closure import require_closed
+            if not durable.is_file():
+                raise ValueError("Cleanup requires the surviving publication record")
+            closure_commit = require_closed(root, frozen)
+        if not durable.exists():
             save(durable, frozen)
     print("[INFO] Surviving cleanup record: " + str(durable))
     failures = []
@@ -142,7 +150,7 @@ def cleanup(root, path):
             retained = retained_record(durable, frozen)
             if error is None:
                 try:
-                    outcome = remove_source(root, common_directory, retained, selected)
+                    outcome = remove_source(root, common_directory, retained, selected, closure_commit=closure_commit)
                 except (ValueError, RuntimeError, OSError) as failure:
                     error = str(failure)
             if error is not None:

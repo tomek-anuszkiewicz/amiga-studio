@@ -4,8 +4,8 @@ from collections import Counter
 from functools import lru_cache
 from pathlib import Path
 
-from otlp import ROUTE_KEY, SIGNALS, attributed_records, items, record_interval, within_bounds
-from record_sources import OtlpTurnCoverage, otlp_turn_coverage, rollout_headers, selected_rollouts
+from otlp import DIAGNOSTIC_KEY, ROUTE_KEY, SIGNALS, attributed_records, items, record_interval, within_bounds
+from record_sources import OtlpTurnCoverage, common_dir, otlp_turn_coverage, rollout_headers, selected_rollouts
 from registry import (
     CaptureError, epoch_ns, path_identity, read_json, rollout_header, rollout_paths, thread_id, write_json,
 )
@@ -17,12 +17,12 @@ NO_TURN_COVERAGE = OtlpTurnCoverage()
 
 
 @lru_cache(maxsize=32)
-def native_turns(common, codex_home, root, bounds, sources):
+def native_turns(common, codex_home, root, bounds, sources, resolve_common):
     # Cache covered IDs and excluded intervals rather than retaining native records.
     headers = rollout_headers(codex_home, paths=[path for path, *_ in sources])
     selection = dict(bounds)
     registration = {"root_thread_id": root, "threads": [selection]}
-    selected_rollouts(codex_home, registration, common, headers=headers)
+    selected_rollouts(codex_home, registration, common, headers=headers, resolve_common=resolve_common)
     # A checked descendant can have only excluded turns and be absent from the
     # selected lineage. Its known intervals still apply before forwarding.
     return {
@@ -32,22 +32,24 @@ def native_turns(common, codex_home, root, bounds, sources):
     }
 
 
-def with_route(resource: dict, route: str) -> dict:
-    attributes = [item for item in items(resource, "attributes") if item.get("key") != ROUTE_KEY]
+def with_route(resource: dict, route: str, diagnostic: bool) -> dict:
+    attributes = [item for item in items(resource, "attributes") if item.get("key") not in (ROUTE_KEY, DIAGNOSTIC_KEY)]
     attributes.append({"key": ROUTE_KEY, "value": {"stringValue": route}})
+    if diagnostic:
+        attributes.append({"key": DIAGNOSTIC_KEY, "value": {"boolValue": True}})
     return {**resource, "attributes": attributes}
 
 
 class RolloutLineage:
-    def __init__(self, project, codex_home: Path):
+    def __init__(self, project, codex_home: Path, source_id=None):
         self.project = project
         self.codex_home = codex_home.resolve()
-        self.source_id = path_identity(self.codex_home)
+        self.source_id = source_id or path_identity(self.codex_home)
         self.path = project.plain_path(project.control / f"lineage-{self.source_id}.json")
         self.verified = read_json(self.path) if self.path.exists() else {}
         self.unsaved = set()
 
-    def parent(self, child: str) -> tuple[str, int] | None:
+    def parent(self, child: str, resolve_common) -> tuple[str, int] | None:
         if child in self.verified:
             return tuple(self.verified[child])
         candidates = rollout_paths(self.codex_home, child)
@@ -55,7 +57,7 @@ class RolloutLineage:
             return None
         try:
             with candidates.pop().open("rb") as stream:
-                info = rollout_header(stream, child, self.project.common)
+                info = rollout_header(stream, child, self.project.common, resolve_common=resolve_common)
             parent = thread_id(info["source"]["subagent"]["thread_spawn"]["parent_thread_id"])
             evidence = (parent, epoch_ns(info["timestamp"]))
         except (KeyError, OSError, TypeError, ValueError):
@@ -80,7 +82,7 @@ class Admission:
         self.lineage = lineage
         self.stats = Counter()
 
-    def filter(self, endpoint: str, message: dict) -> dict:
+    def filter(self, endpoint: str, message: dict, *, resolve_common=common_dir, diagnostic=False) -> dict:
         resource_key, scope_key, leaf = SIGNALS[endpoint]
         selections = {}
         for path, registration in self.project.registrations():
@@ -107,13 +109,13 @@ class Admission:
                         counters["unattributed_or_invalid"] += 1
                         continue
                     thread = attrs["conversation.id"]
-                    match, descendants = self.match(thread, start, end, selections, parents, counters)
+                    match, descendants = self.match(thread, start, end, selections, parents, counters, resolve_common)
                     if match is None:
                         continue
                     path, registration, selection = match
                     key = (path, selection["id"], thread)
                     if key not in turns:
-                        coverage = self.turn_coverage(registration, selection, descendants, parents)
+                        coverage = self.turn_coverage(registration, selection, descendants, parents, resolve_common)
                         observed = coverage.get(thread, NO_TURN_COVERAGE)
                         turn_bounded = (
                             selection.get("start_turn_id") or selection.get("end_turn_id")
@@ -133,11 +135,10 @@ class Admission:
                 for route, accepted in records.items():
                     routes.setdefault(route, []).append({**scope, leaf: accepted})
             for route, scopes in routes.items():
-                target = self.project.archive / route / "otel" / (
-                    "logs.jsonl" if endpoint == "/v1/logs" else "traces.jsonl"
-                )
-                self.project.require_ignored(target)
-                output.append({**group, "resource": with_route(group.get("resource", {}), route), scope_key: scopes})
+                self.project.require_ignored(self.project.archive / route / "otel")
+                output.append({
+                    **group, "resource": with_route(group.get("resource", {}), route, diagnostic), scope_key: scopes,
+                })
 
         # Reserve the latest admitted timestamp before forwarding so a failed request
         # with a partly completed export cannot permit an inconsistent stop.
@@ -150,12 +151,12 @@ class Admission:
         self.stats.update(counters)
         return {resource_key: output} if output else {}
 
-    def parent(self, thread, parents):
+    def parent(self, thread, parents, resolve_common):
         if thread not in parents:
-            parents[thread] = self.lineage.parent(thread)
+            parents[thread] = self.lineage.parent(thread, resolve_common)
         return parents[thread]
 
-    def match(self, thread, start, end, selections, parents, counters):
+    def match(self, thread, start, end, selections, parents, counters, resolve_common):
         descendants = {}
         registered = False
         for _ in range(MAX_PARENT_DEPTH):
@@ -170,7 +171,7 @@ class Admission:
                 if len(matches) == 1 and matches[0][1]["otel"] and "pending_after_turn_id" not in matches[0][1]:
                     return matches[0], descendants
                 break
-            parent = self.parent(thread, parents)
+            parent = self.parent(thread, parents, resolve_common)
             if parent is None:
                 break
             parent_id, spawned = parent
@@ -179,10 +180,10 @@ class Admission:
         counters["outside_selection" if registered else "unresolved"] += 1
         return None, {}
 
-    def turn_coverage(self, registration, selection, descendants, parents):
+    def turn_coverage(self, registration, selection, descendants, parents, resolve_common):
         root = selection["id"]
         threads = {root, *descendants}
-        if (parent := self.parent(root, parents)) is not None:
+        if (parent := self.parent(root, parents, resolve_common)) is not None:
             # A selected child can carry copied turns from its immediate parent.
             threads.add(parent[0])
         sources = []
@@ -195,7 +196,8 @@ class Admission:
             if root == registration["root_thread_id"] and registration.get("after_turn_id"):
                 bounds["after_turn_id"] = registration["after_turn_id"]
             return native_turns(
-                self.project.common, self.lineage.codex_home, root, tuple(sorted(bounds.items())), tuple(sorted(sources))
+                self.project.common, self.lineage.codex_home, root,
+                tuple(sorted(bounds.items())), tuple(sorted(sources)), resolve_common,
             )
         except (OSError, KeyError, TypeError, ValueError, OverflowError):
             return {}

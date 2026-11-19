@@ -506,7 +506,7 @@ This final, unnumbered section holds work awaiting resolution or integration int
 
 ### Entry Format
 
-Every authorized repository commit adds a concise entry here. Logging and compaction follow [diary-maintenance.md](.agents/rules/diary-maintenance.md) and [compact-diary](.agents/skills/compact-diary/SKILL.md). Record the timestamp, affected components, delivered change, rationale and actual verification, including failures and unrun checks. At compaction, retain lasting decisions and evidence in the owning chapter and leave routine details in Git.
+Use [TA-prepare-batch](.agents/skills/TA-prepare-batch/SKILL.md) to prepare the entry for an ordinary or final integration commit. Record the timestamp, affected components, delivered change, rationale and actual verification, including failures and unrun checks. Record the unverified status of working and intermediate assembly commits in the final closure entry. A vocabulary-only closure commit needs no additional diary entry. At compaction, use [TA-compact-diary](.agents/skills/TA-compact-diary/SKILL.md) to retain lasting decisions and evidence in the owning chapter and leave routine details in Git.
 ---
 
 ### [2026-11-13 00:08 CET] — Complete book-derived chipset reconstruction
@@ -3014,3 +3014,27 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - All 267 isolated cases passed in 241.3 seconds with one worker and in 41.2, 39.0 and 40.3 seconds with sixteen workers
   - Focused runner tests passed on Windows and Linux under WSL. Two mutation checks detected shared Git state and overlapping serial tests
   - A diagnostic using the generic POSIX cleanup path under WSL left a child running when interruption occurred during shutdown. Native macOS and BSD were not tested
+---
+
+### [2026-11-19 12:21 CET] — Complete the task workflow correction round
+- **Affected Subsystems**:
+  - `Task workflow`
+  - `Verification`
+  - `Book Review`
+  - `Shared RAG integration`
+- **What Was Changed (The Concrete Reality)**:
+  - Continue WORKFLOW-CORRECTIONS-20261118 with durable capture services, narrow Collector output isolation and current-thread startup evidence
+  - Move the full English check to published master and bind the single project graph refresh to the final accepted commit
+  - Preserve completed files in their registered primary archive and route instructions to their owners
+  - Keep reviewer-qualified findings and bounded review checkpoints and report original test and benchmark attempts
+  - Run Book Review on demand with its own writable diagnostics and use the shared RAG Compose service from bootstrap
+- **Architectural Rationale & Trade-Offs**:
+  - Tie verification, four independent reviews and conditional publication to one combined candidate
+  - Keep telemetry, native outcomes and editor data usable across retries and worktree cleanup
+- **Verification & Test Results**:
+  - The first integrated tree passed all 20 canonical commit groups before review corrections
+  - Closure corrections passed 61 focused cases. Review routing corrections passed 11 cases and native reporting corrections passed 26
+  - The Design audit checked 35 notes and 1103 links after the ownership migration
+  - Fresh CLI capture succeeded before and after Docker Desktop restart. The narrowed Collector output passed isolated container recovery and archive routing
+  - Book Review retained a disposable book across recreation. Shared RAG preserved the database and index and enforced the direct MCP reader scope
+  - The current application proof, final candidate evidence and post-publication steps are recorded at their respective boundaries

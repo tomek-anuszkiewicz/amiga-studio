@@ -8,16 +8,22 @@ description: Remove only an authorized closed task's unchanged plan copies, work
 Apply [the invocation contract](../../references/workflow-contract.md) and the
 [cleanup policy](../../rules/git-merge-commits.md).
 Executor: main session; result kind: `cleanup`.
-Inputs: confirmed publication record, committed closure record, stable task ID,
+Inputs: confirmed publication record, completion of the English and project graph
+stages, committed closure record, task and execution IDs bound at publication,
 exact authorized plans/worktree/branch, the surviving target checkout and
-the required verified preservation references or recorded disposition.
+the completed ordinary preservation state for that publication.
 
-1. Confirm publication and committed closure. Revalidate each selected plan's
-   identity; preserve later edits and all unrelated/unfinished plans.
-   Recheck preservation for the selected task under the
-   [integration policy](../../rules/git-merge-commits.md). Keep the source when
-   required input versions, archive checks or selected report receipts are
-   missing or conflicting.
+1. Confirm publication, committed closure and completion of the English and
+   project graph stages for the selected publication before removing any plan.
+   Apply the [service handoff check](../../../tools/verification/README.md#service-handoff-before-worktree-removal)
+   when the task changed or ran an installed service.
+   Revalidate each selected plan's identity and preserve later edits and all
+   unrelated or unfinished plans.
+   Confirm the original registration matches the publication's capture identity
+   and the existing control record marks the required copies complete for that
+   execution at the exact final master SHA. Confirm the archived paths survive. Keep the source when a required file
+   remains active, uncopied or unavailable. Follow the
+   [integration policy](../../rules/git-merge-commits.md) for approved inputs.
 2. Remove only the authorized unchanged closed-task plan copies from the surviving
    checkout. Tracked removals must already belong to committed closure content;
    do not create a new commit or alter an accepted tree here.

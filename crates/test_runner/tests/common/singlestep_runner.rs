@@ -5,7 +5,9 @@ use super::reporting::{
 use super::schema::SingleStepTest;
 use super::singlestep_vectors::load_test_vectors;
 use super::test_memory_bus::TestMemoryBus;
+use super::vector_report::VectorReport;
 use cpu::Cpu;
+use std::time::Instant;
 
 /// Identifies whether an opcode word is a `CMPM (Ay)+, (Ax)+` instruction.
 ///
@@ -281,25 +283,10 @@ pub fn run_test_file(
         .map(|test| test.name.clone())
         .collect();
 
-    let mut passed = 0;
-    let mut failed = 0;
-    let mut passed_names = Vec::with_capacity(count);
-    let mut failure_summaries = Vec::new();
-    let mut bus = TestMemoryBus::new_flat();
-
-    for (idx, test) in tests.iter().take(count).enumerate() {
-        match run_single_test_detail_with_bus(test, &mut bus, path, idx) {
-            Ok(()) => {
-                passed += 1;
-                passed_names.push(test.name.clone());
-            }
-            Err(failure) => {
-                failed += 1;
-                eprintln!("{}", failure.format_diagnostic());
-                failure_summaries.push(TestFailureSummary::from(&failure));
-            }
-        }
-    }
+    let chosen = tests.iter().take(count);
+    let (passed_names, failure_summaries) = run_chosen_vectors(path, "all", limit, chosen);
+    let passed = passed_names.len();
+    let failed = failure_summaries.len();
 
     // Determine suite name from path, e.g. "Real68k::ADD.b"
     let stem = std::path::Path::new(path)
@@ -364,25 +351,10 @@ where
         .map(|test| test.name.clone())
         .collect();
 
-    let mut passed = 0;
-    let mut failed = 0;
-    let mut passed_names = Vec::with_capacity(count);
-    let mut failure_summaries = Vec::new();
-    let mut bus = TestMemoryBus::new_flat();
-
-    for (idx, test) in filtered_tests.into_iter().take(count).enumerate() {
-        match run_single_test_detail_with_bus(test, &mut bus, path, idx) {
-            Ok(()) => {
-                passed += 1;
-                passed_names.push(test.name.clone());
-            }
-            Err(failure) => {
-                failed += 1;
-                eprintln!("{}", failure.format_diagnostic());
-                failure_summaries.push(TestFailureSummary::from(&failure));
-            }
-        }
-    }
+    let chosen = filtered_tests.iter().take(count).copied();
+    let (passed_names, failure_summaries) = run_chosen_vectors(path, selection, limit, chosen);
+    let passed = passed_names.len();
+    let failed = failure_summaries.len();
 
     let stem = std::path::Path::new(path)
         .file_name()
@@ -409,4 +381,39 @@ where
     record_suite_result(&suite_result, &resolve_results_dir())?;
 
     Ok((passed, failed))
+}
+
+fn run_chosen_vectors<'a>(
+    path: &str,
+    selection: &str,
+    limit: Option<usize>,
+    chosen: impl ExactSizeIterator<Item = &'a SingleStepTest> + Clone,
+) -> (Vec<String>, Vec<TestFailureSummary>) {
+    let mut passed_names = Vec::with_capacity(chosen.len());
+    let mut failure_summaries = Vec::new();
+    let mut bus = TestMemoryBus::new_flat();
+    let mut evidence = VectorReport::reserve(path, selection, limit, chosen.clone());
+    for (index, test) in chosen.enumerate() {
+        VectorReport::start(&mut evidence, test, index);
+        let started = evidence.is_some().then(Instant::now);
+        let outcome = run_single_test_detail_with_bus(test, &mut bus, path, index);
+        let elapsed = started.map(|instant| instant.elapsed());
+        match outcome {
+            Ok(()) => {
+                if let Some(elapsed) = elapsed {
+                    VectorReport::finish(&mut evidence, test, index, elapsed, None);
+                }
+                passed_names.push(test.name.clone());
+            }
+            Err(failure) => {
+                let diagnostic = failure.format_diagnostic();
+                if let Some(elapsed) = elapsed {
+                    VectorReport::finish(&mut evidence, test, index, elapsed, Some(&diagnostic));
+                }
+                eprintln!("{diagnostic}");
+                failure_summaries.push(TestFailureSummary::from(&failure));
+            }
+        }
+    }
+    (passed_names, failure_summaries)
 }

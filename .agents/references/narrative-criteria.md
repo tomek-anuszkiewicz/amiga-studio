@@ -23,7 +23,7 @@ high-impact conclusions.
 Preserve substantive mechanisms, evidence, caveats, formulas, timing tables,
 diagrams and useful links when restructuring. Remove duplication; move detail to
 linked owning references when authorized. Do not discard unique reasoning to meet
-a size target. Apply [Documentation Value](../rules/docs-maintenance.md#documentation-value)
+a size target. Apply [Documentation Value](documentation-criteria.md#documentation-value)
 to choose retained knowledge, and distinguish established evidence from inference.
 Compare the final diff for completeness and resolving links. Ordinary article work
 does not authorize staging, commits or unrelated audits.

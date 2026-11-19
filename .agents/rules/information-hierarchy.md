@@ -16,7 +16,7 @@
   generic advice already supplied by routine competence need not be relocated.
 - Reader-facing `docs/` explains the project and provides useful entry points.
   Operational detail belongs with tools/skills; history belongs in diary/Git.
-  [Documentation Value](docs-maintenance.md#documentation-value) governs retained
+  [Documentation Value](../references/documentation-criteria.md#documentation-value) governs retained
   requirements, evidence and rationale without a deletion quota.
 - Discover operations by skill names/descriptions and accurate links; do not create
   a permanent duplicate registry, symmetry checklist or forwarding rule files.

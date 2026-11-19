@@ -17,9 +17,13 @@ commit, delegate or start competing shared-target checks.
 
 Inspect the selected diff and affected callers before consulting author results.
 The candidate includes selected new files and dirty content, not merely HEAD.
-Inspect only interactions needed to assess the assigned risk. Follow a cross-lane
-finding far enough to explain it, then identify its owner. A demonstrated issue
-must not disappear because another reviewer might find it.
+Review the entire assigned scope, including relevant unchanged consumers and
+requirements. For each central guarantee, trace or probe a plausible failure
+through its supported entry point. After finding a blocker, finish the
+remaining accessible scope in the same pass. Return all supported material
+findings together. Name the paths, interactions and criteria actually inspected.
+If the limit or a missing input prevents completion, state the unchecked scope,
+its consequence and the verdict the available evidence supports.
 
 Before requesting a correction, identify the affected project operation or
 approved requirement, the conditions that can arise in the candidate as used
@@ -31,8 +35,15 @@ Leave scenarios that require a future caller or behavior change to that change.
 
 Report stable finding IDs, severity, confidence, location, trigger, expected and
 observed behavior, consequence and supporting requirement/evidence. Separate
-required corrections from suggestions. Record baseline, candidate, inspected
-scope, relevant requirements/criteria, evidence and limitations. JSON uses
+required corrections, optional improvements and unverified evidence. For each
+required finding, name the binding requirement or gate separately from the
+effect. For a gate failure, describe the actual effect on verification or
+approval. Attribute a product impact only when supported. Omit stylistic
+preferences about already-clear code or prose.
+
+Record baseline, candidate, inspected scope and limitations. Give the result
+its hashed review inputs and fresh context receipt. Bind evidence to the
+reviewed candidate. JSON uses
 `approved`, `changes_requested` or `not_assessed`; an unfinished or failed review
 cannot approve. When the assigned scope is covered, required evidence is present
 and no required correction is supported, return `approved` in that round.
@@ -53,26 +64,46 @@ at their actual trigger. Standalone review uses its selected focused evidence an
 does not manufacture batch readiness. Missing or failed required lanes block
 readiness. Consolidation preserves independent verdicts; it is not a fifth review.
 
-## Reuse scoped approvals
+## Review after correction
 
-After corrections, compare the exact delta with each original review's content,
-requirements, criteria, partition and evidence using native Git and recorded
-identities. Preserve the original reviewer, verdict and identity for carried
-approval, plus the comparison supporting its applicability to the final candidate.
-Do not describe retained approval as a new review.
+The caller supplies the predecessor report, the exact predecessor and corrected
+candidates, their actual delta and the current criteria and evidence. Compare
+the original trigger on both candidates for each selected finding. Keep its
+original task, work item, reporting lane and ID. The current owning reviewer
+records independent evidence for a verified or refuted disposition. An
+implementer repair claim leaves it pending. Reopen a settled ID only with new
+evidence that changes the disposition. Link duplicates to the original issue.
 
-Descriptive corrections for unchanged behavior return to the documentation lane;
-that reviewer identifies any changed requirements or criteria affecting other
-lanes. Behavior, architecture, requirements, partition or evidence changes return
-to the lanes they affect. Unknown impact requires conservative reassessment.
-A different baseline cannot inherit approval. A changed global fingerprint alone
-does not reopen unchanged lanes. Never carry a missing or failed verdict.
+For a newly reported issue, distinguish parent pass and current failure,
+failure on both within earlier covered scope, failure in an earlier documented
+gap and an unavailable parent observation. Record changed requirements, expanded
+scope and newly available evidence separately. Keep the defect's `origin`
+separate from what the comparison establishes about the review history. Evaluate
+the current consequence and binding requirement on their own evidence.
+
+Use the [review routing tool and table](../../tools/workflow/README.md#review-routing-and-human-checkpoint).
+Focused reviews cover the owners of selected findings and the effects of the
+actual correction. Once all focused reviewers verify their assigned repairs
+and approve, obtain every remaining required approval on the exact frozen
+candidate.
+
+### Reuse scoped approvals
+
+A previous approval remains attributed to its original reviewer
+and candidate. Credit it on the current inputs only if it already covers this
+candidate, baseline, scope, requirements, criteria, partition and evidence.
+Retain matching prior evidence. Unknown impact calls for all applicable lanes.
+A changed baseline requires first-review coverage and retains the round count.
+Standalone compliance and parity keep their own triggers and scopes.
 
 The verifier independently owns test-evidence validity and reuse. Review reports
 link actual commands/artifacts and distinguish newly executed from retained
 evidence; they neither replace a failed gate nor authorize repairs or publication.
 
-The receiver applies [next-step guidance](workflow-guidance.md) after assessment.
+The receiver applies [the human review checkpoint](workflow-guidance.md#human-review-checkpoint)
+before offering repair, another lane or subsequent work after the third round.
+Healthy work already running on the frozen candidate can return its evidence.
+The receiver then applies [next-step guidance](workflow-guidance.md).
 Reviewers provide their own verdict and recommendation, not a caller menu or
 dispatch decision. Assess guidance against the actual evidence and authorization,
 including the current option identity, exact executor/skill binding, selection

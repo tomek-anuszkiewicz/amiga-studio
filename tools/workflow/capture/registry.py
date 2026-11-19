@@ -6,8 +6,9 @@ from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
 import hashlib
 import json
+import ntpath
 import os
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 import re
 import subprocess
 from tempfile import NamedTemporaryFile
@@ -22,6 +23,7 @@ SEGMENT = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,63}")
 TIMESTAMP = re.compile(
     r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})"
 )
+is_reserved = getattr(ntpath, "isreserved", lambda value: PureWindowsPath(value).is_reserved())
 
 
 class CaptureError(ValueError):
@@ -81,7 +83,7 @@ def path_identity(path: Path) -> str:
 def segment(value: str) -> str:
     if not isinstance(value, str) or not SEGMENT.fullmatch(value):
         raise CaptureError("Task and execution IDs must use 1 to 64 portable filename characters.")
-    if value.endswith(".") or Path(value).is_reserved():
+    if value.endswith(".") or is_reserved(value):
         raise CaptureError("Task and execution IDs must be portable filenames.")
     return value
 
@@ -120,7 +122,7 @@ def rollout_paths(codex_home: Path, thread: str) -> set[Path]:
     }
 
 
-def rollout_header(stream, thread: str, common: Path) -> dict:
+def rollout_header(stream, thread: str, common: Path, *, resolve_common=None) -> dict:
     line = stream.readline(ROLLOUT_HEADER_LIMIT)
     if not line.endswith(b"\n"):
         raise CaptureError("The selected rollout header is incomplete.")
@@ -128,17 +130,18 @@ def rollout_header(stream, thread: str, common: Path) -> dict:
     info = header["payload"]
     if header["type"] != "session_meta" or info["id"] != thread:
         raise CaptureError("The rollout header does not match the selected thread.")
-    if git_path(Path(info["cwd"]), "--git-common-dir") != common:
+    actual = resolve_common(info["cwd"]) if resolve_common else git_path(Path(info["cwd"]), "--git-common-dir")
+    if actual != common:
         raise CaptureError("The selected rollout belongs to a different Git repository.")
     return info
 
 
-def after_turn_boundary(codex_home: Path, common: Path, thread: str, turn: str) -> str:
+def after_turn_boundary(codex_home: Path, common: Path, thread: str, turn: str, *, resolve_common=None) -> str:
     candidates = rollout_paths(codex_home, thread)
     if len(candidates) != 1:
         raise CaptureError("Exactly one rollout is required for the selected control turn.")
     with candidates.pop().open("rb") as stream:
-        rollout_header(stream, thread, common)
+        rollout_header(stream, thread, common, resolve_common=resolve_common)
         for line in stream:
             if not line.endswith(b"\n"):
                 break
@@ -231,6 +234,9 @@ class Project:
             raise CaptureError("The capture archive contains tracked files.")
         self.control.mkdir(parents=True, exist_ok=True)
 
+    def matches_common(self, value: str) -> bool:
+        return Path(value) == self.common
+
     def registration_path(self, task: str, execution: str) -> Path:
         return self.plain_path(
             self.archive / segment(task) / segment(execution) / "registration.json"
@@ -244,17 +250,17 @@ class Project:
             execution = registration["execution_id"]
             if registration["schema_version"] != 1 or path != self.registration_path(task, execution):
                 raise CaptureError("Invalid capture registration identity.")
-            if Path(registration["git_common_dir"]) != self.common:
+            if not self.matches_common(registration["git_common_dir"]):
                 raise CaptureError("Capture registration belongs to a different Git repository.")
             yield path, registration
 
-    def lock(self):
-        return file_lock(self.plain_path(self.control / "registry.lock"))
+    def lock(self, timeout=30):
+        return file_lock(self.plain_path(self.control / "registry.lock"), timeout=timeout)
 
-    def launcher_lock(self):
+    def launcher_lock(self, timeout=30):
         path = self.control / "launcher.lock"
         self.require_ignored(path)
-        return file_lock(path)
+        return file_lock(path, timeout=timeout)
 
     def service_lock(self):
         path = self.control / "service.lock"

@@ -1,6 +1,6 @@
 ﻿# egui advance requirements
 
-Load before relevant GUI design or implementation. Read the affected behavior in
+Load before relevant GUI planning, design, implementation or repair. Read the affected behavior in
 [GUI](../../Obsidian/Amiga/Design/Application/GUI.md),
 [egui guidance](../../Obsidian/Amiga/Design/egui%20Guidelines.md) and
 [Debugger](../../Obsidian/Amiga/Design/Application/Debugger.md).
@@ -8,6 +8,8 @@ Load before relevant GUI design or implementation. Read the affected behavior in
 - Prepare inspector data at a coherent machine-owner boundary outside continuous
   Run. During Run draw retained values, prepared labels and visible rows without
   new inspection or formatting. Game view neither prepares nor draws inspectors.
+  Send mutations through the ordered machine-owner commands described in
+  [Coherent Owner Data and Retained Inspection](../../Obsidian/Amiga/Design/egui%20Guidelines.md#2-coherent-owner-data-and-retained-inspection).
 - Core chips have no UI callbacks, observers, channels, async runtimes or shared
   threading handles. Host synchronization obeys the approved
   [Clippy permissions](../../tools/verification/checks/clippy_permissions.json);

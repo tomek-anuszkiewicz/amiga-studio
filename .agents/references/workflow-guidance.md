@@ -30,6 +30,10 @@ verdict and identify any disagreement in the receiving session's assessment.
 
 ## Present one current set of choices
 
+For a review sequence, apply the [human review checkpoint](#human-review-checkpoint)
+before consulting skill transitions. Use the scoped lane advice from the
+[review routing tool](../../tools/workflow/README.md#review-routing-and-human-checkpoint).
+
 Use the [official skill matrix](../../docs/workflow-skill-matrix.md) before choosing
 operation options. Its rows are completed/returned skills and its columns are
 possible next skills. Read only the relevant row with
@@ -57,6 +61,13 @@ an invented matrix edge, or disguise the request as an official recommendation.
 Do not put such an operation in the official option set on the agent's initiative.
 After that directly selected operation returns, resume guidance from its own row.
 Clarification, approval, stop, defer and finishing need no skill-transition cell.
+
+A successful TA-close-task reports the surviving publication record and SHA.
+Use the [post-publication procedure](../../tools/verification/README.md#post-publication-closure)
+for the English stage. Once language completes, select TA-refresh-graph for the
+final SHA, including any vocabulary-only child. Retain a successful graph result
+on replay. Complete the required preservation before offering cleanup. If a stage
+is blocked, report it with the published outcome and preserve the task checkout.
 
 In the user's language, briefly state the outcome, its consequence, the recommended
 next step and why. Offer normally one to three useful options with their effects
@@ -110,6 +121,9 @@ publication. Do not offer ignoring required failures as a route to success.
 
 ## Consume the selection
 
+Recheck any active [human review checkpoint](#human-review-checkpoint) before
+consuming an option or executing an explicitly selected continuation.
+
 Wait for a selection. Silence and the recommendation grant no permission. Existing
 permission remains valid for its exact scope and need not be requested twice, but
 permission alone does not select a next operation. Only explicit delegation lets
@@ -133,3 +147,50 @@ without claiming named-role execution or technical isolation. The next real resu
 returns here for a new explanation and choice. For conversation choices, perform
 only the stated conversation action; an approval does not automatically dispatch
 its proposed repair.
+
+## Human review checkpoint
+
+Count the sequence for the selected work item. The first frozen candidate is
+round 1. Reviewing the next corrected candidate adds one round. Focused and
+remaining waves, parallel lanes, report retries and new invocations on the same
+candidate stay in that round. Preserve linked round and candidate identities
+through handoffs and restarts. A changed baseline retains the count. Restoring
+evidence in an authorized additional round counts even with identical source
+bytes. Use the [read-only routing tool](../../tools/workflow/README.md#review-routing-and-human-checkpoint)
+to derive the count and affected lanes. An incomplete history blocks routing.
+Keep the work item's current routing reference up to date as reports and
+decisions arrive. On resume, recheck the preserved guidance against that
+reference and its linked history, including when the candidate is unchanged.
+
+At the end of round 3 or later, stop for any known open defect needing
+disposition, required repair still unverified after its assigned review, or any
+failed or confirmed missing mandatory gate, independent verdict or evidence.
+A healthy lane already running can return its result on the same candidate.
+An ordinary pending lane in a clean focused or remaining wave stays in that
+round and can run as planned. Once a known issue establishes the stop, launch
+no new lane, evidence retry, repair, commit or downstream work on this candidate.
+Silence, prior approvals, standing delegation and a coordinator choice leave
+the stop in force. A clean result follows its ordinary readiness rules.
+
+Tell the human user in their language how many rounds ran and what the last
+round established. Name each open finding by qualified ID and lane or identify
+the unavailable artifact. Explain its practical impact, its known or uncertain
+history and what still blocks progression. Offer exactly these three decisions
+with the named checkpoint and current guidance ID.
+
+1. Accept the named issues and proceed within existing authority. Record each
+   accepted disposition. Every required finding, failed gate and missing
+   approval still blocks its affected stage. Changing a binding requirement
+   needs its owner's separate decision.
+2. Authorize one further repair and review round for the named issues or
+   evidence gaps. Record the one-use continuation receipt before dispatch.
+   Ask again if that round ends with an unresolved issue.
+3. Pause and preserve the exact candidate, reports, gaps and count.
+
+Preserve the real post-checkpoint reply and its conversation reference in the
+same guidance history. Bind it to the guidance ID, round, candidate and named
+items. If a choice is ambiguous or stale, request an unambiguous current reply.
+Use the supplied checkpoint tokens to bind the preserved user message. Apply
+each continuation once. On resume, validate the saved receipt and resume the
+same selected round. A receipt supplies one round even if work stops before
+another candidate is frozen.

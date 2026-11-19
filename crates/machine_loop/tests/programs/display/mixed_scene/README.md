@@ -41,7 +41,7 @@ python tools/verification/verify.py runner gui -- --scenario mixed_scene --outpu
 
 ```powershell
 cargo run --release -p machine_loop --example mixed_scene -- audit --output .agent/tmp/mixed-scene/audit
-cargo run --release -p machine_loop --example mixed_scene -- bench --output .agent/tmp/mixed-scene/bench
+python tools/verification/run_mixed_scene.py --output .agent/tmp/mixed-scene/bench
 ```
 
 Use `--ntsc` for NTSC. `--warmup N`, `--fields N`, and `--series N` select the

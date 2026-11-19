@@ -171,6 +171,7 @@ class ReviewState:
         self.failed_fingerprint = None
         self.codex_agent = None
         self.codex_stop = None
+        self.codex_worker = None
         self.pdf_pages = []
         for path in sorted((root / "pdf" / "pages").glob("page_*.png")):
             with Image.open(path) as image:
@@ -463,6 +464,8 @@ class ReviewState:
         if not isinstance(instruction, str) or not instruction.strip() or len(instruction) > 12000:
             raise ValueError('Enter a Codex instruction of at most 12000 characters')
         with self.lock:
+            if self.stopping.is_set():
+                raise ValueError("Book Review is shutting down")
             if self.codex_agent and self.codex_agent['state'] == 'running':
                 raise ValueError('A Codex Working task is already running')
             if self.input_cache.load(self.root / 'working')[2] != command.get('expected_revision'):
@@ -491,7 +494,8 @@ class ReviewState:
                     self.codex_agent.update(state='failed', error=str(error))
                     self.announce()
 
-        threading.Thread(target=work, name='book-codex-agent', daemon=True).start()
+        self.codex_worker = threading.Thread(target=work, name='book-codex-agent', daemon=True)
+        self.codex_worker.start()
         return {'id': task_id}
 
     def preview_codex_agent(self, command):

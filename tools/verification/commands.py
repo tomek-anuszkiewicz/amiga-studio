@@ -7,6 +7,7 @@ from impact import RustScope, select_rust_scope, workspace_packages
 
 
 CAPTURE_CONTRACTS = "Workflow capture contracts"
+ROUTING_CONTRACTS = "Workflow routing contracts"
 
 
 def singlestep_command(profile="verification", case=None, exact=False):
@@ -34,8 +35,9 @@ def select_tests(root, mode, verify_singlestep=False, changes=(), rust_scope=Non
             include_bootstrap=any(path.startswith("tools/bootstrap/") for path in changes)))
         if not any(verification_contract_input(path) for path in changes):
             commands = [item for item in commands if item[0] != "Verification CLI contracts"]
-        if not any(python_contract_input(CAPTURE_CONTRACTS, path) for path in changes):
-            commands = [item for item in commands if item[0] != CAPTURE_CONTRACTS]
+        for group in (CAPTURE_CONTRACTS, ROUTING_CONTRACTS):
+            if not any(python_contract_input(group, path) for path in changes):
+                commands = [item for item in commands if item[0] != group]
     return commands
 
 
@@ -72,13 +74,8 @@ def select_quality_commands(mode):
     def script(name, *args):
         return [sys.executable, f"tools/verification/checks/{name}.py", *args]
 
-    if mode == "milestone":
-        return [
-            ("Strict English Policy", script("check_english"), {}),
-        ]
     if mode == "commit":
         return [
-            ("Strict English Policy", script("check_english"), {}),
             ("Obsidian Frontmatter", script("check_obsidian_frontmatter"), {}),
             ("Formatting", ["cargo", "fmt", "--all", "--", "--check"], {}),
             ("Clippy Invariants", script("check_clippy_policy"), {}),
@@ -127,6 +124,7 @@ PYTHON_SUITES = (
     ("Artifact report contracts", "tools/artifacts/tests"),
     ("Verification CLI contracts", "tools/verification/tests"),
     (CAPTURE_CONTRACTS, "tools/workflow/capture/tests"),
+    (ROUTING_CONTRACTS, "tools/workflow/tests"),
 )
 
 
@@ -170,6 +168,13 @@ PYTHON_INPUTS = {
     "Verification CLI contracts": ("tools/verification/", "tools/web.ps1", "tools/worktree.ps1", "tools/graphify_query.py",
                                    ".agents/skills/TA-audit-vault-links/scripts/", ".gitignore"),
     CAPTURE_CONTRACTS: ("tools/workflow/capture/", ".gitignore"),
+    ROUTING_CONTRACTS: (
+        "tools/workflow/review_routing.py", "tools/workflow/review_inputs.py",
+        "tools/workflow/review_decision.py", "tools/workflow/review-routing.json",
+        "tools/workflow/guidance.py", "tools/workflow/result.py", "tools/workflow/result.schema.json",
+        "tools/workflow/requirements.txt", "tools/workflow/skill_matrix.py",
+        "tools/workflow/skill-matrix.json", "tools/workflow/tests/",
+    ),
 }
 
 
@@ -208,7 +213,7 @@ def python_commands(directory=None, pattern=None, case=None, changes=None, inclu
         elif path.resolve() == REPO_ROOT / "tools/verification/tests":
             command = [sys.executable, "tools/verification/run_tests.py", "-s", str(target), "-q"]
         else:
-            command = [sys.executable, "-m", "unittest", "discover", "-s", str(target), "-q"]
+            command = [sys.executable, "tools/verification/run_unittest.py", "discover", "-s", str(target), "-q"]
         if pattern:
             command += ["-p", pattern]
         if case:
@@ -280,20 +285,23 @@ def harness_commands(words, exact=False):
 
 def check_commands(name, words):
     from cli import keyword_values
-    labels = {"english": "Strict English Policy", "formatting": "Formatting", "clippy": "Clippy Invariants",
+    labels = {"formatting": "Formatting", "clippy": "Clippy Invariants",
               "architecture": "Architecture Rules", "hardware": "Hardware Quality", "code": "Code Quality",
               "web": "WebAssembly build"}
     if name == "all" and not words:
-        return select_quality_commands("commit")
+        return [*check_commands("english", []), *select_quality_commands("commit")]
+    if name == "english":
+        if words and (words[0] != "files" or len(words) == 1):
+            raise ValueError("Use check english [files PATH ...]")
+        return [("Strict English Policy",
+                 [sys.executable, "tools/verification/checks/check_english.py", *words[1:]], {})]
     if name == "build":
         values = keyword_values(words, ("crate",))
         target = ["-p", values["crate"]] if values else ["--workspace"]
         return [("Rust compilation", ["cargo", "check", *target], {})]
     selected = [item for item in select_quality_commands("commit") if item[0] == labels.get(name)]
     if words:
-        if name == "english" and words[0] == "files" and len(words) > 1:
-            selected[0][1].extend(words[1:])
-        elif name == "architecture":
+        if name == "architecture":
             values = keyword_values(words, ("case",))
             selected[0][1].append(values["case"])
         else:
@@ -354,9 +362,9 @@ def select_phases(args, changes, explanations=None):
             raise ValueError("Completion profiles accept singlestep at most once")
         rust_scope = None
         if args.command == "commit":
-            # Capture suite ownership is for Python selection. Keep the existing Rust fallback.
+            # Workflow suite ownership is for Python selection. Keep the existing Rust fallback.
             rust_python_inputs = {path for name, inputs in PYTHON_INPUTS.items()
-                                  if name != CAPTURE_CONTRACTS for path in inputs}
+                                  if name not in (CAPTURE_CONTRACTS, ROUTING_CONTRACTS) for path in inputs}
             rust_scope = select_rust_scope(REPO_ROOT, changes, rust_python_inputs)
             if getattr(args, "integration_divergent", False):
                 rust_scope = RustScope(None, "Divergent integration requires full ordinary workspace verification.")

@@ -9,7 +9,7 @@ provides rationale. Compiler and Clippy configuration own mechanical settings.
 - Keep serializable/queryable snapshots (`serde::Serialize` / `serde::Deserialize`)
   separate from runtime handles. The machine directly owns peer subsystems;
   no circular handles, interior-mutability/shared-threading backchannels or core
-  thread spawning. Follow [physical topology](hardware-bus-topology.md).
+  thread spawning. Follow [physical topology](../../Obsidian/Amiga/Design/General%20Architecture.md#11-physical-bus-topology--inter-chip-isolation-invariant).
 - Guest errors remain emulated: configurable unmapped reads return `$FF` / `$FFFF`,
   and odd word/long accesses raise Address Error, Vector 3. Runtime code uses no
   `unwrap`, `expect`, `panic!` or `unreachable!`, except the function-scoped
@@ -26,7 +26,7 @@ provides rationale. Compiler and Clippy configuration own mechanical settings.
 - Custom `macro_rules!` and const-generic instruction handlers, decoders or execution
   functions are prohibited. Preserve warning-free builds and configured lints.
 
-For affected crate/export/CPU layout changes load [workspace boundaries](workspace-structure-and-reexports.md).
+For affected crate, export or CPU layout changes read [workspace layout](../../Obsidian/Amiga/Design/General%20Architecture.md#workspace-layout).
 Detailed naming, visibility, accessors, inlining and cohesion standards are owned by
 [architecture review](../references/architecture-criteria.md); consult them for an
 assigned finding or relevant design question, not as an unconditional startup read.

@@ -15,7 +15,9 @@ python tools/graphify/refresh.py --graph reference
 
 Each operation creates a missing graph or refreshes its existing graph. Bootstrap
 runs both selections and fails if either fails; `-All` provisions sources first.
-Commit preparation refreshes only the project graph. Worktree creation copies
+Ordinary task closure refreshes the project graph once in the primary checkout
+on local `master` after publication and the language stage. The result records
+the final SHA, including any closure vocabulary commit. Worktree creation copies
 both existing graph directories from the primary checkout. If a copy is missing
 or stale, use `rg` and inspect the source definitions. The reference graph uses
 an explicit refresh. Provision missing reference sources with bootstrap `-Sources`.

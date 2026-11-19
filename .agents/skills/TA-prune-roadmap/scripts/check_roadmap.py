@@ -11,7 +11,7 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 def check_roadmap_zero_retention():
-    """Verifies that ROADMAP.md exists and contains zero completed tasks ([x]) per roadmap-maintenance.md."""
+    """Verifies that ROADMAP.md exists and contains zero completed tasks ([x]) under TA-prune-roadmap."""
     roadmap_path = REPO_ROOT / "ROADMAP.md"
     if not roadmap_path.exists():
         return {"issues": [{"message": "ROADMAP.md does not exist in repository root"}]}
@@ -21,7 +21,7 @@ def check_roadmap_zero_retention():
 
     issues = []
     if completed:
-        issues.append({"message": f"ROADMAP.md contains {len(completed)} completed task(s) (`[x]`). All completed tasks must be pruned per roadmap-maintenance.md"})
+        issues.append({"message": f"ROADMAP.md contains {len(completed)} completed task(s) (`[x]`). All completed tasks must be pruned under TA-prune-roadmap"})
 
     return {"issues": issues}
 

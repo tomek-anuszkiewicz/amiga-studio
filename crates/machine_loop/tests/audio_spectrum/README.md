@@ -3,7 +3,7 @@
 Run from the repository root:
 
 ```powershell
-cargo test -p machine_loop --test test_audio_spectrum -- --nocapture
+python tools/verification/run_rust_tests.py -- cargo test -p machine_loop --test test_audio_spectrum -- --nocapture
 ```
 
 The [integration test](../test_audio_spectrum.rs) writes signed eight-bit periodic
@@ -75,7 +75,7 @@ The [attachment tests](attachment.rs) also run with the command above. To select
 only these two scenarios:
 
 ```powershell
-cargo test -p machine_loop --test test_audio_spectrum attachment:: -- --nocapture
+python tools/verification/run_rust_tests.py -- cargo test -p machine_loop --test test_audio_spectrum attachment:: -- --nocapture
 ```
 
 Channel 0 reads a looping block of big-endian control words from Chip RAM.

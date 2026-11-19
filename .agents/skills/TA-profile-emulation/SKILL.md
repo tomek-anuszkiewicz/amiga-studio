@@ -19,8 +19,9 @@ authorization and returns that missing prerequisite.
    preserved output activity. Profile the selected steady-state thread/interval
    separately from unprofiled timing. Record build/symbol/input identities.
 3. Inspect frequent paths and small callees hidden by inlining/sampling. Identify
-   repeated decoding, scans, copies, conversions and duplicate work. Use bounded
-   diagnostics or generated-code inspection only for concrete unresolved cost.
+   repeated decoding, scans, copies, conversions and duplicate work. Include
+   concrete recurring cost below the profiler display threshold when supported.
+   Use bounded diagnostics or generated-code inspection for concrete unresolved cost.
 4. Write `micro-optimizations.md` in the task evidence directory with stable
    candidate IDs, concrete mechanisms, cost/frequency evidence, risks and bounded
    deciding measurements. Include the call tree when function profiling ran.

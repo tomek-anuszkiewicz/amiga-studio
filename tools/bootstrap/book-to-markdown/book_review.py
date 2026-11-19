@@ -8,7 +8,8 @@ from pathlib import Path
 from review.model import export_markdown, import_book, load_input, write_json
 from review.render import Renderer
 from review.service import read_snapshot, render_accepted, replace_accepted
-from review.library import serve
+from review.library import BOOKS, serve
+from review.ownership import BookInUseError, BookWriter
 from review.source_validation import validate_book
 from review.reconstruct import import_accepted_book
 from review.publish import publish_book
@@ -21,15 +22,31 @@ def main():
     parser.add_argument("--width", type=int, default=1200, help="Preparation viewport width; HTML view wraps to its panel")
     parser.add_argument("--channel", default="msedge", help="Playwright channel; empty selects bundled Chromium")
     parser.add_argument("--port", type=int, default=8765)
+    parser.add_argument("--host", choices=("127.0.0.1", "0.0.0.0"), default="127.0.0.1",
+                        help="Server bind address")
+    parser.add_argument("--library", type=Path, default=BOOKS, help="Imported library for serve")
+    parser.add_argument("--protected-variants", type=json.loads, help=argparse.SUPPRESS)
     args = parser.parse_args()
     if args.command == "serve":
         if args.book is not None:
             parser.error("serve opens the books catalog; select a book in the browser")
-        serve(args.port, args.width, args.channel)
+        serve(args.port, args.width, args.channel, host=args.host, root=args.library,
+              allowed=args.protected_variants)
         return
     if args.book is None:
         parser.error("--book is required for this command")
     root = args.book.resolve()
+    if args.command in {"import", "import-book", "render", "export"}:
+        try:
+            with BookWriter(root):
+                run_book_command(args, root)
+        except BookInUseError as error:
+            parser.exit(1, f"{error}\n")
+    else:
+        run_book_command(args, root)
+
+
+def run_book_command(args, root):
     if args.command == "validate":
         book = json.loads((root / 'working' / 'book.json').read_text(encoding='utf-8'))
         report = validate_book(book, root / 'pdf-to-markdown')

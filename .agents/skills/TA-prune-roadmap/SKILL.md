@@ -6,7 +6,7 @@ description: Remove selected completed roadmap work using supplied completion ev
 # Prune the selected completed work
 
 Apply [the invocation contract](../../references/workflow-contract.md) and
-[roadmap policy](../../rules/roadmap-maintenance.md).
+[roadmap completion criteria](../../../Obsidian/Amiga/Design/Verification/Testing%20Strategy%20and%20Quality%20Assurance.md#roadmap-and-milestone-completion).
 Executor: main session; result kind: `documents`.
 Inputs: exact selected items, implementation/semantic/verification evidence,
 closure decisions, checkpoint state and candidate.
@@ -14,7 +14,8 @@ closure decisions, checkpoint state and candidate.
 1. Evaluate supplied completion evidence and actual remaining scope. A plan,
    prepared artifact directory or source change alone does not prove completion.
    Report missing evidence without obtaining it automatically.
-2. Prepare removal of the verified completed scope entirely. Preserve distinct
+2. Remove the verified completed scope completely. Omit completed tags,
+   checkboxes, strikethrough and historical capability summaries. Preserve distinct
    unfinished requirements with concrete gates; history belongs in diary/Git,
    not a completed-capability section. Preserve user priorities and dependencies.
 3. Update numbering, references and assigned checkpoints. Run

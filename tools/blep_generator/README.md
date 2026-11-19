@@ -56,7 +56,7 @@ Running `cargo run -p blep_generator` generates four PAL CSV files in
 [`crates/paula/src/audio_tables.rs`](../../crates/paula/src/audio_tables.rs).
 
 The four tracked CSV files are the accepted PAL regression baselines. Run
-`cargo test -p blep_generator` to regenerate all four curves in an isolated
+`python tools/verification/run_rust_tests.py -- cargo test -p blep_generator` to regenerate all four curves in an isolated
 temporary directory and compare every sample against those CSVs. The test does
 not overwrite the baselines or require WinUAE sources or network access. It
 checks numerical stability against the accepted curves, not independent hardware

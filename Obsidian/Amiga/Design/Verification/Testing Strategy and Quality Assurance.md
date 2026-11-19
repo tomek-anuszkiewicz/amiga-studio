@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "testing"
 status: "active"
 created: 2026-09-14
-updated: 2026-11-17
+updated: 2026-11-19
 related: ["[General Architecture.md](../General%20Architecture.md)", "[CPU SingleStepTests.md](CPU%20SingleStepTests.md)", "[CPU Instruction Benchmarking.md](../Performance/CPU%20Instruction%20Benchmarking.md)", "[Machine Loop.md](../Machine%20Loop.md)", "[Platform Quirks and Invariants Catalog.md](../Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
 tracked_paths:
   - ".config/nextest.toml"
@@ -29,7 +29,8 @@ tracked_paths:
 Ordinary work uses focused checks. Batch preparation runs
 `python tools/verification/verify.py commit`; milestone closure also runs the
 separate `milestone` profile for the same snapshot. The latter adds full
-SingleStep and the English audit without repeating commit gates. Full vectors
+SingleStep. Ordinary closure runs the full English audit after local publication
+under the [language policy](../../../../.agents/rules/language-policy.md). Full vectors
 remain available explicitly for diagnosis, and benchmarks remain explicit
 measurements. No profile runs the unavailable whole-machine capture comparator.
 
@@ -59,7 +60,7 @@ Retain these evidence boundaries:
 - Generated timing reports are outputs, not passing evidence. Build caches may
   remain, but stale coverage objects and saved SingleStep totals cannot establish
   that current sources or the requested selection ran.
-- Full formatting, Clippy, architecture, hardware/code, frontmatter and language
+- Full formatting, Clippy, architecture, hardware/code and frontmatter
   gates remain required by the commit profile. Source discovery for quality checks
   includes production and test JavaScript callers. The production Wasm build
   retains its Nightly shared-memory configuration and lint-warning failure policy.
@@ -82,6 +83,29 @@ Host pacing, FPS and graphical guest presentation are evaluated manually;
 dedicated automated graphical execution/image campaigns are retired. Independent
 CPU, chip, bus, input, host-lifecycle, display-state and continuation tests remain
 available. Audio captures retain their spectral and attachment acceptance limits.
+
+### Roadmap and milestone completion
+
+Close a minor roadmap point or major milestone only after milestone
+verification, stage-wide semantic parity, scoped specification compliance
+and compatible enrichment, checkpoint review, diary compaction, provisional
+roadmap pruning and the completion commit. Matching broader assessments can
+satisfy the overlapping requirements. Pruning remains provisional until the
+required results and commit exist. Record a user-directed scope closure
+explicitly and preserve remaining work.
+
+A major milestone also requires stage-level documentation and instruction
+governance assessment through [documentation review](../../../../.agents/skills/TA-review-docs/SKILL.md).
+Credit an applicable documentation-lane report with that stage-wide scope.
+Assessments limited to the changed files leave this obligation open.
+
+Compact the diary before final verification and freeze regardless of size,
+using [the separate compaction operation](../../../../.agents/skills/TA-compact-diary/SKILL.md).
+Use one prepared diary entry for completion and compaction. Extend the
+[preparation storage observation](../../../../.agents/references/agent-tooling.md#local-artifact-storage)
+with the completed task's temporary directories and any scoped cleanup
+recommendations. Keep active diagnostics and remove only authorized paths.
+Use the vAmigaTS reporting format again if that verification track resumes.
 
 ## 1. Architectural Purpose & Testing Pyramid
 

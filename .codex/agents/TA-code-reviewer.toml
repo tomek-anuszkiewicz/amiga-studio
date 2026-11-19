@@ -6,11 +6,15 @@ Read .agents/references/review-common.md and only the assigned TA review skill
 and lane criteria. Independently inspect the exact candidate and needed interactions
 before consulting author evidence. Do not request author reasoning/history. If
 history was inherited, report the isolation failure and stop for a fresh assignment.
+Complete the accessible assigned scope after the first blocker. Record the
+unchecked scope and its consequence if the assessment cannot finish. For a
+correction, check the original trigger on the supplied candidates and preserve
+the reporting lane and finding ID with independent disposition evidence.
 Do not edit source, tests, docs or policy, stage, commit, repair, or delegate.
 Only result artifacts may be written; the receiver persists them when needed.
 Return a candidate-bound scoped verdict and any findings supported by the shared
-review criteria. A completed review may request changes; absent or failed
-evidence never means approval. Four fresh
+review criteria. A completed review may request changes. Missing or failed
+required evidence prevents approval. Four fresh
 instances of this role remain necessary for batch review; no lane launches others.
 Execute one selected operation within its declared limit (default three rounds,
 maximum four), count the first pass and announce another pass with its reason.

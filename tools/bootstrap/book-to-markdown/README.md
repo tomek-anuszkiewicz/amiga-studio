@@ -20,19 +20,43 @@ For an already imported book, use the controller so the console remains free:
 ./tools/bootstrap/book-to-markdown/review-server.ps1 stop
 ```
 
-The controller starts one server on port 8765. Use `-Port <number>` to change
-the port. Choose an imported book from the **Book** list in the browser.
-Open `http://127.0.0.1:8765/`; the status endpoint is
-`http://127.0.0.1:8765/api/status`. Process information and logs are in
-`.agent/tmp/book-review/<port>/`. `status` distinguishes an HTTP response
-from pending rendering and render errors for each opened book. Invoking the
-controller without arguments prints its usage.
+The controller starts the `book-review` service on demand. Port 8765 uses the
+shared Compose project `amiga`. The controller manages only Book Review.
+Use `-Port <number>` or `BOOK_REVIEW_PORT` to select a different port, which
+uses a separate project for the checkout and port. Choose an imported book from
+the **Book** list at `http://127.0.0.1:8765/`. Check `/api/status` for pending rendering and
+render errors per opened book. Compose owns the process. The service listens on
+the container interface and publishes the port on host loopback only.
 
-Restart after changing review Python code or `review/document.css`; then check
-`/` and `/api/status`. Reload the browser after changing viewer HTML, CSS or
-JavaScript. Working book data is picked up by the render queue. Stop a foreground
-`serve` process with Ctrl+C before using the controller on the same port. The
-controller is a background process, not an automatically started Windows service.
+The controller uses `compose.yaml` beside this program and a generated ignored
+mount override. Defaults are `tools/bootstrap/books` for the library,
+`tools/bootstrap/book-to-markdown/config.yaml` for model settings and
+`.agent/tmp/book-review-diagnostics` in the primary checkout for container
+diagnostics. The controller creates that default diagnostics directory on start.
+Controller settings and logs stay in `.agent/tmp/book-review`.
+Set `BOOK_REVIEW_LIBRARY`, `BOOK_REVIEW_CONFIG` or `BOOK_REVIEW_DIAGNOSTICS` to
+use explicitly selected paths. Use an existing, dedicated directory for an
+explicit diagnostics path, separate from workflow evidence, session archives
+and controller files. Keep the configuration outside the writable library and
+diagnostics roots. Existing source PDFs, identity files, preparation directories and
+copied PDF pages are read-only mounts. The library catalog is read-only;
+existing imported variant directories are writable to preserve atomic swaps
+of Working, Accepted and the root `book.json`. Assets stay in those host-backed
+directories. Restart with a fresh
+mount override after importing another variant or changing its source layout.
+
+The image combines the pinned Python and JavaScript dependencies with bundled
+Chromium. Host `book_review.py` continues to default to Edge.
+
+Before switching an existing default-port installation to `amiga`, stop it
+with its original controller and settings. Use the same checkout and mount
+settings for subsequent lifecycle commands. Stop any old native server before
+using Compose. Foreground and
+Compose servers and explicit book-writing jobs share the variant's
+`.book-review-writer` directory. Ownership starts before a selected book is
+opened and ends after its writers finish. An interrupted process can leave
+an empty claim directory. Confirm that every writer for the exact variant has
+exited before removing that claim.
 
 The list discovers `tools/bootstrap/books/<book-id>/<variant>/working/book.json`.
 Names come from book directories; multiple imported variants of the same book
@@ -53,6 +77,64 @@ Working updates refresh changed chapters while retaining unchanged elements and
 their expanded details. Images and document styles are reused by content hash
 across Working and Accepted. Source text is cached by recipe and source-page
 version; changes to a source page invalidate the affected text.
+
+#### Enable Codex in the container
+
+Check the Windows sign-in with `codex login status`. Use `codex login` and
+choose ChatGPT if you need to sign in. Book Review starts its own Codex process
+inside the container and uses your ChatGPT sign-in.
+
+To add or change authentication on an existing instance, first let edits
+finish and run `review-server.ps1 stop` from the owning checkout with that
+instance's existing port and mount settings. The controller uses those
+settings to identify the container. Then select the private login file and
+keep the intended library and other mounts for the next start.
+
+```powershell
+$CodexHome = if ($env:CODEX_HOME) { $env:CODEX_HOME } else { Join-Path $env:USERPROFILE '.codex' }
+$env:BOOK_REVIEW_AUTH = Join-Path $CodexHome 'auth.json'
+./tools/bootstrap/book-to-markdown/review-server.ps1 start
+```
+
+Use the actual file-based ChatGPT login if it lives at another path. Keep
+`auth.json` outside the repository, the image build context and writable
+mounts. The controller passes the path to Compose as a read-only mount. At
+startup the container copies the file into its temporary Codex home. Use the
+same authentication path for later controller commands. If the copied login
+expires, refresh the selected login on Windows and recreate the service.
+Check Codex with a small edit on a disposable imported book.
+
+#### Move Book Review to the primary checkout
+
+For service development, use a separate port and a disposable, independent
+library. For example, select that library with `BOOK_REVIEW_LIBRARY` and run
+`review-server.ps1 start -Port 18765` from the task checkout. Stop that same
+instance from its task checkout when finished. To try the default-port service
+against the usual library, stop the existing instance before starting the
+worktree instance. Book ownership allows only one writer for each variant.
+
+After merging changes to the installed service, check its current checkout.
+Run `docker compose ls` or inspect the container's
+`com.docker.compose.project.config_files` label. The controller checks those
+paths before it acts. Even a stopped container created from the worktree must
+be removed before the controller in the primary checkout can manage port 8765.
+
+Before removing the worktree, let active edits finish and identify the current
+port and mount settings. Use the recorded library, configuration, diagnostics
+and optional authentication paths. If any required input is inside the worktree,
+make it available in the surviving checkout before removal. With the original
+settings and port, run `review-server.ps1 stop` from the owning checkout. It
+stops and removes just `book-review`. Then select the surviving settings and
+run these commands from the primary checkout for the usual service.
+
+```powershell
+./tools/bootstrap/book-to-markdown/review-server.ps1 start -Port 8765
+./tools/bootstrap/book-to-markdown/review-server.ps1 status -Port 8765
+```
+
+Confirm the expected library at `http://127.0.0.1:8765/` and in `/api/status`.
+If the expected library is imported, open a known book to confirm the service
+can use it.
 
 ### Starting a new review
 
@@ -195,7 +277,7 @@ Obsidian and a standard Markdown preview. The review exports still use Obsidian
 block links so identical headings retain distinct destinations during editing.
 Before a commit, review each published Markdown file and add the `book`,
 `chapter`, and content-based tags described in
-[Reference Book Metadata](../../../.agents/rules/docs-maintenance.md#reference-book-metadata).
+[Reference Book Metadata](reference-book-metadata.md).
 The commit check reports missing structural metadata; an agent asks before
 editing frontmatter.
 
@@ -238,7 +320,7 @@ The RAG CLI and shared index state file are configured in the
    It writes Markdown, images, and accepted image-description sidecars to
    `Obsidian/Amiga/Reference/<book-directory>/`. It refuses an occupied target;
    inspect the existing publication before any replacement. Review the
-   published files and add the required [reference metadata](../../../.agents/rules/docs-maintenance.md#reference-book-metadata).
+   published files and add the required [reference metadata](reference-book-metadata.md).
 4. After validating the published Markdown, follow the
    [RAG indexing procedure](../../../.agents/skills/TA-index-amiga-rag/SKILL.md)
    for all three Amiga documentation scopes. The CLI skips unchanged files.
@@ -328,8 +410,9 @@ changes before acceptance. **Cancel task**, Escape, and
 **Stop task** interrupt the active request; edits already saved to Working
 remain. The model and effort are selected in [config.yaml](config.yaml).
 
-Task diagnostics are under `.agent/tmp/book-codex-agent/<request-id>/`, and
-element-transform diagnostics under `.agent/tmp/book-codex/<request-id>/`.
+Task and element-transform diagnostics use `book-codex-agent/<request-id>/`
+and `book-codex/<request-id>/` within the selected diagnostics directory.
+Foreground host runs use the current checkout's `.agent/tmp`.
 Shared authentication and cache behavior are in the
 [conversion client README](../conversion/README.md).
 

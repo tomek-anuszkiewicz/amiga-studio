@@ -12,7 +12,7 @@ Inputs: exact baseline/candidate, assigned scope, relevant requirements, availab
 evidence and proposed partition when preparing a batch.
 
 For major milestone sign-off, take the stage-level scope required by
-[milestone policy](../../rules/roadmap-maintenance.md); retain matching prior
+[milestone completion criteria](../../../Obsidian/Amiga/Design/Verification/Testing%20Strategy%20and%20Quality%20Assurance.md#roadmap-and-milestone-completion); retain matching prior
 assessment instead of repeating covered work.
 
 1. Check input identities and fresh reviewer context. Read only

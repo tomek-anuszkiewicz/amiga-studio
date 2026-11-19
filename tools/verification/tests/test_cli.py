@@ -26,6 +26,8 @@ def selected(sentence, changes=()):
     _, args = parse_args(sentence.split())
     return [item for _, commands in select_phases(args, set(changes)) for item in commands]
 
+from test_case_report import ignore_archive
+
 
 class SelectionTests(unittest.TestCase):
     def test_startup_help_shows_nested_command_tree_without_selecting_work(self):
@@ -78,7 +80,7 @@ class SelectionTests(unittest.TestCase):
     def test_python_selection_preserves_directory_file_and_case(self):
         commands = selected("test python directory tools/bootstrap/tests file test_bootstrap_contract.py case test_all")
         self.assertEqual(len(commands), 1)
-        self.assertEqual(commands[0][1][1:], ["-m", "unittest", "discover", "-s", "tools/bootstrap/tests",
+        self.assertEqual(commands[0][1][1:], ["tools/verification/run_unittest.py", "discover", "-s", "tools/bootstrap/tests",
                                             "-q", "-p", "test_bootstrap_contract.py", "-k", "test_all"])
         book = selected("test python directory tools/bootstrap/book-to-markdown/tests "
                         "file test_book_review_overflow.py case test_pdf_page")
@@ -118,7 +120,13 @@ class SelectionTests(unittest.TestCase):
             ("tools/artifacts/tests/test_report.py", {"Artifact report contracts"}),
             ("tools/workflow/capture/records.py", {"Workflow capture contracts"}),
             ("tools/workflow/capture/tests/test_records.py", {"Workflow capture contracts"}),
-            ("tools/workflow/result.py", set()),
+            ("tools/workflow/result.py", {"Workflow routing contracts"}),
+            ("tools/workflow/result.schema.json", {"Workflow routing contracts"}),
+            ("tools/workflow/guidance.py", {"Workflow routing contracts"}),
+            ("tools/workflow/skill-matrix.json", {"Workflow routing contracts"}),
+            ("tools/workflow/review-routing.json", {"Workflow routing contracts"}),
+            ("tools/workflow/review_inputs.py", {"Workflow routing contracts"}),
+            ("tools/workflow/tests/test_review_routing.py", {"Workflow routing contracts"}),
             ("tools/verification/commands.py", {"Verification CLI contracts"}),
             ("tools/web.ps1", {"Verification CLI contracts"}),
         )
@@ -143,6 +151,16 @@ class SelectionTests(unittest.TestCase):
         self.assertEqual({name for name, _, _ in selected("test python", changes)}, consumers)
         commit = {name for name, _, _ in selected("commit", changes)}
         self.assertTrue(consumers | {"All ordinary crate tests", "All standard harness tests"} <= commit)
+
+    def test_workflow_routing_contracts_remain_scoped_without_narrowing_rust_fallback(self):
+        group = "Workflow routing contracts"
+        for path in ("tools/workflow/review_decision.py", "tools/workflow/result.schema.json"):
+            with self.subTest(path=path):
+                names = {item[0] for item in selected("commit", [path])}
+                self.assertTrue({group, "All ordinary crate tests", "All standard harness tests"} <= names)
+        for changes in ([], ["tools/workflow/capture/records.py"], ["crates/cpu/src/cpu.rs"]):
+            with self.subTest(changes=changes):
+                self.assertNotIn(group, {item[0] for item in selected("commit", changes)})
 
     def test_full_and_sampled_silicon_runs_override_inherited_selection(self):
         commands = selected("test runner singlestep case test_add_b sample 500")
@@ -212,10 +230,10 @@ class SelectionTests(unittest.TestCase):
     def test_milestone_retains_separate_scope(self):
         for changes in ([], ["crates/cpu/src/cpu.rs"], ["docs/testing.md"]):
             commands = selected("milestone", changes)
-            self.assertEqual(len(commands), 2)
-            self.assertTrue(commands[0][1][-1].endswith("check_english.py"))
-            self.assertEqual(commands[1][2], {"SINGLESTEP_FULL": "1", "SINGLESTEP_LIMIT": "all"})
-            self.assertEqual(commands[1][1][-2:], ["--profile", "verification"])
+            self.assertEqual(commands, [("Full SingleStepTests",
+                                         [sys.executable, "tools/verification/run_singlestep.py",
+                                          "--profile", "verification"],
+                                         {"SINGLESTEP_FULL": "1", "SINGLESTEP_LIMIT": "all"})])
 
     def test_commit_skips_rust_but_keeps_quality_and_python_suites_for_bootstrap_changes(self):
         commands = selected("commit", ["tools/bootstrap/book-to-markdown/review/service.py"])
@@ -233,7 +251,8 @@ class SelectionTests(unittest.TestCase):
         docs = selected("commit", ["docs/testing.md"])
         gui = selected("commit", [gui_path])
         names = {name for name, _, _ in docs}
-        self.assertTrue({"Strict English Policy", "Architecture Rules", "Clippy Invariants"} <= names)
+        self.assertTrue({"Architecture Rules", "Clippy Invariants"} <= names)
+        self.assertNotIn("Strict English Policy", names)
         self.assertFalse(any("llvm-cov" in command or command[:2] == ["cargo", "test"]
                              for _, command, _ in docs))
         self.assertNotIn("Verification CLI contracts", names)
@@ -273,7 +292,7 @@ class SelectionTests(unittest.TestCase):
 
     def test_orchestration_keeps_all_quality_gates_and_python_contracts(self):
         self.enterContext(patch.object(impact, "workspace_graph", return_value=self.gui_graph()))
-        gates = {"Strict English Policy", "Obsidian Frontmatter", "Formatting", "Clippy Invariants",
+        gates = {"Obsidian Frontmatter", "Formatting", "Clippy Invariants",
                  "Architecture Rules", "Hardware Quality", "Code Quality", "WebAssembly build",
                  "Graphify contracts", "RAG MCP contracts", "Artifact report contracts"}
         self.assertEqual({name for name, _, _ in selected("commit", ["docs/testing.md"])}, gates)
@@ -364,10 +383,17 @@ class SelectionTests(unittest.TestCase):
         self.assertEqual(commands[0][1][:-1], [sys.executable, "tools/verification/checks/check_architecture.py"])
         self.assertEqual(commands[0][1][-1], "test_file_size_limits")
 
-    def test_explicit_language_files_bypass_repository_selection(self):
-        commands = selected("check english files docs/testing.md AGENTS.md")
-        self.assertEqual(len(commands), 1)
-        self.assertEqual(commands[0][1][-2:], ["docs/testing.md", "AGENTS.md"])
+    def test_explicit_language_and_all_keep_the_scanner(self):
+        scanner = [sys.executable, "tools/verification/checks/check_english.py"]
+        plain = ("Strict English Policy", scanner, {})
+        self.assertEqual(selected("check english"), [plain])
+        self.assertEqual(selected("check english files docs/testing.md AGENTS.md"),
+                         [("Strict English Policy", scanner + ["docs/testing.md", "AGENTS.md"], {})])
+        all_checks = selected("check all")
+        self.assertEqual([name for name, _, _ in all_checks],
+                         ["Strict English Policy", "Obsidian Frontmatter", "Formatting", "Clippy Invariants",
+                          "WebAssembly build", "Architecture Rules", "Hardware Quality", "Code Quality"])
+        self.assertEqual([command for _, command, _ in all_checks if scanner[1] in command], [scanner])
 
     def test_settings_can_follow_subcommands_without_eating_runner_arguments(self):
         _, args = parse_args(["runner", "bench", "--log-level", "full", "--plan", "case", "add/add_w_d1_d0"])
@@ -442,7 +468,57 @@ class ExecutionTests(unittest.TestCase):
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name)
         restore_repository("empty", self.root)
+        ignore_archive(self.root)
         self.enterContext(patch.object(verify, "REPO_ROOT", self.root))
+
+    def test_cold_profiles_launch_the_remaining_commands_and_keep_gate_failures(self):
+        note = self.root / "docs/testing.md"
+        note.parent.mkdir()
+        note.write_text("The notes changed.\n", encoding="utf-8")
+        quality = ["tools/verification/checks/check_obsidian_frontmatter.py", "fmt",
+                   "tools/verification/checks/check_architecture.py",
+                   "tools/verification/checks/audit_hardware_quality.py",
+                   "tools/verification/checks/audit_code_quality.py",
+                   "tools/verification/checks/check_clippy_policy.py", "-NoProfile"]
+        expected = [
+            (["commit"], quality, None),
+            (["milestone"], ["tools/verification/run_singlestep.py"], None),
+            (["milestone", "singlestep"], ["tools/verification/run_singlestep.py"], None),
+            (["commit"], quality[:5], "tools/verification/checks/check_architecture.py"),
+        ]
+        native = verify.execute_command
+        for index, (arguments, launched, failed) in enumerate(expected):
+            with self.subTest(arguments=arguments, fail=failed):
+                observed = []
+
+                def substitute(command, overrides, **options):
+                    observed.append((command, overrides))
+                    child = f"raise SystemExit({int(command[1] == failed)})"
+                    if "SINGLESTEP_RESULTS_DIR" in overrides:
+                        child = ("import os; from pathlib import Path; "
+                                 "out = Path(os.environ['SINGLESTEP_RESULTS_DIR']); out.mkdir(parents=True); "
+                                 "[(out / name).write_text('{}') for name in "
+                                 "('run.json', 'timing.json', 'summary.json', 'execution.log')]")
+                    return native([sys.executable, "-c", child], overrides, **options)
+
+                with patch.object(verify, "execute_command", side_effect=substitute), \
+                     patch.object(verify, "stable_update_notice", return_value=""), \
+                     patch.object(verify, "execution_conditions", return_value="test"), \
+                     patch.object(execution, "REPO_ROOT", self.root), \
+                     contextlib.redirect_stdout(io.StringIO()) as output:
+                    code = verify.main([*arguments, "--results-dir", f".agent/tmp/profile-test/{index}"])
+                self.assertEqual(code, int(failed is not None), output.getvalue())
+                observed_gates = [(command, overrides) for command, overrides in observed
+                                  if any(part in quality or part.endswith("/run_singlestep.py")
+                                         for part in command)]
+                self.assertCountEqual([command[1] for command, _ in observed_gates], launched)
+                self.assertFalse(any(part.endswith("/check_english.py")
+                                     for command, _ in observed for part in command))
+                if arguments[0] == "milestone":
+                    (command, overrides), = observed
+                    self.assertEqual(command[-2:], ["--profile", "verification"])
+                    self.assertEqual([overrides[name] for name in ("SINGLESTEP_FULL", "SINGLESTEP_LIMIT")],
+                                     ["1", "all"])
 
     def test_plan_shows_isolated_logs_and_singlestep_reports_without_writing(self):
         with patch.object(verify, "execute_command") as execute, \

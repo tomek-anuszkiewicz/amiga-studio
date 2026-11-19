@@ -64,7 +64,7 @@ The emulator uses external test suites, hardware measurements, and reference imp
 - **[Techtravels.org](https://www.techtravels.org/):** Amiga hardware investigations, including logic-analyzer measurements and Paula circuit analysis; distinguish measured pins from inferred internal behavior.
 
 > [!NOTE]
-> **Graphify navigation:** Use independent project and reference datasets, then verify source definitions. Bootstrap creates or refreshes both graphs. Worktree creation copies existing graph directories. Commit preparation refreshes only the project graph. See [Chapter 6](#6-code-structure-relationships-graphify).
+> **Graphify navigation:** Use independent project and reference datasets, then verify source definitions. Bootstrap creates or refreshes both graphs. Worktree creation copies existing graph directories. Task closure refreshes the project graph on local `master` after publication. See [Chapter 6](#6-code-structure-relationships-graphify).
 
 Because these test assets comprise multi-gigabyte datasets (~6.5 GB uncompressed), they reside outside Git history in `ref_src/` and `tools/`.
 
@@ -159,7 +159,7 @@ The centralized bootstrapper (`tools/bootstrap/bootstrap.ps1`) orchestrates all 
 <a id="full-development-setup-all"></a><a id="bootstrapper-commands"></a>
 ### Complete Development Setup (`-All`)
 
-To provision the repository-managed reference assets and tooling indexes in a single run, use the `-All` switch. Its RAG phase still starts this repository's independent Qdrant container. When using the separate qdrant-rag repository, run the other provisioning switches individually and follow the RAG setup below:
+Use `-All` to provision reference assets and development tools in one run. Configure the shared Compose backend in [RAG Setup](#domain-hardware-rag-setup-rag) first. The RAG tier starts the shared service and reports its status. Indexing requires an explicit `-Rag` selection.
 
 ```powershell
 .\tools\bootstrap\bootstrap.ps1 -All
@@ -167,10 +167,10 @@ To provision the repository-managed reference assets and tooling indexes in a si
 
 | Mode | Switch | When Needed | What It Provisions |
 | :--- | :--- | :--- | :--- |
-| **Full Setup** | `-All` | Provision repository-managed development assets | Executes five tiers: **Sources** $\to$ **Graphify** $\to$ **Documentation** $\to$ **RAG** $\to$ **Assembler**. It uses the independent Qdrant container, not the external repository's Compose setup. |
+| **Full Setup** | `-All` | Provision repository-managed development assets | Runs **Sources**, **Graphify**, **Documentation**, **RAG service and status**, and **Assembler** in order. |
 | **Verification Testbeds** | `-Sources` | Provision local test and research references | Downloads external test suites, software-generated M68000 vectors (`SingleStepTests-680x0`), vAmiga/vAmigaTS, Amiga Test Kit, MiniMig, and Amiga Replacement Project |
 | **External Reference Scans** | `-Documentation` | External reference scans and manual archives | Downloads original archival PDF scans and OEM technical reference manuals (HRM, TRM, PRM, UM, and technical articles) |
-| **Documentation & RAG** | `-Rag` | Legacy repository-managed Qdrant bootstrap | Starts its own Qdrant container and indexes the Amiga documentation scopes through the external `rag_qdrant` CLI; it does not install or configure the separate RAG service. |
+| **Documentation & RAG** | `-Rag` | Explicit Amiga documentation indexing | Starts the shared RAG service and updates the Amiga scopes in the shared index through `rag_qdrant`. |
 | **Code Knowledge Graph** | `-Graphify` | Codebase structural navigation, call hierarchy, and symbol dependency analysis | Creates or refreshes independent project and reference code graphs; project document semantics use TA-extract-graph-semantics |
 
 ---
@@ -250,28 +250,18 @@ The dispatcher is [`bootstrap_documentation.ps1`](../../tools/bootstrap/bootstra
 <a id="domain-hardware-rag-setup-rag"></a>
 #### 3. Domain Hardware RAG Setup (`-Rag`)
 
-The Qdrant server configuration and `rag_qdrant` CLI live in the separate [qdrant-rag repository](https://github.com/tomek-anuszkiewicz/qdrant-rag). Clone and configure it before using RAG from this project:
+Use a [qdrant-rag checkout with Compose support](https://github.com/tomek-anuszkiewicz/qdrant-rag#compose-managed-rag-service). Follow its setup and cutover instructions to keep the existing Qdrant project, collection, canonical index state and client settings. Configure the service with the authorized Amiga checkout as its read-only source root. Bootstrap assumes the shared database is running and Docker Desktop is available.
+
+Use the CLI from that same checkout. Configure Compose mode, the shared service endpoint and credentials in the backend's client configuration. The read-only `rag_qdrant service mode` command should print `compose`. Run the status check from the Amiga repository root.
 
 ```powershell
-$RagRepo = "<path-to-qdrant-rag>"
-git clone https://github.com/tomek-anuszkiewicz/qdrant-rag.git $RagRepo
-Set-Location $RagRepo
-python -m pip install -r .\rag-qdrant\requirements.txt
-docker compose up -d
-```
-
-Start Docker Desktop before running `docker compose up -d`. Follow the cloned repository's README for any additional configuration required by the version you checked out. Qdrant stores its vectors in that repository's persistent Docker volume or bind mount; the CLI also needs a JSON file for incremental index state.
-
-Add the cloned repository's `rag-qdrant\bin` directory to `PATH` so `rag_qdrant` is available to the Amiga scripts and MCP adapter. For the current PowerShell session on Windows:
-
-```powershell
+$RagRepo = "<path-to-shared-qdrant-rag-checkout>"
 $env:PATH = "$RagRepo\rag-qdrant\bin;$env:PATH"
-Get-Command rag_qdrant.bat
-$env:RAG_INDEX_JSON = "<shared-rag-index-state-file>"
-rag_qdrant.bat --status --json
+rag_qdrant service mode
+.\tools\bootstrap\bootstrap_rag.ps1 -CheckOnly
 ```
 
-Set `RAG_INDEX_JSON` to the service's canonical writable state file for indexing. Search, status and source listing use the service configuration without a state-file argument. Add the launcher directory to your persistent user `PATH` if other shells or IDE sessions need it. When indexing is explicitly requested, follow [Chapter 5](#5-domain-hardware-knowledge-local-vector-rag-amiga-rag) from the Amiga repository root after documentation validation. The `-Rag` and `-All` bootstrap switches still use this repository's older, independent Qdrant container helper and may conflict with the external repository's Compose container on ports 6333/6334. Use the external repository's Compose setup and the direct CLI commands for the shared database.
+The check starts the shared RAG service if needed and prints its status. For an explicitly authorized indexing job, set `RAG_INDEX_JSON` to the canonical host path configured by the shared backend. After documentation validation, run `.\tools\bootstrap\bootstrap.ps1 -Rag` or `.\tools\bootstrap\bootstrap_rag.ps1 -Index` from the Amiga checkout. See [Chapter 5](#5-domain-hardware-knowledge-local-vector-rag-amiga-rag) for the source scopes and indexing workflow.
 
 <a id="code-knowledge-graph-setup-graphify"></a>
 #### 4. Code Knowledge Graph Setup (`-Graphify`)
@@ -300,6 +290,10 @@ manual reference refresh and query commands are described in
   - **Indexing trigger:** [TA-index-amiga-rag](../skills/TA-index-amiga-rag/SKILL.md) requires an explicit indexing request; editing or auditing documentation alone does not publish it to the shared index. There is no file-save watcher.
 - **Manual Reindexing:** Follow [TA-index-amiga-rag](../skills/TA-index-amiga-rag/SKILL.md) for validation, source scopes, shared state and the canonical commands. Do not index another project's notes from this checkout.
 - **Query Tools & FastMCP:**
+  - Start with the configured adapter or the `rag_qdrant` CLI. When retrieval
+    is unavailable or too broad, inspect the local sources for the selected
+    family and report the evidence gap under the
+    [hardware provenance contract](../skills/TA-research-hardware-manuals/references/provenance.md).
    - Query via MCP tool: `rag_search(query="<topic>", sources=["amiga", "devnotes"])`. The Amiga project only retrieves `devnotes`; its owning project indexes it.
   - Fast CLI search across hardware manuals:
     ```powershell
@@ -320,7 +314,7 @@ manual reference refresh and query commands are described in
 <a id="7-code-structure-relationships-graphify"></a><a id="7-code-structure--relationships-graphify"></a><a id="6-code-structure-relationships-graphify"></a><a id="6-code-structure--relationships-graphify"></a><a id="b-code-structure-relationships-ast-knowledge-graph-graphify"></a>
 ## 6. Code Structure & Relationships: Graphify
 - **Datasets:** `project` stores code and allowed project documents in `graphify-out/graph.json`; it honors Git exclusions and excludes imported sources. `reference` stores supported code throughout `ref_src/` in `ref_src/graphify-out/graph.json`, with Git exclusions disabled and Graphify exclusions retained. JSON vectors, generated data and vAmigaTS assembly are excluded; parser errors can leave partial symbols.
-- **Production:** `.\tools\bootstrap\bootstrap.ps1 -Graphify` and the Graphify stage of `-All` create or refresh both graphs. Commit preparation refreshes only the project graph. The dedicated manual reference operation is `python tools/graphify/refresh.py --graph reference`. Structural refresh preserves valid project semantic content; initial or needed document semantics use the host-agent procedure in the [semantic extraction skill](../skills/TA-extract-graph-semantics/SKILL.md). Keep the repository-owned TA graph skills when installing/upgrading Graphify.
+- **Production:** `.\tools\bootstrap\bootstrap.ps1 -Graphify` and the Graphify stage of `-All` create or refresh both graphs. Task closure refreshes the project graph on local `master` after publication. The dedicated manual reference operation is `python tools/graphify/refresh.py --graph reference`. Structural refresh preserves valid project semantic content; initial or needed document semantics use the host-agent procedure in the [semantic extraction skill](../skills/TA-extract-graph-semantics/SKILL.md). Keep the repository-owned TA graph skills when installing/upgrading Graphify.
 - **Queries:** Use the read-only repository entry point with an explicit native graph selector, such as `python tools/graphify/read.py query "Cpu BusResult" --graph graphify-out/graph.json` or `python tools/graphify/read.py explain "Paula" --graph ref_src/graphify-out/graph.json`. The same `--graph` selection applies to `path`. Compare graphs separately and verify source definitions; reference paths resolve under `ref_src/`.
 - **Optional filtering:** `python tools/graphify_query.py "Paula" --graph reference --scope minimig` filters nodes and edges before traversal using a disposable view under `.agent/tmp/`. Scopes are directories within the selected root. Missing graphs are reported without substitution or automatic builds. See the [tool README](../../tools/graphify/README.md) for roots, creation, caching and freshness.
 

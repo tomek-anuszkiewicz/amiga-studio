@@ -10,17 +10,17 @@ receivers:
           authenticator: bearertokenauth
 exporters:
   file/logs:
-    path: /capture/output/*/otel/logs.jsonl
-    append: true
+    path: /capture/output/logs-*.jsonl
+    flush_interval: 100ms
     group_by:
       enabled: true
-      resource_attribute: capture.route
+      resource_attribute: capture.output
   file/traces:
-    path: /capture/output/*/otel/traces.jsonl
-    append: true
+    path: /capture/output/traces-*.jsonl
+    flush_interval: 100ms
     group_by:
       enabled: true
-      resource_attribute: capture.route
+      resource_attribute: capture.output
 service:
   extensions: [bearertokenauth]
   pipelines:

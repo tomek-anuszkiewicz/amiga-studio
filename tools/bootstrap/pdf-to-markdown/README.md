@@ -176,7 +176,7 @@ PDF execution, OCR profile and page-selection tests live in `tests/` beside this
 program. Run them from the repository root:
 
 ```powershell
-python -m unittest discover -s tools/bootstrap/pdf-to-markdown/tests -q
+python tools/verification/run_unittest.py discover -s tools/bootstrap/pdf-to-markdown/tests -q
 ```
 
 Shared conversion transport tests live in `tools/bootstrap/conversion/tests/`.

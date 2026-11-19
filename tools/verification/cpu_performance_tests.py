@@ -6,6 +6,7 @@ import platform
 import subprocess
 import sys
 import threading
+import time
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
@@ -15,6 +16,7 @@ import psutil
 from benchmark_anomalies import (compare_a7, compare_baseline, compare_related, csv_bytes,
                                   load_snapshot, publish_current, publish_reports, report_lines,
                                   snapshot_from_run, write_snapshot)
+from case_report import run_reported
 from repository import REPO_ROOT
 
 CASES = REPO_ROOT / "benchmarks/m68k"
@@ -64,11 +66,20 @@ def select_cases(cases, selector=None):
     return selected
 
 
-def executable():
+def executable(archive=None):
     command = ["cargo", "bench", "-p", "test_runner", "--bench", "bench_instructions",
                "--no-run", "--message-format=json-render-diagnostics"]
     result = subprocess.run(command, cwd=REPO_ROOT, capture_output=True, text=True,
-                            encoding="utf-8", errors="replace", check=True)
+                            encoding="utf-8", errors="replace")
+    if archive:
+        build = archive.attachment("benchmark-build.log")
+        if build:
+            try:
+                build.write_text(result.stdout + result.stderr, encoding="utf-8")
+                archive.event("build_log", artifact=archive.link(build))
+            except OSError as error:
+                archive.record_error(error)
+    result.check_returncode()
     binary = None
     for line in result.stdout.splitlines():
         message = json.loads(line)
@@ -111,27 +122,37 @@ def attempt(binary, case_id, duration_ms, series, directory):
     directory.mkdir(parents=True)
     report_path = directory / "report.json"
     command = [binary, "--measure-case", case_id, str(duration_ms), str(series), str(report_path)]
-    process = subprocess.Popen(command, cwd=REPO_ROOT, stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE, text=True, encoding="utf-8", errors="replace")
     stop = threading.Event()
     active = threading.Event()
     active_series = [0]
     samples = []
-    monitor = threading.Thread(target=cpu_load, args=(process, stop, active, active_series, samples), daemon=True)
-    monitor.start()
     output_lines = []
-    for line in process.stdout:
-        if line.strip() == "SERIES_BEGIN":
-            active_series[0] += 1
-            active.set()
-        elif line.strip() == "SERIES_END":
-            active.clear()
-        else:
-            output_lines.append(line)
-    stderr = process.stderr.read()
-    process.wait()
-    stop.set()
-    monitor.join()
+    finished_series = 0
+    started = time.perf_counter()
+    with subprocess.Popen(command, cwd=REPO_ROOT, stdout=subprocess.PIPE,
+                          stderr=subprocess.PIPE, text=True, encoding="utf-8", errors="replace") as process:
+        monitor = threading.Thread(target=cpu_load,
+                                   args=(process, stop, active, active_series, samples), daemon=True)
+        monitor.start()
+        try:
+            for line in process.stdout:
+                if line.strip() == "SERIES_BEGIN":
+                    active_series[0] += 1
+                    active.set()
+                elif line.strip() == "SERIES_END":
+                    active.clear()
+                    finished_series += 1
+                else:
+                    output_lines.append(line)
+            stderr = process.stderr.read()
+            process.wait()
+            elapsed = time.perf_counter() - started
+        except KeyboardInterrupt:
+            process.terminate()
+            raise
+        finally:
+            stop.set()
+            monitor.join()
     output = ("".join(output_lines) + stderr).replace(str(REPO_ROOT), "<repo_path>")
     (directory / "execution.txt").write_bytes(output.encode("utf-8"))
     core = None
@@ -154,7 +175,8 @@ def attempt(binary, case_id, duration_ms, series, directory):
     disturbed = load_disturbed(load_samples, series)
     load_samples += [sample for sample in samples if "error" in sample]
     return {"report": str(report_path.relative_to(directory.parents[2])).replace("\\", "/"),
-            "exit_code": process.returncode, "load_samples": load_samples,
+            "exit_code": process.returncode, "outer_seconds": elapsed,
+            "series_begun": active_series[0], "series_ended": finished_series, "load_samples": load_samples,
             "observed_core": core, "external_busy_percent": observed, "disturbed": disturbed,
             "error": stderr.strip().replace(str(REPO_ROOT), "<repo_path>") if process.returncode else None}
 
@@ -177,7 +199,30 @@ def write_json(path, data):
     temporary.replace(path)
 
 
-def measure(selector=None, duration_ms=None, series=None):
+def archive_attempt(archive, directory, case_id, ordinal, record):
+    name = case_id.replace("/", "__") + f"-attempt-{ordinal}"
+    execution = archive.copy(directory / "execution.txt", name + "-execution.txt")
+    source = directory / "report.json"
+    native = archive.copy(source, name + "-native.json") if source.is_file() else None
+    if native is not None:
+        try:
+            metrics = json.loads(native.read_text(encoding="utf-8"))
+            samples = [sample for result in metrics["results"] for sample in result["samples"]]
+            archive.event("native_measurement", suite="bench_instructions", id=case_id, attempt=ordinal,
+                          artifact=archive.link(native), metric="ns per target",
+                          series=record["series_ended"], samples=samples)
+        except (OSError, ValueError, KeyError, TypeError) as error:
+            archive.record_error(error)
+    archive.event("case_finished", suite="bench_instructions", id=case_id, attempt=ordinal,
+                  outcome="failed" if record["exit_code"] else "passed", exit_code=record["exit_code"],
+                  seconds=record["outer_seconds"], disturbed=record["disturbed"],
+                  reason="external load or unavailable samples" if record["disturbed"] else None,
+                  detail=record["error"], stack=None, artifact=archive.link(execution))
+
+
+def measure(selector=None, duration_ms=None, series=None, archive=None):
+    if archive:
+        archive.phase("case selection", selector=selector, duration_ms=duration_ms, series=series)
     cases = catalog()
     selected = select_cases(cases, selector)
     shared = json.loads((CASES / "config.json").read_text(encoding="utf-8"))
@@ -185,7 +230,11 @@ def measure(selector=None, duration_ms=None, series=None):
     series = shared["series"] if series is None else series
     if duration_ms <= 0 or series <= 0:
         raise ValueError("duration-ms and series must be positive")
-    binary = executable()
+    if archive:
+        for case_id in selected:
+            archive.event("case_selected", suite="bench_instructions", id=case_id, attempt=1)
+        archive.phase("build")
+    binary = executable(archive)
     run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     run_dir = RESULTS / run_id
     run_dir.mkdir(parents=True, exist_ok=False)
@@ -197,14 +246,26 @@ def measure(selector=None, duration_ms=None, series=None):
                 "host": {"os": platform.system(), "architecture": platform.machine(),
                          "processor": platform.processor()}, "cases": {}}
     write_json(run_dir / "manifest.json", manifest)
+    if archive:
+        archive.phase("measurement", native_run_id=run_id, duration_ms=duration_ms, series=series)
+    completed = started = entered_cases = 0
     try:
         for case_id in selected:
+            entered_cases += 1
             print(f"[RUN] {case_id}", flush=True)
             attempts = []
             for index in range(2):
                 directory = run_dir / "attempts" / case_id.replace("/", "__") / str(index + 1)
+                ordinal = index + 1
+                started += 1
+                if archive:
+                    archive.event("case_started", suite="bench_instructions", id=case_id, attempt=ordinal,
+                                  executable=binary)
                 record = attempt(binary, case_id, duration_ms, series, directory)
                 attempts.append(record)
+                completed += 1
+                if archive:
+                    archive_attempt(archive, directory, case_id, ordinal, record)
                 if record["exit_code"] or not record["disturbed"]:
                     break
             chosen = attempts[-1]
@@ -216,7 +277,14 @@ def measure(selector=None, duration_ms=None, series=None):
         manifest["status"] = "complete"
         write_json(run_dir / "manifest.json", manifest)
     finally:
+        if archive:
+            archived_manifest = archive.copy(run_dir / "manifest.json", "manifest.json")
+            archive.event("native_manifest", artifact=archive.link(archived_manifest))
+            archive.event("counts", selected=len(selected), started=started, completed=completed,
+                          aborted=started - completed, never_started=len(selected) - entered_cases)
         if manifest["status"] == "complete":
+            if archive:
+                archive.phase("analysis")
             analyze(run_dir)
     print(f"Run directory: {run_dir}")
     return 1 if any(row["status"] == "failed" for row in manifest["cases"].values()) else 0
@@ -403,29 +471,44 @@ def refresh_current(run_dir):
     print(f"Refreshed {len(replacements)} current cases from {manifest['run_id']}")
 
 
+def measure_command(arguments, archive):
+    archive.phase("argument selection")
+    selector = None
+    if arguments[:1] and arguments[0] in ("case", "cases", "mnemonic", "opcode"):
+        if len(arguments) < 2:
+            raise ValueError(f"{arguments[0]} requires a selection")
+        selector, arguments = tuple(arguments[:2]), arguments[2:]
+    values = {}
+    if len(arguments) % 2:
+        raise ValueError("expected duration-ms N and series N")
+    for key, value in zip(arguments[::2], arguments[1::2], strict=True):
+        if key not in ("duration-ms", "series") or key in values:
+            raise ValueError(f"unknown or repeated parameter: {key}")
+        values[key] = int(value)
+    return measure(selector, values.get("duration-ms"), values.get("series"), archive)
+
+
+def main(argv):
+    if argv[:1] == ["analyze"] and len(argv) == 2:
+        analyze(argv[1])
+    elif argv[:1] == ["refresh"] and len(argv) == 2:
+        refresh_current(argv[1])
+    elif argv[:1] == ["measure"]:
+        return run_reported("CPU benchmark", [sys.executable, str(Path(__file__).resolve()), *argv],
+                            lambda report: measure_command(argv[1:], report))
+    else:
+        raise ValueError("use measure [case ID|cases FILE|mnemonic NAME|opcode XXXX] "
+                         "[duration-ms N] [series N], analyze RUN_DIRECTORY, "
+                         "or refresh RUN_DIRECTORY")
+    return 0
+
+
 if __name__ == "__main__":
     try:
-        if sys.argv[1:2] == ["analyze"] and len(sys.argv) == 3:
-            analyze(sys.argv[2])
-        elif sys.argv[1:2] == ["refresh"] and len(sys.argv) == 3:
-            refresh_current(sys.argv[2])
-        elif sys.argv[1:2] == ["measure"]:
-            arguments = sys.argv[2:]
-            selector = None
-            if arguments[:1] and arguments[0] in ("case", "cases", "mnemonic", "opcode"):
-                selector, arguments = tuple(arguments[:2]), arguments[2:]
-            values = {}
-            if len(arguments) % 2:
-                raise ValueError("expected duration-ms N and series N")
-            for key, value in zip(arguments[::2], arguments[1::2]):
-                if key not in ("duration-ms", "series") or key in values:
-                    raise ValueError(f"unknown or repeated parameter: {key}")
-                values[key] = int(value)
-            sys.exit(measure(selector, values.get("duration-ms"), values.get("series")))
-        else:
-            raise ValueError("use measure [case ID|cases FILE|mnemonic NAME|opcode XXXX] "
-                             "[duration-ms N] [series N], analyze RUN_DIRECTORY, "
-                             "or refresh RUN_DIRECTORY")
+        sys.exit(main(sys.argv[1:]))
+    except KeyboardInterrupt:
+        print("Error: benchmark measurement interrupted", file=sys.stderr)
+        sys.exit(130)
     except (OSError, ValueError, subprocess.CalledProcessError) as error:
         print(f"Error: {error}", file=sys.stderr)
         sys.exit(1)

@@ -6,14 +6,14 @@ category: "Design"
 subsystem: "general"
 status: "active"
 created: 2026-08-31
-updated: 2026-11-16
+updated: 2026-11-19
 related: ["[Machine Loop.md](Machine%20Loop.md)", "[Game Ports.md](Game%20Ports.md)", "[MemoryBus.md](MemoryBus.md)", "[Physical Memory.md](Physical%20Memory.md)", "[CPU Motorola M68000.md](CPU%20Motorola%20M68000.md)", "[Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md)", "[Agnus.md](Agnus.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)", "[Interrupts.md](Interrupts.md)", "[Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)", "[Custom Chip Register Ownership and Access Matrix.md](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md)", "[Testing Strategy and Quality Assurance.md](Verification/Testing%20Strategy%20and%20Quality%20Assurance.md)"]
 ---
 
 # Amiga 500 General System Architecture
 
 > [!NOTE]
-> Detailed inter-chip signal propagation rules are codified in [`hardware-bus-topology.md`](../../../.agents/rules/hardware-bus-topology.md) and [Cross-Chip Signals and Action Dispatch Catalog.md](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md).
+> Inter-chip isolation follows the [physical bus topology](#11-physical-bus-topology--inter-chip-isolation-invariant). The [cross-chip signal catalog](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md) owns the signal directions and delivery phases.
 
 ---
 
@@ -42,7 +42,19 @@ graph TD
 
 ### 1.1 Physical Bus Topology & Inter-Chip Isolation Invariant
 
-In the physical Commodore Amiga 500 architecture, custom chips do not share an open software memory bus, nor do they communicate via dynamic callbacks or mutual references. The system strictly adheres to three immutable physical hardware rules:
+For chip, DMA, bus, interrupt or peripheral coordination, read the owning
+specifications before design or implementation. The [Machine Loop](Machine%20Loop.md)
+owns master CCK sequencing. The [CPU bus-cycle specification](CPU%20Motorola%20M68000.md)
+defines the four-clock, two-CCK transfer, and [MemoryBus](MemoryBus.md) defines
+how contested Chip RAM keeps the active CPU micro-step pending. Use the
+[register ownership matrix](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md),
+[cross-chip signal catalog](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)
+and [platform invariants](Platform%20Quirks%20and%20Invariants%20Catalog.md) for
+interfaces. Unresolved hardware questions follow the
+[source provenance guide](../../../.agents/skills/TA-research-hardware-manuals/references/provenance.md).
+
+The motherboard connects chips through shared address, data and control lines.
+The machine loop and memory bus implement that wiring at the modeled phases.
 
 ```mermaid
 flowchart TD
@@ -81,10 +93,15 @@ flowchart TD
    - All inter-chip interactions (DMA requests, interrupt lines, blanking, strobes) represent physical copper PCB traces coordinated through the machine loop and `MemoryBus`.
 2. **Agnus as the Exclusive DMA Address Master:**
    - Agnus is the **sole bus master and address generator** for all autonomous Chip RAM DMA channels (Bitplanes, Sprites, Audio, Floppy Disk, Copper, and Blitter).
-   - The supported 8370 and 8371 models address the lower 512 KB for DMA; all current machine presets install 512 KB of Chip RAM.
+   - The supported 8370 and 8371 models address the lower 512 KB for DMA. The
+     [Agnus specification](Agnus.md) owns 18-bit OCS word
+     addresses, their shared mask and register-half rules.
    - Agnus places the memory address onto the Chip RAM address bus and simultaneously asserts the target custom register offset onto the internal Register Address (`RGA`) bus.
 3. **Specialized Custom Chips as Passive Bus Latchers (Zero Direct Memory Reads):**
-   - Neither **Denise** nor **Paula** possesses DMA address generation circuits, and neither holds pointers to `PhysicalMemory`.
+   - Denise and Paula own the receiving latches. Their implementation must not
+     hold direct Chip RAM views or `PhysicalMemory` references. For
+     [disk DMA](DMA.md), Agnus supplies the address in both directions and Paula
+     supplies or receives the holding-register word.
    - Specialized chips **never initiate autonomous memory reads**. During an assigned DMA slot, the memory system reads the 16-bit word from Chip RAM onto the shared data bus, and the receiving chip passively latches the word into its internal holding register (`BPLxDAT`, `SPRxDAT`, `AUDxDAT`, `DSKDAT`) upon matching its `RGA` strobe.
 4. **`MachineLoop` as Motherboard PCB Simulator:**
    - The top-level `A500Machine` resolves wiring after producer work. Each recipient owns incoming inputs and samples them at the explicit [Machine Loop phases](Machine%20Loop.md#connections-advanced-within-the-step).
@@ -221,6 +238,16 @@ Cargo manifests and the architecture check linked above.
 
 GUI host-key translation reuses the keyboard's named modifier keycodes. This
 dependency shares encodings; the machine owner still applies all input events.
+
+### Workspace layout
+
+Keep crates flat under `crates/*`. Each library declares `src/<crate_directory>.rs` as its Cargo target. Workspace crates and helper tools use named roots. `lib.rs` is prohibited.
+
+The machine facade exposes peer subsystems side by side for frontends. Peers do not re-export each other merely because they collaborate. The shared `config` crate is foundational.
+
+Contained engines are modules of their owner. Agnus owns Copper, Blitter and DMA. Denise owns sprites. Paula owns audio and interrupts. Game Ports owns mouse and joystick. Use flat source files with subsystem prefixes and explicit re-exports of subsystem namespaces and useful primary types. Glob exports are prohibited. The owner still re-exports retained child crates such as Denise's `frame_builder`.
+
+The [CPU instruction source layout](CPU%20Motorola%20M68000.md#instruction-source-layout) defines exact instruction file groupings. Follow the [internal migration contract](../../../.agents/rules/internal-migrations.md) before changing an interface or generated format.
 
 ### Chipset design chapters
 

@@ -1,16 +1,18 @@
 ﻿# Language policy
 
-Answer in the user's language and persist repository artifacts in English.
-`.agent/tasks/` is always excluded from language/vocabulary checks, even when named
-explicitly. Translate user concepts into idiomatic English rather than copying
-untranslated prompt wording into repository artifacts.
+Answer in the user's language. All roles write repository artifacts in English,
+including saved plans and both text and JSON agent result files. This requirement
+applies regardless of the conversation language, including Polish.
 
-Batch preparation requires the full repository-owned text scan through the canonical
-commit profile, including unchanged and nonignored new files. Milestone preparation
-retains that gate. Matching evidence may be reused; ordinary turns, generic validation
-and document edits do not trigger scans or vocabulary work. An explicit scoped audit
-selects its files without sweeping unrelated pending changes. Commands and dictionary
-mechanics belong to [agent tooling](../references/agent-tooling.md#recording-and-validating-changes).
+The `.agent/tasks/` exclusion applies only to automated language and vocabulary
+checks, even when paths are named explicitly. Translate user concepts into
+idiomatic English when writing repository artifacts.
+
+Ordinary task closure runs one full English scan in the primary checkout on local
+`master` after publication. The scan includes unchanged authored files and new
+nonignored files. The commit and milestone profiles do not select the scan.
+An explicit scoped audit selects its files without sweeping unrelated work.
+Commands and dictionary mechanics belong to [agent tooling](../references/agent-tooling.md#recording-and-validating-changes).
 
 The authoritative scope is `tools/verification/checks/check_english.json`: generated
 outputs, caches, vendor/imported collections and `tools/bootstrap/books/` remain
@@ -41,7 +43,13 @@ scanner logic, authored scope or other acceptance criteria.
 
 Resolve clear findings first. Report only remaining ambiguity with file, line,
 context and options; missing meaning or unverifiable terminology requires a decision.
-Unresolved findings/scan errors block readiness. Continue the same canonical batch
-after fixes, retaining valid independent evidence; do not duplicate a full scan or
-emulator tests for vocabulary-only corrections. An explicit standalone audit repeats
-its scan after corrections. Summarize automatic fixes and additions with reasons.
+During closure, ambiguous terms, source corrections and scanner or read errors
+keep the published task open and block cleanup. Report the cause and retain the
+worktree. An actual typo or required source edit goes through a separately selected
+correction. With only justified vocabulary and exact-file literal additions, use
+the [published closure procedure](../../tools/verification/README.md#post-publication-closure)
+to create the one authorized vocabulary commit on the same `master`. Preserve
+external changes if the recorded input moves or conflicts. After the commit,
+proceed to the graph without another scan, verifier, tests, reviews or diary edit.
+A standalone language audit repeats its scan after corrections. Summarize reviewed
+additions and their reasons.

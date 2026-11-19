@@ -12,10 +12,10 @@ The test checks its version, checksum and real reset entry. From the repository 
 
 ```powershell
 $env:AMIGA_KICKSTART_ROM = '<private-rom-path>'
-cargo test -p machine_loop --release --test test_native_disk_boot cross1_boots -- --ignored --nocapture
+python tools/verification/run_rust_tests.py -- cargo test -p machine_loop --release --test test_native_disk_boot cross1_boots -- --ignored --nocapture
 
 $env:AMIGA_WORKBENCH_ADF = '<private-workbench-adf-path>'
-cargo test -p machine_loop --release --test test_native_disk_boot workbench13 -- --ignored --nocapture
+python tools/verification/run_rust_tests.py -- cargo test -p machine_loop --release --test test_native_disk_boot workbench13 -- --ignored --nocapture
 ```
 
 The first check reads the original `ref_src/vAmigaTS/Agnus/Copper/cross/cross1/cross1.adf`.

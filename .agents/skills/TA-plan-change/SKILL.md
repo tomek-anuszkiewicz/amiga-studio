@@ -9,9 +9,12 @@ Use [the invocation contract](../../references/workflow-contract.md). Inputs are
 the requested outcome, relevant requirements, read scope, authorized plan paths,
 candidate and round budget. This operation uses `TA-planner` and result kind `plan`.
 
-1. Read the supplied requirements and relevant architecture. Identify the starting
+1. For a new task, check the caller's [telemetry startup confirmation](../../references/workflow-contract.md#telemetry-startup-prerequisite).
+   Read the supplied requirements and relevant architecture. Identify the starting
    state, constraints, acceptance criteria and unresolved decisions.
-2. Write the bounded implementation plan in the assigned `.agent/tasks/` path.
+2. Write the bounded implementation plan in English in the assigned
+   `.agent/tasks/` path, regardless of the conversation language, including Polish.
+   Follow the shared [language policy](../../rules/language-policy.md).
    Distinguish necessary changes from optional ideas and preserve unfinished work.
 3. Return the identified plan, decisions, risks and acceptance criteria as text and
    JSON. Stop without test design, implementation, staging or a next-step invocation.

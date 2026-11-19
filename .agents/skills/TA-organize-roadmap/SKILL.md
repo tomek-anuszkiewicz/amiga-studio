@@ -5,8 +5,8 @@ description: Consolidate and order selected pending roadmap work without deletin
 
 # Organize the selected pending work
 
-Apply [the invocation contract](../../references/workflow-contract.md) and
-[roadmap policy](../../rules/roadmap-maintenance.md).
+Apply [the invocation contract](../../references/workflow-contract.md).
+[ROADMAP.md](../../../ROADMAP.md) is the prioritized pending and active backlog.
 Executor: main session; result kind: `documents`.
 Inputs: selected pending sections, user priorities and known dependencies.
 
@@ -14,7 +14,8 @@ Inputs: selected pending sections, user priorities and known dependencies.
    descriptions, methods and history. Preserve uncertain completion as pending.
 2. Consolidate related objectives and remove duplicate wording while retaining
    substantive requirements, acceptance evidence, failure handling and decisions.
-   Detailed execution plans remain under `.agent/tasks/`.
+   Keep near-term work concrete and distant work concise. Detailed execution
+   plans remain under `.agent/tasks/`.
 3. Order work by user priorities and physical dependencies: bus/clocks, DMA,
    display, peripherals, firmware. Preparatory conversion may precede implementation.
 4. Renumber and update affected references. Run the shared structural check:

@@ -1,7 +1,6 @@
 # Vault metadata and relationships
 
-These criteria apply to authored Design notes and relevant Reference relationships,
-under [documentation policy](../../../rules/docs-maintenance.md).
+These criteria apply to authored Design notes and relevant Reference relationships.
 Each Design document begins on line one with frontmatter:
 
 ```yaml
@@ -38,13 +37,9 @@ manual links `../Reference/<book>/<file>.md`, and repository paths
 spaces correctly. Inline and final references are complementary, not duplicate
 mandatory inventories.
 
-Reference-book Markdown has line-one `title`, `book`, `chapter` and `tags`.
-Use the source book/publication identifier, the file's named unit (including front
-matter) and tags `reference`, `book`, `chapter`, plus existing supported topics.
-Replace an existing `manual` property with `book` without changing its value.
-Infer topics from the file's actual content, not book title alone; include `amiga`
-when appropriate. Proposed book corrections retain their concrete approval
-boundary. A checker validates structure, not substantive topic selection.
+Reference books use the [book metadata schema](../../../../tools/bootstrap/book-to-markdown/reference-book-metadata.md).
+Preserve source-note metadata while editing. Raw conversion follows the
+[nested bootstrap instructions](../../../../tools/bootstrap/AGENTS.md).
 
 The full Design checker rejects empty tags and broken links as well as metadata
 structure. The canonical checker scans every local Amiga Markdown file, including

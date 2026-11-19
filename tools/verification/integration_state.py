@@ -118,7 +118,9 @@ class RefTransaction:
             self.send("start")
             changes = (f"verify {target} {base}\n" if verify_only else
                        f"verify {target} {base}\ndelete {source} {commit}\n" if delete else
-                       f"update {target} {commit} {base}\nverify {source} {commit}\n")
+                       f"update {target} {commit} {base}\n")
+            if not (verify_only or delete) and source is not None:
+                changes += f"verify {source} {commit}\n"
             changes += "".join(f"verify {branch} {tip}\n" for branch, tip in sources)
             self.process.stdin.write(changes.encode("utf-8"))
             self.send("prepare")

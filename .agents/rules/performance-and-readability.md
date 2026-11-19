@@ -12,13 +12,11 @@ must remain traceable to hardware phases. Language prohibitions belong to the
 [Rust rule](rust-best-practices.md), and detailed readability/inlining acceptance
 belongs to [architecture criteria](../references/architecture-criteria.md).
 
-Requested investigation uses [TA-profile-emulation](../skills/TA-profile-emulation/SKILL.md).
-Selected implementation uses [TA-optimize-emulation](../skills/TA-optimize-emulation/SKILL.md).
-Preserve an original baseline before mutation, comparable active/idle measurements,
-correctness and a final comparison with that baseline. Distinguish host savings
-from emulated clock counts; no speedup claim without measurement. Small recurring
-savings are valid candidates even below a profiler display threshold or arbitrary
-percentage, but the assignment does not authorize unrelated optimization.
+Use [TA-profile-emulation](../skills/TA-profile-emulation/SKILL.md) for an
+investigation and [TA-optimize-emulation](../skills/TA-optimize-emulation/SKILL.md)
+for selected optimization changes. The operations share the
+[measurement contract](../skills/TA-profile-emulation/references/optimization-evidence.md).
+Distinguish host cost from emulated clock counts. Measure before claiming a speedup.
 
 CPU phase and micro-step fusion requirements remain in the
 [CPU Micro-Step State Machine](../../Obsidian/Amiga/Design/CPU%20Micro-Step%20State%20Machine.md).

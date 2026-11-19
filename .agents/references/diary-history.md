@@ -1,6 +1,7 @@
 # Engineering history criteria
 
-The [diary policy](../rules/diary-maintenance.md) owns timing and required entries.
+The [completion criteria](../../Obsidian/Amiga/Design/Verification/Testing%20Strategy%20and%20Quality%20Assurance.md#roadmap-and-milestone-completion) own the compaction trigger.
+[Batch preparation](../skills/TA-prepare-batch/SKILL.md) owns ordinary entries.
 Use these criteria when compacting history or reviewing the resulting account.
 
 Keep distinct completed engineering stages identifiable. Extend their existing

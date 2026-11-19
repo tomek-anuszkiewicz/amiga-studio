@@ -51,7 +51,7 @@ port 1 and a joystick on port 2. Kickstart 1.2/1.3 is supplied externally.
 
 [`A500Config`](../../../crates/config/src/config.rs) permits atomic preset
 changes rather than independently mutable memory and device settings. This keeps
-the supported configurations within the three deliberate profiles above.
+the supported configurations within the three deliberate profiles above. Changes to internal configurations follow the [internal migration contract](../../../.agents/rules/internal-migrations.md).
 
 ---
 

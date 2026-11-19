@@ -112,6 +112,16 @@ def render(result):
     data = result["result"]
     if "verdict" in data:
         lines.extend([f"Verdict: {data['verdict']}; scope: {data.get('lane', data['kind'])}.", ""])
+    if "routing" in data:
+        lines.extend(["## Scope and finding comparisons", ""])
+        lines.extend(f"- Inspected {item}" for item in data["inspected_scope"])
+        for comparison in data["routing"]["comparisons"]:
+            finding = comparison["finding"]
+            lines.append(f"- {finding['lane']}/{finding['id']} checked {comparison['trigger']}. "
+                         f"Parent {comparison['parent']['outcome']}. Current {comparison['current']['outcome']}. "
+                         f"Parent scope {comparison['parent_scope']}. Changed input {comparison['change']}. "
+                         f"Disposition {comparison.get('disposition', 'open')}.")
+        lines.append("")
     lines.extend(["## Findings", ""])
     for finding in result["findings"]:
         lines.append(f"- {finding['id']} ({finding['severity']}, {finding['disposition']}): "

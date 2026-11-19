@@ -23,7 +23,7 @@ exception never extends to hardware requirements or protected references.
 
 Specifications need not narrate every implementation detail. Choose unspecified
 technical details within existing requirements and scope. Apply
-[Documentation Value](docs-maintenance.md#documentation-value) to scoped enrichment,
+[Documentation Value](../references/documentation-criteria.md#documentation-value) to scoped enrichment,
 including source-backed hardware knowledge, rather than transcribing code. A missing
 description alone is not a conflict. Do not legitimize a contradiction or unauthorized
 feature by documenting it. Report-only reviewers identify findings; selected writers
@@ -38,11 +38,9 @@ code change. Resolve authorized differences together; report out-of-scope work
 without declaring completion. Never weaken an approved requirement merely to match
 existing code.
 
-Required batch assessment uses
-[TA-review-spec-compliance](../skills/TA-review-spec-compliance/SKILL.md); milestone
-comparison uses [TA-review-semantic-parity](../skills/TA-review-semantic-parity/SKILL.md).
-A matching broader audit can satisfy overlap. Missing assessment or unresolved
-agreement blocks readiness; each operation stops at its result.
+The [scoped specification review](../skills/TA-review-spec-compliance/SKILL.md)
+and [stage-wide semantic comparison](../skills/TA-review-semantic-parity/SKILL.md)
+own the formal assessment and its readiness criteria.
 
 ## Reference Artifact Integrity
 

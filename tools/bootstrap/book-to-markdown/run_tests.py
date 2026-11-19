@@ -1,6 +1,5 @@
 """Install missing pinned review dependencies before running its tests."""
 
-import argparse
 import importlib.metadata
 import json
 from pathlib import Path
@@ -11,6 +10,8 @@ import sys
 
 HERE = Path(__file__).resolve().parent
 REPO_ROOT = HERE.parents[2]
+sys.path.insert(0, str(REPO_ROOT / "tools/verification"))
+from case_report import ReportArgumentParser, run_reported
 
 
 def ensure_python_packages():
@@ -46,23 +47,40 @@ def ensure_katex():
             raise OSError(f"KaTeX asset is still missing after npm ci: {asset}")
 
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
+def execute(argv, report):
+    report.phase("argument selection")
+    parser = ReportArgumentParser(report, description=__doc__)
     parser.add_argument("-p", "--pattern")
-    parser.add_argument("-k", "--case")
-    args = parser.parse_args()
+    parser.add_argument("-k", "--case", action="append")
+    args = parser.parse_args(argv)
     try:
+        report.phase("dependency setup")
         ensure_python_packages()
         ensure_katex()
         command = [sys.executable, str(HERE / "tests/run_suite.py"), "-q"]
         if args.pattern:
             command += ["-p", args.pattern]
-        if args.case:
-            command += ["-k", args.case]
-        return subprocess.run(command, cwd=REPO_ROOT, check=False).returncode
+        for case in args.case or ():
+            command += ["-k", case]
+        report.phase("test execution", command=command)
+        return subprocess.run(command, cwd=REPO_ROOT, check=False, env=report.child_environment()).returncode
     except (OSError, subprocess.CalledProcessError) as error:
+        report.event("launcher_error", detail=str(error), native_exit_code=getattr(error, "returncode", None))
         print(f"[ERROR] Book Review test dependencies could not be installed: {error}", file=sys.stderr)
         return 1
+
+
+def main(argv=None):
+    argv = list(sys.argv[1:] if argv is None else argv)
+
+    def run(report):
+        try:
+            return execute(argv, report)
+        finally:
+            report.merge_children()
+
+    return run_reported("Book Review test launcher", [sys.executable, str(Path(__file__).resolve()), *argv],
+                        run, cwd=REPO_ROOT)
 
 
 if __name__ == "__main__":

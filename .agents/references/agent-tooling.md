@@ -38,10 +38,9 @@ installation and recording approved reference baselines remain separate.
 
 ## Recording and Validating Changes
 
-Commit policy is in [git-commits.md](../rules/git-commits.md); diary policy
-is in [diary-maintenance.md](../rules/diary-maintenance.md). At the selected
-[preparation step](../skills/TA-prepare-batch/SKILL.md), inspect the diff and prepare
-entries with verification already observed. Verification and the four independent
+Use the [batch policy](../rules/git-commits.md) and the selected
+[preparation step](../skills/TA-prepare-batch/SKILL.md) for staged entries
+and their observed verification. Verification and the four independent
 [review lanes](review-common.md) are separately selected operations; missing
 reports remain readiness prerequisites. Put the final profile outcome in commit
 messages and the completion report. Prepare all entries and messages before
@@ -76,9 +75,10 @@ design updates, and diary for the same concern belong together.
 For an explicit scoped language task, use
 `python tools/verification/verify.py check english files <paths>`; for a full requested
 audit, use `python tools/verification/verify.py check english`. Ordinary turns do
-not trigger either scan. During preparation, use the canonical preliminary English
-gate and resume after corrections; do not duplicate it as a standalone pass. Both commit
-and milestone profiles include this scan. Install its pinned dictionary dependency with `python -m pip install -r tools/verification/checks/requirements.txt`. Scope exclusions and text formats live
+not trigger either scan. For ordinary task closure on primary local `master`, use the
+[post-publication procedure](../../tools/verification/README.md#post-publication-closure).
+The scanner requires the pinned dictionary dependency in
+`tools/verification/checks/requirements.txt`. Scope exclusions and text formats live
 in `tools/verification/checks/check_english.json`; maintain them according to
 [language-policy.md](../rules/language-policy.md). Explicit file arguments
 scan those entire files using the same English dictionary and project vocabulary, except for `always_excluded_directories`. Task plans under `.agent/tasks/` are always excluded and need no vocabulary or file-specific exceptions. Reviewed terms live in [english_words/](../../tools/verification/checks/english_words/); deliberate literal examples use the scope catalog's exact-file `file_words` map. Invoke validation explicitly; use no lifecycle or Git hooks.

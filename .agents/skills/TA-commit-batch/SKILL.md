@@ -25,7 +25,8 @@ content, complete current canonical evidence and four applicable independent app
 4. Verify the resulting final tree and sequence. For integration, seal the frozen
    record with `integrate seal record <path>`; no expensive rerun is needed solely
    because those exact mechanical commits changed HEAD.
-5. Return commit IDs, final identity, evidence and seal outcome. Acceptance covers
+5. Return commit IDs, final identity, evidence, retained storage observation and
+   seal outcome. Reuse matching reports and checks after mechanical completion. Acceptance covers
    the combined candidate, not independently tested intermediate commits.
 
 Stop after commits/sealing. Do not repair prerequisites, edit content, publish,

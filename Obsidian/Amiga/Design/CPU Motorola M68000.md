@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "m68000"
 status: "active"
 created: 2026-08-31
-updated: 2026-11-11
+updated: 2026-11-19
 related: ["[CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md)", "[CPU SingleStepTests.md](Verification/CPU%20SingleStepTests.md)", "[MemoryBus.md](MemoryBus.md)", "[Physical Memory.md](Physical%20Memory.md)", "[DMA.md](DMA.md)", "[Interrupts.md](Interrupts.md)", "[Machine Loop.md](Machine%20Loop.md)", "[Platform Quirks and Invariants Catalog.md](Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
 tracked_paths:
   - "crates/cpu"
@@ -105,6 +105,10 @@ The physical 68000 also has bus-request and bus-grant signals for other bus
 masters. This emulator models Agnus's Chip RAM contention through bus results;
 it does not expose a complete BR/BG/BGACK pin protocol or prove expansion-bus
 arbitration through SingleStep tests.
+
+## Instruction source layout
+
+Keep `crates/cpu/src/instructions/` flat, with one mnemonic per file. Subdirectories and umbrella files grouping distinct mnemonics are prohibited. Oversized instruction exceptions still use flat files. The exact grouping exceptions are `move_sr_ccr.rs` and `logic_sr_ccr.rs`, the size-based files `move_b.rs`, `move_w.rs` and `move_l.rs`, and the condition-family files `bcc.rs`, `dbcc.rs` and `scc.rs`.
 
 ## Instruction stream and prefetch
 

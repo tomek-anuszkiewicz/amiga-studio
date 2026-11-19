@@ -20,6 +20,8 @@ import commands
 import execution
 import integration
 import integration_cleanup
+from integration_closure import capture_binding, closure_record
+from test_integration_closure import fixture_registration
 import integration_state
 import repository
 import verify
@@ -80,7 +82,28 @@ class IntegrationTests(unittest.TestCase):
         integration_state.save(self.record, record)
         if record["state"] == "published":
             integration_state.save(integration.cleanup_record(record), record)
+            self.complete_closure_fixture(record)
         return record["commit"], sources
+
+    def complete_closure_fixture(self, frozen):
+        # The separate closure tests run the real scanner and graph producer.
+        path, receipt = closure_record(frozen)
+        commit = frozen["commit"]
+        preserved = "session.jsonl"
+        directory = ".agent/task-archives/task/execution/"
+        self.write(self.target, directory + "registration.json",
+                   json.dumps(fixture_registration(self.target / ".git", "task", "execution")))
+        self.write(self.target, directory + preserved, "Selected fixture file\n")
+        frozen["capture"] = capture_binding(self.target, "task", "execution")
+        durable = integration.cleanup_record(frozen)
+        integration_state.save(durable, frozen)
+        source_copy = Path(frozen["source_root"]) / ".agent/tmp/verification/commit/integration.json"
+        if source_copy.is_file():
+            integration_state.save(source_copy, frozen)
+        receipt.update(language={"state": "complete", "final_commit": commit}, graph={"commit": commit},
+                       preservation={"task_id": "task", "execution_id": "execution", "commit": commit,
+                                     "complete": True, "files": {"session": {"destination": preserved}}})
+        integration_state.save(path, receipt)
 
     def install_worktree_tool(self):
         tool = Path(__file__).resolve().parents[2] / "worktree.ps1"
@@ -101,6 +124,7 @@ class IntegrationTests(unittest.TestCase):
         record["target_root"] = str(self.target)
         integration_state.save(self.record, record)
         integration_state.save(integration.cleanup_record(record), record)
+        self.complete_closure_fixture(record)
         self.install_worktree_tool()
         return record
 
@@ -398,6 +422,8 @@ class IntegrationTests(unittest.TestCase):
         self.assertNotEqual(first, second_control)
         self.assertEqual(first.read_bytes(), original)
         self.assertEqual(integration.read(second_control)["source_ref"], "refs/heads/other")
+        self.complete_closure_fixture(integration.read(first))
+        self.complete_closure_fixture(integration.read(second_control))
         with patch.object(integration_cleanup, "stopped"):
             integration_cleanup.cleanup(self.target, first)
             integration_cleanup.cleanup(self.target, second_control)
@@ -439,6 +465,7 @@ class IntegrationTests(unittest.TestCase):
         integration.publish(self.source, self.record)
         self.assertEqual(self.git(self.target, "rev-parse", "HEAD"), feature)
         self.assertEqual((self.target / "value.txt").read_text(), "already tested\n")
+        self.complete_closure_fixture(integration.read(self.record))
         with patch.object(integration_cleanup, "stopped"):
             integration_cleanup.cleanup(self.target, self.record)
         self.assertFalse(self.source.exists())

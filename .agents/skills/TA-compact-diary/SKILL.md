@@ -8,7 +8,7 @@ description: Consolidate selected settled diary history into thematic chapters w
 Apply [the invocation contract](../../references/workflow-contract.md).
 Executor: main session; result kind: `documents`.
 Inputs: diary scope and explicit compaction request or actual closure trigger.
-Read [diary policy](../../rules/diary-maintenance.md) and
+Read the [closure trigger](../../../Obsidian/Amiga/Design/Verification/Testing%20Strategy%20and%20Quality%20Assurance.md#roadmap-and-milestone-completion) and
 [history criteria](../../references/diary-history.md).
 
 1. Record current line/byte counts. Read affected changelog entries, owning chapters

@@ -12,3 +12,4 @@ pub mod singlestep_suite;
 pub mod singlestep_vectors;
 pub mod test_memory_bus;
 pub mod transactions;
+mod vector_report;

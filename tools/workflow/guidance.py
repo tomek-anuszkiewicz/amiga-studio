@@ -54,6 +54,65 @@ def check_candidate(candidate, root, errors):
         read_reference(ref, root, errors)
 
 
+def check_review_route(guidance, source, root, errors):
+    ref = guidance.get("review_route_ref")
+    operations = [item for item in guidance["options"] if item["kind"] == "operation"]
+    if not ref and not operations:
+        return
+
+    from review_inputs import Artifacts, REFERENCE, check_shape, current_route_path, normalize_candidate
+    from review_routing import recommend
+
+    root = root.resolve()
+    artifacts = Artifacts(root)
+    authority = current_route_path(guidance["task_id"], guidance["work_item_id"])
+    try:
+        current = artifacts.path(authority)
+        if not (ref or (source and source["result"]["kind"] == "review") or current.parent.exists()):
+            return
+        published = check_shape(json.loads(current.read_bytes()), REFERENCE, authority)
+        if ref != published:
+            errors.append("review guidance requires the current authoritative routing request")
+            return
+    except (ValueError, OSError) as error:
+        errors.append(f"current review routing request is unavailable: {error}")
+        return
+
+    try:
+        request = artifacts.read_json(ref)
+        source_identity = None
+        if operations:
+            source_identity = (guidance.get("source_result"),
+                               source["inputs"]["candidate"] if source else None,
+                               source["result"]["kind"] if source else None)
+        advice = recommend(request, root, source=source_identity)
+    except (ValueError, OSError) as error:
+        errors.append(f"invalid review routing request: {error}")
+        return
+    if any(advice.get(name) != guidance[name] for name in ("task_id", "work_item_id")):
+        errors.append("review sequence belongs to another task or work item")
+    candidate = guidance["current_candidate"]
+    if candidate:
+        try:
+            if normalize_candidate(candidate) != advice.get("candidate"):
+                errors.append("review guidance does not identify the current frozen candidate")
+        except (ValueError, KeyError, TypeError) as error:
+            errors.append(f"invalid frozen review candidate: {error}")
+    stopped = advice["phase"] in (
+        "human_decision_required", "paused", "one_round_authorized", "continuation_already_selected", "needs_input",
+    )
+    if stopped and operations:
+        errors.append("the review checkpoint or missing history suppresses operation options")
+        if advice["phase"] == "needs_input":
+            errors.extend(f"review routing: {gap}" for gap in advice["gaps"])
+    expected = {item["skill"] for item in advice["recommended_lanes"]}
+    if not stopped:
+        for item in operations:
+            assignment = item["assignment"]
+            if assignment and assignment["skill"].startswith("TA-review-") and assignment["skill"] not in expected:
+                errors.append(f"{item['id']}: review lane is outside the current recommendation")
+
+
 def validate_guidance(guidance, schema, root):
     errors = [f"{'/'.join(map(str, error.path))}: {error.message}" for error in
               Draft202012Validator(schema["$defs"]["guidance"]).iter_errors(guidance)]
@@ -98,6 +157,7 @@ def validate_guidance(guidance, schema, root):
             errors.append("source candidate differs from the preserved worker input")
     elif not guidance["identity_limits"]:
         errors.append("missing source result requires an identity limitation")
+    check_review_route(guidance, source, root, errors)
     if guidance["supersedes"] is not None:
         content = read_reference(guidance["supersedes"], root, errors)
         if content is not None:

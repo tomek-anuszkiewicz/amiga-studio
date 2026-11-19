@@ -20,7 +20,9 @@ integration also supplies its immutable base and applicable original source iden
 3. Inspect the final canonical verdict and retained artifacts. Preserve matching
    successful groups under the existing protocol; failed, missing, interrupted or
    invalidated groups must execute. Same command/results location supports a caller-
-   selected continuation without inventing a cross-HEAD cache.
+   selected continuation. HEAD changes start a new ordinary batch. Only the
+   frozen mechanical commit procedure bridges accepted integration commits.
+   Treat coverage execution, export and summary as one evidence bundle.
 4. Return actual executed/retained groups, evidence identities, failures and limits.
    Reference metadata failures remain reported with paths and proposed corrections
    for their existing approval boundary; the verifier and this skill do not edit them.

@@ -26,6 +26,8 @@ from batch_lock import VerificationLock
 from impact import RustScope
 from timing_report import measurement
 
+from test_case_report import ignore_archive
+
 
 class ContinuationTests(unittest.TestCase):
     def setUp(self):
@@ -33,6 +35,7 @@ class ContinuationTests(unittest.TestCase):
         self.addCleanup(self.temporary.cleanup)
         self.configure(Path(self.temporary.name).resolve())
         restore_repository("evidence", self.root)
+        ignore_archive(self.root)
         self.head = (self.root / ".git/refs/heads/main").read_text().strip()
 
     def configure(self, root):
@@ -50,6 +53,7 @@ class ContinuationTests(unittest.TestCase):
 
     def restore_successful_attempt(self, state="evidence-passed"):
         restore_repository(state, self.root)
+        ignore_archive(self.root)
         record = self.record()
         record["checkout"] = evidence.digest(str(self.root))
         inputs = json.loads((self.directory / record["inputs"]).read_text(encoding="utf-8"))
@@ -440,7 +444,14 @@ class ContinuationTests(unittest.TestCase):
             result = subprocess.run([sys.executable, "-c", code], cwd=self.root,
                                     capture_output=True, text=True, timeout=10)
             self.assertEqual(result.returncode, 1, result.stderr)
-            self.assertEqual(result.stdout.strip(), failure)
+            self.assertEqual(result.stdout.splitlines()[-1], failure)
+            report_path, = [Path(line.removeprefix("[REPORT] ")) for line in result.stdout.splitlines()
+                            if line.startswith("[REPORT] ")]
+            report = [json.loads(line) for line in report_path.with_suffix(".jsonl").read_text(
+                encoding="utf-8").splitlines()]
+            rejected, = [row for row in report if row["event"] == "lock_rejected"]
+            self.assertEqual(rejected["started"], 0)
+            self.assertEqual(report[-1]["exit_code"], 1)
             self.assertFalse(marker.exists())
             with patch.object(verify, "snapshot") as snapshot, \
                  patch.object(verify, "execute_command") as execute:
@@ -450,7 +461,7 @@ class ContinuationTests(unittest.TestCase):
                     with self.subTest(args=args):
                         self.assertEqual(self.run_main(args, select_phases=lambda *args: marker.touch()), 1,
                                          self.output)
-                        self.assertEqual(self.output.strip(), failure)
+                        self.assertEqual(self.output.splitlines()[-1], failure)
                 snapshot.assert_not_called()
                 execute.assert_not_called()
             self.assertFalse(marker.exists())
@@ -1026,10 +1037,32 @@ class ContinuationTests(unittest.TestCase):
                                  {"Left gate": "failed" if failing else "executed", "Right gate": "executed",
                                   "Build gate": "missing" if failing else "executed"})
 
+    def case_report_rows(self, output):
+        path = next(Path(line.removeprefix("[REPORT] ")) for line in output.splitlines()
+                    if line.startswith("[REPORT] "))
+        return path, self.read_journal(path)
+
+    @staticmethod
+    def read_journal(path):
+        return [json.loads(line) for line in path.with_suffix(".jsonl").read_text(encoding="utf-8").splitlines()]
+
+    def reporting_case(self, name, exit_code):
+        tools = Path(verify.__file__).resolve().parent
+        return ("\nimport sys; from pathlib import Path; "
+                f"sys.path.insert(0, {str(tools)!r}); from case_report import CaseReport; "
+                f"report = CaseReport.reserve('Case fixture', [{name!r}], Path.cwd()); "
+                f"report.event('case_started', id={name!r}); "
+                f"report.event('case_finished', id={name!r}, seconds=0.125, "
+                f"detail={('17 != 23' if exit_code else None)!r}); "
+                "report.event('counts', started=1, completed=1); "
+                f"report.finish({exit_code})\n")
+
     def test_parallel_coverage_and_contract_failure_reuse_only_completed_groups(self):
         coverage = self.barrier_child("coverage", "coverage-ready", "contracts-ready")
         contracts = self.barrier_child("contracts", "contracts-ready", "coverage-ready")
-        contracts[-1] += "sys.exit(1)\n"
+        coverage[-1] += self.reporting_case("fixture::coverage", 0)
+        failed = self.reporting_case("fixture.contract", 1) + "sys.exit(1)\n"
+        contracts[-1] += failed
         self.phases = [("Coverage", [("Fixture coverage", coverage, {})]),
                        ("Verification", [("Verification CLI contracts", contracts, {})])]
         with patch.object(verify, "independent_contract", side_effect=lambda name, items: name == "Verification CLI contracts"):
@@ -1040,16 +1073,33 @@ class ContinuationTests(unittest.TestCase):
             self.assertTrue(any(row["group"] == "Coverage" and row["status"] == "executed" for row in rows))
             self.assertTrue(any(row["group"] == "Verification CLI contracts" and row["status"] == "failed"
                                 for row in rows))
+            first, journal = self.case_report_rows(self.output)
+            self.assertEqual(journal[-2]["started"], 2)
+            linked = {row["group"]: first.parent / row["artifact"] for row in journal
+                      if row["event"] == "group_started"}
+            failed_group = linked["Verification CLI contracts"]
+            failed_child, = [failed_group.parent / row["artifact"] for row in self.read_journal(failed_group)
+                             if row["event"] == "child_report"]
+            self.assertIn("17 != 23", failed_child.read_text(encoding="utf-8"))
             before = self.events().count("coverage")
-            contracts[-1] = contracts[-1].replace("sys.exit(1)\n", "")
+            contracts[-1] = contracts[-1].replace(failed, self.reporting_case("fixture.contract", 0))
             self.assertEqual(self.run_profile(), 0, self.output)
             self.assertEqual(self.events().count("coverage"), before)
             self.assertEqual(self.record()["results"]["Coverage"]["status"], "reused")
+            second, journal = self.case_report_rows(self.output)
+            reused, = [row for row in journal if row["event"] == "group_reused"]
+            self.assertEqual(reused["new_attempts"], 0)
+            self.assertEqual((second.parent / reused["artifact"]).resolve(), linked["Coverage"])
+            self.assertEqual(journal[-2]["started"], 1)
             rows = self.record()["timing_report"]["rows"]
             self.assertTrue(any(row["group"] == "Coverage" and row["status"] == "reused"
                                 and row["seconds"] is None for row in rows))
             self.assertTrue(any(row["group"] == "Verification CLI contracts" and row["status"] == "executed"
                                 for row in rows))
+            self.assertEqual(self.run_profile(), 0, self.output)
+            _, all_reused = self.case_report_rows(self.output)
+            self.assertEqual(all_reused[-2]["started"], 0)
+            self.assertEqual(len([row for row in all_reused if row["event"] == "group_reused"]), 2)
 
     def test_parallel_coverage_failure_stops_export_and_preserves_contract_outcome(self):
         failed = self.child("tests")

@@ -85,7 +85,9 @@ unchanged files where the check's scope requires them. Staging is not required,
 and the command does not create a commit. Ordinary task completion uses relevant
 focused checks. Full SingleStep verification runs automatically at
 milestone closure or explicitly for diagnosis; changes alone do not select it
-in the commit profile. CPU waiting tests run when ordinary CPU tests are selected. Use
+in the commit profile. The full English scan runs once after local publication
+during [ordinary task closure](../tools/verification/README.md#post-publication-closure).
+CPU waiting tests run when ordinary CPU tests are selected. Use
 `python tools/verification/verify.py --help` for the available profiles and
 [tools/verification/README.md](../tools/verification/README.md#completion-verification) for execution details.
 
@@ -100,6 +102,12 @@ report without completion gates. Mandatory coverage measurement and gap review
 belong to batch preparation. Use its unexecuted source
 locations to identify and test missing behavior; see the
 [coverage workflow](../tools/verification/README.md#coverage-guided-testing).
+
+The repository launchers print a case report kept in the primary checkout.
+Use it to find native diagnostics, distinguish fresh attempts from reused
+groups, and read durations when supplied. The
+[case-report reference](../tools/verification/README.md#case-reports) lists
+the available launchers.
 
 When assessing a result, check which suites actually ran, whether they used full
 or sampled inputs, and whether failures or unavailable assets limited the run.

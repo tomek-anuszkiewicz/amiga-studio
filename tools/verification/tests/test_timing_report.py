@@ -38,7 +38,8 @@ class TimingReportTests(unittest.TestCase):
         self.assertIn("All ordinary crate tests", selected)
         self.assertIn("All standard harness tests", selected)
         self.assertNotIn("Verification CLI contracts", selected)
-        self.assertTrue({"Strict English Policy", "Architecture Rules", "WebAssembly build",
+        self.assertNotIn("Strict English Policy", selected)
+        self.assertTrue({"Architecture Rules", "WebAssembly build",
                          "RAG MCP contracts", "Artifact report contracts"} <= selected)
 
     def test_selection_tests_tool_code_but_skips_vocabulary_docs_and_generated_data(self):

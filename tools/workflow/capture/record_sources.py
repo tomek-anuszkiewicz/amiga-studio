@@ -268,7 +268,8 @@ def archived_turns(rows, first_range, thread):
     return turns, False
 
 
-def select_rollout(rollout, bounds, repository, *, ancestors=(), covered_roots=frozenset(), inherited_turns=()):
+def select_rollout(rollout, bounds, repository, *, ancestors=(), covered_roots=frozenset(),
+                   inherited_turns=(), resolve_common=common_dir):
     data, changing = snapshot(rollout.path)
     rows, error = json_lines(data)
     if not rows or rows[0].value != rollout.header:
@@ -311,7 +312,7 @@ def select_rollout(rollout, bounds, repository, *, ancestors=(), covered_roots=f
                 continue
             if not selected_rows:
                 continue
-            if any(common_dir(cwd) != repository for cwd in turn["cwd"]):
+            if any(resolve_common(cwd) != repository for cwd in turn["cwd"]):
                 gaps.append(f"Git identity could not be verified for turn {turn_id}")
                 continue
             admitted_turns.add(turn_id)
@@ -340,7 +341,7 @@ def select_rollout(rollout, bounds, repository, *, ancestors=(), covered_roots=f
     rollout.gap = "; ".join(gaps) or None
 
 
-def selected_rollouts(codex_home, registration, repository, *, headers=None):
+def selected_rollouts(codex_home, registration, repository, *, headers=None, resolve_common=common_dir):
     if headers is None:
         headers = rollout_headers(codex_home)
     admitted = {}
@@ -354,7 +355,7 @@ def selected_rollouts(codex_home, registration, repository, *, headers=None):
         item = unique_rollout(headers.get(thread, []))
         if item is None:
             gaps[thread] = "Rollout missing or conflicting copies share the same identity"
-        elif item.cwd is None or common_dir(item.cwd) != repository:
+        elif item.cwd is None or resolve_common(item.cwd) != repository:
             gaps[thread] = "Rollout checkout does not verify against the registered Git identity"
         elif item.parent is not None:
             # An explicitly resumed child still must exclude its copied parent history.
@@ -364,10 +365,11 @@ def selected_rollouts(codex_home, registration, repository, *, headers=None):
                 continue
             parent_rows, _ = json_lines(parent.path.read_bytes())
             parent_turns = rollout_turns(parent_rows)
-            select_rollout(item, thread_bounds, repository, inherited_turns=parent_turns)
+            select_rollout(item, thread_bounds, repository, inherited_turns=parent_turns,
+                           resolve_common=resolve_common)
             admitted[thread] = (item, ())
         else:
-            select_rollout(item, thread_bounds, repository)
+            select_rollout(item, thread_bounds, repository, resolve_common=resolve_common)
             admitted[thread] = (item, ())
     while True:
         newly_admitted = {}
@@ -395,7 +397,7 @@ def selected_rollouts(codex_home, registration, repository, *, headers=None):
             candidate, bounds, ancestors, covered = next(
                 (entry for entry in roots if entry[0].path == item.path), roots[0]
             )
-            if candidate.cwd is None or common_dir(candidate.cwd) != repository:
+            if candidate.cwd is None or resolve_common(candidate.cwd) != repository:
                 gaps[thread] = "Descendant checkout does not verify against the registered Git identity"
                 continue
             child_bounds = {"start_utc": candidate.created.isoformat(), "end_utc": bounds["end_utc"]}
@@ -403,7 +405,8 @@ def selected_rollouts(codex_home, registration, repository, *, headers=None):
             parent = ancestors[0]
             if parent is not ancestors[-1]:
                 covered = covered & {parent.turns[key]["root"] for key in parent.covered_turns}
-            select_rollout(candidate, child_bounds, repository, ancestors=ancestors, covered_roots=covered)
+            select_rollout(candidate, child_bounds, repository, ancestors=ancestors, covered_roots=covered,
+                           resolve_common=resolve_common)
             if candidate.covered_turns:
                 newly_admitted[thread] = (candidate, ancestors)
                 boundary[thread] = child_bounds

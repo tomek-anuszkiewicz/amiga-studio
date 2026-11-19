@@ -1,0 +1,66 @@
+services:
+  receiver:
+    image: docker.io/library/python@sha256:a5a7017efc5969e00ae2b91c8eb0631049a569652aa4ffc4501769049ae45c72
+    restart: unless-stopped
+    user: "${CAPTURE_USER:?}"
+    read_only: true
+    cap_drop: [ALL]
+    command: [python, -B, /capture/code/receiver.py]
+    labels:
+      amiga.capture.project: "${CAPTURE_PROJECT_ID:?}"
+      amiga.capture.config: "${CAPTURE_CONFIG_ID:?}"
+    environment:
+      CAPTURE_PROJECT_ID: "${CAPTURE_PROJECT_ID:?}"
+      CAPTURE_CONFIG_ID: "${CAPTURE_CONFIG_ID:?}"
+      CAPTURE_COMPOSE_PROJECT: "${CAPTURE_COMPOSE_PROJECT:?}"
+      CAPTURE_COLLECTOR_TOKEN: "${CAPTURE_COLLECTOR_TOKEN:?}"
+      CAPTURE_CLIENT_TOKEN: "${CAPTURE_CLIENT_TOKEN:?}"
+    ports:
+      - "127.0.0.1:${CAPTURE_PORT:?}:4318"
+    volumes:
+      - type: bind
+        source: "${CAPTURE_CODE:?}"
+        target: /capture/code
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: "${CAPTURE_AUTHORITY:?}"
+        target: /capture/authority
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: "${CAPTURE_ARCHIVE:?}"
+        target: /capture/project/.agent/task-archives
+        bind: {create_host_path: false}
+      - type: bind
+        source: "${CAPTURE_SESSIONS:?}"
+        target: /capture/codex/sessions
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: "${CAPTURE_ARCHIVED_SESSIONS:?}"
+        target: /capture/codex/archived_sessions
+        read_only: true
+        bind: {create_host_path: false}
+  collector:
+    image: "${CAPTURE_COLLECTOR_IMAGE:?}"
+    restart: unless-stopped
+    user: "${CAPTURE_USER:?}"
+    read_only: true
+    cap_drop: [ALL]
+    command: ["--config=/capture/collector.yaml"]
+    labels:
+      amiga.capture.project: "${CAPTURE_PROJECT_ID:?}"
+      amiga.capture.config: "${CAPTURE_CONFIG_ID:?}"
+    environment:
+      CAPTURE_COLLECTOR_TOKEN: "${CAPTURE_COLLECTOR_TOKEN:?}"
+    volumes:
+      - type: bind
+        source: "${CAPTURE_CODE:?}/collector.yaml"
+        target: /capture/collector.yaml
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: "${CAPTURE_COLLECTOR_OUTPUT:?}"
+        target: /capture/output
+        bind: {create_host_path: false}

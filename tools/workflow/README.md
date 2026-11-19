@@ -115,3 +115,97 @@ against the current candidate under existing review and verification policy.
 The [invocation contract](../../.agents/references/workflow-contract.md) describes
 normal manual use and interruption. Runtime discovery and its limits are in
 [the runtime reference](../../.agents/references/workflow-runtime.md).
+
+## Review routing and human checkpoint
+
+The receiving session records the actual required lanes and gates for the
+selected scope. Run the read-only tool before choosing a lane or presenting
+an operation. The table and lane effects come from
+[review-routing.json](review-routing.json). Role and skill names come from
+the existing result schema.
+
+```powershell
+python tools/workflow/review_routing.py --table
+python tools/workflow/review_routing.py --describe
+python tools/workflow/review_routing.py <review-request.json>
+```
+
+Keep the request and its portable hashed references under the work item's
+guidance history. The request identifies the selected operation, the current
+round and the exact reporting lane and local ID for each finding. The tool
+qualifies those keys with task and work item. An assessment identifies the
+owning criterion, disposition, impact and evidence. Link a duplicate directly
+to its original qualified ID. Use the local ID for the source report only.
+
+The round record links to its preceding round and the native binary Git diff
+whose digest identifies its frozen candidate. The tool compares the native
+tracked trees in disposable Git data and checks the recorded untracked hashes.
+Preserve superseded round
+snapshots when collecting later reports on the same candidate. The current
+head is the latest actual state. On a correction, identify both round records,
+the actual changed paths and evidence for the assessed effects. Unknown impact
+selects every applicable lane. For a batch, include the canonical commit gate.
+Use the paired verification result and the actual exit and report artifacts for
+a passed or failed gate. If required evidence cannot be read with its recorded
+identity, record the named gate and the unavailable artifact. At round three or
+later the confirmed gap triggers the checkpoint. A confirmed missing current
+review JSON or its paired text also triggers the checkpoint. The tool records
+the missing file and gathers the other returned lane and gate results. An
+inconsistent report identity suspends routing pending refreshed inputs.
+
+Give each reviewer a hashed lane input that binds scope, requirements, criteria,
+partition and applicable evidence. The receiving session records the independent
+runtime context and whether it inherited author history. The review result links
+those inputs in `result.routing`. The report's inspected scope covers the lane
+input. Bind actual evidence to the fingerprint of the canonical candidate object,
+available as `candidate_ref` in the advice. An authorized evidence-only round
+may refer to the same qualifying report and context when all of its review
+inputs still match. Credit that approval to its original reviewer. Finding
+comparisons name the original trigger and evidence for each known outcome on
+the specified candidate. Historical requirements and criteria tracked within
+that candidate's scope are checked against its preserved Git snapshot.
+External inputs, partition and profile evidence still need to match their
+recorded hashes on disk. A prior source citation in review evidence can use
+its preserved candidate when the file changed during repair. The current
+profile is checked against the live inputs. Only independent approval on the
+current review inputs counts.
+Preserve the origin and the separate comparison result.
+
+After a stop, the tool returns the round, candidate and named issues without
+lane recommendations or executable options. Use the
+[human review checkpoint](../../.agents/references/workflow-guidance.md#human-review-checkpoint)
+for the explanation and three conversational decisions. The receiver preserves
+each request with its hashed round records. Before offering guidance and as
+new reports or decisions arrive, the receiver atomically updates
+`.agent/tmp/workflow-TA/<task-id>/<work-item-id>/review-routing/current.json`
+with the latest request's `{"path": "...", "sha256": "..."}` reference. Publish
+the updated reference even when the candidate bytes and round number are
+unchanged. On resume, read that reference and its history before rechecking
+any saved operation option.
+
+Attach the same reference as `review_route_ref` in guidance. The validator
+reads the current reference at the fixed work-item path, checks the source
+against its linked history and recomputes the advice. A review source must
+appear in a lane state or the round's `earlier_reports`. A gate report may be
+referenced by its gate, and the round's `source_results` can hold hashed
+references to other non-review sources on that candidate, such as the repair
+result. Missing history or an older reference suspends operation options.
+
+Preserve the actual offer and user reply as hashed native conversation rows
+from the same thread, with the session header and their ordinals. The offer
+contains the following three selectable reply tokens for that guidance and
+checkpoint. The preserved user reply selects one exact token.
+
+```text
+review <guidance-id> <checkpoint-id> accept
+review <guidance-id> <checkpoint-id> continue-one
+review <guidance-id> <checkpoint-id> pause
+```
+
+The receiver checks the conversation provenance and remains responsible for
+actual user authorization. The tool checks the preserved role, message order,
+choice, candidate and issues. For one additional round, the receiver records
+the returned continuation at its canonical path with exclusive file creation
+before dispatch. Preserve that receipt as `started_by` on the next round.
+Replaying the same reply reports the recorded continuation and supplies no
+additional round. Advice, validation and table rendering launch nothing.

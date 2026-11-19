@@ -1,0 +1,32 @@
+services:
+  book-review:
+    build:
+      context: ..
+      dockerfile: book-to-markdown/Dockerfile
+    init: true
+    restart: "no"
+    stop_grace_period: 45s
+    ports:
+      - "127.0.0.1:${BOOK_REVIEW_PORT:-8765}:8765"
+    environment:
+      CODEX_HOME: /run/book-review-codex
+    tmpfs:
+      - /run/book-review-codex:mode=0700
+    volumes:
+      - type: bind
+        source: ${BOOK_REVIEW_LIBRARY:?Set BOOK_REVIEW_LIBRARY}
+        target: /library
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${BOOK_REVIEW_CONFIG:?Set BOOK_REVIEW_CONFIG}
+        target: /app/tools/bootstrap/book-to-markdown/config.yaml
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${BOOK_REVIEW_DIAGNOSTICS:?Set BOOK_REVIEW_DIAGNOSTICS}
+        target: /app/.agent/tmp
+        bind:
+          create_host_path: false

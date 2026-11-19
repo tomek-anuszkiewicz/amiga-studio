@@ -14,7 +14,7 @@ related: ["[General Architecture.md](General%20Architecture.md)", "[egui Guideli
 
 The maintained engineering obligations live in the [Rust rules](../../../.agents/rules/rust-best-practices.md),
 [performance policy](../../../.agents/rules/performance-and-readability.md),
-[workspace boundaries](../../../.agents/rules/workspace-structure-and-reexports.md),
+[workspace layout](General%20Architecture.md#workspace-layout),
 [architecture review criteria](../../../.agents/references/architecture-criteria.md) and
 [testing policy](../../../.agents/rules/unit-testing-policy.md). This note retains
 why those choices matter rather than maintaining a second copy of their limits,

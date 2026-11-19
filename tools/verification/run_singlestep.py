@@ -1,5 +1,4 @@
 """Build and launch the aggregate SingleStep test; Rust finalizes its own reports."""
-import argparse
 import json
 import os
 from pathlib import Path
@@ -9,10 +8,11 @@ import sys
 import time
 import uuid
 
+from case_report import ReportArgumentParser, run_reported
 from repository import REPO_ROOT
 
 
-def build_artifact(profile):
+def build_artifact(profile, log=None, archive=None):
     command = ["cargo", "test", "--profile", profile, "-p", "test_runner",
                "--test", "test_singlestep", "--no-run", "--message-format=json-render-diagnostics"]
     executable = None
@@ -24,6 +24,13 @@ def build_artifact(profile):
                 rendered = message["message"].get("rendered")
                 if rendered:
                     print(rendered, end="", file=sys.stderr)
+                    if log is not None:
+                        try:
+                            log.write(rendered)
+                            log.flush()
+                        except OSError as error:
+                            archive.record_error(error)
+                            log = None
             elif message.get("reason") == "compiler-artifact":
                 target = message.get("target", {})
                 selected = target.get("name") == "test_singlestep" and "test" in target.get("kind", [])
@@ -64,7 +71,7 @@ def completion(directory, run_id, exit_code):
     return metadata, timing
 
 
-def execute_tests(executable, options, directory):
+def execute_tests(executable, options, directory, archive=None):
     run_id = uuid.uuid4().hex
     env = dict(os.environ, SINGLESTEP_RESULTS_DIR=str(directory), SINGLESTEP_RUN_ID=run_id,
                SINGLESTEP_PROFILE=options.profile, SINGLESTEP_CASE=options.case or "",
@@ -77,12 +84,33 @@ def execute_tests(executable, options, directory):
                     selected_tests=0, completed_tests=0, exit_code=None)
     (directory / "run.json").write_text(json.dumps(metadata, indent=2), encoding="utf-8")
     log_path = directory / "execution.log"
+    output = log_path
+    command = [executable, "--quiet", "--nocapture"]
+    if archive is not None:
+        native_log = archive.attachment("singlestep-execution.log")
+        if native_log:
+            try:
+                native_log.touch(exist_ok=False)
+                output = native_log
+            except OSError as error:
+                archive.record_error(error)
+        index = archive.attachment("groups.md")
+        if index:
+            env["SINGLESTEP_CASE_REPORT_DIR"] = str(index.parent)
+            archive.event("vector_groups", artifact=archive.link(index))
+        if output != log_path:
+            archive.event("execution_log", artifact=archive.link(output))
+        archive.phase("execution", command=command, native_run_id=run_id)
     started = time.perf_counter()
-    with log_path.open("w", encoding="utf-8") as log:
-        code = subprocess.call([executable, "--quiet", "--nocapture"], cwd=REPO_ROOT, env=env,
-                               stdout=log, stderr=subprocess.STDOUT)
+    with output.open("w", encoding="utf-8") as log:
+        code = subprocess.call(command, cwd=REPO_ROOT, env=env, stdout=log, stderr=subprocess.STDOUT)
+    if output != log_path:
+        shutil.copyfile(output, log_path)
     process_seconds = time.perf_counter() - started
     metadata, timing = completion(directory, run_id, code)
+    if archive is not None and "SINGLESTEP_CASE_REPORT_DIR" in env:
+        collect_vector_counts(archive, Path(env["SINGLESTEP_CASE_REPORT_DIR"]))
+        archive.event("native_exit", code=code, signal=-code if code < 0 else None, status=metadata["status"])
     label = "PASS" if metadata["status"] == "passed" else "FAIL"
     print(f"[{label}] SingleStep groups: {metadata['completed_tests']}/{metadata['selected_tests']} "
           f"completed; status {metadata['status']}.", flush=True)
@@ -105,8 +133,31 @@ def execute_tests(executable, options, directory):
     return code or (0 if metadata["status"] == "passed" else 1)
 
 
-def main(argv=None):
-    parser = argparse.ArgumentParser(description=__doc__)
+def collect_vector_counts(archive, directory):
+    counts = dict(selected=0, started=0, completed=0, passed=0, failed=0)
+    try:
+        for report in directory.glob("test_*.jsonl"):
+            with report.open(encoding="utf-8") as stream:
+                for line in stream:
+                    row = json.loads(line)
+                    if row["event"] == "selection":
+                        counts["selected"] += len(row["vectors"])
+                    elif row["event"] == "case_started":
+                        counts["started"] += 1
+                    elif row["event"] == "case_finished":
+                        counts["completed"] += 1
+                        counts[row["outcome"]] += 1
+        if (directory / "incomplete").is_file():
+            archive.record_error("SingleStep could not write all native case records")
+    except (OSError, ValueError, KeyError) as error:
+        archive.record_error(error)
+    archive.event("counts", **counts, aborted=counts["started"] - counts["completed"],
+                  never_started=counts["selected"] - counts["started"])
+
+
+def run(argv, archive):
+    archive.phase("argument selection")
+    parser = ReportArgumentParser(archive, description=__doc__)
     parser.add_argument("--profile", choices=("test", "verification", "release"), default="verification")
     parser.add_argument("--case")
     parser.add_argument("--exact", action="store_true", help="Match the group name exactly; requires --case")
@@ -118,32 +169,58 @@ def main(argv=None):
         parser.error("Sample count must be positive")
     if options.exact and not options.case:
         parser.error("--exact requires --case")
+    archive.phase("results lock", selection=vars(options))
     directory = Path(os.environ.get("SINGLESTEP_RESULTS_DIR", REPO_ROOT / ".agent/tmp/singlestep")).resolve()
     directory.mkdir(parents=True, exist_ok=True)
     lock_path = directory / "run.lock"
     try:
         lock = lock_path.open("x", encoding="utf-8")
     except FileExistsError:
-        print("Error: this results directory is owned by another run (run.lock).", file=sys.stderr)
+        detail = "This results directory is owned by another run (run.lock)."
+        archive.event("lock_rejected", detail=detail)
+        print(f"Error: {detail}", file=sys.stderr)
         return 1
     try:
         with lock:
             lock.write(str(os.getpid()))
             lock.flush()
             started = time.perf_counter()
-            code, executable = build_artifact(options.profile)
+            archive.phase("build", profile=options.profile)
+            build_log = archive.attachment("singlestep-build.log")
+            log = None
+            if build_log:
+                try:
+                    log = build_log.open("x", encoding="utf-8")
+                except OSError as error:
+                    archive.record_error(error)
+                else:
+                    archive.event("build_log", artifact=archive.link(build_log))
+            if log is not None:
+                with log:
+                    code, executable = build_artifact(options.profile, log, archive)
+            else:
+                code, executable = build_artifact(options.profile)
             if code:
                 return code
             print(f"[INFO] Build/reuse {time.perf_counter() - started:.3f}s "
                   f"(profile {options.profile}); selected tests retain all comparisons.", flush=True)
-            return execute_tests(executable, options, directory)
+            return execute_tests(executable, options, directory, archive)
     finally:
         lock_path.unlink()
+
+
+def main(argv=None):
+    args = sys.argv[1:] if argv is None else argv
+    return run_reported("SingleStep", [sys.executable, str(Path(__file__).resolve()), *args],
+                        lambda report: run(args, report), cwd=REPO_ROOT)
 
 
 if __name__ == "__main__":
     try:
         sys.exit(main())
+    except KeyboardInterrupt:
+        print("Error: SingleStep execution interrupted", file=sys.stderr)
+        sys.exit(130)
     except (OSError, ValueError, RuntimeError) as error:
         print(f"Error: {error}", file=sys.stderr)
         sys.exit(1)

@@ -11,6 +11,7 @@ SIGNALS = {
 }
 OTLP_SIGNALS = {resource: (scope, leaf) for resource, scope, leaf in SIGNALS.values()}
 ROUTE_KEY = "capture.route"
+DIAGNOSTIC_KEY = "capture.diagnostic"
 ID_KEYS = ("conversation.id", "thread.id", "turn.id")
 SINGLE_STRING_KEYS = (*ID_KEYS, ROUTE_KEY, "event.timestamp")
 NANOSECONDS = re.compile(r"[0-9]{1,19}")

@@ -44,7 +44,10 @@ After rebase, add --integration-source COMMIT naming the original task tip to
 preserve its pre-rebase divergence and full integration verification scope.
 Local integration: integrate freeze review PATH partition PATH target BRANCH [sources PATH];
 integrate accept-tested confirmation PATH target BRANCH;
-integrate seal|publish|cleanup record PATH; integrate recover.
+integrate seal|closure-graph|cleanup record PATH.
+integrate publish record PATH [task ID execution ID] [correction-for RECORD].
+integrate closure-language record PATH [retry blocked] [correction RECORD].
+integrate closure-vocabulary record PATH additions PATH; integrate recover.
 Only runner gui uses -- to pass native program options.
 """
 
@@ -133,7 +136,9 @@ def parser():
     runs.add_argument("action", choices=("build", "bench", "gui", "analyze", "refresh"))
     runs.add_argument("words", nargs=argparse.REMAINDER)
     integration = commands.add_parser("integrate", help="Freeze, seal, publish, recover or clean up local integration")
-    integration.add_argument("action", choices=("freeze", "accept-tested", "seal", "publish", "recover", "cleanup"))
+    integration.add_argument("action", choices=("freeze", "accept-tested", "seal", "publish", "recover",
+                                                "closure-language", "closure-vocabulary", "closure-graph",
+                                                "cleanup"))
     integration.add_argument("words", nargs="*", metavar="SELECTOR")
     return root
 

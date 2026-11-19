@@ -2,15 +2,19 @@
 
 import hashlib
 import json
+import subprocess
 from pathlib import Path
 import sys
 import tempfile
+from textwrap import dedent
 import unittest
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import cpu_performance_tests as bench
 import benchmark_anomalies as anomalies
+from case_report import CaseReport
+from test_case_report import events, init_repository
 
 
 class CatalogTests(unittest.TestCase):
@@ -71,6 +75,80 @@ class CatalogTests(unittest.TestCase):
                  patch.object(bench, "analyze"):
                 self.assertEqual(bench.measure(None, 50, 1), 1)
             attempt.assert_called_once()
+
+    def test_archive_uses_original_process_elapsed_and_preserves_natural_attempts(self):
+        case_id = "add/add_w_d1_d0"
+        for codes, disturbed in [([0], [False]), ([0, 0], [True, False]), ([4], [True])]:
+            with self.subTest(codes=codes, disturbed=disturbed), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary).resolve()
+                init_repository(root)
+                report = CaseReport.reserve("fixture", ["measure", case_id], root)
+                ledger = root / "launches.jsonl"
+                program = root / "measure.py"
+                program.write_text(dedent(f"""
+                    import json
+                    from pathlib import Path
+                    import sys
+                    import time
+
+                    ledger = Path({str(ledger)!r})
+                    ordinal = len(ledger.read_text().splitlines()) if ledger.exists() else 0
+                    started = time.perf_counter()
+                    report = Path(sys.argv[5])
+                    assert sys.argv[2:5] == [{case_id!r}, "50", "2"]
+                    code = {codes!r}[ordinal]
+                    if code:
+                        print("native measurement failure", file=sys.stderr)
+                    else:
+                        for _ in range(2):
+                            print("SERIES_BEGIN", flush=True)
+                            time.sleep(0.015)
+                            print("SERIES_END", flush=True)
+                        result = {{"results": [{{"samples": [{{"ns_per_target": 16.5}},
+                                                             {{"ns_per_target": 17.25}}]}}]}}
+                        report.write_text(json.dumps(result), encoding="utf-8")
+                    with ledger.open("a", encoding="utf-8") as stream:
+                        print(json.dumps([ordinal + 1, time.perf_counter() - started]), file=stream)
+                    sys.exit(code)
+                    """), encoding="utf-8")
+                launch = subprocess.Popen
+
+                def fixture_launch(command, **options):
+                    return launch([sys.executable, str(program), *command[1:]], **options)
+
+                with patch.object(bench, "RESULTS", root / "native"), \
+                     patch.object(bench, "catalog", return_value={case_id: {}}), \
+                     patch.object(bench, "executable", return_value="fixture"), \
+                     patch.object(bench, "cpu_load"), \
+                     patch.object(bench, "load_disturbed", side_effect=disturbed), \
+                     patch.object(bench.subprocess, "Popen", side_effect=fixture_launch), \
+                     patch.object(bench, "analyze"):
+                    code = bench.measure(("case", case_id), 50, 2, report)
+                self.assertEqual(code, int(bool(codes[-1])))
+                original, = (root / "native").glob("*/manifest.json")
+                manifest = json.loads(original.read_text(encoding="utf-8"))
+                measured = manifest["cases"][case_id]["attempts"]
+                completed = [row for row in events(report) if row["event"] == "case_finished"]
+                native = [row for row in events(report) if row["event"] == "native_measurement"]
+                launches = [json.loads(line) for line in ledger.read_text().splitlines()]
+                self.assertEqual(len(launches), len(codes))
+                self.assertEqual(len(completed), len(codes))
+                for row, attempt, (ordinal, body_seconds) in zip(completed, measured, launches, strict=True):
+                    self.assertEqual((row["id"], row["attempt"]), (case_id, ordinal))
+                    self.assertEqual(row["seconds"], attempt["outer_seconds"])
+                    self.assertGreaterEqual(row["seconds"], body_seconds)
+                    output = (report.path.parent / row["artifact"]).read_text(encoding="utf-8")
+                    if row["exit_code"]:
+                        self.assertIn("native measurement failure", row["detail"])
+                        self.assertEqual(output.strip(), "native measurement failure")
+                for row, attempt in zip(native, measured, strict=not any(codes)):
+                    self.assertEqual([value["ns_per_target"] for value in row["samples"]], [16.5, 17.25])
+                    self.assertEqual(row["series"], 2)
+                    original_native = original.parent / attempt["report"]
+                    self.assertEqual((report.path.parent / row["artifact"]).read_bytes(),
+                                     original_native.read_bytes())
+                if any(codes):
+                    self.assertEqual(native, [])
 
     def test_incomplete_run_cannot_be_analyzed(self):
         with tempfile.TemporaryDirectory() as tmp:
