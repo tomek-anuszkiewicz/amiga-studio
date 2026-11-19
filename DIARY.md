@@ -3038,3 +3038,25 @@ Use [TA-prepare-batch](.agents/skills/TA-prepare-batch/SKILL.md) to prepare the 
   - Fresh CLI capture succeeded before and after Docker Desktop restart. The narrowed Collector output passed isolated container recovery and archive routing
   - Book Review retained a disposable book across recreation. Shared RAG preserved the database and index and enforced the direct MCP reader scope
   - The current application proof, final candidate evidence and post-publication steps are recorded at their respective boundaries
+---
+
+### [2026-11-19 22:29 CET] — Prepare integration for the workflow correction round
+- **Affected Subsystems**:
+  - `Task workflow`
+  - `Verification`
+  - `Workflow capture`
+  - `Book Review`
+- **What Was Changed (The Concrete Reality)**:
+  - Record working commit 002f75c for WORKFLOW-CORRECTIONS-20261118 and prepare its final integration record
+  - Preserve the versioned capture deployment and use authenticated local HTTP for registrations while retaining a verified first upgrade from older installations
+  - Record the Book Review checkout handoff and the subscription sign-in proof on a disposable book
+  - Point the rolling changelog entry instructions to the active preparation and compaction procedures
+- **Architectural Rationale & Trade-Offs**:
+  - Keep installation maintenance separate from source publication and retain task evidence before removing the working checkout
+  - Keep the committed source and its review history intact while preparing the integration record
+- **Verification & Test Results**:
+  - The focused Workflow capture contracts passed on the round seven source
+  - An isolated Docker installation recovered both stopped service cases and passed upgrade and rollback. A real Codex CLI event reached the selected archive
+  - The architecture review confirmed the original capture upgrade repair. The documentation review confirmed the diary instruction correction
+  - The round seven architecture and documentation verdicts request changes
+  - Behavior and test evidence approvals, canonical integration verification, and fresh telemetry from VS Code remain outstanding
