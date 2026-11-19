@@ -7,6 +7,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+from git_fixtures import restore_repository
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import impact
 from commands import PYTHON_INPUTS
@@ -73,22 +75,20 @@ class ImpactTests(unittest.TestCase):
                 self.assertIsNone(self.select([path, "crates/gui/src/gui.rs"]).packages)
 
     def test_working_inputs_do_not_change_diagnostics_or_package_scope(self):
-        git(self.root, "init", "-q")
-        git(self.root, "config", "user.name", "Test")
-        git(self.root, "config", "user.email", "test@example.invalid")
+        restore_repository("empty", self.root)
         ignore = (Path(__file__).resolve().parents[3] / ".gitignore").read_bytes()
         (self.root / ".gitignore").write_bytes(ignore)
         git(self.root, "add", ".gitignore")
-        git(self.root, "commit", "-qm", "fixture")
+        git(self.root, "commit", "--amend", "--no-edit", "-q")
         inputs = ("2026-11-18-plan.md", "test-design.md", "decisions.md", "environment.json")
-        self.assertIsNone(self.select(collect_changes(self.root)).packages)
+        working = self.root / ".agent/tasks"
+        working.mkdir(parents=True)
         for name in inputs:
-            path = self.root / ".agent/tasks" / name
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text("working input", encoding="utf-8")
-            self.assertEqual(git(self.root, "ls-files", "--", ".agent/tasks"), b"")
-            self.assertEqual(collect_changes(self.root), set())
-        self.assertIsNone(self.select(collect_changes(self.root)).packages)
+            (working / name).write_text("working input", encoding="utf-8")
+        self.assertEqual(git(self.root, "ls-files", "--others", "--exclude-standard", "--", ".agent/tasks"), b"")
+        changes = collect_changes(self.root)
+        self.assertEqual(changes, set())
+        self.assertIsNone(self.select(changes).packages)
         expected = {"DIARY.md": (), "crates/gui/lib.rs": ("gui",),
                     "crates/core/lib.rs": ("core", "gui", "machine", "test_runner")}
         for name, packages in expected.items():
@@ -174,18 +174,7 @@ class ImpactTests(unittest.TestCase):
                 self.assertIsNone(self.select(["docs/guide.md"], metadata).packages)
 
     def test_git_change_boundary_includes_index_worktree_new_files_and_both_rename_ends(self):
-        git(self.root, "init", "-q")
-        git(self.root, "config", "user.name", "Test")
-        git(self.root, "config", "user.email", "test@example.invalid")
-        for path in ("old.txt", "working.txt", "staged.txt"):
-            (self.root / path).write_text("original", encoding="utf-8")
-        git(self.root, "add", ".")
-        git(self.root, "commit", "--quiet", "--message", "fixture")
-        git(self.root, "mv", "old.txt", "new.txt")
-        (self.root / "staged.txt").write_text("staged", encoding="utf-8")
-        git(self.root, "add", "staged.txt")
-        (self.root / "working.txt").write_text("working", encoding="utf-8")
-        (self.root / "untracked.txt").write_text("new", encoding="utf-8")
+        restore_repository("impact", self.root)
         self.assertEqual(collect_changes(self.root), {"old.txt", "new.txt", "staged.txt", "working.txt", "untracked.txt"})
 
 

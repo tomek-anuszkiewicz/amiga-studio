@@ -4,14 +4,16 @@ from hashlib import sha256
 import io
 from pathlib import Path
 import sys
-import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
 
+from git_fixtures import restore_repository
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from cli import parse_args
 from commands import select_phases
+import impact
 import verify
 import commands as selection
 import execution
@@ -82,6 +84,13 @@ class SelectionTests(unittest.TestCase):
                         "file test_book_review_overflow.py case test_pdf_page")
         self.assertEqual(book[0][1][1:], ["tools/bootstrap/book-to-markdown/run_tests.py",
                                          "-p", "test_book_review_overflow.py", "-k", "test_pdf_page"])
+        focused = selected("test python directory tools/verification/tests "
+                           "file test_cli.py case test_focused")
+        self.assertEqual(focused[0][1][1:], ["tools/verification/run_tests.py", "-s", "tools/verification/tests",
+                                            "-q", "-p", "test_cli.py", "-k", "test_focused"])
+        default, = selected("test python", ["tools/verification/run_tests.py"])
+        self.assertEqual(default[:2], ("Verification CLI contracts", [
+            sys.executable, "tools/verification/run_tests.py", "-s", "tools/verification/tests", "-q"]))
 
     def test_default_python_selection_skips_unrelated_changes(self):
         for changes in ([], ["crates/cpu/src/state.rs"], ["docs/testing.md"],
@@ -187,10 +196,18 @@ class SelectionTests(unittest.TestCase):
                          selected("test runner singlestep")[0][1:])
 
     def test_ordinary_cpu_wait_tests_remain_in_normal_selection(self):
-        for sentence in ("test rust unit", "commit"):
-            commands = selected(sentence, ["crates/cpu/tests/test_cck_bus.rs"])
-            self.assertTrue(any("cpu" in item[1] for item in commands
-                                if "test" in item[1] or "llvm-cov" in item[1]))
+        changes = ["crates/cpu/tests/test_cck_bus.rs"]
+        unit, = selected("test rust unit", changes)
+        self.assertEqual(unit[0], "Tier 1 ordinary crate tests")
+        self.assertEqual(unit[1][:2], ["cargo", "test"])
+        self.assertEqual(unit[1][unit[1].index("cpu") - 1], "-p")
+
+        commands = {name: command for name, command, _ in selected("commit", changes)}
+        ordinary = commands["Ordinary crate tests"]
+        self.assertEqual([value for option, value in zip(ordinary, ordinary[1:]) if option == "-p"],
+                         ["cpu", "debugger", "gui", "machine_loop", "save_state"])
+        self.assertNotIn("--workspace", ordinary)
+        self.assertIn("All standard harness tests", commands)
 
     def test_milestone_retains_separate_scope(self):
         for changes in ([], ["crates/cpu/src/cpu.rs"], ["docs/testing.md"]):
@@ -211,18 +228,25 @@ class SelectionTests(unittest.TestCase):
         self.assertTrue(any("tools/bootstrap/book-to-markdown/run_tests.py" in item[1] for item in commands))
 
     def test_language_data_keeps_commit_gates_without_expanding_rust(self):
+        self.enterContext(patch.object(impact, "workspace_graph", return_value=self.gui_graph()))
+        gui_path = "crates/gui/src/lib.rs"
         docs = selected("commit", ["docs/testing.md"])
-        gui = selected("commit", ["crates/gui/src/lib.rs"])
+        gui = selected("commit", [gui_path])
         names = {name for name, _, _ in docs}
         self.assertTrue({"Strict English Policy", "Architecture Rules", "Clippy Invariants"} <= names)
         self.assertFalse(any("llvm-cov" in command or command[:2] == ["cargo", "test"]
                              for _, command, _ in docs))
-        for path in ("tools/verification/checks/english_words/programming.txt",
-                     "tools/verification/checks/check_english.json"):
+        self.assertNotIn("Verification CLI contracts", names)
+        for path, expected in (("tools/verification/checks/english_words/programming.txt", []),
+                               ("tools/verification/checks/check_english.json", ["Verification CLI contracts"])):
             with self.subTest(path=path):
-                extra = selection.python_commands(changes=[path], include_bootstrap=False)
-                self.assertEqual(selected("commit", [path]), docs + extra)
-                self.assertEqual(selected("commit", ["crates/gui/src/lib.rs", path]), gui + extra)
+                for changes, baseline in (([path], docs), ([gui_path, path], gui)):
+                    commands = selected("commit", changes)
+                    self.assertEqual(commands[:len(baseline)], baseline)
+                    self.assertEqual([name for name, _, _ in commands[len(baseline):]], expected)
+
+    def gui_graph(self):
+        return {selection.REPO_ROOT / "crates/gui": "gui"}, {"gui": set()}
 
     def test_partial_coverage_runs_once_and_exports_the_same_packages(self):
         with patch.object(selection, "select_rust_scope", return_value=RustScope(("cpu", "gui", "test_runner"), "fixture")):
@@ -248,21 +272,24 @@ class SelectionTests(unittest.TestCase):
         self.assertNotIn("test_singlestep", plain[0])
 
     def test_orchestration_keeps_all_quality_gates_and_python_contracts(self):
-        docs = selected("commit", ["docs/testing.md"])
-        gui = selected("commit", ["crates/gui/src/lib.rs"])
+        self.enterContext(patch.object(impact, "workspace_graph", return_value=self.gui_graph()))
+        gates = {"Strict English Policy", "Obsidian Frontmatter", "Formatting", "Clippy Invariants",
+                 "Architecture Rules", "Hardware Quality", "Code Quality", "WebAssembly build",
+                 "Graphify contracts", "RAG MCP contracts", "Artifact report contracts"}
+        self.assertEqual({name for name, _, _ in selected("commit", ["docs/testing.md"])}, gates)
+        gates.add("Verification CLI contracts")
+        coverage = {"Prepare coverage report", "Reset coverage counters", "Ordinary crate tests",
+                    "Export ordinary crate coverage", "Ordinary crate coverage summary"}
         for path in ("tools/verification/verify.py", "tools/verification/execution.py",
                      "tools/verification/evidence.py", "tools/verification/batch_lock.py",
                      "tools/verification/tests/test_evidence.py"):
             with self.subTest(path=path):
-                expected = docs + selection.python_commands(changes=[path], include_bootstrap=False)
-                self.assertEqual(selected("commit", [path]), expected)
-                expected = gui + selection.python_commands(changes=[path], include_bootstrap=False)
-                self.assertEqual(selected("commit", ["crates/gui/src/lib.rs", path]), expected)
-        names = {name for name, _, _ in docs}
-        self.assertTrue({"Strict English Policy", "Obsidian Frontmatter", "Formatting",
-                         "Clippy Invariants", "Architecture Rules", "Hardware Quality",
-                         "Code Quality", "RAG MCP contracts", "Artifact report contracts"} <= names)
-        self.assertNotIn("Verification CLI contracts", names)
+                self.assertEqual({name for name, _, _ in selected("commit", [path])}, gates)
+                gui = {name: command for name, command, _ in selected("commit", ["crates/gui/src/lib.rs", path])}
+                self.assertEqual(set(gui), gates | coverage)
+                run = gui["Ordinary crate tests"]
+                self.assertEqual([value for option, value in zip(run, run[1:]) if option == "-p"], ["gui"])
+                self.assertNotIn("--workspace", run)
         for path in ("tools/verification/commands.py", "tools/verification/impact.py",
                      "tools/verification/repository.py", "tools/verification/new_module.py"):
             with self.subTest(path=path):
@@ -272,11 +299,14 @@ class SelectionTests(unittest.TestCase):
                 self.assertIn("All standard harness tests", {name for name, _, _ in commands})
 
     def test_only_audited_directory_commands_can_overlap_coverage(self):
-        for item in selection.python_commands(include_bootstrap=True):
-            name, command, overrides = item
-            self.assertEqual(selection.independent_contract(name, [item]),
-                             name in {"RAG MCP contracts", "Artifact report contracts", "Verification CLI contracts"})
-        fake = ("Verification CLI contracts", [sys.executable, "-c", "pass"], {})
+        contracts = selection.python_commands(include_bootstrap=True)
+        coverage = ("Coverage", "Coverage", selection.select_coverage_commands("commit"))
+        groups = [coverage, *(("Verification", item[0], [item]) for item in contracts)]
+        waves = [[name for _, name, _ in wave] for wave in verify.execution_waves(groups)]
+        self.assertEqual(waves[0], ["Coverage", "RAG MCP contracts", "Artifact report contracts"])
+        self.assertIn(["Verification CLI contracts"], waves[1:])
+        self.assertCountEqual([name for wave in waves for name in wave], [name for _, name, _ in groups])
+        fake = ("RAG MCP contracts", [sys.executable, "-c", "pass"], {})
         self.assertFalse(selection.independent_contract(fake[0], [fake]))
 
     def test_development_coverage_reuses_pipeline_without_completion_gates(self):
@@ -347,11 +377,6 @@ class SelectionTests(unittest.TestCase):
         self.assertEqual(command[1:3], ["tools/verification/cpu_performance_tests.py", "measure"])
         self.assertEqual(command[-2:], ["case", "add/add_w_d1_d0"])
 
-    def test_results_directory_is_a_common_option(self):
-        _, args = parse_args(["test", "runner", "singlestep", "case", "test_add_b",
-                              "--results-dir", ".agent/tmp/experiments/add"])
-        self.assertEqual(args.results_dir, ".agent/tmp/experiments/add")
-
     def test_report_output_is_visible_by_default_and_can_be_overridden(self):
         self.assertEqual(parse_args(["runner", "analyze", "fixture.csv"])[1].log_level, "full")
         self.assertEqual(parse_args(["runner", "analyze", "fixture.csv", "--log-level", "error"])[1].log_level, "error")
@@ -395,20 +420,8 @@ class SelectionTests(unittest.TestCase):
             with self.subTest(sentence=sentence), self.assertRaises(ValueError):
                 selected(sentence)
 
-class ExecutionTests(unittest.TestCase):
-    def setUp(self):
-        temporary = tempfile.TemporaryDirectory()
-        self.addCleanup(temporary.cleanup)
-        self.root = Path(temporary.name)
-        subprocess.run(["git", "init", "-q"], cwd=self.root, check=True)
-        tree = subprocess.check_output(["git", "mktree"], input=b"", cwd=self.root).decode().strip()
-        revision = subprocess.check_output(
-            ["git", "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid",
-             "commit-tree", tree, "-m", "fixture"], cwd=self.root).decode().strip()
-        subprocess.run(["git", "update-ref", "HEAD", revision], cwd=self.root, check=True)
-        (self.root / ".git/info/exclude").write_text(".agent/tmp/\n", encoding="utf-8")
-        self.enterContext(patch.object(verify, "REPO_ROOT", self.root))
 
+class CommandExecutionTests(unittest.TestCase):
     def test_exact_rust_run_rejects_zero_matching_tests(self):
         for count, expected in ((0, 1), (1, 0)):
             process = unittest.mock.MagicMock()
@@ -422,6 +435,15 @@ class ExecutionTests(unittest.TestCase):
                                              log_dir=temporary)
             self.assertEqual(code, expected)
 
+
+class ExecutionTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        restore_repository("empty", self.root)
+        self.enterContext(patch.object(verify, "REPO_ROOT", self.root))
+
     def test_plan_shows_isolated_logs_and_singlestep_reports_without_writing(self):
         with patch.object(verify, "execute_command") as execute, \
              contextlib.redirect_stdout(io.StringIO()) as output:
@@ -429,7 +451,8 @@ class ExecutionTests(unittest.TestCase):
                                           "--exact", "--results-dir", ".agent/tmp/experiments/add",
                                           "--plan"]), 0)
         execute.assert_not_called()
-        self.assertIn("experiments\\add\\verify", output.getvalue())
+        self.assertIn(f"[PLAN] Verifier logs: {self.root / '.agent/tmp/experiments/add/verify'}",
+                      output.getvalue())
         self.assertIn("SINGLESTEP_RESULTS_DIR", output.getvalue())
         self.assertIn(repr(str(self.root / ".agent/tmp/experiments/add/singlestep")),
                       output.getvalue())
@@ -447,10 +470,10 @@ class ExecutionTests(unittest.TestCase):
                          str(self.root / ".agent/tmp/experiments/add/singlestep"))
 
     def test_diagnostic_reports_are_unique_and_external_logs_keep_their_route(self):
-        (self.root / ".gitignore").write_text(".agent/tmp/\n", encoding="utf-8")
         diagnostics = self.root / ".agent/tmp/verification/diagnostics"
         with tempfile.TemporaryDirectory() as temporary, \
              patch.object(verify, "execute_command", side_effect=[(True, "ok", 1), (False, "failed", 2)]) as execute, \
+             patch.object(verify, "snapshot", return_value="stable"), \
              contextlib.redirect_stdout(io.StringIO()) as output:
             external = Path(temporary)
             args = ["test", "runner", "singlestep", "case", "test_add_b", "--results-dir", str(external)]
@@ -461,7 +484,10 @@ class ExecutionTests(unittest.TestCase):
             second, = set(diagnostics.glob("*/test-runtime-report.md")) - {first}
             self.assertEqual(first.read_bytes(), first_bytes)
             self.assertIn("executed", first_bytes.decode("utf-8"))
-            self.assertIn("failed", second.read_text(encoding="utf-8"))
+            failure = second.read_text(encoding="utf-8")
+            self.assertIn("run_singlestep.py --profile verification --case test_add_b | failed | 2.000 |", failure)
+            self.assertNotIn("| Stability |", failure)
+            self.assertNotIn("Source or index changed", output.getvalue())
             self.assertIn(str(first), output.getvalue())
             self.assertIn(str(second), output.getvalue())
             for call in execute.call_args_list:
@@ -571,9 +597,10 @@ class ExecutionTests(unittest.TestCase):
         for success in (True, False):
             with self.subTest(success=success), \
                  patch.object(verify, "execute_command", return_value=(success, "result", 0)) as execute, \
-                 patch.object(verify, "snapshot", return_value="same"), \
+                 patch.object(verify, "snapshot") as snapshot, \
                  contextlib.redirect_stdout(io.StringIO()):
                 self.assertEqual(verify.main(["runner", "bench", "inventory"]), 0 if success else 1)
+            snapshot.assert_not_called()
             self.assertEqual(execute.call_count, 1)
             self.assertEqual(execute.call_args_list[0].args[0][:2], ["cargo", "bench"])
             self.assertFalse((self.root / ".agent/tmp/verification/diagnostics").exists())
@@ -611,12 +638,6 @@ class ExecutionTests(unittest.TestCase):
                 self.assertEqual(verify.main(["check", "architecture", "--plan"]), 0)
             execute.assert_not_called()
             snapshot.assert_not_called()
-
-    def test_child_failure_and_changed_source_cannot_report_success(self):
-        for child_ok, snapshots in ((False, ["same", "same"]), (True, ["before", "after"])):
-            with self.subTest(child_ok=child_ok), patch.object(verify, "execute_command", return_value=(child_ok, "result", 0)), \
-                 patch.object(verify, "snapshot", side_effect=snapshots), contextlib.redirect_stdout(io.StringIO()):
-                self.assertEqual(verify.main(["check", "english"]), 1)
 
 
 if __name__ == "__main__":

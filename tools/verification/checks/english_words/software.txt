@@ -175,6 +175,7 @@ bpu
 branchlessly
 breakpoint
 bs
+bsd
 bsh
 bsun
 bswap
@@ -1245,3 +1246,5 @@ contrib
 opentelemetry
 otel
 otlp
+admin
+backlink

@@ -1,12 +1,14 @@
 """Independent graph selection and filtering before traversal."""
 import json
 from pathlib import Path
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
 from types import SimpleNamespace
 
-from tools import graphify_query as query
+with patch.object(sys, "path", [str(Path(__file__).resolve().parents[3]), *sys.path]):
+    from tools import graphify_query as query
 
 
 class GraphifyQueryScopeTests(unittest.TestCase):

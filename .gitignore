@@ -73,7 +73,7 @@ Obsidian/Amiga/Reference/Motorola 68000 DIVU & DIVS Cycle-Accurate Timing Analys
 /Obsidian/Amiga/Reference/.cache/
 
 # Graphify AST knowledge graph database, semantic indices, and architecture maps.
-# Physically copied as independent seeds; only the project graph is refreshed in worktrees.
+# Worktree creation copies an independent seed. Commit preparation refreshes the project graph.
 /graphify-out/
 
 # Shared completed-response and PDF preparation caches for bootstrap tools.

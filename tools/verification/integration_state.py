@@ -28,9 +28,9 @@ def common(root):
 
 
 @contextmanager
-def publication_lock(root):
+def publication_lock(common_directory):
     # Retain the inode/file: another opener must lock the same object.
-    with (common(root) / "local-integration.lock").open("a+b") as stream:
+    with (common_directory / "local-integration.lock").open("a+b") as stream:
         try:
             stream.seek(0)
             if os.name == "nt":
@@ -54,16 +54,25 @@ def worktrees(root):
     return entries
 
 
-def checkout(root, branch):
-    matches = [entry for entry in worktrees(root) if entry.get("branch") == branch]
+def checkout(root, branch, registrations=None):
+    entries = worktrees(root) if registrations is None else registrations
+    matches = [entry for entry in entries if entry.get("branch") == branch]
     if len(matches) != 1 or any(key in matches[0] for key in ("locked", "prunable")):
         raise ValueError("Expected one unlocked registered checkout for " + branch)
     return Path(matches[0]["worktree"]).resolve()
 
 
 def no_operation(root):
-    for name in ("MERGE_HEAD", "CHERRY_PICK_HEAD", "REVERT_HEAD", "rebase-merge", "rebase-apply", "sequencer", "BISECT_START"):
-        if Path(value(root, "rev-parse", "--path-format=absolute", "--git-path", name)).exists():
+    names = ("MERGE_HEAD", "CHERRY_PICK_HEAD", "REVERT_HEAD",
+             "rebase-merge", "rebase-apply", "sequencer", "BISECT_START")
+    options = [option for name in names for option in ("--git-path", name)]
+    output = git(root, "rev-parse", "--path-format=absolute", *options).decode("utf-8")
+    paths = [Path(line) for line in output.removesuffix("\n").split("\n")]
+    if ("\0" in output or len(paths) != len(names)
+            or any(not path.is_absolute() or path.name != name for name, path in zip(names, paths))):
+        raise ValueError("Git returned invalid operation marker paths")
+    for name, path in zip(names, paths):
+        if path.exists():
             raise ValueError("Git operation is active: " + name)
 
 

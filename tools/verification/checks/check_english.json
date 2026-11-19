@@ -279,6 +279,9 @@
       "bbb",
       "fvariant"
     ],
+    "tools/verification/tests/test_worktree.py": [
+      "\u0142"
+    ],
     "tools/verification/tests/test_cli.py": ["xb"],
     "tools/verification/tests/test_impact.py": ["qm"],
     "tools/verification/timing_report.py": ["xb"],

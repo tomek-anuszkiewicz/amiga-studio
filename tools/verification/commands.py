@@ -131,12 +131,12 @@ PYTHON_SUITES = (
 
 
 INDEPENDENT_PYTHON_SUITES = frozenset({
-    "RAG MCP contracts", "Artifact report contracts", "Verification CLI contracts",
+    "RAG MCP contracts", "Artifact report contracts",
 })
 
 
 def independent_contract(name, commands):
-    """Only audited directory commands may overlap coverage or each other."""
+    """Only audited directory commands with spare capacity may overlap coverage."""
     if name not in INDEPENDENT_PYTHON_SUITES or len(commands) != 1:
         return False
     return any(label == name and commands[0] == (label, command, overrides)
@@ -205,6 +205,8 @@ def python_commands(directory=None, pattern=None, case=None, changes=None, inclu
             raise ValueError(f"Python test directory does not exist: {target}")
         if path.resolve() == REPO_ROOT / "tools/bootstrap/book-to-markdown/tests":
             command = [sys.executable, "tools/bootstrap/book-to-markdown/run_tests.py"]
+        elif path.resolve() == REPO_ROOT / "tools/verification/tests":
+            command = [sys.executable, "tools/verification/run_tests.py", "-s", str(target), "-q"]
         else:
             command = [sys.executable, "-m", "unittest", "discover", "-s", str(target), "-q"]
         if pattern:

@@ -10,8 +10,10 @@ import tempfile
 import time
 import unittest
 from unittest.mock import Mock, patch
+from zipfile import ZipFile
 
 import psutil
+from git_fixtures import restore_repository
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import commands
@@ -23,26 +25,27 @@ import repository
 import verify
 import timing_report
 from cli import parse_args
-from evidence import digest
+from evidence import digest, file_digest, group_identity
 
 
 class IntegrationTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
-        self.parent = Path(self.temporary.name)
-        self.target = self.parent / "primary"
-        self.target.mkdir()
-        self.source = self.parent / "primary-task"
-        self.write(self.target, ".gitignore", ".agent/\n.env\nignored*\ntarget/\n")
-        self.write(self.target, "value.txt", "baseline\n")
-        tool = Path(__file__).resolve().parents[2] / "worktree.ps1"
-        self.write(self.target, "tools/worktree.ps1", tool.read_text(encoding="utf-8"))
-        self.git(self.target, "init", "-q", "-b", "master")
-        self.base = self.commit(self.target)
-        self.git(self.target, "worktree", "add", "-q", "-b", "task", str(self.source), self.base)
+        self.configure(Path(self.temporary.name).resolve())
+        if self._testMethodName != "test_batch_partial_cleanup_survives_assembly_removal_and_retries":
+            self.restore("integration")
+            self.install_worktree_tool()
+            self.configure_verifier()
+
+    def configure(self, parent):
+        self.parent = parent
+        self.target = parent / "primary"
+        self.source = parent / "primary-task"
         self.directory = self.source / ".agent/tmp/verification/commit"
         self.record = self.directory / "integration.json"
+
+    def configure_verifier(self):
         self.native_selection = commands.select_phases
         self.enterContext(patch.object(integration, "execution_conditions", return_value="fixture"))
         self.enterContext(patch.object(verify, "execution_conditions", return_value="fixture"))
@@ -52,6 +55,54 @@ class IntegrationTests(unittest.TestCase):
         # These publication fixtures do not need generated report content. The
         # dedicated output-boundary test below exercises the actual publisher.
         self.report_publisher = self.enterContext(patch.object(verify, "publish", return_value={}))
+
+    def restore(self, state):
+        restore_repository(state, self.parent)
+        metadata = integration.read(self.parent / "fixture.json")
+        self.base = metadata["base"]
+        sources = [{**item, "root": str(self.parent / item["root"])} for item in metadata["sources"]]
+        if not self.record.exists():
+            return None, sources
+
+        record = integration.read(self.record)
+        record.update(source_root=str(self.source), target_root=str(self.target), sources=sources)
+        record["evidence_directory"] = str(self.directory)
+        artifacts = record["review_artifacts"]
+        if record["sources_explicit"]:
+            sources_path = self.write(self.source, ".agent/tmp/sources.json", json.dumps(sources))
+            record["review"]["sources"] = digest(sources)
+            review_path = self.write(self.source, ".agent/tmp/review.json", json.dumps(record["review"]))
+            for path in (sources_path, review_path):
+                artifacts[path.relative_to(self.parent).as_posix()] = file_digest(path)
+        record["review_artifacts"] = {str(self.parent / name): identity for name, identity in artifacts.items()}
+        record["evidence"]["checkout"] = digest(str(self.source))
+        integration_state.save(self.directory / "commit.json", record["evidence"])
+        integration_state.save(self.record, record)
+        if record["state"] == "published":
+            integration_state.save(integration.cleanup_record(record), record)
+        return record["commit"], sources
+
+    def install_worktree_tool(self):
+        tool = Path(__file__).resolve().parents[2] / "worktree.ps1"
+        self.write(self.target, "tools/worktree.ps1", tool.read_text(encoding="utf-8"))
+
+    def restore_published_cleanup(self):
+        fixture = Path(__file__).with_name("fixtures") / "partial-cleanup.zip"
+        with ZipFile(fixture) as archive:
+            archive.extractall(self.parent)
+        record = integration.read(self.parent / "published.json")
+        for item in record["sources"]:
+            source = self.parent / item["root"]
+            # Older Git versions require an absolute path back to each checkout.
+            link = self.target / ".git/worktrees" / source.name / "gitdir"
+            link.write_text((source / ".git").as_posix() + "\n", encoding="utf-8")
+            item["root"] = str(source)
+        record["source_root"] = str(self.source)
+        record["target_root"] = str(self.target)
+        integration_state.save(self.record, record)
+        integration_state.save(integration.cleanup_record(record), record)
+        self.install_worktree_tool()
+        return record
 
     def test_report_creation_and_updates_preserve_evidence_before_freeze(self):
         self.report_publisher.side_effect = timing_report.publish
@@ -81,19 +132,20 @@ class IntegrationTests(unittest.TestCase):
         for name in ("tests/test-runtime-report.md", "tests/results/neighbor.md", "value.txt"):
             with self.subTest(path=name):
                 path = self.write(self.source, name, "Changed source after verification.\n")
-                with self.assertRaisesRegex(ValueError, "current candidate"):
-                    integration.validate_evidence(self.source, self.directory)
+                self.assertNotEqual(repository.snapshot(self.source), evidence["source"])
                 self.git(self.source, "add", name)
-                with self.assertRaisesRegex(ValueError, "current candidate"):
-                    integration.validate_evidence(self.source, self.directory)
-                self.git(self.source, "restore", "--staged", "--", name)
-                if name not in {"value.txt"}:
+                self.assertNotEqual(repository.snapshot(self.source), evidence["source"])
+                if name == "value.txt":
+                    with self.assertRaisesRegex(ValueError, "current candidate"):
+                        integration.validate_evidence(self.source, self.directory)
+                else:
+                    self.git(self.source, "restore", "--staged", "--", name)
                     path.unlink()
 
     def write(self, root, name, content):
         path = root / name
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(content, encoding="utf-8")
+        path.write_text(content, encoding="utf-8", newline="\n")
         return path
 
     def git(self, root, *args):
@@ -112,9 +164,7 @@ class IntegrationTests(unittest.TestCase):
         self.git(root, "update-ref", "HEAD", revision)
         return revision
 
-    def prepare(self, pending=True, message="feat: candidate", original_source=None, sources=None):
-        if pending:
-            self.write(self.source, "value.txt", "candidate\n")
+    def verify_current(self, original_source=None):
         with patch.object(verify, "REPO_ROOT", self.source), patch.object(execution, "REPO_ROOT", self.source), \
              patch.object(verify, "stable_update_notice", return_value=""), contextlib.redirect_stdout(io.StringIO()) as output:
             sentence = ["commit", "--integration-base", self.base]
@@ -122,7 +172,9 @@ class IntegrationTests(unittest.TestCase):
                 sentence += ["--integration-source", original_source]
             result = verify.main(sentence)
         self.assertEqual(result, 0, output.getvalue())
-        evidence = integration.read(self.directory / "commit.json")
+        return integration.read(self.directory / "commit.json")
+
+    def freeze_verified(self, evidence, sources=None):
         partition = [{"message": "feat: candidate", "tree": evidence["tree"]}] if repository.collect_changes(self.source) else []
         self.write(self.source, ".agent/tmp/partition.json", json.dumps(partition))
         review = {"verdict": "APPROVED", "reviewer": "independent fixture reviewer", "source": evidence["source"],
@@ -134,12 +186,32 @@ class IntegrationTests(unittest.TestCase):
         self.write(self.source, ".agent/tmp/review.json", json.dumps(review))
         integration.freeze(self.source, self.directory, self.source / ".agent/tmp/review.json",
                            self.source / ".agent/tmp/partition.json", "master", sources_path)
-        if partition:
+        return partition
+
+    def prepare(self, pending=True, message="feat: candidate", original_source=None, sources=None):
+        if pending:
+            self.write(self.source, "value.txt", "candidate\n")
+        if self.freeze_verified(self.verify_current(original_source), sources):
             self.commit(self.source, message)
         integration.seal(self.source, self.record)
         return self.git(self.source, "rev-parse", "HEAD")
 
-    def assemble_sources(self):
+    def restore_verified(self, sealed):
+        """Recreate the verified pending checkout from the sealed snapshot."""
+        self.git(self.source, "update-ref", sealed["source_ref"], sealed["head"], sealed["commit"])
+        self.git(self.source, "read-tree", sealed["head"])
+        evidence_path = self.directory / "commit.json"
+        evidence = integration.read(evidence_path)
+        # The archive stores a portable Python command without a host identity.
+        inputs = integration.read(self.directory / evidence["inputs"])
+        for name, group in evidence["groups"].items():
+            for _, command, _ in group["commands"]:
+                command[0] = sys.executable
+            group["identity"] = group_identity(name, group["commands"], inputs, group["conditions"])
+        integration_state.save(evidence_path, evidence)
+        return evidence
+
+    def arrange_sources(self):
         self.write(self.source, "task.txt", "First task\n")
         first = self.commit(self.source, "feat: first task")
         sources = [{"ref": "refs/heads/task", "root": str(self.source), "tip": first}]
@@ -159,7 +231,7 @@ class IntegrationTests(unittest.TestCase):
         return sources
 
     def test_batch_preserves_three_histories_and_publishes_one_combined_transition(self):
-        sources = self.assemble_sources()
+        _, sources = self.restore("integration-assembled")
         assembled = self.git(self.source, "rev-parse", "HEAD")
         commit = self.prepare(sources=sources)
         evidence = integration.read(self.directory / "commit.json")
@@ -177,27 +249,46 @@ class IntegrationTests(unittest.TestCase):
             self.assertTrue((self.target / (name + ".txt")).is_file())
 
     def test_batch_rejects_unselected_history_missing_assembly_and_duplicate_sources(self):
-        sources = self.assemble_sources()
+        _, sources = self.restore("integration-assembled")
+        evidence = self.verify_current()
         for selected, message in ((sources[1:], "include the assembly"),
                                   ([*sources, sources[1]], "unique local branches")):
             with self.subTest(message=message), self.assertRaisesRegex(ValueError, message):
-                self.prepare(pending=False, sources=selected)
+                self.freeze_verified(evidence, selected)
         absent = {**sources[1], "tip": self.commit(Path(sources[1]["root"]), "feat: later history")}
         with self.assertRaisesRegex(ValueError, "absent from the assembled"):
-            self.prepare(pending=False, sources=[sources[0], absent])
+            self.freeze_verified(evidence, [sources[0], absent])
+        self.assertFalse(self.record.exists())
         self.assertEqual(self.git(self.target, "rev-parse", "HEAD"), self.base)
 
     def test_batch_source_approval_and_artifact_are_bound_to_freeze(self):
-        sources = self.assemble_sources()
-        self.prepare(sources=sources)
-        frozen = integration.read(self.record)
-        frozen["sources"] = sources[:1]
+        commit, sources = self.restore("integration-combined-sealed")
+        sealed = integration.read(self.record)
         with self.assertRaisesRegex(ValueError, "selected source approval"):
-            integration.verify_seal(self.source, frozen)
+            integration.verify_seal(self.source, {**sealed, "sources": sources[:1]})
+
+        sources_path = self.source / ".agent/tmp/sources.json"
+        original = sources_path.read_bytes()
+        accepted = self.record.read_bytes()
+        integration_state.save(sources_path, sources[:1])
+        with self.assertRaisesRegex(ValueError, "review or partition artifact changed"):
+            integration.publish(self.source, self.record)
+        self.assertEqual(self.record.read_bytes(), accepted)
+        self.assertEqual(self.git(self.source, "rev-parse", "HEAD"), commit)
+        self.assertEqual(self.git(self.target, "rev-parse", "HEAD"), self.base)
+
+        sources_path.write_bytes(original)
+        self.restore_verified(sealed)
+        review_path = self.source / ".agent/tmp/review.json"
+        partition_path = self.source / ".agent/tmp/partition.json"
+        integration_state.save(review_path, {**sealed["review"], "sources": digest(sources[:1])})
+        with self.assertRaisesRegex(ValueError, "approval must identify the selected source set"):
+            integration.freeze(self.source, self.directory, review_path, partition_path, "master", sources_path)
+        self.assertEqual(self.record.read_bytes(), accepted)
         self.assertEqual(self.git(self.target, "rev-parse", "HEAD"), self.base)
 
     def test_batch_failed_verification_preserves_target_and_all_sources(self):
-        sources = self.assemble_sources()
+        _, sources = self.restore("integration-assembled")
         self.phases[0][1][0] = ("Fixture check", [sys.executable, "-c", "raise SystemExit(1)"], {})
         with self.assertRaises(AssertionError):
             self.prepare(sources=sources)
@@ -208,8 +299,7 @@ class IntegrationTests(unittest.TestCase):
             self.assertTrue(self.git(self.target, "branch", "--list", item["ref"].removeprefix("refs/heads/")))
 
     def test_batch_dirty_source_and_advanced_tip_block_publication(self):
-        sources = self.assemble_sources()
-        self.prepare(sources=sources)
+        _, sources = self.restore("integration-combined-sealed")
         other = Path(sources[1]["root"])
         later = self.write(other, "later.txt", "New work\n")
         with self.assertRaisesRegex(ValueError, "pending changes"):
@@ -221,8 +311,7 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(self.git(self.target, "rev-parse", "HEAD"), self.base)
 
     def test_batch_publication_locks_every_selected_reference(self):
-        sources = self.assemble_sources()
-        commit = self.prepare(sources=sources)
+        commit, sources = self.restore("integration-combined-sealed")
         native_git = integration.git
         writers = []
         def during_checkout(root, *args):
@@ -238,8 +327,7 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(self.git(self.target, "rev-parse", "HEAD"), commit)
 
     def test_batch_source_writer_before_prepare_blocks_the_whole_publication(self):
-        sources = self.assemble_sources()
-        self.prepare(sources=sources)
+        _, sources = self.restore("integration-combined-sealed")
         native = integration.RefTransaction
         def change_source(*args, **kwargs):
             self.git(self.target, "update-ref", sources[1]["ref"], self.base, sources[1]["tip"])
@@ -253,12 +341,11 @@ class IntegrationTests(unittest.TestCase):
             self.assertTrue(Path(item["root"]).exists())
 
     def test_batch_partial_cleanup_survives_assembly_removal_and_retries(self):
-        sources = self.assemble_sources()
-        commit = self.prepare(sources=sources)
-        integration.publish(self.source, self.record)
-        durable = integration.cleanup_record(integration.read(self.record))
-        other = Path(sources[1]["root"])
-        later = self.write(other, "later.txt", "Preserve later work\n")
+        published = self.restore_published_cleanup()
+        sources = published["sources"]
+        commit = published["commit"]
+        durable = integration.cleanup_record(published)
+        later = Path(sources[1]["root"]) / "later.txt"
         with patch.object(integration_cleanup, "stopped"), self.assertRaisesRegex(ValueError, "pending changes"):
             integration_cleanup.cleanup(self.target, self.record)
         self.assertFalse(self.source.exists())
@@ -287,7 +374,7 @@ class IntegrationTests(unittest.TestCase):
         self.assertNotIn("committed.txt", repository.collect_changes(self.source))
 
     def test_publication_installs_exact_tree_under_prepared_reference_locks(self):
-        commit = self.prepare()
+        commit, _ = self.restore("integration-sealed")
         integration.publish(self.source, self.record)
         self.assertEqual(self.git(self.target, "rev-parse", "HEAD"), commit)
         self.assertEqual((self.target / "value.txt").read_text(), "candidate\n")
@@ -296,7 +383,7 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(integration.read(self.record)["state"], "published")
 
     def test_distinct_source_selections_at_the_same_commit_retain_both_cleanup_records(self):
-        commit = self.prepare()
+        commit, _ = self.restore("integration-sealed")
         integration.publish(self.source, self.record)
         first = integration.cleanup_record(integration.read(self.record))
         original = first.read_bytes()
@@ -358,10 +445,8 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(self.git(self.target, "branch", "--list", "task"), "")
 
     def test_fast_forward_requires_affirmative_plan_and_test_confirmation(self):
-        for changed in ({"tested": False}, {"tested": None}, {"tested": 1},
-                        {"plan_approved": False}, {"confirmation": " "}):
-            with self.subTest(changed=changed), self.assertRaisesRegex(ValueError, "Explicit plan approval"):
-                integration.accept_tested(self.source, self.directory, self.confirmation(**changed), "master")
+        with self.assertRaisesRegex(ValueError, "Explicit plan approval"):
+            integration.accept_tested(self.source, self.directory, self.confirmation(tested=False), "master")
         self.assertFalse(self.record.exists())
         self.assertEqual(self.git(self.target, "rev-parse", "HEAD"), self.base)
 
@@ -432,20 +517,43 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(self.git(self.target, "rev-parse", "HEAD"), commit)
 
     def test_wrong_mechanical_message_cannot_be_sealed(self):
+        commit, _ = self.restore("integration-sealed")
+        frozen = integration.read(self.record)
+        frozen.pop("commit")
+        frozen["state"] = "frozen"
+        self.git(self.source, "update-ref", frozen["source_ref"], frozen["head"], commit)
+        changed = self.commit(self.source, "feat: unreviewed message")
+        self.assertEqual(self.git(self.source, "show", "-s", "--format=%P %T", changed).split(),
+                         [frozen["head"], frozen["tree"]])
+        integration_state.save(self.record, frozen)
         with self.assertRaisesRegex(ValueError, "frozen tree, parents or message"):
-            self.prepare(message="feat: unreviewed message")
+            integration.seal(self.source, self.record)
+        self.assertEqual(integration.read(self.record), frozen)
         self.assertEqual(self.git(self.target, "rev-parse", "HEAD"), self.base)
 
     def test_empty_partition_cannot_bridge_a_rewind_to_a_same_tree_ancestor(self):
-        same_tree_commit = self.commit(self.source, "feat: same tree history")
-        self.prepare(pending=False)
-        self.git(self.source, "update-ref", "refs/heads/task", self.base, same_tree_commit)
-        self.assertEqual(self.git(self.source, "rev-parse", "HEAD^{tree}"), self.git(self.source, "rev-parse", same_tree_commit + "^{tree}"))
+        ancestor, _ = self.restore("integration-sealed")
+        tip = self.commit(self.source, "feat: same tree history")
+        frozen = integration.read(self.record)
+        # Model a clean freeze at the tip with no mechanical commits to complete.
+        source = repository.snapshot(self.source)
+        frozen.pop("commit")
+        frozen.update(head=tip, state="frozen", commits=[],
+                      sources=[{**frozen["sources"][0], "tip": tip}])
+        frozen["evidence"].update(head=tip, source=source)
+        frozen["review"].update(source=source, partition=digest([]))
+        for name, content in (("partition.json", []), ("review.json", frozen["review"])):
+            path = self.source / ".agent/tmp" / name
+            integration_state.save(path, content)
+            frozen["review_artifacts"][str(path)] = file_digest(path)
+        self.assertEqual(integration.verify_seal(self.source, frozen), tip)
+        self.git(self.source, "update-ref", "refs/heads/task", ancestor, tip)
+        self.assertEqual(self.git(self.source, "rev-parse", "HEAD^{tree}"), frozen["tree"])
         with self.assertRaisesRegex(ValueError, "frozen history"):
-            integration.verify_seal(self.source, integration.read(self.record))
+            integration.verify_seal(self.source, frozen)
 
     def test_ref_writer_between_comparison_and_prepare_cannot_be_overwritten(self):
-        self.prepare()
+        self.restore("integration-sealed")
         self.write(self.target, "concurrent.txt", "other publisher\n")
         other = self.commit(self.target)
         self.git(self.target, "read-tree", "-m", "-u", other, self.base)
@@ -462,7 +570,11 @@ class IntegrationTests(unittest.TestCase):
         self.assertFalse((self.target / ".git/local-integration.json").exists())
 
     def test_dirty_staged_operation_head_and_ignored_collisions_are_preserved(self):
+        collision = "ignored-new"
+        self.write(self.source, collision, "candidate\n")
+        self.git(self.source, "add", "-f", collision)
         self.prepare()
+        sealed = self.record.read_bytes()
         self.write(self.target, "value.txt", "local edit\n")
         for staged in (False, True):
             if staged:
@@ -481,19 +593,17 @@ class IntegrationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "checkout"):
             integration.publish(self.source, self.record)
         self.git(self.target, "symbolic-ref", "HEAD", "refs/heads/master")
-        self.write(self.target, "ignored-new", "unique ignored file\n")
-        # The source introduces a tracked file with the same ignored name.
-        self.write(self.source, "ignored-new", "candidate\n")
-        self.git(self.source, "add", "-f", "ignored-new")
-        self.commit(self.source)
-        with self.assertRaisesRegex(ValueError, "advanced"):
+        ignored = self.write(self.target, collision, "unique ignored file\n")
+        with self.assertRaisesRegex(ValueError, "ignored path would be overwritten: ignored-new"):
             integration.publish(self.source, self.record)
-        with self.assertRaisesRegex(ValueError, "overwritten"):
-            integration_state.collisions(self.target, self.git(self.source, "rev-parse", "HEAD"))
-        self.assertEqual((self.target / "ignored-new").read_text(), "unique ignored file\n")
+        self.assertEqual(ignored.read_bytes(), b"unique ignored file\n")
+        self.assertEqual(self.git(self.target, "rev-parse", "HEAD"), self.base)
+        self.assertEqual(self.git(self.target, "write-tree"), self.git(self.target, "rev-parse", "HEAD^{tree}"))
+        self.assertEqual(self.record.read_bytes(), sealed)
+        self.assertFalse((self.target / ".git/local-integration.json").exists())
 
     def test_frozen_review_tree_and_artifacts_block_stale_publication(self):
-        self.prepare()
+        self.restore("integration-sealed")
         artifacts = integration.read(self.directory / "commit.json")["groups"]["Fixture check"]["artifacts"]
         artifact = self.directory / next(name for name in artifacts if name.endswith(".log"))
         artifact.write_text("tampered\n")
@@ -502,7 +612,7 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(self.git(self.target, "rev-parse", "HEAD"), self.base)
 
     def test_changed_review_or_partition_blocks_sealed_publication(self):
-        self.prepare()
+        self.restore("integration-sealed")
         review_path = self.source / ".agent/tmp/review.json"
         review = integration.read(review_path)
         review["verdict"] = "CHANGES REQUESTED"
@@ -533,14 +643,17 @@ class IntegrationTests(unittest.TestCase):
     def test_immutable_base_and_stale_completion_are_rejected(self):
         with self.assertRaisesRegex(ValueError, "immutable"):
             repository.resolve_base(self.source, "master")
-        self.prepare()
-        record = integration.read(self.directory / "commit.json")
-        record["required"] = []
-        (self.directory / "commit.json").write_text(json.dumps(record))
-        # A fresh freeze must reject even apparently passing truncated records.
-        with self.assertRaises(ValueError):
-            integration.freeze(self.source, self.directory, self.source / ".agent/tmp/review.json",
-                               self.source / ".agent/tmp/partition.json", "master")
+        self.restore("integration-sealed")
+        record = self.restore_verified(integration.read(self.record))
+        review = self.source / ".agent/tmp/review.json"
+        partition = self.source / ".agent/tmp/partition.json"
+        self.assertEqual(integration.freeze(self.source, self.directory, review, partition, "master"), self.record)
+        accepted = self.record.read_bytes()
+        integration_state.save(self.directory / "commit.json", {**record, "required": []})
+        with self.assertRaisesRegex(ValueError, "Required completion groups do not match current selection"):
+            integration.freeze(self.source, self.directory, review, partition, "master")
+        self.assertEqual(self.record.read_bytes(), accepted)
+        self.assertEqual(self.git(self.target, "rev-parse", "HEAD"), self.base)
 
     def test_rebased_divergent_source_retains_full_selection_through_freeze(self):
         self.write(self.source, "docs/task.md", "Task documentation\n")
@@ -589,19 +702,59 @@ class IntegrationTests(unittest.TestCase):
                 f"source=Path({str(self.source)!r}); record=Path({str(self.record)!r})\n" + extra +
                 "\nintegration.publish(source, record)\n")
 
+    def wait_for_child(self, process, marker, log):
+        deadline = time.monotonic() + 15
+        while not marker.exists() and process.poll() is None and time.monotonic() < deadline:
+            time.sleep(0.02)
+        ready = marker.exists()
+        status = process.poll()
+        if not ready or status is not None:
+            output = log.read_text(encoding="utf-8", errors="replace")
+            self.fail(f"Child readiness failed at {marker.name}; exit status {status}\n{output}")
+
     def test_two_real_publishers_only_one_succeeds(self):
-        commit = self.prepare()
-        barrier = self.parent / "start"
-        code = self.child_code(f"while not Path({str(barrier)!r}).exists(): time.sleep(0.01)\n")
-        processes = [subprocess.Popen([sys.executable, "-c", code], stdout=subprocess.PIPE, stderr=subprocess.PIPE) for _ in range(2)]
-        barrier.touch()
-        results = [process.communicate(timeout=20) for process in processes]
-        self.assertEqual(sorted(process.returncode for process in processes), [0, 1], results)
+        commit, _ = self.restore("integration-sealed")
+        ready = self.parent / "first-publisher.ready"
+        release = self.parent / "first-publisher.release"
+        log = self.parent / "first-publisher.log"
+        sealed = self.record.read_bytes()
+        code = self.child_code(f"""
+native_check=integration.check_source
+def wait_in_publication_lock(*args):
+    Path({str(ready)!r}).touch()
+    deadline = time.monotonic() + 30
+    while not Path({str(release)!r}).exists():
+        if time.monotonic() >= deadline:
+            raise RuntimeError('Parent did not release publisher')
+        time.sleep(0.02)
+    return native_check(*args)
+integration.check_source=wait_in_publication_lock
+""")
+        with log.open("wb") as output:
+            first = subprocess.Popen([sys.executable, "-u", "-c", code], stdout=output, stderr=subprocess.STDOUT)
+        try:
+            self.wait_for_child(first, ready, log)
+            second = subprocess.run([sys.executable, "-c", self.child_code()], capture_output=True, timeout=20)
+            self.assertEqual(second.returncode, 1, second.stderr)
+            self.assertIn(b"Another local publisher holds the integration lock", second.stderr)
+            self.assertIsNone(first.poll())
+            self.assertEqual(self.git(self.target, "rev-parse", "HEAD"), self.base)
+            self.assertEqual(self.record.read_bytes(), sealed)
+        finally:
+            release.touch()
+            try:
+                first.wait(timeout=20)
+            except subprocess.TimeoutExpired:
+                first.kill()
+                first.wait(timeout=20)
+                raise
+        self.assertEqual(first.returncode, 0, log.read_text(encoding="utf-8", errors="replace"))
         self.assertEqual(self.git(self.target, "rev-parse", "HEAD"), commit)
         self.assertEqual(self.git(self.target, "status", "--porcelain"), "")
+        self.assertEqual(integration.read(self.record)["state"], "published")
 
     def test_recovery_locks_out_a_normal_reference_writer_during_rollback(self):
-        commit = self.prepare()
+        commit, _ = self.restore("integration-sealed")
         with patch.object(integration.RefTransaction, "commit", side_effect=ValueError("interruption")):
             with self.assertRaisesRegex(ValueError, "interruption"):
                 integration.publish(self.source, self.record)
@@ -621,11 +774,17 @@ class IntegrationTests(unittest.TestCase):
         self.assertFalse((self.target / ".git/local-integration.json").exists())
 
     def test_real_termination_and_recovery_at_publication_boundaries(self):
-        commit = self.prepare()
-        sealed = self.record.read_bytes()
-        for stage in ("before_prepare", "after_prepare", "during_checkout", "before_commit", "after_commit"):
+        parent = self.parent
+        for stage, phase_expected in (("before_prepare", False), ("after_prepare", False), ("during_checkout", True),
+                                      ("before_commit", True), ("after_commit", True)):
             with self.subTest(stage=stage):
-                marker = self.parent / (stage + ".ready")
+                self.configure(parent / stage)
+                commit, _ = self.restore("integration-sealed")
+                sealed = self.record.read_bytes()
+                record = integration.read(self.record)
+                durable = integration.cleanup_record(record)
+                marker = self.parent / "publisher.ready"
+                log = self.parent / "publisher.log"
                 extra = f"""
 stage={stage!r}
 def stop():
@@ -643,47 +802,59 @@ integration_state.RefTransaction.send=send
 native_git=integration.git
 def git(root, *args):
     if args[0] == 'read-tree' and stage == 'during_checkout':
-        (root / 'value.txt').write_text('interrupted edit\\n')
+        (root / 'value.txt').write_bytes(b'interrupted edit\\n')
         stop()
     return native_git(root, *args)
 integration.git=git
 """
-                process = subprocess.Popen([sys.executable, "-c", self.child_code(extra)], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                with log.open("wb") as output:
+                    process = subprocess.Popen([sys.executable, "-u", "-c", self.child_code(extra)],
+                                               stdout=output, stderr=subprocess.STDOUT)
                 try:
-                    deadline = time.monotonic() + 15
-                    while not marker.exists() and process.poll() is None and time.monotonic() < deadline:
-                        time.sleep(0.02)
-                    self.assertTrue(marker.exists(), process.poll())
+                    self.wait_for_child(process, marker, log)
                 finally:
                     process.terminate()
-                    process.communicate(timeout=10)
+                    process.wait(timeout=10)
+                self.assertNotEqual(process.returncode, 0)
                 # EOF releases the orphaned native transaction's prepared locks.
+                ref_lock = self.target / ".git/refs/heads/master.lock"
                 deadline = time.monotonic() + 5
-                while (self.target / ".git/refs/heads/master.lock").exists() and time.monotonic() < deadline:
+                while ref_lock.exists() and time.monotonic() < deadline:
                     time.sleep(0.02)
+                self.assertFalse(ref_lock.exists())
                 phase = self.target / ".git/local-integration.json"
+                self.assertEqual(phase.exists(), phase_expected)
+                self.assertEqual(self.record.read_bytes(), sealed)
+                self.assertFalse(durable.exists())
+                if phase_expected:
+                    self.assertEqual(integration.read(phase), {
+                        "record": str(self.record), "record_digest": file_digest(self.record), "candidate": record,
+                    })
                 if stage == "during_checkout":
+                    phase_bytes = phase.read_bytes()
                     with self.assertRaisesRegex(ValueError, "unexpected edits"):
                         integration.recover(self.target)
-                    self.assertEqual((self.target / "value.txt").read_text(), "interrupted edit\n")
-                    # Resolve the deliberate fixture edit; recovery can now abort.
+                    self.assertEqual((self.target / "value.txt").read_bytes(), b"interrupted edit\n")
+                    self.assertEqual(phase.read_bytes(), phase_bytes)
+                    # Resolve the deliberate fixture edit so recovery can abort.
                     self.write(self.target, "value.txt", "baseline\n")
-                    integration.recover(self.target)
-                elif phase.exists():
+                if phase_expected:
                     integration.recover(self.target)
                 expected = commit if stage == "after_commit" else self.base
                 self.assertEqual(self.git(self.target, "rev-parse", "HEAD"), expected)
                 self.assertEqual(self.git(self.target, "status", "--porcelain"), "")
                 self.assertTrue(self.source.exists())
                 self.assertFalse(phase.exists())
-                if expected == commit:
-                    self.git(self.target, "read-tree", "-m", "-u", commit, self.base)
-                    self.git(self.target, "update-ref", "refs/heads/master", self.base, commit)
-                self.record.write_bytes(sealed)
+                if stage == "after_commit":
+                    published = {**record, "state": "published"}
+                    self.assertEqual(integration.read(self.record), published)
+                    self.assertEqual(integration.read(durable), published)
+                else:
+                    self.assertEqual(self.record.read_bytes(), sealed)
+                    self.assertFalse(durable.exists())
 
     def test_cleanup_discards_all_source_ignored_files_and_removes_only_source(self):
-        commit = self.prepare()
-        integration.publish(self.source, self.record)
+        commit, _ = self.restore("integration-published")
         self.write(self.source, ".agent/tasks/plan.md", "active evidence\n")
         self.write(self.source, ".env", "unique local configuration\n")
         self.write(self.source, "target/build-output", "generated output\n")
@@ -698,8 +869,7 @@ integration.git=git
         self.assertEqual(self.git(self.target, "branch", "--list", "task"), "")
 
     def test_cleanup_refuses_later_work_and_an_active_command(self):
-        self.prepare()
-        integration.publish(self.source, self.record)
+        self.restore("integration-published")
         self.write(self.source, "new-work.txt", "later task\n")
         with self.assertRaisesRegex(ValueError, "pending changes"):
             integration_cleanup.cleanup(self.target, self.record)
@@ -713,21 +883,39 @@ integration.git=git
             process.wait(timeout=10)
         self.assertTrue(self.source.exists())
 
-    def test_cleanup_ignores_inaccessible_system_processes_but_blocks_source_commands(self):
-        system = Mock(pid=288)
-        system.cwd.side_effect = psutil.AccessDenied(pid=288)
-        system.username.side_effect = AssertionError("Process owners are not needed")
-        command = Mock(pid=123)
-        command.cwd.return_value = str(self.source)
-        with patch.object(psutil, "process_iter", return_value=[system]):
-            integration_cleanup.stopped(self.source)
-        with patch.object(psutil, "process_iter", return_value=[system, command]):
-            with self.assertRaisesRegex(ValueError, "source checkout"):
-                integration_cleanup.stopped(self.source)
+    def test_cleanup_preserves_checkout_switched_to_another_branch_at_same_commit(self):
+        commit, _ = self.restore("integration-published")
+        self.git(self.target, "branch", "new-owner", commit)
+        ignored = self.write(self.source, ".env", "New owner data\n")
+        durable = integration.cleanup_record(integration.read(self.record))
+        native_transaction = integration_cleanup.RefTransaction
+
+        def switch_after_prepare(*args, **kwargs):
+            transaction = native_transaction(*args, **kwargs)
+            try:
+                self.git(self.source, "switch", "new-owner")
+            except BaseException:
+                transaction.close()
+                raise
+            return transaction
+
+        with (patch.object(integration_cleanup, "stopped"),
+              patch.object(integration_cleanup, "RefTransaction", side_effect=switch_after_prepare),
+              self.assertRaisesRegex(ValueError, "Source checkout ownership changed")):
+            integration_cleanup.cleanup(self.target, self.record)
+
+        self.assertEqual(self.git(self.source, "symbolic-ref", "HEAD"), "refs/heads/new-owner")
+        self.assertEqual(ignored.read_bytes(), b"New owner data\n")
+        for branch in ("refs/heads/master", "refs/heads/task", "refs/heads/new-owner"):
+            self.assertEqual(self.git(self.target, "rev-parse", branch), commit)
+        outcome = integration.read(durable)["cleanup"]["refs/heads/task"]
+        self.assertEqual(outcome["directory"], "present")
+        self.assertEqual(outcome["registration"], "present")
+        self.assertEqual(outcome["branch"], "present")
+        self.assertIn("Source checkout ownership changed", outcome["error"])
 
     def test_failed_cleanup_retains_publication_and_can_retry_original_record(self):
-        commit = self.prepare()
-        integration.publish(self.source, self.record)
+        commit, _ = self.restore("integration-published")
         native_run = subprocess.run
         def fail_removal(command, *args, **kwargs):
             if command[0] in {"powershell", "pwsh"}:
@@ -746,8 +934,7 @@ integration.git=git
         self.assertEqual(self.git(self.target, "branch", "--list", "task"), "")
 
     def test_cleanup_can_finish_branch_removal_with_an_external_input_record(self):
-        commit = self.prepare()
-        integration.publish(self.source, self.record)
+        commit, _ = self.restore("integration-published")
         record = self.parent / "published-input.json"
         record.write_bytes(self.record.read_bytes())
         self.git(self.target, "worktree", "remove", str(self.source))
@@ -756,6 +943,51 @@ integration.git=git
         self.assertEqual(self.git(self.target, "rev-parse", "HEAD"), commit)
         self.assertEqual(integration.read(record)["state"], "published")
         integration_cleanup.cleanup(self.target, record)
+
+
+class IntegrationValidationTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name).resolve()
+
+    def test_confirmation_requires_exact_affirmative_fields(self):
+        approval = {"base": "a" * 40, "commit": "b" * 40, "tree": "c" * 40,
+                    "plan_approved": True, "tested": True, "confirmation": "Approved and tested."}
+        artifact = self.root / "confirmation.json"
+        for changed in ({"tested": None}, {"tested": 1}, {"plan_approved": False}, {"confirmation": " "}):
+            with self.subTest(changed=changed):
+                confirmation = {**approval, **changed}
+                artifact.write_text(json.dumps(confirmation), encoding="utf-8")
+                frozen = {"confirmation": confirmation, "confirmation_path": str(artifact),
+                          "confirmation_digest": file_digest(artifact)}
+                with patch.object(integration, "resolve_base", side_effect=AssertionError("Unexpected Git validation")):
+                    with self.assertRaisesRegex(ValueError, "Explicit plan approval"):
+                        integration.verify_confirmation(self.root, frozen)
+
+    def test_cleanup_ignores_inaccessible_system_processes_but_blocks_source_commands(self):
+        source = self.root / "source"
+        source.mkdir()
+        system = Mock(pid=288)
+        system.cwd.side_effect = psutil.AccessDenied(pid=288)
+        system.username.side_effect = AssertionError("Process owners are not needed")
+        command = Mock(pid=123)
+        command.cwd.return_value = str(source)
+        with patch.object(psutil, "process_iter", return_value=[system]):
+            integration_cleanup.stopped(source)
+        with patch.object(psutil, "process_iter", return_value=[system, command]):
+            with self.assertRaisesRegex(ValueError, r"source checkout \(PID 123\)"):
+                integration_cleanup.stopped(source)
+
+    def test_cleanup_record_identity_includes_selected_sources(self):
+        target = self.root / "target"
+        assembly = {"ref": "refs/heads/task", "root": str(self.root / "source"), "tip": "c" * 40}
+        other = {"ref": "refs/heads/other", "root": str(self.root / "other"), "tip": "d" * 40}
+        fixed = {"base": "a" * 40, "commit": "b" * 40, "source_ref": assembly["ref"], "target_root": str(target)}
+        first = integration.cleanup_record({**fixed, "sources": [assembly]})
+        second = integration.cleanup_record({**fixed, "sources": [assembly, other]})
+        self.assertNotEqual(first, second)
+        self.assertEqual(first, integration.cleanup_record({**fixed, "sources": [assembly]}))
 
 
 if __name__ == "__main__":

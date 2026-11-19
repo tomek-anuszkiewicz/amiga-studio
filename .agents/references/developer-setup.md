@@ -64,7 +64,7 @@ The emulator uses external test suites, hardware measurements, and reference imp
 - **[Techtravels.org](https://www.techtravels.org/):** Amiga hardware investigations, including logic-analyzer measurements and Paula circuit analysis; distinguish measured pins from inferred internal behavior.
 
 > [!NOTE]
-> **Graphify navigation:** Use independent project and reference datasets, then verify source definitions. Bootstrap creates or refreshes both; preparation and worktree operations refresh only project code. See [Chapter 6](#6-code-structure-relationships-graphify).
+> **Graphify navigation:** Use independent project and reference datasets, then verify source definitions. Bootstrap creates or refreshes both graphs. Worktree creation copies existing graph directories. Commit preparation refreshes only the project graph. See [Chapter 6](#6-code-structure-relationships-graphify).
 
 Because these test assets comprise multi-gigabyte datasets (~6.5 GB uncompressed), they reside outside Git history in `ref_src/` and `tools/`.
 
@@ -106,6 +106,10 @@ The repository maintains an authoritative, high-fidelity documentation library u
 
 <a id="in-repository-specifications-committed-to-git"></a><a id="external-reference-documentation-bootstrapped-git-ignored"></a><a id="ingested-reference-documents-available-in-repository"></a>
 ### External Reference Documentation (Bootstrapped / Git-Ignored)
+
+Worktree creation copies local manuals from the primary checkout and preserves
+files tracked by Git in the target. Initial provisioning uses the documentation
+bootstrap described below.
 
 Due to copyright preservation and multi-gigabyte dataset exclusion (`.gitignore`), the primary Commodore and Motorola reference manuals are **excluded from Git tracking**. They are converted into structured Markdown format and must be downloaded or linked via bootstrapping:
 
@@ -316,7 +320,7 @@ manual reference refresh and query commands are described in
 <a id="7-code-structure-relationships-graphify"></a><a id="7-code-structure--relationships-graphify"></a><a id="6-code-structure-relationships-graphify"></a><a id="6-code-structure--relationships-graphify"></a><a id="b-code-structure-relationships-ast-knowledge-graph-graphify"></a>
 ## 6. Code Structure & Relationships: Graphify
 - **Datasets:** `project` stores code and allowed project documents in `graphify-out/graph.json`; it honors Git exclusions and excludes imported sources. `reference` stores supported code throughout `ref_src/` in `ref_src/graphify-out/graph.json`, with Git exclusions disabled and Graphify exclusions retained. JSON vectors, generated data and vAmigaTS assembly are excluded; parser errors can leave partial symbols.
-- **Production:** `.\tools\bootstrap\bootstrap.ps1 -Graphify` and the Graphify stage of `-All` create or refresh both graphs. Worktree operations and preparation refresh project code only. The dedicated manual reference operation is `python tools/graphify/refresh.py --graph reference`. Structural refresh preserves valid project semantic content; initial or needed document semantics use the host-agent procedure in the [semantic extraction skill](../skills/TA-extract-graph-semantics/SKILL.md). Keep the repository-owned TA graph skills when installing/upgrading Graphify.
+- **Production:** `.\tools\bootstrap\bootstrap.ps1 -Graphify` and the Graphify stage of `-All` create or refresh both graphs. Commit preparation refreshes only the project graph. The dedicated manual reference operation is `python tools/graphify/refresh.py --graph reference`. Structural refresh preserves valid project semantic content; initial or needed document semantics use the host-agent procedure in the [semantic extraction skill](../skills/TA-extract-graph-semantics/SKILL.md). Keep the repository-owned TA graph skills when installing/upgrading Graphify.
 - **Queries:** Use the read-only repository entry point with an explicit native graph selector, such as `python tools/graphify/read.py query "Cpu BusResult" --graph graphify-out/graph.json` or `python tools/graphify/read.py explain "Paula" --graph ref_src/graphify-out/graph.json`. The same `--graph` selection applies to `path`. Compare graphs separately and verify source definitions; reference paths resolve under `ref_src/`.
 - **Optional filtering:** `python tools/graphify_query.py "Paula" --graph reference --scope minimig` filters nodes and edges before traversal using a disposable view under `.agent/tmp/`. Scopes are directories within the selected root. Missing graphs are reported without substitution or automatic builds. See the [tool README](../../tools/graphify/README.md) for roots, creation, caching and freshness.
 

@@ -1,10 +1,12 @@
 """Frontmatter gate includes local reference books regardless of Git status."""
 
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
 import unittest
 
+from git_fixtures import restore_repository
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "checks"))
 from check_obsidian_frontmatter import check_vault
@@ -14,12 +16,16 @@ class FrontmatterTests(unittest.TestCase):
     def test_scans_ignored_reference_book_and_reports_missing_properties(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
+            restore_repository("empty", root)
             vault = root / "Obsidian" / "Amiga"
             book = vault / "Reference" / "Local Book"
             book.mkdir(parents=True)
             (root / ".gitignore").write_text("/Obsidian/Amiga/Reference/Local Book/\n", encoding="utf-8")
             chapter = book / "01 Chapter.md"
             chapter.write_text("# Chapter\n", encoding="utf-8")
+            relative = chapter.relative_to(root).as_posix()
+            ignored = subprocess.check_output(["git", "check-ignore", "--", relative], cwd=root, text=True)
+            self.assertEqual(ignored.strip(), relative)
             issues, count = check_vault(root)
             self.assertEqual((count, issues), (1, [(chapter, "missing opening YAML frontmatter marker on line 1")]))
 

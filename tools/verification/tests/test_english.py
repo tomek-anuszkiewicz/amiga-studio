@@ -29,6 +29,7 @@ class EnglishScope(unittest.TestCase):
         with patch.object(english, "REPO_ROOT", self.root), \
              patch.object(english, "repository_targets", return_value=repository_files), \
              patch.object(english, "worker_count", return_value=1), \
+             patch.multiple(english, WORKER_SCOPE=None, WORKER_VOCABULARY=None, WORKER_DICTIONARY=None), \
              patch.object(sys, "argv", ["check_english.py", *map(str, files)]), \
              contextlib.chdir(self.root), contextlib.redirect_stdout(output):
             result = english.main()

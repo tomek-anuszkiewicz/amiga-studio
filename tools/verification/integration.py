@@ -6,7 +6,7 @@ import subprocess
 from evidence import BatchEvidence, capture_inputs, digest, execution_conditions, file_digest, group_identity
 from repository import candidate_tree, collect_changes, git, merge_heads, resolve_base, snapshot
 from integration_state import (ancestor, checkout, clean, collisions, common, no_operation,
-                               publication_lock, RefTransaction, represents, save, value)
+                               publication_lock, RefTransaction, represents, save, value, worktrees)
 from integration_sources import cleanup_record, source_locks, validate_sources
 
 
@@ -65,11 +65,13 @@ def freeze(root, directory, review_path, partition_path, target, sources_path=No
     target_ref = "refs/heads/" + target
     if source_ref == target_ref:
         raise ValueError("Primary-branch work uses ordinary preparation, without self-integration")
-    target_root = checkout(root, target_ref)
+    registrations = worktrees(root)
+    target_root = checkout(root, target_ref, registrations)
     base = record["integration_base"]
     sources = (read(sources_path) if sources_path else
                [{"ref": source_ref, "root": str(root.resolve()), "tip": record["head"]}])
-    validate_sources(root, sources, source_ref, target_ref, record["head"], merge_heads(root))
+    validate_sources(root, sources, source_ref, target_ref, record["head"], merge_heads(root),
+                     registrations=registrations)
     if sources_path and review.get("sources") != digest(sources):
         raise ValueError("Independent approval must identify the selected source set")
     if value(root, "rev-parse", target_ref) != base:
@@ -124,8 +126,7 @@ def verify_confirmation(root, frozen):
         raise ValueError("Fast-forward confirmation identifies a different result")
     clean(root)
     if (value(root, "symbolic-ref", "HEAD") != frozen["source_ref"]
-            or value(root, "rev-parse", "HEAD") != frozen["commit"]
-            or value(root, "rev-parse", "HEAD^{tree}") != frozen["tree"]):
+            or value(root, "rev-parse", "HEAD", "HEAD^{tree}").splitlines() != [frozen["commit"], frozen["tree"]]):
         raise ValueError("Confirmed source branch or content changed")
     ancestor(root, frozen["base"], frozen["commit"])
 
@@ -137,8 +138,9 @@ def accept_tested(root, directory, confirmation_path, target):
     target_ref = "refs/heads/" + target
     if source_ref == target_ref:
         raise ValueError("Primary-branch work cannot use fast-forward confirmation")
-    target_root = checkout(root, target_ref)
-    if checkout(root, source_ref) != root.resolve():
+    registrations = worktrees(root)
+    target_root = checkout(root, target_ref, registrations)
+    if checkout(root, source_ref, registrations) != root.resolve():
         raise ValueError("Expected the selected source checkout")
     frozen = {"version": 2, "verification": "confirmed-fast-forward", "state": "sealed",
               "base": confirmation["base"], "commit": confirmation["commit"], "tree": confirmation["tree"],
@@ -180,16 +182,18 @@ def verify_seal(root, frozen):
     if len(sequence) != len(frozen["commits"]):
         raise ValueError("Commit count differs from the frozen partition")
     parent = frozen["head"]
+    tree = None
     for index, (commit, prepared) in enumerate(zip(sequence, frozen["commits"])):
-        parents = value(root, "show", "-s", "--format=%P", commit).split()
+        parents, tree, message = value(root, "show", "-s", "--format=%P%x00%T%x00%B", commit).split("\0", 2)
         expected = [parent, *(frozen["merge_heads"] if index == 0 else [])]
-        if (parents != expected or value(root, "rev-parse", commit + "^{tree}") != prepared["tree"]
-                or value(root, "show", "-s", "--format=%B", commit) != prepared["message"].strip()):
+        if parents.split() != expected or tree != prepared["tree"] or message.strip() != prepared["message"].strip():
             raise ValueError("Commit differs from the frozen tree, parents or message")
         parent = commit
     if parent != current:
         raise ValueError("HEAD does not consume the frozen history")
-    if value(root, "rev-parse", current + "^{tree}") != frozen["tree"]:
+    if tree is None:
+        tree = value(root, "rev-parse", current + "^{tree}")
+    if tree != frozen["tree"]:
         raise ValueError("Final commit differs from the frozen tree")
     ancestor(root, frozen["base"], current)
     validate_sources(root, frozen["sources"], frozen["source_ref"], frozen["target_ref"], current)
@@ -239,8 +243,9 @@ def publish(root, path):
     frozen = read(path)
     if frozen["state"] != "sealed":
         raise ValueError("Publication requires sealed mechanical completion")
-    phase_path = common(root) / "local-integration.json"
-    with publication_lock(root):
+    common_directory = common(root)
+    phase_path = common_directory / "local-integration.json"
+    with publication_lock(common_directory):
         if phase_path.exists():
             raise ValueError("An unfinished publication requires integrate recover first")
         check_source(root, frozen)
@@ -278,8 +283,9 @@ def publish(root, path):
 
 
 def recover(root):
-    phase_path = common(root) / "local-integration.json"
-    with publication_lock(root):
+    common_directory = common(root)
+    phase_path = common_directory / "local-integration.json"
+    with publication_lock(common_directory):
         phase = read(phase_path)
         frozen = phase["candidate"]
         target = checkout(root, frozen["target_ref"])

@@ -421,11 +421,13 @@ Stable coverage continues to exclude doctests.
 
 The batch coordinator uses two workers for independent preflight gates. All
 preflight and build gates must pass before expensive suites start; Clippy and
-the web build remain serial. Coverage may overlap the audited RAG MCP, artifact
-report and verification Python directories, with at most one Python directory
-active beside coverage. Bootstrap setup, standard harness writers and full
-SingleStep remain separate. Coverage preparation, reset, tests, export and summary
-stay ordered, and a failure stops the remaining coverage steps.
+the web build remain serial. Coverage may overlap the audited RAG MCP and
+artifact report suites, with at most one active beside coverage. The Verification
+CLI suite runs in its own wave so its Python workers have the available CPU
+capacity for their native subprocess readiness checks. Bootstrap setup, standard
+harness writers and full SingleStep remain separate. Coverage preparation,
+reset, tests, export and summary stay ordered, and a failure stops the remaining
+coverage steps.
 
 Workers write isolated logs and return outcomes. Only the coordinator updates
 evidence. Source and index guards run at wave boundaries after all started
@@ -552,6 +554,13 @@ python tools/verification/verify.py milestone
 
 Routine commits use only the first command. The profiles are invoked separately. Commit first runs English, frontmatter, formatting and static architecture/hardware/code gates. A preliminary failure defers expensive checks. Clippy follows those static gates before coverage, so compilation findings also block expensive tests. After preliminary checks pass, it runs selected ordinary crate tests with coverage, selected standard `test_runner` suites and Python tool contracts. It never selects full SingleStepTests, even for CPU changes. Every commit scans all repository-owned text files against the English dictionary and reviewed project vocabulary, regardless of staging or changes, using `tools/verification/checks/check_english.json`. Milestone runs that language audit plus full SingleStepTests, including on a clean tree so already committed milestone work is covered. It does not repeat the other commit checks. vAmigaTS Cargo suites and chipset workload tests have been removed; capture runs and chipset throughput comparisons are excluded from automatic verification.
 
+The Architecture Rules gate resolves Design links to local hardware manuals and
+reference sources. The checkout needs those link targets under
+`Obsidian/Amiga/Reference/` and `ref_src/`. Worktree creation copies the prepared
+local collections from the primary checkout. See the
+[reference setup guide](../../.agents/references/developer-setup.md) for initial
+provisioning.
+
 The commit profile also checks every local Markdown file under `Obsidian/Amiga/`
 for line-one YAML frontmatter with `title` and `tags`, including Git-ignored
 reference books. Book files also require `book` and `chapter` properties and
@@ -574,8 +583,9 @@ The verifier runs the Bootstrap contract
 suites when Git reports staged, unstaged or nonignored new paths under
 `tools/bootstrap/`, including book data. Renames count at both endpoints. The
 Book Review suite checks pinned Python packages and local KaTeX assets, then uses
-its own runner to share a browser process. Other Python suites use `unittest
-discover`. The tools do not run these tests during normal operation. Without a
+its own runner to share a browser process. Verification CLI contracts use
+`tools/verification/run_tests.py`. Other Python suites use `unittest discover`.
+The tools do not run these tests during normal operation. Without a
 commit, run only checks relevant
 to a coherent change, not after every edit. Repeat checks only after affected
 input changes, failures or unresolved concerns. `python tools/verification/verify.py test python` selects contracts
@@ -585,6 +595,33 @@ conversion changes select conversion, PDF and book review contracts; PDF changes
 select PDF and book review contracts. Run a focused suite from the repository root
 with `python tools/verification/verify.py test python directory <directory>`,
 optionally adding `file <test_file.py>` and `case <filter>` to narrow discovery.
+
+The default worker count starts with the available logical CPUs, using process
+affinity where available. It subtracts the larger of two CPUs and a fifth of
+the available count rounded up, with a minimum of one worker. A positive
+`--workers` value overrides the default. Each selected test runs in a fresh
+process with its own working directory and temporary files, including when
+`--workers 1` runs the suite sequentially. Define cases as ordinary
+`unittest.TestCase` methods with unique test IDs. Class and module setup runs
+for each case. Discovery reports duplicate IDs and custom `load_tests` hooks
+as errors.
+
+For a test that requires exclusive execution under the
+[testing policy](../../.agents/rules/unit-testing-policy.md), set
+`test_method.serial_reason` to a short explanation in the class body, or set
+`serial_reason` on the class to mark every method. The runner executes each
+marked test alone, with all parallel workers stopped.
+On Windows and Linux the runner cleans up worker descendants. On other POSIX
+systems it stops the worker's process group. Keep subprocesses in that group
+on those systems so the runner can stop them even if the test is interrupted.
+
+Use `-s`, `-p` and `-k` to select the test directory, file pattern and test
+name filter. Add `--report PATH` to save the selected IDs, serial reasons,
+individual outcomes, durations and errors. Test output is collected separately.
+A worker that exits without returning its result makes the run fail.
+Ctrl+C interrupts the run with exit code 130. The report can be partial.
+A test that has already finished can appear in `missing` if the runner
+had yet to collect its result.
 
 | Directory | Coverage |
 | --- | --- |

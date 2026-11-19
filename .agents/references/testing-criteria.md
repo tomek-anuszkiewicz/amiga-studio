@@ -14,6 +14,12 @@ behavioral/integration fixtures to a new framework. Do not impose assertion-coun
 per-function or exhaustive catalogue quotas. Thin declarations and forwarders may
 be protected through parent integration coverage.
 
+For each proposed test, name the current project use, observed regression or
+approved requirement it protects and the effect a failure would have. Apply
+this to tests of verification tools as well. A fixture may force a rare failure
+to make it repeatable. Explain what can cause that failure in supported use.
+Add coverage for a future use when the change introducing it is in scope.
+
 Expected results come from a contract, specification, external reference or explicit
 invariant. An implementation-generated baseline can establish stability or a
 relative property such as invariance under waiting; it cannot independently prove

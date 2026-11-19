@@ -2967,3 +2967,50 @@ Every authorized repository commit adds a concise entry here. Logging and compac
   - This execution is unregistered and its source worktree and input snapshots remain retained
   - Two canonical preflight attempts stopped on valid vocabulary occurrences before expensive checks. Reviewed API literals and technical terms now have justified dictionary entries
   - The first complete canonical profile passed; Independent review then exposed missing ignore-rule dependencies and early-exit report rows, now covered by passing regression checks with corrected archival and environment guidance
+
+---
+
+### [2026-11-19 01:39 CET] — Simplify task worktrees and parallelize verification contracts
+- **Affected Subsystems**:
+  - `Task workflow`
+  - `Verification tooling`
+  - `Local integration`
+- **What Was Changed (The Concrete Reality)**:
+  - Deliver the selected worktree and verification scope of WORKFLOW-CORRECTIONS-20261118
+  - Copy existing local sources and both graphs during worktree creation
+  - Preserve existing destinations and files tracked by either checkout when copying local assets
+  - Copy only source-ignored Reference files so visible drafts stay in the source checkout
+  - Remove automatic graph rebuilding and synchronization from worktree provisioning
+  - Use portable repository snapshots and reduce redundant Git reads
+  - Apply all 51 selected test audit changes and use isolated verification workers
+  - Respect process affinity when selecting the default test concurrency
+  - Supervise native discovery and reject missing outcomes even after an abrupt successful exit
+  - Preserve checkout ownership during cleanup and fix fixture author identities
+  - Run the parallel Verification CLI suite separately from ordinary Rust coverage
+  - Retain native child output and status when readiness checks fail
+  - Propagate worker interruption, stop peer workers and report results collected before interruption
+  - Run each verification test in its own process and working directory, with exclusive execution for marked tests
+  - Ground review findings and proposed tests in current use or an approved requirement
+  - Use the same creator metadata for Git fixture archives on Windows and Linux
+- **Architectural Rationale & Trade-Offs**:
+  - Keep local inputs independent and avoid network provisioning during task startup
+  - Preserve meaningful assertions and native Git safeguards while reducing repeated work
+  - Leave CPU capacity for other processes when choosing the default worker count
+- **Verification & Test Results**:
+  - Earlier revisions supplied the following complete and focused results
+  - The repaired serial suite passed all 253 cases in 196.707 seconds
+  - The initial parallel candidate passed 263 identical cases with one and sixteen workers in 197.957 and 50.973 seconds
+  - Three additional complete runs of that initial candidate passed without skips or missing results
+  - Three complete retries after the first review corrections passed all 267 cases in 56.614 to 59.921 seconds
+  - Nineteen focused runner cases passed on Windows and Ubuntu under WSL including supervised discovery ownership and exact missing-case accounting
+  - Native ownership and hostile author identity probes passed and both fixture archives rebuilt identically
+  - The required local reference inputs were copied and the Design link integrity check passed
+  - The real command scheduling regression rejected the former coverage overlap and passed after the repair
+  - Eleven focused scheduling, lock and publication cases passed with the original readiness limits
+  - Twenty focused runner cases passed on Windows and Ubuntu under WSL after the worker interruption repair
+  - This round passed twenty-four focused runner cases on Windows and Ubuntu under WSL
+  - Ten focused worktree cases passed on Windows and the original asset ownership and draft-copy probes passed after the repair
+  - This round rebuilt both archives byte for byte on Windows and reproduced the same bytes from identical members on Windows and Ubuntu under WSL
+  - All 267 isolated cases passed in 241.3 seconds with one worker and in 41.2, 39.0 and 40.3 seconds with sixteen workers
+  - Focused runner tests passed on Windows and Linux under WSL. Two mutation checks detected shared Git state and overlapping serial tests
+  - A diagnostic using the generic POSIX cleanup path under WSL left a child running when interruption occurred during shutdown. Native macOS and BSD were not tested

@@ -203,7 +203,7 @@ A suggested session effort helps the user choose settings for a run.
 | 17 `TA-research-reference-models` | - | - | - | - | MAN | RTY | OBS | CPU | - | - | - |
 | 18 `TA-research-hardware-measurements` | - | - | - | - | MAN | - | RTY | CPU | - | - | - |
 | 19 `TA-diagnose-cpu` | - | - | - | - | MAN | MOD | OBS | RTY | - | - | - |
-| 20 `TA-start-plan` | - | - | - | - | - | - | - | - | RTY | AST | - |
+| 20 `TA-start-plan` | - | - | - | - | - | - | - | - | RTY | - | - |
 | 21 `TA-repair-worktree` | - | - | - | - | - | - | - | - | - | RTY | - |
 | 22 `TA-sync-master` | - | SPC | PAR | - | - | - | - | - | - | - | RTY |
 | 23 `TA-resolve-merge-conflicts` | - | SPC | PAR | - | - | - | - | - | - | - | - |

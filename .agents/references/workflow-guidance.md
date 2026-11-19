@@ -21,6 +21,13 @@ authorization. The worker's `recommendation` is advice, never a second active me
    For exhausted rounds, preserve the predecessor and cumulative work history;
    a continuation needs a concrete new approach, not a fresh counter for repetition.
 
+For review results, apply the [review criteria](review-common.md#assigned-reviewer)
+to the evidence behind each proposed correction. State which project use or
+requirement it affects and what would go wrong. If the evidence establishes
+only a constructed scenario, say what connection is missing and leave it out
+of recommended repairs, tests and further rounds. Preserve the reviewer's
+verdict and identify any disagreement in the receiving session's assessment.
+
 ## Present one current set of choices
 
 Use the [official skill matrix](../../docs/workflow-skill-matrix.md) before choosing

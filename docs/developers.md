@@ -72,10 +72,10 @@ remains in the [roadmap](../ROADMAP.md#step-11-four-manual-pdf-to-book-json-conv
 RAG searches hardware and project documentation; Graphify follows source symbols,
 call relationships and dependencies. Select its `project` graph for our code and
 allowed documents, or `reference` for imported source code. Bootstrap creates or
-refreshes both graphs; worktree operations refresh only project code. Both help an agent locate focused context
-for a question such as which phase commits a write or which tests exercise a
-blocked bus access. Their answers still need to be checked against the relevant
-source and evidence.
+refreshes both graphs. Worktree creation copies the existing graph directories
+from the primary checkout. Both tools can help locate where a write commits or
+which tests exercise a blocked bus access. Verify their answers against the
+relevant source and evidence.
 
 For setup and commands, use the
 [RAG reference](../.agents/references/developer-setup.md#5-domain-hardware-knowledge-local-vector-rag-amiga-rag)

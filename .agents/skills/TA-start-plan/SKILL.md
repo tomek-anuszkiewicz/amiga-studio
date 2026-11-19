@@ -12,9 +12,8 @@ scope. Invocation explicitly selects a new worktree; do not ask that choice agai
 
 1. Inspect the current branch, immutable base, worktrees and selected plan identity.
    Preserve pending work and refuse an ambiguous branch/path collision.
-2. Follow [physical provisioning](references/provisioning.md) with
-   `tools/worktree.ps1 add <branch> -Base <base>` from the surviving checkout.
-   Verify required source manifests before and after copying.
+2. Run the [worktree creation command](references/provisioning.md#create-a-task-worktree)
+   directly from the surviving checkout. Proceed once it succeeds.
 3. Copy only the selected plan to the new checkout, preserving its stable task ID.
    Record source/base, branch, copied plan identity, authoritative working copy and
    actual provisioning results using portable references.

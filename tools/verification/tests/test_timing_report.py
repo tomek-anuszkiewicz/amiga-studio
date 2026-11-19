@@ -4,16 +4,19 @@ from hashlib import sha256
 import io
 import json
 from pathlib import Path
-import subprocess
 import sys
 import tempfile
 import unittest
 from unittest.mock import patch
 
+from git_fixtures import restore_repository
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import commands
+import impact
 import timing_report
 from cli import parse_args
+from repository import git
 
 
 class TimingReportTests(unittest.TestCase):
@@ -39,38 +42,52 @@ class TimingReportTests(unittest.TestCase):
                          "RAG MCP contracts", "Artifact report contracts"} <= selected)
 
     def test_selection_tests_tool_code_but_skips_vocabulary_docs_and_generated_data(self):
-        for path, expected in (("tools/verification/evidence.py", True),
-                               ("tools/verification/checks/check_english.json", True),
-                               ("tools/web.ps1", True), ("tools/worktree.ps1", True),
-                               ("tools/graphify_query.py", True),
-                               (".agents/skills/TA-audit-vault-links/scripts/audit_vault.py", True),
-                               ("tools/verification/checks/english_words/software.txt", False),
-                               ("crates/cpu/src/cpu.rs", False),
-                               ("tools/verification/README.md", False),
-                               (".agent/tmp/verification/diagnostics/attempt/test-runtime-report.md", False)):
+        routes = {
+            "tools/verification/evidence.py": True,
+            "tools/verification/checks/check_english.json": True,
+            "tools/web.ps1": True,
+            "tools/verification/checks/english_words/software.txt": False,
+            "crates/cpu/src/cpu.rs": False,
+            "tools/verification/README.md": False,
+            ".agent/tmp/verification/diagnostics/attempt/test-runtime-report.md": False,
+        }
+        predicate_only = {
+            "tools/worktree.ps1": True,
+            "tools/graphify_query.py": True,
+            ".agents/skills/TA-audit-vault-links/scripts/audit_vault.py": True,
+        }
+        for path, expected in (routes | predicate_only).items():
             with self.subTest(path=path):
                 self.assertEqual(commands.verification_contract_input(path), expected)
-                names = {name for name, _, _ in commands.python_commands(changes={path})}
-                self.assertEqual("Verification CLI contracts" in names, expected)
-                _, args = parse_args(["commit"])
-                selected = {name for _, items in commands.select_phases(args, {path}) for name, _, _ in items}
-                self.assertEqual("Verification CLI contracts" in selected, expected)
+
+        root = commands.REPO_ROOT
+        graph = ({root / "crates/cpu": "cpu"}, {"cpu": set()})
+        _, args = parse_args(["commit"])
+        with patch.object(impact, "workspace_graph", return_value=graph):
+            for path, expected in routes.items():
+                with self.subTest(route=path):
+                    names = {name for name, _, _ in commands.python_commands(changes={path})}
+                    self.assertEqual("Verification CLI contracts" in names, expected)
+                    selected = {name for _, items in commands.select_phases(args, {path}) for name, _, _ in items}
+                    self.assertEqual("Verification CLI contracts" in selected, expected)
 
     def test_ignored_report_is_outside_scan_and_both_authored_paths_are_checked(self):
-        sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "checks"))
-        import check_english
+        checks = Path(__file__).resolve().parents[1] / "checks"
+        with patch.object(sys, "path", [str(checks), *sys.path]):
+            import check_english
         scope = json.loads(check_english.SCOPE_FILE.read_text(encoding="utf-8"))
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
+            restore_repository("empty", root)
             names = ("tests/authored.md", "tests/test-runtime-report.md")
-            for name in (*names, ".agent/tmp/verification/diagnostics/attempt/test-runtime-report.md"):
+            generated = ".agent/tmp/verification/diagnostics/attempt/test-runtime-report.md"
+            for name in (*names, generated):
                 target = root / name
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_text("Example text.", encoding="utf-8")
-            paths = ("\0".join(names) + "\0").encode()
-            with patch.object(check_english, "REPO_ROOT", root), \
-                 patch.object(check_english.subprocess, "run",
-                              return_value=subprocess.CompletedProcess([], 0, paths)):
+            # The scanner must exclude the report even if it is present in the index.
+            git(root, "add", "--force", "--", names[1], generated)
+            with patch.object(check_english, "REPO_ROOT", root):
                 self.assertEqual(check_english.repository_targets(scope), [root / name for name in names])
 
     def test_report_distinguishes_execution_reuse_failure_and_omission(self):

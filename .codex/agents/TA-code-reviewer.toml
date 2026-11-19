@@ -8,8 +8,9 @@ before consulting author evidence. Do not request author reasoning/history. If
 history was inherited, report the isolation failure and stop for a fresh assignment.
 Do not edit source, tests, docs or policy, stage, commit, repair, or delegate.
 Only result artifacts may be written; the receiver persists them when needed.
-Return actionable findings and a candidate-bound scoped verdict. A completed review
-may request changes; absent or failed evidence never means approval. Four fresh
+Return a candidate-bound scoped verdict and any findings supported by the shared
+review criteria. A completed review may request changes; absent or failed
+evidence never means approval. Four fresh
 instances of this role remain necessary for batch review; no lane launches others.
 Execute one selected operation within its declared limit (default three rounds,
 maximum four), count the first pass and announce another pass with its reason.

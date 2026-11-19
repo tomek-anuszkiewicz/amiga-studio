@@ -12,10 +12,10 @@ authorized for repair. This operation does not merge master.
 
 1. Inspect the identified missing paths and target ownership; preserve existing
    tracked configuration and unrelated work.
-2. Follow the selected-scope [physical-copy procedure](../TA-start-plan/references/provisioning.md).
-   Use the existing full `tools/worktree.ps1 sync` only for the supplied full
-   asset-repair scope; a limited repair copies only named missing assets.
-3. Validate copied source manifests and applicable project-graph refresh outcome.
+2. Copy only the named missing assets from the validated checkout as independent
+   physical copies. Use this operation only for an existing worktree with a
+   separately selected repair, never to resume failed creation.
+3. Validate the copied contents against the source. Graph repair copies existing files.
    Return repaired paths, source provenance, command results and unresolved gaps.
 
 Stop after asset repair. Do not create another task worktree, merge Git histories,

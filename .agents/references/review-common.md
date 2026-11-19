@@ -21,13 +21,22 @@ Inspect only interactions needed to assess the assigned risk. Follow a cross-lan
 finding far enough to explain it, then identify its owner. A demonstrated issue
 must not disappear because another reviewer might find it.
 
+Before requesting a correction, identify the affected project operation or
+approved requirement, the conditions that can arise in the candidate as used
+or specified, and the concrete consequence. A source trace can establish this
+before anyone encounters the failure. For a diagnostic that forces a platform,
+state or timing, explain how the same conditions arise through a supported
+entry point. A forced probe alone establishes only what happened in the probe.
+Leave scenarios that require a future caller or behavior change to that change.
+
 Report stable finding IDs, severity, confidence, location, trigger, expected and
 observed behavior, consequence and supporting requirement/evidence. Separate
 required corrections from suggestions. Record baseline, candidate, inspected
 scope, relevant requirements/criteria, evidence and limitations. JSON uses
 `approved`, `changes_requested` or `not_assessed`; an unfinished or failed review
-cannot approve. A completed assessment may request changes. Empty findings do not
-prove approval when required evidence is missing.
+cannot approve. When the assigned scope is covered, required evidence is present
+and no required correction is supported, return `approved` in that round.
+An empty findings list is a complete review result.
 
 ## Four-lane batch evidence
 

@@ -3,12 +3,16 @@ from pathlib import Path
 
 from evidence import digest
 from repository import resolve_base
-from integration_state import ancestor, checkout, clean, common, value
+from integration_state import ancestor, checkout, clean, common, value, worktrees
 
 
-def validate_sources(root, sources, source_ref, target_ref, head, merge_heads=()):
+def validate_sources(root, sources, source_ref, target_ref, head, merge_heads=(), *, registrations=None):
     if not isinstance(sources, list) or not sources:
         raise ValueError("Expected a nonempty selected source list")
+    checkout_root = root.resolve()
+    common_directory = common(root).resolve()
+    if registrations is None:
+        registrations = worktrees(root)
     refs, roots = set(), set()
     for source in sources:
         if not isinstance(source, dict) or set(source) != {"ref", "root", "tip"}:
@@ -20,10 +24,11 @@ def validate_sources(root, sources, source_ref, target_ref, head, merge_heads=()
         refs.add(branch)
         roots.add(location)
         resolve_base(root, tip)
-        if checkout(root, branch) != location or common(location).resolve() != common(root).resolve():
+        if (checkout(root, branch, registrations) != location
+                or (location != checkout_root and common(location).resolve() != common_directory)):
             raise ValueError("Selected source checkout ownership changed: " + branch)
         if branch == source_ref:
-            if location != root.resolve():
+            if location != checkout_root:
                 raise ValueError("Assembly checkout differs from the selected source")
             ancestor(root, tip, head)
         else:

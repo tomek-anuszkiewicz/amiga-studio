@@ -1,11 +1,12 @@
-"""Detached diagnostics and safe teardown through the actual PowerShell tool."""
+"""Worktree creation, asset copying, and safe teardown through PowerShell."""
 import os
-import json
 from pathlib import Path
 import shutil
 import subprocess
 import tempfile
 import unittest
+
+from git_fixtures import restore_repository
 
 
 class WorktreeToolTests(unittest.TestCase):
@@ -14,47 +15,61 @@ class WorktreeToolTests(unittest.TestCase):
         self.addCleanup(self.temporary.cleanup)
         self.parent = Path(self.temporary.name)
         self.root = self.parent / "primary"
-        self.root.mkdir()
         self.tool = Path(__file__).resolve().parents[2] / "worktree.ps1"
         self.shell = "powershell" if os.name == "nt" else "pwsh"
-        self.git("init", "-q", "-b", "master")
-        (self.root / ".gitignore").write_text("ignored*\n.agent/\n")
-        (self.root / "tracked.txt").write_text("baseline\n")
-        self.git("add", ".")
-        tree = self.git("write-tree")
-        commit = self.git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit-tree", tree, "-m", "fixture")
-        self.git("update-ref", "HEAD", commit)
+        restore_repository("worktree", self.parent)
+
+    def restore(self, state):
+        restore_repository("worktree-" + state, self.parent)
+        return (self.root / ".git/refs/heads/master").read_text().strip()
 
     def git(self, *args):
         return subprocess.check_output(["git", *args], cwd=self.root, stderr=subprocess.PIPE).decode().strip()
 
     def run_tool(self, *args, root=None):
-        # This fixture has no copied assets or graph: keep the installed graph
-        # CLI outside PATH so testing worktree behavior cannot index the host.
+        # Keep these fixture invocations independent of optional host tools.
         environment = os.environ.copy()
         environment["PATH"] = os.pathsep.join({str(Path(shutil.which("git")).parent),
                                                str(Path(shutil.which(self.shell)).parent),
                                                str(Path(os.environ.get("SystemRoot", "/")) / "System32")})
         return subprocess.run([shutil.which(self.shell), "-NoProfile", "-File", str(self.tool), *args],
-                              cwd=root or self.root, env=environment, capture_output=True, text=True)
+                              cwd=root or self.root, env=environment, capture_output=True, text=True,
+                              errors="replace", timeout=30)
 
     def test_usage_and_invalid_input_do_not_mutate_the_repository(self):
         before = self.git("worktree", "list", "--porcelain")
-        self.assertEqual(self.run_tool().returncode, 0)
-        self.assertIn("Usage:", self.run_tool().stdout)
-        for args in (("unknown",), ("remove",), ("list", "extra"), ("sync", "-Base", "HEAD")):
+        usage = self.run_tool()
+        self.assertEqual(usage.returncode, 0)
+        self.assertIn("Usage:", usage.stdout)
+        self.assertNotRegex(usage.stdout, r"\bsync\b")
+        for args in (("unknown",), ("remove",), ("list", "extra")):
             with self.subTest(args=args):
                 result = self.run_tool(*args)
                 self.assertNotEqual(result.returncode, 0, result.stdout)
                 self.assertIn("Usage:", result.stdout)
         self.assertEqual(self.git("worktree", "list", "--porcelain"), before)
 
+    def test_sync_is_rejected_without_changing_a_linked_checkout(self):
+        target = self.parent / "primary-existing"
+        self.restore("existing")
+        (self.root / ".env").write_text("FIXTURE=source\n")
+        registrations = self.git("worktree", "list", "--porcelain")
+        refs = self.git("show-ref")
+
+        result = self.run_tool("sync", root=target)
+
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("Invalid action or parameter combination", result.stdout)
+        self.assertEqual(self.git("worktree", "list", "--porcelain"), registrations)
+        self.assertEqual(self.git("show-ref"), refs)
+        self.assertFalse((target / ".env").exists())
+
     def test_detached_checkout_has_no_task_branch_and_safe_removal(self):
         result = self.run_tool("test", "probe", "-Base", "HEAD")
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         target = self.parent / "primary-probe"
         self.assertTrue(target.is_dir())
-        self.assertIn(str(self.tool.parent / "graphify/refresh.py"), result.stdout)
+        self.assertNotIn("refresh", result.stdout.lower())
         self.assertEqual(self.git("branch", "--list", "probe"), "")
         self.assertIn("detached", self.git("worktree", "list", "--porcelain"))
         (target / "tracked.txt").write_text("diagnostic changes\n")
@@ -62,8 +77,8 @@ class WorktreeToolTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertTrue(target.is_dir())
         self.assertEqual((target / "tracked.txt").read_text(), "diagnostic changes\n")
-        # Return the disposable fixture to its known baseline before teardown.
-        (target / "tracked.txt").write_text("baseline\n")
+        # Restore the exact fixture bytes before teardown, including line endings.
+        (target / "tracked.txt").write_bytes(b"baseline\n")
         result = self.run_tool("remove", str(target))
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertFalse(target.exists())
@@ -77,8 +92,12 @@ class WorktreeToolTests(unittest.TestCase):
             self.assertNotEqual(self.run_tool("remove", str(target)).returncode, 0)
             self.assertTrue(target.exists())
         target = self.parent / "primary-task"
-        self.git("worktree", "add", "-q", "-b", "task", str(target))
+        self.restore("task")
         self.assertNotEqual(self.run_tool("remove", str(target), root=target).returncode, 0)
+        mismatch = self.run_tool("remove", str(target), "-ExpectedBranch", "refs/heads/other")
+        self.assertNotEqual(mismatch.returncode, 0)
+        self.assertIn("Worktree branch changed before removal.", mismatch.stderr)
+        self.assertTrue(target.exists())
         self.git("worktree", "lock", str(target))
         self.assertNotEqual(self.run_tool("remove", "task").returncode, 0)
         self.assertTrue(target.exists())
@@ -87,55 +106,181 @@ class WorktreeToolTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertTrue(neighbor.exists())
 
-    def test_asset_copy_preserves_target_configuration_and_copies_reference_graph(self):
-        (self.root / ".gitignore").write_text("/ref_src/*\n!/ref_src/.graphifyignore\n.agent/\n")
-        (self.root / "ref_src").mkdir()
-        config = self.root / "ref_src/.graphifyignore"
-        config.write_text("target-specific/\n")
-        self.git("add", ".gitignore", "ref_src/.graphifyignore")
-        tree = self.git("write-tree")
-        commit = self.git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid",
-                          "commit-tree", tree, "-p", "HEAD", "-m", "configuration fixture")
-        self.git("update-ref", "HEAD", commit)
-        nested = self.root / "ref_src/graphify-out"
-        nested.mkdir()
-        (nested / "graph.json").write_text("reference seed")
-        created = self.run_tool("add", "assets", "-Base", "HEAD")
-        self.assertEqual(created.returncode, 0, created.stdout + created.stderr)
-        target = self.parent / "primary-assets"
-        config.write_text("source-only/\n")
-        result = self.run_tool("sync", root=target)
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertEqual((target / "ref_src/.graphifyignore").read_text(), "target-specific/\n")
-        self.assertEqual((target / "ref_src/graphify-out/graph.json").read_text(), "reference seed")
-        (nested / "graph.json").write_text("changed reference seed")
-        self.assertEqual((target / "ref_src/graphify-out/graph.json").read_text(), "reference seed")
-        self.assertEqual(self.run_tool("remove", str(target)).returncode, 0)
+    def test_creation_copies_only_selected_local_assets(self):
+        commit = self.restore("assets")
+        excluded_directories = (".agent/tmp/singlestep", ".agent/tmp/benchmarks")
+        config = "ref_src/.graphifyignore"
+        reference = "Obsidian/Amiga/Reference"
+        (self.root / config).write_text("source-only/\n")
+        (self.root / reference / "tracked.txt").write_bytes(b"source copy of the tracked note\n")
+        self.git("rm", "--cached", f"{reference}/tracked.txt")
+        (self.root / reference / "source-only.md").write_bytes(b"source branch note\n")
+        self.git("add", f"{reference}/source-only.md")
+        self.git("commit", "--quiet", "--message", "Change source reference paths")
 
-    def test_graph_refresh_uses_the_invoking_checkout_script_in_the_target_root(self):
-        wrapper = self.parent / "refresh-probe.ps1"
-        wrapper.write_text("""param([string]$ToolPath)
-function graphify {}
-function python {
-    param([string]$ScriptPath)
-    @{ script = $ScriptPath; root = (Get-Location).Path; selectors = $args } |
-        ConvertTo-Json | Set-Content -LiteralPath $env:GRAPHIFY_PROBE_LOG -Encoding UTF8
-    $global:LASTEXITCODE = 0
-}
-& $ToolPath add refresh-probe -Base HEAD
-""", encoding="utf-8")
-        log = self.parent / "refresh.json"
-        environment = dict(os.environ, GRAPHIFY_PROBE_LOG=str(log))
-        result = subprocess.run([shutil.which(self.shell), "-NoProfile", "-File", str(wrapper), str(self.tool)],
-                                cwd=self.root, env=environment, capture_output=True, text=True)
+        for directory in excluded_directories:
+            source = self.root / directory
+            (source / "tracked.txt").write_text("locally changed\n")
+            (source / "ignored-extra").write_text("ignored content\n")
+            (source / "untracked-extra").write_text("untracked content\n")
+        assets = {
+            "ref_src/graphify-out/graph.json": b"reference seed",
+            "ref_src/graphify-out/cache/manifest.json": b"reference sidecar",
+            "tools/AmigaTestKit/fixture.bin": b"test kit fixture",
+            f"{reference}/ignored-manual/Chapter [1] \u0142.md": b"local manual chapter",
+            "graphify-out/graph.json": b"project seed",
+            "graphify-out/cache/manifest.json": b"project sidecar",
+            ".env": b"FIXTURE=source\r\n",
+        }
+        for name, data in assets.items():
+            path = self.root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(data)
+
+        draft = f"{reference}/Research draft [local].md"
+        draft_content = b"unfinished research"
+        (self.root / draft).write_bytes(draft_content)
+        manual = f"{reference}/ignored-manual/Chapter [1] \u0142.md"
+        self.assertEqual(self.git("-c", "core.quotePath=false", "check-ignore", "--", manual), manual)
+        self.assertEqual(self.git("ls-files", "--others", "--exclude-standard", "--", draft), draft)
+
+        for action in ("add", "test"):
+            with self.subTest(action=action):
+                name = f"{action}-assets"
+                target = self.parent / f"primary-{name} [local] \u0142"
+                result = self.run_tool(action, name, "-Base", commit, "-Path", str(target))
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertEqual((target / config).read_text(), "target-specific/\n")
+                self.assertEqual((target / reference / "tracked.txt").read_bytes(), b"checked-out content\n")
+                self.assertFalse((target / reference / "source-only.md").exists())
+                for asset, data in assets.items():
+                    self.assertEqual((target / asset).read_bytes(), data, asset)
+                self.assertFalse((target / draft).exists())
+                self.assertEqual((self.root / draft).read_bytes(), draft_content)
+                for directory in excluded_directories:
+                    checkout = target / directory
+                    self.assertEqual((checkout / "tracked.txt").read_text(), "checked-out content\n")
+                    self.assertFalse((checkout / "ignored-extra").exists(), directory)
+                    self.assertFalse((checkout / "untracked-extra").exists(), directory)
+                ref_graph = "ref_src/graphify-out/graph.json"
+                (target / ref_graph).write_bytes(b"updated target graph")
+                self.assertEqual((self.root / ref_graph).read_bytes(), assets[ref_graph])
+        # Remove the detached checkout using its exact path.
+        target = self.parent / "primary-test-assets [local] \u0142"
+        removed = self.run_tool("remove", str(target))
+        self.assertEqual(removed.returncode, 0, removed.stdout + removed.stderr)
+        self.assertFalse(target.exists())
+
+    def test_creation_preserves_index_ownership_across_asset_roots(self):
+        self.restore("assets")
+        roots = ("ref_src", "tools/AmigaTestKit", "graphify-out", "Obsidian/Amiga/Reference/ignored-manual")
+        target_owned = {f"{root}/release [\u0142].txt": b"target branch content" for root in roots}
+        for name, data in target_owned.items():
+            path = self.root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(data)
+        self.git("add", "--force", "--", *target_owned)
+        self.git("commit", "--quiet", "--message", "Track target branch assets")
+        commit = self.git("rev-parse", "HEAD")
+        self.git("rm", "--cached", "--", *target_owned)
+        for name in target_owned:
+            (self.root / name).write_bytes(b"local source content with a different size")
+
+        source_owned = tuple(f"{root}/pending [\u0142].txt" for root in roots) + (".env",)
+        for name in source_owned:
+            (self.root / name).write_bytes(b"source index only")
+        self.git("add", "--force", "--", *source_owned)
+        indexed = self.git("-c", "core.quotePath=false", "ls-files", "--", *source_owned, *target_owned)
+        self.assertCountEqual(indexed.splitlines(), source_owned)
+
+        result = self.run_tool("test", "index-ownership", "-Base", commit)
+
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        observed = json.loads(log.read_text(encoding="utf-8-sig"))
-        target = self.parent / "primary-refresh-probe"
-        self.assertEqual(Path(observed["root"]), target)
-        self.assertEqual(Path(observed["script"]), self.tool.parent / "graphify/refresh.py")
-        self.assertFalse((target / "tools/graphify/refresh.py").exists())
-        self.assertEqual(observed["selectors"], ["--graph", "project", "--root", str(target)])
-        self.assertEqual(self.run_tool("remove", str(target)).returncode, 0)
+        target = self.parent / "primary-index-ownership"
+        for name in source_owned:
+            with self.subTest(source_index=name):
+                self.assertFalse((target / name).exists())
+                self.assertEqual((self.root / name).read_bytes(), b"source index only")
+        for name, data in target_owned.items():
+            with self.subTest(target_index=name):
+                self.assertEqual((target / name).read_bytes(), data)
+                self.assertEqual((self.root / name).read_bytes(), b"local source content with a different size")
+
+    def test_creation_preserves_an_existing_env_file(self):
+        commit = self.restore("environment")
+        env_file = self.root / ".env"
+        env_file.write_text("FIXTURE=source\n")
+
+        result = self.run_tool("add", "existing-env", "-Base", commit)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual((self.parent / "primary-existing-env/.env").read_text(), "FIXTURE=target\n")
+        self.assertEqual(env_file.read_text(), "FIXTURE=source\n")
+
+    def test_git_creation_failure_stops_before_asset_copy(self):
+        (self.root / ".env").write_text("FIXTURE=source\n")
+        registrations = self.git("worktree", "list", "--porcelain")
+        refs = self.git("show-ref")
+
+        result = self.run_tool("add", "bad-base", "-Base", "refs/heads/missing-base")
+
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("Git failed with exit code", result.stderr)
+        self.assertNotIn("Copying ignored assets", result.stdout)
+        self.assertFalse((self.parent / "primary-bad-base").exists())
+        self.assertEqual(self.git("worktree", "list", "--porcelain"), registrations)
+        self.assertEqual(self.git("show-ref"), refs)
+
+    def test_copy_failure_stops_creation_and_preserves_the_partial_worktree(self):
+        commit = self.restore("conflict")
+        (self.root / "ref_src").unlink()
+        for directory in ("ref_src", "tools/AmigaTestKit", "graphify-out"):
+            source = self.root / directory
+            source.mkdir(parents=True)
+            (source / "fixture.txt").write_text("local asset\n")
+        (self.root / ".env").write_text("FIXTURE=source\n")
+
+        result = self.run_tool("add", "copy-failure", "-Base", commit)
+
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertRegex(result.stderr, r"Asset copy failed with exit code \d+ for ref_src")
+        self.assertEqual(result.stdout.count("[COPYING] ref_src"), 1)
+        self.assertNotIn("Graphify", result.stdout)
+        self.assertNotIn("created successfully", result.stdout)
+        target = self.parent / "primary-copy-failure"
+        self.assertIn(f"worktree {target.as_posix()}", self.git("worktree", "list", "--porcelain"))
+        self.assertEqual(self.git("rev-parse", "refs/heads/copy-failure"), commit)
+        self.assertEqual((target / "ref_src").read_text(), "destination conflict\n")
+        self.assertFalse((target / "tools/AmigaTestKit").exists())
+        self.assertFalse((target / "graphify-out").exists())
+        self.assertFalse((target / ".env").exists())
+
+    def test_creation_does_not_launch_graph_producers(self):
+        wrapper = self.parent / "graph-probe.ps1"
+        wrapper.write_text("""param([string]$ToolPath, [string]$Action)
+function graphify {
+    Add-Content -LiteralPath $env:GRAPHIFY_PROBE_LOG -Value 'graphify'
+}
+function python {
+    Add-Content -LiteralPath $env:GRAPHIFY_PROBE_LOG -Value 'python'
+}
+function uv {
+    Add-Content -LiteralPath $env:GRAPHIFY_PROBE_LOG -Value 'uv'
+}
+& $ToolPath $Action "$Action-graph-probe" -Base HEAD
+""", encoding="utf-8")
+        for action in ("add", "test"):
+            with self.subTest(action=action):
+                log = self.parent / f"{action}-graph.log"
+                environment = dict(os.environ, GRAPHIFY_PROBE_LOG=str(log))
+                result = subprocess.run(
+                    [shutil.which(self.shell), "-NoProfile", "-File", str(wrapper), str(self.tool), action],
+                    cwd=self.root, env=environment, capture_output=True, text=True, timeout=30,
+                )
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertTrue((self.parent / f"primary-{action}-graph-probe").is_dir())
+                commands = log.read_text().splitlines() if log.exists() else []
+                self.assertEqual(commands, [], result.stdout + result.stderr)
 
 
 if __name__ == "__main__":

@@ -551,9 +551,6 @@
       "TA-start-plan": [
         "RTY"
       ],
-      "TA-repair-worktree": [
-        "AST"
-      ],
       "TA-design-tests": [
         "TST"
       ],

@@ -304,8 +304,8 @@ def execute_batch(args, phases, batch, before, started):
         manifest = batch.attempt_directory / "inputs.json"
         manifest.parent.mkdir(parents=True)
         attempt_started = True
-        inputs = capture_inputs(REPO_ROOT)
-        input_state = capture_inputs(REPO_ROOT, contents=False)
+        input_state = {}
+        inputs = capture_inputs(REPO_ROOT, state=input_state)
         conditions = execution_conditions(REPO_ROOT)
         source = snapshot(REPO_ROOT)
         if source != before:

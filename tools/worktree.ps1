@@ -3,14 +3,12 @@
     Manages Git worktrees with independent physical copies of ignored assets (Zero NTFS Junctions).
 
 .DESCRIPTION
-    Creates, removes, or synchronizes Git worktrees located as sibling directories in the
-    parent folder. Copies required test assets, .env, and the Graphify graph seed into independent
-    physical directories, then refreshes only the project graph in the target worktree. It strictly avoids NTFS
-    directory junctions or symbolic links to preserve total repository isolation.
+    Creates, removes, or lists Git worktrees located as sibling directories in the
+    parent folder. Creation copies local test assets, reference manuals, .env and
+    existing graph directories from the primary checkout as independent files.
 
 .EXAMPLE
     .\tools\worktree.ps1 add feature-blitter
-    .\tools\worktree.ps1 sync
     .\tools\worktree.ps1 remove feature-blitter
     .\tools\worktree.ps1 list
 #>
@@ -27,7 +25,10 @@ param(
     [string]$Base,
 
     [Parameter(Mandatory = $false)]
-    [string]$Path
+    [string]$Path,
+
+    [Parameter(Mandatory = $false)]
+    [string]$ExpectedBranch
 )
 
 Set-StrictMode -Version Latest
@@ -35,21 +36,24 @@ $ErrorActionPreference = "Stop"
 
 function Show-Usage {
     Write-Host @'
-Usage: .\tools\worktree.ps1 <add|test|remove|sync|list> [Name] [-Base COMMIT] [-Path PATH]
+Usage: .\tools\worktree.ps1 <add|test|remove|list> [Name] [-Base COMMIT] [-Path PATH] [-ExpectedBranch REF]
 
   add Name     Create or select a task branch in a new sibling checkout.
   test Name    Create a disposable detached checkout; create no task branch.
   remove Name  Remove only a registered clean worktree, by exact branch or path.
                Preserve dirty files and failed removals; never force or prune.
-  sync         Physically copy missing ignored assets into the current checkout.
   list         Show registered worktrees.
   -Base        Starting commit for a new branch or test checkout (default: HEAD).
   -Path        Explicit sibling directory for add/test (default: <repo>-<Name>).
+  -ExpectedBranch  Full branch ref to require immediately before removal.
 
-Creation and sync copy independent fixtures, .env and graph data from the primary
-checkout (the reference graph travels inside ref_src/); refresh only project code.
-Preserve the target's tracked ref_src/.graphifyignore. Cargo caches remain independent. Task worktrees require the user's
-location choice. Detached tests keep implementation in that selected checkout.
+Creation copies local fixtures, ignored reference files, .env and existing
+graph directories from the primary checkout. The reference graph travels inside
+ref_src/. Copying excludes files tracked in either checkout and preserves existing
+destination files.
+Each checkout has an independent Cargo cache.
+Task worktrees require the user's location choice.
+Detached tests keep implementation in that selected checkout.
 Removal discards all ignored files in the worktree without preservation.
 Stop commands using the checkout before removal.
 Run removal from a surviving checkout. Branch deletion is a separate operation.
@@ -58,15 +62,15 @@ Examples:
   .\tools\worktree.ps1 add feature-blitter -Base master
   .\tools\worktree.ps1 test integration-probe -Base HEAD
   .\tools\worktree.ps1 remove feature-blitter
-  .\tools\worktree.ps1 sync
   .\tools\worktree.ps1 list
 '@
 }
 
 if (-not $Action) { Show-Usage; exit 0 }
-if ($Action -notin @('add', 'test', 'remove', 'sync', 'list') -or
+if ($Action -notin @('add', 'test', 'remove', 'list') -or
     ($Action -in @('add', 'test', 'remove') -and -not $Name) -or
-    ($Action -in @('sync', 'list') -and $Name) -or
+    ($Action -eq 'list' -and $Name) -or
+    ($ExpectedBranch -and ($Action -ne 'remove' -or -not $ExpectedBranch.StartsWith('refs/heads/'))) -or
     ($Action -notin @('add', 'test') -and ($Base -or $Path))) {
     Write-Host 'Invalid action or parameter combination.'
     Show-Usage
@@ -74,8 +78,14 @@ if ($Action -notin @('add', 'test', 'remove', 'sync', 'list') -or
 }
 
 function Invoke-Git {
-    & git @args
-    if ($LASTEXITCODE -ne 0) { throw "Git failed with exit code $LASTEXITCODE." }
+    $previousEncoding = [Console]::OutputEncoding
+    try {
+        [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+        & git @args
+        if ($LASTEXITCODE -ne 0) { throw "Git failed with exit code $LASTEXITCODE." }
+    } finally {
+        [Console]::OutputEncoding = $previousEncoding
+    }
 }
 
 function Get-MainRepoRoot {
@@ -84,7 +94,7 @@ function Get-MainRepoRoot {
         throw "Not inside a Git repository."
     }
     $fullPath = [System.IO.Path]::GetFullPath($commonDir)
-    $item = Get-Item -Force $fullPath
+    $item = Get-Item -LiteralPath $fullPath -Force
     if ($item.Extension -eq '.git' -or $item.Name -eq '.git') {
         return $item.Parent.FullName
     } elseif ($item.Parent.Name -eq '.git') {
@@ -94,45 +104,40 @@ function Get-MainRepoRoot {
     }
 }
 
-function Get-IgnoredAssetDirectoryDefinitions {
-    return @(
-        "ref_src",
-        "Obsidian/Amiga/Reference",
-        "tools/AmigaTestKit",
-        ".agent/tmp/singlestep",
-        ".agent/tmp/benchmarks",
-        "graphify-out"
-    )
-}
-
-function Update-WorktreeGraph {
+function Get-GitAssetPaths {
     param(
-        [string]$WorktreeRoot
+        [string]$Root,
+        [string[]]$Selection,
+        [string[]]$AssetPaths
     )
 
-    $refreshScript = Join-Path $PSScriptRoot 'graphify/refresh.py'
-    $graphifyCommand = Get-Command graphify -ErrorAction SilentlyContinue
-    if (-not $graphifyCommand) {
-        Write-Warning "graphify CLI is not available; copied graphify-out was not refreshed. After provisioning Graphify, run python `"$refreshScript`" --graph project --root `"$WorktreeRoot`"."
-        return
-    }
-
-    Write-Host ">> Refreshing Graphify project code graph in $WorktreeRoot..." -ForegroundColor Cyan
-    Push-Location $WorktreeRoot
-    try {
-        & python $refreshScript --graph project --root $WorktreeRoot
-        if ($LASTEXITCODE -ne 0) {
-            Write-Warning "Graphify refresh exited with code $LASTEXITCODE in $WorktreeRoot."
-        }
-    } finally {
-        Pop-Location
-    }
+    $paths = (Invoke-Git -C $Root --literal-pathspecs ls-files -z @Selection -- @AssetPaths) -join ""
+    $paths.Split([char]0, [System.StringSplitOptions]::RemoveEmptyEntries)
 }
 
-function Get-IgnoredCopyDefinitions {
-    return @(
-        ".env"
+function Copy-LocalAssetFile {
+    param(
+        [string]$SourceRoot,
+        [string]$TargetRoot,
+        [string]$RelativePath,
+        [System.Collections.Generic.HashSet[string]]$TrackedPaths
     )
+
+    # A tracked ancestor can also own the destination, for example a submodule.
+    $ancestor = $RelativePath
+    while ($ancestor) {
+        if ($TrackedPaths.Contains($ancestor)) { return }
+        $separator = $ancestor.LastIndexOf('/')
+        if ($separator -lt 0) { break }
+        $ancestor = $ancestor.Substring(0, $separator)
+    }
+
+    $srcPath = Join-Path $SourceRoot ($RelativePath -replace '/', '\')
+    $dstPath = Join-Path $TargetRoot ($RelativePath -replace '/', '\')
+    if (-not (Test-Path -LiteralPath $dstPath)) {
+        [void][System.IO.Directory]::CreateDirectory([System.IO.Path]::GetDirectoryName($dstPath))
+        [System.IO.File]::Copy($srcPath, $dstPath)
+    }
 }
 
 function Copy-WorktreeAssets {
@@ -143,52 +148,72 @@ function Copy-WorktreeAssets {
 
     Write-Host ">> Copying ignored assets and test fixtures (independent physical copies, zero junctions)..." -ForegroundColor Cyan
 
+    $referenceDir = 'Obsidian/Amiga/Reference'
+    $envFile = '.env'
+    $assetDirs = @('ref_src', $referenceDir, 'tools/AmigaTestKit', 'graphify-out')
+    $assetPaths = $assetDirs + $envFile
+    $trackedPaths = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    foreach ($root in @($SourceRoot, $TargetRoot)) {
+        foreach ($path in (Get-GitAssetPaths -Root $root -Selection '--cached' -AssetPaths $assetPaths)) {
+            [void]$trackedPaths.Add($path)
+        }
+    }
+
     $toolBin = -join ('r','o','b','o','c','o','p','y','.','e','x','e')
-    $assetDirs = Get-IgnoredAssetDirectoryDefinitions
     foreach ($rel in $assetDirs) {
         $srcPath = Join-Path $SourceRoot ($rel -replace '/', '\')
         $dstPath = Join-Path $TargetRoot ($rel -replace '/', '\')
 
-        if (Test-Path -LiteralPath $srcPath) {
-            if (-not (Test-Path -LiteralPath $dstPath)) {
-                New-Item -ItemType Directory -Path $dstPath -Force | Out-Null
+        if (-not (Test-Path -LiteralPath $srcPath)) {
+            Write-Host "  [OMIT]    $rel (not present in main repository)" -ForegroundColor DarkGray
+            continue
+        }
+        if ($trackedPaths.Contains($rel) -and -not (Test-Path -LiteralPath $dstPath -PathType Leaf)) {
+            continue
+        }
+
+        Write-Host "  [COPYING] $rel ..." -ForegroundColor Cyan
+        if ($rel -eq $referenceDir) {
+            # Git selects ignored files without importing ordinary untracked notes.
+            $ignored = Get-GitAssetPaths -Root $SourceRoot -Selection @('--others', '--ignored', '--exclude-standard') -AssetPaths $rel
+            foreach ($path in $ignored) {
+                Copy-LocalAssetFile -SourceRoot $SourceRoot -TargetRoot $TargetRoot -RelativePath $path -TrackedPaths $trackedPaths
             }
-            Write-Host "  [COPYING] $rel ..." -ForegroundColor Cyan
-            $copyArguments = @("`"$srcPath`"", "`"$dstPath`"", "/E", "/R:1", "/W:1", "/MT:8", "/NFL", "/NDL")
-            if ($rel -eq 'ref_src') {
-                $copyArguments += @('/XF', "`"$(Join-Path $srcPath '.graphifyignore')`"")
+        } else {
+            # Keep bulk copying for prepared asset trees, excluding all existing files.
+            $copyArguments = @("`"$srcPath`"", "`"$dstPath`"", '/E', '/R:1', '/W:1', '/MT:8', '/NFL', '/NDL', '/XC', '/XN', '/XO')
+            $excludeFiles = @()
+            $excludeDirs = @()
+            foreach ($trackedPath in $trackedPaths) {
+                if (-not $trackedPath.StartsWith("$rel/", [System.StringComparison]::OrdinalIgnoreCase)) { continue }
+                $excluded = Join-Path $SourceRoot ($trackedPath -replace '/', '\')
+                if (Test-Path -LiteralPath $excluded -PathType Container) {
+                    $excludeDirs += "`"$excluded`""
+                } else {
+                    $excludeFiles += "`"$excluded`""
+                }
             }
+            if ($excludeFiles.Count -gt 0) { $copyArguments += @('/XF') + $excludeFiles }
+            if ($excludeDirs.Count -gt 0) { $copyArguments += @('/XD') + $excludeDirs }
+
             $exitCode = (Start-Process -FilePath $toolBin -ArgumentList $copyArguments -Wait -Passthru -NoNewWindow).ExitCode
             if ($exitCode -ge 8) {
                 throw "Asset copy failed with exit code $exitCode for $rel"
-            } else {
-                Write-Host "  [COPIED]  $rel" -ForegroundColor Green
             }
-        } else {
-            Write-Host "  [OMIT]    $rel (not present in main repository)" -ForegroundColor DarkGray
         }
+        Write-Host "  [COPIED]  $rel" -ForegroundColor Green
     }
 
-    $copyFiles = Get-IgnoredCopyDefinitions
-    foreach ($rel in $copyFiles) {
-        $srcPath = Join-Path $SourceRoot ($rel -replace '/', '\')
-        $dstPath = Join-Path $TargetRoot ($rel -replace '/', '\')
-
-        if (Test-Path -LiteralPath $srcPath) {
-            if (Test-Path -LiteralPath $dstPath) {
-                Write-Host "  [EXISTS]  $rel (already present)" -ForegroundColor DarkGray
-            } else {
-                Copy-Item -LiteralPath $srcPath -Destination $dstPath -Force
-                Write-Host "  [COPIED]  $rel" -ForegroundColor Green
-            }
-        }
+    if (Test-Path -LiteralPath (Join-Path $SourceRoot $envFile)) {
+        Copy-LocalAssetFile -SourceRoot $SourceRoot -TargetRoot $TargetRoot -RelativePath $envFile -TrackedPaths $trackedPaths
     }
 }
 
 # --- Action Handlers ---
 
-$mainRepo = Get-MainRepoRoot
-$currentRepo = (Invoke-Git rev-parse --show-toplevel)
+if ($Action -ne 'list') {
+    $mainRepo = Get-MainRepoRoot
+}
 
 switch ($Action) {
     { $_ -in 'add', 'test' } {
@@ -223,38 +248,29 @@ switch ($Action) {
         Write-Host ">> Creating Git worktree at sibling path: $targetPath" -ForegroundColor Cyan
 
         $gitArgs = @("worktree", "add", $targetPath)
-        # Check if branch exists
-        $branchCheck = (Invoke-Git branch --list $Name | Out-String).Trim()
-        $branchExists = ($branchCheck -ne "")
         if ($Action -eq 'test') {
             $gitArgs += @('--detach', $(if ($Base) { $Base } else { 'HEAD' }))
-        } elseif ($branchExists) {
-            if ($Base) { throw '-Base applies only when creating a new task branch.' }
-            $gitArgs += $Name
         } else {
-            $gitArgs += "-b"
-            $gitArgs += $Name
-            if ($Base) {
-                $gitArgs += $Base
+            $branchCheck = (Invoke-Git branch --list $Name | Out-String).Trim()
+            if ($branchCheck) {
+                if ($Base) { throw '-Base applies only when creating a new task branch.' }
+                $gitArgs += $Name
+            } else {
+                $gitArgs += @('-b', $Name)
+                if ($Base) {
+                    $gitArgs += $Base
+                }
             }
         }
 
         Invoke-Git @gitArgs
 
         Copy-WorktreeAssets -SourceRoot $mainRepo -TargetRoot $targetPath
-        Update-WorktreeGraph -WorktreeRoot $targetPath
 
         Write-Host "`n>> Worktree created successfully!" -ForegroundColor Green
         Write-Host "   Path:   $targetPath"
         Write-Host "   Mode:   $Action $Name"
         Write-Host "   To switch: cd `"$targetPath`""
-    }
-
-    "sync" {
-        Write-Host ">> Synchronizing ignored assets for active repository: $currentRepo" -ForegroundColor Cyan
-        Copy-WorktreeAssets -SourceRoot $mainRepo -TargetRoot $currentRepo
-        Update-WorktreeGraph -WorktreeRoot $currentRepo
-        Write-Host "`n>> Sync complete!" -ForegroundColor Green
     }
 
     "remove" {
@@ -297,6 +313,9 @@ switch ($Action) {
         }
 
         Write-Host ">> Removing Git worktree: $targetPath" -ForegroundColor Cyan
+        if ($ExpectedBranch -and (Invoke-Git -C $resolvedTarget symbolic-ref --quiet HEAD) -cne $ExpectedBranch) {
+            throw 'Worktree branch changed before removal.'
+        }
         Invoke-Git worktree remove $resolvedTarget
         if (Test-Path -LiteralPath $resolvedTarget) { throw 'Worktree directory remains after Git removal.' }
         $remaining = Invoke-Git -c core.quotePath=false worktree list --porcelain

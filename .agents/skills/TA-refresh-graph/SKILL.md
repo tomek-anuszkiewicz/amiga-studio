@@ -11,7 +11,7 @@ Inputs: explicitly selected project/reference graph, source root, trigger and ou
 scope. Use [the structural procedure](references/update.md).
 
 1. Confirm the selected producer scope and relevant existing graph/configuration.
-   Ordinary preparation and worktree provisioning select project only.
+   Ordinary commit preparation selects the project graph. Worktree creation copies existing graphs.
 2. Run `python tools/graphify/refresh.py --graph <selected-graph>` for that input.
    Await completion and inspect actual output/provenance.
 3. Return command, changed graph artifacts, source identity and freshness limits.

@@ -75,7 +75,8 @@ verification or new commits. Keep advanced multi-source acceptance at its rule/t
 owner; successive publication of separately tested sources is not combined review.
 
 Graph criteria include explicit project/reference roots, read-only queries,
-project-only preparation/worktree refresh, explicit reference production and
+worktree copies of existing graphs, project-only preparation refresh, explicit
+reference production and
 distinct structural/semantic freshness. Preserve the repository-owned skill on
 installation. Relevant vault metadata/link semantics use the
 [shared vault reference](../skills/TA-audit-vault-links/references/vault-metadata.md).

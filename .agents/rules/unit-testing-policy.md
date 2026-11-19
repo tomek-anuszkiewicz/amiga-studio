@@ -6,6 +6,14 @@ to the integration owner. Reuse meaningful coverage and independently expected
 results; detailed design/assertion/evidence standards are in
 [testing criteria](../references/testing-criteria.md).
 
+Design every test to run in parallel with other tests. Isolate the files and
+state it changes so that tests cannot affect each other, regardless of execution
+order or overlap. Tests may share read-only inputs.
+
+If full isolation is impossible or would be disproportionately complex or costly,
+mark the test for serial execution, record why it needs to run alone, and
+always run it with no other test running.
+
 Software tasks design agreed scenarios before implementation. Implementers may
 adapt fixtures and strengthen assertions within them. A newly discovered scenario
 outside that plan requires a concrete caller decision; report-only auditors do not

@@ -35,8 +35,8 @@ def file_digest(path):
         return hashlib.file_digest(source, "sha256").hexdigest()
 
 
-def capture_inputs(root, contents=True):
-    """Hash authored inputs and ignored local reference/fixture inputs, not outputs."""
+def capture_inputs(root, contents=True, *, state=None):
+    """Capture authored and local input identities, optionally with their file state."""
     paths = set(git(root, "ls-files", "--cached", "--others", "--exclude-standard", "-z")
                 .decode("utf-8").split("\0")) - {""}
     # Ignored manuals participate in frontmatter; ignored fixtures participate in tests.
@@ -57,16 +57,21 @@ def capture_inputs(root, contents=True):
             raise ValueError(f"Cannot establish input ownership through a symlink: {name}")
         if path.is_file():
             info = path.stat()
-            result[name] = file_digest(path) if contents else (info.st_size, info.st_mtime_ns, info.st_ctime_ns)
+            file_state = (info.st_size, info.st_mtime_ns, info.st_ctime_ns)
+            result[name] = file_digest(path) if contents else file_state
         elif path.exists():
             raise ValueError(f"Unsupported input (for example a submodule): {name}")
         else:
-            result[name] = None
+            result[name] = file_state = None
+        if state is not None:
+            state[name] = file_state
     language_scope = root / "tools/verification/checks/check_english.json"
     if language_scope.is_file():
         settings = json.loads(language_scope.read_text(encoding="utf-8"))
         settings.pop("file_words", None)
         result["@english-scan-scope"] = digest(settings)
+        if state is not None:
+            state["@english-scan-scope"] = result["@english-scan-scope"]
     return result
 
 

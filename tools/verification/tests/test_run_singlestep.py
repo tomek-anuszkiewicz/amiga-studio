@@ -24,7 +24,7 @@ class LauncherTests(unittest.TestCase):
             metadata = json.loads((directory / "run.json").read_text())
             metadata.update(status=status, selected_tests=2, completed_tests=completed)
             (directory / "run.json").write_text(json.dumps(metadata))
-            if status != "running":
+            if report_code is not None:
                 timing = dict(run_id=metadata["id"], execution_seconds=0.1, finalization_seconds=0.2,
                               pipeline_seconds=0.3, report_exit_code=report_code)
                 (directory / "timing.json").write_text(json.dumps(timing))
@@ -47,14 +47,16 @@ class LauncherTests(unittest.TestCase):
 
     def test_report_failure_cannot_turn_successful_tests_into_success(self):
         with tempfile.TemporaryDirectory() as temporary:
-            code, metadata = self.run_fixture(Path(temporary), 0, 1, "failed")
+            code, metadata = self.run_fixture(Path(temporary), 0, 1, "passed")
             self.assertEqual(code, 1)
             self.assertEqual(metadata["status"], "failed")
 
     def test_missing_report_or_unfinished_groups_are_incomplete(self):
-        for status, completed in (("running", 0), ("passed", 1)):
-            with self.subTest(status=status), tempfile.TemporaryDirectory() as temporary:
-                code, metadata = self.run_fixture(Path(temporary), 0, 0, status, completed)
+        for status, completed, report_code in (("running", 0, None), ("passed", 1, 0),
+                                               ("passed", 2, None)):
+            with self.subTest(status=status, completed=completed, report_code=report_code), \
+                 tempfile.TemporaryDirectory() as temporary:
+                code, metadata = self.run_fixture(Path(temporary), 0, report_code, status, completed)
                 self.assertEqual(code, 1)
                 self.assertEqual(metadata["status"], "incomplete")
 
@@ -80,16 +82,19 @@ class LauncherTests(unittest.TestCase):
 
     def test_disabled_runtime_checks_cannot_be_selected_as_verification(self):
         for name, kind in (("test_singlestep", "test"), ("cpu", "lib")):
-            artifact = dict(reason="compiler-artifact", target=dict(name=name, kind=[kind]),
-                            executable="silicon", profile=dict(opt_level="3", debug_assertions=False,
-                                                              overflow_checks=False))
-            process = unittest.mock.MagicMock()
-            process.__enter__.return_value = process
-            process.stdout = [json.dumps(artifact) + "\n"]
-            process.wait.return_value = 0
-            with self.subTest(name=name), patch.object(run_singlestep.subprocess, "Popen", return_value=process), \
-                 self.assertRaisesRegex(RuntimeError, "debug assertions and overflow checks"):
-                run_singlestep.build_artifact("verification")
+            for disabled in ("debug_assertions", "overflow_checks"):
+                profile = dict(opt_level="3", debug_assertions=True, overflow_checks=True)
+                profile[disabled] = False
+                artifact = dict(reason="compiler-artifact", target=dict(name=name, kind=[kind]),
+                                executable="silicon", profile=profile)
+                process = unittest.mock.MagicMock()
+                process.__enter__.return_value = process
+                process.stdout = [json.dumps(artifact) + "\n"]
+                process.wait.return_value = 0
+                with self.subTest(name=name, disabled=disabled), \
+                     patch.object(run_singlestep.subprocess, "Popen", return_value=process), \
+                     self.assertRaisesRegex(RuntimeError, "debug assertions and overflow checks"):
+                    run_singlestep.build_artifact("verification")
 
 
 if __name__ == "__main__":
