@@ -1248,3 +1248,9 @@ otel
 otlp
 admin
 backlink
+backtrace
+cutover
+dockerfile
+junit
+logfile
+tmpfs

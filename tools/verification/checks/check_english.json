@@ -73,6 +73,27 @@
     "english_words/names.txt"
   ],
   "file_words": {
+    "tools/workflow/tests/test_review_routing.py": ["ap", "qm"],
+    "tools/workflow/review_routing.py": ["unassessed"],
+    "tools/workflow/review_inputs.py": ["fsmonitor", "nowarn"],
+    "tools/workflow/capture/tests/test_startup.py": ["getresponse", "joinpath"],
+    "tools/workflow/capture/tests/test_preservation.py": ["nunparsed", "unignored", "xfe", "xff"],
+    "tools/workflow/capture/receiver.py": ["fstat", "nofollow", "nonblock", "nonregular", "xb"],
+    "tools/workflow/capture/control.py": ["fromhex", "getresponse"],
+    "tools/workflow/capture/compose_service.py": ["aq", "cls", "exclusiveaddruse", "getgid", "getuid", "isabs", "normpath", "ntpath", "posixpath", "setsockopt", "xb"],
+    "tools/workflow/capture/README.md": ["aq", "lexists", "mnt", "statvfs", "uncredentialed", "xb", "za"],
+    "tools/verification/tests/test_parallel_runner.py": ["uncatchable"],
+    "tools/verification/tests/test_integration_closure.py": ["deinstrumentation", "deliberatebadliteral", "suposed", "worddzexcluded", "worddzignored", "worddzplan", "worddztracked", "worddzuntracked", "wordingxunknown", "xff"],
+    "tools/verification/run_unittest.py": ["runpy"],
+    "tools/verification/run_tests.py": ["issubclass"],
+    "tools/verification/integration_closure.py": ["cacheinfo"],
+    "tools/verification/case_report.py": ["cls", "relpath", "za"],
+    "tools/bootstrap/tests/test_bootstrap_contract.py": ["dp", "errorlevel"],
+    "tools/bootstrap/book-to-markdown/tests/test_review_server_controller.py": ["getsockname", "ip", "oneoff"],
+    "tools/bootstrap/book-to-markdown/review-server.ps1": ["ceq", "cmatch", "creplace", "ip", "mnt", "oneoff"],
+    "tools/bootstrap/book-to-markdown/container-entrypoint.py": ["creat", "execv", "trunc", "wronly"],
+    ".agents/skills/TA-cleanup-task/SKILL.md": ["uncopied"],
+    ".agents/rules/git-merge-commits.md": ["uncopied"],
     "docs/developers.md": [
       "bookjson"
     ],
@@ -234,7 +255,7 @@
       "nold"
     ],
     "tools/bootstrap/book-to-markdown/README.md": [
-      "addo"
+      "addo", "userprofile"
     ],
     "tools/bootstrap/book-to-markdown/review/content_validation.py": [
       "za"
@@ -289,7 +310,7 @@
     "tools/workflow/capture/environment.py": ["containerenv", "dockerenv", "lld", "shrinkwrap", "vv", "xhigh"],
     "tools/workflow/capture/collector.yaml": ["bearertokenauth"],
     "tools/workflow/capture/record_sources.py": ["aws", "gcloud", "gnupg", "kdbx", "kube", "netrc", "npmrc", "pem", "pfx", "pypirc", "rsa", "za"],
-    "tools/workflow/capture/registry.py": ["za"],
+    "tools/workflow/capture/registry.py": ["za", "isreserved", "ntpath"],
     "tools/workflow/result.schema.json": [
       "za"
     ],
