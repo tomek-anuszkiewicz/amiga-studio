@@ -17,7 +17,9 @@ be protected through parent integration coverage.
 For each proposed test, name the current project use, observed regression or
 approved requirement it protects and the effect a failure would have. Apply
 this to tests of verification tools as well. A fixture may force a rare failure
-to make it repeatable. Explain what can cause that failure in supported use.
+to make it repeatable. Identify which conditions the fixture supplies and which
+are reachable through supported use or covered by the approved requirement.
+Report the demonstrated consequence at its actual severity.
 Add coverage for a future use when the change introducing it is in scope.
 
 Expected results come from a contract, specification, external reference or explicit

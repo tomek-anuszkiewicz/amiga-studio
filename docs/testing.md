@@ -85,8 +85,8 @@ unchanged files where the check's scope requires them. Staging is not required,
 and the command does not create a commit. Ordinary task completion uses relevant
 focused checks. Full SingleStep verification runs automatically at
 milestone closure or explicitly for diagnosis; changes alone do not select it
-in the commit profile. The full English scan runs once after local publication
-during [ordinary task closure](../tools/verification/README.md#post-publication-closure).
+in the commit profile. The sealed task or assembly commit must pass the full English scan before
+[conditional publication](../tools/verification/README.md#local-integration).
 CPU waiting tests run when ordinary CPU tests are selected. Use
 `python tools/verification/verify.py --help` for the available profiles and
 [tools/verification/README.md](../tools/verification/README.md#completion-verification) for execution details.

@@ -73,7 +73,7 @@
     "english_words/names.txt"
   ],
   "file_words": {
-    "tools/workflow/tests/test_review_routing.py": ["ap", "qm"],
+    "tools/workflow/tests/test_review_routing.py": ["ap", "qm", "wf"],
     "tools/workflow/review_routing.py": ["unassessed"],
     "tools/workflow/review_inputs.py": ["fsmonitor", "nowarn"],
     "tools/workflow/capture/tests/test_startup.py": ["getresponse", "joinpath"],

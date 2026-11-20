@@ -33,7 +33,7 @@ triggered, and the [verifier contract](../../../../tools/verification/README.md)
 For Graphify changes, require relevant evidence for corpus isolation, ignore-setting
 preservation, semantic preservation/removal, query provenance and read-only behavior,
 explicit bootstrap updates to both graphs, worktree copies, and the single project
-refresh on local `master` after publication and the closure language scan.
+refresh on local `master` after publication of the commit with passing language evidence.
 Exercise evidence must include actual native traversal and all graph artifacts plus
 any query log; unchanged graph.json alone does not prove a read-only query.
 

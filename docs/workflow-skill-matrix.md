@@ -73,6 +73,7 @@ A suggested session effort helps the user choose settings for a run.
 | 48 | `TA-register-execution` | Session setting |
 | 49 | `TA-collect-task-records` | Session setting |
 | 50 | `TA-check-task-records` | Session setting |
+| 51 | `TA-challenge-findings` | `high` |
 
 ## Cell conditions
 
@@ -103,7 +104,7 @@ A suggested session effort helps the user choose settings for a run.
 | DIA | An actual closure trigger or explicit compaction request requires consolidation of identified settled diary history. Supplied completion evidence distinguishes settled from unfinished work; preserve unique knowledge and keep all changes before the final candidate is accepted. |
 | PRN | An actual closure request identifies exact completed roadmap items supported by implementation, semantic and verification evidence. Preserve unfinished scope and checkpoints; pruning remains provisional until the required final gates, diary work and closure commit succeed. |
 | BAT | The current task has an explicitly selected batch scope and candidate whose partition, messages, diary or readiness record needs preparation or updating after material changes or new evidence. Preserve existing index entries and staging authority; preparation may report missing gates without obtaining them. |
-| CMT | Commit authority covers an exact prepared candidate, partition, messages and diary or closure content. All four independent review lanes approve that candidate, canonical verification and every applicable milestone or other gate pass, and no unresolved blocker remains. Freeze and create only the authorized mechanical commits. |
+| CMT | Commit authority covers an exact prepared candidate, partition, messages and diary or closure content. All four independent lane results are accepted on that candidate, canonical verification and every applicable milestone or other gate pass, and no unresolved blocker remains. Freeze and create only the authorized mechanical commits. |
 | PUB | The selected task has accepted, sealed source and target identities with the required committed closure record, and exact publication authority is available. The recorded base and candidate remain current; use only the existing eligible publication protocol, without inferring push or cleanup authority. |
 | CLN | Publication is confirmed for the exact selected task. Closure English, the project graph for its final SHA and required preservation have completed. Cleanup authority names the plan, branch and worktree. Cleanup preserves later work. |
 | CHK | A named focused check is required for the current candidate and has not completed, or relevant changes or resolved failure causes invalidate prior evidence. Supply the exact command, environment and boundary; do not repeat applicable success or expand into a broader suite. |
@@ -112,7 +113,7 @@ A suggested session effort helps the user choose settings for a run.
 | QRY | A specific unanswered relationship question in the current task can be checked in an identified existing graph. The graph, source scope and query are known; the operation remains read-only and confirms relevant definitions directly. |
 | PTH | The current task has a concrete relationship question between known, source-qualified endpoints in an identified existing graph. A path or no-path result would resolve that question; do not create a new investigation merely because graph access is available. |
 | SYM | Understanding a known symbol and its relationships is necessary for the current scoped task. The symbol, graph and source snapshot are identified; read the owning definitions and do not broaden the requested analysis. |
-| GRF | After ordinary publication and completed closure English, select the project graph on primary local master at the final SHA, including any vocabulary commit. Reuse an intact successful receipt and select a retry only for a failed refresh. An explicit bootstrap or reference refresh keeps its selected scope. |
+| GRF | After conditional publication, refresh the project graph for the published commit using its successful language receipt. Reuse an intact graph receipt. Historical closure follows its recorded protocol. |
 | SEM | Explicitly selected project documents need their semantic relationships extracted into the project graph. The source scope, graph state and write authority are available; structural refresh and document editing alone do not authorize this separate operation. |
 | IMG | The current GUI task needs new image evidence from an identified existing capture scenario and output location. State the capture boundary; a saved image alone is not an interpreted diagnosis, accepted visual result or repair instruction. |
 | IDX | Accepted documents within an explicitly selected supported source scope need shared RAG indexing, and publication authority, configuration and retrieval probe are available. Document editing, graph changes and audit completion alone do not authorize indexing. |
@@ -124,6 +125,7 @@ A suggested session effort helps the user choose settings for a run.
 | REG | The user has selected a thread, repository and execution boundary for capture. |
 | COL | A recorded execution has a closed boundary and its evidence is ready for collection. |
 | REC | A new archive revision and independent expected observations are available for assessment. |
+| CHALLENGE | A collected set of required review findings needs one fresh advisory reviewer to uphold or reject each claim on its frozen candidate. The receiver has checked the human stop, original reports and outstanding lanes. |
 
 ## Destination columns 01-11
 
@@ -179,6 +181,7 @@ A suggested session effort helps the user choose settings for a run.
 | 48 `TA-register-execution` | - | - | - | - | - | - | - | - | - | - | - |
 | 49 `TA-collect-task-records` | - | - | - | - | - | - | - | - | - | - | - |
 | 50 `TA-check-task-records` | - | - | - | - | - | - | - | - | - | - | - |
+| 51 `TA-challenge-findings` | - | - | - | FIX | - | - | - | - | - | - | - |
 
 ## Destination columns 12-22
 
@@ -234,6 +237,7 @@ A suggested session effort helps the user choose settings for a run.
 | 48 `TA-register-execution` | - | - | - | - | - | - | - | - | - | - | - |
 | 49 `TA-collect-task-records` | - | - | - | - | - | - | - | - | - | - | - |
 | 50 `TA-check-task-records` | - | - | - | - | - | - | - | - | - | - | - |
+| 51 `TA-challenge-findings` | - | - | - | - | - | - | - | - | - | - | - |
 
 ## Destination columns 23-33
 
@@ -289,6 +293,7 @@ A suggested session effort helps the user choose settings for a run.
 | 48 `TA-register-execution` | - | - | - | - | - | - | - | - | - | - | - |
 | 49 `TA-collect-task-records` | - | - | - | - | - | - | - | - | - | - | - |
 | 50 `TA-check-task-records` | - | - | - | - | - | - | - | - | - | - | - |
+| 51 `TA-challenge-findings` | - | - | - | - | - | - | - | CMT | - | - | - |
 
 ## Destination columns 34-44
 
@@ -344,58 +349,60 @@ A suggested session effort helps the user choose settings for a run.
 | 48 `TA-register-execution` | - | - | - | - | - | - | - | - | - | - | - |
 | 49 `TA-collect-task-records` | - | - | - | - | - | - | - | - | - | - | - |
 | 50 `TA-check-task-records` | - | - | - | - | - | - | - | - | - | - | - |
+| 51 `TA-challenge-findings` | - | - | - | - | - | - | - | - | - | - | - |
 
-## Destination columns 45-50
+## Destination columns 45-51
 
-| Source skill | 45 | 46 | 47 | 48 | 49 | 50 |
-| --- | --- | --- | --- | --- | --- | --- |
-| 01 `TA-plan-change` | ROLE | - | - | - | - | - |
-| 02 `TA-design-tests` | - | - | - | - | - | - |
-| 03 `TA-implement-change` | - | - | - | - | - | - |
-| 04 `TA-fix-findings` | - | - | - | - | - | - |
-| 05 `TA-optimize-emulation` | - | - | - | - | - | - |
-| 06 `TA-write-powershell` | - | - | - | - | - | - |
-| 07 `TA-audit-tests` | - | - | - | - | - | - |
-| 08 `TA-measure-coverage` | - | - | - | - | - | - |
-| 09 `TA-review-behavior` | - | - | - | - | - | - |
-| 10 `TA-review-architecture` | - | - | - | - | - | - |
-| 11 `TA-review-tests-evidence` | - | - | - | - | - | - |
-| 12 `TA-review-docs` | - | - | - | - | - | - |
-| 13 `TA-review-spec-compliance` | - | - | - | - | - | - |
-| 14 `TA-review-semantic-parity` | - | - | - | - | - | - |
-| 15 `TA-audit-vault-links` | - | - | - | - | - | - |
-| 16 `TA-research-hardware-manuals` | - | - | - | - | - | - |
-| 17 `TA-research-reference-models` | - | - | - | - | - | - |
-| 18 `TA-research-hardware-measurements` | - | - | - | - | - | - |
-| 19 `TA-diagnose-cpu` | - | - | - | - | - | - |
-| 20 `TA-start-plan` | - | ENV | - | REG | - | - |
-| 21 `TA-repair-worktree` | - | - | - | - | - | - |
-| 22 `TA-sync-master` | - | - | - | - | - | - |
-| 23 `TA-resolve-merge-conflicts` | - | - | - | - | - | - |
-| 24 `TA-sync-docs` | - | - | - | - | - | - |
-| 25 `TA-author-methodology-doc` | - | - | - | - | - | - |
-| 26 `TA-compact-diary` | - | - | - | - | - | - |
-| 27 `TA-organize-roadmap` | - | - | - | - | - | - |
-| 28 `TA-prune-roadmap` | - | - | - | - | - | - |
-| 29 `TA-prepare-batch` | - | - | - | - | - | - |
-| 30 `TA-commit-batch` | - | - | - | - | - | - |
-| 31 `TA-close-task` | - | - | - | - | - | - |
-| 32 `TA-cleanup-task` | - | - | - | - | - | - |
-| 33 `TA-verify-focused` | - | - | - | - | - | - |
-| 34 `TA-verify-batch` | - | - | - | - | - | - |
-| 35 `TA-verify-milestone` | - | - | - | - | - | - |
-| 36 `TA-query-graph` | - | - | - | - | - | - |
-| 37 `TA-find-graph-path` | - | - | - | - | - | - |
-| 38 `TA-explain-graph-symbol` | - | - | - | - | - | - |
-| 39 `TA-refresh-graph` | - | - | - | - | COL | - |
-| 40 `TA-extract-graph-semantics` | - | - | - | - | - | - |
-| 41 `TA-capture-gui-screenshot` | - | - | - | - | - | - |
-| 42 `TA-index-amiga-rag` | - | - | - | - | - | - |
-| 43 `TA-profile-emulation` | - | - | - | - | - | - |
-| 44 `TA-create-skill` | ROLE | - | - | - | - | - |
-| 45 `TA-create-agent` | RTY | - | - | - | - | - |
-| 46 `TA-capture-environment` | - | RTY | CMP | - | - | - |
-| 47 `TA-compare-environments` | - | - | RTY | - | - | - |
-| 48 `TA-register-execution` | - | - | - | RTY | COL | - |
-| 49 `TA-collect-task-records` | - | - | - | - | RTY | REC |
-| 50 `TA-check-task-records` | - | - | - | - | - | RTY |
+| Source skill | 45 | 46 | 47 | 48 | 49 | 50 | 51 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 01 `TA-plan-change` | ROLE | - | - | - | - | - | - |
+| 02 `TA-design-tests` | - | - | - | - | - | - | - |
+| 03 `TA-implement-change` | - | - | - | - | - | - | - |
+| 04 `TA-fix-findings` | - | - | - | - | - | - | - |
+| 05 `TA-optimize-emulation` | - | - | - | - | - | - | - |
+| 06 `TA-write-powershell` | - | - | - | - | - | - | - |
+| 07 `TA-audit-tests` | - | - | - | - | - | - | - |
+| 08 `TA-measure-coverage` | - | - | - | - | - | - | - |
+| 09 `TA-review-behavior` | - | - | - | - | - | - | CHALLENGE |
+| 10 `TA-review-architecture` | - | - | - | - | - | - | CHALLENGE |
+| 11 `TA-review-tests-evidence` | - | - | - | - | - | - | CHALLENGE |
+| 12 `TA-review-docs` | - | - | - | - | - | - | CHALLENGE |
+| 13 `TA-review-spec-compliance` | - | - | - | - | - | - | CHALLENGE |
+| 14 `TA-review-semantic-parity` | - | - | - | - | - | - | CHALLENGE |
+| 15 `TA-audit-vault-links` | - | - | - | - | - | - | - |
+| 16 `TA-research-hardware-manuals` | - | - | - | - | - | - | - |
+| 17 `TA-research-reference-models` | - | - | - | - | - | - | - |
+| 18 `TA-research-hardware-measurements` | - | - | - | - | - | - | - |
+| 19 `TA-diagnose-cpu` | - | - | - | - | - | - | - |
+| 20 `TA-start-plan` | - | ENV | - | REG | - | - | - |
+| 21 `TA-repair-worktree` | - | - | - | - | - | - | - |
+| 22 `TA-sync-master` | - | - | - | - | - | - | - |
+| 23 `TA-resolve-merge-conflicts` | - | - | - | - | - | - | - |
+| 24 `TA-sync-docs` | - | - | - | - | - | - | - |
+| 25 `TA-author-methodology-doc` | - | - | - | - | - | - | - |
+| 26 `TA-compact-diary` | - | - | - | - | - | - | - |
+| 27 `TA-organize-roadmap` | - | - | - | - | - | - | - |
+| 28 `TA-prune-roadmap` | - | - | - | - | - | - | - |
+| 29 `TA-prepare-batch` | - | - | - | - | - | - | - |
+| 30 `TA-commit-batch` | - | - | - | - | - | - | - |
+| 31 `TA-close-task` | - | - | - | - | - | - | - |
+| 32 `TA-cleanup-task` | - | - | - | - | - | - | - |
+| 33 `TA-verify-focused` | - | - | - | - | - | - | - |
+| 34 `TA-verify-batch` | - | - | - | - | - | - | - |
+| 35 `TA-verify-milestone` | - | - | - | - | - | - | - |
+| 36 `TA-query-graph` | - | - | - | - | - | - | - |
+| 37 `TA-find-graph-path` | - | - | - | - | - | - | - |
+| 38 `TA-explain-graph-symbol` | - | - | - | - | - | - | - |
+| 39 `TA-refresh-graph` | - | - | - | - | COL | - | - |
+| 40 `TA-extract-graph-semantics` | - | - | - | - | - | - | - |
+| 41 `TA-capture-gui-screenshot` | - | - | - | - | - | - | - |
+| 42 `TA-index-amiga-rag` | - | - | - | - | - | - | - |
+| 43 `TA-profile-emulation` | - | - | - | - | - | - | - |
+| 44 `TA-create-skill` | ROLE | - | - | - | - | - | - |
+| 45 `TA-create-agent` | RTY | - | - | - | - | - | - |
+| 46 `TA-capture-environment` | - | RTY | CMP | - | - | - | - |
+| 47 `TA-compare-environments` | - | - | RTY | - | - | - | - |
+| 48 `TA-register-execution` | - | - | - | RTY | COL | - | - |
+| 49 `TA-collect-task-records` | - | - | - | - | RTY | REC | - |
+| 50 `TA-check-task-records` | - | - | - | - | - | RTY | - |
+| 51 `TA-challenge-findings` | - | - | - | - | - | - | - |

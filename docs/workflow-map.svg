@@ -1,156 +1,838 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1180" height="2220" viewBox="0 0 1180 2220" role="img" aria-labelledby="title desc">
-  <title id="title">Amiga workflow: skills and agents</title>
-  <desc id="desc">Follow a software change from planning to publication on local master. After the task commit, the diagram forks into unchanged fast-forward, merge and explicitly authorized rebase paths. The paths meet at conditional publication. Additional skills are grouped by purpose and primary executor.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1240" height="7123" viewBox="0 0 1240 7123" role="img" aria-labelledby="title desc">
+  <title id="title">Amiga workflow from selection to closure</title>
+  <desc id="desc">Capture readiness lets a user save a plan, start a saved plan or resume the recorded checkout. Select single or combined delivery from ready sources and reconcile code, tests and docs. An authorized checkpoint continuation collects due primary reports before an advisory reviewer upholds findings for repair or rejects them to close the issue. A tested unchanged tip or an accepted full integration meets at the sealed commit, where the full English scan precedes conditional publication. The surviving record supports optional push, graph refresh, capture interval closure, preservation and authorized cleanup.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#427069"/></marker>
   </defs>
   <style>
     text { font-family: system-ui, sans-serif; fill: #17383c; }
     .heading { font-size: 33px; font-weight: 680; }
-    .section { font-size: 22px; font-weight: 650; }
+    .section { font-size: 23px; font-weight: 650; }
     .caption { font-size: 15px; }
     .name { font-family: Consolas, monospace; font-size: 16px; fill: #105467; }
-    .owner { font-size: 13px; fill: #50656b; }
-    .group { font-size: 18px; font-weight: 650; }
+    .owner { font-size: 13px; fill: #4d646a; }
+    .link { font-size: 14px; fill: #125469; text-decoration: underline; }
+    .group { font-size: 19px; font-weight: 650; }
+    .node rect { fill: #eff5f4; stroke: #a6bab8; }
+    .decision rect { fill: #edf2fa; stroke: #a5b5d0; }
+    .detail rect { fill: #fbfcfc; stroke: #a6bab8; }
+    .blocked rect { fill: #fff5eb; stroke: #c9a78e; }
     .edge { fill: none; stroke: #427069; stroke-width: 2; marker-end: url(#arrow); }
-    a:hover .name, a:focus .name { text-decoration: underline; }
+    .branch { font-size: 13px; font-weight: 600; fill: #365d59; paint-order: stroke; stroke: #f8faf8; stroke-width: 4px; }
+    a:hover text, a:focus text { fill: #103d92; text-decoration: underline; }
   </style>
-  <rect width="1180" height="2220" fill="#f8faf8"/>
-  <text x="38" y="52" class="heading">Amiga workflow: skills and agents</text>
-  <text x="38" y="84" class="caption">You choose an operation. The main session runs it or assigns the indicated specialist and brings back the result.</text>
-  <text x="38" y="133" class="section">A software change from plan to local master</text>
-  <text x="38" y="159" class="caption">Follow the arrows for a typical change in an existing task worktree. Preparation collects the evidence needed before commit.</text>
-  <path d="M370 237H424" class="edge"/>
-  <path d="M756 237H810" class="edge"/>
-  <path d="M976 280V302" class="edge"/>
-  <path d="M810 354H790V348H756" class="edge"/>
-  <path d="M810 354H790V439H756" class="edge"/>
-  <path d="M424 348H392V385H370" class="edge"/>
-  <path d="M424 439H392V385H370" class="edge"/>
-  <rect x="38" y="194" width="332" height="86" rx="9" fill="#e6f1ee" stroke="#b5c8c5"/>
-  <text x="54" y="219" class="group">Plan the change</text>
-  <a href="../.agents/skills/TA-plan-change/SKILL.md" xlink:href="../.agents/skills/TA-plan-change/SKILL.md" aria-label="TA-plan-change, TA-planner">
-  <text x="54" y="243" class="name">TA-plan-change</text>
-  </a>
-  <text x="54" y="265" class="owner">TA-planner</text>
-  <rect x="424" y="194" width="332" height="86" rx="9" fill="#e6f1ee" stroke="#b5c8c5"/>
-  <text x="440" y="219" class="group">Design the tests</text>
-  <a href="../.agents/skills/TA-design-tests/SKILL.md" xlink:href="../.agents/skills/TA-design-tests/SKILL.md" aria-label="TA-design-tests, TA-test-designer">
-  <text x="440" y="243" class="name">TA-design-tests</text>
-  </a>
-  <text x="440" y="265" class="owner">TA-test-designer</text>
-  <rect x="810" y="194" width="332" height="86" rx="9" fill="#e6f1ee" stroke="#b5c8c5"/>
-  <text x="826" y="219" class="group">Implement and check</text>
-  <a href="../.agents/skills/TA-implement-change/SKILL.md" xlink:href="../.agents/skills/TA-implement-change/SKILL.md" aria-label="TA-implement-change, TA-implementer">
-  <text x="826" y="243" class="name">TA-implement-change</text>
-  </a>
-  <text x="826" y="265" class="owner">TA-implementer</text>
-  <rect x="810" y="302" width="332" height="174" rx="9" fill="#e6f1ee" stroke="#b5c8c5"/>
-  <text x="826" y="327" class="group">Prepare the candidate</text>
-  <a href="../.agents/skills/TA-prepare-batch/SKILL.md" xlink:href="../.agents/skills/TA-prepare-batch/SKILL.md" aria-label="TA-prepare-batch, Main session">
-  <text x="826" y="351" class="name">TA-prepare-batch</text>
-  </a>
-  <text x="826" y="373" class="owner">Main session</text>
-  <text x="826" y="398" class="owner">Required assessments or matching evidence</text>
-  <a href="../.agents/skills/TA-review-spec-compliance/SKILL.md" xlink:href="../.agents/skills/TA-review-spec-compliance/SKILL.md"><text x="826" y="421" class="name">TA-review-spec-compliance</text></a>
-  <a href="../.agents/skills/TA-audit-vault-links/SKILL.md" xlink:href="../.agents/skills/TA-audit-vault-links/SKILL.md"><text x="826" y="443" class="name">TA-audit-vault-links</text></a>
-  <rect x="424" y="291" width="332" height="116" rx="9" fill="#efedf7" stroke="#b5c8c5"/>
-  <text x="440" y="315" class="group">Four independent reviews</text>
-  <a href="../.agents/skills/TA-review-behavior/SKILL.md" xlink:href="../.agents/skills/TA-review-behavior/SKILL.md" aria-label="TA-review-behavior, TA-code-reviewer">
-  <text x="440" y="337" class="name">TA-review-behavior</text>
-  </a>
-  <a href="../.agents/skills/TA-review-architecture/SKILL.md" xlink:href="../.agents/skills/TA-review-architecture/SKILL.md" aria-label="TA-review-architecture, TA-code-reviewer">
-  <text x="440" y="357" class="name">TA-review-architecture</text>
-  </a>
-  <a href="../.agents/skills/TA-review-tests-evidence/SKILL.md" xlink:href="../.agents/skills/TA-review-tests-evidence/SKILL.md" aria-label="TA-review-tests-evidence, TA-code-reviewer">
-  <text x="440" y="377" class="name">TA-review-tests-evidence</text>
-  </a>
-  <a href="../.agents/skills/TA-review-docs/SKILL.md" xlink:href="../.agents/skills/TA-review-docs/SKILL.md" aria-label="TA-review-docs, TA-code-reviewer">
-  <text x="440" y="397" class="name">TA-review-docs</text>
-  </a>
-  <rect x="424" y="419" width="332" height="57" rx="9" fill="#efedf7" stroke="#b5c8c5"/>
-  <a href="../.agents/skills/TA-verify-batch/SKILL.md" xlink:href="../.agents/skills/TA-verify-batch/SKILL.md" aria-label="TA-verify-batch, Main session">
-  <text x="440" y="442" class="name">TA-verify-batch</text>
-  </a>
-  <text x="440" y="463" class="owner">Main session · canonical commit profile</text>
-  <rect x="38" y="342" width="332" height="86" rx="9" fill="#e6f1ee" stroke="#b5c8c5"/>
-  <text x="54" y="367" class="group">Commit on the task branch</text>
-  <a href="../.agents/skills/TA-commit-batch/SKILL.md" xlink:href="../.agents/skills/TA-commit-batch/SKILL.md" aria-label="TA-commit-batch, Main session">
-  <text x="54" y="391" class="name">TA-commit-batch</text>
-  </a>
-  <text x="54" y="413" class="owner">Main session</text>
-  <path d="M756 380H773V493" class="edge" stroke-dasharray="5 4"/>
-  <path d="M756 452H773" fill="none" stroke="#427069" stroke-dasharray="5 4"/>
-  <rect x="424" y="493" width="718" height="74" rx="9" fill="#f5efdf" stroke="#c8b991"/>
-  <text x="440" y="521" class="group">A check fails or a reviewer requests a change</text>
-  <text x="440" y="546" class="caption">Select a repair, prepare the revised candidate and repeat affected checks and reviews.</text>
-  <path d="M1142 530H1161V355H1142" class="edge" stroke-dasharray="5 4"/>
-  <g transform="translate(0 108)" id="integration" aria-label="Integration in the task worktree and publication on local master">
-    <path d="M204 320V498" class="edge"/>
-    <rect x="38" y="498" width="1104" height="73" rx="9" fill="#eaf2f5" stroke="#a5bec7"/>
-    <text x="54" y="528" class="section">Approve the integration plan before changing either branch</text>
-    <text x="54" y="551" class="caption">Record local master (B), the task tip and the method. An authorized unverified working commit takes the full integration path below.</text>
-    <path d="M204 571V610" class="edge"/>
-    <path d="M590 571V610" class="edge"/>
-    <path d="M976 571V610" class="edge"/>
-
-    <rect x="38" y="610" width="332" height="124" rx="9" fill="#f5efdf" stroke="#c8b991"/>
-    <text x="54" y="639" class="group">Unchanged, tested fast-forward</text>
-    <text x="54" y="665" class="caption">The approved plan accepts this clean tip.</text>
-    <text x="54" y="689" class="caption">It contains B and committed closure.</text>
-    <text x="54" y="712" class="caption">Confirm that this exact tip was tested.</text>
-
-    <rect x="424" y="610" width="332" height="124" rx="9" fill="#e6f1ee" stroke="#b5c8c5"/>
-    <text x="440" y="639" class="group">Merge master into the task branch</text>
-    <a href="../.agents/skills/TA-sync-master/SKILL.md" xlink:href="../.agents/skills/TA-sync-master/SKILL.md" aria-label="TA-sync-master, Main session">
-      <text x="440" y="665" class="name">TA-sync-master</text>
-    </a>
-    <text x="440" y="689" class="caption">Default when histories have diverged.</text>
-    <text x="440" y="712" class="caption">Resolve merge conflicts if they occur.</text>
-
-    <rect x="810" y="610" width="332" height="124" rx="9" fill="#e6f1ee" stroke="#b5c8c5"/>
-    <text x="826" y="639" class="group">Rebase task commits onto B</text>
-    <text x="826" y="665" class="caption">Only by explicit choice. Record the original</text>
-    <text x="826" y="689" class="caption">task tip (S), then replay the agreed commits</text>
-    <text x="826" y="712" class="caption">and resolve any conflicts in the task worktree.</text>
-
-    <path d="M590 734V754" class="edge"/>
-    <path d="M976 734V754" class="edge"/>
-    <rect x="424" y="754" width="718" height="105" rx="9" fill="#e6f1ee" stroke="#b5c8c5"/>
-    <text x="440" y="777" class="group">Reconcile and prepare the combined candidate</text>
-    <text x="440" y="801" class="caption">Reconcile code, tests and tracked documents. Prepare fixes and closure.</text>
-    <text x="440" y="825" class="owner">Already contains B but lacks tested-tip evidence or committed closure? Start the full checks here.</text>
-    <text x="440" y="846" class="owner">Assess specification compliance and vault links. Reuse evidence where its scope still matches.</text>
-
-    <path d="M783 859V876" class="edge"/>
-    <rect x="424" y="876" width="718" height="80" rx="9" fill="#efedf7" stroke="#b5c8c5"/>
-    <text x="440" y="902" class="group">Verify the integrated result and obtain all four review approvals</text>
-    <text x="440" y="927" class="caption">Run the commit profile against B. For a rebase, also supply S as the integration source.</text>
-    <text x="440" y="948" class="owner">Select repairs for findings, then prepare again and repeat the affected checks and reviews.</text>
-    <path d="M1142 917H1161V807H1142" class="edge" stroke-dasharray="5 4"/>
-
-    <path d="M204 734V988" class="edge"/>
-    <rect x="38" y="988" width="332" height="82" rx="9" fill="#f5efdf" stroke="#c8b991"/>
-    <text x="54" y="1015" class="group">Seal the approved tested tip</text>
-    <text x="54" y="1040" class="caption">The accept-tested operation records the</text>
-    <text x="54" y="1061" class="caption">existing commit as the publishable tip (C).</text>
-
-    <path d="M783 956V988" class="edge"/>
-    <rect x="424" y="988" width="718" height="82" rx="9" fill="#e6f1ee" stroke="#b5c8c5"/>
-    <text x="440" y="1015" class="group">Freeze the verified result, finish any prepared commits and seal C</text>
-    <text x="440" y="1040" class="caption">Finish a pending merge commit or add an agreed fix or closure commit when needed.</text>
-    <text x="440" y="1061" class="owner">TA-commit-batch binds the final task tip (C) to the accepted tree and integration evidence.</text>
-
-    <path d="M204 1070V1102" class="edge"/>
-    <path d="M783 1070V1102" class="edge"/>
-    <rect x="38" y="1102" width="1104" height="98" rx="9" fill="#d1ece0" stroke="#578777" stroke-width="2"/>
-    <text x="54" y="1131" class="section">Publish on local master</text>
-    <a href="../.agents/skills/TA-close-task/SKILL.md" xlink:href="../.agents/skills/TA-close-task/SKILL.md" aria-label="TA-close-task, Main session">
-      <text x="54" y="1157" class="name">TA-close-task</text>
-    </a>
-    <text x="54" y="1181" class="caption">In the primary checkout, advance master from B to C only if master still equals B. If master moved, restart integration at its new tip.</text>
+  <rect width="1240" height="7123" fill="#f8faf8"/>
+  <text x="38" y="54" class="heading">Amiga workflow from selection to closure</text>
+  <text x="38" y="78" class="caption">Commit IDs · B is the recorded local master tip · C is the final accepted commit for publication</text>
+  <g id="sections">
+<text x="38" y="100" class="section">Open the plan and confirm capture</text>
+<text x="38" y="1410" class="section">Select the source and prepare the integration</text>
+<text x="38" y="2397" class="section">Verify, review and record the accepted commit</text>
+<text x="38" y="4763" class="section">Publish conditionally and close the selected task</text>
   </g>
-  <g transform="translate(0 808)">
+  <g id="transitions">
+<path class="edge" d="M434 196 L422 196 L422 204 L410 204" data-from="capture-status" data-to="recover-services" data-condition="Installation missing or stopped"><title>Installation missing or stopped</title></path>
+<path class="edge" d="M806 197 L818 197 L818 206 L830 206" data-from="capture-status" data-to="maintenance" data-condition="User selects service or host change"><title>User selects service or host change</title></path>
+<path class="edge" d="M620 296 L620 385" data-from="capture-status" data-to="register" data-condition="Healthy installation reused"><title>Healthy installation reused</title></path>
+  <text x="630" y="344" class="branch" text-anchor="start">Healthy · reuse</text>
+<path class="edge" d="M224 316 L224 360 L501 360 L501 385" data-from="recover-services" data-to="register" data-condition="Services ready after provisioning or recovery"><title>Services ready after provisioning or recovery</title></path>
+  <text x="362" y="351" class="branch" text-anchor="middle">Recovered</text>
+<path class="edge" d="M1016 316 L1016 360 L743 360 L743 385" data-from="maintenance" data-to="register" data-condition="Selected handoff complete; services ready"><title>Selected handoff complete; services ready</title></path>
+  <text x="879" y="351" class="branch" text-anchor="middle">Ready after handoff</text>
+<path class="edge" d="M434 480 L422 480 L422 480 L410 480" data-from="register" data-to="capture-blocked" data-condition="Fresh event not confirmed within the startup procedure"><title>Fresh event not confirmed within the startup procedure</title></path>
+<path class="edge" d="M620 575 L620 644" data-from="register" data-to="intent" data-condition="Fresh archived OTLP event confirmed"><title>Fresh archived OTLP event confirmed</title></path>
+  <text x="630" y="613" class="branch" text-anchor="start">Confirmed</text>
+<path class="edge" d="M479 774 L479 818 L224 818 L224 843" data-from="intent" data-to="plan" data-condition="Save agreed requirements"><title>Save agreed requirements</title></path>
+  <text x="351" y="809" class="branch" text-anchor="middle">Save for later</text>
+<path class="edge" d="M620 774 L620 843" data-from="intent" data-to="start" data-condition="Start a saved plan"><title>Start a saved plan</title></path>
+  <text x="630" y="812" class="branch" text-anchor="start">Start saved plan</text>
+<path class="edge" d="M758 774 L758 818 L1016 818 L1016 843" data-from="intent" data-to="resume" data-condition="Resume a recorded plan"><title>Resume a recorded plan</title></path>
+  <text x="887" y="809" class="branch" text-anchor="middle">Resume</text>
+<path class="edge" d="M620 1033 L620 1142" data-from="start" data-to="implement" data-condition="Copied inputs match and new execution is ready"><title>Copied inputs match and new execution is ready</title></path>
+  <text x="630" y="1091" class="branch" text-anchor="start">Inputs matched</text>
+<path class="edge" d="M927 993 L927 1117 L750 1117 L750 1142" data-from="resume" data-to="implement" data-condition="Implementation remains authorized and outstanding"><title>Implementation remains authorized and outstanding</title></path>
+  <text x="838" y="1108" class="branch" text-anchor="middle">Implementation due</text>
+<path class="edge" d="M1016 993 L1016 1142" data-from="resume" data-to="resume-stage" data-condition="The saved stage owns outstanding work"><title>The saved stage owns outstanding work</title></path>
+  <text x="1026" y="1071" class="branch" text-anchor="start">Recorded stage</text>
+<path class="edge" d="M620 1352 L620 1436" data-from="implement" data-to="discover" data-condition="Authorized delivery with recorded implementation completion"><title>Authorized delivery with recorded implementation completion</title></path>
+  <text x="630" y="1398" class="branch" text-anchor="start">Selected delivery</text>
+<path class="edge" d="M806 1516 L818 1516 L818 1516 L830 1516" data-from="discover" data-to="prior-publication" data-condition="Master already contains the selected delivery"><title>Master already contains the selected delivery</title></path>
+<path class="edge" d="M620 1626 L620 1695" data-from="discover" data-to="choice" data-condition="Selected source eligible"><title>Selected source eligible</title></path>
+  <text x="630" y="1664" class="branch" text-anchor="start">Eligible</text>
+<path class="edge" d="M494 1626 L494 1670 L224 1670 L224 1695" data-from="discover" data-to="no-offer" data-condition="No eligible record for requested delivery"><title>No eligible record for requested delivery</title></path>
+  <text x="359" y="1661" class="branch" text-anchor="middle">No eligible record</text>
+<path class="edge" d="M479 1909 L479 1953 L224 1953 L224 1978" data-from="choice" data-to="tested" data-condition="Single plan with approved exact tested-tip shortcut"><title>Single plan with approved exact tested-tip shortcut</title></path>
+  <text x="351" y="1944" class="branch" text-anchor="middle">Exact tested tip</text>
+<path class="edge" d="M620 1909 L620 1978" data-from="choice" data-to="single-full" data-condition="Single source needs full acceptance"><title>Single source needs full acceptance</title></path>
+  <text x="630" y="1947" class="branch" text-anchor="start">Full single-source path</text>
+<path class="edge" d="M761 1909 L761 1953 L1016 1953 L1016 1978" data-from="choice" data-to="assemble" data-condition="User selected named combined sources"><title>User selected named combined sources</title></path>
+  <text x="888" y="1944" class="branch" text-anchor="middle">Combined selection</text>
+<path class="edge" d="M620 2308 L620 2359 L557 2359 L557 2423" data-from="single-full" data-to="prepare" data-condition="Single candidate reconciled"><title>Single candidate reconciled</title></path>
+  <text x="588" y="2351" class="branch" text-anchor="middle">Single reconciled</text>
+<path class="edge" d="M1016 2328 L1016 2398 L1087 2398 L1087 2423" data-from="assemble" data-to="prepare" data-condition="Assembly reconciled with every original tip"><title>Assembly reconciled with every original tip</title></path>
+  <text x="1051" y="2389" class="branch" text-anchor="middle">Assembly reconciled</text>
+<path class="edge" d="M818 2613 L818 2682" data-from="prepare" data-to="full-verification" data-condition="Prepared commit or full integration"><title>Prepared commit or full integration</title></path>
+  <text x="828" y="2651" class="branch" text-anchor="start">Prepared commit</text>
+<path class="edge" d="M511 2613 L511 2657 L224 2657 L224 2682" data-from="prepare" data-to="milestone" data-condition="Actual roadmap or milestone closure"><title>Actual roadmap or milestone closure</title></path>
+  <text x="367" y="2648" class="branch" text-anchor="middle">Actual closure trigger</text>
+<path class="edge" d="M818 2872 L818 3025" data-from="full-verification" data-to="lanes" data-condition="Persist applicable gate evidence for the review"><title>Persist applicable gate evidence for the review</title></path>
+  <text x="828" y="2952" class="branch" text-anchor="start">Gate results</text>
+<path class="edge" d="M224 2956 L224 3000 L557 3000 L557 3025" data-from="milestone" data-to="lanes" data-condition="Supply required closure evidence alongside the commit profile"><title>Supply required closure evidence alongside the commit profile</title></path>
+  <text x="390" y="2991" class="branch" text-anchor="middle">Closure results</text>
+<path class="edge" d="M542 3275 L542 3319 L224 3319 L224 3344" data-from="lanes" data-to="human-stop" data-condition="Round 3 or later with known unresolved issue"><title>Round 3 or later with known unresolved issue</title></path>
+  <text x="383" y="3310" class="branch" text-anchor="middle">Round 3+ · issue open</text>
+<path class="edge" d="M1010 3275 L1010 3319 L1016 3319 L1016 3344" data-from="lanes" data-to="ready" data-condition="Clean collected review and all mandatory evidence passes"><title>Clean collected review and all mandatory evidence passes</title></path>
+  <text x="1027" y="3310" class="branch">Clean and passing</text>
+<path class="edge" d="M748 3275 L748 3301 L818 3301 L818 3651 L685 3651 L685 3703" data-from="lanes" data-to="challenge" data-condition="Required reports are complete with collected findings and no checkpoint blocks dispatch"><title>Required reports are complete with collected findings and no checkpoint blocks dispatch</title></path>
+  <text x="828" y="3581" class="branch">Findings ready for challenge</text>
+<path class="edge" d="M410 3592 L421 3592 L421 3684 L472 3684 L472 3703" data-from="human-stop" data-to="challenge" data-condition="Recorded continuation covers the challenge and primary reports are complete"><title>Recorded continuation covers the challenge and primary reports are complete</title></path>
+<path class="edge" d="M410 3437 L421 3437 L421 3411 L434 3411" data-from="human-stop" data-to="primary-due" data-condition="Recorded one-use continuation covers pending challenge with primary reports still due"><title>Recorded one-use continuation covers pending challenge with primary reports still due</title></path>
+<path class="edge" d="M620 3554 L620 3703" data-from="primary-due" data-to="challenge" data-condition="Required primary reports are collected on the frozen candidate"><title>Required primary reports are collected on the frozen candidate</title></path>
+  <text x="630" y="3632" class="branch" text-anchor="start">Primary reports collected</text>
+<path class="edge" d="M224 3634 L224 3703" data-from="human-stop" data-to="working" data-condition="User expressly selects a working commit"><title>User expressly selects a working commit</title></path>
+  <text x="234" y="3672" class="branch" text-anchor="start">Working commit selected</text>
+<path class="edge" d="M620 3893 L620 3962" data-from="challenge" data-to="repair" data-condition="A repair for an upheld finding is selected"><title>A repair for an upheld finding is selected</title></path>
+  <text x="630" y="3931" class="branch" text-anchor="start">Upheld and selected</text>
+<path class="edge" d="M806 3783 L818 3783 L818 3774 L830 3774" data-from="challenge" data-to="paused" data-condition="The advisory result is missing, incomplete or stale"><title>The advisory result is missing, incomplete or stale</title></path>
+<path class="edge" d="M778 3703 L778 3683 L1016 3683 L1016 3514" data-from="challenge" data-to="ready" data-condition="Rejected findings are closed and no required repair remains"><title>Rejected findings are closed and no required repair remains</title></path>
+  <text x="1026" y="3665" class="branch">Rejected issues closed</text>
+<path class="edge" d="M1202 3438 L1219 3438 L1219 4320 L1202 4320" data-from="ready" data-to="seal" data-condition="Only a fully accepted candidate takes the prepared-commit route"><title>Only a fully accepted candidate takes the prepared-commit route</title></path>
+  <text x="1120" y="4249" class="branch" text-anchor="middle">Full acceptance</text>
+<path class="edge" d="M38 2063 L18 2063 L18 4326 L38 4326" data-from="tested" data-to="seal" data-condition="Approved exact tip enters through accept-tested; no new commit or canonical verdict"><title>Approved exact tip enters through accept-tested; no new commit or canonical verdict</title></path>
+  <text x="131" y="4249" class="branch" text-anchor="middle">Exact tested tip</text>
+<path class="edge" d="M818 4415 L818 4484" data-from="seal" data-to="scan" data-condition="Sealed commit includes all final changes"><title>Sealed commit includes all final changes</title></path>
+  <text x="828" y="4453" class="branch" text-anchor="start">Sealed commit</text>
+<path class="edge" d="M434 4550 L422 4550 L422 4576 L410 4576" data-from="scan" data-to="scan-repair" data-condition="Missing, stale, failed or incomplete English scan"><title>Missing, stale, failed or incomplete English scan</title></path>
+<path class="edge" d="M526 4634 L526 4725 L224 4725 L224 4789" data-from="scan" data-to="single-publish" data-condition="Current full English receipt on a single sealed task"><title>Current full English receipt on a single sealed task</title></path>
+  <text x="375" y="4717" class="branch" text-anchor="middle">Pass · single source</text>
+<path class="edge" d="M626 4634 L626 4725 L620 4725 L620 4789" data-from="scan" data-to="combined-publish" data-condition="Current full English receipt on the sealed assembly"><title>Current full English receipt on the sealed assembly</title></path>
+  <text x="623" y="4717" class="branch" text-anchor="middle">Pass · assembly</text>
+<path class="edge" d="M806 4869 L818 4869 L818 4877 L830 4877" data-from="combined-publish" data-to="refresh-base" data-condition="Conditional publication refuses stale base"><title>Conditional publication refuses stale base</title></path>
+<path class="edge" d="M306 4789 L306 4777 L1102 4777 L1102 4789" data-from="single-publish" data-to="refresh-base" data-condition="Single publisher also refuses a stale base"><title>Single publisher also refuses a stale base</title></path>
+  <text x="991" y="4767" class="branch" text-anchor="middle">Stale base on either path</text>
+<path class="edge" d="M224 4959 L224 5043 L222 5043 L222 5068" data-from="single-publish" data-to="published" data-condition="Conditional single-source publication succeeds"><title>Conditional single-source publication succeeds</title></path>
+  <text x="223" y="5034" class="branch" text-anchor="middle">Published</text>
+<path class="edge" d="M620 4979 L620 5043 L622 5043 L622 5068" data-from="combined-publish" data-to="published" data-condition="Conditional assembly publication succeeds"><title>Conditional assembly publication succeeds</title></path>
+  <text x="621" y="5034" class="branch" text-anchor="middle">Published</text>
+<path class="edge" d="M806 5131 L818 5131 L818 5148 L830 5148" data-from="published" data-to="push" data-condition="Authorized remote push is outstanding"><title>Authorized remote push is outstanding</title></path>
+<path class="edge" d="M591 5218 L591 5302 L818 5302 L818 5327" data-from="published" data-to="graph" data-condition="Publication and current English receipt recorded"><title>Publication and current English receipt recorded</title></path>
+  <text x="704" y="5293" class="branch" text-anchor="middle">Publication recorded</text>
+<path class="edge" d="M434 5393 L422 5393 L422 5411 L410 5411" data-from="graph" data-to="graph-retry" data-condition="Graph failed or was interrupted"><title>Graph failed or was interrupted</title></path>
+<path class="edge" d="M818 5477 L818 5586" data-from="graph" data-to="close-interval" data-condition="Published graph ready; check capture interval closure"><title>Published graph ready; check capture interval closure</title></path>
+  <text x="828" y="5535" class="branch" text-anchor="start">Graph ready</text>
+<path class="edge" d="M818 5736 L818 5805" data-from="close-interval" data-to="preserve" data-condition="Selected interval is closed"><title>Selected interval is closed</title></path>
+  <text x="828" y="5774" class="branch" text-anchor="start">Interval closed</text>
+<path class="edge" d="M434 5871 L422 5871 L422 5897 L410 5897" data-from="preserve" data-to="preserve-retry" data-condition="Required approved files or closed interval unavailable"><title>Required approved files or closed interval unavailable</title></path>
+<path class="edge" d="M818 5955 L818 6084" data-from="preserve" data-to="cleanup" data-condition="Preservation and selected authority verified; service handoff complete or unnecessary"><title>Preservation and selected authority verified; service handoff complete or unnecessary</title></path>
+  <text x="828" y="6023" class="branch" text-anchor="start">Preserved · teardown authorized</text>
+<path class="edge" d="M534 5955 L534 6059 L224 6059 L224 6084" data-from="preserve" data-to="handoff" data-condition="Affected service depends on checkout or needs selected published revision"><title>Affected service depends on checkout or needs selected published revision</title></path>
+  <text x="379" y="6050" class="branch" text-anchor="middle">Affected installed service</text>
+<path class="edge" d="M410 6155 L422 6155 L422 6147 L434 6147" data-from="handoff" data-to="cleanup" data-condition="Authorized handoff completes and cleanup remains selected"><title>Authorized handoff completes and cleanup remains selected</title></path>
+  </g>
+  <g id="stages">
+<g id="recover-services" class="node action">
+  <rect x="38" y="126" width="372" height="190" rx="8"/>
+  <text x="52" y="150" class="group">Provision or recover services</text>
+  <text x="52" y="172" class="owner">Host operator</text>
+  <text x="52" y="194" class="caption">First use: provision Docker services and</text>
+  <text x="52" y="214" class="caption">configure Codex.</text>
+  <text x="52" y="234" class="caption">Outage: recover the installed revision and</text>
+  <text x="52" y="254" class="caption">check status.</text>
+  <a href="../tools/workflow/capture/README.md#provision-the-shared-services-and-configure-codex" aria-label="Provision">
+  <text x="52" y="274" class="link">Provision</text>
+  </a>
+  <a href="../tools/workflow/capture/README.md#update-a-host-side-capture-installation" aria-label="Recover and check status">
+  <text x="52" y="294" class="link">Recover and check status</text>
+  </a>
+</g>
+<g id="capture-status" class="node decision">
+  <rect x="434" y="126" width="372" height="170" rx="8"/>
+  <text x="448" y="150" class="group">Check capture status</text>
+  <text x="448" y="172" class="owner">Main session</text>
+  <text x="448" y="194" class="caption">Healthy installation: reuse it.</text>
+  <text x="448" y="214" class="caption">Missing or stopped: provision or recover.</text>
+  <text x="448" y="234" class="caption">Version or owner change: select</text>
+  <text x="448" y="254" class="caption">maintenance.</text>
+  <a href="../tools/workflow/capture/README.md#confirm-telemetry-before-work" aria-label="Startup prerequisite">
+  <text x="448" y="274" class="link">Startup prerequisite</text>
+  </a>
+</g>
+<g id="maintenance" class="node action">
+  <rect x="830" y="126" width="372" height="190" rx="8"/>
+  <text x="844" y="150" class="group">Move or update the installation</text>
+  <text x="844" y="172" class="owner">User selects · Host operator</text>
+  <text x="844" y="194" class="caption">For a new revision or host, follow the</text>
+  <text x="844" y="214" class="caption">service handoff.</text>
+  <text x="844" y="234" class="caption">Close affected registrations and let</text>
+  <text x="844" y="254" class="caption">exporters flush before replacing services.</text>
+  <a href="../tools/workflow/capture/README.md#update-a-host-side-capture-installation" aria-label="Capture update or rollback">
+  <text x="844" y="274" class="link">Capture update or rollback</text>
+  </a>
+  <a href="../tools/workflow/capture/README.md#migrate-an-existing-compose-installation" aria-label="Compose migration">
+  <text x="844" y="294" class="link">Compose migration</text>
+  </a>
+</g>
+<g id="capture-blocked" class="node blocked">
+  <rect x="38" y="385" width="372" height="190" rx="8"/>
+  <text x="52" y="409" class="group">Report the startup failure</text>
+  <text x="52" y="431" class="owner">Main session</text>
+  <text x="52" y="453" class="caption">Diagnose within the saved deadline. If</text>
+  <text x="52" y="473" class="caption">export needs a completed turn, return a</text>
+  <text x="52" y="493" class="caption">control reply and check the same</text>
+  <text x="52" y="513" class="caption">registration.</text>
+  <a href="../tools/workflow/capture/README.md#register-and-read-the-fresh-event" aria-label="Confirmation and startup recovery">
+  <text x="52" y="533" class="link">Confirmation and startup recovery</text>
+  </a>
+  <a href="#register" aria-label="Retry confirmation">
+  <text x="52" y="553" class="link">Retry confirmation</text>
+  </a>
+</g>
+<g id="register" class="node action">
+  <rect x="434" y="385" width="372" height="190" rx="8"/>
+  <text x="448" y="409" class="group">Register and confirm</text>
+  <text x="448" y="431" class="owner">Main session</text>
+  <text x="448" y="453" class="caption">For a new execution, bind task, execution</text>
+  <text x="448" y="473" class="caption">and actual thread. For a continuation, use</text>
+  <text x="448" y="493" class="caption">the recorded registration. Confirm a fresh</text>
+  <text x="448" y="513" class="caption">archived Collector event before work.</text>
+  <a href="../.agents/skills/TA-register-execution/SKILL.md" aria-label="TA-register-execution · Main session">
+  <text x="448" y="533" class="link">TA-register-execution · Main session</text>
+  </a>
+  <a href="../tools/workflow/capture/README.md#register-and-read-the-fresh-event" aria-label="Register or confirm the event">
+  <text x="448" y="553" class="link">Register or confirm the event</text>
+  </a>
+</g>
+<g id="intent" class="node decision">
+  <rect x="434" y="644" width="372" height="130" rx="8"/>
+  <text x="448" y="668" class="group">Use the selected intention</text>
+  <text x="448" y="690" class="owner">User selects · Main session routes</text>
+  <text x="448" y="712" class="caption">Save a plan, start a saved plan, or resume</text>
+  <text x="448" y="732" class="caption">its working copy.</text>
+  <a href="../.agents/references/workflow-guidance.md#save-a-formal-plan" aria-label="Planning and start guidance">
+  <text x="448" y="752" class="link">Planning and start guidance</text>
+  </a>
+</g>
+<g id="plan" class="node action">
+  <rect x="38" y="843" width="372" height="230" rx="8"/>
+  <text x="52" y="867" class="group">Save a formal plan</text>
+  <text x="52" y="889" class="owner">Main session dispatches</text>
+  <text x="52" y="911" class="caption">Bind the plan and applicable design to the</text>
+  <text x="52" y="931" class="caption">saved revision.</text>
+  <text x="52" y="951" class="caption">Prose-only: finish with planning. Software:</text>
+  <text x="52" y="971" class="caption">return separate design evidence. Save</text>
+  <text x="52" y="991" class="caption">unresolved decisions.</text>
+  <a href="../.agents/skills/TA-plan-change/SKILL.md" aria-label="TA-plan-change · TA-planner">
+  <text x="52" y="1011" class="link">TA-plan-change · TA-planner</text>
+  </a>
+  <a href="../.agents/skills/TA-design-tests/SKILL.md" aria-label="TA-design-tests · TA-test-designer">
+  <text x="52" y="1031" class="link">TA-design-tests · TA-test-designer</text>
+  </a>
+  <a href="../.agents/references/workflow-guidance.md#record-individual-approvals" aria-label="Approvals and amendments">
+  <text x="52" y="1051" class="link">Approvals and amendments</text>
+  </a>
+</g>
+<g id="start" class="node action">
+  <rect x="434" y="843" width="372" height="190" rx="8"/>
+  <text x="448" y="867" class="group">Start the saved plan</text>
+  <text x="448" y="889" class="owner">Main session</text>
+  <text x="448" y="911" class="caption">Create the isolated task worktree and</text>
+  <text x="448" y="931" class="caption">branch. Copy plan and design, verify</text>
+  <text x="448" y="951" class="caption">digests and link the authoritative working</text>
+  <text x="448" y="971" class="caption">copy.</text>
+  <a href="../.agents/skills/TA-start-plan/SKILL.md" aria-label="TA-start-plan · Main session">
+  <text x="448" y="991" class="link">TA-start-plan · Main session</text>
+  </a>
+  <a href="../.agents/skills/TA-repair-worktree/SKILL.md" aria-label="TA-repair-worktree · Main session">
+  <text x="448" y="1011" class="link">TA-repair-worktree · Main session</text>
+  </a>
+</g>
+<g id="resume" class="node action">
+  <rect x="830" y="843" width="372" height="150" rx="8"/>
+  <text x="844" y="867" class="group">Resume the recorded checkout</text>
+  <text x="844" y="889" class="owner">Main session</text>
+  <text x="844" y="911" class="caption">Open the existing plan and design. Recover</text>
+  <text x="844" y="931" class="caption">amendments and compare the selected diff;</text>
+  <text x="844" y="951" class="caption">verify prior evidence and round count.</text>
+  <a href="../.agents/references/workflow-guidance.md#amend-an-active-plan" aria-label="Resume and amend">
+  <text x="844" y="971" class="link">Resume and amend</text>
+  </a>
+</g>
+<g id="implement" class="node action">
+  <rect x="434" y="1142" width="372" height="210" rx="8"/>
+  <text x="448" y="1166" class="group">Implement and verify in scope</text>
+  <text x="448" y="1188" class="owner">TA-implementer</text>
+  <text x="448" y="1210" class="caption">Reuse valid scenarios. Bind planned checks</text>
+  <text x="448" y="1230" class="caption">and benchmarks to the selected execution.</text>
+  <text x="448" y="1250" class="caption">For completed delivery scope, capture the</text>
+  <text x="448" y="1270" class="caption">source before returning the result pair.</text>
+  <a href="../.agents/skills/TA-implement-change/SKILL.md" aria-label="TA-implement-change · TA-implementer">
+  <text x="448" y="1290" class="link">TA-implement-change · TA-implementer</text>
+  </a>
+  <a href="../tools/workflow/README.md#run-a-command-for-a-selected-execution" aria-label="Selected-command launcher">
+  <text x="448" y="1310" class="link">Selected-command launcher</text>
+  </a>
+  <a href="../.agents/references/workflow-guidance.md#record-the-source-at-implementation-completion" aria-label="Completed source receipt">
+  <text x="448" y="1330" class="link">Completed source receipt</text>
+  </a>
+</g>
+<g id="resume-stage" class="node action">
+  <rect x="830" y="1142" width="372" height="190" rx="8"/>
+  <text x="844" y="1166" class="group">Resume the outstanding stage</text>
+  <text x="844" y="1188" class="owner">Main session</text>
+  <text x="844" y="1210" class="caption">When work already has a review, delivery or</text>
+  <text x="844" y="1230" class="caption">publication record, continue the recorded</text>
+  <text x="844" y="1250" class="caption">stage.</text>
+  <a href="#human-stop" aria-label="Review checkpoint">
+  <text x="844" y="1270" class="link">Review checkpoint</text>
+  </a>
+  <a href="#discover" aria-label="Delivery selection">
+  <text x="844" y="1290" class="link">Delivery selection</text>
+  </a>
+  <a href="#published" aria-label="Surviving publication">
+  <text x="844" y="1310" class="link">Surviving publication</text>
+  </a>
+</g>
+<g id="discover" class="node action">
+  <rect x="434" y="1436" width="372" height="190" rx="8"/>
+  <text x="448" y="1460" class="group">Discover ready sources</text>
+  <text x="448" y="1482" class="owner">Main session · primary checkout</text>
+  <text x="448" y="1504" class="caption">Run delivery.py discover at the delivery</text>
+  <text x="448" y="1524" class="caption">decision. Read current B, exact original</text>
+  <text x="448" y="1544" class="caption">tips, plan versions and dependencies.</text>
+  <text x="448" y="1564" class="caption">Dirty, moved, paused and stale sources are</text>
+  <text x="448" y="1584" class="caption">excluded.</text>
+  <a href="../.agents/rules/git-merge-commits.md#discover-and-select-deliveries" aria-label="Declare and discover">
+  <text x="448" y="1604" class="link">Declare and discover</text>
+  </a>
+</g>
+<g id="prior-publication" class="node action">
+  <rect x="830" y="1436" width="372" height="190" rx="8"/>
+  <text x="844" y="1460" class="group">Check surviving publication</text>
+  <text x="844" y="1482" class="owner">Main session · primary checkout</text>
+  <text x="844" y="1504" class="caption">If master already contains the selected</text>
+  <text x="844" y="1524" class="caption">delivery, inspect its surviving record</text>
+  <text x="844" y="1544" class="caption">before taking any action. Report ambiguity</text>
+  <text x="844" y="1564" class="caption">and retain the checkout.</text>
+  <a href="#published" aria-label="Recorded publication">
+  <text x="844" y="1584" class="link">Recorded publication</text>
+  </a>
+  <a href="../.agents/rules/git-merge-commits.md#conditional-publication-and-cleanup" aria-label="Inspect status and recovery">
+  <text x="844" y="1604" class="link">Inspect status and recovery</text>
+  </a>
+</g>
+<g id="no-offer" class="node blocked">
+  <rect x="38" y="1695" width="372" height="170" rx="8"/>
+  <text x="52" y="1719" class="group">Resolve missing eligibility</text>
+  <text x="52" y="1741" class="owner">Main session</text>
+  <text x="52" y="1763" class="caption">Report why the intended source is excluded.</text>
+  <text x="52" y="1783" class="caption">Reconcile it or continue the already</text>
+  <text x="52" y="1803" class="caption">selected eligible task when another source</text>
+  <text x="52" y="1823" class="caption">is absent.</text>
+  <a href="../.agents/rules/git-merge-commits.md#discover-and-select-deliveries" aria-label="Eligibility and invalidation">
+  <text x="52" y="1843" class="link">Eligibility and invalidation</text>
+  </a>
+</g>
+<g id="choice" class="node decision">
+  <rect x="434" y="1695" width="372" height="214" rx="8"/>
+  <text x="448" y="1719" class="group">Record the exact delivery</text>
+  <text x="448" y="1743" class="group">selection</text>
+  <text x="448" y="1765" class="owner">User chooses set · Main session records</text>
+  <text x="448" y="1787" class="caption">One eligible selected plan: continue</text>
+  <text x="448" y="1807" class="caption">singly. Two or more: offer one named set. A</text>
+  <text x="448" y="1827" class="caption">decline keeps the single plan.</text>
+  <text x="448" y="1847" class="caption">Run delivery.py select. Record any</text>
+  <text x="448" y="1867" class="caption">authorized cleanup and remote.</text>
+  <a href="../.agents/rules/git-merge-commits.md#discover-and-select-deliveries" aria-label="Selection and optional scopes">
+  <text x="448" y="1887" class="link">Selection and optional scopes</text>
+  </a>
+</g>
+<g id="tested" class="node action">
+  <rect x="38" y="1978" width="372" height="170" rx="8"/>
+  <text x="52" y="2002" class="group">Use the existing tested tip</text>
+  <text x="52" y="2024" class="owner">Main session · task checkout</text>
+  <text x="52" y="2046" class="caption">Single clean unchanged tip contains B.</text>
+  <text x="52" y="2066" class="caption">Closure is committed and the approved</text>
+  <text x="52" y="2086" class="caption">evidence confirms tests for that exact tip.</text>
+  <a href="../tools/verification/README.md#confirmed-unchanged-fast-forward" aria-label="Confirmed unchanged fast-forward">
+  <text x="52" y="2106" class="link">Confirmed unchanged fast-forward</text>
+  </a>
+  <a href="#seal" aria-label="Record the accepted commit">
+  <text x="52" y="2126" class="link">Record the accepted commit</text>
+  </a>
+</g>
+<g id="single-full" class="node action">
+  <rect x="434" y="1978" width="372" height="330" rx="8"/>
+  <text x="448" y="2002" class="group">Reconcile the single candidate</text>
+  <text x="448" y="2024" class="owner">Main session · task checkout</text>
+  <text x="448" y="2046" class="caption">For divergence merge exact B. Resolve only</text>
+  <text x="448" y="2066" class="caption">actual pending Git conflicts.</text>
+  <text x="448" y="2086" class="caption">Reconcile clean merges as well. Assign code</text>
+  <text x="448" y="2106" class="caption">and test changes to the implementer; use</text>
+  <text x="448" y="2126" class="caption">finding repair for selected IDs.</text>
+  <text x="448" y="2146" class="caption">A working tip, missing confirmation or</text>
+  <text x="448" y="2166" class="caption">unmet closure also needs full acceptance.</text>
+  <a href="../.agents/skills/TA-sync-master/SKILL.md" aria-label="TA-sync-master · Main session">
+  <text x="448" y="2186" class="link">TA-sync-master · Main session</text>
+  </a>
+  <a href="../.agents/skills/TA-resolve-merge-conflicts/SKILL.md" aria-label="Pending conflicts · TA-resolve-merge-conflicts">
+  <text x="448" y="2206" class="link">Pending conflicts · TA-resolve-merge-conflicts</text>
+  </a>
+  <a href="../.agents/skills/TA-sync-docs/SKILL.md" aria-label="TA-sync-docs · Main session">
+  <text x="448" y="2226" class="link">TA-sync-docs · Main session</text>
+  </a>
+  <a href="../.agents/skills/TA-implement-change/SKILL.md" aria-label="TA-implement-change · TA-implementer">
+  <text x="448" y="2246" class="link">TA-implement-change · TA-implementer</text>
+  </a>
+  <a href="../.agents/skills/TA-fix-findings/SKILL.md" aria-label="TA-fix-findings · TA-implementer">
+  <text x="448" y="2266" class="link">TA-fix-findings · TA-implementer</text>
+  </a>
+  <a href="#prepare" aria-label="Prepare this candidate">
+  <text x="448" y="2286" class="link">Prepare this candidate</text>
+  </a>
+</g>
+<g id="assemble" class="node action">
+  <rect x="830" y="1978" width="372" height="350" rx="8"/>
+  <text x="844" y="2002" class="group">Assemble the selected tips</text>
+  <text x="844" y="2024" class="owner">Main session · assembly checkout</text>
+  <text x="844" y="2046" class="caption">Revalidate the selection and create the</text>
+  <text x="844" y="2066" class="caption">assembly at B.</text>
+  <text x="844" y="2086" class="caption">Export the source manifest then merge every</text>
+  <text x="844" y="2106" class="caption">selected tip in order. Use conflict</text>
+  <text x="844" y="2126" class="caption">resolution only for pending Git conflicts.</text>
+  <text x="844" y="2146" class="caption">Reconcile code, tests and docs, including</text>
+  <text x="844" y="2166" class="caption">clean merges. Preserve the original</text>
+  <text x="844" y="2186" class="caption">checkouts.</text>
+  <a href="../.agents/rules/git-merge-commits.md#combined-sources" aria-label="Combined Sources procedure">
+  <text x="844" y="2206" class="link">Combined Sources procedure</text>
+  </a>
+  <a href="../.agents/skills/TA-resolve-merge-conflicts/SKILL.md" aria-label="Pending conflicts · TA-resolve-merge-conflicts">
+  <text x="844" y="2226" class="link">Pending conflicts · TA-resolve-merge-conflicts</text>
+  </a>
+  <a href="../.agents/skills/TA-sync-docs/SKILL.md" aria-label="TA-sync-docs · Main session">
+  <text x="844" y="2246" class="link">TA-sync-docs · Main session</text>
+  </a>
+  <a href="../.agents/skills/TA-implement-change/SKILL.md" aria-label="TA-implement-change · TA-implementer">
+  <text x="844" y="2266" class="link">TA-implement-change · TA-implementer</text>
+  </a>
+  <a href="../.agents/skills/TA-fix-findings/SKILL.md" aria-label="TA-fix-findings · TA-implementer">
+  <text x="844" y="2286" class="link">TA-fix-findings · TA-implementer</text>
+  </a>
+  <a href="#prepare" aria-label="Prepare the assembly">
+  <text x="844" y="2306" class="link">Prepare the assembly</text>
+  </a>
+</g>
+<g id="scoped-audit" class="node detail">
+  <rect x="38" y="2423" width="372" height="170" rx="8"/>
+  <text x="52" y="2447" class="group">Run a separately selected audit</text>
+  <text x="52" y="2469" class="owner">Main session or selected auditor</text>
+  <text x="52" y="2491" class="caption">Scope an explicit English audit to selected</text>
+  <text x="52" y="2511" class="caption">files. Other focused audits have their own</text>
+  <text x="52" y="2531" class="caption">inputs and evidence.</text>
+  <a href="../.agents/rules/language-policy.md" aria-label="Scoped English audit">
+  <text x="52" y="2551" class="link">Scoped English audit</text>
+  </a>
+  <a href="../.agents/skills/TA-verify-focused/SKILL.md" aria-label="TA-verify-focused · Main session">
+  <text x="52" y="2571" class="link">TA-verify-focused · Main session</text>
+  </a>
+</g>
+<g id="prepare" class="node action">
+  <rect x="434" y="2423" width="768" height="190" rx="8"/>
+  <text x="448" y="2447" class="group">Prepare the complete candidate</text>
+  <text x="448" y="2469" class="owner">Main session and assigned specialists</text>
+  <text x="448" y="2491" class="caption">Reconcile requirements, docs and acceptance. Select the exact paths and hunks, diary and</text>
+  <text x="448" y="2511" class="caption">partition.</text>
+  <text x="448" y="2531" class="caption">Check specification compliance and applicable Design metadata and links.</text>
+  <a href="../.agents/skills/TA-prepare-batch/SKILL.md" aria-label="TA-prepare-batch · Main session">
+  <text x="448" y="2551" class="link">TA-prepare-batch · Main session</text>
+  </a>
+  <a href="../.agents/skills/TA-review-spec-compliance/SKILL.md" aria-label="TA-review-spec-compliance · TA-code-reviewer">
+  <text x="448" y="2571" class="link">TA-review-spec-compliance · TA-code-reviewer</text>
+  </a>
+  <a href="../.agents/skills/TA-audit-vault-links/SKILL.md" aria-label="TA-audit-vault-links · TA-test-auditor">
+  <text x="448" y="2591" class="link">TA-audit-vault-links · TA-test-auditor</text>
+  </a>
+</g>
+<g id="milestone" class="node detail">
+  <rect x="38" y="2682" width="372" height="274" rx="8"/>
+  <text x="52" y="2706" class="group">Close a roadmap stage or</text>
+  <text x="52" y="2730" class="group">milestone</text>
+  <text x="52" y="2752" class="owner">Main session</text>
+  <text x="52" y="2774" class="caption">At the actual closure trigger run the</text>
+  <text x="52" y="2794" class="caption">milestone profile, including full</text>
+  <text x="52" y="2814" class="caption">SingleStep, and the required stage-wide</text>
+  <text x="52" y="2834" class="caption">assessment.</text>
+  <text x="52" y="2854" class="caption">The milestone profile omits the full</text>
+  <text x="52" y="2874" class="caption">English publication scan.</text>
+  <a href="../.agents/skills/TA-verify-milestone/SKILL.md" aria-label="TA-verify-milestone · Main session">
+  <text x="52" y="2894" class="link">TA-verify-milestone · Main session</text>
+  </a>
+  <a href="../.agents/skills/TA-review-semantic-parity/SKILL.md" aria-label="TA-review-semantic-parity · TA-code-reviewer">
+  <text x="52" y="2914" class="link">TA-review-semantic-parity · TA-code-reviewer</text>
+  </a>
+  <a href="../tools/verification/README.md#completion-verification" aria-label="Completion triggers">
+  <text x="52" y="2934" class="link">Completion triggers</text>
+  </a>
+</g>
+<g id="full-verification" class="node action">
+  <rect x="434" y="2682" width="768" height="190" rx="8"/>
+  <text x="448" y="2706" class="group">Run canonical commit verification</text>
+  <text x="448" y="2728" class="owner">Main session · prepared checkout</text>
+  <text x="448" y="2750" class="caption">For a prepared commit or full integration, use the commit profile with the selected</text>
+  <text x="448" y="2770" class="caption">execution. Integration compares against exact B; an assembly binds the source manifest.</text>
+  <text x="448" y="2790" class="caption">The commit profile omits the full English publication scan.</text>
+  <a href="../.agents/skills/TA-verify-batch/SKILL.md" aria-label="TA-verify-batch · Main session">
+  <text x="448" y="2810" class="link">TA-verify-batch · Main session</text>
+  </a>
+  <a href="../tools/verification/README.md#completion-verification" aria-label="Canonical profiles">
+  <text x="448" y="2830" class="link">Canonical profiles</text>
+  </a>
+  <a href="#repair" aria-label="Missing or failed evidence">
+  <text x="448" y="2850" class="link">Missing or failed evidence</text>
+  </a>
+</g>
+<g id="lanes" class="node action">
+  <rect x="434" y="3025" width="768" height="250" rx="8"/>
+  <text x="448" y="3049" class="group">Run the four independent review lanes</text>
+  <text x="448" y="3071" class="owner">Main session dispatches fresh TA-code-reviewer instances</text>
+  <text x="448" y="3093" class="caption">Use the prepared candidate and evidence. Preserve existing valid scoped verdicts. As soon as</text>
+  <text x="448" y="3113" class="caption">the checkpoint detects an open issue in round 3 or later, stop new assignments.</text>
+  <text x="448" y="3133" class="caption">When no checkpoint blocks dispatch and required primary reports are complete, challenge the</text>
+  <text x="448" y="3153" class="caption">collected IDs.</text>
+  <a href="../.agents/skills/TA-review-architecture/SKILL.md" aria-label="TA-review-architecture · TA-code-reviewer">
+  <text x="448" y="3173" class="link">TA-review-architecture · TA-code-reviewer</text>
+  </a>
+  <a href="../.agents/skills/TA-review-behavior/SKILL.md" aria-label="TA-review-behavior · TA-code-reviewer">
+  <text x="448" y="3193" class="link">TA-review-behavior · TA-code-reviewer</text>
+  </a>
+  <a href="../.agents/skills/TA-review-tests-evidence/SKILL.md" aria-label="TA-review-tests-evidence · TA-code-reviewer">
+  <text x="448" y="3213" class="link">TA-review-tests-evidence · TA-code-reviewer</text>
+  </a>
+  <a href="../.agents/skills/TA-review-docs/SKILL.md" aria-label="TA-review-docs · TA-code-reviewer">
+  <text x="448" y="3233" class="link">TA-review-docs · TA-code-reviewer</text>
+  </a>
+  <a href="#challenge" aria-label="Claim the challenge when ready">
+  <text x="448" y="3253" class="link">Claim the challenge when ready</text>
+  </a>
+</g>
+<g id="human-stop" class="node blocked">
+  <rect x="38" y="3344" width="372" height="290" rx="8"/>
+  <text x="52" y="3368" class="group">Stop at the human checkpoint</text>
+  <text x="52" y="3390" class="owner">User decides · Main session records</text>
+  <text x="52" y="3412" class="caption">For unresolved round 3 or later, wait for a</text>
+  <text x="52" y="3432" class="caption">decision; running lanes may return.</text>
+  <text x="52" y="3452" class="caption">Accept only the named disposition,</text>
+  <text x="52" y="3472" class="caption">authorize one more round, or pause. Missing</text>
+  <text x="52" y="3492" class="caption">gates still block.</text>
+  <text x="52" y="3512" class="caption">A recorded authorization can resume the</text>
+  <text x="52" y="3532" class="caption">pending challenge. First collect any</text>
+  <text x="52" y="3552" class="caption">required primary reports still due.</text>
+  <a href="../.agents/references/workflow-guidance.md#human-review-checkpoint" aria-label="Human checkpoint">
+  <text x="52" y="3572" class="link">Human checkpoint</text>
+  </a>
+  <a href="#challenge" aria-label="Claim when no primary report is due">
+  <text x="52" y="3592" class="link">Claim when no primary report is due</text>
+  </a>
+  <a href="#paused" aria-label="Pause without advancing">
+  <text x="52" y="3612" class="link">Pause without advancing</text>
+  </a>
+</g>
+<g id="primary-due" class="node action">
+  <rect x="434" y="3344" width="372" height="210" rx="8"/>
+  <text x="448" y="3368" class="group">Collect the due primary reports</text>
+  <text x="448" y="3390" class="owner">Main session · same candidate and round</text>
+  <text x="448" y="3412" class="caption">When the continuation covers a pending</text>
+  <text x="448" y="3432" class="caption">challenge, dispatch only advised primary</text>
+  <text x="448" y="3452" class="caption">lanes still due. Retain reports already</text>
+  <text x="448" y="3472" class="caption">returned and wait for assigned lanes to</text>
+  <text x="448" y="3492" class="caption">finish.</text>
+  <a href="../.agents/references/workflow-guidance.md#human-review-checkpoint" aria-label="Resume the authorized collection">
+  <text x="448" y="3512" class="link">Resume the authorized collection</text>
+  </a>
+  <a href="#lanes" aria-label="Four primary lane skills">
+  <text x="448" y="3532" class="link">Four primary lane skills</text>
+  </a>
+</g>
+<g id="ready" class="node decision">
+  <rect x="830" y="3344" width="372" height="170" rx="8"/>
+  <text x="844" y="3368" class="group">Confirm readiness</text>
+  <text x="844" y="3390" class="owner">Main session</text>
+  <text x="844" y="3412" class="caption">All four primary lanes are complete and</text>
+  <text x="844" y="3432" class="caption">accepted on this candidate.</text>
+  <text x="844" y="3452" class="caption">All applicable gates pass and no human</text>
+  <text x="844" y="3472" class="caption">checkpoint blocks progression.</text>
+  <a href="../.agents/rules/git-commits.md#readiness-before-freeze" aria-label="Readiness before freeze">
+  <text x="844" y="3492" class="link">Readiness before freeze</text>
+  </a>
+</g>
+<g id="working" class="node blocked">
+  <rect x="38" y="3703" width="372" height="190" rx="8"/>
+  <text x="52" y="3727" class="group">Save a local working commit</text>
+  <text x="52" y="3749" class="owner">User selects · Main session warns then acts</text>
+  <text x="52" y="3771" class="caption">State the named review and evidence</text>
+  <text x="52" y="3791" class="caption">blockers before Git. The commit preserves</text>
+  <text x="52" y="3811" class="caption">current work; freeze and publication remain</text>
+  <text x="52" y="3831" class="caption">blocked.</text>
+  <a href="../.agents/references/workflow-guidance.md#working-commit-after-declining-repairs" aria-label="Working commit warning">
+  <text x="52" y="3851" class="link">Working commit warning</text>
+  </a>
+  <a href="#prepare" aria-label="When preparation is authorized">
+  <text x="52" y="3871" class="link">When preparation is authorized</text>
+  </a>
+</g>
+<g id="challenge" class="node action">
+  <rect x="434" y="3703" width="372" height="190" rx="8"/>
+  <text x="448" y="3727" class="group">Challenge required findings</text>
+  <text x="448" y="3749" class="owner">Fresh advisory TA-code-reviewer</text>
+  <text x="448" y="3771" class="caption">Claim once for the collected lane and ID</text>
+  <text x="448" y="3791" class="caption">pairs on the same candidate and round.</text>
+  <text x="448" y="3811" class="caption">Uphold for repair or reject to close.</text>
+  <text x="448" y="3831" class="caption">Preserve each original report.</text>
+  <a href="../.agents/skills/TA-challenge-findings/SKILL.md" aria-label="TA-challenge-findings · TA-code-reviewer">
+  <text x="448" y="3851" class="link">TA-challenge-findings · TA-code-reviewer</text>
+  </a>
+  <a href="../.agents/references/workflow-guidance.md#challenge-required-findings" aria-label="Challenge and repair handoff">
+  <text x="448" y="3871" class="link">Challenge and repair handoff</text>
+  </a>
+</g>
+<g id="paused" class="node blocked">
+  <rect x="830" y="3703" width="372" height="170" rx="8"/>
+  <text x="844" y="3727" class="group">Preserve the blocked state</text>
+  <text x="844" y="3749" class="owner">Main session</text>
+  <text x="844" y="3771" class="caption">For pause or missing evidence, preserve</text>
+  <text x="844" y="3791" class="caption">the exact candidate, open requirements</text>
+  <text x="844" y="3811" class="caption">and round. Resume only the selected work.</text>
+  <a href="#human-stop" aria-label="Resume at the checkpoint">
+  <text x="844" y="3851" class="link">Resume at the checkpoint</text>
+  </a>
+</g>
+<g id="repair" class="node action">
+  <rect x="434" y="3962" width="372" height="214" rx="8"/>
+  <text x="448" y="3986" class="group">Repair or restore missing</text>
+  <text x="448" y="4010" class="group">evidence</text>
+  <text x="448" y="4032" class="owner">Main session and assigned TA-implementer</text>
+  <text x="448" y="4054" class="caption">Use the authorized, supported repair.</text>
+  <text x="448" y="4074" class="caption">Preserve IDs and prepare the affected</text>
+  <text x="448" y="4094" class="caption">candidate again. Recheck stale evidence</text>
+  <text x="448" y="4114" class="caption">under the applicable round.</text>
+  <a href="../.agents/skills/TA-fix-findings/SKILL.md" aria-label="TA-fix-findings · TA-implementer">
+  <text x="448" y="4134" class="link">TA-fix-findings · TA-implementer</text>
+  </a>
+  <a href="#prepare" aria-label="Prepare again">
+  <text x="448" y="4154" class="link">Prepare again</text>
+  </a>
+</g>
+<g id="seal" class="node action">
+  <rect x="38" y="4265" width="1164" height="150" rx="8"/>
+  <text x="52" y="4289" class="group">Record the final commit accepted for publication</text>
+  <text x="52" y="4311" class="owner">Main session</text>
+  <text x="52" y="4333" class="caption">Existing tested tip: run integrate accept-tested with its approved evidence in the task checkout.</text>
+  <text x="52" y="4353" class="caption">Full route: freeze verification, review and partition; finish only the prepared commits and seal the accepted tip.</text>
+  <a href="../tools/verification/README.md#confirmed-unchanged-fast-forward" aria-label="Seal the confirmed tested tip">
+  <text x="52" y="4373" class="link">Seal the confirmed tested tip</text>
+  </a>
+  <a href="../.agents/skills/TA-commit-batch/SKILL.md" aria-label="TA-commit-batch · Main session">
+  <text x="52" y="4393" class="link">TA-commit-batch · Main session</text>
+  </a>
+</g>
+<g id="scan-repair" class="node blocked">
+  <rect x="38" y="4484" width="372" height="210" rx="8"/>
+  <text x="52" y="4508" class="group">Resolve the scan failure</text>
+  <text x="52" y="4530" class="owner">Main session and assigned implementer</text>
+  <text x="52" y="4552" class="caption">Leave master at B. A transient failure</text>
+  <text x="52" y="4572" class="caption">retries the same full scan. A wording or</text>
+  <text x="52" y="4592" class="caption">input change returns to applicable</text>
+  <text x="52" y="4612" class="caption">acceptance, sealing and a fresh scan.</text>
+  <a href="../.agents/rules/language-policy.md#resolving-findings" aria-label="Language findings">
+  <text x="52" y="4632" class="link">Language findings</text>
+  </a>
+  <a href="#scan" aria-label="Retry the scan">
+  <text x="52" y="4652" class="link">Retry the scan</text>
+  </a>
+  <a href="#prepare" aria-label="Prepare corrected content">
+  <text x="52" y="4672" class="link">Prepare corrected content</text>
+  </a>
+</g>
+<g id="scan" class="node action">
+  <rect x="434" y="4484" width="768" height="150" rx="8"/>
+  <text x="448" y="4508" class="group">Scan the sealed candidate for publication</text>
+  <text x="448" y="4530" class="owner">Main session · task or assembly checkout</text>
+  <text x="448" y="4552" class="caption">Run integrate scan-english record PATH on the exact sealed commit. Scan all configured</text>
+  <text x="448" y="4572" class="caption">authored files and retain the passing receipt. The commit, milestone and scoped audit routes</text>
+  <text x="448" y="4592" class="caption">supply their own evidence.</text>
+  <a href="../tools/verification/README.md#scan-the-sealed-candidate" aria-label="Full prepublication scan">
+  <text x="448" y="4612" class="link">Full prepublication scan</text>
+  </a>
+</g>
+<g id="single-publish" class="node action">
+  <rect x="38" y="4789" width="372" height="170" rx="8"/>
+  <text x="52" y="4813" class="group">Publish the sealed single task</text>
+  <text x="52" y="4835" class="owner">Main session · surviving checkout</text>
+  <text x="52" y="4857" class="caption">Use TA-close-task with the passing receipt,</text>
+  <text x="52" y="4877" class="caption">exact task and execution IDs and the</text>
+  <text x="52" y="4897" class="caption">recorded delivery selection.</text>
+  <a href="../.agents/skills/TA-close-task/SKILL.md" aria-label="TA-close-task · Main session">
+  <text x="52" y="4917" class="link">TA-close-task · Main session</text>
+  </a>
+  <a href="../tools/verification/README.md#conditional-publication-and-cleanup" aria-label="Publish command">
+  <text x="52" y="4937" class="link">Publish command</text>
+  </a>
+</g>
+<g id="combined-publish" class="node action">
+  <rect x="434" y="4789" width="372" height="190" rx="8"/>
+  <text x="448" y="4813" class="group">Publish the sealed assembly</text>
+  <text x="448" y="4835" class="owner">Main session · surviving checkout</text>
+  <text x="448" y="4857" class="caption">Run integrate publish with the assembly</text>
+  <text x="448" y="4877" class="caption">record, capture IDs and delivery selection.</text>
+  <text x="448" y="4897" class="caption">Recheck all selected refs and advance</text>
+  <text x="448" y="4917" class="caption">master once.</text>
+  <a href="../tools/verification/README.md#selected-source-set" aria-label="Selected-source publisher">
+  <text x="448" y="4937" class="link">Selected-source publisher</text>
+  </a>
+  <a href="../tools/verification/README.md#conditional-publication-and-cleanup" aria-label="Conditional publication">
+  <text x="448" y="4957" class="link">Conditional publication</text>
+  </a>
+</g>
+<g id="refresh-base" class="node blocked">
+  <rect x="830" y="4789" width="372" height="210" rx="8"/>
+  <text x="844" y="4813" class="group">Refresh the stale base</text>
+  <text x="844" y="4835" class="owner">Main session · recorded delivery scope</text>
+  <text x="844" y="4857" class="caption">The publisher refuses stale B. Record the</text>
+  <text x="844" y="4877" class="caption">new base and reassess exact sources. Repeat</text>
+  <text x="844" y="4897" class="caption">applicable reconciliation, verification,</text>
+  <text x="844" y="4917" class="caption">reviews and scan. Ask if scope changed.</text>
+  <a href="../.agents/references/workflow-guidance.md#start-or-deliver-a-saved-plan" aria-label="Refresh delegation">
+  <text x="844" y="4937" class="link">Refresh delegation</text>
+  </a>
+  <a href="#discover" aria-label="Reselect the sources">
+  <text x="844" y="4957" class="link">Reselect the sources</text>
+  </a>
+  <a href="#published" aria-label="Graph or closure retry instead">
+  <text x="844" y="4977" class="link">Graph or closure retry instead</text>
+  </a>
+</g>
+<g id="published" class="node action">
+  <rect x="38" y="5068" width="768" height="150" rx="8"/>
+  <text x="52" y="5092" class="group">Continue with the surviving publication record</text>
+  <text x="52" y="5114" class="owner">Main session · primary checkout</text>
+  <text x="52" y="5136" class="caption">Inspect the actual B to C transition and retained receipt. On resume skip completed actions.</text>
+  <text x="52" y="5156" class="caption">Keep the local publication, remote push and cleanup outcomes separate.</text>
+  <a href="../.agents/rules/git-merge-commits.md#conditional-publication-and-cleanup" aria-label="Check publication and remaining work">
+  <text x="52" y="5176" class="link">Check publication and remaining work</text>
+  </a>
+  <a href="../tools/verification/README.md#resume-a-historical-publication" aria-label="Historical publication recovery">
+  <text x="52" y="5196" class="link">Historical publication recovery</text>
+  </a>
+</g>
+<g id="push" class="node detail">
+  <rect x="830" y="5068" width="372" height="190" rx="8"/>
+  <text x="844" y="5092" class="group">Push only if selected</text>
+  <text x="844" y="5114" class="owner">Main session · primary checkout</text>
+  <text x="844" y="5136" class="caption">Run delivery.py push with the surviving</text>
+  <text x="844" y="5156" class="caption">record. It uses only the recorded remote</text>
+  <text x="844" y="5176" class="caption">master and published commit. A rejection</text>
+  <text x="844" y="5196" class="caption">retains local publication; the same record</text>
+  <text x="844" y="5216" class="caption">supports retry.</text>
+  <a href="../.agents/rules/git-merge-commits.md#conditional-publication-and-cleanup" aria-label="Push and status commands">
+  <text x="844" y="5236" class="link">Push and status commands</text>
+  </a>
+</g>
+<g id="graph-retry" class="node blocked">
+  <rect x="38" y="5327" width="372" height="190" rx="8"/>
+  <text x="52" y="5351" class="group">Retry the graph stage</text>
+  <text x="52" y="5373" class="owner">Main session · primary checkout</text>
+  <text x="52" y="5395" class="caption">Retain publication and its passing scan.</text>
+  <text x="52" y="5415" class="caption">Read the failed stage or existing</text>
+  <text x="52" y="5435" class="caption">successful receipt, then retry only the</text>
+  <text x="52" y="5455" class="caption">outstanding graph operation.</text>
+  <a href="../tools/verification/README.md#post-publication-closure" aria-label="Graph recovery">
+  <text x="52" y="5475" class="link">Graph recovery</text>
+  </a>
+  <a href="#graph" aria-label="Retry the graph">
+  <text x="52" y="5495" class="link">Retry the graph</text>
+  </a>
+</g>
+<g id="graph" class="node action">
+  <rect x="434" y="5327" width="768" height="150" rx="8"/>
+  <text x="448" y="5351" class="group">Refresh the published project graph</text>
+  <text x="448" y="5373" class="owner">Main session · primary checkout</text>
+  <text x="448" y="5395" class="caption">Use the surviving record at the published SHA. Any graph already accepted for this closure is</text>
+  <text x="448" y="5415" class="caption">retained.</text>
+  <a href="../.agents/skills/TA-refresh-graph/SKILL.md" aria-label="TA-refresh-graph · Main session">
+  <text x="448" y="5435" class="link">TA-refresh-graph · Main session</text>
+  </a>
+  <a href="../tools/verification/README.md#post-publication-closure" aria-label="Graph command">
+  <text x="448" y="5455" class="link">Graph command</text>
+  </a>
+</g>
+<g id="close-interval" class="node action">
+  <rect x="434" y="5586" width="768" height="150" rx="8"/>
+  <text x="448" y="5610" class="group">Close the selected capture interval</text>
+  <text x="448" y="5632" class="owner">Main session · primary checkout</text>
+  <text x="448" y="5654" class="caption">Confirm closure of the selected interval. If open, let its telemetry flush and use</text>
+  <text x="448" y="5674" class="caption">register.py stop for the exact task and execution. Other registrations and the shared</text>
+  <text x="448" y="5694" class="caption">services continue.</text>
+  <a href="../tools/workflow/capture/README.md#continue-and-close-an-interval" aria-label="Close an interval">
+  <text x="448" y="5714" class="link">Close an interval</text>
+  </a>
+</g>
+<g id="preserve-retry" class="node blocked">
+  <rect x="38" y="5805" width="372" height="210" rx="8"/>
+  <text x="52" y="5829" class="group">Retain the source and retry</text>
+  <text x="52" y="5851" class="owner">Main session</text>
+  <text x="52" y="5873" class="caption">If an interval or required file remains</text>
+  <text x="52" y="5893" class="caption">open, active or unavailable, retain the</text>
+  <text x="52" y="5913" class="caption">source checkout. Resume the outstanding</text>
+  <text x="52" y="5933" class="caption">copy or stop from the same record.</text>
+  <a href="../tools/workflow/capture/README.md#preserve-selected-files-at-task-closure" aria-label="Preservation recovery">
+  <text x="52" y="5953" class="link">Preservation recovery</text>
+  </a>
+  <a href="#close-interval" aria-label="Close the selected interval">
+  <text x="52" y="5973" class="link">Close the selected interval</text>
+  </a>
+  <a href="#preserve" aria-label="Retry the preserved copy">
+  <text x="52" y="5993" class="link">Retry the preserved copy</text>
+  </a>
+</g>
+<g id="preserve" class="node action">
+  <rect x="434" y="5805" width="768" height="150" rx="8"/>
+  <text x="448" y="5829" class="group">Preserve the approved whole files</text>
+  <text x="448" y="5851" class="owner">Main session · primary checkout</text>
+  <text x="448" y="5873" class="caption">From the surviving record identify each plan&#x27;s required files and use records.py preserve.</text>
+  <text x="448" y="5893" class="caption">Verify recorded copies before teardown.</text>
+  <a href="../.agents/skills/TA-collect-task-records/SKILL.md" aria-label="TA-collect-task-records · Main session">
+  <text x="448" y="5913" class="link">TA-collect-task-records · Main session</text>
+  </a>
+  <a href="../tools/workflow/capture/README.md#preserve-selected-files-at-task-closure" aria-label="Closure preservation">
+  <text x="448" y="5933" class="link">Closure preservation</text>
+  </a>
+</g>
+<g id="handoff" class="node detail">
+  <rect x="38" y="6084" width="372" height="170" rx="8"/>
+  <text x="52" y="6108" class="group">Hand off affected local services</text>
+  <text x="52" y="6130" class="owner">User selects · Host operator</text>
+  <text x="52" y="6152" class="caption">When an installed service depends on the</text>
+  <text x="52" y="6172" class="caption">retiring checkout or needs a published</text>
+  <text x="52" y="6192" class="caption">update, complete the selected handoff or</text>
+  <text x="52" y="6212" class="caption">retain the checkout.</text>
+  <a href="../tools/verification/README.md#service-handoff-before-worktree-removal" aria-label="Service ownership and handoff">
+  <text x="52" y="6232" class="link">Service ownership and handoff</text>
+  </a>
+</g>
+<g id="cleanup" class="node action">
+  <rect x="434" y="6084" width="768" height="150" rx="8"/>
+  <text x="448" y="6108" class="group">Clean up only selected sources</text>
+  <text x="448" y="6130" class="owner">Main session · surviving checkout</text>
+  <text x="448" y="6152" class="caption">Require completed preservation and any necessary service handoff. Recheck each authorized</text>
+  <text x="448" y="6172" class="caption">branch, exact tip and active work. Retry partial cleanup from the surviving record.</text>
+  <a href="../.agents/skills/TA-cleanup-task/SKILL.md" aria-label="TA-cleanup-task · Main session">
+  <text x="448" y="6192" class="link">TA-cleanup-task · Main session</text>
+  </a>
+  <a href="../tools/verification/README.md#conditional-publication-and-cleanup" aria-label="Conditional cleanup">
+  <text x="448" y="6212" class="link">Conditional cleanup</text>
+  </a>
+</g>
+  </g>
+  <g transform="translate(28 5731)">
   <text x="38" y="592" class="section">Find an additional skill by what you need to do</text>
   <text x="38" y="620" class="caption">Each group shows the primary executor. Select a skill in the standalone map to open its instructions.</text>
   <rect x="38" y="649" width="354" height="211" rx="9" fill="#ffffff" stroke="#b5c8c5"/>
@@ -303,6 +985,6 @@
   <a href="../.agents/skills/TA-create-agent/SKILL.md" xlink:href="../.agents/skills/TA-create-agent/SKILL.md" aria-label="TA-create-agent, Main session">
   <text x="802" y="1204" class="name">TA-create-agent</text>
   </a>
-  <text x="38" y="1365" class="caption">50 skills · 7 specialist roles · 1 main session. A role can be used several times during a task.</text>
+  <text x="38" y="1365" class="caption">51 skills · 7 specialist roles · 1 main session. A role can be used several times during a task.</text>
   </g>
 </svg>

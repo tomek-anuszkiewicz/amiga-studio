@@ -31,7 +31,7 @@ the primary branch uses ordinary preparation, without a self-merge or removal.
 
 Synchronize exactly `B` in the selected task checkout through
 [TA-sync-master](../skills/TA-sync-master/SKILL.md). Divergent history uses a real
-merge by default; rebase needs explicit direction identifying rewritten commits.
+merge that preserves both histories.
 Do not silently squash, cherry-pick, stash, reset, relocate work or sweep unrelated
 index entries into commits. Pending conflicts return for the separately selected
 [TA-resolve-merge-conflicts](../skills/TA-resolve-merge-conflicts/SKILL.md). A narrow
@@ -64,14 +64,87 @@ Markdown changed on either side, including conflict-free paths and both move
 endpoints. Compare common-base, both branches and merged code; preserve decisions
 in diary/merge records. A clean textual merge is not semantic agreement.
 
+## Discover and Select Deliveries
+
+At the integration decision use the authoritative task checkouts. An eligible
+source has a recorded implementation completion and a clean worktree and index
+at the recorded commit. Its task-owned declaration binds the plan revision,
+plan and design input digests, material-amendment record, matching implementation
+result pair, branch, original tip, dependency revisions and remaining acceptance
+work. Record the actual disposition of required blockers before declaring it.
+Combined verification and review can still be due.
+
+The completing implementer runs `delivery.py snapshot` in the task checkout
+before returning its result pair. Use the
+[source receipt procedure](../references/workflow-guidance.md#record-the-source-at-implementation-completion).
+The main session declares readiness in that checkout using the implemented
+plan and the result that binds the receipt:
+
+```powershell
+python tools/workflow/delivery.py declare --plan <plan> --result <result.json> --blocker-disposition "<decision>" --remaining verification --remaining review --remaining publication
+```
+
+Repeat `--remaining` for the applicable steps. Use `closure-content` when final
+closure text is still pending, `--working-commit` for an unverified working commit
+and `--depends-on TASK=REVISION` for each required plan. Use
+`delivery.py withdraw --task <task-id> --reason "<decision>"` in the owning
+checkout when a ready task becomes paused or resumes implementation. Re-declare
+only after reconciling new inputs and obtaining current completion evidence.
+
+From the primary checkout, save a concrete offer:
+
+```powershell
+python tools/workflow/delivery.py discover --output .agent/tmp/delivery-offer.json
+```
+
+The offer lists the current local master `B`, applicable plan IDs, revisions,
+branches and exact original tips `S_i` in dependency order. Git registrations
+without declarations, duplicate ownership, stale inputs, moved tips, dirty sources,
+unmet dependencies and published plans yield no offer for those sources. A tip
+already present in master requires inspection of the surviving publication before
+resuming any outstanding step.
+
+For one eligible plan continue with its selected delivery. For two or more,
+present one combined choice under the
+[saved-plan delivery guidance](../references/workflow-guidance.md#start-or-deliver-a-saved-plan).
+A decline continues the already selected single plan. Record the exact answer
+and the offered set used to obtain it:
+
+```powershell
+python tools/workflow/delivery.py select --offer .agent/tmp/delivery-offer.json --task <task-id> --answer "<decision>" --output .agent/tmp/delivery-selection.json
+```
+
+Repeat `--task` for the selected combined sources and supply `--assembly-branch`.
+To authorize teardown, repeat `--cleanup refs/heads/<branch>` for the chosen
+branches. Record an authorized ordinary push with `--push-remote <remote>`.
+Omitting either option leaves that step unselected. A changed offered source
+or base requires a fresh comparison before the selection is used.
+
+The single-plan route uses the current ancestry and supplied confirmation.
+Pass `--confirmation <path>` for the approved exact tested-tip record in the
+source checkout. Its short route uses
+`python tools/verification/verify.py integrate accept-tested confirmation <path> target master`.
+A working commit, unconfirmed tip or pending closure content goes through full
+verification and review. A divergent task first merges recorded master in its
+own checkout. Both routes seal the accepted tip and run the full English scan.
+
 ## Combined Sources
 
 The advanced protocol remains at the
 [integration tool reference](../../tools/verification/README.md#selected-source-set).
-Select the exact task IDs, plan copies, dependencies, original tips `S_i`, assembly
-checkout, merge order and `B` before mutation. Registered worktrees do not establish
-completion; committed selection excludes pending changes unless approved. Assemble
-all selected sources and `B` using real merges, preserving original commits.
+Revalidate the selected artifact before provisioning the assembly. Create the
+separate checkout and branch from `B` using the existing provisioning command
+`tools/worktree.ps1 add <assembly-branch> -Base <B>`. Revalidate again just before
+the first merge and export its native sources manifest:
+
+```powershell
+python tools/workflow/delivery.py revalidate .agent/tmp/delivery-selection.json
+python tools/workflow/delivery.py revalidate .agent/tmp/delivery-selection.json --provisioned --sources-output <assembly-checkout>/.agent/tmp/sources.json
+```
+
+Use the recorded merge order in the assembly checkout and merge its exact
+original source tips. Preserve the initial assembly tip and every original
+source tip in assembly history. Leave the original checkouts available and unchanged.
 Intermediate assembly commits may precede final preparation/diary but await combined
 verification; record their identities and retain source worktrees.
 
@@ -80,8 +153,9 @@ The canonical record's HEAD binds assembly; the frozen partition covers only lat
 mechanical commits. Several sources always require combined canonical evidence;
 source-only passes or sequential publication cannot replace it. Explicit combined
 verification also overrides the single-source tested-tip exception. Integration
-alone is not roadmap/milestone closure. The V1 publisher accepts one selected task;
-advanced multi-source work uses its explicit combined protocol, never a hidden fallback.
+alone is not roadmap or milestone closure. Use the explicitly selected Combined
+Sources protocol, including the exported native sources manifest at freeze and
+the recorded selection at publication.
 
 ## Conditional Publication and Cleanup
 
@@ -89,9 +163,13 @@ advanced multi-source work uses its explicit combined protocol, never a hidden f
 verified and sealed readiness or the eligible supplied tested-tip record. It
 publishes exactly `B -> C` through the existing conditional tool or refuses stale
 prerequisites. Require `B` in `C`'s ancestry, the accepted tree equal to `C^{tree}`,
-clean unchanged source state and valid evidence. A separate SHA comparison followed
+clean unchanged source state and a passing full English receipt for the exact
+sealed candidate. A separate SHA comparison followed
 by an ordinary merge is insufficient. If master advances, return `master_changed`;
-the caller must select new synchronization/review/verification under updated authority.
+the caller records the fresh immutable base and rechecks the selected sources.
+Repeat applicable synchronization, reconciliation, verification, review and scan
+under the [recorded refresh delegation](../references/workflow-guidance.md#start-or-deliver-a-saved-plan).
+Return to the user when changed requirements, sources or consequences exceed it.
 For ordinary teardown, select the existing registered capture execution at
 publication. No publisher repair, new checks, commits or content edits are allowed.
 
@@ -102,15 +180,13 @@ cleanup uses original `S_i`. Reference updates are atomic; filesystem changes ar
 not. Recover only known consistent transitions through existing phase records;
 observed interference blocks recovery. Never blindly reset or delete uncertain locks.
 
-After successful publication, the main session runs the [post-publication closure
-procedure](../../tools/verification/README.md#post-publication-closure) for the
-surviving record on primary local `master`. Resolve the one full English scan
-and record any authorized vocabulary-only child. Then select TA-refresh-graph
-for the resulting SHA. A failed scan or refresh leaves publication intact and
-closure open. After resolving a scanner error, explicitly retry it at the scan
-commit. For a source correction, independently verify and publish the linked
-successor before scanning it. Reuse completed stages for the same closure and
-final SHA.
+Include `delivery <selection-path>` on the native `integrate publish` command for
+a selected delivery. This carries the original plan identities and authorized
+cleanup and push scopes into the surviving publication record. After a successful
+update, refresh the project graph for `C` in the primary checkout under the
+[post-publication closure procedure](../../tools/verification/README.md#post-publication-closure).
+A failed refresh leaves closure open and the publication intact. Resume the
+outstanding stage from the surviving record.
 
 After the graph stage, complete the
 [whole-file preservation step](../../tools/workflow/capture/README.md#preserve-selected-files-at-task-closure)
@@ -120,9 +196,14 @@ approved-input version evidence and confirm required Git ancestry and committed
 input bytes when applicable. Keep tracked approved inputs unless an explicit
 closure change authorizes removal. Separately selected archive analysis and
 assessment do not gate ordinary cleanup.
+For selected cleanup, run `delivery.py preservation-inputs <publication-record>`
+to identify the exact required files for each source plan. Include them in the
+existing whole-file preservation selection. The combined execution records each
+plan's preserved paths and digests and can resume incomplete copies.
 
 After confirmed publication and completed closure stages, separately authorized
-[TA-cleanup-task](../skills/TA-cleanup-task/SKILL.md) rechecks exact tips, ancestry,
+[TA-cleanup-task](../skills/TA-cleanup-task/SKILL.md) processes only the recorded
+authorized branches and rechecks their exact tips, ancestry,
 ownership, pending work and active commands. Preserve later/unrelated work. Remove
 all ignored contents with the task worktree without inventorying, hashing, comparing,
 copying or archiving them. Use existing non-forced teardown from the surviving
@@ -131,7 +212,12 @@ only the unchanged integrated branch not checked out elsewhere. No recursive
 fallback after Git failure, unrelated pruning or implicit bootstrap execution.
 
 Keep the published control record under `.agent/tmp/integration/<batch-id>/` in the
-surviving target until cleanup completes. Report publication and each cleanup
-outcome separately; partial cleanup retries use that record without re-verification,
+surviving target until cleanup completes. `delivery.py status <publication-record>`
+reports the original and published tips for each selected plan, pending or completed
+cleanup, and any selected push. For an authorized push run
+`delivery.py push <publication-record>` in the primary checkout. It attempts only
+the published commit and recorded remote master. The surviving closure record
+keeps the push outcome for retry. A rejection leaves local publication intact.
+Partial cleanup retries use the surviving record without re-verification,
 new commits or publication. Review bootstrap procedure changes and recommend needed
 primary-checkout steps without running them automatically.

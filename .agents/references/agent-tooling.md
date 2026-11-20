@@ -75,8 +75,10 @@ design updates, and diary for the same concern belong together.
 For an explicit scoped language task, use
 `python tools/verification/verify.py check english files <paths>`; for a full requested
 audit, use `python tools/verification/verify.py check english`. Ordinary turns do
-not trigger either scan. For ordinary task closure on primary local `master`, use the
-[post-publication procedure](../../tools/verification/README.md#post-publication-closure).
+not trigger either scan. For delivery, use `python tools/verification/verify.py
+integrate scan-english record <sealed-record>` in the task or assembly checkout.
+Correct findings there, and seal and scan the final commit before publication.
+[Sealed candidate scan](../../tools/verification/README.md#scan-the-sealed-candidate).
 The scanner requires the pinned dictionary dependency in
 `tools/verification/checks/requirements.txt`. Scope exclusions and text formats live
 in `tools/verification/checks/check_english.json`; maintain them according to

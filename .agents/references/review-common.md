@@ -18,16 +18,13 @@ commit, delegate or start competing shared-target checks.
 Inspect the selected diff and affected callers before consulting author results.
 The candidate includes selected new files and dirty content, not merely HEAD.
 Review the entire assigned scope, including relevant unchanged consumers and
-requirements. For each central guarantee, trace or probe a plausible failure
-through its supported entry point. After finding a blocker, finish the
+requirements. For each central guarantee, start with the supported operation or approved requirement it protects and, if the candidate shows a concrete path to a violation, trace or probe that path to establish its consequence. After finding a blocker, finish the
 remaining accessible scope in the same pass. Return all supported material
 findings together. Name the paths, interactions and criteria actually inspected.
 If the limit or a missing input prevents completion, state the unchecked scope,
 its consequence and the verdict the available evidence supports.
 
-Before requesting a correction, identify the affected project operation or
-approved requirement, the conditions that can arise in the candidate as used
-or specified, and the concrete consequence. A source trace can establish this
+A source trace can establish this
 before anyone encounters the failure. For a diagnostic that forces a platform,
 state or timing, explain how the same conditions arise through a supported
 entry point. A forced probe alone establishes only what happened in the probe.
@@ -62,7 +59,9 @@ plus proposed partition at batch preparation. The tests/evidence lane confirms
 canonical evidence for the combined final candidate. Milestone gates apply only
 at their actual trigger. Standalone review uses its selected focused evidence and
 does not manufacture batch readiness. Missing or failed required lanes block
-readiness. Consolidation preserves independent verdicts; it is not a fifth review.
+readiness. The receiver preserves each original verdict and applies the
+[binary finding decisions](workflow-guidance.md#challenge-required-findings)
+to assess whether a completed lane has any remaining required findings.
 
 ## Review after correction
 

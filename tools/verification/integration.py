@@ -2,8 +2,10 @@
 import json
 from pathlib import Path
 import subprocess
+import sys
 
 from evidence import BatchEvidence, capture_inputs, digest, execution_conditions, file_digest, group_identity
+from integration_language import read_record, require_english, scan_english
 from repository import candidate_tree, collect_changes, git, merge_heads, resolve_base, snapshot
 from integration_state import (ancestor, checkout, clean, collisions, common, no_operation,
                                publication_lock, RefTransaction, represents, save, value, worktrees)
@@ -239,16 +241,16 @@ def check_source(root, frozen):
                 raise ValueError("Frozen evidence artifact changed: " + relative)
 
 
-def publish(root, path, *, task_id=None, execution_id=None, correction_for=None):
-    frozen = read(path)
-    if frozen["state"] != "sealed":
-        raise ValueError("Publication requires sealed mechanical completion")
+def publish(root, path, *, task_id=None, execution_id=None, correction_for=None, delivery=None):
     common_directory = common(root)
     phase_path = common_directory / "local-integration.json"
     with publication_lock(common_directory):
+        frozen, record_digest = read_record(path)
+        if frozen["state"] != "sealed":
+            raise ValueError("Publication requires sealed mechanical completion")
         if phase_path.exists():
             raise ValueError("An unfinished publication requires integrate recover first")
-        if frozen.keys() & {"capture", "correction_for"}:
+        if frozen.keys() & {"capture", "correction_for", "delivery", "english"}:
             raise ValueError("Supply closure selectors to publication, outside the sealed record")
         if (task_id is None) != (execution_id is None):
             raise ValueError("Publication capture requires both task and execution selectors")
@@ -274,7 +276,15 @@ def publish(root, path, *, task_id=None, execution_id=None, correction_for=None)
             clean(target, untracked=False)
             if value(target, "symbolic-ref", "HEAD") != frozen["target_ref"]:
                 raise ValueError("Target HEAD changed while preparing reference locks")
-            phase = {"record": str(path.resolve()), "record_digest": file_digest(path), "candidate": frozen}
+            frozen["english"] = require_english(path, frozen, record_digest)
+            if delivery is not None:
+                workflow = str(Path(__file__).resolve().parents[1] / "workflow")
+                if workflow not in sys.path:
+                    sys.path.append(workflow)
+                from delivery import bind_publication
+                frozen["delivery"] = bind_publication(root, delivery, frozen)
+            frozen["version"] = 3
+            phase = {"record": str(path.resolve()), "record_digest": record_digest, "candidate": frozen}
             save(phase_path, phase)
             git(target, "read-tree", "-m", "-u", frozen["base"], frozen["commit"])
             if not represents(target, frozen["tree"]):
@@ -364,12 +374,14 @@ def dispatch(root, args):
         print("[PASS] Recovered local publication state")
     else:
         required = ("record", "additions") if args.action == "closure-vocabulary" else ("record",)
-        optional = {"publish": ("task", "execution", "correction-for"),
+        optional = {"publish": ("task", "execution", "correction-for", "delivery"),
                     "closure-language": ("retry", "correction")}.get(args.action, ())
         values = keyword_values(args.words, required + optional)
         if not all(key in values for key in required) or args.results_dir:
             raise ValueError("Use integrate " + args.action + " " + " ".join(key + " PATH" for key in required))
         path = (root / values["record"]).resolve()
+        if args.action == "scan-english":
+            return scan_english(root, path)
         if args.action == "closure-language":
             from integration_closure import scan_language
             retry = values.get("retry")
@@ -388,8 +400,9 @@ def dispatch(root, args):
             cleanup(root, path)
         elif args.action == "publish":
             correction_for = (root / values["correction-for"]).resolve() if "correction-for" in values else None
+            delivery = (root / values["delivery"]).resolve() if "delivery" in values else None
             publish(root, path, task_id=values.get("task"), execution_id=values.get("execution"),
-                    correction_for=correction_for)
+                    correction_for=correction_for, delivery=delivery)
             print("[INFO] Surviving cleanup record: " + str(cleanup_record(read(path))))
         else:
             seal(root, path)

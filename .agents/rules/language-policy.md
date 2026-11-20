@@ -8,9 +8,10 @@ The `.agent/tasks/` exclusion applies only to automated language and vocabulary
 checks, even when paths are named explicitly. Translate user concepts into
 idiomatic English when writing repository artifacts.
 
-Ordinary task closure runs one full English scan in the primary checkout on local
-`master` after publication. The scan includes unchanged authored files and new
-nonignored files. The commit and milestone profiles do not select the scan.
+Run one passing full English scan of the exact sealed commit in the task or
+assembly checkout before conditional publication to local `master`. The scan
+includes unchanged authored files and new nonignored files. The commit and
+milestone profiles keep their existing selection.
 An explicit scoped audit selects its files without sweeping unrelated work.
 Commands and dictionary mechanics belong to [agent tooling](../references/agent-tooling.md#recording-and-validating-changes).
 
@@ -43,13 +44,12 @@ scanner logic, authored scope or other acceptance criteria.
 
 Resolve clear findings first. Report only remaining ambiguity with file, line,
 context and options; missing meaning or unverifiable terminology requires a decision.
-During closure, ambiguous terms, source corrections and scanner or read errors
-keep the published task open and block cleanup. Report the cause and retain the
-worktree. An actual typo or required source edit goes through a separately selected
-correction. With only justified vocabulary and exact-file literal additions, use
-the [published closure procedure](../../tools/verification/README.md#post-publication-closure)
-to create the one authorized vocabulary commit on the same `master`. Preserve
-external changes if the recorded input moves or conflicts. After the commit,
-proceed to the graph without another scan, verifier, tests, reviews or diary edit.
+Ambiguous terms and scanner or read errors block publication. Retain the failed
+attempt and retry the full scan after resolving a transient error. Commit any
+source, vocabulary or exact-file literal correction in the task or assembly
+checkout under the applicable verification and review rules. Seal the corrected
+candidate and scan it again. The publisher checks the passing receipt before
+updating local `master`, and closure uses that receipt for graph and file
+preservation. See the [sealed candidate scan](../../tools/verification/README.md#scan-the-sealed-candidate).
 A standalone language audit repeats its scan after corrections. Summarize reviewed
 additions and their reasons.

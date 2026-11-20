@@ -40,14 +40,12 @@ Completion profiles compare pending changes against HEAD and automatically reuse
 matching evidence in .agent/tmp/verification/PROFILE, or the chosen --results-dir.
 Use --integration-base COMMIT for complete integration scope, including committed
 task work. COMMIT must be a full immutable commit ID.
-After rebase, add --integration-source COMMIT naming the original task tip to
-preserve its pre-rebase divergence and full integration verification scope.
 Local integration: integrate freeze review PATH partition PATH target BRANCH [sources PATH];
 integrate accept-tested confirmation PATH target BRANCH;
-integrate seal|closure-graph|cleanup record PATH.
-integrate publish record PATH [task ID execution ID] [correction-for RECORD].
-integrate closure-language record PATH [retry blocked] [correction RECORD].
-integrate closure-vocabulary record PATH additions PATH; integrate recover.
+integrate seal|scan-english|closure-graph|cleanup record PATH;
+integrate publish record PATH [task ID execution ID] [delivery PATH]; integrate recover.
+Historical closure recovery uses closure-language, closure-vocabulary and
+the publish selector correction-for. See the verifier guide.
 Only runner gui uses -- to pass native program options.
 """
 
@@ -77,8 +75,8 @@ documentation and Python tools skip Rust tests. Quality gates and Python contrac
 policy retain their full scope. The plan explains the selected test scope.
 Without directory selectors, test python runs only contracts affected by changed
 tool inputs. Explicit directory selection runs that suite even on a clean tree.
-Commit excludes full SingleStep. Milestone runs full SingleStep
-and the language audit; domain skills retain their own checks.
+Commit excludes full SingleStep. Milestone runs full SingleStep.
+The full English scan for local publication uses integrate scan-english.
 """
 
 
@@ -109,8 +107,7 @@ def parser():
                       help="Match one Rust suite test or SingleStep group exactly")
     root.add_argument("--integration-base", metavar="COMMIT",
                       help="Compare the complete integration candidate with this immutable commit")
-    root.add_argument("--integration-source", metavar="COMMIT",
-                      help="Preserve the original task tip when rebase removes divergent history")
+    root.add_argument("--integration-source", metavar="COMMIT", help=argparse.SUPPRESS)
     commands = root.add_subparsers(dest="command", required=True)
     for name in ("commit", "milestone"):
         leaf = commands.add_parser(name, help=f"Run the {name} completion profile")
@@ -135,8 +132,8 @@ def parser():
     runs = commands.add_parser("runner", help="Reports, CPU benchmarks and GUI captures")
     runs.add_argument("action", choices=("build", "bench", "gui", "analyze", "refresh"))
     runs.add_argument("words", nargs=argparse.REMAINDER)
-    integration = commands.add_parser("integrate", help="Freeze, seal, publish, recover or clean up local integration")
-    integration.add_argument("action", choices=("freeze", "accept-tested", "seal", "publish", "recover",
+    integration = commands.add_parser("integrate", help="Freeze, seal, scan, publish, recover or clean up local integration")
+    integration.add_argument("action", choices=("freeze", "accept-tested", "seal", "scan-english", "publish", "recover",
                                                 "closure-language", "closure-vocabulary", "closure-graph",
                                                 "cleanup"))
     integration.add_argument("words", nargs="*", metavar="SELECTOR")

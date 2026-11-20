@@ -3,7 +3,7 @@
 from contextlib import contextmanager
 from hashlib import sha256
 import os
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 import json
 import re
 import subprocess
@@ -91,7 +91,8 @@ REQUEST = object_fields({
     "head": REFERENCE, "assessments": array(ASSESSMENT), "selected_findings": array(KEY),
 }, {"repair": object_fields({"before": REFERENCE, "after": REFERENCE, "paths": array(STRING),
                              "effects": array(EFFECT, 1)}),
-    "decision": REFERENCE})
+    "decision": REFERENCE, "challenge_report": REFERENCE, "prior_challenge_reports": array(REFERENCE),
+    "risk_decisions": array({"anyOf": [REFERENCE, object_fields({"finding": KEY, "evidence": REFERENCE})]})})
 ROUTING = next(item["properties"]["routing"] for item in SCHEMA["properties"]["result"]["oneOf"]
                if item["properties"].get("kind", {}).get("const") == "review")
 CONTEXT = object_fields({
@@ -182,44 +183,23 @@ class Artifacts:
             self.read(ref)
 
     def check_snapshot_evidence(self, refs, record):
-        """Check preserved source references on the candidate that supplied them."""
+        """Check explicit evidence against the candidate that supplied it."""
         candidate = record["candidate"]
-        scopes = tuple(map(PurePosixPath, candidate["scope"]))
         untracked = {ref["path"]: ref["sha256"] for ref in candidate["untracked"]}
-        tracked = []
+        tracked_or_private = []
         for ref in refs:
-            try:
-                self.read(ref)
-            except UnavailableArtifact as error:
-                if not any(PurePosixPath(ref["path"]).is_relative_to(scope) for scope in scopes):
-                    raise
-                if ref["path"] in untracked:
-                    if ref["sha256"] != untracked[ref["path"]]:
-                        raise
-                else:
-                    tracked.append(error)
-        if tracked:
-            self.check_tracked_evidence(tracked, record)
-
-    def check_historical_profile_sources(self, refs, record):
-        """Bind historical tracked requirements and criteria to their original candidate."""
-        candidate = record["candidate"]
-        scopes = tuple(map(PurePosixPath, candidate["scope"]))
-        untracked = {ref["path"] for ref in candidate["untracked"]}
-        scoped = []
-        for ref in refs:
-            self.path(ref["path"])
-            if ref["path"] not in untracked and any(
-                    PurePosixPath(ref["path"]).is_relative_to(scope) for scope in scopes):
-                scoped.append(ref)
-            else:
-                self.read(ref)
-        if not scoped:
+            path = ref["path"]
+            self.path(path)
+            if path not in untracked:
+                tracked_or_private.append(ref)
+            elif ref["sha256"] != untracked[path]:
+                raise UnavailableArtifact(ref, f"changed reference: {path}")
+        if not tracked_or_private:
             return
 
         with self.scratch_git() as git:
             self.load_index(git, record)
-            for ref in scoped:
+            for ref in tracked_or_private:
                 path = ref["path"]
                 blob = git("cat-file", "blob", f":0:{path}")
                 if blob.returncode == 0:
@@ -260,15 +240,6 @@ class Artifacts:
             patch and git("apply", "--cached", "--whitespace=nowarn", "-", patch=patch).returncode
         ):
             raise ReviewInputError("cannot reconstruct the preserved candidate from its Git patch")
-
-    def check_tracked_evidence(self, errors, record):
-        with self.scratch_git() as git:
-            self.load_index(git, record)
-            for error in errors:
-                ref = error.ref
-                blob = git("cat-file", "blob", f":0:{ref['path']}")
-                if blob.returncode or not snapshot_hash_matches(blob.stdout, ref["sha256"]):
-                    raise error
 
     def report(self, ref):
         result = self.read_json(ref)

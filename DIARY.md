@@ -3060,3 +3060,11 @@ Use [TA-prepare-batch](.agents/skills/TA-prepare-batch/SKILL.md) to prepare the 
   - The architecture review confirmed the original capture upgrade repair. The documentation review confirmed the diary instruction correction
   - The round seven architecture and documentation verdicts request changes
   - Behavior and test evidence approvals, canonical integration verification, and fresh telemetry from VS Code remain outstanding
+
+### [2026-11-20 00:20 CET] — Plan design, approvals and delivery
+
+- **Task**: PLAN-DESIGN-APPROVALS-INTEGRATION-20261119
+- **Components**: Workflow instructions, review routing, integration verifier and execution reports.
+- **Changes**: Record planning decisions with acceptance scenarios, select eligible delivery sources and require current English evidence before publication. Bind planned commands to the selected registration. The primary reviewer reports concrete findings. For each claim, an independent challenger makes the final decision to uphold the repair or close the claim. The original review remains available.
+- **Rationale**: Keep approvals and reports attributable when a plan, source set or reviewed candidate changes.
+- **Verification at preparation**: A real event from the initiating VS Code session reached the execution archive. The planning fixture exercised restart, and the standard mixed scene benchmark recorded three native series in the task archive. The targeted routing suite passed 16 tests before the later owner-determination change. The first shortened benchmark ended before the guest made progress. The integration suite recorded passing child cases during development and a failed enclosing snapshot check while other files were changing. Canonical verification and independent review apply to the complete candidate.

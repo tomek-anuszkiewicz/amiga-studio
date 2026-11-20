@@ -27,6 +27,9 @@ behavior/test scenarios, original source/build baseline, workloads and write sco
 5. Update the same `micro-optimizations.md` candidate report. Compare the final
    accepted combination directly with the original baseline; never sum individual
    percentages. Return changes, checks, measurements and unresolved opportunities.
+   When the invocation completes the current implementation for delivery,
+   attach the [completed source receipt](../../references/workflow-guidance.md#record-the-source-at-implementation-completion)
+   before returning the result pair.
 
 Stop at the assigned scope or limit. Do not select another candidate outside the
 assignment, launch broad profiling, loosen correctness criteria, stage or commit.

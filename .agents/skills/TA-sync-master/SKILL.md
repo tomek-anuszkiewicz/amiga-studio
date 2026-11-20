@@ -15,8 +15,7 @@ merge authorization and any authorized merge message.
    local master is still exactly `B`; report `master_changed` before mutation
    otherwise. Do not fetch, stash, reset or relocate unrelated work.
 2. Merge exactly `B` in the task checkout. Use the existing fast-forward operation
-   when applicable, otherwise a real merge preserving history. Rebase, cherry-pick
-   and squash require their own explicit direction. A clean merge can finish only
+   when applicable, otherwise a real merge preserving history. A clean merge can finish only
    under existing commit authority or the rule's unverified integration/assembly
    exception; otherwise retain and report its clean pending candidate. Actual
    conflicts leave the authorized pending merge for a separately selected resolver.

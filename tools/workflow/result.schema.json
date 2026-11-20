@@ -85,7 +85,8 @@
         "TA-compare-environments",
         "TA-register-execution",
         "TA-collect-task-records",
-        "TA-check-task-records"
+        "TA-check-task-records",
+        "TA-challenge-findings"
       ]
     },
     "inputs": {
@@ -1998,6 +1999,228 @@
             "report_ref"
           ],
           "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "finding_challenge"
+            },
+            "collection": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "sha256": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              },
+              "required": [
+                "path",
+                "sha256"
+              ],
+              "additionalProperties": false
+            },
+            "context": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "sha256": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              },
+              "required": [
+                "path",
+                "sha256"
+              ],
+              "additionalProperties": false
+            },
+            "decisions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "finding": {
+                    "type": "object",
+                    "properties": {
+                      "lane": {
+                        "enum": [
+                          "behavior",
+                          "architecture",
+                          "tests_evidence",
+                          "documentation",
+                          "spec_compliance",
+                          "semantic_parity",
+                          "vault_links"
+                        ]
+                      },
+                      "id": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "lane",
+                      "id"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "disposition": {
+                    "enum": [
+                      "uphold",
+                      "reject"
+                    ]
+                  },
+                  "preconditions": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "consequence": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "severity": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "relevance": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "urgency": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "accepted_risk": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "support": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "path": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "sha256": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "pattern": "^[0-9a-f]{64}$"
+                        }
+                      },
+                      "required": [
+                        "path",
+                        "sha256"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "minItems": 1
+                  },
+                  "evidence_against": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "path": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "sha256": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "pattern": "^[0-9a-f]{64}$"
+                        }
+                      },
+                      "required": [
+                        "path",
+                        "sha256"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "minItems": 1
+                  },
+                  "duplicate_of": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "lane": {
+                            "enum": [
+                              "behavior",
+                              "architecture",
+                              "tests_evidence",
+                              "documentation",
+                              "spec_compliance",
+                              "semantic_parity",
+                              "vault_links"
+                            ]
+                          },
+                          "id": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "required": [
+                          "lane",
+                          "id"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "finding",
+                  "disposition",
+                  "preconditions",
+                  "consequence",
+                  "severity",
+                  "relevance",
+                  "urgency",
+                  "accepted_risk",
+                  "reason",
+                  "support",
+                  "evidence_against",
+                  "duplicate_of"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 0
+            }
+          },
+          "required": [
+            "kind",
+            "collection",
+            "context",
+            "decisions"
+          ],
+          "additionalProperties": false
         }
       ]
     },
@@ -2579,6 +2802,10 @@
     "TA-check-task-records": {
       "agent": "main-session",
       "kind": "capture_assessment"
+    },
+    "TA-challenge-findings": {
+      "agent": "TA-code-reviewer",
+      "kind": "finding_challenge"
     }
   },
   "$defs": {
@@ -2934,7 +3161,8 @@
                           "TA-compare-environments",
                           "TA-register-execution",
                           "TA-collect-task-records",
-                          "TA-check-task-records"
+                          "TA-check-task-records",
+                          "TA-challenge-findings"
                         ]
                       },
                       "input_refs": {

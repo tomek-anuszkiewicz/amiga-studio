@@ -2,6 +2,10 @@
 
 The caller selects one role, one skill and one outcome. Apply the
 [runtime settings](workflow-runtime.md#model-and-reasoning-effort) before dispatch.
+The receiving main session applies the recorded selection for
+[saving a formal plan](workflow-guidance.md#save-a-formal-plan) or
+[delivering a saved plan](workflow-guidance.md#start-or-deliver-a-saved-plan).
+Each handoff still has its own invocation and result.
 Announce task, work-item, run ID, read/write scope, selected findings, required
 checks and round limit.
 Default to three rounds; a declared limit may be one to four, never more than four.
@@ -37,6 +41,12 @@ If export requires a completed turn, run a short control turn and resume
 confirmation with the same registration and deadline. Report the failed stage
 when startup cannot be confirmed. Preserve the existing capture after startup.
 
+Pass the selected task, execution, work item and round to every test or benchmark
+launcher. Use the [selected-command entry point](../../tools/workflow/README.md#run-a-command-for-a-selected-execution)
+with the exact registration on startup and resume. Preserve the same environment
+through harness overrides. Deliberately isolated fixtures may exercise standalone
+reporting. A missing or conflicting registration for planned work blocks launch.
+
 ## Inputs and outputs
 
 The assignment supplies requirements/plans, authorized operations, exact candidate,
@@ -68,8 +78,9 @@ The human report includes the outcome, invocation/rounds, typed details, finding
 checks and remaining decisions. The worker supplies a non-authoritative
 `recommendation`, not a menu or permission decision. The receiving main session
 automatically applies [result interpretation and next-step guidance](workflow-guidance.md),
-preserving this result and presenting one source-bound option set. It waits for
-the user's choice before another operation; validation/rendering never dispatches.
+preserving this result and presenting one source-bound option set when a choice is
+needed. It waits for the user's choice for any operation outside the recorded
+selection. Validation and rendering never dispatch.
 Official operation suggestions come from the source skill's conditional matrix row
 under that receiving procedure. The matrix does not restrict a user's direct skill
 selection or change the selected skill's authority, required inputs or round limits.

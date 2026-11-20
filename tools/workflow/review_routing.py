@@ -7,6 +7,7 @@ from pathlib import Path
 import re
 import sys
 
+from review_challenge import assess, claim, collection, separate_returns
 from review_decision import (
     CHOICES, DECISION, canonical_receipt, check_decision, check_prior_authorization,
     checkpoint_identity, continuation, saved_continuation,
@@ -63,6 +64,7 @@ class Router:
         self.head = self.rounds[-1][1]
         self.number = self.head["number"]
         self.reports = {}
+        self.current_reports = {}
         self.approvals = {}
         self.contexts = {}
         self.gaps = []
@@ -89,6 +91,9 @@ class Router:
         for _, record in self.rounds:
             if record["candidate"] != candidate:
                 continue
+            if kind == "finding_challenge" and record is self.head and (
+                    ref == self.request.get("challenge_report") or ref in self.request.get("prior_challenge_reports", [])):
+                return
             if kind == "review":
                 links = record.get("earlier_reports", []) + [row.get("report") for row in record["lane_states"].values()]
             else:
@@ -149,11 +154,9 @@ class Router:
             if record is self.head:
                 self.issue(f"lane:{lane}:missing", "The review does not cover its declared scope.", lane=lane)
             return
+        # The saved profile declares the original inputs. Only current review inputs are live.
         if record is self.head:
             self.artifacts.check_all(profile)
-        else:
-            self.artifacts.check_historical_profile_sources(profile["requirements"] + profile["criteria"], record)
-            self.artifacts.check_all([profile["partition"], profile["evidence"]])
         context = self.artifacts.read_json(routing["context"], CONTEXT)
         context_id = context["id"]
         attribution = (ref, routing["context"])
@@ -169,7 +172,8 @@ class Router:
             if record is self.head:
                 self.issue(f"lane:{lane}:missing", "Candidate-bound independent evidence is unavailable.", lane=lane)
             return
-        self.check_review_evidence(links, record)
+        if record is self.head:
+            self.artifacts.check_all(links)
         if earlier is None:
             # Comparisons describe the original reviewed round and its predecessor.
             self.comparisons_by_round[record["number"], lane] = routing["comparisons"]
@@ -203,7 +207,14 @@ class Router:
                     if status not in ("returned", "failed"):
                         raise ReviewInputError(f"{lane} report conflicts with its phase status")
                     try:
-                        self.report(row["report"], record, lane, row["input"] if status == "returned" else None)
+                        report = self.report(row["report"], record, lane,
+                                             row["input"] if status == "returned" else None)
+                        if record is self.head and status == "returned" and (
+                                report["status"] != "completed" or report["result"]["verdict"] == "not_assessed"
+                                or f"lane:{lane}:missing" in self.issues):
+                            self.verdict_states[lane] = "missing"
+                        elif record is self.head and status == "returned":
+                            self.current_reports[lane] = report
                     except MissingArtifact as error:
                         if record is not self.head:
                             raise
@@ -285,17 +296,16 @@ class Router:
                         or any(canonical[name] != row[name] for name in ("owner", "kind"))):
                     raise ReviewInputError(f"conflicting or ambiguous duplicate finding link: {key}")
 
-    def canonical(self, key):
+    def assessed_finding(self, key):
         if key not in self.assessments:
             raise ReviewInputError(f"unknown qualified finding: {key}")
-        row = self.assessments[key]
-        return qualified(row["duplicate_of"]) if "duplicate_of" in row else key
+        return key
 
     def comparisons(self):
         seen = set()
         for (number, lane), rows in sorted(self.comparisons_by_round.items()):
             for row in rows:
-                key = self.canonical(qualified(row["finding"]))
+                key = self.assessed_finding(qualified(row["finding"]))
                 source = self.first[key][1]
                 if (self.assessments[key]["owner"] != lane or (number, key) in seen
                         or self.first[key][2] > number):
@@ -311,10 +321,13 @@ class Router:
                         raise ReviewInputError(f"{phase} comparison uses different candidate inputs: {key}")
                     if observation["outcome"] != "unavailable" and not observation["evidence"]:
                         raise ReviewInputError(f"{phase} outcome lacks evidence: {key}")
-                    if index >= 0:
-                        self.check_review_evidence(observation["evidence"], self.rounds[index][1])
-                    else:
-                        self.artifacts.check_all(observation["evidence"])
+                    # A saved comparison contributes its outcome to the ledger.
+                    # A current comparison must support its claim with exact evidence.
+                    if number == self.number:
+                        if index >= 0:
+                            self.check_review_evidence(observation["evidence"], self.rounds[index][1])
+                        else:
+                            self.artifacts.check_all(observation["evidence"])
                 disposition = row.get("disposition")
                 if disposition:
                     if row["current"]["outcome"] != "pass" or not row["current"]["evidence"]:
@@ -352,9 +365,25 @@ class Router:
                 covered[row["owner"]].add(f"Assigned finding {key[0]}/{key[1]}")
         return {lane: sorted(reasons) for lane, reasons in covered.items()}
 
-    def review_issues(self, selected):
+    def resolved_lanes(self, rejected):
+        resolved = {}
+        for lane, report in self.current_reports.items():
+            if report["result"]["verdict"] != "changes_requested":
+                continue
+            claims = [(lane, row["id"]) for row in report["findings"]
+                      if self.assessments.get((lane, row["id"]), {}).get("kind") == "required"
+                      and row["disposition"] not in ("verified", "refuted")]
+            if claims and all(key in rejected for key in claims):
+                resolved[lane] = {
+                    "report": self.head["lane_states"][lane]["report"],
+                    "findings": [{field: rejected[key][field] for field in ("finding", "report")}
+                                 for key in sorted(claims)],
+                }
+        return resolved
+
+    def review_issues(self, selected, rejected, resolved):
         for key, row in sorted(self.assessments.items()):
-            if self.canonical(key) != key or row["kind"] == "suggestion":
+            if key in rejected or row["kind"] == "suggestion":
                 continue
             lane = row["owner"]
             _, _, first_number = self.first[key]
@@ -385,7 +414,7 @@ class Router:
                 if issue_id not in self.issues:
                     self.issue(issue_id, self.head["lane_states"][lane].get("reason",
                                "A required independent reviewer verdict is unavailable."), lane=lane)
-            elif status == "returned" and lane not in self.approvals and not any(
+            elif status == "returned" and lane not in self.approvals and lane not in resolved and not any(
                 item.get("owner") == lane and item.get("finding") for item in self.issues.values()
             ):
                 self.issue(f"lane:{lane}:unassessed", "The independent reviewer has not approved this candidate.",
@@ -417,9 +446,15 @@ class Router:
     def recommend(self):
         self.collect()
         self.read_assessments()
-        selected = {self.canonical(qualified(key)) for key in self.request["selected_findings"]}
+        selected = {self.assessed_finding(qualified(key)) for key in self.request["selected_findings"]}
         self.comparisons()
-        self.review_issues(selected)
+        base_issues = self.issues.copy()
+        self.review_issues(selected, set(), {})
+        historical_rejections, challenge_returns, challenge_contexts = separate_returns(self)
+        resolved = self.resolved_lanes(historical_rejections)
+        if historical_rejections:
+            self.issues, self.pending = base_issues.copy(), set()
+            self.review_issues(selected, historical_rejections, resolved)
         problems = [item for _, item in sorted(self.issues.items())]
         checkpoint, accepted = self.reply(problems)
         outstanding = [item for item in problems if item["id"] not in accepted]
@@ -429,15 +464,22 @@ class Router:
             "verified": [qualification(self.task, self.item, key) for key in sorted(self.verified)],
             "pending": [qualification(self.task, self.item, key) for key in sorted(self.pending)],
             "approvals": dict(sorted(self.approvals.items())),
+            "resolved_lanes": resolved,
             "issues": outstanding, "recommended_lanes": [], "executable_options": [],
             "gaps": self.gaps, "checkpoint": checkpoint,
             "duplicate_observations": [
                 {"observation": qualification(self.task, self.item, key),
-                 "finding": qualification(self.task, self.item, self.canonical(key))}
-                for key in sorted(self.assessments) if self.canonical(key) != key
+                 "finding": qualification(self.task, self.item, qualified(row["duplicate_of"]))}
+                for key, row in sorted(self.assessments.items()) if "duplicate_of" in row
             ],
         }
-        if checkpoint and outstanding:
+        manifest = collection(self, historical_rejections)
+        output["outstanding_lanes"] = {lane: state for lane, state in sorted(self.verdict_states.items())
+                                       if state != "returned"}
+        stopped = checkpoint and outstanding
+        if stopped:
+            output["challenge"] = {"state": "checkpoint_pending" if manifest["findings"] else "skipped",
+                                   "findings": [row["finding"] for row in manifest["findings"]]}
             output["phase"] = "human_decision_required"
             if checkpoint.get("paused"):
                 output["phase"] = "paused"
@@ -445,6 +487,28 @@ class Router:
                 output["phase"] = "continuation_already_selected"
             elif checkpoint.get("continuation"):
                 output["phase"] = "one_round_authorized"
+            if output["phase"] != "continuation_already_selected":
+                return output
+        challenge = assess(self, manifest, challenge_returns, challenge_contexts, historical_rejections)
+        output["challenge"] = challenge
+        rejected = {qualified(row["finding"]): {"finding": row["finding"], "report": row["report"]}
+                    for row in challenge.get("rejected", [])}
+        if rejected:
+            rejected = historical_rejections | rejected
+            resolved = self.resolved_lanes(rejected)
+            self.issues, self.pending = base_issues.copy(), set()
+            self.review_issues(selected, rejected, resolved)
+            outstanding = [item for key, item in sorted(self.issues.items()) if key not in accepted]
+            output["issues"] = outstanding
+            output["pending"] = [qualification(self.task, self.item, key) for key in sorted(self.pending)]
+            output["resolved_lanes"] = resolved
+        if challenge["state"] == "pending_lanes":
+            output["recommended_lanes"] = [
+                {"lane": lane, "skill": LANE_SKILLS[lane], "action": "collect_primary",
+                 "reasons": ["Collect the outstanding primary review."]}
+                for lane in challenge["lanes"] if self.verdict_states[lane] == "due"
+            ]
+        if stopped and outstanding:
             return output
         required_issues = any(item["mandatory"] for item in outstanding)
         if required_issues:
@@ -452,15 +516,16 @@ class Router:
             return output
         focused = self.focused(selected)
         remaining = dict.fromkeys(self.required, [ROWS["remaining"][0]])
-        active = focused if set(focused) - self.approvals.keys() or self.pending else remaining
+        accepted_lanes = self.approvals.keys() | resolved.keys()
+        active = focused if set(focused) - accepted_lanes or self.pending else remaining
         phase = ("first" if self.number == 1 else "focused") if active is focused else "remaining"
         active_due = [lane for lane in self.required if lane in active
-                      and lane not in self.approvals and self.verdict_states[lane] == "due"]
+                      and lane not in accepted_lanes and self.verdict_states[lane] == "due"]
         if active_due:
             output["recommended_lanes"] = [{"lane": lane, "skill": LANE_SKILLS[lane], "reasons": active[lane]}
                                           for lane in active_due]
             output["phase"] = phase
-        elif set(self.required) == self.approvals.keys() and all(state == "passed" for state in self.gates.values()):
+        elif set(self.required) == accepted_lanes and all(state == "passed" for state in self.gates.values()):
             output["phase"] = "done"
         else:
             output["phase"] = "awaiting_evidence"
@@ -480,18 +545,22 @@ def recommend(request, root, *, source=None):
             problems = [item for _, item in sorted(router.issues.items())]
             report["gaps"] = [*router.gaps, str(error)]
             report.update(task_id=router.task, work_item_id=router.item, round=router.number,
-                          candidate=router.head["candidate"], issues=problems)
+                          candidate=router.head["candidate"], issues=problems,
+                          outstanding_lanes={lane: state for lane, state in sorted(router.verdict_states.items())
+                                             if state != "returned"})
             if problems and router.number >= 3:
                 checkpoint = checkpoint_identity(router.task, router.item, router.head, problems)
+                findings = [row["finding"] for row in problems if row["mandatory"] and "finding" in row]
                 report.update(phase="human_decision_required", checkpoint={
                     "id": checkpoint, "round": router.number, "issues": problems, "choices": list(CHOICES),
-                })
+                }, challenge={"state": "checkpoint_pending" if findings else "skipped", "findings": findings})
         return report
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("request", type=Path, nargs="?")
+    parser.add_argument("--claim-challenge", action="store_true", help="Reserve the current challenge before dispatch.")
     parser.add_argument("--root", type=Path, default=Path.cwd())
     flags = parser.add_mutually_exclusive_group()
     flags.add_argument("--table", action="store_true")
@@ -513,6 +582,13 @@ def main():
     except (ValueError, OSError) as error:
         parser.exit(2, f"review request unavailable: {error}\n")
     advice = recommend(request, args.root.resolve())
+    if args.claim_challenge:
+        current = advice.get("challenge", {})
+        if current.get("state") != "ready_to_claim":
+            parser.exit(1, "No new challenge is ready for dispatch.\n")
+        if not claim(args.root.resolve(), current["manifest"]):
+            parser.exit(1, "This challenge already has a dispatch reservation.\n")
+        advice["challenge"]["state"] = "claimed"
     print(json.dumps(advice, indent=2, sort_keys=True))
     return 1 if advice["phase"] == "needs_input" else 0
 

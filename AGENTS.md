@@ -17,6 +17,12 @@ write authority. Handle specification conflicts immediately under
 
 Ordinary changes stay unstaged; batch preparation authorizes only selected staging, and commits,
 publication, cleanup and push require their corresponding authorization.
+When a direct commit request follows a decision to decline required repairs,
+lead the first user-visible message with the working-commit limit and the
+named blockers from the known checkpoint, including when that message is
+commentary before inspection. Use the
+[checkpoint warning](.agents/references/workflow-guidance.md#working-commit-after-declining-repairs)
+before any tool call for the commit.
 Architectural checkers/policy data, weakened gates and protected references retain
 their [explicit approval boundaries](.agents/rules/unit-testing-policy.md#protected-verification).
 
@@ -42,6 +48,21 @@ only to automated language and vocabulary checks. Follow the shared
 audits. State outcomes and actual evidence plainly, distinguishing assumptions,
 hypotheses and unrun work.
 
+### Explain the system to the engineer
+
+Answer the question directly in the user's language. Assume a technically fluent
+colleague who commissioned the system and may picture its internals differently.
+Give enough project context in the first answer to follow your reasoning. For a
+diagnosis, review finding or architecture question, follow one ordinary user
+action through the relevant components. Explain each component's job, who calls
+whom, when, and where state is read or written when it matters. If expectations
+differ, identify the precise step, the expected and actual behavior, and what
+the user would observe. Say what the evidence establishes, what you infer, and
+which conditions a probe introduced. Identify proposed behavior as future work.
+Put identifiers and links after the explanation they support. Keep simple
+answers short. If the user asks again, walk through a concrete sequence that
+resolves the missing connection.
+
 Before starting or resuming mouse/keyboard control, announce it. Stop input when
 the user takes over. On finishing, including recoverable errors or interruption,
 perform the tool's documented completion/release step before unrelated work. Then
@@ -50,12 +71,12 @@ normally. Do not claim release unless confirmed.
 
 ### Choose the task checkout
 
-Before new implementation, identify the current checkout and branch with Git,
-then establish whether to work there or in a new worktree. Reuse an explicit
-location on correction or continuation. While the choice is pending, continue
-with planning and read-only discovery. Ask for the missing location and
-preserve the existing checkout ownership. For a new task worktree use
-[TA-start-plan](.agents/skills/TA-start-plan/SKILL.md). Use
+Before new implementation, identify the current checkout and branch with Git.
+Starting a saved plan selects its own worktree and branch under
+[TA-start-plan](.agents/skills/TA-start-plan/SKILL.md). Resume the recorded working
+plan in that checkout. For other work, reuse an explicit location or establish
+whether to use the current checkout or a new one. Continue with planning and
+read-only discovery while that choice is pending. Use
 [TA-repair-worktree](.agents/skills/TA-repair-worktree/SKILL.md) for selected
 missing local assets. The [local integration procedure](.agents/rules/git-merge-commits.md#choose-the-task-checkout)
 describes placement and the bounded detached diagnostic exception.
@@ -69,13 +90,19 @@ Each invocation returns matching text and JSON with exact input identity,
 subject to the contract's ordinary whole-file preservation exception. Use
 one to four declared rounds (three by default). A missing prerequisite, finding or
 limit returns control; it does not start another skill, repair or lifecycle phase.
-The receiving main session automatically explains the actual result and presents
-applicable options through [next-step guidance](.agents/references/workflow-guidance.md).
-Official suggestions use its conditional skill matrix. The user may directly choose
-another skill; an empty matrix cell is not a prohibition or a new permission gate.
-Each executable choice names its role, skill, exact scope and copyable invocation.
-Wait for the user's selection, recheck applicability, then run only that choice.
-Interpretation and recommendations do not authorize or dispatch another operation.
+The receiving main session automatically explains the actual result and applies
+[next-step guidance](.agents/references/workflow-guidance.md). A request to save
+agreed behavior selects [planning and applicable test design](.agents/references/workflow-guidance.md#save-a-formal-plan).
+An expressly scoped [end-to-end delivery](.agents/references/workflow-guidance.md#start-or-deliver-a-saved-plan)
+selects the operations within its recorded delegation. Otherwise wait for the
+user's choice, recheck applicability and run only that operation. The skill
+matrix governs official suggestions, and the user may directly select another
+skill. Each executable choice names its role, skill, scope and copyable invocation.
+
+When the user steers active work beyond its approved scope, behavior or acceptance
+criteria, [record the proposed amendment immediately](.agents/references/workflow-guidance.md#amend-an-active-plan).
+Track the proposal through restart, approval or decline even if the user gives no
+separate plan-edit instruction.
 
 Repository roles live in `.codex/agents/`; runtime roles and installed plugin skills
 are separate. Use fresh contexts for independent reviews. Do not claim filesystem,

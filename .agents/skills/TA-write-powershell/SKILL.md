@@ -26,6 +26,9 @@ Inputs: approved behavior/test scenarios, selected script paths and invocation s
    Use temporary outputs; do not execute an unrelated mutating default to read help.
 5. Return changes and actual parse/invocation evidence. Each edit/check pass is a
    round. Apply assigned review findings through their cited criteria.
+   When the invocation completes the current implementation for delivery,
+   attach the [completed source receipt](../../references/workflow-guidance.md#record-the-source-at-implementation-completion)
+   before returning the result pair.
 
 Stop after implementation/checks. No unrelated execution, installation or commit.
 

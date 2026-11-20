@@ -3,7 +3,7 @@
 This small tool validates one invocation's structured handoff and renders matching
 text, and validates the receiving session's separate guidance. It does not invoke
 agents, run tests, manage rounds, authorize repairs, certify canonical evidence or
-publish Git changes. A user's selection determines the next operation.
+publish Git changes. A user's selection can cover one operation or the explicitly delegated planning and delivery sequences in receiving guidance.
 
 Prerequisite: `python -m pip install -r tools/workflow/requirements.txt` in the
 selected environment, when installation is authorized. The migration environment
@@ -162,14 +162,13 @@ available as `candidate_ref` in the advice. An authorized evidence-only round
 may refer to the same qualifying report and context when all of its review
 inputs still match. Credit that approval to its original reviewer. Finding
 comparisons name the original trigger and evidence for each known outcome on
-the specified candidate. Historical requirements and criteria tracked within
-that candidate's scope are checked against its preserved Git snapshot.
-External inputs, partition and profile evidence still need to match their
-recorded hashes on disk. A prior source citation in review evidence can use
-its preserved candidate when the file changed during repair. The current
-profile is checked against the live inputs. Only independent approval on the
-current review inputs counts.
-Preserve the origin and the separate comparison result.
+the specified candidate. When reading a past round, use its recorded review
+and comparison outcomes. The plan and other files the reviewer read may have
+changed or been removed. Check the current review against its live inputs.
+When a current comparison claims a repair, verify the evidence it cites for
+the original failure and the corrected behavior.
+Apply the [readiness policy](../../.agents/rules/git-commits.md#readiness-before-freeze)
+to the current review evidence.
 
 After a stop, the tool returns the round, candidate and named issues without
 lane recommendations or executable options. Use the
@@ -186,10 +185,12 @@ any saved operation option.
 Attach the same reference as `review_route_ref` in guidance. The validator
 reads the current reference at the fixed work-item path, checks the source
 against its linked history and recomputes the advice. A review source must
-appear in a lane state or the round's `earlier_reports`. A gate report may be
-referenced by its gate, and the round's `source_results` can hold hashed
-references to other non-review sources on that candidate, such as the repair
-result. Missing history or an older reference suspends operation options.
+appear in a lane state or the round's `earlier_reports`. A challenge source on
+the current candidate must appear in `challenge_report` or
+`prior_challenge_reports`. A gate report may be referenced by its gate. The
+round's `source_results` can hold hashed references to other sources on that
+candidate, such as the repair result. Missing history or an older reference
+suspends operation options.
 
 Preserve the actual offer and user reply as hashed native conversation rows
 from the same thread, with the session header and their ordinals. The offer
@@ -209,3 +210,47 @@ the returned continuation at its canonical path with exclusive file creation
 before dispatch. Preserve that receipt as `started_by` on the next round.
 Replaying the same reply reports the recorded continuation and supplies no
 additional round. Advice, validation and table rendering launch nothing.
+
+### Challenge a collected review round
+
+Run the review router with the current request. The output lists outstanding primary
+lanes and required IDs. A due, running, failed or missing lane keeps the collection
+pending. Before a human stop, the router recommends due lanes needed to finish
+collection. At a stop it reports pending IDs without dispatching new work.
+When a recorded continuation covers the pending challenge, collect the advised
+primary reports still due, then claim the challenge on the same candidate and
+round.
+
+To reserve a ready challenge, invoke `python tools/workflow/review_routing.py REQUEST --claim-challenge`.
+Only the successful reservation starts a fresh reviewer. Resume its recorded dispatch
+after interruption. The immutable collection beside the round binds reports, finding
+IDs, decisions and candidate. Attach the resulting paired report as `challenge_report`
+in the request. The result uses `uphold` or `reject` per lane and ID. The returned
+advice lists them as `eligible_repairs` and `rejected`. Each `resolved_lanes` entry
+links the original completed primary report and the advisory evidence that
+rejected its applicable required findings. The `approvals` entries still identify
+actual primary approvals. When only gate evidence changes and the candidate,
+primary reports and finding evidence are reused, carry the recorded rejection
+and resolved lane forward. A commit option requires routing phase `done` and
+the ordinary batch prerequisites.
+
+Supply material new evidence for affected IDs in `risk_decisions` with fields
+`finding` and `evidence`. Preserve earlier returns in `prior_challenge_reports`
+in dispatch order for a linked collection of affected IDs. Earlier linked rounds
+can preserve why a rejected ID closed on its earlier candidate. Retain decisions
+for unaffected IDs and resume an open reservation with its original dispatch.
+A changed candidate still requires its applicable primary review and gate evidence. The
+[receiving procedure](../../.agents/references/workflow-guidance.md#challenge-required-findings)
+owns the finding handoff and the human checkpoint.
+
+### Run a command for a selected execution
+
+From the selected checkout run `python tools/workflow/run_selected.py --registration
+PATH --work-item ITEM --round N -- COMMAND` on one line. Give every implementer,
+reviewer and verifier the same authoritative registration path for this execution.
+The launcher recovers the task and execution pair from that specific receipt,
+checks conflicting process bindings before starting the command, and supplies its
+child environment. Reports keep their native outcome and parent invocation links.
+Use the assembly execution for combined verification and retain its source manifest.
+The local receipt and archive work with the receiver offline. Direct ad hoc commands
+outside a selected plan retain the reporter's standalone behavior.

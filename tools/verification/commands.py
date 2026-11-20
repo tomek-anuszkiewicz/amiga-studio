@@ -170,7 +170,8 @@ PYTHON_INPUTS = {
     CAPTURE_CONTRACTS: ("tools/workflow/capture/", ".gitignore"),
     ROUTING_CONTRACTS: (
         "tools/workflow/review_routing.py", "tools/workflow/review_inputs.py",
-        "tools/workflow/review_decision.py", "tools/workflow/review-routing.json",
+        "tools/workflow/review_decision.py", "tools/workflow/review-routing.json", "tools/workflow/delivery.py",
+        "tools/workflow/review_challenge.py", "tools/workflow/run_selected.py",
         "tools/workflow/guidance.py", "tools/workflow/result.py", "tools/workflow/result.schema.json",
         "tools/workflow/requirements.txt", "tools/workflow/skill_matrix.py",
         "tools/workflow/skill-matrix.json", "tools/workflow/tests/",

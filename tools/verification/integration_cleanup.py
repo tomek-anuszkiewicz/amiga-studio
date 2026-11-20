@@ -3,6 +3,7 @@ from contextlib import ExitStack
 import os
 from pathlib import Path
 import subprocess
+import sys
 
 import psutil
 
@@ -79,6 +80,12 @@ def remove_source(root, common_directory, frozen, selected, *, closure_commit=No
         stopped(source)
     elif registered or source_entries:
         raise ValueError("Source checkout registration remains; retain its branch")
+    if frozen.get("delivery") is not None:
+        workflow = Path(__file__).resolve().parents[1] / "workflow"
+        if str(workflow) not in sys.path:
+            sys.path.append(str(workflow))
+        from delivery import require_preserved_source
+        require_preserved_source(root, frozen, branch, source)
     transaction = RefTransaction(root, frozen["target_ref"], target_tip, branch, commit, delete=True)
     try:
         if source.exists():
@@ -112,6 +119,19 @@ def retained_record(durable, frozen):
     return retained
 
 
+def cleanup_sources(frozen):
+    """Use explicit delivery cleanup authority when present."""
+    sources = frozen["sources"]
+    selection = frozen.get("delivery")
+    if selection is not None:
+        branches = set(selection["cleanup"])
+        if branches - {source["ref"] for source in sources}:
+            raise ValueError("The delivery authorizes cleanup only for selected branches")
+        sources = [source for source in sources if source["ref"] in branches]
+    # Try tracked source worktrees before removing the assembly checkout.
+    return sorted(sources, key=lambda item: item["ref"] == frozen["source_ref"])
+
+
 def cleanup(root, path):
     from integration import read
     frozen = read(path)
@@ -135,9 +155,7 @@ def cleanup(root, path):
             save(durable, frozen)
     print("[INFO] Surviving cleanup record: " + str(durable))
     failures = []
-    # Retain the assembly checkout until the other selected sources have been tried.
-    sources = sorted(frozen["sources"], key=lambda item: item["ref"] == frozen["source_ref"])
-    for selected in sources:
+    for selected in cleanup_sources(frozen):
         branch, source = selected["ref"], Path(selected["root"]).resolve()
         error = None
         with ExitStack() as locks:

@@ -37,8 +37,9 @@ inputs, failures or unresolved concerns. Python contracts follow affected owning
 inputs/shared dependencies through `verify.py test python`; explicit directory
 selection is diagnostic. Batch preparation requires `verify.py commit` for the
 complete candidate. Actual minor-roadmap/major-milestone closure also requires
-`verify.py milestone`, including full SingleStep. The full English audit runs
-once after local publication under the [language policy](language-policy.md).
+`verify.py milestone`, including full SingleStep. Run the full English audit of
+the sealed candidate before local publication under the
+[language policy](language-policy.md).
 Full standalone SingleStep otherwise needs explicit diagnosis or request.
 
 The [testing strategy](../../Obsidian/Amiga/Design/Verification/Testing%20Strategy%20and%20Quality%20Assurance.md#completion-entry-point)

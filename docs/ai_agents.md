@@ -2,11 +2,11 @@
 
 This guide is for developers starting to work on the Amiga 500 emulator with an
 AI coding agent. It explains how to frame a task, how the agent finds relevant
-code and hardware evidence, and how to judge the result. You select a bounded
-step and its scope; the main session routes it to the appropriate role or skill
-and explains the result before the next choice. An explicit request can authorize
-several steps' scope; the receiving session still waits for your selection before
-starting the next operation.
+code and hardware evidence, and how to judge the result. The main session routes
+your request to the appropriate roles and explains the results. Saving agreed
+behavior selects planning and applicable test design. An expressly scoped
+end-to-end delivery selects the operations needed to reach that boundary.
+For other work, choose the operation and its scope.
 
 ## Find your way around the skills
 
@@ -17,8 +17,10 @@ Open the map on its own to follow a skill name to its instructions.
 
 ![Workflow from planning through the task commit, integration in the task worktree and publication on local master](workflow-map.svg)
 
-The upper path shows a planned change in an existing task worktree. The planner,
-test designer and implementer hand the candidate back to the main session.
+The upper path shows a change from its saved plan through the task worktree.
+The planner and test designer return separate results. When you start the
+saved plan, the main session copies its approved inputs into an isolated
+worktree. The implementer works there and hands back the candidate.
 During preparation, check specification compliance and audit the Design vault's
 metadata and links. Existing evidence can cover matching scope. Each of the four
 batch review lanes then uses a fresh instance of the same reviewer role.
@@ -31,24 +33,26 @@ lists the evidence to collect for the selected change.
 An explicitly authorized temporary working commit can preserve pending work
 before integration checks. Record that it awaits verification. It must take the
 full integration path even if Git can advance master by fast-forward.
+If you decline repairs and directly select a working commit, the main session
+explains the remaining review and evidence blockers before running Git.
+[Checkpoint guidance](../.agents/references/workflow-guidance.md#working-commit-after-declining-repairs).
 
-Before integration, agree on a plan with the user and record the current local
-master commit (B). With that approval, a clean, unchanged
-task tip that contains B can take the confirmed fast-forward path when closure
-is committed and the exact tip has been confirmed as tested. If the branches
-have diverged, the default is to merge B into the task branch. An explicitly
-selected rebase also runs in the task worktree. Both routes require checking
-the integrated result against B. If the tip already contains B but lacks the
-required evidence or closure, go directly to preparation and full integration checks.
-Include any fixes or closure changes in the
-reviewed and verified candidate before creating the prepared commits. The same
-specification, vault and repair steps apply to the integrated changes.
-`TA-close-task` publishes the sealed final tip on local master, provided
-master still equals B. See the [integration policy](../.agents/rules/git-merge-commits.md)
+Before integration, record the plan's delivery scope and the current local
+master commit (B). A clean, unchanged task tip that contains B can take the
+confirmed fast-forward path when closure is committed and the exact tip has
+approved tested-tip evidence. If the branches have diverged, merge B into
+the task branch and reconcile the integrated result. A tip lacking the
+required evidence or closure also takes full preparation, verification and
+review. Both paths record the final accepted commit and run the full English
+scan on it in the task checkout. `TA-close-task` conditionally advances local
+master to that commit when the passing evidence is current and master still
+equals B. See the [integration policy](../.agents/rules/git-merge-commits.md)
 and [verification and publication commands](../tools/verification/README.md#local-integration).
 
-Choose `TA-start-plan` when you need a new worktree and `TA-register-execution`
-to register the task and its session for capture. The [capture guide](../tools/workflow/capture/README.md) explains how to start and control the collector and receiver.
+Use `TA-register-execution` to register the task and its session for capture
+before starting a saved plan with `TA-start-plan`. The
+[capture guide](../tools/workflow/capture/README.md) explains how to start and
+control the collector and receiver.
 For the conditions under which one skill can suggest another, see the
 [recommendation matrix](workflow-skill-matrix.md).
 
@@ -87,13 +91,14 @@ for implementation.
 
 ## Follow the Change from Evidence to Verification
 
-Planning and test design precede implementation when the workflow handles a
-software change. The selected roles inspect requirements, existing implementation
-and reusable evidence, then define a few meaningful scenarios with independent
-expected results. Implementation follows that agreed scope. For a defect, it
-reproduces the failure before changing the mechanism. Expect it to explain the failing data
-flow, clock phase or state transition, rather than adjusting values until a test
-passes.
+When you ask to save agreed software behavior, planning and applicable test
+design happen under the same request. The roles inspect requirements, existing
+implementation and reusable evidence, then define a few meaningful scenarios
+with independent expected results and link them to the saved revision.
+The main session asks about unresolved behavior and specific protected edits
+found during planning or design. Implementation follows the agreed scope.
+For a defect, it reproduces the failure before changing the mechanism. Expect
+it to explain the failing data flow, clock phase or state transition.
 
 Hardware timing gives this project unusually concrete review criteria. A 68000
 bus cycle spans two Color Clocks, blocked Chip RAM access must preserve the active
@@ -103,11 +108,12 @@ The [architecture overview](architecture.md) introduces these relationships;
 the subsystem contracts. A conflict with a specification or protected reference
 requires a decision from you before the agent changes that contract.
 
-During implementation, keep the conversation focused on the current uncertainty:
-what has been established, what remains unexplained, and what observation will
-resolve it. You can correct assumptions or narrow the task while the agent works.
-For extended tasks, execution plans live in `.agent/tasks/`; disposable captures
-and diagnostics live in `.agent/tmp/`.
+During implementation, you can correct assumptions or change the requirement.
+A material change to approved behavior or acceptance is recorded immediately
+beside the active plan, including when you give no separate plan-edit instruction.
+On approval the session revises the affected criteria and test design, preserving
+the earlier revision and unaffected scenarios. For extended tasks, execution plans
+live in `.agent/tasks/`; disposable captures and diagnostics live in `.agent/tmp/`.
 
 At completion, expect a reviewable diff and a report of the actual checks run,
 their results, and any remaining limitations. Read the diff as well as the report.
@@ -191,8 +197,11 @@ Prepared batches receive four independent review lanes covering behavior,
 architecture, tests/evidence, and specifications/instructions. The
 [review contract](../.agents/references/review-common.md) owns their isolation,
 inputs and scoped approval rules. The main session dispatches four fresh instances
-of `TA-code-reviewer`, each using its own fixed lane skill. Seven role definitions
-do not mean seven calls on every task, and a test audit does not replace a lane.
+of `TA-code-reviewer`, each using its own fixed lane skill. When the lanes report
+required findings, a fresh advisory reviewer upholds or rejects each collected
+finding. Upheld findings go to repair selection. Rejected findings close on
+the reviewed candidate. The main session retains the primary reports and applies
+the [review checkpoint and finding decisions](../.agents/references/workflow-guidance.md#challenge-required-findings).
 
 Each invocation announces its scope and round limit, normally three and never
 more than four. It returns both `result.json` and `result.md` under
@@ -210,9 +219,11 @@ are behavioral limits, not claims of hard runtime enforcement.
 ## Review and Record the Result
 
 After an operation returns, the main session explains what happened, what it means
-for the task and the most useful next step. It normally offers one to three
-relevant options, each with its effect, prerequisites and a complete copyable
-instruction naming the executor, skill and exact scope. Select an option by its
+for the task and the most useful next step. For a review finding, expect the
+explanation to follow an ordinary use of the system and identify the step where
+behavior or required evidence fell short. When a choice is needed, the session
+offers one to three relevant options with their effects, prerequisites and
+copyable instructions naming the executor, skill and exact scope. Select an option by its
 label or number in the conversation, paste its instruction, defer work or give
 a different request. You do not need to read raw JSON or assemble a specialist
 assignment. Completed work may need no next operation.
@@ -242,10 +253,10 @@ workflow. You can still explicitly request another skill, subject to its normal
 scope, authorization and prerequisites. The matrix is guidance, not a permission
 system. After your directly selected operation, suggestions resume from its row.
 
-Before a new implementation task, the agent names the current checkout and branch
-and asks whether to continue there or create a new task worktree. An explicit
-location instruction answers that question for the task. Bounded detached test
-checkouts leave the real implementation in the selected location. The
+Starting a saved plan uses its own worktree and branch. The agent links the
+authoritative working plan so you can open it directly. Resuming returns to those
+copies. For other implementation work, the agent establishes the location if you
+have not supplied one. The
 [location rule](../AGENTS.md#choose-the-task-checkout)
 defines this boundary.
 
@@ -270,8 +281,8 @@ commit. The [testing guide](testing.md) explains what its evidence establishes.
 review, evidence continuation and freeze. Failed or missing required checks
 prevent batch readiness, and results cover the combined candidate.
 
-Local publication is a separate operation: `TA-close-task` consumes an already
-prepared, verified, independently reviewed, committed and sealed candidate.
+Local publication is a separate operation. `TA-close-task` consumes a sealed
+commit with applicable acceptance evidence and a passing full English scan.
 It conditionally advances the recorded local target or reports a stale/missing
 prerequisite. It does not merge master, repair conflicts, run tests, create commits
 or remove the worktree. `TA-cleanup-task` handles separately authorized cleanup
@@ -279,9 +290,9 @@ after confirmed publication and committed closure records.
 
 Earlier steps have separate owners: `TA-sync-master`,
 `TA-resolve-merge-conflicts`, `TA-sync-docs`, `TA-prepare-batch`,
-`TA-verify-batch` and `TA-commit-batch`. A broad request may authorize their concrete
-scope; existing authorization persists without repeated permission requests.
-The next operation still follows your selection from the current guidance.
+`TA-verify-batch` and `TA-commit-batch`. The main session runs the applicable
+operations in an expressly scoped end-to-end delivery, subject to required
+checks, review decisions and approved boundaries.
 Commit-only requests do not authorize merging, pushing or worktree removal.
 The [integration rule](../.agents/rules/git-merge-commits.md) and
 [tool reference](../tools/verification/README.md#local-integration) preserve exact

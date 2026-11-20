@@ -30,6 +30,16 @@ from cli import parse_args
 from evidence import digest, file_digest, group_identity
 
 
+def fixture_english(_, frozen, record_digest=None):
+    """Supply retained evidence for the isolated native Git transaction tests."""
+    directory = integration.cleanup_record(frozen).parent
+    directory.mkdir(parents=True, exist_ok=True)
+    log = directory / ("english-" + "0" * 32 + ".log")
+    log.write_text("Passing fixture scan\n", encoding="utf-8")
+    return {"state": "passed", "commit": frozen["commit"], "tree": frozen["tree"], "sealed_sha256": record_digest,
+            "exit_code": 0, "scanner_exit_code": 0, "log": log.name, "log_sha256": file_digest(log)}
+
+
 class IntegrationTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
@@ -54,6 +64,7 @@ class IntegrationTests(unittest.TestCase):
         self.phases = [("Preflight", [("Fixture check", [sys.executable, "-c", "print('verified fixture')"], {})])]
         self.enterContext(patch.object(commands, "select_phases", return_value=self.phases))
         self.enterContext(patch.object(verify, "select_phases", return_value=self.phases))
+        self.enterContext(patch.object(integration, "require_english", side_effect=fixture_english))
         # These publication fixtures do not need generated report content. The
         # dedicated output-boundary test below exercises the actual publisher.
         self.report_publisher = self.enterContext(patch.object(verify, "publish", return_value={}))
@@ -100,7 +111,8 @@ class IntegrationTests(unittest.TestCase):
         source_copy = Path(frozen["source_root"]) / ".agent/tmp/verification/commit/integration.json"
         if source_copy.is_file():
             integration_state.save(source_copy, frozen)
-        receipt.update(language={"state": "complete", "final_commit": commit}, graph={"commit": commit},
+        receipt.setdefault("language", {"state": "complete", "final_commit": commit})
+        receipt.update(graph={"commit": commit},
                        preservation={"task_id": "task", "execution_id": "execution", "commit": commit,
                                      "complete": True, "files": {"session": {"destination": preserved}}})
         integration_state.save(path, receipt)
@@ -723,8 +735,11 @@ class IntegrationTests(unittest.TestCase):
 
     def child_code(self, extra=""):
         module = str(Path(integration.__file__).parent)
+        tests = str(Path(__file__).parent)
         return (f"import sys; sys.path.insert(0, {module!r})\n"
+                f"sys.path.insert(0, {tests!r})\n"
                 "import integration, integration_state, time, os\nfrom pathlib import Path\n"
+                "from test_integration import fixture_english\nintegration.require_english = fixture_english\n"
                 "integration.execution_conditions = lambda root: 'fixture'\n"
                 f"source=Path({str(self.source)!r}); record=Path({str(self.record)!r})\n" + extra +
                 "\nintegration.publish(source, record)\n")
@@ -854,6 +869,7 @@ integration.git=git
                 self.assertEqual(self.record.read_bytes(), sealed)
                 self.assertFalse(durable.exists())
                 if phase_expected:
+                    record.update(version=3, english=fixture_english(self.record, record, file_digest(self.record)))
                     self.assertEqual(integration.read(phase), {
                         "record": str(self.record), "record_digest": file_digest(self.record), "candidate": record,
                     })

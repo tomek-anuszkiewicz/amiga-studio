@@ -23,6 +23,9 @@ write scope, approved scenarios and focused checks. No selected IDs means
 4. Preserve IDs and report `repaired_pending_verification` until evidence
    verifies the expected behavior. Keep unselected, deferred and unresolved
    findings visible with their existing disposition.
+   When this invocation completes the current implementation for delivery,
+   attach the [completed source receipt](../../references/workflow-guidance.md#record-the-source-at-implementation-completion)
+   before returning the result pair.
 
 Stop after these repairs. Findings do not authorize unrelated changes, new test
 scenarios, weakened checks, broad verification or automatic reviewer dispatch.

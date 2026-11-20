@@ -424,8 +424,11 @@ def execute_batch(args, phases, batch, before, started, archive=None):
     try:
         batch.load()
         batch.record.update(attempt=batch.attempt, outcome="running", results={})
-        for key in ("required", "scope", "inputs", "conditions", "source", "tree", "timing_report"):
+        for key in ("required", "scope", "inputs", "conditions", "source", "tree", "timing_report", "case_report"):
             batch.record.pop(key, None)
+        report = archive.reference() if archive else None
+        if report:
+            batch.record["case_report"] = report
         manifest = batch.attempt_directory / "inputs.json"
         manifest.parent.mkdir(parents=True)
         attempt_started = True
@@ -514,6 +517,9 @@ def execute_batch(args, phases, batch, before, started, archive=None):
         success = write_batch_timing(batch, args.command, attempt_timings(), started) and success
         batch.record["outcome"] = "passed" if success else "failed"
         batch.save()
+        if success and archive:
+            archive.event("batch_completed", profile=args.command, attempt=batch.attempt, source=source,
+                          tree=batch.record["tree"], integration_base=getattr(args, "integration_base", None))
         print(f"{result_label(success)} {args.command} verification; evidence: {batch.path}")
         return 0 if success else 1
     except KeyboardInterrupt:

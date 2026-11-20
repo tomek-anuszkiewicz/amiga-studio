@@ -4,6 +4,10 @@ This reference contains test commands, verification routing and diagnostic detai
 
 ## Command syntax
 
+For planned test or benchmark commands in this guide, run the native command
+through the [selected-command launcher](../workflow/README.md#run-a-command-for-a-selected-execution).
+The [case reporting instructions](#case-reports) explain the registration binding.
+
 Use `python tools/verification/verify.py` followed by one sentence below. There
 is no installed short `verify` alias. Values containing spaces must be quoted.
 Selection keywords are unique; unknown or incomplete sentences fail before
@@ -18,7 +22,7 @@ includes a module path.
 | `milestone [singlestep]` | Full SingleStep, with or without the optional selector |
 | `integrate freeze review PATH partition PATH target BRANCH` | Freeze the approved complete integration candidate and canonical evidence |
 | `integrate accept-tested confirmation PATH target BRANCH` | Seal an unchanged clean fast-forward explicitly confirmed as already tested, without new verification |
-| `integrate seal\|publish\|cleanup record PATH` | Check prepared commits, conditionally publish, or remove the integrated source |
+| `integrate seal\|scan-english\|publish\|cleanup record PATH` | Record mechanical completion, scan the sealed commit, conditionally publish, or remove authorized integrated sources |
 | `integrate recover` | Inspect an interrupted publication from a surviving checkout |
 | `test rust [unit|integration|all|workspace]` | Diagnostic tiers; default is unit plus integration; workspace excludes test_runner |
 | `test rust crate NAME [suite NAME] [case FILTER]` | One Cargo package, optionally one integration target and filter |
@@ -56,11 +60,6 @@ once after all selected groups finish, including failing executions.
 `--integration-base COMMIT` selects complete integration scope for completion
 profiles; it requires a full immutable commit ID. Integration operations have
 their own validation and reject preview/exact selectors.
-For an explicitly requested rebase, also pass `--integration-source COMMIT` with
-the immutable task tip recorded immediately before rebase. It requires an
-integration base and preserves original divergence for full workspace selection,
-evidence continuation and freeze-time validation. Repeat the same arguments after
-corrections; a different original source starts a new batch.
 Only `runner gui -- OPTIONS` forwards native switches to a separate program.
 Counts must be positive; the parser rejects unknown or repeated selectors and
 missing or invalid values before execution, with exit code 2.
@@ -112,6 +111,14 @@ fingerprints nightly Cargo/Rust, Trunk and PowerShell versions as well as source
 inputs; changed build tools invalidate successful evidence.
 
 ## Case reports
+
+For planned tests and benchmarks use the
+[selected-command launcher](../workflow/README.md#run-a-command-for-a-selected-execution)
+from the intended checkout. It reads the task and execution from the authoritative
+registration, binds the work item and round, and refuses unresolved or conflicting
+binding before launching. For combined verification use the assembly registration
+and retain the original source manifest. Direct ad hoc invocations outside a
+selected plan use standalone reporting.
 
 Test and benchmark launchers print the per-invocation Markdown report at
 startup. It links the native event journal, command output and child reports.
@@ -309,7 +316,14 @@ git diff -- benchmarks/m68k_benchmark_baseline.json benchmarks/m68k_benchmark_ba
 
 ## Completion verification
 
-Verify all pending changes against `HEAD`; repeat the same command after corrections:
+Verify all pending changes against `HEAD`. For planned work run from the selected
+checkout with its registration and repeat with the applicable round after corrections:
+
+```powershell
+python tools/workflow/run_selected.py --registration <receipt> --work-item <item> --round <round> -- python tools/verification/verify.py commit
+```
+
+For ad hoc work outside a selected plan, use the native command directly:
 
 ```powershell
 python tools/verification/verify.py commit
@@ -393,7 +407,7 @@ runtime dependency; do not claim reusable evidence for an unmodeled dependency.
 The reuse boundary is conservative: most groups include all captured inputs
 except for reviewed independent data. Known build, test and static-check groups
 omit the root `DIARY.md`, while unknown groups retain it. The final candidate
-identity, source-stability checks and post-publication English scan still include
+identity, source-stability checks and prepublication English scan still include
 the diary. Non-language
 groups omit vocabulary and exact-file `file_words` data. Verification CLI contracts
 use their owning verification code/tests/policy inputs and the web/worktree,
@@ -609,8 +623,8 @@ with coverage, selected standard `test_runner` suites and Python tool contracts.
 It never selects full SingleStepTests, even for CPU changes. Milestone runs full
 SingleStepTests, including on a clean tree so already committed milestone work is
 covered. Capture runs and chipset throughput comparisons are excluded from
-automatic verification. The full English audit runs during
-[ordinary task closure](#post-publication-closure). The explicit `check english`
+automatic verification. The full English audit for local publication runs on the
+[sealed candidate](#scan-the-sealed-candidate). The explicit `check english`
 and `check all` commands still run the full scan.
 
 The Architecture Rules gate resolves Design links to local hardware manuals and
@@ -785,8 +799,8 @@ for changed packages and their transitive consumers, with full workspace fallbac
 for shared or unknown inputs. Independent documentation and known Python tool
 changes skip Rust tests while retaining all quality gates. Ordinary CPU tests
 using real PhysicalMemory run when the CPU package is selected. The separate
-milestone set runs full SingleStepTests. The full language audit belongs to
-[post-publication closure](#post-publication-closure).
+milestone set runs full SingleStepTests. The full language audit for local
+publication runs on the [sealed candidate](#scan-the-sealed-candidate).
 
 Manual commands in the following sections and diagnostic selectors in `verify.py` validate ordinary tasks and support diagnosis; they do not replace pre-commit verification. Wall-clock microbenchmarks run explicitly. Decoder-derived CPU benchmark regression targets, the old chipset throughput workload and capture execution commands have been removed. The approved CPU baseline records the latest user-approved snapshot. During batch preparation, `TA-review-spec-compliance` checks the cumulative intended changes against approved specifications selected through `tracked_paths`, including implementation affected by changed requirements even when code has no diff. Documentation enrichment and pruning follow [Documentation Value](../../.agents/references/documentation-criteria.md#documentation-value); accurate documents and their dates stay untouched. The broader semantic milestone audit may satisfy the scoped review for the same snapshot and covered requirements. Diary compaction and roadmap pruning remain separate agent procedures.
 
@@ -970,7 +984,7 @@ into the selected task branch, reconcile the combined result and finish all
 candidate edits, messages and diary entries before final verification:
 
 ```powershell
-python tools/verification/verify.py commit --integration-base <B>
+python tools/workflow/run_selected.py --registration <receipt> --work-item <item> --round <round> -- python tools/verification/verify.py commit --integration-base <B>
 ```
 
 A full hexadecimal commit ID is required; moving names such as `master` or `HEAD`
@@ -978,10 +992,8 @@ are rejected as comparison bases. The selected scope includes committed source
 changes, pending staged/unstaged/new paths and both endpoints of moves/deletions.
 Divergent synchronization retains full ordinary-workspace coverage and standard
 harness tests. Full SingleStep retains its milestone trigger.
-For an explicitly requested rebase, record original task tip `S` before rewriting
-history and use `commit --integration-base <B> --integration-source <S>`.
-The retained original commit preserves divergence classification through both
-canonical execution and freeze-time selection revalidation.
+For divergent branches, preserve both histories by merging exactly `B` into the
+task branch in its checkout before verifying the reconciled candidate.
 
 ### Selected source set
 
@@ -1028,12 +1040,14 @@ in several prepared trees. Each intermediate tree may change only pending paths,
 and the last tree must equal the verified candidate. Use an empty list when all
 task changes are already committed and no merge commit remains pending.
 
-Once all four scoped approvals cover the final source, baseline, partition and
-applicable evidence, record the consolidated result. The
-[review procedure](../../.agents/references/review-common.md#reuse-scoped-approvals)
-allows carrying unchanged lane approvals after comparison, without another reviewer
-invocation. Keep their original verdicts and identities; only the consolidation
-identifies the final source. This does not change canonical test-evidence validity.
+Once all four independent lane results are accepted under the
+[batch policy](../../.agents/rules/git-commits.md#readiness-before-freeze) on the
+final source, baseline, partition and applicable evidence, record the consolidated
+result. The [review procedure](../../.agents/references/review-common.md#reuse-scoped-approvals)
+allows carrying unchanged lane approvals after comparison. Preserve original
+verdicts and identities and link the advisory result for any lane resolved by
+rejection of its required findings. The canonical verification requirements apply
+independently.
 
 ```json
 {
@@ -1054,7 +1068,8 @@ actual scoped verdicts and evidence references in the review messages or logs.
 python tools/verification/verify.py integrate freeze review .agent/tmp/review.json partition .agent/tmp/partition.json target master
 # Create only the prepared commits, using their exact trees, parents and messages.
 python tools/verification/verify.py integrate seal record .agent/tmp/verification/commit/integration.json
-python tools/verification/verify.py integrate publish record .agent/tmp/verification/commit/integration.json task <task-id> execution <execution-id>
+python tools/verification/verify.py integrate scan-english record .agent/tmp/verification/commit/integration.json
+python tools/verification/verify.py integrate publish record .agent/tmp/verification/commit/integration.json task <task-id> execution <execution-id> delivery <selection-path>
 ```
 
 Use the same `--results-dir .agent/tmp/<batch>` for verification and freeze when
@@ -1068,6 +1083,10 @@ Before publication, select the stable task and execution IDs from the existing
 capture registration. Supply both selectors at publication. The publisher checks
 the exact registration and records its identity before moving the reference.
 A publication with no capture selection cannot authorize preservation or teardown.
+For [selected delivery](../../.agents/rules/git-merge-commits.md#discover-and-select-deliveries),
+also pass the selection artifact. It binds the original plans and exact push and
+cleanup scopes to the surviving record, including a selection with neither step
+authorized. Non-delivery publication omits the `delivery` selector.
 
 ### Confirmed unchanged fast-forward
 
@@ -1093,7 +1112,8 @@ Record the actual approval and confirmation source under `.agent/tmp/`:
 
 ```powershell
 python tools/verification/verify.py integrate accept-tested confirmation .agent/tmp/confirmation.json target master
-python tools/verification/verify.py integrate publish record .agent/tmp/verification/commit/integration.json task <task-id> execution <execution-id>
+python tools/verification/verify.py integrate scan-english record .agent/tmp/verification/commit/integration.json
+python tools/verification/verify.py integrate publish record .agent/tmp/verification/commit/integration.json task <task-id> execution <execution-id> delivery <selection-path>
 ```
 
 `accept-tested` creates a sealed record explicitly marked `confirmed-fast-forward`;
@@ -1104,14 +1124,39 @@ prepare its evidence. The confirmation must identify the exact clean source and 
 baseline. Publication rechecks the confirmation artifact, source tip/tree, ancestry
 and clean source state. Ordinary frozen records remain marked `canonical` and
 retain their full evidence requirements. Both modes use the same conditional
-publication, recovery and authorized cleanup. Any new content uses the canonical
-path; a moving target requires approval of an updated plan.
+publication, recovery and authorized cleanup. New content uses the canonical path.
+If master moves, the conditional publisher refuses the stale base. Record the
+fresh immutable base, reselect the exact inputs and repeat applicable
+synchronization, reconciliation, verification, review and scan within the
+[recorded refresh delegation](../../.agents/references/workflow-guidance.md#start-or-deliver-a-saved-plan).
+Ask for a new decision when changed requirements, sources or consequences exceed it.
+
+### Scan the sealed candidate
+
+In the recorded task or assembly checkout, run the following command after
+sealing the accepted commit, including committed closure text.
+
+```powershell
+python tools/verification/verify.py integrate scan-english record <sealed-record>
+```
+
+This runs the configured full `check english` command, including unchanged
+authored text and newly committed nonignored authored text. It retains the native
+verifier and scanner statuses and the scan log in the target checkout under
+`.agent/tmp/integration/<batch-id>/`. The receipt binds the sealed record, commit,
+tree, scanned content, scan configuration, vocabulary and English dictionary.
+The same requirement applies to a confirmed tested tip, a merged task and Combined
+Sources. A missing or stale receipt, unresolved term, incomplete output or scanner
+error blocks publication. Resolve the cause in the source checkout and retry the
+full scan. If the resolution changes the candidate, obtain applicable verification
+and reviews, seal the corrected commit and scan it before retrying publication.
 
 ### Conditional publication and cleanup
 
 Publication holds a process lock in Git's common directory, shared by worktrees.
 A native `update-ref --stdin` transaction prepares expected-old target and source
-reference locks before `read-tree -m -u B C` advances the clean target index and
+reference locks. The publisher rechecks the passing full English receipt and scan
+inputs before `read-tree -m -u B C` advances the clean target index and
 tracked files. It then confirms the exact tree, commits the reference transaction,
 records `B -> C` in the reflog and checks final checkout consistency. Dirty or
 staged target state, unexpected HEAD, pending Git operations, changed ownership
@@ -1149,16 +1194,24 @@ cannot overwrite an unfinished cleanup operation.
 
 ### Post-publication closure
 
-Use these commands in the recorded primary checkout on local `master`. The first
-runs the same full `check english` audit, including unchanged tracked files and
-new nonignored authored files. Its receipt names the exact publication and includes
-the scanner log and native status. A read error, unresolved term or required
-source correction leaves publication successful and closure open. Retain the
-task checkout and apply the [language policy](../../.agents/rules/language-policy.md)
-to the finding. Running the stage again reuses its recorded result. Once the
-cause of a scanner error is resolved at the same tracked commit, explicitly retry
-the blocked scan. The original status and log remain available. A completed
-scan is reused on later invocations.
+Use the surviving record in the primary checkout on local `master`. The record
+carries the passing English receipt. Select
+[TA-refresh-graph](../../.agents/skills/TA-refresh-graph/SKILL.md) for the published
+commit, then preserve the selected files and perform authorized cleanup. The graph
+stage requires sources at that commit before and after its producer run. It retains
+the output identity in `closure.json`. Retry a failed graph attempt separately.
+A retained successful receipt for the same commit and graph skips the producer.
+Inspect retained state before retrying an interrupted graph attempt.
+
+```powershell
+python tools/verification/verify.py integrate closure-graph record <surviving-record>
+```
+
+#### Resume a historical publication
+
+Version 2 publication records can have outstanding language work on the published
+`master`. Keep the original record and retained status. Run or retry the historical
+stage in the recorded primary checkout. A retry preserves previous attempts.
 
 ```powershell
 python tools/verification/verify.py integrate closure-language record <surviving-record>
@@ -1166,23 +1219,22 @@ python tools/verification/verify.py integrate closure-language record <surviving
 ```
 
 If resolving the blocker requires a source change, prepare and independently
-review an ordinary correction. Verify it through the canonical commit profile
-against the exact unresolved scan commit. Seal it and conditionally publish it
+review a correction against the exact unresolved scan commit. Verify it through
+the canonical commit profile, seal it, obtain a passing scan and publish it
 from the correction worktree with a link to the original surviving publication
 record. Then resume language from the primary checkout.
 
 ```powershell
+python tools/verification/verify.py integrate scan-english record <sealed-correction-record>
 python tools/verification/verify.py integrate publish record <sealed-correction-record> correction-for <original-surviving-record>
 python tools/verification/verify.py integrate closure-language record <original-surviving-record> correction <correction-surviving-record>
 ```
 
-The second command requires the linked publication and exact successor SHA on
-primary `master`. It runs the full scan of that successor and retains the earlier
-scan and initial publication. A Git advance without the linked publication
-blocks the original closure. After a successful scan, continue graph refresh,
-file preservation and teardown under the original publication. Its cleanup
-scope covers the original selected sources. The correction worktree remains
-available for a separately authorized disposition.
+The historical closure command requires the linked publication and exact successor
+commit on primary `master`. It reuses a current successor's passing receipt or
+scans a historical successor that lacks one. It retains the original publication
+and findings. An unlinked advance blocks closure. Continue graph refresh, file
+preservation and authorized cleanup under the original publication.
 
 If the only resolutions are justified vocabulary and exact-file literal additions,
 write the selected additions as an ignored JSON input. The optional objects
@@ -1198,17 +1250,8 @@ work or a moved SHA. No additional diary entry, scan, tests or review follows.
 python tools/verification/verify.py integrate closure-vocabulary record <surviving-record> additions <reviewed-json>
 ```
 
-Once language is complete, select
-[TA-refresh-graph](../../.agents/skills/TA-refresh-graph/SKILL.md) for the final
-SHA, including an accepted source correction or vocabulary commit when present. The graph stage requires sources
-at that SHA before and after its producer run. It retains the output identity in
-`closure.json` beside the publication record. A failed attempt permits a separately
-selected graph retry. A retained successful receipt for the same commit and graph
-skips the producer. An interrupted stage requires inspection of its retained state.
-
-```powershell
-python tools/verification/verify.py integrate closure-graph record <surviving-record>
-```
+Once historical language work completes, run `closure-graph` on the surviving
+record. The graph stage uses the final correction or vocabulary commit when present.
 
 #### Service handoff before worktree removal
 

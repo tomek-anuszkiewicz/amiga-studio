@@ -12,8 +12,8 @@ also found `turn.id` on selected spans. Preserve the separate source fields.
 Test and benchmark launchers reserve `test-runs/<UTC-milliseconds>_<invocation-id>.md`
 within the task and execution archive. Standalone runs use
 `.agent/task-archives/standalone/<execution>/test-runs/` with a fresh execution
-ID. Both routes use the primary checkout and work without a receiver. When the
-task context is known, pass `AMIGA_TEST_TASK_ID` and `AMIGA_TEST_EXECUTION_ID`.
+ID. Both routes use the primary checkout and work without a receiver. For planned work [launch with the selected registration](../README.md#run-a-command-for-a-selected-execution).
+When the task context is known, pass `AMIGA_TEST_TASK_ID` and `AMIGA_TEST_EXECUTION_ID`.
 Launchers propagate parent invocation linkage and accept
 `AMIGA_TEST_WORK_ITEM_ID` and `AMIGA_TEST_ROUND` when supplied.
 

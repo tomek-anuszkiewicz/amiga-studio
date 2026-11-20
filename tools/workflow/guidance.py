@@ -54,6 +54,29 @@ def check_candidate(candidate, root, errors):
         read_reference(ref, root, errors)
 
 
+def selected_review_findings(assignment, qualified_findings):
+    """Resolve legacy local IDs only when they identify a single finding."""
+    choices = {}
+    for key in qualified_findings:
+        choices.setdefault(key.partition("/")[2], set()).add(key)
+    selected = []
+    for identifier in assignment["selected_findings"]:
+        if identifier in qualified_findings:
+            selected.append(identifier)
+        else:
+            matches = choices.get(identifier, ())
+            if len(matches) != 1:
+                raise ValueError(f"select a known lane-qualified finding for {identifier}")
+            selected.extend(matches)
+    if len(selected) != len(set(selected)):
+        raise ValueError("select each lane-qualified finding once")
+    return set(selected)
+
+
+def route_finding_id(finding):
+    return f"{finding['lane']}/{finding['id']}"
+
+
 def check_review_route(guidance, source, root, errors):
     ref = guidance.get("review_route_ref")
     operations = [item for item in guidance["options"] if item["kind"] == "operation"]
@@ -68,7 +91,8 @@ def check_review_route(guidance, source, root, errors):
     authority = current_route_path(guidance["task_id"], guidance["work_item_id"])
     try:
         current = artifacts.path(authority)
-        if not (ref or (source and source["result"]["kind"] == "review") or current.parent.exists()):
+        if not (ref or (source and source["result"]["kind"] in ("review", "finding_challenge"))
+                or current.parent.exists()):
             return
         published = check_shape(json.loads(current.read_bytes()), REFERENCE, authority)
         if ref != published:
@@ -101,16 +125,48 @@ def check_review_route(guidance, source, root, errors):
     stopped = advice["phase"] in (
         "human_decision_required", "paused", "one_round_authorized", "continuation_already_selected", "needs_input",
     )
-    if stopped and operations:
-        errors.append("the review checkpoint or missing history suppresses operation options")
-        if advice["phase"] == "needs_input":
-            errors.extend(f"review routing: {gap}" for gap in advice["gaps"])
-    expected = {item["skill"] for item in advice["recommended_lanes"]}
-    if not stopped:
-        for item in operations:
-            assignment = item["assignment"]
-            if assignment and assignment["skill"].startswith("TA-review-") and assignment["skill"] not in expected:
-                errors.append(f"{item['id']}: review lane is outside the current recommendation")
+    expected = {row["skill"]: row for row in advice["recommended_lanes"]}
+    challenge = advice.get("challenge", {})
+    state = challenge.get("state")
+    collection = challenge.get("manifest", {}).get("findings", [])
+    supported = {route_finding_id(row["finding"]): row for row in challenge.get("eligible_repairs", [])}
+    sources = {route_finding_id(row["finding"]): row["source"] for row in request["assessments"]}
+    for item in operations:
+        assignment = item["assignment"] or {}
+        skill = assignment.get("skill")
+        lane = expected.get(skill, {})
+        action = lane.get("action")
+        released = advice["phase"] == "continuation_already_selected" and (
+            action == "collect_primary"
+            or (skill == "TA-challenge-findings" and state == "ready_to_claim")
+            or (skill == "TA-fix-findings" and state == "returned" and supported)
+        )
+        if stopped and not released:
+            errors.append("the review checkpoint or missing history suppresses operation options")
+            if advice["phase"] == "needs_input":
+                errors.extend(f"review routing: {gap}" for gap in advice["gaps"])
+            continue
+        if skill in ("TA-fix-findings", "TA-challenge-findings"):
+            try:
+                selected = selected_review_findings(assignment, sources.keys())
+            except ValueError as error:
+                errors.append(f"{item['id']}: {error}")
+                continue
+        if skill == "TA-fix-findings":
+            if not selected or not selected <= supported.keys():
+                errors.append("repair choices require an upheld lane-qualified finding from the current challenge")
+            elif any(sources[key] not in assignment["input_refs"] for key in selected):
+                errors.append("repair choices require the selected findings' original lane reports")
+        if skill == "TA-challenge-findings":
+            ids = {route_finding_id(row["finding"]) for row in collection}
+            if state != "ready_to_claim" or assignment["round_limit"] != 1 or selected != ids:
+                errors.append("the challenge requires the exact current collection and a single pass")
+        if skill == "TA-commit-batch" and advice["phase"] != "done":
+            errors.append("commit guidance requires completed independent reviews and passing mandatory gates")
+        if action == "collect_primary" and assignment["selected_findings"]:
+            errors.append("the outstanding primary review does not determine selected findings")
+        if skill and skill.startswith("TA-review-") and skill not in expected:
+            errors.append(f"{item['id']}: review lane is outside the current recommendation")
 
 
 def validate_guidance(guidance, schema, root):
@@ -206,6 +262,12 @@ def validate_guidance(guidance, schema, root):
             if transition["condition"] not in codes:
                 errors.append(f"{option['id']}: not an official matrix recommendation for this source skill")
             known = {finding["id"] for finding in source["findings"]}
+            routed_selection = guidance.get("review_route_ref") and assignment["skill"] in (
+                "TA-fix-findings", "TA-challenge-findings",
+            )
+            if routed_selection:
+                # The current route validates qualified findings across all applicable reports.
+                known.update(assignment["selected_findings"])
             if not set(assignment["selected_findings"]).issubset(known):
                 errors.append(f"{option['id']}: selected findings are absent from the source result")
             if (source["status"] in ("limit_reached", "interrupted")

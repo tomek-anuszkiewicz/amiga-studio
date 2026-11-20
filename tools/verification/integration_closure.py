@@ -7,9 +7,9 @@ import re
 import subprocess
 import sys
 import tempfile
-from uuid import uuid4
 
 from integration import read
+from integration_language import ENGLISH_COMMAND, SCANNER_STATUS, SCOPE_FILE, check_retained_english, run_stage
 from integration_sources import cleanup_record
 from integration_state import RefTransaction, ancestor, clean, common, no_operation, publication_lock
 from integration_state import represents, save, value, worktrees
@@ -17,7 +17,6 @@ from repository import git, snapshot
 
 
 MASTER = "refs/heads/master"
-SCOPE_FILE = "tools/verification/checks/check_english.json"
 GRAPH_FILE = "graphify-out/graph.json"
 
 
@@ -46,6 +45,10 @@ def closure_record(frozen):
     record = read(path) if path.exists() else identity.copy()
     if any(record.get(key) != item for key, item in identity.items()):
         raise ValueError("Closure receipt identifies a different publication")
+    if frozen["version"] >= 3:
+        language = retained_language(frozen)
+        if record.setdefault("language", language) != language:
+            raise ValueError("Closure English differs from the published receipt")
     return path, record
 
 
@@ -60,19 +63,6 @@ def master_commit(root):
     if value(root, "symbolic-ref", "--quiet", "HEAD") != MASTER:
         raise ValueError("Post-publication stages require local master")
     return value(root, "rev-parse", "HEAD")
-
-
-def run_stage(root, directory, name, arguments):
-    command = [sys.executable, *arguments]
-    print("[CMD] " + subprocess.list2cmdline(command), flush=True)
-    result = subprocess.run(command, cwd=root, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                            env={**os.environ, "PYTHONIOENCODING": "utf-8"})
-    log = directory / f"{name}-{uuid4().hex}.log"
-    log.write_bytes(result.stdout)
-    output = result.stdout.decode("utf-8", errors="replace")
-    print(output, end="", flush=True)
-    print("[LOG] " + log.relative_to(root).as_posix(), flush=True)
-    return result.returncode, output, log.name
 
 
 def english_findings(root, output):
@@ -93,9 +83,22 @@ def language_commit(frozen, record):
     return language.get("scan_commit", frozen["commit"])
 
 
+def retained_language(frozen):
+    receipt = frozen.get("english", {})
+    check_retained_english(frozen, receipt)
+    return {"state": "complete", "scan_commit": frozen["commit"], "final_commit": frozen["commit"],
+            "exit_code": 0, "scanner_exit_code": 0, "receipt": receipt}
+
+
+def require_historical(frozen):
+    if frozen["version"] >= 3:
+        raise ValueError("This publication already carries its passing English receipt; continue with closure-graph")
+
+
 def correction_origin(root, publication, successor):
     """Bind a canonical successor to an unresolved scan at its exact base."""
     original = published_target(root, publication)
+    require_historical(original)
     _, record = closure_record(original)
     language = record.get("language", {})
     if language.get("state") not in {"blocked", "findings"} or language.get("prepared_commit"):
@@ -117,7 +120,7 @@ def next_language_commit(root, frozen, record, publication, correction, retry):
     if retry and language is None:
         raise ValueError("A recorded English scanner error is required for retry")
     if correction is not None:
-        successor = published_target(root, correction)
+        successor = correction
         successor_id = cleanup_record(successor).parent.name
         if language and language.get("correction") == successor_id and successor["commit"] == current:
             return current, retry and language["state"] == "blocked", successor_id
@@ -131,8 +134,10 @@ def next_language_commit(root, frozen, record, publication, correction, retry):
 def scan_language(root, publication, *, retry=False, correction=None):
     with publication_lock(common(root)):
         frozen = published_target(root, publication)
+        require_historical(frozen)
         path, record = closure_record(frozen)
-        commit, start, correction_id = next_language_commit(root, frozen, record, publication, correction, retry)
+        successor = published_target(root, correction) if correction is not None else None
+        commit, start, correction_id = next_language_commit(root, frozen, record, publication, successor, retry)
         previous = record.get("language")
         if not start:
             check_master(root, previous.get("final_commit", commit))
@@ -142,6 +147,11 @@ def scan_language(root, publication, *, retry=False, correction=None):
         check_master(root, commit)
         if previous:
             record.setdefault("language_history", []).append(previous)
+        if successor is not None and successor["version"] >= 3:
+            record["language"] = {**retained_language(successor), "correction": correction_id}
+            save(path, record)
+            print("[INFO] Reusing passing English receipt from linked successor " + commit)
+            return 0
         language = {"state": "running", "scan_commit": commit, "exit_code": 1}
         if correction_id is not None:
             language["correction"] = correction_id
@@ -149,10 +159,8 @@ def scan_language(root, publication, *, retry=False, correction=None):
         save(path, record)
         try:
             before = snapshot(root)
-            code, output, log = run_stage(root, path.parent, "english",
-                                          ["tools/verification/verify.py", "check", "english", "--log-level", "full"])
-            child = re.search(r"^\[(?:PASS|FAIL)\] Strict English Policy .*: command exited with code (\d+)$",
-                              "\n".join(output.splitlines()), re.MULTILINE)
+            code, output, log = run_stage(root, path.parent, "english", ENGLISH_COMMAND)
+            child = SCANNER_STATUS.search(output)
             child_code = int(child[1]) if child else None
             language.update(state="blocked", exit_code=code or 1, scanner_exit_code=child_code, snapshot=before, log=log)
             check_master(root, commit)
@@ -277,6 +285,7 @@ def create_vocabulary_commit(root, directory, parent, updates):
 def commit_vocabulary(root, publication, additions):
     with publication_lock(common(root)):
         frozen = published_target(root, publication)
+        require_historical(frozen)
         path, record = closure_record(frozen)
         language = record.get("language", {})
         published = language_commit(frozen, record)
@@ -385,7 +394,7 @@ def require_capture(root, frozen, task_id, execution_id):
         raise ValueError("Capture registration changed after publication")
 
 
-def finish_preservation(root, publication, task_id, execution_id, copy):
+def finish_preservation(root, publication, task_id, execution_id, copy, *, selected=None):
     with publication_lock(common(root)):
         frozen = published_target(root, publication)
         path, record = closure_record(frozen)
@@ -396,8 +405,16 @@ def finish_preservation(root, publication, task_id, execution_id, copy):
         state = record.setdefault("preservation", dict(identity))
         if any(state.get(key) != item for key, item in identity.items()):
             raise ValueError("Preservation identifies a different task, execution or closure commit")
+        if frozen.get("delivery") is not None:
+            workflow = Path(__file__).resolve().parents[1] / "workflow"
+            if str(workflow) not in sys.path:
+                sys.path.append(str(workflow))
+            from delivery import check_preservation_selection, record_preservation
+            check_preservation_selection(frozen, state, selected)
         copy(state, lambda: save(path, record))
         check_master(root, final)
+        if frozen.get("delivery") is not None:
+            record_preservation(root, frozen, state)
         state["complete"] = True
         save(path, record)
 

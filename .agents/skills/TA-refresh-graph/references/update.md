@@ -5,8 +5,8 @@ selection, output/cache ownership, physical copying and failure handling.
 Project and reference datasets remain independent.
 
 The [closure procedure](../../../../tools/verification/README.md#post-publication-closure)
-runs the project producer on the final local `master` SHA after the language
-stage. Task worktrees use copied graphs and direct source inspection if needed.
+runs the project producer on the published local `master` SHA with its passing
+prepublication language receipt. Task worktrees use copied graphs and direct source inspection if needed.
 The reference refresh remains an explicitly selected manual operation. Bootstrap
 `-Graphify` and the Graphify stage of `-All` explicitly produce both datasets;
 this does not authorize a query or ordinary preparation to create reference data.

@@ -68,6 +68,17 @@ def validate(result, schema, root, *, check_references=True):
             if any(f["severity"] in ("blocking", "major") and
                    f["disposition"] not in ("verified", "refuted") for f in result["findings"]):
                 errors.append("approval contains unresolved required findings")
+    if data["kind"] == "finding_challenge":
+        if rounds["limit"] != 1 or result["changed_paths"] or result["findings"]:
+            errors.append("a challenge is a one-pass read-only assessment of existing findings")
+        if result["status"] == "completed" and (not result["inputs"]["candidate"] or not data["decisions"]):
+            errors.append("a completed challenge needs a candidate and per-finding decisions")
+        keys = [(row["finding"]["lane"], row["finding"]["id"]) for row in data["decisions"]]
+        if len(keys) != len(set(keys)):
+            errors.append("challenge decisions must be unique by lane and ID")
+        for row in data["decisions"]:
+            if row["duplicate_of"] == row["finding"]:
+                errors.append("a finding cannot duplicate itself")
     if data["kind"] == "test_audit" and result["status"] != "completed" and data["verdict"] != "not_assessed":
         errors.append("unfinished audit cannot issue a verdict")
     if data["kind"] == "verification" and data["verdict"] == "passed":
@@ -112,6 +123,13 @@ def render(result):
     data = result["result"]
     if "verdict" in data:
         lines.extend([f"Verdict: {data['verdict']}; scope: {data.get('lane', data['kind'])}.", ""])
+    if data["kind"] == "finding_challenge":
+        lines.extend(["## Challenged findings", ""])
+        for item in data["decisions"]:
+            key = item["finding"]
+            lines.extend([f"- {key['lane']}/{key['id']} ({item['disposition']}). {item['consequence']} "
+                          f"{item['reason']} Urgency: {item['urgency']}."])
+        lines.append("")
     if "routing" in data:
         lines.extend(["## Scope and finding comparisons", ""])
         lines.extend(f"- Inspected {item}" for item in data["inspected_scope"])

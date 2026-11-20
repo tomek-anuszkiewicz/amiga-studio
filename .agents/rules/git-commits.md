@@ -20,9 +20,11 @@ unrelated content out of the candidate and preserve originally staged versions.
   and changed-code coverage gaps before freeze.
 - Gather four fresh independent [lane reviews](../references/review-common.md)
   covering behavior, architecture, tests and evidence, and documentation.
-  Each approval retains its exact scope and evidence through corrections.
-  The [review continuation](../references/review-common.md#review-after-correction)
-  owns focused checks, remaining approvals and the human checkpoint.
+  Each lane must be complete and accepted on the exact candidate through its
+  approval or the [binary rejection of its required findings](../references/workflow-guidance.md#challenge-required-findings).
+  Preserve the original reports and the supporting advisory result.
+  Follow the [review continuation](../references/review-common.md#review-after-correction)
+  for focused checks and approvals after a correction.
 - Require passing [canonical commit verification](../skills/TA-verify-batch/SKILL.md)
   for the complete candidate and [milestone verification](../skills/TA-verify-milestone/SKILL.md)
   at its actual trigger. Any failed, missing or invalidated required gate blocks
@@ -33,5 +35,4 @@ unrelated content out of the candidate and preserve originally staged versions.
   [cleanup](../skills/TA-cleanup-task/SKILL.md) consume their own prerequisites.
 
 The [capture guide](../../tools/workflow/capture/README.md#starting-inputs)
-owns approved input versions. The [post-publication language policy](language-policy.md)
-owns the final scan and the vocabulary-only closure commit.
+owns approved input versions. The [language policy](language-policy.md) requires a full English scan of the sealed commit before publication.

@@ -932,7 +932,7 @@ def preserve(args):
     def copy(state, progress):
         copy_selected(primary, archive, files, state, progress)
 
-    finish_preservation(primary, args.publication, args.task_id, args.execution_id, copy)
+    finish_preservation(primary, args.publication, args.task_id, args.execution_id, copy, selected=files)
     return 0
 
 

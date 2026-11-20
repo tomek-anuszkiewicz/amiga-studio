@@ -52,7 +52,7 @@ graph directories from the primary checkout. The reference graph travels inside
 ref_src/. Copying excludes files tracked in either checkout and preserves existing
 destination files.
 Each checkout has an independent Cargo cache.
-Task worktrees require the user's location choice.
+Starting a saved plan selects its own task worktree.
 Detached tests keep implementation in that selected checkout.
 Removal discards all ignored files in the worktree without preservation.
 Stop commands using the checkout before removal.

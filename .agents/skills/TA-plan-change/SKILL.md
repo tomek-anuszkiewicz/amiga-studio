@@ -16,8 +16,13 @@ candidate and round budget. This operation uses `TA-planner` and result kind `pl
    `.agent/tasks/` path, regardless of the conversation language, including Polish.
    Follow the shared [language policy](../../rules/language-policy.md).
    Distinguish necessary changes from optional ideas and preserve unfinished work.
+   Record agreed observable outcomes, the applicable design destination and
+   [concrete approval decisions](../../references/workflow-guidance.md#record-individual-approvals).
+   For an amendment retain unaffected requirements and identify what changed.
 3. Return the identified plan, decisions, risks and acceptance criteria as text and
-   JSON. Stop without test design, implementation, staging or a next-step invocation.
+   JSON. Report agreed testable behavior or other acceptance evidence for the
+   [main session's planning handoff](../../references/workflow-guidance.md#save-a-formal-plan).
 
 If a material requirement is missing, return `needs_input` with the decision; do
 not invent approval. A substantive revision consumes another declared round.
+This operation ends with the plan and its result.

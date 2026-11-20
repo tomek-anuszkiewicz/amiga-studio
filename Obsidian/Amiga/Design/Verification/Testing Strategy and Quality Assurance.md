@@ -29,7 +29,7 @@ tracked_paths:
 Ordinary work uses focused checks. Batch preparation runs
 `python tools/verification/verify.py commit`; milestone closure also runs the
 separate `milestone` profile for the same snapshot. The latter adds full
-SingleStep. Ordinary closure runs the full English audit after local publication
+SingleStep. The sealed commit passes the full English audit before local publication
 under the [language policy](../../../../.agents/rules/language-policy.md). Full vectors
 remain available explicitly for diagnosis, and benchmarks remain explicit
 measurements. No profile runs the unavailable whole-machine capture comparator.

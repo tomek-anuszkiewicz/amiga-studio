@@ -8,6 +8,9 @@ authorization. The worker's `recommendation` is advice, never a second active me
 
 ## Establish what happened
 
+Apply [the shared explanation rule](../../AGENTS.md#explain-the-system-to-the-engineer)
+to the first account of the result.
+
 1. Read the actual JSON, matching text and relevant evidence under the
    [invocation contract](workflow-contract.md). Preserve the worker's original
    status, findings, verdict and recommendation. Separate a completed assessment
@@ -27,6 +30,253 @@ requirement it affects and what would go wrong. If the evidence establishes
 only a constructed scenario, say what connection is missing and leave it out
 of recommended repairs, tests and further rounds. Preserve the reviewer's
 verdict and identify any disagreement in the receiving session's assessment.
+
+## Explain the result to the engineer
+
+Explain the claim that drives a decision. In the historical capture workflow,
+a successful `register.py stop` closed one task's recording interval while the
+shared receiver kept accepting events.
+The client invoked a Python process inside the receiver with `docker exec`.
+That process wrote `end_utc` to the task's mounted `registration.json`. During
+the migration the newer launcher rejected the old receiver revision before that
+write. The interval stayed open, so the upgrade refused to proceed. Stopping
+the container with `docker stop` would also have interrupted other tasks. The
+proposed REST stop request belonged to a later design.
+[Historical capture discussion](codex://threads/01a1f324-6e6e-7b70-9908-9af290295dec).
+
+## Save a formal plan
+
+A request to create a formal plan or add agreed behavior to one selects
+`TA-planner` with `TA-plan-change` and any applicable `TA-test-designer` work
+with `TA-design-tests`. This includes asking to save agreed behavior for later
+after an interactive discussion. Exploration alone does not select planning.
+Confirm [telemetry startup](workflow-contract.md#telemetry-startup-prerequisite)
+where required. Give the planner the requested change, candidate, plan path,
+scope and round budget.
+
+On a valid result with agreed testable behavior, immediately dispatch the
+designer for that behavior under the same request. Bind the saved plan revision
+and SHA-256, exact candidate, affected scenarios, existing protection and an
+owned design output. Preserve distinct assignments, rounds and result pairs.
+A prose or research plan with only documentary or observational acceptance
+evidence ends with the planner. Finish the planning request after applicable
+design and concrete decisions. Ask about missing material behavior before
+relying on it. A plan saved with pending decisions identifies the blocked
+scenarios; unaffected work can still be designed when its inputs are complete.
+
+Declare the design destination as a plan-relative link before handing off the
+saved revision. The design cites the exact input revision and digest, and
+records stable scenario IDs, independent expected observations, reusable
+protection, gaps and decisions still open. This one-way digest binding also works
+with a separately owned section if the unchanged input revision is preserved
+and the assignment names that section as its only write scope. Amend only
+affected requirements and interactions. Retain unaffected scenario IDs and
+valid evidence, and identify superseded expectations. On execution recheck
+the linked inputs against the active plan and current code and tests. Design
+scenarios are planned observations until executable checks run.
+
+## Record individual approvals
+
+While planning, and again when design identifies affected tests, consult
+[protected verification](../rules/unit-testing-policy.md#protected-verification)
+and [reference integrity](../rules/spec-compliance.md#reference-artifact-integrity).
+Present the concrete decisions found. Identify the affected file and symbol,
+assertion or rule, current constraint, exact diff or before-and-after behavior,
+rationale, alternatives, evidence and effect on acceptance. Say which specific
+regression could pass if protection drops, or what a stricter rule would newly
+reject. For moves and removals, identify both endpoints or the deleted item,
+affected references and coverage.
+
+Keep each decision beside its requirement in a versioned plan section. Record a
+stable decision ID, plan revision, affected input identities, exact proposed
+change, scope and conditions, disposition (approved, declined or pending) and
+the user's reply or an unambiguous reference when supplied. Silence, a listed
+proposal and permission to fix a class of tests do not grant individual
+approval. Ordinary in-scope moves, fixture updates and equivalent assertions
+preserving acceptance and coverage remain ordinary maintenance.
+
+At the edit, compare the actual change and current inputs with the recorded
+decision. Exact applicability authorizes that edit. Recheck the premises after
+unrelated amendments and record the applicability check. A changed destination,
+broader exception, newly lost protection or uncertain match requires a decision
+about that difference. Diagnose a newly failed check before proposing a change
+to its criterion. Prior consent for an edit supplies neither tool permission,
+verification, independent verdict nor a [human checkpoint decision](#human-review-checkpoint).
+
+## Amend an active plan
+
+As soon as the user proposes a material change to approved scope, behavior or
+acceptance, write a proposal in the authoritative plan's sibling
+`<plan-stem>.amendments.md` in `.agent/tasks/`. Record the stable decision ID,
+task ID, active plan revision and digest, affected requirement, proposed change,
+effect on acceptance and tests, and the user's turn locator or attributed
+excerpt. Record pending, approved or declined with its source. Keep the
+approved plan in force while the proposal is pending. A repair restoring
+agreed behavior or a request for another review round leaves the plan unchanged.
+A review continuation authorizes only that round.
+
+Use a heading beginning with the decision ID, such as `## D-03 — Change the
+receipt destination`, and an initial `**Disposition.** Pending` in that
+section. Preserve that history when a later checkpoint decides the proposal.
+Add a separate dated decision with the same ID, for example
+`- **D-03 approved.** <source and scope>` or
+`- **D-03 declined for this delivery.** <source and excluded scope>`.
+Keep decisions in chronological order so the last explicit disposition for
+each ID is current. Record incorporation and affected input identities alongside
+that decision.
+
+On resume read the working plan, proposals and linked design before acting.
+Compare the selected files and diff with approved inputs. For an unexplained
+material edit, record its observed effect with origin and intent unknown and
+ask what belongs in the task. Use the task records and selected diff for recovery
+without hooks or a transcript scan.
+
+Group related pending decisions at the next natural checkpoint, such as a round
+result or batch preparation. Resolve a decision sooner when the next action
+depends on it. An explicit instruction to incorporate the specified change
+selects the amendment. Before replacing the active revision, preserve the
+prior plan and relevant design bytes with their digests and record the intended
+revision and affected updates under the approved decision ID. Link that decision
+in the new revision and update the affected acceptance criteria and applicable
+test design through [the planning handoff](#save-a-formal-plan). Record the
+resulting refs when complete. On restart, check the saved refs and complete only
+the missing updates under the same decision ID. Apply
+[individual approval](#record-individual-approvals) separately to any protected edit.
+
+Record a decline and the user's disposition, such as excluding affected hunks
+or assigning them to separate work. Preserve local edits. At preparation,
+compare the selected paths and hunks to the active plan and unresolved material
+proposals. Resolve or exclude affected scope before freeze, while allowing
+an independent selection to proceed. The
+[readiness declaration](../rules/git-merge-commits.md#discover-and-select-deliveries)
+binds the current amendment note or its absence. A changed note requires a
+fresh declaration; other evidence can still be reused within its validity.
+
+## Start or deliver a saved plan
+
+Starting a saved plan selects [an isolated task worktree](../skills/TA-start-plan/SKILL.md).
+Record its authoritative copied plan and linked design inputs. Resume from
+that recorded checkout and copies. A plain planning request leaves execution
+unselected.
+
+An expressly scoped end-to-end delivery request selects the ordinary actions
+needed to reach its agreed boundary. Record the plan revision and input hashes,
+source checkout/branch, target local `master`, authorized commit and publication
+scope, applicable integration and baseline-refresh procedure, cleanup targets
+and any selected remote `master` push. If a stage establishes an identity,
+record it before operating on it. Within this delegation, the main session runs
+the applicable skills and direct commands for checks, reviews, in-scope fixes
+and conflict resolution, integration, publication and other selected actions.
+Each invocation keeps its exact inputs, write scope, result and round budget.
+Apply [the human checkpoint](#human-review-checkpoint) and individual approvals
+where required. A narrower request keeps its own boundary. Local delivery alone
+supplies no remote push authorization.
+
+At integration, use [the delivery selection rules](../rules/git-merge-commits.md#discover-and-select-deliveries)
+to check eligible source records. For single-plan delivery record current
+local master as `B` and the selected task tip as `S`. If master already
+contains the selected delivery, check the publication and closure record and
+ancestry before resuming only outstanding authorized work. Otherwise follow the
+[integration policy](../rules/git-merge-commits.md) and
+[verifier procedure](../../tools/verification/README.md#local-integration).
+With `B` in the task's ancestry, a qualifying clean, unchanged tip with committed
+closure and exact approved tested-tip evidence can use `integrate accept-tested`.
+A working commit, missing acceptance evidence or outstanding closure changes
+takes the full preparation, verification, review and sealing route. On
+divergence merge recorded `B` into the task checkout and reconcile the combined
+candidate before those checks. Combined Sources follows its separate assembly
+procedure.
+
+On every route, pass the
+[full English scan of the sealed commit](../../tools/verification/README.md#scan-the-sealed-candidate)
+before conditional publication. A moved master invalidates the stale write.
+Record the fresh base, recheck the source selection and repeat applicable
+synchronization, reconciliation, verification, review and the scan under the
+recorded refresh procedure. Ask about changed requirements, sources or
+consequences beyond it. Reuse evidence only within its declared validity.
+
+After successful publication retain the record and SHA, then follow
+[closure](../../tools/verification/README.md#post-publication-closure) for
+graph refresh and record preservation before cleanup. An older publication
+with an incomplete historical language stage follows its recorded procedure.
+Report local publication, any authorized push and each authorized cleanup
+separately. A failed stage preserves its observed outcome and recovery inputs.
+Resume only outstanding authorized work.
+
+### Record the source at implementation completion
+
+For an invocation that completes implementation of a selected plan for delivery,
+the assigned implementer captures the completed source after its focused checks
+and before writing the immutable result pair. The main session supplies the
+authoritative plan and matching active registration from the primary checkout.
+Run from the task checkout:
+
+```powershell
+python tools/workflow/delivery.py snapshot --plan <authoritative-plan> --registration <registration.json> --output <result-run-directory>/source.json
+```
+
+Write the fresh receipt beside `result.json` and `result.md` under the
+invocation's recorded run directory. In the implementation result add exactly one
+executed evidence row with ID `delivery-source`, the actual command and status,
+and `artifact_ref` with the repository-relative receipt path and SHA-256 digest.
+Render and validate the pair after including that row. If the assigned completion
+cannot be captured, report the missing input or error and leave readiness open.
+
+The receipt binds the completed tree and branch, task and execution, plan and
+amendment record. Include the plan and any applicable design inputs with their
+digests in the result's plan inputs. A clean capture binds the exact completed tip.
+A capture with pending edits can bind the immediate subsequent commit only if
+its tree is identical and its parent is the captured tip. A later source change
+requires current completion evidence. The receiving session uses this pair and
+receipt in [delivery declaration](../rules/git-merge-commits.md#discover-and-select-deliveries)
+once the source and index are clean. Keep this source evidence distinct from
+canonical verification, independent reviews and publication readiness.
+
+## Challenge required findings
+
+At the repair handoff, use the [review router](../../tools/workflow/README.md) for
+the frozen round. Record expected, returned and outstanding lanes and reports,
+the required lane/ID pairs, current candidate, evidence and attributable scoped
+risk decisions. Follow the human checkpoint first. Let healthy assigned work
+return. Missing lanes and interrupted or stale evidence leave that handoff pending.
+
+If the collection contains required findings, the selected review includes one
+fresh [independent challenge](../skills/TA-challenge-findings/SKILL.md). Claim the
+collection before launch. Resume a recorded assignment using its existing receipt.
+A clean review or suggestions alone finishes without a challenge. If a late
+report or genuinely new material evidence changes the collection, link the
+assessment of only the affected claims and retain decisions for the other IDs.
+
+Validate one final `uphold` or `reject` per lane and ID against the collected
+reports and exact candidate. An upheld finding remains open for authorized
+repair. Explain the supported use or requirement and the demonstrated
+consequence. Group related findings for reference. Repair each upheld finding and verify
+its own trigger. A related finding keeps its separate decision. A rejected finding closes on this candidate when
+the advisory result is accepted. Retain its primary report, the binary decision
+and the evidence. Treat a completed primary lane whose applicable required
+findings were all rejected as resolved for this candidate. The lane's original
+verdict stays in its report. An incomplete assessment leaves its handoff pending.
+
+Check mandatory gates and required independent review evidence before readiness.
+An accepted risk covers its recorded circumstances until a material new fact
+changes the premise. A deferred upheld finding stays open. Apply the ordinary
+review and evidence rules to a changed candidate.
+
+### Working commit after declining repairs
+
+When declining repairs would prevent the requested destination, explain the
+consequence beside that choice. For a direct commit request, the first
+user-visible message, including commentary before an inspection tool, starts
+with the current warning from the recorded checkpoint already known to the
+session. Reserve any inspection update for after the warning. Name the working
+commit's local preservation boundary, each lane with unresolved findings and
+their IDs, each lane that never started or is still running, and each failed
+or missing gate and proof by name. Identify fresh VS Code capture proof when
+that is an outstanding requirement. State the route back through the checkpoint.
+Freeze and publication still require the outstanding approvals and current
+passing evidence. Credit canonical verification only when its passing report
+exists. An explicitly selected working commit can proceed under its existing
+authority after the warning.
 
 ## Present one current set of choices
 
@@ -62,12 +312,8 @@ Do not put such an operation in the official option set on the agent's initiativ
 After that directly selected operation returns, resume guidance from its own row.
 Clarification, approval, stop, defer and finishing need no skill-transition cell.
 
-A successful TA-close-task reports the surviving publication record and SHA.
-Use the [post-publication procedure](../../tools/verification/README.md#post-publication-closure)
-for the English stage. Once language completes, select TA-refresh-graph for the
-final SHA, including any vocabulary-only child. Retain a successful graph result
-on replay. Complete the required preservation before offering cleanup. If a stage
-is blocked, report it with the published outcome and preserve the task checkout.
+A successful TA-close-task hands off its publication record and SHA to
+[the recorded delivery procedure](#start-or-deliver-a-saved-plan) for closure.
 
 In the user's language, briefly state the outcome, its consequence, the recommended
 next step and why. Offer normally one to three useful options with their effects
@@ -124,11 +370,12 @@ publication. Do not offer ignoring required failures as a route to success.
 Recheck any active [human review checkpoint](#human-review-checkpoint) before
 consuming an option or executing an explicitly selected continuation.
 
-Wait for a selection. Silence and the recommendation grant no permission. Existing
-permission remains valid for its exact scope and need not be requested twice, but
-permission alone does not select a next operation. Only explicit delegation lets
-a trial coordinator choose on the user's behalf; record that provenance instead
-of inventing a user reply. Such delegation does not change the default workflow.
+Continue only within a recorded selection, including
+[planning and design](#save-a-formal-plan) and
+[end-to-end delivery](#start-or-deliver-a-saved-plan) where applicable. Otherwise
+wait for a selection. Silence and the recommendation grant no permission.
+Existing permission remains valid for its exact scope. If a user explicitly
+delegates choices to a trial coordinator, record that provenance.
 
 Resolve the choice against the current guidance ID. If a label is ambiguous, ask
 for clarification. Recheck result/candidate identities, selected scope, prerequisites
@@ -139,14 +386,15 @@ Keep earlier evidence and unresolved finding IDs. No fresh tests, coverage or
 reviewers are needed merely to check applicability.
 
 For a ready selected operation, apply the [runtime settings](workflow-runtime.md#model-and-reasoning-effort)
-to the user's current selection. Dispatch exactly the bound role and skill with
-the displayed scope and budget, then stop dispatching. If that role is unavailable,
+to the current selection. Dispatch exactly the bound role and skill with its
+scope and budget. Apply this guidance to the next result before another
+dispatch. If that role is unavailable,
 report the runtime prerequisite; do not silently substitute another role. An
 explicitly authorized fallback records the actual executor and inherited access,
-without claiming named-role execution or technical isolation. The next real result
-returns here for a new explanation and choice. For conversation choices, perform
-only the stated conversation action; an approval does not automatically dispatch
-its proposed repair.
+without claiming named-role execution or technical isolation. For conversation
+choices, perform the action selected. An amendment approval selects its
+incorporation as described above. An individual protected-edit approval supplies
+consent for that edit when its operation is selected.
 
 ## Human review checkpoint
 
@@ -194,3 +442,12 @@ Use the supplied checkpoint tokens to bind the preserved user message. Apply
 each continuation once. On resume, validate the saved receipt and resume the
 same selected round. A receipt supplies one round even if work stops before
 another candidate is frozen.
+
+If the recorded continuation covers a pending challenge on the frozen candidate,
+first collect any due primary lanes required for that challenge. Dispatch only
+the lanes advised by the router. Once the primary collection is complete, claim
+the challenge on the same candidate and round. Apply the advisory decisions
+within the continuation. Select an upheld repair once the required handoff is
+complete and within the recorded scope. Existing gates retain their status.
+If new binding issues invalidate the checkpoint identity, return to the user
+for a current choice.

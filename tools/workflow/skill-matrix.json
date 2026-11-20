@@ -26,7 +26,7 @@
     "DIA": "An actual closure trigger or explicit compaction request requires consolidation of identified settled diary history. Supplied completion evidence distinguishes settled from unfinished work; preserve unique knowledge and keep all changes before the final candidate is accepted.",
     "PRN": "An actual closure request identifies exact completed roadmap items supported by implementation, semantic and verification evidence. Preserve unfinished scope and checkpoints; pruning remains provisional until the required final gates, diary work and closure commit succeed.",
     "BAT": "The current task has an explicitly selected batch scope and candidate whose partition, messages, diary or readiness record needs preparation or updating after material changes or new evidence. Preserve existing index entries and staging authority; preparation may report missing gates without obtaining them.",
-    "CMT": "Commit authority covers an exact prepared candidate, partition, messages and diary or closure content. All four independent review lanes approve that candidate, canonical verification and every applicable milestone or other gate pass, and no unresolved blocker remains. Freeze and create only the authorized mechanical commits.",
+    "CMT": "Commit authority covers an exact prepared candidate, partition, messages and diary or closure content. All four independent lane results are accepted on that candidate, canonical verification and every applicable milestone or other gate pass, and no unresolved blocker remains. Freeze and create only the authorized mechanical commits.",
     "PUB": "The selected task has accepted, sealed source and target identities with the required committed closure record, and exact publication authority is available. The recorded base and candidate remain current; use only the existing eligible publication protocol, without inferring push or cleanup authority.",
     "CLN": "Publication is confirmed for the exact selected task. Closure English, the project graph for its final SHA and required preservation have completed. Cleanup authority names the plan, branch and worktree. Cleanup preserves later work.",
     "CHK": "A named focused check is required for the current candidate and has not completed, or relevant changes or resolved failure causes invalidate prior evidence. Supply the exact command, environment and boundary; do not repeat applicable success or expand into a broader suite.",
@@ -35,7 +35,7 @@
     "QRY": "A specific unanswered relationship question in the current task can be checked in an identified existing graph. The graph, source scope and query are known; the operation remains read-only and confirms relevant definitions directly.",
     "PTH": "The current task has a concrete relationship question between known, source-qualified endpoints in an identified existing graph. A path or no-path result would resolve that question; do not create a new investigation merely because graph access is available.",
     "SYM": "Understanding a known symbol and its relationships is necessary for the current scoped task. The symbol, graph and source snapshot are identified; read the owning definitions and do not broaden the requested analysis.",
-    "GRF": "After ordinary publication and completed closure English, select the project graph on primary local master at the final SHA, including any vocabulary commit. Reuse an intact successful receipt and select a retry only for a failed refresh. An explicit bootstrap or reference refresh keeps its selected scope.",
+    "GRF": "After conditional publication, refresh the project graph for the published commit using its successful language receipt. Reuse an intact graph receipt. Historical closure follows its recorded protocol.",
     "SEM": "Explicitly selected project documents need their semantic relationships extracted into the project graph. The source scope, graph state and write authority are available; structural refresh and document editing alone do not authorize this separate operation.",
     "IMG": "The current GUI task needs new image evidence from an identified existing capture scenario and output location. State the capture boundary; a saved image alone is not an interpreted diagnosis, accepted visual result or repair instruction.",
     "IDX": "Accepted documents within an explicitly selected supported source scope need shared RAG indexing, and publication authority, configuration and retrieval probe are available. Document editing, graph changes and audit completion alone do not authorize indexing.",
@@ -46,7 +46,8 @@
     "CMP": "A saved baseline and a separately captured inventory are available for the selected comparison.",
     "REG": "The user has selected a thread, repository and execution boundary for capture.",
     "COL": "A recorded execution has a closed boundary and its evidence is ready for collection.",
-    "REC": "A new archive revision and independent expected observations are available for assessment."
+    "REC": "A new archive revision and independent expected observations are available for assessment.",
+    "CHALLENGE": "A collected set of required review findings needs one fresh advisory reviewer to uphold or reject each claim on its frozen candidate. The receiver has checked the human stop, original reports and outstanding lanes."
   },
   "transitions": {
     "TA-plan-change": {
@@ -267,6 +268,9 @@
       ],
       "TA-commit-batch": [
         "CMT"
+      ],
+      "TA-challenge-findings": [
+        "CHALLENGE"
       ]
     },
     "TA-review-architecture": {
@@ -297,6 +301,9 @@
       ],
       "TA-commit-batch": [
         "CMT"
+      ],
+      "TA-challenge-findings": [
+        "CHALLENGE"
       ]
     },
     "TA-review-tests-evidence": {
@@ -333,6 +340,9 @@
       ],
       "TA-commit-batch": [
         "CMT"
+      ],
+      "TA-challenge-findings": [
+        "CHALLENGE"
       ]
     },
     "TA-review-docs": {
@@ -372,6 +382,9 @@
       ],
       "TA-commit-batch": [
         "CMT"
+      ],
+      "TA-challenge-findings": [
+        "CHALLENGE"
       ]
     },
     "TA-review-spec-compliance": {
@@ -405,6 +418,9 @@
       ],
       "TA-commit-batch": [
         "CMT"
+      ],
+      "TA-challenge-findings": [
+        "CHALLENGE"
       ]
     },
     "TA-review-semantic-parity": {
@@ -429,6 +445,9 @@
       ],
       "TA-prepare-batch": [
         "BAT"
+      ],
+      "TA-challenge-findings": [
+        "CHALLENGE"
       ]
     },
     "TA-audit-vault-links": {
@@ -1082,6 +1101,14 @@
     "TA-check-task-records": {
       "TA-check-task-records": [
         "RTY"
+      ]
+    },
+    "TA-challenge-findings": {
+      "TA-fix-findings": [
+        "FIX"
+      ],
+      "TA-commit-batch": [
+        "CMT"
       ]
     }
   }

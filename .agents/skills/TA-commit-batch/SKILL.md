@@ -10,7 +10,8 @@ Apply [the invocation contract](../../references/workflow-contract.md),
 [integration protocol](../../../tools/verification/README.md#local-integration).
 Executor: main session; result kind: `commits`.
 Inputs: commit authority, exact candidate/partition/messages, prepared diary/closure
-content, complete current canonical evidence and four applicable independent approvals.
+content, complete current canonical evidence and all four independent lane
+results accepted under the batch policy.
 
 1. Validate prerequisites and current candidate/index/HEAD identities. Missing,
    failed or stale evidence returns its blocker; do not obtain it here. Retain
