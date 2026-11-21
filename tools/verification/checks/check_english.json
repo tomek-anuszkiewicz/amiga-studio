@@ -73,6 +73,7 @@
     "english_words/names.txt"
   ],
   "file_words": {
+    "DIARY.md": ["beh", "wf", "wv"],
     "tools/workflow/tests/test_review_routing.py": ["ap", "qm", "wf"],
     "tools/workflow/review_routing.py": ["unassessed"],
     "tools/workflow/review_inputs.py": ["fsmonitor", "nowarn"],
