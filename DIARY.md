@@ -2,6 +2,30 @@
 
 This document records the architectural evolution, human-AI co-design methodology, and pivotal engineering decisions behind the Amiga 500 emulator in Rust. Dated results describe the source and scope checked at the time; they do not certify the current emulator. The design specifications and roadmap own present behavior and pending work.
 
+## Contents
+
+- [1. Project Genesis: Groundwork, Reference Ingestion & The Myth vs. Reality of AI Emulation](#1-project-genesis-groundwork-reference-ingestion--the-myth-vs-reality-of-ai-emulation)
+- [2. Foundational Architecture: Cycle-Exact Mechanics, Rejecting the "God Bus" & Rust Sympathy](#2-foundational-architecture-cycle-exact-mechanics-rejecting-the-god-bus--rust-sympathy)
+- [3. Modular Workspace Architecture & Two-Tier Hardware Decomposition](#3-modular-workspace-architecture--two-tier-hardware-decomposition)
+- [4. Physical Circuit Simulation: Standalone BLEP Audio Synthesis](#4-physical-circuit-simulation-standalone-blep-audio-synthesis)
+- [5. The 6-Stage Evolution of the M68000 CPU Core](#5-the-6-stage-evolution-of-the-m68000-cpu-core)
+- [6. CPU Benchmarking: From Generated Cases to Handwritten Workloads](#6-cpu-benchmarking-from-generated-cases-to-handwritten-workloads)
+- [7. Subsystem Evolution: The Developer Studio GUI & Debugger Engine](#7-subsystem-evolution-the-developer-studio-gui--debugger-engine)
+- [8. Architectural Rules, Anti-Tamper Policies & The Living Definition of Done](#8-architectural-rules-anti-tamper-policies--the-living-definition-of-done)
+- [9. The Ultimate Goal: The Clean-Room Re-Generation Experiment](#9-the-ultimate-goal-the-clean-room-re-generation-experiment)
+- [10. Accepted-Recipe Reconstruction and Reference Publication](#10-accepted-recipe-reconstruction-and-reference-publication)
+- [11. Register Access and Delivery to Owning Chips](#11-register-access-and-delivery-to-owning-chips)
+- [12. A500 Gary Address Decoding](#12-a500-gary-address-decoding)
+- [13. Receiver-Owned Signal Transport and Continuation](#13-receiver-owned-signal-transport-and-continuation)
+- [14. SDLC, Agent Workflows and Development Harness](#14-sdlc-agent-workflows-and-development-harness)
+- [15. Book-Derived Custom Chipset Reconstruction](#15-book-derived-custom-chipset-reconstruction)
+- [16. Native Kickstart and Disk Program Execution](#16-native-kickstart-and-disk-program-execution)
+- [17. Core Performance: Removing Repeated Host Work](#17-core-performance-removing-repeated-host-work)
+- [18. Video: From Visible Raster Storage to a Stable Image](#18-video-from-visible-raster-storage-to-a-stable-image)
+- [19. Host Execution, Player Workflow and Input Ownership](#19-host-execution-player-workflow-and-input-ownership)
+- [20. Runtime Invariants and Floppy Activity Observations](#20-runtime-invariants-and-floppy-activity-observations)
+- [Rolling Changelog](#rolling-changelog)
+
 > [!IMPORTANT]
 > **Zero Hand-Written Code (100% Voice-Prompted & AI-Generated):**
 > Throughout the entire development of this emulator, **not a single letter of code was written by hand**.
@@ -127,6 +151,31 @@ A dedicated engineering effort was devoted to modeling the physical analog sound
 - The resulting curves model the selected circuit assumptions; they do not by themselves establish physical output accuracy or eliminate every aliasing source.
 
 The November 8 regression work protected retained numerical curves without establishing physical audio output. Its offline reference checks and optional WinUAE comparison belong to the verification history in Chapter 14.
+
+### November 14-16: Buffered Stereo Output and Independent Spectral Checks
+
+BLEP-AUDIO-STREAM-20261114 (`fb1d439`) replaced per-CCK observations with 44,100 Hz
+stereo PCM. Timed DAC steps use PAL/NTSC correction tables and CIA-A filter selection
+without moving channel DMA or interrupt events. A 1,024-pair overwrite ring retains
+unread PCM and synthesis history across continuation. Runtime tables moved into
+Paula; accepted PAL CSV references stayed protected. The host drain API received an
+explicit single-symbol quality exception. This approved output contract superseded
+the earlier audio-preservation experiment; host-device playback remained pending.
+
+AUDIO-SPECTRUM-20261114 and AUDIO-ATTACHMENT-20261114 (`5ed7c28`) exercised Chip RAM
+DMA, WAV decoding, independently predicted tones/DAC images, and looping volume and
+period modulation. Four PAL/NTSC filter combinations and both attachment scenarios
+passed, including a silent source side, return to the initial plateau and negative
+controls. The oracle did not reuse runtime synthesis tables. The shared three-commit
+candidate passed 688 ordinary tests, nine harness tests, 131 Python contracts and
+the commit profile; intermediate commits were not checked separately. Host playback
+and physical filter-switch transient calibration were not established.
+
+TEST-RUNTIME-AND-VALUE-20261116 later shortened captures to about 120 ms without
+widening amplitude, frequency, residual-alias or stereo tolerances. Three cases
+passed before and after, reducing execution from 6.88 to 1.76 seconds outside
+compilation. Enhanced reconstruction experiments remained deferred until games and
+host music playback were available.
 
 ---
 
@@ -349,6 +398,42 @@ November 11-12 artifact commit `3d54d55` recorded the A500/A2000 accepted recipe
 
 The roadmap pilot was removed by user direction, rather than verified as complete: the fresh Test Book had no Accepted bundle or demonstrated clean reconstruction gate. The remaining repository deliverable was four accepted manual recipes with matching source identities, now owned by [Roadmap 11.1](ROADMAP.md#step-11-four-manual-pdf-to-book-json-conversion). Full-book quality, downstream publication and RAG ingestion were not established by the tooling delivery. These unresolved limits remain attached to the narrative; they do not make every settled converter change an active rolling entry.
 
+### November 13-16: Manual Artifacts, Math Provenance and a Shared Catalog
+
+The Hardware Reference Manual recipe recorded 2,508 elements from 405 PDF pages.
+Working and Accepted matched, all eighty graphics loaded, and source/prepared
+hashes matched metadata. Its audit resolved 60,752 references but still reported
+158 literal-content findings and seven math commands lacking source references.
+A validator repair separated italic/spacing syntax from visible content: the
+regression failed first and 108 focused tests passed, removing eighteen formatting
+findings without waiving the remaining source findings.
+
+Motorola programmer-manual preparation covered 646 pages. Importer correction
+`45a1302` decoded named/numeric angle entities only inside parser-owned math spans,
+retaining code, preformatted text, non-math entities and source offsets. It fixed
+KaTeX rendering without changing PDF-to-Markdown prompts. Forty-one recipe and
+33 alignment tests passed after a failing regression; the reimport contained
+5,334 elements, Working matched Accepted and rendering completed. Programmer and
+revision-8 user-manual artifacts then joined the tracked recipes. The accepted
+user manual contained 1,343 elements and 100 assets with a matching PDF identity.
+Artifact matches did not certify whole-book transcription or reconstruction.
+
+The catalog server (`fb5a48b`, November 15-16) replaced per-book launch arguments
+with browser selection. Requests, render queues, PDF page and pane width belonged
+to the selected book so separate tabs could not redirect edits to another book.
+Catalog contracts and PowerShell checks passed; five books were discovered and the
+two opened books had no pending render/error. BOOTSTRAP-NATIVE-INTEGRATION-20261116
+preserved this delivery alongside native disk execution. Earlier integration
+`0e6438e` passed seventeen commit groups and 224 Book Review tests; these were
+integration checks, without a fresh whole-book quality assessment.
+
+The November 16 updates pinned KaTeX 0.18.2 and Pillow 13.0.0 for the reported
+security advisories. Native/browser builds and syntax/compilation checks ran, but
+automated suites and review were explicitly skipped for those commits. Image smoke
+tests lacked local PNG assets, and the shared Python environment kept its existing
+Pillow because other installed tools required a version below 13. These limits
+remain separate from the recipe and importer results.
+
 ---
 
 ## 11. Register Access and Delivery to Owning Chips
@@ -391,7 +476,7 @@ Device-engine reconstruction remained in 2.4 and functional guest verification i
 
 ## 14. SDLC, Agent Workflows and Development Harness
 
-Between September 12 and November 12, 2026, the software development life cycle (SDLC) became an engineering track of its own: rules and skills, agent configuration, reference retrieval, isolated worktrees, test orchestration and protected evidence evolved alongside the emulator. The lasting result was explicit ownership and review of both implementation and its verification criteria. These tooling deliveries did not close chipset behavior milestones. This chapter brings their settled history together; linked rules and tool documentation own the current procedures.
+Between September 12 and November 21, 2026, the software development life cycle (SDLC) became an engineering track of its own: rules and skills, agent configuration, reference retrieval, isolated worktrees, test orchestration and protected evidence evolved alongside the emulator. The lasting result was explicit ownership and review of both implementation and its verification criteria. These tooling deliveries did not close chipset behavior milestones. This chapter brings their settled history together; linked rules and tool documentation own the current procedures.
 
 ### From Implicit Guidance to Owned Rules and Skills
 
@@ -435,11 +520,192 @@ Roadmap consolidation `9206fae` on November 11 moved diagnostics, remaining impl
 
 On November 12, `0dc9126` scheduled REGISTER-PROPAGATION-VERIFY-20261111 as a separate gate before reconstruction, while BOOK-GUEST-PROGRAM-TESTS-20261111 remained after it. The same change excluded local .agent/tasks plans from language scans, including explicit-file scans; 87 verification-tool tests and the repository English scan passed. The scanner change did not execute either chipset task. The user then approved removing that separate propagation prerequisite in `0969545`: component unit tests accompany reconstruction in 2.4, and functional propagation/guest acceptance stays in 2.5. Access/Gary/signal foundations remained established, but no removed gate was declared passed and no new hardware milestone was closed.
 
+On November 15, `aaa12c1` gave priority to original disk execution. The user withdrew
+BOOK-GUEST-PROGRAM-TESTS-20261111 and its obsolete plan without declaring guest
+acceptance. Missing media-stream/DMA behavior moved into native bring-up; native
+verification retained the retirement of `examples/m68k/`. Lockstep tracing became
+a diagnostic contingency after native tests rather than a prerequisite. Chapters
+15-16 describe the earlier stage boundaries and the subsequent delivered path;
+Roadmap 2.6 owns the remaining native-suite acceptance.
+
 ### Logging, Compaction and the Permanent Record
 
 The diary appender arrived in `12eb591` on September 12. Policy briefly limited entries to verified roadmap/milestone closures (`a1e3fc3`, September 25); `4a986fc` restored concise per-commit entries on October 5, with compaction at verified roadmap closures. The November 12 change `0969545` added completed-stage chapters and a stable, final unnumbered Rolling Changelog. Its commit profile and focused diary/roadmap/skill checks passed, with independent approval; it closed no implementation stage.
 
 The later editorial decision was to use that changelog as a buffer for work awaiting resolution or narrative integration. Durable decisions and evidence move into the owning chapter, including this SDLC history; routine mechanical changes, merges and compaction statistics remain in Git. Existing digests have no automatic right to permanent retention, and mentioning an open roadmap stage does not make a settled tooling change active. Granular investigation stays only while needed to continue unfinished work. Historical failures, user-directed scope closures and unresolved limits remain visible in the relevant narrative even after their original entries are removed.
+
+### November 13-16: Selecting Work, Reusing Evidence and Simplifying Ownership
+
+VERIFICATION-SELECTION-20261113 selected changed Cargo packages and their transitive
+consumers, with conservative full-workspace fallback for unknown/shared inputs.
+Detailed LLVM gap reports identified their measured scope and excluded retired
+objects; coverage guided meaningful missing behavior, without assertion quotas.
+The motivating cached profile spent 78.59 of 88.08 seconds in coverage and standard
+tests. A focused BLEP selection passed in 4.24 seconds; this demonstrated selection,
+without measuring a whole-emulator speedup.
+
+FAST-TURNS-BATCH-COMMITS-20261114 moved preparation ahead of expensive verification
+and reused successful independent groups only while their inputs matched. A real
+Cargo/LLVM probe ran three commands initially, zero after a diary edit and three
+after a source edit; corruption, build settings and HEAD changes still invalidated
+evidence. Independent review, graph refresh and verification could overlap on a
+stable candidate, while shared Cargo/coverage outputs stayed serialized. Three
+November 14 orchestration/guidance concerns were committed without tests, scans or
+review at explicit user direction. Language review moved between commit-only and
+per-round boundaries during this period; these superseded procedures are history.
+
+LOCAL-INTEGRATION-20261115, TASK-CLOSURE-20261115 and
+git-close-task-batch-integration-20261116 introduced exact source/target selections,
+combined verification, conditional Git publication and retryable cleanup. An
+explicitly unverified working commit could preserve work before the combined check.
+Native reference locks protected against competing publication; source-only approval
+did not establish an integrated result. Cleanup policy also changed: ignored files
+briefly became disposable by user decision before selected input/output preservation
+returned through explicit archive operations. These transaction tools describe the
+historical implementation, not the simplified revision now in progress.
+
+Windows command-tree supervision briefly used Job Objects, a guardian and a narrow
+MSVC telemetry exception. Empty readiness files exposed a fixture race: atomic
+publication of the complete PID preserved the lifetime assertions.
+VERIFICATION-LOCK-SIMPLIFICATION-20261116 then removed command-tree tracking and its
+tests in favor of one nonblocking OS lock per checkout. It retained mutual exclusion
+and evidence reuse; surviving children were no longer detected or killed. Two hundred
+focused Windows contracts passed; POSIX execution was unrun at that boundary.
+INTEGRATION-ALL-20261116 (`e3093cd`) subsequently passed the combined commit profile
+and four independent reviews for seven source branches, closing the selected memory,
+fixture, timing, locking and parallel-runner tasks.
+
+### November 16-21: Parallel Verification and Test Value
+
+PARALLEL-TEST-EXECUTION-PILOT-20261116 used nextest 0.9.152 with sixteen slots, four
+GUI cases and explicit serialization for conflicting fixtures. With identical
+fixture repairs and 790 selected identities (788 active, two asset-dependent skips),
+warm coverage reset/test/export fell from 280.403 seconds under Cargo to 134.418
+under nextest; a second nextest run took 135.350. Coverage compared 207 files with
+identical function/line totals and two differing asynchronous spans. No threshold
+or exclusion changed. This measured ordinary coverage, not the entire verifier or
+other operating systems.
+
+TEST-RUNTIME-AND-VALUE-20261116 also retired thirteen presentation/pacing campaign
+cases by explicit user decision, retaining guest assets, manual measurement examples
+and CPU/chip/bus/input/host correctness checks. Reports distinguished executed,
+reused, failed, missing and skipped work, and concurrent command durations from
+invocation elapsed time. WORKFLOW-ARTIFACTS-20261118 (`db4336c`) moved timing reports
+out of tracked candidate content into per-attempt outputs with locators/hashes and
+retained selected original bytes before teardown. Reports described their inputs;
+they did not define new acceptance criteria.
+
+WORKFLOW-CORRECTIONS-20261118 moved Python cases to isolated processes/directories,
+restored independent Git fixture copies, ran marked cases exclusively and rejected
+missing outcomes after abrupt worker exit. Affinity-aware concurrency left host
+capacity available; interruption stopped peer workers and retained collected
+results. Final 267-case trials took 241.3 seconds with one worker and 41.2, 39.0 and
+40.3 seconds with sixteen. Focused checks passed on Windows and Ubuntu under WSL;
+fixture archives rebuilt byte-identically on both. Generic POSIX cleanup under WSL
+left a child alive during shutdown interruption. The owner accepted that limitation
+and waived four final approvals for `716fd90`; native macOS/BSD remained unrun.
+
+WORKFLOW-TEST-PERFORMANCE-20261121 (`9606c62`) extended the runner to capture/routing,
+preserving live Git operations on isolated copies. Shared-module changes selected
+all three Python suites. The first focused run passed 386/387: a verifier case
+exceeded its ten-second startup deadline before testing lock recovery, then passed
+alone and in the 306-case retry. Capture/routing passed 39/42 cases on their first
+attempts. The closing commit records all 387 cases and fifteen commit groups passing.
+Original durations were retained rather than rerunning tests solely to time them.
+
+### November 16-18: Independent Graphs and Local Worktree Inputs
+
+GRAPHIFY-REFRESH-PERFORMANCE-20261116 memoized paths within Graphify 0.9.74 refreshes
+without reducing the corpus/resolver context or modifying the installed package.
+Comparable four-worker pairs fell from 42.155 to 34.367 seconds unchanged and
+54.128 to 46.910 after one Rust-function edit; complete graphs, attributes and
+communities matched. Earlier sequential/parallel mixtures were invalid comparisons.
+Twenty-four parser omissions remained, and shared-host timings did not establish
+a typical speedup.
+
+GRAPHIFY-TWO-GRAPHS-20261116 (`de52e8e`) delivered independent project/reference
+roots and outputs, explicit query selection, provenance and host-agent semantic
+extraction. Bootstrap could build both; ordinary preparation refreshed project code.
+The user excluded vAmigaTS. Real-corpus separation/read-only traversal checks, the
+commit profile and four reviews passed. This superseded the frozen-reference
+prototype; unchanged-project preflight remained future work, without an acceptance
+result.
+
+Later provisioning copied available local sources and both graphs, preserving
+existing destinations and paths tracked by either checkout. Only source-ignored
+Reference assets were copied; visible drafts stayed with their owner. Provisioning
+stopped rebuilding/synchronizing graphs automatically and required no network
+download. Portable fixtures reduced repeated Git reads.
+DOCUMENTATION-KNOWLEDGE-PRUNING-20261116 (`7c34cd7`) established one value criterion:
+retain hardware contracts, rationale and costly findings, while removing copied
+procedures and code inventories. Its approved roadmap timing correction preserved
+hardware evidence limits and did not repair runtime behavior.
+
+### November 17-21: Manual Workflow, Findings and Owner Decisions
+
+DETERMINISTIC-WORKFLOW-V1-20261116 (including
+AGENT-INSTRUCTIONS-SIMPLIFICATION-20261116), WORKFLOW-NEXT-STEP-GUIDANCE-20261117 and
+WORKFLOW-SKILL-MATRIX-20261117 separated operation selection from execution and
+result interpretation. Seven roles and eventually 45 atomic skills supplied
+structured handoffs, bounded rounds and an official recommendation matrix; direct
+user skill selection stayed available. A trial accepted a directly selected
+off-matrix skill and rejected it as an official suggestion. Integration `ba27373`
+passed nineteen groups. Bounded trials did not prove runtime model selection,
+technical permission isolation, every skill or interruption/exhaustion behavior.
+
+Four fresh review lanes separated behavior, architecture, tests/evidence and
+documentation. Later guidance required a supported sequence to a reported state
+and a concrete consequence: a forced probe established conditional behavior only.
+Findings did not authorize unrelated repairs or waived requirements. Planning bound
+approvals to selected versions and acceptance scenarios; ordinary drafts could stay
+in one working file while retaining selected approved/handed-off versions. Fewer
+routine copies did not make stale evidence reusable.
+
+WORKFLOW-CORRECTIONS-20261118 integrated as `ccc20ab` after twenty canonical groups
+passed, while reviewers requested changes and fresh VS Code capture proof remained
+outstanding. The user authorized a one-time local publication exception for that
+tree. PLAN-DESIGN-APPROVALS-INTEGRATION-20261119 (`d6426fc`, acceptance record
+`3057547`) also delivered under acceptance of all nine round-five observations:
+fifteen groups passed while four primary reports requested changes. These were
+accepted delivery limits, not repaired findings.
+
+WF-VERSION-CHECKS-20261120 (`954ac9f`) simplified draft handoffs, exposed model/effort
+choices and restored overview/recovery maps. Eighty-three focused cases passed;
+maps were rendered at 1,180 pixels and 107 destinations checked. MR-02/MR-03 were
+procedure walkthroughs, without actual alternate launches. Four first-round reports
+requested changes and seven challenged findings were upheld. The owner accepted
+all seven without repair under D-OWNER-ACCEPT-REVIEW-01. Four fresh final reviews
+approved within that exception; fourteen integration groups passed. Vocabulary
+follow-up `b99c2af` preserved the nineteen original content files and passed fifteen
+groups. Those records do not establish a later full-English/publication outcome.
+Unresolved evidence and the current uncommitted revision remain below.
+
+### November 18-21: Execution Capture and Retained Artifacts
+
+Selected-thread capture (`699c018`) registered identities/UTC boundaries with a
+project receiver, inventoried portable environments and retained scoped private
+session records. A dedicated CLI emitted an explicit skill invocation; independently
+checked root/child spans matched the Collector, and fixture archives/commits
+survived worktree removal. Four original task inputs were compared with their
+starting Git blobs before retirement. The initial pilot alone did not execute every
+planned end-to-end scenario.
+
+WORKFLOW-ARTIFACTS-20261118 preserved approved inputs and selected reports apart
+from authored Git content. Later corrections supplied durable services, narrow
+Collector output isolation, authenticated local registration and upgrade/rollback.
+CLI capture survived Docker restart and isolated installation recovery passed.
+Book Review retained disposable editor data across recreation with separate writable
+diagnostics; shared RAG retained its database/index and limited MCP reader scope.
+Service recovery and a CLI event did not prove capture from the initiating VS Code
+client. A later planning task recorded such an event for its own boundary, and
+WF-VERSION-CHECKS continuation obtained fresh active-client OTLP confirmation;
+neither retroactively filled the earlier task's missing proof.
+
+A read-only artifact report introduced on November 13 exposed sizes/date groups
+and suggested scoped cleanup commands without deleting data. Archive tools,
+per-attempt outputs and documentation ownership evolved again during the current
+workflow revision. Historical delivery does not certify that uncommitted revision
+or dispatch another task stage.
 
 ---
 
@@ -459,7 +725,7 @@ The closure review ran the commit and milestone profiles, native/WASM compilatio
 
 ## 16. Native Kickstart and Disk Program Execution
 
-On November 15, 2026, NATIVE-DISK-BRING-UP-20261115 supplied the missing autonomous
+On November 15-16, 2026, NATIVE-DISK-BRING-UP-20261115 (`c7563f4`) supplied the missing autonomous
 ADF read stream. The baseline Kickstart reached disk DMA but never the original
 cross1 body within 30 emulated seconds. Focused reproductions also showed that
 reset ejected mounted disks and that the sector helper lacked a leading preamble.
@@ -495,2610 +761,360 @@ saved frame was visibly corrupted. Desktop visual acceptance and broader origina
 vAmigaTS image comparison remain with native verification; this single-case boot
 neither closes that track nor establishes universal AmigaDOS support. The read
 workloads needed no media writes, host input or invented companion disk.
-Canonical closure gates and independent review are recorded by the closing commit;
-the focused evidence above does not substitute for those gates.
+The closing commit records passing commit/milestone profiles, 1,002,737 SingleStep
+vectors with two existing ASL.b overrides, two native checks and four independent
+review approvals. Ordinary tests used one thread after parallel GUI attempts
+exposed settlement/texture races; concurrent harness stability was not established.
+
+### November 16: Workbench Rows and Battery Clock Detection
+
+Workbench corruption had a concrete DMA cause: rows consumed 76 bytes instead of
+80. Commit `8313853` requested the final complete fetch group after DDFSTOP and
+applied modulo only on its last word. The Workbench regression failed on old code
+while Kickstart passed; Agnus tests passed after repair, including consecutive rows
+with zero/signed modulo. Native Workbench text and window borders became straight;
+Kickstart and cross1 captures stayed byte-identical. The selected rule followed
+vAmiga, with measured hardware timing unverified. Chapter 18 records the separate
+delayed-DIW and image-rectangle correction.
+
+RTC-WB13-01 (`38f8fd6`, closed by `1cc643c`) reproduced Workbench's missing-clock
+message despite an installed RTC: startup HOLD kept seconds fixed. Starting the
+MSM6242B with HOLD clear restored seconds-based detection, while calendar-write
+tests engaged HOLD explicitly. The startup regression failed first; RTC/machine/bus
+tests and the RTC WASM check passed afterward. Paced Kickstart 1.3 / Workbench 34.20
+boots read the date after repair. Original SetClock had a separate post-1999 defect:
+a diagnostic disk copy with SetClock 34.3 showed 2026 here, while WinUAE 6.0.3 showed
+2026 with both versions. Two-digit RTC years stayed unchanged. The closing
+integration passed the canonical profile and four reviews.
+
+These repairs established specific desktop paths, not broad AmigaOS/native-suite
+acceptance. Roadmap 2.6 still owns readable-desktop confirmation, original vAmigaTS
+disk execution and reference comparisons. Native Amiga software ran in the emulator;
+no physical Amiga execution was established.
+
+---
+
+## 17. Core Performance: Removing Repeated Host Work
+
+November 13-17, 2026 established measured local optimizations while retaining
+CCK-driven timing. CORE-PERFORMANCE-PREP-20261113 began with mutation queues:
+occupied counts and reusable due buffers removed scans/copies of empty slots;
+serialization retained pending values, discarding derived observations on clone or
+reset. All 317 affected tests passed; 28 PAL/NTSC checkpoints matched after
+normalizing only empty slots. Later compaction copied full entries only across a
+hole, preserving due order, capacity and positive delays.
+
+Sprite work moved from every pixel to register-derived state and occupied spans.
+Cached starts, attachment and collision enables skipped inactive pairs without
+stopping disarmed serializers. A lazy 2 KiB line buffer served palette selection
+and both collision paths, rebuilding future output after applied writes while
+retaining consumption-time CLXDAT effects. Review found an H=510 word wrapping into
+earlier entries; anchored-window clipping fixed early collisions with a regression
+that failed before repair. Derived state rebuilt from canonical snapshot values.
+Precomputed playfield masks and unchanged-CLXCON guards retained accumulation and
+live-read clearing. Tests compared 138 full checkpoints and 67,840 pixel samples
+over 4,220 deterministic events without exclusions.
+
+Other accepted changes reused immutable Blitter phases, fixed DMA slots, sprite
+request masks, BPLCON0 decoding and dual-playfield tables. Blank composition could
+be skipped while serializers/collisions progressed. CIA idle guards retained hidden
+timer waveforms and pending pulses. JOY lookup, idle mouse-axis guards, encoded
+joystick contacts and empty keyboard phases avoided repeated work without changing
+connector sampling or wire timing. Constant disk divisors retained FAST phase
+continuity; UART guards retained status/transition tests. Several simplifications
+had no demonstrated whole-machine gain.
+
+These measurements have separate baselines and must not be added together. Core
+timings exclude GUI/pacing unless stated and retain pixel generation.
+
+| Date / task | Retained result | Measurement and evidence limit |
+| --- | --- | --- |
+| Nov 13, queue pass | 23.889839 to 10.017356 ms/frame, 58.07% less time | 5,000 release frames/version; queue tick profile share 22.75% to 0.59%; no general FPS guarantee |
+| Nov 13, sprite line cache | ROM 109.417 to 116.571 FPS; three active scenes +2.87% to +3.36% | ABBA, 300 warmup and 3,000 measured frames/version/scene, baseline `bbcbcdf9`; synthetic active scenes used a stopped CPU |
+| Nov 14, JOY guard | ROM +2.378%, idle +6.686%, input batches +7.141% throughput | 112 checkpoints and 300,000 per-CCK samples matched; host latency excluded |
+| Nov 14, queue self-copy guard | Occupied focused cases about 17-21% faster | 182 tests, equal full states/frames; focused result |
+| Nov 14, pixel decoder | Mixed PAL time -2.47%, NTSC -1.61% | 211 tests, equal complete states/frames |
+| Nov 14, repeated CLXCON | Focused repeated-write time about -83% | 212 tests, equal states/frames; not a whole-machine result |
+| Nov 14, final round two | Core PAL -2.13%, warmed ROM -4.67%, NTSC -3.23%; GUI PAL -2.82% time | Final B0/PREP results in `fdd77f6` supersede intermediate RTC2 figures; GUI NTSC mean -2.02% with overlapping ranges |
+| Nov 14, sprite DMA reuse | PAL 8.51569 to 7.87536 ms/field (-7.52%); NTSC -7.00% | PERIPHERAL-EVENT-OPTIMIZATION-20261114 (`6ba827d`); four 1,000-field samples/version/workload, equal relocated state/frames; ROM within spread |
+| Nov 15, framebuffer write/CCK | Mixed PAL -3.78%, NTSC -3.69% time | DENISE-RENDER-EXPERIMENTS-20261114 (`ccceed1`); interleaved samples, equal serialized state/images; idle PAL ranges overlap |
+| Nov 17, timestamp admission | 119.335 to 122.189 fields/s (+2.39%) | MEMORY-INVARIANT-SIMPLIFICATION-20261117; twelve interleaved samples/version, equal progress/frames; integrated frontend not remeasured |
+
+The sprite-DMA pass passed 275 focused tests; final Denise storage passed 68 focused
+tests and its commit profile with 733 ordinary tests. Final round two passed 730
+ordinary tests, nine harness tests, twelve commit groups and independent review;
+intermediate commit partitions were not independently checked.
+
+Rejected variants bound the result: signal suppression, an audio mixer cache and
+deferred-CCK RTC experiments regressed. Three disk, one UART and two audio variants
+failed later whole-machine comparison. Grouped serializers, table gathering,
+shared sprite checks and stream reconstruction were rejected too. Preserved source
+timestamps left an old binary in one final measurement set; those results were
+discarded and repeated after rebuilding. No rejected variant became an accepted
+speedup.
+
+EMULATION-OPTIMIZATION-ROUND-02-20261114 retained a functional RTC change despite
+its isolated NTSC cost: supplied host UTC plus a separately persisted battery
+offset replaced CCK progression, and live RTC left snapshots in format 7.
+HOLD/STOP, guest calendar writes and battery restart remained supported; February,
+leap-day and negative fractional epoch conversion were repaired. Additional general
+profiling was cancelled by user direction. State/output comparisons used the
+approved exclusion of live RTC from snapshots. MIXED-GAME-SCENE-20261113 (`492818f`)
+exercised ordinary machine stepping with separate audit/benchmark modes and
+observation outside timed runs; visual fidelity and hardware agreement were not
+independently accepted.
+
+---
+
+## 18. Video: From Visible Raster Storage to a Stable Image
+
+November 13-17, 2026 corrected presentation and receiver phase separately from
+chipset reconstruction. Four-bit RGB channels expanded by multiplication by 17 into
+opaque host pixels under explicit full-range normalization, without gamma/CRT
+correction. Visible border/playfield initially used a high-resolution spatial grid
+excluding modeled blanking. Fixed-stride storage then removed row relocation, used
+RGB444 lookup and exposed visible row prefixes to GUI/PNG consumers. The user
+approved border color at the first two samples instead of the former black edge.
+Explicit Denise coordinates and a persisted frame cursor followed; the coordinate
+simplification was retained without a demonstrated speed gain.
+
+VIDEO-FRAME-RECT-20261116 (`5f01bfc`, integrated by `83fe3dc`) found that DIW compared
+the wrong phase and discarded the first pair of an ordinary bitplane word stream.
+Comparing against the delayed output pair while preserving H0 recovered the edge.
+An integration regression also caught a skipped receiver-origin comparison for
+horizontal start 2; starts 2/3, both resolutions and consecutive lines passed after
+repair. Missing tails and blank middle rows were cleared while preserving opposite
+interlaced parity, reset geometry and snapshot continuation.
+
+Presentation became one 720-stride PAL 720 x 568 or NTSC 720 x 480 rectangle, with
+receiver CCK origin 49 and line origins 28/21. These are project choices, without
+analog raster calibration. The saved Workbench Clock remained 170 samples wide and
+its directory 428; 420 missing samples returned in the old scene. PAL matched the
+corrected prior image cropped at (52, 4), and cross1 matched across three identical
+fields. Against WinUAE 6.0.3 before-filtering NTSC output, the selected rectangle at
+(16, 0) in a 752 x 484 capture matched all 345,600 RGB samples exactly, without
+scaling, tolerance or masks. This is reference-model agreement for one configuration,
+not physical hardware measurement.
+
+The source profile passed 837 ordinary tests (three existing skips), nine harness
+tests, native Clippy and the actual WASM build; final integration passed its
+canonical profile and four reviews. Wider display-mode/color/interlace/border
+acceptance remained in Roadmap 4.4 and native verification. GUI Fit preserved the
+whole framebuffer's width-to-height ratio with uniform scaling; fixed scales used
+nearest sampling and Fit used bilinear filtering, independently of interface DPI.
+
+---
+
+## 19. Host Execution, Player Workflow and Input Ownership
+
+### November 13-15: Field Playback and One Machine Owner
+
+Playback moved to bounded CCK slices ending at PAL/NTSC fields, with boundary pause,
+field stepping, speed controls and measured field FPS. Accelerated execution batched
+fields independently of 50/60 Hz presentation. CPU STOP continued video, timers and
+interrupts rather than freezing the machine; HALT and Pause stayed distinct. Six
+focused cases covered CIA wakeup/breakpoints; GUI coverage checked advancing video
+during STOP. Developer Run retained prepared inspectors instead of rebuilding
+disassembly, trace and history, refreshing on stops/edits/reset/load; Game inspection
+was disconnected. A matched sixty-field live_stripes trial fell from 36.772 to
+25.042 ms of Developer execution, with zero steady-run inspector/trace/history calls.
+Texture conversion reserved visible pixels once and skipped stride padding; its
+local gain did not establish whole-application FPS.
+
+HOST-SHARED-MEMORY-PRESENTATION-20261113 (`f0fa90c`, integrated by `a416e45`) moved
+the complete session to one native/browser worker, exchanged reusable pixel
+allocations and routed commands/stopped inspection through that owner. Deterministic
+CCK execution no longer depended on repaint. ROM patching, wrapping, stepping,
+breakpoints, history, persistence and partial-field continuation retained checks.
+Combined integration passed eighteen groups, real browser startup/delayed startup/
+idle notification checks and independent review. Coverage used current objects for
+150 binaries; stale mappings and 482 LLVM mismatches remained measurement limits.
+Optimized shared-memory WASM became an actual build check, separate from advisory
+Stable toolchain update reporting.
+
+Native/browser loading shared validation and visible errors. Kickstart became a
+private fixed 256 KiB buffer with mirrored addressing; invalid loads/restores
+preserved the machine. Separate binary/ROM histories kept five recent entries and
+successful load options without snapshotting host file contents. Missing files
+were removed on selection with feedback; denial/cancellation retained history.
+Native pickers used an existing ancestor; browser history used IndexedDB handles/
+names and explicit selection. Actual picker/permission trials remained separate
+from fixture evidence.
+
+### November 15-17: Deterministic Input and Window Routing
+
+HOST-INPUT-DELIVERY-20261113 (`387d079`) published ordered native/browser events to
+bounded queues and admitted them at three receiver-aligned boundaries per field,
+without per-CCK host synchronization. Generations rejected obsolete events;
+reset/load/focus transitions released controls. Windows/Chrome probes and focused
+GUI/device tests supplied bounded evidence. Physical gamepad freshness, Linux/macOS
+execution and A500 key-combination fidelity were not established.
+
+Explicit capture (`bbdd32c`) reserved F12 for Game/Debug and middle mouse for pointer
+release, with an optional initially unassigned keyboard release key. Gamepads could
+continue without pointer capture; focus loss released all controls. Integration
+`51379e3` corrected stale contacts across generations, preserving fresh gamepad
+edges after pending release while discarding keyboard-joystick presses on capture
+loss. Separate reset/restore/queued-key regressions failed before repair. Fixed
+sleeps gave way to owner observation and inactive-frame retries within the same bound.
+
+KEYBOARD-DIAGNOSTICS-20261117 (`e162dae`, closed by `b17f9b3`) replaced global rdev
+listeners with application-window events and one native/browser routing policy on
+upstream eframe/egui 0.32.3. Physical modifier sides, keypad identity, command edges,
+generations, queues and gilrs gamepads survived; temporary terminals/traces were
+removed. Review reproduced lost Home/End/F11/PageDown and first-key loss before
+activation; position mapping and readiness retries fixed both. Combined acceptance
+passed 896 ordinary tests (three skips), harness tests, native/WASM checks and four
+reviews. An isolated non-wrapper run instrumented 198 GUI tests after cargo-llvm-cov
+0.9.1's default wrapper omitted GUI coverage. Final-adapter physical typing and
+other-platform trials remained unrun.
+
+### November 16-17: Library, Configurations and Continued Games
+
+GAME-LIBRARY-INPUT-PLAYER-20261116 (`58c2070`) delivered desktop discovery, Add/Edit
+game, copied ADF media and JPEG/PNG covers, named hardware/input configurations,
+independent Amiga ports, four-drive controls and a session shared with Debug. Browser
+setup retained manual media selection, persistent settings and snapshot import/export
+without a media cache. A selected library included Amiga Test Kit, Workbench,
+Cadaver and a vAmigaTS diagnostic while preserving source media. Amiga Test Kit 1.21
+reached its menu; complete Cadaver startup was unverified.
+
+Snapshot format 10 retained the CPU's active execution-sequence identity: decoding
+the opcode again lost redirected branch/exception sequences. Static arrays/pointers
+rebuilt from that identity. Real-guest floppy-DMA snapshots continued identically
+for 20,000 CCK; browser import/export retained exact CPU/CCK values. Review repaired
+replacement confirmations, stale ROM/bindings, durable slots, text focus and arrow-key
+conflicts. Unverified checkpoints became `1f99763`/`aa3ab64` after the approved rebase;
+combined acceptance passed 833 ordinary tests (three private-asset skips), browser
+workflow and four reviews. A rejected-ROM test normalized only creation time after
+reproducing a UTC-second mismatch; machine state and all other metadata stayed
+compared. Coverage also protected malformed/duplicate library records, concurrent
+edits, configuration conflicts, disk acknowledgments and atomic restore rejection.
+
+CONFIG-INPUT-STATE-20261116 (`902fc62`, closed by `101f86c`) isolated configuration/
+mapping drafts behind Save/Cancel, unsaved-navigation choices and committed-only
+persistence. Endpoint changes occurred at a stopped owner boundary. Progress loads
+retained exact core state, media, receiver registers and mouse phase, reconciling
+current controls rather than replaying launch hardware. Flat settings stayed
+readable. A saturated ten-code keyboard ring had lost key-up; serialized deferred
+releases preserved retry and release-before-press order, including CPU observation
+after restore. Coverage protected rejected saves, dirty navigation and current-control
+restoration. Chromium verified Cancel, port changes and older endpoint imports with
+current controls at CCK 2,549,684. Combined schema 13 replaced the two parents'
+incompatible schema-12 layouts. Integration, coverage review and four lanes passed;
+physical controllers/private firmware were unrun. Broader player/save-catalog/profile
+acceptance remains scheduled.
+
+### Asynchronous Test Boundaries
+
+An idle command queue did not mean the separately exchanged image had arrived.
+GUI-MONITOR-IMAGE-FAILURE-20261116 waited for generation, stopped CCK and dimensions
+before retaining every original pixel/UV/geometry assertion. Eight controlled
+mode/view combinations failed before and passed afterward; the package passed
+120 tests. Direct snapshot polling could also drain AppHost-owned replies and
+strand a pending UTC request. Waiting for GUI settlement before direct observation
+fixed that fixture (`68d908e`) without changing input assertions/deadlines. Host
+overload and compilation memory failures caused failed/interrupted attempts; later
+passes apply to final candidates and do not erase those failures.
+
+---
+
+## 20. Runtime Invariants and Floppy Activity Observations
+
+MEMORY-ACCESS-INVARIANTS-20261115 and MUTATION-QUEUE-OVERFLOW-20261115 (`3711224`,
+integrated by `e3093cd`, November 16) made Chip RAM private with one shared CPU/DMA
+transfer budget per CCK. Attempts/read-write phases, including waits/TAS, were
+checked in both CPU execution engines. Mutation overflow and shared register/CIA
+preflights failed before partial delivery. Native/browser boundaries kept the first
+diagnostic, refused later work and shut down without waiting for a dead owner.
+Narrow panic/dependency/checker permissions were explicitly approved; guest
+exceptions, ordinary waits, capacities and delays stayed distinct.
+
+Debug/release admission and 6,350 sampled SingleStep vectors passed with state,
+clock and bus comparisons, along with actual native/WASM fatal delivery and eleven
+TAS benchmarks. The final matched comparison cost 3.13% mixed and 6.00% CPU/Fast-RAM
+throughput; native worker timing ranges overlapped. Coverage did not exercise
+poisoned-mailbox forwarding. This accepted diagnostic cost was recorded plainly.
+
+MEMORY-INVARIANT-SIMPLIFICATION-20261117 (`fb6c76f`, closed by `72adaf0`) replaced
+countdowns/verbose descriptions with CCK timestamps. Normalizing writes by one CCK
+preserved two-CCK CPU spacing, pending wait identity, read completion and shared
+storage admission. Access age survived reset/restore; owner/PC plumbing and approved
+diagnostic assertions were reduced, while mutation diagnostics stayed intact.
+Schema 14 replaced development snapshots without compatibility parsing or deleting
+saves. Final integration and four reviews passed. Chapter 17 retains the source-only
+measurement; full SingleStep, physical captures, private firmware and browser speed
+were unrun for this simplification.
+
+Drive feedback evolved from a motor-based label to a fixed green light (`0cfab14`)
+with a 120 ms hold and reset/load baselines. DISK-ACTIVITY-20261117 (`8f52021`) moved
+observations to effective CIA-B controls and accepted Paula transfers, removing both
+per-CCK collectors and presentation state from Floppy. Wrapping per-drive counters
+retained short events across publications; next-CCK recipients were established
+after the CPU phase. Shared connector decoding kept attribution consistent with
+mechanics without callbacks/dependencies. The GUI retained selected/running sustained
+indication and fixed bounds; the physical motor-controlled LED remained distinct.
+Six-sample A-B-B-A idle/read workloads stayed within variation (178.967 to 180.621
+and 171.221 to 172.104 FPS), without an established speedup. Source suites, WASM and
+visual checks passed, followed by combined `101f86c` acceptance. Guest media writes,
+motor dynamics and physical floppy fidelity remained future work; observation
+metadata did not implement them.
 
 ---
 
 ## Rolling Changelog
 
-This final, unnumbered section holds work awaiting resolution or integration into the numbered chapters. Historical results belong to their recorded source and scope. Settled history through November 12, 2026 has been integrated above; no unfinished investigation entries remain from that set.
+This final, unnumbered section retains unresolved work needed for continuation.
+Settled history through November 21, 2026 is integrated into the thematic chapters.
+Historical tests apply only to their recorded inputs. ROADMAP.md and active plans
+own future behavior; compaction does not close their acceptance gates.
 
 ### Entry Format
 
-Use [TA-prepare-batch](.agents/skills/TA-prepare-batch/SKILL.md) to prepare the entry for an ordinary or final integration commit. Record the timestamp, affected components, delivered change, rationale and actual verification, including failures and unrun checks. Record the unverified status of working and intermediate assembly commits in the final closure entry. A vocabulary-only closure commit needs no additional diary entry. At compaction, use [TA-compact-diary](.agents/skills/TA-compact-diary/SKILL.md) to retain lasting decisions and evidence in the owning chapter and leave routine details in Git.
----
-
-### [2026-11-13 00:08 CET] — Complete book-derived chipset reconstruction
-- **Affected Subsystems**:
-  - `chipset`
-  - `peripherals`
-  - `machine loop`
-  - `GUI`
-  - `save state`
-  - `verification`
-  - `design specifications`
-- **What Was Changed (The Concrete Reality)**:
-  - Close CHIPSET-BOOK-REBUILD-20261111 and Roadmap 2.4
-  - Consolidate the completed stage in Chapter 15 and retain guest acceptance in 2.5
-  - Repair the isolated WASM build
-- **Architectural Rationale & Trade-Offs**:
-  - Preserve register transport
-  - hardware ownership and independent verification while replacing engines
-- **Verification & Test Results**:
-  - Previous final-source commit and milestone profiles passed, including 128 SingleStep groups and 1002737 current vectors
-  - The isolated WASM check initially failed on two unused GUI parameters and passed after the repair
-  - Prior live GUI inspection and extended source review passed
-  - Renewed final-source profile and review outcomes are recorded in the closing commit
----
-
-### [2026-11-13 00:19 CET] — Defer English audits to authorized commit workflows
-- **Affected Subsystems**:
-  - `agent rules`
-  - `verification guidance`
-- **What Was Changed (The Concrete Reality)**:
-  - Run language and vocabulary audits only during authorized commits or explicit language work
-  - Keep ordinary implementation and validation free of language scans and vocabulary decisions
-- **Architectural Rationale & Trade-Offs**:
-  - Keep language review at the user-approved workflow boundary
-- **Verification & Test Results**:
-  - The user reported testing and review complete
-  - No tests or audits were rerun under the explicit commit-only instruction
----
-
-### [2026-11-13 00:20 CET] — Align Amiga RAG commands with repository-relative indexing
-- **Affected Subsystems**:
-  - `RAG adapter`
-  - `bootstrap`
-  - `indexing guidance`
-- **What Was Changed (The Concrete Reality)**:
-  - Pass an explicit repository root for all three Amiga indexing scopes
-  - Update bootstrap contract expectations and command examples
-  - Describe actual Qdrant counts and shared worktree document identity
-- **Architectural Rationale & Trade-Offs**:
-  - Keep indexing paths stable across checkouts and distinguish stored points from cached state
-- **Verification & Test Results**:
-  - The user reported testing and review complete
-  - No tests or audits were rerun under the explicit commit-only instruction
----
-
-### [2026-11-13 00:20 CET] — Require fixed 256 KiB Kickstart images
-- **Affected Subsystems**:
-  - `physical memory`
-  - `debugger`
-  - `GUI`
-  - `save state`
-  - `design specifications`
-- **What Was Changed (The Concrete Reality)**:
-  - Keep the ROM buffer private and fixed at 256 KiB with mirrored addressing
-  - Reject invalid ROM loads and snapshot buffers while preserving the active machine
-  - Propagate load failures and keep visible GUI feedback
-  - Update callers and regression fixtures
-  - Record that snapshot backward compatibility is not required before the first release
-- **Architectural Rationale & Trade-Offs**:
-  - Enforce the selected A500 ROM capacity at loading and restoration boundaries
-- **Verification & Test Results**:
-  - The user reported testing and review complete
-  - No tests or audits were rerun under the explicit commit-only instruction
----
-
-### [2026-11-13 09:48 CET] — Distinguish math formatting from missing source references
-- **Affected Subsystems**:
-  - `Book Review source validation`
-- **What Was Changed (The Concrete Reality)**:
-  - Allow italic text and spacing commands without reporting added content
-  - Report other math commands as missing source references
-  - Add regression coverage and clarify the source audit documentation
-  - Add the user-approved textit command to the English vocabulary
-- **Architectural Rationale & Trade-Offs**:
-  - Separate source provenance from renderer syntax support while retaining checks on visible text and symbols
-- **Verification & Test Results**:
-  - The regression failed on the original validator
-  - All 108 focused tests passed after the correction
-  - The hardware manual audit removed 18 formatting findings and retained seven math commands plus 158 literal content findings
-  - Review server HTTP checks passed with no pending render or error
----
-
-### [2026-11-13 11:16 CET] — Save reference manual preparation artifacts
-- **Affected Subsystems**:
-  - `Book Review recipes`
-  - `PDF preparation metadata`
-- **What Was Changed (The Concrete Reality)**:
-  - Save the current Hardware Reference Manual editor recipe with 2508 elements from 405 PDF pages
-  - Record OCR preparation provenance for the M68000 programmer reference manual
-- **Architectural Rationale & Trade-Offs**:
-  - Preserve editable book preparation and matching source identity while source review remains unfinished
-- **Verification & Test Results**:
-  - Original and prepared PDF hashes match both manuals metadata
-  - OCR profiles match their workspace configuration and page selections are within the 405-page and 646-page sources
-  - The recipe matches Working and Accepted and loads all 80 graphics
-  - Source audit resolves 60752 references but exits with code 1 for 158 literal content findings and seven math commands without source references
-  - No new conversion or reconstruction run and no whole-book quality approval
----
-
-### [2026-11-13 13:55 CET] — Normalize RGB444 output to the full host color range
-- **Affected Subsystems**:
-  - `frame_builder`
-  - `Denise`
-  - `machine and GUI video tests`
-- **What Was Changed (The Concrete Reality)**:
-  - Expand each four-bit channel by multiplication by 17 with opaque alpha
-  - Keep independent expected colors in component, guest and texture tests
-- **Architectural Rationale & Trade-Offs**:
-  - Apply the approved full-range host normalization without adding gamma or CRT correction
-- **Verification & Test Results**:
-  - Focused frame_builder tests passed
-  - Historical Kickstart color comparison and user visual acceptance are recorded in session 01a1d47e-011b-7980-8771-ca3c01af51f5
-  - Broader display calibration remains pending
----
-
-### [2026-11-13 13:58 CET] — Define shared guest-program integration work for stage 2.5
-- **Affected Subsystems**:
-  - `roadmap`
-- **What Was Changed (The Concrete Reality)**:
-  - Plan a shared guest-program catalog with equivalent GUI and automated runs
-  - Allow selected standalone vAmigaTS adaptations and bounded frame-count execution
-  - Record the user-authorized correction of faulty tests and later documentation reconciliation
-- **Architectural Rationale & Trade-Offs**:
-  - Keep small integration programs independent of firmware startup while preserving evidence and native-suite boundaries
-- **Verification & Test Results**:
-  - Roadmap retention check passed
-  - Reviewed original user decisions in session 01a1d211-1581-7222-955b-226b5213cc0c
-  - Stage 2.5 remains pending
----
-
-### [2026-11-13 14:03 CET] — Store the complete visible image without blanking samples
-- **Affected Subsystems**:
-  - `frame_builder`
-  - `Denise`
-  - `GUI`
-  - `machine and save-state tests`
-  - `GUI guidance`
-- **What Was Changed (The Concrete Reality)**:
-  - Retain visible border and playfield on a high-resolution spatial grid
-  - Exclude horizontal and vertical blanking and incomplete edge lines
-  - Preserve row tails, field parity and pending assembly in snapshots
-  - Fit the complete image uniformly in the GUI
-  - Add the user-approved framebuffer vocabulary term
-- **Architectural Rationale & Trade-Offs**:
-  - Map receiver coordinates to visible image rows without shifting or stretching the display
-  - Retain current modeled blanking timing without claiming silicon calibration
-- **Verification & Test Results**:
-  - Focused frame_builder, Denise, machine_loop, save_state and GUI tests passed
-  - Vault metadata and 1047 links passed
-  - Fresh live_display GUI capture was rendered and visually inspected: complete centered image and proportional scaling
-  - Historical ROM captures remain in the display-centering diagnostics
----
-
-### [2026-11-13 14:10 CET] — Drive playback by video fields and expose shared Game controls
-- **Affected Subsystems**:
-  - `debugger session`
-  - `GUI playback and file loading`
-  - `browser host integration`
-- **What Was Changed (The Concrete Reality)**:
-  - Run bounded CCK slices to completed fields with boundary pause and frame stepping
-  - Pace PAL and NTSC playback with speed controls and measured field FPS
-  - Disconnect Game inspection and expose File, State and playback controls
-  - Load ROM buffers through a shared desktop and browser path with visible source labels and errors
-  - Restart instruction tracking after GUI execution edits and route native loading through the tested file entry points
-  - Add user-approved API vocabulary
-- **Architectural Rationale & Trade-Offs**:
-  - Keep host timing and file operations in the frontend while both views execute the same machine and share explicit loading controls
-- **Verification & Test Results**:
-  - Focused debugger and GUI tests passed
-  - WASM package check passed
-  - Fresh Studio and Game captures were visually inspected
-  - Vault metadata and 1048 links passed
-  - The execution-edit regression failed before the repair and passed for both PC editing and instruction patching after it
-  - Native dialogs and browser picker interaction were not exercised in this commit workflow
----
-
-### [2026-11-13 14:26 CET] — Keep the machine running while the CPU waits in STOP
-- **Affected Subsystems**:
-  - `debugger session`
-  - `GUI playback`
-- **What Was Changed (The Concrete Reality)**:
-  - Continue CCK execution during CPU STOP in Developer Studio
-  - Preserve field stepping, pause and HALT behavior
-  - Resume breakpoint checks after interrupt entry
-  - Explain the stopped CPU status
-- **Architectural Rationale & Trade-Offs**:
-  - CPU STOP suspends instruction execution while video
-  - timers and interrupt delivery must continue
-- **Verification & Test Results**:
-  - STOP regression failed on the previous implementation
-  - Six frame execution tests passed including CIA wakeup and breakpoints
-  - GUI test confirmed advancing video and working Pause during STOP
-  - Vault metadata and 1048 links passed
----
-
-### [2026-11-13 14:31 CET] — Add independent Amiga image scaling
-- **Affected Subsystems**:
-  - `GUI screen rendering`
-  - `GUI preferences`
-  - `display specifications`
-- **What Was Changed (The Concrete Reality)**:
-  - Select Fit or fixed 0.5x, 1x, 2x and 4x image scales in both views
-  - Use bilinear filtering for Fit and nearest sampling for fixed scales
-  - Preserve physical pixel scale across DPI and interface zoom
-  - Center and clip oversized images
-  - Persist selection without exposing unfinished fields during filter changes
-  - Apply approved texel vocabulary and pixels_per_point spelling
-- **Architectural Rationale & Trade-Offs**:
-  - Keep image presentation independent of emulated samples and interface scaling
-- **Verification & Test Results**:
-  - Scaling, interaction, persistence and execution-edit tests passed
-  - WASM package check passed
-  - Fresh Studio capture visually inspected with selector visible and proportional Fit image
-  - Vault metadata and 1049 links passed
----
-
-### [2026-11-13 14:43 CET] — Retain prepared debugger inspectors during continuous Run
-- **Affected Subsystems**:
-  - `debugger session`
-  - `GUI inspection panels and controls`
-- **What Was Changed (The Concrete Reality)**:
-  - Keep prepared values and visible rows during Run and pending Pause
-  - Separate live breakpoint checks from trace and history collection
-  - Preserve diagnostics for explicit instruction, CCK and frame steps
-  - Refresh on real stop, reset, loading and paused edits
-  - Keep Game inspection disconnected through its return pause
-  - Preserve execution-edit invalidation and apply approved program_counters spelling
-- **Architectural Rationale & Trade-Offs**:
-  - Remove repeated diagnostic work while retaining live execution controls and the Amiga image without snapshots or cached drawings
-- **Verification & Test Results**:
-  - 132 focused debugger and GUI tests passed
-  - WASM check and vault audit passed
-  - Fresh paused, running and stopped captures visually inspected
-  - Same 60-field live_stripes release comparison measured Developer execution at 36.772 ms before and 25.042 ms after, excluding pacing waits
-  - Fresh instrumentation recorded zero inspector refresh, disassembly, trace and history calls during steady Run and zero inspector drawing in Game
-  - Measurements establish this local scenario, not a general FPS guarantee
----
-
-### [2026-11-13 14:50 CET] — Plan display mode, color and border comparisons
-- **Affected Subsystems**:
-  - `ROADMAP display verification backlog`
-- **What Was Changed (The Concrete Reality)**:
-  - Add deferred resolution and interlace transition coverage
-  - Plan palette, dual playfield, Extra Half-Brite and HAM6 comparisons
-  - Include overscan and dynamic border decisions with WinUAE and physical Amiga references
-- **Architectural Rationale & Trade-Offs**:
-  - Record pending visual acceptance work after its guest execution prerequisites without treating model agreement as hardware evidence
-- **Verification & Test Results**:
-  - Roadmap structure check passed
-  - Reviewed numbering and prerequisites against existing 2.5, 4.2.3 and 4.3 tasks
-  - No implementation or milestone closure is claimed
----
-
-### [2026-11-13 16:40 CET] — Reduce register queue work per Color Clock
-- **Affected Subsystems**:
-  - `config mutation queue`
-  - `Agnus and its register writers`
-  - `Denise`
-  - `Paula`
-  - `CIA`
-  - `bus and snapshot tests`
-  - `design specifications`
-- **What Was Changed (The Concrete Reality)**:
-  - Complete stage one of CORE-PERFORMANCE-PREP-20261113 with private occupied counts and reusable due buffers
-  - Preserve capacities, register delays, issue ordering and receiver phases while migrating all consumers
-  - Serialize pending entries only and discard due observations on clone or reset, with no old snapshot parser
-  - Prepare the second-stage sprite, input, frame storage and audio candidates without implementing them
-- **Architectural Rationale & Trade-Offs**:
-  - Remove repeated scans and the initialization and copying of mostly empty fixed arrays without changing guest timing or allocating in the execution loop
-- **Verification & Test Results**:
-  - 317 affected component and integration tests passed
-  - 28 complete PAL and NTSC machine-state checkpoints matched the starting implementation after normalizing only empty queue slots
-  - Native workspace all-target and WASM checks, Clippy, formatting and architecture checks passed
-  - Matched release measurements over 5000 frames per version reduced core frame time from 23.889839 to 10.017356 ms, a 58.07 percent reduction with pixel generation enabled and GUI work excluded
-  - Separate profiles reduced queue tick share from 22.75 to 0.59 percent
-  - Vault metadata and 1051 links passed
-  - These measurements cover the recorded scenarios and do not establish a general FPS guarantee or hardware timing acceptance
----
-
-### [2026-11-13 20:07 CET] — Reduce sprite evaluation work per pixel
-- **Affected Subsystems**:
-  - `Denise sprite engine`
-  - `register application`
-  - `machine and bus tests`
-  - `sprite specification`
-- **What Was Changed (The Concrete Reality)**:
-  - Continue CORE-PERFORMANCE-PREP-20261113 with cached horizontal starts, attachment and collision enables
-  - Skip inactive sprite pairs while completing disarmed serializers
-  - Replace repeated color and pair collision decoding with small lookup tables
-  - Rebuild derived state from canonical serialized values and migrate channel inspection callers
-  - Retain the line buffer proposal and other performance candidates as future work
-- **Architectural Rationale & Trade-Offs**:
-  - Reduce repeated work in the pixel loop while preserving current register commitment
-  - color priority
-  - hidden collisions and snapshot continuation
-- **Verification & Test Results**:
-  - 228 focused Denise, machine, memory bus and save state tests passed
-  - 138 full PAL and NTSC machine checkpoints matched the baseline byte for byte without masks, including framebuffer and serialized continuation
-  - Native all-target and WASM workspace builds, warning-free Clippy, formatting and architecture checks passed
-  - Matched release ABBA runs measured 3000 frames per version per scene after 300 warmup frames with rendering enabled and GUI excluded
-  - Compared with the intermediate idle-sprite guard, throughput rose 4.70 percent for Kickstart, 3.63 percent for separated sprites, 4.12 percent for overlapping sprites and 4.89 percent for attached sprites with mid-line Copper writes
-  - Active synthetic scenes used eight DMA channels over 200 lines, two bitplanes and a stopped CPU
-  - Results preserve the existing model and do not establish new silicon timing or milestone acceptance
----
-
-### [2026-11-13 20:41 CET] — Cache sprite line output and playfield collision conditions
-- **Affected Subsystems**:
-  - `crates/denise`
-  - `crates/machine_loop/tests`
-  - `Obsidian/Amiga/Design`
-- **What Was Changed (The Concrete Reality)**:
-  - CORE-PERFORMANCE-PREP-20261113: replace per-pixel sprite serialization with a lazily built 2 KiB line buffer shared by palette selection and both collision paths
-  - Rebuild future output after applied sprite changes and retain consumption-time CLXDAT updates plus current shifter inspection and snapshot continuation
-  - Precompute all 64 playfield collision masks when CLXCON changes and retain current palette and display priority
-  - Add the explicitly approved computation and Python API terms to the English vocabulary
-- **Architectural Rationale & Trade-Offs**:
-  - Move repeated sprite work to occupied word spans while preserving register delivery and observable hardware state
-- **Verification & Test Results**:
-  - Matched release ABBA runs against bbcbcdf9ad87e4105ffee26b33e5cea824a6be9d: 300 warmup frames and 3000 measured frames per version per workload
-  - Whole-machine FPS: ROM 109.417 to 116.571 (+6.538%)
-  - separated DMA sprites 121.745 to 125.830 (+3.355%)
-  - overlapping 124.798 to 128.540 (+2.998%)
-  - attached with mid-line writes 123.323 to 126.865 (+2.872%)
-  - GUI excluded and active synthetic scenes use a stopped CPU
-  - 138 full PAL/NTSC machine states and 67840 pixel samples across 4220 deterministic events match baseline bytes without exclusions
-  - Independent review found an H=510 word wrapping into earlier cache entries; clipping to the anchored window fixes early collisions while preserving continuation, with a regression test failing before and passing after
-  - All 231 focused Denise, machine-loop, memory-bus and save-state tests pass on the corrected source
-  - Native release build and Wasm workspace check pass
-  - vault audit passes for 35 specifications and 1054 links
-  - Compatibility evidence preserves the existing timing model rather than measuring silicon
-  - Raw measurements and chart: .agent/tmp/sprite-line-buffer/report.html
-  - Other core performance candidates remain pending and this is not milestone closure
----
-
-### [2026-11-13 21:25 CET] — Report local artifact storage after commits
-- **Affected Subsystems**:
-  - `tools/artifacts`
-  - `verification tool contracts`
-  - `commit and roadmap procedures`
-- **What Was Changed (The Concrete Reality)**:
-  - Add a read-only report of target and temporary artifact sizes with creation and modification date groups
-  - Show cleanup commands bound to the measured target directory
-  - Require a fresh report after commits and scoped temporary-directory recommendations at roadmap closure
-  - Register artifact report tests in ordinary Python selection and commit verification
-- **Architectural Rationale & Trade-Offs**:
-  - Expose accumulated data across work periods while keeping cleanup under user control
-  - Distinguish surviving file sizes from historical growth and actual use
-- **Verification & Test Results**:
-  - Artifact tests completed with four passes and one platform-dependent symbolic link skip
-  - All 91 verification tool contracts passed
-  - Full local artifact measurement and command help completed successfully
-  - Vault audit passed for 35 specifications and 1055 links
-  - Whitespace checks passed
----
-
-### [2026-11-13 22:15 CET] — Select verification tests from changed packages
-- **Affected Subsystems**:
-  - `tools/verification`
-  - `testing specifications and procedures`
-- **What Was Changed (The Concrete Reality)**:
-  - VERIFICATION-SELECTION-20261113: select changed Cargo packages and their transitive consumers
-  - Skip Rust tests and coverage for independent documentation and known Python tool changes
-  - Retain full Rust verification for shared build inputs, verification changes, specifications and unknown ownership
-  - Keep all quality gates and the existing Python contract policy
-  - Identify coverage scope and remove retired source files from report totals without deleting build caches
-- **Architectural Rationale & Trade-Offs**:
-  - The measured cached commit profile spent 78.59 of 88.08 seconds in coverage and standard harness tests
-  - Reduce that work when it cannot be affected while preserving full Clippy and architecture enforcement
-- **Verification & Test Results**:
-  - All 103 verification tool contracts passed
-  - All 18 architecture checks passed
-  - Nine BLEP generator Rust tests and partial coverage passed in a 4.24 second pipeline
-  - Vault audit passed for 35 specifications and 1056 links
-  - Partial coverage exposed and now excludes 13 retired source files retained in cached objects
-  - No full SingleStep or performance benchmarks were run
-  - This is ordinary tooling work and does not close a roadmap milestone
----
-
-### [2026-11-13 22:33 CET] — Use coverage gaps to guide behavioral tests
-- **Affected Subsystems**:
-  - `tools/verification`
-  - `testing policy`
-  - `code review`
-- **What Was Changed (The Concrete Reality)**:
-  - Add focused package and workspace coverage commands
-  - export detailed LLVM data and source gap reports
-  - require coverage analysis during emulator changes and review
-  - stop report publication after failed coverage steps
-- **Architectural Rationale & Trade-Offs**:
-  - Make missing execution paths visible while requiring meaningful behavioral assertions and preserving measurement scope
-- **Verification & Test Results**:
-  - Verification tool tests and a focused blep_generator coverage run passed during development
-  - skill and vault checks passed. Full emulator coverage audit was not performed.
----
-
-### [2026-11-13 22:48 CET] — Automate language review during change rounds
-- **Affected Subsystems**:
-  - `.agents`
-  - `tools/verification`
-  - `AGENTS.md`
-  - `Obsidian/Amiga/Design/Verification`
-- **What Was Changed (The Concrete Reality)**:
-  - Resolve clear language findings and maintain reviewed vocabulary during each change round
-  - Block completion on unresolved findings and finish language corrections before final tests
-  - Keep language data changes from expanding Rust test scope while retaining all quality gates
-  - Cover standalone and mixed language-data changes with selection regressions
-- **Architectural Rationale & Trade-Offs**:
-  - The user delegated routine language decisions and approved the narrow test-selection exception
-  - Keep genuine language problems blocking without unnecessary emulator test runs
-- **Verification & Test Results**:
-  - The new regression reproduced the original full-scope selection
-  - 111 verification tool tests passed during development
-  - Scoped language checks and the Design vault audit passed
-  - Full SingleStep and milestone verification were not run
----
-
-### [2026-11-13 23:12 CET] — Batch accelerated playback independently of presentation
-- **Affected Subsystems**:
-  - `GUI playback`
-  - `presentation timing`
-- **What Was Changed (The Concrete Reality)**:
-  - Execute accelerated playback in complete-field batches with 50 Hz PAL and 60 Hz NTSC presentation
-  - count every completed emulated field in FPS
-  - preserve bounded slices and debugger stops
-- **Architectural Rationale & Trade-Offs**:
-  - Allow faster emulation without requiring a texture upload for every emulated field
-- **Verification & Test Results**:
-  - Scoped specification review agrees with the requested pacing and FPS behavior
-  - Design vault audit passed for 35 specifications and 1057 links
-  - whitespace checks passed
-  - commit verification and independent review are recorded in the commit message
----
-
-### [2026-11-13 23:14 CET] — Remember binary and ROM file locations
-- **Affected Subsystems**:
-  - `GUI file actions`
-  - `desktop persistence`
-  - `browser file references`
-- **What Was Changed (The Concrete Reality)**:
-  - Keep separate last-used folders and five recent files per category
-  - reload native files with saved binary options
-  - persist browser names and handles in IndexedDB and open recent folders through explicit selection
-- **Architectural Rationale & Trade-Offs**:
-  - Keep host file references outside machine snapshots and avoid caching file contents
-- **Verification & Test Results**:
-  - Reviewed successful-load history and failure paths against the approved GUI contract
-  - native integration and browser persistence fixtures are included
-  - commit verification and independent review are recorded in the commit message
----
-
-### [2026-11-13 23:14 CET] — Add an optimization workflow and mixed guest workload
-- **Affected Subsystems**:
-  - `Agent performance workflow`
-  - `machine integration fixtures`
-  - `GUI inspector`
-- **What Was Changed (The Concrete Reality)**:
-  - Add optimize-emulation guidance and evidence-backed examples
-  - deliver a deterministic standalone guest exercising CPU and chipset activity
-  - add separate audit and benchmark modes with deterministic input and audio consumption
-  - expose the same guest through the GUI inspector
-  - Accept established profiling and audio terms in the reviewed programming vocabulary
-- **Architectural Rationale & Trade-Offs**:
-  - Measure repeated host work while preserving guest timing and compare fixed workloads without imposing a timing threshold
-- **Verification & Test Results**:
-  - Skill validation passed
-  - source review confirms the runner uses ordinary machine stepping and keeps observation outside timed runs
-  - MIXED-GAME-SCENE-20261113 delivers the scene requested with this skill
-  - visual fidelity and hardware comparison remain unverified
-  - commit verification and independent review are recorded in the commit message
----
-
-### [2026-11-14 00:34 CET] — Skip unchanged game-port counter work
-- **Affected Subsystems**:
-  - `Denise`
-  - `game ports`
-  - `device regression tests`
-- **What Was Changed (The Concrete Reality)**:
-  - Decode direction pins through a 16-entry phase table and skip unchanged JOY counter updates
-  - add ordinary inline hints to four small device and pin paths
-  - cover held inputs after JOYTEST, wrapping, reversal, cloning and reset
-  - document the unchanged CCK sampling contract
-- **Architectural Rationale & Trade-Offs**:
-  - Reuse counter low bits as the retained phase without adding snapshot state
-  - CORE-PERFORMANCE-PREP-20261113 device optimization preserves input timing, while host batching and keyboard scheduling remain future work
-- **Verification & Test Results**:
-  - The six source and test files match the frozen measured version after line-ending normalization
-  - earlier validation passed 238 focused tests and native, Wasm, Clippy, formatting and architecture checks
-  - 112 complete checkpoints and 300000 per-CCK samples matched the previous model
-  - native ABBA throughput improved by 2.378 percent for ROM, 6.686 percent for idle devices and 7.141 percent for active input batches
-  - these measurements exclude GUI and host latency
-  - current commit verification and independent review are recorded in the commit message
----
-
-### [2026-11-14 02:24 CET] — Write display pixels directly to fixed-stride rows
-- **Affected Subsystems**:
-  - `crates/denise`
-  - `crates/frame_builder`
-  - `crates/gui`
-  - `crates/save_state`
-  - `mixed_scene`
-  - `ROADMAP.md`
-- **What Was Changed (The Concrete Reality)**:
-  - CORE-PERFORMANCE-PREP-20261113: finish row-address mapping with a fixed 840-pixel stride and paired Denise output
-  - Use a compile-time RGB444 lookup and clear only invalid row tails
-  - Update texture upload and PNG previews to consume visible row prefixes and advance the internal save format to version 5
-  - Extend the mixed guest scene and regressions for mixed resolution and row boundaries
-  - Preserve border color through horizontal blanking without injecting a black pair into visible storage
-  - Retain optional image-filter evaluation in Roadmap 6.1
-- **Architectural Rationale & Trade-Offs**:
-  - Preserve visible geometry and pipeline order while avoiding row relocation and repeated pixel work
-  - Shared-memory presentation and host input delivery remain separate planned tasks
-- **Verification & Test Results**:
-  - Reviewed the prior frame-direct-apply verification record: component coverage and machine/display/GUI checks succeeded
-  - git diff --check passes for the combined candidate
-  - The initial combined profile found a snapshot assertion retaining the former black edge; the user approved red pixels at x=0 and x=1 while preserving continuation and geometry assertions
-  - This batch will receive one combined commit profile and independent review before three commits as requested
-  - Intermediate revisions are not separately tested and no milestone or measured silicon timing is claimed
----
-
-### [2026-11-14 02:24 CET] — Generate a deterministic stereo BLEP stream
-- **Affected Subsystems**:
-  - `crates/paula`
-  - `crates/machine_loop`
-  - `tools/blep_generator`
-  - `audio callers and snapshots`
-- **What Was Changed (The Concrete Reality)**:
-  - BLEP-AUDIO-STREAM-20261114: replace per-CCK output with 44100 Hz stereo PCM using timed steps and PAL/NTSC correction tables
-  - Preserve channel DMA and interrupt timing while routing CIA-A filter selection and exposing buffer draining
-  - Retain unread PCM and synthesis history across snapshots with a 1024-pair overwrite ring
-  - Move generated runtime tables into Paula while preserving accepted PAL CSV references
-  - Register read_audio_samples as an intentional host I/O boundary in the existing code-quality symbol set with explicit user approval
-  - Close the superseded audio-output performance investigation without retaining its exploratory variants or claiming a speedup
-  - Finish the original CORE-PERFORMANCE-PREP-20261113 candidates with the approved replacement audio contract
-- **Architectural Rationale & Trade-Offs**:
-  - Provide deterministic buffered output for future host playback without host audio I/O in the core
-  - The old per-CCK preservation experiment was superseded by the approved output contract
-  - Further queue overflow investigation remains unscheduled and host input work retains its separate plan
-- **Verification & Test Results**:
-  - Reviewed the prior BLEP coverage log and focused verification record with successful component and integration checks
-  - The initial combined code-quality gate rejected the host drain API as test-only; the approved single-symbol exception retains this API without adding a playback backend
-  - Final combined verification and independent review are recorded in the commit messages
-  - Host playback and analog filter-switch transient calibration remain deferred and no milestone is closed
----
-
-### [2026-11-14 02:24 CET] — Verify DMA audio spectra and attachment output
-- **Affected Subsystems**:
-  - `crates/machine_loop/tests/audio_spectrum`
-  - `crates/machine_loop/tests/test_audio_spectrum.rs`
-  - `reviewed English vocabulary`
-  - `ROADMAP.md`
-- **What Was Changed (The Concrete Reality)**:
-  - AUDIO-SPECTRUM-20261114: capture PAL/NTSC DMA output as WAV and compare tones plus DAC images against independent frequency-domain expectations
-  - AUDIO-ATTACHMENT-20261114: verify looping volume and period modulation with a silent source side and return to the initial plateau
-  - Retain negative controls and original amplitude frequency residual alias and stereo tolerances
-  - Add reviewed Hann DFT RMS WAV SciPy and powi vocabulary
-  - Keep enhanced reconstruction experiments deferred until games and host music playback are available
-- **Architectural Rationale & Trade-Offs**:
-  - Exercise Chip RAM DMA and reconstructed output together without using runtime tables as the spectral oracle
-  - Settled modulation checks complement existing transition tests and do not calibrate hardware edges
-- **Verification & Test Results**:
-  - The task records report four PAL/NTSC filter combinations and both attachment scenarios passing with WAV decoding and negative controls
-  - Fresh combined commit verification and review are required before creating this batch
-  - This closes the two output-test tasks without claiming host-device playback or Roadmap 2.5 completion
----
-
-### [2026-11-14 03:56 CET] — Prepare and verify changes as one commit batch
-- **Affected Subsystems**:
-  - `Agent workflow`
-  - `verification tooling`
-  - `testing specifications`
-- **What Was Changed (The Concrete Reality)**:
-  - FAST-TURNS-BATCH-COMMITS-20261114: defer recurring audits and maintenance to batch preparation
-  - run preliminary gates before expensive suites
-  - retain matching successful verification groups for pending changes against HEAD
-  - remove manual base, resume and editorial options
-  - exclude only the changing agent tool-call identifier from execution identity while retaining build and runtime settings
-  - prepare diary entries and commit partitions before freezing the verified content
-- **Architectural Rationale & Trade-Offs**:
-  - Avoid repeated work after independent corrections while preserving required gates and artifact integrity
-  - document changes conservatively invalidate execution results
-  - one prepared batch can produce several atomic commits without repeating verification between them
-- **Verification & Test Results**:
-  - 130 focused Python tests passed
-  - a focused regression preserved execution identity across agent calls while RUSTFLAGS changes still invalidated it
-  - separate real Cargo probe invocations reused English and coverage results with zero Cargo commands on the second invocation
-  - a real Cargo LLVM and English probe reused coverage after unchanged retries and vocabulary corrections, and reran it after source or document changes, report corruption and a new HEAD
-  - these fixtures do not establish emulator performance or milestone completion
-  - independent task review approved the implementation
-  - preparation resolved one vocabulary finding and interrupted an incomplete profile to correct the agent-call identity issue
-  - final canonical verification and commit review are recorded in the commit message
----
-
-### [2026-11-14 14:40 CET] — reuse immutable channel phase sequences
-- **Affected Subsystems**:
-  - `agnus`
-- **What Was Changed (The Concrete Reality)**:
-  - Use immutable channel/fill phase tables
-  - reuse the selected execution phase and retain startup, waits and destination drain tests
-- **Architectural Rationale & Trade-Offs**:
-  - Reduce repeated phase construction while preserving existing bus phases
-- **Verification & Test Results**:
-  - The combined candidate passed ordinary Rust tests, the standard harness and canonical commit verification before this diary partition
-  - changed executable paths were reviewed against coverage
-  - individual commit boundaries were not tested separately
-  - no new timing measurement of the final combination
----
-
-### [2026-11-14 14:40 CET] — skip timer work between relevant clock events
-- **Affected Subsystems**:
-  - `cia`
-- **What Was Changed (The Concrete Reality)**:
-  - Skip timer work without a clock edge or pending pulse
-  - avoid resolving Port B when timer outputs are hidden
-  - retain pulse and edge regression tests
-- **Architectural Rationale & Trade-Offs**:
-  - Reduce repeated idle work without stopping hidden timer waveforms or changing clock sources
-- **Verification & Test Results**:
-  - The combined candidate passed ordinary Rust tests, the standard harness and canonical commit verification before this diary partition
-  - changed executable paths were reviewed against coverage
-  - individual commit boundaries were not tested separately
-  - no new timing measurement of the final combination
----
-
-### [2026-11-14 14:40 CET] — simplify fixed DMA slots and sprite requests
-- **Affected Subsystems**:
-  - `agnus`
-- **What Was Changed (The Concrete Reality)**:
-  - Use a fixed slot table and direct enable checks
-  - share sprite output availability and simplify start/stop comparisons
-  - retain arbitration and sprite boundary tests
-- **Architectural Rationale & Trade-Offs**:
-  - Reduce repeated scheduling arithmetic while preserving grant order and pending outputs
-- **Verification & Test Results**:
-  - The combined candidate passed ordinary Rust tests, the standard harness and canonical commit verification before this diary partition
-  - changed executable paths were reviewed against coverage
-  - individual commit boundaries were not tested separately
-  - no new timing measurement of the final combination
----
-
-### [2026-11-14 14:40 CET] — use constant disk clock divisors
-- **Affected Subsystems**:
-  - `paula`
-- **What Was Changed (The Concrete Reality)**:
-  - Select constant fast/slow disk cell divisors
-  - verify phase continuity when FAST changes
-- **Architectural Rationale & Trade-Offs**:
-  - Retain the local arithmetic simplification
-  - whole-machine gain remains inconclusive in the earlier audit
-- **Verification & Test Results**:
-  - The combined candidate passed ordinary Rust tests, the standard harness and canonical commit verification before this diary partition
-  - changed executable paths were reviewed against coverage
-  - individual commit boundaries were not tested separately
-  - no new timing measurement of the final combination
----
-
-### [2026-11-14 14:40 CET] — skip stable idle UART work
-- **Affected Subsystems**:
-  - `paula`
-- **What Was Changed (The Concrete Reality)**:
-  - Return early for stable idle transmit/receive state
-  - retain tests for status and transition boundaries
-- **Architectural Rationale & Trade-Offs**:
-  - Avoid work when counters and status cannot change
-  - whole-machine gain remains inconclusive in the earlier audit
-- **Verification & Test Results**:
-  - The combined candidate passed ordinary Rust tests, the standard harness and canonical commit verification before this diary partition
-  - changed executable paths were reviewed against coverage
-  - individual commit boundaries were not tested separately
-  - no new timing measurement of the final combination
----
-
-### [2026-11-14 14:40 CET] — reuse display decoding and skip blanked composition
-- **Affected Subsystems**:
-  - `denise`
-  - `machine_loop`
-  - `save_state`
-- **What Was Changed (The Concrete Reality)**:
-  - Derive display mode fields from BPLCON0
-  - use dual-playfield lookup tables
-  - preserve serializers and collisions while bypassing blanked color composition
-  - update callers and snapshot tests
-- **Architectural Rationale & Trade-Offs**:
-  - Reduce repeated pixel decoding with one authoritative raw register value
-- **Verification & Test Results**:
-  - The combined candidate passed ordinary Rust tests, the standard harness and canonical commit verification before this diary partition
-  - changed executable paths were reviewed against coverage
-  - individual commit boundaries were not tested separately
-  - no new timing measurement of the final combination
----
-
-### [2026-11-14 14:40 CET] — give Denise explicit framebuffer coordinates
-- **Affected Subsystems**:
-  - `denise`
-  - `frame_builder`
-  - `machine_loop`
-  - `gui`
-  - `save_state`
-- **What Was Changed (The Concrete Reality)**:
-  - Move timing-to-image coordinates into the Denise frame cursor
-  - pass final positions to framebuffer storage
-  - relocate rendering tests and adapt GUI fixtures
-  - persist the cursor in snapshot format 6
-- **Architectural Rationale & Trade-Offs**:
-  - User explicitly retains this simplification even without a demonstrated speed gain
-  - host image dimensions and scaling stay unchanged
-- **Verification & Test Results**:
-  - The combined candidate passed ordinary Rust tests, the standard harness and canonical commit verification before this diary partition
-  - changed executable paths were reviewed against coverage
-  - individual commit boundaries were not tested separately
-  - no new timing measurement of the final combination
----
-
-### [2026-11-14 14:40 CET] — retain boundary checks after rejected experiments
-- **Affected Subsystems**:
-  - `machine_loop`
-  - `paula`
-  - `rtc`
-- **What Was Changed (The Concrete Reality)**:
-  - Keep audio output, signal transport and RTC boundary tests using the restored interfaces
-  - remove the pending signal suppression, audio mixer cache and deferred CCK RTC experiments before publication
-- **Architectural Rationale & Trade-Offs**:
-  - The captured audit found repeatable regressions for all three experiments
-  - host UTC plus an independent persisted offset outside save states remains a local second-round proposal and is not implemented
-- **Verification & Test Results**:
-  - The combined candidate passed ordinary Rust tests, the standard harness and canonical commit verification before this diary partition
-  - changed executable paths were reviewed against coverage
-  - individual commit boundaries were not tested separately
-  - no new timing measurement of the final combination
----
-
-### [2026-11-14 14:55 CET] — Commit omitted optimization skill updates
-- **Affected Subsystems**:
-  - `.agents/skills/optimize-emulation`
-- **What Was Changed (The Concrete Reality)**:
-  - Include the pending optimization skill and project example updates omitted from earlier commits
-- **Architectural Rationale & Trade-Offs**:
-  - Complete the previously reviewed work with the remaining documentation files
-- **Verification & Test Results**:
-  - The user reports that verification was completed in another session. Tests
-  - verification profiles and review were not repeated at the explicit user request.
----
-
-### [2026-11-14 15:12 CET] — Reuse verification after diary edits and interrupted runs
-- **Affected Subsystems**:
-  - `tools/verification`
-  - `verification specifications`
-- **What Was Changed (The Concrete Reality)**:
-  - Keep successful independent checks after root diary edits while refreshing the English gate and final candidate verdict
-  - Historically resumed interrupted runs in the same results directory after descendant ownership checks; those checks are unavailable after VERIFICATION-LOCK-SIMPLIFICATION-20261116
-  - Add reviewed API names and valid terminology reported by the language gate, including terms in the previously committed optimization guide
-- **Architectural Rationale & Trade-Offs**:
-  - A diary-only commit partition repeated emulator tests despite unchanged code
-  - abandoned lock files also discarded useful verification history
-- **Verification & Test Results**:
-  - 137 verification tool tests passed
-  - a real Cargo and LLVM probe executed three Cargo commands initially, zero after a diary edit and three after a source edit
-  - this bounded probe is not a full emulator benchmark
----
-
-### [2026-11-14 15:12 CET] — Partition authorized commits automatically
-- **Affected Subsystems**:
-  - `.agents/rules/git-commits.md`
-  - `docs/ai_agents.md`
-- **What Was Changed (The Concrete Reality)**:
-  - Delegate coherent commit grouping to the agent for ordinary commit requests and roadmap closure
-  - inspect session provenance and changes, preserve explicit scope and report commit counts and IDs
-  - finish diary entries and cheap partition checks before expensive verification
-- **Architectural Rationale & Trade-Offs**:
-  - Users should not need a separate request to split independent concerns or avoid repeated verification caused by late preparation
-- **Verification & Test Results**:
-  - Reviewed ordinary single-change, multiple-session, shared-file and explicit-partition cases against the batch lifecycle
-  - commit timing and push authorization remain user controlled
----
-
-### [2026-11-14 19:16 CET] — Avoid mutation queue self-copies
-- **Affected Subsystems**:
-  - `config`
-  - `machine_loop`
-- **What Was Changed (The Concrete Reality)**:
-  - Update only remaining delay while an entry retains its original queue position
-  - copy complete entries only after a compaction hole
-- **Architectural Rationale & Trade-Offs**:
-  - Preserve due order, capacity, positive delays and snapshot behavior while reducing repeated data movement
-- **Verification & Test Results**:
-  - Existing config and machine tests passed: 182 tests across 41 targets
-  - occupied focused workloads improved about 17-21 percent
-  - full-state and framebuffer comparisons passed
----
-
-### [2026-11-14 19:16 CET] — Skip idle mouse-axis arithmetic
-- **Affected Subsystems**:
-  - `game_ports`
-  - `machine_loop`
-- **What Was Changed (The Concrete Reality)**:
-  - Advance pending mouse motion only on active axes
-  - retain unconditional phase normalization and add motion, saturation and restored-phase regressions
-- **Architectural Rationale & Trade-Offs**:
-  - Keep connector sampling and active motion on every CCK without calculating zero movement
-- **Verification & Test Results**:
-  - 169 tests across 38 targets passed
-  - focused idle, one-axis and two-axis cases improved
-  - whole-machine impact was mostly below measurement spread
----
-
-### [2026-11-14 19:16 CET] — Retain derived bitplane masks and pixel decoder selection
-- **Affected Subsystems**:
-  - `denise`
-  - `machine_loop`
-- **What Was Changed (The Concrete Reality)**:
-  - Derive the plane mask and pixel decoder from effective BPLCON0 writes and deserialization
-  - keep raw-word snapshot storage and cover zero planes, BPU=7 and mode combinations
-  - remove the obsolete plane-count getter and cache, with register and pixel-output assertions protecting the same behavior
-- **Architectural Rationale & Trade-Offs**:
-  - Remove repeated mode decoding while preserving HAM history, palette selection and both pixel halves
-- **Verification & Test Results**:
-  - 211 tests across 44 targets passed
-  - the original matched trial reduced mixed PAL time 2.47 percent and NTSC 1.61 percent
-  - complete states and framebuffers matched
----
-
-### [2026-11-14 19:16 CET] — Retain collision decoding on identical CLXCON writes
-- **Affected Subsystems**:
-  - `denise`
-  - `machine_loop`
-- **What Was Changed (The Concrete Reality)**:
-  - Skip table reconstruction for identical effective CLXCON values
-  - preserve register commitment, accumulated collisions and live-read clearing
-  - add repeated and changed write coverage
-- **Architectural Rationale & Trade-Offs**:
-  - Avoid repeated construction of the same derived table without moving collision side effects
-- **Verification & Test Results**:
-  - 212 tests across 44 targets passed
-  - repeated-write focused time improved about 83 percent
-  - complete machine states and framebuffers matched
----
-
-### [2026-11-14 19:16 CET] — Follow host UTC independently of machine snapshots
-- **Affected Subsystems**:
-  - `rtc`
-  - `gui`
-  - `machine_loop`
-  - `save_state`
-  - `optimization documentation`
-- **What Was Changed (The Concrete Reality)**:
-  - Use supplied host UTC plus an independently persisted battery offset
-  - exclude live RTC state from snapshot format 7
-  - preserve HOLD, STOP, calendar writes and reset behavior
-  - correct the calendar year estimate at February and leap-day boundaries
-  - isolate host timestamp conversion and correct negative fractional seconds to match the Wasm floor convention
-  - cover 12-hour guest calendar writes, battery restart and native epoch-boundary conversion
-  - close EMULATION-OPTIMIZATION-ROUND-02-20261114 implementation and the requested rejected-candidate repeat
-  - mark retired RTC and audio examples as historical
-- **Architectural Rationale & Trade-Offs**:
-  - The user explicitly retained RTC as a functional change despite the measured standalone NTSC cost
-  - PAL is the primary standard for the requested repeat
-  - no rejected optimization was reintroduced and additional general profiling was cancelled
-- **Verification & Test Results**:
-  - 315 RTC, bus, machine, save-state and GUI tests passed in 58 targets after reproducing and repairing the calendar underflow
-  - native and Wasm production builds passed
-  - final combined core time fell 4.09 percent PAL, 4.41 percent NTSC and 3.66 percent ROM versus preserved B0
-  - native GUI time fell 2.83 percent PAL and 3.99 percent NTSC
-  - every validated GUI field matched its paired core
-  - 408 repeated machine series and 160 focused series preserved state/output
-  - canonical batch verification and final independent review remain pending
-  - these RTC2 measurements precede a Wasm constant rename and removal of the obsolete Denise plane-count cache and getter
-  - focused RTC calendar and native host-conversion tests passed after coverage review, including reproduction and repair of pre-epoch rounding
----
-
-### [2026-11-14 20:50 CET] — Keep verifier orchestration changes within Python contracts
-- **Affected Subsystems**:
-  - `tools/verification`
-  - `Verification design specification`
-- **What Was Changed (The Concrete Reality)**:
-  - Classify five known execution and evidence files explicitly as orchestration inputs
-  - preserve package selection for concurrent Rust changes and the full Rust fallback for selection logic and unknown files
-  - add selection contract tests and describe the ownership boundary
-- **Architectural Rationale & Trade-Offs**:
-  - Avoid starting emulator tests solely because execution or evidence handling changed while retaining Python contracts and quality gates
-- **Verification & Test Results**:
-  - Tests
-  - verifiers
-  - graph refresh
-  - language scans and independent review were not run for this batch at the user's explicit request.
----
-
-### [2026-11-14 20:50 CET] — Use segment patterns for Graphify exclusions
-- **Affected Subsystems**:
-  - `.graphifyignore`
-  - `Graphify skill`
-- **What Was Changed (The Concrete Reality)**:
-  - Express generated-directory and binary-format exclusions with recursive segment patterns and ASCII case classes
-  - document root anchoring and preservation of the selected reference corpus
-- **Architectural Rationale & Trade-Offs**:
-  - Reduce repeated whole-path matching while preserving case-insensitive exclusions and reference relationships
-- **Verification & Test Results**:
-  - Tests
-  - verifiers
-  - graph refresh
-  - language scans and independent review were not run for this batch at the user's explicit request.
----
-
-### [2026-11-14 20:50 CET] — Overlap independent preparation work on a stable candidate
-- **Affected Subsystems**:
-  - `Commit policy`
-  - `Graphify skill`
-- **What Was Changed (The Concrete Reality)**:
-  - Allow independent review, Graphify refresh and canonical verification to overlap on a stable candidate
-  - require isolated outputs and completion before freeze
-  - serialize work sharing Cargo or coverage outputs and bound competing Graphify workers
-- **Architectural Rationale & Trade-Offs**:
-  - Reduce sequential preparation overhead without treating background launch as completion or changing verifier group scheduling
-- **Verification & Test Results**:
-  - Tests
-  - verifiers
-  - graph refresh
-  - language scans and independent review were not run for this batch at the user's explicit request.
----
-
-### [2026-11-14 22:34 CET] — Reuse sprite DMA comparisons without changing transfer timing
-- **Affected Subsystems**:
-  - `agnus`
-  - `memory_bus register tests`
-  - `save_state`
-  - `DMA and save-state specifications`
-- **What Was Changed (The Concrete Reality)**:
-  - Complete the bounded PERIPHERAL-EVENT-OPTIMIZATION-20261114 pass with compact sprite active/request masks and comparisons reused until their inputs change
-  - Preserve mid-line register writes and vertical latches with DMA disabled or output blocked
-  - Group sprite state in save format 8 and test continuation from an active latch
-  - Reject and restore three disk variants, the UART variant and two audio variants after whole-machine measurements
-- **Architectural Rationale & Trade-Offs**:
-  - Reduce repeated per-CCK work while preserving fixed DMA slots and snapshot continuation
-  - Keep only the candidate supported by the requested PAL measurements
-- **Verification & Test Results**:
-  - Mixed PAL 8.51569 to 7.87536 ms per field, 7.52 percent lower time
-  - Mixed NTSC 7.19934 to 6.69548 ms, 7.00 percent lower time
-  - Kickstart PAL 6.72357 to 6.74259 ms, 0.28 percent higher within overlapping ranges
-  - Four 1000-field samples per build and workload in two ABBA blocks, with matching full state values and frames after a lossless sprite-field relocation
-  - 275 focused tests passed with no failures or ignored tests
-  - Core Wasm compilation and architecture, code, hardware, Clippy and formatting checks passed
-  - Commit-profile verification and independent batch review are pending
-  - Game-port work remains in Host Input Delivery
----
-
-### [2026-11-14 23:37 CET] — Record pending roadmap updates
-- **Affected Subsystems**:
-  - `ROADMAP.md`
-- **What Was Changed (The Concrete Reality)**:
-  - Commit the pending roadmap edits at the user's explicit request
-- **Architectural Rationale & Trade-Offs**:
-  - Preserve the roadmap changes separately from the sprite DMA optimization
-- **Verification & Test Results**:
-  - Tests
-  - verification and content inspection were not performed
-  - as explicitly requested
----
-
-### [2026-11-15 00:16 CET] — Store completed Denise samples once per color clock
-- **Affected Subsystems**:
-  - `Denise`
-  - `FrameBuilder`
-- **What Was Changed (The Concrete Reality)**:
-  - Complete DENISE-RENDER-EXPERIMENTS-20261114 with one four-sample framebuffer write per CCK
-  - Preserve pixel composition order and two-sample output latency
-  - Add clipping and row-boundary coverage
-  - Reject grouped serializers, table gathering, shared sprite checks and stream reconstruction after comparison
-- **Architectural Rationale & Trade-Offs**:
-  - Resolve output row coordinates once per CCK while retaining current rendering
-  - collision and snapshot behavior
-- **Verification & Test Results**:
-  - Mixed PAL median 8.476499 to 8.156421 ms per field, 3.78 percent less time
-  - Mixed NTSC median 7.113554 to 6.851335 ms, 3.69 percent less time
-  - Four samples per build from interleaved runs after 64 warmup fields, with 600 fields per PAL series and 240 per NTSC series
-  - Complete serialized states and frame images match, excluding GUI and pacing
-  - Idle PAL remains within overlapping ranges
-  - Invalid final measurements caused by preserved source timestamps were discarded and repeated after rebuilding
-  - 68 focused tests, core Wasm compilation, Clippy, formatting and diff checks passed
-  - Commit-profile verification and independent review are pending
----
-
-### [2026-11-15 00:49 CET] — Integrate Bootstrap Codex into master
-- **Affected Subsystems**:
-  - `Book Review`
-  - `reference manual recipes`
-  - `branch integration`
-- **What Was Changed (The Concrete Reality)**:
-  - Merge bootstrap-codex-api into master while preserving both histories
-  - Retain the Book Review math provenance correction and reference manual preparation artifacts
-  - Reconcile both diary append sequences chronologically and retain both vocabulary additions
-  - Include all 56 changed Markdown paths in the integration review
-  - Correct retained documentation about accelerated field presentation, test selection and SingleStep comparison boundaries
-- **Architectural Rationale & Trade-Offs**:
-  - Combine the bootstrap work with current emulator and workflow development, then advance the bootstrap branch to the merge point
-  - Retain unfinished source review and roadmap work
-- **Verification & Test Results**:
-  - Both initial worktrees were clean
-  - Fast-forward into master was unavailable because the histories diverged
-  - Both imported JSON artifacts parse and exactly match the source branch
-  - Git diff checks passed
-  - Initial language, frontmatter, formatting, architecture, hardware, code quality and Clippy checks passed
-  - The initial profile was stopped during coverage to reconcile documentation findings
-  - Final canonical verification and independent review are pending
----
-
-### [2026-11-15 09:34 CET] — Prioritize native disk execution and plan shared player workflows
-- **Affected Subsystems**:
-  - `ROADMAP.md`
-  - `Design documentation`
-- **What Was Changed (The Concrete Reality)**:
-  - Add linked contents and reorder remaining Step 2 work as native disk bring-up then native vAmigaTS verification then optional lockstep diagnosis
-  - Withdraw BOOK-GUEST-PROGRAM-TESTS-20261111 and delete its obsolete ignored plan by explicit user direction without claiming guest acceptance
-  - Retain missing media-stream and DMA checks in disk bring-up and move examples/m68k retirement into native verification
-  - Plan shared configuration and recognized ROM selection plus persistent unnamed save catalogs and portable game profiles
-  - Plan WASM bundles and desktop game libraries plus video capture and both detailed debugger rewind and checkpoint/event replay
-  - Update incoming roadmap references while retaining timing and coverage limits
-- **Architectural Rationale & Trade-Offs**:
-  - Prioritize running original ADF software over a standalone guest-program campaign
-  - Record future player capabilities without implementing them or settling open packaging and layout choices
-- **Verification & Test Results**:
-  - Roadmap retention and navigation checks passed
-  - Vault audit passed for 35 Design notes and 1083 links
-  - Source inspection confirmed existing quick slots and preview support plus the zero timestamp and missing runtime media stream
-  - Initial English scan reported the valid term gameplay as unknown and the reviewed software vocabulary now includes it
-  - Independent review identified three plain-text references to the withdrawn stage and these now point to native bring-up or verification
-  - Documentation-only change with no production coverage measurement required
-  - Canonical commit verification and independent review are pending
----
-
-### [2026-11-15 09:48 CET] — Normalize math angle entities during book import
-- **Affected Subsystems**:
-  - `Book-to-Markdown importer`
-  - `PDF source recipes`
-- **What Was Changed (The Concrete Reality)**:
-  - Decode named and numeric HTML angle entities inside parsed Markdown math before source alignment
-  - Preserve code and preformatted text plus entities outside math
-  - Add import-to-render regression coverage without changing PDF conversion prompts
-  - Locate math by parser source spans and apply heading prefixes once
-- **Architectural Rationale & Trade-Offs**:
-  - Prevent HTML angle entities from reaching KaTeX as invalid math while keeping PDF references and exports consistent
-- **Verification & Test Results**:
-  - The new regression failed before the fix and passed afterward
-  - All 41 text recipe tests and 33 source alignment tests passed
-  - Reimported 5334 elements from 646 pages of the M68000 Programmer reference manual
-  - Rendering completed and Working matches Accepted
-  - Editor and document endpoints returned HTTP 200 with no pending render or error
----
-
-### [2026-11-15 10:07 CET] — Store prepared Motorola manual artifacts
-- **Affected Subsystems**:
-  - `Reference manual recipes`
-  - `PDF preparation metadata`
-- **What Was Changed (The Concrete Reality)**:
-  - Store the M68000 Programmer reference manual book recipe
-  - Store the M68000 User manual revision 8 OCR provenance
-- **Architectural Rationale & Trade-Offs**:
-  - Record the remaining local book artifacts at the user-requested commit point
-- **Verification & Test Results**:
-  - No tests or verification were run for this commit at the explicit user request
-  - Earlier importer verification does not certify whole-book transcription quality
----
-
-### [2026-11-15 10:53 CET] — Run the machine on an independent native and browser owner
-- **Affected Subsystems**:
-  - `gui`
-  - `debugger`
-  - `frame_builder`
-  - `save_state`
-  - `host runtime policy`
-- **What Was Changed (The Concrete Reality)**:
-  - Move the complete session to one host worker
-  - exchange seeded reusable pixel allocations through synchronized ownership
-  - migrate commands and stopped inspection
-  - retire direct-session file and ROM wrappers
-  - recognize production JavaScript callers in code-quality reference discovery
-  - preserve debugger ROM patching and 24-bit address wrapping through the owner command boundary
-  - bound the absent-image playback test failure path
-  - add grouped regressions for owner history and stack/reset commands, unfinished-field continuation, GUI ROM/RAM byte edits and breakpoint submission, and actual snapshot file save/error completion
-- **Architectural Rationale & Trade-Offs**:
-  - HOST-SHARED-MEMORY-PRESENTATION-20261113 keeps deterministic CCK execution independent of GUI repaint
-  - six exact Clippy permissions and the JavaScript corpus change have explicit user approval
-  - host audio and guest input endpoints remain open
-- **Verification & Test Results**:
-  - The initial five-concern candidate passed the canonical commit profile with CARGO_BUILD_JOBS=1
-  - subsequent coverage review identified reachable migration gaps and added grouped behavioral regressions
-  - focused instruction/hex/breakpoint, persistence, history, continuation and corrected warm-reset tests pass
-  - final combined verification and review remain pending
----
-
-### [2026-11-15 10:53 CET] — Recover missing recent files and picker folders
-- **Affected Subsystems**:
-  - `gui file actions`
-  - `native history`
-  - `browser history`
-- **What Was Changed (The Concrete Reality)**:
-  - Remove unavailable recent binaries and ROMs after selection with an explanatory message
-  - choose the nearest existing native parent folder
-  - use the browser default folder when unavailable
-  - preserve entries after access denial or ordinary cancellation
-- **Architectural Rationale & Trade-Offs**:
-  - Keep load options and category histories independent
-  - record successful owner replies before updating file labels or history
-- **Verification & Test Results**:
-  - The originating session reported seven Rust tests and a Chromium history regression passing
-  - final combined verification remains pending
----
-
-### [2026-11-15 10:53 CET] — Require optimized browser builds without Cargo lint warnings
-- **Affected Subsystems**:
-  - `tools/web.ps1`
-  - `verification`
-  - `frontend setup`
-- **What Was Changed (The Concrete Reality)**:
-  - Build and serve Release WebAssembly with the existing Nightly shared-memory configuration
-  - require the real browser build in commit verification
-  - reject Cargo lint warnings and restore the caller environment
-  - include browser build tools in execution conditions
-- **Architectural Rationale & Trade-Offs**:
-  - Catch browser build failures and manifest warnings during development and before a commit
-  - keep the global default compiler independent of the browser launcher
-- **Verification & Test Results**:
-  - The originating session reported the actual browser build and architecture checks passing
-  - final combined verification remains pending
----
-
-### [2026-11-15 10:53 CET] — Reserve the visible pixel count during screen conversion
-- **Affected Subsystems**:
-  - `gui screen texture`
-  - `screen scaling tests`
-- **What Was Changed (The Concrete Reality)**:
-  - Allocate the visible pixel count once and convert each visible row without stride padding
-  - preserve ARGB alpha and image dimensions
-- **Architectural Rationale & Trade-Offs**:
-  - The retained WP01 experiment reduced local conversion time by about half
-  - it did not establish a large whole-application FPS improvement
-- **Verification & Test Results**:
-  - The retained performance report records measured A/B comparisons and behavioral checks
-  - final combined verification remains pending
----
-
-### [2026-11-15 10:53 CET] — Report Stable release updates during commit verification
-- **Affected Subsystems**:
-  - `tools/verification`
-  - `Rust toolchain`
-- **What Was Changed (The Concrete Reality)**:
-  - Check official Stable metadata once per actual commit invocation including evidence reuse
-  - show the active compiler and log the advisory result
-  - retain a five-second timeout and offline plan previews
-  - do not automatically update or gate tests on release availability
-- **Architectural Rationale & Trade-Offs**:
-  - The account default Stable changed from Rust and Cargo 1.98.1 with LLVM 22.1.8 to Rust and Cargo 1.100.0 with LLVM 23.1.5
-  - the experimental named toolchain was removed
-  - Nightly and installed targets/components remain available without a repository pin
-- **Verification & Test Results**:
-  - Eight update contracts and the final 164-test tooling run passed before preparation
-  - workspace compilation and 165 machine-loop tests passed on the updated Stable
-  - required compiler identity still invalidates test evidence
-  - final combined verification remains pending
----
-
-### [2026-11-15 10:53 CET] — Track verifier command trees with Windows Job Objects
-> Historical: This mechanism is unavailable after VERIFICATION-LOCK-SIMPLIFICATION-20261116. Checkout-level locking replaces command-tree ownership and telemetry cleanup.
-- **Affected Subsystems**:
-  - `tools/verification`
-  - `Windows process ownership`
-- **What Was Changed (The Concrete Reality)**:
-  - Assign commands to a named Job Object during process creation
-  - retain the job with a guardian until descendants drain
-  - preserve nested verifier containment, result-directory locking and fail-closed recovery
-  - retain the conservative POSIX marker scan
-- **Architectural Rationale & Trade-Offs**:
-  - Replace unstable Windows PID-list comparisons without killing orphan commands
-  - port the reviewed repair from the separate verification-job-tracking worktree without changing that source checkout
-  - archive only completed legacy lock metadata under its kernel lock after establishing that no tagged descendants remain
-- **Verification & Test Results**:
-  - Six integrated real Windows tests pass
-  - prior completed batch evidence stays in its original directory
-  - full combined canonical verification and independent review remain pending
----
-
-### [2026-11-15 11:26 CET] — Integrate bootstrap and shared-memory host work into master
-- **Affected Subsystems**:
-  - `Bootstrap importer and manual recipes`
-  - `GUI host runtime`
-  - `Frame buffer and save state`
-  - `Verification tooling`
-- **What Was Changed (The Concrete Reality)**:
-  - Combine both source histories with master in one explicit merge
-  - Preserve both diary histories and all reviewed vocabulary additions
-  - Inventory 24 changed Markdown paths across the three branch histories and the affected general architecture note
-  - Retain master roadmap priorities alongside independent host execution and current book import behavior
-  - Correct browser toolchain instructions and stale file-access ownership descriptions in the integrated documentation
-- **Architectural Rationale & Trade-Offs**:
-  - Verify the complete integrated candidate in one batch before synchronizing and publishing branches
-- **Verification & Test Results**:
-  - All worktrees were clean before integration
-  - Fast-forward attempts confirmed divergent histories
-  - Native Git merge preparation and diff whitespace checks completed
-  - Vault metadata and link audit passed for 35 Design notes and 1096 links
-  - Canonical verification and independent review are pending
----
-
-### [2026-11-15 12:27 CET] — LOCAL-INTEGRATION-20261115: prepare local integration on the task branch
-- **Affected Subsystems**:
-  - `Agent rules`
-  - `Verification tooling`
-  - `Worktree lifecycle`
-- **What Was Changed (The Concrete Reality)**:
-  - Require an explicit task checkout choice while retaining bounded detached diagnostics
-  - Compare complete integration candidates with immutable primary-branch commits
-  - Freeze approved trees and partitions and seal exact mechanical commits
-  - Publish through prepared native Git reference locks with recoverable checkout transitions
-  - Preserve unique local material before safe worktree removal and conditional branch deletion
-- **Architectural Rationale & Trade-Offs**:
-  - Keep the combined reviewed candidate as the acceptance target
-  - Refuse concurrent reference changes and preserve unexpected file edits
-  - Keep commit-only and complete integration authorization distinct
-- **Verification & Test Results**:
-  - Passed 16 real-Git integration contracts including competing processes and termination at five publication boundaries
-  - Passed 3 PowerShell worktree contracts and script parsing
-  - Passed 34 existing continuation contracts and 43 existing CLI contracts
-  - Vault audit passed for 35 specifications and 1097 links
-  - Canonical commit verification and independent final review remain pending
-  - Independent review identified a staged ignored-file omission and a recovery reference race; candidate trees now retain the real index and recovery holds native verification locks
-  - Sealing also rejects a same-tree ancestor rewind with an empty partition; worktree test ownership preserves the script's full Rust verification scope
-  - The first complete profile passed static gates and the browser build but coverage compilation exhausted virtual memory; the next attempt limits Cargo to one build job without reducing test scope
-  - Automatic cleanup conservatively refuses inaccessible Windows process ownership; successful teardown contracts isolate process discovery while exercising real Git and PowerShell removal
----
-
-### [2026-11-15 17:31 CET] — Reduce repeated idle input work
-- **Affected Subsystems**:
-  - `crates/keyboard`
-  - `crates/game_ports`
-- **What Was Changed (The Concrete Reality)**:
-  - Encode joystick direction contacts when switches change
-  - retain an explicit empty keyboard idle phase and wake it on queued input
-  - preserve wire timing and serialized continuation
-- **Architectural Rationale & Trade-Offs**:
-  - Avoid repeated per-CCK reconstruction and empty selection without changing device phases
-- **Verification & Test Results**:
-  - Existing focused keyboard and game-port checks passed before preparation
-  - retained measurement report records direct original-to-candidate throughput gains and the isolated active-keyboard tradeoff.
----
-
-### [2026-11-15 17:31 CET] — Deliver host input at three field boundaries
-- **Affected Subsystems**:
-  - `crates/gui`
-  - `crates/agnus`
-  - `crates/denise`
-  - `crates/debugger`
-  - `Obsidian/Amiga/Design`
-- **What Was Changed (The Concrete Reality)**:
-  - Collect native OS and controller events on blocking listener threads
-  - publish browser DOM and sampled gamepad events through bounded shared queues
-  - admit ordered events three times per field, aligned with the receiver origin after startup and reset
-  - release controls and reject obsolete generations across lifecycle changes
-  - document host transport
-- **Architectural Rationale & Trade-Offs**:
-  - Separate immediate host publication from deterministic device delivery without adding host synchronization per CCK
-- **Verification & Test Results**:
-  - Focused GUI, debugger, machine-loop and Agnus tests and native/Wasm quality checks passed before preparation. Existing Windows and Chrome probes exercised keyboard/mouse delivery
-  - physical gamepad freshness and Linux/macOS execution remain unverified. Vault audit passed for 35 documents and 1102 links.
----
-
-### [2026-11-15 17:31 CET] — Plan reusable input profiles and gamepad frontend control
-- **Affected Subsystems**:
-  - `ROADMAP.md`
-- **What Was Changed (The Concrete Reality)**:
-  - Plan reusable keyboard and controller mappings with named profiles
-  - defer full gamepad-only frontend navigation until player controls exist
-  - specify physical input diagnostics after basic host input and Workbench boot
-- **Architectural Rationale & Trade-Offs**:
-  - Keep advanced input configuration and interactive acceptance evidence explicit in their owning roadmap stages; user approved the basic adapter before the separate, still-open A500 combination fidelity investigation
-- **Verification & Test Results**:
-  - Reviewed future prerequisites and verification scope
-  - no roadmap stage closed or advanced profile feature implemented.
----
-
-### [2026-11-15 19:13 CET] — TASK-CLOSURE-20261115: approve and complete local task integrations
-- **Affected Subsystems**:
-  - `Agent rules`
-  - `Task closure skill`
-  - `Verification tooling`
-- **What Was Changed (The Concrete Reality)**:
-  - Replace the merge procedure with git-close-task and require approval of an exact integration and cleanup plan
-  - Allow an explicitly unverified working commit before one combined integration verification
-  - Accept an unchanged clean fast-forward after confirmation of the exact tested tip without fabricating canonical evidence
-  - Preserve original divergent verification scope through explicitly requested rebase and freeze revalidation
-- **Architectural Rationale & Trade-Offs**:
-  - Keep commit-only requests scoped and avoid duplicate preparation while retaining exact conditional publication and safe cleanup
-- **Verification & Test Results**:
-  - 202 verification tool tests passed before preparation
-  - Skill validation passed and 179 local Markdown targets resolved
-  - Vault audit passed for 35 Design notes and 1098 links
-  - Canonical commit verification and final independent review are pending
----
-
-### [2026-11-15 19:14 CET] — Remove the module splitting skill
-- **Affected Subsystems**:
-  - `Agent skills`
-  - `Rust module guidance`
-- **What Was Changed (The Concrete Reality)**:
-  - Remove refactor-split-module and its two supporting references
-  - Remove incoming links and retain module cohesion and workspace boundary rules
-- **Architectural Rationale & Trade-Offs**:
-  - Retire the requested procedure while preserving the existing architecture constraints and neighboring-code guidance
-- **Verification & Test Results**:
-  - No Rust production code or architecture checker was changed
-  - No retired skill references remained in active instructions or documentation
-  - Combined batch verification and independent review are pending
----
-
-### [2026-11-15 19:40 CET] — HOST-INPUT-DELIVERY-20261113: close host input delivery after local integration
-- **Affected Subsystems**:
-  - `GUI host input`
-  - `Keyboard and game ports`
-  - `Integration and task closure`
-- **What Was Changed (The Concrete Reality)**:
-  - Rebase the three committed task concerns onto master decdd50 and preserve both diary histories and vocabulary sets
-  - Deliver ordered bounded host input at three field boundaries with native blocking listeners and browser shared queues
-  - Retain keyboard idle and joystick contact optimizations without changing wire timing or adding mouse smoothing
-  - Keep mapping profiles and physical input acceptance work in the roadmap
-  - Synchronize the toolbar layout fixture with the existing asynchronous host settling helper while retaining all geometry assertions
-  - Name raw key mappings locally and reuse the keyboard modifier constants through the explicitly approved GUI dependency
-  - Protect Developer image-click capture and window-focus release through real headless pointer events and guest button-pin assertions
-  - Extend native mouse translation assertions to all three buttons
-- **Architectural Rationale & Trade-Offs**:
-  - Close the delivered task through one combined integration verification while retaining deterministic ownership and recorded platform limits
-- **Verification & Test Results**:
-  - Rebase completed with conflicts limited to the diary and programming vocabulary
-  - Range comparison preserves all production code and tests from the original task tip ef138f0
-  - Twenty-three changed Markdown paths were reconciled and the detailed task report will survive in the integration archive
-  - Existing Windows and Chrome probes remain historical evidence with no new timing measurements
-  - Physical gamepad freshness, Linux and macOS execution and A500 combination fidelity remain unverified or deferred
-  - The first integration coverage run exposed a toolbar fixture that exhausted four immediate GUI passes while awaiting the machine worker
-  - The user approved the direct GUI-to-keyboard dependency and its single architecture permission for authoritative keycode reuse
-  - The user approved stopping the remaining MSVC telemetry process from the first verifier job without changing the process ownership guard
-  - Coverage review identified missing retained GUI-focus interaction protection; the added focused regression passes and honors repaint retries
-  - Canonical integration verification and final independent review are pending
----
-
-### [2026-11-15 22:08 CET] — Separate independent review into four bounded lanes
-- **Affected Subsystems**:
-  - `Agent governance`
-  - `Review skills and role routing`
-- **What Was Changed (The Concrete Reality)**:
-  - Assign fresh reviewers to behavior, architecture, tests and evidence, and documentation
-  - Synchronize affected reviewer criteria with instruction changes
-  - Carry unchanged scoped approvals after exact comparison
-- **Architectural Rationale & Trade-Offs**:
-  - Keep each reviewer focused and avoid repeating unaffected reviews after descriptive corrections
-- **Verification & Test Results**:
-  - Reviewed the pending instructions and their routing
-  - No emulator behavior changes in this concern
-  - Canonical verification and independent review are pending
----
-
-### [2026-11-15 22:08 CET] — Discard ignored worktree files during integration cleanup
-- **Affected Subsystems**:
-  - `Worktree tooling`
-  - `Integration cleanup and documentation`
-- **What Was Changed (The Concrete Reality)**:
-  - Remove ignored-file inventories and preservation archives during worktree deletion
-  - Retain conditional branch deletion and native removal failure handling
-  - Ignore inaccessible process directories while blocking confirmed source commands
-  - Recommend bootstrap steps from changed tracked procedures without automatically running them
-- **Architectural Rationale & Trade-Offs**:
-  - Apply the user-approved cleanup contract without comparing or copying disposable local material
-- **Verification & Test Results**:
-  - Reviewed cleanup data flow and updated behavioral assertions
-  - git diff --check passed before diary preparation
-  - Canonical verification and independent review are pending
----
-
-### [2026-11-15 22:08 CET] — Stop verification-owned MSVC telemetry at job completion
-> Historical: This mechanism is unavailable after VERIFICATION-LOCK-SIMPLIFICATION-20261116. Checkout-level locking replaces command-tree ownership and telemetry cleanup.
-- **Affected Subsystems**:
-  - `Windows verification process ownership`
-- **What Was Changed (The Concrete Reality)**:
-  - Identify vctip.exe by its MSVC toolchain path and verify job membership through retained process handles
-  - Stop telemetry only when no other kind of job member remains
-  - Cover isolated telemetry completion and mixed-member refusal
-- **Architectural Rationale & Trade-Offs**:
-  - Allow verification completion without repeated manual telemetry termination while protecting real commands and unrelated processes
-- **Verification & Test Results**:
-  - Reviewed process-handle ownership and telemetry identity checks
-  - Updated the testing specification to describe the approved exception
-  - Canonical verification and independent review are pending
----
-
-### [2026-11-15 23:15 CET] — NATIVE-DISK-BRING-UP-20261115: native disk execution and closure
-- **Affected Subsystems**:
-  - `Floppy`
-  - `Machine loop`
-  - `Save state`
-  - `Roadmap and specifications`
-- **What Was Changed (The Concrete Reality)**:
-  - Generate circular timed ADF tracks through production pins and DMA
-  - preserve media on electronic reset and serialize usable tracks
-  - prove original cross1 startup and repeated Copper results
-  - record the separate Workbench attempt
-  - prepare roadmap pruning and integrate settled chipset closure into Chapters 15 and 16
-- **Architectural Rationale & Trade-Offs**:
-  - Complete native guest startup without injected payloads or substituted system services
-  - retain independent hardware ownership and evidence boundaries
-- **Verification & Test Results**:
-  - Focused floppy and autonomous DMA suites pass
-  - cross1 boots twice at CCK 14752752 and no-disk control lacks its signature
-  - Workbench bootblock DOS and named task observed within 60 seconds with corrupted frame
-  - full image agreement and media writes remain unverified
-  - canonical closure profiles and independent review pending
----
-
-### [2026-11-15 23:32 CET] — Review imported books through one catalog server
-- **Affected Subsystems**:
-  - `tools/bootstrap/book-to-markdown`
-- **What Was Changed (The Concrete Reality)**:
-  - Discover imported book variants in a browser catalog
-  - Bind editor requests and render queues to the selected book
-  - Keep PDF page and pane width per book
-  - Replace per-book server arguments with browser selection
-- **Architectural Rationale & Trade-Offs**:
-  - Allow separate browser tabs to review books without redirecting edits to another book
-- **Verification & Test Results**:
-  - Book library contracts passed
-  - PowerShell parser and usage checks passed
-  - Status reports five books and no pending renders or errors for the two opened books
-  - Invalid actions return a nonzero exit code
----
-
-### [2026-11-15 23:32 CET] — Record the accepted M68000 user manual recipe
-- **Affected Subsystems**:
-  - `tools/bootstrap/books/m68000-users-manual-rev8/e41cbe7e14dc`
-- **What Was Changed (The Concrete Reality)**:
-  - Add the accepted source-backed reconstruction recipe
-- **Architectural Rationale & Trade-Offs**:
-  - Preserve the current accepted recipe alongside its existing source identity and OCR data
-- **Verification & Test Results**:
-  - Recipe matches local Accepted
-  - Accepted input resolves one chapter with 1343 elements and 100 assets
-  - Source PDF SHA-256 matches source.json
-  - Whole-book transcription and layout quality were not assessed
----
-
-### [2026-11-16 00:49 CET] — BOOTSTRAP-NATIVE-INTEGRATION-20261116: integrate book catalog with native disk execution
-- **Affected Subsystems**:
-  - `Local integration`
-  - `Book review catalog`
-  - `Native disk documentation`
-- **What Was Changed (The Concrete Reality)**:
-  - Combine Bootstrap commits fb5a48b and bccaee1 with native tip c7563f4 without rewriting their history
-  - Preserve native Chapter 16 and roadmap boundaries together with both book entries
-  - Retain vocabulary from both branches
-- **Architectural Rationale & Trade-Offs**:
-  - Keep independent book review sessions and the accepted manual recipe alongside the unchanged native disk implementation
-  - Reconcile all changed Markdown against the common base and both branches
-- **Verification & Test Results**:
-  - Native c7563f4 was published unchanged using its confirmed final-source verification
-  - Bootstrap catalog contracts and recipe checks are historical results recorded by the original commits
-  - No recipe was regenerated and whole-book quality was not reassessed
-  - Integrated canonical verification and four independent review lanes are pending
----
-
-### [2026-11-16 01:03 CET] — MEMORY-ACCESS-INVARIANTS-20261115 / MUTATION-QUEUE-OVERFLOW-20261115: enforce fatal runtime invariants
-- **Affected Subsystems**:
-  - `CPU`
-  - `Physical memory`
-  - `Custom chips and CIA`
-  - `Machine loop`
-  - `Native and browser GUI`
-  - `Save states`
-- **What Was Changed (The Concrete Reality)**:
-  - Make Chip RAM private and count CPU and DMA transfers against one serialized budget per CCK
-  - Guard CPU attempts and read/write phases in both execution engines, including waits and TAS
-  - Make mutation queue overflow and earlier shared-register/CIA preflights fatal before partial delivery
-  - Report the original diagnostic at the native owner or browser worker boundary, reject later work and finish shutdown without waiting for the failed owner
-  - Migrate fixtures and the benchmark bus to explicit cycles and require admission state in save format 9
-  - Apply the approved function-scoped panic permission, CPU dependency on config and removal of the obsolete empty raw-buffer test while retaining open-bus address behavior
-  - Reject instruction retirement before read completion, preserve rejected disk requests, and retain the first native diagnostic across flag/completion and poisoned-mailbox races
-  - Remove the unused block-injection helper, reuse physical byte inspection in the debug bank paths and reconcile active retry/dependency descriptions
-- **Architectural Rationale & Trade-Offs**:
-  - Stop internal violations before rejected side effects while preserving guest exceptions, ordinary waits, queue capacities and propagation timing
-  - Keep both checks enabled in optimized builds
-  - User approved the narrow panic and dependency permissions and the one obsolete test removal
-  - Older snapshot formats are unsupported under the existing pre-release policy
-- **Verification & Test Results**:
-  - Focused owning suites passed, including 200 component tests, 124 GUI tests and 20 persistence tests
-  - Seven CPU admission tests and physical admission tests passed in debug and release
-  - Sampled SingleStep verification passed 6350 vectors with state, clocks and bus comparisons retained
-  - Current architecture, Clippy, formatting, real browser build and actual Rust/Wasm fatal delivery passed
-  - All 11 TAS benchmark cases executed after fixture migration
-  - Final interleaved original/candidate comparison measured 123.442 to 119.584 FPS mixed and 211.130 to 198.452 FPS CPU/Fast RAM, reductions of 3.13 and 6.00 percent
-  - Native worker timing spread overlaps and no browser throughput or full hardware capture result is claimed
-  - Final optimized profiles and matching source/binary identities remain in task artifacts
-  - New CPU retirement and disk-admission regressions failed before their fixes and pass afterward; deterministic native failure classification passes in debug and release
-  - Reviewed changed coverage spans after extending repeated-clock, pending-retirement, replacement-preflight and unavailable-disk-data tests
-  - Native coverage omits source-owning test modules and Wasm, which have separate direct and browser evidence; poisoned-mailbox forwarding branches were not exercised
----
-
-### [2026-11-16 08:26 CET] — Publish Windows verification fixture readiness atomically
-> Historical: The Windows Job Object fixture and its process-ownership protection are unavailable after VERIFICATION-LOCK-SIMPLIFICATION-20261116.
-- **Affected Subsystems**:
-  - `Verification CLI test fixtures`
-- **What Was Changed (The Concrete Reality)**:
-  - Write the detached test child PID to a temporary file and atomically rename it to the ready marker after closing the complete payload
-  - Preserve all process ownership assertions, timeouts, telemetry identity checks and required gates
-- **Architectural Rationale & Trade-Offs**:
-  - Two canonical attempts reproduced reading an empty ready file before write_text finished, followed by cleanup sharing errors
-  - Readiness must mean the complete PID is available rather than only that a file was opened
-- **Verification & Test Results**:
-  - Existing Windows Job fixture suite passed all nine tests after the change
-  - Canonical attempts before the fixture correction failed with empty-PID ValueError and cleanup sharing errors
-  - Emulator production code and reference values are unchanged by this prerequisite fix
-### [2026-11-16 09:28 CET] — VERIFICATION-LOCK-SIMPLIFICATION-20261116: simplify verifier ownership
-- **Affected Subsystems**:
-  - `tools/verification`
-  - `Verification requirements and commit continuation`
-- **What Was Changed (The Concrete Reality)**:
-  - Use one nonblocking OS lock per checkout across executing verification entry points
-  - Remove command-tree supervision and its obsolete tests while retaining evidence reuse and all acceptance gates
-  - Isolate executing CLI fixtures and document the replacement contract
-- **Architectural Rationale & Trade-Offs**:
-  - Authorize verifier mutual exclusion without process registries or recovery machinery
-  - Surviving children may overlap a later invocation and are no longer detected or terminated
-  - Keep administrative integration transactions and psutil consumers unchanged
-- **Verification & Test Results**:
-  - Focused verification passed 200 Python tests on Windows
-  - Real subprocess tests cover contention and unchanged evidence plus release and reuse after interruption
-  - git diff --check passed
-  - POSIX execution is unrun
-  - Canonical commit verification and four independent reviews are pending
-### [2026-11-16 09:41 CET] — GUI-MONITOR-IMAGE-FAILURE-20261116: wait for the monitor image before checking its upload
-- **Affected Subsystems**:
-  - `GUI integration tests`
-- **What Was Changed (The Concrete Reality)**:
-  - Capture the expected stopped CCK before transferring the session to the host
-  - Wait for the presented image to match the current generation and expected CCK and dimensions
-  - Retain every full-image, pixel, geometry, centering, UV and unchanged-framebuffer assertion
-- **Architectural Rationale & Trade-Offs**:
-  - Command replies and video use independent paths, so idle commands do not prove that the GUI has received an image
-  - Keep the command-idle predicate and existing timeout unchanged
-- **Verification & Test Results**:
-  - The unchanged test passed once and then reproduced the texture lookup failure naturally
-  - Controlled mailbox contention reproduced the same failure in all eight PAL/NTSC, interlace and view combinations
-  - All eight paired cases using the repaired waiting block passed the original assertions
-  - The complete GUI package passed 120 tests without failures or ignored tests
-  - The browser build and focused formatting checks passed
-  - Canonical commit verification is pending
-  - The historical failure logs remain unavailable, so the exact historical thread schedule is unverified
-### [2026-11-16 09:42 CET] — Publish Windows Job Object fixture readiness atomically
-> Historical: The Windows Job Object fixture and its process-ownership protection are unavailable after VERIFICATION-LOCK-SIMPLIFICATION-20261116.
-- **Affected Subsystems**:
-  - `tools/verification/tests/test_windows_job.py`
-- **What Was Changed (The Concrete Reality)**:
-  - Write the complete PID to a temporary file and atomically replace the ready signal before the parent reads it
-- **Architectural Rationale & Trade-Offs**:
-  - The full tooling run demonstrated an empty-PID read and cleanup failure when file existence became visible before its contents
-  - Preserve every containment and cleanup assertion
-- **Verification & Test Results**:
-  - The initial 216-case run failed in this fixture
-  - All nine Windows Job Object cases and the corrected 218-case tooling suite passed
-### [2026-11-16 09:42 CET] — TEST-RUNTIME-AND-VALUE-20261116: report verification timings without invalidating inputs
-- **Affected Subsystems**:
-  - `tools/verification`
-  - `tests/test-runtime-report.md`
-  - `verification instructions and specifications`
-- **What Was Changed (The Concrete Reality)**:
-  - Generate a versioned timing report and grouped console summary from existing command timers
-  - Exclude this exact output from selection source stability input identities and language scans while sealing it in the candidate tree
-  - Select verification-tool contracts only for their owning code tests policies and consumed shared tooling
-- **Architectural Rationale & Trade-Offs**:
-  - Expose executed reused failed missing and skipped work without repeating tests to measure them
-  - Preserve required repository gates and detect real source edits
-- **Verification & Test Results**:
-  - All 218 focused tooling contracts passed after the separate PID fixture correction
-  - Six alternating reused fixture pairs measured median generation 24.608 ms and writing 0.528 ms with a noisy 87 ms end-to-end difference
-  - Input fixture profiling found 5.671 s of machine advance and 13 roughly 26 MB snapshots with 6.313 s acquisition plus 3.311 s decoding
-  - Emulator production code is unchanged and changed-code coverage review is inapplicable
-  - Canonical batch verification and independent review are recorded in the commit message
----
-
-### [2026-11-16 09:42 CET] — TEST-RUNTIME-AND-VALUE-20261116: shorten audio captures and retire presentation campaigns
-- **Affected Subsystems**:
-  - `crates/gui/tests`
-  - `crates/machine_loop/tests`
-- **What Was Changed (The Concrete Reality)**:
-  - Remove thirteen pacing and graphical-program assertion cases while preserving guest assets and manual measurement examples
-  - Shorten PAL and NTSC audio WAV captures to about 120 ms without widening acceptance bounds
-- **Architectural Rationale & Trade-Offs**:
-  - Apply the recorded user decision to evaluate presentation and FPS manually while retaining CPU chip bus input and host command correctness checks
-- **Verification & Test Results**:
-  - Three audio cases passed before and after with execution falling from 6.88 s to 1.76 s outside compilation
-  - Twenty-seven focused GUI input and host cases passed
-  - Browser build and formatting passed
-  - No whole-commit speedup or hardware agreement is established
----
-
-### [2026-11-16 09:47 CET] — GRAPHIFY-REFRESH-PERFORMANCE-20261116: cache source paths within each refresh
-- **Affected Subsystems**:
-  - `tools/graphify`
-  - `tools/worktree.ps1`
-  - `tools/bootstrap/bootstrap_graphify.ps1`
-  - `agent refresh procedures`
-- **What Was Changed (The Concrete Reality)**:
-  - Use a local Graphify 0.9.74 refresh command with per-instance path memoization
-  - Route bootstrap and worktree refresh callers through the command
-  - Retain full corpus extraction and resolver context
-  - Preserve deterministic default hash seeds and UTF-8 output across interpreter restarts
-  - Keep immutable reference freezing and unchanged-project preflight as active unfinished work
-- **Architectural Rationale & Trade-Offs**:
-  - Avoid repeated lexical path calculations without changing persisted graph semantics or the installed tool
-  - The reference-layer prototype still needs complete dependency invalidation before production use
-- **Verification & Test Results**:
-  - Ten refresh contracts and four worktree contracts pass
-  - PowerShell parsing and usage checks pass
-  - Comparable four-worker unchanged pair: 42.155 to 34.367 seconds
-  - Comparable four-worker one-function Rust pair: 54.128 to 46.910 seconds
-  - The original baseline uses the unmodified Graphify module CLI to retain importable worker startup
-  - Earlier console-launcher timings mixed sequential and parallel extraction and cannot attribute savings to memoization
-  - Both final pairs preserve the entire graph including attributes and communities
-  - These shared-host observations do not establish typical speedup
-  - The 24 existing partial-extraction warnings remain visible
-### [2026-11-16 11:04 CET] — Batch task integration with recoverable source cleanup
-- **Affected Subsystems**:
-  - `tools/verification`
-  - `.agents/rules`
-  - `.agents/skills/git-close-task`
-  - `Obsidian/Amiga/Design/Verification`
-- **What Was Changed (The Concrete Reality)**:
-  - Completed task git-close-task-batch-integration-20261116
-  - Extend the existing integration record with approved immutable sources and all-source publication locks
-  - Assemble real intermediate merges before one combined verification and bind their history through the recorded HEAD
-  - Retain operation-specific control records in the surviving checkout and report independently retryable source cleanup
-  - Update the owning rules and procedures plus affected reviewer criteria
-- **Architectural Rationale & Trade-Offs**:
-  - Preserve original task commits and single-source behavior while accepting only one combined target transition
-  - Keep cleanup recoverable after assembly removal and distinguish operations reaching the same commit
-  - This implements the workflow without integrating any live task branches
-- **Verification & Test Results**:
-  - Focused integration suite passed all 36 tests before the record-isolation correction
-  - The additional record-isolation regression passed and independently cleaned both source selections
-  - Skill validation passed
-  - Vault audit passed for 35 specifications and 1113 links
-  - Canonical commit verification and four final review verdicts follow in batch preparation
-  - Git fixtures establish tool behavior and process protections rather than hardware behavior
----
-
-### [2026-11-16 11:35 CET] — Wait for the expected monitor image in the upload test
-- **Affected Subsystems**:
-  - `crates/gui/tests/test_interactions.rs`
-- **What Was Changed (The Concrete Reality)**:
-  - Apply the exact test correction from a2f604b with explicit user approval
-  - Wait for a presented image at the current generation and original stopped CCK with the expected dimensions before examining the texture
-  - Preserve every pixel and geometry assertion plus the existing timeout and command-idle checks
-- **Architectural Rationale & Trade-Offs**:
-  - The initial canonical profile failed the unchanged upload test because command replies may arrive before the independent video handoff
-  - Scope expansion is limited to this existing synchronization correction and does not change GUI runtime behavior
-- **Verification & Test Results**:
-  - The original canonical failure is retained in the batch evidence
-  - The corrected exact upload test passed all eight PAL and NTSC combinations with interlace and view selection
-  - The previous canonical attempt passed all 216 verification-tool contracts including 37 integration tests
-  - A complete canonical rerun and renewed four-lane review will cover the final two-commit batch
-### [2026-11-16 12:03 CET] — PARALLEL-TEST-EXECUTION-PILOT-20261116: bound parallel verification without changing selected protection
-- **Affected Subsystems**:
-  - `Verification coordinator`
-  - `Rust coverage runner`
-  - `Persistence and GUI test fixtures`
-- **What Was Changed (The Concrete Reality)**:
-  - Use nextest 0.9.152 for ordinary coverage with sixteen slots and four GUI cases
-  - Serialize the native-listener RTC case and the shared sample-binary writer and reader
-  - Use PID-scoped persistence files and the existing monitor-image readiness repair from a2f604b with all original assertions
-  - Add deterministic obsolete-generation rejection protection
-  - Overlap audited Python directories with coverage and independent preliminary gates with two coordinator workers
-  - Preserve serial builds and harness writers and coordinator-owned evidence with ordered coverage failure handling
-- **Architectural Rationale & Trade-Offs**:
-  - Preserve selected identities and assertions without retries or changed timeouts
-  - Retain focused Cargo diagnostics and doctests
-  - Include runner version and configuration in evidence identity
-  - Keep bootstrap setup and full SingleStep separate
-  - The user stopped additional timing campaigns after the measured benefit was clear
-- **Verification & Test Results**:
-  - Base bb68537 with identical fixture repairs in both arms selected 790 cases with 788 active and two asset-dependent ignored cases
-  - Warm ordinary coverage reset plus tests plus export took 280.403 seconds with Cargo and 134.418 seconds with nextest which is 52.06 percent less elapsed time and 2.09 times as fast
-  - A second nextest arm passed in 135.350 seconds
-  - Sampled peak process-tree working sets were 523.6 MiB baseline and 392.8 MiB nextest with mean host CPU 28.9 and 26.9 percent
-  - Four executing GUI cases were observed and ten RTC samples had no competing test
-  - Source coverage compared across 207 files with identical function and line totals and one changed stop-loop break span versus one changed toast-expiration span reflecting asynchronous timing
-  - No coverage exclusion or acceptance threshold changed
-  - Earlier failed or interrupted trials remain diagnostics under .agent/tmp/parallel-tests and are not passing evidence
-  - The full verifier speedup and Linux or macOS execution were not measured
-  - Existing continuation contracts passed 34 cases and the focused new parallel and selection contracts passed
-  - The browser build and the 35-specification vault audit with 1114 links passed
-  - The first canonical profile passed twelve groups but failed Windows process contracts when a ready file existed before its PID had been written
-  - Publish the complete PID through an owned pending file and atomic replacement without changing process-lifetime assertions or deadlines
-  - All nine focused Windows process contracts passed after that fixture correction
-  - Final canonical commit verification and four independent review verdicts are pending
----
-
-### [2026-11-16 12:12 CET] — Plan debugger register and chip-state screen layout
-- **Affected Subsystems**:
-  - `ROADMAP.md`
-- **What Was Changed (The Concrete Reality)**:
-  - Add planned item 5.5 linking custom-chip and CIA register inspection with internal chip-state views and screen layout
-  - Consider tabs and grouped panels while leaving the final layout undecided
-- **Architectural Rationale & Trade-Offs**:
-  - Make hardware activity inspectable within the debugger's available screen space
-- **Verification & Test Results**:
-  - Tests and automated verification and independent review were not run at the user's explicit request
-
-### [2026-11-16 12:49 CET] — INTEGRATION-ALL-20261116: integrate seven source branches and close completed tasks
-- **Affected Subsystems**:
-  - `Emulator memory and host failure handling`
-  - `GUI regression protection`
-  - `Verification and local integration tooling`
-  - `Graphify refresh`
-- **What Was Changed (The Concrete Reality)**:
-  - Close MEMORY-ACCESS-INVARIANTS-20261115 and MUTATION-QUEUE-OVERFLOW-20261115 with their committed CPU bus guards shared Chip RAM budget fatal mutation preflights and native/browser failure reporting
-  - Close GUI-MONITOR-IMAGE-FAILURE-20261116 while preserving both source histories and one effective upload synchronization fix
-  - Integrate the delivered GRAPHIFY-REFRESH-PERFORMANCE-20261116 path memoization and caller updates while retaining its active plan and source checkout for unfinished reference-layer and preflight work
-  - Close TEST-RUNTIME-AND-VALUE-20261116 with the approved presentation-test retirement shorter audio captures scoped tooling contracts and generated timing data
-  - Close VERIFICATION-LOCK-SIMPLIFICATION-20261116 and PARALLEL-TEST-EXECUTION-PILOT-20261116 with one checkout lock bounded concurrent groups and nextest resource limits
-  - Close git-close-task-batch-integration-20261116 with immutable source selections conditional all-source publication and independently retryable cleanup
-  - Preserve f38576a and all eleven original task commits through local assembly merges 1152b01 3abe385 50cf735 8077e0c 2d86aef 5f6467a and cddb03b awaiting this combined verification
-  - Reconcile overlapping timing and lock changes and retain native disk snapshot requirements alongside CPU admission state; migrate the native disk DMA fixture to explicit producer labels and observational debug reads without changing assertions
-  - Remove completed plan copies and integrated source checkouts only after accepted local publication while retaining DOCUMENTATION-KNOWLEDGE-PRUNING-20261116 and unfinished Graphify work
-- **Architectural Rationale & Trade-Offs**:
-  - Verify one complete candidate against immutable target f38576a9d0cdad720b731f11c00531cd78ea16a0 rather than treating source-only results as acceptance
-  - Preserve approved test retirements without restoring obsolete Windows process-ownership code or tests
-  - Distinguish concurrent command durations from invocation wall time and preserve failed missing executed and reused report rows
-  - No roadmap stage completion or remote operation is implied
-- **Verification & Test Results**:
-  - Pinned FPGA manifests and hashes verified in primary and integration checkouts
-  - Focused continuation contracts passed 46 tests after correcting timer propagation across the entry-point lock wrapper
-  - Initial focused execution exposed that combined wrapper defect and failed before correction
-  - Added report assertions for concurrent failure continuation reuse and skipped coverage export; publish the rewritten lock fixture PID atomically and keep diagnostic report Git fixtures and platform-version mocks isolated
-  - Canonical combined commit verification coverage-span review vault audit graph refresh and four independent approvals are pending and their final outcome belongs in the integration commit
----
-
-### [2026-11-16 15:23 CET] — DOCUMENTATION-KNOWLEDGE-PRUNING-20261116: retain valuable knowledge and remove code narration
-- **Affected Subsystems**:
-  - `Agent governance`
-  - `Design specifications`
-  - `Reader and tool documentation`
-  - `Rust source documentation`
-  - `Roadmap and engineering history`
-- **What Was Changed (The Concrete Reality)**:
-  - Adopt one documentation-value criterion and reconcile its review and enrichment consumers
-  - Remove duplicate field and module catalogs plus copied procedures while retaining hardware contracts and rationale
-  - Correct CPU-history and evidence claims and preserve the known in-flight restoration gap
-  - Replace Roadmap 5.2 timing assumptions with the owning Agnus and DMA specifications under explicit user approval
-  - Preserve all 89 historical changelog records and restore chronological order
-- **Architectural Rationale & Trade-Offs**:
-  - Retain independent hardware evidence and costly knowledge without transcribing implementation
-  - Keep source books conversion prompts executable code test bodies and protected references unchanged
-- **Verification & Test Results**:
-  - Focused vault checks passed for 35 specifications and 1069 links
-  - Roadmap structure formatting and configured semantic-sync checks passed
-  - Exact comparison preserves seven hardware columns across 256 register rows and executable text plus fenced examples in 21 Rust files
-  - Local link and anchor checks passed for 1208 links after the approved roadmap correction
-  - Canonical commit verification and four independent review lanes are pending
-  - No runtime repair hardware certification or milestone closure is claimed
-  - The first commit preflight found two dictionary entries and the AGENTS byte ceiling; shortened routing and resolved language findings under the standing language policy
-  - A later preparation run passed preliminary checks and Clippy but its browser build was interrupted to correct structural-test ownership wording before final verification
----
-
-### [2026-11-16 17:03 CET] — Update KaTeX to patched version 0.18.2
-- **Affected Subsystems**:
-  - `tools/bootstrap/book-to-markdown`
-- **What Was Changed (The Concrete Reality)**:
-  - Pin KaTeX 0.18.2 in the npm manifest and lockfile
-  - Update the renderer cache version to match the installed math library
-- **Architectural Rationale & Trade-Offs**:
-  - Address the [KaTeX security advisory](https://github.com/advisories/GHSA-238p-pmpm-9mq7) and Dependabot alert 1
-- **Verification & Test Results**:
-  - cargo build --workspace --locked passed with unused dependency warnings for bitflags and serde_json
-  - tools/web.ps1 build passed
-  - Python byte compilation and Node syntax checks for the installed KaTeX JavaScript and module passed
-  - Automated tests independent reviews and the canonical commit profile were skipped at the explicit user request
----
-
-### [2026-11-16 17:05 CET] — Clarify game library, input and player roadmap
-- **Affected Subsystems**:
-  - `ROADMAP.md`
-- **What Was Changed (The Concrete Reality)**:
-  - Unify reusable input mappings with named emulator configurations
-  - define desktop directory games and player controls
-  - separate current manual WASM setup from future bundles and persistent save catalogs
-  - Update related roadmap terminology and recognize the Dependabot name in the English vocabulary
-- **Architectural Rationale & Trade-Offs**:
-  - Record the selected frontend scope and verification gates without claiming implementation or milestone completion
-- **Verification & Test Results**:
-  - Roadmap structure check and git diff --check passed
-  - no production code changed
-  - Initial canonical preflight found vocabulary in the preceding diary entry; link its advisory identifier and register the established service name before retrying
----
-
-### [2026-11-16 17:16 CET] — Update Pillow to patched version 13.0.0
-- **Affected Subsystems**:
-  - `tools/bootstrap/book-to-markdown`
-  - `tools/bootstrap/pdf-to-markdown`
-- **What Was Changed (The Concrete Reality)**:
-  - Pin Pillow 13.0.0 in both converter requirement files
-- **Architectural Rationale & Trade-Offs**:
-  - Address the MPO and DCX decompression-bomb protection bypass reported in Dependabot alert 39
-  - Keep the shared Python installation unchanged because installed Docling and FastEmbed packages restrict Pillow to versions below 13
-- **Verification & Test Results**:
-  - cargo build --workspace --locked passed with existing unused dependency warnings for bitflags and serde_json
-  - tools/web.ps1 build passed
-  - Python compilation passed for 93 tracked bootstrap source files
-  - Book image smoke checks could not run because this checkout contains no local book PNG assets
-  - Automated test suites and independent reviews and the canonical commit profile were skipped at the explicit user request
----
-
-### [2026-11-16 18:51 CET] — Separate project and reference Graphify datasets
-- **Affected Subsystems**:
-  - `tools/graphify`
-  - `tools/graphify_query.py`
-  - `tools/bootstrap`
-  - `tools/worktree.ps1`
-  - `agent instructions`
-- **What Was Changed (The Concrete Reality)**:
-  - Complete GRAPHIFY-TWO-GRAPHS-20261116 with independent project and reference roots and outputs
-  - make bootstrap create or refresh both datasets while preparation and worktree refresh only project code
-  - require explicit query selection and source provenance
-  - retain project documentation and host-agent semantic extraction with attributed caching
-  - exclude vAmigaTS by user decision and retire the copied general skill pipelines
-  - Run native traversal through a process-local adapter that suppresses the pinned CLI query stamp and query log without changing the installed package
-- **Architectural Rationale & Trade-Offs**:
-  - Keep project relationships separate from imported models without duplicating the installed Graphify package or adding an external LLM service
-  - preserve physical worktree isolation and tracked reference configuration
-  - unchanged-project preflight remains separate future work
-- **Verification & Test Results**:
-  - Fresh project and reference structural builds succeeded
-  - focused real Graphify corpus tests passed for Git-ignore settings and semantic preservation and source removal and output isolation
-  - bootstrap contract tests passed
-  - reference parser reported 24 files with syntax errors and partial extraction
-  - canonical verification and independent review remain preparation gates
-  - no performance or hardware correctness claim
----
-
-### [2026-11-16 19:53 CET] — GAME-LIBRARY-INPUT-PLAYER-20261116: desktop library and player task closure
-- **Affected Subsystems**:
-  - `crates/gui`
-  - `crates/cpu`
-  - `crates/save_state`
-  - `crates/debugger`
-  - `crates/floppy`
-  - `crates/game_ports`
-  - `Obsidian/Amiga/Design`
-- **What Was Changed (The Concrete Reality)**:
-  - Deliver desktop game discovery and Add game / Edit game with copied ADF media and JPEG/PNG covers
-  - Add named hardware and input configurations with explicit independent Amiga port routing
-  - Provide a compact player panel with four drives and one session shared with Debug
-  - Preserve active CPU execution-sequence identity in version 10 snapshots with game/media associations and durable desktop progress
-  - Retain manual browser setup and explicit snapshot import/export with persistent settings but no media cache
-  - Prepare the user-selected external library with Amiga Test Kit, Workbench, Cadaver and a vAmigaTS diagnostic, preserving original source media
-- **Architectural Rationale & Trade-Offs**:
-  - The user requested a usable setup-to-disk path and library/player prototype, then authorized task closure with a rebase onto the current local master
-  - Static microcode arrays and host pointers are reconstructed from a serialized execution identity because opcode decoding alone loses redirected branch and exception sequences
-  - Host controls remain outside deterministic CCK execution and both game ports release on loss of capture or device availability
-  - Record only the delivered task scope, retaining broader roadmap acceptance and deferred physical-controller trials
-- **Verification & Test Results**:
-  - Before integration, the combined ordinary Cargo run passed 551 tests, and the later library/player GUI regressions passed 53 cases
-  - Native cross1 booted twice with identical milestones and a no-disk negative control, and Amiga Test Kit 1.21 reached its main menu
-  - Real-guest snapshots during floppy DMA resumed identically for 20000 CCK and the browser export/import retained exact CPU and CCK values
-  - Native and actual WASM builds, focused quality gates and wide/narrow visual checks passed before the rebase
-  - Source checkpoints ca665ac9e5a011db9392d0df2dd5ffd23542954f and 853f7aba7b9ae3ee54e11ab7f2c324c8e650ab6f were explicitly unverified integration working commits and became 1f9976389b6fa6c750896398da60323b4cb4d95a and aa3ab645a400fd7ec84a7414bb0cf88d0dd0a786 after the user-approved rebase onto de52e8efe3062e818cc1ec422e984e057eb7b72b
-  - Final combined acceptance is gated by the canonical commit profile, changed-code coverage review and four independent lanes, with final verdicts recorded in the closing commit
-  - Physical controller and real permission-dialog trials remain deferred, Workbench rendering artifacts also occur on the baseline, and complete Cadaver startup is unverified
-  - User approved the complete-state CPU architecture-test fixture and exactly Arc/Mutex permissions for the existing browser worker bootstrap
-  - No milestone or full SingleStep claim is made, and no remote publication was authorized
-
-  - Integration review reproduced and corrected stale host bindings after controller reassignment, durable game-slot menu availability, missing replacement confirmation, stale ROM selection and shortcuts escaping focused host text.
-  - Focused correction checks passed 55 GUI cases and three CPU continuation cases, including interrupt entry with wait states, short untaken branches and condition-true DBcc. Mouse port/sensitivity and keyboard-alias release assertions were added. The original slot-menu implementation was separately confirmed to report a persisted slot as empty.
-  - Direct and recent-ROM file operations now use the same reset confirmation, while invalid ROMs retain their original non-mutating error path. Tests preserve the existing load/history assertions after explicit confirmation.
-  - Confirmation rendering was checked across repeated GUI layout passes and visually inspected at 1024x600. The ROM/file regression group passed all 13 cases after the correction.
-  - The combined run exposed an older F5 fixture conflicting with focused-text priority. The test now verifies that F5 leaves the editor paused, then starts through Run and retains every frozen-editor assertion; all five frozen-inspection cases passed.
-  - Coverage review added behavioral protection for malformed library metadata and duplicate IDs, concurrent edit preservation, configuration conflicts and creation controls, selected-game Continue, disk switch/ejection acknowledgments, manual launch readiness and atomic rejection of incompatible player restores. A new assertion reproduced missing arrow-key frontend conflict detection; explicit physical-name normalization fixes all four directions.
----
-
-### [2026-11-16 21:46 CET] — Correct final bitplane DMA group for Workbench rows
-- **Affected Subsystems**:
-  - `agnus`
-  - `DMA specification`
-- **What Was Changed (The Concrete Reality)**:
-  - Request the final complete fetch group at the boundary after DDFSTOP and apply modulo only on its last word
-  - Add ROM-free component regressions for Kickstart and Workbench across consecutive rows with zero and signed modulos
-  - Correct the existing mid-group stop expectation with explicit user approval
-- **Architectural Rationale & Trade-Offs**:
-  - Workbench used 76 rather than 80 bytes per row
-  - The selected final-group rule follows vAmiga and retains the hardware evidence limits in the DMA specification
-- **Verification & Test Results**:
-  - On the original code the Kickstart regression passed and the Workbench regression failed
-  - cargo test -p agnus passed after the repair
-  - Native Workbench text and window borders are straight after the repair
-  - Native Kickstart and Cross1 captures are byte-identical before and after the repair
----
-
-### [2026-11-16 22:10 CET] — Compare rejected-ROM snapshots independently of save creation time
-- **Affected Subsystems**:
-  - `gui tests`
-- **What Was Changed (The Concrete Reality)**:
-  - Deserialize both snapshots and normalize only their creation timestamp before comparing their complete values
-  - Preserve machine state and all other snapshot metadata assertions
-- **Architectural Rationale & Trade-Offs**:
-  - Separate saves can cross a UTC second while the machine remains unchanged
-  - The user explicitly approved this single-field comparison exception after the canonical test exposed the mismatch
-- **Verification & Test Results**:
-  - The previous canonical failure differed only in header timestamp
-  - The corrected focused host runtime test passed
----
-
-### [2026-11-16 22:56 CET] — RTC-WB13-01: restore Workbench clock detection and close the task
-- **Affected Subsystems**:
-  - `crates/rtc`
-  - `crates/machine_loop/tests/test_rtc.rs`
-  - `Obsidian/Amiga/Design/RTC.md`
-- **What Was Changed (The Concrete Reality)**:
-  - Start the installed MSM6242B with HOLD clear so readable seconds advance before guest initialization
-  - Add a machine-bus startup regression and explicitly engage HOLD in the existing calendar-write fixture
-  - Document seconds-based detection and the SetClock 34.3 update for original Workbench dates after 1999
-  - Record working commit 38f8fd624d36260af86edf9bb84f8486e389af4a as awaiting combined integration verification against 34f04bf1585c329d886f895650a5e4ed28c84ec4
-- **Architectural Rationale & Trade-Offs**:
-  - The clock was present but its startup HOLD latch kept the seconds register fixed and caused SetClock to report no battery clock
-  - Preserve two BCD year digits and use the guest SetClock update for its independent year 2000 defect
-  - The user approved local integration into master and removal of rtc-workbench-detection after verification, without remote publication
-- **Verification & Test Results**:
-  - The new startup regression failed on the original code and passed after the fix
-  - cargo test -p rtc -p machine_loop -p memory_bus passed, including 20 RTC tests
-  - cargo check -p rtc --target wasm32-unknown-unknown passed
-  - Paced headless boots with local Kickstart 1.3 and Workbench 34.20 reproduced the original missing-clock message and read the date after the fix
-  - A diagnostic disk copy with SetClock 34.3 displayed 2026 in this emulator, and WinUAE 6.0.3 displayed 2026 with both SetClock versions
-  - Canonical integration verification and four independent review lanes remain pending, and no roadmap milestone is claimed
----
-
-### [2026-11-16 23:15 CET] — Make input capture explicit and reserve F12
-- **Affected Subsystems**:
-  - `crates/gui`
-  - `docs/debugger.md`
-  - `docs/game-library.md`
-  - `Obsidian/Amiga/Design/Application/GUI.md`
-- **What Was Changed (The Concrete Reality)**:
-  - Reserve F12 for Game/Debug
-  - replace the default Escape release with fixed middle mouse and an optional unassigned keyboard key
-  - remove Ctrl+R
-  - separate gamepad gameplay from pointer capture
-  - retain controller contacts on capture release and release all inputs on focus loss
-  - show shared capture guidance
-- **Architectural Rationale & Trade-Offs**:
-  - Keep Amiga keys available and allow controllers to play without capturing the desktop pointer
-- **Verification & Test Results**:
-  - GUI suite passed before final review corrections
-  - focused capture and view suites passed after text-focus and shared-guidance corrections
-  - browser adapter contention regression passed
-  - actual WASM build and vault audit passed
-  - configuration screenshot rendered and inspected. Canonical verification and final independent approvals pending. Physical controllers and Linux/macOS were not exercised.
----
-
-### [2026-11-16 22:56 CET] — Show disk activity in the player panel
-- **Affected Subsystems**:
-  - `crates/config`
-  - `crates/floppy`
-  - `crates/paula`
-  - `crates/machine_loop`
-  - `crates/gui`
-  - `Obsidian/Amiga/Design/Application/GUI.md`
-- **What Was Changed (The Concrete Reality)**:
-  - Replaced motor-based Active text with a fixed-position green activity light.
-  - Retained head steps and consumed disk data between host publications.
-  - Held the light for 120 ms and cleared its baseline on restore or any drive reset, including guest RESET and stepped keyboard reset.
-  - Shared the existing drive-count limit through config without adding dependencies.
-  - Added behavioral protection for head steps, byte reads, DMA reads, serialized writes, timing and reset/restore.
-  - Added the valid egui API namespace epaint to the programming vocabulary.
-- **Architectural Rationale & Trade-Offs**:
-  - Confirm real drive work without a track display or a light held on by the spindle motor.
-  - Activity and reset counters and the pending controller observation are required serialized fields, so older snapshots without them are unsupported.
-- **Verification & Test Results**:
-  - Focused floppy, Paula and GUI crate tests passed, as did machine-loop activity and autonomous ADF DMA suites, architecture checks and the browser build.
-  - The revised GUI activity suite passed guest RESET and stepped keyboard reset checks.
-  - Headless wide and compact game panels were visually inspected.
-  - Canonical batch coverage and independent review are pending.
----
-
-### [2026-11-17 00:28 CET] — Integrate input capture and floppy activity
-- **Affected Subsystems**:
-  - `crates/gui`
-  - `crates/floppy`
-  - `crates/paula`
-  - `crates/machine_loop`
-  - `GUI specification`
-- **What Was Changed (The Concrete Reality)**:
-  - Integrate task input-capture at bbdd32cab335d5a17317a8ead7e54ee66adee133 and task floppy-activity at 0cfab14e55db4f7bbab1ab408fed66b0d33353aa against primary baseline 1cc643c1833acbda53d0bfc78507f7a46ad60ab0
-  - Preserve both features and the primary RTC fix while resolving overlapping GUI requirements and diary entries
-  - Record intermediate merges 4612d23 and ca0d45c as awaiting combined verification
-  - Retain both task branches, worktrees and the input-capture working plan under the approved merge-only scope
-  - Invalidate cached controller contacts on every runtime generation change and preserve fresh gamepad edges admitted after a pending full release while discarding keyboard joystick presses on capture loss
-  - Retry a contended fatal-test command submission without weakening its failure assertions
-  - Explain the physical motor-controlled drive LED separately from GUI event feedback in the floppy specification
-- **Architectural Rationale & Trade-Offs**:
-  - Assemble both source histories before one combined acceptance pass
-  - preserve pending primary roadmap edits separately during publication
-  - no remote publication or milestone closure
-- **Verification & Test Results**:
-  - Source commit messages record passing source-only canonical checks and four review approvals for each feature
-  - merge conflict resolutions and git diff --check passed
-  - Both controller defects failed focused regressions before the runtime correction, including separate keyboard-reset and running-restore reproductions
-  - All 45 focused input, runtime, player capture and mapping tests passed after correction; the Node adapter regression also passed
-  - A further regression reproduced a keyboard joystick press retained by the initial queue correction; all 11 input tests passed after distinguishing gamepad ports
-  - The vault audit passed all 35 specifications and 1078 links
-  - Add the HRM-confirmed DSKMOTOR signal name to reviewed hardware vocabulary after the preliminary language gate identified it
-  - The first combined profile failed at a contended fatal-test command submission; final combined canonical verification and four independent review lanes are pending
-  - physical controller and live browser interaction remain outside this verification
----
-
-### [2026-11-17 00:26 CET] — Recover the DIW edge and store a fixed video rectangle
-- **Affected Subsystems**:
-  - `Denise`
-  - `frame_builder`
-  - `machine_loop`
-  - `save_state`
-  - `GUI`
-- **What Was Changed (The Concrete Reality)**:
-  - VIDEO-FRAME-RECT-20261116: compare DIW against the delayed output pair and preserve H0
-  - store PAL 720 x 568 and selected NTSC 720 x 480 directly at a 720-sample stride, without a second cropped image
-  - retain parity, clear missing tails and absent rows including blank lines between painted lines, select geometry at construction and retain it on reset
-  - advance save schema to 11 with no compatibility parser
-  - adapt component, machine, preview, exchange and texture regressions to the fixed rectangle
-- **Architectural Rationale & Trade-Offs**:
-  - The original renderer discards the first pair of an ordinary bitplane word stream before composition. The independent reproduction fails on the original renderer and passes after the phase correction. Presentation dimensions are a project choice
-  - they do not claim analog PAL/NTSC raster dimensions or silicon edge calibration.
-- **Verification & Test Results**:
-  - Focused Denise, frame-builder, Agnus fetch, machine display/state, save persistence and GUI exchange/scaling checks passed during development
-  - the original-renderer word-stream regression fails at its first expected sample
-  - Workbench Clock width is 170 and its directory remains 428 samples, with exactly 420 recovered samples in the old saved scene
-  - final PAL equals the corrected old image cropped at (52, 4), and Cross1 matches the previous corrected-DMA crop across three identical fields
-  - PAL and NTSC Kickstart captures are 720 x 568 and 720 x 480
-  - vault audit passed 35 Design notes and 1079 links
-  - a headless Game view shows the complete rectangle under uniform Fit scaling. WinUAE 6.0.3 displayed the selected NTSC configuration at 59.8 Hz
-  - the first canonical attempt exposed one GUI fixture still computing the retired raster size; its expectation now uses the independently specified fixed dimensions
-  - independent review reproduced old pixels on a blank middle line; the corrected mapping clears those rows after completing the previous row, preserving opposite interlaced parity
-  - reset-profile and blank-row regressions pass, and coverage review restored explicit black queries outside the rectangle
-  - NTSC origin is confirmed against WinUAE 6.0.3 before-filtering output: the selected 720 x 480 rectangle at (16, 0) in its 752 x 484 native capture matches all 345600 RGB samples exactly, without scaling, tolerance or masks
-  - canonical code verification passed 837 ordinary tests (3 existing skips), 9 standard-harness tests, native Clippy and the actual WASM build; changed-runtime coverage has no unresolved in-scope gap
-  - the selected presentation origins are receiver CCK 49, PAL line 28 and NTSC line 21; analog timing calibration and broader native-display fidelity remain outside this task
-  - no milestone or broader roadmap closure is claimed.
----
-
-### [2026-11-17 00:58 CET] — Integrate fixed framebuffer geometry with the current frontend
-- **Affected Subsystems**:
-  - `Denise`
-  - `frame_builder`
-  - `machine_loop`
-  - `save_state`
-  - `GUI`
-- **What Was Changed (The Concrete Reality)**:
-  - Integrate VIDEO-FRAME-RECT-20261116 at 5f01bfcdb15180494c51c09b6c25ef70c287507f with primary baseline 51379e3d44ed8fb9cfa4892c2984434c62a2d24a
-  - preserve fixed PAL and NTSC geometry together with explicit input capture, F12 and floppy activity
-  - retain both parent diary histories and regenerate the timing report
-  - reconcile every tracked Markdown path changed from the common base
-  - retain schema 11 and the existing task closure record
-  - compare the DIW receiver restart value before the delayed output phase, preserving a programmed horizontal start of 2
-  - observe gamepad state directly at an idle owner boundary and retry inactive GUI frames until focus-loss release is visible, without a focused redraw or a fixed sleep
-- **Architectural Rationale & Trade-Offs**:
-  - Preserve the source histories and accept the combined result before conditional local publication and approved worktree removal
-  - unrelated primary roadmap edits remain outside this integration
-- **Verification & Test Results**:
-  - Source commit records 837 passing ordinary tests, 3 existing skips, 9 harness tests, four review approvals and the exact NTSC WinUAE comparison
-  - merge code paths combined without conflicts and git diff --check passed
-  - the first combined profile passed 852 ordinary tests, 3 existing skips and 9 standard-harness tests
-  - independent review identified the skipped DIW origin comparison; a new start-2 regression failed on the candidate and all four display-window tests passed after the correction, including both resolutions and consecutive lines
-  - a later combined attempt failed the gamepad focus-loss test after its fixed 30 ms sleep; direct snapshot observation and inactive-frame retries preserve the release assertion, and all six focused capture tests passed during diagnosis
-  - final canonical integration verification and independent integration reviews remain pending
-  - no milestone or remote publication is claimed
----
-
-### [2026-11-17 01:25 CET] — Plan optional floppy loading and disk controls
-- **Affected Subsystems**:
-  - `Roadmap`
-- **What Was Changed (The Concrete Reality)**:
-  - Add turbo floppy mode and deferred automatic disk swapping exploration
-  - Include disk selection and swapping in configurable gamepad actions
-- **Architectural Rationale & Trade-Offs**:
-  - Record future frontend work without selecting an acceleration or recognition mechanism or claiming implementation
-- **Verification & Test Results**:
-  - Reviewed the roadmap diff and section anchors
-  - git diff --check passed before this entry
-  - No runtime code or acceptance references changed
----
-
-### [2026-11-17 02:07 CET] — Observe drive activity at chipset source events
-- **Affected Subsystems**:
-  - `CIA-B board routing`
-  - `Paula disk observations`
-  - `Floppy controls`
-  - `GUI drive indicator`
-  - `SaveState`
-- **What Was Changed (The Concrete Reality)**:
-  - DISK-ACTIVITY-20261117: record effective CIA-B control events and accepted Paula transfers in wrapping per-drive observations
-  - remove both per-CCK activity collectors and presentation bookkeeping from Floppy
-  - share connector control decoding with drive mechanics and establish next-CCK transfer recipients after the CPU phase
-  - retain selected/running sustained indication and the 120 ms hold with reset/load baselines
-  - use save schema 12 without compatibility parsing
-  - update owning specifications and add production-path regressions and an inspector scenario
-  - retain the documented standalone subsystem stepping API under the user-approved single-symbol host/spec exemption in the code-quality checker
-- **Architectural Rationale & Trade-Offs**:
-  - Preserve short events and correct drive attribution across publication gaps without per-CCK activity collection, duplicated writable mechanics, chip callbacks or new dependencies
-  - observation metadata does not alter guest registers, physical signal phases or media-write support
-- **Verification & Test Results**:
-  - Original machine and GUI activity suites passed before implementation
-  - final full CIA, Floppy, Paula, SaveState, Debugger, GUI and Machine Loop suites passed, as did the actual WASM build and git diff --check
-  - GUI visual capture and integration assertions verify sustained indication, hold timing, fixed bounds, restore and reset
-  - six samples per version and workload in A-B-B-A order gave idle median 178.967 to 180.621 FPS and active byte-read median 171.221 to 172.104 FPS, within observed variation
-  - no whole-machine speedup or regression is established, and browser performance and physical hardware fidelity remain unverified
-  - canonical batch gates, changed-code coverage review and four independent review lanes are pending
----
-
-### [2026-11-17 02:58 CET] — Commit configuration editing and current controls on progress restore
-- **Affected Subsystems**:
-  - `GUI`
-  - `debugger`
-  - `keyboard`
-  - `save_state`
-- **What Was Changed (The Concrete Reality)**:
-  - Complete CONFIG-INPUT-STATE-20261116: isolate configuration and shared-mapping drafts behind Save and Cancel, including unsaved navigation and committed-only persistence
-  - Separate launch choices, port attachment and host input values while retaining the current flat RON settings contract and stable configuration IDs
-  - Apply changed endpoints at a stopped owner boundary and restore progress with current session controls across library, file and quick-slot loads
-  - Preserve exact core restoration and observational capture, receiver-owned registers, mouse phase, embedded media and live RTC independence
-  - Retain deferred keyboard releases behind a saturated ten-code ring and preserve retry and release-before-press ordering, recording this state in snapshot schema 12
-- **Architectural Rationale & Trade-Offs**:
-  - Changing controls must allow the same game to continue without reset or replaying launch hardware
-  - A reproduced full-ring release lost key-up and emitted only overflow, requiring serializable pending releases rather than protocol flushing
-  - Earlier snapshots remain unsupported under the pre-release contract, while existing user configuration data stays readable without migration
-- **Verification & Test Results**:
-  - Original port-rejection regression passed before the approved acceptance update, and the full-ring keyboard reproduction failed on the original controller
-  - Full GUI crate tests and subsequent affected editor, import, capture, restore, runtime input and library suites passed
-  - Keyboard, save_state and debugger ordinary tests and machine keyboard/CIA integration passed, including synthetic CPU observation of key-up from partial and full-ring snapshots
-  - Architecture, Clippy and the actual WASM application build passed, with existing unused-dependency manifest warnings retained outside scope
-  - Chromium 157.0.8103.51 verified Cancel persistence, stopped port changes and importing older endpoint types with current controls, preserving CCK 2549684 and reporting no page or worker failures
-  - Inspected 1280x800 and 480x640 editor captures and the narrow unsaved dialog
-  - Independent review reproduced missing controller validation on Debug and dirty Discard entry, then shared validated session navigation and retained editor origin fixed both regressions
-  - Retired the unused LoadSnapshot owner command and implicit attachment cache, migrating existing tests to explicit restore requests without weakening assertions
-  - Added rejected Save coverage for referenced and unused blank-name mappings, catalog identity and mapping-field validation, unchanged machine/control state and Cancel recovery
-  - A parallel focused runtime run exceeded its existing GUI wait limit under host pressure, while the unchanged checks passed when serialized
-  - Initial canonical coverage compilation failed with memory allocation and Windows paging-file errors before test execution; the full suite is being retried with one Cargo build job and unchanged acceptance criteria
-  - Canonical commit verification, changed-code coverage review and final independent review approvals remain pending at entry preparation
-  - Physical controllers, private firmware boot and milestone verification were not run
----
-
-### [2026-11-17 10:47 CET] — Integrate current controls with chipset drive activity
-- **Affected Subsystems**:
-  - `GUI`
-  - `keyboard`
-  - `SaveState`
-  - `disk activity`
-- **What Was Changed (The Concrete Reality)**:
-  - Close CONFIG-INPUT-STATE-20261116 by integrating configuration-gameports-save-state into local master
-  - preserve the configuration and disk-activity commits through a real merge
-  - retain both restore and mount regressions and both inspector scenarios
-  - use schema 13 for the combined pending-keyboard-release and chipset-observation layout
-- **Architectural Rationale & Trade-Offs**:
-  - The two independent branches used schema 12 for incompatible state layouts
-  - current-control reconciliation must preserve captured disk observations and physical delivery phases
-  - retain existing settings data while unsupported snapshots receive an explicit version rejection
-  - User explicitly approved the single test-file std::thread::spawn permission needed to verify bounded input contention and deferred draft publication
-- **Verification & Test Results**:
-  - Source commit 902fc62 passed canonical attempt 2e60da62d2f64a47854c888126948086 with 875 ordinary tests passed and three skipped plus four independent approvals before integration
-  - merge resolutions retain both parent behaviors and migrate the additional activity test to explicit RestorePlayer
-  - combined canonical verification and independent review are pending at preparation
-  - physical controllers and private firmware remain unverified and this integration does not close a roadmap milestone
-
----
-
-### [2026-11-17 14:39 CET] — Close window keyboard routing and integrate current configuration controls
-- **Affected Subsystems**:
-  - `GUI host input`
-  - `native window and browser adapters`
-  - `frontend configuration`
-  - `roadmap`
-- **What Was Changed (The Concrete Reality)**:
-  - KEYBOARD-DIAGNOSTICS-20261117: replace global rdev keyboard and mouse listeners with application-window input and one native/browser keyboard routing policy
-  - use upstream eframe/egui 0.32.3 through the public external-event-loop API without vendored patches
-  - remove the temporary keyboard terminal and all added tracing
-  - retain physical modifier sides, keypad identities, command edges, session generations, bounded queues and gilrs gamepads
-  - reconcile the current controls.host configuration structure, draft editor and schema 13 user-load release policy from master
-  - preserve accepted frontend bindings without guest counterparts and retain queued keys across host activation/publication delays
-  - cover obsolete generations, physical held/released keys, focus-loss ordering, inbox and cross-frame retry overflow through the GUI-to-owner path
-  - verify full frontend modifier/command routing, GUI zoom and stopped Developer recording without starting the machine
-  - expose the existing native key enqueue boundary for typed metadata and bounded-buffer regressions
-  - record deferred profiler-guided CPU reduction in roadmap 8.5
-  - working commits e162dae and 4c3eb88 await this combined verification
-- **Architectural Rationale & Trade-Offs**:
-  - Preserve master history and current configuration/save behavior while limiting keyboard observation to the application window
-  - host adapters stay outside the CCK-driven hardware models
-  - the user approved local integration, closure and removal of both keyboard experiment worktrees, including the discarded older rdev experiment
-- **Verification & Test Results**:
-  - Pre-integration source: 120 selected Rust tests, browser adapter Node test and native/WASM builds passed
-  - the user confirmed Workbench Notepad and Cadaver on the preceding window-input experiment
-  - merged GUI and all tests compile after configuration and egui API reconciliation
-  - independent review reproduced lost Home/End/F11/PageDown actions; its new regression failed before the frontend-position correction and passed afterward
-  - the new ingress regression reproduced first-key loss before host activation; the corrected activation/owner-readiness retry and both ingress regressions passed
-  - the default cargo-llvm-cov 0.9.1 wrapper omitted GUI instrumentation despite running its tests; an isolated documented non-wrapper full-GUI measurement supplied actual GUI coverage without changing enforcement
-  - GUI settlement now includes pending host mapping/capture activation; synthetic gamepad transitions after text focus resume wait for that acknowledgment while preserving all original gameplay assertions
-  - final upstream-adapter physical typing, physical gamepad freshness and Linux/macOS execution remain unverified
-  - canonical combined results and the four scoped review verdicts are required before publication and recorded by the final integration commit
-  - no roadmap implementation milestone or remote publication is claimed
-
----
-
-### [2026-11-17 15:00 CET] — Simplify memory admission with CCK timestamps
-- **Affected Subsystems**:
-  - `CPU`
-  - `physical memory`
-  - `Agnus DMA`
-  - `machine loop`
-  - `save state`
-- **What Was Changed (The Concrete Reality)**:
-  - MEMORY-INVARIANT-SIMPLIFICATION-20261117: replace CPU admission countdowns and Chip RAM transfer descriptions with access timestamps
-  - normalize write callbacks by one CCK
-  - preserve duplicate attempts, wait identity and read completion
-  - remove owner and PC plumbing
-  - preserve access age across reset and snapshots
-  - advance save schema to 14
-  - apply explicitly approved reduced diagnostic assertions
-- **Architectural Rationale & Trade-Offs**:
-  - Keep shared CPU/DMA storage admission and two-CCK CPU cycles with less successful-path bookkeeping
-  - pending transfer identity remains functional
-  - mutation queue diagnostics remain unchanged
-- **Verification & Test Results**:
-  - Focused CPU, physical_memory, agnus and machine_loop tests pass
-  - architecture and vault checks pass
-  - twelve interleaved release samples per version show median 8.379795 to 8.184074 ms/field, 119.335 to 122.189 fields/s, throughput +2.39%
-  - CCK counts, guest progress, activity and frame bytes agree
-  - measurement excludes GUI and pacing but retains pixel/audio generation
-  - final canonical verification and independent review pending
-  - browser speed, isolated Fast RAM and real-game compatibility unmeasured
----
-
-### [2026-11-17 15:13 CET] — Preserve GUI reply ownership in the host-input fixture
-- **Affected Subsystems**:
-  - `GUI host-runtime tests`
-- **What Was Changed (The Concrete Reality)**:
-  - Before direct snapshot polling, wait for the GUI to process its outstanding replies while retaining the requested window focus
-  - keep all input assertions and the existing deadline
-- **Architectural Rationale & Trade-Offs**:
-  - The direct runtime helper drains all replies and discards unrelated IDs
-  - entering it while AppHost owns a pending UTC command can strand bookkeeping and prevent later settling
-- **Verification & Test Results**:
-  - Two canonical coverage attempts timed out in the unchanged input case
-  - normal and instrumented focused cases passed
-  - a controlled temporary reproduction demonstrated a GUI reply consumed by direct snapshot polling and a permanently non-idle AppHost
-  - the diagnostic was removed
-  - final combined batch validation pending
----
-
-### [2026-11-17 16:23 CET] — Close memory invariant simplification and integrate current window input
-- **Affected Subsystems**:
-  - `CPU`
-  - `Chip RAM`
-  - `machine loop`
-  - `snapshots`
-  - `GUI input fixtures`
-- **What Was Changed (The Concrete Reality)**:
-  - Close MEMORY-INVARIANT-SIMPLIFICATION-20261117 by integrating task commits 68d908e and fb6c76f with master b17f9b3 through a real merge
-  - retain normalized CPU cycle-start spacing and shared Chip RAM timestamps
-  - preserve the GUI reply-ownership fixture repair, current window keyboard routing and deferred profiler roadmap work
-  - combine both histories in the rolling changelog and regenerate runtime evidence
-  - migrate the browser workflow's snapshot assertion to schema 14 without changing its other checks
-- **Architectural Rationale & Trade-Offs**:
-  - Source-only verification does not establish the combined result after master advances
-  - preserve all original commits and both sets of behavior, then conditionally publish the exact approved target transition
-- **Verification & Test Results**:
-  - Task source fb6c76f passed canonical verification with 890 ordinary tests and three existing private-fixture skips, WebAssembly, Clippy and four independent reviews
-  - original native PAL measurements showed median throughput +2.39 percent at matching guest progress with GUI and pacing excluded
-  - integration verification and four fresh reviews are pending
-  - the initial integrated run passed 900 ordinary tests; stale coverage executables exceeded the Windows export command limit, so workspace coverage artifacts were refreshed before repeating verification
-  - source-only performance is historical evidence and was not remeasured for the integrated frontend
-  - full SingleStep, hardware captures, private firmware and browser performance are not established
----
-
-### [2026-11-17 20:27 CET] — Separate the manual TA workflow into bounded operations
-- **Affected Subsystems**:
-  - `.agents`
-  - `.codex/agents`
-  - `tools/workflow`
-  - `verification and Graphify consumers`
-- **What Was Changed (The Concrete Reality)**:
-  - Implement DETERMINISTIC-WORKFLOW-V1-20261116 with seven named roles and 43 atomic TA skills
-  - reduce root instructions to shared obligations and selective domain routing
-  - move detailed result criteria to review owners while preserving exact exceptions
-  - add typed text and JSON handoffs, bounded rounds and normal result validation
-  - update moved checker imports and active documentation consumers
-- **Architectural Rationale & Trade-Offs**:
-  - Keep operation selection in the interactive session and make missing prerequisites return control
-  - preserve existing verification and conditional Git publication guards without an automatic lifecycle engine
-  - inherited role permissions remain visible behavioral limits, not a claimed sandbox
-  - the migration uses a separate candidate worktree and the unchanged source harness under explicit task-scoped authorization
-- **Verification & Test Results**:
-  - The first actual fresh TA-planner completed one round and its receiver validated both results
-  - existing focused suites passed 23 architecture contracts, five timing/selection contracts and 15 Graphify contracts
-  - PowerShell parsing and safe invocation checks passed
-  - no emulator behavior, hardware/golden references or conversion prompts changed
-  - practical coverage is bounded and does not establish a speedup or exhaustive skill coverage
----
-
-### [2026-11-17 22:57 CET] — Explain TA results and offer explicit next choices
-- **Affected Subsystems**:
-  - `.agents`
-  - `tools/workflow`
-  - `docs/ai_agents.md`
-- **What Was Changed (The Concrete Reality)**:
-  - Implement WORKFLOW-NEXT-STEP-GUIDANCE-20261117 on the preserved pending V1 candidate
-  - add one receiving-session procedure with outcome, consequence, recommendation and source-bound options
-  - preserve worker reports and migrate their recommendation into result schema version 2
-  - render exact role, skill, inputs, findings, scope and round budget for selected operations
-  - update affected routing and four independent review criteria
-- **Architectural Rationale & Trade-Offs**:
-  - Interpretation is automatic while the next operation waits for selection
-  - current guidance retains exact source and candidate identities without an execution engine
-  - stale options and missing inputs remain explicit and criterion approval remains separate from repair authority
-  - task-specific trial delegation does not become a future default
-- **Verification & Test Results**:
-  - Initial tracked diff and all 84 V1 new-file hashes matched the recorded prior candidate
-  - Python compilation and both selected schema description commands passed
-  - canonical profile preview selected the combined V1 and extension scope
-  - practical handoff trials and final combined verification are recorded separately when executed
-  - no emulator, golden reference or conversion prompt changes
-
----
-
-### [2026-11-18 00:08 CET] — Constrain official TA suggestions with a skill matrix
-- **Affected Subsystems**:
-  - `.agents`
-  - `tools/workflow`
-  - `docs/ai_agents.md`
-- **What Was Changed (The Concrete Reality)**:
-  - Implement WORKFLOW-SKILL-MATRIX-20261117 on the preserved pending workflow candidate
-  - define all 43 source and destination skills with shared conditions in one authoritative matrix
-  - generate a readable matrix and expose source-row lookup through the existing result tool
-  - require official guidance to identify its matrix, transition condition and actual evidence basis
-  - retain ordinary direct skill requests outside the official recommendation matrix
-- **Architectural Rationale & Trade-Offs**:
-  - Marked cells identify conditional suggestions while the receiver interprets evidence and waits for selection
-  - reuse the existing role mapping and keep worker result validation independent of recommendation membership
-  - preserve historical results and distinguish structural validation from meaningful evidence assessment
-  - no execution engine, automatic workflow test suite or default permission expansion
-- **Verification & Test Results**:
-  - Python compilation, guidance schema description, matrix rendering and coverage-row lookup passed
-  - the matrix covers 43 skills with 282 populated cells and 39 shared conditions
-  - actual read-only trial accepted a directly selected skill outside the matrix and rejected the same pair as an official suggestion
-  - the canonical commit profile passed all 19 groups; exact snapshots, independent reviews and evidence reuse are recorded in the task report
-  - no emulator, golden reference or conversion prompt changes
-
----
-
-### [2026-11-18 02:36 CET] — Remove obsolete browser build output
-- **Affected Subsystems**:
-  - `Browser build`
-- **What Was Changed (The Concrete Reality)**:
-  - Remove the generated JavaScript, WebAssembly and HTML files from `crates/gui/dist`.
-- **Architectural Rationale & Trade-Offs**:
-  - The current Trunk configurations and documented launcher build into `.agent/tmp/web-dist`.
-- **Verification & Test Results**:
-  - Confirmed the configured output paths and checked that the tracked launcher and source files do not reference the obsolete output. Commit verification is pending.
----
-
-### [2026-11-18 09:50 CET] — Close the manual TA workflow tasks
-- **Affected Subsystems**:
-  - `.agents`
-  - `.codex/agents`
-  - `tools/workflow`
-  - `verification and Graphify consumers`
-- **What Was Changed (The Concrete Reality)**:
-  - Close DETERMINISTIC-WORKFLOW-V1-20261116, including AGENT-INSTRUCTIONS-SIMPLIFICATION-20261116, WORKFLOW-NEXT-STEP-GUIDANCE-20261117 and WORKFLOW-SKILL-MATRIX-20261117
-  - Adopt seven named roles and 45 atomic skills, including agent and skill creation, with structured results, next-step guidance and the official recommendation matrix
-  - Record working commit 3f70adc4261910152e6b2318f631902b1a35ba48 as awaiting integration verification
-  - Preserve both diary histories and regenerate the timing report for this integration
-- **Architectural Rationale & Trade-Offs**:
-  - The interactive session selects operations and uses structured results to evaluate recommendations
-  - The matrix constrains official recommendations while direct skill selection remains available; Keep the role and skill model defaults already present in the selected worktree
-  - Verification and conditional Git publication retain their existing gates
-- **Verification & Test Results**:
-  - The earlier pending candidate passed 19 required verification groups and exercised bounded role and handoff trials, including rejection of an off-matrix official suggestion
-  - The integrated diff passed the Git whitespace check before this entry
-  - Previous trial limits include named role dispatch availability, technical permission isolation and untested interruption and exhaustion paths; The present model defaults have no effective runtime evidence from those trials
----
-
-### [2026-11-18 12:05 CET] — Record the execution capture inputs
-- **Affected Subsystems**:
-  - `Workflow`
-- **What Was Changed (The Concrete Reality)**:
-  - Recorded the approved execution capture plan, practical test scenarios, environment inventory and delivery decisions.
-- **Architectural Rationale & Trade-Offs**:
-  - Keep the implementation starting point independently recoverable from Git.
-- **Verification & Test Results**:
-  - In a limited pilot, one dedicated CLI turn produced fourteen telemetry logs with the expected conversation identifier. The collector retained the allowed control and excluded both rejected controls.
-  - The planned implementation scenarios S1 through S5 remain unrun end to end.
----
-
-### [2026-11-18 12:49 CET] — Capture selected workflow executions
-- **Affected Subsystems**:
-  - `Workflow`
-- **What Was Changed (The Concrete Reality)**:
-  - Register selected threads and UTC boundaries with a project receiver. Record portable tool inventories and compare observed environments. Preserve scoped session records in a private archive and assess each revision against independent observations.
-- **Architectural Rationale & Trade-Offs**:
-  - Keep approved inputs in Git and retain enough execution evidence to investigate individual task runs.
-- **Verification & Test Results**:
-  - The dedicated CLI emitted an explicit skill invocation. Checked root and child spans matched the collector output. The independent fixture retained its archive and both commits after its task worktree was removed.
----
-
-### [2026-11-18 16:42 CET] — Workflow map and focused verification roles
-- **Affected Subsystems**:
-  - `Workflow documentation`
-  - `workflow result validation`
-- **What Was Changed (The Concrete Reality)**:
-  - Map the skills from planning through the task commit and publication on local master.
-  - Reject the test auditor as the executor of focused verification in results and guidance.
-- **Architectural Rationale & Trade-Offs**:
-  - Make the integration and repair paths visible and direct focused checks to supported roles.
-- **Verification & Test Results**:
-  - All 50 distinct skill links resolved. The map rendered in Edge. Validator probes rejected the test auditor for focused checks and accepted its test audit and coverage assignments.
----
-
-### [2026-11-18 17:37 CET] — Retire execution capture task inputs
-- **Affected Subsystems**:
-  - `Workflow documentation`
-- **What Was Changed (The Concrete Reality)**:
-  - Remove the four completed execution capture inputs from the active task directory.
-- **Architectural Rationale & Trade-Offs**:
-  - The approved starting commit retains the original inputs. The surviving checkout keeps a private copy with its provenance record.
-- **Verification & Test Results**:
-  - Compared each archived file with the starting Git blob. All four matched exactly.
----
-
-### [2026-11-18 18:31 CET] — Preserve task inputs and per-attempt verification reports
-- **Affected Subsystems**:
-  - `Workflow capture`
-  - `Verification tooling`
-- **What Was Changed (The Concrete Reality)**:
-  - Complete WORKFLOW-ARTIFACTS-20261118 with ignored approved-input snapshots and selected-report preservation
-  - Write a distinct timing report for each verification attempt with its locator and SHA-256
-  - Remove the tracked timing report and its exact exceptions so freeze compares the complete verified tree
-  - Add capture contracts to Python selection while retaining conservative Rust scope
-- **Architectural Rationale & Trade-Offs**:
-  - Keep generated output out of authored candidate identity and retain selected original bytes before eventual worktree disposal
-- **Verification & Test Results**:
-  - Focused impact and CLI contracts passed
-  - Timing and evidence continuation contracts passed
-  - Integration and registered/unregistered preservation fixtures passed including survival after disposable worktree removal
-  - The Design audit passed for 35 documents and 1087 links
-  - This execution is unregistered and its source worktree and input snapshots remain retained
-  - Two canonical preflight attempts stopped on valid vocabulary occurrences before expensive checks. Reviewed API literals and technical terms now have justified dictionary entries
-  - The first complete canonical profile passed; Independent review then exposed missing ignore-rule dependencies and early-exit report rows, now covered by passing regression checks with corrected archival and environment guidance
-
----
-
-### [2026-11-19 01:39 CET] — Simplify task worktrees and parallelize verification contracts
-- **Affected Subsystems**:
-  - `Task workflow`
-  - `Verification tooling`
-  - `Local integration`
-- **What Was Changed (The Concrete Reality)**:
-  - Deliver the selected worktree and verification scope of WORKFLOW-CORRECTIONS-20261118
-  - Copy existing local sources and both graphs during worktree creation
-  - Preserve existing destinations and files tracked by either checkout when copying local assets
-  - Copy only source-ignored Reference files so visible drafts stay in the source checkout
-  - Remove automatic graph rebuilding and synchronization from worktree provisioning
-  - Use portable repository snapshots and reduce redundant Git reads
-  - Apply all 51 selected test audit changes and use isolated verification workers
-  - Respect process affinity when selecting the default test concurrency
-  - Supervise native discovery and reject missing outcomes even after an abrupt successful exit
-  - Preserve checkout ownership during cleanup and fix fixture author identities
-  - Run the parallel Verification CLI suite separately from ordinary Rust coverage
-  - Retain native child output and status when readiness checks fail
-  - Propagate worker interruption, stop peer workers and report results collected before interruption
-  - Run each verification test in its own process and working directory, with exclusive execution for marked tests
-  - Ground review findings and proposed tests in current use or an approved requirement
-  - Use the same creator metadata for Git fixture archives on Windows and Linux
-- **Architectural Rationale & Trade-Offs**:
-  - Keep local inputs independent and avoid network provisioning during task startup
-  - Preserve meaningful assertions and native Git safeguards while reducing repeated work
-  - Leave CPU capacity for other processes when choosing the default worker count
-- **Verification & Test Results**:
-  - Earlier revisions supplied the following complete and focused results
-  - The repaired serial suite passed all 253 cases in 196.707 seconds
-  - The initial parallel candidate passed 263 identical cases with one and sixteen workers in 197.957 and 50.973 seconds
-  - Three additional complete runs of that initial candidate passed without skips or missing results
-  - Three complete retries after the first review corrections passed all 267 cases in 56.614 to 59.921 seconds
-  - Nineteen focused runner cases passed on Windows and Ubuntu under WSL including supervised discovery ownership and exact missing-case accounting
-  - Native ownership and hostile author identity probes passed and both fixture archives rebuilt identically
-  - The required local reference inputs were copied and the Design link integrity check passed
-  - The real command scheduling regression rejected the former coverage overlap and passed after the repair
-  - Eleven focused scheduling, lock and publication cases passed with the original readiness limits
-  - Twenty focused runner cases passed on Windows and Ubuntu under WSL after the worker interruption repair
-  - This round passed twenty-four focused runner cases on Windows and Ubuntu under WSL
-  - Ten focused worktree cases passed on Windows and the original asset ownership and draft-copy probes passed after the repair
-  - This round rebuilt both archives byte for byte on Windows and reproduced the same bytes from identical members on Windows and Ubuntu under WSL
-  - All 267 isolated cases passed in 241.3 seconds with one worker and in 41.2, 39.0 and 40.3 seconds with sixteen workers
-  - Focused runner tests passed on Windows and Linux under WSL. Two mutation checks detected shared Git state and overlapping serial tests
-  - A diagnostic using the generic POSIX cleanup path under WSL left a child running when interruption occurred during shutdown. Native macOS and BSD were not tested
----
-
-### [2026-11-19 12:21 CET] — Complete the task workflow correction round
-- **Affected Subsystems**:
-  - `Task workflow`
-  - `Verification`
-  - `Book Review`
-  - `Shared RAG integration`
-- **What Was Changed (The Concrete Reality)**:
-  - Continue WORKFLOW-CORRECTIONS-20261118 with durable capture services, narrow Collector output isolation and current-thread startup evidence
-  - Move the full English check to published master and bind the single project graph refresh to the final accepted commit
-  - Preserve completed files in their registered primary archive and route instructions to their owners
-  - Keep reviewer-qualified findings and bounded review checkpoints and report original test and benchmark attempts
-  - Run Book Review on demand with its own writable diagnostics and use the shared RAG Compose service from bootstrap
-- **Architectural Rationale & Trade-Offs**:
-  - Tie verification, four independent reviews and conditional publication to one combined candidate
-  - Keep telemetry, native outcomes and editor data usable across retries and worktree cleanup
-- **Verification & Test Results**:
-  - The first integrated tree passed all 20 canonical commit groups before review corrections
-  - Closure corrections passed 61 focused cases. Review routing corrections passed 11 cases and native reporting corrections passed 26
-  - The Design audit checked 35 notes and 1103 links after the ownership migration
-  - Fresh CLI capture succeeded before and after Docker Desktop restart. The narrowed Collector output passed isolated container recovery and archive routing
-  - Book Review retained a disposable book across recreation. Shared RAG preserved the database and index and enforced the direct MCP reader scope
-  - The current application proof, final candidate evidence and post-publication steps are recorded at their respective boundaries
----
-
-### [2026-11-19 22:29 CET] — Prepare integration for the workflow correction round
-- **Affected Subsystems**:
-  - `Task workflow`
-  - `Verification`
-  - `Workflow capture`
-  - `Book Review`
-- **What Was Changed (The Concrete Reality)**:
-  - Record working commit 002f75c for WORKFLOW-CORRECTIONS-20261118 and prepare its final integration record
-  - Preserve the versioned capture deployment and use authenticated local HTTP for registrations while retaining a verified first upgrade from older installations
-  - Record the Book Review checkout handoff and the subscription sign-in proof on a disposable book
-  - Point the rolling changelog entry instructions to the active preparation and compaction procedures
-- **Architectural Rationale & Trade-Offs**:
-  - Keep installation maintenance separate from source publication and retain task evidence before removing the working checkout
-  - Keep the committed source and its review history intact while preparing the integration record
-- **Verification & Test Results**:
-  - The focused Workflow capture contracts passed on the round seven source
-  - An isolated Docker installation recovered both stopped service cases and passed upgrade and rollback. A real Codex CLI event reached the selected archive
-  - The architecture review confirmed the original capture upgrade repair. The documentation review confirmed the diary instruction correction
-  - The round seven architecture and documentation verdicts request changes
-  - Behavior and test evidence approvals, canonical integration verification, and fresh telemetry from VS Code remain outstanding
-
-### [2026-11-20 00:20 CET] — Plan design, approvals and delivery
-
-- **Task**: PLAN-DESIGN-APPROVALS-INTEGRATION-20261119
-- **Components**: Workflow instructions, review routing, integration verifier and execution reports.
-- **Changes**: Record planning decisions with acceptance scenarios, select eligible delivery sources and require current English evidence before publication. Bind planned commands to the selected registration. The primary reviewer reports concrete findings. For each claim, an independent challenger makes the final decision to uphold the repair or close the claim. The original review remains available.
-- **Rationale**: Keep approvals and reports attributable when a plan, source set or reviewed candidate changes.
-- **Verification at preparation**: A real event from the initiating VS Code session reached the execution archive. The planning fixture exercised restart, and the standard mixed scene benchmark recorded three native series in the task archive. The targeted routing suite passed 16 tests before the later owner-determination change. The first shortened benchmark ended before the guest made progress. The integration suite recorded passing child cases during development and a failed enclosing snapshot check while other files were changing. Canonical verification and independent review apply to the complete candidate.
-- **Owner acceptance at local integration**: The owner accepted all nine observations from review round five and requested local delivery without further repairs. The canonical commit profile passed all 15 required groups on the reviewed source. The four primary reports requested changes. The offline reporting checks covered Python tests, the delegated Book Review and the mixed scene benchmark. Other launch routes have no recorded offline run. A local working commit preserved the reviewed implementation before final integration verification.
-
-
-### 2026-11-21 | Parallel workflow tests
-
-- Task `WORKFLOW-TEST-PERFORMANCE-20261121` extended the parallel test runner to workflow capture and routing. Tests that need a saved Git state restore an isolated copy from an archive to avoid rebuilding the same history. They still exercise live Git operations.
-- Changes to the shared reporting or repository modules now select all three suites. Reviewers use the original case duration when available and record the command or suite duration when a runner omits case timing.
-- Four reviewers approved the implementation. The first focused run passed 386 of 387 cases. One verifier test reached its ten-second startup deadline before checking lock recovery. It passed alone and in the full 306-case retry. Capture passed 39 cases and routing passed 42 on their first attempts. These focused results cover the three Python suites. The commit message records the separate batch verification outcome.
----
-
-### [2026-11-21 CET] — Prepare workflow version checks and map consolidation for local delivery
-- **Affected Subsystems**:
-  - `Task workflow`
-  - `Workflow tools`
-  - `Documentation`
-- **What Was Changed (The Concrete Reality)**:
-  - Allow ordinary draft edits in one working file while retaining selected approved and handed-off versions
-  - Expose default models and effort with the crate write rule in both matrix views
-  - Require a supported sequence and consequence for workflow defect findings
-  - Restore the workflow overview and link detailed recovery paths
-- **Architectural Rationale & Trade-Offs**:
-  - Keep approval and evidence decisions tied to the input that matters while reducing routine draft artifacts
-  - Give readers a direct route from a saved plan to a sealed commit and conditional publication
-- **Verification & Test Results**:
-  - Task WF-VERSION-CHECKS-20261120 execution delivery-20261121-01 completed 83 focused Python cases
-  - The author rendered both maps at 1180 pixels and checked 107 unique destinations
-  - MR-02 and MR-03 alternatives were procedure walkthroughs rather than actual alternate launches
-  - The initial source receipt refused missing plan metadata and passed after an execution-only header update
-  - The initial canonical commit profile passed all 14 required groups on the first-review candidate
-  - All four first-round reviewers requested changes; the independent challenger upheld ARCH-01, BEH-01, BEH-02, DOC-WV-01, DOC-WV-02, DOC-WV-03 and TEST-EV-01
-  - After that review boundary, the owner accepted all seven findings without repair and selected continued local delivery under D-OWNER-ACCEPT-REVIEW-01. The original reports remain preserved; no finding is claimed repaired or rejected
-  - Continuation execution delivery-20261121-02 obtained fresh active-client OTLP confirmation before preparation. Only closure evidence and execution metadata changed after owner acceptance
-  - Canonical integration verification and four fresh final lane reviews are pending for this prepared candidate. The commit message and completion report will record their actual outcomes
-  - The full English scan applies to the later sealed commit before local publication. Push and cleanup of the main task worktree are outside this delivery
+Ordinary commits do not require an entry. When an entry is explicitly requested, record the timestamp, affected components, delivered change, rationale and actual verification, including failures and unrun checks. [Milestone closure](.agents/skills/TA-WF-Main-close-milestone/SKILL.md) includes [diary compaction](.agents/skills/TA-WF-Step-compact-diary/SKILL.md) to retain lasting decisions and evidence in the owning chapter and leave routine details in Git.
+
+### [2026-11-16 09:47 CET] — Graphify work outside the delivered optimizations
+
+- GRAPHIFY-REFRESH-PERFORMANCE-20261116 delivered memoization; the subsequent
+  GRAPHIFY-TWO-GRAPHS-20261116 delivered separate corpora (`de52e8e`).
+- Unchanged-project preflight remained unfinished. The frozen-reference prototype
+  lacked complete dependency invalidation; measurements did not establish a
+  production-ready incremental skip mechanism.
+- No later acceptance evidence for preflight was found during compaction.
+  Chapter 14 retains delivered mechanisms and their verification limits.
+
+### [2026-11-19 22:29 CET] — Workflow correction delivery retained an exception
+
+- WORKFLOW-CORRECTIONS-20261118: `002f75c` was the working commit; `ccc20ab` records
+  twenty passing integration groups and a one-time local-publication exception
+  despite changes-requested reviews and missing fresh VS Code capture proof.
+- Isolated recovery, upgrade/rollback and a real CLI archive event passed. A later
+  client proof from another task does not certify this boundary. Original reports
+  and pending observations remain relevant; no retrospective repair is claimed.
+
+### [2026-11-20 00:20 CET] — Planning and delivery findings accepted without repair
+
+- PLAN-DESIGN-APPROVALS-INTEGRATION-20261119: the owner accepted all nine round-five
+  observations and selected local delivery (`d6426fc`, `3057547`). Fifteen groups
+  passed; four primary reports requested changes.
+- Offline checks covered Python tests, delegated Book Review and the mixed benchmark.
+  Other launch routes had no recorded offline execution. A shortened benchmark ended
+  before guest progress; an enclosing snapshot check failed while files changed.
+  Those attempts do not supply the missing route evidence.
+
+### [2026-11-21 CET] — Version findings and the workflow revision in progress
+
+- WF-VERSION-CHECKS-20261120: D-OWNER-ACCEPT-REVIEW-01 accepted ARCH-01, BEH-01,
+  BEH-02, DOC-WV-01, DOC-WV-02, DOC-WV-03 and TEST-EV-01 without repair. Original
+  reports/challenge verdicts remain authoritative for those findings.
+- `954ac9f` records fourteen integration groups and four final approvals within that
+  exception. `b99c2af` records fifteen passing groups after vocabulary corrections,
+  preserving original content files. Neither repairs the seven findings or proves
+  a later full-English/publication outcome.
+- Continuation delivery-20261121-02 obtained fresh active-client OTLP confirmation;
+  MR-02/MR-03 remain walkthroughs, without alternate-launch evidence.
+- On November 21, master contains an additional uncommitted workflow simplification:
+  renamed Main/Step skills, user-selected operations, a simpler result contract,
+  ordinary Git integration and retirement of matrix/routing/transaction machinery.
+  Existing prepared edits remain in place. Compaction establishes no tests, review
+  acceptance, commit or closure for that revision.
