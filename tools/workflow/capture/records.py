@@ -18,7 +18,7 @@ from record_sources import (
     otlp_selection, protected_name, raw_selection, safe_file, selected_rollouts,
     Rollout, snapshot, utc,
 )
-from registry import git, git_path
+from registry import CaptureError, git, git_paths
 
 
 FORMAT = 1
@@ -104,8 +104,12 @@ def preserve_timing(args):
     """Copy one explicitly selected report and its identity to the primary checkout."""
     primary, repository, archive = private_archive(args.primary, args.task_id, Path(".timing-reports"))
     checkout = args.source_checkout.absolute()
-    if (repository is None or common_dir(checkout) != repository
-            or checkout.resolve() != git_path(checkout, "--show-toplevel")):
+    checkout_paths = git_paths(checkout, "--git-common-dir", "--show-toplevel")
+    try:
+        report_repository = next(checkout_paths) if repository is not None else None
+    except (CaptureError, OSError):
+        report_repository = None
+    if report_repository is None or report_repository != repository or checkout.resolve() != next(checkout_paths):
         raise ValueError("The report checkout differs from the selected Git repository")
     spec = json_object(args.input.absolute())
     required = {"task_id", "profile", "attempt", "candidate", "outcome", "path", "sha256"}
@@ -135,10 +139,13 @@ def preserve_timing(args):
         raise ValueError("The timing report differs from its producer digest")
 
     destination = archive / attempt
-    for filename in (TIMING_REPORT, "receipt.json"):
-        relative = (destination / filename).relative_to(primary).as_posix()
-        if git(primary, "check-ignore", "--quiet", "--", relative).returncode:
-            raise ValueError("Timing archive files must stay ignored")
+    destinations = b"".join(
+        os.fsencode((destination / filename).relative_to(primary).as_posix()) + b"\0"
+        for filename in (TIMING_REPORT, "receipt.json")
+    )
+    ignored = git(primary, "check-ignore", "-z", "--stdin", input=destinations)
+    if ignored.returncode or ignored.stdout != destinations:
+        raise ValueError("Timing archive files must stay ignored")
     archive.mkdir(parents=True, exist_ok=True)
     receipt = {**spec, "version": FORMAT, "source_checkout": str(checkout.resolve()),
                "git_common_dir": str(repository), "size": len(data)}
@@ -390,10 +397,13 @@ def collect(args, primary, repository, archive):
                 gaps.append({"source": destination, "reason": str(error)})
         if registration.get("otel") and not any(item["kind"] == "otel" for item in inventory):
             gaps.append({"source": "otel/", "reason": "No verified receiver records were available"})
-        for label, commit in [
+        commits = [
             ("start_commit", start_commit), ("workflow_commit", workflow_commit), ("final_commit", final_commit),
-        ]:
-            if commit is not None and not commit_exists(primary, commit):
+        ]
+        available = {commit: commit_exists(primary, commit)
+                     for commit in dict.fromkeys(value for _, value in commits if value is not None)}
+        for label, commit in commits:
+            if commit is not None and not available[commit]:
                 gaps.append({"source": label, "reason": "Commit is unavailable in the selected repository"})
         manifest = {
             "format_version": FORMAT, "tool_version": TOOL, "revision": revision,

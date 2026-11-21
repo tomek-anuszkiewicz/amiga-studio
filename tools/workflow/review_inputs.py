@@ -146,6 +146,41 @@ def snapshot_hash_matches(content, expected):
     )
 
 
+def batch_objects(git, queries):
+    """Read historical blobs and check baseline object existence in one Git process."""
+    requests = tuple((command, ref.encode("utf-8")) for command, ref in queries)
+    process = git("cat-file", "--batch-command", "-z",
+                  patch=b"".join(command + b" " + ref + b"\0" for command, ref in requests))
+    if process.returncode:
+        raise ReviewInputError("cannot read objects for the preserved candidate")
+    output = process.stdout
+    position = 0
+    for command, ref in requests:
+        missing = ref + b" missing\n"
+        if output.startswith(missing, position):
+            position += len(missing)
+            yield None, None
+            continue
+        header_end = output.find(b"\n", position)
+        if header_end == -1:
+            raise ReviewInputError("invalid Git object response for the preserved candidate")
+        header = output[position:header_end].split(b" ")
+        if len(header) != 3 or not header[2].isdigit():
+            raise ReviewInputError("invalid Git object response for the preserved candidate")
+        _, kind, size = header
+        position = header_end + 1
+        content = None
+        if command == b"contents":
+            end = position + int(size)
+            if output[end:end + 1] != b"\n":
+                raise ReviewInputError("invalid Git object response for the preserved candidate")
+            content = output[position:end]
+            position = end + 1
+        yield kind, content
+    if position != len(output):
+        raise ReviewInputError("invalid Git object response for the preserved candidate")
+
+
 class Artifacts:
     def __init__(self, root):
         self.root = root
@@ -199,13 +234,19 @@ class Artifacts:
 
         with self.scratch_git() as git:
             self.load_index(git, record)
-            for ref in tracked_or_private:
+            queries = [
+                query
+                for ref in tracked_or_private
+                for query in ((b"contents", f":0:{ref['path']}"), (b"info", f"{candidate['base_commit']}:{ref['path']}"))
+            ]
+            objects = list(batch_objects(git, queries))
+            for ref, (kind, content), (base_kind, _) in zip(
+                    tracked_or_private, objects[::2], objects[1::2], strict=True):
                 path = ref["path"]
-                blob = git("cat-file", "blob", f":0:{path}")
-                if blob.returncode == 0:
-                    if not snapshot_hash_matches(blob.stdout, ref["sha256"]):
+                if kind == b"blob":
+                    if not snapshot_hash_matches(content, ref["sha256"]):
                         raise UnavailableArtifact(ref, f"changed reference: {path}")
-                elif git("cat-file", "-e", f"{candidate['base_commit']}:{path}").returncode == 0:
+                elif base_kind is not None:
                     raise UnavailableArtifact(ref, f"reference absent from preserved candidate: {path}")
                 else:
                     # Private plans and other external inputs can lie under a broad scope.

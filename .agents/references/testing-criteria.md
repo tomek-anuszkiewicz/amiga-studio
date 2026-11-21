@@ -86,6 +86,17 @@ measurements in benchmark targets. Generated diagnostics, including the per-atte
 timing report, stay ignored. Keep the report locator and digest for archival
 provenance. The report stays outside reusable gate artifacts and supplies no pass evidence.
 
+When a change adds tests or alters how they run, use the original attempt's
+timing report to check the affected suite. When the runner reports per-case
+elapsed times, identify the slowest changed cases. Otherwise, report suite or
+command elapsed time and state that case timing is unavailable. Compare suite
+elapsed time with a comparable earlier run when available. Report material
+increases or unexpected serial execution, including the affected scope,
+execution mode and observed cost.
+For an expensive Git scenario, distinguish the cost of building its starting
+repository from Git calls made during the scenario. Reuse a prepared fixture
+when it supplies the required starting state.
+
 Match actual commands, exit statuses, input identities, acceptance criteria and
 intact artifacts to the selected candidate. Distinguish newly executed checks,
 retained evidence and inspected reports. Failed, missing, interrupted or invalidated

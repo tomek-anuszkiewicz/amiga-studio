@@ -22,6 +22,7 @@ from evidence import digest, file_digest
 from integration_cleanup import cleanup, cleanup_sources
 from integration_closure import capture_binding, closure_record, finish_preservation
 from result import render
+from fixture_repository import baseline, empty_repository, restore
 
 
 class DeliveryTests(unittest.TestCase):
@@ -30,13 +31,7 @@ class DeliveryTests(unittest.TestCase):
         self.addCleanup(temporary.cleanup)
         self.parent = Path(temporary.name).resolve()
         self.root = self.parent / "primary"
-        self.git(self.parent, "init", "--initial-branch=master", self.root)
-        self.git(self.root, "config", "core.autocrlf", "false")
-        self.write(self.root, ".gitignore", ".agent/\n")
-        self.write(self.root, "shared.txt", "baseline\n")
-        self.git(self.root, "add", ".")
-        self.commit(self.root, "Create baseline")
-        self.base = self.tip(self.root)
+        self.base = baseline("delivery", self.parent)
         self.next_run = 0
 
     @staticmethod
@@ -59,12 +54,11 @@ class DeliveryTests(unittest.TestCase):
         path.write_text(content, encoding="utf-8")
         return path
 
-    def worktree(self, task):
+    def worktree(self, task, *, shared_channel=False):
         location = self.parent / ("primary-" + task)
-        self.git(self.root, "worktree", "add", "-b", task, location, self.base)
-        self.write(location, task + ".txt", task + "\n")
-        self.git(location, "add", task + ".txt")
-        self.commit(location, "Complete " + task)
+        restore("source-" + task, self.parent)
+        if shared_channel:
+            restore("channel-" + task, self.parent)
         return location
 
     def registration(self, task, execution="execution"):
@@ -130,16 +124,18 @@ class DeliveryTests(unittest.TestCase):
         return delivery.select(self.root, delivery.offer(self.root), tasks, "Selected by fixture", **options)
 
     def confirmation(self, location):
+        tip, tree = self.git(location, "rev-parse", "HEAD", "HEAD^{tree}").splitlines()
         return self.write(location, ".agent/tmp/confirmation.json", json.dumps({
-            "base": self.base, "commit": self.tip(location), "tree": self.tip(location, "HEAD^{tree}"),
+            "base": self.base, "commit": tip, "tree": tree,
             "plan_approved": True, "tested": True, "confirmation": "User tested this exact commit.",
         }))
 
     def frozen(self, location, selection, *, canonical=True):
+        tip, tree = self.git(location, "rev-parse", "HEAD", "HEAD^{tree}").splitlines()
         return {"version": 2, "state": "sealed", "base": selection["base"],
                 "target_root": str(self.root), "target_ref": delivery.MASTER,
                 "source_root": str(location), "source_ref": self.git(location, "symbolic-ref", "HEAD"),
-                "commit": self.tip(location), "tree": self.tip(location, "HEAD^{tree}"),
+                "commit": tip, "tree": tree,
                 "sources": selection["sources"], "sources_explicit": selection["assembly"] is not None,
                 "verification": "canonical" if canonical else "confirmed-fast-forward"}
 
@@ -365,13 +361,19 @@ class DeliveryTests(unittest.TestCase):
 
     def test_working_unconfirmed_closure_and_divergent_tips_require_full_route(self):
         location = self.worktree("task")
-        self.declare(location, "task")
+        plan, result = self.evidence(location, "task")
+
+        def declare(remaining=("verification", "review"), *, working=False):
+            return delivery.declare(location, plan, result, "All implementation blockers resolved.",
+                                    remaining, {}, working)
+
+        declare()
         confirmation = self.confirmation(location)
         self.assertEqual(self.selected("task")["route"], "verify")
         self.assertEqual(self.selected("task", confirmation=confirmation)["route"], "tested")
-        self.declare(location, "task", working=True)
+        declare(working=True)
         self.assertEqual(self.selected("task", confirmation=confirmation)["route"], "verify")
-        self.declare(location, "task", remaining=("closure-content", "verification"))
+        declare(remaining=("closure-content", "verification"))
         self.assertEqual(self.selected("task", confirmation=confirmation)["route"], "verify")
         old = self.selected("task")
         self.write(self.root, "target.txt", "Master advances independently\n")
@@ -382,12 +384,8 @@ class DeliveryTests(unittest.TestCase):
             delivery.revalidate(self.root, old)
 
     def test_separate_assembly_uses_original_sources_and_scoped_cleanup(self):
-        first = self.worktree("first")
-        second = self.worktree("second")
-        for location, task in ((first, "first"), (second, "second")):
-            self.write(location, task + ".txt", "primary\n")
-            self.git(location, "add", task + ".txt")
-            self.commit(location, "Assign an exclusive channel")
+        first = self.worktree("first", shared_channel=True)
+        second = self.worktree("second", shared_channel=True)
         paths = ["first.txt", "second.txt"]
         conflict = "Two clients use the same exclusive channel"
         check = ("from pathlib import Path\n"
@@ -476,16 +474,20 @@ class DeliveryTests(unittest.TestCase):
             header = json.loads(unchanged.splitlines()[0])
             self.assertEqual((header["task_id"], header["execution_id"]), (task, "execution"))
             self.assertNotEqual(header["invocation_id"], provenance["case_report"]["invocation_id"])
-        self.assertEqual(delivery.offer(self.root)["plans"], [])
-        self.assertIn("already records this plan", delivery.offer(self.root)["excluded"]["second"])
+        offer = delivery.offer(self.root)
+        self.assertEqual(offer["plans"], [])
+        self.assertIn("already records this plan", offer["excluded"]["second"])
 
     def test_incompatible_dependencies_and_changed_source_block_assembly(self):
         first = self.worktree("first")
         second = self.worktree("second")
         self.declare(first, "first")
-        self.declare(second, "second", deps={"first": "2"})
+        plan, result = self.evidence(second, "second")
+        delivery.declare(second, plan, result, "All implementation blockers resolved.",
+                         ("verification", "review"), {"first": "2"}, False)
         self.assertIn("revision 2", delivery.offer(self.root)["excluded"]["second"])
-        self.declare(second, "second", deps={"first": "1"})
+        delivery.declare(second, plan, result, "All implementation blockers resolved.",
+                         ("verification", "review"), {"first": "1"}, False)
         selected = self.selected("first", "second", assembly_branch="assembly")
         path = self.write(second, "second.txt", "Pending source edit\n")
         with self.assertRaisesRegex(ValueError, "Selected source changed: second"):
@@ -574,8 +576,8 @@ class DeliveryTests(unittest.TestCase):
         self.declare(location, "task")
         remote = self.parent / "destination.git"
         other = self.parent / "other.git"
-        self.git(self.parent, "init", "--bare", remote)
-        self.git(self.parent, "init", "--bare", other)
+        empty_repository("bare", remote, bare=True)
+        empty_repository("bare", other, bare=True)
         self.git(self.root, "remote", "add", "destination", remote)
         self.git(self.root, "remote", "add", "other", other)
         selected = self.selected("task", remote="destination")
@@ -600,7 +602,7 @@ class DeliveryTests(unittest.TestCase):
         location = self.worktree("task")
         self.declare(location, "task")
         remote = self.parent / "destination.git"
-        self.git(self.parent, "init", "--bare", remote)
+        empty_repository("bare", remote, bare=True)
         self.git(self.root, "remote", "add", "destination", remote)
         different = self.worktree("different")
         self.git(different, "push", "--no-verify", str(remote), "HEAD:" + delivery.MASTER)

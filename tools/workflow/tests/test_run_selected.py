@@ -11,6 +11,7 @@ import unittest
 TOOLS = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(TOOLS))
 from run_selected import selected_environment
+from fixture_repository import empty_repository
 
 
 class SelectedCommandTests(unittest.TestCase):
@@ -18,7 +19,7 @@ class SelectedCommandTests(unittest.TestCase):
         temp = TemporaryDirectory()
         self.addCleanup(temp.cleanup)
         self.root = Path(temp.name).resolve()
-        subprocess.run(["git", "init", "-q"], cwd=self.root, check=True)
+        empty_repository("command", self.root)
         self.env = {k: v for k, v in os.environ.items() if not k.startswith("AMIGA_TEST_")}
 
     def register(self, task, execution, **extra):

@@ -157,7 +157,7 @@ def capture_source(root, plan_path, registration):
             "ref": ref, "head": head, "tree": tree}
 
 
-def completed_source(root, task, plan, material, source, evidence, result_relative):
+def completed_source(root, primary, task, plan, material, source, evidence, result_relative):
     rows = [item for item in evidence["evidence"] if item["id"] == "delivery-source"]
     if len(rows) != 1 or not rows[0]["artifact_ref"]:
         raise ValueError("The implementation result must identify its captured delivery source")
@@ -169,7 +169,6 @@ def completed_source(root, task, plan, material, source, evidence, result_relati
     if (output["task_id"], output["plan"], output["amendments"], output["ref"]) != (
             task, plan, material, source["ref"]):
         raise ValueError("Captured delivery source identifies different plan inputs or branch")
-    primary, _ = target(root, worktrees(root))
     execution = output["execution"]
     if capture_binding(primary, task, execution["execution_id"]) != execution:
         raise ValueError("Captured source execution registration changed")
@@ -178,17 +177,22 @@ def completed_source(root, task, plan, material, source, evidence, result_relati
         raise ValueError("The implementation result names a different capture execution")
     head = resolve_base(root, output["head"])
     tip = source["tip"]
-    if output["tree"] == value(root, "rev-parse", head + "^{tree}"):
+    if head == tip:
+        head_tree = tip_tree = value(root, "rev-parse", head + "^{tree}")
+    else:
+        head_tree, tip_tree = value(root, "rev-parse", "--revs-only", head + "^{tree}", tip + "^{tree}",
+                                    "--").splitlines()
+    if output["tree"] == head_tree:
         matches = head == tip
     else:
         # A working snapshot may be committed once, directly on its recorded HEAD.
         matches = value(root, "rev-list", "--parents", "-n", "1", tip).split() == [tip, head]
-    if not matches or value(root, "rev-parse", tip + "^{tree}") != output["tree"]:
+    if not matches or tip_tree != output["tree"]:
         raise ValueError("Committed tip or tree differs from captured implementation")
     return receipt, execution
 
 
-def completion(root, task, plan, material, source, result_path):
+def completion(root, primary, task, plan, material, source, result_path):
     path = local_path(root, result_path)
     evidence = read(path)
     errors = validate(evidence, SCHEMA, root, check_references=False)
@@ -208,7 +212,7 @@ def completion(root, task, plan, material, source, result_path):
     rendered_path = path.with_suffix(".md").relative_to(root).as_posix()
     if local_path(root, rendered_path).read_text(encoding="utf-8") != render(evidence):
         raise ValueError("Implementation result pair differs")
-    receipt, execution = completed_source(root, task, plan, material, source, evidence, path.relative_to(root))
+    receipt, execution = completed_source(root, primary, task, plan, material, source, evidence, path.relative_to(root))
     candidate = evidence["inputs"]["candidate"]
     if candidate is None or not contains(root, resolve_base(root, candidate["base_commit"]), source["tip"]):
         raise ValueError("The committed source does not contain the implementation result baseline")
@@ -218,13 +222,13 @@ def completion(root, task, plan, material, source, result_path):
 
 def source_identity(root, source, entries):
     if (checkout(root, source["ref"], entries) != root or value(root, "symbolic-ref", "HEAD") != source["ref"]
-            or value(root, "rev-parse", "HEAD") != source["tip"]
-            or value(root, "rev-parse", source["ref"]) != source["tip"]):
+            or value(root, "rev-parse", "--revs-only", "HEAD", source["ref"], "--").splitlines()
+            != [source["tip"], source["tip"]]):
         raise ValueError("Source checkout or committed tip changed")
     clean(root)
 
 
-def verify_plan_inputs(root, declaration):
+def verify_plan_inputs(root, primary, declaration):
     task, revision, plan = plan_identity(root, declaration["plan"]["path"])
     if (task, revision, plan) != (declaration["task_id"], declaration["revision"], declaration["plan"]):
         raise ValueError("The recorded plan or revision changed")
@@ -232,7 +236,7 @@ def verify_plan_inputs(root, declaration):
         raise ValueError("The material amendment record changed")
     material = amendments(root, plan["path"], require_resolved=True)
     evidence = declaration["completion"]
-    if completion(root, task, plan, material, declaration["source"], evidence["json"]["path"]) != evidence:
+    if completion(root, primary, task, plan, material, declaration["source"], evidence["json"]["path"]) != evidence:
         raise ValueError("The recorded implementation completion evidence changed")
 
 
@@ -258,7 +262,8 @@ def declare(root, plan_path, result_path, disposition, remaining, dependencies, 
         raise ValueError("The authoritative plan must be in its own task checkout")
     source_identity(root, source, entries)
     material = amendments(root, plan_path, require_resolved=True)
-    evidence = completion(root, task, plan, material, source, result_path)
+    primary, _ = target(root, entries)
+    evidence = completion(root, primary, task, plan, material, source, result_path)
     declaration = {
         "state": "ready", "task_id": task, "revision": revision, "plan": plan,
         "amendments": material,
@@ -334,7 +339,7 @@ def discover(root):
             if contains(root, resolve_base(root, source["tip"]), base):
                 raise ValueError("The source tip is already in master; check the actual publication record")
             source_identity(source_root, source, entries)
-            verify_plan_inputs(source_root, declaration)
+            verify_plan_inputs(source_root, target_root, declaration)
             ready[task] = declaration
         except INPUT_ERRORS as error:
             excluded[task] = str(error)
@@ -573,7 +578,8 @@ def bind_publication(root, path, frozen):
         if current != plan:
             raise ValueError("Selected source readiness changed")
         verify_readiness(plan)
-        verify_plan_inputs(location, plan)
+        primary, _ = target(location, worktrees(location))
+        verify_plan_inputs(location, primary, plan)
     return {**selected, "assembly_verification": assembly_verification(frozen, plans)} if assembly else selected
 
 
@@ -652,7 +658,8 @@ def require_preserved_source(root, frozen, branch, location):
         if not actual or actual["state"] != "preserved" or actual != state.get("plans", {}).get(task):
             raise ValueError(f"Required preserved plan evidence is unavailable: {task}")
         if location.exists():
-            verify_plan_inputs(location, plan)
+            primary, _ = target(location, worktrees(location))
+            verify_plan_inputs(location, primary, plan)
 
 
 def push(root, record):

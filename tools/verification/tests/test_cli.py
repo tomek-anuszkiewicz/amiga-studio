@@ -90,9 +90,21 @@ class SelectionTests(unittest.TestCase):
                            "file test_cli.py case test_focused")
         self.assertEqual(focused[0][1][1:], ["tools/verification/run_tests.py", "-s", "tools/verification/tests",
                                             "-q", "-p", "test_cli.py", "-k", "test_focused"])
-        default, = selected("test python", ["tools/verification/run_tests.py"])
-        self.assertEqual(default[:2], ("Verification CLI contracts", [
-            sys.executable, "tools/verification/run_tests.py", "-s", "tools/verification/tests", "-q"]))
+        defaults = {name: command for name, command, _ in selected("test python", ["tools/verification/run_tests.py"])}
+        self.assertEqual(defaults["Verification CLI contracts"], [
+            sys.executable, "tools/verification/run_tests.py", "-s", "tools/verification/tests", "-q"])
+        self.assertEqual(set(defaults), {"Verification CLI contracts", "Workflow routing contracts",
+                                         "Workflow capture contracts"})
+
+        for group, directory in (("Workflow routing contracts", "tools/workflow/tests"),
+                                 ("Workflow capture contracts", "tools/workflow/capture/tests")):
+            with self.subTest(group=group):
+                runner = [sys.executable, "tools/verification/run_tests.py", "-s", directory, "-q"]
+                self.assertEqual(defaults[group], runner)
+                named, = selected(f"test python directory {directory} file test_*.py case trial")
+                self.assertEqual(named[1], [*runner, "-p", "test_*.py", "-k", "trial"])
+                batch = {name: command for name, command, _ in selected("commit", [directory + "/test_trial.py"])}
+                self.assertEqual(batch[group], runner)
 
     def test_default_python_selection_skips_unrelated_changes(self):
         for changes in ([], ["crates/cpu/src/state.rs"], ["docs/testing.md"],
@@ -100,6 +112,7 @@ class SelectionTests(unittest.TestCase):
             self.assertEqual(selected("test python", changes), [])
 
     def test_default_python_selection_covers_owned_code_and_shared_dependencies(self):
+        parallel_suites = {"Verification CLI contracts", "Workflow capture contracts", "Workflow routing contracts"}
         cases = (
             ("tools/bootstrap/ensure_qdrant.ps1", {"Bootstrap contracts"}),
             ("tools/bootstrap/bootstrap_graphify.ps1", {"Bootstrap contracts"}),
@@ -127,6 +140,9 @@ class SelectionTests(unittest.TestCase):
             ("tools/workflow/review-routing.json", {"Workflow routing contracts"}),
             ("tools/workflow/review_inputs.py", {"Workflow routing contracts"}),
             ("tools/workflow/tests/test_review_routing.py", {"Workflow routing contracts"}),
+            ("tools/verification/tests/git_fixtures.py", parallel_suites),
+            ("tools/verification/case_report.py", parallel_suites),
+            ("tools/verification/repository.py", parallel_suites),
             ("tools/verification/commands.py", {"Verification CLI contracts"}),
             ("tools/web.ps1", {"Verification CLI contracts"}),
         )

@@ -12,6 +12,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+from capture_fixtures import restore_capture
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import records
 import preservation
@@ -24,14 +26,7 @@ class WholeFilePreservationTests(unittest.TestCase):
         self.folder = Path(temporary.name).resolve()
         self.primary = self.folder / "primary"
         self.task = self.folder / "task"
-        self.primary.mkdir()
-        self.git("init", "-b", "master")
-        self.git("config", "user.name", "Preservation Trial")
-        self.git("config", "user.email", "trial@example.com")
-        self.write(self.primary / ".gitignore", b".agent/\n")
-        self.git("add", ".gitignore")
-        self.git("commit", "-m", "Create a disposable preservation trial")
-        self.git("worktree", "add", "-b", "trial", str(self.task))
+        restore_capture("preservation", self.folder)
         self.archive = self.primary / ".agent/task-archives/trial/execution"
         self.selection = self.task / ".agent/tmp/selected.json"
         self.register()

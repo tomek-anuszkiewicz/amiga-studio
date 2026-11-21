@@ -34,11 +34,10 @@ def chunk_paths(directory):
 
 
 def baseline(project, registration_path):
-    positions = {"chunks": [path.name for path, _ in chunk_paths(
-        archive_path(project, registration_path, "logs.jsonl").parent
-    )]}
+    logs = archive_path(project, registration_path, "logs.jsonl")
+    positions = {"chunks": [path.name for path, _ in chunk_paths(logs.parent)]}
     for name in SIGNAL_FILES.values():
-        path = archive_path(project, registration_path, name)
+        path = logs if name == logs.name else archive_path(project, registration_path, name)
         try:
             with safe_file(path, single_link=True).open("rb") as stream:
                 end = stream.seek(0, 2)

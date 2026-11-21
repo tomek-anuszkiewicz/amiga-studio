@@ -16,6 +16,7 @@ from review_challenge import claim
 from review_inputs import Artifacts, SCHEMA, fingerprint, qualification
 from review_routing import recommend
 from skill_matrix import MATRIX_PATH, MATRIX_REFERENCE
+from fixture_repository import baseline
 
 
 TASK = "fixture-task"
@@ -34,12 +35,7 @@ class RoutingTests(unittest.TestCase):
         temp = TemporaryDirectory()
         self.addCleanup(temp.cleanup)
         self.root = Path(temp.name).resolve()
-        self.git("init", "-q")
-        self.data("source.txt", b"baseline\n")
-        self.data(".gitignore", b".agent/\n")
-        self.git("add", "source.txt", ".gitignore")
-        self.commit("Baseline")
-        self.base = self.git("rev-parse", "HEAD").decode().strip()
+        self.base = baseline("routing", self.root)
         self.req = self.data(".agent/requirements", b"Preserve pending IRQ exactly once.\n")
         self.criteria = self.data(".agent/criteria", b"Check full scope.\n")
         self.partition = self.data(".agent/partition", b"One commit.\n")
@@ -583,11 +579,7 @@ class RoutingTests(unittest.TestCase):
         self.assert_lanes(self.advice(changed, **options), "focused", *LANES)
 
     def test_repair_delta_covers_native_multi_file_binary_and_rename_paths(self):
-        self.data("old name.txt", b"Native rename source\n")
-        self.data("table.bin", bytes(range(256)))
-        self.git("add", "old name.txt", "table.bin")
-        self.commit("Add native diff fixtures")
-        base = self.git("rev-parse", "HEAD").decode().strip()
+        base = baseline("routing-native-diff", self.root)
 
         def snapshot(name):
             patch = self.git("diff", "--binary", "--no-ext-diff", "--no-textconv", base, "--", ".")
@@ -654,23 +646,20 @@ class RoutingTests(unittest.TestCase):
         self.assertEqual([issue["id"] for issue in advice["checkpoint"]["issues"]], ["gate:commit:missing"])
 
     def test_historical_baseline_source_outside_diff_and_private_artifact(self):
-        self.git("config", "--local", "core.autocrlf", "true")
-        baseline = self.data("rule.txt", b"Original recorded criterion\r\n")
-        self.git("add", "rule.txt")
-        self.commit("Record a separate baseline criterion")
-        self.base = self.git("rev-parse", "HEAD").decode().strip()
+        self.base = baseline("routing-historical", self.root)
+        baseline_rule = {"path": "rule.txt", "sha256": sha256(b"Original recorded criterion\r\n").hexdigest()}
         external = self.data(".agent/private-observation.txt", b"Original measurement")
         old_candidate, old_patch = self.candidate("old", "Proposed implementation")
         self.assertNotIn("rule.txt", old_candidate["scope"])
         old = self.finding("fixed")
-        old["evidence_refs"] = [baseline, external]
+        old["evidence_refs"] = [baseline_rule, external]
         old_report = self.report("old", "behavior", old_candidate, findings=[old], verdict="changes_requested")
         old_head = self.round("old-round", 1, old_candidate, old_patch, reports={"behavior": old_report})
 
         current = self.data("rule.txt", b"Changed criterion\r\n")
         new_candidate, new_patch = self.candidate("new", "Corrected implementation")
         comparison = self.compare("behavior", old, old_candidate, new_candidate)
-        comparison["parent"]["evidence"] = [baseline]
+        comparison["parent"]["evidence"] = [baseline_rule]
         options = {"before": old_head, "effects": ("behavior",), "selected": [key("behavior", "fixed")],
                    "assessments": [self.assessment("behavior", "fixed", old_report)]}
 
@@ -684,7 +673,7 @@ class RoutingTests(unittest.TestCase):
         self.assertEqual(valid["approvals"], {"behavior": "valid"})
         comparison["parent"]["evidence"] = [current]
         self.assertIn("changed reference: rule.txt", route("future-citation")["gaps"])
-        comparison["parent"]["evidence"] = [baseline]
+        comparison["parent"]["evidence"] = [baseline_rule]
         self.data(external["path"], b"Changed private measurement")
         damaged = route("damaged-private")
         self.assert_lanes(damaged, "needs_input")

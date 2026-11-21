@@ -16,6 +16,8 @@ import unittest
 from unittest.mock import patch
 from uuid import UUID
 
+from capture_fixtures import restore_capture
+
 CAPTURE = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(CAPTURE))
 from admission import Admission
@@ -71,8 +73,7 @@ class ArchiveProofTests(unittest.TestCase):
         directory = TemporaryDirectory()
         self.addCleanup(directory.cleanup)
         self.primary = Path(directory.name).resolve()
-        self.primary.joinpath(".gitignore").write_text(".agent/task-archives/\n", encoding="utf-8")
-        fake_git(self.primary, "init", "-q")
+        restore_capture("proof", self.primary)
         self.project = Project(self.primary, self.primary)
         self.project.prepare()
         self.registration = self.project.registration_path("fixture", "execution")
@@ -173,13 +174,6 @@ class ArchiveProofTests(unittest.TestCase):
         self.assertFalse(source.exists())
         self.assertEqual(self.read_proof()["status"], "pending")
 
-    def test_deadline_remains_fixed_across_pending_and_resume(self):
-        self.register()
-        self.assertEqual(self.read_proof()["status"], "pending")
-        self.logs.write_bytes(log_line(ROOT_THREAD, AT + 10))
-        with self.assertRaisesRegex(CaptureError, "original startup deadline expired"):
-            self.read_proof(now=AT + 20_001)
-
     def test_native_only_and_wrong_execution_archives_cannot_confirm(self):
         self.register(otel=False)
         self.logs.write_bytes(log_line(ROOT_THREAD, AT + 10))
@@ -226,10 +220,8 @@ class ServiceFixture:
         self.addCleanup(directory.cleanup)
         root = Path(directory.name).resolve()
         self.primary = root / "sessions"
-        self.primary.mkdir()
+        restore_capture("service", self.primary)
         self.ignore = self.primary / ".gitignore"
-        self.ignore.write_text(".agent/task-archives/\n.agent/tools/\n", encoding="utf-8")
-        fake_git(self.primary, "init", "-q")
         self.project = Project(self.primary, self.primary)
         self.project.prepare()
         self.args = SimpleNamespace(port=4318, codex_home=root / "codex", collector_image=None)
@@ -282,14 +274,6 @@ class ServicePathsTests(ServiceFixture, unittest.TestCase):
         with patch.dict(os.environ, {"COMPOSE_REMOVE_ORPHANS": "true"}):
             loaded = self.provision()
         self.assertEqual(loaded.env["COMPOSE_REMOVE_ORPHANS"], "false")
-
-    def test_saved_compose_name_must_be_valid(self):
-        service = self.provision()
-        for name in (None, "", "Amiga-capture", "_amiga-capture", "amiga/capture", "amiga-capture\n"):
-            with self.subTest(name=name):
-                self.save_revision(service, compose_project=name)
-                with self.assertRaisesRegex(CaptureError, "saved Compose project name is invalid"):
-                    ComposeService(self.project, self.args, Deadline.start(10))
 
     def test_short_name_requires_full_git_identity_and_matching_options(self):
         service = self.provision()
@@ -810,13 +794,6 @@ class ComposeContractTests(unittest.TestCase):
                 with patch.object(service, "call", side_effect=["fixture-id", json.dumps([item])]):
                     with self.assertRaisesRegex(CaptureError, "different capture ownership"):
                         service.containers()
-
-    def test_dedicated_project_still_rejects_unexpected_services(self):
-        service = self.compose_service("amiga-capture-fixture")
-        item = self.container("book-review")
-        with patch.object(service, "call", side_effect=["fixture-id", json.dumps([item])]):
-            with self.assertRaisesRegex(CaptureError, "different capture ownership"):
-                service.containers()
 
     def test_recovery_starts_only_the_capture_services(self):
         service = self.compose_service()

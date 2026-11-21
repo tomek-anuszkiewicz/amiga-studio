@@ -9,6 +9,8 @@ import sys
 import tempfile
 import unittest
 
+from capture_fixtures import fixture_git_environment, restore_capture
+
 
 CAPTURE = Path(__file__).resolve().parents[1]
 REPORT = "test-runtime-report.md"
@@ -23,18 +25,23 @@ class PreservationTests(unittest.TestCase):
         self.primary = self.root / "primary"
         self.source = self.root / "task"
         self.codex = self.root / "fixture-client"
-        self.primary.mkdir()
-        ignore = (CAPTURE.parents[2] / ".gitignore").read_bytes()
+        ignore = (CAPTURE.parents[2] / ".gitignore").read_bytes().replace(b"\r\n", b"\n")
+        restore_capture("records", self.root)
+        if (self.primary / ".gitignore").read_bytes() == ignore:
+            self.base = json.loads((self.root / "fixture.json").read_bytes())["base"]
+        else:
+            # The contract uses the current checkout's ignore rules.
+            self.refresh_ignore_fixture(ignore)
+
+    def refresh_ignore_fixture(self, ignore):
         self.write(self.primary / ".gitignore", ignore)
-        self.git(self.primary, "init", "-q", "-b", "master")
         self.git(self.primary, "add", ".gitignore")
-        self.git(self.primary, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid",
-                 "commit", "-qm", "Starting commit")
+        self.git(self.primary, "commit", "--allow-empty", "-qm", "Refresh the ignore rules")
         self.base = self.git(self.primary, "rev-parse", "HEAD").decode().strip()
-        self.git(self.primary, "worktree", "add", "-qb", "task", str(self.source))
+        self.git(self.source, "merge", "--ff-only", self.base)
 
     def git(self, checkout, *command):
-        return subprocess.check_output(["git", *command], cwd=checkout)
+        return subprocess.check_output(["git", *command], cwd=checkout, env=fixture_git_environment())
 
     def write(self, path, data):
         path.parent.mkdir(parents=True, exist_ok=True)

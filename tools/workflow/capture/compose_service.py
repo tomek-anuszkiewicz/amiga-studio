@@ -129,7 +129,7 @@ def write_authority(project, directory, codex_home, cwd):
     candidates.extend(Path(os.fsdecode(field.removeprefix(b"worktree ")))
                       for field in result.stdout.split(b"\0") if field.startswith(b"worktree "))
     checked = set()
-    for candidate in candidates:
+    for candidate in dict.fromkeys(candidates):
         try:
             if git_path(candidate, "--git-common-dir") == project.common:
                 checked.add(os.path.normcase(str(candidate.resolve())))

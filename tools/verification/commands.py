@@ -127,6 +127,11 @@ PYTHON_SUITES = (
     (ROUTING_CONTRACTS, "tools/workflow/tests"),
 )
 
+PARALLEL_PYTHON_DIRECTORIES = tuple(
+    directory for name, directory in PYTHON_SUITES
+    if name in ("Verification CLI contracts", CAPTURE_CONTRACTS, ROUTING_CONTRACTS)
+)
+
 
 INDEPENDENT_PYTHON_SUITES = frozenset({
     "RAG MCP contracts", "Artifact report contracts",
@@ -140,6 +145,12 @@ def independent_contract(name, commands):
     return any(label == name and commands[0] == (label, command, overrides)
                for label, command, overrides in python_commands(include_bootstrap=False))
 
+
+WORKFLOW_TEST_INPUTS = (
+    "tools/verification/run_tests.py", "tools/verification/worker_processes.py",
+    "tools/verification/case_report.py", "tools/verification/repository.py",
+    "tools/verification/tests/git_fixtures.py", "tools/verification/tests/fixtures/build_repositories.py",
+)
 
 PYTHON_INPUTS = {
     "Bootstrap contracts": (
@@ -167,14 +178,14 @@ PYTHON_INPUTS = {
     "Artifact report contracts": ("tools/artifacts/",),
     "Verification CLI contracts": ("tools/verification/", "tools/web.ps1", "tools/worktree.ps1", "tools/graphify_query.py",
                                    ".agents/skills/TA-audit-vault-links/scripts/", ".gitignore"),
-    CAPTURE_CONTRACTS: ("tools/workflow/capture/", ".gitignore"),
+    CAPTURE_CONTRACTS: ("tools/workflow/capture/", ".gitignore", *WORKFLOW_TEST_INPUTS),
     ROUTING_CONTRACTS: (
         "tools/workflow/review_routing.py", "tools/workflow/review_inputs.py",
         "tools/workflow/review_decision.py", "tools/workflow/review-routing.json", "tools/workflow/delivery.py",
         "tools/workflow/review_challenge.py", "tools/workflow/run_selected.py",
         "tools/workflow/guidance.py", "tools/workflow/result.py", "tools/workflow/result.schema.json",
         "tools/workflow/requirements.txt", "tools/workflow/skill_matrix.py",
-        "tools/workflow/skill-matrix.json", "tools/workflow/tests/",
+        "tools/workflow/skill-matrix.json", "tools/workflow/tests/", *WORKFLOW_TEST_INPUTS,
     ),
 }
 
@@ -193,6 +204,7 @@ def verification_contract_input(path):
 
 
 def python_commands(directory=None, pattern=None, case=None, changes=None, include_bootstrap=True):
+    parallel_directories = {REPO_ROOT / suite for suite in PARALLEL_PYTHON_DIRECTORIES}
     selections = PYTHON_SUITES if directory is None else [("Python contracts", directory)]
     if directory is None and not include_bootstrap:
         selections = [(name, target) for name, target in selections
@@ -211,7 +223,7 @@ def python_commands(directory=None, pattern=None, case=None, changes=None, inclu
             raise ValueError(f"Python test directory does not exist: {target}")
         if path.resolve() == REPO_ROOT / "tools/bootstrap/book-to-markdown/tests":
             command = [sys.executable, "tools/bootstrap/book-to-markdown/run_tests.py"]
-        elif path.resolve() == REPO_ROOT / "tools/verification/tests":
+        elif path.resolve() in parallel_directories:
             command = [sys.executable, "tools/verification/run_tests.py", "-s", str(target), "-q"]
         else:
             command = [sys.executable, "tools/verification/run_unittest.py", "discover", "-s", str(target), "-q"]

@@ -657,8 +657,12 @@ The verifier runs the Bootstrap contract
 suites when Git reports staged, unstaged or nonignored new paths under
 `tools/bootstrap/`, including book data. Renames count at both endpoints. The
 Book Review suite checks pinned Python packages and local KaTeX assets, then uses
-its own runner to share a browser process. Verification CLI contracts use
-`tools/verification/run_tests.py`. Other Python suites use `tools/verification/run_unittest.py discover`.
+its own runner to share a browser process. Verification CLI, workflow capture
+and workflow routing contracts use `tools/verification/run_tests.py`. Changes to
+the parallel runner, its shared reporting, Git checkout and worker management
+modules, or the shared Git fixture helpers select all three suites. Each suite
+uses the worker count described below. Other Python suites use
+`tools/verification/run_unittest.py discover`.
 The tools do not run these tests during normal operation. Without a
 commit, run only checks relevant
 to a coherent change, not after every edit. Repeat checks only after affected

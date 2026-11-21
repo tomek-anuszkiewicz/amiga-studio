@@ -10,6 +10,13 @@ Design every test to run in parallel with other tests. Isolate the files and
 state it changes so that tests cannot affect each other, regardless of execution
 order or overlap. Tests may share read-only inputs.
 
+Run independent cases in parallel through the suite's normal verification
+command. When adding or extending a suite, check which runner that command
+actually selects and whether it schedules individual cases concurrently.
+Use the existing bounded parallel runner where it supports the suite's fixtures.
+If the current runner executes independent cases in sequence, flag this when
+reporting the change. Use test names to describe the scenario and expected result.
+
 If full isolation is impossible or would be disproportionately complex or costly,
 mark the test for serial execution, record why it needs to run alone, and
 always run it with no other test running.

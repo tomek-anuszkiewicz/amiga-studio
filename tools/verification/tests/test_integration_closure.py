@@ -4,18 +4,19 @@ import contextlib
 import io
 import json
 from pathlib import Path
-import shutil
 import subprocess
 import sys
 import tempfile
 import unittest
 from unittest.mock import patch
 
+from git_fixtures import restore_repository
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import commands
 import execution
 import verify
-from evidence import digest
+from evidence import digest, file_digest
 from integration import accept_tested, cleanup_record, freeze, publish, read, seal
 from repository import candidate_tree
 from integration_cleanup import cleanup
@@ -24,7 +25,24 @@ from integration_state import save
 
 
 TOOLS = Path(__file__).resolve().parents[2]
+CLOSURE_ARCHIVE = Path(__file__).with_name("fixtures") / "closure-repositories.zip"
+STARTING_FIXTURES = {
+    "test_failed_publication_cannot_begin_closure": "clean",
+    "test_wrong_primary_branch_or_sha_blocks_before_scanning": "clean",
+    "test_clean_closure_scans_once_then_refreshes_final_project_sources": "clean",
+    "test_short_route_blocks_unchanged_typo_then_publishes_the_verified_correction": "typo",
+    "test_task_vocabulary_and_exact_file_corrections_require_a_new_receipt": "vocabulary",
+    "test_publisher_rejects_changed_scan_inputs_and_missing_log_at_the_same_commit": "clean",
+    "test_divergent_and_combined_candidates_require_a_full_scan_of_the_final_merge": "divergent",
+    "test_resolved_scanner_read_error_can_retry_at_the_same_master_sha": "clean",
+    "test_graph_failure_retries_only_graph_and_reuses_a_successful_receipt": "clean",
+    "test_cleanup_requires_the_same_completed_preservation_before_removing_worktree": "clean",
+}
 WORD_LIST = "tools/verification/checks/english_words/software.txt"
+MISSPELLED_NOTES = "The task is suposed to succeed.\n"
+REVIEWED_TERM = "deinstrumentation"
+EXACT_LITERAL = "deliberatebadliteral"
+INVALID_TEXT = b"\xff"
 THREAD = "38e0b2b3-5101-4730-a1e0-6ea70126e200"
 START = "2026-11-19T10:00:00Z"
 
@@ -38,11 +56,23 @@ class PublishedClosureTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
-        directory = Path(temporary.name).resolve()
+        self.configure(Path(temporary.name).resolve())
+        fixture = STARTING_FIXTURES.get(self._testMethodName)
+        if fixture is None:
+            self.initialize_repository()
+        else:
+            self.sealed = self.restore_sealed(fixture)
+            self.remember_sealed()
+            self.install_tools(self.root)
+            self.install_tools(self.source)
+
+    def configure(self, directory):
         self.root = directory / "primary"
         self.source = directory / "task"
+
+    def initialize_repository(self):
         self.root.mkdir()
-        self.git(self.root, "init", "-b", "master")
+        self.git(self.root, "init", "--template=", "-b", "master")
         self.git(self.root, "config", "user.name", "Closure Trial")
         self.git(self.root, "config", "user.email", "trial@example.com")
         self.git(self.root, "config", "core.autocrlf", "false")
@@ -50,34 +80,55 @@ class PublishedClosureTests(unittest.TestCase):
         self.write(self.root, ".graphifyignore", "/tools/\n")
         # Imported test drivers are local fixture inputs, not authored trial files.
         self.write(self.root, ".git/info/exclude", "/tools/\n")
-        for module in (TOOLS / "verification").glob("*.py"):
-            self.write(self.root, "tools/verification/" + module.name, module.read_bytes())
-        for name in ("check_english.py", "check_english.json", "english_words"):
-            source = TOOLS / "verification/checks" / name
-            target = self.root / "tools/verification/checks" / name
-            if source.is_dir():
-                shutil.copytree(source, target)
-            else:
-                self.write(self.root, target.relative_to(self.root).as_posix(), source.read_bytes())
-        self.write(self.root, "tools/graphify/refresh.py", (TOOLS / "graphify/refresh.py").read_bytes())
+        for name in (SCOPE_FILE, WORD_LIST):
+            self.write(self.root, name, (TOOLS.parent / name).read_bytes())
         self.git(self.root, "add", "-f", SCOPE_FILE, WORD_LIST)
         self.write(self.root, "notes.md", "Initial task notes.\n")
         self.base = self.commit(self.root, "Establish closure trial")
         self.git(self.root, "worktree", "add", "-b", "task", str(self.source))
-        for module in (TOOLS / "verification").glob("*.py"):
-            self.write(self.source, "tools/verification/" + module.name, module.read_bytes())
-        checks = "tools/verification/checks"
-        self.write(self.source, checks + "/check_english.py", (self.root / checks / "check_english.py").read_bytes())
-        for path in (self.root / checks / "english_words").glob("*.txt"):
-            relative = path.relative_to(self.root)
-            if not (self.source / relative).exists():
-                self.write(self.source, relative, path.read_bytes())
-        for module in (TOOLS / "workflow/capture").glob("*.py"):
-            relative = module.relative_to(TOOLS).as_posix()
-            for checkout in (self.root, self.source):
-                self.write(checkout, "tools/" + relative, module.read_bytes())
+        self.install_tools(self.root)
+        self.install_tools(self.source)
         self.write(self.root, "ref_src/graphify-out/graph.json", b"reference")
         self.write(self.source, GRAPH_FILE, b"independent task graph")
+
+    def install_tools(self, checkout):
+        # The tracked scope and software vocabulary belong to the fixture commit.
+        for pattern in ("verification/*.py", "verification/checks/check_english.py",
+                        "verification/checks/english_words/*.txt", "workflow/capture/*.py"):
+            for tool in TOOLS.glob(pattern):
+                relative = "tools/" + tool.relative_to(TOOLS).as_posix()
+                if relative != WORD_LIST:
+                    self.write(checkout, relative, tool.read_bytes())
+        if checkout == self.root:
+            self.write(checkout, "tools/graphify/refresh.py", (TOOLS / "graphify/refresh.py").read_bytes())
+
+    def restore_sealed(self, name, *, advance=False):
+        parent = self.root.parent
+        restore_repository(name, parent, CLOSURE_ARCHIVE)
+        path = self.source / f".agent/tmp/sealed-{name}.json"
+        frozen = read(path)
+        if advance:
+            self.git(self.source, "merge", "--ff-only", frozen["commit"])
+        for key in ("source_root", "target_root"):
+            frozen[key] = str(parent / frozen[key])
+        for source in frozen["sources"]:
+            source["root"] = str(parent / source["root"])
+        if frozen["verification"] == "confirmed-fast-forward":
+            frozen["confirmation_path"] = str(parent / frozen["confirmation_path"])
+        else:
+            frozen["evidence_directory"] = str(parent / frozen["evidence_directory"])
+            frozen["evidence"]["checkout"] = digest(str(self.source))
+            artifacts = {str(parent / name): identity for name, identity in frozen["review_artifacts"].items()}
+            if frozen["sources_explicit"]:
+                frozen["review"]["sources"] = digest(frozen["sources"])
+                for artifact, data in (("review.json", frozen["review"]), ("sources.json", frozen["sources"])):
+                    rebound = Path(frozen["evidence_directory"]) / artifact
+                    save(rebound, data)
+                    artifacts[str(rebound)] = file_digest(rebound)
+            frozen["review_artifacts"] = artifacts
+            save(Path(frozen["evidence_directory"]) / "commit.json", frozen["evidence"])
+        save(path, frozen)
+        return path
 
     def git(self, root, *args):
         result = subprocess.run(["git", *args], cwd=root, capture_output=True, check=True)
@@ -108,8 +159,14 @@ class PublishedClosureTests(unittest.TestCase):
                             "plan_approved": True, "tested": True,
                             "confirmation": "Fixture approval for the exact accepted source"})
         self.sealed = accept_tested(self.source, confirmation.parent, confirmation, "master")
-        self.record = cleanup_record(read(self.sealed))
-        self.closure = closure_path(read(self.sealed))
+        self.remember_sealed()
+
+    def remember_sealed(self):
+        frozen = read(self.sealed)
+        self.base = frozen["base"]
+        self.published = frozen["commit"]
+        self.record = cleanup_record(frozen)
+        self.closure = closure_path(frozen)
 
     def register_capture(self, execution_id="execution"):
         path = self.root / ".agent/task-archives/trial" / execution_id / "registration.json"
@@ -223,7 +280,6 @@ class PublishedClosureTests(unittest.TestCase):
         return list(self.closure.parent.glob(f"{name}-*.log"))
 
     def test_failed_publication_cannot_begin_closure(self):
-        self.seal()
         self.assert_status(self.stage("closure-language", record=self.sealed), 1)
         self.write(self.root, "notes.md", "Unrelated master change.\n")
         advanced = self.commit(self.root, "Advance master outside the task")
@@ -235,7 +291,6 @@ class PublishedClosureTests(unittest.TestCase):
         self.assertFalse(self.logs("graph"))
 
     def test_wrong_primary_branch_or_sha_blocks_before_scanning(self):
-        self.seal()
         self.record_historical_publication()
         with self.assertRaisesRegex(ValueError, "recorded primary master checkout"):
             from integration_closure import scan_language
@@ -253,7 +308,6 @@ class PublishedClosureTests(unittest.TestCase):
         self.assertFalse(self.closure.exists())
 
     def test_clean_closure_scans_once_then_refreshes_final_project_sources(self):
-        self.seal()
         self.assert_status(self.stage("closure-graph"), 1)
         self.assert_status(self.stage("cleanup"), 1)
         first = self.source_stage("scan-english")
@@ -284,10 +338,6 @@ class PublishedClosureTests(unittest.TestCase):
         self.assertFalse((self.root / ".git/local-integration.json").exists())
 
     def test_short_route_blocks_unchanged_typo_then_publishes_the_verified_correction(self):
-        self.write(self.root, "notes.md", "The task is suposed to succeed.\n")
-        self.base = self.commit(self.root, "Establish an unchanged authored file")
-        self.git(self.source, "merge", "--ff-only", self.base)
-        self.seal()
         self.assert_status(self.source_stage("publish"), 1)
         self.assert_unpublished(self.base, self.sealed)
         result = self.source_stage("scan-english")
@@ -301,8 +351,7 @@ class PublishedClosureTests(unittest.TestCase):
         self.assert_status(self.source_stage("publish"), 1)
         self.assert_unpublished(self.base, self.sealed)
 
-        self.write(self.source, "notes.md", "The task is supposed to succeed.\n")
-        candidate = self.seal_canonical(self.source, self.base, "Fix the reported English wording")
+        candidate = self.restore_sealed("typo-corrected", advance=True)
         self.assert_status(self.canonical_stage(self.source, candidate, "publish"), 1)
         self.assert_unpublished(self.base, candidate)
         self.assert_status(self.canonical_stage(self.source, candidate, "scan-english"), 0)
@@ -312,20 +361,11 @@ class PublishedClosureTests(unittest.TestCase):
         self.assertEqual(read(old_receipt_path), old_receipt)
 
     def test_task_vocabulary_and_exact_file_corrections_require_a_new_receipt(self):
-        self.seal({"notes.md": "The accepted terminology includes deinstrumentation.\n",
-                   "literal.py": "rejected = 'deliberatebadliteral'\n"})
         self.assert_status(self.source_stage("scan-english"), 1)
         self.assert_status(self.source_stage("publish"), 1)
         self.assert_unpublished(self.base, self.sealed)
 
-        word_list = self.source / WORD_LIST
-        with word_list.open("a", encoding="utf-8") as stream:
-            stream.write("deinstrumentation\n")
-        scope_path = self.source / SCOPE_FILE
-        scope = read(scope_path)
-        scope["file_words"]["literal.py"] = ["deliberatebadliteral"]
-        save(scope_path, scope)
-        candidate = self.seal_canonical(self.source, self.base, "Record reviewed terminology and exact literal")
+        candidate = self.restore_sealed("vocabulary-corrected", advance=True)
         self.assert_status(self.canonical_stage(self.source, candidate, "publish"), 1)
         self.assert_unpublished(self.base, candidate)
         self.assert_status(self.canonical_stage(self.source, candidate, "scan-english"), 0)
@@ -336,7 +376,6 @@ class PublishedClosureTests(unittest.TestCase):
                          {SCOPE_FILE, WORD_LIST})
 
     def test_publisher_rejects_changed_scan_inputs_and_missing_log_at_the_same_commit(self):
-        self.seal()
         self.assert_status(self.source_stage("scan-english"), 0)
         receipt_path = self.record.with_name("english.json")
         receipt = read(receipt_path)
@@ -370,34 +409,26 @@ class PublishedClosureTests(unittest.TestCase):
         self.assert_status(self.source_stage("publish"), 0)
 
     def test_divergent_and_combined_candidates_require_a_full_scan_of_the_final_merge(self):
-        self.seal()
-        divergent = self.published
-        self.write(self.root, "notes.md", "Maintain ordinary task notes.\n")
-        base = self.commit(self.root, "Advance master independently")
-        self.git(self.source, "merge", "--no-ff", base)
-        candidate = self.seal_canonical(self.source, base, "Seal the divergent task")
+        candidate = self.sealed
+        divergent = self.git(self.source, "rev-parse", "refs/heads/divergent-task")
+        base = self.base
         self.assert_status(self.canonical_stage(self.source, candidate, "publish"), 1)
         self.assert_unpublished(base, candidate)
         self.assert_status(self.canonical_stage(self.source, candidate, "scan-english"), 0)
         first = read(candidate)
         passing = read(cleanup_record(first).with_name("english.json"))
         self.assertEqual(passing["commit"], first["commit"])
-        self.write(self.root, "notes.md", "Keep the latest task notes.\n")
-        base = self.commit(self.root, "Advance master between scan and publication")
+        self.git(self.root, "merge", "--ff-only", "refs/heads/next-master")
+        base = self.git(self.root, "rev-parse", "HEAD")
         moved = self.canonical_stage(self.source, candidate, "publish")
         self.assert_status(moved, 1)
         self.assertIn("Target advanced", moved.stdout)
         self.assert_unpublished(base, candidate)
-        self.git(self.source, "merge", "--no-ff", base)
-
+        candidate = self.restore_sealed("combined", advance=True)
         other = self.root.parent / "other"
-        self.git(self.root, "worktree", "add", "-b", "other", str(other), base)
-        self.write(other, "invalid.md", b"\xff")
-        second = self.commit(other, "Add a file with a scanner read error")
-        self.git(self.source, "merge", "--no-ff", second)
+        second = self.git(other, "rev-parse", "HEAD")
         sources = [{"ref": "refs/heads/task", "root": str(self.source), "tip": divergent},
                    {"ref": "refs/heads/other", "root": str(other), "tip": second}]
-        candidate = self.seal_canonical(self.source, base, "Seal the selected sources", sources)
         combined = cleanup_record(read(candidate)).with_name("english.json")
         self.assert_status(self.canonical_stage(self.source, candidate, "publish"), 1)
         self.assert_unpublished(base, candidate)
@@ -412,8 +443,7 @@ class PublishedClosureTests(unittest.TestCase):
         self.assert_status(self.canonical_stage(self.source, candidate, "publish"), 1)
         self.assert_unpublished(base, candidate)
 
-        self.write(self.source, "invalid.md", "The source text is available.\n")
-        candidate = self.seal_canonical(self.source, base, "Repair the file before publication", sources)
+        candidate = self.restore_sealed("combined-corrected", advance=True)
         self.assert_status(self.canonical_stage(self.source, candidate, "scan-english"), 0)
         frozen = read(candidate)
         self.assert_status(self.canonical_stage(self.source, candidate, "publish"), 0)
@@ -574,7 +604,6 @@ class PublishedClosureTests(unittest.TestCase):
         self.assert_published_open()
 
     def test_resolved_scanner_read_error_can_retry_at_the_same_master_sha(self):
-        self.seal()
         self.record_historical_publication()
         bad = self.write(self.root, "invalid.md", b"\xff")
         failed = self.stage("closure-language")
@@ -597,7 +626,6 @@ class PublishedClosureTests(unittest.TestCase):
         self.assertEqual(len(self.logs("graph")), 1)
 
     def test_graph_failure_retries_only_graph_and_reuses_a_successful_receipt(self):
-        self.seal()
         self.assert_status(self.source_stage("scan-english"), 0)
         self.assert_status(self.source_stage("publish"), 0)
         blocked = self.write(self.root, "graphify-out", b"blocks output")
@@ -625,7 +653,6 @@ class PublishedClosureTests(unittest.TestCase):
         self.assertEqual(len(self.logs("graph")), 2)
 
     def test_cleanup_requires_the_same_completed_preservation_before_removing_worktree(self):
-        self.seal()
         self.write(self.root, "tools/worktree.ps1", (TOOLS / "worktree.ps1").read_bytes())
         active = self.write(self.source, ".agent/tmp/worker.jsonl", b"partial")
         main = self.write(self.source, ".agent/tmp/main.jsonl", b"main result\r\n\xff")

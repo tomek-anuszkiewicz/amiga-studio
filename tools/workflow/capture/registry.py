@@ -30,12 +30,12 @@ class CaptureError(ValueError):
     """A capture prerequisite or requested boundary is invalid."""
 
 
-def git(path: Path, *args: str) -> subprocess.CompletedProcess[bytes]:
+def git(path: Path, *args: str, input: bytes | None = None) -> subprocess.CompletedProcess[bytes]:
     # Preserve the sandbox's exact checkout trust without its wildcard or other overrides.
     trust = git_checkout_trust(path)
     env = {key: value for key, value in os.environ.items() if not key.upper().startswith("GIT_")}
     return subprocess.run(
-        ["git", *trust, "-C", str(path), *args], capture_output=True, env=env
+        ["git", *trust, "-C", str(path), *args], capture_output=True, env=env, input=input
     )
 
 
@@ -74,6 +74,19 @@ def git_path(path: Path, flag: str) -> Path:
                 break
         raise CaptureError(message)
     return Path(os.fsdecode(result.stdout.rstrip(b"\r\n"))).resolve(strict=True)
+
+
+def git_paths(path: Path, *flags: str):
+    result = git(path, "rev-parse", "--path-format=absolute", *flags)
+    lines = result.stdout.removesuffix(b"\n").split(b"\n")
+    if (result.returncode or len(lines) != len(flags)
+            or any(not line or b"\r" in line for line in lines)):
+        # Individual queries preserve the diagnostic and handle paths with line breaks.
+        for flag in flags:
+            yield git_path(path, flag)
+    else:
+        for line in lines:
+            yield Path(os.fsdecode(line)).resolve(strict=True)
 
 
 def path_identity(path: Path) -> str:
@@ -203,12 +216,13 @@ def file_lock(path: Path, timeout: float = 30):
 class Project:
     def __init__(self, primary: Path, working: Path):
         self.primary = primary.resolve(strict=True)
-        if self.primary != git_path(self.primary, "--show-toplevel"):
+        paths = git_paths(self.primary, "--show-toplevel", "--git-common-dir", "--git-dir")
+        if self.primary != next(paths):
             raise CaptureError("The project path must be the root of the primary checkout.")
-        self.common = git_path(self.primary, "--git-common-dir")
-        if self.common != git_path(self.primary, "--git-dir"):
+        self.common = next(paths)
+        if self.common != next(paths):
             raise CaptureError("Select the primary checkout as the project.")
-        if self.common != git_path(working, "--git-common-dir"):
+        if working != self.primary and self.common != git_path(working, "--git-common-dir"):
             raise CaptureError("The working directory does not belong to the selected Git repository.")
         self.identity = path_identity(self.common)
         self.archive = self.primary / ARCHIVE
