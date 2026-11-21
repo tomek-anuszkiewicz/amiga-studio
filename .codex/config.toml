@@ -1,3 +1,7 @@
+[agents]
+default_subagent_model = "gpt-6.2-sol"
+default_subagent_reasoning_effort = "high"
+
 # Inherit the active Codex session directory; keep server paths relative to it.
 [mcp_servers.amiga-rag]
 command = "python"

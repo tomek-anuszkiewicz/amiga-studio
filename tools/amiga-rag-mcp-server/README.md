@@ -86,7 +86,7 @@ Documentation indexing is a heavy batch process handled strictly outside the MCP
 The CLI uses the `amiga` source tag, an explicit `--repo-root`, and the absolute
 directory to scan. `RAG_INDEX_JSON` is needed only for indexing invocations.
 It hashes every Markdown file on each run and processes only modified or added
-repository-relative documents. Follow the [indexing procedure](../../.agents/skills/TA-index-amiga-rag/SKILL.md).
+repository-relative documents. Follow the [indexing procedure](../../.agents/skills/TA-RAG-index-amiga/SKILL.md).
 
 When the MCP `rag_search` tool receives multiple source tags, it passes the
 deduplicated tags as the CLI's supported comma-separated `--source` value.

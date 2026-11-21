@@ -2,11 +2,11 @@
 
 This operational reference contains setup commands and provisioning details. Start with the [developer overview](../../docs/developers.md) for the project map and the [testing overview](../../docs/testing.md) for verification scope. Run commands from the repository root; current program help and owning tool READMEs provide their detailed interfaces.
 
-For TA agent work, [runtime loading](workflow-runtime.md) explains role discovery
-and inherited access. The [result tool](../../tools/workflow/README.md) declares
-its Python dependency and commands for a selected schema view and matching
-text/JSON handoff. A specialist reports missing setup as a prerequisite; it does
-not install dependencies unless the assignment already authorizes that operation.
+TA role definitions live in `.codex/agents/`. Check their actual runtime loading
+before claiming a role is active. Skills return text and JSON under the shared
+[result contract](workflow-contract.md). No result renderer or workflow Python
+dependency is required. Missing setup is an input gap; install dependencies only
+when the assignment authorizes it.
 
 > [!IMPORTANT]
 > **Foundational Architecture:** Before modifying or extending emulator subsystems, review the [**Core Architecture & Hardware Execution Model**](../../docs/architecture.md). It formalizes the cycle-exact Color Clock phases (`CCK1`/`CCK2`), shared bus contention, Gary arbitration, Big-Endian invariance, and decoupled subsystem ownership. Comprehensive silicon specifications, register allocations, and circuit schematics reside in [`Obsidian/Amiga/Design/`](../../Obsidian/Amiga/Design).
@@ -64,7 +64,7 @@ The emulator uses external test suites, hardware measurements, and reference imp
 - **[Techtravels.org](https://www.techtravels.org/):** Amiga hardware investigations, including logic-analyzer measurements and Paula circuit analysis; distinguish measured pins from inferred internal behavior.
 
 > [!NOTE]
-> **Graphify navigation:** Use independent project and reference datasets, then verify source definitions. Bootstrap creates or refreshes both graphs. Worktree creation copies existing graph directories. Task closure refreshes the project graph on local `master` after publication. See [Chapter 6](#6-code-structure-relationships-graphify).
+> **Graphify navigation:** Use independent project and reference datasets, then verify source definitions. Bootstrap creates or refreshes both graphs. Worktree creation copies existing graph directories. Task closure refreshes the project graph on final local `master` after successful final tests/review and any corrective commits. See [Chapter 6](#6-code-structure-relationships-graphify).
 
 Because these test assets comprise multi-gigabyte datasets (~6.5 GB uncompressed), they reside outside Git history in `ref_src/` and `tools/`.
 
@@ -171,7 +171,7 @@ Use `-All` to provision reference assets and development tools in one run. Confi
 | **Verification Testbeds** | `-Sources` | Provision local test and research references | Downloads external test suites, software-generated M68000 vectors (`SingleStepTests-680x0`), vAmiga/vAmigaTS, Amiga Test Kit, MiniMig, and Amiga Replacement Project |
 | **External Reference Scans** | `-Documentation` | External reference scans and manual archives | Downloads original archival PDF scans and OEM technical reference manuals (HRM, TRM, PRM, UM, and technical articles) |
 | **Documentation & RAG** | `-Rag` | Explicit Amiga documentation indexing | Starts the shared RAG service and updates the Amiga scopes in the shared index through `rag_qdrant`. |
-| **Code Knowledge Graph** | `-Graphify` | Codebase structural navigation, call hierarchy, and symbol dependency analysis | Creates or refreshes independent project and reference code graphs; project document semantics use TA-extract-graph-semantics |
+| **Code Knowledge Graph** | `-Graphify` | Codebase structural navigation, call hierarchy, and symbol dependency analysis | Creates or refreshes independent project and reference code graphs; project document semantics use TA-Graphify-extract-semantics |
 
 ---
 
@@ -239,7 +239,7 @@ For multi-page web publications, the bootstrapper incorporates an autonomous cra
 <a id="processing-raw-documents-into-markdown"></a>
 ##### Processing Raw Documents into Markdown
 
-The bootstrap converters prepare the initial reference knowledge base from raw scans and downloaded HTML. PDF preparation, HTML conversion and book review have separate entry points in the [bootstrap instructions](../../tools/bootstrap/AGENTS.md). Shared Codex authentication, requests and caching are described in the [conversion client README](../../tools/bootstrap/conversion/README.md). Automatic tests follow the [bootstrap converter scope](../rules/unit-testing-policy.md#bootstrap-converter-scope). Run only the fragment requested by the user; the user assesses generated content.
+The bootstrap converters prepare the initial reference knowledge base from raw scans and downloaded HTML. PDF preparation, HTML conversion and book review have separate entry points in the [bootstrap instructions](../../tools/bootstrap/AGENTS.md). Shared Codex authentication, requests and caching are described in the [conversion client README](../../tools/bootstrap/conversion/README.md). Automatic tests follow the [bootstrap converter scope](../../tools/bootstrap/AGENTS.md#converter-testing). Run only the fragment requested by the user; the user assesses generated content.
 
 1. **PDF preparation ([`pdf-to-markdown`](../../tools/bootstrap/pdf-to-markdown/README.md)):** Stage 01 prepares a native/OCR text layer, Stage 02 extracts page images and positioned text, and Stages 03–07 prepare ordered objects, tables, crops and callouts. See the program README for current stage commands and outputs.
 2. **Book review ([`book-to-markdown`](../../tools/bootstrap/book-to-markdown/README.md)):** Review prepared pages, roles and source selections. Accepted recipes support [documentation reconstruction](../../tools/bootstrap/book-to-markdown/README.md#documentation-bootstrap-from-an-accepted-bookjson); local editor acceptance alone does not validate the reconstructed publication.
@@ -287,13 +287,13 @@ manual reference refresh and query commands are described in
   - Unified `projects_docs` collection partitioned by source tags: `amiga` for this repository's manuals and design specifications, `devnotes` for separately maintained developer notes.
   - Local FastEmbed (`BAAI/bge-small-en-v1.5`), 100% offline with zero external cloud API keys required.
   - The CLI state file named by `RAG_INDEX_JSON` tracks SHA-256 hashes of individual files, reindexing modified documents while skipping unchanged files.
-  - **Indexing trigger:** [TA-index-amiga-rag](../skills/TA-index-amiga-rag/SKILL.md) requires an explicit indexing request; editing or auditing documentation alone does not publish it to the shared index. There is no file-save watcher.
-- **Manual Reindexing:** Follow [TA-index-amiga-rag](../skills/TA-index-amiga-rag/SKILL.md) for validation, source scopes, shared state and the canonical commands. Do not index another project's notes from this checkout.
+  - **Indexing trigger:** [TA-RAG-index-amiga](../skills/TA-RAG-index-amiga/SKILL.md) requires an explicit indexing request; editing or auditing documentation alone does not publish it to the shared index. There is no file-save watcher.
+- **Manual Reindexing:** Follow [TA-RAG-index-amiga](../skills/TA-RAG-index-amiga/SKILL.md) for validation, source scopes, shared state and the canonical commands. Do not index another project's notes from this checkout.
 - **Query Tools & FastMCP:**
   - Start with the configured adapter or the `rag_qdrant` CLI. When retrieval
     is unavailable or too broad, inspect the local sources for the selected
     family and report the evidence gap under the
-    [hardware provenance contract](../skills/TA-research-hardware-manuals/references/provenance.md).
+    [hardware provenance contract](../skills/TA-Hardware-research/references/provenance.md).
    - Query via MCP tool: `rag_search(query="<topic>", sources=["amiga", "devnotes"])`. The Amiga project only retrieves `devnotes`; its owning project indexes it.
   - Fast CLI search across hardware manuals:
     ```powershell
@@ -314,8 +314,8 @@ manual reference refresh and query commands are described in
 <a id="7-code-structure-relationships-graphify"></a><a id="7-code-structure--relationships-graphify"></a><a id="6-code-structure-relationships-graphify"></a><a id="6-code-structure--relationships-graphify"></a><a id="b-code-structure-relationships-ast-knowledge-graph-graphify"></a>
 ## 6. Code Structure & Relationships: Graphify
 - **Datasets:** `project` stores code and allowed project documents in `graphify-out/graph.json`; it honors Git exclusions and excludes imported sources. `reference` stores supported code throughout `ref_src/` in `ref_src/graphify-out/graph.json`, with Git exclusions disabled and Graphify exclusions retained. JSON vectors, generated data and vAmigaTS assembly are excluded; parser errors can leave partial symbols.
-- **Production:** `.\tools\bootstrap\bootstrap.ps1 -Graphify` and the Graphify stage of `-All` create or refresh both graphs. Task closure refreshes the project graph on local `master` after publication. The dedicated manual reference operation is `python tools/graphify/refresh.py --graph reference`. Structural refresh preserves valid project semantic content; initial or needed document semantics use the host-agent procedure in the [semantic extraction skill](../skills/TA-extract-graph-semantics/SKILL.md). Keep the repository-owned TA graph skills when installing/upgrading Graphify.
+- **Production:** `.\tools\bootstrap\bootstrap.ps1 -Graphify` and the Graphify stage of `-All` create or refresh both graphs. Task closure refreshes the project graph on final local `master` after successful final tests/review and any corrective commits. The dedicated manual reference operation is `python tools/graphify/refresh.py --graph reference`. Structural refresh preserves valid project semantic content; initial or needed document semantics use the host-agent procedure in the [semantic extraction skill](../skills/TA-Graphify-extract-semantics/SKILL.md). Keep the repository-owned TA graph skills when installing/upgrading Graphify.
 - **Queries:** Use the read-only repository entry point with an explicit native graph selector, such as `python tools/graphify/read.py query "Cpu BusResult" --graph graphify-out/graph.json` or `python tools/graphify/read.py explain "Paula" --graph ref_src/graphify-out/graph.json`. The same `--graph` selection applies to `path`. Compare graphs separately and verify source definitions; reference paths resolve under `ref_src/`.
-- **Optional filtering:** `python tools/graphify_query.py "Paula" --graph reference --scope minimig` filters nodes and edges before traversal using a disposable view under `.agent/tmp/`. Scopes are directories within the selected root. Missing graphs are reported without substitution or automatic builds. See the [tool README](../../tools/graphify/README.md) for roots, creation, caching and freshness.
+- **Optional filtering:** `python tools/graphify/query.py "Paula" --graph reference --scope minimig` filters nodes and edges before traversal using a disposable view under `.agent/tmp/`. Scopes are directories within the selected root. Missing graphs are reported without substitution or automatic builds. See the [tool README](../../tools/graphify/README.md) for roots, creation, caching and freshness.
 
 ---

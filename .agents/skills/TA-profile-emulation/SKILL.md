@@ -5,8 +5,8 @@ description: Investigate selected emulation costs and frequent work, returning c
 
 # Profile the selected execution boundary
 
-Apply [the invocation contract](../../references/workflow-contract.md).
-Executor: main session; result kind: `profile`.
+Apply [the result contract](../../references/workflow-contract.md).
+Executor: main session.
 Inputs: concrete performance question, exact candidate/build, selected workloads,
 measurement boundary and output scope. A plan-only request supplies no measurement
 authorization and returns that missing prerequisite.

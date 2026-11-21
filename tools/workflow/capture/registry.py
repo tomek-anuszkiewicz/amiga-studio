@@ -17,6 +17,7 @@ import uuid
 
 
 ARCHIVE = Path(".agent/task-archives")
+SERVICE_ROOT = Path(".agent/tools/workflow-capture")
 ROLLOUT_HEADER_LIMIT = 512 * 1024
 EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
 SEGMENT = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,63}")
@@ -226,11 +227,24 @@ class Project:
             raise CaptureError("The working directory does not belong to the selected Git repository.")
         self.identity = path_identity(self.common)
         self.archive = self.primary / ARCHIVE
-        self.control = self.archive / "_receiver"
+        self.service_root = self.primary / SERVICE_ROOT
+        self.control, self.spool = self.runtime_paths()
+
+    def runtime_paths(self):
+        settings = self.plain_path(self.service_root / "compose-settings.json")
+        if settings.is_file():
+            revision = read_json(settings).get("config_id")
+            if not isinstance(revision, str) or not re.fullmatch(r"[0-9a-f]{64}", revision):
+                raise CaptureError("Compose identity: the saved service revision is invalid.")
+            manifest = self.plain_path(self.service_root / "compose" / revision / "compose.yaml")
+            if b"${CAPTURE_RECEIVER_STATE:?}" not in manifest.read_bytes():
+                control = self.archive / "_receiver"
+                return control, control / "collector-output"
+        return self.service_root / "receiver", self.service_root / "collector" / "spool"
 
     def plain_path(self, path: Path) -> Path:
         if path.resolve() != path:
-            raise CaptureError("Capture paths must stay in the primary archive without links.")
+            raise CaptureError("Capture paths must stay in the primary checkout without links.")
         return path
 
     def require_ignored(self, path: Path) -> None:
@@ -240,12 +254,15 @@ class Project:
             raise CaptureError("Git must ignore the selected capture path before data is written.")
 
     def prepare(self) -> None:
+        self.require_ignored(self.archive / "probe")
         self.require_ignored(self.control / "registry.lock")
-        tracked = git(self.primary, "ls-files", "--", ARCHIVE.as_posix())
+        tracked = git(self.primary, "ls-files", "--", ARCHIVE.as_posix(),
+                      self.control.relative_to(self.primary).as_posix())
         if tracked.returncode:
             raise CaptureError("Git cannot verify the selected capture paths are untracked.")
         if tracked.stdout:
-            raise CaptureError("The capture archive contains tracked files.")
+            raise CaptureError("The capture archive or Receiver state contains tracked files.")
+        self.archive.mkdir(parents=True, exist_ok=True)
         self.control.mkdir(parents=True, exist_ok=True)
 
     def matches_common(self, value: str) -> bool:
@@ -280,6 +297,29 @@ class Project:
         path = self.control / "service.lock"
         self.require_ignored(path)
         return file_lock(path, timeout=0)
+
+
+class RegistrationIndex:
+    """Keep the receiver's saved registrations indexed by thread for its lifetime."""
+
+    def __init__(self, project):
+        self._registrations = {}
+        self.selections = {}
+        for path, registration in project.registrations():
+            self.replace(path, registration)
+
+    def replace(self, path, registration):
+        previous = self._registrations.get(path)
+        if previous is not None:
+            for thread in {selection["id"] for selection in previous["threads"]}:
+                remaining = [entry for entry in self.selections[thread] if entry[0] != path]
+                if remaining:
+                    self.selections[thread] = remaining
+                else:
+                    del self.selections[thread]
+        self._registrations[path] = registration
+        for selected in registration["threads"]:
+            self.selections.setdefault(selected["id"], []).append((path, registration, selected))
 
 
 def require_available_range(project: Project, thread: str, boundary: str, except_path: Path | None = None):

@@ -13,7 +13,7 @@ related: ["[GUI.md](Application/GUI.md)", "[Rust Guidelines.md](Rust%20Guideline
 # Amiga 500 egui & Frontend Best Practices
 
 - **Parent Specification:** [GUI.md](Application/GUI.md)
-- **Rules & Policies:** [egui-best-practices.md](../../../.agents/rules/egui-best-practices.md) | [Rust Guidelines.md](Rust%20Guidelines.md)
+- **Shared Practices:** [egui-best-practices.md](../../../.agents/references/egui-best-practices.md) | [Rust Guidelines.md](Rust%20Guidelines.md)
 - **Module Location:** `crates/gui/`
 - **Engineering Guidelines:** Follow systems rules in [AGENTS.md](../../../AGENTS.md).
 
@@ -145,7 +145,7 @@ Every inspectable or interactive element across all docks, panels, and modal dia
 
 ## 9. Reference Documentation & Upstream Ground Truth
 
-- [egui Best Practices Rule](../../../.agents/rules/egui-best-practices.md): Mandatory immediate-mode UI rules and headless testing policies.
+- [egui Best Practices](../../../.agents/references/egui-best-practices.md): Shared immediate-mode UI requirements and headless testing criteria.
 - [GUI](Application/GUI.md): Frontend role, game and debugger views, intended input and output paths, and display scaling.
 - [GUI Crate Implementation](../../../crates/gui/src/gui.rs): Living Rust implementation of eframe app, views, docks, and modals.
 - [GUI Interaction Test Suite](../../../crates/gui/tests/test_interactions.rs): Headless integration tests validating UI layout, keyboard events, and theme toggling.

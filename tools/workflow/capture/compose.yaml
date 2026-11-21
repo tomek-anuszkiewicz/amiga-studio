@@ -33,6 +33,14 @@ services:
         target: /capture/project/.agent/task-archives
         bind: {create_host_path: false}
       - type: bind
+        source: "${CAPTURE_RECEIVER_STATE:?}"
+        target: /capture/receiver
+        bind: {create_host_path: false}
+      - type: bind
+        source: "${CAPTURE_COLLECTOR_OUTPUT:?}"
+        target: /capture/collector-output
+        bind: {create_host_path: false}
+      - type: bind
         source: "${CAPTURE_SESSIONS:?}"
         target: /capture/codex/sessions
         read_only: true

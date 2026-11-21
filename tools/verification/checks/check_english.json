@@ -73,6 +73,7 @@
     "english_words/names.txt"
   ],
   "file_words": {
+    "tools/artifacts/tests/test_preserve.py": ["gpgsign", "qb", "qm"],
     "DIARY.md": ["beh", "wf", "wv"],
     "tools/workflow/tests/test_review_routing.py": ["ap", "qm", "wf"],
     "tools/workflow/review_routing.py": ["unassessed"],
@@ -93,8 +94,7 @@
     "tools/bootstrap/book-to-markdown/tests/test_review_server_controller.py": ["getsockname", "ip", "oneoff"],
     "tools/bootstrap/book-to-markdown/review-server.ps1": ["ceq", "cmatch", "creplace", "ip", "mnt", "oneoff"],
     "tools/bootstrap/book-to-markdown/container-entrypoint.py": ["creat", "execv", "trunc", "wronly"],
-    ".agents/skills/TA-cleanup-task/SKILL.md": ["uncopied"],
-    ".agents/rules/git-merge-commits.md": ["uncopied"],
+    ".agents/skills/TA-WF-Main-close-task/references/local-integration.md": ["uncopied"],
     "docs/developers.md": [
       "bookjson"
     ],

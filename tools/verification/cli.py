@@ -36,16 +36,7 @@ The test rust, test runner and runner bench branches also accept no selector.
 Execution options: --plan, --log-level full|warn|error and --results-dir PATH
 may appear anywhere among sentence selectors. --exact requires crate NAME,
 suite NAME and case NAME for Rust, or case NAME for SingleStep groups.
-Completion profiles compare pending changes against HEAD and automatically reuse
-matching evidence in .agent/tmp/verification/PROFILE, or the chosen --results-dir.
-Use --integration-base COMMIT for complete integration scope, including committed
-task work. COMMIT must be a full immutable commit ID.
-Local integration: integrate freeze review PATH partition PATH target BRANCH [sources PATH];
-integrate accept-tested confirmation PATH target BRANCH;
-integrate seal|scan-english|closure-graph|cleanup record PATH;
-integrate publish record PATH [task ID execution ID] [delivery PATH]; integrate recover.
-Historical closure recovery uses closure-language, closure-vocabulary and
-the publish selector correction-for. See the verifier guide.
+Profiles execute their selected checks on each invocation. --results-dir chooses output locations.
 Only runner gui uses -- to pass native program options.
 """
 
@@ -76,7 +67,7 @@ policy retain their full scope. The plan explains the selected test scope.
 Without directory selectors, test python runs only contracts affected by changed
 tool inputs. Explicit directory selection runs that suite even on a clean tree.
 Commit excludes full SingleStep. Milestone runs full SingleStep.
-The full English scan for local publication uses integrate scan-english.
+The full English scan runs through check english.
 """
 
 
@@ -105,9 +96,6 @@ def parser():
                       help="Store verifier logs and SingleStep reports under PATH")
     root.add_argument("--exact", action="store_true",
                       help="Match one Rust suite test or SingleStep group exactly")
-    root.add_argument("--integration-base", metavar="COMMIT",
-                      help="Compare the complete integration candidate with this immutable commit")
-    root.add_argument("--integration-source", metavar="COMMIT", help=argparse.SUPPRESS)
     commands = root.add_subparsers(dest="command", required=True)
     for name in ("commit", "milestone"):
         leaf = commands.add_parser(name, help=f"Run the {name} completion profile")
@@ -132,11 +120,6 @@ def parser():
     runs = commands.add_parser("runner", help="Reports, CPU benchmarks and GUI captures")
     runs.add_argument("action", choices=("build", "bench", "gui", "analyze", "refresh"))
     runs.add_argument("words", nargs=argparse.REMAINDER)
-    integration = commands.add_parser("integrate", help="Freeze, seal, scan, publish, recover or clean up local integration")
-    integration.add_argument("action", choices=("freeze", "accept-tested", "seal", "scan-english", "publish", "recover",
-                                                "closure-language", "closure-vocabulary", "closure-graph",
-                                                "cleanup"))
-    integration.add_argument("words", nargs="*", metavar="SELECTOR")
     return root
 
 
@@ -151,8 +134,6 @@ def parse_args(argv):
     common.add_argument("--log-level", choices=("full", "warn", "error"))
     common.add_argument("--results-dir")
     common.add_argument("--exact", action="store_true")
-    common.add_argument("--integration-base")
-    common.add_argument("--integration-source")
     separator = argv.index("--") if "--" in argv else len(argv)
     settings, words = common.parse_known_args(argv[:separator])
     args = root.parse_args(words + argv[separator:])
@@ -161,6 +142,4 @@ def parse_args(argv):
     args.log_level = settings.log_level or ("full" if report else "warn")
     args.results_dir = settings.results_dir
     args.exact = settings.exact
-    args.integration_base = settings.integration_base
-    args.integration_source = settings.integration_source
     return root, args

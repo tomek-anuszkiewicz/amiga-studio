@@ -51,7 +51,7 @@ how contested Chip RAM keeps the active CPU micro-step pending. Use the
 [cross-chip signal catalog](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)
 and [platform invariants](Platform%20Quirks%20and%20Invariants%20Catalog.md) for
 interfaces. Unresolved hardware questions follow the
-[source provenance guide](../../../.agents/skills/TA-research-hardware-manuals/references/provenance.md).
+[source provenance guide](../../../.agents/skills/TA-Hardware-research/references/provenance.md).
 
 The motherboard connects chips through shared address, data and control lines.
 The machine loop and memory bus implement that wiring at the modeled phases.
@@ -247,7 +247,7 @@ The machine facade exposes peer subsystems side by side for frontends. Peers do 
 
 Contained engines are modules of their owner. Agnus owns Copper, Blitter and DMA. Denise owns sprites. Paula owns audio and interrupts. Game Ports owns mouse and joystick. Use flat source files with subsystem prefixes and explicit re-exports of subsystem namespaces and useful primary types. Glob exports are prohibited. The owner still re-exports retained child crates such as Denise's `frame_builder`.
 
-The [CPU instruction source layout](CPU%20Motorola%20M68000.md#instruction-source-layout) defines exact instruction file groupings. Follow the [internal migration contract](../../../.agents/rules/internal-migrations.md) before changing an interface or generated format.
+The [CPU instruction source layout](CPU%20Motorola%20M68000.md#instruction-source-layout) defines exact instruction file groupings. Follow the [internal migration contract](../../../.agents/references/internal-migrations.md) before changing an interface or generated format.
 
 ### Chipset design chapters
 

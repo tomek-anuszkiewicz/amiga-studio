@@ -12,26 +12,19 @@ Read affected requirements before design or editing; nearby code supplies exampl
 not authority over specifications or hardware evidence. Applicable result standards
 remain binding even when their detailed reviewer checklist is not loaded by the
 author. In-scope corrections complete the assignment; findings grant no unrelated
-write authority. Handle specification conflicts immediately under
-[reference integrity and requirements](.agents/rules/spec-compliance.md).
+write authority.
 
 Ordinary changes stay unstaged; batch preparation authorizes only selected staging, and commits,
 publication, cleanup and push require their corresponding authorization.
-When a direct commit request follows a decision to decline required repairs,
-lead the first user-visible message with the working-commit limit and the
-named blockers from the known checkpoint, including when that message is
-commentary before inspection. Use the
-[checkpoint warning](.agents/references/workflow-guidance.md#working-commit-after-declining-repairs)
-before any tool call for the commit.
+When reporting or committing incomplete work, state the known blockers and
+distinguish a working commit from verified readiness.
 Architectural checkers/policy data, weakened gates and protected references retain
-their [explicit approval boundaries](.agents/rules/unit-testing-policy.md#protected-verification).
+their [explicit approval boundaries](.agents/references/protected-verification.md#protected-verification).
 
 Keep active, paused and blocked plans in `.agent/tasks/` and use `.agent/tmp/`
 for disposable diagnostics. Preserve stable task IDs across copies and
 continuations. On resumption, verify approved input versions and record
 the continuation boundary.
-Before planning a new task or starting execution of an existing plan, satisfy
-the [telemetry startup prerequisite](.agents/references/workflow-contract.md#telemetry-startup-prerequisite).
 Do not trust old artifacts without checking their inputs. Run commands explicitly;
 do not install, configure or use lifecycle, code or Git hooks. Prefer existing tools
 and direct commands; create a helper only for a concrete need they cannot meet.
@@ -41,11 +34,21 @@ CLI inputs. Never hardcode private host paths or disclose them unnecessarily.
 Already authorized local inputs need no second approval; missing configuration is
 an input gap, not permission to invent it.
 
+### Specification authority
+
+Approved Design specifications govern behavior, timing, memory semantics and
+architecture. When a requirement, expected result or reference model conflicts
+with a specification, stop the conflicting change and present the requirement,
+contrary evidence and concrete options. Obtain a recorded user decision before
+changing or waiving an approved requirement or adding behavior outside scope.
+A review finding or code agreement does not grant that authority.
+
+### Language
+
 Answer in the user's language. Write repository artifacts in English, including
-all saved plans and agent result files. The `.agent/tasks/` exclusion applies
-only to automated language and vocabulary checks. Follow the shared
-[language policy](.agents/rules/language-policy.md) for writing, findings and
-audits. State outcomes and actual evidence plainly, distinguishing assumptions,
+saved plans and agent result files, regardless of the conversation language.
+Translate user concepts into idiomatic English when writing repository artifacts.
+State outcomes and actual evidence plainly, distinguishing assumptions,
 hypotheses and unrun work.
 
 ### Explain the system to the engineer
@@ -72,93 +75,115 @@ normally. Do not claim release unless confirmed.
 ### Choose the task checkout
 
 Before new implementation, identify the current checkout and branch with Git.
-Starting a saved plan selects its own worktree and branch under
-[TA-start-plan](.agents/skills/TA-start-plan/SKILL.md). Resume the recorded working
-plan in that checkout. For other work, reuse an explicit location or establish
-whether to use the current checkout or a new one. Continue with planning and
-read-only discovery while that choice is pending. Use
-[TA-repair-worktree](.agents/skills/TA-repair-worktree/SKILL.md) for selected
-missing local assets. The [local integration procedure](.agents/rules/git-merge-commits.md#choose-the-task-checkout)
-describes placement and the bounded detached diagnostic exception.
+Resume a saved plan in its recorded checkout and branch unless the user selects
+another location. For other work, reuse an explicit location or establish whether
+to use the current checkout or a new one. Continue with read-only discovery while
+that choice is pending. Report missing local assets without inventing inputs.
 
-## One Selected Operation
+## User-Selected Operations
 
-Select the role and atomic `TA-` skill from the actual request. Before dispatch,
-apply the [runtime settings](.agents/references/workflow-runtime.md#model-and-reasoning-effort)
-and announce the assignment under the [invocation and dual-result contract](.agents/references/workflow-contract.md).
-Each invocation returns matching text and JSON with exact input identity,
-subject to the contract's ordinary whole-file preservation exception. Use
-one to four declared rounds (three by default). A missing prerequisite, finding or
-limit returns control; it does not start another skill, repair or lifecycle phase.
-The receiving main session automatically explains the actual result and applies
-[next-step guidance](.agents/references/workflow-guidance.md). Edit an
-[ordinary working draft](.agents/references/workflow-contract.md#working-drafts-and-version-checks)
-in the current conversation. A request to save agreed behavior as a formal plan
-selects [planning and applicable test design](.agents/references/workflow-guidance.md#save-a-formal-plan).
-An expressly scoped [end-to-end delivery](.agents/references/workflow-guidance.md#start-or-deliver-a-saved-plan)
-selects the operations within its recorded delegation. Otherwise wait for the
-user's choice, recheck applicability and run only that operation. The skill
-matrix governs official suggestions, and the user may directly select another
-skill. Each executable choice names its role, skill, scope and copyable invocation.
+The user selects the outcome and scope through ordinary language or a named skill.
+The main session matches that request and the active task context to the relevant
+repository skill, reads it and coordinates its authorized steps. For example,
+implementing an existing task selects `TA-WF-Main-implement-task`; correcting
+identified errors in an active task selects the repair mode of
+`TA-WF-Step-implement-change`; creating or amending a plan selects
+`TA-WF-Main-plan-change`. A request to explain or assess something remains an
+inspection request. Use skill descriptions for other operations; these examples
+are not an exact-phrase command parser. Resolve missing scope before dependent work.
+
+Selecting a skill does not extend authorization. Recommendations and findings do
+not start another operation, and completing a workflow does not start the next
+stage. Commits, publication and cleanup still need their corresponding scope.
 
 When the user steers active work beyond its approved scope, behavior or acceptance
-criteria, [record the proposed amendment immediately](.agents/references/workflow-guidance.md#amend-an-active-plan).
-Track the proposal through restart, approval or decline even if the user gives no
-separate plan-edit instruction.
+criteria, identify the changed requirement and keep any active plan consistent
+with the user's decision.
 
 Repository roles live in `.codex/agents/`; runtime roles and installed plugin skills
 are separate. Use fresh contexts for independent reviews. Do not claim filesystem,
 context or budget enforcement beyond the runtime controls actually observed.
 
-For a new repository skill, use [TA-create-skill](.agents/skills/TA-create-skill/SKILL.md).
-For a new repository role, use [TA-create-agent](.agents/skills/TA-create-agent/SKILL.md).
-Select each operation separately when the request needs both definitions.
+### Subagent assignment and model selection
+
+The main session coordinates `TA-WF-Main-` workflows on its current model. Loading
+a skill does not switch that session's model or reasoning effort. Delegate planning
+and test design to `TA-planner`, source/test implementation and repairs to
+`TA-implementer`, independent assessments to `TA-code-reviewer`, hardware source
+research to `TA-hardware-researcher` and selected command/coverage execution to
+`TA-test-runner`. Other skills keep their stated executor. A compound operation
+may include several assignments; resolve settings for each assignment separately.
+
+Choose model and reasoning effort independently, in this order: the user's explicit
+setting for that assignment, the contextual rule below, a default stated by the
+selected skill, the role defaults in this table, then the project `[agents]`
+defaults in `.codex/config.toml`. An explicit user setting can change either field
+without discarding the rule for the other field.
+
+| Role | Default model | Default reasoning effort |
+| --- | --- | --- |
+| `TA-planner` | `gpt-6.2-astra` | `xhigh` |
+| `TA-implementer` | `gpt-6.2-sol` | `high` |
+| `TA-code-reviewer` | `gpt-6.2-sol` | `high` |
+| `TA-hardware-researcher` | `gpt-6.2-sol` | `high` |
+| `TA-test-runner` | `gpt-6.2-sol` | `medium` |
+
+For implementation, repair or optimization that changes Amiga chipset or peripheral
+hardware behavior, use `gpt-6.2-astra` with `xhigh`. Infer this from the requested
+behavior, plan, affected interactions and authorized writes: examples include
+custom-chip timing, DMA, bus arbitration, register semantics and interrupt/device
+behavior. Paths and hardware names are evidence, not sufficient triggers. Merely
+reading chipset code or changing its prose, logs or build tooling does not trigger
+this rule. Reviewers retain their own defaults even when reviewing chipset work.
+
+Before every launch, including corrections and resumed work, announce the role,
+model, effort and a short reason. Supply the selected skill, checkout, requirements,
+current plan/findings, write scope and result boundary in the assignment. Use fresh
+context (`fork_turns = "none"` where supported) and pass `model` and
+`reasoning_effort` explicitly to the spawn tool. A planner applies the included
+test-design step in its own assignment; it does not launch another planner.
+
+Re-evaluate settings when the assigned scope changes. If a new assignment needs
+different settings, launch a fresh agent with the necessary current context;
+a follow-up message does not itself change an existing agent's model or effort.
+Keep `model` and `model_reasoning_effort` absent from role TOML files so their
+native precedence cannot defeat assignment-specific selection.
+
+If the role or selected settings are unavailable, report the actual launch gap
+instead of silently substituting another model or doing delegated work in the
+main session. Distinguish requested settings from effective settings observed in
+runtime records; an agent's claim about its own model is not confirmation. Changed
+role/skill configuration may require a new session before it is discoverable.
 
 ## Task-Specific Rules and Navigation
 
-Load only the relevant advance requirements and selected operation. Reviewers also
-load their assigned lane criteria; authors do not read all reviewer checklists.
+Load only the relevant technical requirements. For a requested review, load its
+assigned criteria; authors do not read all reviewer checklists.
 Read-only questions need only the material needed to answer them.
 
 | Work | Read at its trigger |
 | --- | --- |
-| Rust implementation | [Rust constraints](.agents/rules/rust-best-practices.md); affected specifications through [General Architecture](Obsidian/Amiga/Design/General%20Architecture.md) |
-| Execution-path refactoring or performance work | [Execution semantics](.agents/rules/performance-and-readability.md) |
 | Crates, exports or CPU module layout | [Workspace layout](Obsidian/Amiga/Design/General%20Architecture.md#workspace-layout) |
-| Internal APIs, configuration, generated formats or snapshots | [Internal migrations](.agents/rules/internal-migrations.md) |
 | Chip, DMA, bus, interrupts or peripherals | [Hardware topology](Obsidian/Amiga/Design/General%20Architecture.md#11-physical-bus-topology--inter-chip-isolation-invariant) |
-| Test design, execution or assessment | [Testing policy](.agents/rules/unit-testing-policy.md) and the selected skill's criteria |
-| Defect investigation or repair | [Original reproduction and causal repair](.agents/references/defect-resolution.md) before mutation |
-| GUI | [GUI advance requirements](.agents/rules/egui-best-practices.md) |
-| Documentation or specifications | [Documentation value](.agents/references/documentation-criteria.md#documentation-value) |
-| Rules, skills, roles or instruction ownership | [Information hierarchy](.agents/rules/information-hierarchy.md) |
-| Preparation, commits or closure | [Batch readiness](.agents/rules/git-commits.md) and [roadmap or milestone completion](Obsidian/Amiga/Design/Verification/Testing%20Strategy%20and%20Quality%20Assurance.md#roadmap-and-milestone-completion) at their triggers |
-| Synchronization, publication or cleanup | The relevant part of [integration policy](.agents/rules/git-merge-commits.md) and the separately selected skill |
-| PowerShell changes | [TA-write-powershell](.agents/skills/TA-write-powershell/SKILL.md) |
 | Reference conversion | [Nested bootstrap instructions](tools/bootstrap/AGENTS.md), then the applicable program README |
 
-For cross-file code navigation use the selected Graphify read operation:
-[query](.agents/skills/TA-query-graph/SKILL.md),
-[path](.agents/skills/TA-find-graph-path/SKILL.md) or
-[symbol explanation](.agents/skills/TA-explain-graph-symbol/SKILL.md).
-Choose project or reference data explicitly, read source definitions, and use `rg`
-when the graph is missing, stale or insufficient. Hardware/manual retrieval follows
-[domain provenance](.agents/skills/TA-research-hardware-manuals/references/provenance.md). Manuals live under
+When using a graph for navigation, identify the project or reference corpus and
+verify relevant source definitions. Use `rg` when it provides the needed context
+or the graph is missing, stale or insufficient. Distinguish hardware manuals,
+measured observations and reference-model behavior. Manuals live under
 `Obsidian/Amiga/Reference/`; imported models and vectors under `ref_src/`.
+
+For planning, test design, implementation and review, consult the shared
+[knowledge tools guide](.agents/references/knowledge-tools.md) when graph
+navigation, RAG retrieval, hardware research or a GUI screenshot helps the
+assigned work. It distinguishes read-only discovery from indexing and refresh.
 
 ## Verification and Completion
 
-Run relevant focused checks during development. Canonical batch verification is
-`python tools/verification/verify.py commit`; milestone verification is
-`python tools/verification/verify.py milestone` at an actual closure trigger.
-The [verifier](tools/verification/README.md) owns selection, required gates and
-evidence reuse. A failed or missing required gate blocks readiness. Assessment
-results do not replace executed verification.
+Report actual checks, their inputs and outcomes. Distinguish executed checks,
+retained evidence and assessments. Failed, missing or invalidated required evidence
+cannot establish readiness; an assessment does not replace an executed check.
 
-Required batch review uses four fresh independent `TA-code-reviewer` instances,
-one for each fixed lane. Schedule within available slots; an author or earlier
-audit cannot replace a lane. Preparation, checks, reviews, commits, publication and
-cleanup remain separately selected operations; broad existing authorization may
-cover their scope without repeated permission requests, while guidance still waits
-for selection. Before reporting completion,
+Preparation, reviews, commits, publication and cleanup require the user's selected
+scope; routing does not grant it. Before reporting completion,
 review the diff against the requested scope and state checks and remaining limits.

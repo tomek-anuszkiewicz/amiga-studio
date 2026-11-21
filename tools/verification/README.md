@@ -4,9 +4,9 @@ This reference contains test commands, verification routing and diagnostic detai
 
 ## Command syntax
 
-For planned test or benchmark commands in this guide, run the native command
-through the [selected-command launcher](../workflow/README.md#run-a-command-for-a-selected-execution).
-The [case reporting instructions](#case-reports) explain the registration binding.
+Run commands directly from the selected checkout. The
+[case reporting instructions](#case-reports) describe optional registration binding
+and standalone reports.
 
 Use `python tools/verification/verify.py` followed by one sentence below. There
 is no installed short `verify` alias. Values containing spaces must be quoted.
@@ -18,12 +18,8 @@ includes a module path.
 
 | Sentence | Scope |
 | --- | --- |
-| `commit` | Required commit profile; excludes full SingleStep |
+| `commit` | Selected check profile; excludes full SingleStep |
 | `milestone [singlestep]` | Full SingleStep, with or without the optional selector |
-| `integrate freeze review PATH partition PATH target BRANCH` | Freeze the approved complete integration candidate and canonical evidence |
-| `integrate accept-tested confirmation PATH target BRANCH` | Seal an unchanged clean fast-forward explicitly confirmed as already tested, without new verification |
-| `integrate seal\|scan-english\|publish\|cleanup record PATH` | Record mechanical completion, scan the sealed commit, conditionally publish, or remove authorized integrated sources |
-| `integrate recover` | Inspect an interrupted publication from a surviving checkout |
 | `test rust [unit|integration|all|workspace]` | Diagnostic tiers; default is unit plus integration; workspace excludes test_runner |
 | `test rust crate NAME [suite NAME] [case FILTER]` | One Cargo package, optionally one integration target and filter |
 | `test coverage crate NAME` | All ordinary tests of one package with detailed coverage; excludes test_runner |
@@ -57,9 +53,6 @@ controls how many vectors from that group execute.
 CPU benchmarks use the Cargo benchmark target described below.
 The aggregate SingleStep test saves suite results and calls report aggregation
 once after all selected groups finish, including failing executions.
-`--integration-base COMMIT` selects complete integration scope for completion
-profiles; it requires a full immutable commit ID. Integration operations have
-their own validation and reject preview/exact selectors.
 Only `runner gui -- OPTIONS` forwards native switches to a separate program.
 Counts must be positive; the parser rejects unknown or repeated selectors and
 missing or invalid values before execution, with exit code 2.
@@ -67,8 +60,7 @@ The `test_runner` crate contains test and benchmark targets with shared helpers
 in `tests/common/`; chipset baseline recording has no executable entry point.
 Benchmark analysis defaults to full output; other commands default
 to warnings and errors. Focused commands save full logs in `.agent/tmp/verify/`
-by default. Completion profiles keep them with their
-[batch evidence](#completion-verification); `--results-dir` selects another directory.
+by default. Profiles use the same logging path; `--results-dir` selects another directory.
 
 Examples:
 
@@ -93,6 +85,16 @@ Skill-owned scripts remain owned by their skills. Bootstrap, conversion,
 indexing, worktree management, diary appending, tool installation and baseline
 recording remain workflow operations with their own entry points.
 
+For an assigned focused check, run the exact documented command directly; no
+separate execution skill is needed. Confirm tools/fixtures, isolate concurrent
+writable build/report outputs, await exit status and inspect actual reports.
+Keep the selected candidate stable. Report failed, interrupted, missing or unrun
+work separately; a check does not authorize repairs, broader tests or coverage.
+Use the [CPU diagnostic guidance](../../.agents/references/cpu-diagnostics.md)
+when investigating an isolated instruction mismatch. Full standalone SingleStep
+requires its explicitly selected complete scope; do not expand a diagnostic
+sample into the full suite.
+
 ## Browser build verification
 
 Run `python tools/verification/verify.py check web` during changes to GUI code,
@@ -106,25 +108,21 @@ warnings are outside this Cargo setting's scope.
 
 The build requires Trunk, PowerShell, and nightly Rust with `rust-src` and the
 `wasm32-unknown-unknown` target, as described in the [launch instructions](../../README.md).
-Missing tools or a failed build block commit verification. Batch continuation
-fingerprints nightly Cargo/Rust, Trunk and PowerShell versions as well as source
-inputs; changed build tools invalidate successful evidence.
+Missing tools or a failed build fail the selected verification. Every invocation
+executes its selected build/check commands in the current environment.
 
 ## Case reports
 
-For planned tests and benchmarks use the
-[selected-command launcher](../workflow/README.md#run-a-command-for-a-selected-execution)
-from the intended checkout. It reads the task and execution from the authoritative
-registration, binds the work item and round, and refuses unresolved or conflicting
-binding before launching. For combined verification use the assembly registration
-and retain the original source manifest. Direct ad hoc invocations outside a
-selected plan use standalone reporting.
+Run tests and benchmarks directly from the intended checkout. Repository launchers
+write standalone reports by default. If an execution registration was explicitly
+selected, pass its `AMIGA_TEST_TASK_ID` and `AMIGA_TEST_EXECUTION_ID` environment
+variables as described in the [capture guide](../workflow/capture/README.md#case-reports).
+The retired selected-command launcher is not required.
 
 Test and benchmark launchers print the per-invocation Markdown report at
 startup. It links the native event journal, command output and child reports.
-Each invocation retains its own case attempts and durations. A reused
-verification group links the preceding evidence and contributes zero new
-attempts. Command wall times and coverage retain their existing reports.
+Each invocation retains its own case attempts and durations. Command wall times
+and coverage retain their existing reports.
 
 The primary checkout retains these files when a linked worktree is removed.
 See the [archive layout](../workflow/capture/README.md#case-reports) for
@@ -167,10 +165,9 @@ repository launchers.
 
 ## Saved SingleStep reports
 
-Standalone runs default to `.agent/tmp/singlestep/`. Milestone verification uses
-`.agent/tmp/verification/milestone/singlestep/`; with `--results-dir PATH`, the
-verifier uses `PATH/singlestep/`. For reused milestone evidence, read the archived
-report bundle identified by `milestone.json`, not an older standalone summary.
+SingleStep runs default to `.agent/tmp/singlestep/`. With `--results-dir PATH`,
+the verifier uses `PATH/singlestep/`. Inspect the output from the actual run;
+there is no saved milestone verdict that substitutes for execution.
 
 The single `#[test]` entry point calls `common::singlestep_suite::run_suite()`.
 It runs selected instruction groups on bounded worker threads, catches group
@@ -316,188 +313,50 @@ git diff -- benchmarks/m68k_benchmark_baseline.json benchmarks/m68k_benchmark_ba
 
 ## Completion verification
 
-Verify all pending changes against `HEAD`. For planned work run from the selected
-checkout with its registration and repeat with the applicable round after corrections:
+Run selected profiles directly from the intended checkout:
 
-```powershell
-python tools/workflow/run_selected.py --registration <receipt> --work-item <item> --round <round> -- python tools/verification/verify.py commit
-```
-
-For ad hoc work outside a selected plan, use the native command directly:
-
-```powershell
+```text
 python tools/verification/verify.py commit
+python tools/verification/verify.py milestone
 ```
 
-Completion profiles automatically record evidence under
-`.agent/tmp/verification/<profile>`. Use `--results-dir .agent/tmp/<batch>` only
-when a different output directory is needed, and repeat it on subsequent runs.
-Staging does not isolate execution: use a candidate checkout containing exactly
-the intended batch. The full required set comes from all staged, unstaged and
-nonignored new changes against the current `HEAD`, including earlier pending
-edits even when only a vocabulary correction changed since the last attempt.
-`--plan` selects and displays commands without executing or writing records.
-For integration, `--integration-base <full-commit-id>` selects committed task
-changes as well as pending paths against that immutable base. HEAD, source and
-index identities still guard concurrency independently. The plan and completion
-record include the base and full selected path scope. Changing the base starts a
-new context with conservative reruns; ordinary HEAD-based continuation is unchanged.
+These are check bundles, not commit or closure operations. The commit profile
+retains quality checks, the browser build, ordinary tests/coverage and selected
+Python tool suites. The milestone profile retains full SingleStep verification.
+Use `--plan` to inspect commands without running them and `--results-dir <path>`
+for a selected log/SingleStep output location.
 
-Each actual `commit` invocation also checks official Rust Stable metadata with a
-five-second network timeout. It compares the installed `stable` channel with the
-published version numerically and shows the active verification compiler
-separately. An available update suggests `rustup update stable`; unavailable or
-invalid metadata produces an informational notice. Neither result blocks tests
-or changes their reuse identity. The check runs even when all test evidence is
-reused, saves its notice in `verify/<attempt>/stable-update.log` beside the batch
-logs, and never updates toolchains. `--plan` makes no network request. Actual
-compiler changes still invalidate evidence through execution conditions.
-
-The per-profile JSON record identifies the batch, `HEAD`, checkout, command lists,
-required groups, source and input identities, execution conditions, outcomes,
-elapsed command time and hashed evidence artifacts. Records and original logs
-stay under that directory. Repeating the command reads only its current record;
-the verifier never searches old logs or other tasks. A changed `HEAD` starts a new
-batch and executes all required groups. Missing, corrupt or incompatible records
-also require execution and cannot produce a reused pass. Repeat the same command
-and results directory after interruption. Completed, matching groups survive;
-an interrupted group never counts as passed. Do not change output directories just
-to recover an interrupted run, because a new directory has no prior evidence.
-
-Every executing `commit`, `milestone`, `test`, `check` and `runner` invocation
-acquires the same nonblocking operating-system lock at
-`<checkout>/.agent/tmp/verification.lock` after argument parsing and before
-selection, source snapshots, evidence writes or checks. Contention immediately
-returns a nonzero status with `[FAIL] Verification is already running in this
-repository working directory.` It launches no tools and changes no evidence.
-Profiles, branch changes and `--results-dir` do not change the lock; separate
-worktrees and repository copies have independent locks. Help, no-argument help
-and `--plan` leave the lock file untouched and remain available during a run.
-An invocation with no selected work releases the lock normally.
-
-Windows uses `msvcrt.locking`; POSIX uses `fcntl.flock`. The verifier keeps the
-file in place without ownership metadata: its existence or contents never mean
-verification is active. Normal completion, failures and forced owner termination
-release the operating-system lock. The handle is not inherited by child commands.
-A command left alive after verifier termination can therefore overlap a later
-invocation. The harness does not detect, wait for or terminate surviving children,
-and provides no ownership recovery, queue, timeout or force-unlock option.
-Direct Cargo, unittest and standalone helper commands are outside this entry-point
-contract. Administrative `integrate` actions retain their transaction protocol.
-
-Coverage test execution, export and summary form one reuse group. The three
-reports are retained together beside the original logs; reuse does not invoke
-Cargo or reset counters. Other current commands are independent groups. A failed
-attempt may retain stable successful groups. Failed, interrupted, missing-artifact,
-changed-command or changed-input groups execute again. New required suites cannot
-be satisfied by the old set. Reports distinguish executed, reused, invalidated,
-failed and missing results with reasons and originating attempts.
-
-Input identity includes tracked/nonignored authored files, ignored crate fixtures,
-local Amiga Markdown, the 68000 reference JSON corpus, local Cargo configuration
-and `.env`. Generated build and diagnostic directories are excluded. SHA-256
-content checks at attempt boundaries complement source/index checks and file
-metadata checks at each group boundary. Environment values are hashed rather than
-stored. The agent's per-call `CODEX_TOOL_CALL_ID` is correlation metadata and is
-excluded; other environment keys remain inputs. Tool versions, Python packages and parent/user Cargo configuration also
-participate. Changed source/index or execution conditions reject the attempt.
-Input ownership must be reviewed when a suite acquires another ignored or external
-runtime dependency; do not claim reusable evidence for an unmodeled dependency.
-
-The reuse boundary is conservative: most groups include all captured inputs
-except for reviewed independent data. Known build, test and static-check groups
-omit the root `DIARY.md`, while unknown groups retain it. The final candidate
-identity, source-stability checks and prepublication English scan still include
-the diary. Non-language
-groups omit vocabulary and exact-file `file_words` data. Verification CLI contracts
-use their owning verification code/tests/policy inputs and the web/worktree,
-graph-query and vault-link tooling they exercise; unrelated emulator and vocabulary edits do not
-invalidate them. The commit profile selects those contracts only when such
-owning inputs change. Scanner logic,
-authored scan scope, test criteria, specifications, unknown inputs, build settings
-and source/test changes invalidate the broad groups. Other documentation remains a
-conservative input;
-a `.md` extension does not prove independence. This is bounded reuse within one
-batch, not a persistent test cache or a relaxation of final acceptance criteria.
+Every invocation executes its selected checks. There are no frozen trees, saved
+verdicts, reused passing groups, entry-point batch locks, sealed commits or Git
+publication commands. The caller chooses the checkout and keeps shared build and
+coverage outputs isolated. Results report actual commands, failures and unrun work.
+The tool does not infer review, commit, merge, language-audit or cleanup authority.
 
 ### Generated timing report
 
-Each report-producing completion attempt writes
-`<results-dir>/verify/<attempt>/test-runtime-report.md`, even when every group is
-reused. The completion record's `timing_report` includes the report path relative
-to the results directory and its SHA-256. The console prints the full path and
-digest. Diagnostics write their timing reports to separate invocation directories
-under `.agent/tmp/verification/diagnostics/`. A diagnostic `--results-dir` still
-controls command logs and suite output and can point outside the checkout.
+Each ordinary verifier invocation writes a separate `test-runtime-report.md`
+under `.agent/tmp/verification/diagnostics/`. The console prints its path and
+content digest for archive lookup. `--results-dir` controls command logs and
+SingleStep outputs; it does not enable verdict reuse.
 
-The report records command wall times, retained execution
-times for reused groups, failures and missing work; completion reports also list
-unselected suites as skipped. Cargo test commands include compilation/reuse and
-execution; the report does not invent a split when none was measured. Coverage
-preparation, export and summary have their own command times. Generation and
-file-writing costs are measured separately and saved in completion evidence.
+The report records actual command wall times, failures and unrun work. Cargo
+commands include measured build and execution time together unless the native
+runner supplies a narrower breakdown. Coverage preparation, export and summary
+have separate rows. Timing data does not certify a passing gate. Failed report
+writing is reported as an incomplete invocation.
 
-The report stays outside the Git candidate and reusable group artifacts. A write
-failure fails the invocation while preserving matching successful group evidence.
-Older completion records can still supply valid group evidence. Archival requires
-both the report locator and digest. Save the selected attempt's identity before
-the latest profile record is replaced. Follow the
-[capture guide](../workflow/capture/README.md#selected-timing-reports) to preserve
-its bytes. The report itself supplies no verification verdict.
-
-The old `tests/test-runtime-report.md` path has ordinary input ownership. Freeze
-requires the prepared tree to equal the complete verified tree. Plan previews,
-empty selections, integration commands and benchmark runners with their own
-reports produce no verifier timing report.
-
-Verification orchestration and coverage result processing live in `tools/verification/`;
-worktree management lives in `tools/worktree.ps1`. The shared diary appender lives in `tools/log_diary.py`. Concrete project audits and checks live in `tools/verification/checks/`. Run these scripts from the repository root. Task selection uses subcommands; the former selection switches are rejected.
-
-The `Clippy Invariants` gate runs through `python tools/verification/verify.py check clippy`.
-It obtains native workspace/all-target and Wasm workspace/library diagnostics from
-Clippy, forcing only `disallowed_types` and `disallowed_methods` to warnings.
-The checker then enforces exact source-file/lint/symbol permissions from
-[`clippy_permissions.json`](checks/clippy_permissions.json). Every unapproved use,
-unused or malformed permission, unsupported policy diagnostic and compiler failure
-fails the gate. Local lint suppressions cannot hide forced warnings. All other
-lint levels and verification gates retain their existing behavior. Direct
-`cargo clippy` does not apply the central permissions and remains a strict
-diagnostic command. Changes to these permissions require explicit approval under
-[protected verification](../../.agents/rules/unit-testing-policy.md#protected-verification).
-
-The `test_runner` suites retain emulator execution checks and reference-result invariants. The decoder inventory has a targeted test; Python tests check CPU performance test selection, analysis and command contracts. Empirical anomaly reports use stored results and do not establish fresh performance measurements.
-
-Commit verification runs selected ordinary crate tests once under LLVM coverage instrumentation, excluding `test_runner`. There is no second uninstrumented run of those tests. The remaining quality gates and selected harness suites use normal Cargo artifacts. `cargo-llvm-cov` uses its separate `target/llvm-cov-target` cache, while normal Cargo commands retain their usual target directory. Raw measurement counters and the previous summary are cleared before each measurement, without deleting build caches. Yellow `[INFO]` messages identify the phases and summarize line, function and region coverage. Data is saved to `.agent/tmp/coverage/summary.json`, with `verification_scope` recording the test packages. Report totals include only current source files in those packages; retired files from old cached objects are excluded. A partial result is not a workspace-wide baseline. When Rust tests are skipped, no coverage is measured and any previous summary is not evidence for that run. There is no percentage threshold. Coverage does not measure performance or prove assertion quality. Stable coverage does not include doctest execution; branch coverage is not enabled.
+Native case reports and logs normally already survive in the primary checkout.
+Preserve local timing reports, coverage and other ignored outputs with the
+[artifact tool](../artifacts/README.md) before removing a task worktree.
 
 ### Bounded parallel execution
 
-Ordinary coverage uses `cargo llvm-cov nextest` with
-[the project configuration](../../.config/nextest.toml): sixteen test slots and
-at most four GUI cases. The RTC persistence case reserves all test slots because
-its real constructor starts native input listeners. The sample-binary generator
-and trace reader share a one-slot group because they write and read the same
-example files. Other ordinary cases may run across binaries. Retries are disabled,
-failures do not stop selection early, and an empty selection fails. Focused Rust
-diagnostics retain Cargo and their existing doctest and exact-selection behavior.
-Stable coverage continues to exclude doctests.
-
-The batch coordinator uses two workers for independent preflight gates. All
-preflight and build gates must pass before expensive suites start; Clippy and
-the web build remain serial. Coverage may overlap the audited RAG MCP and
-artifact report suites, with at most one active beside coverage. The Verification
-CLI suite runs in its own wave so its Python workers have the available CPU
-capacity for their native subprocess readiness checks. Bootstrap setup, standard
-harness writers and full SingleStep remain separate. Coverage preparation,
-reset, tests, export and summary stay ordered, and a failure stops the remaining
-coverage steps.
-
-Workers write isolated logs and return outcomes. Only the coordinator updates
-evidence. Source and index guards run at wave boundaries after all started
-commands stop; a failed guard invalidates the combined attempt. Interruption
-cancels queued work and drains active work before releasing ownership. Completed
-matching groups remain reusable. The nextest version and project configuration
-participate in evidence identity. See [nextest groups](https://nexte.st/docs/configuration/test-groups/)
-for the scheduler's resource limits.
+The existing Python test runner executes eligible cases with bounded workers and
+retains justified serial cases. Rust test runners retain their native scheduling.
+The verifier runs its selected command groups in order. A failed preliminary/build
+check defers subsequent expensive phases; a failed coverage step stops its bundle.
+Independent coverage exports must not share mutable counters. No batch-lock or
+saved-evidence protocol coordinates separate verifier invocations.
 
 ### Coverage-guided testing
 
@@ -536,7 +395,7 @@ counts remain authoritative because source spans are not the same as LLVM region
 
 Read `gaps.md`, inspect the corresponding production behavior and existing
 assertions, then add or extend tests for in-scope gaps under the
-[coverage policy](../../.agents/rules/unit-testing-policy.md#coverage-during-development-and-review).
+[coverage criteria](../../.agents/references/testing-criteria.md#coverage-and-adequacy-assessment).
 Check whether an omitted suite already tests the behavior before declaring a
 missing test. Rerun coverage after test or production changes; use evidence only
 from a successful run whose source and index remained unchanged. Before an
@@ -547,268 +406,22 @@ complete hardware scenarios or performance.
 
 ### Selection from changed inputs
 
-`commit --plan` explains the scope before listing commands. Git supplies the union
-of staged, unstaged and nonignored new paths against the current `HEAD`, including
-both rename endpoints. Already committed changes are outside this selection.
-With `--integration-base`, committed changes are included against the recorded
-primary-branch revision; divergent synchronization selects the full ordinary
-workspace regardless of changed package ownership.
-Verification executes the working tree; it does not extract or stage an index-only
-candidate. A scoped commit must still match the verified source. Unrelated pending
-Rust changes therefore expand the test scope, even for a documentation task.
+The verifier uses staged, unstaged and nonignored new paths for check selection.
+This selects work; it does not create a snapshot or prove source stability.
+Commit selects affected Rust packages and their transitive consumers using
+`impact.py`; unknown inputs or build/verification changes retain the conservative
+full scope. Quality gates keep their existing selection. Full SingleStep remains
+outside the commit profile and inside milestone verification.
 
-| Changed inputs | Rust test scope |
-| --- | --- |
-| Files inside a workspace package, including tests and fixtures | Owning package and every transitive consumer |
-| Independent root, `docs/`, `.agents/` or tool Markdown; known Python tool inputs | No Rust tests or coverage |
-| `checks/english_words/*.txt` and `checks/check_english.json` under `tools/verification/` | No Rust tests or coverage; does not expand the scope of other changes |
-| Known verifier orchestration inputs: `verify.py`, `execution.py`, `evidence.py`, `batch_lock.py`, `tests/test_evidence.py` | No Rust tests or coverage; Python contracts and all quality gates still run |
-| Cargo manifests/lockfiles, build scripts, toolchain or `.cargo/` configuration | Full ordinary workspace and standard harness |
-| Other verification implementation/tests, including selection, CLI grammar, Git change discovery, commands, coverage processing and checks; Design specifications | Full ordinary workspace and standard harness |
-| Root `.gitignore`, `tools/worktree.ps1`, and workflow capture source and tests | Full ordinary workspace and standard harness; these inputs retain full Rust scope alongside their Python contracts |
-| Unknown ownership, unavailable Cargo metadata, or a clean tree | Full ordinary workspace and standard harness |
+Python tool ownership lives in `commands.py`. Without directory selectors,
+`test python` selects affected tool suites. An explicit directory runs that suite
+even when Git has no relevant changes. Telemetry/archive contracts remain a
+separate suite; the retired workflow coordinator has no test suite.
 
-[impact.py](impact.py) reads `cargo metadata --no-deps --offline --locked`. It uses
-all local normal, development and build dependency declarations, including
-optional and target-specific edges, then follows consumers transitively. Ownership
-comes from manifest locations, including workspace tools outside `crates/`.
-Dependencies compile as required by Cargo; their own tests are selected only if
-they are affected. A change to `gui`, for example, selects `gui`; a change to
-`cpu` also selects `machine_loop`, `save_state`, `debugger`, `gui` and `test_runner`.
-Unknown external assets take the full fallback because Cargo does not describe
-every runtime file dependency. Package ownership takes precedence over the
-independent-documentation classification; build and specification inputs take
-precedence over package selection.
-
-Orchestration ownership is an explicit file list in [impact.py](impact.py), not
-an exemption for the verification directory. A logging or evidence-reuse change
-alone therefore keeps the Python contracts without starting emulator tests.
-Combined with a Rust change, it retains that package and its transitive consumers.
-Unknown verifier files and rename destinations still require the full Rust scope.
-Changing this selection contract itself also requires the full scope.
-
-All ordinary unit and integration tests of selected packages run. When
-`test_runner` is selected, all its standard harness targets run, excluding the
-aggregate full SingleStep target. Performance benchmarks remain explicit
-`runner bench` diagnostics; benchmark workload contracts remain standard tests.
-The profile retains full Clippy, formatting, architecture, hardware/code audits,
-frontmatter, and the Python contract policy. Selection derives the full required
-set against HEAD, or the explicit immutable integration base. Repeating the command
-can retain successful groups under the input and artifact rules below; Cargo
-retains responsibility for incremental compilation.
-
-Install the required tooling once:
-
-```powershell
-rustup component add llvm-tools-preview
-cargo install cargo-llvm-cov --locked
-cargo install cargo-nextest --version 0.9.152 --locked
-```
-
-Run `python tools/verification/verify.py` without arguments (or with `--help`) to display the full command tree, verification sets, milestone CPU-suite scope, plan behavior and command examples. This prints instructions and exits successfully without running verification.
-
-Verification runs on the current working tree and does not require staging or pending changes. For milestone closure run both separate sets, once each:
-
-```powershell
-python tools/verification/verify.py commit
-python tools/verification/verify.py milestone
-```
-
-Routine commits use only the first command. The profiles are invoked separately.
-Commit first runs frontmatter, formatting and static architecture, hardware and
-code gates. A preliminary failure defers expensive checks. Clippy follows those
-static gates before coverage, so compilation findings also block expensive tests.
-After preliminary checks pass, the profile runs selected ordinary crate tests
-with coverage, selected standard `test_runner` suites and Python tool contracts.
-It never selects full SingleStepTests, even for CPU changes. Milestone runs full
-SingleStepTests, including on a clean tree so already committed milestone work is
-covered. Capture runs and chipset throughput comparisons are excluded from
-automatic verification. The full English audit for local publication runs on the
-[sealed candidate](#scan-the-sealed-candidate). The explicit `check english`
-and `check all` commands still run the full scan.
-
-The Architecture Rules gate resolves Design links to local hardware manuals and
-reference sources. The checkout needs those link targets under
-`Obsidian/Amiga/Reference/` and `ref_src/`. Worktree creation copies the prepared
-local collections from the primary checkout. See the
-[reference setup guide](../../.agents/references/developer-setup.md) for initial
-provisioning.
-
-The commit profile also checks every local Markdown file under `Obsidian/Amiga/`
-for line-one YAML frontmatter with `title` and `tags`, including Git-ignored
-reference books. Book files also require `book` and `chapter` properties and
-the `reference`, `book`, and `chapter` tags. The check reports paths and never
-edits files. Before an agent repairs a reported file, it presents the proposed
-frontmatter and asks the user
-for approval. Run `python tools/verification/checks/check_obsidian_frontmatter.py`
-to inspect only this gate. Missing local reference books are outside its scan.
-The [Reference Book Metadata schema](../bootstrap/book-to-markdown/reference-book-metadata.md)
-owns chapter topic selection and the scope of source-note repairs.
-
-Python tool contracts live beside their owning tools. Commit verification always
-runs RAG MCP and artifact report contracts. Verification CLI contracts run only
-for changes to verification code/tests/policy or shared tooling that they exercise.
-Vocabulary and unrelated emulator changes do not select them. The root
-`.gitignore` selects both Verification CLI and Workflow capture contracts and
-requires full Rust verification. Changes under `tools/workflow/capture/` select
-the Workflow capture contracts. Capture source and test files retain the full
-Rust fallback, while independent Markdown follows the documentation rule.
-The verifier runs the Bootstrap contract
-suites when Git reports staged, unstaged or nonignored new paths under
-`tools/bootstrap/`, including book data. Renames count at both endpoints. The
-Book Review suite checks pinned Python packages and local KaTeX assets, then uses
-its own runner to share a browser process. Verification CLI, workflow capture
-and workflow routing contracts use `tools/verification/run_tests.py`. Changes to
-the parallel runner, its shared reporting, Git checkout and worker management
-modules, or the shared Git fixture helpers select all three suites. Each suite
-uses the worker count described below. Other Python suites use
-`tools/verification/run_unittest.py discover`.
-The tools do not run these tests during normal operation. Without a
-commit, run only checks relevant
-to a coherent change, not after every edit. Repeat checks only after affected
-input changes, failures or unresolved concerns. `python tools/verification/verify.py test python` selects contracts
-whose owning tool inputs or shared dependencies have staged, unstaged or nonignored
-new changes; unrelated changes and a clean tree select no Python suites. Shared
-conversion changes select conversion, PDF and book review contracts; PDF changes
-select PDF and book review contracts. Run a focused suite from the repository root
-with `python tools/verification/verify.py test python directory <directory>`,
-optionally adding `file <test_file.py>` and `case <filter>` to narrow discovery.
-
-The default worker count starts with the available logical CPUs, using process
-affinity where available. It subtracts the larger of two CPUs and a fifth of
-the available count rounded up, with a minimum of one worker. A positive
-`--workers` value overrides the default. Each selected test runs in a fresh
-process with its own working directory and temporary files, including when
-`--workers 1` runs the suite sequentially. Define cases as ordinary
-`unittest.TestCase` methods with unique test IDs. Class and module setup runs
-for each case. Discovery reports duplicate IDs and custom `load_tests` hooks
-as errors.
-
-For a test that requires exclusive execution under the
-[testing policy](../../.agents/rules/unit-testing-policy.md), set
-`test_method.serial_reason` to a short explanation in the class body, or set
-`serial_reason` on the class to mark every method. The runner executes each
-marked test alone, with all parallel workers stopped.
-On Windows and Linux the runner cleans up worker descendants. On other POSIX
-systems it stops the worker's process group. Keep subprocesses in that group
-on those systems so the runner can stop them even if the test is interrupted.
-
-Use `-s`, `-p` and `-k` to select the test directory, file pattern and test
-name filter. Add `--report PATH` to save the selected IDs, serial reasons,
-individual outcomes, durations and errors. Test output is collected separately.
-A worker that exits without returning its result makes the run fail.
-Ctrl+C interrupts the run with exit code 130. The report can be partial.
-A test that has already finished can appear in `missing` if the runner
-had yet to collect its result.
-
-| Directory | Coverage |
-| --- | --- |
-| [`tools/bootstrap/tests`](../../tools/bootstrap/tests/) | Bootstrap and Qdrant provisioning command contracts |
-| [`tools/bootstrap/conversion/tests`](../../tools/bootstrap/conversion/tests/) | Shared client, transport, cache and PDF/HTML publication contracts |
-| [`tools/bootstrap/pdf-to-markdown/tests`](../../tools/bootstrap/pdf-to-markdown/tests/) | PDF stage validation, artifacts, restart and resume contracts |
-| [`tools/bootstrap/book-to-markdown/tests`](../../tools/bootstrap/book-to-markdown/tests/) | Book import, recipe, editor and review contracts |
-| [`tools/amiga-rag-mcp-server/tests`](../../tools/amiga-rag-mcp-server/tests/) | RAG CLI adapter contracts and real Codex MCP discovery |
-| [`tools/verification/tests`](tests/) | Verification grammar, selection, preview and failure propagation |
-
-The code-quality auditor accepts no arguments and always checks dead code,
-visibility and accessor conventions across the workspace. Commit verification
-runs it once; milestone verification does not repeat it. Every finding returns
-exit code 1. Run `python tools/verification/verify.py check code` for the same full audit
-manually. Passing command-line arguments is rejected.
-
-The hardware-quality auditor accepts no arguments and always checks hardware
-bus topology and DMA mastership patterns. Commit verification runs it once;
-milestone verification does not repeat it. It does
-not check CCK timing, open-bus values or test-file presence.
-
-The frontmatter presence gate does not replace the owning skill's design-document
-metadata and link audit. Instruction brevity, script ownership and procedure
-routing are reviewed manually. Scoped design review, vault links,
-static semantic comparisons, diary chronology and roadmap retention
-are run by their owning skills. Follow
-[TA-review-spec-compliance](../../.agents/skills/TA-review-spec-compliance/SKILL.md),
-[TA-audit-vault-links](../../.agents/skills/TA-audit-vault-links/SKILL.md),
-[TA-review-semantic-parity](../../.agents/skills/TA-review-semantic-parity/SKILL.md),
-[TA-compact-diary](../../.agents/skills/TA-compact-diary/SKILL.md) and
-[TA-prune-roadmap](../../.agents/skills/TA-prune-roadmap/SKILL.md) at their defined
-triggers. Organizing pending roadmap work uses the separate
-[TA-organize-roadmap](../../.agents/skills/TA-organize-roadmap/SKILL.md) operation.
-Semantic milestone review is required by its skill. A successful
-`verify.py milestone` alone does not certify these separate skill checks.
-
-Each prepared batch also requires four independent
-[review lanes](../../.agents/references/review-common.md), each in fresh agent context,
-covering the cumulative candidate, proposed commit partition and final applicable
-evidence. The coordinating agent consolidates all four scoped verdicts and resolves
-findings under [commit policy](../../.agents/rules/git-commits.md).
-The verifier does not launch reviewers or grant review approval.
-
-Full SingleStep runs automatically at milestones. Independent full runs remain available for explicit diagnosis or user requests:
-
-```powershell
-python tools/verification/verify.py test runner singlestep
-python tools/verification/verify.py test runner silicon
-python tools/verification/verify.py milestone --plan
-```
-
-With no completion profile, `test runner singlestep` runs only full SingleStepTests. Standalone sets use the current working tree, require no staging, and run no quality gates, ordinary crate tests, or Python contracts. Milestone always selects full SingleStep once; its optional selector does not duplicate execution. Commit rejects CPU suite selectors. Standalone runs do not replace completion verification. Add `--plan` to inspect commands without executing checks. There are no hooks. Unknown arguments are rejected.
-
-The verifier selects and runs checks; it does not stage or commit files. Completion
-evidence must cover the final combined candidate, including both rename endpoints.
-After corrections, repeat the command: applicable successful groups survive, while
-failed, missing or invalidated groups rerun. Source and index guards reject edits
-during execution. [Completion verification](#completion-verification) owns those
-boundaries; [commands.py](commands.py) and [cli.py](cli.py) define selection and grammar.
-
-During execution, `[RUN]` identifies the active check and `[CMD]` prints its exact
-command before launch; explicit environment overrides appear as `[ENV]`. Full
-child output is saved in a unique log. Focused commands default to
-`.agent/tmp/verify/`; completion profiles keep logs with their batch evidence.
-`--log-level full|warn|error` selects streamed output; `warn` is the default.
-Commands and final results remain visible in every mode. Failure output includes
-context and the full log path, including when no recognized error marker exists.
-`--plan` announces preview mode and launches no commands. Ignored diagnostics
-belong in `.agent/tmp/`.
-
-Focused development diagnostics also use `verify.py`:
-
-```powershell
-python tools/verification/verify.py test rust unit
-python tools/verification/verify.py test rust integration
-python tools/verification/verify.py test runner standard
-python tools/verification/verify.py test rust all --plan
-```
-
-`test rust unit` runs the configured ordinary crate tests;
-`test rust integration` runs memory_bus, machine_loop, debugger and GUI tests;
-`test rust all` combines those two tiers. `test runner standard` selects ordinary harness suites, including
-transaction checker regressions and SingleStep override contracts;
-`test runner silicon` selects full SingleStepTests.
-Focused commands do not run completion gates; only `test coverage` measures
-coverage. With no arguments,
-the entry point displays help without executing commands.
-
-SingleStep uses CPU + synthetic TestMemoryBus, not production MemoryBus or
-PhysicalMemory. Its selection is owned by [commands.py](commands.py):
-
-| Trigger | Full SingleStepTests |
-| --- | --- |
-| Ordinary edits or task completion | No automatic full run |
-| Commit, including CPU and harness changes | No |
-| Explicit suite selection | `test runner singlestep` |
-| Milestone, including a clean working tree | Full suite |
-
-Commit architecture tests run once as a fixed quality gate. Rust tests are selected
-for changed packages and their transitive consumers, with full workspace fallback
-for shared or unknown inputs. Independent documentation and known Python tool
-changes skip Rust tests while retaining all quality gates. Ordinary CPU tests
-using real PhysicalMemory run when the CPU package is selected. The separate
-milestone set runs full SingleStepTests. The full language audit for local
-publication runs on the [sealed candidate](#scan-the-sealed-candidate).
-
-Manual commands in the following sections and diagnostic selectors in `verify.py` validate ordinary tasks and support diagnosis; they do not replace pre-commit verification. Wall-clock microbenchmarks run explicitly. Decoder-derived CPU benchmark regression targets, the old chipset throughput workload and capture execution commands have been removed. The approved CPU baseline records the latest user-approved snapshot. During batch preparation, `TA-review-spec-compliance` checks the cumulative intended changes against approved specifications selected through `tracked_paths`, including implementation affected by changed requirements even when code has no diff. Documentation enrichment and pruning follow [Documentation Value](../../.agents/references/documentation-criteria.md#documentation-value); accurate documents and their dates stay untouched. The broader semantic milestone audit may satisfy the scoped review for the same snapshot and covered requirements. Diary compaction and roadmap pruning remain separate agent procedures.
-
----
+Scoped documentation review and metadata/link, semantic, language and diary work
+are selected separately. A successful profile does not assert that those operations
+ran. Use `check english` for a requested full language scan or `check english files
+<paths>` for selected files. Neither creates a sealed publication receipt.
 
 ## 1. M68000 SingleStepTests (Generated Reference Verification)
 
@@ -954,368 +567,13 @@ External source provisioning remains available:
 ```
 
 Provisioning does not restore execution or certify a capture comparison.
-For future investigations, follow
-[the defect procedure](../../.agents/references/defect-resolution.md): reproduce
-the observed failure, establish the relevant clock or state transition, and
-repair its demonstrated mechanism. Coordinate or timing adjustments made solely
-to fit an image do not establish hardware behavior.
 
 ## Local integration
 
-Authorization and checkout selection belong to the
-[local integration rule](../../.agents/rules/git-merge-commits.md). The caller
-selects synchronization, conflict resolution, semantic review, selected repairs,
-preparation, verification, review and mechanical commits as separate operations.
-[TA-prepare-batch](../../.agents/skills/TA-prepare-batch/SKILL.md) establishes the
-candidate and lists missing prerequisites;
-[TA-commit-batch](../../.agents/skills/TA-commit-batch/SKILL.md) consumes complete
-readiness evidence before freeze, prepared commits and sealing.
-[TA-close-task](../../.agents/skills/TA-close-task/SKILL.md) only publishes the
-supplied sealed record, and
-[TA-cleanup-task](../../.agents/skills/TA-cleanup-task/SKILL.md) performs authorized
-cleanup after publication. None of these skills launches a missing earlier step.
-The tool does not choose the task location, merge branches, grant authorization,
-write review verdicts or create commits. Integration requires authorization of
-the concrete source set, target and selected operations, including any cleanup.
-An existing explicit authorization remains valid; the publisher does not obtain
-a second approval or choose a different verification path. Pending task
-changes may be recorded in an explicitly unverified local working commit before
-synchronization; the canonical profile then verifies the complete combined result
-once. Working commits are not passing evidence.
-
-Record the primary branch's immutable tip as `B`, synchronize exactly that commit
-into the selected task branch, reconcile the combined result and finish all
-candidate edits, messages and diary entries before final verification:
-
-```powershell
-python tools/workflow/run_selected.py --registration <receipt> --work-item <item> --round <round> -- python tools/verification/verify.py commit --integration-base <B>
-```
-
-A full hexadecimal commit ID is required; moving names such as `master` or `HEAD`
-are rejected as comparison bases. The selected scope includes committed source
-changes, pending staged/unstaged/new paths and both endpoints of moves/deletions.
-Divergent synchronization retains full ordinary-workspace coverage and standard
-harness tests. Full SingleStep retains its milestone trigger.
-For divergent branches, preserve both histories by merging exactly `B` into the
-task branch in its checkout before verifying the reconciled candidate.
-
-### Selected source set
-
-For several sources, assemble real merges before canonical verification. Local
-intermediate merge commits await the final combined verdict; their exact history
-is bound by the canonical record's immutable HEAD. The partition below covers
-only commits still pending after assembly.
-
-Pass `sources PATH` to `integrate freeze` with a JSON list recorded before
-assembly, containing every approved source, including the assembly branch:
-
-```json
-[
-  {"ref": "refs/heads/task-a", "root": "<absolute source checkout A>", "tip": "<original full immutable S_a>"},
-  {"ref": "refs/heads/task-b", "root": "<absolute source checkout B>", "tip": "<original full immutable S_b>"}
-]
-```
-
-Each item has exactly `ref`, `root` and `tip`. Branches and checkout paths must be
-unique, registered in the same repository and exclude the target branch. Original
-tips must be ancestors of the assembled HEAD or its pending merge parents. Other
-sources must remain clean at their original tips. The assembly checkout may
-advance through the approved real merges and prepared commits. Consolidated
-review approval adds `sources: digest(source_list)` using the same digest
-function as the partition. Freeze retains the source artifact and its hash.
-
-```powershell
-python tools/verification/verify.py integrate freeze review .agent/tmp/review.json partition .agent/tmp/partition.json target master sources .agent/tmp/sources.json
-```
-
-Several sources require canonical combined evidence. `accept-tested` accepts only
-one unchanged source, with no source-list selector. Omitting `sources` from
-`freeze` retains the single-source workflow; the record internally stores one
-source. Record version 2 stores `sources` alongside the assembly `source_ref`
-and `source_root`. Publication locks every selected reference and checks each
-source's current state. The assembly cleanup tip is final `C`; other cleanup tips
-remain the recorded original tips.
-
-Prepare a JSON partition under `.agent/tmp/`: a list of objects with `message`
-(the exact complete commit message) and `tree` (the prepared Git tree ID after
-that commit). A temporary Git index can construct intermediate trees without
-editing the candidate or real index. Shared paths such as the diary may appear
-in several prepared trees. Each intermediate tree may change only pending paths,
-and the last tree must equal the verified candidate. Use an empty list when all
-task changes are already committed and no merge commit remains pending.
-
-Once all four independent lane results are accepted under the
-[batch policy](../../.agents/rules/git-commits.md#readiness-before-freeze) on the
-final source, baseline, partition and applicable evidence, record the consolidated
-result. The [review procedure](../../.agents/references/review-common.md#reuse-scoped-approvals)
-allows carrying unchanged lane approvals after comparison. Preserve original
-verdicts and identities and link the advisory result for any lane resolved by
-rejection of its required findings. The canonical verification requirements apply
-independently.
-
-```json
-{
-  "verdict": "APPROVED",
-  "reviewer": "<four reviewer identities with their lane names>",
-  "source": "<commit.json source digest>",
-  "integration_base": "<B>",
-  "partition": "<SHA-256 of canonical partition JSON>"
-}
-```
-
-The partition digest uses `evidence.digest(partition)`: UTF-8 SHA-256 of
-`json.dumps(partition, sort_keys=True)`. This records the independent review
-decision; it is not a cryptographic reviewer authentication service. Keep all four
-actual scoped verdicts and evidence references in the review messages or logs.
-
-```powershell
-python tools/verification/verify.py integrate freeze review .agent/tmp/review.json partition .agent/tmp/partition.json target master
-# Create only the prepared commits, using their exact trees, parents and messages.
-python tools/verification/verify.py integrate seal record .agent/tmp/verification/commit/integration.json
-python tools/verification/verify.py integrate scan-english record .agent/tmp/verification/commit/integration.json
-python tools/verification/verify.py integrate publish record .agent/tmp/verification/commit/integration.json task <task-id> execution <execution-id> delivery <selection-path>
-```
-
-Use the same `--results-dir .agent/tmp/<batch>` for verification and freeze when
-using a custom directory. Freeze validates current inputs, conditions, required
-commands and intact artifacts. Seal requires a clean source and checks the exact
-first-parent commit sequence, merge parents, messages and trees. It bridges only
-those mechanical commits to the frozen evidence, without a second expensive
-profile or general evidence reuse across changed HEAD. Publication checks retained
-artifacts again. New content or a different target baseline returns to preparation.
-Before publication, select the stable task and execution IDs from the existing
-capture registration. Supply both selectors at publication. The publisher checks
-the exact registration and records its identity before moving the reference.
-A publication with no capture selection cannot authorize preservation or teardown.
-For [selected delivery](../../.agents/rules/git-merge-commits.md#discover-and-select-deliveries),
-also pass the selection artifact. It binds the original plans and exact push and
-cleanup scopes to the surviving record, including a selection with neither step
-authorized. Non-delivery publication omits the `delivery` selector.
-
-### Confirmed unchanged fast-forward
-
-When a clean source tip `C` already contains `B`, no content will change and the
-closure record is already committed, the approved plan may accept clear session
-evidence or the user's affirmative confirmation that exactly `C` was tested.
-Working or unknown status requires canonical verification. A working commit
-created during this integration cannot use this shortcut. Before mutation, ask
-for the status when unknown and wait for plan approval in every case.
-
-Record the actual approval and confirmation source under `.agent/tmp/`:
-
-```json
-{
-  "base": "<full immutable B>",
-  "commit": "<full immutable C>",
-  "tree": "<C tree ID>",
-  "plan_approved": true,
-  "tested": true,
-  "confirmation": "<user confirmation or current-session evidence and approved plan reference>"
-}
-```
-
-```powershell
-python tools/verification/verify.py integrate accept-tested confirmation .agent/tmp/confirmation.json target master
-python tools/verification/verify.py integrate scan-english record .agent/tmp/verification/commit/integration.json
-python tools/verification/verify.py integrate publish record .agent/tmp/verification/commit/integration.json task <task-id> execution <execution-id> delivery <selection-path>
-```
-
-`accept-tested` creates a sealed record explicitly marked `confirmed-fast-forward`;
-it does not run checks, fabricate canonical evidence or require a new commit or
-review. The caller supplies the eligible confirmation and creates this record
-before invoking `TA-close-task`; the publisher does not choose this exception or
-prepare its evidence. The confirmation must identify the exact clean source and unchanged target
-baseline. Publication rechecks the confirmation artifact, source tip/tree, ancestry
-and clean source state. Ordinary frozen records remain marked `canonical` and
-retain their full evidence requirements. Both modes use the same conditional
-publication, recovery and authorized cleanup. New content uses the canonical path.
-If master moves, the conditional publisher refuses the stale base. Record the
-fresh immutable base, reselect the exact inputs and repeat applicable
-synchronization, reconciliation, verification, review and scan within the
-[recorded refresh delegation](../../.agents/references/workflow-guidance.md#start-or-deliver-a-saved-plan).
-Ask for a new decision when changed requirements, sources or consequences exceed it.
-
-### Scan the sealed candidate
-
-In the recorded task or assembly checkout, run the following command after
-sealing the accepted commit, including committed closure text.
-
-```powershell
-python tools/verification/verify.py integrate scan-english record <sealed-record>
-```
-
-This runs the configured full `check english` command, including unchanged
-authored text and newly committed nonignored authored text. It retains the native
-verifier and scanner statuses and the scan log in the target checkout under
-`.agent/tmp/integration/<batch-id>/`. The receipt binds the sealed record, commit,
-tree, scanned content, scan configuration, vocabulary and English dictionary.
-The same requirement applies to a confirmed tested tip, a merged task and Combined
-Sources. A missing or stale receipt, unresolved term, incomplete output or scanner
-error blocks publication. Resolve the cause in the source checkout and retry the
-full scan. If the resolution changes the candidate, obtain applicable verification
-and reviews, seal the corrected commit and scan it before retrying publication.
-
-### Conditional publication and cleanup
-
-Publication holds a process lock in Git's common directory, shared by worktrees.
-A native `update-ref --stdin` transaction prepares expected-old target and source
-reference locks. The publisher rechecks the passing full English receipt and scan
-inputs before `read-tree -m -u B C` advances the clean target index and
-tracked files. It then confirms the exact tree, commits the reference transaction,
-records `B -> C` in the reflog and checks final checkout consistency. Dirty or
-staged target state, unexpected HEAD, pending Git operations, changed ownership
-and untracked/ignored collisions are preserved and rejected. Another publisher
-is refused without bypassing the locks.
-
-The Git mechanisms are described in [update-ref](https://git-scm.com/docs/git-update-ref)
-and [read-tree](https://git-scm.com/docs/git-read-tree). Reference publication is
-atomic; the checkout directory is not. A minimal common-directory phase record
-survives interruptions. From a surviving checkout, run:
-
-```powershell
-python tools/verification/verify.py integrate recover
-```
-
-Recovery recognizes an untouched baseline, rolls a complete uncommitted checkout
-transition back through safe two-tree checkout, or confirms a committed transition.
-It holds a native prepared verification lock on the target reference through
-checkout consistency checks and phase removal, excluding ordinary Git ref writers.
-Mixed files, unexpected references or edited recovery evidence require a concrete
-decision and remain preserved. Native reference locks left by an abruptly killed
-Git process also require ownership investigation; never blindly delete locks.
-The process lock coordinates participating publishers and native ref locks guard
-against ordinary Git writers. Neither protects files from arbitrary editors;
-observed interference blocks completion.
-
-Publication retains its control record at
-`.agent/tmp/integration/<batch-id>/integration.json` in the target checkout and prints
-that path. Use that surviving record for the separately selected stages and their
-retries.
-
-`batch-id` is `digest([B, C, source_ref, sources])`. Different source selections
-ending at the same commit retain separate control records, so a later integration
-cannot overwrite an unfinished cleanup operation.
-
-### Post-publication closure
-
-Use the surviving record in the primary checkout on local `master`. The record
-carries the passing English receipt. Select
-[TA-refresh-graph](../../.agents/skills/TA-refresh-graph/SKILL.md) for the published
-commit, then preserve the selected files and perform authorized cleanup. The graph
-stage requires sources at that commit before and after its producer run. It retains
-the output identity in `closure.json`. Retry a failed graph attempt separately.
-A retained successful receipt for the same commit and graph skips the producer.
-Inspect retained state before retrying an interrupted graph attempt.
-
-```powershell
-python tools/verification/verify.py integrate closure-graph record <surviving-record>
-```
-
-#### Resume a historical publication
-
-Version 2 publication records can have outstanding language work on the published
-`master`. Keep the original record and retained status. Run or retry the historical
-stage in the recorded primary checkout. A retry preserves previous attempts.
-
-```powershell
-python tools/verification/verify.py integrate closure-language record <surviving-record>
-python tools/verification/verify.py integrate closure-language record <surviving-record> retry blocked
-```
-
-If resolving the blocker requires a source change, prepare and independently
-review a correction against the exact unresolved scan commit. Verify it through
-the canonical commit profile, seal it, obtain a passing scan and publish it
-from the correction worktree with a link to the original surviving publication
-record. Then resume language from the primary checkout.
-
-```powershell
-python tools/verification/verify.py integrate scan-english record <sealed-correction-record>
-python tools/verification/verify.py integrate publish record <sealed-correction-record> correction-for <original-surviving-record>
-python tools/verification/verify.py integrate closure-language record <original-surviving-record> correction <correction-surviving-record>
-```
-
-The historical closure command requires the linked publication and exact successor
-commit on primary `master`. It reuses a current successor's passing receipt or
-scans a historical successor that lacks one. It retains the original publication
-and findings. An unlinked advance blocks closure. Continue graph refresh, file
-preservation and authorized cleanup under the original publication.
-
-If the only resolutions are justified vocabulary and exact-file literal additions,
-write the selected additions as an ignored JSON input. The optional objects
-`word_lists` and `file_words` map configured list names and repository-relative
-source paths, respectively, to arrays of reviewed terms. A word-list key uses
-the spelling in the scanner configuration, such as `english_words/software.txt`.
-The tool requires resolutions for every retained finding and permits only the
-selected additions. It creates one child commit from the scanned tip with
-an isolated index and expected-old reference check. It stops on conflicting
-work or a moved SHA. No additional diary entry, scan, tests or review follows.
-
-```powershell
-python tools/verification/verify.py integrate closure-vocabulary record <surviving-record> additions <reviewed-json>
-```
-
-Once historical language work completes, run `closure-graph` on the surviving
-record. The graph stage uses the final correction or vocabulary commit when present.
-
-#### Service handoff before worktree removal
-
-Before deleting a published task checkout that changed or ran an installed
-service, identify that service's running or stopped containers and their
-owning Compose files and host mounts. Report any dependency on the retiring
-checkout and any installed revision that needs the published code. A service
-whose configuration, inputs and revision already match can stay running.
-
-Use the owning procedure to present the affected services and proposed
-handoff to the user. The user chooses the service and maintenance time.
-
-- [Book Review](../bootstrap/book-to-markdown/README.md#move-book-review-to-the-primary-checkout).
-  Stop a test instance from its owning checkout. For the usual installation,
-  stop the old instance from its owning checkout and recreate it from the
-  surviving checkout with the intended library.
-- [Workflow capture](../workflow/capture/README.md#update-a-host-side-capture-installation).
-  After publishing capture changes, report the affected installation, saved
-  and published revisions, open registrations, and any stopped capture
-  container using the [capture handoff](../workflow/capture/README.md#update-a-host-side-capture-installation).
-  The user chooses the maintenance window. Then close the selected intervals,
-  upgrade from the primary checkout, and confirm a fresh record.
-
-Record the service outcome with the closure evidence. Complete a needed
-handoff while the old checkout is available, or retain the affected worktree
-until the user is ready. Use the service procedures for Compose ownership and
-container operations before invoking the Git cleanup command. Stop or recreate
-only the approved services.
-
-Once the required files are preserved under the registered execution and
-`master` still identifies the recorded final SHA, separately authorized cleanup
-can proceed:
-
-```powershell
-python tools/verification/verify.py integrate cleanup record .agent/tmp/integration/<batch-id>/integration.json
-```
-
-Cleanup rechecks tip, ancestry, registration, pending work and local command
-ownership separately for each selected source, trying the assembly checkout last.
-Before cleanup, verify required preservation from the surviving checkout under
-the [cleanup policy](../../.agents/rules/git-merge-commits.md#conditional-publication-and-cleanup).
-All ignored files in removed source worktrees are discarded, including
-`.env`, references, caches, plans, reports and verification evidence. Cleanup does
-not inventory, hash, compare, copy or archive them. Its surviving control record
-is operation state, not an ignored-file archive. It stores per-source directory,
-registration and branch outcomes, including failures. The source copy of the
-record disappears with its worktree. Ordinary
-Git removal runs through `tools/worktree.ps1`, never forced or followed by
-recursive fallback deletion or unrelated pruning. Prepared reference locks protect
-conditional deletion of the unchanged source branch. Cleanup failure leaves
-publication intact and does not prevent independent sources from being cleaned.
-Retry from the surviving target record even after the assembly checkout has been
-removed. Already removed sources can be checked again safely; later work is preserved.
-Do not rerun verification or recreate deleted evidence merely to finish removal.
-Review the integration diff for bootstrap procedure changes and recommend any
-needed bootstrap steps on the primary branch; cleanup does not run bootstrap.
-
-The operation does not prevent an arbitrary editor or external process broker
-from changing files. Cleanup blocks processes with a readable working directory
-inside the source checkout. It does not query process owners; protected system
-processes with inaccessible working directories do not block cleanup.
-Git state checks detect observed changes. Permission errors and
-unexpected partial removal remain incomplete cleanup, never success.
+Use ordinary Git commands for the explicitly selected commit and merge. The old
+`integrate` command, delivery coordinator and freeze/seal/publication records have
+been removed. The [Git procedure](../../.agents/skills/TA-WF-Main-close-task/references/local-integration.md)
+contains shared scope constraints. Before removing a worktree, preserve local
+outputs with the [artifact tool](../artifacts/README.md), then use the unchanged
+`tools/worktree.ps1`. Native case reports already stored in the primary checkout
+survive there.

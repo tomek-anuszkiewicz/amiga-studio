@@ -13,7 +13,7 @@ import sys
 import time
 
 from admission import Admission, RolloutLineage, SIGNALS
-from compose_service import CLIENT_HEADER, COLLECTOR_OUTPUT, MOUNTED_HOME, UPSTREAM, MountedProject
+from compose_service import CLIENT_HEADER, MOUNTED_HOME, UPSTREAM, MountedProject
 from confirmation import CHUNK, MAX_RECORD
 from control import ENDPOINT, IDENTITY, MAX_BODY, ControlBusy, authorization, control_key, mutation_claim, query
 from register import controlled_registration
@@ -32,7 +32,7 @@ OUTPUT_WAIT_SECONDS = 2
 class CollectorOutput:
     def __init__(self, project, key):
         self.project = project
-        self.directory = project.plain_path(project.control / COLLECTOR_OUTPUT)
+        self.directory = project.plain_path(project.spool)
         self.key = key
 
     def signature(self, endpoint, route, diagnostic, nonce):
@@ -145,7 +145,8 @@ class Receiver(HTTPServer):
     def __init__(self, project):
         self.project = project
         source = project.authority()["rollout_source"]
-        self.admission = Admission(project, RolloutLineage(project, MOUNTED_HOME, source_id=source))
+        with project.lock():
+            self.admission = Admission(project, RolloutLineage(project, MOUNTED_HOME, source_id=source))
         self.token = os.environ["CAPTURE_COLLECTOR_TOKEN"]
         self.client_token = os.environ["CAPTURE_CLIENT_TOKEN"].encode("ascii")
         self.control_key = control_key(self.token, os.environ["CAPTURE_CLIENT_TOKEN"])
@@ -248,7 +249,7 @@ class Handler(BaseHTTPRequestHandler):
                 self.reply(409, {"error": "Capture control installation or receiver instance changed."})
                 return
             with mutation_claim(self.server.project):
-                report = controlled_registration(self.server.project, request)
+                report = controlled_registration(self.server.project, request, self.server.admission.registrations)
         except ControlBusy as error:
             self.reply(409, {"error": str(error)})
         except (CaptureError, ValueError, TimeoutError) as error:

@@ -45,7 +45,7 @@ and clock totals remain the upstream values in both corrected records.
 ## Adding or retiring a correction
 
 Investigate the reference conflict, record supporting evidence and obtain user
-approval under [spec-compliance.md](../../../../../.agents/rules/spec-compliance.md).
+approval under [spec-compliance.md](../../../../../.agents/references/spec-compliance.md).
 Then add the exact record identity, corrected fields, reason and evidence to
 `corrections.json`. A digest alone does not justify a change. Run the affected
 full-input instruction suite and the loader contract tests. Keep the reference

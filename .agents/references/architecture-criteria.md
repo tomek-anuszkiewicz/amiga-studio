@@ -2,10 +2,9 @@
 
 This reference owns manual architecture and code-quality standards. Apply it to
 the assigned source and affected interactions; do not turn a review into repairs
-or repeat canonical Clippy/architecture checks. Advance constraints remain in the
-[Rust](../rules/rust-best-practices.md),
-[workspace layout](../../Obsidian/Amiga/Design/General%20Architecture.md#workspace-layout) and
-[execution](../rules/performance-and-readability.md) rules.
+or repeat canonical Clippy/architecture checks. Shared constraints remain in the
+[Rust best practices](rust-best-practices.md) and
+[workspace layout](../../Obsidian/Amiga/Design/General%20Architecture.md#workspace-layout).
 
 ## Named numeric values
 
@@ -40,14 +39,14 @@ Below 600 lines is the usual cohesive range; 600–800 lines requires responsibi
 review. The checker enforces 800 lines unless a registered exception applies.
 Static dispatch/LUT tables, indivisible linear instruction decoders and hardware
 state machines may justify exceptions. Adding or removing an exception requires
-[protected-verification approval](../rules/unit-testing-policy.md#protected-verification),
+[protected-verification approval](protected-verification.md#protected-verification),
 including stale exceptions for deleted files or files reduced to 800 lines or fewer.
 Assess touched modules; do not expand the task to unrelated large files. Source
 limits do not apply to documentation or reference manuals.
 
 Inspect affected callers, exports and tests for replaced mechanisms, stale aliases,
 forwarders, wrappers, duplicate definitions and hypothetical compatibility paths.
-Apply the [internal migration contract](../rules/internal-migrations.md).
+Apply the [internal migration contract](internal-migrations.md).
 Prefer simpler local mechanisms; unnecessary abstractions or duplicate ownership
 need a concrete requirement, not a speculative future consumer.
 

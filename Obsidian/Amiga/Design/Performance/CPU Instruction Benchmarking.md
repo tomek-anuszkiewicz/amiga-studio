@@ -103,7 +103,7 @@ run remains identified separately from the refreshed cases. The runner never
 updates the approved files. After reviewing the current snapshot and its reports,
 the user may approve its complete JSON/CSV pair as the next baseline, including
 documented filtered-run refreshes. Promotion retains per-case provenance and
-follows the [reference-artifact approval procedure](../../../../.agents/rules/spec-compliance.md).
+follows the [reference-artifact approval procedure](../../../../.agents/references/spec-compliance.md).
 The [decoder inventory](../../../../crates/test_runner/benches/bench_instructions/inventory.rs)
 remains available to the separate coverage audit; it is not a measurement path.
 

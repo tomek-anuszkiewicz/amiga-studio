@@ -16,17 +16,15 @@ import tomllib
 
 
 ROOT = Path(__file__).resolve().parents[3]
-RUNTIME = ".agents/references/workflow-runtime.md"
 CONFIG = ".codex/config.toml"
 REQUIREMENTS = (
-    "tools/workflow/requirements.txt",
     "tools/verification/requirements.txt",
     "tools/verification/checks/requirements.txt",
 )
 INPUTS = (
-    "Cargo.lock", "Cargo.toml", *REQUIREMENTS, RUNTIME, CONFIG,
+    "Cargo.lock", "Cargo.toml", *REQUIREMENTS, CONFIG,
     ".agents/references/workflow-contract.md",
-    "tools/workflow/result.schema.json", "tools/workflow/skill-matrix.json",
+    "tools/workflow/result.schema.json",
 )
 COMMANDS = (
     ("git", "--version"), ("rustc", "-Vv"), ("cargo", "--version"),
@@ -44,7 +42,6 @@ NAME = r"[@a-zA-Z0-9_][a-zA-Z0-9_.-]*(?:/[a-zA-Z0-9_.-]+)?"
 IMAGE_NAME = r"[a-z0-9.-]+(?::\d+)?(?:/[a-z0-9_.-]+)*"
 IMAGE_TAG = r":[a-zA-Z0-9_.-]+"
 IMAGE_DIGEST = r"@sha256:[0-9a-f]{64}"
-ROLE_ROW = re.compile(r"^\| *\x60(TA-[\w-]+)\x60 *\| *([^|]+?) *\| *\x60(\w+)\x60 *\|$", re.M)
 UNKNOWN = object()
 
 
@@ -243,10 +240,7 @@ def capture(args):
         node_packages[target.relative_to(ROOT).as_posix()] = record
 
     blobs, checkout = input_hashes(sorted(paths), commit)
-    try:
-        roles = sorted(ROLE_ROW.findall((ROOT / RUNTIME).read_text(encoding="utf-8")))
-    except (OSError, UnicodeError):
-        roles = None
+    roles = None  # No shared workflow role-default table is maintained.
     try:
         config = tomllib.loads((ROOT / CONFIG).read_text(encoding="utf-8-sig"))
         mcp = sorted(name for name in config.get("mcp_servers", {}) if allowed(name, r"[\w-]+"))

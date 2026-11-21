@@ -23,7 +23,7 @@
 
 .PARAMETER Graphify
     Creates or refreshes project code in graphify-out/ and reference code in
-    ref_src/graphify-out/. Project document semantics use TA-extract-graph-semantics.
+    ref_src/graphify-out/. Project document semantics use TA-Graphify-extract-semantics.
     Delegates to tools/bootstrap_graphify.ps1.
 
 .PARAMETER Rag

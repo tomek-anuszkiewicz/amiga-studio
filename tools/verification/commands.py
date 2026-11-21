@@ -7,7 +7,6 @@ from impact import RustScope, select_rust_scope, workspace_packages
 
 
 CAPTURE_CONTRACTS = "Workflow capture contracts"
-ROUTING_CONTRACTS = "Workflow routing contracts"
 
 
 def singlestep_command(profile="verification", case=None, exact=False):
@@ -35,7 +34,7 @@ def select_tests(root, mode, verify_singlestep=False, changes=(), rust_scope=Non
             include_bootstrap=any(path.startswith("tools/bootstrap/") for path in changes)))
         if not any(verification_contract_input(path) for path in changes):
             commands = [item for item in commands if item[0] != "Verification CLI contracts"]
-        for group in (CAPTURE_CONTRACTS, ROUTING_CONTRACTS):
+        for group in (CAPTURE_CONTRACTS,):
             if not any(python_contract_input(group, path) for path in changes):
                 commands = [item for item in commands if item[0] != group]
     return commands
@@ -124,29 +123,15 @@ PYTHON_SUITES = (
     ("Artifact report contracts", "tools/artifacts/tests"),
     ("Verification CLI contracts", "tools/verification/tests"),
     (CAPTURE_CONTRACTS, "tools/workflow/capture/tests"),
-    (ROUTING_CONTRACTS, "tools/workflow/tests"),
 )
 
 PARALLEL_PYTHON_DIRECTORIES = tuple(
     directory for name, directory in PYTHON_SUITES
-    if name in ("Verification CLI contracts", CAPTURE_CONTRACTS, ROUTING_CONTRACTS)
+    if name in ("Verification CLI contracts", CAPTURE_CONTRACTS)
 )
 
 
-INDEPENDENT_PYTHON_SUITES = frozenset({
-    "RAG MCP contracts", "Artifact report contracts",
-})
-
-
-def independent_contract(name, commands):
-    """Only audited directory commands with spare capacity may overlap coverage."""
-    if name not in INDEPENDENT_PYTHON_SUITES or len(commands) != 1:
-        return False
-    return any(label == name and commands[0] == (label, command, overrides)
-               for label, command, overrides in python_commands(include_bootstrap=False))
-
-
-WORKFLOW_TEST_INPUTS = (
+CAPTURE_TEST_INPUTS = (
     "tools/verification/run_tests.py", "tools/verification/worker_processes.py",
     "tools/verification/case_report.py", "tools/verification/repository.py",
     "tools/verification/tests/git_fixtures.py", "tools/verification/tests/fixtures/build_repositories.py",
@@ -178,15 +163,8 @@ PYTHON_INPUTS = {
     "Artifact report contracts": ("tools/artifacts/",),
     "Verification CLI contracts": ("tools/verification/", "tools/web.ps1", "tools/worktree.ps1", "tools/graphify_query.py",
                                    ".agents/skills/TA-audit-vault-links/scripts/", ".gitignore"),
-    CAPTURE_CONTRACTS: ("tools/workflow/capture/", ".gitignore", *WORKFLOW_TEST_INPUTS),
-    ROUTING_CONTRACTS: (
-        "tools/workflow/review_routing.py", "tools/workflow/review_inputs.py",
-        "tools/workflow/review_decision.py", "tools/workflow/review-routing.json", "tools/workflow/delivery.py",
-        "tools/workflow/review_challenge.py", "tools/workflow/run_selected.py",
-        "tools/workflow/guidance.py", "tools/workflow/result.py", "tools/workflow/result.schema.json",
-        "tools/workflow/requirements.txt", "tools/workflow/skill_matrix.py",
-        "tools/workflow/skill-matrix.json", "tools/workflow/tests/", *WORKFLOW_TEST_INPUTS,
-    ),
+    CAPTURE_CONTRACTS: ("tools/workflow/capture/", ".gitignore", *CAPTURE_TEST_INPUTS),
+
 }
 
 
@@ -377,10 +355,8 @@ def select_phases(args, changes, explanations=None):
         if args.command == "commit":
             # Workflow suite ownership is for Python selection. Keep the existing Rust fallback.
             rust_python_inputs = {path for name, inputs in PYTHON_INPUTS.items()
-                                  if name not in (CAPTURE_CONTRACTS, ROUTING_CONTRACTS) for path in inputs}
+                                  if name not in (CAPTURE_CONTRACTS) for path in inputs}
             rust_scope = select_rust_scope(REPO_ROOT, changes, rust_python_inputs)
-            if getattr(args, "integration_divergent", False):
-                rust_scope = RustScope(None, "Divergent integration requires full ordinary workspace verification.")
             if explanations is not None:
                 explanations.extend(rust_scope.explain())
         coverage = select_coverage_commands(args.command, rust_scope)

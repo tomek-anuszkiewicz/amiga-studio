@@ -37,7 +37,8 @@ def verify_mounted_rollout(project, codex_home, thread, resolve_common):
         rollout_header(stream, thread, project.common, resolve_common=resolve_common)
 
 
-def register(project, args, thread, *, deadline=None, startup=None, resolve_common=None, host_now=None):
+def register(project, args, thread, *, deadline=None, startup=None, resolve_common=None, host_now=None,
+             registrations=None):
     path = project.registration_path(args.task, args.execution)
     stage = "Execution registration"
     timeout = min(30, deadline.remaining(stage)) if deadline else 30
@@ -101,6 +102,8 @@ def register(project, args, thread, *, deadline=None, startup=None, resolve_comm
             deadline.remaining(stage)
         path.parent.mkdir(parents=True, exist_ok=True)
         write_json(path, data)
+        if registrations is not None:
+            registrations.replace(path, data)
     report = {
         "task_id": data["task_id"], "execution_id": data["execution_id"],
         "thread_id": thread, "boundary_utc": at, "turn_id": turn,
@@ -112,7 +115,7 @@ def register(project, args, thread, *, deadline=None, startup=None, resolve_comm
     return report
 
 
-def controlled_registration(project, request):
+def controlled_registration(project, request, registrations):
     request = registration_request(request)
     args = argparse.Namespace(
         action=request["action"], task=request["task"], execution=request["execution"], otel=request["otel"],
@@ -128,7 +131,8 @@ def controlled_registration(project, request):
     startup = None
     if args.action == "start" and args.otel and not (args.at or args.after_turn):
         startup = {"deadline_ns": deadline.expires_ns, "baseline": baseline(project, path)}
-    return register(project, args, thread, deadline=deadline, startup=startup, resolve_common=resolve_common)
+    return register(project, args, thread, deadline=deadline, startup=startup, resolve_common=resolve_common,
+                    registrations=registrations)
 
 
 def port(value):
@@ -148,10 +152,10 @@ def wait_seconds(value):
 def arguments():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="action", required=True)
-    for action in ("provision", "start", "confirm", "arm", "include", "stop", "status", "handoff", "recover"):
+    for action in ("provision", "start", "confirm", "arm", "include", "stop", "status"):
         command = commands.add_parser(action)
         command.add_argument("--project", required=True, type=Path, help="Primary checkout root.")
-        if action not in ("provision", "status", "handoff", "recover"):
+        if action not in ("provision", "status"):
             command.add_argument("--task", required=True)
             command.add_argument("--execution", required=True)
         if action in ("include", "stop"):
@@ -182,15 +186,17 @@ def ready(service):
     health = service.healthy(service.containers(), status)
     if not health:
         raise CaptureError("Receiver and Collector readiness: both installed services are required. "
-                           "Use recover during the maintenance window if either service is stopped.")
+                           "Start the installed containers in Docker before retrying.")
     return health
 
 
-def handoff(service, args):
+def installation_status(service, args):
     published = ComposeService(service.project, args, service.deadline, revision="upgrade")
     service.wait_engine()
     containers = service.containers()
+    health = service.healthy(containers, status)
     return {
+        **(health or {"ready": False}),
         "project_id": service.project.identity, "compose_project": service.name, "port": service.port,
         "saved_config_id": service.config_id, "published_config_id": published.config_id,
         "control": "http" if service.has_control else "legacy",
@@ -210,16 +216,15 @@ def host_request(args):
     cwd = Path.cwd()
     project = Project(args.project, cwd)
     action = args.action
-    if action in ("status", "handoff"):
+    if action == "status":
         installed = ComposeService(project, args, deadline, revision="saved")
-        return ready(installed) if action == "status" else handoff(installed, args)
+        return installation_status(installed, args)
     project.prepare()
-    if action in ("provision", "recover"):
+    if action == "provision":
         with project.launcher_lock(timeout=min(30, deadline.remaining("Compose preparation"))):
-            if action == "provision" and args.codex_home is None and saved_settings(project) is None:
+            if args.codex_home is None and saved_settings(project) is None:
                 args.codex_home = default_codex_home()
-            revision = "saved" if action == "recover" else None
-            return ComposeService(project, args, deadline, revision=revision).ensure(cwd, status)
+            return ComposeService(project, args, deadline).ensure(cwd, status)
     thread = None if action == "arm" else thread_id(os.environ.get("CODEX_THREAD_ID"))
     path = project.registration_path(args.task, args.execution)
     if action == "confirm":
@@ -282,6 +287,8 @@ def main():
         print(str(error), file=sys.stderr)
         return 1
     print(json.dumps(report, indent=2))
+    if report.get("ready") is False:
+        return 1
     return 3 if report.get("status") == "pending" else 0
 
 

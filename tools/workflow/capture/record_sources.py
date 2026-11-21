@@ -17,12 +17,6 @@ from registry import CaptureError, git_path
 
 TERMINAL_EVENTS = {"task_complete", "turn_aborted", "turn_failed"}
 SAFE_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*\Z")
-SECRET_NAMES = {
-    ".codex", "sessions", "archived_sessions", ".docker", ".kube", "gcloud",
-    ".env", ".netrc", ".npmrc", ".pypirc", ".git-credentials", "auth.json",
-    "credentials.json", "credentials.toml", "credentials", "secrets.json",
-    "secrets.toml", "secrets", "token.json", "tokens.json", "id_rsa", "id_ed25519",
-}
 
 
 def identifier(value):
@@ -50,15 +44,6 @@ def common_dir(cwd):
         return git_path(cwd, "--git-common-dir")
     except (CaptureError, OSError):
         return None
-
-
-def protected_name(path):
-    return any(
-        part.casefold() in SECRET_NAMES | {".git", ".ssh", ".aws", ".gnupg", "task-archives"}
-        or part.casefold().startswith((".env.", "credentials.", "secrets."))
-        or part.casefold().endswith((".pem", ".key", ".pfx", ".kdbx"))
-        for part in path.parts
-    )
 
 
 def linked(path):
@@ -108,20 +93,6 @@ def json_lines(data):
         rows.append(Line(number, offset, offset + len(raw), raw, value))
         offset += len(raw)
     return rows, f"Unterminated JSONL at byte {offset}" if offset < len(data) else None
-
-
-def raw_selection(lines):
-    ranges = []
-    for row in lines:
-        if ranges and ranges[-1]["end"] == row.start:
-            ranges[-1]["end"] = row.end
-            ranges[-1]["last_line"] = row.number
-        else:
-            ranges.append({
-                "start": row.start, "end": row.end,
-                "first_line": row.number, "last_line": row.number,
-            })
-    return b"".join(row.raw for row in lines), ranges
 
 
 @dataclass
@@ -474,7 +445,6 @@ def cli_turn(rows, lineage, requested, *, allow_incomplete=False):
     if turn["start"] is None or any(row not in rollout.selected for row in turn["rows"]):
         raise ValueError("CLI stream includes a turn that is only partly inside the selected boundary")
     return thread, turn_id, bool(terminals)
-
 
 
 def otlp_envelope(value):

@@ -29,10 +29,10 @@ def authorization(key, body):
 
 
 @contextmanager
-def mutation_claim(project):
+def mutation_claim(project, *, control=None):
     # Atomic directory creation coordinates Windows hosts and Linux bind mounts.
     # Their native advisory file locks do not share a lock namespace.
-    path = project.control / "control-mutation"
+    path = (project.control if control is None else control) / "control-mutation"
     project.require_ignored(path)
     try:
         path.mkdir()

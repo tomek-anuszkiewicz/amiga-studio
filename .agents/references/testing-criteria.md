@@ -1,9 +1,22 @@
 # Test design and evidence criteria
 
-Use these standards for the selected test design, test audit or tests/evidence
-review. The [testing policy](../rules/unit-testing-policy.md) owns protection,
-domain obligations and gate triggers. A report-only assessor never adds tests or
-starts missing measurements automatically.
+Use these shared standards for selected test design, implementation, audit or
+tests/evidence review. Changes to protected checks or acceptance follow
+[verification change authorization](protected-verification.md#protected-verification).
+A report-only assessor never adds tests or starts missing measurements automatically.
+
+## Test organization and isolation
+
+Tests belong in the owning crate/tool's local `tests/`, never inline in production
+`src/` or in a new global component-test directory. Cross-component tests belong
+to the integration owner. Test names describe the scenario and expected result.
+
+Design tests to run in parallel. Isolate writable files and state so execution
+order and overlap cannot affect another case. Read-only inputs may be shared.
+If full isolation is impossible or disproportionately complex or costly, mark
+the case for serial execution and record why it needs exclusive execution.
+The [runner contract](../../tools/verification/README.md#bounded-parallel-execution)
+owns process isolation, bounded scheduling and exclusive serial execution.
 
 ## Scenario design
 
@@ -46,6 +59,9 @@ integration, CPU reference vectors, and whole-machine hardware captures. Capture
 execution is currently unavailable. Every executed SingleStep vector compares
 final state, instruction clocks and timed bus transactions with its JSON reference;
 sampling only changes the number of inputs. Report harness limits explicitly.
+No weakened comparison modes or unverified-success skips are permitted. The
+[CPU verification specification](../../Obsidian/Amiga/Design/Verification/CPU%20SingleStepTests.md)
+owns vector fields, observation boundaries and documented harness limits.
 
 For a CPU execution path absent from supplied vectors, design a handwritten
 regression in `crates/cpu/tests/` with independent expectations. Check resulting
@@ -60,10 +76,9 @@ before repair. Converter work instead follows its
 
 ## Coverage and adequacy assessment
 
-For affected emulator production code, inspect canonical coverage's unexecuted
-functions and source spans after implementation stabilizes. Earlier measurement
-needs an explicit request or diagnostic reason. Coverage is execution evidence,
-not correctness; assess assertions with the final measured source.
+For an assigned coverage assessment, inspect canonical coverage's unexecuted
+functions and source spans with the final measured source. Coverage is execution
+evidence, not correctness; assess the assertions protecting the observed behavior.
 
 Check measured suites, targets, conditional compilation, instrumentation and stale
 object mappings before identifying a gap. Evidence from another target may explain
@@ -73,10 +88,20 @@ affected interactions require meaningful protection before readiness. Report
 pre-existing out-of-scope gaps separately; never hide them with exclusions,
 allowlists, reduced measurement scope or meaningless assertions.
 
-The Implementer may adjust fixtures and strengthen assertions within approved
-scenarios. Newly found scenarios outside that plan are proposed to the caller;
-required gaps remain blockers while undecided. The Test Auditor reports adequacy
-and measurement limits; coverage collection is a separate selected operation.
+The Implementer may add meaningful cases, adjust fixtures and strengthen
+assertions for approved behavior within the selected write scope, including gaps
+identified by coverage or review. Each such case does not need separate approval.
+New behavior, changed acceptance criteria, protected verification changes and
+out-of-scope work still need their applicable decisions. Required unresolved gaps
+remain visible. A separate `TA-code-reviewer` instance assesses tests and supplied
+coverage; `TA-test-runner` performs a selected measurement without changing tests.
+
+For each uncovered area, distinguish a real reachable behavior gap from stale or
+incomplete instrumentation, protection supplied by another measured suite, and
+pre-existing out-of-scope work. Explain the missing scenario and independent
+expected observation before recommending a test. High execution coverage with
+weak assertions can still leave a protection gap. Do not manufacture tests for
+unreachable code or add assertions that merely mirror the implementation.
 
 ## Evidence review
 
@@ -97,15 +122,12 @@ For an expensive Git scenario, distinguish the cost of building its starting
 repository from Git calls made during the scenario. Reuse a prepared fixture
 when it supplies the required starting state.
 
-Match actual commands, exit statuses, input identities, acceptance criteria and
-intact artifacts to the selected candidate. Distinguish newly executed checks,
-retained evidence and inspected reports. Failed, missing, interrupted or invalidated
-groups are not passes. Changed global fingerprints do not by themselves invalidate
-an unchanged scoped review, but the comparison and original identity must be retained.
+Match actual commands, exit statuses, acceptance criteria and output artifacts to
+the selected scope. Distinguish executed checks from inspected older reports.
+Failed, missing, interrupted or unrun checks are not passes. Report what was
+actually tested; do not infer coverage of other commits, hardware, platforms or
+performance. Keep shared writable targets isolated during tests.
 
-Batch acceptance needs the canonical verdict for the complete candidate; milestone
-acceptance additionally needs its triggered gates. Combined integration needs
-combined evidence, not source-branch passes. Do not claim intermediate commits,
-hardware, platforms or performance were checked beyond the supplied evidence.
-Canonical verification owns deterministic selection and reuse; an agent report
-does not replace it or start it without assignment.
+The verifier selects commands but does not freeze inputs, cache acceptance or
+require lifecycle transitions. Preserve useful local outputs before worktree
+removal through the [artifact tool](../../tools/artifacts/README.md).

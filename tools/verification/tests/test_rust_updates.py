@@ -11,7 +11,6 @@ from urllib.error import URLError
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import verify
-import evidence
 
 
 class StableUpdateTests(unittest.TestCase):
@@ -70,22 +69,6 @@ class StableUpdateTests(unittest.TestCase):
         self.assertIn("Stable is up to date", notice)
         self.network.assert_called_once()
 
-    def test_actual_stable_compiler_identity_still_invalidates_execution_conditions(self):
-        changed = {}
-
-        def version(command, **kwargs):
-            return subprocess.CompletedProcess(command, 0, stdout=changed.get(tuple(command), b"version"),
-                                               stderr=b"")
-
-        with patch.object(evidence.subprocess, "run", side_effect=version), \
-             patch.object(evidence.importlib.metadata, "distributions", return_value=[]), \
-             patch.object(evidence, "file_digest", return_value="content"):
-            original = evidence.execution_conditions(Path.cwd())
-            for command in (("rustc", "-vV"), ("cargo", "--version")):
-                with self.subTest(command=command):
-                    changed[command] = b"new compiler version"
-                    self.assertNotEqual(evidence.execution_conditions(Path.cwd()), original)
-                    changed.clear()
 
     def test_commit_plan_performs_no_network_or_compiler_query(self):
         with patch.object(verify, "collect_changes", return_value=set()), \

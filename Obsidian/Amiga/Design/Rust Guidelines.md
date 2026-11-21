@@ -12,11 +12,10 @@ related: ["[General Architecture.md](General%20Architecture.md)", "[egui Guideli
 
 # Rust Engineering Rationale
 
-The maintained engineering obligations live in the [Rust rules](../../../.agents/rules/rust-best-practices.md),
-[performance policy](../../../.agents/rules/performance-and-readability.md),
+The maintained engineering obligations live in the [Rust best practices](../../../.agents/references/rust-best-practices.md),
 [workspace layout](General%20Architecture.md#workspace-layout),
 [architecture review criteria](../../../.agents/references/architecture-criteria.md) and
-[testing policy](../../../.agents/rules/unit-testing-policy.md). This note retains
+[testing criteria](../../../.agents/references/testing-criteria.md). This note retains
 why those choices matter rather than maintaining a second copy of their limits,
 crate lists or verification commands.
 
@@ -26,7 +25,7 @@ Explicit functions and direct calls preserve IDE navigation and make a hardware
 phase visible at its call site. Custom macros obscure that relationship and
 complicate compiler diagnostics; const-generic instruction handlers also hide the
 concrete size/addressing path. The project instead uses specialized functions
-and static dispatch where required by the owning rules.
+and static dispatch where required by the owning specifications and practices.
 
 ## Preserve guest semantics on the host
 
@@ -48,7 +47,7 @@ condition evaluation and hit testing. Splitting each type into its own file woul
 separate one capability without creating an independent responsibility.
 
 The [architecture](General%20Architecture.md) explains subsystem ownership.
-Advance rules own dependency permissions, required module layout, hot-path
+Specifications and shared practices own dependency permissions, required module layout, hot-path
 constraints and verification triggers. Architecture review owns the detailed
 cohesion, visibility, numeric naming and inlining criteria. Mechanical limits
 remain with their configured checkers; moving a criterion does not waive it.

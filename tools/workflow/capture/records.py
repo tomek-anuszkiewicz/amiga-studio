@@ -1,9 +1,8 @@
-"""Collect or independently inspect one registered local execution archive."""
+"""Preserve selected files or inspect an existing execution archive."""
 
 from __future__ import annotations
 
 import argparse
-from datetime import datetime, timezone
 from hashlib import sha256
 import json
 import os
@@ -15,7 +14,7 @@ from uuid import uuid4
 
 from record_sources import (
     archived_turns, cli_turn, common_dir, identifier, json_lines, linked, otlp_items,
-    otlp_selection, protected_name, raw_selection, safe_file, selected_rollouts,
+    otlp_selection, safe_file,
     Rollout, snapshot, utc,
 )
 from registry import CaptureError, git, git_paths
@@ -33,12 +32,10 @@ ROWS = {
     "change_history": "Change history",
     "integrity_survival": "File integrity and survival",
 }
-KINDS = {"cli": "cli", "otel": "otel", "artifact": "artifacts"}
 SAFE_COMMIT = re.compile(r"(?:[a-f0-9]{40}|[a-f0-9]{64})\Z")
 SHA256 = re.compile(r"[a-f0-9]{64}\Z")
 ATTEMPT = re.compile(r"[a-f0-9]{32}\Z")
 TIMING_REPORT = "test-runtime-report.md"
-REVISION_ID = re.compile(r"[0-9]{8}T[0-9]{12}Z-[a-f0-9]{8}\Z")
 WINDOWS_DEVICE = re.compile(r"(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\..*)?\Z", re.I)
 
 
@@ -209,73 +206,6 @@ def full_commit(value):
     return value
 
 
-def commit_exists(primary, value):
-    return git(primary, "cat-file", "-e", f"{full_commit(value)}^{{commit}}").returncode == 0
-
-
-def archive_file(directory, inventory, relative, data, kind, **metadata):
-    key = archive_path(relative).as_posix()
-    if key.casefold() in {item["path"].casefold() for item in inventory}:
-        raise ValueError(f"Duplicate archive path: {key}")
-    target = directory / key
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.touch(exist_ok=False)
-    target.write_bytes(data)
-    inventory.append({"path": key, "size": len(data), "sha256": digest(data), "kind": kind, **metadata})
-
-
-def explicit_file(spec, source_root, roots, codex_home):
-    kind = spec["kind"]
-    destination = archive_path(spec["path"])
-    if kind not in KINDS or destination.parts[0] != KINDS[kind] or len(destination.parts) < 2:
-        raise ValueError("Selected file type must match its archive subdirectory")
-    source = (source_root / spec["source"]).absolute()
-    if any(part == ".." or ":" in part for part in source.parts[1:]):
-        raise ValueError("Selected file path uses parent traversal or an alternate stream")
-    canonical = source.resolve()
-    if (not any(canonical.is_relative_to(root) for root in roots)
-            or canonical.is_relative_to(codex_home)
-            or protected_name(source) or protected_name(canonical)):
-        raise ValueError("Selected file is outside the allowed artifact roots or names a protected location")
-    safe_file(source, single_link=True)
-    return kind, source, destination.as_posix()
-
-
-def collect_otel(directory, inventory, source, destination, data, lineage, bounds, gaps, route):
-    rows, tail = json_lines(data)
-    if tail:
-        gaps.append({"source": destination, "reason": tail, "provisional": True})
-    segments = []
-    evidence = []
-    excluded = encoded_again = output_offset = 0
-    for row in rows:
-        try:
-            selected, dropped = otlp_selection(row.value, lineage, bounds, route=route)
-        except (KeyError, TypeError, ValueError, AttributeError, OverflowError):
-            gaps.append({"source": destination, "reason": f"Invalid OTLP envelope at line {row.number}"})
-            continue
-        excluded += dropped
-        if selected is None:
-            continue
-        if dropped:
-            encoded_again += 1
-            output = json.dumps(selected, ensure_ascii=False, separators=(",", ":")).encode() + b"\n"
-        else:
-            output = row.raw
-        segments.append(output)
-        evidence.append({
-            "start": row.start, "end": row.end, "source_line": row.number,
-            "archive_start": output_offset, "archive_end": output_offset + len(output),
-            "encoded_again": bool(dropped),
-        })
-        output_offset += len(output)
-    if segments:
-        archive_file(directory, inventory, destination, b"".join(segments), "otel", source=str(source),
-                     ranges=evidence, encoded_again_lines=encoded_again, excluded_records=excluded)
-    if not segments:
-        gaps.append({"source": destination, "reason": "No attributable in-range OTLP records"})
-
-
 def latest_record(rollout):
     if not rollout.selected:
         return None
@@ -288,147 +218,6 @@ def latest_record(rollout):
             (key for key, turn in rollout.turns.items() if row in turn["rows"]), None
         ), "call_id": payload.get("call_id"),
     }
-
-
-def archive_artifact(directory, inventory, destination, source, data):
-    try:
-        first = json.loads(data.split(b"\n", 1)[0])
-    except (ValueError, UnicodeError):
-        first = None
-    if isinstance(first, dict) and (
-        first.get("type") in ("session_meta", "thread.started")
-        or set(first) & {"resourceLogs", "resourceSpans", "resourceMetrics"}
-    ):
-        raise ValueError("Runtime streams must pass the matching source selection")
-    archive_file(directory, inventory, destination, data, "artifact", source=str(source))
-
-
-def collect(args, primary, repository, archive):
-    registration_path = archive / "registration.json"
-    registration_raw = safe_file(registration_path).read_bytes()
-    registration = json.loads(registration_raw)
-    check_registration(registration, args, repository)
-    spec_path = args.input.absolute()
-    spec = json_object(spec_path)
-    start_commit = full_commit(spec["start_commit"])
-    workflow_commit = full_commit(spec["workflow_commit"])
-    final_commit = spec.get("final_commit")
-    if final_commit is not None:
-        full_commit(final_commit)
-    if not isinstance(spec["outcome"], str) or not spec["outcome"].strip():
-        raise ValueError("A terminal task outcome is required")
-    source_root = spec_path.parent
-    roots = {source_root.resolve(), primary.resolve()}
-    roots.update((source_root / entry).resolve() for entry in spec.get("artifact_roots", []))
-    scoped_files = []
-    gaps = []
-    for entry in spec.get("files", []):
-        try:
-            kind, source, destination = explicit_file(entry, source_root, roots, args.codex_home)
-        except (KeyError, OSError, ValueError, TypeError) as error:
-            gaps.append({"source": entry.get("path") if isinstance(entry, dict) else None, "reason": str(error)})
-            continue
-        scoped_files.append((kind, source, destination, entry))
-    spool = archive / "otel"
-    if spool.exists():
-        if linked(spool):
-            raise ValueError("Telemetry spool is a linked directory")
-        for source in sorted(spool.iterdir()):
-            if source.is_file() and ".jsonl" in source.name and not linked(source):
-                scoped_files.append(("otel", source, f"otel/{source.name}", {}))
-    lineage, bounds, rollout_gaps = selected_rollouts(args.codex_home, registration, repository)
-    gaps.extend(
-        {"source": f"rollouts/{thread}.jsonl", "reason": message, "provisional": True}
-        for thread, message in rollout_gaps.items()
-    )
-    revisions = archive / "revisions"
-    if linked(revisions):
-        raise ValueError("Archive revision directory is a link")
-    revisions.mkdir(exist_ok=True)
-    fmt = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
-    revision = f"{fmt}-{uuid4().hex[:8]}"
-    previous = sorted(name.name for name in revisions.iterdir()
-                      if REVISION_ID.fullmatch(name.name) and not linked(name) and (name / "manifest.json").is_file())
-    with TemporaryDirectory(prefix=".pending-", dir=revisions) as tmp:
-        directory = Path(tmp) / revision
-        directory.mkdir()
-        inventory = []
-        archive_file(directory, inventory, "registration.json", registration_raw, "registration")
-        threads = []
-        for thread, item in lineage.items():
-            location = f"rollouts/{thread}.jsonl"
-            if item.selected:
-                data, ranges = raw_selection(item.selected)
-                archive_file(directory, inventory, location, data, "rollout", source=str(item.path),
-                             ranges=ranges, whole_source=len(item.lines) == len(item.selected) and not item.gap)
-            threads.append({
-                "thread_id": thread, "parent_thread_id": item.parent, "source": str(item.path),
-                "selection": bounds[thread], "turn_ids": sorted(item.covered_turns),
-                "last_event": latest_record(item), "segment": location if item.selected else None,
-                "cli_version": item.header["payload"].get("cli_version"),
-            })
-        for kind, source, destination, entry in scoped_files:
-            try:
-                safe_file(source, single_link=True)
-                data, changing = snapshot(source)
-                if kind == "artifact" and "sha256" in entry and (
-                    changing or digest(data) != entry["sha256"]
-                ):
-                    raise ValueError("Selected artifact differs from its expected digest")
-                if changing:
-                    gaps.append({"source": destination, "reason": "Source changed during the bounded read",
-                                 "provisional": True})
-                if kind == "otel":
-                    collect_otel(directory, inventory, source, destination, data, lineage, bounds, gaps,
-                                 f"{args.task_id}/{args.execution_id}")
-                elif kind == "cli":
-                    rows, tail = json_lines(data)
-                    if tail:
-                        gaps.append({"source": destination, "reason": tail, "provisional": True})
-                    thread, turn, terminal = cli_turn(rows, lineage, entry.get("turn_id"), allow_incomplete=True)
-                    if not terminal:
-                        gaps.append({"source": destination, "reason": "CLI terminal event is absent",
-                                     "provisional": True})
-                    archive_file(directory, inventory, destination, b"".join(row.raw for row in rows), kind,
-                                 source=str(source), thread_id=thread, turn_id=turn, complete=terminal and tail is None)
-                else:
-                    archive_artifact(directory, inventory, destination, source, data)
-            except (OSError, ValueError) as error:
-                gaps.append({"source": destination, "reason": str(error)})
-        if registration.get("otel") and not any(item["kind"] == "otel" for item in inventory):
-            gaps.append({"source": "otel/", "reason": "No verified receiver records were available"})
-        commits = [
-            ("start_commit", start_commit), ("workflow_commit", workflow_commit), ("final_commit", final_commit),
-        ]
-        available = {commit: commit_exists(primary, commit)
-                     for commit in dict.fromkeys(value for _, value in commits if value is not None)}
-        for label, commit in commits:
-            if commit is not None and not available[commit]:
-                gaps.append({"source": label, "reason": "Commit is unavailable in the selected repository"})
-        manifest = {
-            "format_version": FORMAT, "tool_version": TOOL, "revision": revision,
-            "previous_revision": previous[-1] if previous else None,
-            "task_id": args.task_id, "execution_id": args.execution_id,
-            "git_common_dir": str(repository),
-            "root_thread_id": registration["root_thread_id"],
-            "start_utc": registration["start_utc"], "end_utc": registration["end_utc"],
-            "start_commit": start_commit, "workflow_commit": workflow_commit,
-            "initial_input_limits": spec.get("initial_input_limits", []),
-            "final_commit": final_commit, "final_candidate": spec.get("final_candidate"),
-            "outcome": spec["outcome"], "client": spec.get("client"), "backup": spec.get("backup"),
-            "collection_status": "provisional" if any(gap.get("provisional") for gap in gaps) else
-                                 "partial" if gaps else "collected",
-            "threads": threads, "files": sorted(inventory, key=lambda item: item["path"]), "gaps": gaps,
-        }
-        if safe_file(registration_path).read_bytes() != registration_raw:
-            raise ValueError("Execution registration changed during collection")
-        (directory / "manifest.json").write_bytes(json_bytes(manifest))
-        directory.rename(revisions / revision)
-    print(json.dumps({"revision": revision, "archive": str(revisions / revision),
-                      "status": manifest["collection_status"], "gaps": gaps}, ensure_ascii=False))
-    return 0
-
-
 
 
 def files_from_disk(directory):
@@ -655,8 +444,6 @@ def source_examples(files, manifest):
             except (KeyError, TypeError, ValueError, AttributeError):
                 continue
     return examples
-
-
 
 
 def archive_correlations(files, manifest, registration):
@@ -930,19 +717,8 @@ def preserve(args):
 
     primary, _, archive = archive_context(args)
     files = selected_files(json_object(args.input), archive_path)
-    if not args.publication:
-        registered_execution(primary, args.task_id, args.execution_id)
-        copy_selected(primary, archive, files, {}, lambda: None)
-        return 0
-
-    # The publication control record owns the serial closure stages.
-    sys.path.append(str(Path(__file__).resolve().parents[2] / "verification"))
-    from integration_closure import finish_preservation
-
-    def copy(state, progress):
-        copy_selected(primary, archive, files, state, progress)
-
-    finish_preservation(primary, args.publication, args.task_id, args.execution_id, copy, selected=files)
+    registered_execution(primary, args.task_id, args.execution_id)
+    copy_selected(primary, archive, files, {}, lambda: None)
     return 0
 
 
@@ -952,13 +728,9 @@ def main():
     common.add_argument("--primary", type=Path, required=True, help="Surviving primary checkout")
     common.add_argument("--task-id", required=True)
     common.add_argument("--execution-id", required=True)
-    common.add_argument("--codex-home", type=Path, default=Path(os.environ.get("CODEX_HOME") or Path.home() / ".codex"))
     commands = parser.add_subparsers(dest="operation", required=True)
     preserving = commands.add_parser("preserve", parents=[common])
     preserving.add_argument("--input", type=Path, required=True, help="Known file paths and producer completion")
-    preserving.add_argument("--publication", type=Path, help="Surviving local integration record for task closure")
-    collector = commands.add_parser("collect", parents=[common])
-    collector.add_argument("--input", type=Path, required=True, help="Selected file and Git input identities")
     checker = commands.add_parser("check", parents=[common])
     checker.add_argument("--revision", required=True)
     checker.add_argument("--expect", type=Path, required=True, help="Independently observed data and byte expectations")
@@ -974,10 +746,7 @@ def main():
             return preserve_timing(args)
         if args.operation == "preserve":
             return preserve(args)
-        args.codex_home = args.codex_home.resolve()
         primary, repository, archive = archive_context(args)
-        if args.operation == "collect":
-            return collect(args, primary, repository, archive)
         return inspect(args, primary, repository, archive)
     except (KeyError, ValueError, TypeError, OSError, RuntimeError) as error:
         print(f"{args.operation}: {error}", file=sys.stderr)

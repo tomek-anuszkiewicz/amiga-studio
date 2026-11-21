@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "testing"
 status: "active"
 created: 2026-09-14
-updated: 2026-11-19
+updated: 2026-11-21
 related: ["[General Architecture.md](../General%20Architecture.md)", "[CPU SingleStepTests.md](CPU%20SingleStepTests.md)", "[CPU Instruction Benchmarking.md](../Performance/CPU%20Instruction%20Benchmarking.md)", "[Machine Loop.md](../Machine%20Loop.md)", "[Platform Quirks and Invariants Catalog.md](../Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
 tracked_paths:
   - ".config/nextest.toml"
@@ -26,13 +26,13 @@ tracked_paths:
 
 ## Completion entry point
 
-Ordinary work uses focused checks. Batch preparation runs
-`python tools/verification/verify.py commit`; milestone closure also runs the
-separate `milestone` profile for the same snapshot. The latter adds full
-SingleStep. The sealed commit passes the full English audit before local publication
-under the [language policy](../../../../.agents/rules/language-policy.md). Full vectors
-remain available explicitly for diagnosis, and benchmarks remain explicit
-measurements. No profile runs the unavailable whole-machine capture comparator.
+The engineer selects focused checks or the `commit` and `milestone` bundles.
+The commit profile retains its quality, browser-build, ordinary-test and coverage
+selection. The milestone profile runs full SingleStep. Full vectors also remain
+available explicitly for diagnosis; benchmarks remain explicit measurements.
+Profiles do not commit, publish or close a plan, and no profile runs the
+unavailable whole-machine capture comparator. Language scans are separate selected
+operations through `python tools/verification/verify.py check english`.
 
 The [verification reference](../../../../tools/verification/README.md#completion-verification)
 owns commands, profile contents, environment requirements and failure handling.
@@ -46,7 +46,7 @@ Retain these evidence boundaries:
 - Ordinary selected crate tests run once under coverage. Reports identify their
   packages, current source and build target; execution coverage does not establish
   meaningful assertions, all platforms, branch coverage or hardware accuracy.
-  [Coverage policy](../../../../.agents/rules/unit-testing-policy.md#coverage-during-development-and-review)
+  [Coverage criteria](../../../../.agents/references/testing-criteria.md#coverage-and-adequacy-assessment)
   owns gap review; the [coverage reference](../../../../tools/verification/README.md#coverage-guided-testing)
   owns diagnostic measurements and artifacts. There is no percentage gate.
 - Failed, missing, interrupted or invalidated groups cannot count as passed.
@@ -56,7 +56,7 @@ Retain these evidence boundaries:
 - A changed HEAD starts a new batch. Approved integration compares the complete
   combined candidate against an immutable primary base; its narrow mechanical
   commit bridge and unverified working-commit/confirmed-fast-forward exceptions
-  belong to the [integration rule](../../../../.agents/rules/git-merge-commits.md).
+  belong to the [integration procedure](../../../../.agents/skills/TA-WF-Main-close-task/references/local-integration.md).
 - Generated timing reports are outputs, not passing evidence. Build caches may
   remain, but stale coverage objects and saved SingleStep totals cannot establish
   that current sources or the requested selection ran.
@@ -69,13 +69,18 @@ Retain these evidence boundaries:
   A surviving child after verifier termination is outside its checkout lock.
   No lifecycle or Git hooks are used.
 
-[Scoped compliance](../../../../.agents/skills/TA-review-spec-compliance/SKILL.md),
-[vault integrity](../../../../.agents/skills/TA-audit-vault-links/SKILL.md),
-[semantic milestone review](../../../../.agents/skills/TA-review-semantic-parity/SKILL.md)
-and [independent batch review](../../../../.agents/references/review-common.md)
-retain their own triggers. The mechanical verifier does not execute or replace
-those reviews. Each selected assessment returns findings without repairing them
-or starting another operation. Diary and roadmap closure remain separate duties.
+Selected [behavior review](../../../../.agents/skills/TA-WF-Step-review-behavior/SKILL.md)
+includes scoped specification compliance and, for an assigned whole-stage parity
+assessment, unchanged affected code/interactions and the full workspace-wide
+static semantic comparison. Selected
+[documentation review](../../../../.agents/skills/TA-WF-Step-review-docs/SKILL.md) includes
+retained source-backed knowledge, requirement authority and the full recursive
+Design link/metadata audit. Broader matching evidence can satisfy overlapping
+scoped requirements; a static pass alone does not prove semantic parity.
+[Independent review](../../../../.agents/references/review-common.md) retains its
+selected scope. The mechanical verifier does not execute or replace these
+assessments. They report findings without repairs or automatic next stages.
+Diary and roadmap closure remain separate duties.
 Required unresolved gaps still block readiness when the caller has not selected
 their repair.
 
@@ -86,26 +91,31 @@ available. Audio captures retain their spectral and attachment acceptance limits
 
 ### Roadmap and milestone completion
 
-Close a minor roadmap point or major milestone only after milestone
-verification, stage-wide semantic parity, scoped specification compliance
-and compatible enrichment, checkpoint review, diary compaction, provisional
-roadmap pruning and the completion commit. Matching broader assessments can
-satisfy the overlapping requirements. Pruning remains provisional until the
-required results and commit exist. Record a user-directed scope closure
-explicitly and preserve remaining work.
+The engineer defines the scope and selected verification for milestone closure.
+Report completed and unfinished behavior and actual tests, semantic assessment,
+documentation, diary and roadmap work. A passing test profile alone does not prove
+all intended behavior is complete. Preserve unfinished requirements when removing
+completed roadmap work. Review stage-wide interactions when that assessment is
+selected; changed-file-only evidence does not establish that wider coverage.
 
-A major milestone also requires stage-level documentation and instruction
-governance assessment through [documentation review](../../../../.agents/skills/TA-review-docs/SKILL.md).
-Credit an applicable documentation-lane report with that stage-wide scope.
-Assessments limited to the changed files leave this obligation open.
-
-Compact the diary before final verification and freeze regardless of size,
-using [the separate compaction operation](../../../../.agents/skills/TA-compact-diary/SKILL.md).
-Use one prepared diary entry for completion and compaction. Extend the
-[preparation storage observation](../../../../.agents/references/agent-tooling.md#local-artifact-storage)
-with the completed task's temporary directories and any scoped cleanup
-recommendations. Keep active diagnostics and remove only authorized paths.
-Use the vAmigaTS reporting format again if that verification track resumes.
+There is no fixed sequence of review lanes, checkpoints, frozen candidates or
+publication receipts. Selected task delivery uses ordinary
+Git merge and the separate
+[task closure](../../../../.agents/skills/TA-WF-Main-close-task/SKILL.md) operation.
+Final tests and independent review on local master, including verification of
+corrective commits, precede task closure. Closure preserves outputs/context,
+removes the selected merged task resources and refreshes the project Graphify
+structure on final master. Failed or incomplete final evidence blocks closure;
+graph-refresh failure leaves a partial closure with successful cleanup retained.
+Document-semantic freshness is reported separately from structural refresh.
+[Milestone closure](../../../../.agents/skills/TA-WF-Main-close-milestone/SKILL.md) runs the
+full milestone profile, removes the selected completed roadmap item after
+success and compacts its settled diary history through
+[diary compaction](../../../../.agents/skills/TA-WF-Step-compact-diary/SKILL.md).
+Ordinary task commits do not require changelog entries or diary compaction.
+Preserve useful test reports and
+other local outputs before removing its task worktree with the
+[artifact tool](../../../../tools/artifacts/README.md).
 
 ## 1. Architectural Purpose & Testing Pyramid
 
@@ -195,7 +205,7 @@ Whenever any custom chip, coprocessor, peripheral device, or interrupt line is a
 3. **Cross-Chip Signal & Interrupt Routing:** Does the subsystem raise an interrupt line, latch status, or send electronic signals to other chips (Paula -> CPU, Agnus -> Denise, CIAs -> CPU)?
 4. **Hardware Contention & Wait States:** Does the subsystem compete for Chip RAM slots or stall the CPU?
 
-If any answer is **YES**, identify integration protection for that coordination. Reuse or extend an existing production fixture; add a test only for a demonstrated gap. A module change does not by itself require another test file. Expected results and runtime observation interfaces follow [unit-testing-policy.md](../../../../.agents/rules/unit-testing-policy.md).
+If any answer is **YES**, identify integration protection for that coordination. Reuse or extend an existing production fixture; add a test only for a demonstrated gap. A module change does not by itself require another test file. Expected results and runtime observation interfaces follow [testing criteria](../../../../.agents/references/testing-criteria.md).
 
 #### The 4 Standardized Integration Test Archetypes
 
@@ -265,8 +275,8 @@ temporary compensating patches.
 When exploratory changes accumulate, compare symptoms, patch locations, and
 applied mechanisms to determine whether they share an upstream cause. Scope,
 reproduction and reference conflicts follow
-[defect procedure](../../../../.agents/references/defect-resolution.md) and
-[spec-compliance.md](../../../../.agents/rules/spec-compliance.md).
+[defect procedure](../../../../.agents/skills/TA-WF-Step-implement-change/references/defect-resolution.md) and
+[spec-compliance.md](../../../../.agents/references/spec-compliance.md).
 
 ---
 
@@ -286,7 +296,7 @@ Select existing checks for the actual change. The following categories describe 
 
 ## 6. Structural Conventions & Invariants
 
-[Testing policy](../../../../.agents/rules/unit-testing-policy.md) owns external
+[Testing criteria](../../../../.agents/references/testing-criteria.md) owns external
 suite placement and behavioral protection. Use `test_` names for test files and
 subdirectories for shared helpers. The
 [architecture checker](../../../../tools/verification/checks/check_architecture.py)

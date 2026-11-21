@@ -15,9 +15,13 @@ python tools/graphify/refresh.py --graph reference
 
 Each operation creates a missing graph or refreshes its existing graph. Bootstrap
 runs both selections and fails if either fails; `-All` provisions sources first.
-Ordinary task closure refreshes the project graph once in the primary checkout
-on local `master` after publication and the language stage. The result records
-the final SHA, including any closure vocabulary commit. Worktree creation copies
+During task closure, [TA-WF-Main-close-task](../../.agents/skills/TA-WF-Main-close-task/SKILL.md)
+invokes [TA-Graphify-refresh](../../.agents/skills/TA-Graphify-refresh/SKILL.md), whose
+procedure runs `python tools/graphify/refresh.py --graph project`. This refresh
+runs once in the primary checkout on local `master` after successful final master
+tests/review and any corrective commits. Closure records the final SHA, including
+any plan-removal commit.
+Structural refresh does not update document semantics. Worktree creation copies
 both existing graph directories from the primary checkout. If a copy is missing
 or stale, use `rg` and inspect the source definitions. The reference graph uses
 an explicit refresh. Provision missing reference sources with bootstrap `-Sources`.
@@ -45,7 +49,7 @@ set `PYTHONHASHSEED=0` only when absent, and use UTF-8 output. Worker limits ret
 
 Structural refresh preserves valid project semantics and removes excluded/deleted
 sources; it does not refresh document meaning. Initial and requested semantic
-extraction uses the host agent through the [semantic extraction skill](../../.agents/skills/TA-extract-graph-semantics/SKILL.md).
+extraction uses the host agent through the [semantic extraction skill](../../.agents/skills/TA-Graphify-extract-semantics/SKILL.md).
 The explicit `semantic.py prepare --graph project` / `apply --graph project --run`
 commands stage host extraction chunks with source-and-prompt freshness checks;
 the skill owns their execution procedure. No new API service, API key or background
@@ -56,7 +60,10 @@ For native traversal without query-stamp, query-log or bytecode writes, use
 `python tools/graphify/read.py query "<question>" --graph graphify-out/graph.json`.
 The pinned raw CLI writes a query stamp; the adapter suppresses that incidental
 writer only in its process and leaves the installed package unchanged. For the explicit `--graph` / optional directory
-`--scope` helper, use the [query procedure](../../.agents/skills/TA-query-graph/references/query.md).
+`--scope` helper, run `python tools/graphify/query.py "Paula" --graph reference --scope minimig`.
+It filters nodes and edges before traversal using a disposable view under
+`.agent/tmp/`. See the [query procedure](../../.agents/skills/TA-Graphify-query/references/query.md)
+for provenance and write restrictions.
 Do not install the upstream skill over the maintained repository procedure.
 
 Focused checks:

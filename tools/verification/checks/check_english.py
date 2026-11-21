@@ -5,7 +5,7 @@ import argparse
 from concurrent.futures import ProcessPoolExecutor
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import re
 import subprocess
 import sys
@@ -23,6 +23,7 @@ WORKER_SCOPE = None
 WORKER_VOCABULARY = None
 WORKER_DICTIONARY = None
 WORD_PATTERN = re.compile(r"[^\W\d_][^\W_]*(?:['\u2019][^\W\d_]+)?", re.UNICODE)
+VOCABULARY_ENTRY = re.compile(r"[^\W_]+(?:['\u2019][^\W_]+)?")
 CASE_BOUNDARY = re.compile(r"(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
 URL_PATTERN = re.compile(r"(?:https?://|mailto:)[^\s<>\"'`)]+")
 OPCODE_LITERAL_PATTERN = re.compile(r'("target_primary_opcode"\s*:\s*")[0-9a-fA-F]{4}(\")')
@@ -62,10 +63,28 @@ def load_vocabulary(scope):
         for line in (SCOPE_FILE.parent / relative).read_text(encoding="utf-8").splitlines():
             word = line.split("#", 1)[0].strip().lower()
             if word:
-                if re.fullmatch(r"[^\W_]+(?:['\u2019][^\W_]+)?", word) is None:
+                if VOCABULARY_ENTRY.fullmatch(word) is None:
                     raise ValueError(f"Invalid vocabulary entry in {relative}: {word}")
                 words.add(word)
     return words
+
+
+def validate_file_words(scope):
+    """Require individual terms attached to exact repository-relative file paths."""
+    entries = scope.get("file_words", {})
+    if not isinstance(entries, dict):
+        raise ValueError("file_words must map exact file paths to lists of terms")
+    for relative, terms in entries.items():
+        if not isinstance(relative, str) or not relative or any(char in relative for char in "\\*?[]:"):
+            raise ValueError(f"Invalid exact-file vocabulary path: {relative}")
+        path = PurePosixPath(relative)
+        if path.is_absolute() or ".." in path.parts or path.as_posix() != relative or relative == ".":
+            raise ValueError(f"Invalid exact-file vocabulary path: {relative}")
+        if not isinstance(terms, list):
+            raise ValueError(f"Vocabulary for {relative} must be a list of individual terms")
+        for word in terms:
+            if not isinstance(word, str) or VOCABULARY_ENTRY.fullmatch(word) is None:
+                raise ValueError(f"Invalid vocabulary entry in {relative}: {word}")
 
 
 def words_in_line(line, dictionary, vocabulary):
@@ -165,6 +184,7 @@ def main():
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     try:
         scope = json.loads(SCOPE_FILE.read_text(encoding="utf-8"))
+        validate_file_words(scope)
         vocabulary = load_vocabulary(scope)
         targets = args.files or repository_targets(scope)
         excluded = [(REPO_ROOT / directory).resolve() for directory in scope["always_excluded_directories"]]

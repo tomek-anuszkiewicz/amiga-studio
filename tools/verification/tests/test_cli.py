@@ -7,9 +7,7 @@ import sys
 import tempfile
 import unittest
 from unittest.mock import patch
-
 from git_fixtures import restore_repository
-
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from cli import parse_args
 from commands import select_phases
@@ -21,17 +19,15 @@ from timing_report import REPORT_NAME
 import timing_report
 from impact import RustScope
 
-
 def selected(sentence, changes=()):
     _, args = parse_args(sentence.split())
     return [item for _, commands in select_phases(args, set(changes)) for item in commands]
-
 from test_case_report import ignore_archive
 
-
 class SelectionTests(unittest.TestCase):
+
     def test_startup_help_shows_nested_command_tree_without_selecting_work(self):
-        for argv in ([], ["--help"]):
+        for argv in ([], ['--help']):
             with self.subTest(argv=argv), contextlib.redirect_stdout(io.StringIO()) as output:
                 if argv:
                     with self.assertRaises(SystemExit) as exit_result:
@@ -41,467 +37,326 @@ class SelectionTests(unittest.TestCase):
                     _, args = parse_args(argv)
                     self.assertIsNone(args)
             help_text = output.getvalue()
-            for command in ("milestone [singlestep]", "crate NAME [suite NAME] [case FILTER]",
-                            "python [directory PATH [file PATTERN] [case FILTER]]",
-                            "singlestep [case FILTER] [full|sample N]",
-                            "architecture [case FILTER]",
-                            "analyze RUN_DIRECTORY"):
+            for command in ('milestone [singlestep]', 'crate NAME [suite NAME] [case FILTER]', 'python [directory PATH [file PATTERN] [case FILTER]]', 'singlestep [case FILTER] [full|sample N]', 'architecture [case FILTER]', 'analyze RUN_DIRECTORY'):
                 self.assertIn(command, help_text)
 
     def test_focused_rust_preserves_suite_and_case_without_completion(self):
-        commands = selected("test rust crate test_runner suite test_singlestep case test_sub")
+        commands = selected('test rust crate test_runner suite test_singlestep case test_sub')
         self.assertEqual(len(commands), 1)
-        self.assertEqual(commands[0][1], [sys.executable, "tools/verification/run_singlestep.py",
-                                         "--profile", "test", "--case", "test_sub"])
+        self.assertEqual(commands[0][1], [sys.executable, 'tools/verification/run_singlestep.py', '--profile', 'test', '--case', 'test_sub'])
         self.assertEqual(commands[0][2], {})
 
     def test_exact_selection_targets_one_named_rust_test_or_singlestep_group(self):
-        rust = selected("test rust crate cpu suite test_add case test_add_b --exact")
-        self.assertEqual(rust[0][1][-2:], ["test_add_b", "--exact"])
-        silicon = selected("test runner singlestep case test_add_b sample 5 --exact")
-        self.assertEqual(silicon[0][1][-3:], ["--case", "test_add_b", "--exact"])
-        self.assertEqual(silicon[0][2], {"SINGLESTEP_FULL": "0", "SINGLESTEP_LIMIT": "5"})
+        rust = selected('test rust crate cpu suite test_add case test_add_b --exact')
+        self.assertEqual(rust[0][1][-2:], ['test_add_b', '--exact'])
+        silicon = selected('test runner singlestep case test_add_b sample 5 --exact')
+        self.assertEqual(silicon[0][1][-3:], ['--case', 'test_add_b', '--exact'])
+        self.assertEqual(silicon[0][2], {'SINGLESTEP_FULL': '0', 'SINGLESTEP_LIMIT': '5'})
 
     def test_exact_without_supported_case_is_rejected(self):
-        for sentence in ("test rust unit --exact", "test rust crate cpu --exact",
-                         "test rust crate cpu case test_add_b --exact",
-                         "test python directory tools/verification/tests case test_cli --exact",
-                         "test runner standard --exact", "test runner singlestep --exact",
-                         "commit --exact"):
+        for sentence in ('test rust unit --exact', 'test rust crate cpu --exact', 'test rust crate cpu case test_add_b --exact', 'test python directory tools/verification/tests case test_cli --exact', 'test runner standard --exact', 'test runner singlestep --exact', 'commit --exact'):
             with self.subTest(sentence=sentence), self.assertRaises(ValueError):
                 selected(sentence)
 
     def test_runner_build_compiles_test_and_benchmark_targets_without_execution(self):
-        commands = selected("runner build")
+        commands = selected('runner build')
         self.assertEqual(len(commands), 1)
-        self.assertEqual(commands[0][1], ["cargo", "test", "--release", "--no-run",
-                                         "-p", "test_runner", "--tests", "--benches"])
+        self.assertEqual(commands[0][1], ['cargo', 'test', '--release', '--no-run', '-p', 'test_runner', '--tests', '--benches'])
 
     def test_python_selection_preserves_directory_file_and_case(self):
-        commands = selected("test python directory tools/bootstrap/tests file test_bootstrap_contract.py case test_all")
+        commands = selected('test python directory tools/bootstrap/tests file test_bootstrap_contract.py case test_all')
         self.assertEqual(len(commands), 1)
-        self.assertEqual(commands[0][1][1:], ["tools/verification/run_unittest.py", "discover", "-s", "tools/bootstrap/tests",
-                                            "-q", "-p", "test_bootstrap_contract.py", "-k", "test_all"])
-        book = selected("test python directory tools/bootstrap/book-to-markdown/tests "
-                        "file test_book_review_overflow.py case test_pdf_page")
-        self.assertEqual(book[0][1][1:], ["tools/bootstrap/book-to-markdown/run_tests.py",
-                                         "-p", "test_book_review_overflow.py", "-k", "test_pdf_page"])
-        focused = selected("test python directory tools/verification/tests "
-                           "file test_cli.py case test_focused")
-        self.assertEqual(focused[0][1][1:], ["tools/verification/run_tests.py", "-s", "tools/verification/tests",
-                                            "-q", "-p", "test_cli.py", "-k", "test_focused"])
-        defaults = {name: command for name, command, _ in selected("test python", ["tools/verification/run_tests.py"])}
-        self.assertEqual(defaults["Verification CLI contracts"], [
-            sys.executable, "tools/verification/run_tests.py", "-s", "tools/verification/tests", "-q"])
-        self.assertEqual(set(defaults), {"Verification CLI contracts", "Workflow routing contracts",
-                                         "Workflow capture contracts"})
-
-        for group, directory in (("Workflow routing contracts", "tools/workflow/tests"),
-                                 ("Workflow capture contracts", "tools/workflow/capture/tests")):
+        self.assertEqual(commands[0][1][1:], ['tools/verification/run_unittest.py', 'discover', '-s', 'tools/bootstrap/tests', '-q', '-p', 'test_bootstrap_contract.py', '-k', 'test_all'])
+        book = selected('test python directory tools/bootstrap/book-to-markdown/tests file test_book_review_overflow.py case test_pdf_page')
+        self.assertEqual(book[0][1][1:], ['tools/bootstrap/book-to-markdown/run_tests.py', '-p', 'test_book_review_overflow.py', '-k', 'test_pdf_page'])
+        focused = selected('test python directory tools/verification/tests file test_cli.py case test_focused')
+        self.assertEqual(focused[0][1][1:], ['tools/verification/run_tests.py', '-s', 'tools/verification/tests', '-q', '-p', 'test_cli.py', '-k', 'test_focused'])
+        defaults = {name: command for name, command, _ in selected('test python', ['tools/verification/run_tests.py'])}
+        self.assertEqual(defaults['Verification CLI contracts'], [sys.executable, 'tools/verification/run_tests.py', '-s', 'tools/verification/tests', '-q'])
+        self.assertEqual(set(defaults), {'Verification CLI contracts', 'Workflow capture contracts'})
+        for group, directory in (('Workflow capture contracts', 'tools/workflow/capture/tests'),):
             with self.subTest(group=group):
-                runner = [sys.executable, "tools/verification/run_tests.py", "-s", directory, "-q"]
+                runner = [sys.executable, 'tools/verification/run_tests.py', '-s', directory, '-q']
                 self.assertEqual(defaults[group], runner)
-                named, = selected(f"test python directory {directory} file test_*.py case trial")
-                self.assertEqual(named[1], [*runner, "-p", "test_*.py", "-k", "trial"])
-                batch = {name: command for name, command, _ in selected("commit", [directory + "/test_trial.py"])}
+                named, = selected(f'test python directory {directory} file test_*.py case trial')
+                self.assertEqual(named[1], [*runner, '-p', 'test_*.py', '-k', 'trial'])
+                batch = {name: command for name, command, _ in selected('commit', [directory + '/test_trial.py'])}
                 self.assertEqual(batch[group], runner)
 
     def test_default_python_selection_skips_unrelated_changes(self):
-        for changes in ([], ["crates/cpu/src/state.rs"], ["docs/testing.md"],
-                        ["tools/bootstrap/conversion-old/client.py"]):
-            self.assertEqual(selected("test python", changes), [])
+        for changes in ([], ['crates/cpu/src/state.rs'], ['docs/testing.md'], ['tools/bootstrap/conversion-old/client.py']):
+            self.assertEqual(selected('test python', changes), [])
 
     def test_default_python_selection_covers_owned_code_and_shared_dependencies(self):
-        parallel_suites = {"Verification CLI contracts", "Workflow capture contracts", "Workflow routing contracts"}
-        cases = (
-            ("tools/bootstrap/ensure_qdrant.ps1", {"Bootstrap contracts"}),
-            ("tools/bootstrap/bootstrap_graphify.ps1", {"Bootstrap contracts"}),
-            ("tools/graphify/refresh.py", {"Graphify contracts"}),
-            ("tools/graphify/semantic.py", {"Graphify contracts"}),
-            ("tools/graphify/read.py", {"Graphify contracts"}),
-            ("tools/graphify/tests/test_corpora.py", {"Graphify contracts"}),
-            ("tools/bootstrap/tests/test_bootstrap_contract.py", {"Bootstrap contracts"}),
-            ("tools/bootstrap/html-to-markdown/pipeline.py", {"Conversion contracts", "HTML conversion contracts"}),
-            ("tools/bootstrap/conversion/client.py", {"Conversion contracts", "HTML conversion contracts", "PDF conversion contracts",
-                                                      "Book review contracts"}),
-            ("tools/bootstrap/pdf-to-markdown/pipeline.py", {"Conversion contracts", "PDF conversion contracts",
-                                                              "Book review contracts"}),
-            ("tools/bootstrap/book-to-markdown/review/model.py", {"Book review contracts"}),
-            ("tools/amiga-rag-mcp-server/server.py", {"RAG MCP contracts"}),
-            (".codex/config.toml", {"RAG MCP contracts"}),
-            ("tools/artifacts/report.py", {"Artifact report contracts"}),
-            ("tools/artifacts/tests/test_report.py", {"Artifact report contracts"}),
-            ("tools/workflow/capture/records.py", {"Workflow capture contracts"}),
-            ("tools/workflow/capture/tests/test_records.py", {"Workflow capture contracts"}),
-            ("tools/workflow/result.py", {"Workflow routing contracts"}),
-            ("tools/workflow/result.schema.json", {"Workflow routing contracts"}),
-            ("tools/workflow/guidance.py", {"Workflow routing contracts"}),
-            ("tools/workflow/skill-matrix.json", {"Workflow routing contracts"}),
-            ("tools/workflow/review-routing.json", {"Workflow routing contracts"}),
-            ("tools/workflow/review_inputs.py", {"Workflow routing contracts"}),
-            ("tools/workflow/tests/test_review_routing.py", {"Workflow routing contracts"}),
-            ("tools/verification/tests/git_fixtures.py", parallel_suites),
-            ("tools/verification/case_report.py", parallel_suites),
-            ("tools/verification/repository.py", parallel_suites),
-            ("tools/verification/commands.py", {"Verification CLI contracts"}),
-            ("tools/web.ps1", {"Verification CLI contracts"}),
-        )
+        parallel_suites = {'Verification CLI contracts', 'Workflow capture contracts'}
+        cases = (('tools/bootstrap/ensure_qdrant.ps1', {'Bootstrap contracts'}), ('tools/bootstrap/bootstrap_graphify.ps1', {'Bootstrap contracts'}), ('tools/graphify/refresh.py', {'Graphify contracts'}), ('tools/graphify/semantic.py', {'Graphify contracts'}), ('tools/graphify/read.py', {'Graphify contracts'}), ('tools/graphify/tests/test_corpora.py', {'Graphify contracts'}), ('tools/bootstrap/tests/test_bootstrap_contract.py', {'Bootstrap contracts'}), ('tools/bootstrap/html-to-markdown/pipeline.py', {'Conversion contracts', 'HTML conversion contracts'}), ('tools/bootstrap/conversion/client.py', {'Conversion contracts', 'HTML conversion contracts', 'PDF conversion contracts', 'Book review contracts'}), ('tools/bootstrap/pdf-to-markdown/pipeline.py', {'Conversion contracts', 'PDF conversion contracts', 'Book review contracts'}), ('tools/bootstrap/book-to-markdown/review/model.py', {'Book review contracts'}), ('tools/amiga-rag-mcp-server/server.py', {'RAG MCP contracts'}), ('.codex/config.toml', {'RAG MCP contracts'}), ('tools/artifacts/report.py', {'Artifact report contracts'}), ('tools/artifacts/tests/test_report.py', {'Artifact report contracts'}), ('tools/workflow/capture/records.py', {'Workflow capture contracts'}), ('tools/workflow/capture/tests/test_records.py', {'Workflow capture contracts'}), ('tools/verification/tests/git_fixtures.py', parallel_suites), ('tools/verification/case_report.py', parallel_suites), ('tools/verification/repository.py', parallel_suites), ('tools/verification/commands.py', {'Verification CLI contracts'}), ('tools/web.ps1', {'Verification CLI contracts'}))
         for path, expected in cases:
             with self.subTest(path=path):
-                self.assertEqual({item[0] for item in selected("test python", [path])}, expected)
+                self.assertEqual({item[0] for item in selected('test python', [path])}, expected)
 
     def test_capture_contracts_follow_owning_changes_and_keep_full_rust_fallback(self):
-        group = "Workflow capture contracts"
-        for path in ("tools/workflow/capture/records.py", "tools/workflow/capture/tests/test_records.py"):
+        group = 'Workflow capture contracts'
+        for path in ('tools/workflow/capture/records.py', 'tools/workflow/capture/tests/test_records.py'):
             with self.subTest(path=path):
-                names = {item[0] for item in selected("commit", [path])}
-                self.assertTrue({group, "All ordinary crate tests", "All standard harness tests",
-                                 "RAG MCP contracts", "Artifact report contracts"} <= names)
-        for changes in ([], ["DIARY.md"], ["tools/workflow/result.py"], ["crates/cpu/src/cpu.rs"]):
+                names = {item[0] for item in selected('commit', [path])}
+                self.assertTrue({group, 'All ordinary crate tests', 'All standard harness tests', 'RAG MCP contracts', 'Artifact report contracts'} <= names)
+        for changes in ([], ['DIARY.md'], ['tools/workflow/result.py'], ['crates/cpu/src/cpu.rs']):
             with self.subTest(changes=changes):
-                self.assertNotIn(group, {item[0] for item in selected("commit", changes)})
+                self.assertNotIn(group, {item[0] for item in selected('commit', changes)})
 
     def test_root_ignore_rules_select_both_consumers_and_keep_full_rust_scope(self):
-        changes = [".gitignore"]
-        consumers = {"Verification CLI contracts", "Workflow capture contracts"}
-        self.assertEqual({name for name, _, _ in selected("test python", changes)}, consumers)
-        commit = {name for name, _, _ in selected("commit", changes)}
-        self.assertTrue(consumers | {"All ordinary crate tests", "All standard harness tests"} <= commit)
-
-    def test_workflow_routing_contracts_remain_scoped_without_narrowing_rust_fallback(self):
-        group = "Workflow routing contracts"
-        for path in ("tools/workflow/review_decision.py", "tools/workflow/result.schema.json"):
-            with self.subTest(path=path):
-                names = {item[0] for item in selected("commit", [path])}
-                self.assertTrue({group, "All ordinary crate tests", "All standard harness tests"} <= names)
-        for changes in ([], ["tools/workflow/capture/records.py"], ["crates/cpu/src/cpu.rs"]):
-            with self.subTest(changes=changes):
-                self.assertNotIn(group, {item[0] for item in selected("commit", changes)})
+        changes = ['.gitignore']
+        consumers = {'Verification CLI contracts', 'Workflow capture contracts'}
+        self.assertEqual({name for name, _, _ in selected('test python', changes)}, consumers)
+        commit = {name for name, _, _ in selected('commit', changes)}
+        self.assertTrue(consumers | {'All ordinary crate tests', 'All standard harness tests'} <= commit)
 
     def test_full_and_sampled_silicon_runs_override_inherited_selection(self):
-        commands = selected("test runner singlestep case test_add_b sample 500")
-        self.assertEqual(commands[0][2], {"SINGLESTEP_FULL": "0", "SINGLESTEP_LIMIT": "500"})
-        self.assertEqual(commands[0][1][-1], "test_add_b")
-        self.assertEqual(selected("test runner singlestep")[0][2],
-                         {"SINGLESTEP_FULL": "1", "SINGLESTEP_LIMIT": "all"})
+        commands = selected('test runner singlestep case test_add_b sample 500')
+        self.assertEqual(commands[0][2], {'SINGLESTEP_FULL': '0', 'SINGLESTEP_LIMIT': '500'})
+        self.assertEqual(commands[0][1][-1], 'test_add_b')
+        self.assertEqual(selected('test runner singlestep')[0][2], {'SINGLESTEP_FULL': '1', 'SINGLESTEP_LIMIT': 'all'})
 
     def test_commit_excludes_full_singlestep_even_for_cpu_changes(self):
-        for changes in ([], ["crates/cpu/src/cpu.rs"], ["Cargo.toml"],
-                        ["crates/cpu/tests/test_cck_bus.rs"], ["docs/testing.md"]):
-            commands = selected("commit", changes)
-            self.assertFalse(any("tools/verification/run_singlestep.py" in item[1] for item in commands))
+        for changes in ([], ['crates/cpu/src/cpu.rs'], ['Cargo.toml'], ['crates/cpu/tests/test_cck_bus.rs'], ['docs/testing.md']):
+            commands = selected('commit', changes)
+            self.assertFalse(any(('tools/verification/run_singlestep.py' in item[1] for item in commands)))
 
     def test_commit_checks_obsidian_frontmatter_without_git_change_selection(self):
-        for changes in ([], ["tools/verification/commands.py"]):
-            commands = selected("commit", changes)
-            self.assertTrue(any(item[1][-1] == "tools/verification/checks/check_obsidian_frontmatter.py"
-                                for item in commands))
+        for changes in ([], ['tools/verification/commands.py']):
+            commands = selected('commit', changes)
+            self.assertTrue(any((item[1][-1] == 'tools/verification/checks/check_obsidian_frontmatter.py' for item in commands)))
 
     def test_commit_always_builds_the_browser_application(self):
-        web = selected("check web")
+        web = selected('check web')
         self.assertEqual(len(web), 1)
-        self.assertEqual(web[0][0], "WebAssembly build")
-        self.assertEqual(web[0][1][-4:], ["-NoProfile", "-File", "tools/web.ps1", "build"])
-        for changes in ([], ["docs/testing.md"], ["crates/gui/src/app.rs"], ["Cargo.toml"]):
+        self.assertEqual(web[0][0], 'WebAssembly build')
+        self.assertEqual(web[0][1][-4:], ['-NoProfile', '-File', 'tools/web.ps1', 'build'])
+        for changes in ([], ['docs/testing.md'], ['crates/gui/src/app.rs'], ['Cargo.toml']):
             with self.subTest(changes=changes):
-                commands = selected("commit", changes)
-                self.assertEqual([item for item in commands if item[0] == "WebAssembly build"], web)
-        self.assertIn(web[0], selected("check all"))
+                commands = selected('commit', changes)
+                self.assertEqual([item for item in commands if item[0] == 'WebAssembly build'], web)
+        self.assertIn(web[0], selected('check all'))
 
     def test_empty_standard_harness_never_selects_all_cargo_targets(self):
-        with patch.object(Path, "glob", return_value=[Path("test_singlestep.rs")]):
-            commands = selected("commit")
-            self.assertFalse(any(item[1][:2] == ["cargo", "test"] for item in commands))
-            self.assertEqual(selected("test runner standard"), [])
+        with patch.object(Path, 'glob', return_value=[Path('test_singlestep.rs')]):
+            commands = selected('commit')
+            self.assertFalse(any((item[1][:2] == ['cargo', 'test'] for item in commands)))
+            self.assertEqual(selected('test runner standard'), [])
 
     def test_standard_harness_keeps_explicit_ordinary_targets(self):
-        with patch.object(Path, "glob", return_value=[Path("test_singlestep.rs"),
-                                                   Path("test_reports.rs")]):
-            commands = selection.harness_commands(["standard"])
-            self.assertEqual(commands[0][1], ["cargo", "test", "--no-fail-fast", "-p",
-                                              "test_runner", "--test", "test_reports",
-                                              "--", "--quiet"])
+        with patch.object(Path, 'glob', return_value=[Path('test_singlestep.rs'), Path('test_reports.rs')]):
+            commands = selection.harness_commands(['standard'])
+            self.assertEqual(commands[0][1], ['cargo', 'test', '--no-fail-fast', '-p', 'test_runner', '--test', 'test_reports', '--', '--quiet'])
 
     def test_explicit_singlestep_runs_once_alongside_automatic_selection(self):
-        commands = selected("milestone singlestep", ["crates/cpu/src/cpu.rs"])
-        self.assertEqual(sum("tools/verification/run_singlestep.py" in item[1]
-                             for item in commands), 1)
-        self.assertEqual(selected("test runner silicon")[0][1:],
-                         selected("test runner singlestep")[0][1:])
+        commands = selected('milestone singlestep', ['crates/cpu/src/cpu.rs'])
+        self.assertEqual(sum(('tools/verification/run_singlestep.py' in item[1] for item in commands)), 1)
+        self.assertEqual(selected('test runner silicon')[0][1:], selected('test runner singlestep')[0][1:])
 
     def test_ordinary_cpu_wait_tests_remain_in_normal_selection(self):
-        changes = ["crates/cpu/tests/test_cck_bus.rs"]
-        unit, = selected("test rust unit", changes)
-        self.assertEqual(unit[0], "Tier 1 ordinary crate tests")
-        self.assertEqual(unit[1][:2], ["cargo", "test"])
-        self.assertEqual(unit[1][unit[1].index("cpu") - 1], "-p")
-
-        commands = {name: command for name, command, _ in selected("commit", changes)}
-        ordinary = commands["Ordinary crate tests"]
-        self.assertEqual([value for option, value in zip(ordinary, ordinary[1:]) if option == "-p"],
-                         ["cpu", "debugger", "gui", "machine_loop", "save_state"])
-        self.assertNotIn("--workspace", ordinary)
-        self.assertIn("All standard harness tests", commands)
+        changes = ['crates/cpu/tests/test_cck_bus.rs']
+        unit, = selected('test rust unit', changes)
+        self.assertEqual(unit[0], 'Tier 1 ordinary crate tests')
+        self.assertEqual(unit[1][:2], ['cargo', 'test'])
+        self.assertEqual(unit[1][unit[1].index('cpu') - 1], '-p')
+        commands = {name: command for name, command, _ in selected('commit', changes)}
+        ordinary = commands['Ordinary crate tests']
+        self.assertEqual([value for option, value in zip(ordinary, ordinary[1:]) if option == '-p'], ['cpu', 'debugger', 'gui', 'machine_loop', 'save_state'])
+        self.assertNotIn('--workspace', ordinary)
+        self.assertIn('All standard harness tests', commands)
 
     def test_milestone_retains_separate_scope(self):
-        for changes in ([], ["crates/cpu/src/cpu.rs"], ["docs/testing.md"]):
-            commands = selected("milestone", changes)
-            self.assertEqual(commands, [("Full SingleStepTests",
-                                         [sys.executable, "tools/verification/run_singlestep.py",
-                                          "--profile", "verification"],
-                                         {"SINGLESTEP_FULL": "1", "SINGLESTEP_LIMIT": "all"})])
+        for changes in ([], ['crates/cpu/src/cpu.rs'], ['docs/testing.md']):
+            commands = selected('milestone', changes)
+            self.assertEqual(commands, [('Full SingleStepTests', [sys.executable, 'tools/verification/run_singlestep.py', '--profile', 'verification'], {'SINGLESTEP_FULL': '1', 'SINGLESTEP_LIMIT': 'all'})])
 
     def test_commit_skips_rust_but_keeps_quality_and_python_suites_for_bootstrap_changes(self):
-        commands = selected("commit", ["tools/bootstrap/book-to-markdown/review/service.py"])
-        self.assertFalse(any("llvm-cov" in item[1] or item[1][:2] == ["cargo", "test"] for item in commands))
-        self.assertTrue(any(any(part.endswith("checks/check_architecture.py") for part in item[1]) for item in commands))
-        self.assertEqual([name for name, command, _ in commands if "discover" in command],
-                         ["Bootstrap contracts", "Graphify contracts", "Conversion contracts",
-                          "HTML conversion contracts", "PDF conversion contracts", "RAG MCP contracts",
-                          "Artifact report contracts"])
-        self.assertTrue(any("tools/bootstrap/book-to-markdown/run_tests.py" in item[1] for item in commands))
+        commands = selected('commit', ['tools/bootstrap/book-to-markdown/review/service.py'])
+        self.assertFalse(any(('llvm-cov' in item[1] or item[1][:2] == ['cargo', 'test'] for item in commands)))
+        self.assertTrue(any((any((part.endswith('checks/check_architecture.py') for part in item[1])) for item in commands)))
+        self.assertEqual([name for name, command, _ in commands if 'discover' in command], ['Bootstrap contracts', 'Graphify contracts', 'Conversion contracts', 'HTML conversion contracts', 'PDF conversion contracts', 'RAG MCP contracts', 'Artifact report contracts'])
+        self.assertTrue(any(('tools/bootstrap/book-to-markdown/run_tests.py' in item[1] for item in commands)))
 
     def test_language_data_keeps_commit_gates_without_expanding_rust(self):
-        self.enterContext(patch.object(impact, "workspace_graph", return_value=self.gui_graph()))
-        gui_path = "crates/gui/src/lib.rs"
-        docs = selected("commit", ["docs/testing.md"])
-        gui = selected("commit", [gui_path])
+        self.enterContext(patch.object(impact, 'workspace_graph', return_value=self.gui_graph()))
+        gui_path = 'crates/gui/src/lib.rs'
+        docs = selected('commit', ['docs/testing.md'])
+        gui = selected('commit', [gui_path])
         names = {name for name, _, _ in docs}
-        self.assertTrue({"Architecture Rules", "Clippy Invariants"} <= names)
-        self.assertNotIn("Strict English Policy", names)
-        self.assertFalse(any("llvm-cov" in command or command[:2] == ["cargo", "test"]
-                             for _, command, _ in docs))
-        self.assertNotIn("Verification CLI contracts", names)
-        for path, expected in (("tools/verification/checks/english_words/programming.txt", []),
-                               ("tools/verification/checks/check_english.json", ["Verification CLI contracts"])):
+        self.assertTrue({'Architecture Rules', 'Clippy Invariants'} <= names)
+        self.assertNotIn('Strict English Policy', names)
+        self.assertFalse(any(('llvm-cov' in command or command[:2] == ['cargo', 'test'] for _, command, _ in docs)))
+        self.assertNotIn('Verification CLI contracts', names)
+        for path, expected in (('tools/verification/checks/english_words/programming.txt', []), ('tools/verification/checks/check_english.json', ['Verification CLI contracts'])):
             with self.subTest(path=path):
                 for changes, baseline in (([path], docs), ([gui_path, path], gui)):
-                    commands = selected("commit", changes)
+                    commands = selected('commit', changes)
                     self.assertEqual(commands[:len(baseline)], baseline)
                     self.assertEqual([name for name, _, _ in commands[len(baseline):]], expected)
 
     def gui_graph(self):
-        return {selection.REPO_ROOT / "crates/gui": "gui"}, {"gui": set()}
+        return ({selection.REPO_ROOT / 'crates/gui': 'gui'}, {'gui': set()})
 
     def test_partial_coverage_runs_once_and_exports_the_same_packages(self):
-        with patch.object(selection, "select_rust_scope", return_value=RustScope(("cpu", "gui", "test_runner"), "fixture")):
-            commands = selected("commit", ["crates/cpu/src/cpu.rs"])
-        run = next(command for _, command, _ in commands if "--no-report" in command)
-        self.assertEqual(run[:3], ["cargo", "llvm-cov", "nextest"])
-        self.assertIn("--no-fail-fast", run)
-        for option, value in (("--profile", "default"), ("--retries", "0"), ("--no-tests", "fail"),
-                              ("--config-file", ".config/nextest.toml")):
+        with patch.object(selection, 'select_rust_scope', return_value=RustScope(('cpu', 'gui', 'test_runner'), 'fixture')):
+            commands = selected('commit', ['crates/cpu/src/cpu.rs'])
+        run = next((command for _, command, _ in commands if '--no-report' in command))
+        self.assertEqual(run[:3], ['cargo', 'llvm-cov', 'nextest'])
+        self.assertIn('--no-fail-fast', run)
+        for option, value in (('--profile', 'default'), ('--retries', '0'), ('--no-tests', 'fail'), ('--config-file', '.config/nextest.toml')):
             self.assertEqual(run[run.index(option) + 1], value)
-        export = next(command for _, command, _ in commands if "--json" in command)
-        self.assertNotIn("--summary-only", export)
-        self.assertEqual(export[-2:], ["--output-path", ".agent/tmp/coverage/coverage.json"])
-        summary = next(command for _, command, _ in commands
-                       if "tools/verification/coverage_report.py" in command and "--prepare" not in command)
+        export = next((command for _, command, _ in commands if '--json' in command))
+        self.assertNotIn('--summary-only', export)
+        self.assertEqual(export[-2:], ['--output-path', '.agent/tmp/coverage/coverage.json'])
+        summary = next((command for _, command, _ in commands if 'tools/verification/coverage_report.py' in command and '--prepare' not in command))
         for command in (run, export):
-            self.assertEqual([command[i + 1] for i, word in enumerate(command) if word == "-p"], ["cpu", "gui"])
-            self.assertNotIn("--workspace", command)
-        self.assertEqual(summary[-4:], ["--package", "cpu", "--package", "gui"])
-        plain = [command for _, command, _ in commands if command[:2] == ["cargo", "test"]]
+            self.assertEqual([command[i + 1] for i, word in enumerate(command) if word == '-p'], ['cpu', 'gui'])
+            self.assertNotIn('--workspace', command)
+        self.assertEqual(summary[-4:], ['--package', 'cpu', '--package', 'gui'])
+        plain = [command for _, command, _ in commands if command[:2] == ['cargo', 'test']]
         self.assertEqual(len(plain), 1)
-        self.assertIn("test_runner", plain[0])
-        self.assertNotIn("test_singlestep", plain[0])
+        self.assertIn('test_runner', plain[0])
+        self.assertNotIn('test_singlestep', plain[0])
 
     def test_orchestration_keeps_all_quality_gates_and_python_contracts(self):
-        self.enterContext(patch.object(impact, "workspace_graph", return_value=self.gui_graph()))
-        gates = {"Obsidian Frontmatter", "Formatting", "Clippy Invariants",
-                 "Architecture Rules", "Hardware Quality", "Code Quality", "WebAssembly build",
-                 "Graphify contracts", "RAG MCP contracts", "Artifact report contracts"}
-        self.assertEqual({name for name, _, _ in selected("commit", ["docs/testing.md"])}, gates)
-        gates.add("Verification CLI contracts")
-        coverage = {"Prepare coverage report", "Reset coverage counters", "Ordinary crate tests",
-                    "Export ordinary crate coverage", "Ordinary crate coverage summary"}
-        for path in ("tools/verification/verify.py", "tools/verification/execution.py",
-                     "tools/verification/evidence.py", "tools/verification/batch_lock.py",
-                     "tools/verification/tests/test_evidence.py"):
+        self.enterContext(patch.object(impact, 'workspace_graph', return_value=self.gui_graph()))
+        gates = {'Obsidian Frontmatter', 'Formatting', 'Clippy Invariants', 'Architecture Rules', 'Hardware Quality', 'Code Quality', 'WebAssembly build', 'Graphify contracts', 'RAG MCP contracts', 'Artifact report contracts'}
+        self.assertEqual({name for name, _, _ in selected('commit', ['docs/testing.md'])}, gates)
+        gates.add('Verification CLI contracts')
+        coverage = {'Prepare coverage report', 'Reset coverage counters', 'Ordinary crate tests', 'Export ordinary crate coverage', 'Ordinary crate coverage summary'}
+        for path in ('tools/verification/verify.py', 'tools/verification/execution.py', 'tools/verification/evidence.py', 'tools/verification/batch_lock.py', 'tools/verification/tests/test_evidence.py'):
             with self.subTest(path=path):
-                self.assertEqual({name for name, _, _ in selected("commit", [path])}, gates)
-                gui = {name: command for name, command, _ in selected("commit", ["crates/gui/src/lib.rs", path])}
+                self.assertEqual({name for name, _, _ in selected('commit', [path])}, gates)
+                gui = {name: command for name, command, _ in selected('commit', ['crates/gui/src/lib.rs', path])}
                 self.assertEqual(set(gui), gates | coverage)
-                run = gui["Ordinary crate tests"]
-                self.assertEqual([value for option, value in zip(run, run[1:]) if option == "-p"], ["gui"])
-                self.assertNotIn("--workspace", run)
-        for path in ("tools/verification/commands.py", "tools/verification/impact.py",
-                     "tools/verification/repository.py", "tools/verification/new_module.py"):
+                run = gui['Ordinary crate tests']
+                self.assertEqual([value for option, value in zip(run, run[1:]) if option == '-p'], ['gui'])
+                self.assertNotIn('--workspace', run)
+        for path in ('tools/verification/commands.py', 'tools/verification/impact.py', 'tools/verification/repository.py', 'tools/verification/new_module.py'):
             with self.subTest(path=path):
-                commands = selected("commit", ["tools/verification/evidence.py", path])
-                run = next(command for _, command, _ in commands if "--no-report" in command)
-                self.assertIn("--workspace", run)
-                self.assertIn("All standard harness tests", {name for name, _, _ in commands})
-
-    def test_only_audited_directory_commands_can_overlap_coverage(self):
-        contracts = selection.python_commands(include_bootstrap=True)
-        coverage = ("Coverage", "Coverage", selection.select_coverage_commands("commit"))
-        groups = [coverage, *(("Verification", item[0], [item]) for item in contracts)]
-        waves = [[name for _, name, _ in wave] for wave in verify.execution_waves(groups)]
-        self.assertEqual(waves[0], ["Coverage", "RAG MCP contracts", "Artifact report contracts"])
-        self.assertIn(["Verification CLI contracts"], waves[1:])
-        self.assertCountEqual([name for wave in waves for name in wave], [name for _, name, _ in groups])
-        fake = ("RAG MCP contracts", [sys.executable, "-c", "pass"], {})
-        self.assertFalse(selection.independent_contract(fake[0], [fake]))
+                commands = selected('commit', ['tools/verification/evidence.py', path])
+                run = next((command for _, command, _ in commands if '--no-report' in command))
+                self.assertIn('--workspace', run)
+                self.assertIn('All standard harness tests', {name for name, _, _ in commands})
 
     def test_development_coverage_reuses_pipeline_without_completion_gates(self):
-        for sentence, package in (("test coverage crate cpu", "cpu"),
-                                  ("test coverage workspace", None)):
+        for sentence, package in (('test coverage crate cpu', 'cpu'), ('test coverage workspace', None)):
             with self.subTest(sentence=sentence):
                 commands = selected(sentence)
                 self.assertEqual(len(commands), 5)
-                run = next(command for _, command, _ in commands if "--no-report" in command)
-                self.assertNotIn("cargo test", " ".join(run))
+                run = next((command for _, command, _ in commands if '--no-report' in command))
+                self.assertNotIn('cargo test', ' '.join(run))
                 if package:
-                    self.assertEqual(run[run.index("-p") + 1], package)
-                    self.assertNotIn("--workspace", run)
+                    self.assertEqual(run[run.index('-p') + 1], package)
+                    self.assertNotIn('--workspace', run)
                 else:
-                    self.assertIn("--workspace", run)
-                    self.assertEqual(run[run.index("--exclude") + 1], "test_runner")
-                self.assertFalse(any("check_" in " ".join(command) for _, command, _ in commands))
-                self.assertFalse(any("run_singlestep.py" in " ".join(command) for _, command, _ in commands))
+                    self.assertIn('--workspace', run)
+                    self.assertEqual(run[run.index('--exclude') + 1], 'test_runner')
+                self.assertFalse(any(('check_' in ' '.join(command) for _, command, _ in commands)))
+                self.assertFalse(any(('run_singlestep.py' in ' '.join(command) for _, command, _ in commands)))
 
     def test_coverage_rejects_unknown_packages_harness_and_partial_test_filters(self):
-        for sentence in ("test coverage crate unknown_package", "test coverage crate test_runner",
-                         "test coverage crate cpu suite test_add", "test coverage workspace --exact"):
+        for sentence in ('test coverage crate unknown_package', 'test coverage crate test_runner', 'test coverage crate cpu suite test_add', 'test coverage workspace --exact'):
             with self.subTest(sentence=sentence), self.assertRaises(ValueError):
                 selected(sentence)
 
     def test_unaffected_runner_is_skipped_and_harness_only_change_has_no_coverage(self):
-        for packages, harness, coverage in ((("gui",), False, True), (("test_runner",), True, False), ((), False, False)):
-            with self.subTest(packages=packages), patch.object(selection, "select_rust_scope", return_value=RustScope(packages, "fixture")):
-                commands = selected("commit", ["docs/testing.md"])
-            self.assertEqual(any(command[:2] == ["cargo", "test"] for _, command, _ in commands), harness)
-            self.assertEqual(any("llvm-cov" in command for _, command, _ in commands), coverage)
-            self.assertIn([sys.executable, "tools/verification/checks/check_clippy_policy.py"],
-                          [command for _, command, _ in commands])
+        for packages, harness, coverage in ((('gui',), False, True), (('test_runner',), True, False), ((), False, False)):
+            with self.subTest(packages=packages), patch.object(selection, 'select_rust_scope', return_value=RustScope(packages, 'fixture')):
+                commands = selected('commit', ['docs/testing.md'])
+            self.assertEqual(any((command[:2] == ['cargo', 'test'] for _, command, _ in commands)), harness)
+            self.assertEqual(any(('llvm-cov' in command for _, command, _ in commands)), coverage)
+            self.assertIn([sys.executable, 'tools/verification/checks/check_clippy_policy.py'], [command for _, command, _ in commands])
 
     def test_commit_skips_bootstrap_contracts_without_bootstrap_changes(self):
-        bootstrap = {"Bootstrap contracts", "Conversion contracts", "HTML conversion contracts",
-                     "PDF conversion contracts", "Book review contracts"}
-        for changes in ([], ["crates/cpu/src/cpu.rs"], ["tools/verification/commands.py"]):
+        bootstrap = {'Bootstrap contracts', 'Conversion contracts', 'HTML conversion contracts', 'PDF conversion contracts', 'Book review contracts'}
+        for changes in ([], ['crates/cpu/src/cpu.rs'], ['tools/verification/commands.py']):
             with self.subTest(changes=changes):
-                names = {name for name, _, _ in selected("commit", changes)}
+                names = {name for name, _, _ in selected('commit', changes)}
                 self.assertFalse(names & bootstrap)
-                self.assertIn("RAG MCP contracts", names)
-                self.assertIn("Artifact report contracts", names)
-                self.assertEqual("Verification CLI contracts" in names,
-                                 any(selection.verification_contract_input(path) for path in changes))
-        for path in ("tools/bootstrap/conversion/client.py",
-                     "tools/bootstrap/books/new/source.json"):
+                self.assertIn('RAG MCP contracts', names)
+                self.assertIn('Artifact report contracts', names)
+                self.assertEqual('Verification CLI contracts' in names, any((selection.verification_contract_input(path) for path in changes)))
+        for path in ('tools/bootstrap/conversion/client.py', 'tools/bootstrap/books/new/source.json'):
             with self.subTest(path=path):
-                names = {name for name, _, _ in selected("commit", [path])}
+                names = {name for name, _, _ in selected('commit', [path])}
                 self.assertEqual(names & bootstrap, bootstrap)
 
     def test_focused_architecture_filter_does_not_select_other_checks(self):
-        commands = selected("check architecture case test_file_size_limits")
+        commands = selected('check architecture case test_file_size_limits')
         self.assertEqual(len(commands), 1)
-        self.assertEqual(commands[0][1][:-1], [sys.executable, "tools/verification/checks/check_architecture.py"])
-        self.assertEqual(commands[0][1][-1], "test_file_size_limits")
+        self.assertEqual(commands[0][1][:-1], [sys.executable, 'tools/verification/checks/check_architecture.py'])
+        self.assertEqual(commands[0][1][-1], 'test_file_size_limits')
 
     def test_explicit_language_and_all_keep_the_scanner(self):
-        scanner = [sys.executable, "tools/verification/checks/check_english.py"]
-        plain = ("Strict English Policy", scanner, {})
-        self.assertEqual(selected("check english"), [plain])
-        self.assertEqual(selected("check english files docs/testing.md AGENTS.md"),
-                         [("Strict English Policy", scanner + ["docs/testing.md", "AGENTS.md"], {})])
-        all_checks = selected("check all")
-        self.assertEqual([name for name, _, _ in all_checks],
-                         ["Strict English Policy", "Obsidian Frontmatter", "Formatting", "Clippy Invariants",
-                          "WebAssembly build", "Architecture Rules", "Hardware Quality", "Code Quality"])
+        scanner = [sys.executable, 'tools/verification/checks/check_english.py']
+        plain = ('Strict English Policy', scanner, {})
+        self.assertEqual(selected('check english'), [plain])
+        self.assertEqual(selected('check english files docs/testing.md AGENTS.md'), [('Strict English Policy', scanner + ['docs/testing.md', 'AGENTS.md'], {})])
+        all_checks = selected('check all')
+        self.assertEqual([name for name, _, _ in all_checks], ['Strict English Policy', 'Obsidian Frontmatter', 'Formatting', 'Clippy Invariants', 'WebAssembly build', 'Architecture Rules', 'Hardware Quality', 'Code Quality'])
         self.assertEqual([command for _, command, _ in all_checks if scanner[1] in command], [scanner])
 
     def test_settings_can_follow_subcommands_without_eating_runner_arguments(self):
-        _, args = parse_args(["runner", "bench", "--log-level", "full", "--plan", "case", "add/add_w_d1_d0"])
+        _, args = parse_args(['runner', 'bench', '--log-level', 'full', '--plan', 'case', 'add/add_w_d1_d0'])
         self.assertTrue(args.plan)
-        self.assertEqual(args.log_level, "full")
+        self.assertEqual(args.log_level, 'full')
         command = select_phases(args, set())[0][1][0][1]
-        self.assertEqual(command[1:3], ["tools/verification/cpu_performance_tests.py", "measure"])
-        self.assertEqual(command[-2:], ["case", "add/add_w_d1_d0"])
+        self.assertEqual(command[1:3], ['tools/verification/cpu_performance_tests.py', 'measure'])
+        self.assertEqual(command[-2:], ['case', 'add/add_w_d1_d0'])
 
     def test_report_output_is_visible_by_default_and_can_be_overridden(self):
-        self.assertEqual(parse_args(["runner", "analyze", "fixture.csv"])[1].log_level, "full")
-        self.assertEqual(parse_args(["runner", "analyze", "fixture.csv", "--log-level", "error"])[1].log_level, "error")
-        self.assertEqual(parse_args(["commit"])[1].log_level, "warn")
+        self.assertEqual(parse_args(['runner', 'analyze', 'fixture.csv'])[1].log_level, 'full')
+        self.assertEqual(parse_args(['runner', 'analyze', 'fixture.csv', '--log-level', 'error'])[1].log_level, 'error')
+        self.assertEqual(parse_args(['commit'])[1].log_level, 'warn')
 
     def test_benchmark_selects_cpu_performance_tests(self):
-        self.assertEqual(selected("runner bench case add/add_w_d1_d0")[0][1][1:],
-                         ["tools/verification/cpu_performance_tests.py", "measure", "case", "add/add_w_d1_d0"])
-        self.assertEqual(selected("runner analyze full_run")[0][1][1:],
-                         ["tools/verification/cpu_performance_tests.py", "analyze", "full_run"])
-        self.assertEqual(selected("runner bench cases selected.txt")[0][1][1:],
-                         ["tools/verification/cpu_performance_tests.py", "measure", "cases",
-                          "selected.txt"])
-        self.assertEqual(selected("runner refresh filtered_run")[0][1][1:],
-                         ["tools/verification/cpu_performance_tests.py", "refresh", "filtered_run"])
+        self.assertEqual(selected('runner bench case add/add_w_d1_d0')[0][1][1:], ['tools/verification/cpu_performance_tests.py', 'measure', 'case', 'add/add_w_d1_d0'])
+        self.assertEqual(selected('runner analyze full_run')[0][1][1:], ['tools/verification/cpu_performance_tests.py', 'analyze', 'full_run'])
+        self.assertEqual(selected('runner bench cases selected.txt')[0][1][1:], ['tools/verification/cpu_performance_tests.py', 'measure', 'cases', 'selected.txt'])
+        self.assertEqual(selected('runner refresh filtered_run')[0][1][1:], ['tools/verification/cpu_performance_tests.py', 'refresh', 'filtered_run'])
 
     def test_refresh_allows_intended_current_snapshot_change(self):
-        with tempfile.TemporaryDirectory() as temporary, \
-             patch.object(verify, "REPO_ROOT", Path(temporary)), \
-             patch.object(verify, "execute_command", return_value=(True, "refreshed", 0.1)), \
-             patch.object(verify, "snapshot") as snapshot, \
-             contextlib.redirect_stdout(io.StringIO()):
-            self.assertEqual(verify.main(["runner", "refresh", "filtered_run"]), 0)
-        snapshot.assert_not_called()
+        with tempfile.TemporaryDirectory() as temporary, patch.object(verify, 'REPO_ROOT', Path(temporary)), patch.object(verify, 'execute_command', return_value=(True, 'refreshed', 0.1)), contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(verify.main(['runner', 'refresh', 'filtered_run']), 0)
 
     def test_gui_keeps_its_separate_native_options(self):
-        self.assertEqual(selected("runner gui -- --frames 10")[0][1][-2:], ["--frames", "10"])
+        self.assertEqual(selected('runner gui -- --frames 10')[0][1][-2:], ['--frames', '10'])
 
     def test_invalid_sentences_are_rejected(self):
-        for sentence in ("test rust suite missing", "test rust crate cpu crate gui",
-                         "test python directory missing", "test runner dma", "test runner harness",
-                         "test runner dma sample 50", "milestone dma",
-                         "test runner singlestep sample 0", "test runner singlestep sample 50 full",
-                         "milestone singlestep singlestep", "check english case name",
-                         "runner bench -- --quick", "runner bench measure retry",
-                         "runner bench duration-ms 0", "runner bench series 0",
-                         "runner bench case add/add_w_d1_d0 mnemonic ADD",
-                         "runner bench measure filter ADD", "runner bench measure unroll 500",
-                         "runner bench measure passes 9", "runner bench measure output reports",
-                         "runner bench measure pin off", "runner bench unroll"):
+        for sentence in ('test rust suite missing', 'test rust crate cpu crate gui', 'test python directory missing', 'test runner dma', 'test runner harness', 'test runner dma sample 50', 'milestone dma', 'test runner singlestep sample 0', 'test runner singlestep sample 50 full', 'milestone singlestep singlestep', 'check english case name', 'runner bench -- --quick', 'runner bench measure retry', 'runner bench duration-ms 0', 'runner bench series 0', 'runner bench case add/add_w_d1_d0 mnemonic ADD', 'runner bench measure filter ADD', 'runner bench measure unroll 500', 'runner bench measure passes 9', 'runner bench measure output reports', 'runner bench measure pin off', 'runner bench unroll'):
             with self.subTest(sentence=sentence), self.assertRaises(ValueError):
                 selected(sentence)
 
-
 class CommandExecutionTests(unittest.TestCase):
+
     def test_exact_rust_run_rejects_zero_matching_tests(self):
         for count, expected in ((0, 1), (1, 0)):
             process = unittest.mock.MagicMock()
             process.__enter__.return_value = process
-            process.stdout = [f"running {count} test{'s' if count != 1 else ''}\n"]
+            process.stdout = [f"running {count} test{('s' if count != 1 else '')}\n"]
             process.wait.return_value = 0
-            with self.subTest(count=count), tempfile.TemporaryDirectory() as temporary, \
-                 patch.object(execution.subprocess, "Popen", return_value=process), \
-                 contextlib.redirect_stdout(io.StringIO()):
-                code, _ = execution.run_cmd(["cargo", "test", "--", "case", "--exact"],
-                                             log_dir=temporary)
+            with self.subTest(count=count), tempfile.TemporaryDirectory() as temporary, patch.object(execution.subprocess, 'Popen', return_value=process), contextlib.redirect_stdout(io.StringIO()):
+                code, _ = execution.run_cmd(['cargo', 'test', '--', 'case', '--exact'], log_dir=temporary)
             self.assertEqual(code, expected)
 
-
 class ExecutionTests(unittest.TestCase):
+
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name)
-        restore_repository("empty", self.root)
+        restore_repository('empty', self.root)
         ignore_archive(self.root)
-        self.enterContext(patch.object(verify, "REPO_ROOT", self.root))
+        self.enterContext(patch.object(verify, 'REPO_ROOT', self.root))
 
     def test_cold_profiles_launch_the_remaining_commands_and_keep_gate_failures(self):
-        note = self.root / "docs/testing.md"
+        note = self.root / 'docs/testing.md'
         note.parent.mkdir()
-        note.write_text("The notes changed.\n", encoding="utf-8")
-        quality = ["tools/verification/checks/check_obsidian_frontmatter.py", "fmt",
-                   "tools/verification/checks/check_architecture.py",
-                   "tools/verification/checks/audit_hardware_quality.py",
-                   "tools/verification/checks/audit_code_quality.py",
-                   "tools/verification/checks/check_clippy_policy.py", "-NoProfile"]
-        expected = [
-            (["commit"], quality, None),
-            (["milestone"], ["tools/verification/run_singlestep.py"], None),
-            (["milestone", "singlestep"], ["tools/verification/run_singlestep.py"], None),
-            (["commit"], quality[:5], "tools/verification/checks/check_architecture.py"),
-        ]
+        note.write_text('The notes changed.\n', encoding='utf-8')
+        quality = ['tools/verification/checks/check_obsidian_frontmatter.py', 'fmt', 'tools/verification/checks/check_architecture.py', 'tools/verification/checks/audit_hardware_quality.py', 'tools/verification/checks/audit_code_quality.py', 'tools/verification/checks/check_clippy_policy.py', '-NoProfile']
+        expected = [(['commit'], quality, None), (['milestone'], ['tools/verification/run_singlestep.py'], None), (['milestone', 'singlestep'], ['tools/verification/run_singlestep.py'], None), (['commit'], quality[:5], 'tools/verification/checks/check_architecture.py')]
         native = verify.execute_command
         for index, (arguments, launched, failed) in enumerate(expected):
             with self.subTest(arguments=arguments, fail=failed):
@@ -509,228 +364,152 @@ class ExecutionTests(unittest.TestCase):
 
                 def substitute(command, overrides, **options):
                     observed.append((command, overrides))
-                    child = f"raise SystemExit({int(command[1] == failed)})"
-                    if "SINGLESTEP_RESULTS_DIR" in overrides:
-                        child = ("import os; from pathlib import Path; "
-                                 "out = Path(os.environ['SINGLESTEP_RESULTS_DIR']); out.mkdir(parents=True); "
-                                 "[(out / name).write_text('{}') for name in "
-                                 "('run.json', 'timing.json', 'summary.json', 'execution.log')]")
-                    return native([sys.executable, "-c", child], overrides, **options)
-
-                with patch.object(verify, "execute_command", side_effect=substitute), \
-                     patch.object(verify, "stable_update_notice", return_value=""), \
-                     patch.object(verify, "execution_conditions", return_value="test"), \
-                     patch.object(execution, "REPO_ROOT", self.root), \
-                     contextlib.redirect_stdout(io.StringIO()) as output:
-                    code = verify.main([*arguments, "--results-dir", f".agent/tmp/profile-test/{index}"])
+                    child = f'raise SystemExit({int(command[1] == failed)})'
+                    if 'SINGLESTEP_RESULTS_DIR' in overrides:
+                        child = "import os; from pathlib import Path; out = Path(os.environ['SINGLESTEP_RESULTS_DIR']); out.mkdir(parents=True); [(out / name).write_text('{}') for name in ('run.json', 'timing.json', 'summary.json', 'execution.log')]"
+                    return native([sys.executable, '-c', child], overrides, **options)
+                with patch.object(verify, 'execute_command', side_effect=substitute), patch.object(verify, 'stable_update_notice', return_value=''), patch.object(execution, 'REPO_ROOT', self.root), contextlib.redirect_stdout(io.StringIO()) as output:
+                    code = verify.main([*arguments, '--results-dir', f'.agent/tmp/profile-test/{index}'])
                 self.assertEqual(code, int(failed is not None), output.getvalue())
-                observed_gates = [(command, overrides) for command, overrides in observed
-                                  if any(part in quality or part.endswith("/run_singlestep.py")
-                                         for part in command)]
+                observed_gates = [(command, overrides) for command, overrides in observed if any((part in quality or part.endswith('/run_singlestep.py') for part in command))]
                 self.assertCountEqual([command[1] for command, _ in observed_gates], launched)
-                self.assertFalse(any(part.endswith("/check_english.py")
-                                     for command, _ in observed for part in command))
-                if arguments[0] == "milestone":
+                self.assertFalse(any((part.endswith('/check_english.py') for command, _ in observed for part in command)))
+                if arguments[0] == 'milestone':
                     (command, overrides), = observed
-                    self.assertEqual(command[-2:], ["--profile", "verification"])
-                    self.assertEqual([overrides[name] for name in ("SINGLESTEP_FULL", "SINGLESTEP_LIMIT")],
-                                     ["1", "all"])
+                    self.assertEqual(command[-2:], ['--profile', 'verification'])
+                    self.assertEqual([overrides[name] for name in ('SINGLESTEP_FULL', 'SINGLESTEP_LIMIT')], ['1', 'all'])
 
     def test_plan_shows_isolated_logs_and_singlestep_reports_without_writing(self):
-        with patch.object(verify, "execute_command") as execute, \
-             contextlib.redirect_stdout(io.StringIO()) as output:
-            self.assertEqual(verify.main(["test", "runner", "singlestep", "case", "test_add_b",
-                                          "--exact", "--results-dir", ".agent/tmp/experiments/add",
-                                          "--plan"]), 0)
+        with patch.object(verify, 'execute_command') as execute, contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(verify.main(['test', 'runner', 'singlestep', 'case', 'test_add_b', '--exact', '--results-dir', '.agent/tmp/experiments/add', '--plan']), 0)
         execute.assert_not_called()
-        self.assertIn(f"[PLAN] Verifier logs: {self.root / '.agent/tmp/experiments/add/verify'}",
-                      output.getvalue())
-        self.assertIn("SINGLESTEP_RESULTS_DIR", output.getvalue())
-        self.assertIn(repr(str(self.root / ".agent/tmp/experiments/add/singlestep")),
-                      output.getvalue())
-        self.assertFalse((self.root / ".agent/tmp/verification/diagnostics").exists())
+        self.assertIn(f"[PLAN] Verifier logs: {self.root / '.agent/tmp/experiments/add/verify'}", output.getvalue())
+        self.assertIn('SINGLESTEP_RESULTS_DIR', output.getvalue())
+        self.assertIn(repr(str(self.root / '.agent/tmp/experiments/add/singlestep')), output.getvalue())
+        self.assertFalse((self.root / '.agent/tmp/verification/diagnostics').exists())
 
     def test_results_directory_reaches_execution_and_singlestep_environment(self):
-        with patch.object(verify, "execute_command", return_value=(True, "ok", 0)) as execute, \
-             patch.object(verify, "snapshot", return_value="same"), \
-             contextlib.redirect_stdout(io.StringIO()):
-            self.assertEqual(verify.main(["test", "runner", "singlestep", "case", "test_add_b",
-                                          "--results-dir", ".agent/tmp/experiments/add"]), 0)
-        self.assertEqual(execute.call_args.kwargs["log_dir"],
-                         self.root / ".agent/tmp/experiments/add/verify")
-        self.assertEqual(execute.call_args.args[1]["SINGLESTEP_RESULTS_DIR"],
-                         str(self.root / ".agent/tmp/experiments/add/singlestep"))
+        with patch.object(verify, 'execute_command', return_value=(True, 'ok', 0)) as execute, contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(verify.main(['test', 'runner', 'singlestep', 'case', 'test_add_b', '--results-dir', '.agent/tmp/experiments/add']), 0)
+        self.assertEqual(execute.call_args.kwargs['log_dir'], self.root / '.agent/tmp/experiments/add/verify')
+        self.assertEqual(execute.call_args.args[1]['SINGLESTEP_RESULTS_DIR'], str(self.root / '.agent/tmp/experiments/add/singlestep'))
 
     def test_diagnostic_reports_are_unique_and_external_logs_keep_their_route(self):
-        diagnostics = self.root / ".agent/tmp/verification/diagnostics"
-        with tempfile.TemporaryDirectory() as temporary, \
-             patch.object(verify, "execute_command", side_effect=[(True, "ok", 1), (False, "failed", 2)]) as execute, \
-             patch.object(verify, "snapshot", return_value="stable"), \
-             contextlib.redirect_stdout(io.StringIO()) as output:
+        diagnostics = self.root / '.agent/tmp/verification/diagnostics'
+        with tempfile.TemporaryDirectory() as temporary, patch.object(verify, 'execute_command', side_effect=[(True, 'ok', 1), (False, 'failed', 2)]) as execute, contextlib.redirect_stdout(io.StringIO()) as output:
             external = Path(temporary)
-            args = ["test", "runner", "singlestep", "case", "test_add_b", "--results-dir", str(external)]
+            args = ['test', 'runner', 'singlestep', 'case', 'test_add_b', '--results-dir', str(external)]
             self.assertEqual(verify.main(args), 0, output.getvalue())
-            first, = diagnostics.glob("*/test-runtime-report.md")
+            first, = diagnostics.glob('*/test-runtime-report.md')
             first_bytes = first.read_bytes()
             self.assertEqual(verify.main(args), 1, output.getvalue())
-            second, = set(diagnostics.glob("*/test-runtime-report.md")) - {first}
+            second, = set(diagnostics.glob('*/test-runtime-report.md')) - {first}
             self.assertEqual(first.read_bytes(), first_bytes)
-            self.assertIn("executed", first_bytes.decode("utf-8"))
-            failure = second.read_text(encoding="utf-8")
-            self.assertIn("run_singlestep.py --profile verification --case test_add_b | failed | 2.000 |", failure)
-            self.assertNotIn("| Stability |", failure)
-            self.assertNotIn("Source or index changed", output.getvalue())
+            self.assertIn('executed', first_bytes.decode('utf-8'))
+            failure = second.read_text(encoding='utf-8')
+            self.assertIn('run_singlestep.py --profile verification --case test_add_b | failed | 2.000 |', failure)
+            self.assertNotIn('| Stability |', failure)
+            self.assertNotIn('Source or index changed', output.getvalue())
             self.assertIn(str(first), output.getvalue())
             self.assertIn(str(second), output.getvalue())
             for call in execute.call_args_list:
-                self.assertEqual(call.kwargs["log_dir"], external / "verify")
-                self.assertEqual(call.args[1]["SINGLESTEP_RESULTS_DIR"], str(external / "singlestep"))
-            self.assertEqual(list(external.rglob("test-runtime-report.md")), [])
+                self.assertEqual(call.kwargs['log_dir'], external / 'verify')
+                self.assertEqual(call.args[1]['SINGLESTEP_RESULTS_DIR'], str(external / 'singlestep'))
+            self.assertEqual(list(external.rglob('test-runtime-report.md')), [])
 
     def read_diagnostic_report(self, output):
-        diagnostics = self.root / ".agent/tmp/verification/diagnostics"
-        report, = (path for path in diagnostics.glob(f"*/{REPORT_NAME}") if str(path) in output)
+        diagnostics = self.root / '.agent/tmp/verification/diagnostics'
+        report, = (path for path in diagnostics.glob(f'*/{REPORT_NAME}') if str(path) in output)
         content = report.read_bytes()
-        self.assertIn(f"[TIMING] Report SHA-256: {sha256(content).hexdigest()}", output)
-        return content.decode("utf-8")
+        self.assertIn(f'[TIMING] Report SHA-256: {sha256(content).hexdigest()}', output)
+        return content.decode('utf-8')
 
     def test_diagnostic_interrupt_retains_completed_and_interrupted_commands(self):
-        (self.root / ".gitignore").write_text(".agent/tmp/\n", encoding="utf-8")
-        with patch.object(verify, "execute_command", side_effect=[(True, "ok", 1.25), KeyboardInterrupt()]) as execute, \
-             contextlib.redirect_stdout(io.StringIO()) as output:
-            self.assertEqual(verify.main(["test", "python"]), 130)
+        (self.root / '.gitignore').write_text('.agent/tmp/\n', encoding='utf-8')
+        with patch.object(verify, 'execute_command', side_effect=[(True, 'ok', 1.25), KeyboardInterrupt()]) as execute, contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(verify.main(['test', 'python']), 130)
         self.assertEqual(execute.call_count, 2)
         report = self.read_diagnostic_report(output.getvalue())
-        self.assertIn("tools/verification/tests -q | executed | 1.250 |", report)
-        self.assertIn("tools/workflow/capture/tests -q | interrupted |", report)
-        self.assertIn("Verification interrupted", output.getvalue())
-
-    def test_diagnostic_snapshot_failure_reports_unstarted_command(self):
-        for error in (OSError("snapshot unavailable"), RuntimeError("snapshot unavailable")):
-            with self.subTest(error=type(error).__name__), \
-                 patch.object(verify, "snapshot", side_effect=error), \
-                 patch.object(verify, "execute_command") as execute, \
-                 contextlib.redirect_stdout(io.StringIO()) as output:
-                self.assertEqual(verify.main(["check", "english"]), 1)
-            execute.assert_not_called()
-            report = self.read_diagnostic_report(output.getvalue())
-            self.assertIn("tools/verification/checks/check_english.py | missing |", report)
-            self.assertIn("| Stability | Source and index |  | failed |", report)
-            self.assertIn("Cannot capture source snapshot: snapshot unavailable", output.getvalue())
+        self.assertIn('tools/verification/tests -q | executed | 1.250 |', report)
+        self.assertIn('tools/workflow/capture/tests -q | interrupted |', report)
+        self.assertIn('Verification interrupted', output.getvalue())
 
     def test_diagnostic_command_error_preserves_completed_measurement(self):
-        (self.root / ".gitignore").write_text(".agent/tmp/\n", encoding="utf-8")
-        for error in (OSError("command unavailable"), RuntimeError("command unavailable")):
-            with self.subTest(error=type(error).__name__), \
-                 patch.object(verify, "execute_command", side_effect=[(True, "ok", 1.25), error]) as execute, \
-                 contextlib.redirect_stdout(io.StringIO()) as output:
-                self.assertEqual(verify.main(["test", "python"]), 1)
+        (self.root / '.gitignore').write_text('.agent/tmp/\n', encoding='utf-8')
+        for error in (OSError('command unavailable'), RuntimeError('command unavailable')):
+            with self.subTest(error=type(error).__name__), patch.object(verify, 'execute_command', side_effect=[(True, 'ok', 1.25), error]) as execute, contextlib.redirect_stdout(io.StringIO()) as output:
+                self.assertEqual(verify.main(['test', 'python']), 1)
             self.assertEqual(execute.call_count, 2)
             report = self.read_diagnostic_report(output.getvalue())
-            self.assertIn("tools/verification/tests -q | executed | 1.250 |", report)
-            self.assertIn("tools/workflow/capture/tests -q | failed |", report)
-            self.assertIn("Diagnostic execution failed: command unavailable", output.getvalue())
+            self.assertIn('tools/verification/tests -q | executed | 1.250 |', report)
+            self.assertIn('tools/workflow/capture/tests -q | failed |', report)
+            self.assertIn('Diagnostic execution failed: command unavailable', output.getvalue())
 
     def test_diagnostic_coverage_preparation_failure_retains_pending_scopes(self):
-        with patch.object(verify, "execute_command", return_value=(False, "preparation failed", 2)) as execute, \
-             contextlib.redirect_stdout(io.StringIO()) as output:
-            self.assertEqual(verify.main(["test", "coverage", "workspace"]), 1)
+        with patch.object(verify, 'execute_command', return_value=(False, 'preparation failed', 2)) as execute, contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(verify.main(['test', 'coverage', 'workspace']), 1)
         execute.assert_called_once()
         report = self.read_diagnostic_report(output.getvalue())
-        self.assertIn("coverage_report.py --prepare | failed | 2.000 |", report)
-        pending = [row.split(" | ")[1:4] for row in report.splitlines() if " | missing | " in row]
-        self.assertEqual([(group, status) for group, _, status in pending], [
-            ("Reset coverage counters", "missing"),
-            ("All ordinary crate tests", "missing"),
-            ("Export ordinary crate coverage", "missing"),
-            ("Ordinary crate coverage summary", "missing"),
-        ])
-        for (_, scope, _), selector in zip(pending, ("--profraw-only", "--workspace --exclude test_runner",
-                                                    "cargo llvm-cov report --json", "coverage_report.py")):
+        self.assertIn('coverage_report.py --prepare | failed | 2.000 |', report)
+        pending = [row.split(' | ')[1:4] for row in report.splitlines() if ' | missing | ' in row]
+        self.assertEqual([(group, status) for group, _, status in pending], [('Reset coverage counters', 'missing'), ('All ordinary crate tests', 'missing'), ('Export ordinary crate coverage', 'missing'), ('Ordinary crate coverage summary', 'missing')])
+        for (_, scope, _), selector in zip(pending, ('--profraw-only', '--workspace --exclude test_runner', 'cargo llvm-cov report --json', 'coverage_report.py')):
             self.assertIn(selector, scope)
-
-    def test_diagnostic_source_stability_failure_keeps_completed_measurement(self):
-        for final_snapshot in ("after", OSError("unreadable"), RuntimeError("unavailable")):
-            with self.subTest(final_snapshot=final_snapshot), \
-                 patch.object(verify, "snapshot", side_effect=["before", final_snapshot]), \
-                 patch.object(verify, "execute_command", return_value=(True, "ok", 3)), \
-                 contextlib.redirect_stdout(io.StringIO()) as output:
-                self.assertEqual(verify.main(["check", "english"]), 1)
-            report = self.read_diagnostic_report(output.getvalue())
-            self.assertIn("tools/verification/checks/check_english.py | executed | 3.000 |", report)
-            self.assertIn("| Stability | Source and index |  | failed |", report)
-            self.assertIn("Source or index changed during verification", output.getvalue())
 
     def test_diagnostic_report_publication_failure_exits_without_receipt(self):
         original_open = Path.open
 
-        def fail_report_open(path, mode="r", *args, **kwargs):
-            if path.name == REPORT_NAME and mode == "xb":
-                raise OSError("write unavailable")
+        def fail_report_open(path, mode='r', *args, **kwargs):
+            if path.name == REPORT_NAME and mode == 'xb':
+                raise OSError('write unavailable')
             return original_open(path, mode, *args, **kwargs)
-
-        for failure, message in (
-            (patch.object(Path, "open", fail_report_open), "write unavailable"),
-            (patch.object(timing_report, "git", side_effect=RuntimeError("revision unavailable")),
-             "revision unavailable"),
-        ):
-            with self.subTest(message=message), failure, \
-                 patch.object(verify, "execute_command", return_value=(True, "ok", 4)) as execute, \
-                 contextlib.redirect_stdout(io.StringIO()) as output:
-                self.assertEqual(verify.main(["check", "english"]), 1)
+        for failure, message in ((patch.object(Path, 'open', fail_report_open), 'write unavailable'), (patch.object(timing_report, 'git', side_effect=RuntimeError('revision unavailable')), 'revision unavailable')):
+            with self.subTest(message=message), failure, patch.object(verify, 'execute_command', return_value=(True, 'ok', 4)) as execute, contextlib.redirect_stdout(io.StringIO()) as output:
+                self.assertEqual(verify.main(['check', 'english']), 1)
             execute.assert_called_once()
-            self.assertIn(f"Cannot write timing report: {message}", output.getvalue())
-            self.assertNotIn("[TIMING] Report SHA-256:", output.getvalue())
-            self.assertNotIn("[TIMING] Report generation:", output.getvalue())
-            diagnostics = self.root / ".agent/tmp/verification/diagnostics"
-            self.assertEqual(list(diagnostics.glob(f"*/{REPORT_NAME}")), [])
+            self.assertIn(f'Cannot write timing report: {message}', output.getvalue())
+            self.assertNotIn('[TIMING] Report SHA-256:', output.getvalue())
+            self.assertNotIn('[TIMING] Report generation:', output.getvalue())
+            diagnostics = self.root / '.agent/tmp/verification/diagnostics'
+            self.assertEqual(list(diagnostics.glob(f'*/{REPORT_NAME}')), [])
 
     def test_inventory_runs_without_candidate_generation(self):
         for success in (True, False):
-            with self.subTest(success=success), \
-                 patch.object(verify, "execute_command", return_value=(success, "result", 0)) as execute, \
-                 patch.object(verify, "snapshot") as snapshot, \
-                 contextlib.redirect_stdout(io.StringIO()):
-                self.assertEqual(verify.main(["runner", "bench", "inventory"]), 0 if success else 1)
-            snapshot.assert_not_called()
+            with self.subTest(success=success), patch.object(verify, 'execute_command', return_value=(success, 'result', 0)) as execute, contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(verify.main(['runner', 'bench', 'inventory']), 0 if success else 1)
             self.assertEqual(execute.call_count, 1)
-            self.assertEqual(execute.call_args_list[0].args[0][:2], ["cargo", "bench"])
-            self.assertFalse((self.root / ".agent/tmp/verification/diagnostics").exists())
+            self.assertEqual(execute.call_args_list[0].args[0][:2], ['cargo', 'bench'])
+            self.assertFalse((self.root / '.agent/tmp/verification/diagnostics').exists())
 
     def test_unrelated_changes_execute_no_python_contracts(self):
-        with patch.object(verify, "collect_changes", return_value={"crates/cpu/src/state.rs"}), \
-             patch.object(verify, "execute_command") as execute, patch.object(verify, "snapshot") as snapshot:
+        with patch.object(verify, 'collect_changes', return_value={'crates/cpu/src/state.rs'}), patch.object(verify, 'execute_command') as execute:
             with contextlib.redirect_stdout(io.StringIO()) as output:
-                self.assertEqual(verify.main(["test", "python"]), 0)
+                self.assertEqual(verify.main(['test', 'python']), 0)
         execute.assert_not_called()
-        snapshot.assert_not_called()
-        self.assertIn("inputs are unchanged", output.getvalue())
-        self.assertFalse((self.root / ".agent/tmp/verification/diagnostics").exists())
+        self.assertIn('inputs are unchanged', output.getvalue())
+        self.assertFalse((self.root / '.agent/tmp/verification/diagnostics').exists())
 
     def test_default_python_command_collects_working_tree_changes(self):
-        with patch.object(verify, "collect_changes", return_value={"tools/amiga-rag-mcp-server/server.py"}) as collect:
+        with patch.object(verify, 'collect_changes', return_value={'tools/amiga-rag-mcp-server/server.py'}) as collect:
             with contextlib.redirect_stdout(io.StringIO()) as output:
-                self.assertEqual(verify.main(["test", "python", "--plan"]), 0)
+                self.assertEqual(verify.main(['test', 'python', '--plan']), 0)
         collect.assert_called_once_with(self.root)
-        self.assertIn("RAG MCP contracts", output.getvalue())
-        self.assertNotIn("Bootstrap contracts", output.getvalue())
+        self.assertIn('RAG MCP contracts', output.getvalue())
+        self.assertNotIn('Bootstrap contracts', output.getvalue())
 
     def test_commit_plan_collects_working_tree_changes(self):
-        with patch.object(verify, "collect_changes", return_value={"tools/bootstrap/conversion/client.py"}) as collect:
+        with patch.object(verify, 'collect_changes', return_value={'tools/bootstrap/conversion/client.py'}) as collect:
             with contextlib.redirect_stdout(io.StringIO()) as output:
-                self.assertEqual(verify.main(["commit", "--plan"]), 0)
+                self.assertEqual(verify.main(['commit', '--plan']), 0)
         collect.assert_called_once_with(self.root)
-        self.assertIn("Book review contracts", output.getvalue())
-        self.assertIn("Rust test scope: none", output.getvalue())
-        self.assertIn("previous summary is not evidence", output.getvalue())
+        self.assertIn('Book review contracts', output.getvalue())
+        self.assertIn('Rust test scope: none', output.getvalue())
+        self.assertIn('previous summary is not evidence', output.getvalue())
 
-    def test_plan_never_executes_or_fingerprints_source(self):
-        with patch.object(verify, "execute_command") as execute, patch.object(verify, "snapshot") as snapshot:
+    def test_plan_never_executes_commands(self):
+        with patch.object(verify, 'execute_command') as execute:
             with contextlib.redirect_stdout(io.StringIO()):
-                self.assertEqual(verify.main(["check", "architecture", "--plan"]), 0)
+                self.assertEqual(verify.main(['check', 'architecture', '--plan']), 0)
             execute.assert_not_called()
-            snapshot.assert_not_called()
-
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     unittest.main()

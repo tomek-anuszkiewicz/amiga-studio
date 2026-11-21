@@ -1,9 +1,11 @@
 """Exercise archive startup proof, Compose identity and the receiver admission boundary."""
 
 from collections import Counter
+from contextlib import redirect_stderr, redirect_stdout
 from email.message import Message
 import hashlib
 from http.client import HTTPConnection
+import io
 import json
 import os
 from pathlib import Path
@@ -22,11 +24,11 @@ CAPTURE = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(CAPTURE))
 from admission import Admission
 from compose_service import (
-    CONFIG_LABEL, LABEL, PROJECT_LABEL, ComposeService, Deadline, HostCheckouts, saved_settings,
+    CONFIG_LABEL, LABEL, PROJECT_LABEL, ComposeService, Deadline, HostCheckouts, MountedProject, saved_settings,
 )
 from confirmation import baseline, confirm
 from control import ENDPOINT, IDENTITY, authorization, control_key, status
-from register import host_request
+from register import arguments, host_request, main
 from receiver import CollectorOutput, Receiver
 from registry import CaptureError, Project, epoch_ns, path_identity, read_json, write_json
 from upgrade import upgrade
@@ -118,7 +120,7 @@ class ArchiveProofTests(unittest.TestCase):
 
     def collector_output(self):
         output = CollectorOutput(self.project, b"fixture-private-key")
-        output.directory.mkdir()
+        output.directory.mkdir(parents=True)
         return output
 
     def test_new_collector_chunks_obey_the_archive_baseline_and_retain_exact_bytes(self):
@@ -303,15 +305,60 @@ class ServicePathsTests(ServiceFixture, unittest.TestCase):
         self.assertEqual(Path(service.env["CAPTURE_AUTHORITY"]), root / "authority")
         self.assertEqual(set(root.iterdir()), {
             root / "authority", root / "compose", root / "compose-settings.json",
+            root / "receiver", root / "collector",
         })
         config = saved_settings(self.project)
         self.assertEqual(config["config_id"], service.config_id)
         authority = root / "authority/compose-authority.json"
         self.assertEqual(json.loads(authority.read_text(encoding="utf-8"))["project_id"], self.project.identity)
-        self.assertEqual({p.name for p in self.project.control.iterdir()}, {"collector-output"})
+        self.assertEqual(self.project.control, root / "receiver")
+        self.assertEqual(self.project.spool, root / "collector/spool")
+        self.assertEqual(list(self.project.control.iterdir()), [])
+        self.assertTrue(self.project.spool.is_dir())
+        self.assertTrue(self.project.archive.is_dir())
+        self.assertFalse((self.project.archive / "_receiver").exists())
+
+    def test_mounted_receiver_accepts_only_archive_and_separate_runtime_data_paths(self):
+        service = self.provision()
+        with patch("compose_service.MOUNTED_PROJECT", self.primary), \
+                patch("compose_service.MOUNTED_AUTHORITY", service.authority), \
+                patch("compose_service.MOUNTED_RECEIVER_STATE", self.project.control), \
+                patch("compose_service.MOUNTED_COLLECTOR_OUTPUT", self.project.spool), \
+                patch.dict(os.environ, {"CAPTURE_PROJECT_ID": self.project.identity}):
+            mounted = MountedProject()
+        self.assertEqual(mounted.control, self.project.control)
+        self.assertEqual(mounted.spool, self.project.spool)
+        mounted.authority = lambda: {"archive_ignored": True, "service_ignored": True}
+        for path in (mounted.archive / "task/execution/otel/logs.jsonl",
+                     mounted.control / "lineage-source.json", mounted.spool / "logs-ticket.jsonl"):
+            mounted.require_ignored(path)
+        for path in (service.root / "compose-settings.json", service.code / "receiver.py",
+                     service.authority / "compose-authority.json", mounted.archive, mounted.control, mounted.spool):
+            with self.subTest(path=path), self.assertRaisesRegex(CaptureError, "outside the ignored"):
+                mounted.require_ignored(path)
+        mounted.authority = lambda: {"archive_ignored": True}
+        with self.assertRaisesRegex(CaptureError, "outside the ignored"):
+            mounted.require_ignored(mounted.control / "lineage-source.json")
+
+    def test_native_receiver_state_cannot_overwrite_tracked_data(self):
+        state = self.project.control / "tracked.json"
+        state.write_bytes(b"preserved state\n")
+        fake_git(self.primary, "add", "-f", str(state))
+        with self.assertRaisesRegex(CaptureError, "Receiver state contains tracked files"):
+            self.project.prepare()
+        self.assertEqual(state.read_bytes(), b"preserved state\n")
+
+    def test_invalid_saved_revision_is_rejected_before_selecting_runtime_paths(self):
+        service = self.provision()
+        settings = service.root / "compose-settings.json"
+        write_json(settings, {**saved_settings(self.project), "config_id": "../other-installation"})
+        with self.assertRaisesRegex(CaptureError, "saved service revision is invalid"):
+            Project(self.primary, self.primary)
 
     def test_missing_ignore_rule_or_tracked_content_blocks_private_service_writes(self):
         root = self.primary / ".agent/tools/workflow-capture"
+        self.project.control.rmdir()
+        root.rmdir()
         self.ignore.write_text(".agent/task-archives/\n", encoding="utf-8")
         with self.assertRaisesRegex(CaptureError, "ignore the entire service directory"):
             self.provision()
@@ -329,7 +376,8 @@ class ServicePathsTests(ServiceFixture, unittest.TestCase):
         for name in ("compose", "compose-authority.json", "compose-settings.json",
                      "compose-settings.before-output-isolation-fixture.json"):
             with self.subTest(name=name):
-                path = self.project.control / name
+                path = self.project.archive / "_receiver" / name
+                path.parent.mkdir(parents=True, exist_ok=True)
                 path.touch()
                 with self.assertRaisesRegex(CaptureError, "migrate the legacy service files"):
                     self.provision()
@@ -341,7 +389,7 @@ class ServicePathsTests(ServiceFixture, unittest.TestCase):
             with self.subTest(home=home):
                 self.args.codex_home = home
                 for name in ("sessions", "archived_sessions"):
-                    (home / name).mkdir(exist_ok=True)
+                    (home / name).mkdir(parents=True, exist_ok=True)
                 with self.assertRaisesRegex(CaptureError, "must be separate from the capture paths"):
                     self.provision()
 
@@ -357,13 +405,131 @@ class ServicePathsTests(ServiceFixture, unittest.TestCase):
         args = SimpleNamespace(project=self.primary, rollback=False)
         return installed, source, args
 
+    def archive_layout_installation(self):
+        service = self.provision()
+        self.save_revision(service, compose_project="amiga")
+        service = self.provision()
+        source = self.primary / "archive-layout-source"
+        source.mkdir()
+        for name, data in service.contents.items():
+            if name == "compose.yaml":
+                prefix = b"      - type: bind\n"
+                blocks = data.split(prefix)
+                data = blocks[0] + b"".join(
+                    prefix + block for block in blocks[1:]
+                    if b"/capture/receiver\n" not in block and b"/capture/collector-output\n" not in block
+                )
+            (source / name).write_bytes(data)
+        with patch("compose_service.SOURCE", source):
+            legacy = ComposeService(self.project, self.args, Deadline.start(10), revision="upgrade")
+            legacy.persist_code()
+            write_json(service.root / "compose-settings.json", {**service.settings, "config_id": legacy.config_id})
+        self.project.control.rmdir()
+        self.project.spool.rmdir()
+        self.project.spool.parent.rmdir()
+        self.project = Project(self.primary, self.primary)
+        self.project.prepare()
+        legacy = ComposeService(self.project, self.args, Deadline.start(10), revision="saved")
+        legacy.persist(self.primary)
+        self.assertEqual(self.project.control, self.project.archive / "_receiver")
+        self.assertEqual(self.project.spool, self.project.control / "collector-output")
+        return legacy
+
+    def test_upgrade_moves_legacy_state_and_spool_out_of_task_archives(self):
+        installed = self.archive_layout_installation()
+        cache = installed.control / "lineage-source.json"
+        cache.write_bytes(b'{"descendant":"parent"}\n')
+        spool = installed.spool / "logs-pending.jsonl"
+        spool.write_bytes(b'{"pending":true}\n')
+        private = installed.control / "control.json"
+        private.write_bytes(b'{"token":"historical-credential"}\n')
+        registration = self.project.registration_path("task", "execution")
+        registration.parent.mkdir(parents=True)
+        write_json(registration, dict(schema_version=1, task_id="task", execution_id="execution",
+                                      git_common_dir=str(self.project.common), end_utc=START))
+        registered = registration.read_bytes()
+        engine = UpgradeEngine(self, installed)
+        args = SimpleNamespace(project=self.primary, rollback=False)
+        with patch("compose_service.docker", engine.docker), patch("upgrade.status", engine.status):
+            report = upgrade(args, self.primary)
+        backup = self.primary / report["previous_layout"]
+        current = Project(self.primary, self.primary)
+        self.assertFalse(installed.control.exists())
+        self.assertEqual((current.control / cache.name).read_bytes(), b'{"descendant":"parent"}\n')
+        self.assertEqual((backup / cache.name).read_bytes(), b'{"descendant":"parent"}\n')
+        self.assertEqual((current.spool / spool.name).read_bytes(), b'{"pending":true}\n')
+        self.assertEqual((backup / private.name).read_bytes(), b'{"token":"historical-credential"}\n')
+        self.assertFalse((current.control / private.name).exists())
+        self.assertEqual(registration.read_bytes(), registered)
+        self.assertEqual([action for action, _ in engine.actions], ["config", "stop", "up"])
+
+    def test_failed_layout_switch_restores_old_services_and_preserves_new_pending_output(self):
+        installed = self.archive_layout_installation()
+        cache = installed.control / "lineage-source.json"
+        cache.write_bytes(b"{}\n")
+        engine = UpgradeEngine(self, installed, fail_after_receiver=True)
+
+        def docker(*args, **kwargs):
+            result = engine.docker(*args, **kwargs)
+            if result.returncode:
+                (Path(kwargs["env"]["CAPTURE_COLLECTOR_OUTPUT"]) / "late.jsonl").write_bytes(b"late output\n")
+            return result
+
+        args = SimpleNamespace(project=self.primary, rollback=False)
+        with patch("compose_service.docker", docker), patch("upgrade.status", engine.status):
+            with self.assertRaisesRegex(CaptureError, "installed revision was restored"):
+                upgrade(args, self.primary)
+        self.assertEqual(saved_settings(self.project)["config_id"], installed.config_id)
+        self.assertEqual((installed.spool / "late.jsonl").read_bytes(), b"late output\n")
+        self.assertEqual(cache.read_bytes(), b"{}\n")
+        self.assertEqual(set(engine.revisions.values()), {installed.config_id})
+        self.assertFalse((installed.root / "previous-layout").exists())
+        with patch("compose_service.docker", engine.docker), patch("upgrade.status", engine.status):
+            report = upgrade(args, self.primary)
+        self.assertEqual(report["status"], "upgraded")
+        current = Project(self.primary, self.primary)
+        self.assertEqual((current.spool / "late.jsonl").read_bytes(), b"late output\n")
+
+    def test_existing_previous_layout_blocks_migration_before_services_are_stopped(self):
+        installed = self.archive_layout_installation()
+        backup = installed.root / "previous-layout" / installed.config_id / "receiver"
+        backup.mkdir(parents=True)
+        marker = backup / "preserved.txt"
+        marker.write_bytes(b"previous attempt\n")
+        engine = UpgradeEngine(self, installed)
+        args = SimpleNamespace(project=self.primary, rollback=False)
+        with patch("compose_service.docker", engine.docker), patch("upgrade.status", engine.status):
+            with self.assertRaisesRegex(CaptureError, "previous-layout destination exists"):
+                upgrade(args, self.primary)
+        self.assertEqual(engine.actions, [])
+        self.assertEqual(marker.read_bytes(), b"previous attempt\n")
+        self.assertTrue(all(engine.running.values()))
+
+    def test_layout_migration_collision_preserves_both_spools_and_restores_old_services(self):
+        installed = self.archive_layout_installation()
+        original = installed.spool / "pending.jsonl"
+        original.write_bytes(b"original output\n")
+        destination = installed.root / "collector/spool/pending.jsonl"
+        destination.parent.mkdir(parents=True)
+        destination.write_bytes(b"other output\n")
+        engine = UpgradeEngine(self, installed)
+        args = SimpleNamespace(project=self.primary, rollback=False)
+        with patch("compose_service.docker", engine.docker), patch("upgrade.status", engine.status):
+            with self.assertRaisesRegex(CaptureError, "Conflicting runtime.*installed revision was restored"):
+                upgrade(args, self.primary)
+        self.assertEqual(original.read_bytes(), b"original output\n")
+        self.assertEqual(destination.read_bytes(), b"other output\n")
+        self.assertEqual(set(engine.revisions.values()), {installed.config_id})
+        self.assertTrue(all(engine.running.values()))
+        self.assertEqual(saved_settings(self.project)["config_id"], installed.config_id)
+
     def test_upgrade_preserves_the_host_settings_and_reuses_the_matching_revision(self):
         installed, source, args = self.revised_installation()
         registration = self.project.registration_path("task", "execution")
         registration.parent.mkdir(parents=True)
         write_json(registration, dict(schema_version=1, task_id="task", execution_id="execution",
                                       git_common_dir=str(self.project.common), end_utc=START))
-        spool = self.project.control / "collector-output" / "fixture.jsonl"
+        spool = self.project.spool / "fixture.jsonl"
         spool.write_bytes(b"saved spool")
         old_files = [*installed.code.iterdir(), spool, registration,
                      installed.authority / "compose-authority.json"]
@@ -449,6 +615,7 @@ class RegistrationControlTests(ServiceFixture, unittest.TestCase):
         self.enterContext(patch.object(ComposeService, "check_logs"))
         self.exec = self.enterContext(patch.object(ComposeService, "legacy_stop"))
         self.receiver_status = receiver.status
+        self.active_receiver = receiver
 
     def host_transport(self, _port, key, request, deadline):
         from control import send_registration
@@ -461,13 +628,13 @@ class RegistrationControlTests(ServiceFixture, unittest.TestCase):
         for group in payload.get("resourceLogs", []):
             ticket = next(item["value"]["stringValue"] for item in group["resource"]["attributes"]
                           if item["key"] == "capture.output")
-            spool = self.project.control / "collector-output" / f"logs-{ticket}.jsonl"
+            spool = self.project.spool / f"logs-{ticket}.jsonl"
             spool.write_bytes(json.dumps({"resourceLogs": [group]}).encode() + b"\n")
         return {}
 
     def rollout(self, thread, *, cwd=None, source=None, events=()):
         path = self.args.codex_home / "sessions" / f"rollout-fixture-{thread}.jsonl"
-        records = [{"type": "session_meta", "payload": {
+        records = [{"type": "session_meta", "timestamp": "2026-11-18T10:00:00.000005Z", "payload": {
             "id": thread, "cwd": str(cwd or self.primary), "timestamp": "2026-11-18T10:00:00.000005Z",
             "source": source,
         }}, *events]
@@ -533,6 +700,220 @@ class RegistrationControlTests(ServiceFixture, unittest.TestCase):
                 content += b"\n# published revision\n"
             (source / name).write_bytes(content)
         return source
+
+    def test_startup_index_routes_closed_ranges_without_reading_registration_files(self):
+        registration = self.registration()
+        registration.parent.mkdir(parents=True)
+        write_json(registration, {
+            "schema_version": 1, "task_id": "fixture", "execution_id": "a",
+            "git_common_dir": str(self.project.common), "root_thread_id": ROOT_THREAD, "otel": True,
+            "start_utc": START, "end_utc": "2026-11-18T10:00:00.000010Z",
+            "threads": [{"id": ROOT_THREAD, "start_utc": START,
+                         "end_utc": "2026-11-18T10:00:00.000010Z"}],
+        })
+        with patch.object(self.project, "registrations", wraps=self.project.registrations) as scans:
+            self.receiver()
+        scans.assert_called_once_with()
+        self.rollout(ROOT_THREAD)
+        with patch.object(self.project, "registrations", side_effect=AssertionError("Archive scanned again")), \
+                patch("registry.read_json", side_effect=AssertionError("Registration read again")):
+            self.otlp([log_record(ROOT_THREAD, AT + 7000, "first-delayed")])
+            self.otlp([log_record(ROOT_THREAD, AT + 8000, "second-delayed"),
+                       log_record(ROOT_THREAD, AT + 11000, "outside")])
+        self.assertEqual(self.archive_labels("a"), {"first-delayed", "second-delayed"})
+        self.assertEqual(self.receiver_status()["counts"]["accepted_after_stop"], 2)
+        self.assertEqual(read_json(registration)["latest_admitted_ns"], AT + 8000)
+
+    def test_live_index_keeps_reused_thread_ranges_and_new_continuations(self):
+        self.receiver()
+        self.rollout(ROOT_THREAD)
+        self.rollout(CONTINUATION)
+        self.cli("start", at=START)
+        self.cli("stop", at="2026-11-18T10:00:00.000010Z")
+        self.cli("start", execution="b", at="2026-11-18T10:00:00.000020Z")
+        self.cli("include", execution="b", thread=CONTINUATION, at="2026-11-18T10:00:00.000022Z")
+        with patch.object(self.project, "registrations", side_effect=AssertionError("Archive scanned again")):
+            self.otlp([log_record(ROOT_THREAD, AT + 7000, "closed"),
+                       log_record(ROOT_THREAD, AT + 15000, "between"),
+                       log_record(ROOT_THREAD, AT + 23000, "new-root"),
+                       log_record(CONTINUATION, AT + 23000, "new-continuation")])
+        self.assertEqual(self.archive_labels("a"), {"closed"})
+        self.assertEqual(self.archive_labels("b"), {"new-root", "new-continuation"})
+
+    def test_arming_replaces_the_pending_index_entry_before_admission(self):
+        self.receiver()
+        setup, work = str(UUID(int=40)), str(UUID(int=41))
+        events = []
+        for turn, first, last in ((setup, "000001", "000010"), (work, "000020", "000030")):
+            for kind, fraction in (("task_started", first), ("task_complete", last)):
+                events.append({"type": "event_msg", "timestamp": f"2026-11-18T10:00:00.{fraction}Z",
+                               "payload": {"type": kind, "turn_id": turn}})
+        self.rollout(ROOT_THREAD, events=events)
+        self.cli("start", after_turn=setup)
+        pending = read_json(self.registration())
+        self.otlp([log_record(ROOT_THREAD, epoch_ns(pending["start_utc"]) + 1, "pending")])
+        self.assertEqual(self.archive_labels("a"), set())
+        self.cli("arm", thread=None)
+        with patch.object(self.project, "registrations", side_effect=AssertionError("Archive scanned again")):
+            self.otlp([log_record(ROOT_THREAD, AT + 5000, "setup"),
+                       log_record(ROOT_THREAD, AT + 25000, "work")])
+        self.assertEqual(self.archive_labels("a"), {"work"})
+
+    def test_failed_registration_write_keeps_the_cached_range_open(self):
+        self.receiver()
+        self.rollout(ROOT_THREAD)
+        self.cli("start", at=START)
+        original = self.registration().read_bytes()
+        with patch("register.write_json", side_effect=OSError("Archive unavailable")):
+            self.assertEqual(self.direct("stop", signer=self.key,
+                                         at="2026-11-18T10:00:00.000010Z")[0], 503)
+        self.assertEqual(self.registration().read_bytes(), original)
+        self.otlp([log_record(ROOT_THREAD, AT + 11000, "still-open")])
+        self.assertEqual(self.archive_labels("a"), {"still-open"})
+
+    def test_failed_admission_write_retries_the_watermark_before_forwarding(self):
+        self.receiver()
+        self.rollout(ROOT_THREAD)
+        self.cli("start", at=START)
+        original = self.registration().read_bytes()
+        packet = json.dumps(envelope([log_record(ROOT_THREAD, AT + 9000, "retried")])).encode()
+        with patch("admission.write_json", side_effect=OSError("Archive unavailable")):
+            self.assertEqual(self.post("/v1/logs", packet, {})[0], 503)
+        self.assertEqual(self.registration().read_bytes(), original)
+        self.assertEqual(self.archive_labels("a"), set())
+        self.otlp([log_record(ROOT_THREAD, AT + 9000, "retried")])
+        self.assertEqual(read_json(self.registration())["latest_admitted_ns"], AT + 9000)
+        self.assertEqual(self.archive_labels("a"), {"retried"})
+
+    def test_receiver_restart_restores_saved_registration_changes(self):
+        self.receiver()
+        self.rollout(ROOT_THREAD)
+        self.rollout(CONTINUATION)
+        self.cli("start", at=START)
+        self.cli("include", thread=CONTINUATION, at=START)
+        self.otlp([log_record(ROOT_THREAD, AT + 9000, "before-restart")])
+        self.cli("stop", at="2026-11-18T10:00:00.000010Z")
+        self.active_receiver.shutdown()
+        with LoopbackReceiver(self.project) as restarted:
+            self.port = restarted.server_port
+            worker = Thread(target=restarted.serve_forever, kwargs={"poll_interval": 0.02})
+            worker.start()
+            try:
+                with patch.object(self.project, "registrations", side_effect=AssertionError("Archive scanned again")):
+                    self.otlp([log_record(CONTINUATION, AT + 8000, "delayed-continuation"),
+                               log_record(ROOT_THREAD, AT + 11000, "after-stop")])
+            finally:
+                restarted.shutdown()
+                worker.join()
+        self.assertEqual(read_json(self.registration())["latest_admitted_ns"], AT + 9000)
+        self.assertEqual(self.archive_labels("a"), {"before-restart", "delayed-continuation"})
+
+    def test_status_combines_readiness_revisions_and_only_open_registrations(self):
+        self.receiver()
+        self.rollout(ROOT_THREAD)
+        self.cli("start", execution="closed", at=START)
+        self.cli("stop", execution="closed", at="2026-11-18T10:00:00.000010Z")
+        self.cli("start", execution="open", at="2026-11-18T10:00:00.000020Z")
+        original = self.registration("open").read_bytes()
+        settings = saved_settings(self.project)
+        with patch("compose_service.SOURCE", self.modified_source()), \
+                patch.object(ComposeService, "compose", side_effect=AssertionError("Status changes services")):
+            report = self.cli("status", thread=None)
+        self.assertTrue(report["ready"])
+        self.assertEqual(report["config_id"], self.service.config_id)
+        self.assertEqual(report["saved_config_id"], self.service.config_id)
+        self.assertNotEqual(report["published_config_id"], report["saved_config_id"])
+        self.assertEqual(report["port"], self.service.port)
+        self.assertEqual(report["control"], "http")
+        self.assertEqual(report["services"], {"receiver": "running", "collector": "running"})
+        self.assertEqual(report["open_registrations"], [{
+            "task_id": "fixture", "execution_id": "open", "root_thread_id": ROOT_THREAD,
+        }])
+        self.assertEqual(self.registration("open").read_bytes(), original)
+        self.assertEqual(saved_settings(self.project), settings)
+
+    def test_status_reports_stopped_or_missing_services_without_starting_them(self):
+        self.receiver()
+        self.rollout(ROOT_THREAD)
+        self.cli("start", at=START)
+        for containers, expected in (
+            ({"receiver": {"Id": "receiver", "State": {"Running": False}}},
+             {"receiver": "stopped", "collector": "missing"}),
+            ({}, {"receiver": "missing", "collector": "missing"}),
+        ):
+            with self.subTest(services=expected), \
+                    patch.object(ComposeService, "containers", return_value=containers), \
+                    patch.object(ComposeService, "compose", side_effect=AssertionError("Status starts services")), \
+                    patch("register.Path.cwd", return_value=self.primary), \
+                    patch.object(sys, "argv", ["register.py", "status", "--project", str(self.primary)]), \
+                    redirect_stdout(io.StringIO()) as output:
+                self.assertEqual(main(), 1)
+            report = json.loads(output.getvalue())
+            self.assertFalse(report["ready"])
+            self.assertEqual(report["services"], expected)
+            self.assertEqual(report["saved_config_id"], self.service.config_id)
+            self.assertEqual(report["open_registrations"][0]["execution_id"], "a")
+
+    def test_status_rejects_a_receiver_from_another_installation(self):
+        self.receiver()
+        with patch("register.status", return_value={"ready": True, "project_id": "foreign"}):
+            with self.assertRaisesRegex(CaptureError, "different service"):
+                self.cli("status", thread=None)
+
+    def test_status_reports_unavailable_collector_even_when_both_containers_run(self):
+        self.receiver()
+        with patch("receiver.query", side_effect=OSError("Collector unavailable")):
+            report = self.cli("status", thread=None)
+        self.assertFalse(report["ready"])
+        self.assertEqual(report["services"], {"receiver": "running", "collector": "running"})
+        self.assertEqual(report["saved_config_id"], self.service.config_id)
+
+    def test_removed_handoff_command_is_rejected_before_service_access(self):
+        with patch.object(sys, "argv", ["register.py", "handoff", "--project", str(self.primary)]), \
+                redirect_stderr(io.StringIO()):
+            with self.assertRaises(SystemExit) as error:
+                arguments()
+        self.assertEqual(error.exception.code, 2)
+
+    def test_removed_recover_command_is_rejected_before_service_access(self):
+        with patch.object(sys, "argv", ["register.py", "recover", "--project", str(self.primary)]), \
+                redirect_stderr(io.StringIO()):
+            with self.assertRaises(SystemExit) as error:
+                arguments()
+        self.assertEqual(error.exception.code, 2)
+
+    def test_start_restores_missing_or_stopped_collector_from_the_saved_installation(self):
+        self.receiver()
+        running = {name: {"Id": name, "State": {"Running": True}}
+                   for name in ("receiver", "collector")}
+        with patch("compose_service.SOURCE", self.modified_source()):
+            for execution, thread, collector in (
+                ("missing", ROOT_THREAD, None),
+                ("stopped", OTHER_THREAD, {"Id": "collector", "State": {"Running": False}}),
+            ):
+                self.rollout(thread)
+                initial = {"receiver": running["receiver"]}
+                if collector is not None:
+                    initial["collector"] = collector
+                with self.subTest(collector=execution), \
+                        patch.object(ComposeService, "containers", side_effect=[initial, running]), \
+                        patch.object(ComposeService, "compose") as compose:
+                    receipt = self.cli("start", execution=execution, thread=thread, at=START)
+                compose.assert_called_once_with(
+                    "Compose recovery", "up", "--detach", "--no-recreate", "receiver", "collector",
+                )
+                self.assertTrue(receipt["receiver"]["ready"])
+                self.assertEqual(receipt["receiver"]["config_id"], self.service.config_id)
+                self.assertEqual(read_json(self.registration(execution))["root_thread_id"], thread)
+
+    def test_provision_reuses_installed_services_without_creating_registration(self):
+        self.receiver()
+        settings = saved_settings(self.project)
+        with patch.object(ComposeService, "compose", side_effect=AssertionError("Services already running")):
+            report = self.cli("provision", thread=None)
+        self.assertTrue(report["ready"])
+        self.assertEqual(saved_settings(self.project), settings)
+        self.assertEqual(list(self.project.registrations()), [])
 
     def test_changed_source_closes_only_the_owned_range_and_can_arm_and_include(self):
         self.receiver()
@@ -675,6 +1056,7 @@ class UpgradeEngine:
         self.test = test
         self.installed = installed
         self.revisions = dict.fromkeys(("receiver", "collector"), installed.config_id)
+        self.running = dict.fromkeys(("receiver", "collector"), True)
         self.actions = []
         self.fail_after_receiver = fail_after_receiver
 
@@ -692,7 +1074,8 @@ class UpgradeEngine:
                 {"Id": name, "Config": {"Labels": {f"{LABEL}.service": name,
                                                    PROJECT_LABEL: installed.project.identity,
                                                    CONFIG_LABEL: config}},
-                 "State": {"Running": True}, "HostConfig": {"RestartPolicy": {"Name": "unless-stopped"}}}
+                 "State": {"Running": self.running[name]},
+                 "HostConfig": {"RestartPolicy": {"Name": "unless-stopped"}}}
                 for name, config in self.revisions.items()
             ] + [{"Config": {"Labels": {f"{LABEL}.service": "book-review"}}}])
         elif args[0] == "compose":
@@ -700,23 +1083,43 @@ class UpgradeEngine:
             self.test.assertEqual(args[1:5], ("--project-name", "amiga", "--file",
                                              str(installed.code.parent / revision / "compose.yaml")))
             self.test.assertEqual(env["COMPOSE_REMOVE_ORPHANS"], "false")
+            runtime_keys = {"CAPTURE_RECEIVER_STATE", "CAPTURE_COLLECTOR_OUTPUT"}
             self.test.assertEqual({key: value for key, value in env.items()
-                                   if key.startswith("CAPTURE_") and key not in ("CAPTURE_CODE", "CAPTURE_CONFIG_ID")},
+                                   if key.startswith("CAPTURE_")
+                                   and key not in {"CAPTURE_CODE", "CAPTURE_CONFIG_ID", *runtime_keys}},
                                   {key: value for key, value in installed.env.items()
-                                   if key.startswith("CAPTURE_") and key not in ("CAPTURE_CODE", "CAPTURE_CONFIG_ID")})
+                                   if key.startswith("CAPTURE_")
+                                   and key not in {"CAPTURE_CODE", "CAPTURE_CONFIG_ID", *runtime_keys}})
+            manifest = Path(args[4]).read_bytes()
+            if b"${CAPTURE_RECEIVER_STATE:?}" in manifest:
+                receiver_state = installed.root / "receiver"
+                spool = installed.root / "collector/spool"
+            else:
+                receiver_state = installed.project.archive / "_receiver"
+                spool = receiver_state / "collector-output"
+            self.test.assertEqual(env["CAPTURE_RECEIVER_STATE"], str(receiver_state))
+            self.test.assertEqual(env["CAPTURE_COLLECTOR_OUTPUT"], str(spool))
             self.test.assertEqual(saved_settings(installed.project), installed.settings)
             self.actions.append((args[5], revision))
             if args[5] == "config":
                 self.test.assertEqual(args[6:], ("--quiet",))
                 self.test.assertTrue(Path(args[4]).is_file())
+            elif args[5] == "stop":
+                self.test.assertEqual(args[6:], ("receiver", "collector"))
+                self.running.update(receiver=False, collector=False)
             else:
                 self.test.assertEqual(args[5:], ("up", "--detach", "--no-deps", "--force-recreate",
                                                 "receiver", "collector"))
+                if receiver_state != installed.control:
+                    self.test.assertTrue((installed.control / "control-mutation").is_dir())
+                    self.test.assertTrue((receiver_state / "control-mutation").is_dir())
                 self.revisions["receiver"] = revision
+                self.running["receiver"] = True
                 if self.fail_after_receiver:
                     self.fail_after_receiver = False
                     return SimpleNamespace(returncode=1, stdout="", stderr="cutover fixture")
                 self.revisions["collector"] = revision
+                self.running["collector"] = True
         else:
             self.test.assertEqual(args[0], "logs", stage)
         return result

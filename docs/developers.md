@@ -79,7 +79,7 @@ relevant source and evidence.
 
 For setup and commands, use the
 [RAG reference](../.agents/references/developer-setup.md#5-domain-hardware-knowledge-local-vector-rag-amiga-rag)
-and [graph query skill](../.agents/skills/TA-query-graph/SKILL.md). These services are useful
+and [graph query skill](../.agents/skills/TA-Graphify-query/SKILL.md). These services are useful
 for investigation, but they are not prerequisites for running the emulator.
 
 ## Make and Evaluate a Change

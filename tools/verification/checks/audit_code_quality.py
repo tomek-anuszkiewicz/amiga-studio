@@ -345,7 +345,7 @@ def scan_least_visibility():
 
         if len(external_callers) == 0:
             # If callers exist in external tests/ suites, the symbol must remain pub
-            # because external integration tests (crates/*/tests/) cannot access pub(crate) items per unit-testing-policy.md
+            # because external integration tests (crates/*/tests/) cannot access pub(crate) items per .agents/references/testing-criteria.md
             if len(test_callers) > 0:
                 continue
 
@@ -377,7 +377,7 @@ def scan_least_visibility():
 def scan_accessor_conventions():
     """
     Scans crate source files for violations of method naming and accessor conventions
-    per .agents/rules/rust-best-practices.md:
+    per .agents/references/rust-best-practices.md:
     1. Standard getters must match field name without `get_` prefix.
     2. Boolean getters must start with `is_` (or retain `has_`/`can_`) with zero duplicate prefixes.
     3. Setters must start with `set_<field>`.

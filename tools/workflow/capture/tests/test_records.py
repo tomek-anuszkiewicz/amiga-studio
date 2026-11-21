@@ -55,7 +55,10 @@ class PreservationTests(unittest.TestCase):
         result = subprocess.run([sys.executable, str(CAPTURE / script), *map(str, args)],
                                 cwd=self.source, env=env, capture_output=True, encoding="utf-8")
         self.assertEqual(result.returncode, status, result.stdout + result.stderr)
-        return json.loads(result.stdout) if status in (0, 1) and result.stdout else result.stderr
+        if status in (0, 1):
+            self.assertTrue(result.stdout, result.stderr)
+            return json.loads(result.stdout)
+        return result.stderr
 
     def timing(self, profile, attempt, data, checkout=None):
         checkout = checkout or self.source
@@ -114,7 +117,13 @@ class PreservationTests(unittest.TestCase):
         self.assertEqual((receipt.parent / REPORT).read_bytes(), report.read_bytes())
         self.assertEqual(json.loads(receipt.read_bytes())["invocation"], selected["invocation"])
 
-    def test_registered_collection_keeps_input_versions_and_reports_after_disposal(self):
+    def test_removed_collection_command_is_rejected_before_creating_archive(self):
+        error = self.run_capture("records.py", "collect", "--primary", self.primary,
+                                 "--task-id", TASK, "--execution-id", "removed", status=2)
+        self.assertIn("invalid choice: 'collect'", error)
+        self.assertFalse((self.primary / ".agent/task-archives" / TASK).exists())
+
+    def test_existing_revision_keeps_input_versions_and_reports_after_disposal(self):
         execution = "registered"
         thread = "11111111-1111-4111-8111-111111111111"
         turn = "22222222-2222-4222-8222-222222222222"
@@ -155,35 +164,55 @@ class PreservationTests(unittest.TestCase):
         version_map = self.json_file(snapshots / "versions.json",
                                      {"task_id": TASK, "versions": versions, "final": "final"})
         select(version_map, "artifacts/worktree/inputs/versions.json", version_map.read_bytes())
-        roots = [str(snapshots)]
         for profile, attempt, data in (("commit", "5" * 32, b"commit duration\n"),
                                        ("milestone", "6" * 32, b"milestone duration\n")):
             report, record = self.timing(profile, attempt, data)
-            roots.append(str(report.parent))
             destination = f"artifacts/verification/{profile}/{attempt}"
             select(report, f"{destination}/{REPORT}", data)
             selected = self.json_file(report.parent / "selection.json", record)
             select(selected, f"{destination}/selection.json", selected.read_bytes())
 
-        spec = {"start_commit": self.base, "workflow_commit": self.base, "final_commit": self.base,
-                "final_candidate": self.base, "outcome": "completed", "artifact_roots": roots, "files": files}
-        collection = self.root / "collection.json"
-        args = ["--primary", self.primary, "--task-id", TASK, "--execution-id", execution,
-                "--codex-home", self.codex]
-        changed_digest = {**files[0], "sha256": "0" * 64}
-        self.json_file(collection, {**spec, "files": [changed_digest, *files[1:]]})
-        partial = self.run_capture("records.py", "collect", *args, "--input", collection)
-        self.assertEqual(partial["status"], "partial")
-        self.assertEqual(partial["gaps"][0]["source"], files[0]["path"])
-        self.assertFalse((Path(partial["archive"]) / files[0]["path"]).exists())
+        args = ["--primary", self.primary, "--task-id", TASK, "--execution-id", execution]
+        revision = "20261118T100200000000Z-12345678"
+        execution_archive = self.primary / ".agent/task-archives" / TASK / execution
+        archive = execution_archive / "revisions" / revision
+        inventory = []
+
+        def archived(path, data, kind, **metadata):
+            self.write(archive / path, data)
+            inventory.append({"path": path, "kind": kind, "size": len(data),
+                              "sha256": sha256(data).hexdigest(), **metadata})
+
+        # Describe an existing revision independently of the retired producer.
+        registration_data = (execution_archive / "registration.json").read_bytes()
+        registered = json.loads(registration_data)
+        archived("registration.json", registration_data, "registration")
+        native_data = native.read_bytes()
+        native_lines = native_data.splitlines(keepends=True)
+        archived(f"rollouts/{thread}.jsonl", native_data, "rollout", source=str(native),
+                 ranges=[{"start": 0, "end": len(native_data), "first_line": 1,
+                          "last_line": len(native_lines)}], whole_source=True)
+        for entry in files:
+            archived(entry["path"], Path(entry["source"]).read_bytes(), "artifact", source=entry["source"])
+        manifest = {
+            "format_version": 1, "tool_version": "records.py/1", "revision": revision,
+            "previous_revision": None, "task_id": TASK, "execution_id": execution,
+            "git_common_dir": registered["git_common_dir"], "root_thread_id": thread,
+            "start_utc": registered["start_utc"], "end_utc": registered["end_utc"],
+            "start_commit": self.base, "workflow_commit": self.base, "final_commit": self.base,
+            "final_candidate": self.base, "outcome": "completed", "collection_status": "collected",
+            "threads": [{"thread_id": thread, "parent_thread_id": None, "source": str(native),
+                         "selection": registered["threads"][0], "turn_ids": [turn],
+                         "segment": f"rollouts/{thread}.jsonl", "cli_version": None,
+                         "last_event": {"timestamp": end, "source_line": len(native_lines),
+                                        "byte_start": len(native_data) - len(native_lines[-1]),
+                                        "byte_end": len(native_data), "type": "event_msg",
+                                        "event": "task_complete", "turn_id": turn, "call_id": None}}],
+            "files": inventory, "gaps": [],
+        }
+        self.json_file(archive / "manifest.json", manifest)
         first_source = Path(files[0]["source"])
         self.assertEqual(first_source.read_bytes(), b"starting\n")
-        self.json_file(collection, spec)
-        receipt = self.run_capture("records.py", "collect", *args, "--input", collection)
-        self.assertEqual((receipt["status"], receipt["gaps"]), ("collected", []))
-        archive = Path(receipt["archive"])
-        manifest = json.loads((archive / "manifest.json").read_bytes())
-        self.assertEqual(manifest["previous_revision"], partial["revision"])
         self.assertFalse(any(item["kind"] == "otel" for item in manifest["files"]))
         self.assertEqual((archive / f"rollouts/{thread}.jsonl").read_bytes(), native.read_bytes())
         self.assertEqual(editable.read_bytes(), b"final\n")
@@ -203,7 +232,7 @@ class PreservationTests(unittest.TestCase):
                          "final_candidate": self.base, "task_id": TASK, "execution_id": execution},
             "threads": [thread], "rows": checks,
         })
-        result = self.run_capture("records.py", "check", *args, "--revision", receipt["revision"],
+        result = self.run_capture("records.py", "check", *args, "--revision", revision,
                                   "--expect", observer, status=1)
         self.assertEqual(result["integrity"], "passed")
         self.assertEqual(result["verdict"], "gaps")
@@ -216,7 +245,7 @@ class PreservationTests(unittest.TestCase):
         details["rows"]["starting_inputs"]["checks"].append(
             {"kind": "archive", "path": missing, "sha256": sha256(b"missing approved content").hexdigest()})
         observer = self.json_file(self.root / "missing-input.json", details)
-        missing_result = self.run_capture("records.py", "check", *args, "--revision", receipt["revision"],
+        missing_result = self.run_capture("records.py", "check", *args, "--revision", revision,
                                           "--expect", observer, status=1)
         report = json.loads((Path(missing_result["report"]) / "result.json").read_bytes())
         row = report["rows"]["starting_inputs"]

@@ -7,7 +7,8 @@ from pathlib import Path
 from otlp import DIAGNOSTIC_KEY, ROUTE_KEY, SIGNALS, attributed_records, items, record_interval, within_bounds
 from record_sources import OtlpTurnCoverage, common_dir, otlp_turn_coverage, rollout_headers, selected_rollouts
 from registry import (
-    CaptureError, epoch_ns, path_identity, read_json, rollout_header, rollout_paths, thread_id, write_json,
+    CaptureError, RegistrationIndex, epoch_ns, path_identity, read_json, rollout_header, rollout_paths,
+    thread_id, write_json,
 )
 
 
@@ -80,14 +81,12 @@ class Admission:
     def __init__(self, project, lineage: RolloutLineage):
         self.project = project
         self.lineage = lineage
+        self.registrations = RegistrationIndex(project)
         self.stats = Counter()
 
     def filter(self, endpoint: str, message: dict, *, resolve_common=common_dir, diagnostic=False) -> dict:
         resource_key, scope_key, leaf = SIGNALS[endpoint]
-        selections = {}
-        for path, registration in self.project.registrations():
-            for selected in registration["threads"]:
-                selections.setdefault(selected["id"], []).append((path, registration, selected))
+        selections = self.registrations.selections
 
         parents = {}
         turns = {}
@@ -145,8 +144,9 @@ class Admission:
         for path, (registration, latest) in watermarks.items():
             if latest > registration.get("latest_admitted_ns", 0):
                 self.project.require_ignored(path)
-                registration["latest_admitted_ns"] = latest
-                write_json(path, registration)
+                updated = {**registration, "latest_admitted_ns": latest}
+                write_json(path, updated)
+                self.registrations.replace(path, updated)
         self.lineage.save(proved)
         self.stats.update(counters)
         return {resource_key: output} if output else {}

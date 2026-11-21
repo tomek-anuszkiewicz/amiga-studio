@@ -55,7 +55,7 @@ HTML runtime validation remains. PDF-STATE-1 removes PDF artifact, configuration
 local response validation; PDF parsing, conversion I/O and transport completion
 handling remain. Required repository per-commit checks still apply and are reported
 separately from fragment execution and editorial quality. Architectural/weakening
-changes retain [protected verification](../../.agents/rules/unit-testing-policy.md#protected-verification).
+changes retain [protected verification](../../.agents/references/protected-verification.md#protected-verification).
 
 ## Preparing the book source collection
 

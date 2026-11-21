@@ -1,5 +1,13 @@
 # Documentation and governance criteria
 
+## Prose and narrative
+
+Assess clarity, evidence placement and retained reasoning using the shared
+[prose and narrative criteria](narrative-criteria.md), within the assigned document
+scope. Use the article-specific progression for articles, not as a template for
+specifications, plans or procedures. Link/metadata audits retain their narrower
+scope; diary preparation and compaction have their own criteria.
+
 ## Documentation Value
 
 Preserve actual hardware behavior confirmed by authoritative sources, even when it
@@ -25,13 +33,13 @@ The owning specification explains hardware behavior with links to manual section
 book passages or authoritative observations. Scoped review compares affected
 behavior with those sources. Source-confirmed behavior missing its explanation
 requires compatible enrichment at the owning specification, even when code makes
-it obvious. Report-only review identifies that work; the caller assigns
-[TA-sync-docs](../skills/TA-sync-docs/SKILL.md) before readiness where required.
+it obvious. Report-only review identifies that work and any resulting readiness
+gap. The user selects any subsequent documentation update.
 
 Code agreement alone does not establish hardware correctness. Distinguish hardware
 facts from modeling choices, assumptions and unresolved evidence. Report contrary
 behavior, code, specification and source passages under
-[specification compliance](../rules/spec-compliance.md); never remove a requirement to match
+[specification compliance](spec-compliance.md); never remove a requirement to match
 incorrect code. Preserve source books, imported references, conversion prompts and
 generated artifacts. This editorial policy applies to project-authored explanations,
 not rewriting their sources or executable instructions.
@@ -83,7 +91,7 @@ knowledge gaps or required implementation/evidence gaps block readiness.
 
 ## Instructions and procedures
 
-Use [instruction ownership](../rules/information-hierarchy.md). Each requirement,
+Use [instruction ownership](information-hierarchy.md). Each requirement,
 criterion and procedure has one authoritative home with resolving consumer links.
 Walk a realistic affected invocation through authority, scope, inputs, required
 evidence, failure handling and its stopping boundary. Find duplicate readers,
@@ -97,21 +105,24 @@ this review never dispatches it. No cosmetic changes are required to unaffected
 checklists. Assess script/function ownership by actual responsibilities, including
 switches in mixed scripts; reference counts alone do not decide placement.
 
-Integration criteria include approved immutable source/target selection, one
-combined candidate, semantic reconciliation of every changed Markdown path
-including conflict-free paths, task-specific closure records, and a cleanup
-control record surviving source removal. Confirm publication cannot start repairs,
-verification or new commits. Keep advanced multi-source acceptance at its rule/tool
-owner; successive publication of separately tested sources is not combined review.
+For selected Git/documentation changes, assess the intended combined result,
+including conflict-free changed Markdown. Preserve unfinished plans and useful
+outputs before an authorized worktree removal. No publication control record,
+sealed candidate or fixed sequence of reviews is required.
 
 Graph criteria include explicit project/reference roots, read-only queries,
-worktree copies of existing graphs, one closure refresh bound to the final
-published project SHA, explicit reference production and
+worktree copies of existing graphs, project refresh within verified task closure,
+separately selected reference refresh/production and
 distinct structural/semantic freshness. Preserve the repository-owned skill on
 installation. Relevant vault metadata/link semantics use the
 [shared vault reference](../skills/TA-audit-vault-links/references/vault-metadata.md).
 Check language, portable paths, resolving links and actually triggered diary,
-roadmap and milestone obligations. Retain unrelated and historical material.
+roadmap and milestone obligations. Pending-work organization belongs to
+[TA-WF-Step-update-docs](../skills/TA-WF-Step-update-docs/SKILL.md#organizing-pending-roadmap-work);
+completion-based removal belongs to
+[TA-WF-Main-close-milestone](../skills/TA-WF-Main-close-milestone/SKILL.md#roadmap-removal-criteria).
+Assess their criteria without launching either operation. Retain unrelated and
+historical material.
 
 Report findings only. A recommendation to enrich, repair, index or verify is not
 authorization to perform that operation. Shared criteria can be assessed within

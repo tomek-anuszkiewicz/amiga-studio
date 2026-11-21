@@ -11,7 +11,7 @@ Write-Host @'
 Usage: .\tools\bootstrap\bootstrap_graphify.ps1 [-CheckOnly]
 
 Default: create or refresh both project and reference code graphs.
-         Project document semantics use TA-extract-graph-semantics separately.
+         Project document semantics use TA-Graphify-extract-semantics separately.
 -CheckOnly: check Graphify availability; change neither graph.
 
 Examples:
@@ -36,7 +36,7 @@ foreach ($Graph in @('project', 'reference')) {
         Write-Warning "$Graph graph failed with exit code $LASTEXITCODE."
         $Result = 1
     } else {
-        Write-Host "[OK] $Graph code refreshed. Project semantics require TA-extract-graph-semantics."
+        Write-Host "[OK] $Graph code refreshed. Project semantics require TA-Graphify-extract-semantics."
     }
 }
 exit $Result

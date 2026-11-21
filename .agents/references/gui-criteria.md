@@ -3,8 +3,8 @@
 The [GUI specification](../../Obsidian/Amiga/Design/Application/GUI.md) owns view
 behavior and scaling; [egui guidance](../../Obsidian/Amiga/Design/egui%20Guidelines.md)
 owns visual responsibilities, complete hover coverage, structured tooltip layout
-and allocation constraints. Apply the [advance rules](../rules/egui-best-practices.md)
-before relevant implementation; assess only the assigned UI scope.
+and allocation constraints. Apply the shared [egui best practices](egui-best-practices.md)
+to the selected implementation or review; assess only the assigned UI scope.
 
 - Preserve dark-default appearance, host preference detection, runtime theme
   switching, point/relative layout and host DPI scaling.
@@ -26,8 +26,7 @@ before relevant implementation; assess only the assigned UI scope.
   actual captured images and confirm the repaired scenario. Report automated and
   visual evidence separately, including unavailable coverage.
 
-[TA-capture-gui-screenshot](../skills/TA-capture-gui-screenshot/SKILL.md) only captures
-and returns an image. Interpretation belongs to the caller's assignment. A failed
-visual assessment reports findings; selected implementation or repair uses the
-ordinary Implementer skills with the original reproduction. There is no automatic
-capture/repair loop or dedicated GUI repair dispatcher.
+A capture provides an image; interpretation belongs to the requested assessment.
+A failed visual assessment reports findings. The user selects any subsequent
+repair, which retains the original reproduction. Findings do not start a capture
+or repair loop.

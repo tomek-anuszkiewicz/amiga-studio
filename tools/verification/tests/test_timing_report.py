@@ -44,7 +44,7 @@ class TimingReportTests(unittest.TestCase):
 
     def test_selection_tests_tool_code_but_skips_vocabulary_docs_and_generated_data(self):
         routes = {
-            "tools/verification/evidence.py": True,
+            "tools/verification/verify.py": True,
             "tools/verification/checks/check_english.json": True,
             "tools/web.ps1": True,
             "tools/verification/checks/english_words/software.txt": False,

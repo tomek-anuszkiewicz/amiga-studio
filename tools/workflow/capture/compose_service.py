@@ -15,15 +15,16 @@ import subprocess
 import time
 from urllib.error import HTTPError, URLError
 
-from registry import ARCHIVE, CaptureError, Project, git, git_path, path_identity, read_json, write_json
+from registry import ARCHIVE, SERVICE_ROOT, CaptureError, Project, git, git_path, path_identity, read_json, write_json
+from record_sources import safe_file
 
 
 MOUNTED_PROJECT = Path("/capture/project")
 MOUNTED_HOME = Path("/capture/codex")
 MOUNTED_AUTHORITY = Path("/capture/authority")
-SERVICE_ROOT = Path(".agent/tools/workflow-capture")
+MOUNTED_RECEIVER_STATE = Path("/capture/receiver")
+MOUNTED_COLLECTOR_OUTPUT = Path("/capture/collector-output")
 UPSTREAM = "http://collector:4318"
-COLLECTOR_OUTPUT = "collector-output"
 COLLECTOR_IMAGE = (
     "otel/opentelemetry-collector-contrib@"
     "sha256:e40d61f10c9a617cca1ffd1be4d7e2b3a4b0f0001798ff07e58cabe82e618cea"
@@ -80,7 +81,8 @@ class MountedProject(Project):
     def __init__(self):
         self.primary = MOUNTED_PROJECT
         self.archive = self.primary / ARCHIVE
-        self.control = self.archive / "_receiver"
+        self.control = MOUNTED_RECEIVER_STATE
+        self.spool = MOUNTED_COLLECTOR_OUTPUT
         self.identity = os.environ["CAPTURE_PROJECT_ID"]
         self.common = self.authority()["git_common_dir"]
 
@@ -99,9 +101,15 @@ class MountedProject(Project):
         return rules.normcase(rules.normpath(value)) == rules.normcase(rules.normpath(self.common))
 
     def require_ignored(self, path):
-        self.authority()
-        if not self.plain_path(path).is_relative_to(self.archive) or path == self.archive:
-            raise CaptureError("The selected path is outside the ignored host archive.")
+        state = self.authority()
+        path = self.plain_path(path)
+        if path.is_relative_to(self.archive) and path != self.archive:
+            return
+        if state.get("service_ignored") is True and any(
+            path.is_relative_to(root) and path != root for root in (self.control, self.spool)
+        ):
+            return
+        raise CaptureError("The selected path is outside the ignored archive and service data mounts.")
 
 
 def verify_archive(project):
@@ -122,6 +130,7 @@ def verify_service_root(project):
 
 def write_authority(project, directory, codex_home, cwd):
     verify_archive(project)
+    verify_service_root(project)
     result = git(project.primary, "worktree", "list", "--porcelain", "-z")
     if result.returncode:
         raise CaptureError("Git could not enumerate the selected checkout's linked worktrees.")
@@ -143,6 +152,7 @@ def write_authority(project, directory, codex_home, cwd):
         "project_id": project.identity,
         "git_common_dir": str(project.common),
         "archive_ignored": True,
+        "service_ignored": True,
         "windows": os.name == "nt",
         "worktree_paths": sorted(checked),
         "rollout_source": path_identity(codex_home),
@@ -150,9 +160,10 @@ def write_authority(project, directory, codex_home, cwd):
 
 
 def saved_settings(project):
+    legacy = project.archive / "_receiver"
     legacy_paths = [
-        project.control / "compose", project.control / "compose-authority.json",
-        *project.control.glob("compose-settings*.json"),
+        legacy / "compose", legacy / "compose-authority.json",
+        *legacy.glob("compose-settings*.json"),
     ]
     if any(path.exists() or path.is_symlink() for path in legacy_paths):
         raise CaptureError("Compose settings: migrate the legacy service files out of the writable archive.")
@@ -162,6 +173,24 @@ def saved_settings(project):
         project.require_ignored(path)
         return read_json(path)
     return None
+
+
+def copy_runtime_file(project, source, destination):
+    source = safe_file(project.plain_path(source), single_link=True)
+    destination = project.plain_path(destination)
+    project.require_ignored(destination)
+    data = source.read_bytes()
+    if destination.exists():
+        if safe_file(destination, single_link=True).read_bytes() != data:
+            raise CaptureError("Conflicting runtime migration destination. Preserve both copies.")
+        return
+    with destination.open("xb") as stream:
+        try:
+            stream.write(data)
+        except BaseException:
+            stream.close()
+            destination.unlink()
+            raise
 
 
 def docker(deadline, stage, args, *, env=None, attempt_seconds=None, input=None):
@@ -240,6 +269,11 @@ class ComposeService:
             raise CaptureError("Compose identity: the saved project uses a different capture service revision.")
         self.code = self.root / "compose" / self.config_id
         self.authority = self.root / "authority"
+        self.control = self.root / "receiver"
+        self.spool = self.root / "collector" / "spool"
+        if b"${CAPTURE_RECEIVER_STATE:?}" not in self.contents["compose.yaml"]:
+            self.control = project.archive / "_receiver"
+            self.spool = self.control / "collector-output"
         self.env = {
             **os.environ,
             "COMPOSE_REMOVE_ORPHANS": "false",
@@ -247,7 +281,8 @@ class ComposeService:
             "CAPTURE_CONFIG_ID": self.config_id,
             "CAPTURE_COMPOSE_PROJECT": self.name,
             "CAPTURE_ARCHIVE": str(project.archive),
-            "CAPTURE_COLLECTOR_OUTPUT": str(project.control / COLLECTOR_OUTPUT),
+            "CAPTURE_RECEIVER_STATE": str(self.control),
+            "CAPTURE_COLLECTOR_OUTPUT": str(self.spool),
             "CAPTURE_CODE": str(self.code),
             "CAPTURE_AUTHORITY": str(self.authority),
             "CAPTURE_SESSIONS": str(self.codex_home / "sessions"),
@@ -325,9 +360,9 @@ class ComposeService:
         verify_archive(self.project)
         verify_service_root(self.project)
         self.persist_code()
-        spool = self.project.control / COLLECTOR_OUTPUT
-        self.project.require_ignored(spool)
-        spool.mkdir(exist_ok=True)
+        for directory in (self.control, self.spool):
+            self.project.require_ignored(directory)
+            directory.mkdir(parents=True, exist_ok=True)
         write_authority(self.project, self.authority, self.codex_home, cwd)
         if self.new:
             path = self.root / "compose-settings.json"

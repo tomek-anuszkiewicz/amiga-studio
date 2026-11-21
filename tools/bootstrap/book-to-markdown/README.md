@@ -322,13 +322,13 @@ The RAG CLI and shared index state file are configured in the
    inspect the existing publication before any replacement. Review the
    published files and add the required [reference metadata](reference-book-metadata.md).
 4. After validating the published Markdown, follow the
-   [RAG indexing procedure](../../../.agents/skills/TA-index-amiga-rag/SKILL.md)
+   [RAG indexing procedure](../../../.agents/skills/TA-RAG-index-amiga/SKILL.md)
    for all three Amiga documentation scopes. The CLI skips unchanged files.
 
 5. Check the index status and search for distinctive chapter text, table
    descriptions, and image descriptions under source `amiga`. Compare returned
    fragments with the published Markdown and image `.txt` sidecars. The
-   [RAG indexing workflow](../../../.agents/skills/TA-index-amiga-rag/SKILL.md)
+   [RAG indexing workflow](../../../.agents/skills/TA-RAG-index-amiga/SKILL.md)
    has the status and search commands.
 
 ## Source catalog and variant layout

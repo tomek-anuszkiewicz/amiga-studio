@@ -42,7 +42,7 @@ is restored. The envelope contains `header` and a boxed `state` value, keeping l
 serialized payloads off the call stack. JSON contains an ordinary state object;
 old layouts have no
 compatibility parser. Frontends and the debugger use this crate for persistence;
-in-memory quick slots retain only the machine value. See the [internal migration contract](../../../../.agents/rules/internal-migrations.md) for schema changes and user-data preservation.
+in-memory quick slots retain only the machine value. See the [internal migration contract](../../../../.agents/references/internal-migrations.md) for schema changes and user-data preservation.
 
 Schema version 14 replaces CPU admission countdowns and shared Chip RAM transfer
 descriptions with access timestamps. Pending keyboard releases survive a full

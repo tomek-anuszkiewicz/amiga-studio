@@ -25,3 +25,6 @@ def restore_capture(name, destination):
         # The unborn repositories start with empty object and ref directories.
         (destination / ".git/objects").mkdir()
         (destination / ".git/refs").mkdir()
+    if name == "proof":
+        with (destination / ".gitignore").open("a", encoding="utf-8") as stream:
+            stream.write(".agent/tools/\n")

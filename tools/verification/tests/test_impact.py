@@ -65,7 +65,7 @@ class ImpactTests(unittest.TestCase):
         self.assertEqual(scope.packages, ("base", "core", "gui", "independent", "machine", "test_runner"))
 
     def test_independent_docs_and_python_skip_rust(self):
-        self.assertEqual(self.select(["DIARY.md", "docs/guide.md", ".agents/rules/git-commits.md",
+        self.assertEqual(self.select(["DIARY.md", "docs/guide.md", ".agents/skills/TA-prepare-batch/references/batch-readiness.md",
                                       "tools/verification/README.md", "tools/artifacts/report.py"]).packages, ())
 
     def test_retired_report_and_neighbor_paths_have_ordinary_ownership(self):
