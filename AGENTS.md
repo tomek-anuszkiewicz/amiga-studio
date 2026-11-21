@@ -91,8 +91,10 @@ subject to the contract's ordinary whole-file preservation exception. Use
 one to four declared rounds (three by default). A missing prerequisite, finding or
 limit returns control; it does not start another skill, repair or lifecycle phase.
 The receiving main session automatically explains the actual result and applies
-[next-step guidance](.agents/references/workflow-guidance.md). A request to save
-agreed behavior selects [planning and applicable test design](.agents/references/workflow-guidance.md#save-a-formal-plan).
+[next-step guidance](.agents/references/workflow-guidance.md). Edit an
+[ordinary working draft](.agents/references/workflow-contract.md#working-drafts-and-version-checks)
+in the current conversation. A request to save agreed behavior as a formal plan
+selects [planning and applicable test design](.agents/references/workflow-guidance.md#save-a-formal-plan).
 An expressly scoped [end-to-end delivery](.agents/references/workflow-guidance.md#start-or-deliver-a-saved-plan)
 selects the operations within its recorded delegation. Otherwise wait for the
 user's choice, recheck applicability and run only that operation. The skill

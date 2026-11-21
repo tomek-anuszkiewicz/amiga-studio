@@ -8,6 +8,8 @@ description: Create one atomic repository TA skill and register its executor, re
 Apply the [invocation contract](../../references/workflow-contract.md) and
 [instruction ownership](../../rules/information-hierarchy.md).
 Executor: `main-session`. Result kind: `implementation`.
+Before work, resolve and check both session settings under the
+[runtime procedure](../../references/workflow-runtime.md#resolve-one-invocation).
 Inputs are the requested operation, its intended executor, authorized paths and
 the conditions under which the user would select it.
 
@@ -27,9 +29,7 @@ the conditions under which the user would select it.
    row and any justified incoming and outgoing cells. Give each recommendation
    an evidence-based condition. Leave other cells empty. Report the inherited
    settings or add a row to the [skill overrides table](../../references/workflow-runtime.md#skill-overrides)
-   when the operation needs a different default for a named role. For
-   `main-session`, a row can suggest an effort for the user while the operation
-   uses the session's configured model and effort.
+   when the operation needs its own default or session prerequisite.
 4. Update affected callers and criteria under instruction ownership. Run
    `python tools/workflow/result.py --describe <skill>`, inspect the affected
    rows with `--next-skills`, and regenerate the

@@ -47,6 +47,42 @@ with the exact registration on startup and resume. Preserve the same environment
 through harness overrides. Deliberately isolated fixtures may exercise standalone
 reporting. A missing or conflicting registration for planned work blocks launch.
 
+## Working drafts and version checks
+
+For an ordinary draft edit in the same conversation, read and update one
+authoritative working path. Reply with the change, its effect and any pending
+decision. A later message, repeated read or wording correction needs no saved
+revision, digest, result or guidance pair. In a shared draft, inspect concurrent
+edits, merge compatible changes and ask about conflicting intent before
+replacing it. A drafting clarification that becomes a requirement belongs in
+the working plan.
+
+An explicit formal planning selection uses the normal result and round contract.
+Substantive revisions within it consume rounds. A new scope, missing decision or
+exhausted formal run follows the normal decision or continuation boundary.
+
+Before checking a version, ask **what will the next consumer do differently if
+the versions differ?** If there is a concrete effect, identify the relevant
+input once at that decision using its owning procedure or tool. Carry that
+observation forward at the same boundary. A later handoff or mutation may need
+a current check of its own. A digest identifies bytes; keeping the original
+bytes or an immutable Git object makes recovery and comparison possible.
+
+- At approval, bind the decision and its premises to one
+  [recoverable input version](../../tools/workflow/capture/README.md#starting-inputs).
+  Before relying on it again, compare any changed requirement and its acceptance
+  cases. Preserve unaffected consent and get a fresh decision for changed scope
+  or protected effects.
+- At a handoff, move or resumption relying on prior work, name the authoritative
+  path and the recoverable versions the recipient needs. Compare at use and
+  refresh affected assignments or decisions if the input differs. A missing
+  baseline leaves the comparison unknown. Returning to the same conversation
+  alone creates no resumption check.
+- For review, verification and publication, keep the existing scoped candidate,
+  native evidence and action-time guards. Review and verifier owners establish
+  reuse eligibility. Freeze and conditional publication still check the exact
+  source and target state at their respective boundaries.
+
 ## Inputs and outputs
 
 The assignment supplies requirements/plans, authorized operations, exact candidate,
@@ -56,7 +92,7 @@ record base commit, SHA-256 of the selected binary Git diff and hashes of select
 untracked files, plus scope. A branch or HEAD alone cannot identify dirty work.
 State unavailable identities explicitly; they cannot support approval.
 
-Each invocation persists fresh `result.json` and matching `result.md` under
+Each formal invocation persists fresh `result.json` and matching `result.md` under
 `.agent/tmp/workflow-TA/<task-id>/<work-item-id>/<run-id>/`. Never overwrite a prior
 run. Plans belong under `.agent/tasks/`. The receiving session may persist a
 read-only worker's returned data, preserving its claims and identity.
@@ -78,9 +114,9 @@ The human report includes the outcome, invocation/rounds, typed details, finding
 checks and remaining decisions. The worker supplies a non-authoritative
 `recommendation`, not a menu or permission decision. The receiving main session
 automatically applies [result interpretation and next-step guidance](workflow-guidance.md),
-preserving this result and presenting one source-bound option set when a choice is
-needed. It waits for the user's choice for any operation outside the recorded
-selection. Validation and rendering never dispatch.
+preserving this result and saving guidance for a selectable operation, a decision
+bound to the displayed version or a pending handoff that must survive resumption.
+It waits for the user's choice for any operation outside the recorded selection. Validation and rendering never dispatch.
 Official operation suggestions come from the source skill's conditional matrix row
 under that receiving procedure. The matrix does not restrict a user's direct skill
 selection or change the selected skill's authority, required inputs or round limits.

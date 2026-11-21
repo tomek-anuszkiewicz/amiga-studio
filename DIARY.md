@@ -3076,3 +3076,29 @@ Use [TA-prepare-batch](.agents/skills/TA-prepare-batch/SKILL.md) to prepare the 
 - Task `WORKFLOW-TEST-PERFORMANCE-20261121` extended the parallel test runner to workflow capture and routing. Tests that need a saved Git state restore an isolated copy from an archive to avoid rebuilding the same history. They still exercise live Git operations.
 - Changes to the shared reporting or repository modules now select all three suites. Reviewers use the original case duration when available and record the command or suite duration when a runner omits case timing.
 - Four reviewers approved the implementation. The first focused run passed 386 of 387 cases. One verifier test reached its ten-second startup deadline before checking lock recovery. It passed alone and in the full 306-case retry. Capture passed 39 cases and routing passed 42 on their first attempts. These focused results cover the three Python suites. The commit message records the separate batch verification outcome.
+---
+
+### [2026-11-21 CET] — Prepare workflow version checks and map consolidation for local delivery
+- **Affected Subsystems**:
+  - `Task workflow`
+  - `Workflow tools`
+  - `Documentation`
+- **What Was Changed (The Concrete Reality)**:
+  - Allow ordinary draft edits in one working file while retaining selected approved and handed-off versions
+  - Expose default models and effort with the crate write rule in both matrix views
+  - Require a supported sequence and consequence for workflow defect findings
+  - Restore the workflow overview and link detailed recovery paths
+- **Architectural Rationale & Trade-Offs**:
+  - Keep approval and evidence decisions tied to the input that matters while reducing routine draft artifacts
+  - Give readers a direct route from a saved plan to a sealed commit and conditional publication
+- **Verification & Test Results**:
+  - Task WF-VERSION-CHECKS-20261120 execution delivery-20261121-01 completed 83 focused Python cases
+  - The author rendered both maps at 1180 pixels and checked 107 unique destinations
+  - MR-02 and MR-03 alternatives were procedure walkthroughs rather than actual alternate launches
+  - The initial source receipt refused missing plan metadata and passed after an execution-only header update
+  - The initial canonical commit profile passed all 14 required groups on the first-review candidate
+  - All four first-round reviewers requested changes; the independent challenger upheld ARCH-01, BEH-01, BEH-02, DOC-WV-01, DOC-WV-02, DOC-WV-03 and TEST-EV-01
+  - After that review boundary, the owner accepted all seven findings without repair and selected continued local delivery under D-OWNER-ACCEPT-REVIEW-01. The original reports remain preserved; no finding is claimed repaired or rejected
+  - Continuation execution delivery-20261121-02 obtained fresh active-client OTLP confirmation before preparation. Only closure evidence and execution metadata changed after owner acceptance
+  - Canonical integration verification and four fresh final lane reviews are pending for this prepared candidate. The commit message and completion report will record their actual outcomes
+  - The full English scan applies to the later sealed commit before local publication. Push and cleanup of the main task worktree are outside this delivery

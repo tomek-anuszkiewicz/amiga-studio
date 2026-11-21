@@ -46,6 +46,21 @@ cannot approve. When the assigned scope is covered, required evidence is present
 and no required correction is supported, return `approved` in that round.
 An empty findings list is a complete review result.
 
+### Workflow defects
+
+For a required workflow repair, give the shortest supported sequence that
+reaches the failure on the candidate. Start at a supported entry point or at
+an intermediate state established by a recorded run or a trace through the
+code and procedure. Name who performs each decisive action, what state it
+changes and which later decision or visible outcome fails.
+
+A focused probe may recreate the intermediate state. Identify the conditions it
+supplied and show how the workflow can produce them together in that order.
+If the setup supplies the only evidence for the decisive transition, identify
+the missing step and leave the claim off the required repair list. Reconsider
+it when new evidence establishes the step. An independently binding requirement
+or failed mandatory check can still be reported on its own evidence.
+
 ## Four-lane batch evidence
 
 Batch preparation requires four independent instances of `TA-code-reviewer` with

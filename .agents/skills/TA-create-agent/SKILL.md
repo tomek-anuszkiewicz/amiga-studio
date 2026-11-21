@@ -8,6 +8,8 @@ description: Create one repository TA agent with bounded responsibility, assigne
 Apply the [invocation contract](../../references/workflow-contract.md) and
 [instruction ownership](../../rules/information-hierarchy.md).
 Executor: `main-session`. Result kind: `implementation`.
+Before work, resolve and check both session settings under the
+[runtime procedure](../../references/workflow-runtime.md#resolve-one-invocation).
 Inputs are the requested responsibility, authorized paths, relevant existing
 skills and the boundaries the role must follow.
 

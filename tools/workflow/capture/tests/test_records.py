@@ -143,7 +143,10 @@ class PreservationTests(unittest.TestCase):
             files.append({"kind": "artifact", "source": str(source), "path": destination, "sha256": value})
             expected[destination] = {"kind": "archive", "path": destination, "sha256": value, "size": len(data)}
 
-        for version, data in (("start", b"starting\n"), ("revision", b"intermediate\n"), ("final", b"final\n")):
+        self.write(editable, b"unselected initial draft\n")
+        for version, data in (("start", b"starting\n"), ("revision", b"approved\n"), ("final", b"final\n")):
+            if version == "final":
+                self.write(editable, b"unselected working edit after approval\n")
             self.write(editable, data)
             copy = self.write(snapshots / version / "nested/plan.md", editable.read_bytes())
             select(copy, f"artifacts/worktree/inputs/{version}/nested/plan.md", data)
@@ -184,6 +187,10 @@ class PreservationTests(unittest.TestCase):
         self.assertFalse(any(item["kind"] == "otel" for item in manifest["files"]))
         self.assertEqual((archive / f"rollouts/{thread}.jsonl").read_bytes(), native.read_bytes())
         self.assertEqual(editable.read_bytes(), b"final\n")
+        self.assertEqual({item["path"] for item in manifest["files"] if "/inputs/" in item["path"]},
+                         {name for name in expected if "/inputs/" in name})
+        approved = archive / "artifacts/worktree/inputs/revision/nested/plan.md"
+        self.assertEqual(approved.read_bytes(), b"approved\n")
         checks = {
             "starting_inputs": {"checks": [check for path, check in expected.items() if "/inputs/" in path]},
             "registration_lineage": {"checks": [{"kind": "source_range", "path": f"rollouts/{thread}.jsonl",
@@ -204,6 +211,17 @@ class PreservationTests(unittest.TestCase):
         self.assertEqual(len(rows), 8)
         for row in checks:
             self.assertEqual(rows[row]["status"], "present", rows[row])
+        missing = "artifacts/worktree/inputs/required-but-missing/nested/plan.md"
+        details = json.loads(observer.read_bytes())
+        details["rows"]["starting_inputs"]["checks"].append(
+            {"kind": "archive", "path": missing, "sha256": sha256(b"missing approved content").hexdigest()})
+        observer = self.json_file(self.root / "missing-input.json", details)
+        missing_result = self.run_capture("records.py", "check", *args, "--revision", receipt["revision"],
+                                          "--expect", observer, status=1)
+        report = json.loads((Path(missing_result["report"]) / "result.json").read_bytes())
+        row = report["rows"]["starting_inputs"]
+        self.assertEqual(row["status"], "partial")
+        self.assertEqual([entry["locator"] for entry in row["checks"] if not entry["verified"]], [missing])
         self.dispose_source()
         for destination, check in expected.items():
             self.assertEqual(sha256((archive / destination).read_bytes()).hexdigest(), check["sha256"])

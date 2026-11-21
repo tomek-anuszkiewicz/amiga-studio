@@ -12,7 +12,6 @@ already supplied the dependency. No hook or model API is required.
 ```powershell
 python tools/workflow/result.py --describe TA-plan-change
 python tools/workflow/result.py .agent/tmp/workflow-TA/<task>/<item>/<run>/result.json --render
-python tools/workflow/result.py .agent/tmp/workflow-TA/<task>/<item>/<run>/result.json
 python tools/workflow/result.py --describe-guidance
 python tools/workflow/result.py --next-skills TA-implement-change
 python tools/workflow/result.py --matrix
@@ -22,8 +21,11 @@ python tools/workflow/result.py .agent/tmp/workflow-TA/<task>/<item>/<run>/guida
 [result.schema.json](result.schema.json) owns required fields, typed payloads and
 role/skill pairing. `--describe` selects a schema view, not an operation to run.
 Validation also checks round/status relationships, review prerequisites, reference
-content hashes and portable paths. `--render` creates the text representation from
-the same claims and refuses to overwrite a different existing report. Reconcile a
+content hashes and portable paths. `--render` also checks existing Markdown or
+creates it from the same claims. It refuses to overwrite a different report.
+Reuse one successful check for rendering and consumption at the same decision
+if it verifies the required live references and matching text. After a delay
+or changed input, recheck at the next decision that depends on those bytes. Reconcile a
 formatting error explicitly within the same invocation; never rerun expensive
 successful checks merely to rewrite reports. Use a fresh run directory for a
 continuation and preserve the previous result.
@@ -35,13 +37,13 @@ Guidance schema version 2 binds the authoritative
 `transition.condition` naming one code in the source-skill/destination-skill cell,
 and `transition.basis` explaining the actual evidence for that condition. Conversation
 options use a null transition. `--next-skills` reads one row and shows the conditions,
-executor and reasoning effort for each possible destination.
-`--matrix` renders all skill axes and cells into
-[the readable matrix](../../docs/workflow-skill-matrix.md), grouped into
-destination-column blocks. The result schema owns the executor, and the
-[runtime tables](../../.agents/references/workflow-runtime.md#model-and-reasoning-effort)
-own the effort. Main-session suggestions leave its settings up to the user.
-Regenerate the view after changes to transitions, skill ownership or effort.
+executor, default model, effort and assignment condition for each possible
+destination. `--matrix` renders the same settings and all cells in
+[the readable matrix](../../docs/workflow-skill-matrix.md). The result schema
+owns the executor. The
+[runtime procedure](../../.agents/references/workflow-runtime.md#resolve-one-invocation)
+owns defaults, crate-write selection and main-session prerequisites.
+Regenerate the view after changing transitions, skill ownership or settings.
 
 The validator enforces matrix identity and cell/code membership for official
 operation suggestions, including proposals with missing prerequisites. It cannot
@@ -58,7 +60,10 @@ caller, with no dispatch or authorization meaning. Version 1's `next_action`
 format is retired; historical results remain preserved historical evidence and
 are not rewritten as new runs or accepted through a compatibility parser.
 
-After reading the actual result, the receiver authors a guidance record using
+An ordinary draft edit needs no formal artifact. A completed formal plan with
+no remaining choice keeps its result pair and a conversational reply.
+For a selectable operation, a decision tied to the displayed version or a
+handoff retained for resumption, the receiver authors guidance using
 `--describe-guidance`. It binds the source result by path and hash, retains its
 original candidate, and separately identifies the current candidate. The schema
 and existing skill-to-role mapping both live in `result.schema.json`; there is no
@@ -77,7 +82,8 @@ made-up slash command nor a new execution CLI is provided.
 Unavailable operations name missing inputs or the approval prerequisite and are
 rendered as proposals, without an executable invocation. A source result that is
 unavailable is represented by `source_result: null` with an identity limitation;
-it cannot support a ready operation. A finished task can have no options.
+it cannot support a ready operation. Earlier guidance with no options remains
+readable.
 
 Guidance validation checks the source JSON and matching text, source identities,
 option uniqueness, executor binding, finding IDs and continuation fields. It

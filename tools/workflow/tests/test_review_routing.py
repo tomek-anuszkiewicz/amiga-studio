@@ -15,7 +15,7 @@ from guidance import check_review_route, validate_guidance
 from review_challenge import claim
 from review_inputs import Artifacts, SCHEMA, fingerprint, qualification
 from review_routing import recommend
-from skill_matrix import MATRIX_PATH, MATRIX_REFERENCE
+from skill_matrix import MATRIX_PATH, MATRIX_REFERENCE, load_matrix
 from fixture_repository import baseline
 
 
@@ -28,6 +28,60 @@ SKILLS = dict(zip(LANES, ("TA-review-behavior", "TA-review-architecture",
 
 def key(lane, identifier):
     return {"lane": lane, "id": identifier}
+
+
+class SkillMatrixTests(unittest.TestCase):
+    def matrix_view(self, *args):
+        return subprocess.run([sys.executable, str(TOOLS / "result.py"), *args],
+                              encoding="utf-8", capture_output=True, check=True).stdout
+
+    def test_complete_matrix_shows_approved_defaults_and_assignment_conditions(self):
+        view = self.matrix_view("--matrix")
+        guide = TOOLS.parents[1] / "docs"
+        self.assertEqual(view, (guide / "workflow-skill-matrix.md").read_text(encoding="utf-8"))
+        runtime = ".agents/references/workflow-runtime.md#resolve-one-invocation"
+        self.assertIn(f"](../{runtime})", view)
+        self.assertIn(f"](../{runtime})", (guide / "ai_agents.md").read_text(encoding="utf-8"))
+        groups = [
+            ("TA-implementer", "any authorized write under `crates/` selects `gpt-6.2-astra` and `high`",
+             ("TA-implement-change", "TA-fix-findings", "TA-optimize-emulation")),
+            ("TA-implementer", "-", ("TA-write-powershell",)),
+            ("TA-test-auditor", "-", ("TA-measure-coverage", "TA-audit-tests")),
+            ("TA-code-reviewer", "-", ("TA-review-behavior", "TA-review-architecture", "TA-review-semantic-parity")),
+            ("main-session", "The main session must apply both resolved settings before starting.",
+             ("TA-create-skill", "TA-create-agent")),
+        ]
+        for executor, condition, skills in groups:
+            for skill in skills:
+                with self.subTest(skill=skill):
+                    line, = (line for line in view.splitlines() if f"| `{skill}` |" in line)
+                    self.assertIn(f"| `{executor}` | `gpt-6.2-sol` | `high` |", line)
+                    self.assertIn(condition, line.split("|")[-2].strip())
+
+    def test_next_skill_rows_show_same_settings_and_keep_official_conditions(self):
+        matrix = load_matrix(SCHEMA)
+        sources = {
+            "TA-implement-change": ("TA-implement-change", "TA-fix-findings"),
+            "TA-profile-emulation": ("TA-optimize-emulation",),
+            "TA-create-skill": ("TA-create-skill", "TA-create-agent"),
+        }
+        for source, affected in sources.items():
+            with self.subTest(source=source):
+                view = self.matrix_view("--next-skills", source)
+                self.assertIn("](.agents/references/workflow-runtime.md#resolve-one-invocation)", view)
+                sections = dict(section.split("\n", 1) for section in view.split("\n## ")[1:])
+                self.assertEqual(set(sections), set(matrix["transitions"][source]))
+                for target, codes in matrix["transitions"][source].items():
+                    section = sections[target]
+                    executor = SCHEMA["x-skill-contracts"][target]["agent"]
+                    self.assertIn(f"Executor: {executor}.", section)
+                    self.assertEqual([line for line in section.splitlines() if line.startswith("- ")],
+                                     [f"- {code}: {matrix['conditions'][code]}" for code in codes])
+                    if target in affected:
+                        self.assertIn("Default model: `gpt-6.2-sol`. Default reasoning effort: `high`.", section)
+                        condition = ("main session must apply both resolved settings" if executor == "main-session"
+                                     else "any authorized write under `crates/` selects `gpt-6.2-astra` and `high`")
+                        self.assertIn(condition, section)
 
 
 class RoutingTests(unittest.TestCase):
@@ -1111,6 +1165,7 @@ class RoutingTests(unittest.TestCase):
         stale = self.json(".agent/focused-route.json", self.request(cr, before=br, effects=("wording",)))
         authority = self.publish_route(stale)
         matrix = self.data(MATRIX_REFERENCE, MATRIX_PATH.read_bytes())
+        attachment = self.data(".agent/selected-attachment.md", b"Selected handoff input.\n")
         guidance = {
             "schema_version": 2, "kind": "guidance", "guidance_id": "fixture-guidance",
             "task_id": TASK, "work_item_id": ITEM, "source_run_id": "docs-c", "source_result": docs,
@@ -1124,7 +1179,7 @@ class RoutingTests(unittest.TestCase):
                 "instruction": "Review the candidate behavior.", "authorization_impact": "Select the review only.",
                 "transition": {"condition": "REV", "basis": "Behavior is in the remaining wave."},
                 "assignment": {"skill": SKILLS["behavior"], "executor": "TA-code-reviewer",
-                               "input_refs": [self.req], "selected_findings": [], "read_scope": ["source.txt"],
+                               "input_refs": [self.req, attachment], "selected_findings": [], "read_scope": ["source.txt"],
                                "write_scope": [], "round_limit": 1, "previous_run_id": None,
                                "cumulative_history": [], "new_approach": None},
             }],
@@ -1136,6 +1191,13 @@ class RoutingTests(unittest.TestCase):
                                      SCHEMA, self.root)
 
         self.assertEqual(errors(), [])
+        preserved_pair = [(self.root / docs["path"]).with_suffix(suffix) for suffix in (".json", ".md")]
+        original_pair = [path.read_bytes() for path in preserved_pair]
+        with self.subTest("selected attachment changed after successful handoff"):
+            self.data(attachment["path"], b"Revised after the operation was offered.\n")
+            self.assertEqual(errors(), [f"changed reference: {attachment['path']}"])
+            self.assertEqual([path.read_bytes() for path in preserved_pair], original_pair)
+            self.data(attachment["path"], b"Selected handoff input.\n")
         foreign = self.report("foreign", "documentation", c, routed=False)
         with self.subTest("unrelated source"):
             self.assertIn("review routing: guidance source result is outside the current review history", errors(foreign))

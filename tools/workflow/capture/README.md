@@ -36,18 +36,26 @@ python tools/workflow/capture/environment.py compare <saved-inventory.json> <fre
 ```
 
 Keep approved plans, test designs, acceptance criteria, decisions, attachments
-and inventories under `.agent/tasks/` or another selected ignored location. At approval, create a version map under
-`.agent/tmp/task-inputs/<task>/` and copy each selected starting file byte for
-byte under `start/` before editing. Use ordinary file copy and SHA-256 commands.
-Check the source and destination digests and preserve any existing copy if they
-differ. Do the same under a new named version directory before replacing each
-selected substantive revision. Verify again before resuming a task.
+and inventories under `.agent/tasks/` or another selected ignored location.
+Use a version map under `.agent/tmp/task-inputs/<task>/` for approved inputs,
+selected handoffs and versions explicitly retained for history. Include each
+attachment the decision or recipient actually depends on. Working draft edits
+need no intermediate versions.
 
-For every version, record the task, original relative path, version, approval or
-run identity, snapshot path and SHA-256. Record the selected final version and
-its links to the starting and intermediate versions. Identical bytes may use a
-single preserved copy. Record unavailable earlier versions as gaps. Keep any
-historical source locators and the limits of archive-only inputs in the map.
+At approval, bind each selected input to recoverable bytes. Use the path at an
+immutable Git commit if it contains the exact bytes. For ignored or dirty inputs,
+keep one verified copy before changing the selected bytes. Use ordinary file
+copy and SHA-256 commands and verify the destination against the source.
+Reuse an existing verified copy of identical content. Keep previous accepted
+versions and existing archive records. If the recipient needs a worktree copy,
+reference its existing provisioning copy when it provides the selected bytes.
+
+For each selected version, record the task, original relative path, version,
+approval or handoff identity, SHA-256 and the copy or Git object locator.
+At a decision that depends on an earlier version, compare its selected inputs
+once at use. Record missing required versions as gaps. A hash without recoverable
+bytes cannot supply a comparison. When asked what changed since approval, read
+that approved input and compare it with the current working file.
 ### Explicit starting input commits
 
 An explicitly selected starting input commit may retain named ignored paths
@@ -639,8 +647,8 @@ artifacts. Use `kind: cli`, `otel` or `artifact` with destination paths under
 `cli/`, `otel/` or `artifacts/` respectively. Source paths are relative to the
 input file by default. For linked worktree sources list narrow directories in
 `artifact_roots` and give each selected file's full source path. Include the
-version map and individually selected copies under `artifacts/worktree/inputs/`,
-with input bytes under `<version>/<relative-path>`. Within each version retain
+version map and individually selected copies, when relied on, under
+`artifacts/worktree/inputs/`, with preserved input bytes under `<version>/<relative-path>`. Within each version retain
 relative subpaths to distinguish duplicate filenames. Use
 `artifacts/verification/<profile>/<attempt>/` for the selected timing report and
 its selection record. Give the independently acquired expected `sha256` for
@@ -704,9 +712,12 @@ Pass an observer JSON object with `identity`, the expected `threads` list, and
 an explicit reason under `not_exercised` or `unavailable`. An exact file check
 uses the expected archive-relative path and the digest of its independently held
 source, for example `{"kind":"archive","path":"cli/covered.jsonl","sha256":"<digest>"}`.
-Use `git_blob` for committed approved input bytes, `commit_ref` for required
-ancestry and `source_range` for selected original JSONL byte ranges. Check exits
-with status 1 when the report contains gaps.
+In the starting-input row, check only the required approved, handed-off or
+explicitly retained versions. Use `git_blob` for approved input bytes retained
+in Git and `archive` for selected copies. A missing expected approved version
+remains a gap. Use `commit_ref` for required ancestry and `source_range`
+for selected original JSONL byte ranges. Check exits with status 1 when the
+report contains gaps.
 
 ## Selected timing reports
 

@@ -15,10 +15,11 @@ to the first account of the result.
    [invocation contract](workflow-contract.md). Preserve the worker's original
    status, findings, verdict and recommendation. Separate a completed assessment
    requesting changes from successful implementation and verified batch readiness.
-2. Check task, work item, run, source result hash and candidate identity against
-   the current task. Inspect referenced command outcomes; schema validity alone
-   proves neither execution nor approval. Keep canonical verification, independent
-   scoped verdicts and repair claims distinct. Do not rerun checks while interpreting.
+2. For a handoff, decision or evidence reuse, bind the task, work item, run and
+   relevant inputs to the current task. Use the owning check and reuse its
+   observation at that boundary. Inspect referenced command outcomes; schema
+   validity alone proves neither execution nor approval. Keep canonical
+   verification, independent scoped verdicts and repair claims distinct.
 3. Explain uncertainty and missing evidence honestly. For interrupted work, inspect
    actual edits and surviving commands under the contract before offering a resume.
    For exhausted rounds, preserve the predecessor and cumulative work history;
@@ -33,6 +34,14 @@ verdict and identify any disagreement in the receiving session's assessment.
 
 ## Explain the result to the engineer
 
+Use plain language for progress and final replies. Name the action and its
+object in the user's language. For a check, explain what it established and
+what that means for the task. Name an internal operation when the user needs
+to select it or find its record. Use descriptive task labels. For example,
+state the selected task branch and commit, the target branch and that any
+authorized removal follows integration. Show individual digests for a mismatch,
+an explicit request or a recipient who needs them.
+
 Explain the claim that drives a decision. In the historical capture workflow,
 a successful `register.py stop` closed one task's recording interval while the
 shared receiver kept accepting events.
@@ -46,11 +55,12 @@ proposed REST stop request belonged to a later design.
 
 ## Save a formal plan
 
-A request to create a formal plan or add agreed behavior to one selects
+A request to save agreed behavior as a formal plan selects
 `TA-planner` with `TA-plan-change` and any applicable `TA-test-designer` work
 with `TA-design-tests`. This includes asking to save agreed behavior for later
-after an interactive discussion. Exploration alone does not select planning.
-Confirm [telemetry startup](workflow-contract.md#telemetry-startup-prerequisite)
+after an interactive discussion. Ordinary edits to a working draft follow the
+[shared draft rule](workflow-contract.md#working-drafts-and-version-checks).
+Honor an explicit selection of this formal operation. Confirm [telemetry startup](workflow-contract.md#telemetry-startup-prerequisite)
 where required. Give the planner the requested change, candidate, plan path,
 scope and round budget.
 
@@ -63,6 +73,8 @@ evidence ends with the planner. Finish the planning request after applicable
 design and concrete decisions. Ask about missing material behavior before
 relying on it. A plan saved with pending decisions identifies the blocked
 scenarios; unaffected work can still be designed when its inputs are complete.
+A terminal formal planning result keeps its result pair and gets a short
+conversational explanation when there is no choice to preserve.
 
 Declare the design destination as a plan-relative link before handing off the
 saved revision. The design cites the exact input revision and digest, and
@@ -125,8 +137,10 @@ Keep decisions in chronological order so the last explicit disposition for
 each ID is current. Record incorporation and affected input identities alongside
 that decision.
 
-On resume read the working plan, proposals and linked design before acting.
-Compare the selected files and diff with approved inputs. For an unexplained
+When relying on prior work after a handoff or resumption, read the working plan,
+proposals and linked design, then compare the selected files and diff with the
+recoverable approved inputs once at use. On request, compare the working plan
+with the selected approved text and explain affected decisions and acceptance. For an unexplained
 material edit, record its observed effect with origin and intent unknown and
 ask what belongs in the task. Use the task records and selected diff for recovery
 without hooks or a transcript scan.
@@ -134,9 +148,10 @@ without hooks or a transcript scan.
 Group related pending decisions at the next natural checkpoint, such as a round
 result or batch preparation. Resolve a decision sooner when the next action
 depends on it. An explicit instruction to incorporate the specified change
-selects the amendment. Before replacing the active revision, preserve the
-prior plan and relevant design bytes with their digests and record the intended
-revision and affected updates under the approved decision ID. Link that decision
+selects the amendment. Before replacing approved bytes, confirm the prior plan
+and relevant design are recoverable through their
+[selected version records](../../tools/workflow/capture/README.md#starting-inputs).
+Record the intended revision and affected updates under the approved decision ID. Link that decision
 in the new revision and update the affected acceptance criteria and applicable
 test design through [the planning handoff](#save-a-formal-plan). Record the
 resulting refs when complete. On restart, check the saved refs and complete only
@@ -249,7 +264,8 @@ assessment of only the affected claims and retain decisions for the other IDs.
 
 Validate one final `uphold` or `reject` per lane and ID against the collected
 reports and exact candidate. An upheld finding remains open for authorized
-repair. Explain the supported use or requirement and the demonstrated
+repair. Apply the [supported-sequence test](review-common.md#workflow-defects)
+to the challenger evidence and preserve the actual checkpoint reply when required. Explain the supported use or requirement and the demonstrated
 consequence. Group related findings for reference. Repair each upheld finding and verify
 its own trigger. A related finding keeps its separate decision. A rejected finding closes on this candidate when
 the advisory result is accepted. Retain its primary report, the binary decision
@@ -316,11 +332,13 @@ A successful TA-close-task hands off its publication record and SHA to
 [the recorded delivery procedure](#start-or-deliver-a-saved-plan) for closure.
 
 In the user's language, briefly state the outcome, its consequence, the recommended
-next step and why. Offer normally one to three useful options with their effects
-and prerequisites. Use no padding and invent no next task after completion: an
-empty option set can correctly report that the requested work is finished.
+next step and why when a choice remains. Offer normally one to three useful options
+with their effects and prerequisites. An ordinary draft edit or a terminal
+formal result with no pending selection can use a direct reply.
 
-Persist the caller's interpretation as a fresh matching `guidance.json` and
+When offering another operation for selection, tying a decision to the displayed
+version or retaining a handoff for resumption, persist the interpretation as
+a fresh matching `guidance.json` and
 `guidance.md` pair under the source run's `.agent/tmp/workflow-TA/` directory, in
 a uniquely named guidance subdirectory. Use the
 [existing data and rendering tool](../../tools/workflow/README.md); it validates
@@ -379,9 +397,10 @@ delegates choices to a trial coordinator, record that provenance.
 
 Resolve the choice against the current guidance ID. If a label is ambiguous, ask
 for clarification. Recheck result/candidate identities, selected scope, prerequisites
-and relevant evidence, including the matrix version and selected condition, with
-lightweight comparisons. If they changed materially,
-explain the change and replace the affected options; do not run a stale instruction.
+and relevant evidence, including the matrix version and selected condition.
+Use the owning tool or procedure once at this decision. Reuse any observation
+that already checked the exact ready action against live inputs here.
+If they changed materially, explain the change and replace the affected options.
 Keep earlier evidence and unresolved finding IDs. No fresh tests, coverage or
 reviewers are needed merely to check applicability.
 

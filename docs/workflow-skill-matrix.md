@@ -17,63 +17,61 @@ do not repeat checks or continue completed work merely because a cell exists.
 
 ## Skill axes
 
-Effort comes from the [runtime settings](../.agents/references/workflow-runtime.md#model-and-reasoning-effort)
-for the primary executor. Main-session skills use the current session's effort.
-A suggested session effort helps the user choose settings for a run.
+The [runtime procedure](../.agents/references/workflow-runtime.md#resolve-one-invocation) owns assignment and session checks.
 
-| ID | Skill | Reasoning effort |
-| --- | --- | --- |
-| 01 | `TA-plan-change` | `high` |
-| 02 | `TA-design-tests` | `high` |
-| 03 | `TA-implement-change` | `high` |
-| 04 | `TA-fix-findings` | `medium` |
-| 05 | `TA-optimize-emulation` | `high` |
-| 06 | `TA-write-powershell` | `medium` |
-| 07 | `TA-audit-tests` | `high` |
-| 08 | `TA-measure-coverage` | `medium` |
-| 09 | `TA-review-behavior` | `high` |
-| 10 | `TA-review-architecture` | `high` |
-| 11 | `TA-review-tests-evidence` | `high` |
-| 12 | `TA-review-docs` | `high` |
-| 13 | `TA-review-spec-compliance` | `high` |
-| 14 | `TA-review-semantic-parity` | `high` |
-| 15 | `TA-audit-vault-links` | `high` |
-| 16 | `TA-research-hardware-manuals` | `high` |
-| 17 | `TA-research-reference-models` | `high` |
-| 18 | `TA-research-hardware-measurements` | `high` |
-| 19 | `TA-diagnose-cpu` | `high` |
-| 20 | `TA-start-plan` | Session setting |
-| 21 | `TA-repair-worktree` | Session setting |
-| 22 | `TA-sync-master` | Session setting |
-| 23 | `TA-resolve-merge-conflicts` | Session setting |
-| 24 | `TA-sync-docs` | Session setting |
-| 25 | `TA-author-methodology-doc` | Session setting |
-| 26 | `TA-compact-diary` | Session setting |
-| 27 | `TA-organize-roadmap` | Session setting |
-| 28 | `TA-prune-roadmap` | Session setting |
-| 29 | `TA-prepare-batch` | Session setting |
-| 30 | `TA-commit-batch` | Session setting |
-| 31 | `TA-close-task` | Session setting |
-| 32 | `TA-cleanup-task` | Session setting |
-| 33 | `TA-verify-focused` | Session setting |
-| 34 | `TA-verify-batch` | Session setting |
-| 35 | `TA-verify-milestone` | Session setting |
-| 36 | `TA-query-graph` | Session setting |
-| 37 | `TA-find-graph-path` | Session setting |
-| 38 | `TA-explain-graph-symbol` | Session setting |
-| 39 | `TA-refresh-graph` | Session setting |
-| 40 | `TA-extract-graph-semantics` | Session setting |
-| 41 | `TA-capture-gui-screenshot` | Session setting |
-| 42 | `TA-index-amiga-rag` | Session setting |
-| 43 | `TA-profile-emulation` | Session setting |
-| 44 | `TA-create-skill` | `medium` (suggested) |
-| 45 | `TA-create-agent` | `medium` (suggested) |
-| 46 | `TA-capture-environment` | Session setting |
-| 47 | `TA-compare-environments` | Session setting |
-| 48 | `TA-register-execution` | Session setting |
-| 49 | `TA-collect-task-records` | Session setting |
-| 50 | `TA-check-task-records` | Session setting |
-| 51 | `TA-challenge-findings` | `high` |
+| ID | Skill | Executor | Default model | Default reasoning effort | Assignment condition |
+| --- | --- | --- | --- | --- | --- |
+| 01 | `TA-plan-change` | `TA-planner` | `gpt-6.2-astra` | `high` | - |
+| 02 | `TA-design-tests` | `TA-test-designer` | `gpt-6.2-astra` | `high` | - |
+| 03 | `TA-implement-change` | `TA-implementer` | `gpt-6.2-sol` | `high` | For `TA-implementer`, any authorized write under `crates/` selects `gpt-6.2-astra` and `high` for the whole assignment, unless the user overrides either field. |
+| 04 | `TA-fix-findings` | `TA-implementer` | `gpt-6.2-sol` | `high` | For `TA-implementer`, any authorized write under `crates/` selects `gpt-6.2-astra` and `high` for the whole assignment, unless the user overrides either field. |
+| 05 | `TA-optimize-emulation` | `TA-implementer` | `gpt-6.2-sol` | `high` | For `TA-implementer`, any authorized write under `crates/` selects `gpt-6.2-astra` and `high` for the whole assignment, unless the user overrides either field. |
+| 06 | `TA-write-powershell` | `TA-implementer` | `gpt-6.2-sol` | `high` | - |
+| 07 | `TA-audit-tests` | `TA-test-auditor` | `gpt-6.2-sol` | `high` | - |
+| 08 | `TA-measure-coverage` | `TA-test-auditor` | `gpt-6.2-sol` | `high` | - |
+| 09 | `TA-review-behavior` | `TA-code-reviewer` | `gpt-6.2-sol` | `high` | - |
+| 10 | `TA-review-architecture` | `TA-code-reviewer` | `gpt-6.2-sol` | `high` | - |
+| 11 | `TA-review-tests-evidence` | `TA-code-reviewer` | `gpt-6.2-sol` | `high` | - |
+| 12 | `TA-review-docs` | `TA-code-reviewer` | `gpt-6.2-sol` | `high` | - |
+| 13 | `TA-review-spec-compliance` | `TA-code-reviewer` | `gpt-6.2-sol` | `high` | - |
+| 14 | `TA-review-semantic-parity` | `TA-code-reviewer` | `gpt-6.2-sol` | `high` | - |
+| 15 | `TA-audit-vault-links` | `TA-code-reviewer` | `gpt-6.2-sol` | `high` | - |
+| 16 | `TA-research-hardware-manuals` | `TA-hardware-researcher` | `gpt-6.2-sol` | `high` | - |
+| 17 | `TA-research-reference-models` | `TA-hardware-researcher` | `gpt-6.2-sol` | `high` | - |
+| 18 | `TA-research-hardware-measurements` | `TA-hardware-researcher` | `gpt-6.2-sol` | `high` | - |
+| 19 | `TA-diagnose-cpu` | `TA-cpu-verifier` | `gpt-6.2-sol` | `high` | - |
+| 20 | `TA-start-plan` | `main-session` | Session setting | Session setting | - |
+| 21 | `TA-repair-worktree` | `main-session` | Session setting | Session setting | - |
+| 22 | `TA-sync-master` | `main-session` | Session setting | Session setting | - |
+| 23 | `TA-resolve-merge-conflicts` | `main-session` | Session setting | Session setting | - |
+| 24 | `TA-sync-docs` | `main-session` | Session setting | Session setting | - |
+| 25 | `TA-author-methodology-doc` | `main-session` | Session setting | Session setting | - |
+| 26 | `TA-compact-diary` | `main-session` | Session setting | Session setting | - |
+| 27 | `TA-organize-roadmap` | `main-session` | Session setting | Session setting | - |
+| 28 | `TA-prune-roadmap` | `main-session` | Session setting | Session setting | - |
+| 29 | `TA-prepare-batch` | `main-session` | Session setting | Session setting | - |
+| 30 | `TA-commit-batch` | `main-session` | Session setting | Session setting | - |
+| 31 | `TA-close-task` | `main-session` | Session setting | Session setting | - |
+| 32 | `TA-cleanup-task` | `main-session` | Session setting | Session setting | - |
+| 33 | `TA-verify-focused` | `main-session` | Session setting | Session setting | - |
+| 34 | `TA-verify-batch` | `main-session` | Session setting | Session setting | - |
+| 35 | `TA-verify-milestone` | `main-session` | Session setting | Session setting | - |
+| 36 | `TA-query-graph` | `main-session` | Session setting | Session setting | - |
+| 37 | `TA-find-graph-path` | `main-session` | Session setting | Session setting | - |
+| 38 | `TA-explain-graph-symbol` | `main-session` | Session setting | Session setting | - |
+| 39 | `TA-refresh-graph` | `main-session` | Session setting | Session setting | - |
+| 40 | `TA-extract-graph-semantics` | `main-session` | Session setting | Session setting | - |
+| 41 | `TA-capture-gui-screenshot` | `main-session` | Session setting | Session setting | - |
+| 42 | `TA-index-amiga-rag` | `main-session` | Session setting | Session setting | - |
+| 43 | `TA-profile-emulation` | `main-session` | Session setting | Session setting | - |
+| 44 | `TA-create-skill` | `main-session` | `gpt-6.2-sol` | `high` | The main session must apply both resolved settings before starting. |
+| 45 | `TA-create-agent` | `main-session` | `gpt-6.2-sol` | `high` | The main session must apply both resolved settings before starting. |
+| 46 | `TA-capture-environment` | `main-session` | Session setting | Session setting | - |
+| 47 | `TA-compare-environments` | `main-session` | Session setting | Session setting | - |
+| 48 | `TA-register-execution` | `main-session` | Session setting | Session setting | - |
+| 49 | `TA-collect-task-records` | `main-session` | Session setting | Session setting | - |
+| 50 | `TA-check-task-records` | `main-session` | Session setting | Session setting | - |
+| 51 | `TA-challenge-findings` | `TA-code-reviewer` | `gpt-6.2-sol` | `high` | - |
 
 ## Cell conditions
 

@@ -16,9 +16,13 @@ Work in fresh context without author history.
 
 For each supplied lane and ID, test the strongest counterexample. Trace how
 supported use or a binding requirement covers the preconditions, check the probe
-setup and recovery, and establish the consequence. Account for the scope of any
-recorded risk decision. A rare trigger or an unsuccessful reproduction can
-coexist with a conclusive source trace.
+setup and recovery, and establish the consequence. For a workflow defect, apply
+the [supported-sequence criterion](../../references/review-common.md#workflow-defects)
+to the actual setup as well as the candidate. Reject the repair request if the
+decisive transition only occurs in the setup. Uphold it when the supported path
+and claimed failure are both established. Account for the scope of any recorded
+risk decision. A rare trigger or an unsuccessful reproduction can coexist with
+a conclusive source trace.
 
 Return one final disposition per lane and ID. Use `uphold` when the evidence
 supports the submitted repair and `reject` when it does not. Cite the evidence and

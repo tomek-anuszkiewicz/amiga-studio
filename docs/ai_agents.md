@@ -10,51 +10,42 @@ For other work, choose the operation and its scope.
 
 ## Find your way around the skills
 
-The [workflow map](workflow-map.svg) follows a planned software change from its
-task worktree through publication on local master. The lower half groups
-additional operations by purpose.
-Open the map on its own to follow a skill name to its instructions.
+Follow the [workflow map](workflow-map.svg) from a saved plan to local
+publication. Open the SVG on its own to follow its skill and procedure links.
+The [workflow details](workflow-details.svg) cover capture and service recovery,
+approvals, resuming work, review decisions and interrupted publication or
+closure. The map's [skill directory](workflow-map.svg#directory) groups other
+operations by purpose.
 
-![Workflow from planning through the task commit, integration in the task worktree and publication on local master](workflow-map.svg)
+![Workflow from a saved plan through conditional local publication and closure](workflow-map.svg)
 
-The upper path shows a change from its saved plan through the task worktree.
-The planner and test designer return separate results. When you start the
-saved plan, the main session copies its approved inputs into an isolated
-worktree. The implementer works there and hands back the candidate.
-During preparation, check specification compliance and audit the Design vault's
-metadata and links. Existing evidence can cover matching scope. Each of the four
-batch review lanes then uses a fresh instance of the same reviewer role.
-If a review or check fails, select the repair, prepare the revised candidate
-and repeat the affected checks and reviews. A commit requires a passing canonical
-verification of the prepared changes.
-The [batch policy](../.agents/rules/git-commits.md#readiness-before-freeze)
-lists the evidence to collect for the selected change.
+The main session confirms a fresh archived capture event before formal
+planning for a new task or starting a saved plan. It starts the plan in its
+own worktree and points to the authoritative copy. The implementer works there,
+runs focused checks and records the completed source. [Capture startup](../tools/workflow/capture/README.md#confirm-telemetry-before-work), [plan execution](../.agents/references/workflow-guidance.md#start-or-deliver-a-saved-plan).
 
-An explicitly authorized temporary working commit can preserve pending work
-before integration checks. Record that it awaits verification. It must take the
-full integration path even if Git can advance master by fast-forward.
-If you decline repairs and directly select a working commit, the main session
-explains the remaining review and evidence blockers before running Git.
-[Checkpoint guidance](../.agents/references/workflow-guidance.md#working-commit-after-declining-repairs).
+When you authorize local delivery, the main session identifies the selected
+task branch and commit and records the local master tip. A clean, unchanged,
+approved tested tip with committed closure can take the short path when it
+contains that master tip. A divergent single source merges master in the
+task checkout. Combined Sources merges the selected original tips in a
+separate assembly checkout. Working commits or missing tested-tip requirements
+take the full route. [Source selection](../.agents/rules/git-merge-commits.md#discover-and-select-deliveries).
 
-Before integration, record the plan's delivery scope and the current local
-master commit (B). A clean, unchanged task tip that contains B can take the
-confirmed fast-forward path when closure is committed and the exact tip has
-approved tested-tip evidence. If the branches have diverged, merge B into
-the task branch and reconcile the integrated result. A tip lacking the
-required evidence or closure also takes full preparation, verification and
-review. Both paths record the final accepted commit and run the full English
-scan on it in the task checkout. `TA-close-task` conditionally advances local
-master to that commit when the passing evidence is current and master still
-equals B. See the [integration policy](../.agents/rules/git-merge-commits.md)
-and [verification and publication commands](../tools/verification/README.md#local-integration).
+On the full route, the implementer reconciles code and tests, and the main session
+reconciles documentation and prepares the batch. The whole candidate needs
+passing canonical verification and four independent reviews. Applicable
+specification and vault evidence belongs in preparation. A required issue or
+a missing gate follows the checkpoint and repair procedure before a proposed
+commit can be accepted. [Batch policy](../.agents/rules/git-commits.md#readiness-before-freeze), [review checkpoint](../.agents/references/workflow-guidance.md#human-review-checkpoint).
 
-Use `TA-register-execution` to register the task and its session for capture
-before starting a saved plan with `TA-start-plan`. The
-[capture guide](../tools/workflow/capture/README.md) explains how to start and
-control the collector and receiver.
-For the conditions under which one skill can suggest another, see the
-[recommendation matrix](workflow-skill-matrix.md).
+All routes meet at the exact sealed commit. Pass one full English scan for that
+commit in the task or assembly checkout before conditional publication to local
+master. If master moves, recheck the source selection and repeat the affected
+acceptance steps and scan. The surviving publication record supports graph
+refresh, closure of the selected capture intervals, record preservation and
+authorized cleanup. An authorized push can follow publication separately.
+[Integration and closure](../tools/verification/README.md#local-integration).
 
 For build and environment setup, use the [developer guide](developers.md).
 For the project's development story and lessons learned, read
@@ -108,12 +99,12 @@ The [architecture overview](architecture.md) introduces these relationships;
 the subsystem contracts. A conflict with a specification or protected reference
 requires a decision from you before the agent changes that contract.
 
-During implementation, you can correct assumptions or change the requirement.
-A material change to approved behavior or acceptance is recorded immediately
-beside the active plan, including when you give no separate plan-edit instruction.
-On approval the session revises the affected criteria and test design, preserving
-the earlier revision and unaffected scenarios. For extended tasks, execution plans
-live in `.agent/tasks/`; disposable captures and diagnostics live in `.agent/tmp/`.
+In an ordinary planning conversation, edit one working plan through successive
+messages. At approval, keep the selected text recoverable so the agent can show
+what changed and which decisions still apply. Formal planning and handoffs keep
+their own results. During implementation, a material change to approved behavior
+or acceptance is recorded beside the plan. The approved requirements stay in
+force until the material change is decided. [Drafts and version checks](../.agents/references/workflow-contract.md#working-drafts-and-version-checks), [active plan amendments](../.agents/references/workflow-guidance.md#amend-an-active-plan).
 
 At completion, expect a reviewable diff and a report of the actual checks run,
 their results, and any remaining limitations. Read the diff as well as the report.
@@ -184,14 +175,15 @@ You can also request focused work from the configured roles in
 
 Delegation happens when requested by you or required by an applicable procedure.
 Each helper receives a scoped assignment and reports back to the main session.
-The [runtime settings tables](../.agents/references/workflow-runtime.md#model-and-reasoning-effort)
-own the default model and reasoning effort for each role and the skill overrides.
-You can choose either setting or both for one invocation. For example, you can
-request `xhigh` for one finding repair or `gpt-6.2-astra` for
-`TA-implement-change`; these are explicit user choices, not additional defaults.
-The main session reports the role, skill and resolved settings before dispatch.
-The same reference owns support checks and access limits. Declared write boundaries
-remain binding when a parent supplies full access.
+The main session announces the role, skill, model and reasoning effort, including
+where each setting comes from. For implementation, selected repairs and
+optimization, an authorized write anywhere under `crates/` selects Astra high
+for the whole assignment. The default for tool-only assignments is Sol high.
+Read access to a crate does not change the pair. The behavior, architecture
+and semantic parity reviewers use Sol high by default, including for crate
+changes. For the two creation skills, the main session must apply both resolved
+settings before work. Your explicit choice replaces the field you name.
+[Runtime procedure](../.agents/references/workflow-runtime.md#resolve-one-invocation), [skill matrix](workflow-skill-matrix.md).
 
 Prepared batches receive four independent review lanes covering behavior,
 architecture, tests/evidence, and specifications/instructions. The
@@ -203,7 +195,7 @@ finding. Upheld findings go to repair selection. Rejected findings close on
 the reviewed candidate. The main session retains the primary reports and applies
 the [review checkpoint and finding decisions](../.agents/references/workflow-guidance.md#challenge-required-findings).
 
-Each invocation announces its scope and round limit, normally three and never
+Each formal invocation announces its scope and round limit, normally three and never
 more than four. It returns both `result.json` and `result.md` under
 `.agent/tmp/workflow-TA/<task-id>/<work-item-id>/<run-id>/`. The
 [invocation contract](../.agents/references/workflow-contract.md) records candidate
@@ -236,12 +228,13 @@ a test audit is appropriate when the expectation itself is unresolved. A require
 failure remains visible if you defer it. Permission to repair does not approve
 weakening a test, and inability to repair is not evidence that the test is wrong.
 
-The session keeps the worker's original report and stores its own explanation in
-a linked text/JSON guidance pair. Only the current option set is selectable. Before
-executing your selection, it checks that the inputs and candidate still match;
-changed prerequisites produce refreshed choices instead of stale execution. This
-check does not rerun tests. Recommendations and silence start nothing. The shared
-[receiving procedure](../.agents/references/workflow-guidance.md) owns these steps.
+The session keeps the worker's original report. It saves linked guidance when
+you can select an operation, a decision needs to identify the displayed version,
+or a pending handoff must survive resumption. Only the current option set is
+selectable. Before relying on a delayed selection, the session checks the live
+inputs and refreshes choices if the change affects their prerequisites. When a
+formal plan finishes with no pending decision, the session replies directly and
+keeps the formal result pair. [Receiving procedure](../.agents/references/workflow-guidance.md).
 
 The [skill matrix](workflow-skill-matrix.md) defines the standard recommendation
 paths. Its source row is the skill that returned; each destination column is a

@@ -6,7 +6,9 @@ from pathlib import Path
 
 MATRIX_PATH = Path(__file__).with_name("skill-matrix.json")
 MATRIX_REFERENCE = "tools/workflow/skill-matrix.json"
-RUNTIME_PATH = MATRIX_PATH.parents[2] / ".agents" / "references" / "workflow-runtime.md"
+RUNTIME_REFERENCE = ".agents/references/workflow-runtime.md"
+RUNTIME_PATH = MATRIX_PATH.parents[2] / RUNTIME_REFERENCE
+RUNTIME_SECTION = RUNTIME_REFERENCE + "#resolve-one-invocation"
 
 
 def load_matrix(schema):
@@ -35,42 +37,51 @@ def load_matrix(schema):
     return matrix
 
 
-def effort_labels(schema):
+def runtime_settings(schema):
     runtime = RUNTIME_PATH.read_text(encoding="utf-8")
     role_section = runtime.partition("### Role defaults\n")[2]
     role_table, skill_heading, skill_section = role_section.partition("### Skill overrides\n")
-    skill_table, resolve_heading, _ = skill_section.partition("### Resolve one invocation\n")
-    if not (skill_heading and resolve_heading):
-        raise ValueError("runtime reference must contain role and skill effort tables")
-    row = r"^\|[ \t]*`([^|`\n]+)`[ \t]*\|[^|\n]+\|[ \t]*`([^|`\n]+)`[ \t]*\|[ \t]*$"
-    role_efforts = dict(re.findall(row, role_table, re.MULTILINE))
-    skill_efforts = dict(re.findall(row, skill_table, re.MULTILINE))
-    labels = {}
+    skill_table, condition_heading, condition_section = skill_section.partition("### Assignment conditions\n")
+    condition_table, resolve_heading, _ = condition_section.partition("### Resolve one invocation\n")
+    if not (skill_heading and condition_heading and resolve_heading):
+        raise ValueError("runtime reference must contain defaults and assignment conditions")
+
+    row = r"^\|[ \t]*`([^|`\n]+)`[ \t]*\|[ \t]*([^|\n]+?)[ \t]*\|[ \t]*([^|\n]+?)[ \t]*\|[ \t]*$"
+    role_defaults = {name: (model, effort) for name, model, effort in re.findall(row, role_table, re.MULTILINE)}
+    skill_defaults = {name: (model, effort) for name, model, effort in re.findall(row, skill_table, re.MULTILINE)}
+    conditions = {}
+    for names, condition in re.findall(r"^\|\s*(`[^|\n]+)\|([^|\n]+)\|[ \t]*$", condition_table, re.MULTILINE):
+        for name in re.findall(r"`([^`]+)`", names):
+            conditions[name] = condition.strip()
+
+    settings = {}
     for skill, contract in schema["x-skill-contracts"].items():
         executor = contract["agent"]
-        effort = skill_efforts.get(skill)
-        if executor == "main-session":
-            labels[skill] = f"`{effort}` (suggested)" if effort else "Session setting"
-        else:
-            role_effort = role_efforts.get(executor)
-            if not role_effort:
-                raise ValueError(f"{executor}: missing default reasoning effort")
-            labels[skill] = f"`{effort or role_effort}`"
-    return labels
-
+        defaults = ("Session setting", "Session setting") if executor == "main-session" else role_defaults.get(executor)
+        if defaults is None:
+            raise ValueError(f"{executor}: missing default model and reasoning effort")
+        override = skill_defaults.get(skill, ("Inherit role default", "Inherit role default"))
+        model, effort = (default if choice == "Inherit role default" else choice
+                         for default, choice in zip(defaults, override, strict=True))
+        settings[skill] = (executor, model, effort, conditions.get(skill))
+    return settings
 
 def render_row(matrix, schema, source):
     if source not in schema["x-skill-contracts"]:
         raise ValueError("unknown source skill")
-    efforts = effort_labels(schema)
+    settings = runtime_settings(schema)
     lines = [f"# Official next skills after {source}", "",
              "Evaluate the listed conditions against the actual result and current task.",
              "A cell is a possible recommendation, not permission or an automatic next step.",
-             "The user can explicitly request another skill outside this matrix.", ""]
+             "The user can explicitly request another skill outside this matrix.",
+             f"[Runtime procedure]({RUNTIME_SECTION}) owns assignment and session checks.", ""]
     for target, codes in matrix["transitions"][source].items():
-        contract = schema["x-skill-contracts"][target]
-        lines.extend([f"## {target}", "", f"Executor: {contract['agent']}.",
-                      f"Reasoning effort: {efforts[target]}.", ""])
+        executor, model, effort, condition = settings[target]
+        lines.extend([f"## {target}", "", f"Executor: {executor}.",
+                      f"Default model: {model}. Default reasoning effort: {effort}."])
+        if condition:
+            lines.append(condition)
+        lines.append("")
         lines.extend(f"- {code}: {matrix['conditions'][code]}" for code in codes)
         lines.append("")
     if not matrix["transitions"][source]:
@@ -80,7 +91,7 @@ def render_row(matrix, schema, source):
 
 def render_matrix(matrix, schema):
     skills = list(schema["x-skill-contracts"])
-    efforts = effort_labels(schema)
+    settings = runtime_settings(schema)
     lines = ["# Official skill recommendation matrix", "",
              "Generated by `python tools/workflow/result.py --matrix`. Edit the",
              "[authoritative matrix](../tools/workflow/skill-matrix.json), then regenerate this view.",
@@ -95,12 +106,12 @@ def render_matrix(matrix, schema):
              "approval, stop and defer need no invented skill or matrix cell. Reuse valid results;",
              "do not repeat checks or continue completed work merely because a cell exists.", "",
              "## Skill axes", "",
-             "Effort comes from the [runtime settings](../.agents/references/workflow-runtime.md#model-and-reasoning-effort)",
-             "for the primary executor. Main-session skills use the current session's effort.",
-             "A suggested session effort helps the user choose settings for a run.", "",
-             "| ID | Skill | Reasoning effort |", "| --- | --- | --- |"]
-    lines.extend(f"| {index:02} | `{skill}` | {efforts[skill]} |"
-                 for index, skill in enumerate(skills, 1))
+             f"The [runtime procedure](../{RUNTIME_SECTION}) owns assignment and session checks.", "",
+             "| ID | Skill | Executor | Default model | Default reasoning effort | Assignment condition |",
+             "| --- | --- | --- | --- | --- | --- |"]
+    for index, skill in enumerate(skills, 1):
+        executor, model, effort, condition = settings[skill]
+        lines.append(f"| {index:02} | `{skill}` | `{executor}` | {model} | {effort} | {condition or '-'} |")
     lines.extend(["", "## Cell conditions", "", "| Code | Required context |", "| --- | --- |"])
     lines.extend(f"| {code} | {text} |" for code, text in matrix["conditions"].items())
     for start in range(0, len(skills), 11):

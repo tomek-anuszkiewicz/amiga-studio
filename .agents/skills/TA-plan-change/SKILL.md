@@ -7,7 +7,10 @@ description: Plan one requested change with scope, acceptance criteria, risks an
 
 Use [the invocation contract](../../references/workflow-contract.md). Inputs are
 the requested outcome, relevant requirements, read scope, authorized plan paths,
-candidate and round budget. This operation uses `TA-planner` and result kind `plan`.
+candidate and round budget. Use the contract's
+[working draft route](../../references/workflow-contract.md#working-drafts-and-version-checks)
+for ordinary in-conversation edits. When the user explicitly selects formal
+planning, this operation uses `TA-planner` and result kind `plan`.
 
 1. For a new task, check the caller's [telemetry startup confirmation](../../references/workflow-contract.md#telemetry-startup-prerequisite).
    Read the supplied requirements and relevant architecture. Identify the starting
@@ -19,6 +22,9 @@ candidate and round budget. This operation uses `TA-planner` and result kind `pl
    Record agreed observable outcomes, the applicable design destination and
    [concrete approval decisions](../../references/workflow-guidance.md#record-individual-approvals).
    For an amendment retain unaffected requirements and identify what changed.
+   When a prior approval applies, use its
+   [recoverable version](../../../tools/workflow/capture/README.md#starting-inputs)
+   to explain differences and their effect on decisions and acceptance.
 3. Return the identified plan, decisions, risks and acceptance criteria as text and
    JSON. Report agreed testable behavior or other acceptance evidence for the
    [main session's planning handoff](../../references/workflow-guidance.md#save-a-formal-plan).
