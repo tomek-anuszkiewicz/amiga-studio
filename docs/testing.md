@@ -73,7 +73,11 @@ explains what the current measurements capture.
 <a id="completion-verification"></a>
 ## Run Verification and Read the Result
 
-During batch preparation, run this command from the repository root.
+After committing the changes on local master, use
+[TA-WF-Main-verify-master](../.agents/skills/TA-WF-Main-verify-master/SKILL.md)
+for final verification. That separate workflow runs the selected checks and
+independent review. Its ordinary test profile uses this command from the
+repository root:
 
 ```powershell
 python tools/verification/verify.py commit

@@ -16,7 +16,7 @@ Assign the `documentation` review to `TA-code-reviewer`. Supply the exact
 baseline and candidate, assigned scope, relevant requirements and available
 evidence. When preparing a batch, also supply the proposed grouping of changes.
 
-For major milestone sign-off, assess the stage-level scope required by the
+For milestone sign-off, follow the engineer's selected scope under the
 [milestone completion criteria](../../../Obsidian/Amiga/Design/Verification/Testing%20Strategy%20and%20Quality%20Assurance.md#roadmap-and-milestone-completion).
 Reuse matching prior assessment for the work it already covers.
 

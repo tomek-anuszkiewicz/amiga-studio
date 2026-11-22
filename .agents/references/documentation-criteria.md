@@ -95,8 +95,10 @@ hardware requirements. Accurate documents and dates stay unchanged. Substantive
 corrections update metadata; no synchronization hashes, periodic stamps or
 review-only dates. Design specifications have no line-count ceiling.
 
-At minor-roadmap/major-milestone closure assess the modified subsystems and their
-interactions across the whole stage, including unchanged code. Static semantic
+Keep the review within the selected scope, including at roadmap or milestone
+closure. When the engineer explicitly selects a stage-wide assessment, assess
+the modified subsystems and their interactions across that stage, including
+unchanged code. Static semantic
 checks establish only their configured comparisons. A matching broader audit can
 satisfy scoped compliance when snapshot, requirements and evidence overlap;
 record that coverage instead of repeating it. Unresolved conflicts, valuable

@@ -25,8 +25,9 @@ Open the Markdown report at the printed path for links to the native journal,
 logs and child reports. The journal records case events as they happen. The
 invocation's final outcome is unavailable if its finish event is missing. If
 the journal records a case start without a result, the duration and outcome of that case are
-unavailable. Reused groups point to their earlier evidence and add zero new
-attempts.
+unavailable. Each verification invocation runs its selected groups afresh. Its
+report aggregates the child reports from that invocation; earlier passing
+results do not replace current execution.
 
 ## Starting inputs
 

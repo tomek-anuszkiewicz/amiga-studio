@@ -81,16 +81,3 @@ def publish(root, output_root, directory, profile, rows, wall_seconds):
     return {"generation_seconds": generated, "write_seconds": written, "rows": rows,
             "wall_seconds_before_report": wall_seconds,
             "path": path.relative_to(output_root).as_posix(), "sha256": digest}
-
-
-def omissions(phases):
-    """Make unselected completion suites visible without selecting any commands."""
-    from commands import PYTHON_SUITES
-    selected = {name for _, items in phases for name, _, _ in items}
-    candidates = [name for name, _ in PYTHON_SUITES]
-    candidates += ["All standard harness tests", "Full SingleStepTests"]
-    rows = [measurement("Verification", name, "not selected by profile/change scope", "skipped")
-            for name in candidates if name not in selected]
-    if not any(phase == "Coverage" for phase, _ in phases):
-        rows.append(measurement("Coverage", "Coverage", "not selected by profile/change scope", "skipped"))
-    return rows
