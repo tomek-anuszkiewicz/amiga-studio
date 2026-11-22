@@ -750,8 +750,16 @@ startup and the actual body were observed in order. Both clean runs reached the
 loop at CCK 14,752,752. The independently identified Copper list at $70214 produced
 its complete 83-color sequence repeatedly, including actual palette commitment,
 over multiple full fields. A 30-second no-disk control lacked the program signature.
-The machine test guide records exact input hashes, startup bytes, commands and
-milestones. Focused drive and machine tests verify raw words on both surfaces,
+The recorded inputs were used with a PAL A500 OCS, 512 KiB Chip RAM and 512 KiB
+Slow RAM, starting from zeroed RAM and the ROM reset vectors:
+
+| Input | Size in bytes | SHA-256 |
+| --- | --- | --- |
+| Kickstart 1.3 rev 34.5 | 262,144 | `ee05862d8102a08436ac4056da7d549db31625c7d47b24dfb7b3c9a5c113ca53` |
+| Original cross1 ADF | 901,120 | `133a0a489ccb241fe4011e5e1f6d9d5641dd31c4e8c05620290ee57a0769838a` |
+| Supplied Workbench 1.3 ADF | 901,120 | `097d332a6443be8339ef686aea49be578988e6f0131eb6e6d36a47f246c9cae8` |
+
+Focused drive and machine tests verify raw words on both surfaces,
 track wrap, CPU contention, reset and serialized continuation.
 
 The separately supplied Workbench 1.3 OFS disk executed its bootblock and DOS

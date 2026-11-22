@@ -545,6 +545,34 @@ python tools/verification/verify.py test runner singlestep case test_add_b sampl
 
 ---
 
+## Native Disk Boot Checks
+
+The two checks in
+[`test_native_disk_boot`](../../crates/machine_loop/tests/test_native_disk_boot.rs)
+require private inputs and are ignored by ordinary test runs. Run them explicitly
+with `--ignored`; missing inputs fail the selected check. Supply an unmodified
+256 KiB Kickstart 1.3 rev 34.5 ROM through `AMIGA_KICKSTART_ROM`. No ROM is included.
+
+```powershell
+$env:AMIGA_KICKSTART_ROM = '<private-rom-path>'
+python tools/verification/run_rust_tests.py -- cargo test -p machine_loop --release --test test_native_disk_boot cross1_boots -- --ignored --nocapture
+
+$env:AMIGA_WORKBENCH_ADF = '<private-workbench-adf-path>'
+python tools/verification/run_rust_tests.py -- cargo test -p machine_loop --release --test test_native_disk_boot workbench13 -- --ignored --nocapture
+```
+
+The cross1 check reads
+`ref_src/vAmigaTS/Agnus/Copper/cross/cross1/cross1.adf` automatically. The Workbench
+check reads the ADF named by `AMIGA_WORKBENCH_ADF`. Both insert their image into DF0
+with write protection and run unthrottled on a PAL A500 with 1 MB of RAM.
+
+The cross1 check verifies original program execution and Copper color changes,
+including repeatability and a no-disk control. The separate Workbench check
+observes startup stages during 60 emulated seconds and saves
+`.agent/tmp/native-disk/workbench.ppm`. Passing it does not establish a correct
+desktop image; inspect the saved frame separately. Neither check performs a
+hardware-reference image comparison.
+
 ## Hardware Capture References and Availability
 
 The vAmigaTS reference assets remain under `ref_src/vAmigaTS/`. Tests can include

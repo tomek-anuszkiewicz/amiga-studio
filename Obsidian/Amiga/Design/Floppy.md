@@ -125,7 +125,7 @@ The [autonomous DMA tests](../../../crates/machine_loop/tests/test_floppy_media_
 check exact successive raw words, track wrap, CPU contention, reset and serialized
 mid-transfer continuation. [Native boot tests](../../../crates/machine_loop/tests/test_native_disk_boot.rs)
 use the original cross1 bootblock and Kickstart startup. Invocation and evidence
-limits are in the [machine test guide](../../../crates/machine_loop/tests/README.md).
+limits are in the [verification reference](../../../tools/verification/README.md#native-disk-boot-checks).
 Full image comparisons and broader guest coverage remain in
 [native verification](../../../ROADMAP.md#native-disk-verification).
 
