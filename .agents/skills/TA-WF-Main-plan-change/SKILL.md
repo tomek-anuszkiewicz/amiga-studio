@@ -18,10 +18,13 @@ Apply the [result contract](../../references/workflow-contract.md), shared
 [prose criteria](../../references/narrative-criteria.md). Internal API/schema changes
 also use the [migration contract](../../references/internal-migrations.md).
 
-Read the selected requirements and relevant architecture. Identify the starting
-state, intended behavior, necessary changes, acceptance criteria and unresolved
-choices. Preserve existing decisions and unfinished work when amending a plan.
-Separate required work from optional ideas.
+Read the selected requirements and relevant architecture. Before defining acceptance
+criteria and tests, search the [review decisions register](../../references/review-decisions.md)
+by subject and owning requirement. Check applicable entries against the current
+requirements and plan inputs. Identify the starting state, intended behavior,
+necessary changes, acceptance criteria and unresolved choices. Preserve existing
+decisions and unfinished work when amending a plan. Separate required work from
+optional ideas.
 
 On every creation or amendment, apply
 [TA-WF-Step-design-tests](../TA-WF-Step-design-tests/SKILL.md) to the resulting

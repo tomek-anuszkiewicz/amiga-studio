@@ -75,6 +75,7 @@
   "file_words": {
     "tools/artifacts/tests/test_preserve.py": ["gpgsign", "qb", "qm"],
     "DIARY.md": ["beh", "wf", "wv"],
+    ".agents/references/review-decisions.md": ["beh"],
     "tools/workflow/tests/test_review_routing.py": ["ap", "qm", "wf"],
     "tools/workflow/review_routing.py": ["unassessed"],
     "tools/workflow/review_inputs.py": ["fsmonitor", "nowarn"],

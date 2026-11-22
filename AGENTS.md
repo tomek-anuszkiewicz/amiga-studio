@@ -143,6 +143,10 @@ context (`fork_turns = "none"` where supported) and pass `model` and
 `reasoning_effort` explicitly to the spawn tool. A planner applies the included
 test-design step in its own assignment; it does not launch another planner.
 
+When selecting requirements for an assignment, look for applicable entries in the
+[review decisions register](.agents/references/review-decisions.md). Supply only
+relevant entries and their source pointers to the assignee.
+
 Re-evaluate settings when the assigned scope changes. If a new assignment needs
 different settings, launch a fresh agent with the necessary current context;
 a follow-up message does not itself change an existing agent's model or effort.

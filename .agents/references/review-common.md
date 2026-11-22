@@ -9,6 +9,13 @@ missing inputs that limit independence. Read relevant source and requirements
 before accepting an author's explanation. Reviewers report findings without
 repairing code, tests or documentation or launching another reviewer.
 
+Search the [review decisions register](review-decisions.md) by subject and owning
+requirement. Inspect the current candidate and requirement, compare the trigger,
+evidence and consequence with any relevant decision, and explain material differences.
+Finding IDs identify findings within their original review. Assess each new claim
+on its evidence. Reviewers and challengers may propose an entry or amendment in
+their results. The main session records a decision only within authorized write scope.
+
 For each concrete issue, explain the trigger, expected and observed behavior,
 consequence, relevant location and supporting criterion. Preserve supplied finding
 IDs when reassessing them. A forced probe establishes only the conditions it
