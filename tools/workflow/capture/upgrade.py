@@ -5,9 +5,13 @@ from contextlib import ExitStack
 from datetime import UTC, datetime
 import json
 from pathlib import Path
+import re
 import sys
 
-from compose_service import CAPTURE_SERVICES, ComposeService, Deadline, copy_runtime_file, verify_archive
+from compose_service import (
+    CAPTURE_SERVICES, PREVIOUS_LAYOUT_CONFIG, ComposeService, Deadline, copy_runtime_file,
+    rename_without_overwrite, verify_archive,
+)
 from confirmation import STARTUP_SECONDS
 from control import mutation_claim, status
 from registry import CaptureError, Project, read_json, write_json
@@ -27,7 +31,7 @@ def require_running(service):
 
 
 def restore_installed(installed, selected, *, merge_output=True):
-    installed.deadline = Deadline.start(STARTUP_SECONDS)
+    installed.deadline = selected.deadline = Deadline.start(STARTUP_SECONDS)
     installed.compose("Capture rollback configuration", "config", "--quiet")
     installed.containers(transition_revision=selected.config_id)
     if installed.control != selected.control and merge_output:
@@ -48,36 +52,72 @@ def copy_receiver_state(installed, selected):
     copy_spool(installed, selected)
 
 
-def retain_previous_layout(installed):
-    project = installed.project
-    source = project.plain_path(installed.control)
-    if source != project.archive / "_receiver":
-        raise CaptureError("Unexpected previous runtime layout. Keep the source directory.")
-    destination = project.plain_path(installed.root / "previous-layout" / installed.config_id / "receiver")
+def previous_layout_destination(service, config_id):
+    if not isinstance(config_id, str) or not re.fullmatch(r"[0-9a-f]{64}", config_id):
+        raise CaptureError("The previous layout revision is invalid. Keep the runtime directories.")
+    project = service.project
+    destination = project.plain_path(service.root / "previous-layout" / config_id / "receiver")
     project.require_ignored(destination)
-    if destination.exists():
-        raise CaptureError("The previous-layout destination exists. Keep both runtime directories.")
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    source.rename(destination)
-    return destination.relative_to(project.primary).as_posix()
+    return destination
+
+
+def retain_previous_layout(service, settings_path, settings):
+    config_id = settings[PREVIOUS_LAYOUT_CONFIG]
+    project = service.project
+    source = project.plain_path(project.archive / "_receiver")
+    destination = previous_layout_destination(service, config_id)
+    try:
+        if source == service.control or config_id == service.config_id:
+            raise CaptureError("The previous runtime layout is still selected.")
+        if read_json(settings_path) != settings:
+            raise CaptureError("The saved settings changed before retaining the previous layout.")
+        if source.exists():
+            if not source.is_dir():
+                raise CaptureError("The previous runtime layout is not a directory.")
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            if destination.exists():
+                raise CaptureError("The previous-layout destination exists. Keep both runtime directories.")
+            rename_without_overwrite(source, destination)
+        elif not destination.is_dir():
+            raise CaptureError("The previous runtime directory and its retained copy are missing.")
+        write_json(settings_path, {key: value for key, value in settings.items() if key != PREVIOUS_LAYOUT_CONFIG})
+    except (OSError, ValueError) as error:
+        raise CaptureError(f"Previous layout retention is incomplete: {error}") from error
+    return {"previous_config_id": config_id, "previous_layout": destination.relative_to(project.primary).as_posix()}
 
 
 def upgrade(args, cwd):
     project = Project(args.project, cwd)
     project.prepare()
     verify_archive(project)
-    with project.launcher_lock(), mutation_claim(project), ExitStack() as claims:
-        if any(record["end_utc"] is None for _, record in project.registrations()):
-            raise CaptureError("Close all capture registrations before changing the installed revision.")
-
+    with ExitStack() as selected_claims, ExitStack() as installed_locks:
+        installed_locks.enter_context(project.launcher_lock())
         deadline = Deadline.start(STARTUP_SECONDS)
         installed = ComposeService(project, args, deadline, revision="saved")
         selected = ComposeService(project, args, deadline, revision="upgrade")
+        if installed.control != project.control:
+            raise CaptureError("The capture runtime layout changed while acquiring the launcher lock. Retry the upgrade.")
         if installed.settings != selected.settings:
             raise CaptureError("Compose identity: the saved settings changed while validating the revisions.")
+        installed_locks.enter_context(mutation_claim(project))
+        if any(record["end_utc"] is None for _, record in project.registrations()):
+            raise CaptureError("Close all capture registrations before changing the installed revision.")
+
+        settings_path = installed.root / "compose-settings.json"
+        project.require_ignored(settings_path)
+        legacy = project.plain_path(project.archive / "_receiver")
+        pending_retention = PREVIOUS_LAYOUT_CONFIG in installed.settings
+        if pending_retention and installed.config_id != selected.config_id:
+            raise CaptureError("Previous layout retention is incomplete. Retry from the installed revision's checkout.")
+        if installed.control != legacy and legacy.exists() and not pending_retention:
+            raise CaptureError("Previous layout retention is incomplete and the previous revision is unknown. "
+                               "Keep both runtime directories.")
         installed.wait_engine()
         if installed.config_id == selected.config_id:
-            return {"status": "already_current", **require_running(installed)}
+            report = {"status": "already_current", **require_running(installed)}
+            if pending_retention:
+                report.update(retain_previous_layout(installed, settings_path, installed.settings))
+            return report
 
         if args.rollback:
             return {"status": "restored", **restore_installed(installed, selected)}
@@ -86,15 +126,17 @@ def upgrade(args, cwd):
         selected.persist(cwd)
         relocating = installed.control != selected.control
         if relocating:
-            previous = selected.root / "previous-layout" / installed.config_id / "receiver"
+            if installed.control != legacy:
+                raise CaptureError("Unexpected previous runtime layout. Keep the source directory.")
+            previous = previous_layout_destination(selected, installed.config_id)
             if previous.exists():
                 raise CaptureError("The previous-layout destination exists. Keep both runtime directories.")
-            claims.enter_context(mutation_claim(project, control=selected.control))
+            selected_claims.enter_context(mutation_claim(project, control=selected.control))
         selected.compose("Capture upgrade configuration", "config", "--quiet")
         require_running(installed)
-        settings_path = installed.root / "compose-settings.json"
-        project.require_ignored(settings_path)
         updated = {**installed.settings, "config_id": selected.config_id}
+        if relocating:
+            updated[PREVIOUS_LAYOUT_CONFIG] = installed.config_id
         if read_json(settings_path) != installed.settings:
             raise CaptureError("Compose identity: the saved settings changed before the upgrade.")
         selected_started = False
@@ -121,9 +163,12 @@ def upgrade(args, cwd):
                                    "Keep both snapshots and inspect the selected capture deployment.") from rollback_error
             raise CaptureError(f"Capture upgrade failed ({reason}). The installed revision was restored.") from error
         report = {"status": "upgraded", "previous_config_id": installed.config_id, **health}
-    if relocating:
-        report["previous_layout"] = retain_previous_layout(installed)
-    return report
+        if relocating:
+            # Windows will not rename a directory containing the open launcher
+            # lock. Keep the selected runtime claimed across the move.
+            installed_locks.close()
+            report.update(retain_previous_layout(selected, settings_path, updated))
+        return report
 
 
 def main():

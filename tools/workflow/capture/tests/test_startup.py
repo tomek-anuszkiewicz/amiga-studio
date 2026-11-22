@@ -24,7 +24,8 @@ CAPTURE = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(CAPTURE))
 from admission import Admission
 from compose_service import (
-    CONFIG_LABEL, LABEL, PROJECT_LABEL, ComposeService, Deadline, HostCheckouts, MountedProject, saved_settings,
+    CONFIG_LABEL, LABEL, PREVIOUS_LAYOUT_CONFIG, PROJECT_LABEL, ComposeService, Deadline, HostCheckouts,
+    MountedProject, copy_runtime_file, rename_without_overwrite, saved_settings,
 )
 from confirmation import baseline, confirm
 from control import ENDPOINT, IDENTITY, authorization, control_key, status
@@ -489,6 +490,197 @@ class ServicePathsTests(ServiceFixture, unittest.TestCase):
         self.assertEqual(report["status"], "upgraded")
         current = Project(self.primary, self.primary)
         self.assertEqual((current.spool / "late.jsonl").read_bytes(), b"late output\n")
+
+    def test_interrupted_spool_copy_leaves_rollback_without_partial_input(self):
+        installed = self.archive_layout_installation()
+        original = installed.spool / "logs-pending.jsonl"
+        original.write_bytes(b"complete pending output\n")
+        args = SimpleNamespace(project=self.primary, rollback=True)
+        selected = ComposeService(self.project, args, Deadline.start(10), revision="upgrade")
+        selected.persist(self.primary)
+        destination = selected.spool / original.name
+        engine = UpgradeEngine(self, installed)
+        with patch("compose_service.docker", engine.docker):
+            installed.compose("Capture migration stop", "stop", "receiver", "collector")
+
+        # Exit during the actual file write without running Python cleanup.
+        child = """
+import os
+from pathlib import Path
+import sys
+sys.path.insert(0, sys.argv[1])
+from compose_service import copy_runtime_file
+from registry import Project
+
+class InterruptedWrite:
+    def __init__(self, stream):
+        self.stream = stream
+    def __enter__(self):
+        return self
+    def __exit__(self, *_):
+        self.stream.close()
+    def write(self, data):
+        self.stream.write(data[:3])
+        self.stream.flush()
+        os._exit(83)
+
+open_path = Path.open
+def open_for_copy(path, mode="r", *args, **kwargs):
+    stream = open_path(path, mode, *args, **kwargs)
+    return InterruptedWrite(stream) if mode == "xb" else stream
+
+primary, source, destination = map(Path, sys.argv[2:])
+project = Project(primary, primary)
+Path.open = open_for_copy
+copy_runtime_file(project, source, destination)
+"""
+        result = subprocess.run(
+            [sys.executable, "-B", "-c", child, str(CAPTURE), str(self.primary), str(original), str(destination)],
+            capture_output=True, text=True, timeout=10,
+        )
+        self.assertEqual(result.returncode, 83, result.stderr)
+        with patch("compose_service.docker", engine.docker), patch("upgrade.status", engine.status):
+            self.assertEqual(upgrade(args, self.primary)["status"], "restored")
+        self.assertFalse(destination.exists())
+        self.assertEqual(original.read_bytes(), b"complete pending output\n")
+        self.assertEqual(original.stat().st_nlink, 1)
+        self.assertEqual(set(engine.revisions.values()), {installed.config_id})
+        self.assertTrue(all(engine.running.values()))
+
+    def test_expired_cutover_stops_selected_services_and_restores_with_a_fresh_deadline(self):
+        installed = self.archive_layout_installation()
+        engine = UpgradeEngine(self, installed)
+        now = AT
+        recovery_deadlines = []
+        late = installed.spool / "late.jsonl"
+
+        def docker(deadline, stage, args, *, env=None, **options):
+            nonlocal now
+            deadline.remaining(stage)
+            result = engine.docker(deadline, stage, args, env=env, **options)
+            if stage == "Capture upgrade":
+                (Path(env["CAPTURE_COLLECTOR_OUTPUT"]) / late.name).write_bytes(b"late output\n")
+                self.assertEqual(set(engine.revisions.values()), {env["CAPTURE_CONFIG_ID"]})
+                now = deadline.expires_ns
+            elif "rollback" in stage:
+                recovery_deadlines.append(deadline.expires_ns)
+                if stage == "Capture rollback":
+                    self.assertEqual(late.read_bytes(), b"late output\n")
+            return result
+
+        args = SimpleNamespace(project=self.primary, rollback=False)
+        with patch("compose_service.docker", docker), patch("upgrade.status", engine.status), \
+                patch("compose_service.time.time_ns", side_effect=lambda: now):
+            with self.assertRaisesRegex(CaptureError, "deadline expired.*installed revision was restored"):
+                upgrade(args, self.primary)
+        self.assertEqual([action for action, _ in engine.actions], ["config", "stop", "up", "config", "stop", "up"])
+        self.assertEqual(engine.actions[4], ("stop", engine.actions[2][1]))
+        self.assertEqual(engine.actions[5], ("up", installed.config_id))
+        self.assertEqual(recovery_deadlines, [now + 180 * 10**9] * 3)
+        self.assertEqual(saved_settings(self.project)["config_id"], installed.config_id)
+        self.assertTrue(all(engine.running.values()))
+
+    def test_spool_publication_preserves_a_conflict_created_after_staging(self):
+        service = self.provision()
+        original = service.control / "pending.jsonl"
+        original.write_bytes(b"complete pending output\n")
+        destination = service.spool / original.name
+
+        def publish(temporary, target):
+            self.assertEqual(temporary.read_bytes(), original.read_bytes())
+            self.assertFalse(temporary.is_relative_to(service.spool))
+            self.assertEqual(temporary.stat().st_dev, target.parent.stat().st_dev)
+            target.write_bytes(b"other pending output\n")
+            rename_without_overwrite(temporary, target)
+
+        with patch("compose_service.rename_without_overwrite", publish):
+            with self.assertRaisesRegex(CaptureError, "Conflicting runtime migration destination"):
+                copy_runtime_file(self.project, original, destination)
+        self.assertEqual(original.read_bytes(), b"complete pending output\n")
+        self.assertEqual(destination.read_bytes(), b"other pending output\n")
+        self.assertEqual(list(service.spool.parent.iterdir()), [service.spool])
+
+    def test_retention_failure_after_settings_publication_finishes_on_retry(self):
+        installed = self.archive_layout_installation()
+        engine = UpgradeEngine(self, installed)
+        args = SimpleNamespace(project=self.primary, rollback=False)
+        private = installed.control / "control.json"
+        private.write_bytes(b"historical credential\n")
+        pending = installed.spool / "logs-pending.jsonl"
+        pending.write_bytes(b"pending data\n")
+        registration = self.project.registration_path("task", "execution")
+        registration.parent.mkdir(parents=True)
+        write_json(registration, dict(schema_version=1, task_id="task", execution_id="execution",
+                                      git_common_dir=str(self.project.common), end_utc=START))
+        registered = registration.read_bytes()
+        def refuse_retention(path, destination):
+            self.assertEqual(path, installed.control)
+            self.assertFalse((installed.control / "control-mutation").exists())
+            self.assertTrue((installed.root / "receiver/control-mutation").is_dir())
+            raise PermissionError("retention fixture")
+
+        with patch("compose_service.docker", engine.docker), patch("upgrade.status", engine.status):
+            with patch("upgrade.rename_without_overwrite", refuse_retention):
+                with self.assertRaisesRegex(CaptureError, "Previous layout retention is incomplete.*retention fixture"):
+                    upgrade(args, self.primary)
+            current = Project(self.primary, self.primary)
+            current_revision = saved_settings(current)["config_id"]
+            self.assertNotEqual(current_revision, installed.config_id)
+            self.assertEqual(private.read_bytes(), b"historical credential\n")
+            self.assertEqual(current.spool.joinpath(pending.name).read_bytes(), b"pending data\n")
+            backup = installed.root / "previous-layout" / installed.config_id / "receiver"
+            backup.mkdir()
+            occupied = backup / "preserved.txt"
+            occupied.write_bytes(b"pre-existing retention\n")
+            with self.assertRaisesRegex(CaptureError, "Previous layout retention is incomplete.*destination exists"):
+                upgrade(SimpleNamespace(project=self.primary, rollback=True), self.primary)
+            self.assertEqual(occupied.read_bytes(), b"pre-existing retention\n")
+            self.assertEqual(private.read_bytes(), b"historical credential\n")
+            occupied.unlink()
+            backup.rmdir()
+            report = upgrade(args, self.primary)
+        self.assertEqual(report["status"], "already_current")
+        self.assertEqual(report["previous_config_id"], installed.config_id)
+        self.assertEqual(report["previous_layout"], backup.relative_to(self.primary).as_posix())
+        self.assertFalse(installed.control.exists())
+        self.assertEqual(backup.joinpath(private.name).read_bytes(), b"historical credential\n")
+        self.assertEqual(backup.joinpath("collector-output", pending.name).read_bytes(), b"pending data\n")
+        self.assertEqual(current.spool.joinpath(pending.name).read_bytes(), b"pending data\n")
+        self.assertEqual(registration.read_bytes(), registered)
+        self.assertEqual(saved_settings(current), {**installed.settings, "config_id": current_revision})
+        self.assertEqual([action for action, _ in engine.actions], ["config", "stop", "up"])
+
+    def test_rollback_after_retention_rename_completes_without_moving_the_backup(self):
+        installed = self.archive_layout_installation()
+        engine = UpgradeEngine(self, installed)
+        args = SimpleNamespace(project=self.primary, rollback=False)
+        historical = installed.control / "historical.txt"
+        historical.write_bytes(b"preserved data\n")
+
+        def stop_before_clear(path, settings):
+            if PREVIOUS_LAYOUT_CONFIG not in settings:
+                raise KeyboardInterrupt
+            write_json(path, settings)
+
+        with patch("compose_service.docker", engine.docker), patch("upgrade.status", engine.status):
+            with patch("upgrade.write_json", stop_before_clear):
+                with self.assertRaises(KeyboardInterrupt):
+                    upgrade(args, self.primary)
+            self.assertFalse(installed.control.exists())
+            backup = installed.root / "previous-layout" / installed.config_id / "receiver"
+            self.assertEqual(backup.joinpath(historical.name).read_bytes(), b"preserved data\n")
+            settings = saved_settings(self.project)
+            self.assertEqual(settings[PREVIOUS_LAYOUT_CONFIG], installed.config_id)
+            self.assertNotEqual(settings["config_id"], installed.config_id)
+            args.rollback = True
+            with patch("upgrade.rename_without_overwrite") as move:
+                report = upgrade(args, self.primary)
+            move.assert_not_called()
+        self.assertEqual(report["status"], "already_current")
+        self.assertEqual(report["previous_layout"], backup.relative_to(self.primary).as_posix())
+        self.assertEqual(backup.joinpath(historical.name).read_bytes(), b"preserved data\n")
+        self.assertEqual(saved_settings(self.project), {**installed.settings, "config_id": settings["config_id"]})
+        self.assertEqual([action for action, _ in engine.actions], ["config", "stop", "up"])
 
     def test_existing_previous_layout_blocks_migration_before_services_are_stopped(self):
         installed = self.archive_layout_installation()

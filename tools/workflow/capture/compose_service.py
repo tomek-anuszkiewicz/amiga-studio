@@ -1,5 +1,6 @@
 """Own the durable Compose project and translate its host-side Git identity."""
 
+import ctypes
 from dataclasses import dataclass
 from datetime import UTC, datetime
 import hashlib
@@ -12,6 +13,7 @@ import re
 import secrets
 import socket
 import subprocess
+import sys
 import time
 from urllib.error import HTTPError, URLError
 
@@ -41,6 +43,7 @@ LABEL = "com.docker.compose"
 PROJECT_LABEL = "amiga.capture.project"
 CONFIG_LABEL = "amiga.capture.config"
 CLIENT_HEADER = "x-amiga-codex-capture"
+PREVIOUS_LAYOUT_CONFIG = "previous_layout_config_id"
 
 
 @dataclass(frozen=True)
@@ -175,22 +178,64 @@ def saved_settings(project):
     return None
 
 
+def rename_without_overwrite(source, destination):
+    if os.name == "nt":
+        source.rename(destination)
+        return
+
+    libc = ctypes.CDLL(None, use_errno=True)
+    source_bytes, destination_bytes = os.fsencode(source), os.fsencode(destination)
+    if sys.platform == "linux" and hasattr(libc, "renameat2"):
+        at_fdcwd, rename_noreplace = -100, 1
+        rename = libc.renameat2
+        rename.argtypes = (ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_uint)
+        result = rename(at_fdcwd, source_bytes, at_fdcwd, destination_bytes, rename_noreplace)
+    elif sys.platform == "darwin" and hasattr(libc, "renamex_np"):
+        rename_excl = 0x00000004
+        rename = libc.renamex_np
+        rename.argtypes = (ctypes.c_char_p, ctypes.c_char_p, ctypes.c_uint)
+        result = rename(source_bytes, destination_bytes, rename_excl)
+    else:
+        raise CaptureError("This host has no atomic rename without overwrite for capture migration.")
+    if result != 0:
+        error = ctypes.get_errno()
+        raise OSError(error, os.strerror(error), source, None, destination)
+
+
+def reuse_runtime_destination(project, destination, data):
+    project.plain_path(destination)
+    if not destination.exists():
+        return False
+    if safe_file(destination, single_link=True).read_bytes() != data:
+        raise CaptureError("Conflicting runtime migration destination. Preserve both copies.")
+    return True
+
+
 def copy_runtime_file(project, source, destination):
     source = safe_file(project.plain_path(source), single_link=True)
-    destination = project.plain_path(destination)
     project.require_ignored(destination)
     data = source.read_bytes()
-    if destination.exists():
-        if safe_file(destination, single_link=True).read_bytes() != data:
-            raise CaptureError("Conflicting runtime migration destination. Preserve both copies.")
+    if reuse_runtime_destination(project, destination, data):
         return
-    with destination.open("xb") as stream:
-        try:
+
+    # Both services are stopped during migration copying. Stage outside the
+    # runtime directory so even an interrupted close leaves no queue input.
+    staging = destination.parent.parent
+    if staging.stat().st_dev != destination.parent.stat().st_dev:
+        raise CaptureError("Runtime migration staging must share the destination filesystem.")
+    temporary = staging / f".migration-{secrets.token_hex(16)}.tmp"
+    project.require_ignored(temporary)
+    stream = temporary.open("xb")
+    try:
+        with stream:
             stream.write(data)
-        except BaseException:
-            stream.close()
-            destination.unlink()
-            raise
+        try:
+            rename_without_overwrite(temporary, destination)
+        except FileExistsError:
+            if not reuse_runtime_destination(project, destination, data):
+                raise
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def docker(deadline, stage, args, *, env=None, attempt_seconds=None, input=None):
@@ -258,7 +303,8 @@ class ComposeService:
             self.contents = {name: (SOURCE / name).read_bytes().replace(b"\r\n", b"\n")
                              for name in SERVICE_FILES}
         identity = hashlib.sha256()
-        service_settings = {key: value for key, value in self.settings.items() if key != "config_id"}
+        service_settings = {key: value for key, value in self.settings.items()
+                            if key not in {"config_id", PREVIOUS_LAYOUT_CONFIG}}
         identity.update(json.dumps(service_settings, sort_keys=True).encode())
         for name, data in self.contents.items():
             identity.update(name.encode() + b"\0" + hashlib.sha256(data).digest())

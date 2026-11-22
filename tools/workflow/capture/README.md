@@ -179,8 +179,13 @@ The upgrade verifies the installed revision and recreates only `receiver` and
 registry and archives. Other services in the same Compose project keep running.
 It checks readiness before accepting the new revision. If the switch fails,
 the command attempts to restore the previous capture revision and verifies that
-it is ready. An installation at the selected revision returns `already_current`
-after a readiness check.
+it is ready. Recovery gives Docker commands and readiness checks a fresh shared
+180-second deadline. Copying pending output back runs synchronously and is not
+interrupted by that deadline; its elapsed time reduces the budget available for
+restarting the previous services. Time spent on the failed upgrade does not consume
+the recovery budget. An installation at the selected
+revision returns `already_current` after readiness and any pending old-layout
+retention have completed.
 
 After a successful upgrade, [confirm a fresh event](#register-and-read-the-fresh-event)
 from the actual Codex client using a new proof execution. Close its registration
@@ -231,6 +236,13 @@ recreates the services with their new mounts. It retains the Compose project,
 port, credentials, image and existing task archives. The archive directories for
 individual tasks and executions keep their existing paths.
 
+Each copied runtime file is fully written and closed in an ignored temporary file
+outside the destination runtime directory, on the same filesystem. Only then is it
+published under its final name by an atomic rename that refuses to overwrite an
+existing entry. An interrupted write can leave a temporary file outside the queue;
+it leaves no incomplete queue input and preserves the original. A platform or
+filesystem without the required publication operation fails rather than overwrites.
+
 After the new services are ready, the old `_receiver/` directory moves to
 `previous-layout/<old-config-id>/receiver/` under the private service root.
 This host-only copy retains historical files and credentials without mounting
@@ -239,6 +251,16 @@ the operation and preserves both copies. An ordinary failed switch restores the
 old services and returns pending new spool files to the old spool before restart.
 For an interrupted switch, use the documented `upgrade.py --rollback` operation
 from the same checkout; preserve both runtime directories until it succeeds.
+
+The settings save records `previous_layout_config_id` with the newly installed
+revision until the old directory is retained. If the switch succeeds but the move
+fails, retry the normal upgrade or `--rollback` from the same installed revision's
+checkout. Both routes check readiness and finish that pending move before reporting
+`already_current`. If the move completed before interruption, the retry recognizes
+its recorded destination and clears the pending field. A collision, missing source
+and backup, or a different selected revision leaves the operation incomplete and
+preserves the files. An older failed attempt without previous-revision attribution
+also reports incomplete retention rather than guessing which backup to use.
 
 An older installation that still stores Compose settings or deployed code under
 `_receiver/` needs its matching earlier migration procedure first. The current
