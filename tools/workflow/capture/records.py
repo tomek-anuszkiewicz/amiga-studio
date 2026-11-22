@@ -718,7 +718,7 @@ def preserve(args):
     primary, _, archive = archive_context(args)
     files = selected_files(json_object(args.input), archive_path)
     registered_execution(primary, args.task_id, args.execution_id)
-    copy_selected(primary, archive, files, {}, lambda: None)
+    copy_selected(primary, archive, files)
     return 0
 
 

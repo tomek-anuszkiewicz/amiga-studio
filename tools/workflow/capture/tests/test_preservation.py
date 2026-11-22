@@ -178,6 +178,13 @@ class WholeFilePreservationTests(unittest.TestCase):
                         producer.kill()
                         producer.communicate(timeout=10)
 
+    def test_selected_file_in_another_execution_is_refused(self):
+        source = self.write(self.archive.parent / "other/output.txt", b"keep other execution")
+        with self.assertRaisesRegex(ValueError, "belongs to another private execution"):
+            self.run_selection([self.item("output", source, "output.txt")])
+        self.assertFalse((self.archive / "output.txt").exists())
+        self.assertEqual(source.read_bytes(), b"keep other execution")
+
     def test_wrong_root_unignored_and_force_tracked_archive_are_refused(self):
         source = self.write(self.folder / "source.txt", b"selected")
         original = [self.item("source", source, "source.txt")]

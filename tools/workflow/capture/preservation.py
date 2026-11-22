@@ -91,29 +91,10 @@ def registered_execution(primary, task_id, execution_id):
         raise ValueError(f"Cannot use the existing capture registration for {task_id}/{execution_id}: {error}") from error
 
 
-def copy_selected(primary, archive, selected, state, save_progress):
-    """Remember completed paths through ordinary retries when closure has a control record."""
-    initial = {key: {"source": str(item.source), "path": item.destination.as_posix()}
-               for key, item in selected.items()}
-    previous = state.setdefault("files", initial)
-    if previous.keys() != selected.keys():
-        raise ValueError("Keep the same required file selection when resuming preservation")
+def copy_selected(primary, archive, selected):
+    """Copy selected complete files or retain files already in this archive."""
     for key, item in selected.items():
-        stored = previous[key]
-        resumed = (archive / stored["destination"]) if "destination" in stored else None
-        if ((str(item.source) != stored["source"] or item.destination.as_posix() != stored["path"])
-                and (resumed is None or item.source != resumed)):
-            raise ValueError(f"Preservation selection changed for {key}")
-    save_progress()
-
-    for key, item in selected.items():
-        stored = previous[key]
         source = item.source
-        if "destination" in stored:
-            destination = safe_file(archive / stored["destination"])
-            require_ignored(primary, destination)
-            print(f"[RETAINED] {key}: {stored['destination']}", flush=True)
-            continue
         if source.is_relative_to(archive):
             destination = safe_file(source)
             require_ignored(primary, destination)
@@ -128,6 +109,4 @@ def copy_selected(primary, archive, selected, state, save_progress):
             except (ValueError, OSError) as error:
                 raise ValueError(f"Cannot preserve {source} as {item.destination}: {error}") from error
             label = "COPIED"
-        stored["destination"] = destination.relative_to(archive).as_posix()
-        save_progress()
-        print(f"[{label}] {key}: {stored['destination']}", flush=True)
+        print(f"[{label}] {key}: {destination.relative_to(archive).as_posix()}", flush=True)
