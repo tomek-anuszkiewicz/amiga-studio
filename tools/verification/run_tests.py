@@ -14,7 +14,6 @@ import time
 import unittest
 
 from case_report import CONTEXT, ReportArgumentParser, run_reported
-from repository import git
 from worker_processes import CLEANUP_POLL_SECONDS, WorkerProcesses
 
 
@@ -502,13 +501,8 @@ def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     if argv[:1] == ["--worker"]:
         return run_worker(Path(argv[1]))
-    cwd = Path.cwd()
-    try:
-        git(cwd, "rev-parse", "--show-toplevel")
-    except RuntimeError:
-        cwd = PROJECT_ROOT
     return run_reported("unittest", [sys.executable, str(RUNNER), *argv],
-                        lambda report: run_suite(argv, report), cwd=cwd)
+                        lambda report: run_suite(argv, report), cwd=Path.cwd(), fallback_cwd=PROJECT_ROOT)
 
 
 def interrupt(signum, frame):

@@ -90,7 +90,7 @@
     "tools/workflow/capture/control.py": ["fromhex", "getresponse"],
     "tools/workflow/capture/compose_service.py": ["aq", "cls", "exclusiveaddruse", "fdcwd", "getgid", "getuid", "isabs", "noreplace", "normpath", "ntpath", "posixpath", "renameat", "renamex", "setsockopt", "xb"],
     "tools/workflow/capture/README.md": ["aq", "lexists", "mnt", "statvfs", "uncredentialed", "xb", "za"],
-    "tools/verification/tests/test_parallel_runner.py": ["uncatchable"],
+    "tools/verification/tests/test_parallel_runner.py": ["addaudithook", "runpy", "uncatchable"],
     "tools/verification/tests/test_integration_closure.py": ["deinstrumentation", "deliberatebadliteral", "suposed", "worddzexcluded", "worddzignored", "worddzplan", "worddztracked", "worddzuntracked", "wordingxunknown", "xff"],
     "tools/verification/run_unittest.py": ["runpy"],
     "tools/verification/run_tests.py": ["issubclass"],

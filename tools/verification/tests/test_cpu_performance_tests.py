@@ -1,7 +1,11 @@
 """Contracts for CPU performance test selection and stored-run analysis."""
 
+import contextlib
+from functools import partial
 import hashlib
+import io
 import json
+import os
 import subprocess
 from pathlib import Path
 import sys
@@ -13,8 +17,8 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import cpu_performance_tests as bench
 import benchmark_anomalies as anomalies
-from case_report import CaseReport
-from test_case_report import events, init_repository
+from case_report import CONTEXT, run_reported
+from test_case_report import TASK_CONTEXT, init_repository
 
 
 class CatalogTests(unittest.TestCase):
@@ -76,13 +80,17 @@ class CatalogTests(unittest.TestCase):
                 self.assertEqual(bench.measure(None, 50, 1), 1)
             attempt.assert_called_once()
 
-    def test_archive_uses_original_process_elapsed_and_preserves_natural_attempts(self):
+    def test_launcher_preserves_native_measurements_and_reports_only_assigned_attempts(self):
         case_id = "add/add_w_d1_d0"
-        for codes, disturbed in [([0], [False]), ([0, 0], [True, False]), ([4], [True])]:
-            with self.subTest(codes=codes, disturbed=disturbed), tempfile.TemporaryDirectory() as temporary:
+        scenarios = ((TASK_CONTEXT, [0], [False]), (TASK_CONTEXT, [0, 0], [True, False]),
+                     (TASK_CONTEXT, [4], [True]), ({}, [0], [False]))
+        for context, codes, disturbed in scenarios:
+            with self.subTest(assigned=bool(context), codes=codes, disturbed=disturbed), \
+                 tempfile.TemporaryDirectory() as temporary:
                 root = Path(temporary).resolve()
                 init_repository(root)
-                report = CaseReport.reserve("fixture", ["measure", case_id], root)
+                environment = {key: value for key, value in os.environ.items() if key not in CONTEXT.values()}
+                environment.update(context)
                 ledger = root / "launches.jsonl"
                 program = root / "measure.py"
                 program.write_text(dedent(f"""
@@ -114,30 +122,52 @@ class CatalogTests(unittest.TestCase):
                 launch = subprocess.Popen
 
                 def fixture_launch(command, **options):
-                    return launch([sys.executable, str(program), *command[1:]], **options)
+                    if command[0] == "fixture":
+                        command = [sys.executable, str(program), *command[1:]]
+                    return launch(command, **options)
 
-                with patch.object(bench, "RESULTS", root / "native"), \
+                with patch.dict(os.environ, environment, clear=True), \
+                     contextlib.redirect_stdout(io.StringIO()) as stdout, \
+                     contextlib.redirect_stderr(io.StringIO()) as stderr, \
+                     patch.object(bench, "run_reported", partial(run_reported, cwd=root)), \
+                     patch.object(bench, "RESULTS", root / "native"), \
                      patch.object(bench, "catalog", return_value={case_id: {}}), \
                      patch.object(bench, "executable", return_value="fixture"), \
                      patch.object(bench, "cpu_load"), \
                      patch.object(bench, "load_disturbed", side_effect=disturbed), \
                      patch.object(bench.subprocess, "Popen", side_effect=fixture_launch), \
                      patch.object(bench, "analyze"):
-                    code = bench.measure(("case", case_id), 50, 2, report)
+                    code = bench.main(["measure", "case", case_id, "duration-ms", "50", "series", "2"])
                 self.assertEqual(code, int(bool(codes[-1])))
                 original, = (root / "native").glob("*/manifest.json")
                 manifest = json.loads(original.read_text(encoding="utf-8"))
                 measured = manifest["cases"][case_id]["attempts"]
-                completed = [row for row in events(report) if row["event"] == "case_finished"]
-                native = [row for row in events(report) if row["event"] == "native_measurement"]
                 launches = [json.loads(line) for line in ledger.read_text().splitlines()]
                 self.assertEqual(len(launches), len(codes))
+                self.assertEqual(manifest["status"], "complete")
+                if not context:
+                    [attempt] = measured
+                    self.assertEqual(attempt["exit_code"], 0)
+                    self.assertEqual(attempt["series_ended"], 2)
+                    self.assertEqual(manifest["cases"][case_id]["status"], "measured")
+                    report = json.loads((original.parent / attempt["report"]).read_text(encoding="utf-8"))
+                    self.assertEqual(report["results"][0]["samples"],
+                                     [{"ns_per_target": 16.5}, {"ns_per_target": 17.25}])
+                    self.assertNotIn("[REPORT]", stdout.getvalue())
+                    self.assertNotIn("evidence is incomplete", stderr.getvalue())
+                    self.assertFalse((root / ".agent").exists())
+                    continue
+                archive = root / ".agent/task-archives/task/execution/test-runs"
+                [journal] = archive.glob("*.jsonl")
+                rows = [json.loads(line) for line in journal.read_text(encoding="utf-8").splitlines()]
+                completed = [row for row in rows if row["event"] == "case_finished"]
+                native = [row for row in rows if row["event"] == "native_measurement"]
                 self.assertEqual(len(completed), len(codes))
                 for row, attempt, (ordinal, body_seconds) in zip(completed, measured, launches, strict=True):
                     self.assertEqual((row["id"], row["attempt"]), (case_id, ordinal))
                     self.assertEqual(row["seconds"], attempt["outer_seconds"])
                     self.assertGreaterEqual(row["seconds"], body_seconds)
-                    output = (report.path.parent / row["artifact"]).read_text(encoding="utf-8")
+                    output = (archive / row["artifact"]).read_text(encoding="utf-8")
                     if row["exit_code"]:
                         self.assertIn("native measurement failure", row["detail"])
                         self.assertEqual(output.strip(), "native measurement failure")
@@ -145,7 +175,7 @@ class CatalogTests(unittest.TestCase):
                     self.assertEqual([value["ns_per_target"] for value in row["samples"]], [16.5, 17.25])
                     self.assertEqual(row["series"], 2)
                     original_native = original.parent / attempt["report"]
-                    self.assertEqual((report.path.parent / row["artifact"]).read_bytes(),
+                    self.assertEqual((archive / row["artifact"]).read_bytes(),
                                      original_native.read_bytes())
                 if any(codes):
                     self.assertEqual(native, [])

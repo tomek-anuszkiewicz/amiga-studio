@@ -10,14 +10,16 @@ selected spans. Keep these fields separate in the evidence.
 
 ## Case reports
 
-Test and benchmark launchers reserve `test-runs/<UTC-milliseconds>_<invocation-id>.md`
-in the task's execution archive. For a standalone run, they use a fresh execution
-ID and write under `.agent/task-archives/standalone/<execution>/test-runs/`.
-Both routes write to the primary checkout and work without a receiver. Run
-commands directly. The repository removed the selected-command wrapper.
-When the task context is known, pass `AMIGA_TEST_TASK_ID` and `AMIGA_TEST_EXECUTION_ID`.
-The launchers carry the link to the parent invocation forward. They also accept
-`AMIGA_TEST_WORK_ITEM_ID` and `AMIGA_TEST_ROUND` when supplied.
+Pass `AMIGA_TEST_TASK_ID` and `AMIGA_TEST_EXECUTION_ID` when running a test or
+benchmark for an assigned task. The launcher reserves
+`test-runs/<UTC-milliseconds>_<invocation-id>.md` in that execution's archive
+in the primary checkout. The host launcher writes these reports directly and
+works without a Receiver. Child reports record their parent invocation ID.
+Launchers also accept `AMIGA_TEST_WORK_ITEM_ID` and `AMIGA_TEST_ROUND`.
+
+With either ID missing or with the legacy `standalone` task ID, the launcher
+discards case reporting and runs the command as usual. Task context comes
+solely from the supplied IDs.
 
 Open the Markdown report at the printed path for links to the native journal,
 logs and child reports. The journal records case events as they happen. The

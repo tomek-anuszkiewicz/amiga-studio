@@ -18,7 +18,7 @@ The `case` selector looks for a substring in the name, including in qualified
 Python test names. To match the complete name for a focused Rust or SingleStep
 `case`, use `--exact`. For an ordinary Rust test whose libtest name includes a
 module path, supply that full name. See the [case reporting instructions](#case-reports)
-for standalone reports and for associating a report with an existing registration.
+for associating a report with a task execution.
 
 | Sentence | Scope |
 | --- | --- |
@@ -122,13 +122,12 @@ executes its selected build/check commands in the current environment.
 
 ## Case reports
 
-Run tests and benchmarks directly from the intended checkout. Repository launchers
-write standalone reports by default. If an execution registration was explicitly
-selected, pass its IDs in the `AMIGA_TEST_TASK_ID` and `AMIGA_TEST_EXECUTION_ID`
-environment variables. See the [capture guide](../workflow/capture/README.md#case-reports).
-The retired selected-command launcher is not required.
+Run tests and benchmarks directly from the intended checkout. Set both
+`AMIGA_TEST_TASK_ID` and `AMIGA_TEST_EXECUTION_ID` to save a case report for an
+assigned task. Unassigned runs discard case reporting and return their usual
+test or benchmark results. See the [capture guide](../workflow/capture/README.md#case-reports).
 
-At startup, a test or benchmark launcher prints the path to its Markdown report.
+When case reporting is enabled, the launcher prints the path to its Markdown report.
 Open it to find the case attempts and durations for that invocation, with links
 to the native event journal, command output and child reports. The existing
 reports still provide command wall times and coverage.
@@ -255,7 +254,8 @@ all attempts, host-load observations, failures and completion status. The Rust
 runner executes complete guest programs and resets CPU and memory outside each timer.
 The default is three series of at least 400 ms of timed execution per case.
 The runner selects the lowest nanoseconds per target among the series as the
-whole-workload cost. The case report retains all series. The measurement runs
+whole-workload cost. For an assigned task, the case report retains all series.
+The measurement runs
 the guest only as part of the workload, without a separate inspection run.
 Assembly sources and binaries stay under `.agent/tmp/benchmarks/cpu_performance_tests/`.
 

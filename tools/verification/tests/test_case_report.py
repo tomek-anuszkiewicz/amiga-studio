@@ -18,6 +18,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import case_report
 
 
+TASK_CONTEXT = {"AMIGA_TEST_TASK_ID": "task", "AMIGA_TEST_EXECUTION_ID": "execution"}
+
+
 def git_fixture(root, *args, source=None):
     environment = {key: val for key, val in os.environ.items() if not key.upper().startswith("GIT_")}
     environment.update(GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1",
@@ -54,10 +57,51 @@ class CaseReportTests(unittest.TestCase):
         self.root = Path(temporary.name).resolve()
         self.revision = init_repository(self.root)
         environment = {key: value for key, value in os.environ.items() if key not in case_report.CONTEXT.values()}
-        environment.update(AMIGA_TEST_TASK_ID="task", AMIGA_TEST_EXECUTION_ID="execution")
+        environment.update(TASK_CONTEXT)
         context = patch.dict(os.environ, environment, clear=True)
         context.start()
         self.addCleanup(context.stop)
+
+    def test_unassigned_reports_discard_all_evidence_without_git_or_warnings(self):
+        for context in ({}, {"AMIGA_TEST_TASK_ID": "task"}, {"AMIGA_TEST_EXECUTION_ID": "execution"},
+                        TASK_CONTEXT | {"AMIGA_TEST_TASK_ID": ""},
+                        TASK_CONTEXT | {"AMIGA_TEST_EXECUTION_ID": ""},
+                        TASK_CONTEXT | {"AMIGA_TEST_TASK_ID": "standalone"},
+                        TASK_CONTEXT | {"AMIGA_TEST_TASK_ID": "Standalone"}):
+            with self.subTest(context=context), patch.object(case_report, "git", wraps=case_report.git) as git, \
+                 contextlib.redirect_stdout(io.StringIO()) as stdout, \
+                 contextlib.redirect_stderr(io.StringIO()) as stderr:
+                environment = context | {"AMIGA_TEST_ROUND": "2"}
+                report = case_report.CaseReport.reserve("fixture", ["run"], self.root, environment)
+                self.assertIsNone(report.attachment("fixture.log"))
+                source = self.root / "native.log"
+                self.assertIsNone(report.copy(source, "fixture.log"))
+                self.assertIsNone(report.link(source))
+                self.assertIsNone(report.reference())
+                self.assertEqual(report.child_environment(environment), environment)
+                self.assertEqual(report.children(), [])
+                self.assertEqual(report.merge_children(), {"started": 0, "completed": 0})
+                report.phase("execution")
+                report.event("case_finished", id="fixture")
+                report.record_error("no native case event available")
+                report.finish(7)
+                git.assert_not_called()
+                self.assertFalse(report.incomplete)
+                self.assertEqual(stdout.getvalue(), "")
+                self.assertEqual(stderr.getvalue(), "")
+                self.assertFalse((self.root / ".agent").exists())
+
+    def test_invalid_complete_context_warns_without_writing_an_archive(self):
+        for key in TASK_CONTEXT:
+            with self.subTest(key=key), patch.object(case_report, "git") as git, \
+                 contextlib.redirect_stderr(io.StringIO()) as stderr:
+                context = TASK_CONTEXT | {key: "../invalid"}
+                report = case_report.CaseReport.reserve("fixture", ["run"], self.root, context)
+                git.assert_not_called()
+                self.assertIsNone(report.reference())
+                self.assertTrue(report.incomplete)
+                self.assertIn("Invalid archive identifier", stderr.getvalue())
+                self.assertFalse((self.root / ".agent").exists())
 
     def test_same_millisecond_boundaries_and_child_survive_worktree_removal(self):
         linked = self.root / "linked"

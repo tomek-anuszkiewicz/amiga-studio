@@ -13,7 +13,7 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from case_report import CONTEXT, CaseReport
 from run_rust_tests import CargoCases, NextestCases, rust_command
-from test_case_report import events, init_repository
+from test_case_report import TASK_CONTEXT, events, init_repository
 
 
 TOOLS = Path(__file__).resolve().parents[1]
@@ -26,6 +26,7 @@ class NativeReportsTests(unittest.TestCase):
         self.root = Path(temporary.name).resolve()
         init_repository(self.root)
         self.env = {key: value for key, value in os.environ.items() if key not in CONTEXT.values()}
+        self.env.update(TASK_CONTEXT)
 
     def test_unittest_direct_and_discovery_keep_original_case_ids_and_outcomes(self):
         source = self.root / "test_fixture.py"

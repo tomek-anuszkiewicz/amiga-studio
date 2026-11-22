@@ -1,4 +1,4 @@
-"""Durable case evidence shared by repository test and measurement launchers."""
+"""Durable case evidence for tests and measurements assigned to a task."""
 
 import argparse
 from datetime import datetime, timezone
@@ -83,25 +83,35 @@ class CaseReport:
         self.started = time.perf_counter()
         self.current_phase = "startup"
         self.incomplete = False
+        self._enabled = False
         self._warned = False
 
     @classmethod
-    def reserve(cls, producer, argv, cwd=REPO_ROOT, environment=None):
+    def reserve(cls, producer, argv, cwd=REPO_ROOT, environment=None, *, fallback_cwd=None):
         report = cls()
+        environment = os.environ if environment is None else environment
+        values = {key: environment.get(name) for key, name in CONTEXT.items()}
+        task_id, execution_id = values["task_id"], values["execution_id"]
+        if not task_id or not execution_id or task_id.lower() == "standalone":
+            return report
+        report._enabled = True
         try:
-            report._reserve(producer, list(argv), cwd, os.environ if environment is None else environment)
+            report._reserve(producer, list(argv), cwd, values, fallback_cwd)
         except (OSError, RuntimeError, ValueError) as error:
             report.record_error(error)
         return report
 
-    def _reserve(self, producer, argv, cwd, environment):
+    def _reserve(self, producer, argv, cwd, values, fallback_cwd):
         instant = utc_now()
-        values = {key: environment.get(name) for key, name in CONTEXT.items()}
-        if bool(values["task_id"]) != bool(values["execution_id"]):
-            raise ValueError("Test report context requires both task and execution IDs")
-        values["task_id"] = identifier(values["task_id"] or "standalone")
-        values["execution_id"] = identifier(values["execution_id"] or uuid4().hex)
-        self.primary = primary_checkout(cwd)
+        values["task_id"] = identifier(values["task_id"])
+        values["execution_id"] = identifier(values["execution_id"])
+        try:
+            self.primary = primary_checkout(cwd)
+        except RuntimeError:
+            if fallback_cwd is None:
+                raise
+            cwd = fallback_cwd
+            self.primary = primary_checkout(cwd)
         archive = self.primary / ".agent/task-archives" / values["task_id"] / values["execution_id"] / "test-runs"
         try:
             git(self.primary, "check-ignore", "--quiet", "--", str(archive / "probe"))
@@ -139,6 +149,8 @@ class CaseReport:
         self.event("invocation", **self.metadata)
 
     def record_error(self, error):
+        if not self._enabled:
+            return
         self.incomplete = True
         if self._warned:
             return
@@ -167,7 +179,9 @@ class CaseReport:
         return None
 
     def link(self, path):
-        return Path(os.path.relpath(path, self.path.parent)).as_posix() if path is not None else None
+        if self.path is None or path is None:
+            return None
+        return Path(os.path.relpath(path, self.path.parent)).as_posix()
 
     def child_environment(self, environment=None):
         result = dict(os.environ if environment is None else environment)
@@ -258,6 +272,8 @@ class CaseReport:
             self.record_error(error)
 
     def finish(self, exit_code):
+        if self.journal is None:
+            return
         self.event("finished", phase=self.current_phase, exit_code=exit_code,
                    signal=-exit_code if isinstance(exit_code, int) and exit_code < 0 else None,
                    ended_utc=timestamp(utc_now()), seconds=time.perf_counter() - self.started,
@@ -274,8 +290,8 @@ class ReportArgumentParser(argparse.ArgumentParser):
         super().error(message)
 
 
-def run_reported(producer, argv, run, cwd=REPO_ROOT):
-    report = CaseReport.reserve(producer, argv, cwd)
+def run_reported(producer, argv, run, cwd=REPO_ROOT, *, fallback_cwd=None):
+    report = CaseReport.reserve(producer, argv, cwd, fallback_cwd=fallback_cwd)
     try:
         code = run(report)
     except SystemExit as error:
