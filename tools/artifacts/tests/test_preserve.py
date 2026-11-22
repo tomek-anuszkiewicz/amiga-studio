@@ -1,7 +1,12 @@
 """Preserve real ignored task outputs without deleting or overwriting work."""
+from contextlib import redirect_stderr, redirect_stdout
+import errno
 import importlib.util
+from io import StringIO
+import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -77,6 +82,41 @@ class PreserveTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             preservation.preserve(self.primary, self.destination)
 
+    def test_unreadable_nested_directory_fails_preservation(self):
+        include = ".agent/screenshots"
+        readable = self.output(f"{include}/overview.png", b"overview")
+        hidden = self.output(f"{include}/nested/detail.png", b"detail")
+        directory = hidden.parent.resolve()
+        native = os.scandir
+
+        def scan(path):
+            if Path(path) == directory:
+                raise PermissionError(errno.EACCES, "Access denied", path)
+            return native(path)
+
+        arguments = [str(SCRIPT), "--worktree", str(self.worktree), "--destination",
+                     str(self.destination), "--include", include]
+        stdout, stderr = StringIO(), StringIO()
+        with (patch("os.scandir", side_effect=scan), patch.object(sys, "argv", arguments),
+              redirect_stdout(stdout), redirect_stderr(stderr)):
+            try:
+                status = preservation.main()
+            except SystemExit as error:
+                status = error.code
+
+        self.assertEqual(status, 1, stdout.getvalue())
+        self.assertEqual(stdout.getvalue(), "")
+        self.assertIn("Preservation failed; retain the worktree", stderr.getvalue())
+        self.assertIn(str(directory), stderr.getvalue())
+        self.assertEqual(readable.read_bytes(), b"overview")
+        self.assertEqual(hidden.read_bytes(), b"detail")
+
+        result = preservation.preserve(self.worktree, self.destination, [include])
+        expected = {f"{include}/overview.png": b"overview", f"{include}/nested/detail.png": b"detail"}
+        self.assertEqual({item["source"] for item in result["files"]}, set(expected))
+        for path, content in expected.items():
+            self.assertEqual((self.destination / path).read_bytes(), content)
+
     def test_copy_failure_keeps_source_and_already_preserved_results(self):
         self.output(".agent/tmp/coverage/a.json")
         self.output(".agent/tmp/coverage/b.json")
@@ -93,6 +133,14 @@ class PreserveTests(unittest.TestCase):
         self.assertTrue((self.worktree / ".agent/tmp/coverage/b.json").exists())
         result = preservation.preserve(self.worktree, self.destination)
         self.assertEqual((result["copied"], result["reused"]), (1, 1))
+
+    def test_copy_permission_error_identifies_source_when_error_has_no_filename(self):
+        source = self.output(".agent/tmp/coverage/report.json")
+        with (patch("shutil.copyfileobj", side_effect=PermissionError("Access denied")),
+              self.assertRaises(PermissionError) as failure):
+            preservation.preserve(self.worktree, self.destination)
+        self.assertIn(str(source.resolve()), str(failure.exception))
+        self.assertEqual(source.read_bytes(), b"actual output")
 
     def test_changed_producer_cannot_report_a_successful_copy(self):
         source = self.output(".agent/tmp/coverage/report.json", b"before")

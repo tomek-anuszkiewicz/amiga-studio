@@ -2,6 +2,7 @@
 import argparse
 import json
 from pathlib import Path, PurePosixPath
+from stat import S_ISDIR, S_ISREG
 import subprocess
 import sys
 
@@ -20,7 +21,11 @@ DEFAULTS = (
 
 
 def same_content(source, destination):
-    if not destination.is_file() or source.stat().st_size != destination.stat().st_size:
+    try:
+        target = destination.stat()
+    except (FileNotFoundError, NotADirectoryError):
+        return False
+    if not S_ISREG(target.st_mode) or source.stat().st_size != target.st_size:
         return False
     with source.open("rb") as first, destination.open("rb") as second:
         while chunk := first.read(1024 * 1024):
@@ -36,15 +41,25 @@ def selected_files(worktree, includes):
         if relative.is_absolute() or not relative.parts or ".." in relative.parts or ":" in name or "\\" in name:
             raise ValueError(f"Expected a worktree-relative output path: {name}")
         source = worktree / relative
-        reject_links(source)
-        if not source.exists():
-            if name in includes:
-                raise ValueError(f"Selected output does not exist: {name}")
-            continue
-        candidates = [source] if source.is_file() else source.rglob("*")
-        for path in candidates:
+        pending = [source]
+        while pending:
+            path = pending.pop()
             reject_links(path)
-            if not path.is_file():
+            try:
+                mode = path.stat().st_mode
+            except (FileNotFoundError, NotADirectoryError):
+                if path != source:
+                    raise
+                if name in includes:
+                    raise ValueError(f"Selected output does not exist: {name}") from None
+                continue
+            if S_ISDIR(mode):
+                try:
+                    pending.extend(path.iterdir())
+                except PermissionError as error:
+                    raise PermissionError(f"Cannot list selected output directory {path}: {error}") from error
+                continue
+            if not S_ISREG(mode):
                 continue
             relative_path = path.relative_to(worktree).as_posix()
             # check-ignore respects tracked files, including force-added ignored paths.
@@ -74,14 +89,18 @@ def preserve(worktree, destination, includes=()):
     outputs = []
     for source in files:
         target = destination / source.relative_to(worktree)
-        reject_links(target)
-        before = source.stat()
-        reused = same_content(source, target)
-        if not reused:
-            target = copy_whole(primary, source, target)
-        after = source.stat()
-        if (before.st_size, before.st_mtime_ns) != (after.st_size, after.st_mtime_ns) or not same_content(source, target):
-            raise ValueError(f"Output changed or its copy differs; retain the worktree: {source}")
+        try:
+            reject_links(target)
+            before = source.stat()
+            reused = same_content(source, target)
+            if not reused:
+                target = copy_whole(primary, source, target)
+            after = source.stat()
+            unchanged = (before.st_size, before.st_mtime_ns) == (after.st_size, after.st_mtime_ns)
+            if not unchanged or not same_content(source, target):
+                raise ValueError(f"Output changed or its copy differs; retain the worktree: {source}")
+        except PermissionError as error:
+            raise PermissionError(f"Cannot preserve {source} at {target}: {error}") from error
         outputs.append({"source": source.relative_to(worktree).as_posix(),
                         "archive": target.relative_to(primary).as_posix(), "reused": reused})
     return {"copied": sum(not item["reused"] for item in outputs),
