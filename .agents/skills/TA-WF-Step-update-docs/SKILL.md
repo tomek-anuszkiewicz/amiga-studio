@@ -19,6 +19,10 @@ or ambiguous document target returns `blocked`.
    [specification compliance guidance](../../references/spec-compliance.md) and supplied findings.
    Apply the shared [prose and narrative criteria](../../references/narrative-criteria.md)
    according to the selected document's genre.
+   Diary authoring follows the [history criteria](../TA-WF-Step-compact-diary/SKILL.md#history-criteria):
+   describe performed work and actual results from the selected committed scope;
+   task continuation and working-tree status belong in plans. Reading these criteria
+   does not select diary compaction or authorize a new entry on its own.
    For descriptions of replaced APIs, schemas or formats, apply the
    [internal migration contract](../../references/internal-migrations.md).
    Reader-facing docs explain the project and its entry points. Keep operating

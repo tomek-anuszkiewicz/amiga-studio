@@ -8,6 +8,12 @@ scope. Use the article-specific progression for articles, not as a template for
 specifications, plans or procedures. Link/metadata audits retain their narrower
 scope; diary preparation and compaction have their own criteria.
 
+For diary changes, apply the [history criteria](../skills/TA-WF-Step-compact-diary/SKILL.md#history-criteria).
+Check that the account describes performed work and actual evidence from its
+selected committed scope. Pending edits, commit status and task continuation belong
+in plans. Preserve historical verification limits without turning them into a list
+of current tasks.
+
 ## Documentation Value
 
 Preserve actual hardware behavior confirmed by authoritative sources, even when it

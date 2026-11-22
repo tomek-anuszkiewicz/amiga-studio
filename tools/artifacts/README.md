@@ -11,6 +11,12 @@ requested. Ordinary commits do not require an entry. Milestone closure uses
 [diary compaction](../../.agents/skills/TA-WF-Step-compact-diary/SKILL.md) to retain
 settled knowledge in its owning chapters.
 
+Prepare the supplied text under the skill's
+[history criteria](../../.agents/skills/TA-WF-Step-compact-diary/SKILL.md#history-criteria).
+Describe completed work, its reason and actual results; use the selected committed
+changes as evidence. Keep pending edits and commit status in the task plan.
+The appender formats that text and does not establish that its claims are true.
+
 Preview an entry before writing it:
 
 ```text

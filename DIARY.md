@@ -100,7 +100,7 @@ storage over opaque arithmetic tricks. Direct opcode dispatch and allocation-fre
 hot paths were chosen to keep host overhead visible and avoid allocator work during
 emulation. Those choices are design intentions, not throughput measurements or a
 guarantee of branch prediction, cache behavior or deterministic host latency.
-The [optimization examples](.agents/skills/optimize-emulation/references/project-examples.md)
+The [optimization examples](.agents/skills/TA-profile-emulation/references/project-examples.md)
 record later measurements and cases where active-work costs changed the conclusion.
 
 ---
@@ -678,7 +678,6 @@ all seven without repair under D-OWNER-ACCEPT-REVIEW-01. Four fresh final review
 approved within that exception; fourteen integration groups passed. Vocabulary
 follow-up `b99c2af` preserved the nineteen original content files and passed fifteen
 groups. Those records do not establish a later full-English/publication outcome.
-Unresolved evidence and the current uncommitted revision remain below.
 
 ### November 18-21: Execution Capture and Retained Artifacts
 
@@ -702,10 +701,11 @@ WF-VERSION-CHECKS continuation obtained fresh active-client OTLP confirmation;
 neither retroactively filled the earlier task's missing proof.
 
 A read-only artifact report introduced on November 13 exposed sizes/date groups
-and suggested scoped cleanup commands without deleting data. Archive tools,
-per-attempt outputs and documentation ownership evolved again during the current
-workflow revision. Historical delivery does not certify that uncommitted revision
-or dispatch another task stage.
+and suggested scoped cleanup commands without deleting data. The November 21
+workflow simplification (`ac3963d`) separated copying task outputs from the former
+publication process. Per-invocation reports stayed in the primary checkout, and
+task closure preserved additional local outputs before removing a worktree.
+The capture results above retain their recorded execution boundaries.
 
 ---
 
@@ -1071,7 +1071,7 @@ own future behavior; compaction does not close their acceptance gates.
 
 ### Entry Format
 
-Ordinary commits do not require an entry. When an entry is explicitly requested, record the timestamp, affected components, delivered change, rationale and actual verification, including failures and unrun checks. [Milestone closure](.agents/skills/TA-WF-Main-close-milestone/SKILL.md) includes [diary compaction](.agents/skills/TA-WF-Step-compact-diary/SKILL.md) to retain lasting decisions and evidence in the owning chapter and leave routine details in Git.
+Ordinary commits do not require an entry. When an entry is explicitly requested, describe completed work from the selected committed scope, its reason and actual verification, including failures and evidence limits. Pending edits and instructions for continuing work belong in task plans. [History criteria](.agents/skills/TA-WF-Step-compact-diary/SKILL.md#history-criteria) govern diary authoring and compaction. [Milestone closure](.agents/skills/TA-WF-Main-close-milestone/SKILL.md) includes [diary compaction](.agents/skills/TA-WF-Step-compact-diary/SKILL.md) to retain lasting decisions and evidence in the owning chapter and leave routine details in Git.
 
 ### [2026-11-16 09:47 CET] — Graphify work outside the delivered optimizations
 
@@ -1102,7 +1102,9 @@ Ordinary commits do not require an entry. When an entry is explicitly requested,
   before guest progress; an enclosing snapshot check failed while files changed.
   Those attempts do not supply the missing route evidence.
 
-### [2026-11-21 CET] — Version findings and the workflow revision in progress
+<a id="2026-11-21-cet--version-findings-and-the-workflow-revision-in-progress"></a>
+
+### [2026-11-21 CET] — Version findings and the delivered workflow simplification
 
 - WF-VERSION-CHECKS-20261120: D-OWNER-ACCEPT-REVIEW-01 accepted ARCH-01, BEH-01,
   BEH-02, DOC-WV-01, DOC-WV-02, DOC-WV-03 and TEST-EV-01 without repair. Original
@@ -1113,8 +1115,9 @@ Ordinary commits do not require an entry. When an entry is explicitly requested,
   a later full-English/publication outcome.
 - Continuation delivery-20261121-02 obtained fresh active-client OTLP confirmation;
   MR-02/MR-03 remain walkthroughs, without alternate-launch evidence.
-- On November 21, master contains an additional uncommitted workflow simplification:
-  renamed Main/Step skills, user-selected operations, a simpler result contract,
-  ordinary Git integration and retirement of matrix/routing/transaction machinery.
-  Existing prepared edits remain in place. Compaction establishes no tests, review
-  acceptance, commit or closure for that revision.
+- `ac3963d` delivered user-selected Main/Step operations, a simpler skill result
+  contract and ordinary Git integration. It retired the skill matrix and the
+  routing/publication transaction tools. `7da7fc3` consolidated the engineering
+  history into thematic chapters. These commits identify the delivered changes;
+  they do not establish that the earlier accepted findings were repaired or that
+  any unrecorded verification was performed.

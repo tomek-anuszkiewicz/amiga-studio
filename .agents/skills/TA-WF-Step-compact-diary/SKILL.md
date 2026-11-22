@@ -1,6 +1,6 @@
 ---
 name: TA-WF-Step-compact-diary
-description: Consolidate selected settled diary history into thematic chapters while preserving unfinished work and evidence.
+description: Consolidate selected completed work into thematic diary chapters while preserving historical evidence and its limits.
 ---
 
 # Compact the selected settled history
@@ -19,18 +19,27 @@ Read the [closure trigger](../../../Obsidian/Amiga/Design/Verification/Testing%2
    and relevant Git/closure evidence. Pruning alone does not establish completion.
 2. Integrate substantive settled decisions/mechanisms/evidence into their owning
    thematic chapters; add a numbered chapter before the changelog when justified.
-   Preserve granular unfinished work and distinguish historical from current checks.
+   Preserve historical evidence and its limits; keep task continuation in plans.
+   Distinguish historical from current checks.
 3. Remove source entries only after retaining unique knowledge. Routine change noise
    stays in Git; do not create a parallel prose archive or infer missing rationale.
 4. Review the diff and incoming heading links. Keep the final unnumbered
    `Rolling Changelog`, then run
    `python .agents/skills/TA-WF-Step-compact-diary/scripts/check_diary.py`.
-5. Return chapters changed, preserved active work, counts and actual check results.
+5. Return chapters changed, preserved evidence, counts and actual check results.
 
 Stop after compaction. Ordinary commits do not require changelog entries. Do not
 create a commit, run a milestone suite or claim historical closure from structure.
 
 ## History criteria
+
+Apply these criteria when authoring an entry as well as when compacting history.
+Record performed work, its reason, outcome and actual checks. For code changes,
+use the selected committed scope as the source of the historical account. Link
+relevant commits where useful. Completed investigations may retain their observed
+results and limitations without claiming an implementation or verified closure.
+Keep pending edits, commit status and instructions for continuing a task in its
+plan; do not use the diary as a list of working-tree files awaiting commit.
 
 Keep distinct completed engineering stages identifiable. Extend their existing
 chapter or add the next numbered chapter immediately before the final, unnumbered
@@ -41,13 +50,13 @@ Preserve date ranges, stable task IDs, closing commits where available, problems
 affected components, mechanisms, decisions, alternatives, hardware findings,
 historical verification and remaining limits. Inspect Git and roadmap history;
 roadmap removal or renumbering alone does not prove verified completion. Distinguish
-verified closure, user-directed scope closure and unfinished work. Delivered tooling
+verified closure, user-directed scope closure and limits of completed work. Delivered tooling
 does not establish acceptance of every artifact it can produce.
 
-Keep granular entries needed to continue active investigations or unfinished work.
-An open roadmap stage does not make every supporting tooling change unfinished.
-The changelog is a buffer awaiting resolution or narrative integration, not a
-parallel archive. Move settled unique knowledge into its owning chapter and remove
+Retain concrete observations from completed work even when a wider roadmap stage
+is still open. Continuing that work belongs to the active plan and roadmap.
+The changelog holds completed work awaiting narrative integration. Move settled
+unique knowledge into its owning chapter and remove
 the source entry without repeating the detailed account. An empty changelog after
 historical compaction is valid.
 
@@ -58,7 +67,7 @@ Historical Digest only for substantive settled history without a suitable chapte
 and reconsider that placement next time. Reserve Milestone Digest for documented
 milestone closure. Preserve useful incoming links when headings move.
 
-Report the chapters changed, important decisions preserved, active entries retained,
+Report the chapters changed, important decisions and evidence preserved,
 line/byte changes and actual structure/chronology checks. Those checks establish
 format and timestamp order, not the truth of closure claims. Pending gates remain
 pending; historical results are not checks executed now.
