@@ -18,7 +18,10 @@ before capture. Without task context, use an explicitly selected archive locatio
 
 Supply the governing commit and explicitly selected client evidence. Preserve
 tool probe results, installed and declared dependencies, checkout and Git object
-identities, configured roles and observation limits. Keep the inventory beside
+identities and observation limits. The recorded `governing_commit` is sufficient
+to recover repository-defined role settings from that revision. Separate role
+tables and per-role comparisons are unnecessary. Claims about the actual session
+model and effort require selected runtime evidence. Keep the inventory beside
 the task's session logs, telemetry and test reports; capture needs no running
 Receiver or Collector. Return the inventory location and digest. Stop after capture.
 

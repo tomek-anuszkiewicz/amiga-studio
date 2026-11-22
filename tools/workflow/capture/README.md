@@ -34,16 +34,19 @@ fresh name in the same directory and preserve the earlier inventory. Without
 task context, use an explicitly selected archive location. This file stays with
 the task's session logs, telemetry and test reports without requiring a running
 Receiver or Collector.
-Select the known revision that governs execution and the relevant local tools. Identify the actual shell with `--shell <name>` and inspect a locally available Collector image with `--docker-image <reference>`.
-To record observed client settings, supply `--rollout <selected-session.jsonl> --turn-id <observed-turn-id>` to the capture command. Without that source the inventory reports the client observation as unavailable. The executable probe records the version of Codex found on `PATH`. Use `--node-project <repository-relative-directory>` for each selected local Node project. The comparison operation takes two saved inventories.
+Select the known revision that governs execution and the relevant local tools.
+Apply the [capture skill's governing revision rule](../../../.agents/skills/TA-WF-Step-capture-environment/SKILL.md).
+Identify the actual shell with `--shell <name>` and inspect a locally available
+Collector image with `--docker-image <reference>`.
+To record observed client settings, supply `--rollout <selected-session.jsonl> --turn-id <observed-turn-id>` to the capture command. Without that source the inventory reports the client observation as unavailable. The executable probe records the version of Codex found on `PATH`. Use `--node-project <repository-relative-directory>` for each selected local Node project. The comparison operation takes two inventories saved in the current format (version 2).
 
 ```text
 python tools/workflow/capture/environment.py capture --output <primary>/.agent/task-archives/<task>/<execution>/logs/environment.json --governing-commit <revision>
 python tools/workflow/capture/environment.py compare <saved-inventory.json> <fresh-inventory.json> --output <differences.json>
 ```
 
-Keep approved plans, test designs, acceptance criteria, decisions and attachments
-under `.agent/tasks/` or another selected ignored location.
+Keep approved task-specific plans, test designs, acceptance criteria, decisions
+and attachments under `.agent/tasks/` or another selected ignored location.
 Use a version map under `.agent/tmp/task-inputs/<task>/` for approved inputs,
 selected handoffs and versions explicitly retained for history. Include each
 attachment the decision or recipient actually depends on. Working draft edits

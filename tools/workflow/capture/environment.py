@@ -16,6 +16,7 @@ import tomllib
 
 
 ROOT = Path(__file__).resolve().parents[3]
+INVENTORY_FORMAT = 2
 CONFIG = ".codex/config.toml"
 REQUIREMENTS = (
     "tools/verification/requirements.txt",
@@ -240,7 +241,6 @@ def capture(args):
         node_packages[target.relative_to(ROOT).as_posix()] = record
 
     blobs, checkout = input_hashes(sorted(paths), commit)
-    roles = None  # No shared workflow role-default table is maintained.
     try:
         config = tomllib.loads((ROOT / CONFIG).read_text(encoding="utf-8-sig"))
         mcp = sorted(name for name in config.get("mcp_servers", {}) if allowed(name, r"[\w-]+"))
@@ -254,7 +254,7 @@ def capture(args):
     except OSError:
         selected_hash = None
     return {
-        "format_version": 2, "captured_at": now(), "governing_commit": commit,
+        "format_version": INVENTORY_FORMAT, "captured_at": now(), "governing_commit": commit,
         "host": {"os": platform.platform(), "architecture": platform.machine(),
                  "processors": os.cpu_count(), "native": True if context == "native" else
                  None if context == "unknown" else False, "context": context, "shell": args.shell,
@@ -269,7 +269,7 @@ def capture(args):
         "python_requirements": {path: requirement_summary(path) for path in REQUIREMENTS},
         "repository_input_git_blob_sha256": blobs,
         "repository_input_checkout_sha256": checkout,
-        "role_settings": roles,
+        "role_settings": None,  # Configured roles are recoverable from the governing commit.
         "declared_mcp_servers": mcp,
         "client": read_client(args.session_log, args.turn_id),
         "limits": [
@@ -282,34 +282,19 @@ def capture(args):
 
 
 def observed(record):
-    value = record.get("result")
-    if record.get("status") != "observed" or value == "Output contained a location; version unavailable in this probe.":
-        return UNKNOWN
-    return value
+    return record["result"] if record["status"] == "observed" else UNKNOWN
 
 
 def inventory_fields(inventory):
     fields = {key: inventory[key] for key in (
         "host", "python", "python_requirements", "repository_input_git_blob_sha256",
-        "repository_input_checkout_sha256",
-    ) if key in inventory}
-    client = inventory.get("client", inventory.get("pilot_client", {}))
-    fields["client"] = {key: client.get(key) for key in ("surface", "version", "backend_version", "model", "effort")}
-    paths = inventory.get("declared_dependencies")
-    fields["declared_dependencies"] = dict.fromkeys(paths, True) if isinstance(paths, list) else None
-    fields["declared_mcp_servers"] = inventory.get("declared_mcp_servers", client.get("mcp_available"))
-    fields["client"]["plugins"] = client.get("plugins") if isinstance(client.get("plugins"), list) else None
-    roles = inventory.get("role_settings")
-    if isinstance(roles, list):
-        rows = [ROLE_ROW.fullmatch(row).groups() for row in roles if isinstance(row, str) and ROLE_ROW.fullmatch(row)]
-        rows.extend(tuple(row) for row in roles if isinstance(row, list) and len(row) == 3)
-        fields["role_settings"] = {name: [model.strip("\x60"), effort] for name, model, effort in rows}
-    else:
-        fields["role_settings"] = None
-    node = inventory.get("node", {}).get("local_packages")
-    if node == "No task-local Node package manifest at the checkout root.":
-        node = {}
-    fields["node_local_packages"] = {key: observed(value) for key, value in node.items()} if isinstance(node, dict) else node
+        "repository_input_checkout_sha256", "declared_mcp_servers", "role_settings",
+    )}
+    client = inventory["client"]
+    fields["client"] = {key: client.get(key)
+                        for key in ("surface", "version", "backend_version", "model", "effort", "plugins")}
+    fields["declared_dependencies"] = dict.fromkeys(inventory["declared_dependencies"], True)
+    fields["node_local_packages"] = {key: observed(value) for key, value in inventory["node"]["local_packages"].items()}
     fields["probes"] = {" ".join(record["command"]): observed(record) for record in inventory["probes"]}
     fields["executables"] = {
         " ".join(record["command"]): {"name": record.get("executable", "").casefold(),
@@ -344,8 +329,9 @@ def compare(saved, fresh):
 
 def load_inventory(path):
     value = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(value, dict) or value.get("format_version") not in (1, 2) or not isinstance(value.get("probes"), list):
-        raise ValueError("Expected an environment inventory in format 1 or 2.")
+    if (not isinstance(value, dict) or value.get("format_version") != INVENTORY_FORMAT
+            or not isinstance(value.get("probes"), list)):
+        raise ValueError(f"Expected an environment inventory in format {INVENTORY_FORMAT}.")
     return value
 
 
@@ -392,7 +378,9 @@ def main():
     except (OSError, UnicodeError, subprocess.TimeoutExpired):
         parser.exit(2, "Could not read or write the selected inventory inputs.\n")
     except (ValueError, KeyError, TypeError, AttributeError):
-        parser.exit(2, "The selected environment inputs or inventory format are invalid.\n")
+        if args.operation == "compare":
+            parser.exit(2, f"Expected valid environment inventories in format {INVENTORY_FORMAT}.\n")
+        parser.exit(2, "The selected environment inputs are invalid.\n")
 
 
 if __name__ == "__main__":
