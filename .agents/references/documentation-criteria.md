@@ -48,9 +48,11 @@ not rewriting their sources or executable instructions.
 
 Identify baseline, selected paths/hunks, new files and proposed partition. Staging
 does not isolate execution, and unrelated working files cannot satisfy an index
-candidate. For integration use the recorded immutable primary-branch base, including
-committed task changes and merge resolutions; retain HEAD/index identities to
-detect interference. Use `--no-renames` when selecting paths to expose both endpoints.
+candidate. For integrated work, identify the delivered commit range and any selected
+working changes, including merge resolutions. Review the complete intended result
+in the selected checkout and report interference or a missing comparison scope.
+No frozen baseline copy or publication control record is required. Use
+`--no-renames` when selecting paths to expose both endpoints.
 For an initial commit inspect the intended candidate without assuming HEAD exists.
 
 Collect `tracked_paths` from Design frontmatter. Normalize slash paths and match an

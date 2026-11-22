@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "testing"
 status: "active"
 created: 2026-09-14
-updated: 2026-11-21
+updated: 2026-11-22
 related: ["[General Architecture.md](../General%20Architecture.md)", "[CPU SingleStepTests.md](CPU%20SingleStepTests.md)", "[CPU Instruction Benchmarking.md](../Performance/CPU%20Instruction%20Benchmarking.md)", "[Machine Loop.md](../Machine%20Loop.md)", "[Platform Quirks and Invariants Catalog.md](../Platform%20Quirks%20and%20Invariants%20Catalog.md)"]
 tracked_paths:
   - ".config/nextest.toml"
@@ -50,13 +50,15 @@ Retain these evidence boundaries:
   owns gap review; the [coverage reference](../../../../tools/verification/README.md#coverage-guided-testing)
   owns diagnostic measurements and artifacts. There is no percentage gate.
 - Failed, missing, interrupted or invalidated groups cannot count as passed.
-  Continuation reuses only matching successful evidence with intact artifacts;
-  it is not a cross-task cache. Source, index and execution conditions must remain
-  stable. The final verdict covers the complete candidate, not intermediate commits.
-- A changed HEAD starts a new batch. Approved integration compares the complete
-  combined candidate against an immutable primary base; its narrow mechanical
-  commit bridge and unverified working-commit/confirmed-fast-forward exceptions
-  belong to the [integration procedure](../../../../.agents/skills/TA-WF-Main-close-task/references/local-integration.md).
+  Each verifier invocation executes its selected checks again; it does not resume
+  from saved passing groups. The caller keeps the tested source and execution
+  conditions stable and reports interference. The final verdict covers the complete
+  selected candidate, not intermediate commits.
+- For integrated work, the main session identifies the delivered commit range and
+  any selected working changes, including merge resolutions. Checks and reviews
+  run in the selected checkout. Ordinary Git integration follows the
+  [integration procedure](../../../../.agents/skills/TA-WF-Main-close-task/references/local-integration.md),
+  without a frozen comparison copy, publication control record or commit bridge.
 - Generated timing reports are outputs, not passing evidence. Build caches may
   remain, but stale coverage objects and saved SingleStep totals cannot establish
   that current sources or the requested selection ran.
@@ -64,10 +66,12 @@ Retain these evidence boundaries:
   gates remain required by the commit profile. Source discovery for quality checks
   includes production and test JavaScript callers. The production Wasm build
   retains its Nightly shared-memory configuration and lint-warning failure policy.
-- Bounded scheduling, locks, cancellation and reuse identity follow the
+- Scheduling and failure handling follow the
   [execution reference](../../../../tools/verification/README.md#bounded-parallel-execution).
-  A surviving child after verifier termination is outside its checkout lock.
-  No lifecycle or Git hooks are used.
+  The verifier has no entry-point batch lock or saved-evidence protocol. The caller
+  isolates shared build and coverage outputs and, after interruption, confirms that
+  earlier processes have ended before reusing those outputs. No lifecycle or Git
+  hooks are used.
 
 Selected [behavior review](../../../../.agents/skills/TA-WF-Step-review-behavior/SKILL.md)
 includes scoped specification compliance and, for an assigned whole-stage parity
