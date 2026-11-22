@@ -40,9 +40,9 @@ manual links `../Reference/<book>/<file>.md`, and repository paths
 spaces correctly. Inline and final references are complementary, not duplicate
 mandatory inventories.
 
-Reference books use the [book metadata schema](../../../../tools/bootstrap/book-to-markdown/reference-book-metadata.md).
+Reference books use the [book metadata schema](../../tools/bootstrap/book-to-markdown/reference-book-metadata.md).
 Preserve source-note metadata while editing. Raw conversion follows the
-[nested bootstrap instructions](../../../../tools/bootstrap/AGENTS.md).
+[nested bootstrap instructions](../../tools/bootstrap/AGENTS.md).
 
 The full Design checker rejects invalid metadata structure, empty tags and
 broken links. The canonical checker scans every local Amiga Markdown file,

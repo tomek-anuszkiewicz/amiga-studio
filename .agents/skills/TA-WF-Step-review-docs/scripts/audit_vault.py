@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic checks owned by TA-audit-vault-links."""
+"""Check Design document links and frontmatter."""
 
 import argparse
 import re

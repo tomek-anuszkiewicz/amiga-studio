@@ -131,7 +131,7 @@ worktree copies of existing graphs, project refresh within verified task closure
 separately selected reference refresh/production and
 distinct structural/semantic freshness. Preserve the repository-owned skill on
 installation. Relevant vault metadata/link semantics use the
-[shared vault reference](../skills/TA-audit-vault-links/references/vault-metadata.md).
+[shared vault reference](vault-metadata.md).
 Check language, portable paths, resolving links and actually triggered diary,
 roadmap and milestone obligations. Pending-work organization belongs to
 [TA-WF-Step-update-docs](../skills/TA-WF-Step-update-docs/SKILL.md#organizing-pending-roadmap-work);

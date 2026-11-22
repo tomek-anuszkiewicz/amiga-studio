@@ -55,7 +55,7 @@ class TimingReportTests(unittest.TestCase):
         predicate_only = {
             "tools/worktree.ps1": True,
             "tools/graphify_query.py": True,
-            ".agents/skills/TA-audit-vault-links/scripts/audit_vault.py": True,
+            ".agents/skills/TA-WF-Step-review-docs/scripts/audit_vault.py": True,
         }
         for path, expected in (routes | predicate_only).items():
             with self.subTest(path=path):

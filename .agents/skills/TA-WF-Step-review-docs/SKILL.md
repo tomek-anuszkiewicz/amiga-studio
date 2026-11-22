@@ -33,8 +33,8 @@ Reuse matching prior assessment for the work it already covers.
    stage and its interactions, including unchanged affected documents and code.
    Record where existing evidence covers the same work.
 3. For assigned Design documentation, run the full recursive link/metadata audit:
-   `python .agents/skills/TA-audit-vault-links/scripts/audit_vault.py --vault-links --frontmatter`.
-   Read the [vault schema and semantic criteria](../TA-audit-vault-links/references/vault-metadata.md)
+   `python .agents/skills/TA-WF-Step-review-docs/scripts/audit_vault.py --vault-links --frontmatter`.
+   Read the [vault schema and semantic criteria](../../references/vault-metadata.md)
    and assess contextual links and metadata meaning, including empty tag/link
    sets. Reuse overlapping current canonical structural evidence only where it
    applies. The wider canonical frontmatter gate still applies and includes

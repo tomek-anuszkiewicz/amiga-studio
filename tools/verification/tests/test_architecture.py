@@ -10,7 +10,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "checks"))
 import check_architecture as architecture
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[3] / ".agents/skills/TA-audit-vault-links/scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / ".agents/skills/TA-WF-Step-review-docs/scripts"))
 import audit_vault as vault
 
 

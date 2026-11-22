@@ -162,7 +162,8 @@ PYTHON_INPUTS = {
     "RAG MCP contracts": ("tools/amiga-rag-mcp-server/", ".codex/config.toml"),
     "Artifact report contracts": ("tools/artifacts/",),
     "Verification CLI contracts": ("tools/verification/", "tools/web.ps1", "tools/worktree.ps1", "tools/graphify_query.py",
-                                   ".agents/skills/TA-audit-vault-links/scripts/", ".gitignore"),
+                                   ".agents/skills/TA-WF-Step-review-docs/scripts/audit_vault.py",
+                                   ".gitignore"),
     CAPTURE_CONTRACTS: ("tools/workflow/capture/", ".gitignore", *CAPTURE_TEST_INPUTS),
 
 }

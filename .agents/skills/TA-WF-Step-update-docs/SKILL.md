@@ -49,7 +49,7 @@ if the document target is missing or ambiguous.
    completed items. Preserve unfinished scope and return any missing completion
    evidence for a separately selected milestone closure.
 4. Apply selected metadata/link repairs using the
-   [vault schema](../TA-audit-vault-links/references/vault-metadata.md).
+   [vault schema](../../references/vault-metadata.md).
    Follow the separate [reference book schema](../../../tools/bootstrap/book-to-markdown/reference-book-metadata.md)
    and its approval requirement before editing source notes. Preserve approved
    intent, neighboring structure and links to implementation. Update dates and
