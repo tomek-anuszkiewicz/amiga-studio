@@ -24,6 +24,11 @@ failure from a hypothesis or missing evidence.
 
 ## Review after correction
 
+[Vocabulary-only maintenance](workflow-contract.md#vocabulary-only-maintenance)
+does not reopen a review or consume a corrective pass. Continue the existing
+assessment of other changes; no new review, challenge or check is needed solely
+because a justified dictionary entry was added.
+
 Recheck selected findings against the actual correction and its affected callers.
 Use applicable existing test results, stating their scope and limits. Do not infer
 success from a source edit or a report label. Identify scope that was not inspected and any

@@ -15,6 +15,11 @@ Resolve model and effort for the actual assignment before each launch, including
 repairs. Assign independent reviews and selected command/coverage execution to
 their respective roles under the same policy.
 
+Apply [vocabulary-only maintenance](../../references/workflow-contract.md#vocabulary-only-maintenance)
+at every stage, including a task consisting solely of such additions. It does not
+enter the verification/review steps or corrective-pass loop below. In mixed work,
+those steps still apply to the other selected changes.
+
 1. Read the working plan and relevant requirements. Execute
    [TA-WF-Step-implement-change](../TA-WF-Step-implement-change/SKILL.md) for the assigned code,
    tests, necessary Design documentation and focused checks. Reuse its approved

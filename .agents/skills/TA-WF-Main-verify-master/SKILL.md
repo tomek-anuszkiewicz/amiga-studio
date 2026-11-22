@@ -17,6 +17,11 @@ The main session coordinates. Apply the
 to each runner, reviewer and corrective implementation assignment. Re-evaluate
 model and effort for each correction instead of reusing earlier settings by habit.
 
+Apply [vocabulary-only maintenance](../../references/workflow-contract.md#vocabulary-only-maintenance)
+at every stage. Such additions do not initiate or repeat the language, test,
+review or corrective-pass steps below. Continue the independently required
+assessment of other delivered changes.
+
 1. Inspect master and preserve unrelated files/index entries. Tests and review run
    directly here. Do not copy master to another branch or compare it with a frozen
    baseline. Report interference that prevents testing the intended change.
@@ -26,7 +31,9 @@ model and effort for each correction instead of reusing earlier settings by habi
    and no implementation repairs are needed. If it changes files, use
    [TA-WF-Main-commit-changes](../TA-WF-Main-commit-changes/SKILL.md) on master to
    commit only those selected corrections, omitting merge. Unresolved required
-   language findings or scanner failures leave the final assessment incomplete.
+   language findings, read errors or scanner execution errors leave the final
+   assessment incomplete. Resolve known vocabulary findings through the shared
+   maintenance rule without requiring another scan.
 3. Assign the requested tests, quality checks and selected coverage measurements
    to `TA-test-runner` in this master checkout, using the existing verifier.
    If no narrower test selection was supplied, use

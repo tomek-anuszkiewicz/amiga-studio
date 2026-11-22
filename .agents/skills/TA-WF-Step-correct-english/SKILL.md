@@ -9,7 +9,9 @@ Apply the [result contract](../../references/workflow-contract.md).
 
 Use only when the user requests this operation. The input is the selected files
 or an expressly requested full repository audit. A request to write or implement
-something does not invoke this skill. Respect a report-only assignment; otherwise
+something does not invoke this skill. Ordinary
+[vocabulary-only maintenance](../../references/workflow-contract.md#vocabulary-only-maintenance)
+does not require invoking this skill or running its scanner. Respect a report-only assignment; otherwise
 the operation permits contextual text corrections and justified vocabulary entries.
 
 Run the existing scanner for the selected scope:
@@ -50,10 +52,11 @@ unverifiable terms or choices that would alter behavior or an external contract.
 For each, give the file, line, context, evidence and concrete options. Report read
 or scanner errors separately from vocabulary findings.
 
-After corrections, repeat the same selected scan and summarize text corrections,
-vocabulary additions with reasons, remaining questions and the actual result.
-Retain failed attempts. An unresolved finding or scanner/read error leaves the
-language assessment incomplete; do not claim a passing audit or publication readiness.
+After authored-text corrections, repeat the same selected scan. For vocabulary-only
+additions, apply the shared maintenance rule and continue without another scan,
+checks or review. Summarize the additions and their reasons without claiming a
+fresh passing command. Retain earlier scan outcomes. Unresolved language findings,
+read errors or scanner execution errors leave the assessment incomplete.
 
 This operation does not stage, commit, publish, change scanner logic/scope or
 launch another skill. Authority to edit justified exact-file vocabulary entries

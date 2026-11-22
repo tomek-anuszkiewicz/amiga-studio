@@ -12,6 +12,11 @@ candidate, write scope, relevant specifications and focused checks. Repairs may
 include selected finding IDs and evidence. Optimizations include the selected
 candidate or concrete saving mechanism, original baseline and measurement scope.
 
+Apply [vocabulary-only maintenance](../../references/workflow-contract.md#vocabulary-only-maintenance)
+to justified word-list and exact-file literal additions. They do not trigger this
+operation's checks or repairs; continue the current assignment. Changes to code,
+authored text or other verification configuration keep their normal requirements.
+
 1. Read the shared [Rust best practices](../../references/rust-best-practices.md)
    for Rust changes and [egui best practices](../../references/egui-best-practices.md)
    for GUI changes. Read affected specifications, nearby implementations and agreed test

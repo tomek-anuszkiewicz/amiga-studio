@@ -51,6 +51,10 @@ Translate user concepts into idiomatic English when writing repository artifacts
 State outcomes and actual evidence plainly, distinguishing assumptions,
 hypotheses and unrun work.
 
+Apply [vocabulary-only maintenance](.agents/references/workflow-contract.md#vocabulary-only-maintenance)
+during ordinary work and selected workflows. Adding a justified word or exact-file
+literal exception needs no separate permission, scan, review or verification loop.
+
 ### Explain the system to the engineer
 
 Answer the question directly in the user's language. Assume a technically fluent

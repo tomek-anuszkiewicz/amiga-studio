@@ -39,6 +39,33 @@ assignment.
 
 ## Independent operations
 
+### Vocabulary-only maintenance
+
+Contextually justified additions to the configured English word lists and
+exact-file `file_words` allowances are ordinary maintenance within authorized work.
+The current assignee may make them directly without a separate permission request
+or a new assignment. This applies during ordinary work as well as a selected
+language operation.
+
+The change must consist only of adding valid words, required inflections or
+necessary literal exceptions. Resolve their meaning in the existing context
+before adding them; dictionary absence alone is not a language defect. Keep
+ordinary prose errors out of the lists. Changes to scanner logic, file discovery,
+exclusions, patterns, gates, code or authored text are outside this exception.
+
+After adding the entries, continue from the current selected stage. Do not start
+or repeat a language scan, tests, builds, coverage, quality or documentation
+checks, reviews, analysis or evidence validation because of the addition. A
+request to add vocabulary needs no preliminary scan either. Do not count this
+maintenance as a corrective pass or trigger targeted/final review rounds.
+
+An already reported unknown-word finding may be resolved by this contextual
+vocabulary decision. Retain the original scan outcome and say that the entry was
+added without a rerun; do not invent a fresh passing command. The addition does
+not invalidate checks of unchanged code or text. In mixed work, continue the
+independently required work for the other changes. Run an extra scan only when
+the user explicitly requests one or a separate authored-text change requires it.
+
 Planning, implementation, review, verification and Git operations remain available
 when selected. A selected compound skill includes its stated internal steps and
 component operations. It does not invoke the next task stage automatically. A broader

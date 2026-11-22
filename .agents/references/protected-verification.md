@@ -18,6 +18,12 @@ Ordinary maintenance preserving acceptance/coverage remains allowed, including
 imports, internal-refactor fixtures, meaningful new tests and stronger assertions.
 A specific approved contract change can authorize its matching ordinary test update.
 
+Justified English word-list additions and exact-file literal allowances are ordinary
+[vocabulary-only maintenance](workflow-contract.md#vocabulary-only-maintenance),
+including additions made during ordinary work. They need no separate approval or
+follow-up checks. This exception does not cover scanner logic, discovery,
+exclusions or other verification policy changes.
+
 ## Reference Artifact Integrity
 
 Reference traces, CSV baselines, cycle totals and SingleStep vectors are protected.

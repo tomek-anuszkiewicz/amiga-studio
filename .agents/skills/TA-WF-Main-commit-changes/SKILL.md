@@ -12,6 +12,11 @@ Inputs: selected task checkout/branch, primary checkout, delivered scope, plan w
 available check results. Selecting this stage authorizes its scoped staging,
 commits and local merge. It does not authorize a push or cleanup.
 
+Apply [vocabulary-only maintenance](../../references/workflow-contract.md#vocabulary-only-maintenance)
+throughout preparation and integration. Those additions do not initiate or repeat
+language scans or other verification. Continue the already selected Git operation;
+other authored-text changes retain their language-check requirements.
+
 1. Inspect selected changes and existing commits. Group unfinished work into one
    or several logical commits: keep a behavior change with its tests and required
    documentation; separate independent operations where that helps understanding.
