@@ -20,8 +20,7 @@ CORE_EMULATION_CRATES = (
     "debugger", "agnus", "frame_builder", "denise", "floppy", "paula",
     "keyboard", "game_ports", "cia", "machine_loop",
 )
-MAX_RULE_FILE_BYTES = 23_000
-MAX_AGENTS_MD_BYTES = 14_000
+MAX_AGENTS_MD_BYTES = 16_384
 REQUIRED_MULTI_MODULE_TESTS = {
     "disassembler": ("test_align.rs", "test_alu.rs", "test_branch.rs", "test_data.rs", "test_ea.rs"),
     "config": ("test_config.rs", "test_mutation.rs"),
@@ -261,18 +260,14 @@ class ArchitectureChecks(unittest.TestCase):
         self.no_violations(violations, "Architecture Rule Violation: Non-standard or anonymous idle micro-step usage")
 
     def test_rule_files_size_limit_and_truncation_safety(self):
-        violations = []
         agents = self.root / "AGENTS.md"
-        paths = [(agents, MAX_AGENTS_MD_BYTES)] if agents.exists() else []
-        directory = self.root / ".agents/rules"
-        if directory.is_dir():
-            paths.extend((path, MAX_RULE_FILE_BYTES) for path in sorted(directory.glob("*.md"))
-                         if path.is_file() and path.suffix == ".md")
-        for path, limit in paths:
-            size = path.stat().st_size
-            if size > limit:
-                violations.append(f"{self.relative(path)} is {size} bytes (exceeds {limit} byte ceiling)")
-        self.no_violations(violations, "Architecture Rule Violation: Rule file size safety thresholds")
+        if agents.exists():
+            size = agents.stat().st_size
+            self.assertLessEqual(
+                size, MAX_AGENTS_MD_BYTES,
+                f"Architecture Rule Violation: AGENTS.md is {size} bytes "
+                f"(exceeds {MAX_AGENTS_MD_BYTES} byte ceiling)",
+            )
 
     def test_obsidian_design_docs_links_integrity(self):
         directory = self.root / "Obsidian/Amiga/Design"

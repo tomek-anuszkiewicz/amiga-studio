@@ -502,7 +502,7 @@ for the observation boundary.
 [`checks/check_architecture.py`](checks/check_architecture.py) runs 18 source and
 repository checks: file size limits $\le 800$ lines, forbidden unwrap/expect calls,
 custom macros, path privacy, inlining attributes, instruction layout, test
-organization, instruction file budgets, design-document links and approved
+organization, the 16 KiB root `AGENTS.md` limit, design-document links and approved
 dependencies between workspace crates. It uses the Python standard library
 and Cargo metadata, without compiling Rust. Commit and `check all` run
 the complete set; `case` selects control names by literal substring:

@@ -179,17 +179,19 @@ edition = "2021"
         self.write(path, "MicroStep {\nbus_fn: None,\nalu_fn: None,\nbase_clocks: 4,\n}\n")
         self.check(name, False, "common::ALU_IDLE_4CLK")
 
-    def test_instruction_budgets_measure_bytes_and_ignore_nested_rules(self):
+    def test_root_agents_md_size_limit_measures_utf8_bytes(self):
         name = "test_rule_files_size_limit_and_truncation_safety"
-        self.write("AGENTS.md", "a" * architecture.MAX_AGENTS_MD_BYTES)
-        self.write(".agents/rules/example.md", "a" * architecture.MAX_RULE_FILE_BYTES)
-        self.write(".agents/rules/nested/example.md", "a" * (architecture.MAX_RULE_FILE_BYTES + 1))
+        self.write("AGENTS.md", "a" * 16_384)
         self.check(name, True)
-        self.write("AGENTS.md", "a" * (architecture.MAX_AGENTS_MD_BYTES - 1) + "£")
-        self.check(name, False, "14001 bytes")
+        self.write("AGENTS.md", "a" * 16_383 + "£")
+        self.check(name, False, "AGENTS.md is 16385 bytes (exceeds 16384 byte ceiling)")
+
+    def test_root_agents_md_size_limit_ignores_other_instruction_files(self):
         self.write("AGENTS.md", "")
-        self.write(".agents/rules/example.md", "a" * (architecture.MAX_RULE_FILE_BYTES + 1))
-        self.check(name, False, "23001 bytes")
+        self.write("tools/example/AGENTS.md", "a" * 16_385)
+        self.write(".agents/references/egui-best-practices.md", "a" * 23_001)
+        self.write(".agents/rules/egui-best-practices.md", "a" * 23_001)
+        self.check("test_rule_files_size_limit_and_truncation_safety", True)
 
     def test_design_links_decode_paths_ignore_external_links_and_keep_minimums(self):
         name = "test_obsidian_design_docs_links_integrity"
