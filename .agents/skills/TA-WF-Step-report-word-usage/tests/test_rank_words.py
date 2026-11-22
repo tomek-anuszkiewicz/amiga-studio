@@ -172,3 +172,137 @@ class FencedBlockRankingTests(unittest.TestCase):
         self.assertEqual({row["word"]: row["samples"][0]["line"] for row in report["ranking"]}, {
             "opal": 1, "cadence": 3, "visible": 4, "ordinary": 5, "prose": 5, "quixotic": 6,
         })
+
+    def test_quote_markers_and_four_spaces_inside_a_fence_stay_literal(self):
+        for marker in ("> ```", "    ```"):
+            with self.subTest(marker=marker):
+                body = "`brontolith cadence`"
+                report = self.report_for({
+                    "docs/example.md": f"```text\n{marker}\n{body}\n```\nSpectral\n",
+                })
+
+                self.assertEqual(report["token_count"], 3)
+                self.assertEqual(report["ranking"], [
+                    {"word": word, "count": 1, "document_count": 1, "samples": [
+                        {"path": "docs/example.md", "line": line, "context": context},
+                    ]}
+                    for word, line, context in (
+                        ("brontolith", 3, body), ("cadence", 3, body), ("spectral", 5, "Spectral")
+                    )
+                ])
+
+    def test_fences_inside_quote_and_list_use_their_container_boundaries(self):
+        report = self.report_for({
+            "docs/nested.md": (
+                "> - ```remarkable\n"
+                ">   `brontolith opal`\n"
+                ">   ```\n"
+                ">   Cadence\n"
+                ">\n"
+                "> - ~~~\n"
+                ">   secrettitle\n"
+                ">   ~~~\n"
+                "Spectral\n"
+                "\n"
+                "- ```remarkable\n"
+                "  loquacious\n"
+                "- `hidden phrase` quixotic\n"
+            ),
+        })
+
+        self.assertEqual(report["token_count"], 6)
+        self.assertEqual({row["word"]: row["samples"][0]["line"] for row in report["ranking"]}, {
+            "brontolith": 2, "opal": 2, "cadence": 4, "spectral": 9,
+            "loquacious": 12, "quixotic": 13,
+        })
+
+    def test_wrapped_visible_label_keeps_both_source_lines_and_excludes_destination(self):
+        report = self.report_for({
+            "docs/wrapped.md": "[Opal\ncadence](\nquartzdestination\n) spectral\n",
+        })
+
+        self.assertEqual(report["token_count"], 3)
+        self.assertEqual(report["ranking"], [
+            {"word": word, "count": 1, "document_count": 1, "samples": [
+                {"path": "docs/wrapped.md", "line": line, "context": context},
+            ]}
+            for word, line, context in (
+                ("cadence", 2, "cadence]("), ("opal", 1, "[Opal"), ("spectral", 4, ") spectral")
+            )
+        ])
+
+    def test_multiline_reference_title_is_excluded_and_following_prose_keeps_its_line(self):
+        report = self.report_for({
+            "docs/reference.md": (
+                "[Opal][ref]\n"
+                "\n"
+                "[ref]: quartzdestination\n"
+                '  "secrettitle\n'
+                '  hiddentitle"\n'
+                "\n"
+                "spectral\n"
+            ),
+        })
+
+        self.assertEqual(report["token_count"], 2)
+        self.assertEqual(report["ranking"], [
+            {"word": word, "count": 1, "document_count": 1, "samples": [
+                {"path": "docs/reference.md", "line": line, "context": context},
+            ]}
+            for word, line, context in (("opal", 1, "[Opal][ref]"), ("spectral", 7, "spectral"))
+        ])
+
+    def test_tab_in_list_fence_preserves_the_original_sample_column(self):
+        line = "\tfolder/" + "x" * 150 + ' [Spectral](spectral "secrettitle")'
+        report = self.report_for({
+            "docs/tabs.md": f"- ```markdown\n{line}\n  ```",
+        })
+
+        self.assertEqual(report["token_count"], 1)
+        self.assertEqual(report["ranking"], [{
+            "word": "spectral", "count": 1, "document_count": 1, "samples": [{
+                "path": "docs/tabs.md", "line": 2,
+                "context": "\u2026" + "x" * 68 + ' [Spectral](spectral "secrettitle")',
+            }],
+        }])
+
+    def test_obsidian_aliases_and_comments_keep_only_visible_words(self):
+        report = self.report_for({
+            "docs/obsidian.md": (
+                "---\n"
+                "title: hiddentitle\n"
+                "...\n"
+                "[[Amber note|Opal]] ![[private/image.png|Cadence]] [[Timbre]]\n"
+                "<!-- concealed\n"
+                "\n"
+                "```\n"
+                "indistinct\n"
+                "```\n"
+                "--> Spectral\n"
+                "Rhythmic <!-- shadowed\n"
+                "obscured --> Quixotic\n"
+            ),
+        })
+
+        self.assertEqual(report["token_count"], 6)
+        self.assertEqual({row["word"]: row["samples"][0]["line"] for row in report["ranking"]}, {
+            "opal": 4, "cadence": 4, "timbre": 4, "spectral": 10,
+            "rhythmic": 11, "quixotic": 12,
+        })
+
+    def test_inline_comment_can_cross_a_blank_line_and_contain_a_fence_marker(self):
+        report = self.report_for({
+            "docs/comment.md": (
+                "Rhythmic <!-- concealed\n"
+                "\n"
+                "```\n"
+                "indistinct\n"
+                "--> Quixotic\n"
+                "`obscured phrase` Spectral\n"
+            ),
+        })
+
+        self.assertEqual(report["token_count"], 3)
+        self.assertEqual({row["word"]: row["samples"][0]["line"] for row in report["ranking"]}, {
+            "rhythmic": 1, "quixotic": 5, "spectral": 6,
+        })

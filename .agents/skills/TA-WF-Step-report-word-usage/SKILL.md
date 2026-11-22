@@ -11,9 +11,11 @@ milestone completion have their own checks. Follow the
 [result contract](../../references/workflow-contract.md) and
 [communication rules](../../../AGENTS.md#communication).
 
-From the selected checkout, run:
+Install the Markdown parser in the Python environment that runs the report
+and its tests. Run these commands from the selected checkout.
 
 ```text
+python -m pip install -r .agents/skills/TA-WF-Step-report-word-usage/requirements.txt
 python .agents/skills/TA-WF-Step-report-word-usage/scripts/rank_words.py --output .agent/tmp/word-usage/report.json
 ```
 
@@ -31,11 +33,12 @@ unclassified directory, it reports example paths and leaves their contents
 outside the scan and the word counts. Include these notices so the user can
 decide whether each directory belongs in a future scan or in the ignore rules.
 
-The report uses bundled lists of excluded words, so it needs no downloads
-or installed language packages. It ignores letter case and counts different
-word forms separately. It includes the contents of blocks opened with three or
-more backticks and skips their fence markers and language labels. It excludes
-metadata, tilde-fenced blocks, paths and link destinations.
+The report runs offline after installation and uses bundled lists of excluded
+words. It ignores letter case and counts different word forms separately.
+It includes backtick-fenced bodies, including in quotes and lists, and skips
+their fence markers and language labels. It counts visible link labels and
+excludes link destinations, titles, frontmatter, comments in ordinary Markdown,
+tilde-fenced blocks and paths. Samples show the original source line.
 [Common words](assets/common-words.txt),
 [project vocabulary](assets/project-words.txt),
 [sources and maintenance guidance](references/vocabulary.md).

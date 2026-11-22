@@ -79,7 +79,10 @@
   "file_words": {
     ".agents/skills/TA-WF-Step-report-word-usage/tests/test_rank_words.py": [
       "quartzdestination", "secrettitle", "referencekey", "referencetitle",
-      "hiddenpath", "hiddentitle"
+      "hiddenpath", "hiddentitle", "brontolith"
+    ],
+    ".agents/skills/TA-WF-Step-report-word-usage/scripts/markdown_text.py": [
+      "lheading", "za"
     ],
     ".agents/skills/TA-WF-Step-report-word-usage/scripts/rank_words.py": [
       "mypy", "virtualenv", "tox", "nox", "refsrc", "refsource", "refsources",

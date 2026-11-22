@@ -552,3 +552,6 @@ precomputes
 precomputing
 subcomponents
 unapplied
+autolink
+rindex
+tokenize
