@@ -125,7 +125,7 @@ def preserve_timing(args):
     if profile == "diagnostic":
         valid = parts == (".agent", "tmp", "verification", "diagnostics", attempt, TIMING_REPORT)
     else:
-        valid = parts[:2] == (".agent", "tmp") and parts[-3:] == ("verify", attempt, TIMING_REPORT)
+        valid = parts[:2] == (".agent", "tmp") and parts[-2:] == (attempt, TIMING_REPORT)
     if not valid:
         raise ValueError("The timing path does not identify this verification attempt")
     source = safe_file(checkout / report, single_link=True)

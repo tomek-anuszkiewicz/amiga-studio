@@ -4,6 +4,7 @@ from hashlib import sha256
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 import tempfile
@@ -13,6 +14,7 @@ from capture_fixtures import fixture_git_environment, restore_capture
 
 
 CAPTURE = Path(__file__).resolve().parents[1]
+VERIFICATION = CAPTURE.parents[1] / "verification"
 REPORT = "test-runtime-report.md"
 TASK = "fixture-task"
 
@@ -62,8 +64,7 @@ class PreservationTests(unittest.TestCase):
 
     def timing(self, profile, attempt, data, checkout=None):
         checkout = checkout or self.source
-        prefix = "diagnostics" if profile == "diagnostic" else f"{profile}/verify"
-        relative = Path(f".agent/tmp/verification/{prefix}/{attempt}/{REPORT}")
+        relative = Path(f".agent/tmp/verification/diagnostics/{attempt}/{REPORT}")
         report = self.write(checkout / relative, data)
         selected = {"task_id": TASK, "profile": profile, "attempt": attempt,
                     "candidate": self.base, "outcome": "passed", "path": relative.as_posix(),
@@ -87,9 +88,6 @@ class PreservationTests(unittest.TestCase):
         first_report, first = self.timing("commit", "1" * 32, b"first commit report\n")
         _, later = self.timing("commit", "2" * 32, b"later commit report\n")
         _, milestone = self.timing("milestone", "3" * 32, b"milestone report\n")
-        # The task retained the first selection while the profile's latest record advanced.
-        latest = self.source / ".agent/tmp/verification/commit/commit.json"
-        self.json_file(latest, {"attempt": later["attempt"], "timing_report": later})
         pending = self.write(self.source / ".agent/tasks/plan.md", b"unique input\n")
         self.assertIn("producer digest", self.preserve({k: v for k, v in first.items() if k != "sha256"}, 2))
         self.assertIn("producer digest", self.preserve({**first, "sha256": later["sha256"]}, 2))
@@ -99,7 +97,9 @@ class PreservationTests(unittest.TestCase):
         first_receipt = Path(self.preserve(first)["receipt"])
         final_receipt = Path(self.preserve(milestone)["receipt"])
         self.assertEqual(self.preserve(first)["status"], "reused")
-        self.assertIn("Conflicting timing archive entry", self.preserve({**first, "outcome": "failed"}, 2))
+        for key, value in (("outcome", "failed"), ("profile", "milestone"), ("candidate", "other candidate")):
+            with self.subTest(conflict=key):
+                self.assertIn("Conflicting timing archive entry", self.preserve({**first, key: value}, 2))
         self.assertEqual(json.loads(first_receipt.read_bytes())["outcome"], "passed")
         self.assertEqual(first_report.read_bytes(), b"first commit report\n")
         self.assertEqual(pending.read_bytes(), b"unique input\n")
@@ -110,6 +110,74 @@ class PreservationTests(unittest.TestCase):
         self.assertEqual((first_receipt.parent / REPORT).read_bytes(), b"first commit report\n")
         self.assertEqual((final_receipt.parent / REPORT).read_bytes(), b"milestone report\n")
         self.assertFalse((first_receipt.parent.parent.parent / "inputs").exists())
+
+    def test_current_verifier_reports_round_trip_for_commit_and_milestone(self):
+        script = """
+import sys
+import time
+from pathlib import Path
+from unittest.mock import patch
+
+sys.path.insert(0, sys.argv[1])
+import execution
+import verify
+
+profile, child_status = sys.argv[2:]
+command = [sys.executable, "-c", f"raise SystemExit({int(child_status)})"]
+phases = [("Fixture", [("Controlled child", command, {})])]
+with (patch.object(verify, "REPO_ROOT", Path.cwd()),
+      patch.object(execution, "REPO_ROOT", Path.cwd()),
+      patch.object(verify, "select_phases", return_value=phases),
+      patch.object(verify, "stable_update_notice", return_value="")):
+    sys.exit(verify.select_and_run([profile], time.perf_counter()))
+"""
+        for profile, code, outcome, child_result in (("commit", 0, "passed", "executed"),
+                                                     ("milestone", 1, "failed", "failed")):
+            with self.subTest(profile=profile):
+                result = subprocess.run([sys.executable, "-c", script, str(VERIFICATION), profile, str(code)],
+                                        cwd=self.source, env=fixture_git_environment(), capture_output=True,
+                                        encoding="utf-8")
+                self.assertEqual(result.returncode, code, result.stdout + result.stderr)
+                report_path, = re.findall(r"^\[TIMING\] Report generation:.*?; file writing: [^;]+; (.+)$",
+                                          result.stdout, re.MULTILINE)
+                producer_digest, = re.findall(r"^\[TIMING\] Report SHA-256: ([0-9a-f]{64})$",
+                                               result.stdout, re.MULTILINE)
+                report = Path(report_path)
+                self.assertEqual(report.parent.parent, self.source / ".agent/tmp/verification/diagnostics")
+                data = report.read_bytes()
+                self.assertIn(f"Profile: `{profile}`".encode(), data)
+                self.assertIn(f"| {child_result} |".encode(), data)
+                self.assertEqual(producer_digest, sha256(data).hexdigest())
+                selection = {"task_id": TASK, "profile": profile, "attempt": report.parent.name,
+                             "candidate": self.base, "outcome": outcome,
+                             "path": report.relative_to(self.source).as_posix(), "sha256": producer_digest}
+                saved = self.preserve(selection)
+                self.assertEqual(saved["status"], "preserved")
+                self.assertEqual(saved["sha256"], producer_digest)
+                receipt = Path(saved["receipt"])
+                self.assertEqual(receipt, self.primary / ".agent/task-archives" / TASK / ".timing-reports"
+                                 / report.parent.name / "receipt.json")
+                self.assertEqual(json.loads(receipt.read_bytes()), {
+                    **selection, "version": 1, "source_checkout": str(self.source),
+                    "git_common_dir": str(self.primary / ".git"), "size": len(data),
+                })
+                self.assertEqual((receipt.parent / REPORT).read_bytes(), data)
+
+    def test_timing_rejects_unsafe_or_mismatched_sources_without_publishing(self):
+        report, selected = self.timing("commit", "7" * 32, b"current timing\n")
+        self.assertIn("does not identify this verification attempt",
+                      self.preserve({**selected, "attempt": "8" * 32}, 2))
+        for path in ("../" + selected["path"], report.as_posix()):
+            with self.subTest(path=path):
+                self.assertIn("Unsafe archive path", self.preserve({**selected, "path": path}, 2))
+        self.assertIn("differs from the selected Git repository", self.preserve(selected, 2, self.root))
+        other_link = self.root / "linked-report.md"
+        os.link(report, other_link)
+        self.assertIn("Hard-linked input", self.preserve(selected, 2))
+        other_link.unlink()
+        self.write(self.source / ".gitignore", b".agent/task-archives/\n")
+        self.assertIn("must be ignored in its checkout", self.preserve(selected, 2))
+        self.assertFalse((self.primary / ".agent/task-archives" / TASK / ".timing-reports").exists())
 
     def test_primary_checkout_can_supply_an_explicitly_selected_diagnostic(self):
         report, selected = self.timing("diagnostic", "4" * 32, b"diagnostic report\n", self.primary)

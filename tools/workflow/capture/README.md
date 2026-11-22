@@ -348,9 +348,11 @@ when interpreting a dedicated probe.
 
 ## Capture a stage
 
-Record the task, work item, run, round and stage alongside the available thread,
-turn and call identities. The result envelope accepts this association under
-`observations.capture`. Save the actual paired results and separately produced
+Keep the task and execution association in the existing registration and archived
+session or command records. Return selected archive paths in the common result's
+existing `summary` or relevant check summaries. The
+[skill result schema](../result.schema.json) defines its permitted fields; do not
+add an `observations.capture` object. Save the actual paired results and separately produced
 verification reports as selected artifacts, including the status and complete
 output of a failed attempt. Use a scoped Git diff at the stage boundary if
 native patch events omit the required content. Include newly created files and
@@ -423,19 +425,21 @@ report contains gaps.
 
 ## Selected timing reports
 
-When accepting a final verification profile, save a fresh task-local selection
-record from the actual completion JSON. Record both final profiles when both were
-required. Select a failed attempt or a diagnostic only when explicitly required,
-using its actual status and, for diagnostics, exact invocation. Record explicitly
-when the task had no report-producing verification.
+When selecting a verification timing report for preservation, save a task-local
+selection record using the actual invocation's output. The verifier already writes
+the report and prints its path and SHA-256 digest; this operation makes a selected
+archival copy and receipt. It does not create the original report. Select both final
+profiles when both were required. Select a failed attempt or diagnostic only when
+requested, using its actual outcome and, for a diagnostic, exact invocation.
 
-The selection record identifies the task, profile, attempt, reviewed candidate,
-actual outcome and the source checkout-relative report path. Take that path from
-the completion record's results directory and `timing_report.path`. Take
-`sha256` from `timing_report.sha256`, or the verifier's console for a selected
-diagnostic. Keep the selected record with the attempt evidence. Later completion
-records describe later attempts, including attempts that reuse all groups.
-A record without the producer path or digest cannot establish an archival copy.
+The selection identifies the task, profile, attempt, reviewed candidate, actual
+outcome and report path relative to the source checkout. Use the path printed on
+the verifier's `[TIMING] Report generation` line and the digest printed on its
+`[TIMING] Report SHA-256` line. The report's immediate parent directory supplies
+the attempt ID. Current commit and milestone reports use the diagnostics directory
+too. Keep their actual profile names. There is no completion JSON to read.
+Keep the selection with that invocation's evidence; do not substitute a guessed
+path, a later attempt or a digest calculated only from an unverified archive copy.
 
 Copy the named report and receipt using the explicit surviving primary and
 source checkouts. This command works with or without a telemetry registration:
@@ -449,17 +453,18 @@ python tools/workflow/capture/records.py preserve-timing --primary <primary> --s
   "task_id": "<task>",
   "profile": "commit",
   "attempt": "<attempt>",
-  "candidate": "<verified-tree>",
+  "candidate": "<reviewed-candidate>",
   "outcome": "passed",
-  "path": ".agent/tmp/verification/commit/verify/<attempt>/test-runtime-report.md",
+  "path": ".agent/tmp/verification/diagnostics/<attempt>/test-runtime-report.md",
   "sha256": "<producer-digest>"
 }
 ```
 
-Use profile `milestone` for that completion profile. A diagnostic uses profile
-`diagnostic`, also supplies `invocation`, and uses its invocation directory
-name as the attempt. Supply the actual candidate identity and outcome for either
-route. The source checkout may also be the primary.
+Use profile `milestone` for that profile's report. A selected diagnostic uses
+profile `diagnostic` and additionally supplies its exact `invocation`. Its directory
+name is also the attempt ID, which is 32 lower-case hexadecimal characters. Supply
+the actual reviewed candidate and outcome for either route. The source checkout
+may also be the primary.
 
 The copy procedure checks Git identity and the ignored source and destination
 paths. It hashes the selected bytes, writes the report and receipt to a temporary
