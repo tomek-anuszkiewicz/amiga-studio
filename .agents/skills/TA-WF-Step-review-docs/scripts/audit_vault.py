@@ -94,7 +94,7 @@ def check_vault_links():
 
 
 def check_frontmatter_compliance():
-    """Validates that Obsidian design specifications have proper Line 1 frontmatter."""
+    """Check whether each Design note's frontmatter yields at least one tag entry."""
     design_dir = REPO_ROOT / "Obsidian" / "Amiga" / "Design"
     if not design_dir.exists():
         return {"total_docs": 0, "issues": []}
@@ -145,7 +145,7 @@ def main():
             if len(broken) > 10:
                 print(f"    ... and {len(broken) - 10} more broken links.")
         else:
-            print("  - Status: [PASS] 100% link integrity (zero broken links detected).")
+            print("  - Status: [PASS] All checked local link paths exist.")
 
     if run_all or args.frontmatter:
         print("\n[7. FRONTMATTER & INVERTED PYRAMID COMPLIANCE]")
@@ -160,7 +160,7 @@ def main():
             if len(fm_issues) > 10:
                 print(f"    ... and {len(fm_issues) - 10} more frontmatter issues.")
         else:
-            print("  - Status: [PASS] All design specs define valid YAML frontmatter properties.")
+            print("  - Status: [PASS] All inspected Design notes have at least one parsed tag entry in frontmatter.")
 
     print(f"[FAIL] {total_issues} issue(s) detected." if total_issues else "[PASS] Checks completed without issues.")
     return 1 if total_issues else 0

@@ -44,8 +44,16 @@ Reference books use the [book metadata schema](../../tools/bootstrap/book-to-mar
 Preserve source-note metadata while editing. Raw conversion follows the
 [nested bootstrap instructions](../../tools/bootstrap/AGENTS.md).
 
-The full Design checker rejects invalid metadata structure, empty tags and
-broken links. The canonical checker scans every local Amiga Markdown file,
-including ignored books. Record the actual scope of each checker and reuse
-evidence only where the scopes overlap. Structural success and link counts
-are insufficient evidence of hardware or semantic parity.
+The recursive Design audit checks that each note's frontmatter yields at least
+one parsed `tags` entry and that the local file paths it extracts from Markdown
+links exist. [Design audit](../skills/TA-WF-Step-review-docs/scripts/audit_vault.py)
+
+The canonical frontmatter check scans every local Amiga Markdown file, including
+ignored books. It looks for opening and closing delimiters, text after `title:`,
+and a `tags` property, and applies additional rules to reference book notes.
+[Canonical frontmatter check](../../tools/verification/checks/check_obsidian_frontmatter.py)
+
+During review, check YAML syntax and assess the meaning of metadata and links,
+including blank tag entries and link fragments. Record each check's scope and
+reuse evidence only where the scopes overlap. Assess hardware behavior and
+semantic parity separately from these structural checks.
