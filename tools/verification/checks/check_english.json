@@ -73,6 +73,11 @@
     "english_words/names.txt"
   ],
   "file_words": {
+    ".agents/skills/report-word-usage/scripts/rank_words.py": [
+      "mypy", "virtualenv", "tox", "nox", "refsrc", "refsource", "refsources",
+      "revsrc", "revsource", "revsources", "referencesrc", "referencesource",
+      "referencesources", "nonprose", "za"
+    ],
     "tools/artifacts/tests/test_preserve.py": ["gpgsign", "qb", "qm"],
     "DIARY.md": ["beh", "wf", "wv"],
     ".agents/references/review-decisions.md": ["beh"],

@@ -1,6 +1,6 @@
 ---
 name: TA-WF-Main-close-milestone
-description: Run full milestone tests, remove the selected completed roadmap milestone after success, and compact its settled diary history.
+description: Run full milestone tests, remove completed roadmap work, compact its diary history, and report unusual word usage.
 ---
 
 # Close the selected verified roadmap milestone
@@ -31,11 +31,20 @@ milestone or remove an unfinished requirement implicitly.
    the actual successful verification and completed scope as the closure trigger.
    If there is no applicable history, report that observation. Report failed
    compaction/checks as partial closure rather than claiming completion.
-5. Return the removed scope, retained work, full-test and roadmap-check results,
-   diary changes/structure checks and remaining issues.
+5. Apply [report-word-usage](../report-word-usage/SKILL.md) after the roadmap and
+   diary edits. Show the 20 highest-ranked words, assess their use in context and
+   suggest additions to the report's static vocabulary exclusions. This step
+   reports possible wording problems; it does not rewrite documentation, update
+   word lists or introduce a word-frequency pass/fail threshold. If the report
+   cannot be completed, identify the unfinished reporting and preserve the actual
+   test, roadmap and diary outcomes.
+6. Return the removed scope, retained work, full-test and roadmap-check results,
+   diary changes/structure checks, word-usage assessment, proposed exclusions,
+   newly discovered documentation directories and remaining issues.
 
-Stop after verification, the roadmap edit and diary compaction. Do not add code
-review, implementation, commits, merge, push or worktree cleanup to this stage.
+Stop after verification, the roadmap edit, diary compaction and the word-usage
+report. Do not add code review, implementation, commits, merge, push or worktree
+cleanup to this stage.
 
 ## Roadmap removal criteria
 

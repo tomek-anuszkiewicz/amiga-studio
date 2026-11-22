@@ -1259,3 +1259,5 @@ tmpfs
 # Workflow skill prefix and Codex reasoning-effort value.
 wf
 xhigh
+# Vocabulary-list terminology.
+lemmatized

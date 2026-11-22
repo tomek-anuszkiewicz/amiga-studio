@@ -116,6 +116,11 @@ Document-semantic freshness is reported separately from structural refresh.
 full milestone profile, removes the selected completed roadmap item after
 success and compacts its settled diary history through
 [diary compaction](../../../../.agents/skills/TA-WF-Step-compact-diary/SKILL.md).
+It then uses [report-word-usage](../../../../.agents/skills/report-word-usage/SKILL.md)
+to rank unusual words in the final project documentation, assess their use in
+context and suggest vocabulary exclusions. This editorial report does not change
+the test profile or set a word-frequency threshold for completion. The standalone
+`verify.py milestone` command runs tests; the milestone skill includes the report.
 Ordinary task commits do not require changelog entries or diary compaction.
 Preserve useful test reports and
 other local outputs before removing its task worktree with the

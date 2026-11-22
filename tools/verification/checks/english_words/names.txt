@@ -111,3 +111,5 @@ sci
 wmi
 rdev
 dependabot
+culligan
+ngsl

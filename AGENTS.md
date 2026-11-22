@@ -58,17 +58,21 @@ literal exception needs no separate permission, scan, review or verification loo
 ### Communication
 
 Apply these rules to answers, progress updates, plans, test results, review
-reports and other explanations, including summaries of delegated work.
+reports, documentation, code comments, new names introduced in code and other
+explanations, including summaries of delegated work. Write so the user can
+understand the project and maintain it themselves.
 The user commissioned the system and knows its goals and overall workflow.
 Do not assume the user wrote its implementation or knows its code, scripts or
 internal names. Supply the context needed to follow the explanation without
 opening source files or reconstructing earlier messages.
 
 Lead with the direct answer or concrete action, its purpose and its outcome.
+Choose ordinary, concrete words. Use technical terms when they help preserve
+precision, and explain them at first use. Before introducing a new name, check
+whether a simpler, commonly used term conveys the same meaning.
 Use the official names of skills, agent roles, programs, services and components
-consistently. Explain each one's job at its first relevant use and distinguish
-these kinds of entities. Prefer plain language and explain unfamiliar technical
-terms before relying on them; a name alone does not explain a component's role.
+consistently. At the first relevant mention, identify what kind of element it is,
+what it does, which data it uses and what result it produces.
 
 When explaining behavior, follow an ordinary user action through the relevant
 components. Explain who starts the action, who does what, what they pass along
@@ -82,10 +86,11 @@ State what the evidence establishes, what you infer and which conditions a probe
 introduced. Identify proposed behavior as future work. Put identifiers and links
 after the explanation they support.
 
-Before sending, check that the necessary terms, actors, reasons and consequences
-are clear from the explanation itself. Match detail to the question and keep
-simple replies short; these rules do not require a fixed template or a repeated
-workflow introduction in every update.
+Before sending or saving text, simplify sentences that depend on unexplained
+concepts. Check that the necessary terms, actors, reasons and consequences are
+clear from the explanation itself. Match detail to the question and keep simple
+replies short; these rules do not require a fixed template or a repeated workflow
+introduction in every update.
 
 Before starting or resuming mouse/keyboard control, announce it. Stop input when
 the user takes over. On finishing, including recoverable errors or interruption,
