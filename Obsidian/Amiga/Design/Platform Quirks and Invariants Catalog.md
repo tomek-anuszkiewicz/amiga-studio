@@ -15,13 +15,24 @@ related: ["[General Architecture.md](General%20Architecture.md)", "[CPU Motorola
 - **Parent Architectural Hub:** [General Architecture.md](General%20Architecture.md)
 - **Owning specifications:** [CPU Motorola M68000.md](CPU%20Motorola%20M68000.md) | [CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md) | [Physical Memory.md](Physical%20Memory.md) | [MemoryBus.md](MemoryBus.md)
 
-This index highlights behavior that is easy to lose when simplifying the CPU pipeline or the Amiga bus. The linked subsystem specifications define the implemented behavior; hardware references and stated limitations distinguish it from physical behavior.
+This catalog points out behavior that a simpler CPU pipeline or Amiga bus
+model could miss. The linked subsystem specifications define the
+implementation. The hardware references show where its behavior can be
+compared with the physical machine, and the notes identify what those
+sources leave open.
 
 ---
 
 ## 1. Scope
 
-Instruction semantics are checked against the [SingleStep contract](Verification/CPU%20SingleStepTests.md) and Motorola references. The [CPU specification](CPU%20Motorola%20M68000.md) describes the external interface; DMA scheduling, address decoding, and ROM overlay belong in their subsystem specifications. This catalog records ordering and fault effects that a conventional instruction-level model can miss, the Amiga-specific TAS write exception, refresh sync strobes, and the limits of fixed open-bus values.
+CPU verification checks instruction semantics against SingleStep and the
+Motorola references. [SingleStep contract](Verification/CPU%20SingleStepTests.md)
+
+The CPU specification describes the external interface. The subsystem
+specifications define DMA scheduling, address decoding, and the ROM overlay.
+This catalog records ordering and fault effects that an instruction-level
+model can miss, the Amiga-specific TAS write exception, refresh sync strobes,
+and the limits of fixed open-bus values. [CPU specification](CPU%20Motorola%20M68000.md)
 
 ---
 
@@ -45,30 +56,77 @@ Instruction semantics are checked against the [SingleStep contract](Verification
 
 ### CPU writes to refresh sync strobes
 
-`STREQU`, `STRVBL`, `STRHOR`, and `STRLONG` are address strobes that Agnus normally presents during refresh slots to synchronize Denise; the manual also lists Paula for `STRHOR`. The [register matrix](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md) records their documented function and the prohibition on Copper writes. A CPU write can address the same offsets through [MemoryBus](MemoryBus.md), so treating them as ordinary unused storage would discard a possible synchronization effect. The [Hardware Reference Manual, Appendix A](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md#strequ-strhor-strlong-strvbl) establishes the refresh-time strobes, but the precise effect of an extra CPU-initiated strobe on Denise or Paula has not been verified here.
+`STREQU`, `STRVBL`, `STRHOR`, and `STRLONG` are address strobes that Agnus
+normally presents during refresh slots to synchronize Denise. The manual also
+lists Paula for `STRHOR`. The register matrix records the documented function
+of these strobes and the prohibition on Copper writes.
+[Register matrix](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md)
 
-The current router delivers all four addresses to [Denise](../../../crates/denise/src/registers.rs) and [Paula](../../../crates/paula/src/registers.rs). Paula uses `strobe_sync(address)` under its approved [receiver model](Paula.md#rga-synchronization-and-vertb): the three line markers capture DMAL, entry into STREQU requests VERTB, and STRLONG leaves its state unchanged. CPU selections act immediately without a queue entry, even when data queues are full. These tested model effects do not establish the physical consequences or exact edge timing of an extra CPU strobe.
+A CPU write can select the same offsets, so treating them as unused storage
+would discard a possible synchronization effect. [MemoryBus](MemoryBus.md)
+
+The manual establishes the refresh-time strobes. The precise effect on Denise
+or Paula of an extra CPU-initiated strobe remains unverified here.
+[Hardware Reference Manual, Appendix A](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md#strequ-strhor-strlong-strvbl)
+
+The current router delivers all four addresses to Denise and Paula.
+[Denise](../../../crates/denise/src/registers.rs) and [Paula](../../../crates/paula/src/registers.rs)
+
+Paula handles these addresses through `strobe_sync(address)`. It captures
+DMAL on the three line markers, requests VERTB on entry into STREQU, and
+leaves its state unchanged on STRLONG. When the CPU selects an address, the
+strobe takes effect immediately with no queue entry, even when the data
+queues are full. The tests establish these effects in the model. The physical
+effect and exact edge timing of an extra CPU strobe remain open.
+[Approved receiver model](Paula.md#rga-synchronization-and-vertb)
 
 ### Open bus and opposite-direction register access
 
-The emulator uses one fixed open-bus placeholder: `$FF` for an undriven byte lane and `$FFFF` for a word. Unmapped [physical memory](Physical%20Memory.md), inactive CIA lanes, absent RTC responses, and custom-register addresses without a modeled read all use it through [MemoryBus](MemoryBus.md). These fixed values do not track which device last drove the data lines or establish what a particular physical bus cycle would return. A read of `COPJMP1` or `COPJMP2` is an implemented exception: it strobes the Copper even though the returned value is `$FFFF`.
+The router uses fixed open-bus values for unmapped physical memory,
+inactive CIA lanes, absent RTC responses, and custom-register addresses
+without a modeled read. It returns `$FF` for an undriven byte lane and
+`$FFFF` for a word, regardless of which device last drove the data lines.
+The value a particular physical bus cycle returns remains open. A read
+of `COPJMP1` or `COPJMP2` strobes the Copper in the model and also
+returns `$FFFF`.
+[Physical memory](Physical%20Memory.md) and [MemoryBus](MemoryBus.md)
 
-`BLTDDAT` and `DSKDATR` are early DMA read addresses, not ordinary CPU-readable data registers. The [Hardware Reference Manual, Appendix B](../Reference/Hardware%20Reference%20Manual/10%20-%20Appendix%20B%20-%20Register%20Summary%20%28Address%20Order%29.md) explains that Agnus initiates these transfers to Chip RAM according to DMA timing, rather than a read address presented by the CPU. [Appendix A](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md#bltddat) explicitly says the microprocessor cannot read `BLTDDAT`. A CPU read of either address therefore does not fetch the blitter result or disk DMA word; the current `MemoryBus` returns its fixed open-bus approximation of `$FFFF`. This does not establish the exact value driven or retained on a physical CPU read cycle.
+`BLTDDAT` and `DSKDATR` are early DMA read addresses. Agnus initiates these
+transfers to Chip RAM at the scheduled DMA time. A CPU read of either address
+does not fetch the blitter result or disk DMA word. The manual explicitly
+says that the microprocessor cannot read `BLTDDAT`. The current `MemoryBus`
+returns the fixed open-bus approximation `$FFFF`. The exact value driven
+or retained during a physical CPU read cycle remains open.
+[Hardware Reference Manual, Appendix B](../Reference/Hardware%20Reference%20Manual/10%20-%20Appendix%20B%20-%20Register%20Summary%20%28Address%20Order%29.md)
+and [Appendix A](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md#bltddat)
 
-The [custom-register ownership matrix](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md) records documented access directions, not guaranteed behavior for an opposite-direction cycle. The [Hardware Reference Manual, Appendix A](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md) warns that reading a write-only register can disturb its contents and writing a read-only register can have unexpected results. A fixed `$FFFF` response therefore does not establish that a physical read was harmless; the emulator models only explicitly handled side effects. The manual likewise gives no universal value for unused register addresses. Investigation of exact values and further side effects is tracked in the [deferred bus fidelity work](../../../ROADMAP.md#deferred-bus-and-peripherals).
+The custom-register ownership matrix lists the documented directions for
+access. The manual warns that access in the opposite direction can affect
+the device. Reading a write-only register can disturb its contents, and
+writing a read-only register can produce unexpected results. The manual
+gives no universal value for unused register addresses.
+[Custom-register ownership matrix](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md)
+and [Hardware Reference Manual, Appendix A](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md)
+
+The emulator reproduces only explicitly handled side effects. A fixed
+`$FFFF` response leaves open whether the corresponding physical read would
+disturb the device. Investigation of exact values and other side effects is
+deferred. [Deferred bus fidelity work](../../../ROADMAP.md#deferred-bus-and-peripherals)
 
 ---
 
 ### Gary aliases and inactive CIA lanes
 
-The [motherboard decoder](MemoryBus.md#cia-and-boot-overlay) routes CIA banks
-`$A0-$BF` with independent active-low A12/A13 selects, and both `$DE/$DF`
-custom banks. CIA inactive read lanes and unconnected selector B return fixed
-`$FF`; they do not sample a retained motherboard data word. Byte writes drive
-every selected CIA regardless of address parity. These are address-selection
-rules, separate from accepted-transfer effects and queued register capture.
-Additional model-dependent mirrors, data retention/decay and external bus-error
-behavior remain deferred in [Roadmap 12.1](../../../ROADMAP.md).
+The motherboard decoder uses independent active-low A12/A13 selects for CIA
+banks `$A0-$BF` and also routes both `$DE/$DF` custom banks. Inactive CIA
+read lanes and unconnected selector B return fixed `$FF`, independent of the
+data word last driven on the motherboard. Byte writes reach every selected
+CIA regardless of address parity. These rules describe address selection.
+The effects of an accepted transfer and queued register capture follow
+separate rules. [Motherboard decoder](MemoryBus.md#cia-and-boot-overlay)
+
+Additional model-dependent mirrors, data retention and decay, and external
+bus-error behavior remain deferred. [Roadmap 12.1](../../../ROADMAP.md)
 
 ## 4. Reference Documentation & Evidence
 

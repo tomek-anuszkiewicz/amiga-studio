@@ -5,17 +5,19 @@ description: Run the selected commit verification profile and report actual chec
 
 # Run the selected commit profile
 
-Executor: main session or `TA-test-runner` for an independent execution assignment.
+The main session runs the profile, or `TA-test-runner` runs it when assigned
+independent execution.
 
 Apply the [result contract](../../references/workflow-contract.md) and
 [command reference](../../../tools/verification/README.md#completion-verification).
-Inputs: selected checkout, requested verification scope and optional output directory.
+Use the selected checkout and requested verification scope, with an output
+directory if requested.
 
-1. Confirm required local tools and fixtures and avoid concurrent writers to shared
-   build/coverage outputs.
+1. Confirm that the required local tools and fixtures are available. Avoid
+   concurrent writes to shared build and coverage outputs.
 2. Run `python tools/verification/verify.py commit`, adding `--results-dir <path>`
-   when requested. The profile selects its existing checks, Rust tests, coverage
-   and tool tests; every invocation executes its selected commands.
+   when requested. On each invocation, the profile runs the existing checks,
+   Rust tests, coverage measurements and tool tests it selects.
 3. Report actual commands, outcomes, output paths, failures and unrun work. A
    profile result does not authorize a commit, review, merge or cleanup.
 

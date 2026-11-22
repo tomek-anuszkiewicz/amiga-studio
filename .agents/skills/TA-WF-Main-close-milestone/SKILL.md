@@ -10,27 +10,27 @@ Inputs: selected checkout, exact completed heading/item in
 [ROADMAP.md](../../../ROADMAP.md) and its completion scope. Do not choose another
 milestone or remove an unfinished requirement implicitly.
 
-1. Read the selected roadmap section and supplied completion context. Identify
-   which descendants are completed and preserve any distinct unfinished work.
-   An ambiguous item or unresolved completion scope returns to the user.
+1. Read the selected roadmap section and the supplied information about its
+   completion. Identify which items nested under that section are complete and
+   preserve any distinct unfinished work. Ask the user to resolve an ambiguous
+   item or unclear completion scope.
 2. Confirm the required local tools/fixtures and avoid concurrent writers to
    shared outputs. Run `python tools/verification/verify.py milestone`, adding
    `--results-dir <path>` when selected, under the existing
    [verification command contract](../../../tools/verification/README.md#completion-verification).
-   Preserve the full profile and full SingleStep selection. Await exit status
-   and inspect the reports. If tests fail, are interrupted or cannot run, leave the
-   selected roadmap item in place and report the failure; do not repair or replace
-   the full run with a sample.
+   Use the full profile and the full SingleStep selection. Wait for the command
+   to exit, check its status and inspect the reports. If tests fail, are
+   interrupted or cannot run, leave the selected roadmap item in place and report
+   what happened. Stop without making repairs or substituting a sample run.
 3. After success, remove the selected completed section under the criteria below,
    update affected numbering/references and run
    `python tools/verification/checks/check_roadmap.py`.
-4. Apply [TA-WF-Step-compact-diary](../TA-WF-Step-compact-diary/SKILL.md) to the
-   settled history of the selected milestone. This is included in milestone
-   closure; the user does not need to select compaction separately. Preserve
-   unrelated and unfinished entries, unique decisions and their evidence. Use
-   the actual successful verification and completed scope as the closure trigger.
-   If there is no applicable history, report that observation. Report failed
-   compaction/checks as partial closure rather than claiming completion.
+4. Once verification succeeds and the selected scope is complete, consolidate
+   the milestone's settled history using
+   [TA-WF-Step-compact-diary](../TA-WF-Step-compact-diary/SKILL.md). Selecting
+   milestone closure also authorizes this step. Preserve unrelated and unfinished
+   entries, unique decisions and their evidence. Report if you find no
+   applicable history. If compaction or its checks fail, report partial closure.
 5. Apply [report-word-usage](../report-word-usage/SKILL.md) after the roadmap and
    diary edits. Show the 20 highest-ranked words, assess their use in context and
    suggest additions to the report's static vocabulary exclusions. This step
@@ -61,5 +61,5 @@ supporting evidence. Do not claim stage closure until its selected completion wo
 is finished. Report actual checks and unfinished scope.
 
 The roadmap check verifies that the root roadmap exists and contains no completed
-`[x]` task checkboxes. It does not validate numbering, links, completion evidence or
-milestone readiness; inspect affected numbering and references separately.
+`[x]` task checkboxes. It leaves numbering, links, completion evidence and milestone
+readiness outside its checks. Inspect affected numbering and references separately.

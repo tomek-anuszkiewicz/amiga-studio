@@ -1,9 +1,10 @@
 # Specification compliance guidance
 
 The shared [specification authority](../../AGENTS.md#specification-authority)
-owns requirement precedence and conflict decisions. Apply this guidance to selected
-code changes, documentation updates and reviews. A report-only assessment reports
-conflicts without editing requirements, code or reference data.
+defines which requirements take precedence and how to resolve conflicts. Apply
+this guidance to selected code changes, documentation updates and reviews. If
+the assignment calls only for an assessment, report conflicts and leave the
+requirements, code and reference data as they are.
 
 ## Unspecified Technical Details
 
@@ -12,11 +13,12 @@ A missing description alone is not a specification conflict.
 
 ## Specification Changes Before Implementation
 
-Record approved requirement changes in specifications before implementing them;
-reuse that approval even when current code differs.
-Resolve authorized differences together; report out-of-scope work
-without declaring completion. Never weaken an approved requirement merely to match
-existing code.
+Record the approved change in the specification before implementing it. The
+approval applies even if the current code differs from the approved requirement.
+Resolve authorized differences together. If reconciling the differences requires
+work outside the authorized scope, report that work as outstanding and do not
+declare the reconciliation complete. Never weaken an approved requirement merely
+to match existing code.
 
 For provisional `delay_cck` and `MutationMode` choices, use the
 [register mutation modeling guidance](register-mutation-modeling.md#provisional-register-mutation-parameters).

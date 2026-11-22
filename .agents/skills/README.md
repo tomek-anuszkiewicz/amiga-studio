@@ -1,15 +1,17 @@
 # Task workflow and skills
 
-This guide maps a task from initialization to closure and shows which skills each
-main operation uses. Follow the linked `SKILL.md` for its inputs, procedure and
-stopping boundary. [AGENTS.md](../../AGENTS.md) owns authorization and assignment
-policy; [agent roles](../../.codex/agents/README.md) explain who performs the work.
+This guide shows how a task moves from initialization to closure and which
+skills each main operation uses. Each linked `SKILL.md` explains what the skill
+needs, how to use it and where its work ends. Authorization and assignment
+rules are in [AGENTS.md](../../AGENTS.md). For who performs the work, see
+[agent roles](../../.codex/agents/README.md).
 
-The engineer can select one operation or authorize a sequence in ordinary language.
-Arrows between main operations show process order, not automatic invocation.
-Implicit skill discovery uses descriptions and invocation metadata.
-Each operation returns its actual outcome; failed or missing required evidence
-stops dependent work. Findings do not authorize changes outside the selected scope.
+The engineer can select one operation or authorize a sequence in ordinary
+language. The session uses skill descriptions and invocation metadata to match
+the request to the applicable skills. When the engineer authorizes a sequence,
+follow the order shown by the arrows. Each operation reports what happened.
+Stop dependent work if a required check fails or required evidence is missing.
+Findings alone do not expand the authorized scope.
 
 ## Task overview
 
@@ -35,16 +37,17 @@ these task stages.
 
 ## Main operations and their component skills
 
-Names in diagrams are exact skill names. Linked lists below each diagram provide
-the owning procedures. Direct Git and tool actions are labeled as actions rather
-than skills. `TA-WF-Main-` groups main workflow operations; `TA-WF-Step-` groups
-their component operations, which can also be selected separately.
+The diagrams use exact skill names and label direct Git and tool actions by
+the action they perform. The links below each diagram lead to the procedures.
+The `TA-WF-Main-` prefix identifies a main workflow operation. The `TA-WF-Step-`
+prefix identifies a component operation that can also be selected separately.
 
 ### Start task
 
-[TA-WF-Main-start-task](TA-WF-Main-start-task/SKILL.md) initializes the selected
-task and stops before implementation. The main session handles registration and
-provisioning; one planner owns the plan and test design together.
+To initialize the selected task, the main session registers the execution and
+provisions the task worktree. One planner prepares both the plan and the test
+design. The operation ends before implementation. See
+[TA-WF-Main-start-task](TA-WF-Main-start-task/SKILL.md).
 
 ```mermaid
 flowchart TD
@@ -63,11 +66,12 @@ Component procedures:
 
 ### Plan change
 
-[TA-WF-Main-plan-change](TA-WF-Main-plan-change/SKILL.md) creates or amends a plan,
-both independently and within task initialization. Every revision reconciles the
-test design; an editorial amendment can retain scenarios that remain valid.
-Planning defines observations and expected results; implementation writes the
-executable tests.
+The planner creates or amends a plan as a standalone operation or as part of
+task initialization. On every revision, the planner checks the test design
+against the revised plan. An editorial amendment can keep scenarios that
+remain valid. The planner defines what to observe and what result to expect.
+The implementer writes the executable tests. See
+[TA-WF-Main-plan-change](TA-WF-Main-plan-change/SKILL.md).
 
 ```mermaid
 flowchart TD
@@ -127,12 +131,12 @@ flowchart TD
     Conflict -->|No| Result
 ```
 
-The component skill is
-[correct-english](TA-WF-Step-correct-english/SKILL.md); ordinary Git commands perform
-commits and integration. Genuine behavior decisions or unsafe interference stop
-dependent integration. This operation stops before final master verification,
-cleanup and push. A diary entry is included only when it is part of the selected
-work or separately requested.
+Use [correct-english](TA-WF-Step-correct-english/SKILL.md) for the language
+checks and ordinary Git commands for commits and integration. If a behavior
+decision is needed or interference makes integration unsafe, stop the work
+that depends on it. The operation ends before final master verification,
+cleanup and push. Include a diary entry only when it belongs to the selected
+work or the engineer separately requests it.
 
 ### Verify master
 
@@ -165,16 +169,18 @@ Component procedures:
 The [shared review flow](#three-review-rounds-and-up-to-two-corrective-passes)
 defines the review rounds and corrective passes. Without a narrower test selection,
 use the existing `commit` verification profile.
-Inspect its selection and explicitly run affected Python/bootstrap suites that
-working-file detection would miss after integration. Full milestone vectors run
-here only when expressly selected. Failed required checks or review leave this
-assessment incomplete and stop task closure; integration is not rolled back.
+Inspect which tests that profile selects and explicitly run affected Python or
+bootstrap suites that working-file detection would miss after integration. Run
+the full milestone vectors here only when expressly selected. If a required
+check or review fails, leave the assessment incomplete and stop task closure.
+Leave the integrated work in place.
 
 ### Close task
 
-[TA-WF-Main-close-task](TA-WF-Main-close-task/SKILL.md) consumes successful final
-master evidence covering the delivered scope after all corrections. It preserves
-outputs before removing the selected task resources.
+Task closure requires successful final master evidence that covers the delivered
+scope after all corrections. The operation preserves outputs before removing
+the selected task resources. See
+[TA-WF-Main-close-task](TA-WF-Main-close-task/SKILL.md).
 
 ```mermaid
 flowchart TD
@@ -190,11 +196,12 @@ Component procedures:
 [collect-task-records](TA-WF-Step-collect-task-records/SKILL.md) when needed and
 [Graphify-refresh](TA-Graphify-refresh/SKILL.md).
 The [artifact tool](../../tools/artifacts/README.md), `tools/worktree.ps1` and
-ordinary Git/file operations perform preservation and removal. Any selected
-tracked-plan removal receives only its scoped housekeeping commit. Missing or
-stale required evidence stops closure; a partial failure reports the completed
-steps so resumption performs only the remaining work. Structural graph refresh
-leaves document-semantic freshness as a separate observation.
+ordinary Git and file operations preserve and remove the selected resources.
+For a selected tracked plan, commit only its removal as housekeeping. Stop
+closure if required evidence is missing or stale. After a partial failure,
+report the completed steps so the next attempt picks up the remaining work.
+Report how current the document semantics are separately from the structural
+graph refresh.
 
 ### Close milestone
 
@@ -255,12 +262,13 @@ flowchart TD
 | 2: targeted reassessment | Findings upheld by the challenge and selected for repair, their corrections and affected interactions | Only the round 1 assignments responsible for those findings, in fresh independent contexts | Make a second corrective pass if supported issues remain; otherwise proceed directly to round 3 |
 | 3: final full review | The complete corrected change and affected interactions, with current checks and selected coverage | Every round 1 assignment, including those previously without findings, plus any newly affected scope | Finish if required evidence and findings permit it; otherwise return to the engineer without another repair or review round |
 
-Round 2 may contain only assessment of rerun checks when no reviewer assignments
-qualify for targeted reassessment. Round 3 is required whenever corrective work was
-needed after round 1, even if round 2 is clear and only one corrective pass was used.
-Missing requirements, protected-change approval or work outside the selected scope
-return to the engineer before dependent repairs. A challenge decision cannot turn
-a failed or missing required check into a pass.
+When no reviewer assignments qualify for targeted reassessment, round 2 may
+consist only of assessing the checks that were rerun. Run round 3 whenever
+round 1 led to corrective work, even if round 2 found no issues after only one
+corrective pass. Bring missing requirements, approval for protected changes
+and work outside the selected scope to the engineer before making repairs that
+depend on those decisions. Evidence from required checks still determines
+whether they pass after a challenge.
 
 Corrections can include code, necessary documentation and meaningful tests or
 assertions for already approved behavior. Refresh affected selected coverage when
@@ -289,12 +297,13 @@ flowchart TD
 | [review-tests](TA-WF-Step-review-tests/SKILL.md) | Assertions, meaningful missing scenarios, supplied coverage, verification gates and evidence freshness; code/test changes receive a separate reviewer instance |
 | [review-docs](TA-WF-Step-review-docs/SKILL.md) | Affected Design documents, requirements, instruction ownership and retained knowledge, including the full Design link/metadata audit |
 
-The diagram shows available assignments, not a mandatory four-reviewer batch.
-Round 2 retains its narrower selection. Reviewers report findings without repairs;
-the [challenge-findings](TA-WF-Step-challenge-findings/SKILL.md) step independently
-assesses the reported claims before repairs are selected. The runner collects
-coverage; the tests reviewer assesses it; the implementer writes selected tests.
-A percentage alone does not decide which tests to add.
+The diagram shows the available assignments. Select the applicable ones and
+keep the narrower selection in round 2. Reviewers report findings without
+making repairs. An independent assessment of their claims informs the choice
+of repairs. See [challenge-findings](TA-WF-Step-challenge-findings/SKILL.md).
+The test runner collects coverage, the tests reviewer assesses it and the
+implementer writes the selected tests. Deciding which tests to add takes
+evidence beyond the coverage percentage.
 
 ## Other selected operations
 
@@ -320,12 +329,12 @@ skills, not agent roles.
 
 ## Results and tool references
 
-Every skill returns text and JSON under the
-[result contract](../references/workflow-contract.md), including actual checks,
-findings and remaining work. The [schema](../../tools/workflow/result.schema.json)
-describes the format; it does not authorize the next stage or establish readiness.
-No handoff ledger, transition matrix, round manifest, candidate seal or matching
-Markdown artifact is required.
+Every skill returns text and JSON with the checks that ran, findings and
+remaining work. See the [result contract](../references/workflow-contract.md).
+The engineer authorizes the next stage, and evidence establishes readiness.
+The [schema](../../tools/workflow/result.schema.json) defines the result format.
+The result needs no handoff ledger, transition matrix, round manifest, candidate
+seal or matching Markdown artifact.
 
 Use [verification commands](../../tools/verification/README.md) for actual tests,
 quality checks and coverage; full milestone tests are also available without

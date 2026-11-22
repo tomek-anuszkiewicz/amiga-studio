@@ -1,30 +1,40 @@
 # How This Emulator Was Written: Pair-Programming with an AI Agent
 
-This retrospective explains the collaboration and design choices used while building the emulator. It describes the development process; the [architecture](architecture.md), [testing](testing.md) and [agent collaboration](ai_agents.md) guides are the entry points for understanding and working with the current project.
-
-Here is the honest breakdown of how this cycle-exact Amiga 500 emulator was built from scratch in Rust—and how an AI agent generated 100% of the implementation code, test suites, and documentation under human architectural direction.
+We built this cycle-exact Amiga 500 emulator from scratch in Rust. I directed
+the architecture, and an AI agent generated 100% of the implementation code, test
+suites and documentation. This account describes how we worked and why we made
+those design choices. For the current project, start with the
+[architecture](architecture.md), [testing](testing.md) and [agent collaboration](ai_agents.md)
+guides.
 
 ---
 
 ## 1. Zero Hand-Written Code (and Zero Rust Experience)
 
-Here is the defining fact about this project: **I did not write a single line of Rust code. Not one.**
+I did not write a single line of Rust for this project. The agent wrote all
+of the implementation code. I never wrote, designed or proposed a single
+test. That includes unit tests, multi-chip integration suites, GUI harnesses
+and automated architecture gates. The AI agent generated and verified
+every struct, every CPU state machine micro-step, every bus arbitration check,
+every co-processor pipeline and every test suite.
 
-I didn't write any of the implementation code. And just as importantly, **I never wrote, designed, or proposed a single test**—from unit tests and multi-chip integration suites to GUI harnesses and automated architecture gates. Every struct, every micro-step in the CPU state machine, every bus arbitration check, every co-processor pipeline, and every test suite was generated and verified by the AI agent.
+When I started, I did not know the hardware inside and out or have its details
+memorized. This project was my first experience with Rust, and I am still
+learning parts of the language.
 
-And here is the even more candid reality: **I didn't know the hardware inside-out going in, and this project was my very first contact with Rust.**
-
-I didn't have the retro hardware details memorized. Nor was I a seasoned Rust programmer—in all honesty, there are still aspects of Rust that I am learning today.
-
-My role was serving as the **Architect, Constraint Setter, and Sparring Partner**. Rather than micromanaging syntax, I focused on high-level system boundaries, trade-off debates, and designing the verification harness.
+As **Architect, Constraint Setter, and Sparring Partner**, I set high-level
+system boundaries, debated trade-offs and designed the verification harness.
+The agent handled the syntax.
 
 ---
 
 ## 2. The Methodology: The "Minimal Frame" Rule
 
-When building complex systems with AI, asking a model to generate an entire subsystem from a large prompt almost always produces brittle, unmaintainable code.
-
-Our approach was the opposite: **the agent was never unleashed on a subsystem until the architecture was proven on the smallest possible working slice—the "minimal frame."**
+When building complex systems with AI, asking a model to generate a whole
+subsystem from a large prompt almost always produces brittle code that is hard
+to maintain. We called the smallest working slice the **"minimal frame."** The
+agent expanded to the rest of a subsystem only after we proved the architecture
+on that slice.
 
 ```mermaid
 flowchart TD
@@ -34,26 +44,32 @@ flowchart TD
     D --> E["5. Unleash Automated Scale-Out\n(Agent scales across subsystem under strict test gates)"]
 ```
 
-Before implementing hundreds of CPU instructions or complex co-processor pipelines, we first proved the minimal operational skeleton:
-- How a bus cycle breaks down across discrete sub-clock phases.
-- How the memory bus arbitrates wait states when co-processor DMA blocks the CPU.
-- How decoupled chips communicate cleanly without circular reference handles (`Rc<RefCell<...>>`).
-- How interrupt priority signals propagate into the CPU.
+Before implementing hundreds of instructions or complex co-processor pipelines,
+we proved a small set of behaviors.
 
-Once verified on a single instruction or clock phase, the pattern was locked into a recipe, and the agent scaled it out across the entire subsystem.
+- We followed a bus cycle through its discrete sub-clock phases.
+- We showed how the memory bus handles wait states when co-processor DMA blocks the CPU.
+- We showed how chips communicate without circular reference handles (`Rc<RefCell<...>>`).
+- We traced how interrupt priority signals reach the CPU.
+
+Once we verified a pattern on one instruction or clock phase, we wrote down the
+steps and the agent applied them across the subsystem.
 
 ### When the AI Trips, Don't Touch the Code—Upgrade the Harness
-Whenever the agent made a mistake or took a shortcut, the solution was never to step in and write code manually. Instead, we diagnosed the root cause: *What rule, skill, or architectural constraint was missing?*
+When the agent made a mistake or took a shortcut, we looked for the missing rule,
+skill or architectural constraint. I kept code changes with the agent.
 
-Recurring failures led to updates in our operational rules (`.agents/rules/`),
-skill recipes (`.agents/skills/`) and architecture checks. Those protections
-reduced repeated mistakes; each change still needed evidence and review.
+For recurring failures, we updated our operational rules (`.agents/rules/`),
+skill recipes (`.agents/skills/`) and architecture checks. Those changes reduced
+repeated mistakes. Each change still needed evidence and review.
 
 ---
 
 ## 3. The Zero-Trust Verification Engine
 
-LLMs excel at generating code that looks plausible, compiles cleanly, and passes basic smoke tests—yet breaks completely under real-world execution. To eliminate hallucinated hardware behavior, we established a three-tier verification harness:
+LLMs can generate convincing code that compiles and passes basic smoke tests
+but fails completely when running real workloads. We built a three-tier
+verification harness to catch invented hardware behavior.
 
 ```mermaid
 flowchart TD
@@ -74,17 +90,17 @@ flowchart TD
 ```
 
 ### A. CPU Reference Vectors and Hardware Tests (Tom Harte & vAmigaTS)
-- **1 Million+ Generated CPU Vectors:** We imported 124 SingleStep suites generated from a software 68000 implementation. The harness compares final CPU state, instruction clocks, and timed bus transactions against the reference records. A disagreement exposes a case to investigate; agreement does not establish that the behavior matches a physical 68000.
-- **Hardware Timing Evidence:** External Amiga tests provide reference behavior for chipset synchronization, beam timing, bus priority and timers. The earlier capture/execution harness is retired; native guest bring-up and current automated acceptance have distinct, still-open roadmap gates. Historical comparisons do not certify the present chipset.
+- **1 Million+ Generated CPU Vectors.** We imported 124 SingleStep suites generated from a software 68000 implementation. The harness compares final CPU state, instruction clocks and timed bus transactions against the reference records. A mismatch identifies a case to investigate. A match establishes agreement with the software reference for that case. A claim about a physical 68000 requires separate evidence.
+- **Hardware Timing Evidence.** External Amiga tests provide reference behavior for chipset synchronization, beam timing, bus priority and timers. We retired the earlier capture/execution harness. The roadmap has separate open items for bringing up native guest execution and establishing current automated acceptance. Verifying the present chipset requires current evidence.
 
 ### B. Micro-Benchmarking Every Instruction
-The earlier benchmark engine grouped findings into family-cost spikes,
-addressing-mode differences and variation between runs. That diagnostic runner
-and its Type A/B/C classification are retired. The current
-[whole-program CPU benchmark](../Obsidian/Amiga/Design/Performance/CPU%20Instruction%20Benchmarking.md)
-measures host cost separately from emulated clocks and states its comparison
-limits. A timing spike or jitter alone does not establish a particular host
-pipeline or branch-predictor cause.
+The earlier benchmark engine classified spikes in the cost of instruction
+families, differences by addressing mode and variation between runs. We retired
+that runner and its Type A/B/C classification. The current whole-program CPU
+benchmark measures host cost separately from emulated clocks and documents the
+limits of its comparisons. Identifying a particular host pipeline or
+branch-predictor cause takes evidence beyond a timing spike or jitter.
+[Whole-program CPU benchmark](../Obsidian/Amiga/Design/Performance/CPU%20Instruction%20Benchmarking.md)
 
 ### C. Autonomous Testing Spectrum
 The agent authored and maintained the unit tests, multi-chip integration tests,
@@ -97,18 +113,26 @@ the question. Regression tests protect meaningful behavior and identified risks.
 ## 4. Systems Architecture in Rust: Flat Layout, Rigorous Ownership
 
 ### Flat Code Layout, Rich Compile-Time Ownership
-One foundational design choice was keeping the codebase structure intentionally flat:
+We deliberately kept the directory structure flat.
 - **Flat Crate Layout:** Crates live directly under `crates/*` (e.g. `crates/cpu`, `crates/memory_bus`, `crates/debugger`, `crates/gui`).
 - **Flat Modules:** CPU instructions reside directly under `crates/cpu/src/instructions/<mnemonic>.rs` without nested directories.
 
-While the file layout is flat, the ownership graph within is strict. Shared mutable pointers (`Rc<RefCell<...>>`) are strictly banned. The top-level machine struct owns subsystems directly, modeling bus contention and co-processor scheduling through unidirectional borrows and explicit event queues.
+The top-level machine struct owns the subsystems directly. It models bus
+contention and co-processor scheduling through one-way borrows and explicit
+event queues. The ownership rules forbid shared mutable pointers (`Rc<RefCell<...>>`).
 
 ### Aspect-per-File Modularity
-Modules are organized by cohesive behavioral capabilities rather than fragmented across dozens of micro-files. In [`crates/debugger/src/`](../crates/debugger/src/), for example, each file encapsulates an entire functional aspect: `assembler.rs` (parser), `breakpoints.rs` (evaluators and hit testing), `temporal.rs` (time-travel ring buffers), and `stepping.rs` (execution control).
+Each module keeps related behavior together in one file. In the debugger,
+`assembler.rs` handles parsing. The `breakpoints.rs` module evaluates breakpoints
+and checks for hits. The `temporal.rs` module manages time-travel ring buffers,
+and `stepping.rs` controls execution. [`crates/debugger/src/`](../crates/debugger/src/)
 
 > [!NOTE]
 > **A DSP Detour: Standalone Anti-Aliasing (BLEP)**
-> To eliminate digital audio aliasing from variable-rate sound channels, we implemented Band-Limited Steps (BLEP). We built a standalone Rust tool in [`tools/blep_generator`](../tools/blep_generator/) with zero external dependencies—deriving sinc pulses, minimum-phase transforms, and analog filter curves directly from mathematical first principles.
+> We implemented Band-Limited Steps (BLEP) to eliminate digital audio aliasing
+> from variable-rate sound channels. Our standalone Rust tool has zero external
+> dependencies. It derives sinc pulses, minimum-phase transforms and analog filter
+> curves from first principles. [`tools/blep_generator`](../tools/blep_generator/)
 
 ---
 

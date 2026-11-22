@@ -1,69 +1,78 @@
 # Shared Conversion Client
 
-The PDF, HTML and explicit Book Review Codex commands use `CodexClient` for authentication, request execution,
-completed-response caching and metrics. Their own README files document program
-configuration and invocation; their prompts define inference behavior.
+The PDF, HTML and explicit Book Review Codex commands use `CodexClient` to
+authenticate, run requests, cache completed responses and record metrics. To
+configure or run a program, use its README. To find the rules for what the
+model should produce, use its prompt.
 
 ## Execution
 
-The [transport](transport.py) uses the pinned Codex SDK/app-server runtime and
-ChatGPT authentication. API-key billing is not a fallback. Each request starts
+The transport sends model requests through the pinned Codex SDK/app-server
+runtime using ChatGPT authentication. It has no fallback to API-key billing.
+[Transport](transport.py)
+
+Each request starts
 a fresh read-only thread with the explicitly selected model and reasoning effort.
 Base/developer instructions are empty, repository instructions are disabled, and
 shell, web, MCP, app and agent tools are disabled.
 
-Requests contain the prompt and source data, with applicable images sent at
-`detail: original`. No separate output schema is sent. The transport verifies
-the actual thread configuration and completion before returning a result.
-Failures stop conversion without switching model, effort or provider.
-An `imageView` event is accepted only when its resolved path matches an image
-attached to that request. The transport logs the repeated view and continues
-waiting for the final response. Other image paths and tool items are rejected.
-HTTP 429/503, `rateLimitExceeded` and `serverOverloaded` errors close the affected
-transport and retry the same request through a fresh transport after 60 seconds.
-Consecutive retryable failures double the wait: 60, 120, 240 seconds and so on,
-without a retry limit. After a successful response, the next retryable failure
-starts again at 60 seconds.
-Each attempt has its own request timeout; backoff waits are outside that timeout.
-Waits are printed even without tracing and can be interrupted with Ctrl+C.
+Each request carries the prompt and source data. The transport sends applicable
+images at `detail: original`. It sends no separate output schema. The transport
+checks the settings actually used by the thread and confirms completion before
+returning a result. Failures stop conversion without switching model, effort or
+provider. The transport accepts an `imageView` event only if its resolved path
+matches the resolved path of an image attached to the same request. It logs the
+repeated view and continues waiting for the final response. It rejects all other
+image paths and tool items.
+For HTTP 429/503, `rateLimitExceeded` and `serverOverloaded` errors, the
+converter closes the affected transport before retrying the same request
+through a fresh transport. It waits 60 seconds before the first retry. With
+consecutive retryable failures the wait doubles, following the sequence 60,
+120, 240 seconds and so on, with no retry limit. A successful
+response resets the next retry wait to 60 seconds.
+Each attempt has its own request timeout. Time spent waiting to retry falls
+outside that timeout. The converter prints those waits even when tracing is
+off. You can interrupt them with Ctrl+C.
 Other failures, including usage and session-budget limits, still stop conversion.
-Runtime retries for capacity notifications are stopped
-immediately so the converter owns backoff. PDF parallel workers own
-separate transports and independent backoff sequences.
+The converter stops runtime retries for capacity notifications immediately and
+controls the timing of each retry itself. In parallel PDF stages, each worker
+has its own transport and calculates its retry waits independently.
 In parallel PDF stages, coordinator interruption or a worker failure signals
 all clients to cancel active transports and interrupt request delays and retry
 waits before the coordinator drains its workers.
 `llm.post_request_delay_seconds` optionally delays a new request to the same
 client until the specified time has elapsed since the previous model response.
-Response generation time does not count toward the delay; cache hits do not
-wait or reset it. Set `llm.concurrency: 1` to apply the delay to the entire PDF
+The delay excludes response generation time. A cache hit neither waits nor
+resets the delay. Set `llm.concurrency: 1` to apply the delay to the entire PDF
 conversion stage.
 
-Set `CONVERSION_TRACE=1` to print a concise live trace to stderr: spacing waits,
-requests sent to Codex, and request completion or failure. Sent requests include
-the worker, thread and turn IDs. Cached results produce no trace events. Prompt,
-image and response content and streaming notification fragments are omitted.
-An allowed `imageView` is an event within the same request; the converter does
-not send a follow-up turn.
+Set `CONVERSION_TRACE=1` to print a concise live trace to stderr. It shows
+waits imposed by request spacing, requests sent to Codex, and request completion
+or failure. The trace gives the worker, thread and turn IDs for sent requests.
+It omits prompt, image and response content and fragments of streaming
+notifications. Cached results produce no trace events. An allowed `imageView`
+is an event within the same request. The converter handles it without sending
+a follow-up turn.
 
-HTML performs configuration/capability checks and validates Markdown responses.
-PDF Stages 03 and 05 parse JSON without local response-schema enforcement;
-Stage 08 validates proofreading patch targets before applying them. A successful
-request confirms execution, not transcription quality.
+The HTML converter checks configuration and capabilities and validates Markdown
+responses. PDF Stages 03 and 05 parse JSON without enforcing a local response
+schema. Stage 08 validates proofreading patch targets before applying the
+patches. A successful request confirms execution. Transcription quality
+requires a separate assessment.
 
 ## Cache and metrics
 
-The [response cache](cache.py) defaults to
-`tools/bootstrap/.cache/codex`. Identity includes the stable
-operation ID, model/effort, pinned runtime, contract version, execution settings,
-prompt, ordered image-byte hashes and image detail. Stage names and numbers are
-execution labels rather than cache identity.
+The default location is `tools/bootstrap/.cache/codex`. The cache identifies
+a request by its stable operation ID, model and effort, pinned runtime,
+contract version, execution settings, prompt, ordered image-byte hashes and
+image detail. Stage names and numbers label execution only.
+[Response cache](cache.py)
 
-Only completed responses are cached; invalid JSON, invalid HTML-converter
-Markdown and JSON rejected by an explicitly supplied application validator are
-not cached. Cached responses are checked by that validator on reuse too.
-Metrics distinguish new calls, cache hits and execution
-time. Token usage returned from cache belongs to the original request.
+The cache stores only completed responses. It excludes invalid JSON, invalid
+HTML-converter Markdown and JSON rejected by an explicitly supplied application
+validator. That validator also checks cached responses when the client reuses
+them. Metrics distinguish new calls, cache hits and execution time. Token usage
+returned from cache belongs to the original request.
 
 JSON parsing failures include the full model response, stage, operation and input
 image paths in exception notes printed to the console. Stage 05 also identifies

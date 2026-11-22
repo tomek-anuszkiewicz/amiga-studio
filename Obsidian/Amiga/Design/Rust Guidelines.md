@@ -12,48 +12,63 @@ related: ["[General Architecture.md](General%20Architecture.md)", "[egui Guideli
 
 # Rust Engineering Rationale
 
-The maintained engineering obligations live in the [Rust best practices](../../../.agents/references/rust-best-practices.md),
+This note explains why the project uses these engineering practices. The
+maintained requirements, including their limits, crate lists and verification
+commands, are in the source documents.
+[Rust best practices](../../../.agents/references/rust-best-practices.md),
 [workspace layout](General%20Architecture.md#workspace-layout),
-[architecture review criteria](../../../.agents/references/architecture-criteria.md) and
-[testing criteria](../../../.agents/references/testing-criteria.md). This note retains
-why those choices matter rather than maintaining a second copy of their limits,
-crate lists or verification commands.
+[architecture review criteria](../../../.agents/references/architecture-criteria.md),
+[testing criteria](../../../.agents/references/testing-criteria.md)
 
 ## Keep execution paths concrete
 
-Explicit functions and direct calls preserve IDE navigation and make a hardware
-phase visible at its call site. Custom macros obscure that relationship and
-complicate compiler diagnostics; const-generic instruction handlers also hide the
-concrete size/addressing path. The project instead uses specialized functions
-and static dispatch where required by the owning specifications and practices.
+With explicit functions and direct calls, a developer can follow a call in the
+IDE and see which hardware phase it represents. Custom macros obscure that
+connection and complicate compiler diagnostics. Const-generic instruction
+handlers also make it harder to follow the path for a specific operand size and
+addressing mode. The project uses specialized functions and static dispatch
+where its specifications and practices require them.
 
 ## Preserve guest semantics on the host
 
-Guest arithmetic wraps, and guest faults remain emulated exceptions rather than
-host failures. Rust's debug overflow behavior therefore cannot define the guest
-machine. The shared fatal helper is reserved for internal invariant violations;
-[the host owner](Application/GUI.md#input-and-output) terminates a failed machine.
+Guest arithmetic wraps, and the emulator handles guest faults as emulated
+exceptions. The emulator must preserve these guest semantics regardless of
+Rust's debug overflow behavior. The project reserves its shared fatal helper
+for failures of internal invariants. The host component that owns the machine
+terminates a failed machine.
+[Host ownership](Application/GUI.md#input-and-output)
 
-Guest memory is big-endian. Explicit byte conversion makes that boundary visible.
-Some raw operations commute with byte reversal, including bitwise logic and
-unchanged byte copies; that exception does not authorize host-endian pointer
-casts or treating arithmetic values as raw byte streams.
+Guest memory is big-endian. Explicit byte conversion shows where an operation
+crosses that boundary. For some raw operations, including bitwise logic and
+unchanged byte copies, reversing the byte order before or after the operation
+gives the same result. The exception is limited to such operations. Host-endian
+pointer casts and treating arithmetic values as raw byte streams are outside
+that exception.
 
 ## Organize by responsibility
 
-Cohesive behavior belongs together even when it needs several types. For example,
-[breakpoints](../../../crates/debugger/src/breakpoints.rs) combine definitions,
-condition evaluation and hit testing. Splitting each type into its own file would
-separate one capability without creating an independent responsibility.
+Keep the code for one responsibility together even when it uses several types.
+The debugger keeps breakpoint definitions, condition evaluation and hit testing
+together. Giving each type its own file would split that capability while
+leaving the responsibility the same.
+[Breakpoints](../../../crates/debugger/src/breakpoints.rs)
 
-The [architecture](General%20Architecture.md) explains subsystem ownership.
-Specifications and shared practices own dependency permissions, required module layout, hot-path
-constraints and verification triggers. Architecture review owns the detailed
-cohesion, visibility, numeric naming and inlining criteria. Mechanical limits
-remain with their configured checkers; moving a criterion does not waive it.
+The architecture describes which subsystem owns each responsibility.
+[Architecture](General%20Architecture.md)
+
+Specifications and shared practices govern dependency permissions, required
+module layout, constraints on frequently executed code and when verification
+runs. Architecture review defines the detailed criteria for cohesion,
+visibility, numeric naming and inlining. The configured checkers enforce the
+mechanical limits. Each criterion still applies if it moves to another
+document.
 
 ## References
 
-- [General Architecture](General%20Architecture.md): System boundaries and subsystem specifications.
-- [Architecture checker](../../../tools/verification/checks/check_architecture.py): Mechanical enforcement; a passing check does not replace the owning policies or behavioral tests.
-- [egui Guidelines](egui%20Guidelines.md): Host presentation and interaction constraints.
+- The architecture documents system boundaries and subsystem specifications.
+  [General Architecture](General%20Architecture.md)
+- The architecture checker enforces mechanical limits. The owning policies and
+  behavioral tests still apply after the checker passes.
+  [Architecture checker](../../../tools/verification/checks/check_architecture.py)
+- The frontend guidelines describe host presentation and interaction constraints.
+  [egui Guidelines](egui%20Guidelines.md)

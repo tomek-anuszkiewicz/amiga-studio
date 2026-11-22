@@ -15,13 +15,14 @@ final master tests/review, including verification of any corrective commits,
 must already be complete. Missing, failed or stale required evidence stops
 closure; this skill does not run those tests or reviewers itself.
 
-1. Inspect ordinary Git/worktree state and the supplied final master evidence.
-   Confirm it covers the current delivered behavior after all corrections;
-   unrelated later changes must not be silently included in a readiness claim.
-   Confirm the selected branch's work is
-   included in master and preserve any later commits or uncommitted work. Stop
-   rather than force removal when work is absent from master or unfinished. Producers of selected
-   outputs must have finished. Preserve unrelated files, plans and index entries.
+1. Inspect the Git and worktree state and the supplied final master evidence.
+   Confirm the evidence covers the current delivered behavior after all
+   corrections. Limit any readiness claim to what the evidence covers so it
+   does not silently include unrelated later changes. Confirm that master
+   includes the selected branch's work. Preserve later commits and uncommitted
+   work, along with unrelated files, plans and index entries. Stop if the
+   selected work is absent from master or unfinished. Before copying the
+   selected outputs, confirm that the processes producing them have finished.
 2. From the surviving checkout run the existing artifact tool:
 
    ```text
@@ -37,7 +38,8 @@ closure; this skill does not run those tests or reviewers itself.
    scope, use an explicit ordinary copy or the existing
    [record preservation operation](../TA-WF-Step-collect-task-records/SKILL.md), without
    inventing a telemetry-registration prerequisite for ordinary file copying.
-   Inspect output locations and copy results; a failed/incomplete copy stops cleanup.
+   Inspect the destination paths and the copy results. Continue to cleanup only
+   after all selected copies succeed.
 3. Run `tools/worktree.ps1 remove <selected-worktree>` from a surviving checkout,
    using the script's accepted name/path. Keep the script's checks; do not force
    removal or recursively delete leftovers after failure. Confirm the directory
@@ -51,12 +53,12 @@ closure; this skill does not run those tests or reviewers itself.
 5. In the primary checkout on final local `master`, run
    [TA-Graphify-refresh](../TA-Graphify-refresh/SKILL.md) for `project` using
    `python tools/graphify/refresh.py --graph project`. Await the real result and
-   record the final master SHA and source checkout, including any authorized
-   plan-removal commit. Do not refresh the reference graph. Structural refresh
-   does not update document semantics; report their freshness separately and
-   leave semantic extraction to its selected operation. If refresh fails, report
-   partial closure and preserve its diagnostics; do not recreate removed task
-   resources or repeat successful cleanup on retry.
+   record the source checkout and the final master SHA, including any authorized
+   plan-removal commit. Keep the refresh limited to the project graph. It
+   updates the graph structure, so report the freshness of document semantics
+   separately and leave semantic extraction to its selected operation. If the
+   refresh fails, report partial closure and preserve its diagnostics. On retry,
+   preserve completed cleanup and leave removed resources removed.
 6. Return archive/report and retained plan locations, worktree/Git-registration,
    branch and plan outcomes, project graph command/result, semantic limits and
    any partial failure in text and JSON. Preserve the archive and execution

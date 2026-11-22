@@ -1,4 +1,4 @@
----
+﻿---
 title: "Custom Chip Register Ownership and Access Matrix"
 aliases: ["Custom Chip Register Matrix", "Custom Register Map", "Hardware Register Catalog", "Chipset Register Reference"]
 tags: ["amiga", "design", "registers", "agnus", "denise", "paula", "memory-map"]
@@ -12,57 +12,102 @@ related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md
 
 # Custom Chip Register Ownership and Access Matrix
 
-This is the book-derived address map and current owner-delivery reference for the original custom-chip register block. The 68000 address is `$DFF000` plus the three-digit offset below. [Appendix B](../Reference/Hardware%20Reference%20Manual/10%20-%20Appendix%20B%20-%20Register%20Summary%20%28Address%20Order%29.md) supplies names, directions, chip listings, and short functions; [Appendix A](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md) supplies fields, access cautions and exceptions. Hardware meaning, modeled delivery and missing functional effects are separate claims below.
+To find a 68000 address in the original custom-chip register block, add the
+three-digit offset in the address map to `$DFF000`. The map shows the register
+names, access directions, chips and brief functions documented in the manual.
+[Appendix B](../Reference/Hardware%20Reference%20Manual/10%20-%20Appendix%20B%20-%20Register%20Summary%20%28Address%20Order%29.md)
+
+The manual also defines the register fields and describes access cautions and
+exceptions. [Appendix A](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md)
+
+The accompanying text explains how the current emulator delivers each access to
+its owner and identifies functional effects outside the model.
 
 ## Reading the matrix
 
-- `RO` and `WO` reproduce the manual's documented read or write direction. `—` means no **documented safe counterpart** at that offset. It does not mean that an opposite-direction bus cycle has no effect. Appendix A says a read of a write-only register can disturb it and a write to a read-only register can have unexpected results.
-- `ER` is an early DMA read initiated by Agnus timing, not an ordinary CPU register read. `COR` marks `CLXDAT`, whose documented read also clears collision state. `STROBE` marks an address-triggered action rather than stored register bits. Both `COPJMP1` and `COPJMP2` can trigger a Copper jump on a CPU read or write. The four sync strobes (`STREQU`, `STRVBL`, `STRHOR`, `STRLONG`) are documented as write-address strobes used by Agnus during refresh; their CPU reads have no documented safe strobe semantics. The read/write distinction does not make an opposite-direction access harmless.
-- A name suffix `&` means DMA-only use; `%` means usually DMA, sometimes processor; `+` marks a chip-memory pointer pair. A prefix `*` on the Appendix B address prohibits Copper writes. A prefix `-` permits Copper writes only with `COPCON.CDANG` set. These markers appear in the notes rather than the offset so the offset stays numeric.
-- `Scope` records only what the book supports: `Multiple chips listed` where Appendix B names more than one chip. A single listed chip does not establish that every downstream effect stays inside that chip, so other rows say `Not established`. The appendices do not provide a general per-register CCK propagation delay, so `Delay` is `Unknown`; it must not be interpreted as zero.
-- Chip listings reproduce the manual; they are not a register-write dispatch table. Use an explicit design-model note in a row to decide whether a listed chip needs a modeled write action.
-- `Reserved` reproduces an explicit Appendix B label. `Unlisted` applies only to `$1C0–$1DA`, which the address-order table skips without labeling. Neither classification establishes open-bus values or other silicon behavior. Appendix A advises against accessing unused registers.
+- `RO` and `WO` give the manual's documented read or write direction. `—`
+  means the manual gives no **documented safe counterpart** at that offset.
+  Appendix A warns that reading a write-only register can disturb it and
+  writing to a read-only register can have unexpected results.
+- `ER` marks an early DMA read initiated by Agnus timing and distinguishes it
+  from an ordinary CPU register read. `COR` marks `CLXDAT`, whose documented
+  read also clears collision state. `STROBE` marks an address-triggered action.
+  The strobe itself stores no register bits. A CPU read or write of `COPJMP1`
+  or `COPJMP2` can trigger a Copper jump. The manual describes `STREQU`,
+  `STRVBL`, `STRHOR` and `STRLONG` as write-address strobes that Agnus uses
+  during refresh. It gives no safe strobe semantics for CPU reads of those
+  addresses. A documented access direction gives no guarantee about the effects
+  of using the other direction.
+- The suffix `&` marks DMA-only use. The suffix `%` marks a register
+  usually used by DMA and sometimes by the processor. The suffix `+` marks a
+  chip-memory pointer pair. When an Appendix B address starts with `*`, the
+  Copper cannot write to it. When it starts with `-`, the Copper can write to
+  it only with `COPCON.CDANG` set. The table puts these markers in the notes
+  to keep the offset numeric.
+- The `Scope` column says `Multiple chips listed` when Appendix B names more
+  than one chip. When it names one chip, the scope is `Not established`
+  because effects may extend beyond that chip. The `Delay` column says
+  `Unknown` because the appendices do not generally specify how many CCKs
+  each register takes to propagate. Do not treat that label as a delay of zero.
+- The chip listings reproduce the manual. Use an explicit design note in the
+  row to decide whether a listed chip needs to act on a write in the emulator.
+- `Reserved` reproduces an explicit Appendix B label. `Unlisted` applies
+  only to `$1C0–$1DA`, which the address-order table skips without labeling.
+  Both classifications leave open-bus values and other silicon behavior
+  unspecified. Appendix A advises against accessing unused registers.
 
 ## Modeled interfaces and timing
 
-The map applies to the supported PAL 8371 and NTSC 8370 Agnus with OCS 8362
-Denise and 8364 Paula. It does not expose ECS/AGA registers. The current
-[MemoryBus map](MemoryBus.md#a-cpu-access-through-the-router) selects bank `$DF`
-and mirrors its low nine address bits throughout that bank. A0 selects the
-read byte lane; it does not select a different register. A word uses one
-aligned offset; a byte write on either lane duplicates its byte into both
-halves. Reserved/unlisted writes acknowledge without enqueuing anything.
-Dummy early reads, reads without a modeled response and `NO-OP(NULL)` return the fixed `$FFFF`
-placeholder. These are emulator limits, not safe-access guarantees. Expanded
-[MemoryBus](MemoryBus.md#cia-and-boot-overlay) defines Gary bank selection,
-CIA aliases, dual selection and lane behavior.
+The map covers the supported PAL 8371 and NTSC 8370 Agnus, with OCS 8362 Denise
+and 8364 Paula. ECS/AGA registers are outside its scope. The current MemoryBus
+map selects bank `$DF` and uses the low nine address bits to mirror register
+offsets across the bank. A0 selects the byte lane within the register for a
+byte read. A word access uses one aligned offset. On a byte write to either
+lane, the router copies the byte into both halves of the word.
+[MemoryBus map](MemoryBus.md#a-cpu-access-through-the-router)
 
-Production dispatch lives in
+The router acknowledges writes to reserved or unlisted offsets without queuing
+an event. Dummy early reads, reads without a modeled response and `NO-OP(NULL)`
+return the fixed `$FFFF` placeholder. These emulator responses leave the safety
+of the corresponding hardware access unverified. MemoryBus also describes Gary
+bank selection, CIA aliases, dual selection and lane behavior.
+[MemoryBus](MemoryBus.md#cia-and-boot-overlay)
+
+The production router dispatches accesses through
 [`custom_registers.rs`](../../../crates/memory_bus/src/custom_registers.rs).
-[MemoryBus](MemoryBus.md#custom-registers-and-specialized-chips) owns the current
-per-recipient delays, Pipeline mode, atomic fan-out and issue boundaries. These
-are the user-approved model policy of 2026-11-11, not hardware propagation
-measurements. Address strobes act at accepted selection without a queue entry;
-a committed data write may still wait for a later engine consumer. Agnus owns
-register delivery for its contained Copper and Blitter engines.
+The MemoryBus specification defines each recipient's delay, Pipeline mode,
+how a write reaches multiple recipients as one operation, and when the machine
+issues an access. These rules are the user-approved emulator model policy of
+2026-11-11. Hardware propagation measurements fall outside the policy's scope.
+An address strobe acts as soon as the router accepts its selection, without a
+queue entry. An engine may consume a committed data write later. Agnus handles
+register delivery for its Copper and Blitter engines.
+[MemoryBus](MemoryBus.md#custom-registers-and-specialized-chips)
 
-CPU writes and legal Copper MOVE destinations share production dispatch. The
-[Copper](Copper.md) applies the manual's address restrictions before emitting
-its retained request: offsets below `$040` are prohibited, `$040–$07E` require
-`COPCON.CDANG`, and `$080` upward are available. Direct calls to the router do
-not enforce a Copper policy on CPU writes. Arbitration waits retain requests;
-an attempted receiver queue overflow stops the owner before partial delivery.
-Reset cancels unaccepted Copper output and queued events; DMA enable changes
-gate the engine separately from accepted register delivery. Live CPU reads occur in CCK1 and writes in CCK2;
-owner steps precede CPU issue. Copper issue also follows all custom-chip
-steps. Thus the same accepted offset can mature at different recipients on
-different later steps without implying a second motherboard delay.
+The production router dispatches both CPU writes and legal Copper MOVE writes.
+Before the Copper emits its retained request, it checks the destination under
+the manual's rules. Offsets below `$040` are prohibited. Offsets `$040–$07E`
+require `COPCON.CDANG`, and the Copper can use offsets from `$080` upward.
+Direct CPU writes are exempt from these Copper restrictions.
+
+Arbitration retains requests while they wait. If a receiver queue would
+overflow, the owner stops before delivering any part of the write. Reset
+cancels unaccepted Copper output and queued events. Changes to DMA enables
+control whether the engine can run. Writes the router has already accepted
+still reach their recipients. [Copper](Copper.md)
+
+The CPU performs live reads in CCK1 and writes in CCK2. The chips that own the
+registers take their steps before the CPU issues an access. The Copper issues
+requests after all custom-chip steps. Consequently, recipients of the same
+accepted access can apply it on different later steps. That difference alone
+leaves the existence of a second motherboard delay unverified.
 
 ### State owners and hardware meaning
 
-Each family below expands to the individual addresses in the map. The linked
-owning specifications and Appendix A sections define the fields and intended
-hardware effects; implementation details remain with the linked source.
+Each register family below corresponds to individual addresses in the map.
+The owning specifications and Appendix A sections define the register fields
+and intended hardware effects. Consult the linked source for implementation
+details.
 
 | Family | State owner and fields / intended effect | Source sections |
 | --- | --- | --- |
@@ -86,22 +131,26 @@ hardware effects; implementation details remain with the linked source.
 | `INTENA/INTENAR`, `INTREQ/INTREQR` | Paula's [Interrupts](Interrupts.md) child owns source enables, master enable and pending requests. Bit 15 selects set/clear on writes. Read addresses expose active enable/request bits; they do not acknowledge by reading. Delivered INT2/INT3/INT6 levels are sampled after due register writes without a queue entry. | [`intena / intenar`](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md#intena-intenar), [`intreq / intreqr`](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md#intreq-intreqr) |
 | `SERDAT/SERDATR`, `SERPER` | Paula serial child owns transmit data/stop bits, receive data and status, period and long-word selection. | [`serdat`](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md#serdat), [`serdatr`](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md#serdatr), [`serper`](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md#serper) |
 | `POT0DAT/POT1DAT`, `POTGO/POTGOR` | Paula owns proportional counters and port control/sampled inputs. POTGO supplies start, output enables and output levels; POTGOR reads pins, and POTDAT pairs read counter bytes. | [`pot0dat / pot1dat`](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md#pot0dat-pot1dat), [`potgo / potgor`](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md#potgo-potgor) |
+
 ### Read interfaces and current limits
 
-`read_custom_word` calls the lowercase register-named reader on the chip named
-in the read column, with two exceptions: `DSKBYTR` uses `Paula::read_dskbytr`,
-and `COPJMP1/2` use `Agnus::strobe_copjmp1/2`. `DMACONR` reads Agnus, rather
-than combining two software readers. `BLTDDAT/DSKDATR` return the placeholder.
-Debug dispatch uses the corresponding `_debug` reader, except
-`DSKBYTR` uses `peek_dskbytr`. Debug COPJMP reads return `$FFFF` without a
-strobe. Live CLXDAT and DSKBYTR acknowledge in their readers; live COPJMP
-reads act immediately rather than entering the write queue. Other addresses
-use the fallback; opposite-direction silicon disturbances are not modeled.
+For registers with a reader, `read_custom_word` calls the lowercase
+register-named reader on the chip in the read column. Two entries use
+different calls. `DSKBYTR` uses `Paula::read_dskbytr` and `COPJMP1/2` use
+`Agnus::strobe_copjmp1/2`. `DMACONR` reads Agnus alone.
+`BLTDDAT/DSKDATR` return the placeholder.
 
-The owning chip specifications describe reconstructed register effects.
-[Native disk verification](../../../ROADMAP.md#native-disk-verification) checks
-the effects exercised by selected programs; it does not establish an exhaustive
-register-wide access and observable-effect audit.
+Debug dispatch uses the corresponding `_debug` reader. For `DSKBYTR`, it
+uses `peek_dskbytr`. A debug COPJMP read returns `$FFFF` and leaves the strobe
+inactive. The live CLXDAT and DSKBYTR readers acknowledge the access themselves.
+A live COPJMP read triggers the jump strobe immediately, without adding a
+write queue entry. Other addresses use the fallback. Silicon disturbances
+from opposite-direction accesses are outside the emulator model.
+
+The owning chip specifications describe the reconstructed register effects.
+The native disk verification checks the observable effects exercised by
+selected programs. A full account of register accesses and observable effects
+requires broader coverage. [Native disk verification](../../../ROADMAP.md#native-disk-verification)
 
 ## Address map
 
@@ -366,7 +415,7 @@ register-wide access and observable-effect audit.
 
 ## Owner-delivery evidence
 
-The register-delivery boundary is exercised through production interfaces:
+The tests below use production interfaces to exercise register delivery.
 
 | Evidence | Established boundary and limits |
 | --- | --- |
@@ -376,14 +425,15 @@ The register-delivery boundary is exercised through production interfaces:
 | [`test_custom_dispatch.rs`](../../../crates/machine_loop/tests/test_custom_dispatch.rs) | Production-machine CPU/Copper issue boundaries, fatal shared overflow atomicity, queue order and snapshot continuation, strobe delivery, interrupt-input versus CPU ordering, DMA competition and pending-state serialization. |
 | [`test_cia_propagation.rs`](../../../crates/machine_loop/tests/test_cia_propagation.rs) and [`test_register_propagation.rs`](../../../crates/machine_loop/tests/test_register_propagation.rs) | CPU CIA retries/read acknowledgment, pending capture/output restore, reset cancellation, and committed CIA-A PRA/DDRA polarity and overlay mapping using synthetic ROM bytes. No firmware boot is required. |
 
-Task `REGISTER-ACCESS-CLOSE-20261111` records the documentation-and-delivery
-closure in [DIARY.md](../../../DIARY.md). Numerical delays remain configured
-model values; owner delivery does not certify engine or silicon behavior.
+Task `REGISTER-ACCESS-CLOSE-20261111` records the completed documentation and
+register-delivery work. The emulator uses the configured numerical delays.
+The tests establish delivery to the owner. The effects in the engine and on
+silicon require separate evidence. [DIARY.md](../../../DIARY.md)
 
 ## Reference Documentation & Upstream Ground Truth
 
-- [Hardware Reference Manual, Appendix B](../Reference/Hardware%20Reference%20Manual/10%20-%20Appendix%20B%20-%20Register%20Summary%20%28Address%20Order%29.md): Address order, names, access symbols, chip listings, and concise functions used for every row.
-- [Hardware Reference Manual, Appendix A](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md): Opposite-direction access caution, collision read-and-clear behavior, Copper jump strobes, and Agnus refresh strobes.
-- [MemoryBus](MemoryBus.md): Shared selection, acknowledgment, queue ordering, lane and issue-boundary contract.
-- [Agnus register application](../../../crates/agnus/src/register_apply.rs), [Denise access](../../../crates/denise/src/registers.rs) and [Paula access](../../../crates/paula/src/registers.rs): Living private application and read paths behind the recorded interfaces.
-- [Hardware Reference Manual, Chapter 2](../Reference/Hardware%20Reference%20Manual/02%20-%20Chapter%202%20-%20Coprocessor%20Hardware.md): Demonstrates a CPU read of `COPJMP1` that reloads the Copper program counter.
+- The address order, names, access symbols, chip listings and brief functions in every row come from [Hardware Reference Manual, Appendix B](../Reference/Hardware%20Reference%20Manual/10%20-%20Appendix%20B%20-%20Register%20Summary%20%28Address%20Order%29.md).
+- The manual describes cautions for opposite-direction access, collision read-and-clear behavior, Copper jump strobes and Agnus refresh strobes. [Hardware Reference Manual, Appendix A](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md)
+- The shared contract covers selection, acknowledgment, queue order, byte lanes and when an access issues. [MemoryBus](MemoryBus.md)
+- The current private implementations apply writes and handle reads behind the documented interfaces. [Agnus register application](../../../crates/agnus/src/register_apply.rs), [Denise access](../../../crates/denise/src/registers.rs), [Paula access](../../../crates/paula/src/registers.rs)
+- The manual demonstrates how a CPU read of `COPJMP1` reloads the Copper program counter. [Hardware Reference Manual, Chapter 2](../Reference/Hardware%20Reference%20Manual/02%20-%20Chapter%202%20-%20Coprocessor%20Hardware.md)

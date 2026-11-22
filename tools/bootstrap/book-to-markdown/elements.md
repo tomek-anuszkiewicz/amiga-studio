@@ -1,9 +1,10 @@
 # Book Element Types and Roles
 
-Each element has an independent `type` for representation and `role` for its
-semantic function. PDF [Stage 03](../pdf-to-markdown/stages/03_page_conversion/prompt.md)
-chooses both in one request using the page image and extracted text. Role metadata
-supports later authored grouping; it does not establish group membership.
+An element's `type` describes how it is represented. Its independent `role`
+describes what it does in the source. For each page, PDF Stage 03 uses the
+page image and extracted text to choose both values in one request. Authors
+use those roles later when they decide which elements to group. The author
+records group membership separately. [Stage 03](../pdf-to-markdown/stages/03_page_conversion/prompt.md)
 
 | Type | Meaning |
 | --- | --- |
@@ -30,7 +31,7 @@ supports later authored grouping; it does not establish group membership.
 
 ## Semantic roles
 
-Every new element includes `role`, with one of these values:
+Every new element includes `role`. The allowed values appear below.
 
 | Role | Meaning |
 | --- | --- |
@@ -40,48 +41,75 @@ Every new element includes `role`, with one of these values:
 | `note` | Source explanations, assumptions, conditions or qualifications, including standalone notes. |
 | `footnote` | A source note referenced by a marker, including the marker and its complete content. |
 
-A symbol-definition table is `type: table, role: legend`; a qualification paragraph
-is `type: prose, role: note`. Changing role preserves type and content. Advisory
-labels and bodies remain `callout` and `callout_text`, normally with null role.
-The Markdown representation and heading depth continue to follow type.
-Tables with `legend`, `note` or `footnote` roles supply description context; they
-are not separate description targets.
+A symbol-definition table uses `type: table, role: legend`. A paragraph that
+states a qualification uses `type: prose, role: note`. Changing the role
+preserves the type and content. Advisory labels and bodies use `callout` and
+`callout_text`, normally with a null role. The type still governs Markdown
+representation and heading depth. Tables with `legend`, `note` or `footnote`
+roles provide context for another element's description. The description action
+cannot target these tables separately.
 
-Only the current format is supported. Every element must include an explicit
-role, including null when no role applies. Old semantic types and missing fields
-are not translated or repaired; regenerate the data with the current converter
-and importer when requested.
+PDF-to-Markdown and Book-to-Markdown support only the current format. Every
+element must include an explicit role, including null when no role applies.
+Regenerate the data with the current converter and importer when requested.
+The current format requires current semantic types and all required fields,
+with no translation or repair of old types or missing fields.
 
 ## Code and preformatted text
 
-Use `code_block` for program or command listings and `preformatted_text` for material whose character layout must be preserved, such as ASCII timing diagrams, bit-field layouts, memory dumps and aligned explanatory text. A monospaced font alone does not establish that something is source code.
+Use `code_block` for program or command listings. Use `preformatted_text` for
+material whose character layout carries meaning, including ASCII timing diagrams,
+bit-field layouts, memory dumps and aligned explanatory text. A monospaced
+font alone does not establish that something is source code.
 
-Render `preformatted_text` in a fenced `text` block, preserving its characters, spaces, indentation, blank lines and line breaks. Do not reflow it into prose or reconstruct it as a table or drawing. Render `code_block` with an appropriate language tag when known, preserving the source listing. Mixed objects can be explicitly split during recipe authoring; this vocabulary does not trigger automatic splitting or reclassification of saved PDF objects.
+Render `preformatted_text` in a fenced `text` block. Keep its characters,
+spaces, indentation, blank lines and line breaks. Do not reflow it into prose
+or reconstruct it as a table or drawing. Preserve the source listing when
+rendering `code_block` and use an appropriate language tag when known.
+Authors can explicitly split mixed objects while writing a recipe. The
+vocabulary itself does not trigger automatic splitting or reclassification of
+saved PDF objects.
 
 ## Notes, legends and groups
 
-An authored table or image group can associate its `table` or `graphic` with elements carrying `caption`, `note`, `legend` or `footnote` roles. Group membership identifies the source content each text block belongs to; proximity alone does not establish that relationship. A standalone `note` does not require membership in a table or image group.
+An author can group a `table` or `graphic` with elements carrying `caption`,
+`note`, `legend` or `footnote` roles. Group membership records which source
+content each text block belongs to. Nearby placement alone cannot establish
+that relationship. A standalone `note` can remain outside any table or image
+group.
 
-Use `note` for source notes and qualifications, and `legend` for definitions needed to interpret notation. A NOTES or LEGEND label alone does not determine the role. General narrative remains `prose`, and a table's or graphic's formal name remains `caption`. Text integrated into the artwork stays inside the `graphic`; these roles describe separate source blocks, not a requirement to extract labels from an image.
+Use `note` for source notes and qualifications, and `legend` for definitions needed to interpret notation. A NOTES or LEGEND label alone does not determine the role. General narrative
+remains `prose`, and a table's or graphic's formal name remains `caption`.
+These roles apply to separate source blocks. Leave text that is integrated
+into the artwork inside the `graphic`.
 
-Prepared groups provide the source context for the [image description prompt](prompts/describe-images.md). Generated descriptions are additions to those source elements, not source notes or legends. Table descriptions follow the [table description prompt](prompts/describe-tables.md). PDF Stage 05 continues to replace table markup only; grouping and descriptions are separate book-processing work.
+The image and table description tasks use prepared groups as source context.
+They add generated descriptions alongside the source notes and legends.
+Grouping and description are book-processing steps. PDF Stage 05 replaces
+only table markup. [Image description prompt](prompts/describe-images.md)
+[Table description prompt](prompts/describe-tables.md)
 
 A `table` or `graphic` can also carry an authored `description` string. The
-context action generates it from that element, its chosen nearby caption and
-contiguous notes, legends and footnotes below it, including the image asset
-when applicable. A graphic or table description appears in a separate collapsed
-`<details>` block containing a fenced `text` block below its source element in
-rendered Working and exported Markdown; the stored description remains plain
-text. The selected context is used for the task; it does not create persistent
-group membership.
-Descriptions are model-authored additions, not PDF source recipes. Source-text
-alignment and **Clean direct book text** inspect chapter titles and `md_text`;
-the cleanup action also inspects an explicitly edited generated contents title,
-but never the `description` field of a table or graphic.
+context action generates the selected element's description from the element
+itself, its chosen nearby caption, contiguous notes, legends and footnotes
+below it, and the image asset when applicable.
+It uses that selection for the task only, without recording group membership.
+The editor stores the description as plain text. In rendered Working and
+exported Markdown, it appears below the element in a separate collapsed
+`<details>` block containing a fenced `text` block.
+Descriptions store text the model adds to explain a table or graphic.
+The PDF source recipe records how to reconstruct content from the source.
+Source-text alignment and
+**Clean direct book text** inspect chapter titles and `md_text`. The cleanup
+action also inspects the generated contents title when explicitly edited.
+It skips the `description` field of every table or graphic.
 
 ## Heading hierarchy
 
-Use one `heading` type with an integer `heading_level` property for hierarchy depth. The section's source number is a separate optional `number` string; it identifies the section rather than determining its type.
+Use one `heading` type and an integer `heading_level` property to record
+hierarchy depth. When present, the source number identifies the section and
+goes in the separate optional `number` string. The element type stays the
+same at every numbered level.
 
 | Type | Level | Example number |
 | --- | --- | --- |
@@ -98,14 +126,15 @@ Unnumbered titles still have a level and omit `number`. Preserve appendix identi
 ## Editable review model
 
 Each version has its own `book.json` with ordered `chapters` and
-`toc: {depth: 2}`. The generated TOC is mandatory; depth may be 1, 2 or 3.
-Its optional `title` and `markdown_file` properties control the generated
-heading and export filename; the defaults are `Table of Contents` and
-`table-of-contents.md`. It appears separately in Rename Chapters.
-A chapter has `id`, `title`, `markdown_file`
-and ordered `elements`. Title and safe filename are derived from its first
-heading when the chapter is created. Rename Chapters edits these fields
-independently and updates the exported filename and contents links.
+`toc: {depth: 2}`. The generated table of contents is required and can have a
+depth of 1, 2 or 3. Its optional `title` and `markdown_file` properties control
+the generated heading and export filename. The defaults are `Table of Contents`
+and `table-of-contents.md`. The table of contents has its own entry in Rename
+Chapters.
+A chapter has `id`, `title`, `markdown_file` and ordered `elements`. When the
+editor creates a chapter, it derives the title and a safe filename from the
+first heading. Rename Chapters lets you edit the title and filename independently
+and updates the exported filename and contents links.
 
 The importer retains provisional source classifications without automatic
 grouping or reclassification. Each element has a stable `id` (the imported
@@ -113,13 +142,14 @@ grouping or reclassification. Each element has a stable `id` (the imported
 `heading_level`, `table_format`, and a graphic `asset: assets/<id>.png`.
 `pdf_regions` contains ordered `{page, bbox}` records in original Stage 02 pixels.
 It has no duplicated segment ID, image dimensions or OCR block associations.
-Joined elements may have several regions. Splitting retains role; merging requires matching roles.
-
+Joined elements may have several regions. Splitting an element preserves its
+role. To merge elements, their roles must match.
 
 `rendered.json` records the exact completed model, chapter HTML documents,
 asset hashes, input fingerprint, preparation settings and revision. Each
 `render.chapters` entry contains its chapter `id`, cache `key` and bundle-relative
-`document` path. Display geometry is measured from the viewer's live DOM by
-stable element ID; no PNG `render_regions` or TOC hit rectangles are generated.
+`document` path. Display geometry comes from the viewer's live DOM and is
+measured by stable element ID. No PNG `render_regions` or TOC hit rectangles
+are generated.
 Authored input has no derived geometry or schema-version field. See the [review workflow](README.md#local-html-review)
 for the queue and whole-version acceptance contract.

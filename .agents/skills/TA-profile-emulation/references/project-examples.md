@@ -1,170 +1,191 @@
 # Project Optimization Examples
 
-These examples record mechanisms and failure modes from November 13-14, 2026.
-Use them to generate hypotheses, not as a list of transformations to apply
-everywhere. Git commits and [DIARY.md](../../../../DIARY.md) retain the historical
-results. Remeasure on the current source and workload before claiming a gain.
-The November 14 source examples also include pending implementations; examples
-without timings do not establish a measured speedup or completed verification.
+These examples describe changes investigated from November 13-14, 2026,
+and what could go wrong with them. Use them to form hypotheses about the current
+workload. Measure the current source and workload before claiming a gain.
+The November 14 examples drawn from source include pending implementations.
+Where an example gives no timings, the speedup and completion of verification
+remain unconfirmed. Git commits and [DIARY.md](../../../../DIARY.md) record
+the historical results.
 
 ## Scan Occupied Entries and Reuse Results
 
-Commit `eb4c408f5400515560e41b08b34578455855183a` changed
-[register mutation queues](../../../../crates/config/src/mutation.rs) from
-full-capacity scans and full result arrays to a packed occupied prefix and
-reusable, length-delimited due storage. The warm ROM diagnostic had almost all
-slots empty. Matched release measurements reduced core frame time from 23.890
-to 10.017 ms with pixel generation enabled and GUI work excluded.
+Commit `eb4c408f5400515560e41b08b34578455855183a` packed occupied entries at
+the start of each queue so scans could stop at the last occupied entry. It
+also reused storage for entries due for delivery and tracked the length of
+the result, replacing full result arrays. Almost all slots were empty in the
+warm ROM diagnostic. In matched release measurements, core frame time fell
+from 23.890 to 10.017 ms with pixel generation enabled and GUI work
+excluded. [Register mutation queues](../../../../crates/config/src/mutation.rs)
 
-The reusable lesson is to inspect initialization, returned copies and consumer
-scans together; a cheap queue operation can still have an expensive result path.
-Capacity, issue order, the complete due set and receiver phases remained intact.
-Low observed occupancy did not justify reducing capacity or altering overflow
-behavior. Differential state comparison established model preservation, not
-hardware timing acceptance.
+Inspect how the queue initializes storage, copies its results and passes them
+to consumers that scan them. Processing the results can cost more than the queue
+operation itself. The change preserved capacity, issue order, all entries due
+for delivery and the phases in which receivers process them. Low observed
+occupancy was insufficient evidence for reducing capacity or changing overflow
+behavior. Comparing the baseline and candidate model states showed that the
+change preserved the model. Hardware timing acceptance requires separate evidence.
 
 ## Move Stable Decoding Out of the Pixel Loop
 
 Commit `bbcbcdf9ad87e4105ffee26b33e5cea824a6be9d` cached horizontal starts,
-attachment and collision controls in the
-[sprite engine](../../../../crates/denise/src/sprites.rs), skipped inactive pairs,
-and used small tables for color and collision decoding. It retained completion
-of disarmed serializers. Compared with the preceding idle-sprite guard, measured
-throughput increased about 3.6-4.9% across the recorded ROM and active scenes.
+attachment and collision controls, skipped inactive pairs and used small
+tables to decode colors and collisions. Disarmed serializers could still
+finish emitting their output. Compared with the preceding idle-sprite guard,
+measured throughput increased about 3.6-4.9% across the recorded ROM and
+active scenes. [Sprite engine](../../../../crates/denise/src/sprites.rs)
 
-The useful question is how often a value changes compared with how often it is
-decoded. Update derived values at effective register application, including
-mid-line changes, and reconstruct them after restore. An inactive flag alone is
-insufficient when a serializer still has output to consume. Idle-only results
-cannot establish the gain for overlapping or attached sprites.
+Compare how often a value changes with how often the code decodes it. Update
+derived values when register writes take effect, including mid-line changes,
+and reconstruct them after restore. Check for pending serializer output even
+when the inactive flag is set. To establish the gain for overlapping or
+attached sprites, measure scenes in which those sprites are active.
 
 ## Share Precomputed Output, Keep Side Effects at Consumption
 
-Commit `c49dc32604bb486bc4c5eab803a7e6dd5bd05c62` introduced a lazily built
-2 KiB sprite line table shared by pixel selection and collision paths, plus
-playfield match masks derived from CLXCON. Recorded active-scene throughput gains
-were about 2.9-3.4%; the ROM scene gained about 6.5%. GUI work was excluded, and
-the active synthetic scenes used a stopped CPU.
+Commit `c49dc32604bb486bc4c5eab803a7e6dd5bd05c62` built a 2 KiB sprite line
+table on demand and shared it between pixel selection and collision detection.
+It also derived playfield match masks from CLXCON. Recorded throughput rose
+about 2.9-3.4% in active scenes and about 6.5% in the ROM scene. The measurements
+excluded GUI work, and the CPU was stopped in the active synthetic scenes.
 
-Applied writes invalidate future output. Potential collision bits may be cached,
-but CLXDAT accumulates only when the current pixel is consumed. Current palette
-and priority remain effective. Review found an H=510 word wrapping into early
-cache entries; clipping spans to the current window fixed premature collisions
-while preserving continuation. The final measurements include that correction.
+When writes take effect, they invalidate cached output for future pixels. The
+cache can hold potential collision bits. CLXDAT accumulates those bits only
+when the current pixel is consumed, and the palette and priority in effect
+at that point still apply. Review found that a word at H=510 wrapped into
+early cache entries. Clipping spans to the current window prevented premature
+collisions and preserved continuation. The final measurements used the
+corrected code.
 
-The lesson is to price invalidation and boundary behavior, not only table reads.
-The remaining shifts used for construction, inspection and save state were not
-per-pixel costs. Determine execution frequency before treating a familiar source
-expression as the next hot path.
+Account for the cost of table reads, invalidation and boundary handling. Table
+construction, inspection and save state work use the remaining shifts outside
+the per-pixel path. Determine how often an expression runs before treating it
+as a frequent cost.
 
 ## Separate Requested Diagnostics from Continuous Execution
 
-Commit `c7bde75` retained prepared debugger inspectors during continuous Run while
-preserving live breakpoint checks and refreshing on actual stop or paused edits.
-The recorded 60-field live_stripes comparison reduced Developer execution from
-36.772 to 25.042 ms, excluding pacing waits. This was one local scenario, not a
-general display FPS guarantee.
+Commit `c7bde75` kept the prepared debugger inspectors during continuous Run.
+Breakpoint checks still ran live. The inspectors refreshed when execution
+stopped or the user made edits while paused. In the recorded 60-field
+live_stripes comparison, Developer execution time fell from 36.772 to 25.042 ms
+with pacing waits excluded. The result applies to that local scenario, so a
+broader claim about display FPS needs more evidence.
 
-Repeated work may serve a different mode or refresh boundary. Identify when a
-consumer needs fresh data before introducing a cache or skipping computation;
-preserve explicit stepping and live controls.
+Work repeated during continuous execution may only need to run in a different
+mode or when the user next needs fresh data. Determine when each consumer
+needs an update before adding a cache or skipping computation. Preserve
+explicit stepping and live controls.
 
 ## Resolve Elapsed Time on Access
 
-An earlier November 14 RTC experiment replaced per-CCK stepping with elapsed-time
-settlement on register access and time/control changes. It retained the last
-machine CCK and fractional second. That implementation was rolled back and is
-unavailable in the current code. The [current RTC](../../../../Obsidian/Amiga/Design/RTC.md)
-uses host UTC plus an independent battery offset under an explicitly approved
-functional contract; machine snapshots exclude the clock.
+An earlier November 14 RTC experiment kept the last machine CCK and the
+fractional second. It applied elapsed time when software accessed a register
+or changed the time or control settings, replacing per-CCK stepping. The
+experiment was rolled back. Under the explicitly approved functional contract,
+the current clock uses host UTC plus an independent battery offset. Machine
+snapshots exclude the clock. [Current RTC](../../../../Obsidian/Amiga/Design/RTC.md)
 
-The general lesson is to defer a result only when intermediate updates have no
-required consumer. Such an optimization must preserve the device's specified
-clock, control-write ordering and observable state. Switching from emulated time
-to host time is a separate requirement decision, not an equivalent calculation.
+Defer a result only if every consumer can wait for the update. Preserve the
+device's specified clock, the order of control writes and the observable
+state. Using host time in place of emulated time changes the requirement and
+needs a separate decision.
 
 ## Update Derived Results Only When Their Inputs Change
 
-Commit `2451f6c` uses a 16-entry pin-to-phase table in
-[Denise game ports](../../../../crates/denise/src/game_ports.rs). The counter's
-existing low bits retain the consumed phase, so unchanged inputs need no counter
-arithmetic or separate dirty flag. Input sampling still occurs every CCK.
+Commit `2451f6c` uses a 16-entry table to map input pins to phases. The
+counter's existing low bits record the last phase the counter consumed, so
+unchanged inputs require neither counter arithmetic nor a separate dirty
+flag. The ports still sample inputs every CCK.
+[Denise game ports](../../../../crates/denise/src/game_ports.rs)
 
-An earlier November 14 audio-mixer experiment rebuilt stereo levels only when a
-contributing channel changed or the derived state became invalid. That trial was
-rejected and removed; the [current mixer](../../../../crates/paula/src/audio.rs)
-runs unconditionally. It illustrates the invalidation obligations of a candidate,
-not an optimization available in the retained implementation.
+An earlier November 14 audio-mixer experiment rebuilt stereo levels only when
+a contributing channel changed or the stored levels became invalid. Those
+conditions show what a candidate that reuses levels must check. The trial was
+rejected and removed, and the current mixer runs unconditionally.
+[Current mixer](../../../../crates/paula/src/audio.rs)
 
-Reuse existing state before adding a cache. If a validity flag is needed, keep
-mutation paths controlled so callers cannot silently leave derived output stale.
-Unchanged output does not mean the device clock or pending output can stop.
+Reuse existing state before adding a cache. If you need a validity flag, keep
+changes to inputs in code that also updates the flag so callers cannot leave
+derived output stale. An unchanged result is insufficient reason to stop
+advancing the device clock or processing pending output.
 
 ## Guard the Inactive Helper, Preserve the Device Clock
 
-The November 14 [CIA timers](../../../../crates/cia/src/timers.rs) return early
-when there is no E/CNT edge and neither timer has a live pulse. Port B resolution
-is skipped when neither timer drives those pins, while hidden waveforms still
-evolve. The [Paula serial port](../../../../crates/paula/src/serial.rs) has a local
-guard for stable idle state, including empty transmit storage and current pin
-and status levels.
+The November 14 CIA timers return early when there is no E/CNT edge and
+neither timer has a live pulse. If neither timer drives the Port B pins, the
+code skips resolving those pins while the hidden waveforms continue to evolve.
+[CIA timers](../../../../crates/cia/src/timers.rs)
 
-Put the guard where no work is provably due. Skipping an entire CIA because its
-timers are idle would also skip input, delayed-write or handshake work. A pulse
-that must expire is active work even between clock edges. Measure the guard's
-active path as well as the common idle case.
+The Paula serial port checks for stable idle state locally. The check includes
+empty transmit storage and the current pin and status levels.
+[Paula serial port](../../../../crates/paula/src/serial.rs)
+
+Put the guard at the point where you can establish that no work is due.
+Skipping an entire CIA because its timers are idle would also skip input,
+delayed-write or handshake work. A pulse that must expire still needs handling
+between clock edges. Measure the path through the guard when work is due and
+in the common idle case.
 
 ## Replace Repeated Decoding with Explicit Immutable Tables
 
-The November 14 [dual-playfield decoder](../../../../crates/denise/src/decode.rs)
-uses 64 input-code pairs and two 64-entry priority mappings, totaling 256 bytes.
-The [DMA scheduler](../../../../crates/agnus/src/dma.rs) maps fixed horizontal
-slots through a compile-time table while retaining live request/enable checks
-and the line-length-dependent final refresh. Commit `a1d9b55` also introduced
-the [RGB444 conversion table](../../../../crates/frame_builder/src/frame_builder.rs).
+The November 14 dual-playfield decoder uses 64 input-code pairs and two
+64-entry priority mappings, totaling 256 bytes.
+[Dual-playfield decoder](../../../../crates/denise/src/decode.rs)
 
-These tables replace bounded, deterministic calculations without mutable cache
-invalidation. Their indices retain clear meanings: plane bits, horizontal CCK or
-RGB444 color. Keep dynamic palette values and arbitration decisions live; a
-table of opportunities is not a precomputed bus grant. Derive entries from the
-existing mapping, then measure lookup cost and memory footprint.
+The DMA scheduler looks up fixed horizontal slots in a compile-time table.
+It still checks live requests and enables, and the final refresh depends on
+line length. [DMA scheduler](../../../../crates/agnus/src/dma.rs)
+
+Commit `a1d9b55` also introduced the RGB444 conversion table.
+[RGB444 conversion table](../../../../crates/frame_builder/src/frame_builder.rs)
+
+These tables replace bounded, deterministic calculations and need no mutable
+cache invalidation. Each index retains its meaning as plane bits, a horizontal
+CCK or an RGB444 color. The slot table identifies opportunities to use the bus.
+The scheduler still decides who receives each grant using the live state, and
+dynamic palette values still apply. Derive entries from the existing mapping,
+then measure lookup cost and memory footprint.
 
 ## Reuse a Local Result and Expose Constant Arithmetic
 
-November 14 [signal routing](../../../../crates/machine_loop/src/signals.rs)
-consumes the Port B value returned by CIA-B polling instead of resolving the
-same pins separately and discarding the poll result. Inside the
-[Blitter](../../../../crates/agnus/src/blitter.rs), execution reuses its selected
-phase for area work instead of asking for that phase again.
+November 14 signal routing uses the Port B value returned by CIA-B polling.
+Previously, it discarded that value and resolved the same pins separately.
+[Signal routing](../../../../crates/machine_loop/src/signals.rs)
 
-The [disk engine](../../../../crates/paula/src/disk.rs) selects between remainder
-expressions with named constant periods, allowing the compiler to simplify each.
-It retains remainder semantics when FAST changes mid-cell; compare-and-reset
-would need a different proof. These are local data-flow or arithmetic changes,
-not reasons to export private execution hints to another chip. Inspect optimized
-instructions before attributing a gain to fewer source expressions.
+The Blitter reuses the phase it already selected when executing area work.
+[Blitter](../../../../crates/agnus/src/blitter.rs)
+
+The disk engine picks a remainder expression whose period is a named constant,
+so the compiler can simplify each expression. The code retains remainder
+semantics when FAST changes mid-cell. Compare-and-reset would need a separate
+proof. [Disk engine](../../../../crates/paula/src/disk.rs)
+
+Keep these changes to data flow and arithmetic local to the component. Private
+execution hints remain private. Inspect optimized instructions before
+attributing a gain to fewer source expressions.
 
 ## Write to Final Storage and Clear Only Invalid Regions
 
-Commit `a1d9b55` gave the
-[frame buffer](../../../../crates/frame_builder/src/frame_builder.rs) a fixed
-row stride and paired pixel writes, avoiding row relocation as visible width
-changes. Row completion clears invalid tails instead of clearing pixels that
-will be overwritten; reset and layout changes retain their required clearing.
+Commit `a1d9b55` used a fixed row stride and wrote pixels in pairs so the
+frame buffer could leave rows in place when visible width changed. At the end
+of a row it clears the invalid tail, while incoming pixel writes replace the
+previous visible data. Reset and layout changes still clear the required
+regions. [Frame buffer](../../../../crates/frame_builder/src/frame_builder.rs)
 
-The lesson is to remove data movement by making storage straightforward. Keep
-visible geometry, field pairing, pipeline order and consumer stride handling
-explicit. A shorter frame or missing pixels are changed output, not a speedup.
+Choose a storage layout that avoids moving data. Keep visible geometry, field
+pairing, pipeline order and the stride consumers use explicit. Treat a shorter
+frame or missing pixels as a change in output when assessing any timing gain.
 
 ## A Shorter Formula Is Still a Hypothesis
 
 The November 12 BCD investigation considered alternative ABCD/SBCD/NBCD
-arithmetic. An exhaustive arithmetic identity alone did not establish full CCR
-equivalence or speed, and that investigation ended with a plan, not a measured
-optimization. Current implementations are under
-[CPU instructions](../../../../crates/cpu/src/instructions).
+arithmetic. The exhaustive arithmetic identity left full CCR equivalence
+and speed unverified. The investigation ended with a plan for further work.
+The current implementations are in the CPU instructions directory.
+[CPU instructions](../../../../crates/cpu/src/instructions)
 
 Include input X, cumulative Z, the other flags and invalid packed digits when
-checking equivalence. Include operand preparation and flag construction when
-measuring an alternative. Generated instructions and comparable execution time
-decide performance; fewer Rust expressions do not. Respect a plan-only request.
+checking equivalence. When measuring an alternative, include operand
+preparation and flag construction. Use the generated instructions and
+comparable execution times to judge performance. A request for a plan ends
+at the planning stage.

@@ -1,15 +1,26 @@
 # Development Environment and Reference Setup
 
-This operational reference contains setup commands and provisioning details. Start with the [developer overview](../../docs/developers.md) for the project map and the [testing overview](../../docs/testing.md) for verification scope. Run commands from the repository root; current program help and owning tool READMEs provide their detailed interfaces.
+Use this reference to build the emulator and provision the development and
+verification assets your work needs. Run commands from the repository root.
+For details on a specific command, use the program's current help and README.
+For a map of the project and an overview of what verification covers, see the
+[developer overview](../../docs/developers.md) and [testing overview](../../docs/testing.md).
 
-TA role definitions live in `.codex/agents/`. Check their actual runtime loading
-before claiming a role is active. Skills return text and JSON under the shared
-[result contract](workflow-contract.md). No result renderer or workflow Python
-dependency is required. Missing setup is an input gap; install dependencies only
-when the assignment authorizes it.
+TA role definitions live in `.codex/agents/`. Before reporting that a role is
+active, confirm that the runtime loaded it. Skills return text and JSON under
+the shared [result contract](workflow-contract.md). This requires neither a
+result renderer nor a workflow Python dependency. Treat missing setup as a
+missing input, and install dependencies only when the assignment authorizes it.
 
 > [!IMPORTANT]
-> **Foundational Architecture:** Before modifying or extending emulator subsystems, review the [**Core Architecture & Hardware Execution Model**](../../docs/architecture.md). It formalizes the cycle-exact Color Clock phases (`CCK1`/`CCK2`), shared bus contention, Gary arbitration, Big-Endian invariance, and decoupled subsystem ownership. Comprehensive silicon specifications, register allocations, and circuit schematics reside in [`Obsidian/Amiga/Design/`](../../Obsidian/Amiga/Design).
+> Before modifying or extending an emulator subsystem, read the architecture
+> overview. It explains how the emulator models cycle-exact Color Clock phases
+> (`CCK1`/`CCK2`), contention on the shared bus and Gary's arbitration. It also
+> explains Big-Endian invariance and independent subsystem ownership.
+> [**Core Architecture & Hardware Execution Model**](../../docs/architecture.md)
+>
+> For detailed silicon specifications, register allocations and circuit schematics,
+> see [`Obsidian/Amiga/Design/`](../../Obsidian/Amiga/Design).
 
 ---
 
@@ -52,7 +63,10 @@ rustup toolchain install nightly --component rust-src --target wasm32-unknown-un
 <a id="2-external-reference-sources-verification-testbeds"></a><a id="2-external-reference-sources--verification-testbeds"></a><a id="3-external-reference-sources-verification-testbeds"></a>
 ## 2. External Reference Sources & Verification Testbeds
 
-The emulator uses external test suites, hardware measurements, and reference implementations. These sources serve different purposes; a hardware capture can establish observed signals, while emulator and FPGA code provide models to compare against them:
+The emulator uses external test suites, hardware measurements and reference
+implementations. A hardware capture can establish which signals were observed.
+Emulator and FPGA code provide models that developers can compare with those
+observations.
 
 - **[Tom Harte SingleStepTests](https://github.com/SingleStepTests/680x0):** Software-generated M68000 instruction reference vectors.
 - **[vAmigaTS](https://github.com/dirkwhoffmann/vAmigaTS):** Amiga chipset regression tests and reference captures.
@@ -66,7 +80,8 @@ The emulator uses external test suites, hardware measurements, and reference imp
 > [!NOTE]
 > **Graphify navigation:** Use independent project and reference datasets, then verify source definitions. Bootstrap creates or refreshes both graphs. Worktree creation copies existing graph directories. Task closure refreshes the project graph on final local `master` after successful final tests/review and any corrective commits. See [Chapter 6](#6-code-structure-relationships-graphify).
 
-Because these test assets comprise multi-gigabyte datasets (~6.5 GB uncompressed), they reside outside Git history in `ref_src/` and `tools/`.
+The test assets amount to ~6.5 GB uncompressed. To keep data of that size out
+of Git history, the project stores the assets locally in `ref_src/` and `tools/`.
 
 <a id="pinned-upstream-sources-summary"></a>
 ### Pinned Upstream Sources Summary
@@ -80,7 +95,16 @@ Because these test assets comprise multi-gigabyte datasets (~6.5 GB uncompressed
 | **MiniMig** | `ref_src/minimig/` | [cristianoag/minimig](https://github.com/cristianoag/minimig) | **`89c2643101860be4caa6ffb275e9bdd7c60d61d2`** |
 | **Amiga Replacement Project** | `ref_src/amiga_replacement_project/` | [nonarkitten/amiga_replacement_project](https://github.com/nonarkitten/amiga_replacement_project) | **`143ad5f1b5acae093ea66186e832a8ab4fb1bc0f`** |
 
-The two FPGA archives are optional individual selections in `bootstrap_sources.ps1`; the coordinator's `-Sources` switch includes both. Their local `_bootstrap_source.json` files record the archive hash, upstream revision, and per-file hashes. They are Git-ignored research references. The [hardware researcher](../../.codex/agents/TA-hardware-researcher.toml) uses the caller-selected source-family skill. A selected measurement investigation may consult original [Techtravels Paula/DMAL evidence](https://www.techtravels.org/2026/08/from-flux-to-filenames-335ms-inside-paula/) through web search; web pages are not copied into the documentation RAG index, and missing manual evidence does not automatically start that operation.
+Select either FPGA archive individually with `bootstrap_sources.ps1`. Use the
+coordinator's `-Sources` switch to provision both. Git ignores these research
+references. Each archive has a local `_bootstrap_source.json` that records the
+archive hash, upstream revision and the hash of each file. The
+[hardware researcher](../../.codex/agents/TA-hardware-researcher.toml) uses the
+skill selected by the caller for the source family. For a selected measurement
+investigation, the researcher may use web search to consult original
+[Techtravels Paula/DMAL evidence](https://www.techtravels.org/2026/08/from-flux-to-filenames-335ms-inside-paula/).
+Missing evidence in the manuals does not itself start that investigation.
+Web pages stay outside the documentation RAG index.
 
 > [!TIP]
 > Information and automated scripts for downloading, decompressing, and provisioning these reference test sources are provided in **[Chapter 4: Bootstrapping & External Reference Provisioning](#sources-provisioning-sources)** (`.\tools\bootstrap\bootstrap.ps1 -Sources`).
@@ -90,7 +114,10 @@ The two FPGA archives are optional individual selections in `bootstrap_sources.p
 <a id="3-documentation-architecture-reference-literature"></a><a id="3-documentation-architecture--reference-literature"></a><a id="3-ingested-reference-documentation-in-repository"></a><a id="3-ingested-reference-documentation--in-repository"></a><a id="3-technical-reference-documentation-literature"></a><a id="3-technical-reference-documentation--literature"></a>
 ## 3. Documentation Architecture & Reference Literature
 
-The repository maintains an authoritative, high-fidelity documentation library under `Obsidian/Amiga/`. To optimize repository clone sizes and respect licensing boundaries, documentation is strictly partitioned into two categories:
+The documentation library under `Obsidian/Amiga/` preserves authoritative
+technical material in detail. It keeps project documentation and external
+materials in separate categories to limit clone size and respect licensing
+boundaries.
 
 <a id="why-documentation-is-critical-human-ai-rag"></a><a id="why-ingested-documentation-is-critical"></a>
 ### Why Documentation is Critical (Human, AI & RAG)
@@ -111,7 +138,10 @@ Worktree creation copies local manuals from the primary checkout and preserves
 files tracked by Git in the target. Initial provisioning uses the documentation
 bootstrap described below.
 
-Due to copyright preservation and multi-gigabyte dataset exclusion (`.gitignore`), the primary Commodore and Motorola reference manuals are **excluded from Git tracking**. They are converted into structured Markdown format and must be downloaded or linked via bootstrapping:
+The primary Commodore and Motorola reference manuals are **excluded from Git tracking**
+under `.gitignore` to respect copyright and keep multi-gigabyte datasets out of
+Git. Use the bootstrap process to download or link these manuals, which are
+converted into structured Markdown.
 
 1. **Hardware Reference Manual (Addison-Wesley 2nd Edition, 1989)**
    - **Location:** `Obsidian/Amiga/Reference/Hardware Reference Manual/`
@@ -150,11 +180,18 @@ Due to copyright preservation and multi-gigabyte dataset exclusion (`.gitignore`
 <a id="4-bootstrapping-overview-toolsbootstrapbootstrapps1"></a><a id="4-bootstrapping-overview--toolsbootstrapbootstrapps1"></a><a id="5-bootstrapping-overview-toolsbootstrapbootstrapps1"></a><a id="5-bootstrapping-overview--toolsbootstrapbootstrapps1"></a><a id="4-external-reference-downloads-provisioning"></a><a id="4-external-reference-downloads--provisioning"></a><a id="4-archival-documentation-reference-downloads"></a><a id="4-archival-documentation--reference-downloads"></a><a id="2-optional-bootstrapping-overview"></a><a id="bootstrapping-overview"></a>
 ## 4. Bootstrapping & External Reference Provisioning (`tools/bootstrap/bootstrap.ps1`)
 
-Reference provisioning is **optional** for running the emulator. The desktop GUI uses Stable Rust; the shared-memory browser application requires Nightly with `rust-src`, the Wasm target and Trunk, as described in [Build & Run](#1-build-run).
+Reference provisioning is **optional** for running the emulator. The desktop
+GUI uses Stable Rust. The shared-memory browser application requires Nightly
+with `rust-src`, the Wasm target and Trunk. [Build & Run](#1-build-run)
 
-However, specialized development and verification workflows—such as running exhaustive 124-suite M68000 SingleStep tests, validating against golden vAmigaTS visual viewports, querying the offline Qdrant RAG vector database, or exploring cross-codebase call graphs—require external reference assets, technical literature, or tooling services.
+Specialized development and verification work requires external reference
+assets, technical literature or tooling services. Examples include running
+the exhaustive 124-suite M68000 SingleStep tests, comparing rendered viewports
+against golden vAmigaTS viewports, querying the offline Qdrant RAG vector database and
+exploring call graphs across codebases.
 
-The centralized bootstrapper (`tools/bootstrap/bootstrap.ps1`) orchestrates all provisioning workflows.
+The central bootstrapper (`tools/bootstrap/bootstrap.ps1`) coordinates all
+provisioning workflows.
 
 <a id="full-development-setup-all"></a><a id="bootstrapper-commands"></a>
 ### Complete Development Setup (`-All`)
@@ -192,7 +229,8 @@ Automates downloading, unpacking, decompressing, and validating external test as
 
 ##### Automation Lifecycle Steps
 
-When external test sources are provisioned via `.\tools\bootstrap\bootstrap.ps1 -Sources`, the automated bootstrapper executes the following lifecycle steps:
+When you run `.\tools\bootstrap\bootstrap.ps1 -Sources`, the bootstrapper
+prepares and checks the reference sources.
 
 1. **Zip Archive Expansion:** Scans `ref_src/SingleStepTests-680x0/` for `.zip` archives and unpacks them into place.
 2. **Gzip Decompression:** Scans for `.json.gz` or `.gz` compressed test archives and decompresses them into native `.json` files using .NET `GZipStream` (zero external dependencies).
@@ -208,21 +246,29 @@ When external test sources are provisioned via `.\tools\bootstrap\bootstrap.ps1 
 <a id="bootstrapping-raw-archival-sources-toolsbootstrapbootstrap_documentationps1"></a><a id="archival-documentation-provisioning-documentation"></a><a id="upstream-archival-reference-documents"></a><a id="multi-source-fallback-matrix-error-resilience"></a><a id="multi-source-fallback-matrix--error-resilience"></a>
 #### 2. Archival Reference Documentation Provisioning (`-Documentation`)
 
-Provisions original PDF scans, OEM technical manuals, and archival web articles for developers inspecting raw schematics or re-running OCR pipelines:
+Use this option to provision original PDF scans, OEM technical manuals and
+archival web articles when you need to inspect raw schematics or rerun an OCR
+pipeline.
 
-Each book's downloads go into `Obsidian/Amiga/Reference/<Document_Name>-tmp/`
-(or `<Destination>/<Document_Name>-tmp/` with a custom destination). Conversion
-keeps its `workspace/` there. `-Markdown` leaves final results in that workspace:
-`14_link_toc/` for PDF and `html_to_markdown/` for HTML. Add `-Publish` to copy
-finished Markdown and assets to the sibling `<Document_Name>/` directory without
-the suffix. The destination must be absent or empty; existing files, hidden entries
-and links cause an error before downloads or conversion. The converter checks again
-before publishing and never replaces an occupied directory. Existing downloads in
-unsuffixed directories are not moved or
-reused automatically; the `-tmp` directories remain available for inspection and
-resuming conversion. Neither pipeline accepts `--output-dir` or automatically
-mirrors HTML into `Reference`. Direct CLI publication uses the boolean `--publish`
-and derives the book destination from its enclosing `<Document_Name>-tmp/` directory.
+The bootstrapper downloads each book to
+`Obsidian/Amiga/Reference/<Document_Name>-tmp/`. If you supply a custom
+destination, it uses `<Destination>/<Document_Name>-tmp/`. The converter keeps
+its `workspace/` in the book's download directory. With `-Markdown`, it saves
+final PDF conversion results under `14_link_toc/` and final HTML conversion
+results under `html_to_markdown/` in that workspace.
+
+Add `-Publish` to copy finished Markdown and assets to the sibling
+`<Document_Name>/` directory without the suffix. That destination must be absent
+or empty. Files, hidden entries or links cause an error before downloads or
+conversion. The converter checks the destination again before publishing and
+never replaces an occupied directory. It leaves existing downloads in
+unsuffixed directories in place and does not reuse them automatically. The
+`-tmp` directories remain available for inspection and resuming conversion.
+
+Neither pipeline accepts `--output-dir` or automatically mirrors HTML into
+`Reference`. For direct CLI publication, the boolean `--publish` enables
+publication. The converter derives the book destination from the enclosing
+`<Document_Name>-tmp/` directory.
 
 ```powershell
 .\tools\bootstrap\bootstrap.ps1 -Documentation
@@ -232,14 +278,24 @@ and derives the book destination from its enclosing `<Document_Name>-tmp/` direc
 
 <a id="multi-page-web-crawling-engine"></a>
 ##### Multi-Page Web Crawling Engine
-For multi-page web publications, the bootstrapper incorporates an autonomous crawling engine:
+For multi-page web publications, the bootstrapper uses a crawler to download
+pages automatically.
 - **Kuba Winnicki's *Achtung! Amiga*:** Downloads the root index and all 16 technical subpages (`Copper.html`, `Sprite_Hardware.html`, `Freeing_the_DMA.html`, `More_sprites_in_one_line.html`, `Disappearing_sprites.html`, `UHRES_Display.html`, `Speed_Up_Tricks.html`, `Faster_Chipmem_bus_in_PAL_mode.html`, `Other_Amiga_Native_Hardware.html`, `CD32_Controller.html`, `Battery_Backed_Clock.html`, `Desaturation_Control_Bit.html`, `Video_timings.html`, `Links.html`, `Last_Words.html`, `What_is_this_all_about.html`).
 - If the primary live server at `winnicki.net` is unreachable or blocks requests, the crawler automatically switches to the permanent Wayback Machine snapshot mirror.
 
 <a id="processing-raw-documents-into-markdown"></a>
 ##### Processing Raw Documents into Markdown
 
-The bootstrap converters prepare the initial reference knowledge base from raw scans and downloaded HTML. PDF preparation, HTML conversion and book review have separate entry points in the [bootstrap instructions](../../tools/bootstrap/AGENTS.md). Shared Codex authentication, requests and caching are described in the [conversion client README](../../tools/bootstrap/conversion/README.md). Automatic tests follow the [bootstrap converter scope](../../tools/bootstrap/AGENTS.md#converter-testing). Run only the fragment requested by the user; the user assesses generated content.
+The bootstrap converters prepare the initial reference library from raw scans
+and downloaded HTML. PDF preparation, HTML conversion and book review have
+separate entry points. [Bootstrap instructions](../../tools/bootstrap/AGENTS.md)
+
+The converters share Codex authentication, requests and caching.
+[Conversion client README](../../tools/bootstrap/conversion/README.md)
+
+Run only the part requested by the user, who assesses the generated content.
+Automatic tests follow the
+[bootstrap converter scope](../../tools/bootstrap/AGENTS.md#converter-testing).
 
 1. **PDF preparation ([`pdf-to-markdown`](../../tools/bootstrap/pdf-to-markdown/README.md)):** Stage 01 prepares a native/OCR text layer, Stage 02 extracts page images and positioned text, and Stages 03–07 prepare ordered objects, tables, crops and callouts. See the program README for current stage commands and outputs.
 2. **Book review ([`book-to-markdown`](../../tools/bootstrap/book-to-markdown/README.md)):** Review prepared pages, roles and source selections. Accepted recipes support [documentation reconstruction](../../tools/bootstrap/book-to-markdown/README.md#documentation-bootstrap-from-an-accepted-bookjson); local editor acceptance alone does not validate the reconstructed publication.
@@ -272,10 +328,11 @@ Creates or refreshes both independent code graphs:
 .\tools\bootstrap\bootstrap.ps1 -Graphify
 ```
 
-Project document semantics use the host-agent procedure separately. Corpus selection,
-manual reference refresh and query commands are described in
-[Chapter 6](#6-code-structure-relationships-graphify); the owning
-[tool README](../../tools/graphify/README.md) explains command mechanics.
+A separate host-agent procedure extracts relationships from project documents.
+For how to select files, refresh the reference graph manually or query either
+graph, see [Chapter 6](#6-code-structure-relationships-graphify).
+The [tool README](../../tools/graphify/README.md) explains how those commands
+work.
 
 ---
 

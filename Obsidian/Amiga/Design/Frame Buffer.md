@@ -13,51 +13,61 @@ tracked_paths:
 ---
 # Frame Buffer
 
-The frame buffer holds the pixels of a rendered video frame. In the emulator, `FrameBuilder` is a component of [Denise](Denise.md). [Agnus](Agnus.md) supplies display data and beam timing; Denise uses them to build the image in the buffer. The buffer is intended to pass the rendered frame to the [GUI](Application/GUI.md) for display on screen.
+The frame buffer holds rendered video pixels for display by the
+[GUI](Application/GUI.md). [Agnus](Agnus.md) supplies display data and beam
+timing. [Denise](Denise.md) uses them to build the image and stores it in
+its `FrameBuilder` component.
 
-`frame_builder` remains a separate Cargo crate. Denise's [renderer](../../../crates/denise/src/render.rs) selects pixel colors, applies display gating and records collisions. The frame builder receives completed ARGB pixels and stores them in the appropriate field rows; it does not repeat the chip's pixel composition.
+`frame_builder` remains a separate Cargo crate. Denise's
+[renderer](../../../crates/denise/src/render.rs) selects pixel colors, gates display
+output and records collisions. The frame builder's role is to store the
+completed ARGB pixels in the appropriate field rows.
 
 ## Host color conversion
 
-RGB444 channels expand from 0..15 to 0..255 by multiplication by 17, with
-opaque alpha. This host normalization preserves channel order and ignores the
-unused upper four bits. It does not apply gamma or CRT correction.
+For host output, the conversion multiplies each RGB444 channel by 17 to expand
+0..15 to 0..255 and sets alpha to opaque. It keeps the channel order, ignores the
+unused upper four bits and leaves gamma and CRT correction unapplied.
 
 ## Visible storage
 
-The framebuffer contains a fixed presentation rectangle, independently of DIW
-registers, pixel colors, firmware and short or long scanlines and fields.
-PAL publishes 720 x 568 samples; NTSC publishes 720 x 480, selected explicitly
-for this project's presentation. These dimensions are not digital-raster
-requirements of the analog video standards. PAL matches the measured WinUAE
-viewport; NTSC uses the separately selected 720 x 480 WinUAE configuration.
+The framebuffer contains a fixed presentation rectangle. DIW registers, pixel
+colors, firmware and short or long scanlines and fields leave its size and
+position unchanged. The project selects 720 x 568 samples for PAL and 720 x 480
+for NTSC. These are presentation dimensions chosen for the emulator. The PAL
+rectangle matches the measured WinUAE viewport, and the NTSC rectangle uses
+the separately selected 720 x 480 WinUAE configuration. The analog standards
+do not require these digital raster dimensions.
 
-The rectangle starts at receiver CCK 49. PAL starts at receiver line 28;
-NTSC starts at receiver line 21. With OCS NTSC, hires/double-line output and
-centering disabled, the selected rectangle matches WinUAE 6.0.3's unfiltered
-Kickstart 1.3 image exactly: 720 x 480 samples starting at (16, 0) in its
-752 x 484 native capture, without resizing. These coordinates describe this receiver model,
-not calibrated physical beam offsets. Samples before and after the rectangle
-still advance all chip pipelines and collisions. Blanked portions inside it
-are black. The right edge crosses the horizontal counter wrap: the first two
-CCKs of the following short line, or one CCK after a long line, finish the row.
+The rectangle starts at receiver CCK 49. It starts at receiver line 28 for PAL
+and receiver line 21 for NTSC. With OCS NTSC, hires/double-line output and
+centering disabled, the rectangle matches WinUAE 6.0.3's unfiltered Kickstart
+1.3 image exactly. The matching region is 720 x 480 samples starting at (16, 0)
+in the 752 x 484 native capture and needs no resizing. These coordinates describe the receiver model. Their relationship to the
+physical beam remains uncalibrated. Chip pipelines and
+collision detection continue to advance outside the rectangle. Blanked parts
+inside it appear black. The right edge crosses the horizontal counter wrap.
+The first two CCKs after a short line finish the row. After a long line,
+the row ends after one CCK.
 
 A fixed high-resolution, interlaced spatial grid preserves mixed-resolution
-content, including changes within a line. Low-resolution pixels occupy two
-horizontal samples; non-interlaced lines occupy two rows. Interlaced fields
+content, including changes within a line. A low-resolution pixel occupies two consecutive horizontal samples. A
+non-interlaced line occupies two rows. Interlaced fields
 occupy alternate rows. Storage reserves the PAL capacity once, with a fixed
 row stride of 720 samples. The exposed slice contains exactly `width * height`
 samples, without row padding. NTSC reuses the allocation's first 480 rows.
 There is no raw raster buffer or separate cropped/expanded presentation image.
 
 Denise's [frame cursor](../../../crates/denise/src/frame_cursor.rs) translates
-receiver timing into visible `frame_x` and `frame_y` coordinates. It retains
-the preceding row across counter wrap until HBLANK finishes that row; the
-frame builder receives final coordinates and owns storage and published geometry.
-Completed ARGB samples go directly
-to their final columns and, without interlace, both destination rows. Finished
-rows are never moved. Missing row tails and rows not painted by a shorter field
-are cleared in the current parity; the opposite interlaced field remains intact.
+receiver timing into visible `frame_x` and `frame_y` coordinates. After the
+counter wraps, the cursor keeps using the preceding row until HBLANK completes
+it. The frame builder receives the final coordinates. It owns the pixel
+storage and the geometry exposed to the host. It writes completed ARGB
+samples directly to their final columns. With interlace off, it writes each
+sample to both destination rows.
+Finished rows stay where they were written. The builder clears missing row
+tails and rows a shorter field did not paint in the current parity. The
+opposite interlaced field stays intact.
 
 Denise collects the four high-resolution output samples of each CCK before
 storing them together. Pixel composition and the two-sample pipeline still
@@ -65,8 +75,8 @@ advance in their original order. At the visible edge, only complete pairs within
 
 The [GUI](Application/GUI.md#scaling-and-appearance) reads the visible prefix of
 each stored row for texture upload and applies the selected uniform scale.
-Saved previews use the same rectangle. Fixed scales may clip the centered
-image to the viewport; Fit shows it completely. The GUI does not infer a crop
+Saved previews use the same rectangle. A fixed scale may clip the centered image at the viewport edges. Fit shows
+the whole image. The GUI does not infer a crop
 from DIW or colors.
 
 ## Field assembly and snapshots
@@ -74,9 +84,9 @@ from DIW or colors.
 Denise derives field and visible-line boundaries from received equalization,
 blank and horizontal strobes. Counter positions before HBLANK complete the
 preceding visible line; its field parity survives the counter wrap. The first
-partial field does not publish a completed frame. Machine configuration selects
-the fixed standard-specific geometry before execution; frame completion
-increments the host refresh generation without changing its dimensions.
+partial field does not publish a completed frame. Before execution, machine configuration selects the fixed geometry for the
+video standard. Each completed frame increments the host refresh generation
+and keeps the dimensions unchanged.
 The opposite interlaced field remains available, while changing interlace mode
 clears incompatible rows.
 
@@ -85,13 +95,15 @@ together. Restoration preserves both the displayed pixels and subsequent
 mid-line output. No pre-release snapshot compatibility is required.
 
 The host can allocate a reusable spare with `FrameBuilder::new_buffer` and
-hand off the current allocation through `exchange_buffer`. The replacement must
-have the complete fixed storage length. Before swapping allocations, the builder
-seeds the replacement with the current pixels, including the opposite field,
-unfinished rows and unused NTSC capacity. Logical image and assembly state remain unchanged;
-subsequent drawing cannot change the handed-off image. The host must exclusively
-own the spare throughout the operation. This API contains no synchronization or
-host handles, and snapshots continue to capture the builder's current allocation.
+take ownership of the current allocation through `exchange_buffer`. The spare
+must have the complete fixed storage length, and the host must own it
+exclusively throughout the operation. Before swapping allocations, the
+builder copies its current pixels into the spare, including the opposite
+field, unfinished rows and unused NTSC capacity. The swap preserves the
+logical image and assembly state. Later drawing uses the replacement
+allocation and leaves the handed-off image intact. The API has no
+synchronization or host handles. Snapshots continue to capture the builder's
+current allocation.
 
 ## References
 

@@ -13,13 +13,13 @@ and stop.
 
 ## Run detached diagnostics
 
-Bounded detached diagnostics use the selected tool procedure:
-`tools/worktree.ps1 test <name> -Base <commit>`.
-Reproduce intended dirty inputs explicitly; baseline HEAD is insufficient.
-Canonical acceptance stays in the real task checkout. Remove owned disposable
-checkouts from a surviving checkout through `tools/worktree.ps1 remove <name>`
-after confirming active commands, ownership and pending work. Report failed cleanup.
-This is a technical diagnostic procedure, not a public lifecycle dispatcher.
+Use `tools/worktree.ps1 test <name> -Base <commit>` for bounded diagnostics in a
+detached checkout. Reproduce any intended uncommitted inputs explicitly in
+addition to the baseline HEAD. Run acceptance checks in the real task checkout.
+Before removing the disposable checkout, confirm ownership and check for active
+commands and pending work. Run `tools/worktree.ps1 remove <name>` from a
+surviving checkout and report any cleanup failure. This procedure serves
+technical diagnostics only. It does not dispatch public lifecycle operations.
 
 Before removing a real task worktree, preserve useful local outputs using
 [TA-WF-Main-close-task](../../TA-WF-Main-close-task/SKILL.md). The existing worktree script

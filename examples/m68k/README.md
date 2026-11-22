@@ -1,8 +1,13 @@
 # M68000 Standalone Debugger Test Programs
 
-This directory contains standalone Motorola 68000 test programs designed specifically for interactive debugging, stepping, and inspection in the **Amiga 500 Developer Studio** (native GUI and WebAssembly).
+Use these standalone Motorola 68000 test programs to try interactive debugging,
+stepping and inspection in the **Amiga 500 Developer Studio** on the native GUI
+or WebAssembly.
 
-All programs are **100% pure CPU execution**: they require no Amiga OS, Kickstart ROM, or custom chip DMA. They load into RAM at `$001000` and end with an idle spin loop (`halt: BRA.S halt`, machine code `$60FE`), which keeps the CPU running until you pause it.
+Each program runs 100% on the CPU and needs no Amiga OS, Kickstart ROM or custom
+chip DMA. The programs load into RAM at `$001000` and finish their work by
+entering an idle loop (`halt: BRA.S halt`, machine code `$60FE`). The CPU
+continues executing that loop until you pause it.
 
 ---
 
@@ -39,7 +44,7 @@ cargo run -p gui -- --load examples/m68k/fibonacci.bin
 ---
 
 ### 2. `bubble_sort.asm` / `bubble_sort.bin`
-- **Description:** Copies an unsorted array of eight 16-bit words to `$002000` and sorts them in-place using bubble sort.
+- **Description.** Copies an unsorted array of eight 16-bit words to `$002000`, then uses bubble sort to reorder the words at that address.
 - **Entry Address:** `$001000`
 - **Output Area:** `$002000` (16 bytes / 8 words)
 - **Initial Array:** `$0042, $0010, $0099, $0003, $0077, $0025, $0001, $0050`
@@ -47,14 +52,14 @@ cargo run -p gui -- --load examples/m68k/fibonacci.bin
   ```
   $002000: 0001 0003 0010 0025 0042 0050 0077 0099
   ```
-- **Registers to Watch:** `A0` (walking pointer), `D0` / `D1` (compared pair), `D6` (inner pass), `D7` (outer pass).
-- **Suggested Breakpoints:** `$001028` (hits only when an in-place swap occurs!).
-- **Debugger Features Highlighted:** In-place RAM modification diffs (red highlights in Hex Viewer) and CPU history (`Shift+F10`) to inspect earlier register states. Memory remains current; this is not full-machine rewind.
+- **Registers to Watch:** `A0` (pointer advancing through the array), `D0` / `D1` (compared pair), `D6` (inner pass), `D7` (outer pass).
+- **Suggested Breakpoints:** `$001028` hits only when the program swaps the values in place.
+- **Debugger Features Highlighted:** The Hex Viewer highlights changed RAM in red. Use CPU history (`Shift+F10`) to see earlier register states. This rewinds CPU state only and leaves memory at its current value.
 
 ---
 
 ### 3. `sieve_primes.asm` / `sieve_primes.bin`
-- **Description:** Sieve of Eratosthenes finding all prime numbers under 64.
+- **Description.** Uses the Sieve of Eratosthenes to find all prime numbers under 64.
 - **Entry Address:** `$001000`
 - **Output Area:**
   - `$002000..$00203F`: 64-byte sieve buffer ($00 = composite, $01 = prime).
@@ -66,20 +71,20 @@ cargo run -p gui -- --load examples/m68k/fibonacci.bin
 ---
 
 ### 4. `string_reverse.asm` / `string_reverse.bin`
-- **Description:** Demonstrates string manipulations, byte transfers, and palindrome detection:
+- **Description:** Shows how to manipulate strings, transfer bytes and detect a palindrome.
   1. Reverses `"AMIGA 500 RULEZ!"` into `$002040` (`"!ZELUR 005 AGIMA"`).
-  2. Tests `"RACECAR"` for palindrome; sets `D0 = 1` (true) or `0` (false).
+  2. Checks whether `"RACECAR"` is a palindrome. It sets `D0 = 1` for true or `0` for false.
 - **Entry Address:** `$001000`
 - **Output Area:**
   - `$002000`: Original string `"AMIGA 500 RULEZ!"`
   - `$002040`: Reversed string `"!ZELUR 005 AGIMA"`
 - **Registers to Watch:** `D0` (palindrome result: 1 at halt), `A1` / `A2` (reverse pointers), `A3` / `A4` (palindrome pointers).
-- **Debugger Features Highlighted:** Enable the **"ASCII"** checkbox in the Memory Hex Viewer to read the strings directly in ASCII!
+- **Debugger Features Highlighted:** Select **"ASCII"** in the Memory Hex Viewer to read the strings in ASCII.
 
 ---
 
 ### 5. `factorial.asm` / `factorial.bin`
-- **Description:** Subroutine and call stack demonstration. Computes factorials $1!$ through $8!$ as 32-bit integers at `$002000`.
+- **Description.** Demonstrates a subroutine call and the call stack. It computes factorials $1!$ through $8!$ as 32-bit integers at `$002000`.
 - **Entry Address:** `$001000`
 - **Stack Pointer:** `SP` (`A7`) initialized to `$008000`.
 - **Output Area:** `$002000` (32 bytes / 8 32-bit longs)

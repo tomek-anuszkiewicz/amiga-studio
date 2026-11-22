@@ -6,27 +6,30 @@ description: Investigate selected emulation costs and frequent work, returning c
 # Profile the selected execution boundary
 
 Apply [the result contract](../../references/workflow-contract.md).
-Executor: main session.
-Inputs: concrete performance question, exact candidate/build, selected workloads,
-measurement boundary and output scope. A plan-only request supplies no measurement
-authorization and returns that missing prerequisite.
+The main session performs the profiling. It needs a concrete performance
+question, the exact candidate and build, the selected workloads, what the
+measurement covers and the intended output scope. For a plan-only request,
+the main session reports measurement authorization as a missing prerequisite.
 
 1. Read relevant performance/domain requirements, the
    [measurement contract](references/optimization-evidence.md),
    [tool guidance](references/measurement-tools.md) and relevant
    [project examples](references/project-examples.md).
-2. Establish an optimized-build baseline with repeatable workload/warmup and
-   preserved output activity. Profile the selected steady-state thread/interval
-   separately from unprofiled timing. Record build/symbol/input identities.
-3. Inspect frequent paths and small callees hidden by inlining/sampling. Identify
-   repeated decoding, scans, copies, conversions and duplicate work. Include
-   concrete recurring cost below the profiler display threshold when supported.
-   Use bounded diagnostics or generated-code inspection for concrete unresolved cost.
+2. Use an optimized build for the baseline. Choose a repeatable workload and
+   warmup that preserve output activity. Profile the chosen thread and interval
+   once the workload reaches steady state. Keep profiling separate from
+   unprofiled timing. Record the exact build, symbols and inputs.
+3. Inspect frequently executed paths and small functions that inlining or sampling
+   can hide. Look for repeated decoding, scans, copies, conversions and duplicate
+   work. Include recurring costs below the profiler's display threshold when
+   evidence supports them. If a specific cost remains unclear, use a bounded
+   diagnostic or inspect the generated code.
 4. Write `micro-optimizations.md` in the task evidence directory with stable
    candidate IDs, concrete mechanisms, cost/frequency evidence, risks and bounded
    deciding measurements. Include the call tree when function profiling ran.
-5. Return candidates, artifacts, actual measurements and limits in text/JSON.
-   No surviving candidate is a valid outcome; do not invent savings.
+5. Return candidates, artifacts, actual measurements and limits in text and
+   JSON. If the investigation finds no viable candidate, report that outcome.
+   Report savings supported by the evidence.
 
 Stop after investigation. Do not edit production code, start an optimization,
 expand to an unrelated workload campaign or choose a next skill.

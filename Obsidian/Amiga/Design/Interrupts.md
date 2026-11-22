@@ -14,46 +14,55 @@ tracked_paths:
 ---
 # Amiga 500 Interrupt Controller
 
-The interrupt controller is part of [Paula](Paula.md). It collects interrupt requests from the Amiga's chips and peripherals, applies the enable mask, and selects the highest pending priority level. Paula drives the [Motorola 68000](CPU%20Motorola%20M68000.md) interrupt priority lines directly; the emulator's [machine loop](Machine%20Loop.md) delivers the selected level to the CPU.
+The interrupt controller in [Paula](Paula.md) collects requests from the
+Amiga's chips and peripherals. It uses the enable mask to determine which pending requests can reach the
+CPU, then selects the highest priority level among them. On the Amiga, Paula
+drives the interrupt priority lines of the [Motorola 68000](CPU%20Motorola%20M68000.md)
+directly. In the emulator, the [machine loop](Machine%20Loop.md) delivers
+the selected level to the CPU.
 
-The internal [`paula::interrupts` module](../../../crates/paula/src/interrupts.rs) implements the controller. This document is the interrupt chapter of the [Paula specification](Paula.md); its component tests live under `crates/paula/tests/`.
+The internal [`paula::interrupts` module](../../../crates/paula/src/interrupts.rs)
+implements the controller. This chapter belongs to the [Paula specification](Paula.md).
+The controller's component tests live under `crates/paula/tests/`.
 
 An event such as vertical blank, a completed Blitter or disk transfer, an
 audio channel event, or a CIA interrupt sets a pending request. An enable
-mask determines which pending sources can reach the CPU. Paula resolves the
-enabled requests to a priority level; the CPU may then enter the matching
-interrupt exception when that level exceeds its current mask. The original
-request remains pending until software acknowledges it, so delivering a CPU
-interrupt does not erase its cause. [Machine Loop](Machine%20Loop.md) carries
-the resulting level to the CPU.
+mask determines which pending sources can reach the CPU. Paula selects a
+priority level from the enabled requests, and the [Machine Loop](Machine%20Loop.md)
+carries it to the CPU. If the level exceeds the CPU's current mask, the CPU may enter the
+corresponding interrupt exception. The request stays pending until software
+acknowledges it.
 
 CIA-A IRQ, Agnus INT3 and CIA-B IRQ reach Paula as captured active-low
-INT2/INT3/INT6 input levels. Paula samples them after due CPU register writes;
-an asserted level sets its request latch, while release alone does not clear it.
-This explicit model phase makes assertion win a coincident CPU acknowledgment;
-it is not a measured silicon race rule. The motherboard drives the resulting
-IPL level in the same pre-CPU phase, without another blanket CCK delay.
-[Machine Loop](Machine%20Loop.md#connections-advanced-within-the-step) owns those phases,
-and [Paula](Paula.md#register-propagation) owns register/input ordering.
+INT2/INT3/INT6 input levels. Paula applies due CPU register writes before
+sampling the inputs. An asserted level sets its request latch. The latch
+retains the request when the input releases. If an input assertion coincides with a CPU acknowledgment, this ordering
+lets Paula set the latch again when it samples the input. Silicon
+measurements of the race are unavailable here. The motherboard drives
+IPL in the same phase before the CPU runs, with no additional CCK delay.
+[Machine Loop](Machine%20Loop.md#connections-advanced-within-the-step) defines
+the phases, and [Paula](Paula.md#register-propagation) defines the order of
+register writes and input sampling.
 
 ## Register and priority contract
 
 The approved [Paula sync model](Paula.md#rga-synchronization-and-vertb) requests
 VERTB on entry into STREQU, once per field in the normal Agnus sequence.
-Repeated STREQU and STRLONG do not request it again. A captured sync event
-sets VERTB after due INTREQ writes; CPU sync selections act immediately.
+Repeated STREQU and STRLONG do not request it again. A captured sync event sets VERTB after Paula applies due INTREQ writes.
+CPU sync selections act immediately.
 The request remains pending until software clears it, independently of the
 equalization latch. Agnus no longer supplies a decoded VBlank event.
 
-HRM 7 Interrupts and Figure 7-4 define fourteen request sources. INTENA's master
-bit gates delivery without erasing INTREQ. SET/CLR updates only written one
-bits; reads acknowledge nothing. The highest enabled source group selects IPL:
-TBE/DSKBLK/SOFT level 1, PORTS level 2, COPER/VERTB/BLIT level 3, audio level 4,
-RBF/DSKSYN level 5 and EXTER level 6. There is no Paula level-7 source. The
-register latches retain bits 0-14 under the Appendix A common bit assignment;
-only bits 0-13 participate in source arbitration. CPU exception handling does
-not mutate these latches. Local audio/UART request pulses, like delivered input
-levels, are applied after due software writes under the existing CCK policy.
+HRM 7 Interrupts and Figure 7-4 define fourteen request sources. The master bit in INTENA controls delivery. INTREQ retains pending
+requests. SET/CLR affects only bits written as one, and a read leaves
+pending requests intact. The highest
+enabled source group selects IPL. TBE/DSKBLK/SOFT use
+level 1, PORTS level 2, COPER/VERTB/BLIT level 3, audio level 4, RBF/DSKSYN
+level 5 and EXTER level 6. There is no Paula level-7 source. In the common bit
+assignment in Appendix A, the register latches retain bits 0-14 and only bits
+0-13 take part in choosing the source. CPU exception handling leaves those
+latches intact. Under the existing CCK policy, Paula applies local audio/UART
+request pulses and delivered input levels after due software writes.
 
 ## References
 

@@ -12,32 +12,54 @@ related: ["[General Architecture.md](General%20Architecture.md)", "[MemoryBus.md
 
 # Cross-Chip Signals and Action Dispatch Catalog
 
-The Amiga 500 connects its chips through shared buses and dedicated electrical lines. This catalog records the connections that carry behavior across chip or peripheral boundaries. Its board-level evidence is the Commodore A500 Rev. 6A/7 schematic, available as a vector redraw, checked against the custom-chip pin list and hardware manuals. A drawn net establishes connectivity; the manuals explain what a receiver does with it. Neither establishes a general propagation delay or complete event order for an emulator.
+The Amiga 500 uses shared buses and dedicated electrical lines to pass signals
+between chips and peripherals. This catalog traces those connections from the
+source to the receiver. It uses the vector redraw of the Commodore A500 Rev.
+6A/7 schematic to identify the pins connected by each net. The catalog checks
+those connections against the custom-chip pin list and the hardware manuals,
+which explain how the receiving chips respond. These sources leave general
+propagation delays and the emulator's full order of events unresolved.
 
-The hardware tables describe physical connections; the implementation sections identify how the [machine coordinator](Machine%20Loop.md) represents them and where that representation remains incomplete. [DMA](DMA.md) owns slot allocation and arbitration rules; this catalog identifies requests, buses, strobes, and result paths. The [custom-register matrix](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md) identifies addresses selected on `RGA`. Names prefixed by `_` in the schematic or suffixed by `*` in the manuals are active low unless otherwise specified. `DMAL` is explicitly active high. Evidence keys are linked at the end.
+The tables trace requests, buses, strobes, and the paths that carry results on
+the board. The implementation sections show how the emulator represents those
+connections and where the representation is incomplete. [Machine coordinator](Machine%20Loop.md)
 
-The current [Agnus](Agnus.md#motherboard-transport-boundary),
+The DMA specification defines how the machine allocates bus slots and decides
+which request to grant. [DMA](DMA.md)
+
+The custom-register matrix lists the addresses selected on `RGA`.
+[Custom-register matrix](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md)
+
+A name with an initial `_` in the schematic or a trailing `*` in the manuals
+denotes an active-low signal unless specified otherwise. `DMAL` is explicitly
+active high. The reference section links the evidence keys used in the tables.
+
+Each of the chips and peripherals linked below keeps its own signal state in
+`pins.rs` and exposes it through its `pins` field. Their specifications
+describe the current boundaries for signal delivery.
+[Agnus](Agnus.md#motherboard-transport-boundary),
 [Denise](Denise.md#delivered-timing-and-controller-inputs),
 [Paula](Paula.md#pin-transport-and-deferred-receiver-work),
 [CIA](CIA.md#motherboard-pin-boundary),
 [keyboard](Keyboard.md#transport-contract-and-reconstruction-boundary),
 [floppy](Floppy.md#drive-control-and-deterministic-connector-boundary) and
-[game port](Game%20Ports.md#connector-delivery) signal state lives in each
-owner's `pins.rs` and is exposed through its `pins` field. The motherboard
-retains capture/delivery ordering for chip signals and device responses; these
-modules add no propagation stage. Independent game-port direction/quadrature,
-FIRE and digital POT button levels are sampled at the current CCK input phase,
-with arrival at the receiver pin defining their event time. They have no
-additional pending copy; receiver processing and protocol times remain separate.
+[game port](Game%20Ports.md#connector-delivery).
+
+The motherboard controls when it captures and delivers chip signals and device
+responses. The modules add no propagation stage. During the current CCK input
+phase, the motherboard samples the independent game-port direction/quadrature,
+FIRE, and digital POT button levels. The event is timed at arrival at the
+receiver pin. The path holds no additional pending copy. The receiver applies
+its own processing and protocol timing.
 
 ## CPU, Gary and CIA: the synchronous E-clock transaction
 
-The 68000 accesses the 8520s using its **M6800 peripheral protocol**. The
-handshake signals are `VPA*` (Valid Peripheral Address) and `VMA*` (Valid
-Memory Address), together with the CPU-generated `E` clock. They are separate
-from the asynchronous `DTACK*` memory protocol and from Agnus's CCK/CCKQ
-clock outputs. [Motorola Appendix B, B.1 and Figures B-1/B-4/B-5](../Reference/68000%20User's%20Manual/13%20-%20Appendix%20B%20-%20M6800%20Peripheral%20Interface.md)
-defines the transaction; schematic S2/S6 establishes the A500 connections.
+The 68000 uses its **M6800 peripheral protocol** to access the 8520s. It
+synchronizes the access using `VPA*` (Valid Peripheral Address), `VMA*`
+(Valid Memory Address), and its own `E` clock. The asynchronous `DTACK*`
+memory protocol and Agnus's CCK/CCKQ clock outputs are separate from this
+handshake. Schematic S2/S6 shows how the A500 wires the transaction described
+by [Motorola Appendix B, B.1 and Figures B-1/B-4/B-5](../Reference/68000%20User's%20Manual/13%20-%20Appendix%20B%20-%20M6800%20Peripheral%20Interface.md).
 
 | Connection | Producer -> receiver | Physical role |
 | --- | --- | --- |
@@ -47,14 +69,14 @@ defines the transaction; schematic S2/S6 establishes the A500 connections.
 | `VMA*` | 68000 -> U37 selection gates -> CIA `CS*` | The CPU asserts it after synchronizing to E. On S6, U37 (74LS32) ORs `VMA*` with A12 for CIA-A and A13 for CIA-B. A CIA is selected only when both inputs to its gate are low. VMA is not generated by Gary and does not select an internal register itself. |
 | Data bus and `R/W` | Selected CIA <-> CPU | During the active E interval, the selected CIA drives a read or captures write data according to its bus timing. The CPU samples read data at S6; strobes are released at S7 as E falls. |
 
-The CPU starts an ordinary bus cycle, Gary recognizes the peripheral region
-and asserts `VPA*`, and the CPU waits for the appropriate E relationship before
-asserting `VMA*`. Address selection and `VMA*` then select the CIA through U37.
-The transfer occurs during E high, followed by release of the CPU strobes and
-`VMA*`. The CIA does not return `DTACK*` for this access. Motorola explicitly
-prohibits asserting `DTACK*` and `VPA*` together. VPA also participates in
-autovector interrupt acknowledgment; that use must not accidentally select a
-CIA or perform an ICR read.
+The CPU starts an ordinary bus cycle. When Gary recognizes the peripheral
+address region, it asserts `VPA*`. The CPU waits for the appropriate point in
+the E cycle and asserts `VMA*`. U37 uses the address selection and `VMA*` to
+select the CIA. The transfer takes place while E is high. The CPU then releases
+its strobes and `VMA*`. No `DTACK*` returns from the CIA on this access.
+Motorola explicitly prohibits asserting `DTACK*` and `VPA*` together. VPA also
+participates in autovector interrupt acknowledgment, which must neither select
+a CIA nor cause an ICR read.
 
 ```mermaid
 sequenceDiagram
@@ -77,16 +99,16 @@ sequenceDiagram
 
 ### Current implementation: calculated waiting, not simulated VPA/VMA pins
 
-The emulator does **not** execute that electrical handshake. There are no
-runtime VPA/VMA nets or independent U37 gate model. Instead,
-[`MemoryBus::cia_access_ready`](../../../crates/memory_bus/src/cia_registers.rs)
-uses the decoded CIA selection and calls
-[`Cia::synchronize_bus_access`](../../../crates/cia/src/cia.rs). Each CIA has
-a five-phase CCK divider representing E. The first attempt calculates the
-remaining wait until an allowed acceptance phase; CPU retries receive
-`BusResult::WaitState` while the CPU retains its active micro-step. The other
-chips continue stepping. This is a phase-dependent precalculation, not one
-constant delay for every CIA access.
+The emulator calculates when the selected CIA can accept an access. The
+runtime has no VPA/VMA nets or independent U37 gate model. When the CPU tries
+to access a CIA, the memory bus uses the decoded CIA selection and calls the
+CIA's synchronization method. The CIA represents E with a five-phase CCK
+divider and uses the divider phase on the first attempt to calculate how long
+to wait for an allowed acceptance phase. While the wait is pending, CPU
+retries receive `BusResult::WaitState`. The CPU stays on its active micro-step
+while the other chips continue stepping.
+[`MemoryBus::cia_access_ready`](../../../crates/memory_bus/src/cia_registers.rs),
+[`Cia::synchronize_bus_access`](../../../crates/cia/src/cia.rs)
 
 | Modeled E phase | Meaning in the current implementation |
 | --- | --- |
@@ -95,32 +117,37 @@ constant delay for every CIA access.
 | `2` | Falling E; accepted register writes and pending TOD read-latch changes commit. |
 | `3`, `4` | Remaining low E interval. |
 
-For the first-attempt phase `p`, calculate `d = (5 + 1 - p) mod 5`; if
-`d < 3`, add five CCK. Phases `0..4` therefore wait `6, 5, 4, 3, 7` CCK.
-This reproduces the even CPU-phase entries in
+For the first-attempt phase `p`, the CIA calculates `d = (5 + 1 - p) mod 5`.
+If `d < 3`, it adds five CCK. Phases `0..4` therefore wait
+`6, 5, 4, 3, 7` CCK. The formula reproduces the even CPU-phase entries in
 [vAmiga's `Agnus::syncWithEClock`](../../../ref_src/vAmiga/Core/Components/Agnus/Agnus.cpp).
-The three-CCK minimum and phase origin are reference-model choices. They are
-not a measured Gary setup time. Both selected CIAs must become ready before
-either synchronization is consumed. A denied attempt invokes neither a live
-register read nor a write setter, so repeated attempts cannot repeatedly clear
-ICR or insert duplicate writes. Debug inspection does not synchronize or
-advance this state. A phase-1 accepted write commits at the next phase 2;
-that capture boundary is separate from the calculated bus wait and must not
-be added a second time as a wire delay. Pending countdowns and divider phases
-are serialized; reset cancels them. [CIA](CIA.md#runtime-register-capture-and-bus-synchronization)
-owns the complete software contract and existing tests.
+The reference model supplies the three-CCK minimum and the phase origin. A
+measured Gary setup time remains outside that evidence.
 
-This verifies ordering in the CCK abstraction, not all ten CPU-clock entry
-positions, half-clock VPA/VMA transitions, Gary propagation, or the complete
-physical best/worst bus-cycle durations in Motorola's diagrams. The hardware
-requirements remain authoritative; full production timing validation remains
-unverified. Selected [native test cases](../../../ROADMAP.md#native-disk-verification)
-can expose integration faults; finer silicon calibration remains separately
-scheduled. Minimig's Gary uses synchronized
-`ecpu`/`cpuok` gating instead of reproducing the original handshake pins;
-the replacement-project Gary exposes `nVPA` while its separate CIA module
-models E edges. Neither is evidence that the Rust countdown simulates those
-physical circuits.
+If the CPU selects both CIAs, the emulator waits until both are ready before
+consuming either synchronization. A denied attempt performs no live register
+read and calls no write setter. That prevents retries from repeatedly clearing
+ICR or inserting duplicate writes. Debug inspection leaves the synchronization
+and its timing state untouched. Once the CIA accepts a write at phase 1, it
+commits the write at the next phase 2. The calculated bus wait gets the CPU to
+the acceptance phase. The capture boundary is separate from that wait and must
+be excluded from any additional wire delay. The emulator serializes pending
+countdowns and divider phases. Reset cancels them. The CIA specification gives
+the full software contract and the existing tests. [CIA](CIA.md#runtime-register-capture-and-bus-synchronization)
+
+Verification covers the ordering at CCK resolution. The hardware requirements
+still govern timing. Full production timing remains unverified, including all
+ten CPU-clock entry positions, half-clock VPA/VMA transitions, Gary propagation,
+and the complete physical best/worst bus-cycle durations in Motorola's
+diagrams. Selected native test cases can expose integration faults. Finer
+silicon calibration remains scheduled separately.
+[Native test cases](../../../ROADMAP.md#native-disk-verification)
+
+Minimig's Gary uses synchronized `ecpu`/`cpuok` gating in place of the original
+handshake pins. The replacement-project Gary exposes `nVPA` and its separate
+CIA module models E edges. These examples describe how the FPGA projects handle
+synchronization. Whether the Rust countdown simulates the physical circuits
+remains outside the evidence they supply.
 
 ## Shared buses, requests, and beam timing
 
@@ -141,9 +168,27 @@ physical circuits.
 
 ### Paula–Agnus DMA request timing
 
-Agnus marks the beginning of a scan line with a horizontal sync strobe encoded on `RGA` during refresh. The Hardware Reference Manual lists `STRHOR` (`$03C`) for Paula as well as Denise. Thus Paula can synchronize its request sequence from the register-address bus and the shared clocks; it does not need a separate `HSYNC*` input. A [reconstructed Paula circuit](https://github.com/nonarkitten/amiga_replacement_project/blob/master/paula/Paula.v) resets its `DMAL` shift counter when it decodes a horizontal strobe and loads pending disk and audio requests for that line. This is a useful implementation model, not direct proof of Paula's internal sampling edge. The reconstruction also treats `STREQU` and `STRVBL` as horizontal strobes, whereas Appendix B explicitly lists Paula only for `STRHOR`.
+Agnus marks the start of a scan line during refresh by encoding a horizontal
+sync strobe on `RGA`. The Hardware Reference Manual lists `STRHOR`
+(`$03C`) for both Paula and Denise. Paula can receive the strobe on the
+register-address bus and use it with the shared clocks to synchronize its
+request sequence without a separate `HSYNC*` input.
 
-The physical A500 [logic-analyzer capture](https://www.techtravels.org/2026/08/from-flux-to-filenames-335ms-inside-paula/) shows that Paula sends a fixed 16-position frame over the single active-high `DMAL` wire at the start of each line, one bit per CCK (`$00`–`$0F`). Agnus knows the kind of request from its position in this frame; `DMAL` carries no address or channel number. Pending work in Paula's disk word queue or audio state machines supplies the bits. Agnus then decides whether and when to grant the corresponding transfer; the request itself moves no word.
+The reconstructed Paula circuit decodes a horizontal strobe, resets its
+`DMAL` shift counter, and loads the pending disk and audio requests for that
+line. The reconstruction also treats `STREQU` and `STRVBL` as horizontal
+strobes. Appendix B explicitly lists Paula only for `STRHOR`. The circuit
+provides an implementation model. Paula's internal sampling edge still lacks
+direct confirmation. [Reconstructed Paula circuit](https://github.com/nonarkitten/amiga_replacement_project/blob/master/paula/Paula.v)
+
+A logic-analyzer capture from a physical A500 shows Paula sending a fixed
+16-position frame at the start of each line. Paula sends one bit per CCK
+(`$00`–`$0F`) on the single active-high `DMAL` wire. Pending work in Paula's
+disk word queue or audio state machines supplies the bits. The request carries
+no address or channel number on `DMAL`. Agnus uses each bit's position to
+identify the kind of request, then decides whether and when to grant the
+transfer. The word moves only after a grant.
+[Logic-analyzer capture](https://www.techtravels.org/2026/08/from-flux-to-filenames-335ms-inside-paula/)
 
 | `DMAL` position | Meaning | Corresponding transfer opportunity |
 | :--- | :--- | :--- |
@@ -151,7 +196,14 @@ The physical A500 [logic-analyzer capture](https://www.techtravels.org/2026/08/f
 | `$02/$03`, `$04/$05`, `$06/$07` | Three disk pairs: direction bit followed by a request bit, one pair per queued word. For disk reads the direction bits are zero. | Requests at `$03`, `$05`, `$07` led to disk grants at `$07`, `$09`, `$0B` in the capture: four CCK later. |
 | `$08/$09`, `$0A/$0B`, `$0C/$0D`, `$0E/$0F` | One pair for each audio channel, 0 through 3. The reconstruction places a restart-related qualifier first and the channel's data request second. | The second-bit positions align four CCK before the audio transfer positions `$0D`, `$0F`, `$11`, `$13`; this audio timing is inferred from the reconstruction and [DMA slot schedule](DMA.md), not measured by the cited disk capture. |
 
-For disk reads, a queue with one, two, or three waiting words asserts the last request bit, the last two, or all three. The capture verifies the disk request positions and four-CCK request-to-grant interval. The exact audio pair semantics and the treatment of alternate horizontal strobes still need original-hardware confirmation before a pin-level emulator model is fixed. The `AUDxDR` and `AUDxDSR` names in the Hardware Reference Manual describe audio state-machine requests; they are encoded into `DMAL` rather than separate board wires.
+For disk reads, Paula asserts the last request bit when one word is waiting,
+the last two when two words are waiting, and all three when three words are
+waiting. The capture verifies those disk request positions and the four-CCK
+interval from request to grant. The exact meaning of the audio bit pairs and
+Paula's handling of alternate horizontal strobes still need confirmation on
+original hardware before the pin-level emulator model is fixed. In the
+Hardware Reference Manual, `AUDxDR` and `AUDxDSR` name requests from the
+audio state machines. Paula encodes them on the shared `DMAL` wire.
 
 ## Interrupts and reset
 
@@ -183,30 +235,65 @@ For disk reads, a queue with one, two, or three waiting words asserts the last r
 
 ## Interpretation for a machine coordinator
 
-The coordinator needs distinct paths for **requests** (`DMAL`, interrupt inputs), **granted transfers** (RAM address, data direction, `RGA` destination), **sampled inputs** (CIA ports, Denise movement, Paula `POT`, disk read data), and **continuous timing** (clocks, sync, TOD). A pending DMA request is not itself a completed word transfer. The [audio state-machine description](../Reference/Hardware%20Reference%20Manual/05%20-%20Chapter%205%20-%20Audio%20Hardware.md#state-machine-signal-summary) names per-channel requests such as `AUDxDR` and `AUDxDSR`, while the board drawing shows one Paula-to-Agnus `DMAL` line; those names must not become invented per-channel motherboard wires. An interrupt generated within Paula need not become a synthetic motherboard wire merely because software observes it in `INTREQ`. Shared interrupt lines can have more than one source.
+The coordinator needs distinct paths for **requests** (`DMAL`, interrupt
+inputs), **granted transfers** (RAM address, data direction, `RGA`
+destination), **sampled inputs** (CIA ports, Denise movement, Paula `POT`,
+disk read data), and **continuous timing** (clocks, sync, TOD). A pending
+request signals that work is waiting. A DMA transfer moves a word after a grant.
 
-Timing and revision limits are recorded in the comparison below; selected [native test cases](../../../ROADMAP.md#native-disk-verification) do not establish complete production CPU timing validation.
-This catalog does not establish a dedicated Agnus-to-Paula vertical-blank wire.
-See [Interrupts](Interrupts.md), [CIA](CIA.md), [Floppy](Floppy.md) and
-[Game Ports](Game%20Ports.md) for receiver behavior.
+The manual names per-channel requests such as `AUDxDR` and `AUDxDSR`.
+The board drawing shows a single Paula-to-Agnus `DMAL` line, so keep those
+per-channel requests off the modeled motherboard wiring.
+[Audio state-machine description](../Reference/Hardware%20Reference%20Manual/05%20-%20Chapter%205%20-%20Audio%20Hardware.md#state-machine-signal-summary)
+
+Paula can generate an interrupt internally and expose it to software through
+`INTREQ` without a synthetic motherboard wire. More than one source can drive
+a shared interrupt line. The evidence here leaves open whether a dedicated
+Agnus-to-Paula vertical-blank wire exists. The subsystem specifications define
+receiver behavior. [Interrupts](Interrupts.md), [CIA](CIA.md),
+[Floppy](Floppy.md), and [Game Ports](Game%20Ports.md).
+
+The comparison below records the timing and board revision limits. Complete
+production CPU timing validation remains outside the coverage of the selected
+native test cases. [Native test cases](../../../ROADMAP.md#native-disk-verification)
 
 ## Three-reference comparison and selected transport
 
-This comparison concerns connections, protocol boundaries and capture phases.
-The comparison established the transport boundary before engine reconstruction.
-A deterministic source output establishes its route independently of the source
-engine. The linked subsystem specifications now describe reconstructed behavior;
-transport evidence alone does not certify those algorithms.
-The [DMA exchange](DMA.md) and [machine phase contract](Machine%20Loop.md)
-separate that transport evidence from functional device evidence.
+The comparison established the transport boundary before the device engines
+were reconstructed. It examined which components connect, where protocols
+cross between them, and when signals are captured. Observing delivery of a
+deterministic output establishes the signal's route independently of the
+engine that generated it. The linked subsystem specifications describe the
+reconstructed behavior. Evidence for the routes alone leaves the device
+algorithms unverified. The DMA and machine loop specifications distinguish
+the evidence for signal transport from the evidence for device behavior.
+[DMA exchange](DMA.md), [Machine phase contract](Machine%20Loop.md)
 
 The inspected vAmiga tree identifies itself as **4.5.0** in `Core/config.h`.
 
-The following source prefixes identify exact local reference trees:
+Each prefix in the comparison identifies the inspected local reference tree.
 
-- **V**: [vAmiga Core](../../../ref_src/vAmiga/Core), especially `Components/Agnus`, `Components/CIA`, `Components/Paula`, `Components/Denise`, `Ports` and `Peripherals`.
-- **M**: [Minimig FPGA core](../../../ref_src/minimig/software%20and%20firmware/old/source/fpga%20core). `Minimig1.v` instantiates the compared modules. This older core uses extra FPGA bus opportunities and a second `dmas` signal; those are not additional A500 board wires.
-- **R**: [Amiga Replacement Project](../../../ref_src/amiga_replacement_project). These are separate chip projects, not a verified complete A500 board. `cia/cia8520_top.v` instantiates `cia8520`; `denise/Makefile` selects `src/*.v`, where `top.v` instantiates `denise` with ECS enabled and A1000 disabled. Its `unused/joymouse.v` is not that target's active input circuit. `agnus/tf/boards/rev0/Makefile` selects `tf/rtl/reagnus.v`, a pin stub with constant address/BUSEN outputs. Other Makefile-relative RTL paths do not establish a working target. The much larger `agnus/ice/Agnus.v` is an alternate model, not proof that the stub implements DMA. In particular, its clock-domain logic cannot be copied as original-chip delay evidence.
+- **V** refers to [vAmiga Core](../../../ref_src/vAmiga/Core), especially
+  `Components/Agnus`, `Components/CIA`, `Components/Paula`,
+  `Components/Denise`, `Ports`, and `Peripherals`.
+- **M** refers to the
+  [Minimig FPGA core](../../../ref_src/minimig/software%20and%20firmware/old/source/fpga%20core).
+  `Minimig1.v` instantiates the compared modules. The extra bus opportunities
+  and the second `dmas` signal belong to this older FPGA core. Both fall
+  outside the A500 board wiring.
+- **R** refers to the
+  [Amiga Replacement Project](../../../ref_src/amiga_replacement_project).
+  The inspected sources are separate chip projects, and a complete A500 board
+  remains unverified. `cia/cia8520_top.v` instantiates `cia8520`.
+  `denise/Makefile` selects `src/*.v`, where `top.v` instantiates `denise`
+  with ECS enabled and A1000 disabled. That target's active input circuit
+  excludes `unused/joymouse.v`. `agnus/tf/boards/rev0/Makefile` selects
+  `tf/rtl/reagnus.v`, a pin stub that holds its address/BUSEN outputs constant.
+  Other Makefile-relative RTL paths do not establish a working target.
+  The much larger `agnus/ice/Agnus.v` is an alternate model. Its presence leaves
+  the stub's DMA implementation unestablished. Its clock-domain logic supplies
+  evidence about timing in the alternate model. Original-chip delays are
+  outside the scope of that evidence.
 
 | Path and hardware evidence | V model | M model | R model | Rust route / phase and conclusion |
 | --- | --- | --- | --- | --- |
@@ -225,19 +312,27 @@ The following source prefixes identify exact local reference trees:
 | Parallel data, PC, ACK and status: H8/AF, S6 | `CIAB::portAexternal` explicitly leaves the parallel endpoint unimplemented; SP/CNT board coupling is present. | Compared top/CIA modules do not establish a full Centronics endpoint. | CIA top exposes PB/PC/FLAG; `cia_handshake.v` models delayed PC and FLAG synchronization. No attached printer is established. | No parallel connector model or attached endpoint is retained. CIA-A PB/FLAG and CIA-B external PA0..2 remain released high. Port registers and drivers remain available, including CIA-B PA0/PA1 coupling to SP/CNT. The reconstructed [CIA](CIA.md) implements port readback, PC strobe and FLAG interrupt logic with external inputs disconnected. Device-generated ACK/status and full communication remain [12.4](../../../ROADMAP.md#serial-parallel-device-support). |
 | Interrupt priority, reset, LED/filter, video/audio boundary: H7/P/AF/S2/S4/S5/S6/S7 | Paula priority controller and host audio/video ports; CIAs route requests and LED/filter. | `Minimig1.v`, `Paula.v`, reset and Amber/audio paths mix board emulation with FPGA presentation. | Separate chip projects expose IRQ/reset/video/audio outputs with differing completeness; no single verified A500 target. | CIA IRQ and Agnus INT3 outputs -> Paula-owned incoming active-low INT2/INT6/INT3 inputs -> request sampling after due writes. Released input does not acknowledge INTREQ. Same-phase assertion wins CPU clear in this model; silicon race timing remains unverified. IPL reaches CPU in the pre-CPU phase; CPU RESET assertion acts after its CPU phase. A single machine-owned boolean retains keyboard reset for the next CCK; Paula detects entry into STREQU and requests VERTB after due writes; the decoded vertical event has been removed. LED/filter control can be derived on demand from committed CIA-A PRA/DDRA, without cached board fields. Core frame and digital sample buffers are output boundaries; GUI playback, DAC/filter analog response and physical device operation are not certified. |
 
-The comparison establishes the required connector/receiver boundaries, not
-equivalence of the three models. Original-board edges, Gary delays, capacitor
-thresholds, reset pulse width and audio pair details remain unmeasured. In
-particular the early Rust device engines must not be used as independent
-expectations. [Floppy](Floppy.md#autonomous-adf-reads-and-continuation)
-owns autonomous ADF media generation; selected
-[native test cases](../../../ROADMAP.md#native-disk-verification) check guest-visible
-interactions. Attached serial/parallel devices retain their
-[deferred scope](../../../ROADMAP.md#serial-parallel-device-support).
+The comparison establishes the required boundaries between connectors and
+receivers. Equivalence among the three models remains unverified.
+Original-board edges, Gary delays, capacitor thresholds, reset pulse width,
+and details of the audio pairs remain unmeasured. Use evidence independent of
+the early Rust device engines to establish expected behavior.
+
+The floppy drive owns autonomous ADF media generation.
+[Floppy drive](Floppy.md#autonomous-adf-reads-and-continuation)
+
+Selected native test cases check interactions visible to guest software.
+[Native test cases](../../../ROADMAP.md#native-disk-verification)
+
+Support for attached serial and parallel devices remains deferred.
+[Serial and parallel device support](../../../ROADMAP.md#serial-parallel-device-support)
 
 ## Inspected source identity
 
-These SHA-256 values identify the actual files used for the focused comparison. They do not certify the whole source tree, a successful FPGA build, or hardware equivalence. FPGA values match their bootstrap manifests.
+The SHA-256 values identify the files used for the focused comparison. Values
+for FPGA sources match their bootstrap manifests. The record establishes the
+identity of these files. The complete source trees, successful FPGA builds,
+and hardware equivalence remain outside its scope.
 
 <details>
 <summary>Focused source SHA-256 record</summary>
@@ -303,28 +398,39 @@ These SHA-256 values identify the actual files used for the focused comparison. 
 
 ## Reference Documentation & Upstream Ground Truth
 
-- [Motorola M68000 User's Manual, Appendix B](../Reference/68000%20User's%20Manual/13%20-%20Appendix%20B%20-%20M6800%20Peripheral%20Interface.md): Defines E, VPA/VMA synchronization, synchronous transfer phases and autovector use; Figures B-4/B-5 distinguish best/worst timing.
-- [CIA bus router](../../../crates/memory_bus/src/cia_registers.rs), [CIA divider and countdown](../../../crates/cia/src/cia.rs), and [CIA specification](CIA.md): Distinguish implemented waiting/capture from physical handshake simulation.
-- [Minimig Gary](../../../ref_src/minimig/software%20and%20firmware/old/source/fpga%20core/Gary.v) and [replacement-project Gary](../../../ref_src/amiga_replacement_project/gary/Gary.v): Alternative FPGA bus-control representations, not original-board delay measurements.
+- Appendix B defines E, VPA/VMA synchronization, the phases of a synchronous
+  transfer, and autovector use. Figures B-4/B-5 distinguish best- and worst-case
+  timing. [Motorola M68000 User's Manual, Appendix B](../Reference/68000%20User's%20Manual/13%20-%20Appendix%20B%20-%20M6800%20Peripheral%20Interface.md)
+- The implementation calculates the bus wait and captures the access at the
+  specified phase. These sources explain how that works and where the physical
+  handshake is abstracted. [CIA bus router](../../../crates/memory_bus/src/cia_registers.rs),
+  [CIA divider and countdown](../../../crates/cia/src/cia.rs), and
+  [CIA specification](CIA.md)
+- The FPGA implementations show alternative ways to control the bus. They
+  provide no delay measurements for the original board.
+  [Minimig Gary](../../../ref_src/minimig/software%20and%20firmware/old/source/fpga%20core/Gary.v)
+  and [replacement-project Gary](../../../ref_src/amiga_replacement_project/gary/Gary.v)
 
-The `S` keys refer to sheets of the [Commodore A500 Rev. 6A/7 schematic, vector redraw](https://www.amigawiki.org/dnl/schematics/A500_R6.pdf). They identify board nets, pins, and intermediate logic for this revision.
+The `S` keys identify schematic sheets that show the board nets, pins, and
+intermediate logic for this revision.
+[Commodore A500 Rev. 6A/7 schematic, vector redraw](https://www.amigawiki.org/dnl/schematics/A500_R6.pdf)
 
-- **S2** — [processor, Gary, and Agnus (PDF page 3)](https://www.amigawiki.org/dnl/schematics/A500_R6.pdf#page=3): bus, DMA, clock, sync, and CPU interrupt connections.
-- **S4** — [Paula, Gary floppy logic, and audio (PDF page 5)](https://www.amigawiki.org/dnl/schematics/A500_R6.pdf#page=5): DMA request, interrupts, disk data, potentiometers, and audio output.
-- **S5** — [Denise, game ports, and video (PDF page 6)](https://www.amigawiki.org/dnl/schematics/A500_R6.pdf#page=6): movement input multiplexer, buses, sync, and video output.
-- **S6** — [CIA-A/B, keyboard, parallel, and serial (PDF page 7)](https://www.amigawiki.org/dnl/schematics/A500_R6.pdf#page=7): port pins, interrupts, TOD input, and peripherals.
-- **S7** — [floppy and reset connectors (PDF page 8)](https://www.amigawiki.org/dnl/schematics/A500_R6.pdf#page=8): drive wiring, expansion lines, and reset network.
-- **P** — [Hardware Reference Manual, Appendix C](../Reference/Hardware%20Reference%20Manual/11%20-%20Appendix%20C%20-%20Custom%20Chip%20Pin%20Allocation%20List.md): Chip pin names, directions, and active-low convention.
-- **F** — [A500/A2000 Technical Reference, Fat Agnus](../Reference/A500%20A2000%20Technical%20Reference%20Manual/11%20-%20Section%206%20-%20Fat%20Agnus%20Chip.md): DMA request direction, memory control, RGA, and sync behavior.
-- **A** — [Hardware Reference Manual, Appendix A](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md): Refresh-time sync strobes and listed receiving chips.
-- **B** — [Hardware Reference Manual, Appendix B](../Reference/Hardware%20Reference%20Manual/10%20-%20Appendix%20B%20-%20Register%20Summary%20%28Address%20Order%29.md): Register-bus addresses with multiple listed chip recipients.
-- **H7** — [Hardware Reference Manual, Chapter 7](../Reference/Hardware%20Reference%20Manual/07%20-%20Chapter%207%20-%20System%20Control%20Hardware.md): Interrupt sources, levels, and masking.
-- **H2** — [Hardware Reference Manual, Chapter 2](../Reference/Hardware%20Reference%20Manual/02%20-%20Chapter%202%20-%20Coprocessor%20Hardware.md): Copper fetch, WAIT/SKIP and Blitter dependence.
-- **H3** — [Hardware Reference Manual, Chapter 3](../Reference/Hardware%20Reference%20Manual/03%20-%20Chapter%203%20-%20Playfield%20Hardware.md): Bitplane DMA windows and word-to-pixel delivery.
-- **H4** — [Hardware Reference Manual, Chapter 4](../Reference/Hardware%20Reference%20Manual/04%20-%20Chapter%204%20-%20Sprite%20Hardware.md): Sprite control/data pairs and DMA lifecycle.
-- **H5** — [Hardware Reference Manual, Chapter 5](../Reference/Hardware%20Reference%20Manual/05%20-%20Chapter%205%20-%20Audio%20Hardware.md): Audio request/restart/count and sample state.
-- **H6** — [Hardware Reference Manual, Chapter 6](../Reference/Hardware%20Reference%20Manual/06%20-%20Chapter%206%20-%20Blitter%20Hardware.md): DMA priority, CPU bus sharing and Blitter completion.
-- **H8** — [Hardware Reference Manual, Chapter 8](../Reference/Hardware%20Reference%20Manual/08%20-%20Chapter%208%20-%20Interface%20Hardware.md): Game-controller and disk/serial interface behavior.
-- **AF** — [Hardware Reference Manual, Appendix F](../Reference/Hardware%20Reference%20Manual/14%20-%20Appendix%20F%20-%20Complex%20Interface%20Adapters.md): CIA ports, TOD, serial pins, and interrupts.
-- **DI** — [Hardware Reference Manual, Appendix I](../Reference/Hardware%20Reference%20Manual/17%20-%20Appendix%20I%20-%20External%20Disk%20Connector%20Interface%20Specification.md): Drive line names and directions.
-- **H** — [Hardware Reference Manual, Appendix H](../Reference/Hardware%20Reference%20Manual/16%20-%20Appendix%20H%20-%20Keyboard.md): Keyboard serial and reset lines.
+- **S2** shows bus, DMA, clock, sync, and CPU interrupt connections. [Processor, Gary, and Agnus (PDF page 3)](https://www.amigawiki.org/dnl/schematics/A500_R6.pdf#page=3)
+- **S4** shows the DMA request line, interrupts, disk data, potentiometers, and audio output. [Paula, Gary floppy logic, and audio (PDF page 5)](https://www.amigawiki.org/dnl/schematics/A500_R6.pdf#page=5)
+- **S5** shows the movement input multiplexer, buses, sync, and video output. [Denise, game ports, and video (PDF page 6)](https://www.amigawiki.org/dnl/schematics/A500_R6.pdf#page=6)
+- **S6** shows port pins, interrupts, TOD input, and peripherals. [CIA-A/B, keyboard, parallel, and serial (PDF page 7)](https://www.amigawiki.org/dnl/schematics/A500_R6.pdf#page=7)
+- **S7** shows drive wiring, expansion lines, and the reset network. [Floppy and reset connectors (PDF page 8)](https://www.amigawiki.org/dnl/schematics/A500_R6.pdf#page=8)
+- **P** lists chip pin names and directions and explains the active-low convention. [Hardware Reference Manual, Appendix C](../Reference/Hardware%20Reference%20Manual/11%20-%20Appendix%20C%20-%20Custom%20Chip%20Pin%20Allocation%20List.md)
+- **F** explains DMA request direction, memory control, RGA, and sync behavior. [A500/A2000 Technical Reference, Fat Agnus](../Reference/A500%20A2000%20Technical%20Reference%20Manual/11%20-%20Section%206%20-%20Fat%20Agnus%20Chip.md)
+- **A** lists the refresh-time sync strobes and identifies their documented receivers. [Hardware Reference Manual, Appendix A](../Reference/Hardware%20Reference%20Manual/09%20-%20Appendix%20A%20-%20Register%20Summary%20%28Alphabetical%29.md)
+- **B** includes register-bus addresses with more than one listed receiving chip. [Hardware Reference Manual, Appendix B](../Reference/Hardware%20Reference%20Manual/10%20-%20Appendix%20B%20-%20Register%20Summary%20%28Address%20Order%29.md)
+- **H7** explains interrupt sources, levels, and masking. [Hardware Reference Manual, Chapter 7](../Reference/Hardware%20Reference%20Manual/07%20-%20Chapter%207%20-%20System%20Control%20Hardware.md)
+- **H2** explains Copper fetches, WAIT/SKIP, and how the Copper depends on the Blitter. [Hardware Reference Manual, Chapter 2](../Reference/Hardware%20Reference%20Manual/02%20-%20Chapter%202%20-%20Coprocessor%20Hardware.md)
+- **H3** explains bitplane DMA windows and how fetched words become pixels. [Hardware Reference Manual, Chapter 3](../Reference/Hardware%20Reference%20Manual/03%20-%20Chapter%203%20-%20Playfield%20Hardware.md)
+- **H4** describes sprite control/data pairs and the stages of sprite DMA. [Hardware Reference Manual, Chapter 4](../Reference/Hardware%20Reference%20Manual/04%20-%20Chapter%204%20-%20Sprite%20Hardware.md)
+- **H5** describes audio requests, restart, count, and sample state. [Hardware Reference Manual, Chapter 5](../Reference/Hardware%20Reference%20Manual/05%20-%20Chapter%205%20-%20Audio%20Hardware.md)
+- **H6** explains DMA priority, CPU bus sharing, and Blitter completion. [Hardware Reference Manual, Chapter 6](../Reference/Hardware%20Reference%20Manual/06%20-%20Chapter%206%20-%20Blitter%20Hardware.md)
+- **H8** describes game-controller and disk/serial interface behavior. [Hardware Reference Manual, Chapter 8](../Reference/Hardware%20Reference%20Manual/08%20-%20Chapter%208%20-%20Interface%20Hardware.md)
+- **AF** describes CIA ports, TOD, serial pins, and interrupts. [Hardware Reference Manual, Appendix F](../Reference/Hardware%20Reference%20Manual/14%20-%20Appendix%20F%20-%20Complex%20Interface%20Adapters.md)
+- **DI** lists drive line names and directions. [Hardware Reference Manual, Appendix I](../Reference/Hardware%20Reference%20Manual/17%20-%20Appendix%20I%20-%20External%20Disk%20Connector%20Interface%20Specification.md)
+- **H** describes the keyboard serial and reset lines. [Hardware Reference Manual, Appendix H](../Reference/Hardware%20Reference%20Manual/16%20-%20Appendix%20H%20-%20Keyboard.md)

@@ -5,10 +5,11 @@ expand its write scope.
 
 ## Provisional Register Mutation Parameters
 
-Per-register `delay_cck` and `MutationMode` choices are provisional modeling decisions,
-including values adopted from reference emulators. During authorized implementation
-or debugging, test results, traces or timing analysis may justify correction without
-separate requirement-change approval. Update affected code/tests/design together.
-Existing implementation/tests/prose do not make those choices immutable. This
-exception never extends to hardware requirements or
+The choice of `delay_cck` and `MutationMode` for each register is provisional,
+including when the values come from reference emulators or already appear in the
+implementation, tests or prose. During authorized implementation or debugging,
+a correction supported by test results, traces or timing analysis can proceed
+without separate approval to change a requirement. Update the affected code,
+tests and design together. This exception
+never extends to hardware requirements or
 [protected references](protected-verification.md#reference-artifact-integrity).

@@ -15,13 +15,13 @@ task branch into local master, check ancestry with
 `git merge-base --is-ancestor master <task-branch>`. If master is an ancestor of
 the task branch, use `git merge --ff-only <task-branch>`. If the task branch is
 already an ancestor of master, report that its commits are already included.
-For diverged histories, use `git merge --no-ff <task-branch>`. An unexpected Git
-error is a failure to inspect, not permission to force integration. A commit does
-not authorize a push.
+For diverged histories, use `git merge --no-ff <task-branch>`. If Git returns an
+unexpected error, report the inspection failure and stop before any forced
+integration. A push requires separate authorization.
 Do not stash, reset, discard unrelated changes or invent a different target.
 Resolve assigned conflicts under the procedure below; report unresolved decisions
-or failed commands. Report actual verification
-and remaining work without freeze, seal, publication or readiness records.
+or failed commands. Report verification that actually ran and work that
+remains. The report needs no freeze, seal, publication or readiness records.
 
 When explicitly asked to merge local master into a task branch, run
 `git merge master` in that task worktree. This ordinary operation is not a
@@ -39,11 +39,13 @@ conflicts. Documentation resolutions retain unique reasoning under
 [document ownership](../../../references/information-hierarchy.md) and the
 [prose criteria](../../../references/narrative-criteria.md).
 
-Check the selected resolutions and complete the authorized merge only when its
-conflicts are resolved. Stop for a genuine behavior decision or unsafe
-interference; do not invent approval. Report actual verification and any
-unverified intermediate merge. A clean textual resolution does not establish
-semantic agreement of conflict-free documents or the whole combined change.
+Check the selected resolutions and complete the authorized merge only after
+resolving its conflicts. Stop if you need a decision about behavior or
+interference makes the work unsafe. Do not assume approval. Report the
+verification that ran and any intermediate merge that remains unverified.
+A clean textual resolution establishes only that the conflicting text has
+been reconciled. Claims about agreement in documents without conflicts or
+across the combined change require evidence that covers that scope.
 
 ## Worktree removal
 

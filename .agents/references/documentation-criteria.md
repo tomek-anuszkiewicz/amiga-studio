@@ -9,18 +9,18 @@ specifications, plans or procedures. Link/metadata audits retain their narrower
 scope; diary preparation and compaction have their own criteria.
 
 For diary changes, apply the [history criteria](../skills/TA-WF-Step-compact-diary/SKILL.md#history-criteria).
-Check that the account describes performed work and actual evidence from its
-selected committed scope. Pending edits, commit status and task continuation belong
-in plans. Preserve historical verification limits without turning them into a list
-of current tasks.
+Check that the account describes work that happened and reports evidence from
+the selected committed changes. Keep pending edits, commit status and task
+continuation in plans. Preserve historical verification limits without turning
+them into a list of current tasks.
 
 ## Documentation Value
 
-Preserve actual hardware behavior confirmed by authoritative sources, even when it
-is easy to read from code: it remains an independent implementation contract.
-Preserve knowledge whose discovery/explanation would otherwise require substantial
-work: established intent, decisions, consequential trade-offs, external evidence and
-non-obvious constraints.
+Preserve descriptions of hardware behavior confirmed by authoritative sources.
+They define a contract independent of the implementation, even when the behavior
+is easy to read from code. Also preserve knowledge that would take substantial
+work to recover or explain, including established intent, decisions,
+consequential trade-offs, external evidence and non-obvious constraints.
 
 For other implementation descriptions, ask whether the reader can establish the
 fact quickly and directly from code. If so, omit it unless it adds independent
@@ -42,8 +42,9 @@ requires compatible enrichment at the owning specification, even when code makes
 it obvious. Report-only review identifies that work and any resulting readiness
 gap. The user selects any subsequent documentation update.
 
-Code agreement alone does not establish hardware correctness. Distinguish hardware
-facts from modeling choices, assumptions and unresolved evidence. Report contrary
+Hardware correctness requires evidence beyond code agreement. Distinguish what
+sources establish about the hardware from choices made in the emulator model,
+assumptions and questions the evidence leaves open. Report contrary
 behavior, code, specification and source passages under
 [specification compliance](spec-compliance.md); never remove a requirement to match
 incorrect code. Preserve source books, imported references, conversion prompts and
@@ -52,11 +53,14 @@ not rewriting their sources or executable instructions.
 
 ## Select the complete intended scope
 
-Identify baseline, selected paths/hunks, new files and proposed partition. Staging
-does not isolate execution, and unrelated working files cannot satisfy an index
-candidate. For integrated work, identify the delivered commit range and any selected
-working changes, including merge resolutions. Review the complete intended result
-in the selected checkout and report interference or a missing comparison scope.
+Identify the baseline, selected paths and hunks, new files and proposed groups
+of changes. Checks can still read files in the working checkout after you stage
+selected changes. If the results depend on unrelated working files, they leave
+the staged candidate's result unverified. For integrated work, identify
+the delivered commit range and any selected working changes, including merge
+resolutions. Review the complete intended result in the selected checkout.
+Report anything that interferes with the assessment or leaves part of the
+comparison undefined.
 No frozen baseline copy or publication control record is required. Use
 `--no-renames` when selecting paths to expose both endpoints.
 For an initial commit inspect the intended candidate without assuming HEAD exists.
@@ -76,12 +80,13 @@ changes alone do not require implementation changes.
 
 ## Assess meaning and authority
 
-Compare intended versions in both directions: requirements against behavior and
-tests; source-supported behavior and valuable knowledge against retained prose.
+Check that behavior and tests satisfy the intended requirements. Also check that
+the intended prose retains source-supported behavior and valuable knowledge.
 Inspect relevant registers, timing phases, ownership, public contracts and shared
-interactions. Extend scope only for a concrete dependency and record why. Review
-previous wording and approval evidence for changed requirements; final agreement
-between code and prose does not establish authorization.
+interactions. Extend scope only for a concrete dependency, and record why. When
+a requirement changes, inspect its previous wording and look for evidence that
+the user authorized the change. Agreement between the final code and prose
+establishes consistency between them. Authorization requires its own evidence.
 
 Classify findings as unmet requirements, approved changes awaiting implementation,
 compatible knowledge gaps, unsupported claims or genuine specification conflicts.
@@ -101,11 +106,14 @@ knowledge gaps or required implementation/evidence gaps block readiness.
 
 Use [instruction ownership](information-hierarchy.md). Each requirement,
 criterion and procedure has one authoritative home with resolving consumer links.
-Walk a realistic affected invocation through authority, scope, inputs, required
-evidence, failure handling and its stopping boundary. Find duplicate readers,
-contradictory transitions, unreachable steps and active examples for retired
-mechanisms. A shorter root with compulsory transitive reading is not selective
-loading. Review labels and filenames do not establish runtime isolation.
+Trace a realistic invocation of the affected procedure. Identify who authorizes
+it and confirm that its rules come from the sources that own them. Check which
+scope and inputs it uses, which evidence it requires, what happens on failure
+and where it stops. Look for duplicate readers, contradictory transitions,
+unreachable steps and examples that still direct readers to retired mechanisms.
+Shortening the root instructions preserves selective reading only if the linked
+references do not introduce a compulsory reading chain. Check runtime isolation
+from actual behavior. Review labels and filenames cannot establish it.
 
 For instruction/role/skill/verification changes, identify affected reviewer criteria
 and update their routing together. Other lane assessment belongs to the caller;

@@ -1,10 +1,11 @@
 # Working with an AI agent
 
-The engineer selects work through ordinary instructions or named repository skills.
-Requests can cover one operation or a stated sequence, such as planning,
-implementation, review and merge. Shared [instructions](../AGENTS.md) constrain
-scope, authorization, preservation and reporting. The main session matches the
-request and active task to a skill and coordinates only its authorized steps.
+Ask the agent in plain language or name a repository skill. You can request a
+single operation or specify a sequence, such as planning, implementation, review
+and merge. The main session selects a skill based on your request and the active
+task. It coordinates the steps you authorized and follows the shared rules on
+scope, authorization, preservation and reporting.
+[Shared instructions](../AGENTS.md)
 
 ## Find the right guide
 
@@ -19,11 +20,13 @@ request and active task to a skill and coordinates only its authorized steps.
 | How do graph navigation, RAG, hardware sources and screenshots help? | [Knowledge tools guide](../.agents/references/knowledge-tools.md) |
 | Where are telemetry and execution archives documented? | [Capture guide](../tools/workflow/capture/README.md) |
 
-Start with the workflow guide to choose the operation and follow its links to the
-owning skill procedures. Consult the role guide for assignment responsibilities
-and model selection. The engineer can select stages individually or authorize a
-combined sequence; completing an operation does not authorize the next one.
+Use the workflow guide to choose an operation and find its skill procedures.
+The role guide explains who does each assignment and how the main session
+selects models. Authorize stages one at a time or as a sequence. If your
+authorization covers the next stage, the agent can proceed when the current
+stage ends.
 
-Results distinguish actual changes, executed checks, findings and remaining work.
-The [result schema](../tools/workflow/result.schema.json) describes their format;
-it does not verify claims or grant permission for another action.
+The agent's result describes what changed, which checks ran, what the agent found
+and what remains. The result schema defines the format. The agent needs evidence
+for its claims and your permission for further work.
+[Result schema](../tools/workflow/result.schema.json)

@@ -16,14 +16,16 @@ permission to apply every technique.
 
 ## Baseline and frequency
 
-Bind evidence to actual source including local changes, compiler/features/settings,
-executable and matching symbols. A commit ID alone misses dirty inputs. Preserve
-baseline artifacts before a rebuild; never reset another actor's source or index.
-Disposable old diagnostics require checking their workload, boundaries, identities
-and assumptions before reuse.
+Tie the evidence to the actual source, including local changes, and to the
+compiler, features, settings, executable and matching symbols. Include local
+changes when using a commit ID to identify the source. Preserve baseline
+artifacts before rebuilding and leave other contributors' source and index
+entries intact. Before reusing an old disposable diagnostic, check its workload,
+boundaries, identities and assumptions.
 
-Choose a specific boundary: core throughput, instruction cost, GUI responsiveness,
-presentation or browser execution. Separate emulation, buffer conversion,
+Choose the specific boundary for the measurement. It may cover core throughput,
+instruction cost, GUI responsiveness, presentation or browser execution.
+Separate emulation, buffer conversion,
 upload/drawing and pacing. Capped display FPS is not core throughput. Preserve
 normal pixel/audio generation unless explicitly isolating it. Record PAL/NTSC,
 machine configuration, ROM/input identity, fixed frames/instructions, warmup and
@@ -36,11 +38,14 @@ Look for repeated register decoding, empty-capacity scans, temporary arrays/copi
 duplicate consumers, unnecessary conversions and repeated dispatch/checks.
 Inspect optimized instructions when actual cost is uncertain.
 
-Use bounded counters only to resolve unknown calls, changed inputs, occupied entries,
-active channels or writes. Compare diagnostic output/state with the unmodified path;
-measure speed uninstrumented. Idle observations do not establish maximum occupancy.
-Rank candidates by likely total savings, evidence, complexity and risk without a
-minimum percentage. Frequency times estimated cost is prioritization, not proof.
+Use bounded counters only to resolve questions about unknown calls, changed
+inputs, occupied entries, active channels or writes. Compare output and state
+from the diagnostic run with the unmodified path. Measure speed without
+instrumentation. An idle observation shows occupancy at the time of observation.
+Establishing maximum occupancy requires evidence beyond that observation.
+Use frequency times estimated cost to help prioritize candidates. Rank them
+by likely total savings, evidence, complexity and risk, without applying a
+minimum percentage. Use measurements to establish savings.
 
 ## Timing and correctness
 
@@ -53,11 +58,12 @@ effects early. Stable levels may skip redundant delivery; repeated strobes/write
 can remain distinct events. Host input collection does not authorize reduced guest
 sampling. Changing guest timing is a requirement decision.
 
-Keep baseline/candidate compiler, features, workload, warmup and host conditions
-comparable. Repeat unprofiled A/B measurements, interleaving versions such as A-B-B-A
-to expose drift. Avoid concurrent builds, tests and profilers. Report sample count,
-spread and disturbed runs; do not discard inconvenient results.
-Include active cases, transitions and frequent invalidation, not only idle wins.
+Keep the baseline and candidate comparable in compiler, features, workload,
+warmup and host conditions. Repeat unprofiled A/B measurements. Interleave
+versions, for example in A-B-B-A order, to expose drift. Avoid concurrent
+builds, tests and profilers. Report the sample count, spread and disturbed runs
+and retain results that complicate the comparison. Include idle and active
+cases, transitions and frequent invalidation.
 For core changes measure whole-machine execution when available; a small focused
 gain may be useful while whole-machine effect remains below noise.
 Native evidence does not establish browser performance. Preserve native/Wasm builds

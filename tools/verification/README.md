@@ -1,20 +1,24 @@
 # Repository Verification Reference
 
-This reference contains test commands, verification routing and diagnostic details. For an introduction to what each kind of test establishes, read the [testing overview](../../docs/testing.md). Run commands from the repository root. Invoke `python tools/verification/verify.py` without arguments or with `--help` to see the full command tree; `--plan` previews selected commands.
+This reference lists the test commands and explains how the verifier selects
+checks and reports their results. For an introduction to the evidence each kind
+of test provides, read the [testing overview](../../docs/testing.md). Run commands
+from the repository root. To list every command, invoke
+`python tools/verification/verify.py` without arguments or with `--help`. To preview
+the commands for a selection, use `--plan`.
 
 ## Command syntax
 
-Run commands directly from the selected checkout. The
-[case reporting instructions](#case-reports) describe optional registration binding
-and standalone reports.
+From the selected checkout, run `python tools/verification/verify.py` followed by
+one of the command forms below. The installation provides no short `verify`
+alias. Quote values containing spaces. Use each selection keyword at most once.
+The verifier rejects unknown or incomplete command forms before running checks.
 
-Use `python tools/verification/verify.py` followed by one sentence below. There
-is no installed short `verify` alias. Values containing spaces must be quoted.
-Selection keywords are unique; unknown or incomplete sentences fail before
-execution. `case` is a substring filter, including Python qualified test names.
-Use `--exact` with a focused Rust or SingleStep `case` to match the complete
-test or group name. For ordinary Rust tests, pass the full libtest name when it
-includes a module path.
+The `case` selector looks for a substring in the name, including in qualified
+Python test names. To match the complete name for a focused Rust or SingleStep
+`case`, use `--exact`. For an ordinary Rust test whose libtest name includes a
+module path, supply that full name. See the [case reporting instructions](#case-reports)
+for standalone reports and for associating a report with an existing registration.
 
 | Sentence | Scope |
 | --- | --- |
@@ -39,28 +43,30 @@ includes a module path.
 | `runner gui -- OPTIONS` | GUI inspector capture |
 | `runner analyze RUN_DIRECTORY` | Regenerate a stored run analysis without measurement |
 
-`--plan` previews the exact child commands and environment. `--log-level
-full|warn|error` controls output; both options may appear among sentence selectors.
-`--results-dir PATH` places verifier logs in `PATH/verify/` and, for SingleStep,
-reports and history in `PATH/singlestep/`. Relative paths start at the repository
-root. Use a new directory per experiment to keep its SingleStep history separate.
-Other tools, including coverage and benchmarks, retain their own output paths.
+`--plan` previews the exact child commands and their environment. `--log-level
+full|warn|error` controls output. Both options may appear among the command's
+selectors. `--results-dir PATH` puts verifier logs in `PATH/verify/` and SingleStep
+reports and history in `PATH/singlestep/`. The verifier resolves relative paths
+from the repository root. Give each experiment a new directory to keep its
+SingleStep history separate. Other tools, including coverage and benchmarks,
+keep their own output paths.
 `--exact` is accepted only with `test rust crate NAME suite NAME case NAME` or
 `test runner singlestep case NAME`; it does not change the selected build profile
-or vector comparisons. The focused Rust form fails when the named suite executes
-zero or multiple tests. SingleStep `case` names one instruction group; `sample`
-controls how many vectors from that group execute.
+or vector comparisons. The focused Rust command fails if the named suite runs
+zero or multiple tests. In SingleStep, `case` names one instruction group and
+`sample` controls how many vectors from that group run.
 CPU benchmarks use the Cargo benchmark target described below.
-The aggregate SingleStep test saves suite results and calls report aggregation
-once after all selected groups finish, including failing executions.
+The aggregate SingleStep test saves suite results and combines the reports once
+all selected groups finish. This reporting step runs even when a group fails.
 Only `runner gui -- OPTIONS` forwards native switches to a separate program.
-Counts must be positive; the parser rejects unknown or repeated selectors and
-missing or invalid values before execution, with exit code 2.
+Counts must be positive. The parser exits with code 2 before execution if it sees
+unknown or repeated selectors or missing or invalid values.
 The `test_runner` crate contains test and benchmark targets with shared helpers
 in `tests/common/`; chipset baseline recording has no executable entry point.
-Benchmark analysis defaults to full output; other commands default
-to warnings and errors. Focused commands save full logs in `.agent/tmp/verify/`
-by default. Profiles use the same logging path; `--results-dir` selects another directory.
+Benchmark analysis prints full output by default. Other commands print warnings
+and errors by default. Focused commands save full logs in `.agent/tmp/verify/`
+by default. Profiles use the same logging path. Use `--results-dir` to select
+another directory.
 
 Examples:
 
@@ -85,11 +91,13 @@ Skill-owned scripts remain owned by their skills. Bootstrap, conversion,
 indexing, worktree management, diary appending, tool installation and baseline
 recording remain workflow operations with their own entry points.
 
-For an assigned focused check, run the exact documented command directly; no
-separate execution skill is needed. Confirm tools/fixtures, isolate concurrent
-writable build/report outputs, await exit status and inspect actual reports.
-Keep the selected candidate stable. Report failed, interrupted, missing or unrun
-work separately; a check does not authorize repairs, broader tests or coverage.
+For an assigned focused check, confirm that the tools and fixtures are available,
+then run the exact documented command directly. The command needs no separate
+execution skill. Keep the selected candidate stable and give concurrent
+invocations separate writable build and report locations. Wait for the exit
+status and inspect the reports from that invocation. Identify any failed,
+interrupted, missing or unrun work. Authorization covers the selected check.
+Get separate authorization for repairs, broader tests or coverage.
 Use the [CPU diagnostic guidance](../../.agents/references/cpu-diagnostics.md)
 when investigating an isolated instruction mismatch. Full standalone SingleStep
 requires its explicitly selected complete scope; do not expand a diagnostic
@@ -99,10 +107,11 @@ sample into the full suite.
 
 Run `python tools/verification/verify.py check web` during changes to GUI code,
 workspace manifests or the browser build pipeline. Every `commit` profile selects
-the same `WebAssembly build` gate after preflight and before coverage. It invokes
-`tools/web.ps1 build`, including Trunk asset processing and the production shared
-memory flags. The launcher sets `CARGO_BUILD_WARNINGS=deny`, so Cargo lint warnings
-such as unused workspace dependencies fail both ordinary web builds and the gate.
+the same `WebAssembly build` gate after preflight and before coverage. The gate
+invokes `tools/web.ps1 build`, which processes assets through Trunk and uses the
+production shared memory flags. The launcher sets `CARGO_BUILD_WARNINGS=deny`,
+so Cargo lint warnings such as unused workspace dependencies fail both ordinary
+web builds and the gate.
 This does not change the centrally reviewed Clippy permissions. Non-lint Cargo
 warnings are outside this Cargo setting's scope.
 
@@ -115,14 +124,14 @@ executes its selected build/check commands in the current environment.
 
 Run tests and benchmarks directly from the intended checkout. Repository launchers
 write standalone reports by default. If an execution registration was explicitly
-selected, pass its `AMIGA_TEST_TASK_ID` and `AMIGA_TEST_EXECUTION_ID` environment
-variables as described in the [capture guide](../workflow/capture/README.md#case-reports).
+selected, pass its IDs in the `AMIGA_TEST_TASK_ID` and `AMIGA_TEST_EXECUTION_ID`
+environment variables. See the [capture guide](../workflow/capture/README.md#case-reports).
 The retired selected-command launcher is not required.
 
-Test and benchmark launchers print the per-invocation Markdown report at
-startup. It links the native event journal, command output and child reports.
-Each invocation retains its own case attempts and durations. Command wall times
-and coverage retain their existing reports.
+At startup, a test or benchmark launcher prints the path to its Markdown report.
+Open it to find the case attempts and durations for that invocation, with links
+to the native event journal, command output and child reports. The existing
+reports still provide command wall times and coverage.
 
 The primary checkout retains these files when a linked worktree is removed.
 See the [archive layout](../workflow/capture/README.md#case-reports) for
@@ -138,7 +147,8 @@ invocation metadata and interrupted-run recovery.
 | SingleStep and milestone | Original vectors, host seconds, expected guest clocks and comparator failure diagnostics. |
 | `verify.py runner bench`, CPU `measure` and `run_mixed_scene.py` | Original outer attempt seconds and native series. A CPU retry retains its reason and evidence. |
 
-These direct commands select a timed Rust case and Python discovery by file:
+The first command selects a timed Rust case. The second discovers Python tests
+by filename.
 
 ```powershell
 python tools/verification/run_rust_tests.py -- cargo nextest run -p config --test test_config -E 'test(=test_default_config)' --no-tests fail
@@ -165,27 +175,29 @@ repository launchers.
 
 ## Saved SingleStep reports
 
-SingleStep runs default to `.agent/tmp/singlestep/`. With `--results-dir PATH`,
-the verifier uses `PATH/singlestep/`. Inspect the output from the actual run;
-there is no saved milestone verdict that substitutes for execution.
+SingleStep runs place reports in `.agent/tmp/singlestep/` by default. With
+`--results-dir PATH`, the verifier uses `PATH/singlestep/`. Inspect the output of
+the actual run to establish the current verdict. Milestone verification requires
+a new execution.
 
-The single `#[test]` entry point calls `common::singlestep_suite::run_suite()`.
-It runs selected instruction groups on bounded worker threads, catches group
-assertions so every group finishes, then calls `common::reporting::update_global_summary()`
-once before the final assertion. This updates `summary.json`, `summary.md` and
-`diff.md` in the selected results directory inside the same Rust process.
-Each suite writer only persists its own result and rotates its history.
-The summary contains totals,
-a table for all saved suites, and all failing case names. The diff lists cases
-that changed from passed to failed or failed to passed, and suites without a
-previous result. Suites and cases are ordered for readable comparisons.
+The single `#[test]` entry point calls `common::singlestep_suite::run_suite()`
+to run the selected instruction groups on a limited number of worker threads.
+The suite catches group assertion failures so each selected group can finish.
+Each suite writer saves its own result and rotates its own history. Before the
+final assertion, the same Rust process calls `common::reporting::update_global_summary()`
+once to update `summary.json`, `summary.md` and `diff.md` in the selected results
+directory. The summary lists totals, a table of all saved suites and the names
+of all failing cases. The diff lists cases that moved from pass to fail or from
+fail to pass, along with suites that have no previous result. Both reports order
+the suites and cases for comparison.
 
-Open the generated Markdown files directly after a SingleStep run. Each suite
-retains its own latest and previous result, so saved totals may combine different
-executions. Current execution status and current report/vector counts are listed
-separately. Missing Rust completion/report metadata, an unfinished selection or zero
-matching groups is incomplete and returns failure. Test failure status is preserved even if
-finalization also fails. A successful test process cannot hide reporting failure.
+Open the generated Markdown files directly after a SingleStep run. The reports
+show the current run's status, report count and vector count separately. Saved
+totals can span multiple runs because each suite retains its latest and previous
+result. The invocation fails as incomplete if Rust completion or report metadata
+is missing, the selection did not finish or zero groups match. If finalization
+also fails after a test failure, the invocation retains the test failure status.
+If the test process succeeds but reporting fails, the invocation still fails.
 
 Full CMP and filtered CMPM have distinct report identities, for example
 `Real68k::CMP.b` and `Real68k::CMP.b::CMPM`. Diffs require matching selection
@@ -222,7 +234,7 @@ finalization; the launcher prints build/reuse time separately.
 ## CPU benchmark entry point
 
 The active CPU measurement catalog is [benchmarks/m68k](../../benchmarks/m68k/README.md).
-The pinned assembler is installed with `tools/bootstrap/bootstrap.ps1 -Assembler`.
+The command `tools/bootstrap/bootstrap.ps1 -Assembler` installs the pinned assembler.
 Install the monitor dependency with `python -m pip install -r tools/verification/requirements.txt`.
 The decoder inventory remains available for the separate coverage audit.
 
@@ -239,29 +251,31 @@ python tools/verification/verify.py runner analyze benchmarks/results/<run-id>
 
 Each measurement invocation creates one `benchmarks/results/<run-id>/` directory.
 The manifest records the selected cases, effective duration and series count,
-all attempts, host-load observations, failures and completion status. The runner
-executes complete guest programs and resets CPU and memory outside each timer.
+all attempts, host-load observations, failures and completion status. The Rust
+runner executes complete guest programs and resets CPU and memory outside each timer.
 The default is three series of at least 400 ms of timed execution per case.
-The minimum series nanoseconds per target is the selected whole-workload cost;
-all series remain in the case report. No separate guest inspection run is made.
+The runner selects the lowest nanoseconds per target among the series as the
+whole-workload cost. The case report retains all series. The measurement runs
+the guest only as part of the workload, without a separate inspection run.
 Assembly sources and binaries stay under `.agent/tmp/benchmarks/cpu_performance_tests/`.
 
-The external monitor samples the pinned host core during each measured series
-(all logical cores when affinity is unavailable). It subtracts the benchmark
-process's CPU time from busy time and treats more than 20% average external
-busy time in any series, or unavailable observation, as a
-load disturbance. One disturbed attempt triggers one full-case rerun with the
-same settings. Both attempts remain in the manifest, and a second disturbance
-marks the result. Execution failure is recorded as a failed case without retry.
+During each measured series, the external monitor samples the pinned host core.
+It samples all logical cores when affinity is unavailable. The Python benchmark
+launcher uses those samples to subtract the benchmark process's CPU time from
+host busy time. It treats more than 20% average external busy time in any series
+or an unavailable observation as a load disturbance. One disturbed attempt triggers
+one full-case rerun with the same settings. The manifest keeps both attempts, and
+a second disturbance marks the result. If execution fails, the launcher records
+a failed case and skips the retry.
 
-Completed runs automatically write `aggregate.json`, `aggregate.csv`,
+On completion, the launcher automatically writes `aggregate.json`, `aggregate.csv`,
 `anomalies.json`, `comparison.json`, `baseline_comparison.json`,
-`cross_case_anomalies.json`, `a7_comparison.json` and a readable `report.md`. Explicit analysis
-regenerates those reports from stored data without measuring again. An incomplete
-run cannot be analyzed or selected as a comparison. The existing previous-run
-comparison uses the latest earlier locally available, completed full run with
-matching host and settings. Each case additionally requires matching source,
-configuration, image, target count and CPU clocks.
+`cross_case_anomalies.json`, `a7_comparison.json` and a readable `report.md`.
+Explicit analysis reads stored data and regenerates those reports without a new
+measurement. Analysis and comparison require a complete run. For the comparison
+with a previous run, the tool selects the latest earlier completed full run
+available locally with a matching host and settings. Each case must also match
+the source, configuration, image, target count and CPU clocks.
 
 The baseline comparison uses the approved
 `benchmarks/m68k_benchmark_baseline.json` and `.csv` directly, so it also works
@@ -275,20 +289,22 @@ the gap at each mode is compared with the median gap across matched modes.
 Other matched variants receive direct comparisons. The A7 report compares the
 same instruction on A7 with matching A0-A6 workloads after normalizing register
 numbers in the program. Unmatched cases remain visible in machine-readable data.
-The Markdown report lists timing deviations of at least 5% that also exceed
-their measured series spread, baseline regressions and incompatible cases,
-failed or load-disturbed measurements, and series spreads of at least 10%.
-Series-spread rows are collapsed for quick review. These diagnostic limits are
-not pass/fail gates or estimates of statistical confidence. Whole-program times
-include helpers and do not establish isolated opcode latency or CPU correctness.
+The Markdown report lists timing deviations of at least 5% when they also
+exceed their measured series spread. It also lists baseline regressions,
+incompatible cases, failed or load-disturbed measurements and series spreads
+of at least 10%. It collapses the series-spread rows for quick review. These
+thresholds flag measurements for diagnosis. They supply no pass/fail verdict or
+estimate of statistical confidence. Since the whole-program times include helpers,
+they cannot establish isolated opcode latency or CPU correctness.
 
-Only a successful, complete, default-parameter catalog run automatically replaces the
-trackable `benchmarks/m68k_benchmark_current.json` and `.csv` files. It also
+The launcher automatically replaces the trackable
+`benchmarks/m68k_benchmark_current.json` and `.csv` files only after a successful,
+complete catalog run with default parameters. It also
 writes `m68k_benchmark_anomalies.json`, `m68k_benchmark_baseline_comparison.json`,
 `m68k_benchmark_cross_case_anomalies.json`, `m68k_benchmark_a7_comparison.json`
 and `m68k_benchmark_anomaly_report.md`
-beside them in `benchmarks/`. These are the reviewable reports to commit with
-the current snapshot. The run directory retains its own detailed copies.
+beside them in `benchmarks/`. When committing the current snapshot, include these
+reports for review. The run directory retains its own detailed copies.
 Filtered runs and shortened development runs receive reports only in their run
 directories. `runner refresh RUN_DIRECTORY` explicitly replaces matching cases in
 the current snapshot from one completed, undisturbed filtered run made with the
@@ -298,12 +314,12 @@ each replaced case's run ID. The root anomaly reports are regenerated from the
 combined current snapshot. A `cases FILE` selector reads one case ID per line,
 so related instruction and addressing-mode workloads can be measured together
 before refresh. Reanalyzing an older full run cannot replace newer root files.
-The approved baseline remains tracked and is never updated by the runner.
+The approved baseline remains tracked in Git. The runner never updates it.
 After review and explicit approval under the reference-artifact procedure, the
-complete current JSON/CSV pair may become the next baseline, including a
+complete current JSON/CSV pair may become the next baseline. This includes a
 composite snapshot with documented per-case sources. Copy both files together,
-regenerate the baseline comparison and root anomaly reports, then review the
-resulting Git diff. The normal commit verification and commit policy still apply.
+regenerate the baseline comparison and root anomaly reports, and review the
+resulting Git diff. Follow the normal commit verification and commit policy.
 
 ```powershell
 Copy-Item -LiteralPath benchmarks/m68k_benchmark_current.json -Destination benchmarks/m68k_benchmark_baseline.json
@@ -320,24 +336,27 @@ python tools/verification/verify.py commit
 python tools/verification/verify.py milestone
 ```
 
-These are check bundles, not commit or closure operations. The commit profile
-retains quality checks, the browser build, ordinary tests/coverage and selected
-Python tool suites. The milestone profile retains full SingleStep verification.
-Use `--plan` to inspect commands without running them and `--results-dir <path>`
-for a selected log/SingleStep output location.
+These commands run bundles of checks. They leave commits and task closure to
+their respective operations. The commit profile includes quality checks, the
+browser build, ordinary tests and coverage, and selected Python tool suites. The
+milestone profile includes full SingleStep verification. Use `--plan` to inspect
+commands without running them. Use `--results-dir <path>` to select a location
+for logs and SingleStep output.
 
-Every invocation executes its selected checks. There are no frozen trees, saved
-verdicts, reused passing groups, entry-point batch locks, sealed commits or Git
-publication commands. The caller chooses the checkout and keeps shared build and
-coverage outputs isolated. Results report actual commands, failures and unrun work.
-The tool does not infer review, commit, merge, language-audit or cleanup authority.
+The caller chooses the checkout and keeps shared build and coverage outputs
+isolated. Each invocation executes its selected checks and reports the commands
+it ran, failures and work it did not run. The profiles provide no frozen trees,
+saved verdicts, reuse of passing groups, entry-point batch locks, sealed commits
+or Git publication commands. The verifier leaves review, commit, merge,
+language-audit and cleanup authority to their respective operations.
 
 ### Generated timing report
 
 Each ordinary verifier invocation writes a separate `test-runtime-report.md`
-under `.agent/tmp/verification/diagnostics/`. The console prints its path and
-content digest for archive lookup. `--results-dir` controls command logs and
-SingleStep outputs; it does not enable verdict reuse.
+under `.agent/tmp/verification/diagnostics/`. The console prints the report's path
+and content digest for archive lookup. `--results-dir` controls where the
+verifier writes command logs and SingleStep outputs. Each invocation still needs
+its own verdict.
 
 The report records actual command wall times, failures and unrun work. Cargo
 commands include measured build and execution time together unless the native
@@ -351,12 +370,12 @@ Preserve local timing reports, coverage and other ignored outputs with the
 
 ### Bounded parallel execution
 
-The existing Python test runner executes eligible cases with bounded workers and
-retains justified serial cases. Rust test runners retain their native scheduling.
-The verifier runs its selected command groups in order. A failed preliminary/build
-check defers subsequent expensive phases; a failed coverage step stops its bundle.
-Independent coverage exports must not share mutable counters. No batch-lock or
-saved-evidence protocol coordinates separate verifier invocations.
+The existing Python test runner limits the number of workers for eligible cases.
+It runs cases serially where justified. Rust test runners keep their native
+scheduling. The verifier runs its selected command groups in order. A failed
+preliminary or build check defers subsequent expensive phases. A failed coverage
+step stops its bundle. Give independent coverage exports separate writable counters.
+Separate verifier invocations share no batch lock or saved-evidence protocol.
 
 ### Coverage-guided testing
 
@@ -367,11 +386,11 @@ python tools/verification/verify.py test coverage crate denise
 python tools/verification/verify.py test coverage workspace
 ```
 
-Both commands use the commit coverage pipeline and run all ordinary tests of the
-selected packages. The package command measures only the named package, without
-automatically selecting its consumers. Use the workspace command for an explicitly
-requested broad audit. There is no suite or case filter that could make a partial
-test run look like complete package coverage.
+Both commands use the commit coverage pipeline to run all ordinary tests of the
+selected packages. Choose the package command to measure the named package only.
+Packages that depend on it are outside that selection. Use the workspace command
+for an explicitly requested broad audit. Neither command accepts a suite or case
+filter that could present a partial run as complete package coverage.
 
 The pipeline writes three files under `.agent/tmp/coverage/`:
 
@@ -393,25 +412,27 @@ not every platform or conditional build. Code absent from instrumentation is not
 proven covered. The Markdown report identifies source locations; LLVM's summary
 counts remain authoritative because source spans are not the same as LLVM regions.
 
-Read `gaps.md`, inspect the corresponding production behavior and existing
-assertions, then add or extend tests for in-scope gaps under the
+Read `gaps.md` and inspect the corresponding production behavior and existing
+assertions. Before declaring a test missing, check whether an omitted suite
+already tests that behavior. Add or extend tests for gaps within the selected
+scope, following the
 [coverage criteria](../../.agents/references/testing-criteria.md#coverage-and-adequacy-assessment).
-Check whether an omitted suite already tests the behavior before declaring a
-missing test. Rerun coverage after test or production changes; use evidence only
-from a successful run whose source and index remained unchanged. Before an
-authorized commit, review the final commit report with its assertions. Report
-unrelated existing gaps separately; do not suppress them or create a permanent
-coverage exception list. Execution coverage does not establish assertion quality,
-complete hardware scenarios or performance.
+Rerun coverage after test or production changes. Use only evidence from a
+successful run whose source and index remained unchanged. Before an authorized
+commit, review the final commit report alongside the assertions. Report existing
+unrelated gaps separately. Do not suppress them or create a permanent coverage
+exception list. Execution coverage shows what ran in the instrumented code. Assertion quality,
+complete hardware scenarios and performance require other evidence.
 
 ### Selection from changed inputs
 
-The verifier uses staged, unstaged and nonignored new paths for check selection.
-This selects work; it does not create a snapshot or prove source stability.
-Commit selects affected Rust packages and their transitive consumers using
-`impact.py`; unknown inputs or build/verification changes retain the conservative
-full scope. Quality gates keep their existing selection. Full SingleStep remains
-outside the commit profile and inside milestone verification.
+The verifier uses staged, unstaged and nonignored new paths to choose checks.
+That choice saves no snapshot and gives no evidence that the source stayed
+stable. The commit profile uses `impact.py` to identify affected Rust packages
+and packages that depend on them directly or indirectly. Unknown inputs or
+changes to build or verification files keep the profile at its full scope.
+Quality gates follow their existing selection rules. Full SingleStep runs in
+milestone verification, outside the commit profile.
 
 Python tool ownership lives in `commands.py`. Without directory selectors,
 `test python` selects affected tool suites. An explicit directory runs that suite
@@ -425,7 +446,12 @@ ran. Use `check english` for a requested full language scan or `check english fi
 
 ## 1. M68000 SingleStepTests (Generated Reference Verification)
 
-The CPU core is compared against **Tom Harte's `SingleStepTests-680x0`** suite ([`ref_src/SingleStepTests-680x0/68000/v1/`](../../ref_src/SingleStepTests-680x0/68000/v1)), consisting of 124 per-instruction test files and ~1,000,000 randomized vectors generated using a software implementation. The [upstream methodology](https://github.com/SingleStepTests/680x0#methodology) describes the checks applied to that implementation; these vectors are not direct physical 68000 measurements.
+The tests compare the CPU core with **Tom Harte's `SingleStepTests-680x0`** suite
+([`ref_src/SingleStepTests-680x0/68000/v1/`](../../ref_src/SingleStepTests-680x0/68000/v1)).
+The suite contains 124 per-instruction test files and ~1,000,000 randomized vectors.
+A software implementation generated the vectors. They provide no direct physical
+68000 measurements. The [upstream methodology](https://github.com/SingleStepTests/680x0#methodology)
+describes the checks applied to that software implementation.
 
 ### Execution Modes
 
@@ -442,15 +468,15 @@ python tools/verification/verify.py test rust crate test_runner suite test_singl
 ```
 
 #### B. Full Exhaustive Verification (`SINGLESTEP_FULL`)
-Setting `SINGLESTEP_FULL=1` removes the ordinary per-suite sample limit. Every
-executed vector always compares CPU state, instruction clocks and
-transaction callback times, direction, address, size and data. Internal delays
-remain part of the expected timeline. There is no weaker assertion mode. All
-124 JSON files are selected by the named tests; filtered CMPM tests additionally
-exercise subsets of the CMP files. Initial RAM initializes the isolated fixture;
-writes are checked through committed transaction callbacks. The reference's
-`final.ram` is not a separate CPU assertion. The callback interface's timing and
-electrical signal limits remain documented in the
+Setting `SINGLESTEP_FULL=1` removes the ordinary per-suite sample limit. For each
+vector it executes, the test compares CPU state, instruction clocks and the time,
+direction, address, size and data of each transaction callback. Internal delays
+remain part of the expected timeline. Every mode uses the same assertions. The
+named tests select all 124 JSON files. Filtered CMPM tests also exercise subsets
+of the CMP files. The test loads initial RAM into the isolated fixture and checks
+writes through committed transaction callbacks. The reference's `final.ram`
+adds no separate CPU assertion. See the callback interface's timing and
+electrical signal limits in the
 [CPU verification specification](../../Obsidian/Amiga/Design/Verification/CPU%20SingleStepTests.md#12-input-scope-and-complete-verification).
 
 - **PowerShell (Windows):**
@@ -469,20 +495,24 @@ python tools/verification/verify.py test runner singlestep sample 500
 ```
 
 #### D. Automated Archive Decompression (`tools/bootstrap/bootstrap.ps1 -Sources`)
-Running `.\tools\bootstrap\bootstrap.ps1 -Sources` automatically scans for compressed archives (`*.json.gz`, `*.gz`, or `.zip`) under `ref_src/SingleStepTests-680x0/` and decompresses them into native `.json` files in `68000/v1/` using native .NET decompression (idempotent, zero external dependencies).
+Running `.\tools\bootstrap\bootstrap.ps1 -Sources` automatically finds compressed
+archives (`*.json.gz`, `*.gz`, or `.zip`) under `ref_src/SingleStepTests-680x0/`.
+It uses native .NET decompression to produce native `.json` files in `68000/v1/`.
+Repeating the operation leaves the same result, and it has zero external dependencies.
 
 ---
 
 ## 2. Ordinary CPU Wait-State Verification
 
-The existing CPU crate suites use PhysicalMemory and a small recording
-AddressBus wrapper to deny specific transfers zero, once or repeatedly. They
-check read CCK1/write CCK2 waiting, idle phases without accesses, unchanged
-latches or memory during refusal, stable retry identity and one successful
-transfer. Real instruction fixtures cover long halves, address updates, RMW,
-prefetch, stack/exception transfers, MOVEM and MOVEP. Actual bus refusals are
-counted independently of elapsed clocks. Later transfers can wait again after
-an earlier successful access.
+The CPU crate suites use PhysicalMemory and a small AddressBus wrapper. The
+wrapper records transfers and can allow a specified transfer immediately, refuse
+it once or refuse it repeatedly. The tests check that reads wait at CCK1, writes
+wait at CCK2 and idle phases issue no accesses. During a refusal, latches or
+memory stay unchanged. Retries must keep the same transfer identity, and the
+transfer must succeed exactly once. Fixtures that execute real instructions cover
+long halves, address updates, RMW, prefetch, stack and exception transfers, MOVEM
+and MOVEP. The suites count refusals and elapsed clocks separately. An earlier
+successful access can still be followed by a transfer that waits.
 
 ```powershell
 python tools/verification/verify.py test rust crate cpu
@@ -518,8 +548,9 @@ and build dependencies are separate; an omitted kind allows none. Every workspac
 crate needs an entry, including crates with no internal dependencies. The check
 uses `cargo metadata --no-deps --offline --locked` to include inherited, renamed,
 optional and target-specific declarations, even when their features or platforms
-are inactive. New permissions require a deliberate rule change; the checker never
-generates permissions from the current manifests. Removing a dependency is allowed.
+are inactive. Adding a permission requires a deliberate rule change. The checker
+never derives permissions from the current manifests. Removing a dependency is
+allowed.
 External libraries and indirect paths through re-exports are outside this check.
 
 The opcode micro-step coverage test uses the compiled CPU descriptor table and
@@ -530,10 +561,11 @@ It runs with ordinary CPU tests. Formatting remains a separate `check formatting
 
 ## 4. Automatic Reports & Regression Tracking
 
-The SingleStep test helpers save `summary.md` and `diff.md` in the
-[selected report directory](#saved-singlestep-reports) with suite results. Open these files for
-saved suite totals and regression status. Filtered runs can leave older suite
-results in these reports; compare scope and freshness before interpreting totals.
+The SingleStep test helpers save `summary.md`, `diff.md` and the suite results
+in the [selected report directory](#saved-singlestep-reports). Open the Markdown
+files to see saved suite totals and regression status. A filtered run can leave
+older suite results in these reports. Check which suites were selected and when
+their results were written before interpreting the totals.
 
 ```powershell
 # Run sampled SingleStep tests for one opcode with live failure diagnostics
@@ -566,12 +598,12 @@ The cross1 check reads
 check reads the ADF named by `AMIGA_WORKBENCH_ADF`. Both insert their image into DF0
 with write protection and run unthrottled on a PAL A500 with 1 MB of RAM.
 
-The cross1 check verifies original program execution and Copper color changes,
-including repeatability and a no-disk control. The separate Workbench check
-observes startup stages during 60 emulated seconds and saves
-`.agent/tmp/native-disk/workbench.ppm`. Passing it does not establish a correct
-desktop image; inspect the saved frame separately. Neither check performs a
-hardware-reference image comparison.
+The cross1 check verifies that the original program runs and produces Copper
+color changes. It checks repeatability and includes a control run without a
+disk. The Workbench check observes startup stages over 60 emulated seconds and
+saves a frame at `.agent/tmp/native-disk/workbench.ppm`. Assess the desktop image
+by opening that frame. The Workbench verdict covers the startup check alone.
+Neither check compares an image with a hardware reference.
 
 ## Hardware Capture References and Availability
 
@@ -580,13 +612,13 @@ an ADF image or binary payload, a `test.retrosh` script describing configuration
 and frame count, and a hardware reference capture. The former comparator used
 716 x 285 RGB24 viewport captures (612,180 bytes).
 
-The execution runner, script handling, payload injection, viewport extraction,
-comparison commands and dependent chipset throughput benchmark have been
-removed. Neither commit nor milestone runs captures, and there is currently no
-manual capture CLI. A future capture workflow needs an executable workload and
-validated comparison path before the reference assets can establish current
-whole-machine behavior. Retained assets and historical results are not fresh
-execution evidence.
+The repository removed the execution runner, script handling, payload injection,
+viewport extraction, comparison commands and the chipset throughput benchmark
+that depended on them. Neither the commit nor milestone profile runs captures.
+There is currently no manual capture CLI. To use the reference assets as evidence
+of current whole-machine behavior, a future workflow needs an executable workload
+and a validated way to compare its output. The retained assets and historical
+results do not establish a fresh execution.
 
 External source provisioning remains available:
 

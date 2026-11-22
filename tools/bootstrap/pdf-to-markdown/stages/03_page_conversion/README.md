@@ -1,15 +1,19 @@
 # Stage 03: Page Objects and Markdown
 
-For each selected Stage 02 page, send its original-resolution PNG and matching
-text JSON to Codex using the attempt's configured model and effort. The
-[prompt](prompt.md) is the sole source of inference instructions and response
-format. No separate output schema or type enumeration is sent.
+Stage 03 sends the original-resolution PNG and matching text JSON for each
+selected Stage 02 page to Codex. It uses the model and effort configured for
+the attempt. The [prompt](prompt.md) provides all inference instructions and
+defines the response format. The stage sends no separate output schema or type
+list.
 
-The program assigns page-scoped `segment_id` values in returned order and saves
-the response to `03_page_conversion/page_XXXX_segments.json`. The shared artifact
-writer omits empty/default fields.
-Pages run with the configured `llm.concurrency` limit; each worker owns a separate
-Codex client. The coordinator saves each completed page to its own file.
+The program assigns `segment_id` values within each page, in the order Codex
+returns the objects. It saves the response to
+`03_page_conversion/page_XXXX_segments.json`. The shared component that writes
+the file omits empty fields and fields with default values.
+
+The configured `llm.concurrency` limits how many pages can run at once. Each
+worker uses a separate Codex client, and the coordinator saves each completed
+page to its own file.
 
 [Stage 04](../04_filter_page_content/README.md) consumes the saved page objects.
 Changing the prompt does not rewrite existing results.

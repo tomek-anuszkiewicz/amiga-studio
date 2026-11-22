@@ -11,27 +11,30 @@ Role: `TA-hardware-researcher`.
 Inputs: concrete question, selected source families and locations/revisions,
 existing evidence, output scope and any supplied limit.
 
-Use existing evidence when it resolves the question. Start with manuals when the
-assignment does not select another source family. A combined assignment can cover
-several families; keep their claims and gaps distinct and do not expand beyond
-the selected investigation because one source is insufficient.
+Use existing evidence when it resolves the question. Otherwise start with
+manuals unless the assignment selects another type of source. A combined
+assignment can cover several source types. For each type, identify what it
+supports and where evidence is missing. Stay within the selected investigation
+even if one source is insufficient.
 
 ## Manuals
 
-Retrieve focused passages through `rag_search_reference`, not the mixed general
-`rag_search` corpus as hardware-manual evidence. Verify that returned paths remain
-under `Obsidian/Amiga/Reference/` and inspect supporting sections or diagrams.
-If retrieval is unavailable or insufficient, search the same local Reference
-corpus and report that route. Preserve exact book paths, sections and conflicts.
+Retrieve focused passages through `rag_search_reference`. The general
+`rag_search` corpus mixes source types and is unsuitable for hardware manual
+evidence. Verify that returned paths remain under `Obsidian/Amiga/Reference/`
+and inspect the supporting sections or diagrams. If retrieval is unavailable or
+insufficient, search the same local Reference corpus and report how you found
+the passages. Preserve exact book paths, sections and conflicts.
 
 ## Original physical measurements
 
-Inspect original traces, acquisition conditions and supporting passages. When a
-web source is needed, open the original article rather than relying on its search
-snippet. For relevant questions, `site:techtravels.org <signal/question>` can help;
-the [Paula/DMAL logic-analyzer account](https://www.techtravels.org/2026/08/from-flux-to-filenames-335ms-inside-paula/)
-is a source to inspect, not proof of every internal detail. Distinguish measured
-signals from reconstructed circuitry and unavailable clock-phase observations.
+Inspect original traces, the conditions under which they were captured and
+supporting passages. Identify which signals were measured, which circuitry was
+reconstructed and which clock phases lack observations. When a web source is
+needed, open the original article. For relevant questions,
+`site:techtravels.org <signal/question>` can help locate sources such as the
+[Paula/DMAL logic-analyzer account](https://www.techtravels.org/2026/08/from-flux-to-filenames-335ms-inside-paula/).
+Limit claims about internal details to what the evidence supports.
 
 ## Emulator and FPGA models
 

@@ -1,15 +1,14 @@
 # Getting Oriented as a Developer
 
-This guide gives you the project map: how to run the emulator, where its main
-parts live, and where to start investigating a change. Detailed setup procedures,
-command options and subsystem contracts are linked from the relevant sections.
-For an overview of the documentation, start with [the reading guide](README.md).
+Start here to run the emulator, find its main components or investigate a change.
+Each section points to detailed setup procedures, command options or subsystem
+requirements. For the wider documentation, see the [reading guide](README.md).
 
 ## Build and Run
 
-The native emulator is a Rust workspace. A normal build does not require the
-external test collections, hardware manuals or a running knowledge database.
-From the repository root:
+The native emulator builds from a Rust workspace. You can build and launch it
+without external test collections, hardware manuals or a running knowledge
+database. Run the following command from the repository root.
 
 ```powershell
 cargo run --release -p gui
@@ -17,15 +16,16 @@ cargo run --release -p gui
 
 The GUI provides the emulator display and Developer Studio. See the
 [debugger guide](debugger.md) for execution controls and inspection tools.
-A browser frontend is also supported through WebAssembly and Trunk. Installation
-and launch commands are in the
+A browser frontend uses WebAssembly and Trunk. Find its installation and
+launch commands in the
 [environment setup reference](../.agents/references/developer-setup.md#1-build-run).
 
 ## Find the Part You Want to Understand
 
-The [architecture overview](architecture.md) explains the clock model and how the
-CPU, memory bus and custom chips work together. The source is organized into a
-Rust workspace under [crates/](../crates/):
+The architecture overview explains the clock model and how the CPU, memory bus
+and custom chips work together. [Architecture overview](architecture.md)
+
+The table shows where to start in the Rust workspace under [crates/](../crates/).
 
 | Area | Starting point |
 | --- | --- |
@@ -36,10 +36,11 @@ Rust workspace under [crates/](../crates/):
 | Execution inspection and frontend | [debugger](../crates/debugger/) and [gui](../crates/gui/) |
 | External CPU vectors and diagnostic workloads | [test_runner](../crates/test_runner/) |
 
-Follow a concrete behavior through these boundaries. For example, a CPU memory
-access involves the CPU's instruction state, address decoding and bus availability;
-a display issue also involves DMA scheduling and the video chip. A local symptom
-can originate in a different component.
+Trace the behavior through the components involved. For a CPU memory access,
+start with the CPU's instruction state, then follow address decoding and check
+whether the bus is available. For a display issue, also inspect DMA scheduling
+and the video chip. The cause can be in a different component from the one
+where you see the symptom.
 
 ## Use Specifications and References
 
@@ -50,10 +51,10 @@ under `Obsidian/Amiga/Reference/`, while reference emulator sources and generate
 instruction vectors live under `ref_src/`. Large external collections are provisioned
 separately and may be absent in a fresh checkout.
 
-These materials serve different purposes. A project specification states the
-intended model; a hardware manual or silicon trace provides evidence for it;
-a reference emulator offers another implementation to inspect. A disagreement
-needs investigation before changing code or expected results.
+A project specification defines the intended model. Use hardware manuals and
+silicon traces as evidence for the model. A reference emulator gives you another
+implementation to inspect. If the sources disagree, investigate before changing
+code or expected results.
 
 <a id="processing-raw-documents-into-markdown"></a>
 Reference conversion prepares searchable Markdown and assets from raw PDF and
@@ -69,13 +70,13 @@ remains in the [roadmap](../ROADMAP.md#step-11-four-manual-pdf-to-book-json-conv
 
 ## Navigate with RAG and Graphify
 
-RAG searches hardware and project documentation; Graphify follows source symbols,
-call relationships and dependencies. Select its `project` graph for our code and
-allowed documents, or `reference` for imported source code. Bootstrap creates or
-refreshes both graphs. Worktree creation copies the existing graph directories
-from the primary checkout. Both tools can help locate where a write commits or
-which tests exercise a blocked bus access. Verify their answers against the
-relevant source and evidence.
+RAG searches hardware and project documentation. Graphify follows symbols, calls
+and dependencies in source code. In Graphify, select the `project` graph for our
+code and allowed documents or `reference` for imported source code. Bootstrap
+creates or refreshes both graphs. When creating a worktree, the tool copies the
+existing graph directories from the primary checkout. Either RAG or Graphify can
+help you find where a write takes effect or which tests attempt a blocked bus
+access. Check the answers against the relevant source and evidence.
 
 For setup and commands, use the
 [RAG reference](../.agents/references/developer-setup.md#5-domain-hardware-knowledge-local-vector-rag-amiga-rag)
@@ -84,15 +85,19 @@ for investigation, but they are not prerequisites for running the emulator.
 
 ## Make and Evaluate a Change
 
-Start with a specific behavior, reproduce it, and establish which component owns
-it. The [testing overview](testing.md) explains the different kinds of evidence
-available and their limits. For ordinary completion verification, run:
+Start with a specific behavior. Reproduce it and identify the component that owns
+it. The testing overview explains the available evidence and its limits.
+[Testing overview](testing.md)
+
+Run this command for ordinary completion verification.
 
 ```powershell
 python tools/verification/verify.py commit
 ```
 
-This checks the working tree and reports results; it does not create a commit.
-Use [tools/verification/README.md](../tools/verification/README.md) for operational details and focused test
-commands. If you work through an agent, [Working with an AI Agent](ai_agents.md)
-explains how to frame the task, review the result and request a commit.
+The command checks the working tree and reports results. Commit creation is a
+separate action. For the procedure and focused test commands, see
+[tools/verification/README.md](../tools/verification/README.md).
+
+If you work through an agent, see how to frame the task, review the result and
+request a commit. [Working with an AI Agent](ai_agents.md)

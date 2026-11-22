@@ -20,19 +20,22 @@ owns process isolation, bounded scheduling and exclusive serial execution.
 
 ## Scenario design
 
-Map approved requirements and chip/module interactions to existing evidence before
-proposing tests. Identify a small set of meaningful scenarios, suitable levels,
-independent expected results, observation methods and concrete gaps. Prefer reused
-behavioral/integration fixtures to a new framework. Do not impose assertion-count,
-per-function or exhaustive catalogue quotas. Thin declarations and forwarders may
-be protected through parent integration coverage.
+Before proposing tests, check which approved requirements and interactions
+between chips or modules the existing evidence covers. Identify concrete gaps,
+then choose a small set of meaningful scenarios. For each, pick a suitable
+test level, an independent expected result and a way to observe it. Prefer to
+reuse existing behavioral or integration fixtures when the alternative is a
+new framework. Do not set quotas for assertions, tests per function or
+exhaustive scenario catalogues. Integration tests of the parent component may
+cover thin declarations and forwarders.
 
-For each proposed test, name the current project use, observed regression or
-approved requirement it protects and the effect a failure would have. Apply
-this to tests of verification tools as well. A fixture may force a rare failure
-to make it repeatable. Identify which conditions the fixture supplies and which
-are reachable through supported use or covered by the approved requirement.
-Report the demonstrated consequence at its actual severity.
+For each proposed test, explain which current use, observed regression or
+approved requirement it protects and what would happen if the behavior failed.
+Include that explanation for tests of verification tools. A fixture may force a
+rare failure to make it repeatable. Identify the conditions the fixture supplies,
+then identify which conditions can occur through supported use or are covered
+by the approved requirement. Report the demonstrated impact at its actual
+severity.
 Add coverage for a future use when the change introducing it is in scope.
 
 Expected results come from a contract, specification, external reference or explicit
@@ -54,12 +57,14 @@ Maintain production integration coverage when chips gate execution, transfer Chi
 RAM, signal peers or compete for bus slots. A synthetic CPU bus does not establish
 production bus or chipset scheduler correctness.
 
-The four verification tiers are isolated crate behavior, machine/debugger/GUI
-integration, CPU reference vectors, and whole-machine hardware captures. Capture
-execution is currently unavailable. Every executed SingleStep vector compares
-final state, instruction clocks and timed bus transactions with its JSON reference;
-sampling only changes the number of inputs. Report harness limits explicitly.
-No weakened comparison modes or unverified-success skips are permitted. The
+The four verification tiers cover isolated crate behavior, machine/debugger/GUI
+integration, CPU reference vectors and whole-machine hardware captures. Capture
+execution is currently unavailable. For each SingleStep vector it runs, the
+harness compares final state, instruction clocks and timed bus transactions
+with the JSON reference. Sampling changes only how many vectors the harness
+runs. Report harness limits explicitly. All comparison modes must retain the
+required checks, and any skipped case without verification cannot count as a
+success. The
 [CPU verification specification](../../Obsidian/Amiga/Design/Verification/CPU%20SingleStepTests.md)
 owns vector fields, observation boundaries and documented harness limits.
 
@@ -76,9 +81,10 @@ before repair. Converter work instead follows its
 
 ## Coverage and adequacy assessment
 
-For an assigned coverage assessment, inspect canonical coverage's unexecuted
-functions and source spans with the final measured source. Coverage is execution
-evidence, not correctness; assess the assertions protecting the observed behavior.
+For an assigned coverage assessment, use the canonical coverage results to
+find functions and source spans that did not run in the measured final version.
+Coverage shows which code executed. Read the test assertions to determine which
+behavior each test protects.
 
 Check measured suites, targets, conditional compilation, instrumentation and stale
 object mappings before identifying a gap. Evidence from another target may explain
@@ -105,19 +111,20 @@ unreachable code or add assertions that merely mirror the implementation.
 
 ## Evidence review
 
-Separate behavioral tests, static architecture checks, performance measurements and
-diagnostic traces. Source-inspection checks belong in verification tooling;
-measurements in benchmark targets. Generated diagnostics, including the per-attempt
-timing report, stay ignored. Keep the report locator and digest for archival
-provenance. The report stays outside reusable gate artifacts and supplies no pass evidence.
+Distinguish evidence from behavioral tests, static architecture checks,
+performance measurements and diagnostic traces. Put source-inspection checks
+in verification tooling and measurements in benchmark targets. Keep generated
+diagnostics, including the per-attempt timing report, ignored by Git. Preserve
+the report locator and digest so the archived report's origin can be traced.
+The report stays outside reusable gate artifacts and supplies no pass evidence.
 
 When a change adds tests or alters how they run, use the original attempt's
-timing report to check the affected suite. When the runner reports per-case
-elapsed times, identify the slowest changed cases. Otherwise, report suite or
-command elapsed time and state that case timing is unavailable. Compare suite
-elapsed time with a comparable earlier run when available. Report material
-increases or unexpected serial execution, including the affected scope,
-execution mode and observed cost.
+timing report to check the affected suite. If the runner provides elapsed times
+for individual cases, identify the slowest changed cases. Otherwise, report the
+available suite or command elapsed time and state that case timing is
+unavailable. Compare suite elapsed time with a comparable earlier run when
+available. Report material increases or unexpected serial execution, including
+the affected scope, execution mode and observed cost.
 For an expensive Git scenario, distinguish the cost of building its starting
 repository from Git calls made during the scenario. Reuse a prepared fixture
 when it supplies the required starting state.

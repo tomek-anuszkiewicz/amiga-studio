@@ -26,92 +26,105 @@ tracked_paths:
 
 ## Completion entry point
 
-The engineer selects focused checks or the `commit` and `milestone` bundles.
-The commit profile retains its quality, browser-build, ordinary-test and coverage
-selection. The milestone profile runs full SingleStep. Full vectors also remain
-available explicitly for diagnosis; benchmarks remain explicit measurements.
-Profiles do not commit, publish or close a plan, and no profile runs the
-unavailable whole-machine capture comparator. Language scans are separate selected
-operations through `python tools/verification/verify.py check english`.
+The engineer can run focused checks or select the `commit` or `milestone` profile.
+The commit profile selects quality checks, the browser build, ordinary tests
+and coverage. The milestone profile runs full SingleStep. The engineer can
+also request the full vectors for diagnosis or run benchmarks as explicit
+measurements. Commit, publication and plan closure are separate operations.
+The whole-machine capture comparator is unavailable to either profile.
+Select language scans separately through
+`python tools/verification/verify.py check english`.
 
-The [verification reference](../../../../tools/verification/README.md#completion-verification)
-owns commands, profile contents, environment requirements and failure handling.
-Its [input-selection contract](../../../../tools/verification/README.md#selection-from-changed-inputs)
-owns package/consumer selection, full-workspace fallbacks and Python-tool routing.
-Selection covers the complete staged, unstaged and nonignored new candidate,
-including both rename endpoints; staging does not isolate execution.
+The verification reference defines the commands, profile contents, environment
+requirements and failure handling. Its input selection rules determine which
+packages and consumers to check, when to check the entire workspace and how
+to select Python tool checks. The verifier considers the complete candidate.
+That includes staged changes, unstaged changes, new nonignored files and both
+paths of a rename. The other inputs stay in scope when the engineer stages a
+change.
+[Verification reference](../../../../tools/verification/README.md#completion-verification),
+[input-selection contract](../../../../tools/verification/README.md#selection-from-changed-inputs)
 
-Retain these evidence boundaries:
-
-- Ordinary selected crate tests run once under coverage. Reports identify their
-  packages, current source and build target; execution coverage does not establish
-  meaningful assertions, all platforms, branch coverage or hardware accuracy.
-  [Coverage criteria](../../../../.agents/references/testing-criteria.md#coverage-and-adequacy-assessment)
-  owns gap review; the [coverage reference](../../../../tools/verification/README.md#coverage-guided-testing)
-  owns diagnostic measurements and artifacts. There is no percentage gate.
+- The verifier runs the selected ordinary crate tests once under coverage.
+  Reports identify the packages, current source and build target. Execution
+  coverage shows which code the run reached, with no percentage gate. It
+  cannot establish whether assertions are meaningful, whether all platforms
+  or branches are covered, or whether behavior matches hardware. The coverage
+  criteria govern review of gaps, and the verification reference defines
+  diagnostic measurements and artifacts.
+  [Coverage criteria](../../../../.agents/references/testing-criteria.md#coverage-and-adequacy-assessment),
+  [coverage reference](../../../../tools/verification/README.md#coverage-guided-testing)
 - Failed, missing, interrupted or invalidated groups cannot count as passed.
-  Each verifier invocation executes its selected checks again; it does not resume
-  from saved passing groups. The caller keeps the tested source and execution
-  conditions stable and reports interference. The final verdict covers the complete
-  selected candidate, not intermediate commits.
+  Each invocation reruns every selected check, even if a saved result shows
+  that a group passed earlier. The caller keeps the tested source and execution
+  conditions stable and reports interference. The final verdict applies only
+  to the complete selected candidate.
 - For integrated work, the main session identifies the delivered commit range and
   any selected working changes, including merge resolutions. Checks and reviews
   run in the selected checkout. Ordinary Git integration follows the
   [integration procedure](../../../../.agents/skills/TA-WF-Main-close-task/references/local-integration.md),
   without a frozen comparison copy, publication control record or commit bridge.
-- Generated timing reports are outputs, not passing evidence. Build caches may
-  remain, but stale coverage objects and saved SingleStep totals cannot establish
-  that current sources or the requested selection ran.
+- Generated timing reports show how long the work took. Timing data cannot
+  certify a pass. A passing verdict requires valid results from the selected
+  checks. Build caches may remain. Stale coverage objects and saved SingleStep
+  totals cannot establish that the verifier ran the current sources or the
+  requested selection.
 - Full formatting, Clippy, architecture, hardware/code and frontmatter
   gates remain required by the commit profile. Source discovery for quality checks
   includes production and test JavaScript callers. The production Wasm build
   retains its Nightly shared-memory configuration and lint-warning failure policy.
-- Scheduling and failure handling follow the
-  [execution reference](../../../../tools/verification/README.md#bounded-parallel-execution).
-  The verifier has no entry-point batch lock or saved-evidence protocol. The caller
-  isolates shared build and coverage outputs and, after interruption, confirms that
-  earlier processes have ended before reusing those outputs. No lifecycle or Git
-  hooks are used.
+- The caller isolates shared build and coverage outputs because the verifier
+  has no entry-point batch lock or saved-evidence protocol. After an
+  interruption, the caller confirms that earlier processes have ended before
+  reusing the outputs. The operation uses no lifecycle or Git hooks. The
+  execution reference defines scheduling and failure handling.
+  [Execution reference](../../../../tools/verification/README.md#bounded-parallel-execution)
 
-Selected [behavior review](../../../../.agents/skills/TA-WF-Step-review-behavior/SKILL.md)
-includes scoped specification compliance and, for an assigned whole-stage parity
-assessment, unchanged affected code/interactions and the full workspace-wide
-static semantic comparison. Selected
-[documentation review](../../../../.agents/skills/TA-WF-Step-review-docs/SKILL.md) includes
-retained source-backed knowledge, requirement authority and the full recursive
-Design link/metadata audit. Broader matching evidence can satisfy overlapping
-scoped requirements; a static pass alone does not prove semantic parity.
-[Independent review](../../../../.agents/references/review-common.md) retains its
-selected scope. The mechanical verifier does not execute or replace these
-assessments. They report findings without repairs or automatic next stages.
-Diary and roadmap closure remain separate duties.
-Required unresolved gaps still block readiness when the caller has not selected
-their repair.
+When selected, behavior review checks specification compliance within its
+assigned scope. A whole-stage parity assignment also covers affected code
+and interactions that the change left untouched. It includes a static
+comparison of semantics across the full workspace. Evidence from the broader
+assignment can satisfy overlapping scoped requirements if it checks the same
+requirements. A static pass alone cannot establish semantic parity.
+[Behavior review](../../../../.agents/skills/TA-WF-Step-review-behavior/SKILL.md)
 
-Host pacing, FPS and graphical guest presentation are evaluated manually;
-dedicated automated graphical execution/image campaigns are retired. Independent
-CPU, chip, bus, input, host-lifecycle, display-state and continuation tests remain
-available. Audio captures retain their spectral and attachment acceptance limits.
+When selected, documentation review checks whether documents retain
+source-backed knowledge and respect the authority of requirements. It also
+performs the full recursive audit of Design links and metadata.
+[Documentation review](../../../../.agents/skills/TA-WF-Step-review-docs/SKILL.md)
+
+The mechanical verifier leaves these assessments to independent reviewers
+working within the selected scope. They report findings. Repairs, subsequent
+stages, and diary and roadmap closure are separate duties. Required gaps still
+block readiness even if the caller did not select repairs.
+[Independent review](../../../../.agents/references/review-common.md)
+
+Engineers evaluate host pacing, FPS and the guest's graphical presentation
+manually. The dedicated automated graphical execution and image campaigns are
+retired. Independent CPU, chip, bus, input, host-lifecycle, display-state and
+continuation tests remain available. Audio captures still have spectral and
+attachment acceptance limits.
 
 ### Roadmap and milestone completion
 
-The engineer defines the scope and selected verification for milestone closure.
-Report completed and unfinished behavior and actual tests, semantic assessment,
-documentation, diary and roadmap work. A passing test profile alone does not prove
-all intended behavior is complete. Preserve unfinished requirements when removing
-completed roadmap work. Review stage-wide interactions when that assessment is
-selected; changed-file-only evidence does not establish that wider coverage.
+The engineer chooses the scope and verification for milestone closure. The
+report identifies completed and unfinished behavior and records the tests,
+semantic assessments, documentation, diary and roadmap work actually done.
+A passing test profile alone cannot establish that all intended behavior is
+complete. Keep unfinished requirements when removing completed roadmap work.
+If the engineer selects a stage-wide assessment, review interactions throughout
+the stage. Checking only changed files cannot establish that wider coverage.
 
 There is no fixed sequence of review lanes, checkpoints, frozen candidates or
-publication receipts. Selected task delivery uses ordinary
-Git merge and the separate
-[task closure](../../../../.agents/skills/TA-WF-Main-close-task/SKILL.md) operation.
-Final tests and independent review on local master, including verification of
-corrective commits, precede task closure. Closure preserves outputs/context,
-removes the selected merged task resources and refreshes the project Graphify
-structure on final master. Failed or incomplete final evidence blocks closure;
-graph-refresh failure leaves a partial closure with successful cleanup retained.
-Document-semantic freshness is reported separately from structural refresh.
+publication receipts. Selected task delivery uses ordinary Git merge and
+a separate closure operation. Run final tests and independent review on local
+master and verify any corrective commits before closure. Closure preserves
+outputs and context, removes the selected merged task resources and refreshes
+the project Graphify structure on final master. Failed or incomplete final
+evidence blocks closure. If the graph refresh fails, closure is partial and
+the completed cleanup stands. The report records the freshness of document
+semantics separately from the structural refresh.
+[Task closure](../../../../.agents/skills/TA-WF-Main-close-task/SKILL.md)
 [Milestone closure](../../../../.agents/skills/TA-WF-Main-close-milestone/SKILL.md) runs the
 full milestone profile, removes the selected completed roadmap item after
 success and compacts its settled diary history through
@@ -121,14 +134,19 @@ to rank unusual words in the final project documentation, assess their use in
 context and suggest vocabulary exclusions. This editorial report does not change
 the test profile or set a word-frequency threshold for completion. The standalone
 `verify.py milestone` command runs tests; the milestone skill includes the report.
-Ordinary task commits do not require changelog entries or diary compaction.
-Preserve useful test reports and
-other local outputs before removing its task worktree with the
-[artifact tool](../../../../tools/artifacts/README.md).
+Ordinary task commits require neither changelog entries nor diary compaction.
+Use the artifact tool to preserve useful test reports and other local outputs
+before removing the task worktree.
+[Artifact tool](../../../../tools/artifacts/README.md)
 
 ## 1. Architectural Purpose & Testing Pyramid
 
-The four tiers describe different evidence boundaries. Ordinary crate and integration tests, external CPU vectors and ordinary CPU wait checks are available. Whole-machine capture execution is deferred until a new entry point exists. Passing one tier establishes only the properties its fixtures and assertions check. Runtime code and external test suites remain separate:
+Each of the four tiers checks specific properties using its own fixtures and
+assertions. A passing result establishes only those properties. Ordinary
+crate and integration tests, external CPU vectors and ordinary CPU wait
+checks are available. Whole-machine capture execution requires a future
+entry point. The emulator's runtime code and external test suites remain
+separate.
 
 ```mermaid
 graph TD
@@ -164,10 +182,11 @@ graph TD
 
 ## 2. Unit, Integration, and CPU/Bus Verification
 
-Ordinary CPU tests cover phase-specific waiting, stable retries, counted delay,
-and transfer side effects through PhysicalMemory and a small recording wrapper.
-They do not enumerate SingleStep vectors or DMA schedules; production arbitration
-is tested separately. See [CPU wait coverage](CPU%20SingleStepTests.md#8-ordinary-cpu-wait-state-tests).
+Ordinary CPU tests use PhysicalMemory and a small wrapper that records transfers.
+They check the phase in which the CPU waits, stable retries, the delay it counts
+and transfer side effects. Their scope excludes SingleStep vectors and DMA
+schedules. Separate tests cover production arbitration.
+[CPU wait coverage](CPU%20SingleStepTests.md#8-ordinary-cpu-wait-state-tests)
 
 ### Tier 1: Isolated Unit Tests (L1 — Fast, Unit Scope)
 - **Scope**: Single crate, single module in complete isolation. Zero multi-chip machine state.
@@ -179,22 +198,23 @@ is tested separately. See [CPU wait coverage](CPU%20SingleStepTests.md#8-ordinar
   - CPU instruction, memory, wait-state, and exception behavior ([`crates/cpu/tests/`](../../../../crates/cpu/tests)).
   - Configuration and physical memory behavior ([`crates/config/tests/`](../../../../crates/config/tests), [`crates/physical_memory/tests/`](../../../../crates/physical_memory/tests)).
 
-Custom-chip and peripheral tests should check register behavior, algorithms,
-and boundary conditions against HRM-derived expectations in isolated fixtures.
-Production-machine integration tests check the cross-chip interactions they
-assert, but do not establish those isolated behaviors.
+Custom-chip and peripheral tests should use isolated fixtures to check
+register behavior, algorithms and boundary conditions against expectations
+drawn from the HRM. Production-machine integration tests establish only the
+cross-chip interactions they assert. The native disk work extends component
+coverage by checking machine outputs for selected original ADF programs
+against independent expectations.
 [Native disk verification](../../../../ROADMAP.md#native-disk-verification)
-extends component coverage to independently expected machine outputs for
-the selected original ADF programs.
 
-The [BLEP generator tests](../../../../tools/blep_generator/tests/) cover its
-numerical helpers and regenerate all four PAL curves in an isolated directory.
-Every CSV sample is compared with the accepted files under
-[`tools/blep_generator/output/`](../../../../tools/blep_generator/output/).
-This regression check preserves the accepted curves without network access or
-WinUAE sources; it does not independently establish hardware accuracy. The
-[generator reference](../../../../tools/blep_generator/README.md) describes the
-separate optional comparison chart using an explicitly supplied WinUAE table.
+The BLEP generator tests cover the numerical helpers and regenerate all four
+PAL curves in an isolated directory. They compare every CSV sample with the
+accepted files under [`tools/blep_generator/output/`](../../../../tools/blep_generator/output/).
+This regression check preserves the accepted curves without network access
+or WinUAE sources. It supplies no independent evidence of hardware accuracy.
+[BLEP generator tests](../../../../tools/blep_generator/tests/)
+
+The generator can also produce an optional comparison chart when the caller
+explicitly supplies a WinUAE table. [Generator reference](../../../../tools/blep_generator/README.md)
 
 ### Tier 2: Headless Multi-Crate Integration Tests (L2 — Subsystem Orchestration)
 - **Scope**: Multi-crate interaction, bus routing, and system loop orchestration.
@@ -235,11 +255,11 @@ If any answer is **YES**, identify integration protection for that coordination.
 | **CIAs** | Keyboard serial shift to CIA-A `SDR`, Timer A/B underflow Level 2/6 IRQs, horizontal TOD (CIA-B), vertical TOD 50 Hz tick (CIA-A) |
 
 
-Debugger, GUI and router integration suites live with their
-[debugger](../../../../crates/debugger/tests/), [GUI](../../../../crates/gui/tests/)
-and [MemoryBus](../../../../crates/memory_bus/tests/) owners. Their presence is
-not evidence that every interaction is asserted. Debugger history stores CPU
-states; full-machine rewind remains pending.
+The debugger, GUI and MemoryBus crates each contain their own integration
+suites. Each suite establishes only the interactions its tests assert.
+Debugger history stores CPU states. Full-machine rewind remains pending.
+[Debugger](../../../../crates/debugger/tests/), [GUI](../../../../crates/gui/tests/),
+[MemoryBus](../../../../crates/memory_bus/tests/)
 
 ### Tier 3: Generated CPU Reference Vectors and Verification Harness (L3)
 - **Scope**: CPU state, instruction clocks and timed callbacks against external 68000 vectors. Ordinary crate tests own focused waiting invariants.
@@ -259,13 +279,14 @@ and runs with ordinary CPU tests.
 
 ## 3. Tier 4: Whole-Machine Hardware Capture Verification
 
-Whole-machine verification should load an executable hardware workload, run it
-for specified frames, extract the rendered 716 x 285 RGB24 viewport, and compare
-it with the vAmigaTS reference images using a validated comparison method.
+Whole-machine verification should load an executable hardware workload and run
+it for the specified number of frames. It should then extract the rendered
+716 x 285 RGB24 viewport and compare it with the vAmigaTS reference images
+using a validated method.
 
-Whole-machine capture execution/comparison remains unavailable; see the
-[external hardware verification work](../../../../ROADMAP.md#external-hardware-verification).
-Neither completion profile executes captures or chipset throughput measurements.
+Whole-machine capture execution and comparison are still unavailable. Both
+completion profiles exclude captures and chipset throughput measurements.
+[External hardware verification work](../../../../ROADMAP.md#external-hardware-verification)
 
 A requested integration sweep uses the available production machine tests.
 Classify failures by observed mechanism, repair demonstrated causes, and rerun
@@ -274,12 +295,12 @@ missing hardware comparison.
 
 ## 4. Diagnose Mechanisms Before Consolidating Fixes
 
-A timing offset or local condition that makes one test pass can conceal the
-wrong bus phase, signal propagation or state transition. Reproduce an isolated
-failure and establish its mechanism before scaling a fix. Investigate a shared
-cause when the evidence connects failures; unrelated defects need not collapse
-into one hardware law. Preserve justified state-machine conditions while removing
-temporary compensating patches.
+A timing offset or local condition that makes a test pass can conceal the
+wrong bus phase, signal propagation or state transition. Isolate and reproduce
+the failure and determine what causes it before extending the fix. Investigate
+a shared cause when the evidence connects failures. Unrelated defects can
+have separate hardware explanations. Keep justified state-machine conditions
+when removing temporary patches that compensate for the defect.
 
 When exploratory changes accumulate, compare symptoms, patch locations, and
 applied mechanisms to determine whether they share an upstream cause. Scope,
@@ -291,7 +312,9 @@ reproduction and reference conflicts follow
 
 ## 5. Select Evidence for the Changed Behavior
 
-Select existing checks for the actual change. The following categories describe available evidence and remaining prerequisites; they are not a sequence to execute after every edit. Commit and milestone profiles use the triggers above.
+The table shows what each check can establish and what it requires. Use it to
+choose only the existing checks that apply to the actual change. Follow the
+triggers above for commit and milestone profiles.
 
 | Level | Verification Tier | Primary Tool / Command | Pass Criteria |
 | :---: | :--- | :--- | :--- |
@@ -305,15 +328,18 @@ Select existing checks for the actual change. The following categories describe 
 
 ## 6. Structural Conventions & Invariants
 
-[Testing criteria](../../../../.agents/references/testing-criteria.md) owns external
-suite placement and behavioral protection. Use `test_` names for test files and
-subdirectories for shared helpers. The
-[architecture checker](../../../../tools/verification/checks/check_architecture.py)
-enforces naming, executable existing suites and configured production file
-limits; [architecture criteria](../../../../.agents/references/architecture-criteria.md)
-own the semantic cohesion review. The architecture gate's required suite filenames do not prove
-behavioral coverage or require a new file for every module. Evaluate each
-fixture's independently expected behavior and failure modes.
+The testing criteria govern where external suites go and which behavior they
+must protect. Use `test_` names for test files and subdirectories for shared
+helpers. [Testing criteria](../../../../.agents/references/testing-criteria.md)
+
+The architecture checker enforces naming and configured production file limits
+and requires existing suites to be executable. The architecture criteria govern
+review of semantic cohesion. The architecture gate's required suite filenames
+are a structural check and do not require a new file for every module. To assess
+behavioral coverage, evaluate each fixture's independently expected behavior
+and failure modes.
+[Architecture checker](../../../../tools/verification/checks/check_architecture.py),
+[architecture criteria](../../../../.agents/references/architecture-criteria.md)
 
 ---
 

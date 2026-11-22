@@ -1,9 +1,9 @@
 # How the Emulator Models an Amiga 500
 
-This overview explains the execution model and the responsibilities of the main
-components. It is a starting point for understanding why timing and shared memory
-matter in this emulator. Detailed register behavior and subsystem contracts live
-in the [design specifications](../Obsidian/Amiga/Design/General%20Architecture.md).
+The emulator models how the Amiga 500 components share memory and coordinate
+their work over time. The design specifications define register behavior and the
+requirements for each subsystem.
+[Design specifications](../Obsidian/Amiga/Design/General%20Architecture.md)
 
 ## A Shared Clock Connects the Components
 
@@ -12,36 +12,34 @@ PAL and 3.58 MHz for NTSC. The 68000 CPU runs at twice that frequency. A normal
 CPU bus cycle takes four CPU clocks, spanning two Color Clocks, conventionally
 called CCK1 and CCK2.
 
-This lets the emulator represent when a memory access starts, when data is
-transferred, and how other hardware activity affects it. Timing is part of the
-behavior being modeled: a correct final register value can still be wrong if a
-read or write happens at the wrong time.
-
-The [main-loop specification](../Obsidian/Amiga/Design/Machine%20Loop.md)
-describes how these phases are scheduled.
+These phases let the emulator model when an access starts, when it transfers
+data and how other hardware affects it. A register can end up with the expected
+value even when the read or write occurred in the wrong phase. The main-loop
+specification describes how the emulator schedules each phase.
+[Main-loop specification](../Obsidian/Amiga/Design/Machine%20Loop.md)
 
 ## The CPU and Custom Chips Share Memory
 
-Chip RAM is used by both the CPU and the custom chipset. Agnus schedules DMA
-activity for display data, sprites, audio, disk transfers, Copper and Blitter
-operations. CPU access therefore depends on which bus slots are available.
+The CPU and the custom chipset share Chip RAM. Agnus schedules DMA activity for
+display data, sprites, audio, disk transfers, Copper and Blitter operations. The
+CPU can use Chip RAM when a bus slot is available to it.
 
-When a Chip RAM access is blocked, the bus returns a wait state and the CPU keeps
-its current instruction micro-step until it can continue. The delay changes
-elapsed time without prematurely committing the access. Memory outside the
-contended path has different access rules; the
-[memory-bus specification](../Obsidian/Amiga/Design/MemoryBus.md)
-provides the exact mapping and arbitration behavior.
+When the CPU requests a Chip RAM access and the slot is unavailable, the bus
+returns a wait state. The CPU holds its current instruction micro-step and the
+access remains pending while emulated time advances. The memory-bus
+specification gives the exact address mapping and rules for granting access,
+including the different rules for memory outside the contended path.
+[Memory-bus specification](../Obsidian/Amiga/Design/MemoryBus.md)
 
-This coordination is why bus timing matters to visible and audible results. A
-CPU write can affect a display register, while DMA may delay the CPU before the
-write occurs. Testing either component alone cannot establish the entire interaction.
+Bus timing affects what appears on the display and what the audio plays. For
+example, DMA can delay a CPU write to a display register. Testing either
+component alone leaves the CPU and DMA interaction unverified.
 
 ## Components Have Distinct Responsibilities
 
 The top-level machine owns the CPU, memory bus, Agnus, Denise, Paula and the two
-CIAs. The machine loop and bus coordinate their interactions; peer chips do not
-hold direct references to one another.
+CIAs. The machine loop and bus coordinate their interactions. Each chip operates
+without a direct reference to its peers.
 
 | Component | Main responsibility |
 | --- | --- |
@@ -52,21 +50,22 @@ hold direct references to one another.
 | Paula | Audio, disk and interrupt-related behavior. |
 | CIAs | Timers, ports and peripheral control. |
 
-Agnus supplies Chip RAM DMA addresses; Denise and Paula latch transferred data.
-They do not independently read host memory. Register changes and cross-component
-signals follow modeled phases and propagation delays, so a write need not affect
-another component immediately.
+Agnus supplies the Chip RAM DMA addresses, and Denise and Paula latch the data
+transferred on the bus. Neither Denise nor Paula reads host memory independently.
+Register changes and signals between components follow modeled clock phases and
+propagation delays. A write may therefore take effect in another component later.
 
 ## Separate the Guest Machine from Its Host
 
-The core consumes external buffers and keeps host filesystem, thread and
-wall-clock operations outside emulation. This supports both the native desktop
-and WebAssembly frontends. Guest memory is big-endian, and invalid guest accesses
-must produce the modeled machine behavior rather than panic the host process.
+The emulation core receives buffers from its caller. Keeping filesystem,
+thread and wall-clock operations outside emulation lets the native desktop and
+WebAssembly frontends use the same core. Guest memory is big-endian. If the
+guest makes an invalid access, the emulator must reproduce the modeled machine's
+response and keep the host process running.
 
-Serializable machine state is separate from runtime handles. The debugger uses
-state and execution history to help inspect behavior; the
-[debugger guide](debugger.md) explains the available views and controls.
+The core can serialize machine state independently of its runtime handles. The
+debugger uses machine state and execution history to let you inspect behavior.
+[Debugger views and controls](debugger.md)
 
 For a source map, continue with the [developer orientation](developers.md).
 For the evidence used to verify these relationships, read

@@ -14,27 +14,94 @@ tracked_paths:
 ---
 # Amiga 500 Debugger
 
-The debugger lets a developer pause the emulated machine, inspect its state, and follow a small M68000 program as it executes. A headless debugging session owns the [machine](../Machine%20Loop.md) and its execution controls; the [Developer Studio GUI](GUI.md) presents the registers, memory, disassembly, breakpoints, and history. The debugger reads machine state without advancing emulation during inspection.
+Use the debugger to pause the emulated machine, inspect its state, and follow a
+small M68000 program as it executes. The debugging session owns the machine
+and its execution controls and can run without a window. Inspection reads the
+machine's state without advancing emulation. [machine](../Machine%20Loop.md)
+
+The GUI presents the session's registers, memory, disassembly, breakpoints,
+and history. [Developer Studio GUI](GUI.md)
 
 ## Controlling execution
 
-Execution can run continuously, pause, advance by one M68000 instruction or Color Clock, or advance to the next completed video field with Step Frame. Ordinary pause completes the current field; pausing at an already completed field does not advance another one. Field completion follows Denise's frame counter, so stopping can occur within a CPU instruction. Frame stepping uses the same bounded execution path as Run and respects breakpoints. Continuous execution stops before an instruction whose program counter matches an enabled breakpoint, or when the CPU halts; these debugger stops take precedence over completing the field. CPU STOP keeps Run and frame stepping active: chip clocks, video and interrupts continue while the CPU waits. Waiting does not record instructions or trigger a breakpoint at the following instruction before the CPU resumes. Instruction stepping executes the next instruction even when a breakpoint is set at its address. The host runtime owns wall-clock pacing and applies GUI speed selection; the headless session only advances emulated CCKs. A motherboard keyboard reset ends the current slice, clears field-boundary and instruction tracking, and lets the host owner begin a new input generation. See the [Debugger Guide](../../../../docs/debugger.md) for shortcuts.
+Run advances execution continuously. An ordinary pause finishes the current
+video field, or stops immediately if the field is already complete. The
+debugger uses Denise's frame counter to detect the boundary, which can occur
+partway through a CPU instruction. Step Frame advances to the next completed
+field through the same bounded execution path as Run and respects breakpoints.
+An enabled breakpoint stops continuous execution before the instruction at its
+address. A CPU halt also stops execution. Both stops take precedence over
+completing the field.
+
+Run and Step Frame keep chip clocks, video and interrupts advancing during CPU
+STOP. While the CPU waits, the debugger records no instructions and cannot
+trigger a breakpoint at the following instruction until the CPU resumes. An
+explicit instruction step executes the next M68000 instruction even if a
+breakpoint is set at its address. A Color Clock step advances one Color Clock.
+
+The host runtime applies the GUI's selected speed and paces execution against
+wall-clock time. The headless session advances emulated CCKs. A motherboard
+keyboard reset ends the current slice, clears field-boundary and instruction
+tracking, and lets the host owner begin a new input generation. Shortcuts are
+listed in the [Debugger Guide](../../../../docs/debugger.md).
 
 ## Inspecting code and memory
 
-Game execution disables debugger instrumentation at the session boundary. It advances the same machine CCK loop without breakpoint checks, instruction disassembly, trace or temporal recording, CPU cloning, memory diff capture or debugger counter updates. Switching back synchronizes inspection state; it does not reconstruct the unrecorded interval. Both views keep the machine running during CPU STOP. Manual save/load remains explicit and independent of history recording.
+When Game execution starts, the session disables debugger instrumentation.
+The same machine CCK loop continues without breakpoint checks, instruction
+disassembly, trace recording, recording of historical CPU states, CPU cloning,
+memory diff capture or debugger counter updates. On return, the debugger
+synchronizes inspection state with the current machine and leaves the
+unrecorded interval absent from its history. Both views keep the machine
+running during CPU STOP. Manual save/load remains explicit and independent of
+history recording.
 
-The register view shows the current CPU state. The memory viewer lets the developer navigate to an address, inspect bytes in hex and ASCII, search memory, and edit bytes. Disassembly decodes words from the selected address into M68000 instructions, highlights the current instruction, and supports navigation through surrounding code. It recognizes MOVEP and NBCD and checks effective-address legality for the covered ALU, data, and control-flow forms. Rejected encodings are displayed as `DATA.W` and consume one word so inspection remains aligned with the input stream. An instruction can also be replaced in place with assembled text when the replacement has the same byte length. Replacing execution through PC editing, instruction patching or historical CPU restoration restarts instruction tracking, so the next Run checks its breakpoint before executing. Inspection reads do not cause guest bus side effects.
+The register view shows the current CPU state. In the memory viewer, a
+developer can jump to an address, read bytes in hex and ASCII, search memory,
+and edit bytes. Inspection reads have no guest bus side effects.
+
+The disassembly listing decodes words at the selected address as M68000
+instructions and highlights the current instruction. The developer can browse
+surrounding code. The decoder recognizes MOVEP and NBCD and checks whether
+effective addresses are legal for the ALU, data, and control-flow forms it
+covers. A rejected encoding appears as `DATA.W` and consumes one word,
+keeping the listing aligned with the input stream.
+
+The developer can replace an instruction in place by entering assembly that
+produces the same number of bytes. Editing the PC, patching an instruction, or
+restoring a historical CPU state restarts instruction tracking. On the next
+Run, the debugger checks the breakpoint before executing the instruction.
 
 ## Stopping at a location
 
-A breakpoint can be added from a disassembly row or the breakpoint panel. It targets a program-counter address and can optionally require a CPU register condition; the panel can enable, disable, or remove it. The UI also lets developers configure and highlight read/write watchpoint ranges in memory. Watchpoint-triggered stops remain incomplete; see the [debugger work](../../../../ROADMAP.md#debugger-execution-control).
+Add a breakpoint from a disassembly row or from the breakpoint panel. The
+breakpoint targets a program-counter address and can require a CPU register
+condition. Use the panel to enable, disable, or remove it. Developers can
+configure and highlight read/write watchpoint ranges in memory. Stopping at
+those watchpoints remains incomplete. [debugger work](../../../../ROADMAP.md#debugger-execution-control)
 
 ## Following earlier execution
 
-The execution trace records recent instruction addresses, opcodes, disassembly, CPU state, and Color Clock positions during explicit instruction, CCK and frame steps. A separate, optional history records CPU snapshots before those instructions and allows the developer to browse backward and forward through recorded states. History recording starts disabled. Continuous Run checks enabled PC breakpoints and their conditions against the current CPU state without disassembly, trace writes, temporal snapshots, repeated CPU clones or memory diff capture. Pending ordinary pause keeps this policy until the field boundary. Existing entries remain available, but the unrecorded interval is not reconstructed on Stop. Browsing history restores CPU state for inspection; it does not rewind memory or the rest of the machine.
+During explicit instruction, CCK and frame steps, the execution trace records
+recent instruction addresses, opcodes, disassembly, CPU state and Color Clock
+positions. Developers can enable history to record CPU snapshots before those
+instructions. They can then browse the recordings in either direction. Selecting
+a snapshot restores the CPU state for inspection only. Memory and the rest of
+the machine keep their current state. History starts disabled.
 
-Run and Game share bounded CCK execution with explicit stepping. Retired instruction counts are accumulated at slice boundaries and published for inspection after stopping; they are independent of recorded entries. On stopping, debugger clocks and diff baselines synchronize with the current machine. Returning from Game keeps instrumentation disconnected until its pending pause completes.
+During continuous Run, the debugger checks enabled PC breakpoints and their
+conditions against the current CPU state without disassembling instructions,
+writing trace entries, recording snapshots for history, repeatedly cloning
+CPU state or capturing memory diffs. An ordinary pause keeps this policy until
+the field boundary. On Stop, existing entries remain available and the
+unrecorded interval remains absent from the record.
+
+Run, Game and explicit stepping use the same bounded CCK execution. The
+session accumulates retired instruction counts at slice boundaries and
+publishes them after stopping, independently of any recorded entries. When
+execution stops, the debugger synchronizes its clocks and memory comparison
+baselines with the current machine. When returning from Game, instrumentation
+stays disconnected until the pending pause completes.
 
 ## References
 

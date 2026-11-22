@@ -1,14 +1,18 @@
 # Reference Book Metadata
 
-Every Markdown file in a book directory under `Obsidian/Amiga/Reference/` has
-line-one frontmatter containing `title`, `book`, `chapter` and `tags`. `book` names
-the source title or composite publication identifier; `chapter` names its section
-or unit, including contents/front matter. Replace `manual` with `book` without
-changing the value. Tags include `reference`, `book`, `chapter`, retained relevant
-tags and content-supported topics; reuse lowercase hyphenated tags and include
-`amiga` for Amiga content. Do not infer topics from the book title alone.
+Start the frontmatter on the first line of every Markdown file in a book
+directory under `Obsidian/Amiga/Reference/`. Include `title`, `book`,
+`chapter` and `tags`. Use `book` for the source title or composite
+publication identifier. Use `chapter` for the section or unit, including
+contents or front matter. Rename `manual` to `book` and keep its value.
 
-The canonical gate checks every local vault Markdown file, including ignored books.
-If metadata is missing, report affected paths and proposed frontmatter for each and
-obtain approval before editing those source notes. The verifier does not repair them.
-Structural acceptance does not replace the topic-selection review.
+Include `reference`, `book` and `chapter` in the tags. Keep relevant existing
+tags and add topics supported by the content. Reuse lowercase, hyphenated
+tags and include `amiga` for Amiga content. The book title alone is
+insufficient evidence for a topic.
+
+The repository verifier checks every local Markdown file in the vault,
+including ignored books, without repairing any source notes.
+If metadata is missing, list each affected path and its proposed frontmatter.
+Obtain approval before editing those source notes.
+Review the choice of topics even when the structural check passes.

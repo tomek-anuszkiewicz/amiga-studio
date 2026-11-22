@@ -1,8 +1,9 @@
 # Independent assessment
 
-Use the assigned review skill and its criteria. Inspect the selected files, changes
-and affected interactions against approved requirements. The user selects the
-scope and review operations; no fixed set of lanes or review rounds is mandatory.
+Use the assigned review skill and its criteria to inspect the selected files,
+changes and affected interactions against approved requirements. The user
+chooses the scope and which reviews to run. There is no mandatory set of review
+areas or rounds.
 
 Use fresh context for an independent review. Report inherited author history or
 missing inputs that limit independence. Read relevant source and requirements
@@ -16,11 +17,12 @@ Finding IDs identify findings within their original review. Assess each new clai
 on its evidence. Reviewers and challengers may propose an entry or amendment in
 their results. The main session records a decision only within authorized write scope.
 
-For each concrete issue, explain the trigger, expected and observed behavior,
-consequence, relevant location and supporting criterion. Preserve supplied finding
-IDs when reassessing them. A forced probe establishes only the conditions it
-introduced; show a supported path to the reported problem. Distinguish an observed
-failure from a hypothesis or missing evidence.
+For each concrete issue, explain what triggers it, what should happen, what you
+observed and what consequence follows. Include the relevant location and
+supporting criterion. Preserve supplied finding IDs when reassessing them. If
+your probe forces a state, its result applies under the conditions it created.
+Trace a supported path that leads to the reported problem.
+Distinguish an observed failure from a hypothesis or missing evidence.
 
 ## Review after correction
 
@@ -30,9 +32,9 @@ assessment of other changes; no new review, challenge or check is needed solely
 because a justified dictionary entry was added.
 
 Recheck selected findings against the actual correction and its affected callers.
-Use applicable existing test results, stating their scope and limits. Do not infer
-success from a source edit or a report label. Identify scope that was not inspected and any
-remaining uncertainty. No report hashes, reservations, candidate seals, round
+Use applicable existing test results and say what they cover and where their
+evidence stops. A source edit or report label alone cannot establish success.
+Identify parts of the scope you did not inspect and any remaining uncertainty. No report hashes, reservations, candidate seals, round
 manifests or human-checkpoint tokens are required.
 
 Return the scoped verdict, findings and actual checks in text and JSON under the

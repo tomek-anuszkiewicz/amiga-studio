@@ -1,19 +1,25 @@
 # Amiga Paula Audio BLEP Table Generator
 
-This tool generates Band-Limited Step (BLEP) interpolation tables for cycle-accurate anti-aliased sound synthesis in Paula's variable-rate audio channels.
+This tool generates Band-Limited Step (BLEP) interpolation tables that Paula's
+variable-rate audio channels use for cycle-accurate, anti-aliased sound synthesis.
 
 ## 1. Why Band-Limited Steps (BLEPs)?
 
-Commodore Amiga's Paula chip features 4 independent DMA audio channels with variable sample playback rates (up to ~28 kHz on standard PAL screens).
-In an emulator, changing sample levels on arbitrary clock cycles produces harsh high-frequency harmonics (Nyquist aliasing). Rather than brute-force oversampling the entire sound mixer at 3.54 MHz, BLEP synthesis injects pre-calculated bandlimited step responses whenever a DAC transition occurs, cancelling alias frequencies with minimal CPU overhead.
+The Commodore Amiga's Paula chip has 4 independent DMA audio channels. Each can
+vary its sample playback rate, up to ~28 kHz on standard PAL screens. Changing
+sample levels on arbitrary emulator clock cycles produces harsh high-frequency
+harmonics (Nyquist aliasing). Oversampling the whole mixer at 3.54 MHz is a
+costly way to address this. In BLEP synthesis, the renderer applies a precomputed
+bandlimited step response each time the DAC changes level. This cancels alias
+frequencies with minimal CPU overhead.
 
 ---
 
 ## 2. Mathematical Synthesis Pipeline
 
-The generator approximates the Amiga 500 and Amiga 1200 filtering paths through
-the six stages below. Its circuit parameters and numerical comparison are model
-evidence, not a measurement of every physical board:
+The generator approximates the Amiga 500 and Amiga 1200 filtering paths in six
+stages. The circuit parameters and numerical comparison describe the model.
+Measurements would be needed to establish the behavior of individual boards.
 
 ```
 ┌─────────────────┐     ┌───────────────┐     ┌───────────────────────┐
@@ -31,10 +37,10 @@ evidence, not a measurement of every physical board:
 1. **Bandlimited Sinc Impulse**: Sinc kernel with $f_c = 21\,\text{kHz}$ at DAC clock $F_s \approx 3.546895\,\text{MHz}$ (PAL).
 2. **Kaiser Windowing**: Windows the 2048-sample kernel using modified Bessel function of the first kind $I_0(x)$ ($\beta = 8.0$ for A500, $\beta = 9.0$ for A1200).
 3. **Minimum-Phase Reconstruction (Physical Causality & Pre-Ringing Removal)**:
-   - **Why it's needed (Causality)**: A standard mathematical sinc filter is symmetric (*linear phase*), meaning its impulse response starts oscillating **before** the event occurs (*pre-ringing / anticausal components*). In real physical audio hardware, an effect cannot precede its cause — sound can only react **after** (in the future of) a DAC step transition, never before it in the past.
-   - **How it works**: By converting the filter to **minimum phase** via the real cepstrum, all energy is shifted to $t \ge 0$. Anticausal components (pre-ringing) are completely eliminated so that the BLEP step response begins strictly at and after the exact moment the DAC level switches:
+   - **Why it's needed (Causality).** A standard mathematical sinc filter is symmetric (*linear phase*), so its impulse response starts oscillating before the event (*pre-ringing / anticausal components*). Physical audio hardware responds only after the DAC step transition.
+   - **How it works.** Converting the filter to **minimum phase** via the real cepstrum moves all energy to $t \ge 0$. This removes all anticausal components (pre-ringing). The BLEP step response starts at the instant the DAC level switches.
      $$\text{cepstrum} = \text{IFFT}(\ln |\text{FFT}(h)|)$$
-   - Anticausal components ($t < 0$) are zeroed, and causal components are doubled before exponential inversion:
+   - Before exponential inversion, the generator zeroes the anticausal components ($t < 0$) and doubles the causal components.
      $$h_{\text{min}} = \text{IFFT}(\exp(\text{FFT}(\text{cepstrum})))$$
 4. **Analog Circuit Emulation (IIR Biquad Filters)**:
    - Discretized via the Bilinear Transform ($s \to z$ domain).
@@ -43,7 +49,7 @@ evidence, not a measurement of every physical board:
 
 ![Amiga 500 Audio Filter Schematic](./a500_audio_filter_schematic.png)
 
-5. **Numerical Step Integration**: Integrates the impulse response into a step response:
+5. **Numerical Step Integration.** The generator integrates the impulse response to produce a step response.
    $$s[n] = -\sum_{k} h[k] + \sum_{k=0}^n h[k]$$
 6. **Quantization & Scaling**: Normalizes and scales to 18-bit fixed point dynamic range ($2^{17} = 131072$).
 
@@ -56,18 +62,20 @@ Running `cargo run -p blep_generator` generates four PAL CSV files in
 [`crates/paula/src/audio_tables.rs`](../../crates/paula/src/audio_tables.rs).
 
 The four tracked CSV files are the accepted PAL regression baselines. Run
-`python tools/verification/run_rust_tests.py -- cargo test -p blep_generator` to regenerate all four curves in an isolated
-temporary directory and compare every sample against those CSVs. The test does
-not overwrite the baselines or require WinUAE sources or network access. It
-checks numerical stability against the accepted curves, not independent hardware
-accuracy. Changes to the baseline curves require separate review.
+`python tools/verification/run_rust_tests.py -- cargo test -p blep_generator` to
+regenerate all four curves in an isolated temporary directory and compare each
+sample with the corresponding baseline. The test keeps the baselines intact and
+runs without WinUAE sources or network access. The comparison establishes
+numerical stability against the accepted curves. Hardware accuracy requires
+independent evidence. Changes to the baseline curves require separate review.
 
 ### One-Time Reference Comparison
 
 On 2026-11-08, all four generated tables matched the committed CSVs exactly.
-Comparison with [WinUAE sinctable.cpp at revision f4e416cf973393c317ab02c012285fcda62a9a1f](https://github.com/tonioni/WinUAE/blob/f4e416cf973393c317ab02c012285fcda62a9a1f/sinctable.cpp)
-confirmed the following differences. The WinUAE tables are an implementation
-reference, not measurements of original hardware.
+The table records the differences observed against WinUAE's implementation
+tables. Measurements of original hardware would provide a separate source of
+evidence.
+[WinUAE sinctable.cpp at revision f4e416cf973393c317ab02c012285fcda62a9a1f](https://github.com/tonioni/WinUAE/blob/f4e416cf973393c317ab02c012285fcda62a9a1f/sinctable.cpp)
 
 | Hardware Target | Filter Switch | Generated CSV File | Max Error vs WinUAE | Relative Error (% FS) |
 |---|---|---|---|---|
@@ -77,29 +85,29 @@ reference, not measurements of original hardware.
 | **Amiga 1200**| Filter ON  | `blep_a1200_filter_on.csv` | **97** / 131072  | **0.0740%** |
 
 ### Rust Source Output for Paula Core
-The runtime module contains A500 PAL and NTSC tables, each with LED filtering
-enabled or disabled. Each correction has 2,048 entries spaced one CCK apart at
-that standard's clock rate, starting at 131072 and ending at zero. The renderer
-subtracts scaled step corrections from the current output level. Its 44.1 kHz
-PCM clock is independent of the table spacing. A1200 curves remain generator
-comparison data; they are not part of the A500 runtime.
+The runtime module contains A500 PAL and NTSC tables for both LED filter
+settings. Each correction has 2,048 entries spaced one CCK apart at the
+corresponding standard's clock rate. Its first entry is 131072 and its last is
+zero. The renderer subtracts scaled step corrections from the current output
+level. Its 44.1 kHz PCM clock is independent of the table spacing. The generator
+uses the A1200 curves for comparison only.
 
 The regression test also compares the complete generated Rust module, including
-the NTSC tables. The former `output/blep_tables.rs` artifact has been replaced by
-the module consumed directly by Paula.
+the NTSC tables. The module Paula reads directly replaces the former
+`output/blep_tables.rs` artifact.
 
 ### Optional WinUAE Comparison Chart
 
-The tracked `output/blep_comparison.svg` and its generator in `src/comparator.rs`
-are retained. To regenerate the chart and print comparison metrics, supply a
-local WinUAE `sinctable.cpp` explicitly:
+The repository keeps the tracked `output/blep_comparison.svg` and its generator
+in `src/comparator.rs`. Supply a local WinUAE `sinctable.cpp` explicitly to
+regenerate the chart and print comparison metrics.
 
 ```powershell
 cargo run -p blep_generator -- <path/to/sinctable.cpp>
 ```
 
-This also regenerates the CSV files and Rust module. Without the reference
-argument, the generator writes only those tables and leaves the chart unchanged.
-It does not download or search for WinUAE sources. Missing or malformed supplied
-references cause an error. The offline regression test uses only the committed
-CSV baselines.
+That command also regenerates the CSV files and Rust module. If you omit the
+reference argument, the generator writes only those tables and leaves the chart
+intact. It relies on the WinUAE source supplied by the caller for the comparison
+and never searches for or downloads it. A missing or malformed supplied reference
+causes an error. The offline regression test uses only the committed CSV baselines.

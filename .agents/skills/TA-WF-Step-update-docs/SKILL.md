@@ -9,33 +9,35 @@ Apply [the result contract](../../references/workflow-contract.md).
 Apply shared [document/instruction ownership](../../references/information-hierarchy.md)
 to the selected documents. This operation can assess or update documentation
 independently of an implementation assignment.
-Executor: main session.
-Inputs: selected code changes and/or assigned documents/findings, requested outcome,
-exact candidate, approved requirements, implementation/evidence and write scope.
-Pending roadmap work also needs user priorities and known dependencies. A missing
-or ambiguous document target returns `blocked`.
+The main session uses the selected code changes, assigned documents or findings,
+or both as applicable. It also needs the requested outcome, exact candidate,
+approved requirements, implementation and evidence, and write scope. For pending
+roadmap work, use the user's priorities and known dependencies. Return `blocked`
+if the document target is missing or ambiguous.
 
 1. Read [Documentation Value](../../references/documentation-criteria.md#documentation-value),
    [specification compliance guidance](../../references/spec-compliance.md) and supplied findings.
    Apply the shared [prose and narrative criteria](../../references/narrative-criteria.md)
    according to the selected document's genre.
-   Diary authoring follows the [history criteria](../TA-WF-Step-compact-diary/SKILL.md#history-criteria):
-   describe performed work and actual results from the selected committed scope;
-   task continuation and working-tree status belong in plans. Reading these criteria
-   does not select diary compaction or authorize a new entry on its own.
+   Apply the [history criteria](../TA-WF-Step-compact-diary/SKILL.md#history-criteria)
+   when writing the diary. Describe work performed and actual results from
+   the selected committed scope. Keep instructions for continuing a task and
+   working-tree status in its plan. Reading the criteria alone gives no
+   authority to compact the diary or add an entry.
    For descriptions of replaced APIs, schemas or formats, apply the
    [internal migration contract](../../references/internal-migrations.md).
    Reader-facing docs explain the project and its entry points. Keep operating
    procedures with their tools or skills and update their consumers when they move.
-   For selected code changes, identify affected documentation through Design
-   `tracked_paths` and relevant source/document links. Assess whether changed
-   behavior, contracts or valuable knowledge need an update; a code change does
-   not by itself require more documentation. Keep edits within the assigned write
-   scope and report missing ownership or out-of-scope document changes.
+   For selected code changes, use Design `tracked_paths` and relevant links
+   between source and documents to identify affected documentation. Assess
+   whether changed behavior, contracts or valuable knowledge call for updates.
+   Keep any edits within the assigned write scope. Report gaps in document
+   ownership and needed updates outside that scope.
 2. Author or reconcile only assigned documents and compatible enrichment. For an
-   article or substantial restructuring, read the complete target and relevant
-   evidence, map its argument and place important conclusions with the reasoning
-   they support, including conclusions previously buried in trailing sections.
+   article or substantial restructuring, read the complete document and
+   relevant evidence. Trace the argument, then place each important conclusion
+   with the reasoning it supports, including conclusions previously buried near
+   the end.
    Preserve source-backed hardware explanations, independent requirements, provenance and
    unique rationale. Do not document a contradiction as accepted behavior.
    Omit straightforward code narration unless it adds independent value. Missing
@@ -60,9 +62,9 @@ or ambiguous document target returns `blocked`.
    deliberately moved to an authoritative reference. Review the diff and relevant
    local links; after roadmap edits run
    `python tools/verification/checks/check_roadmap.py`.
-   Return changed documents, addressed IDs, actual checks, conflicts and missing
-   evidence. Required final full vault
-   checks remain explicit prerequisites when not already supplied.
+   Report the documents you changed, addressed IDs, actual checks, conflicts
+   and missing evidence. If evidence from the required final full vault checks
+   is missing, report the checks as outstanding prerequisites.
 
 Stop after document changes. Do not repair code/tests, perform an unrelated audit,
 index documentation, begin integration, stage or commit.
@@ -74,11 +76,11 @@ belongs in diary/Git. Organization does not infer completion or authorize milest
 closure.
 
 Read the assigned sections, user priorities and known dependencies. Distinguish
-pending requirements from descriptions, methods and history. Preserve uncertain
-completion as pending. Consolidate related objectives and duplicate wording while
-retaining distinct requirements, acceptance evidence, failure handling and open
-decisions. Keep near-term work concrete and distant work concise; detailed
-execution plans belong under `.agent/tasks/`.
+pending requirements from descriptions, methods and history. Keep work pending
+when its completion is uncertain. Group related objectives and remove duplicate
+wording while retaining distinct requirements, acceptance evidence, failure
+handling and open decisions. Describe near-term work concretely and keep
+distant work concise. Store detailed execution plans under `.agent/tasks/`.
 
 Order by user priorities and actual dependencies. For hardware work, account for
 bus/clocks, DMA, display, peripherals and firmware dependencies; preparatory

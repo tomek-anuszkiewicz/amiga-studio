@@ -1,12 +1,12 @@
 # Stage 07: Repair Callouts
 
-Read retained pages from the latest available JSON in Stages 05, 04 and 03,
-in that order. Omit pages with empty `segments` in their latest JSON.
-Stage 06 must have completed before this callout stage. No model request
-or new role inference is performed.
+After Stage 06 completes, Stage 07 reads retained pages from the latest
+available JSON in Stages 05, 04 and 03, in that order. It omits a page when its
+latest file has an empty `segments` list. It makes no model requests and infers
+no new roles.
 
-Within each page, join an immediately adjacent `callout` label and `callout_text`
-body into a Markdown callout, for example:
+When a `callout` label is immediately adjacent to its `callout_text` body on the
+same page, the stage joins the two into a Markdown callout like this one.
 
 ```markdown
 > [!NOTE] NOTE
@@ -14,22 +14,25 @@ body into a Markdown callout, for example:
 > Advisory text.
 ```
 
-Keep the label's segment ID and original title, including Markdown emphasis.
-Preserve body Markdown, blank lines and reading order. Store both original source
-boxes in `pdf_regions` as ordered `{page, bbox}` records; the segment's `bbox`
-encloses the complete callout. Remove the consumed body segment without renumbering
-survivors. Already formatted callouts remain unchanged.
+The stage keeps the label's segment ID and original title, including Markdown
+emphasis. It preserves the body's Markdown and blank lines, and keeps the
+reading order. The callout's `pdf_regions` stores both original source boxes
+as ordered `{page, bbox}` records. The segment's `bbox` encloses the complete
+callout. The stage removes the body segment used in the callout and keeps the
+IDs of the remaining segments. Already formatted callouts stay as written.
 
-Leave orphan labels/bodies, invalid labels, empty bodies and pairs with different
-roles unchanged and report
-warnings with segment IDs. Do not guess associations across page boundaries.
+The stage leaves unpaired labels or bodies, invalid labels, empty bodies and
+pairs with different roles unchanged and reports warnings with segment IDs. It
+does not guess associations across page boundaries.
 
-Write a full page to `07_repair_callouts/page_*_segments.json` only when callout
-repair changes it. [Stage 08](../08_proofreading/README.md) reads these replacements
-and uses Stages 05, 04 and 03 for unchanged pages before book import; graphic assets
-still come from Stage 06. Preserve unrelated fields and transcribed tables.
-An empty output directory is valid even when pages remain in earlier stages.
+The stage writes a full page to `07_repair_callouts/page_*_segments.json` only
+when callout repair changes the page. It preserves unrelated fields and
+transcribed tables. During proofreading before book import,
+[Stage 08](../08_proofreading/README.md) reads these replacements where available
+and falls back to Stages 05, 04 and 03 for unchanged pages. Graphic assets
+still come from Stage 06. An empty output directory is valid even when pages
+remain in earlier stages.
 
 Run through the [pipeline](../../README.md) with `--from-stage 07 --to-stage 07`
-after successful predecessor stages. `--page-ranges` selects pages for this run;
-pipeline restart clears only selected outputs when a range is supplied.
+after successful predecessor stages. `--page-ranges` selects pages for this run.
+When a range is supplied, restarting the pipeline clears only selected outputs.

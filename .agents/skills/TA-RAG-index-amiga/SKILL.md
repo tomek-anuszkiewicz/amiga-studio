@@ -23,12 +23,15 @@ authorize publishing content to the shared index.
    `rag_qdrant search "<probe>" --source amiga --limit 2 --index-json <state> --json`.
 4. Return actual indexing/skipped counts, health/retrieval evidence and limitations.
 
-Worktrees share one `amiga` document version through repository-relative keys;
-last successfully indexed content replaces that version. Changed files replace
-old vectors and removed files under selected roots are removed. An unchanged
-nonempty document with one remaining fragment may be skipped; that is not
-completeness proof. No force-reindex mode exists. Old absolute-path state requires
-a separately authorized rebuild.
+The index identifies each `amiga` document by its repository-relative path,
+so worktrees share one indexed version of that document. The most recent content
+that the tool indexes successfully replaces the previous version. The indexer
+replaces vectors for changed files and removes entries for files deleted under
+selected roots. It may skip an unchanged nonempty document that has one fragment
+left in the index. In that case, the skip shows only that the indexer left the
+entry as it was. The tool
+has no force-reindex mode. State that still uses absolute paths requires a
+separately authorized rebuild.
 
 Stop after indexing/health checks. Do not index `devnotes`, clear shared state,
 repair sources, broaden accepted roots or launch further workflow steps.

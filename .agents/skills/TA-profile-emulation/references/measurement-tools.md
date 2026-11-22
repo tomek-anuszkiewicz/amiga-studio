@@ -4,10 +4,10 @@
 
 [Clippy](https://doc.rust-lang.org/clippy/) performs static linting, including
 performance suggestions. It does not measure where execution time is spent.
-[samply](https://github.com/mstange/samply) is a sampling profiler. Check the
-installed profiler's help and platform requirements before choosing a command;
-do not assume a tool on another checkout or in an old temporary directory is
-available or configured here.
+[samply](https://github.com/mstange/samply) is a sampling profiler. Before
+choosing a command, check the installed profiler's help and platform
+requirements. A tool you found in another checkout or an old temporary
+directory may be unavailable or configured differently here.
 
 The November 13 native investigations captured warmed machine execution with
 Very Sleepy and used samply symbolication with matching PDBs to recover inline
@@ -22,14 +22,16 @@ unless the current experiment needs it.
 
 Use an optimized build with usable symbols. Preserve its executable and PDB (or
 target-equivalent symbols) together before another build overwrites them. The
-workspace's `verification` profile retains debug assertions and overflow checks;
-do not treat its timings as release performance. Record any compiler/environment
-overrides and use equivalent settings for baseline and candidate.
+workspace's `verification` profile retains debug assertions and overflow checks.
+Use its timings only to evaluate performance under that profile. Record any
+compiler or environment overrides and use equivalent settings for baseline and
+candidate.
 
-Report the selected thread/stack root, capture interval, sample weight semantics
-and unresolved symbols. Inspect the exact binary's generated code when inline
-attribution is ambiguous. Address ranges or symbol corrections from another
-binary are not transferable evidence. Profile separately from throughput timing.
+Report the selected thread and stack root, capture interval, what the sample
+weights represent and any unresolved symbols. If a sample's inline attribution
+is ambiguous, inspect the code generated for the exact binary. Use address
+ranges and symbol corrections from that binary. Profile separately from
+throughput timing.
 
 ## CPU Measurements and Correctness
 
@@ -47,12 +49,13 @@ The commands above demonstrate distinct measurement and reference checks;
 50 vectors are not a universal acceptance threshold. Use `--plan` to inspect
 selection without running a measurement or test.
 
-The CPU benchmark measures whole guest programs, including helpers and stepping.
-It does not measure isolated arithmetic latency, chipset contention or complete
-Amiga throughput. Preserve the runner's measurement policy. Compare compatible
-workloads explicitly when interleaving filtered runs: automatic previous-run
-selection expects a completed full run. Report all relevant series and noise;
-the analyzer's display thresholds are not a minimum useful optimization gain.
+The CPU benchmark measures whole guest programs, including their helpers and
+stepping. Isolated arithmetic latency, chipset contention and whole
+Amiga throughput need their own measurements. Preserve the runner's measurement
+policy. When interleaving filtered runs, explicitly choose compatible workloads
+for comparison. Automatic previous-run selection expects a completed full run.
+Report all relevant series and noise. Assess the usefulness of a gain
+independently of the analyzer's display thresholds.
 
 Filtered runs keep reports in their run directories. A successful full run with
 default settings also replaces tracked current snapshots and reports. Inspect
@@ -81,11 +84,12 @@ affinity, power settings and competing load consistently; include process CPU
 time when wall-time variation needs explanation. Never combine results from
 different baseline snapshots into one before/after pair.
 
-Use active scenes that exercise the proposed saving and its maintenance cost:
-DMA and output enabled, collisions, register changes, or active inputs as
-applicable. Confirm that the intended activity occurs. Separate ROM, synthetic
-workload and real guest evidence. For GUI or browser conclusions, measure that
-execution path as well; a native headless result or a Wasm compile is insufficient.
+Use active scenes that exercise the proposed saving and its maintenance cost.
+Depending on the proposed change, enable DMA and output or exercise collisions,
+register changes or active inputs. Confirm that the intended activity occurs.
+Identify which evidence comes from a ROM, a synthetic workload or a real guest. For GUI or browser
+conclusions, measure the claimed execution path. A native headless result or
+a Wasm compile leaves that path's performance unmeasured.
 
 ## Designing a Mixed Guest Workload
 
@@ -103,12 +107,13 @@ audio and sprite behavior. They are reusable starting points, not an existing
 combined benchmark. The historical sprite performance scenes stopped the CPU
 and therefore do not cover sustained CPU work under competing DMA.
 
-Let the host load the program and data, establish initial CPU state and execute
-normal machine steps. Keep ongoing scene updates on guest CPU/Copper paths so
-the workload exercises decoding, propagation, arbitration and waits. Use a
-repeatable schedule with both stable output and changes that invalidate caches.
-Keep completed guest work comparable: a scene that misses updates or completes
-fewer blits must not appear faster merely because less work occurred.
+Have the host load the program and data, set the initial CPU state and step
+the machine normally. Keep ongoing scene updates on guest CPU or Copper paths
+so the workload exercises decoding, propagation, arbitration and waits. Use
+a repeatable schedule with both stable output and changes that invalidate
+caches. Compare runs with equivalent completed guest work. Check for missed
+updates or fewer completed blits before attributing shorter times to the
+optimization.
 
 Before timing, verify guest progress, completed blits, active sprite output and
 collisions, display changes and nonzero audio production. Account for audio

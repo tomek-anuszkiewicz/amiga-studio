@@ -1,22 +1,25 @@
 # Amiga RAG MCP Server
 
-This project-specific FastMCP server exposes Amiga documentation retrieval and health inspection through `rag_search`, `rag_search_reference`, `rag_list_sources`, and `rag_status`.
+Clients connect to this project's FastMCP server to search Amiga documentation
+with `rag_search` and `rag_search_reference`, list indexed sources with
+`rag_list_sources` and check service health with `rag_status`.
 
-`rag_search_reference` searches the shared `amiga` tag, then returns only hits
-whose resolved file paths are under `Obsidian/Amiga/Reference/`. It scans at
-most the first 100 ranked Amiga hits and reports when none are in scope.
-New results use repository-relative paths, resolved against this checkout for
-reference filtering. Existing absolute-path results may still identify another
-checkout in the shared index until that index is explicitly rebuilt.
+`rag_search_reference` queries the shared `amiga` tag and examines at most the
+first 100 ranked Amiga hits. It returns only hits whose resolved file paths are
+under `Obsidian/Amiga/Reference/` and reports when none qualify. Newly indexed
+results use repository-relative paths. The server resolves them against this
+checkout to apply the filter. Existing absolute-path results in the shared index
+may still point to another checkout until you explicitly rebuild that index.
 
-It does not import Qdrant, its cache, or the indexer. It invokes the standalone
-`rag_qdrant` command from `PATH` for query execution and status inspection, so the CLI and its dependencies must be installed independently.
-The adapter decodes CLI output as UTF-8, matching the CLI's output encoding
-regardless of the host's default locale.
+The adapter runs the standalone `rag_qdrant` command from `PATH` for queries and
+status checks. Install the CLI and its dependencies separately. The adapter
+imports neither Qdrant, its cache nor the indexer. It decodes CLI output as
+UTF-8 to match the CLI's encoding regardless of the host's default locale.
 
-Source and file counts come from actual Qdrant points, independently of the
-incremental JSON cache. The listing omits sources with no points. Indexing dates
-are `N/A` for old points without stored timestamps.
+The server uses the records stored in Qdrant, called points, to count sources
+and files independently of the incremental JSON cache. It lists only sources
+with points. For old points without a stored timestamp, it reports `N/A` as
+the indexing date.
 
 ## Installation
 
@@ -24,9 +27,8 @@ are `N/A` for old points without stored timestamps.
 pip install -r requirements.txt
 ```
 
-Ensure `rag_qdrant` is available on `PATH`, then register the server in the Amiga project:
-
-Use the checked-in [`.codex/config.toml`](../../.codex/config.toml):
+Verify that `rag_qdrant` is on `PATH`. Use the checked-in Amiga project
+configuration to register the server. [`.codex/config.toml`](../../.codex/config.toml)
 
 ```toml
 [mcp_servers.amiga-rag]
@@ -37,21 +39,24 @@ args = ["tools/amiga-rag-mcp-server/amiga_rag_mcp_server.py"]
 PYTHONPATH = "tools/amiga-rag-mcp-server"
 ```
 
-Open the repository root as the Codex session's working directory. Omit `cwd`
-so the server inherits that session directory and resolves the script path and
+Use the repository root as the Codex session's working directory. Omit `cwd`
+to let the server inherit that directory and resolve the script path and
 `PYTHONPATH` from it. In the tested Codex CLI 0.160.0, an explicit relative MCP
-`cwd` resolves from the host process directory, so `cwd = ".."` does not reliably
-select the repository root. Project configuration loads only for trusted
-projects. See [Codex configuration](https://learn.chatgpt.com/docs/config-file/config-advanced)
+`cwd` resolved from the host process directory. As a result, `cwd = ".."` could
+select a directory other than the repository root. Codex loads project
+configuration only for trusted projects.
+[Codex configuration](https://learn.chatgpt.com/docs/config-file/config-advanced)
 and [MCP setup](https://learn.chatgpt.com/docs/extend/mcp).
 
-Check the effective registration with `codex mcp get amiga-rag --json`. After
-changing it, restart the local Codex client and inspect `/mcp` for the server's
-connection status; a configuration listing alone does not test a connection.
+Check which registration Codex uses with `codex mcp get amiga-rag --json`. After
+you change the registration, restart the local Codex client. Use `/mcp` to inspect
+the server's connection status. The configuration listing shows the registration
+settings only.
 
 The launch regression starts a real Codex app-server from an unrelated host
-directory, creates an ephemeral session at the repository root without a model
-turn, and verifies the server connects and exposes the required retrieval and status tools:
+directory. The test creates a temporary session at the repository root without
+a model turn. It then checks that the server connects and exposes the required
+retrieval and status tools.
 
 ```powershell
 python tools/verification/verify.py test python directory tools/amiga-rag-mcp-server/tests file test_codex_mcp_launch.py
@@ -62,14 +67,14 @@ requirements installed in the configured Python environment. It skips when
 Codex or FastMCP is absent. Verify backend connectivity with `rag_status` and a
 source-filtered `rag_search` in the refreshed Codex session.
 
-Run all adapter and launch contracts from the repository root with:
+Run all adapter and launch checks from the repository root.
 
 ```powershell
 python tools/verification/verify.py test python directory tools/amiga-rag-mcp-server/tests --log-level full
 ```
 
-Read-only MCP tools use the service configuration and do not require a local
-index-state path. Configure the ignored project `.env` only for indexing:
+Read-only MCP tools query the service using its configuration. You need a local
+index-state path only for indexing. Set it in the ignored project `.env`.
 
 ```dotenv
 RAG_INDEX_JSON=<shared-rag-index-state-file>
@@ -77,16 +82,19 @@ RAG_INDEX_JSON=<shared-rag-index-state-file>
 
 ## Documentation Indexing
 
-Documentation indexing is a heavy batch process handled strictly outside the MCP server through the `rag_qdrant` CLI or `tools/bootstrap/bootstrap.ps1 -Rag` across the Amiga documentation scopes:
+Documentation indexing is a heavy batch process. Run it outside the MCP server
+through the `rag_qdrant` CLI or `tools/bootstrap/bootstrap.ps1 -Rag` for the
+following Amiga documentation directories.
 
 - repository `docs`
 - `Obsidian/Amiga/Design`
 - `Obsidian/Amiga/Reference`
 
-The CLI uses the `amiga` source tag, an explicit `--repo-root`, and the absolute
-directory to scan. `RAG_INDEX_JSON` is needed only for indexing invocations.
-It hashes every Markdown file on each run and processes only modified or added
-repository-relative documents. Follow the [indexing procedure](../../.agents/skills/TA-RAG-index-amiga/SKILL.md).
+The CLI uses the `amiga` source tag, an explicit `--repo-root` and the absolute
+path to the directory it scans. It needs `RAG_INDEX_JSON` only for indexing.
+On each run, it hashes every Markdown file and processes only documents added
+or modified at repository-relative paths. Follow the indexing procedure.
+[Indexing procedure](../../.agents/skills/TA-RAG-index-amiga/SKILL.md)
 
 When the MCP `rag_search` tool receives multiple source tags, it passes the
 deduplicated tags as the CLI's supported comma-separated `--source` value.

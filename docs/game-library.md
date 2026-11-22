@@ -1,43 +1,49 @@
 # Game library and manual setup
 
-Desktop opens the library. Select a root directory, then refresh after adding a
-game directory. Manual setup starts standalone disks and is also the browser's
-entry screen. Choose a named configuration, select a supported 256 KiB Kickstart
-and any standard 880 KiB DD ADF images, then Start. Empty drives are valid.
+The desktop app opens to the game library. Select the library's root directory.
+Refresh the library after adding a game directory. To start standalone disks,
+use manual setup. The browser opens to manual setup. Choose a named
+configuration, select a supported 256 KiB Kickstart and any standard 880 KiB DD
+ADF images, then choose Start. You can leave drives empty.
 
-Configurations combine one of the three supported memory presets with PAL/NTSC,
-ROM selection, attached drives and input mappings. DF0 is always attached;
-external drives are optional. Configure devices before their host sources.
-Keyboard mappings use physical Amiga key positions in hexadecimal. The default
-joystick uses arrows, numpad 0 and numpad decimal. Controller choices name a
-specific connection; unavailable choices require reassignment. After reconnect
-or application focus loss, release held controller inputs before using them again.
+Each configuration combines one of the three supported memory presets with a
+PAL/NTSC setting, ROM, attached drives and input mappings. DF0 is always attached.
+You can attach external drives as needed. Configure the devices before you choose
+their host input sources. Keyboard mappings use physical Amiga key positions in
+hexadecimal. By default, the joystick uses the arrow keys, numpad 0 and numpad
+decimal. When you select a controller, the app binds that specific connection.
+If the connection is unavailable, reassign it. After reconnecting a controller
+or after the app loses focus, release any held controller inputs before using
+them again.
 
 Click the Amiga display to capture keyboard and mouse input. The middle mouse
-button always releases capture without pausing. An optional release key can be
-assigned in Configurations; it starts empty. F12 always switches Game/Debug and
-cannot be reassigned. F5 pauses/resumes and F6/F9 save/load slot 1; these three
-bindings are configurable. Reset is available through the interface without a
-keyboard shortcut. Escape and F2 otherwise reach the Amiga. Browser pointer lock
-retains its own Escape release behavior. Editing a host text field takes priority
-over guest input. Gamepads work in an active, running session without capture;
-configuration screens and inactive application windows disable gameplay input. The right player panel supplies four
-disk dropdowns, eject, activity, pause/resume, reset and save/load. Small windows
-collapse these controls below the display. Debug uses the same machine.
+button always releases capture without pausing. You can assign a release key in
+Configurations, where it starts unassigned. F12 is fixed and always switches
+Game/Debug. F5 pauses or resumes, F6 saves to slot 1, and F9 loads slot 1. You can
+reassign those three keys. Use the interface to reset. Reset has no keyboard
+shortcut. Escape and F2 otherwise reach the Amiga. The browser still uses Escape
+to release pointer lock. Editing a host text field takes priority over guest
+input.
+
+Gamepads work in an active, running session even without capture. Configuration
+screens and inactive app windows disable gameplay input. The right player panel
+shows activity and has four disk dropdowns, plus controls for ejecting,
+pausing/resuming, resetting and saving/loading. Small windows move these controls
+below the display. Debug uses the same machine.
 
 ## Add or edit a desktop game
 
-Choose a library directory, then use **Add game**. Enter a name and select a
-named configuration. The name is also the game's folder name. A description is
-optional. Use **Add disk...** once per ADF; **Save game** copies those files into
-the game folder and assigns the first disk to DF0. Original files stay untouched.
-An empty disk list is valid for a ROM-only machine.
+Choose a library directory and click **Add game**. Enter the name that the app
+will use for both the game and its folder, then select a named configuration.
+You can add a description. Click **Add disk...** once per ADF. **Save game**
+copies the ADFs into the game folder and assigns the first one to DF0. The
+original files stay untouched. For a ROM-only machine, leave the disk list empty.
 
-Select an existing entry and use **Edit game** to change its name, description
-or configuration and append more disks. Renaming moves the whole folder,
-including saved progress and any initial state. Disk IDs and assignments stay
-unchanged. Cancel discards the draft without writing files. Existing media are
-retained; switch or eject them in the player panel.
+Select an existing entry and click **Edit game** to change its name, description
+or configuration or append more disks. Renaming moves the whole folder, including
+saved progress and any initial state. Disk IDs and assignments stay the same.
+Cancel discards the draft without writing files. The editor keeps existing media.
+Use the player panel to switch or eject them.
 
 For a cover, place **cover.jpg**, **cover.jpeg** or **cover.png** next to game.json
 and click **Refresh**. No manifest edit is needed. A declared artwork path takes
@@ -45,7 +51,7 @@ precedence over this filename convention. JPEG and PNG covers are supported.
 
 ## Prepare a game manually
 
-Create one subdirectory per game and place a `game.json` inside it:
+Create one subdirectory per game and place a `game.json` inside it.
 
 ```json
 {
@@ -63,29 +69,31 @@ Create one subdirectory per game and place a `game.json` inside it:
 }
 ```
 
-Disk IDs must be unique within the game. Asset paths are relative to its
-directory. Artwork and description are optional; missing optional files do not
-prevent launch. Use Edit game to select a configuration, then Save game to write
-that association. Configuration names can change without changing their IDs.
-Moving a game directory preserves its relative media paths; another installation
-must supply its own configuration and ROM.
+Give each disk a unique ID within its game. Asset paths are relative to the game
+directory. You can launch without artwork or a description, even if the optional
+files are missing. Use Edit game to select a configuration and Save game to write
+that association. You can rename configurations while keeping their IDs. Moving
+a game directory keeps its relative media paths valid. Another installation must
+supply its own configuration and ROM.
 
-Save creates a new file in the game's `saves/` directory, with a preview and UTC
-creation time. Continue restores saved hardware, ROM and current media before
-resuming. It does not boot first or apply the current hardware preset. A compatible
-configuration is still needed for host input. Slot saves also persist per game.
+Save creates a new file in the game's `saves/` directory with a preview and a UTC
+creation time. Continue restores the saved hardware, ROM and current media
+directly and resumes the session. It bypasses boot and the current hardware
+preset. Host input still needs a compatible configuration. Slot saves also
+persist per game.
 
-To prepare an initial state, start the associated game, save progress, copy that
-save outside `saves/`, and set `initial_state` to the relative filename. Ordinary
-saving never overwrites it. A broken initial state shows an error; Boot normally
-without initial state is an explicit alternative.
+To prepare an initial state, start its game and save progress. Copy that save
+outside `saves/` and set `initial_state` to the relative filename. Ordinary saves
+leave the initial state intact. If loading it fails, the app shows an error.
+You can explicitly choose Boot normally without initial state.
 
 ## Browser storage
 
-The current browser build has manual setup, file save/import/export and session
-quick slots. Named settings persist in browser storage. ROM and disk bytes do
-not: select those files again after reopening. There is no browser library,
-bundle loader or persistent browser save catalog in this iteration.
+The current browser build supports manual setup, file save/import/export and
+session quick slots. Browser storage retains named settings. Select ROM and disk
+files again after reopening because the browser build keeps their bytes only for
+the session. This iteration has no browser library, bundle loader or persistent
+browser save catalog.
 
-Save schema 14 is explicit. Earlier snapshot files are unsupported; no migration
-or automatic deletion occurs. Media writes and ADF write-back remain unavailable.
+Saves explicitly use schema 14. The app leaves earlier snapshots in place and
+cannot load or migrate them. Media writes and ADF write-back remain unavailable.

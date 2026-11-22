@@ -2,20 +2,23 @@
 
 ## Protected Verification
 
-Architectural tests, checker implementations and policy data require explicit user
-approval for every addition, modification or deletion, even stricter checks and
-mechanical refactors. This includes dependency permissions, limits, exceptions and
-enforcement scope wherever stored. A generic implementation/refactor/test-fix/commit
-request does not grant it. Present the current constraint, concrete diff, rationale
-and effect on accepted code, then obtain approval before applying it. Satisfy the
-existing constraint or obtain a decision; manifests, documentation, passing checks
-and another agent's approval do not substitute.
+Get explicit user approval before adding, changing or deleting architectural
+tests, checker implementations or policy data. This applies to stricter checks
+and mechanical refactors as well as dependency permissions, limits, exceptions
+and enforcement scope wherever they are stored. A general request to implement,
+refactor, fix tests or commit gives no such approval. Show the user the current
+constraint, the proposed diff, the reason for it and how it would affect which
+code passes. Follow the existing constraint unless the user approves the change.
+Manifests, documentation, passing checks and another agent's approval cannot
+substitute for that decision.
 
-Weakening any other test or required gate also needs that approval: expectations,
-tolerances, masks, exceptions, removed/skipped assertions/cases and reduced scope.
-Present evidence and lost protection; suspected obsolescence is not permission.
-Ordinary maintenance preserving acceptance/coverage remains allowed, including
-imports, internal-refactor fixtures, meaningful new tests and stronger assertions.
+Get the same explicit approval before weakening any other test or required gate.
+This includes weakening expectations, tolerances, masks or exceptions, removing
+or skipping assertions or cases, and reducing scope. Present the evidence and
+explain which protection the change would remove. A check that appears obsolete
+still requires approval to weaken. Ordinary maintenance that preserves
+acceptance and coverage remains allowed, including import changes, fixture
+updates for internal refactors, meaningful new tests and stronger assertions.
 A specific approved contract change can authorize its matching ordinary test update.
 
 Justified English word-list additions and exact-file literal allowances are ordinary
@@ -27,13 +30,14 @@ exclusions or other verification policy changes.
 ## Reference Artifact Integrity
 
 Reference traces, CSV baselines, cycle totals and SingleStep vectors are protected.
-Never change them to make a failure pass. A justified correction requires root-cause
-evidence, a proposed change and explicit approval; hardware-derived references
-additionally need precise hardware evidence. For relevant review consult
+Never change them to make a failure pass. To justify a correction, show evidence
+of the root cause, propose the change and obtain explicit approval. For a
+hardware-derived reference, also provide precise hardware evidence. For relevant review consult
 [platform invariants](../../Obsidian/Amiga/Design/Platform%20Quirks%20and%20Invariants%20Catalog.md)
 and validated test evidence.
 
-Harness normalization/comparison masks need precise evidence and a condition limited
-to the demonstrated case, such as the exact exception frame and fields. Do not
-broaden exceptions to obtain a pass. Report existing masks as verification limits;
-narrowing them still follows defect/reference-conflict procedures.
+For normalization or comparison masks in the harness, provide precise evidence
+and limit the condition to the demonstrated case, such as the exact exception
+frame and fields. Do not broaden exceptions to obtain a pass. Report existing
+masks as limits on what verification establishes. Follow the procedures for
+defects and reference conflicts even when narrowing a mask.

@@ -15,15 +15,16 @@ tracked_paths:
 
 # Joystick
 
-The Amiga joystick connects to a [game port](Game%20Ports.md). The [`game_ports::joystick` module](../../../crates/game_ports/src/joystick.rs) models the device, and the [`game_ports` crate](../../../crates/game_ports/src/game_ports.rs) connects it to a port.
+An Amiga joystick plugs into a [game port](Game%20Ports.md). In the emulator,
+the [`game_ports::joystick` module](../../../crates/game_ports/src/joystick.rs)
+models the device, and the [`game_ports` crate](../../../crates/game_ports/src/game_ports.rs)
+connects it to a port.
 
-A digital joystick closes directional switches rather than reporting a
-continuous position. The Amiga senses combinations of those lines to
-distinguish up, down, left, right, and diagonals. Its fire button uses a
-separate input line. The device emits four active-low contacts rather than
-an encoded JOY register. Denise makes LEFT/RIGHT available in bits 9/1 and
-FORWARD/BACK through XOR of each axis's two low bits, including diagonals. [Game Ports](Game%20Ports.md) explains how those device
-signals reach the appropriate chips in the machine.
+A digital joystick reports which directional switches are closed over four
+active-low contacts. A separate line carries the fire button state. The
+Amiga can read several directional contacts at once, including diagonals. Denise supplies the JOY register view. Bits 9/1 expose LEFT/RIGHT. Taking the XOR of the two low bits of each
+axis gives FORWARD/BACK, including when a diagonal is held. The device itself supplies only the switch signals.
+[Game Ports](Game%20Ports.md) explains how they reach the chips.
 
 
 ## References

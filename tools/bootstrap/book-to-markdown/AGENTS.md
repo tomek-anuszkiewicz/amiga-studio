@@ -1,42 +1,52 @@
 ﻿# Book recipes and reconstruction
 
-Load this contract for recipe authoring, import and reconstruction alongside the
-applicable [bootstrap instructions](../AGENTS.md). Source/editorial requirements
-apply before changing a recipe, not merely at review.
+Use this contract and the applicable bootstrap instructions when authoring a
+recipe, importing a book or reconstructing it. Apply the source and editorial
+requirements before you change a recipe. They also apply during review.
+[Bootstrap instructions](../AGENTS.md)
 
 ## Authoritative model
 
-- The PDF supplies text and graphics. `book.json` selects/orders source regions,
-  assigns chapters/roles and records visibility, Markdown/HTML structure and explicit
-  corrections. It is the reconstruction recipe.
-- Source-derived `md_text`, chapter titles and filenames use physical PDF page,
-  extracted block and Unicode character-range references, with formatting around
-  them. Do not substitute opaque Stage 04/05 converted-Markdown segment references.
-- Conversion results help author recipes but are not required text sources for a
-  finished recipe. Tables retain row/cell structure and spans with referenced text;
-  graphics reconstruct from PDF regions. Generated assets are local review artifacts.
-- The publication target is reviewed recipes with source identification, allowing a
-  matching PDF to rebuild Markdown without repeated model inference. Keep acquisition,
-  identity and extraction explicit. Restore the editor with `book_review.py import-book`
-  under the [roadmap](../../../ROADMAP.md#step-11-four-manual-pdf-to-book-json-conversion)
+- The PDF supplies text and graphics. The reconstruction recipe, `book.json`,
+  selects and orders source regions, assigns chapters and roles, and records
+  visibility, Markdown/HTML structure and explicit corrections.
+- For source-derived `md_text`, chapter titles and filenames, refer to the
+  physical PDF page, extracted block and Unicode character range. Put formatting
+  around those references. Do not substitute opaque Stage 04/05 converted-Markdown
+  segment references.
+- Conversion results can help when you author the recipe. A finished recipe
+  supports text reconstruction independently of those results. Tables keep
+  their row and cell structure and spans, with references for the text.
+  Reconstruction also recovers graphics from PDF regions. Generated assets
+  serve local review.
+- The publication target is reviewed recipes that identify their sources. With a
+  matching PDF, reconstruction can rebuild Markdown without repeating model
+  inference. Keep acquisition, identity and extraction explicit. Restore the
+  editor with `book_review.py import-book` under the
+  [roadmap](../../../ROADMAP.md#step-11-four-manual-pdf-to-book-json-conversion)
   and [recipe contract](README.md#editing-and-publication).
-- The explicit Codex editor command trusts current authored text, including literals,
-  as its baseline. Check returned content against the exact request snapshot before
-  replacing one Working element; preserve ID, source regions, role and visibility.
-  Do not impose the optional strict source audit on responses, imports or manual edits.
-- The general Codex Working task may request context and edit across elements under
-  its user's instruction. Validate current Working revision and recipe after every
-  tool action. It cannot write Accepted or source PDF data. The one-element content
-  guard remains specific to the element transformation tool.
-- Table-to-graphic shows original PDF crops and retains text. A graphic without
-  stored text uses positioned Stage 02 OCR; report absent OCR rather than inventing
-  text from its image. Changed or stale model responses must not save.
+- The explicit Codex editor command takes the current authored text, including
+  literals, as its trusted baseline. Before replacing one Working element, check
+  the returned content against the exact request snapshot. Preserve the element's
+  ID, source regions, role and visibility. Keep the strict source audit optional
+  for responses, imports and manual edits.
+- A general Codex Working task may request context and edit multiple elements
+  under the user's instruction. After each tool action, validate the current
+  Working revision and recipe. Accepted and source PDF data are read-only for
+  this task. Only the element transformation tool uses the one-element content
+  guard.
+- Table-to-graphic displays original PDF crops and preserves the text. For a
+  graphic without stored text, use positioned Stage 02 OCR. If OCR is absent,
+  report that absence and leave the image text unspecified. Changed or stale
+  model responses must never be saved.
 
 ## Scope
 
-The parent [converter-development contract](../AGENTS.md#converter-development)
-owns current-format-only behavior, generated artifacts, import timing and technical
-test/editorial boundaries. Ordinary editor actions and current-format validation
-remain supported. Do not publish, stage or commit recipes/source artifacts merely
-because publication is the intended eventual workflow; follow the requested timing
-and repository commit policy.
+The parent contract governs current-format-only behavior, generated artifacts,
+import timing and the boundaries of technical testing and editorial work. The
+editor still supports its ordinary actions and current-format validation.
+[Converter-development contract](../AGENTS.md#converter-development)
+
+Publish, stage or commit recipes or source artifacts only at the requested time
+and under the repository commit policy. The intended publication workflow alone
+authorizes none of those steps.

@@ -18,36 +18,39 @@ tracked_paths:
 ---
 # Agnus DMA Scheduling
 
-DMA is part of [Agnus](Agnus.md). It schedules access to the Chip RAM bus shared
-with the CPU, deciding which requester may use each available memory slot.
+The DMA scheduler in Agnus decides which requester can use each available
+slot on the Chip RAM bus it shares with the CPU. [Agnus](Agnus.md)
 
-For a DMA transfer, Agnus drives the memory address on the Chip RAM address bus
-and the destination register address on its internal register address (RGA) bus.
-DMA selection signals and register strobes travel over the modeled electrical
-connections. The selected chip recognizes its signal and latches or supplies the
-word on the shared data bus. [MemoryBus.md](MemoryBus.md) describes CPU contention;
-the [cross-chip signal catalog](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)
-describes the connections between chips.
+For a DMA transfer, Agnus drives the memory address on the Chip RAM address
+bus and selects the destination register on its internal register address
+(RGA) bus. The emulator carries DMA selection signals and register strobes
+over modeled electrical connections. The selected chip recognizes its signal
+and latches or supplies the word on the shared data bus.
 
+MemoryBus describes what happens when the CPU and DMA compete for the bus.
+[MemoryBus.md](MemoryBus.md)
+
+The signal catalog describes the connections between chips.
+[Cross-chip signal catalog](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)
 
 ## From an opportunity to a transfer
 
-Some DMA activity starts with a request from the device that needs data, such as
-an audio or disk channel. Other opportunities follow the beam position and an
-enabled display function: bitplane and sprite fetching have scheduled places in
-the line, while memory refresh occurs independently of a device data request.
-An allocated opportunity does not by itself mean that a word is transferred.
-If the relevant channel has no work, its opportunity can be used by another
-eligible bus user.
+An audio or disk channel can request a transfer when it needs data. Agnus
+schedules bitplane and sprite fetches in each line according to the beam
+position and the enabled display function. Memory refresh follows its own
+schedule independently of device requests. An allocated slot gives a channel a
+chance to transfer a word. If the channel has no work, another eligible bus
+user can take the slot.
 
-Audio DMA control follows this signal flow:
+Paula and Agnus use the shared register write and the audio request as follows.
 
 | Stage | Paula | Agnus |
 | :--- | :--- | :--- |
 | `DMACON` write | Retains only `DMAEN`, `DSKEN`, and `AUD0EN`–`AUD3EN` from the shared register bus for its audio and disk DMA control. | Latches the full `DMACON` state for DMA control. |
 | Audio DMA request | When a channel needs data, asserts its request on `DMAL` only if `DMAEN` and that channel's `AUDxEN` are enabled in Paula's retained control bits. | Responds only if `DMAEN` and the requested channel's `AUDxEN` are enabled in Agnus's copy of `DMACON`; then schedules the transfer in an eligible slot. |
 
-Display DMA follows a different path:
+For display DMA, Denise and Agnus use different fields of the same display
+window writes. Agnus schedules the fetch and sends the data to Denise.
 
 | Stage | [Denise](Denise.md) | Agnus |
 | :--- | :--- | :--- |
@@ -56,28 +59,33 @@ Display DMA follows a different path:
 | Display fetch | Does not request DMA. | Uses the vertical display window and `DDFSTRT`/`DDFSTOP` horizontal fetch interval for bitplanes; sprite slots are scheduled separately. `DMAEN` and the relevant channel enable must also be set. |
 | Data transfer | Latches the selected `BPLxDAT` or sprite register from the shared data bus. | Reads Chip RAM and selects the destination register on `RGA`. |
 
-There is no Denise-to-Agnus request or separate grant signal in this display
-DMA model. The `RGA` register selection and shared data bus deliver the fetched
-word to Denise; this is not the Paula `DMAL` request path.
+In this model, Agnus delivers the fetched word to Denise by selecting a
+register on `RGA` and putting the word on the shared data bus. This completes
+the transfer without a request from Denise or a separate grant signal. Paula
+uses `DMAL` for its own requests.
 
-When a channel is granted a memory cycle, Agnus selects its Chip RAM address and
-the destination on the shared custom-chip bus. For a read, Chip RAM supplies a
-word and the selected display or audio circuit latches it. For a disk write or
-other memory-bound operation, the data flows in the opposite direction under
-the same Agnus-controlled address and bus grant. The transfer then advances
-the channel's position in its data stream; completion or a need for more data
-is signaled by the responsible component. Refresh is different: it occupies a
-memory opportunity but does not deliver a word to a peripheral.
+When arbitration gives a channel a memory cycle, Agnus selects the Chip RAM
+address and the destination on the shared custom-chip bus. On a read from RAM,
+Chip RAM supplies a word and the selected display or audio circuit latches it.
+For a disk write or other memory-bound operation, the word flows in the
+opposite direction under the same Agnus-controlled address and bus grant.
+After the transfer advances the channel's position in the stream, the
+responsible component signals completion or a need for more data. Refresh
+uses a memory slot without delivering a word to a peripheral.
 
 ## Arbitration and complete-exchange requirements
 
-These are hardware/protocol requirements for the reconstructed engines. The
-previous engine code is not certified by its presence. [HRM Chapter 6,
-Blitter Operations and System DMA](../Reference/Hardware%20Reference%20Manual/06%20-%20Chapter%206%20-%20Blitter%20Hardware.md)
-gives the priority and bus-sharing rules; Chapters 2-5 give requester-specific
-eligibility and completion. The reference-model slot coordinates below use the
-same horizontal CCK convention as the existing scheduler. They do not measure
-sub-CCK bus edges or establish that its current eligibility algorithm is correct.
+The reconstructed engines must follow the hardware and protocol requirements
+below. Conformance requires evidence beyond the presence of earlier engine
+code. Chapters 2-5 of the Hardware Reference Manual (HRM) describe when each
+requester qualifies for a slot and what completes a transfer. Chapter 6
+explains priority and bus sharing.
+[HRM Chapter 6, Blitter Operations and System DMA](../Reference/Hardware%20Reference%20Manual/06%20-%20Chapter%206%20-%20Blitter%20Hardware.md)
+
+The reference-model slot coordinates below use the same horizontal CCK
+convention as the existing scheduler. Sub-CCK bus edge measurements fall outside
+the scope of these coordinates, which also leave the scheduler's eligibility
+algorithm unverified.
 
 | User | Eligibility / opportunity | Transfer and advancement | Retention / competing work |
 | --- | --- | --- | --- |
@@ -90,16 +98,17 @@ sub-CCK bus edges or establish that its current eligibility algorithm is correct
 | Blitter | Master/BLTEN and active operation with a channel needing a source/destination cycle. | Source RAM -> A/B/C latches -> local logic -> D word -> RAM, under Agnus address ownership. Each granted channel cycle advances its own pointer/count; completion produces INT3*. | Below fixed/display DMA and Copper. With BLTPRI clear, three unsatisfied CPU memory requests require a CPU opportunity; BLTPRI set permits the Blitter to keep eligible remaining cycles. Local idle/pipeline cycles are not fabricated RAM transfers. |
 | CPU | Pending memory cycle and a free eligible bus opportunity. | Production MemoryBus returns Ready only for the accepted access. A denied Chip RAM cycle returns WaitState without advancing the CPU's active bus micro-step or repeating a live-read effect. | Denial retains address, data and direction while the rest of the machine advances. Installed private RAM/ROM/peripheral timing is selected through MemoryBus, not indiscriminately blocked by Chip RAM ownership. |
 
-The HRM describes CPU even-cycle access and display stealing. FPGA clocks and
-the emulator's CCK coordinate conventions must be reconciled before equating
-an odd/even test in one source with an edge on the original board. Minimig
-explicitly supplies extra CPU opportunities and altered Blitter timing;
-vAmiga uses a bus-owner schedule. Their differences remain model evidence.
-PAL 8371 and NTSC 8370 share the request/data ownership and priority contracts;
-line length, field timing and valid opportunities at line end need their
-model-specific engine checks. Copper/Blitter dependencies stay internal to
-Agnus. Gary's BLIT/DBR memory-request role and BLISS/BLS slowdown role are
-different directions, not two interchangeable names for one signal.
+The HRM assigns the CPU even cycles and explains how display DMA takes some
+of them. Before matching an odd/even test from a source to an edge on the
+original board, reconcile the FPGA clocks with the emulator's CCK coordinates.
+The models show different behavior. Minimig explicitly offers extra CPU
+opportunities and alters Blitter timing. vAmiga uses a schedule of bus owners.
+
+PAL 8371 and NTSC 8370 share the rules for request and data ownership and bus
+priority. Each model needs its own engine checks for line length, field
+timing and the slots available at the end of a line. Copper and Blitter
+dependencies stay within Agnus. Gary's BLIT/DBR memory-request role and
+BLISS/BLS slowdown role use different signal directions.
 
 ```mermaid
 sequenceDiagram
@@ -124,94 +133,105 @@ sequenceDiagram
 
 ### Sprite control and data production
 
-Agnus compares each sprite's committed nine-bit start/stop coordinates. Start
-sets its DMA-active state and stop clears it; stop selects the next POS/CTL
-pair, allowing reuse after a gap. Active lines select DATA/DATB. Each grant
-reads exactly one word, increments the OCS pointer and retains the RGA/data
-output through the existing receiver-acceptance path. A blocked output cannot
-be overwritten by a later grant. A missed scheduled opportunity does not
-advance the pointer. Bitplane work retains priority over overlapping sprite
-opportunities.
+Agnus compares each sprite's committed nine-bit start and stop coordinates.
+A start match sets the sprite's DMA-active state. A stop match clears it and
+selects the next POS/CTL pair, allowing the sprite to be reused after a gap.
+For active lines, Agnus selects DATA/DATB. Each grant reads exactly one word
+and increments the OCS pointer. The existing delivery path holds the RGA/data
+output until the receiver accepts it, preventing a later grant from replacing
+the pending output. A missed slot leaves the pointer unchanged. Bitplane
+fetches take priority where the slots overlap.
 
-[HRM 4](../Reference/Hardware%20Reference%20Manual/04%20-%20Chapter%204%20-%20Sprite%20Hardware.md)
-defines the control/data stream and blank line needed for reuse. The initial
-control fetch uses PAL line 25 and NTSC line 19 from the local
-[vAmiga Agnus model](../../../ref_src/vAmiga/Core/Components/Agnus/Agnus.cpp);
-these coordinates are provisional model timing. Earlier vertical-blank lines
-disable sprite fetching. Pointers are software-owned reload values: a new
-field does not restore an old address automatically. Mid-line committed POS/CTL
-changes participate in subsequent comparisons; pending words still deliver once.
+The HRM defines the stream of sprite control and data words and the blank
+line needed for reuse. [HRM 4](../Reference/Hardware%20Reference%20Manual/04%20-%20Chapter%204%20-%20Sprite%20Hardware.md)
+The initial control fetch uses PAL line 25 and NTSC line 19. These are
+provisional timing coordinates from the local vAmiga model. [vAmiga Agnus model](../../../ref_src/vAmiga/Core/Components/Agnus/Agnus.cpp)
+Sprite fetching is disabled on earlier vertical-blank lines. Software owns
+the pointer reload values. A new field does not automatically restore an old
+address. Subsequent comparisons use a mid-line POS/CTL change once it commits.
+The receiver still gets each pending word once.
 
-The [sprite DMA implementation](../../../crates/agnus/src/dma_sprite.rs) retains
-the vertical latches and uses an eight-channel request mask. It reuses comparisons
-while the vertical position, model control line and committed POS/CTL values stay
-unchanged. Effective writes invalidate that result; reset and restore rebuild it.
-Vertical latches still update with DMA disabled or the output occupied. Current
-DMA enables and output availability gate the mask independently, and an empty
-mask permits a quick return without changing the fixed transfer opportunities.
+The implementation holds the vertical latches and uses an eight-channel mask
+to track requests. It reuses the comparison result while the vertical
+position, model control line and committed POS/CTL values stay the same.
+An effective write invalidates the result. Reset and restore
+rebuild it. The vertical latches update even when DMA is disabled or the
+output is occupied. The current DMA enables and output availability gate the
+mask independently. If the mask is empty, the implementation can return early
+while preserving the fixed transfer opportunities.
+[Sprite DMA implementation](../../../crates/agnus/src/dma_sprite.rs)
 
 ## Paula request framing and state ownership
 
-The reconstructed arbitration step selects one owner before any Copper fetch.
-Its starvation counter counts denied CPU requests across higher-priority work;
-a CPU grant or absence of a request clears the consecutive count. BLTPRI removes
-the Blitter's yield obligation, without overriding other DMA priorities.
-The production [MemoryBus](MemoryBus.md) latches an actual refused CPU access
-and clears it on acceptance. The first refusal starts the count; subsequent
-arbitration counts held requests once per CCK. Paula generates audio/disk requests and advances its own count and latch state
-when granted words arrive through the shared bus.
+The reconstructed arbitration selects one bus owner before any Copper fetch.
+When higher-priority work denies a CPU request, the production MemoryBus
+records the refusal and clears it when it accepts the access. The first
+refusal starts the count. Later arbitration steps count the held request once
+per CCK. A CPU grant or a cycle without a request clears the count. BLTPRI
+lets the Blitter keep using eligible cycles without yielding to the CPU, while
+the other DMA priorities still apply. [MemoryBus](MemoryBus.md)
 
-Bitplane allocation follows HRM Figures 6-11 and 6-12. An eight-CCK group fetches
-one word per low-resolution plane or two per high-resolution plane. In the
-retained DMA model, DDFSTOP requests a final complete group at the next
-group boundary, including that boundary when the comparison falls exactly on it.
-Modulo applies only to each plane's last word in that final group.
-The Chapter 3 standard windows `$38/$D0` and `$3C/$D4` consequently fetch 20
-and 40 words per plane. Workbench 1.3 also uses `$3C/$D0`: stopping at the group
-containing that comparison fetches only 38 words and advances each row by 76
-bytes instead of 80, producing a progressively displaced image. The final-group
-rule follows [vAmiga's stop-request and last-unit state](../../../ref_src/vAmiga/Core/Components/Agnus/Sequencer/SequencerBpl.cpp),
-and restores the native Workbench image while preserving the `$38/$D0`
-Kickstart disk prompt. This comparison establishes the reproduced firmware cases,
-not measured silicon phase for every unusual DDF combination. The Chapter 3
-register summary says H3 is respected only in hires, whereas the selected
-reference model handles a mid-group stop in both modes. That difference remains
-a hardware verification limit; the source manual is unchanged.
-The Copper uses its separate alternate opportunities
-as described in [Copper](Copper.md#fetch-and-suspension-contract), and cannot
-fetch a word in a slot awarded to bitplanes.
+Paula generates the audio and disk requests. When a grant brings a word over
+the shared bus, Paula advances its own count and latch state.
 
-On the board, the active-high **single DMAL wire** carries a line-relative
-request frame, not an address, data word or separate channel wires. RGA
-horizontal strobes and related clocks establish the line reference. The
-[catalog's request-position table](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md#paula-agnus-dma-request-timing)
-separates measured disk positions from reconstructed audio semantics. In that
-frame the first two positions are unused, positions 2-7 form three disk
-direction/request pairs, and positions 8-15 form four audio restart/request
-pairs. The cited physical disk capture shows requests at 3/5/7 and transfers
-four CCK later at 7/9/11. The analogous audio timing and restart qualifiers
-remain reference-model evidence, not measurements from that disk capture.
+Bitplane allocation follows HRM Figures 6-11 and 6-12. Each eight-CCK group
+fetches one word per low-resolution plane or two per high-resolution plane.
+In the retained DMA model, DDFSTOP requests a final complete group at the
+next group boundary. If the comparison falls exactly on a boundary, that
+boundary starts the final group. Modulo applies only to each plane's last
+word in the final group. The Chapter 3 standard windows `$38/$D0` and
+`$3C/$D4` consequently fetch 20 and 40 words per plane.
 
-The reconstructed protocol must follow this complete sequence:
+Workbench 1.3 also uses `$3C/$D0`. Ending the fetch with the group containing
+the stop comparison gives each plane only 38 words. Each row then advances by
+76 bytes instead of 80, and the image shifts farther on successive rows.
+The final-group rule restores the native Workbench image and preserves the
+`$38/$D0` Kickstart disk prompt. The rule follows the vAmiga model's stop
+request and tracking of the last fetch unit.
+[vAmiga's stop-request and last-unit state](../../../ref_src/vAmiga/Core/Components/Agnus/Sequencer/SequencerBpl.cpp)
 
-1. Agnus supplies the line synchronization. Paula's disk/audio engines retain
-   their work and build the corresponding request bits at the defined line
-   phase. Their memory addresses do not enter DMAL.
-2. Machine Loop carries Paula's exposed DMAL level to the Agnus input. Agnus's
-   receiver identifies the request from its position relative to the line,
-   retaining channel/direction/restart information until the eligible transfer.
-3. Agnus checks enables and arbitration, selects the owning pointer and RAM
-   direction, then drives the matching RGA code. There is no additional
-   motherboard grant wire: the matching register/data transfer is observable
-   acceptance by the selected device.
+The comparison establishes these reproduced firmware cases. The silicon phase
+for unusual DDF combinations still needs hardware verification. The Chapter 3
+register summary says H3 is respected only in hires. The selected reference
+model handles a mid-group stop in both modes. That difference limits the
+hardware claim, and the source manual is unchanged.
+
+The Copper has its own alternate opportunities. It cannot fetch a word in a
+slot awarded to bitplanes. [Copper](Copper.md#fetch-and-suspension-contract)
+
+On the board, the channels share an active-high **single DMAL wire** for DMA
+requests. Addresses and data travel over other connections. RGA horizontal
+strobes and related clocks establish the line reference for each request
+frame. The first two frame positions are unused. Positions 2-7 form three
+disk direction/request pairs, and positions 8-15 form four audio
+restart/request pairs. The physical disk capture shows requests at 3/5/7 and
+transfers four CCK later at 7/9/11. The analogous audio timing and restart
+qualifiers come from reference models. The catalog records the evidence for
+each. [Catalog request-position table](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md#paula-agnus-dma-request-timing)
+
+The reconstructed protocol must follow the full sequence below.
+
+1. Agnus supplies line synchronization. Paula's disk and audio engines hold
+   their work and build request bits at the defined line phase. DMAL carries
+   only the request information, with no memory addresses.
+2. Machine Loop carries the DMAL level exposed by Paula to the Agnus input.
+   The Agnus receiver uses the position relative to the line to identify the
+   request. It retains the channel, direction and restart information until
+   the eligible transfer.
+3. Agnus checks the enables and arbitration, selects the owning pointer and
+   RAM direction, and then drives the matching RGA code. The matching
+   register and data transfer show when the selected device accepts it.
+   The motherboard uses no additional grant wire.
 4. For audio, the shared bus supplies AUDxDAT. For disk reads, Paula supplies
-   the next queued word under the dummy early-read selection DSKDATR, and
-   Agnus writes RAM. For disk writes, RAM supplies DSKDAT and Paula consumes
-   it for serialization. CPU reads of the dummy address do not perform that DMA.
-5. The responsible engines update pointer, count, holding/full state and reload
-   request only on their documented transitions. Reset cancels requests and
-   unaccepted output; an enable change does not retroactively duplicate or
-   erase a word already accepted into a receiver queue. Unsatisfied requests follow the audio and disk engine enable rules.
+   the next queued word at the dummy early-read selection DSKDATR, and Agnus
+   writes it to RAM. For disk writes, RAM supplies DSKDAT and Paula consumes
+   it for serialization. A CPU read of the dummy address leaves the DMA
+   operation untouched.
+5. The responsible engines update the pointer, count, holding/full state and
+   reload request only on their documented transitions. Reset cancels
+   requests and unaccepted output. An enable change leaves words already
+   accepted into a receiver queue in place, without duplicating or erasing
+   them. The audio and disk engine enable rules govern unsatisfied requests.
 
 | State | Authoritative owner |
 | --- | --- |
@@ -223,45 +243,49 @@ The reconstructed protocol must follow this complete sequence:
 | Copper PC/instruction and Blitter channel pointers/latches/counts | Contained Agnus engines, not motherboard peer chips. |
 | Captured wire frame and pending delivery phase | Machine Loop, serialized separately from recipient processing. |
 
-Audio now generates its four request/restart pairs from Paula channel state.
-Agnus decodes the captured wire and supplies AUDxDAT in the owning slot, using
-the reload address only when the qualifier is present. A held output prevents
-another fetch until accepted. The current CCK model receives a line strobe at HPOS 2,
-which supplies request-frame position 2; positions 0/1 are zero. The following
-CCK input phase captures each driven bit, preserving request positions 9/11/13/15
-and transfer positions 13/15/17/19. This is model phase alignment, not a new
-measurement. Pointer increment belongs to the fetch; Paula length and sample
-state advance when the receiver commits AUDxDAT.
+Paula generates four audio request/restart pairs from its channel state.
+Agnus decodes the captured DMAL level and supplies AUDxDAT in the channel's
+slot. It uses the reload address only when the request carries the restart
+qualifier. An outstanding output blocks another fetch until the receiver
+accepts it. In the current CCK model, a line strobe at HPOS 2 supplies
+request-frame position 2. Positions 0/1 are zero. The following CCK input
+phase captures each driven bit, preserving request positions 9/11/13/15
+and transfer positions 13/15/17/19. This alignment comes from the model.
+Agnus increments the pointer on the fetch. Paula advances the length and
+sample state when the receiver commits AUDxDAT.
 
-STREQU, STRVBL and STRHOR each capture a new request frame, so audio and disk
-DMA continue during vertical blanking. STRLONG leaves the active frame and
-phase unchanged. The approved [Paula receiver model](Paula.md#rga-synchronization-and-vertb)
-also derives VERTB from entry into STREQU; no decoded vertical event crosses
-the motherboard route.
-Disk requests now encode FIFO availability and direction in the same frame.
-For a read with one, two or three words, the last one, two or three slots are
-requested, matching the captured A500 frame. A disk read advances DSKPT after
-Paula supplies a word and RAM accepts it; a write advances it when Agnus fetches
-the word into the retained common output. Audio/sprite and deterministic disk
-exchange tests cover these paths and snapshot continuation.
-Working bitplane/Copper routes keep their existing queues.
-[Floppy](Floppy.md#autonomous-adf-reads-and-continuation) supplies timed ADF
-transitions through the same connector. The original cross1 boot test exercises
-firmware and guest setup; broader [native tests](../../../ROADMAP.md#native-disk-verification)
-retain image comparisons and selected program-level exchanges. Deterministic pin
-tests alone do not certify media boot.
+STREQU, STRVBL and STRHOR each capture a new request frame, so audio and
+disk DMA continue during vertical blanking. STRLONG leaves the active frame
+and phase unchanged. The approved Paula receiver model also derives VERTB on
+entry into STREQU. The motherboard route carries no decoded vertical event.
+[Paula receiver model](Paula.md#rga-synchronization-and-vertb)
+
+Disk requests encode FIFO availability and direction in the same frame. A read
+of one, two or three words requests the last one, two or three slots,
+respectively, as in the captured A500 frame. For a disk read, Paula supplies
+a word and RAM accepts it before Agnus advances DSKPT. For a disk write, Agnus
+advances DSKPT when it fetches the word into the retained common output. Audio
+and sprite tests and deterministic disk exchange tests cover the corresponding
+paths and continuation from snapshots. The working bitplane and Copper paths
+use their existing queues.
+
+The floppy drive model supplies timed ADF transitions through the same
+connector. [Floppy](Floppy.md#autonomous-adf-reads-and-continuation)
+The original cross1 boot test exercises the firmware and guest setup. The
+broader native tests retain image comparisons and selected program-level
+exchanges. Media boot evidence requires more than the deterministic pin
+tests alone. [native tests](../../../ROADMAP.md#native-disk-verification)
 
 ## Reference Documentation & Upstream Ground Truth
 
-- [Three-reference signal comparison](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md#three-reference-comparison-and-selected-transport): Revision-aware comparison, physical DMAL encoding, source identities and missing internal reactions.
-- [Machine input and register-delivery phases](Machine%20Loop.md#captured-connector-transport-and-pending-bus-words): Executed transport and save/restore contracts, distinct from the engine protocols described here.
-
-- [Fat Agnus technical reference](../Reference/A500%20A2000%20Technical%20Reference%20Manual/11%20-%20Section%206%20-%20Fat%20Agnus%20Chip.md): Describes Agnus address generation and DMA signals.
-- [Amiga Hardware Reference Manual, Chapter 3](../Reference/Hardware%20Reference%20Manual/03%20-%20Chapter%203%20-%20Playfield%20Hardware.md): Describes bitplane DMA and display data fetch.
-- [Amiga Hardware Reference Manual, Chapter 4](../Reference/Hardware%20Reference%20Manual/04%20-%20Chapter%204%20-%20Sprite%20Hardware.md): Describes sprite DMA channels and automatic fetches.
-- [Amiga Hardware Reference Manual, Chapter 5](../Reference/Hardware%20Reference%20Manual/05%20-%20Chapter%205%20-%20Audio%20Hardware.md): Describes audio channel enables and DMA requests.
-- [Amiga Hardware Reference Manual, Chapter 6](../Reference/Hardware%20Reference%20Manual/06%20-%20Chapter%206%20-%20Blitter%20Hardware.md): Explains allocated memory opportunities and bus priority.
-- [Amiga Hardware Reference Manual, Appendix B](../Reference/Hardware%20Reference%20Manual/10%20-%20Appendix%20B%20-%20Register%20Summary%20%28Address%20Order%29.md): Identifies the chips selected by `DMACON` writes and `DMACONR` reads.
-- [DMA scheduler source](../../../crates/agnus/src/dma.rs): Implements the current arbitration model.
-- [vAmiga Agnus register handling](../../../ref_src/vAmiga/Core/Components/Agnus/AgnusRegs.cpp) and [DMA events](../../../ref_src/vAmiga/Core/Components/Agnus/AgnusEvents.cpp): Reference implementation of `DMACON` gating and scheduled bitplane transfers.
-- [vAmiga bitplane sequencer](../../../ref_src/vAmiga/Core/Components/Agnus/Sequencer/SequencerBpl.cpp): Reference-model distinction between a stop request and its final complete fetch group.
+- The signal comparison accounts for revisions and records physical DMAL encoding, source identities and missing internal reactions. [Three-reference signal comparison](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md#three-reference-comparison-and-selected-transport)
+- The machine phases describe how the machine carries signals and handles pending transfers across save and restore. This page describes the engine protocols. [Machine input and register-delivery phases](Machine%20Loop.md#captured-connector-transport-and-pending-bus-words)
+- The technical reference describes Agnus address generation and DMA signals. [Fat Agnus technical reference](../Reference/A500%20A2000%20Technical%20Reference%20Manual/11%20-%20Section%206%20-%20Fat%20Agnus%20Chip.md)
+- The playfield chapter describes bitplane DMA and display data fetch. [Amiga Hardware Reference Manual, Chapter 3](../Reference/Hardware%20Reference%20Manual/03%20-%20Chapter%203%20-%20Playfield%20Hardware.md)
+- The sprite chapter describes DMA channels and automatic fetches. [Amiga Hardware Reference Manual, Chapter 4](../Reference/Hardware%20Reference%20Manual/04%20-%20Chapter%204%20-%20Sprite%20Hardware.md)
+- The audio chapter describes channel enables and DMA requests. [Amiga Hardware Reference Manual, Chapter 5](../Reference/Hardware%20Reference%20Manual/05%20-%20Chapter%205%20-%20Audio%20Hardware.md)
+- The Blitter chapter explains allocated memory opportunities and bus priority. [Amiga Hardware Reference Manual, Chapter 6](../Reference/Hardware%20Reference%20Manual/06%20-%20Chapter%206%20-%20Blitter%20Hardware.md)
+- The register summary identifies the chips selected by `DMACON` writes and `DMACONR` reads. [Amiga Hardware Reference Manual, Appendix B](../Reference/Hardware%20Reference%20Manual/10%20-%20Appendix%20B%20-%20Register%20Summary%20%28Address%20Order%29.md)
+- The scheduler source implements the current arbitration model. [DMA scheduler source](../../../crates/agnus/src/dma.rs)
+- The reference implementation shows `DMACON` gating and scheduled bitplane transfers. [vAmiga Agnus register handling](../../../ref_src/vAmiga/Core/Components/Agnus/AgnusRegs.cpp), [DMA events](../../../ref_src/vAmiga/Core/Components/Agnus/AgnusEvents.cpp)
+- The reference model shows how a stop request relates to the final complete fetch group. [vAmiga bitplane sequencer](../../../ref_src/vAmiga/Core/Components/Agnus/Sequencer/SequencerBpl.cpp)

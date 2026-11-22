@@ -14,78 +14,102 @@ tracked_paths:
 
 # Game Ports
 
-The two game ports represent the Amiga's controller sockets. Each port can host an emulated [mouse](Mouse.md), [joystick](Joystick.md), or no device. The frontend translates input from host hardware into the state of those emulated devices. A host mouse can supply mouse movement and buttons; host keyboard controls can be mapped to joystick directions and buttons. The Amiga keyboard itself is a separate peripheral.
+The two game ports represent the Amiga's controller sockets. Each can have
+an emulated [mouse](Mouse.md), an emulated [joystick](Joystick.md) or no
+device. The frontend turns host input into emulated device state. A host mouse
+can supply mouse movement and buttons, and keyboard controls on the host can
+map to joystick directions and buttons. The Amiga keyboard is a separate
+peripheral.
 
-Game port signals do not belong to a single chip. The corresponding registers and input lines are distributed across [Denise](Denise.md), [Paula](Paula.md), and [CIA-A](CIA.md). The game ports model the connected devices and their signals; those chips retain their own register state and behavior.
+The inputs and registers for a game port are spread across [Denise](Denise.md),
+[Paula](Paula.md) and [CIA-A](CIA.md). The game ports model the devices and
+their signals. Each chip owns its corresponding register state and behavior.
 
-The `game_ports` crate owns the `mouse.rs` and `joystick.rs` device modules and exposes their primary types. [Mouse](Mouse.md) and [Joystick](Joystick.md) remain detailed chapters of this subsystem's design. Device signals continue through the machine's connector routing; Denise retains its JOY counters and Paula retains its chip-side POT state.
+The `game_ports` crate owns the `mouse.rs` and `joystick.rs` device modules
+and exposes their primary types. [Mouse](Mouse.md) and [Joystick](Joystick.md)
+describe the two devices in more detail. Their signals pass through the
+machine's connector routing. Denise retains its JOY counters, and Paula
+retains its chip-side POT state.
 
-[MachineLoop](Machine%20Loop.md) owns the game ports alongside the chips. It samples the port signals and passes them to the appropriate chip, so the devices and chips communicate through the machine rather than through direct references to one another.
+[MachineLoop](Machine%20Loop.md) owns the game ports alongside the chips. It
+samples the port signals and delivers them to the receiving chips, which
+communicate with the devices without holding direct references to them.
 
 ## Host destinations
 
-Every mouse or joystick event names a physical destination port. Helpers do not
-search for a matching device. An event for a disconnected or different device
-has no effect. Releasing host input neutralizes both ports and the keyboard;
-release preserves attached device types and mouse quadrature position. Host
-source selection and reusable mappings belong to the [GUI](Application/GUI.md),
-not serialized controller handles.
+Every mouse or joystick event names a physical destination port. The input
+helpers deliver the event only if that port has the matching device type.
+Releasing host input neutralizes both ports and the keyboard. The release
+leaves device types and mouse quadrature position intact. The
+[GUI](Application/GUI.md) owns host source selection and reusable mappings.
+Serialized controller state holds no host handles for them.
 
-At a stopped frontend controls update or after exact core restoration, current
-committed controls choose each attachment. An unchanged device retains its
-phase while contacts and queued motion are released. A changed device is replaced
-in neutral state, leaving receiver-owned Denise, Paula and CIA values untouched.
-The normal CCK connector phases deliver its levels when execution continues;
-neither a machine reset nor immediate chip-register mutation is required.
+The frontend uses the current committed controls to select each port's device
+after exact core restoration and whenever it updates controls while stopped.
+If a port keeps the same device type, the device retains its phase, its
+contacts release and any queued motion clears. If the type changes, the replacement starts in a neutral state.
+Denise, Paula and CIA keep their receiver state. When execution resumes, the
+normal CCK connector phases deliver the new levels with no machine reset or
+immediate chip-register write.
 
 ## Connector delivery
 
 The serializable `GamePortsPins` state in [pins.rs](../../../crates/game_ports/src/pins.rs)
-is exposed as `game_ports.pins`. It groups direction outputs and delivered
-fire/POT drive levels separately from plugged device state.
+is exposed as `game_ports.pins`. It holds direction outputs and delivered
+fire/POT drive levels separately from the state of the connected devices.
 
-Each port's low nibble in `pins.direction_pins` carries connector pins 1-4, high
-when released. The [machine](Machine%20Loop.md#captured-connector-transport-and-pending-bus-words)
+Each port's low nibble in `pins.direction_pins` carries the levels on
+connector pins 1-4, which are high when released. The
+[machine](Machine%20Loop.md#captured-connector-transport-and-pending-bus-words)
 samples these external levels into Denise's `game_port_inputs` before engine
-work in the current CCK, without retaining another pending copy. The input time
-already denotes arrival at the receiver pin. It does not overwrite JOY registers
-with device-side counters.
-The device stage advances before this sampling phase. Mouse deltas queue
-quadrature transitions, at most one per axis per CCK; joystick contacts supply
-static active-low levels. Denise decodes the four wrapping byte counters and
-keeps their low two bits consistent with the delivered pins. JOYTEST changes
-only bits 7..2 of each axis on both ports. The former device-side JOY register
-helpers are removed. The per-CCK waveform rate is a functional model, not a
-calibrated physical mouse speed or half-CCK input multiplexer.
+work in the current CCK. The event time already marks arrival at the receiver
+pin, so the machine needs no extra pending copy. The machine delivers pin
+levels and does not copy device-side counters into JOY registers.
 
-Pin 6 fire is sampled directly into CIA-A PA6/PA7 at that same input phase,
-independently of the captured drive-status bits on the same port. CIA direction and output levels travel back
-to `pins.fire_output_mask`/`pins.fire_output_high`, rather than disappearing when software
-changes a pin to output. Additional buttons on pins 5/9 travel through Paula's
-POT input boundary; the existing decoded POT endpoint is retained without
-certifying its conversion algorithm. Raw return levels are sampled from the
-endpoint using its delivered drive state and sampled directly into
-`paula.pins.pot_input_high`. Existing decoded POT counters remain in
-`paula.pins.incoming` for next-CCK delivery; they do not establish analog
-conversion timing. The direct digital inputs add no wire delay, while the
-committed CIA/Paula drive levels retain their existing connector delivery phase.
-Committed POTGO direction bits 9/11/13/15
-produce `pins.pot_output_mask` on data positions 8/10/12/14; those data positions
-also supply `pins.pot_output_high`. These are electrical drive inputs to the
-attached endpoint. Each digital return is high only if neither an enabled
-low output nor a pressed button pulls it low. Released inputs pull high, and
-POTGOR reports only the four data positions. The same low-drive resolution
-applies to FIRE. Analog capacitor conversion remains deferred.
+The machine advances the devices before sampling their outputs. Mouse
+movement queues quadrature transitions. Each axis advances by at most one
+transition per CCK. Joystick contacts supply static active-low levels. Denise decodes the four wrapping byte counters
+and keeps their low two bits consistent with the delivered pins. JOYTEST
+changes only bits 7..2 of each axis on both ports. The former device-side
+JOY register helpers are removed. The per-CCK waveform rate belongs to the
+functional model. It provides neither a calibrated physical mouse speed
+nor a half-CCK input multiplexer.
 
-Disconnected direction/fire inputs are released high; a disconnected decoded
-JOY value is a receiver question, not a zero written by the motherboard. Device
-selection, neutral/release events and per-port state are serialized. External
-levels must hold through the input phase; later changes appear at the next input
-phase. Sub-CCK pulses and analog
-capacitor charging are not modeled by that interface. Proportional devices and
-four-player adapters remain 12.2 work. The [frontend](Application/GUI.md#input-and-output)
-now supplies physical mouse and gamepad events through named host configurations. Physical-controller diagnostics and keyboard matrix fidelity remain 6.2 work. Tests cover digital direction/data/button combinations, quadrature wrapping,
-JOYTEST and continuation of queued movement after snapshot restore.
+At the same input phase, the machine samples the pin 6 fire level directly
+into CIA-A PA6/PA7. Drive-status bits on that CIA port are captured
+independently. CIA direction and output levels travel back through
+`pins.fire_output_mask`/`pins.fire_output_high`, including when software
+sets a pin as an output. Additional buttons on pins 5/9 use Paula's POT
+input boundary. The model retains the existing decoded POT endpoint, whose
+conversion algorithm remains unverified here. The machine samples raw return
+levels from the endpoint using its delivered drive state and passes them
+directly into `paula.pins.pot_input_high`. The existing decoded POT counters
+stay in `paula.pins.incoming` for next-CCK delivery and provide no evidence of
+analog conversion timing. The direct digital inputs add no wire delay.
+Committed CIA/Paula drive levels retain their existing connector delivery
+phase.
+
+Once POTGO commits, direction bits 9/11/13/15 determine which data
+positions 8/10/12/14 are enabled as outputs in `pins.pot_output_mask`.
+The same data positions supply the levels in `pins.pot_output_high`.
+Together, these values drive the attached endpoint. An enabled
+low output or a pressed button pulls a digital return low. Otherwise the
+released input pulls high. POTGOR reports only the four data positions. FIRE
+uses the same rule for resolving a low drive. Analog capacitor conversion
+remains deferred.
+
+Disconnected direction and fire inputs are released high. Denise determines
+the decoded JOY value from what it receives. The motherboard does not write
+zero for a disconnected port. Serialization includes device selection,
+neutral and release events, and state for each port. External levels must
+hold through the input phase. Later changes appear at the next input phase.
+The interface leaves sub-CCK pulses and analog capacitor charging unmodeled.
+Proportional devices and four-player adapters remain 12.2 work. The
+[frontend](Application/GUI.md#input-and-output) now supplies physical mouse
+and gamepad events through named host configurations. Physical-controller
+diagnostics and keyboard matrix fidelity remain 6.2 work. Tests cover digital
+direction, data and button combinations, quadrature wrapping, JOYTEST and
+continuation of queued movement after snapshot restore.
 
 ## References
 

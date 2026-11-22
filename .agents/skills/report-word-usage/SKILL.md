@@ -5,10 +5,11 @@ description: Rank uncommon words in project-authored Markdown, assess vague word
 
 # Report words that may hide an unclear explanation
 
-Executor: main session. Apply the [result contract](../../references/workflow-contract.md)
-and [communication rules](../../../AGENTS.md#communication).
-This report helps the user notice repeated, vague language. It is an editorial
-assessment, not a spelling check or a test of whether a milestone is complete.
+The main session prepares this editorial report to help the user find recurring
+vague wording. The report assesses how words are used in context. Spelling and
+milestone completion have their own checks. Follow the
+[result contract](../../references/workflow-contract.md) and
+[communication rules](../../../AGENTS.md#communication).
 
 From the selected checkout, run:
 
@@ -16,52 +17,52 @@ From the selected checkout, run:
 python .agents/skills/report-word-usage/scripts/rank_words.py --output .agent/tmp/word-usage/report.json
 ```
 
-The script reads current Markdown from the agreed project directories, including
-tracked files and nonignored new files. Its fixed scope covers root project
-documents, agent instructions, Design notes, reader documentation and the selected
-tool, test, benchmark and example documentation. It excludes reference books,
+The script reads the current contents of tracked Markdown and new Markdown
+files that Git does not ignore. Its fixed scope covers root project
+documents, agent instructions, Design notes, reader documentation and the
+selected tool, test, benchmark and example documentation. It excludes reference books,
 `ref_src/`, `tools/bootstrap/books/`, task archives, dependencies and generated
-outputs. Use the report's paths and directory totals to describe the actual scan;
-do not expand the scope to find more candidates.
+outputs. Use the paths and directory totals in the report to describe the
+scan within that fixed scope.
 
-The script also inventories Markdown file names elsewhere in the checkout,
-skipping known ignored source collections and build/cache directories. It reports
-unclassified directories and example paths without reading their contents or
-adding them to the word counts. Include these notices in the response so the user
-can decide whether each directory belongs in the scan or in the ignore rules.
-The script does not change its own scope.
+In the rest of the checkout, the script lists Markdown file names and skips
+known ignored source collections and build and cache directories. For each
+unclassified directory, it reports example paths and leaves their contents
+outside the scan and the word counts. Include these notices so the user can
+decide whether each directory belongs in a future scan or in the ignore rules.
 
-The bundled [common words](assets/common-words.txt) and
-[project vocabulary](assets/project-words.txt) are static exclusions. Their
-[sources and maintenance guidance](references/vocabulary.md) explain what they
-contain. Reports need no downloads or installed language packages. Counts ignore
-letter case and retain different word forms separately. Metadata, code examples,
-paths and link destinations do not count as prose.
+The report uses bundled lists of excluded words, so it needs no downloads
+or installed language packages. It ignores letter case, counts different
+word forms separately and skips metadata, code examples, paths and link
+destinations when it counts prose. [Common words](assets/common-words.txt),
+[project vocabulary](assets/project-words.txt),
+[sources and maintenance guidance](references/vocabulary.md).
 
 Read the report and inspect its source examples. For each of the top 20 words,
-decide whether the examples show a useful term, a possible vocabulary exclusion,
-or wording that hides who acts, what happens or which condition applies. Read the
-surrounding passage when a short sample is insufficient. Explain uncertainty and
-mixed meanings rather than assigning one verdict to every occurrence of a word.
-Do not treat frequency or absence from the common-word list as proof of misuse
-or as an English proficiency level.
+decide from its context whether it names something useful, is a candidate for
+exclusion or obscures who acts, what happens or which condition applies. Read
+the surrounding passage when the sample leaves the meaning unclear. Explain
+any uncertainty or differences between uses of the same word. Frequency and
+absence from the common-word list alone establish neither misuse nor an
+English proficiency level.
 
-Show the 20 highest-ranked words with their occurrence and document counts. If
-fewer than 20 remain, show the available words and state the number. Keep the
-ranking produced by the stored filters. Separately suggest ordinary or established
-project terms that should be excluded in a future run, explaining each suggestion.
-Do not quietly remove them or add a familiar abstract word to the exclusions
-merely because it occurs often.
+Show the 20 highest-ranked words and give each word's occurrence and document
+counts. If fewer than 20 words remain, show them all and state how many there
+are. Keep the ranking from the stored filters. Separately suggest ordinary
+English words or established project terms to exclude in a future run. Explain
+each suggestion from its use in context. For familiar abstract words,
+frequency alone gives insufficient reason to suggest an exclusion.
 
-Give a short assessment of the strongest wording concerns, supported by source
-examples and locations. Where useful, show how naming the actor, action, data or
-result would improve an example. Preserve its requirements and evidence limits.
-Finish the prose report with a compact summary of the scanned directories and
-the excluded source collections, followed by any newly discovered directories
-that need a scope decision.
+Give a short assessment of the most significant wording concerns, with
+examples and their locations. Where useful, show how naming the actor, action,
+data or result would clarify a passage while preserving its requirements and
+the limits of its evidence. End the prose report with a short account of the
+scanned directories and excluded source collections, followed by any
+newly discovered directories that need a scope decision.
 
-Report source-reading failures or other missing inputs as limits; an incomplete
-scan cannot establish a complete ranking. Word frequencies and editorial findings
-have no pass/fail threshold. Stop after the report and suggested exclusions.
-Do not rewrite source documents, rename code, update the filters or start another
-operation. The caller decides how to use the findings.
+Report any files the script could not read or other missing inputs. An
+incomplete scan cannot establish that the ranking is complete. Present word
+frequencies and editorial findings without a pass/fail threshold. The assignment
+ends with the report and suggested exclusions. Changes to source documents,
+code names or filters and any follow-up operation require a separate decision
+from the caller.

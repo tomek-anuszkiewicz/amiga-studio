@@ -1,30 +1,38 @@
 # Stage 05: Transform Page Tables
 
-Read selected Stage 04 page JSONs, falling back to Stage 03 for unchanged pages,
-and original Stage 02 PNGs. Omit pages with empty `segments`. For each `table`,
-make one Codex request using its exact, unpadded pixel crop and the
-[table prompt](prompt.md). Replace table `md_text` and record `table_format`.
-The prompt is the sole source of transcription instructions and response format;
-no separate JSON schema is sent.
-Before saving, literal angle-bracket notation present in the extracted PDF text
-is escaped in the returned markup. Formatting tags added by the transcription,
-such as `<br>`, remain markup when they are absent from the PDF text.
+Stage 05 reads the selected pages from Stage 04 JSON and uses the original
+Stage 02 PNGs. It reads unchanged pages from Stage 03 and skips pages with empty
+`segments`. For each `table`, the stage sends Codex one request containing a
+pixel crop at the table's exact bounds, with no padding, and the
+[table prompt](prompt.md). The prompt supplies all transcription instructions
+and defines the response format. The stage sends no separate JSON schema.
+With the transcription, it replaces the table's `md_text` and records
+`table_format`.
+
+Before saving, the stage escapes literal angle-bracket notation in the returned
+markup when that notation appears in the extracted PDF text. Formatting tags
+added by the transcription, such as `<br>`, remain markup when they are absent
+from the PDF text.
 An `unconverted` result retains the original table content.
 
-Save a full page JSON to `05_transform_page_tables/` only when its data changes.
-Pages without tables and unchanged pages remain in Stage 04 or Stage 03. Preserve other
-source objects, their IDs, geometry and order. Remove temporary request crops
-after execution. Console progress reports each table's start, format and elapsed
-time, followed by the page's save/skip outcome.
-Table requests run with the configured `llm.concurrency` limit, including tables
-from the same page. Each worker owns a separate Codex client. The coordinator
-applies results and writes a page only after all its tables complete successfully.
+The stage writes a full page JSON to `05_transform_page_tables/` only when the
+page data changes. Pages without tables and unchanged pages remain in Stage 04
+or Stage 03. The stage preserves other source objects and their IDs, geometry
+and order. After execution, it removes the temporary request crops. The console
+reports each table's start, format and elapsed time, then whether the coordinator
+saved or skipped the page.
+
+The configured `llm.concurrency` limits how many table requests can run at
+once, even when the tables share a page. Each worker uses a separate Codex
+client. The coordinator applies the results and writes a page only after the
+requests for all its tables succeed.
 
 Run through the [pipeline](../../README.md) with `--from-stage 05 --to-stage 05`
 after successful Stages 02 and 04. The configured model/effort and shared response
 cache apply. The status entry records this invocation's page range.
 
-[Stage 06](../06_extract_crops/README.md) overlays these replacement pages on
-Stages 04 and 03 and extracts graphic assets. [Stage 07](../07_repair_callouts/README.md)
-uses the same overlay to assemble callouts before [Stage 08](../08_proofreading/README.md)
-proofreads the final page objects for book import.
+To extract graphic assets, [Stage 06](../06_extract_crops/README.md) reads
+these replacement pages where available and falls back to Stages 04 and 03.
+[Stage 07](../07_repair_callouts/README.md) reads the same collection of pages
+to assemble callouts. [Stage 08](../08_proofreading/README.md) then proofreads
+the final page objects for book import.

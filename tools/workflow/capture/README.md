@@ -1,28 +1,30 @@
 # Capture a selected task execution
 
 The primary checkout keeps private evidence in `.agent/task-archives/<task>/<execution>/`.
-An execution groups expressly selected turns and verified descendant threads. The
-workflow's task, work item, run and round identify an assignment within it.
-Codex's thread ID joins the rollout to the OTLP `conversation.id`. The CLI pilot
-also found `turn.id` on selected spans. Preserve the separate source fields.
+Each execution groups the turns explicitly selected for capture and their
+verified descendant threads. The task, work item, run and round identify the
+workflow assignment within the execution. Codex's thread ID links the rollout
+to the OTLP `conversation.id`. The CLI pilot also observed `turn.id` on
+selected spans. Keep these fields separate in the evidence.
 
 
 ## Case reports
 
 Test and benchmark launchers reserve `test-runs/<UTC-milliseconds>_<invocation-id>.md`
-within the task and execution archive. Standalone runs use
-`.agent/task-archives/standalone/<execution>/test-runs/` with a fresh execution
-ID. Both routes use the primary checkout and work without a receiver. Execute
-commands directly; the selected-command wrapper has been removed.
+in the task's execution archive. For a standalone run, they use a fresh execution
+ID and write under `.agent/task-archives/standalone/<execution>/test-runs/`.
+Both routes write to the primary checkout and work without a receiver. Run
+commands directly. The repository removed the selected-command wrapper.
 When the task context is known, pass `AMIGA_TEST_TASK_ID` and `AMIGA_TEST_EXECUTION_ID`.
-Launchers propagate parent invocation linkage and accept
+The launchers carry the link to the parent invocation forward. They also accept
 `AMIGA_TEST_WORK_ITEM_ID` and `AMIGA_TEST_ROUND` when supplied.
 
-Open the printed Markdown path and follow the links to its native journal,
-logs and child reports. The journal persists case events during execution.
-A missing finish leaves the invocation's final outcome unavailable. A started
-case without a result has an unavailable duration and outcome. Reused groups
-identify the earlier evidence and add zero new attempts.
+Open the Markdown report at the printed path for links to the native journal,
+logs and child reports. The journal records case events as they happen. The
+invocation's final outcome is unavailable if its finish event is missing. If
+the journal records a case start without a result, the duration and outcome of that case are
+unavailable. Reused groups point to their earlier evidence and add zero new
+attempts.
 
 ## Starting inputs
 
@@ -34,11 +36,17 @@ fresh name in the same directory and preserve the earlier inventory. Without
 task context, use an explicitly selected archive location. This file stays with
 the task's session logs, telemetry and test reports without requiring a running
 Receiver or Collector.
-Select the known revision that governs execution and the relevant local tools.
-Apply the [capture skill's governing revision rule](../../../.agents/skills/TA-WF-Step-capture-environment/SKILL.md).
-Identify the actual shell with `--shell <name>` and inspect a locally available
-Collector image with `--docker-image <reference>`.
-To record observed client settings, supply `--rollout <selected-session.jsonl> --turn-id <observed-turn-id>` to the capture command. Without that source the inventory reports the client observation as unavailable. The executable probe records the version of Codex found on `PATH`. Use `--node-project <repository-relative-directory>` for each selected local Node project. The comparison operation takes two inventories saved in the current format (version 2).
+Select the known revision that governs the execution, following the
+[capture skill's governing revision rule](../../../.agents/skills/TA-WF-Step-capture-environment/SKILL.md).
+Select the relevant local tools. Identify the actual shell with `--shell <name>`
+and inspect a locally available Collector image with `--docker-image <reference>`.
+To record observed client settings, supply
+`--rollout <selected-session.jsonl> --turn-id <observed-turn-id>` to the capture
+command. The inventory reports the client observation as unavailable when that
+source is missing. The executable probe records the version of Codex it finds
+on `PATH`. Use `--node-project <repository-relative-directory>` for each selected
+local Node project. To compare inventories, supply two saved in the current
+format (version 2).
 
 ```text
 python tools/workflow/capture/environment.py capture --output <primary>/.agent/task-archives/<task>/<execution>/logs/environment.json --governing-commit <revision>
@@ -52,20 +60,21 @@ selected handoffs and versions explicitly retained for history. Include each
 attachment the decision or recipient actually depends on. Working draft edits
 need no intermediate versions.
 
-At approval, bind each selected input to recoverable bytes. Use the path at an
-immutable Git commit if it contains the exact bytes. For ignored or dirty inputs,
-keep one verified copy before changing the selected bytes. Use ordinary file
-copy and SHA-256 commands and verify the destination against the source.
-Reuse an existing verified copy of identical content. Keep previous accepted
-versions and existing archive records. If the recipient needs a worktree copy,
-reference its existing provisioning copy when it provides the selected bytes.
+At approval, record how to recover the exact bytes of each selected input. Use
+the path at an immutable Git commit if it contains those bytes. For ignored or
+dirty inputs, keep one verified copy before changing the selected bytes. Use
+ordinary file copy and SHA-256 commands to verify the destination against the
+source. Reuse an existing verified copy with identical content. Preserve earlier
+accepted versions and existing archive records. If the recipient needs a worktree
+copy, reference the existing provisioning copy when it contains the selected bytes.
 
 For each selected version, record the task, original relative path, version,
-approval or handoff identity, SHA-256 and the copy or Git object locator.
-At a decision that depends on an earlier version, compare its selected inputs
-once at use. Record missing required versions as gaps. A hash without recoverable
-bytes cannot supply a comparison. When asked what changed since approval, read
-that approved input and compare it with the current working file.
+approval or handoff identity, SHA-256 and where to find the copy or Git object.
+When a decision depends on an earlier version, compare the selected inputs
+once when making that decision. Report any required version you cannot recover
+as a gap. A recorded hash alone cannot replace the saved bytes.
+When asked what changed since approval, compare the approved input with the
+current working file.
 ### Explicit starting input commits
 
 An explicitly selected starting input commit may retain named ignored paths
@@ -96,13 +105,14 @@ python tools/workflow/capture/register.py provision --project <primary>
 
 Compose publishes the receiver on `127.0.0.1:4318` and keeps the Collector on the
 private project network at `http://collector:4318`. Both use `unless-stopped`.
-The primary archive stores task registrations and each execution's Collector output.
-At startup, the receiver reads registrations into a thread index in memory.
-Each successful registration change or admission timestamp write updates that
-index after the file is saved. Incoming log and trace requests use the index
-without scanning registration files again, including for closed intervals and
-delayed events. Registration commands still validate the selected files on disk.
-Direct archive edits require a receiver restart to rebuild the index.
+The primary archive stores task registrations and each execution's Collector
+output. At startup, the receiver reads the registration files to build an
+in-memory thread index. After it successfully saves a registration change or
+an admission timestamp, it updates the index. Incoming log and trace requests
+use that index, including requests for closed intervals and delayed events,
+so the receiver can handle them without scanning the files again. Registration
+commands still validate the selected files on disk. After a direct archive edit,
+restart the receiver to rebuild the index.
 The primary checkout's ignored, untracked `.agent/tools/workflow-capture/`
 stores private Compose settings, deployed service files, the host's Git
 validation, Receiver state in `receiver/` and Collector writes in `collector/spool/`.
@@ -119,13 +129,14 @@ Existing `logs.jsonl` and `traces.jsonl` files remain readable.
 
 #### Update a host-side capture installation
 
-From the published primary checkout, inspect the installation before choosing a
-maintenance window. The report gives the installation and port, saved and
-published revisions, open task and execution IDs with their root threads, and
-the current state of each capture container and Receiver/Collector readiness.
-Inspection leaves the containers and registry untouched. When either service is
-missing, stopped or unavailable, the report includes `ready: false` and the
-command exits with status 1. Publication itself starts no service action.
+Inspect the installation from the published primary checkout before choosing a
+maintenance window. The report identifies the installation and port, the saved
+and published revisions, and the open task and execution IDs with their root
+threads. It shows each capture container's state and whether the Receiver and
+Collector are ready. The status command reads the containers and registry without
+changing them. If either service is missing, stopped or unavailable, the report
+includes `ready: false` and the command exits with status 1. Publication alone
+triggers no service action.
 
 ```powershell
 python tools/workflow/capture/register.py status --project .
@@ -142,11 +153,11 @@ to be ready before closing existing registrations or upgrading.
 python tools/workflow/capture/register.py status --project .
 ```
 
-Have each registered owner end the selected interval at its actual last
+Have each registered owner close the selected interval at its actual last
 included time. Supply the observed turn ID when available. A task in one
 session needs one bounded interval. Include a continuation only when explicitly
-selected. Keep both services available while exporting any remaining records
-and processing delayed writes.
+selected. Keep both services available while the exporters send any remaining
+records and the services process delayed writes.
 
 If the report shows "control: http", use the [normal stop command](#continue-and-close-an-interval)
 from the selected thread. Registration uses authenticated loopback HTTP at
@@ -179,16 +190,16 @@ python tools/workflow/capture/register.py status --project .
 
 The upgrade verifies the installed revision and recreates only `receiver` and
 `collector`. It retains their Compose project name, port, credentials, spool,
-registry and archives. Other services in the same Compose project keep running.
-It checks readiness before accepting the new revision. If the switch fails,
-the command attempts to restore the previous capture revision and verifies that
-it is ready. Recovery gives Docker commands and readiness checks a fresh shared
-180-second deadline. Copying pending output back runs synchronously and is not
-interrupted by that deadline; its elapsed time reduces the budget available for
-restarting the previous services. Time spent on the failed upgrade does not consume
-the recovery budget. An installation at the selected
-revision returns `already_current` after readiness and any pending old-layout
-retention have completed.
+registry and archives. Other services in the Compose project keep running.
+Before accepting the new revision, the command checks readiness. If the switch
+fails, it attempts to restore the previous capture revision and checks that
+it is ready. Docker commands and readiness checks in recovery share a new
+180-second deadline that excludes time spent on the failed upgrade. Copying
+pending output back runs synchronously to completion, even if the deadline
+passes. The copy uses time that would otherwise be available to restart the
+previous services. When the selected revision is already installed, the command
+returns `already_current` after it confirms readiness and finishes any pending
+retention of the old layout.
 
 After a successful upgrade, [confirm a fresh event](#register-and-read-the-fresh-event)
 from the actual Codex client using a new proof execution. Close its registration
@@ -239,12 +250,13 @@ recreates the services with their new mounts. It retains the Compose project,
 port, credentials, image and existing task archives. The archive directories for
 individual tasks and executions keep their existing paths.
 
-Each copied runtime file is fully written and closed in an ignored temporary file
-outside the destination runtime directory, on the same filesystem. Only then is it
-published under its final name by an atomic rename that refuses to overwrite an
-existing entry. An interrupted write can leave a temporary file outside the queue;
-it leaves no incomplete queue input and preserves the original. A platform or
-filesystem without the required publication operation fails rather than overwrites.
+The upgrade writes each runtime copy to an ignored temporary file on the same
+filesystem, outside the destination runtime directory. It closes the file, then
+publishes it under its final name with an atomic rename that refuses to overwrite
+an existing entry. If a write is interrupted, the original stays intact and any
+incomplete temporary file stays outside the queue. If the platform or filesystem
+lacks the required publication operation, the upgrade fails and leaves existing
+entries intact.
 
 After the new services are ready, the old `_receiver/` directory moves to
 `previous-layout/<old-config-id>/receiver/` under the private service root.
@@ -295,38 +307,42 @@ when prompt logging is disabled.
 
 ### Register and read the fresh event
 
-Run from the actual initiating thread. Establish its `CODEX_THREAD_ID`
-independently of the archive. Provide the stable task and execution IDs.
-The start command checks Docker, recovers missing or stopped services from
-the installed revision, and checks both services and new errors. The receiver
-validates the actual thread's rollout before registering it over HTTP. Preserve the registration receipt and UTC
-time. Use an ordinary short activity in the active client to emit telemetry.
+Run the start command from the actual initiating thread. Establish its
+`CODEX_THREAD_ID` independently of the archive and provide the stable task and
+execution IDs. The command checks Docker, restores missing or stopped services
+from the installed revision, then checks both services and looks for new errors.
+The receiver validates the actual thread's rollout before registering it over
+HTTP. Save the registration receipt and UTC time. Perform a short, ordinary
+activity in the active client to emit telemetry.
 
 ```text
 python tools/workflow/capture/register.py start --otel --project <primary> --task <task> --execution <execution>
 python tools/workflow/capture/register.py confirm --project <primary> --task <task> --execution <execution>
 ```
 
-A live start supplies one 180-second deadline measured before the first Docker
-check. `confirm` polls the selected host archive every 250 ms while waiting.
-It normally waits up to five seconds in a call and returns exit 3 with
-`status = pending` if the original budget remains. Finish a short verification
-turn if the client flushes at turn end, then invoke the same confirmation
-command in the same thread. The registration and original deadline remain in
-force. Exit 1 reports a failed prerequisite, an archive error or expiration.
-Resolve the reported cause and use a fresh execution ID for a new attempt,
-closing an earlier open registration through the normal stop command.
+A live start begins a single 180-second deadline before the first Docker check.
+While waiting, `confirm` polls the selected host archive every 250 ms. A call
+normally waits up to five seconds. If the call finishes without confirmation and
+time remains before the original deadline, it returns exit 3 with `status = pending`.
+If the client flushes telemetry at turn end, finish a short verification turn and
+run the same confirmation command again in that thread. The registration and
+original deadline still apply. Exit 1 reports a failed prerequisite, an archive
+error or an expired deadline. Resolve the reported cause and choose a fresh execution
+ID for a new attempt. Close any earlier open registration using the normal stop command.
 
 Require exit 0 and `status = confirmed` before planning or executing the task.
-Keep the proof's archive path, byte range, record indexes, digest, event time and
-observation time with the registration receipt. It identifies a complete new
-Collector record for the initiating thread whose event time is strictly after
-registration. Select only records generated by ordinary activity in the active
-client. An earlier file, native rollout, HTTP success and a manually submitted
-sample supply diagnostic information. Mark manual OTLP requests with
+Confirmation identifies a complete new Collector record from the initiating
+thread, with an event time strictly after registration. Select only records
+that ordinary activity in the active client produced. Keep the proof's archive
+path, byte range, record indexes, digest, event time and observation time with
+the registration receipt.
+
+An earlier file, native rollout, HTTP success or manually submitted sample
+provides diagnostic information. Mark manual OTLP requests with
 `X-Capture-Diagnostic: 1` and omit the private application header. The receiver
-also marks uncredentialed requests as diagnostics. Diagnostic events remain
-available for testing admission and archive delivery and cannot confirm startup.
+also marks uncredentialed requests as diagnostics. Diagnostic events are
+available for testing admission and archive delivery. Startup confirmation
+requires the active-client record described above.
 
 ### Continue and close an interval
 
@@ -373,17 +389,21 @@ when interpreting a dedicated probe.
 
 ## Capture a stage
 
-Keep the task and execution association in the existing registration and archived
-session or command records. Return selected archive paths in the common result's
-existing `summary` or relevant check summaries. The
-[skill result schema](../result.schema.json) defines its permitted fields; do not
-add an `observations.capture` object. Save the actual paired results and separately produced
-verification reports as selected artifacts, including the status and complete
-output of a failed attempt. Use a scoped Git diff at the stage boundary if
-native patch events omit the required content. Include newly created files and
-binary inputs separately when the diff does not preserve their bytes. A script
-that writes and restores a file inside one command can finish with an empty
-stage diff. The accepted history records tool events and observable changes at command and stage boundaries. Internal writes that a script restores without emitting their contents remain unobserved.
+Keep the task and execution association in the existing registration and the
+archived session or command records. Return selected archive paths in the
+common result's existing `summary` or relevant check summaries. Use the fields
+permitted by the [skill result schema](../result.schema.json). Do not add an
+`observations.capture` object. Save the actual paired results and any separately
+produced verification reports as selected artifacts. For a failed attempt,
+include its status and complete output.
+
+If native patch events omit required content, use a scoped Git diff at the
+stage boundary. Include newly created files and binary inputs separately when
+the diff does not preserve their bytes. The accepted history records tool
+events and observable changes at command and stage boundaries. A script can
+write and restore a file within one command, leaving an empty stage diff.
+If the script never emits those contents, the history cannot show the internal
+writes.
 
 ## Preserve selected files at task closure
 
@@ -414,14 +434,14 @@ to the execution directory can continue at the same path.
 }
 ```
 
-The command prints the actual archived path for each copy or retained file.
-If a requested name is occupied, use the alternate path printed by the command.
-The copy does not compare payloads. On a write failure or a pending external
-producer, keep the source and repeat with the same selected IDs after resolving
-the specific condition. Earlier completed copies remain available. The existing
-copy command reports preserved paths; reuse those paths for a retry. It does not
-generate an archive revision, manifest or closure report. An ordinary copy does
-not select archive analysis or assessment.
+The command prints the actual archive path for each copied or retained file. If
+the requested name is occupied, use the alternate path it prints. The copy
+operation performs no payload comparison. Keep the source if a write fails or
+an external producer has yet to finish. Resolve the specific condition and retry
+with the same selected IDs. Reuse the reported paths for earlier completed copies,
+which remain available. The command generates no archive revision, manifest or
+closure report. Archive analysis and assessment are separate operations that
+require their own selection.
 
 ## Inspect an existing archive revision
 
@@ -450,12 +470,12 @@ report contains gaps.
 
 ## Selected timing reports
 
-When selecting a verification timing report for preservation, save a task-local
-selection record using the actual invocation's output. The verifier already writes
-the report and prints its path and SHA-256 digest; this operation makes a selected
-archival copy and receipt. It does not create the original report. Select both final
-profiles when both were required. Select a failed attempt or diagnostic only when
-requested, using its actual outcome and, for a diagnostic, exact invocation.
+To preserve a verification timing report, save a task-local selection record
+from the actual invocation's output. The verifier creates the original report
+and prints its path and SHA-256 digest. The preservation operation copies that
+report to the archive and writes a receipt. Select both final profiles if both
+were required. Select a failed attempt or diagnostic only when requested, and
+use its actual outcome. For a diagnostic, also supply the exact invocation.
 
 The selection identifies the task, profile, attempt, reviewed candidate, actual
 outcome and report path relative to the source checkout. Use the path printed on

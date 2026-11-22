@@ -17,17 +17,20 @@ related: ["[SiblingDoc.md](SiblingDoc.md)"]
 ---
 ```
 
-Use `active`, `completed` or `draft` status reflecting actual maturity. Include
-`tracked_paths` where the specification owns source paths; retain its existing
-file/directory ownership meaning. Update `updated` only with substantive content,
-not a no-change review or mechanical obsolete-metadata removal. Review tags,
-status and related dependencies for meaning, not merely structural presence.
+Choose `active`, `completed` or `draft` according to the document's actual
+maturity. Include `tracked_paths` where the specification owns source paths
+and retain its existing file and directory ownership rules. Change `updated`
+only when the content changes substantively. A review without changes or
+mechanical removal of obsolete metadata leaves the date in place. Check that
+the tags, status and related dependencies mean what the document needs them
+to convey.
 
-Maintain two useful link layers: contextual inline links where a relationship is
-explained and a final curated reference section. Source entries include a short
-rationale explaining the hardware contract, model comparison or implementation
-they support. Use the General Architecture hub and reciprocal meaningful
-dependencies without link quotas. Adapt section structure to the subsystem.
+Link to related material where the text explains the relationship and keep a
+curated reference section at the end. For each source entry, briefly explain
+what hardware contract, model comparison or implementation it supports. Use
+the General Architecture hub and link meaningful dependencies in both
+directions. Let the relationships determine the number of links. Adapt the
+section structure to the subsystem.
 
 Resolve every relative target from its source file's parent, including nested
 Design folders. For a note directly under Design, sibling links use `File.md`,
@@ -41,7 +44,8 @@ Reference books use the [book metadata schema](../../../../tools/bootstrap/book-
 Preserve source-note metadata while editing. Raw conversion follows the
 [nested bootstrap instructions](../../../../tools/bootstrap/AGENTS.md).
 
-The full Design checker rejects empty tags and broken links as well as metadata
-structure. The canonical checker scans every local Amiga Markdown file, including
-ignored books. Retain both actual scopes and reuse only overlapping evidence;
-neither structural success nor link counts establish hardware or semantic parity.
+The full Design checker rejects invalid metadata structure, empty tags and
+broken links. The canonical checker scans every local Amiga Markdown file,
+including ignored books. Record the actual scope of each checker and reuse
+evidence only where the scopes overlap. Structural success and link counts
+are insufficient evidence of hardware or semantic parity.

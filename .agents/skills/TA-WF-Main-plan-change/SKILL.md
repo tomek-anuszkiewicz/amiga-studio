@@ -5,12 +5,11 @@ description: Create or amend a change plan and its test design together, with sc
 
 # Plan the selected change
 
-Executor: `TA-planner`, assigned by the main session using the
+The main session assigns `TA-planner` to create or amend the plan. It supplies the
+current requirements and decisions and brings unresolved choices back to the
+user. The assigned planner carries out the procedure directly and designs tests
+in the same context, without delegating the operation again. See the
 [subagent policy](../../../AGENTS.md#subagent-assignment-and-model-selection).
-This compound operation covers both creating and amending a plan. In the assigned
-planner context, execute the procedure directly, including test design in the same
-instance; do not delegate this operation again. The main session supplies current
-requirements and decisions and returns unresolved choices to the user.
 
 Apply the [result contract](../../references/workflow-contract.md), shared
 [information hierarchy](../../references/information-hierarchy.md),
@@ -32,16 +31,17 @@ plan within this operation. Reconcile scenarios, expected observations and exist
 test protection with the current requirements. Preserve unaffected scenario IDs
 and identify superseded expectations. If an editorial amendment leaves the test
 design valid, retain it and report that assessment instead of duplicating it.
-The user does not need to select the test-design step separately. This step
-designs tests; implementation and execution remain outside planning.
+The planning operation includes designing the tests. Writing and running the
+tests are later steps.
 
 Use a conversational draft unless saving a plan is requested. Save formal plans
 in English at the authorized `.agent/tasks/` path. Keep the test design in the
 plan or update its existing linked test-design document. For conversational drafts,
-include the scenarios in the draft. Return the plan/test-design locations when
-saved, summary, risks and decisions in text and JSON. Missing behavior or
-authorization remains an explicit open decision. No hashed input record, round history, readiness
-record or telemetry startup is required for planning.
+include the scenarios in the draft. If you save the plan, report where it and the test design are stored. Return
+the summary, risks, decisions and any saved locations in text and JSON. List
+unresolved questions about behavior and missing authorization among the open
+decisions. Planning requires no hashed input record, round history,
+readiness record or telemetry startup.
 
 Stop after the plan and its reconciled test design. Do not implement or create a
 worktree without that scope.

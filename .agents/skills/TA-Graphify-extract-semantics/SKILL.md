@@ -12,10 +12,13 @@ output permission. Reference graphs are ineligible.
 
 1. Follow [the fixed prepare/extract/apply procedure](references/procedure.md).
    Read the extraction schema only for the selected pending sources.
-2. Extract evidence-grounded fragments inline within the selected scope and any supplied limit.
-   Do not recursively delegate or choose another public skill.
-3. Apply through the existing tool, inspect actual acceptance and return coverage,
-   cache/provenance evidence, generated artifacts and semantic freshness limits.
+2. The main session performs this operation directly using only this public
+   skill. Extract fragments from source evidence and stay within the selected
+   scope and any supplied limit.
+3. Apply the fragments with the existing tool and inspect what it accepted.
+   Report which sources the operation covered, what the evidence says about
+   cache use and fragment origins, which files the tool generated and any
+   limits on how current the semantic data is.
 
 Stop after extraction/apply or a concrete blocker. Do not install a backend,
 switch corpora, rewrite source documents or begin RAG indexing.

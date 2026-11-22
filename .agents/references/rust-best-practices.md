@@ -1,7 +1,8 @@
 # Rust implementation and review practices
 
-Apply to the selected Rust implementation or review. Specifications own behavioral
-requirements. Compiler and Clippy configuration own mechanical settings.
+Apply these practices to the selected Rust implementation or review. Use the
+specifications for behavioral requirements and the compiler and Clippy
+configuration for mechanical settings.
 
 - Support native desktop and `wasm32-unknown-unknown`. Core emulation consumes
   external buffers and performs no host filesystem, thread or wall-clock I/O.
@@ -9,15 +10,15 @@ requirements. Compiler and Clippy configuration own mechanical settings.
   separate from runtime handles. The machine directly owns peer subsystems;
   no circular handles, interior-mutability/shared-threading backchannels or core
   thread spawning. Follow [physical topology](../../Obsidian/Amiga/Design/General%20Architecture.md#11-physical-bus-topology--inter-chip-isolation-invariant).
-- Guest errors remain emulated: configurable unmapped reads return `$FF` / `$FFFF`,
-  and odd word/long accesses raise Address Error, Vector 3. Runtime code uses no
-  `unwrap`, `expect`, `panic!` or `unreachable!`, except the function-scoped
+- Emulate guest errors. Configurable unmapped reads return `$FF` / `$FFFF`.
+  Word or long accesses at odd addresses raise Address Error, Vector 3. Runtime
+  code uses no `unwrap`, `expect`, `panic!` or `unreachable!`, except the function-scoped
   `clippy::panic` permission on `config::fatal_emulation_error` for internal
   memory-access, CPU bus-timing or mutation-capacity violations. The host terminates
   the failed owner and reports the diagnostic without resuming it. Tests may catch
   that fatal panic to inspect failure, never resume the failed fixture.
-- Use explicit wrapping arithmetic for ALU operations and cycle counters; mask
-  hardware fields/addresses deliberately.
+- Use explicit wrapping arithmetic for ALU operations and cycle counters.
+  Deliberately apply masks to hardware fields and addresses.
 - Preserve short-circuit evaluation, evaluation order, side effects and hardware
   timing during refactoring. Do not eagerly compute an alternative that the
   original branch would skip.
@@ -28,7 +29,8 @@ requirements. Compiler and Clippy configuration own mechanical settings.
 - Custom `macro_rules!` and const-generic instruction handlers, decoders or execution
   functions are prohibited. Preserve warning-free builds and configured lints.
 
-For affected crate, export or CPU layout changes read [workspace layout](../../Obsidian/Amiga/Design/General%20Architecture.md#workspace-layout).
-Detailed naming, visibility, accessors, inlining and cohesion standards are owned by
-[architecture review](architecture-criteria.md); consult them for an
-assigned finding or relevant design question, not as an unconditional startup read.
+For changes that affect crate structure, exports or CPU layout, read the
+[workspace layout](../../Obsidian/Amiga/Design/General%20Architecture.md#workspace-layout).
+Consult the detailed standards for naming, visibility, accessors, inlining and
+cohesion when an assigned finding or design question calls for them. You can
+start other work without reading these standards. [Architecture review](architecture-criteria.md)

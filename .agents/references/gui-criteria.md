@@ -1,16 +1,19 @@
 # GUI behavior and visual review
 
-The [GUI specification](../../Obsidian/Amiga/Design/Application/GUI.md) owns view
-behavior and scaling; [egui guidance](../../Obsidian/Amiga/Design/egui%20Guidelines.md)
-owns visual responsibilities, complete hover coverage, structured tooltip layout
-and allocation constraints. Apply the shared [egui best practices](egui-best-practices.md)
-to the selected implementation or review; assess only the assigned UI scope.
+The [GUI specification](../../Obsidian/Amiga/Design/Application/GUI.md) defines
+view behavior and scaling. The [egui guidance](../../Obsidian/Amiga/Design/egui%20Guidelines.md)
+defines what each part of the UI displays, which fields and actions require
+hover documentation, how to lay out structured tooltips and where to avoid
+allocation. Apply the shared [egui best practices](egui-best-practices.md)
+within the assigned UI implementation or review scope.
 
-- Preserve dark-default appearance, host preference detection, runtime theme
-  switching, point/relative layout and host DPI scaling.
-- Uniformly scale the complete framebuffer to fit while preserving its existing
-  width-to-height ratio. Do not force 4:3 or stretch axes independently; 1:1 pixels
-  are unnecessary. Do not silently choose a new raster/blanking region.
+- Preserve the dark default theme, detection of host theme preferences, theme
+  switching while the application runs, point-based and relative layout, and host
+  DPI scaling.
+- Scale the complete framebuffer to fit. Use the same scale factor on both axes
+  to keep its existing width-to-height ratio. Do not force 4:3. Display pixels
+  can differ from source pixels, so 1:1 is optional. Do not silently choose a new
+  raster/blanking region.
 - Inspect layout, contrast, resizing, splitters, visible panel responsibilities and
   relevant interaction behavior. Large memory/trace views use virtualized visible
   rows; inner grids and tooltip generators avoid heap allocation through static
@@ -26,7 +29,7 @@ to the selected implementation or review; assess only the assigned UI scope.
   actual captured images and confirm the repaired scenario. Report automated and
   visual evidence separately, including unavailable coverage.
 
-A capture provides an image; interpretation belongs to the requested assessment.
-A failed visual assessment reports findings. The user selects any subsequent
-repair, which retains the original reproduction. Findings do not start a capture
-or repair loop.
+Use the captured image as evidence for the requested assessment. If the
+assessment finds a problem, report it. If the user selects a repair, carry the
+original reproduction into that repair. The finding itself starts no further
+capture or repair.

@@ -13,15 +13,29 @@ tracked_paths:
 ---
 # Amiga 500 Keyboard
 
-The Amiga 500 keyboard is a separate device with its own controller. It scans the keys and sends key events to the computer; the CPU does not scan the key matrix.
+The Amiga 500 keyboard has its own controller. The controller scans the
+keyboard matrix and sends key events to the computer, so the CPU receives
+events without scanning the keys itself.
 
 ## Connection and reading
 
-The keyboard receives power through `+5V` and `GND`. Its `KCLK` clock line reaches the `CNT` input of [CIA-A](CIA.md), and its bidirectional `KDAT` data line reaches CIA-A's `SP` pin. The controller sends each key event as a serial byte. After eight bits, CIA-A makes the byte available in its serial data register (`SDR`) and can request a level 2 interrupt. Software reads `SDR` and acknowledges the byte by pulling `KDAT` low; the keyboard then sends the next byte. The byte identifies a physical key and whether it was pressed or released.
+The keyboard receives power through `+5V` and `GND`. Its `KCLK` clock line
+connects to the `CNT` input of [CIA-A](CIA.md), and its bidirectional `KDAT`
+data line connects to CIA-A's `SP` pin. The controller sends each key event as
+a serial byte. The byte identifies a physical key and whether it was pressed
+or released. After receiving eight bits, CIA-A exposes the byte in its serial data
+register (`SDR`) and can request a level 2 interrupt. Software reads
+`SDR` and acknowledges the byte by pulling `KDAT` low. The keyboard then
+sends the next byte.
 
 ## Reset
 
-The keyboard controller detects `Ctrl` + both `Amiga` keys independently of the running software. Its separate reset signal reaches the motherboard reset circuit, causing a hard-wired reset of the A500. Unlike the reset-warning protocol available on some A1000/A2000 keyboards, the A500 does not send a shutdown warning and wait for software to finish. The machine's subsequent warm-start behavior is described in [Machine Loop.md](Machine%20Loop.md).
+The keyboard controller detects `Ctrl` + both `Amiga` keys independently of
+the running software. The controller signals the motherboard reset circuit on a separate line.
+That signal triggers a hard-wired reset of the A500 without a warning or a
+wait for software. Some A1000/A2000 keyboards support a reset warning and
+wait for software to finish. [Machine Loop.md](Machine%20Loop.md)
+describes the warm start that follows.
 
 ## Transport contract and reconstruction boundary
 
@@ -29,71 +43,88 @@ The serializable `KeyboardPins` state in [pins.rs](../../../crates/keyboard/src/
 is exposed as `keyboard.pins`. It groups KCLK/KDAT and reset line state
 separately from the controller queue and transmission state.
 
-The serial boundary is `pins.clock_high`/`pins.data_high` on the keyboard and delivered
-SP/CNT input latches on [CIA-A](CIA.md#motherboard-pin-boundary). Released
-open-drain lines are high. [Machine Loop](Machine%20Loop.md#captured-connector-transport-and-pending-bus-words)
-resolves keyboard and enabled CIA drive levels, captures them after chip work
-and delivers them before the next receiver step. The resolved return is also
-retained as `pins.host_data_high` on the keyboard. That input, rather than a direct
-read of CRA or an SDR assignment, is the controller's handshake input.
-The keyboard retains the routed return in `pins.incoming_host_data_high` until
-the next input phase; current `host_data_high` changes only when sampled.
-Reset remains a separate line and does not wait for serial acknowledgment.
-Its asserted level is captured with the other connector outputs in the machine's
-single `keyboard_reset_asserted` boolean. On the next CCK the machine retains
-that value locally before subsystem work captures the next level, then checks it
-before stepping the CPU. A snapshot retains an assertion in flight even if the
-source subsequently releases; warm reset clears the pending assertion. This
-one-CCK connection uses no separate sampled field or delay queue.
+On the keyboard side, `pins.clock_high`/`pins.data_high` carry the serial
+signals. On the [CIA-A](CIA.md#motherboard-pin-boundary) side, the delivered
+signals are held in the SP/CNT input latches. Released open-drain lines are
+high. The [Machine Loop](Machine%20Loop.md#captured-connector-transport-and-pending-bus-words)
+resolves the keyboard and enabled CIA drive levels, captures the result
+after chip work and delivers it before the next receiver step. The keyboard
+keeps the routed return in `pins.incoming_host_data_high` until the next
+input phase. Sampling then updates the current `host_data_high`, exposed as
+`pins.host_data_high`. The controller uses the sampled pin for the handshake,
+with no direct read of CRA or assignment to SDR.
 
-HRM Appendix H specifies bit order 6-5-4-3-2-1-0-7 and active-low data. Ordinary
-keys carry the release flag last; Caps Lock changes only on presses. The
-receiver shifts eight SP levels on CNT rising edges, then exposes SDR and a
-serial interrupt. The host acknowledges by pulling KDAT low and releasing it;
-software must allow the documented 85-microsecond compatibility pulse, while
-the keyboard must detect at least one microsecond. Approximate 20-microsecond
-setup/low/recovery portions and the 143-millisecond timeout are device protocol
-requirements, not the coordinator's one-CCK transport choice. Power-up requires
-resynchronization, self-test and the `$FD/$FE` held-key stream. Timeout recovery
-sends release-like resync bits and reports lost synchronization. These state
-machines run in [`protocol.rs`](../../../crates/keyboard/src/protocol.rs).
-Microsecond intervals are rounded up to whole CCKs for the selected PAL/NTSC
-clock. The successful self-test path sends `$FD`, the keys held at initial
-synchronization and `$FE`; no physical controller fault is simulated. A
-recognized low holds transmission until the host releases KDAT. The receiver
-waits two CCKs after releasing its own data driver before examining the return,
-so its own previously captured low cannot acknowledge a byte.
+Reset uses a separate line and proceeds independently of serial
+acknowledgment. The machine captures the asserted level with the other
+connector outputs in its single `keyboard_reset_asserted` boolean. At the next CCK, the machine saves that value locally so subsystem work
+can capture the next level. Before stepping the CPU, the machine checks the
+saved value. A snapshot
+preserves an assertion in flight even if the source subsequently releases.
+Warm reset clears the pending assertion. This one-CCK connection uses no
+separate sampled field or delay queue.
 
-The controller has a ten-keycode type-ahead ring. Full input retains queued
-codes and reports `$FA` after draining them. Key state suppresses duplicate
-physical transitions. Frontend capture loss and user loads release held keys
-without canceling an active or retried byte. Releases that do not fit the ring
-remain pending rather than being lost. They follow existing ring data and any
-due overflow report, or enter newly available ring entries ahead of fresh host
-transitions so key-up precedes a new press. Ordinary events retain the ten-code
-overflow behavior. Pending releases are serializable controller
-state, and Caps Lock keeps its toggle state. Software owns repeat. Caps Lock produces alternating
-press/release codes on presses only. A500 reset directly asserts the separate
-line and never queues the A1000/A2000 reset-warning protocol. The old whole-byte
-step/acknowledgment shortcut is removed. Current state includes partial wire
-phases, timeout/acknowledgment counters, queued and retransmitted codes, and
-startup progress. After the idle guard expires with no code available, an explicit
-empty phase skips repeated selection; enqueueing a code wakes selection on the
-same CCK without restarting the guard. This phase is serialized for snapshot
-continuation. Guest-visible keyboard integration is scheduled with
-[input-dependent native cases](../../../ROADMAP.md#native-disk-verification);
-the [frontend](Application/GUI.md#input-and-output) now supplies physical key events,
-with configurable mappings owned by that frontend. The basic adapter forwards reported
-physical transitions without reproducing keyboard-matrix blocking or ghosting.
-Original A500 combination fidelity and host rollover limits remain explicitly
-open in [6.2](../../../ROADMAP.md#task-6-2), independently of adapter delivery.
+HRM Appendix H specifies bit order 6-5-4-3-2-1-0-7 with active-low data.
+Ordinary keys send the release flag last. Caps Lock changes only on presses.
+The receiver shifts eight SP levels on CNT rising edges, then exposes SDR
+and a serial interrupt. The host acknowledges by pulling KDAT low and then
+releasing it. Software must allow the documented 85-microsecond compatibility
+pulse, and the keyboard must detect a pulse of at least one microsecond. The
+protocol requires approximate 20-microsecond setup, low and recovery
+portions and a 143-millisecond timeout. The coordinator's one-CCK transport
+is a separate model choice. At power-up the protocol requires
+resynchronization, self-test and the `$FD/$FE` held-key stream. On timeout,
+recovery sends release-like resync bits and reports lost synchronization.
+[`protocol.rs`](../../../crates/keyboard/src/protocol.rs) runs these state
+machines.
+
+The model uses the selected PAL/NTSC clock to round each microsecond
+interval up to a whole number of CCKs. After a successful self-test, it sends `$FD`, the keys held
+at initial synchronization and `$FE`. The model simulates no physical
+controller fault. Once the keyboard recognizes an acknowledgment low, it
+holds transmission until the host releases KDAT. After releasing its own
+data driver, the receiver waits two CCKs before checking the return, so its
+previously captured low cannot acknowledge a byte.
+
+The controller queues input in a ten-keycode type-ahead ring. If an attempt to
+queue an ordinary keycode finds the ring already full, the controller retains
+the queued codes and reports `$FA` after draining them. It uses key state to
+suppress duplicate physical transitions. The frontend releases held keys when
+it loses input capture or after a successful user load. The release preserves
+any active or retried byte. Releases that do not fit the ring stay pending.
+They follow existing ring data and any due overflow report, or take newly
+available ring entries before fresh host transitions so a release precedes a
+new press. Ordinary events retain the ten-code overflow behavior.
+
+Pending releases are part of the serializable controller state. Caps Lock
+keeps its toggle state and produces alternating press and release codes on
+presses only. Software handles key repeat. A500 reset asserts the separate
+line directly and never queues the A1000/A2000 reset-warning protocol. The
+old whole-byte step and acknowledgment shortcut is removed. The current
+state includes partial wire phases, timeout and acknowledgment counters,
+queued and retransmitted codes, and startup progress.
+
+If the idle guard expires with no code available, the controller enters an
+explicit empty phase. This skips repeated attempts to select a code. Adding
+a code to the queue resumes selection in the same CCK with the guard
+already elapsed. Snapshots save this phase for continuation.
+Guest-visible keyboard integration is scheduled with
+[input-dependent native cases](../../../ROADMAP.md#native-disk-verification).
+The [frontend](Application/GUI.md#input-and-output) now supplies physical
+key events and owns their configurable mappings. Its basic adapter forwards
+the physical transitions it receives, leaving keyboard-matrix blocking and
+ghosting unmodeled. Original A500 combination fidelity and host rollover
+limits remain open in [6.2](../../../ROADMAP.md#task-6-2), independently
+of how the adapter delivers events.
 
 ## Power LED and audio filter
 
-The power LED and the switchable audio low-pass filter share the control signal from CIA-A port A bit 1 (`/LED`). When the power LED is bright, the filter is engaged; dimming the LED bypasses that filter. This is the power LED, separate from the keyboard's Caps Lock LED.
+CIA-A port A bit 1 (`/LED`) supplies the same control signal to the power LED
+and the switchable audio low-pass filter. The filter is engaged when the
+power LED is bright. When the LED dims, audio bypasses the filter. The
+keyboard's Caps Lock LED is separate.
 
-The control level can be derived on demand from committed CIA-A PRA/DDRA.
-The machine does not retain separate LED brightness or filter-enable fields.
+The machine can derive the control level on demand from committed CIA-A
+PRA/DDRA. It keeps no separate fields for LED brightness or filter enable.
 
 ## Reference documentation and source
 

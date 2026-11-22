@@ -5,35 +5,44 @@ description: Implement assigned PowerShell tooling with its intended invocation,
 
 # Implement the selected PowerShell change
 
-Apply [the result contract](../../references/workflow-contract.md).
-Role: `TA-implementer`.
-Inputs: approved behavior/test scenarios, selected script paths and invocation scope.
+The `TA-implementer` receives the approved behavior and test scenarios,
+the selected script paths and the scope for exercising the script.
+Return results using the [result contract](../../references/workflow-contract.md).
 
-1. Use typed parameters and nearby script conventions. An action/input tool prints usage and succeeds
-   with no arguments without doing work; a complete single-purpose default runs.
-   Keep usage at no-argument invocation, with no extra help switches or aliases.
-   Invalid input reports its problem/usage and exits nonzero.
-   Internal API, configuration or format changes follow the shared
+1. Use typed parameters and follow nearby script conventions. If the tool needs
+   an action or input, a call with no arguments prints usage, succeeds and does
+   no work. If the tool has a complete single-purpose default, that call runs
+   the default. Keep usage at the no-argument invocation and omit extra help
+   switches and aliases. For invalid input, report the problem and relevant
+   usage, then exit with a nonzero status. Changes to internal APIs,
+   configuration or formats follow the shared
    [internal migration contract](../../references/internal-migrations.md) and
    [specification compliance guidance](../../references/spec-compliance.md).
-2. Explain parameter effects, defaults, constraints and data changes beside the
-   implementation, with executable examples and aligned output independent of color.
-   Avoid duplicate manuals or parameter binding that prompts before usage can print.
-   Apply relevant [document/instruction ownership](../../references/information-hierarchy.md)
-   and [prose criteria](../../references/narrative-criteria.md)
-   when updating companion documentation within the assigned scope.
-3. Validate inputs first. Infer an action from a modifier only where one documented
-   meaning exists. Use task-specific variables, quoted/combined paths and
-   `-LiteralPath`; keep file operations in one PowerShell shell. Propagate external
-   failures and verify resolved targets before recursive moves/deletions.
-4. Parse with `System.Management.Automation.Language.Parser.ParseFile` without
-   executing. Inspect parameter/help agreement, then exercise the no-argument path,
-   a representative valid invocation and invalid input only where safe within scope.
-   Use temporary outputs; do not execute an unrelated mutating default to read help.
-5. Return changes, actual parse/invocation evidence and remaining work in text
-   and JSON. Apply assigned review findings through their cited criteria.
+2. Alongside the implementation, explain what each parameter does, its default
+   and constraints, and any changes to data. Include executable examples and keep
+   output aligned and readable without color. Maintain one source for the
+   manual. Have the script print usage before parameter binding can prompt.
+   When the assignment includes companion documentation, apply the relevant
+   [document/instruction ownership](../../references/information-hierarchy.md)
+   and [prose criteria](../../references/narrative-criteria.md).
+3. Validate inputs first. Infer an action from a modifier only when its
+   documentation gives it one meaning. Use task-specific variables, quote and
+   compose paths, and use `-LiteralPath`. Keep file operations in one PowerShell
+   shell. Propagate failures from external tools and check resolved target paths
+   before recursive moves or deletions.
+4. Use `System.Management.Automation.Language.Parser.ParseFile` to parse the
+   script without running it. Check that the declared parameters match the
+   usage text. Then exercise the no-argument path, a representative valid
+   invocation and invalid input where each is safe and within scope. Use
+   temporary outputs. Keep help inspection read-only if a default outside the
+   assignment can change data.
+5. Return the changes, observed parsing and invocation results, and remaining
+   work in text and JSON. Address assigned review findings using the criteria
+   they cite.
 
-Stop after implementation/checks. No unrelated execution, installation or commit.
+The assignment ends after implementation and its checks. Keep script execution
+within that scope and leave installation and commits outside the assignment.
 
-Reviewers use the [PowerShell acceptance criteria](references/acceptance.md);
-authors consult that detail for an applicable finding rather than loading it by default.
+Reviewers use the [PowerShell acceptance criteria](references/acceptance.md).
+Authors consult the detailed criteria only when they need them to address an
+applicable finding.

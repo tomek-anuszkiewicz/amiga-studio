@@ -1,17 +1,19 @@
 # Developer Studio & Time-Travel Debugger
 
-This guide introduces the Developer Studio for users and developers who want to inspect the emulated machine, pause execution or investigate a program. It covers the main views and everyday controls; implementation details are linked at the end.
+Use Developer Studio to pause the emulator, inspect the machine or follow what
+a program does as it runs. The guide covers everyday controls and views and ends
+with links to implementation details.
 
 ---
 
 ## 1. Launching the Developer Studio
 
-- **Default Launch:** Running the GUI without flags opens directly with the Developer Studio docked:
+- **Default Launch.** Run the GUI without flags to open it with Developer Studio docked.
   ```powershell
   cargo run -p gui
   ```
-- **From Game Mode:** When running in clean game mode (`cargo run -p gui -- --game`), press **`F12`** at any time to pause emulation and switch into Developer Studio.
-- **Direct Binary Loading:** To load compiled machine code into RAM:
+- **From Game Mode.** In clean game mode (`cargo run -p gui -- --game`), press **`F12`** at any time to pause emulation and open Developer Studio.
+- **Direct Binary Loading.** Run this command to load compiled machine code into RAM.
   ```powershell
   cargo run -p gui -- --load path/to/game.bin --addr 001000
   ```
@@ -32,37 +34,38 @@ This guide introduces the Developer Studio for users and developers who want to 
 | **`Ctrl + O`** | **Load Binary** | Opens file dialog to load compiled machine code at an arbitrary RAM address. |
 | **Drag & Drop** | **Binary Loading** | Opens the binary injection dialog for the dropped bytes. Use File > Load ROM from File to boot firmware. |
 
-The **Slower** and **Faster** buttons select 0.25x, 0.5x, 1x, 2x or 4x;
-**1x** restores normal PAL/NTSC timing. At normal or slower speed, Run presents
-each completed field before waiting for the next field deadline. Above 1x, it
-executes every field but presents only the latest completed image from each
-batch, targeting 50 Hz for PAL or 60 Hz for NTSC. **FPS** reports all completed
-emulated video fields per host second, including fields omitted from presentation.
-Frame controls count each field of an interlaced image separately. Host capacity
-can limit the achieved speed and presentation rate. Instruction and CCK stepping
-remain available while paused and can show a partial field.
+Use **Slower** and **Faster** to select 0.25x, 0.5x, 1x, 2x or 4x. **1x** is
+normal PAL/NTSC speed. At normal or slower speed, Run presents each completed
+video field before waiting for the next field deadline. Above 1x, Run executes
+every field and presents only the latest completed image from each batch. The
+target rate is 50 Hz for PAL or 60 Hz for NTSC. **FPS** counts all emulated
+fields completed per host second, including fields the display skips. For an
+interlaced image, frame controls count each field separately. Host capacity can
+limit the achieved speed and presentation rate. When paused, instruction and CCK stepping can show a
+partly completed field.
 
-CPU **STOPPED** means the processor is waiting for an interrupt. Run and Step
-Frame still advance the rest of the machine, including video and timers, in both
-views. During continuous Run, inspector values, including CPU status and CCK
-labels, retain their last prepared contents. The Pause control, FPS and Amiga
-screen stay live. A CPU halt ends Run and refreshes the inspectors.
+CPU **STOPPED** means the processor is waiting for an interrupt. In both views,
+Run and Step Frame still advance the rest of the machine, including video and
+timers. During continuous Run, the inspectors retain the last values prepared
+for display, including CPU status and CCK labels. The Pause control, FPS and
+Amiga screen stay live. A CPU halt ends Run and refreshes the inspectors.
 
-**File > Load ROM from File** installs a 256 KiB Kickstart image, resets the
-machine to its ROM vectors and leaves it paused. The toolbar shows the filename;
-press **Run** to begin execution. A rejected image preserves the existing machine
-and ROM name. This file picker works on desktop and WASM; the browser requires an
-explicit file selection. Snapshot loading uses the ROM stored in the snapshot and
-labels it **ROM: from saved state**.
+Choose **File > Load ROM from File** to install a 256 KiB Kickstart image. The
+emulator resets the machine to the ROM vectors and leaves it paused. The toolbar
+shows the filename. Press **Run** to start execution. If the emulator rejects the
+image, it keeps the current machine and ROM name. The file picker works on desktop
+and WASM. In the browser, you must explicitly choose a file. When you load a
+snapshot, the emulator uses the ROM stored in it and displays **ROM: from saved state**.
 
-Game View keeps File, State, Run/Stop, speed, FPS visibility, theme and zoom
-controls. **Debug View** or the fixed F12 key returns to inspection. The middle
-mouse button releases input capture without pausing; an optional keyboard release
-binding starts unassigned in Configurations. Reset has no keyboard shortcut. While in Game
-View, debugger panels and shortcuts, breakpoints, disassembly, trace collection,
-CPU history and memory diff capture are disconnected. The CPU's STOP instruction
-still allows the chips to run and deliver interrupts. State saves occur only when
-requested through the State menu or its shortcuts.
+Game View keeps the File, State, Run/Stop, speed, FPS visibility, theme and zoom
+controls. Choose **Debug View** or press the fixed F12 key to return to inspection.
+The middle mouse button releases input capture without pausing. You can assign a
+keyboard release binding in Configurations, where it starts unassigned. Reset
+has no keyboard shortcut. Game View disconnects debugger panels and shortcuts,
+breakpoints, disassembly, trace collection, CPU history and memory diff capture.
+The CPU's STOP instruction still allows the chips to run and deliver interrupts.
+The emulator saves state only when you request a save from the State menu or one
+of its shortcuts.
 
 ---
 
@@ -70,38 +73,43 @@ requested through the State menu or its shortcuts.
 
 ### A. Execution History and Rewind
 Continuous Run checks enabled PC breakpoints and their register conditions against
-the current CPU state, but does not collect trace or temporal history, even with
-Rec enabled. Existing entries remain available; stopping does not reconstruct the
-unrecorded interval. Instruction, CCK and frame steps retain diagnostic recording.
+the current CPU state. Trace and execution history recording stay off during Run,
+even with Rec enabled. Existing entries remain available. When you stop, history
+still has a gap for the unrecorded interval. Instruction, CCK and frame steps
+retain diagnostic recording.
 
-Inspector registers, memory, decoded code and counters stay frozen during Run and
-pending Stop. Editing and navigation resume after execution actually stops. A
-breakpoint stops before its matching instruction and may show a partial field;
-ordinary Stop finishes the current field. Reset and state loading refresh the
-inspection view. Returning from Game keeps diagnostics disconnected until its
-pending pause finishes.
+The inspector's registers, memory, decoded code and counters keep their displayed
+values during Run and while Stop is pending. Editing and navigation resume when
+execution stops. A breakpoint stops before the matching instruction, so you may
+see a partial field. An ordinary Stop lets the current field finish. Reset and
+state loading refresh the inspection view. On return from Game View, diagnostics
+resume after its pending pause completes.
 
-Recorded execution history browses CPU states only; full-machine rewind is tracked in the [debugger work](../ROADMAP.md#debugger-execution-control). Within retained history:
-- **Instruction Scrubbing:** Step backward and forward through past instructions to locate bugs or crashes.
-- **Frame Scrubbing:** Jump backward by entire 50 Hz PAL video frames (~70,824 CCK cycles).
-- **Cycle-Exact Timestamps:** Inspect exact Color Clock cycle timestamps and register states at each step.
+The recorded history lets you browse CPU states. Full-machine rewind is tracked
+on the roadmap. [Debugger work](../ROADMAP.md#debugger-execution-control)
+
+Within the retained history, you can use these controls.
+
+- **Instruction Scrubbing.** Step backward and forward through past instructions to locate bugs or crashes.
+- **Frame Scrubbing.** Jump backward by entire 50 Hz PAL video frames (~70,824 CCK cycles).
+- **Cycle-Exact Timestamps.** Inspect each step's exact Color Clock timestamp and register state.
 
 ### B. Live Register Inspector
-Interactive view of all 68000 CPU registers:
+The inspector shows all 68000 CPU registers and lets you edit them.
 - **Data & Address Registers:** $D_0-D_7$ and $A_0-A_7$ displayed in hex and decimal.
 - **System Registers:** Program Counter ($PC$), Status Register ($SR$ with individual flag indicators $X, N, Z, V, C, I_0-I_2, S$), User Stack Pointer ($USP$), and Supervisor Stack Pointer ($SSP$).
-- **Diff Highlighting:** Mutated registers glow with a cyan highlight when their values change between steps.
+- **Diff Highlighting.** Cyan highlights mark registers whose values changed between steps.
 - **Interactive Editing:** Click any register value to edit it in hexadecimal.
 
 ### C. Memory Hex Grid
-Live memory viewer displaying memory banks across Chip RAM, Slow RAM, and Fast RAM:
+The live memory grid shows banks across Chip RAM, Slow RAM and Fast RAM.
 - **Inline Editing:** Click any byte to edit in hex. Press `Tab` or `Enter` to advance to the next byte, or `Esc` to cancel.
 - **Mutation Glow:** Memory locations modified during recent cycles glow in amber/cyan.
 - **Address Navigation:** Jump directly to any 24-bit Amiga address ($000000..$FFFFFF).
 
 ### D. Disassembly & In-Place Instruction Editing
-- **Live Disassembler:** Powered by the zero-dependency `crates/disassembler` crate, providing instruction decoding with aligned multi-line view.
-- **In-Place Assembly:** Click the pencil icon (`✏`) next to any instruction to type standard M68000 assembly (e.g. `NOP`, `MOVE.W D0, D1`, `BRA.S label`) with automated byte-size safety verification before patching memory.
+- **Live Disassembler.** The zero-dependency `crates/disassembler` crate decodes instructions for an aligned, multiline display.
+- **In-Place Assembly.** Click the pencil icon (`✏`) next to an instruction and type standard M68000 assembly, for example `NOP`, `MOVE.W D0, D1` or `BRA.S label`. Developer Studio checks the size in bytes before patching memory.
 
 ### E. Execution Breakpoints & Memory Watchpoints
 - **PC Breakpoints:** Pause emulation when the Program Counter reaches a designated address.
@@ -111,7 +119,8 @@ Live memory viewer displaying memory banks across Chip RAM, Slow RAM, and Fast R
 
 ## 4. Architecture & Upstream References
 
-For complete data structure definitions, temporal trace buffer schemas, and integration details, consult:
+These references cover the full data structure definitions, temporal trace buffer
+schemas and integration details.
 - **Obsidian Design Spec:** [`Obsidian/Amiga/Design/Application/Debugger.md`](../Obsidian/Amiga/Design/Application/Debugger.md)
 - **Frontend Guidelines:** [`Obsidian/Amiga/Design/egui Guidelines.md`](../Obsidian/Amiga/Design/egui%20Guidelines.md)
 - **Source Crates:** [`crates/debugger/`](../crates/debugger/) and [`crates/disassembler/`](../crates/disassembler/)

@@ -13,13 +13,14 @@ related: ["[Machine Loop.md](Machine%20Loop.md)", "[Game Ports.md](Game%20Ports.
 # Amiga 500 General System Architecture
 
 > [!NOTE]
-> Inter-chip isolation follows the [physical bus topology](#11-physical-bus-topology--inter-chip-isolation-invariant). The [cross-chip signal catalog](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md) owns the signal directions and delivery phases.
+> The [physical bus topology](#11-physical-bus-topology--inter-chip-isolation-invariant) defines how chips stay isolated. The [cross-chip signal catalog](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md) defines signal directions and delivery phases.
 
 ---
 
 ## 1. System Block Diagram & Ownership
 
-The emulator is organized around a top-level machine struct named A500, which owns all subsystems and manages coordination without circular handles:
+The top-level machine struct, A500, owns and coordinates all subsystems.
+The diagram shows how the machine connects them without circular handles.
 
 ```mermaid
 graph TD
@@ -36,25 +37,33 @@ graph TD
     BUS <--> CPU
 ```
 
-- **Top-Level Machine (A500)**: Controls stepping (single CCK, multi-cycle, or full video frame), reset lines, and interrupt priority arbitration (IPL 1–6).
-- **Decoupled Modules**: Subsystems do not hold references or callbacks to one another; signals and bus requests are driven in the main machine loop and MemoryBus.
-- **Register Timing & Signal Propagation**: [MemoryBus](MemoryBus.md#custom-registers-and-specialized-chips) defines reference-model delays and the fallback for unresolved data writes, with immediate accepted reads and address strobes. [CIA](CIA.md#runtime-register-capture-and-bus-synchronization) retains its E-clock boundary. Motherboard delivery and downstream engine phases remain separate; these model policies do not establish every physical propagation delay.
+- **Top-Level Machine (A500)** controls stepping for a single CCK, multiple cycles or a full video frame. It also controls reset lines and resolves interrupt priorities (IPL 1–6).
+- **Decoupled Modules** exchange signals and bus requests through the main machine loop and MemoryBus. Subsystems hold no references or callbacks to one another.
+- **Register Timing & Signal Propagation** keeps motherboard signal delivery
+  and downstream engine work in separate phases. [MemoryBus](MemoryBus.md#custom-registers-and-specialized-chips)
+  defines delays derived from reference models and the fallback for data writes
+  whose timing remains unresolved. It handles accepted reads and address strobes
+  immediately. [CIA](CIA.md#runtime-register-capture-and-bus-synchronization)
+  keeps its E-clock boundary. Some physical propagation delays remain
+  unestablished under these model policies.
 
 ### 1.1 Physical Bus Topology & Inter-Chip Isolation Invariant
 
-For chip, DMA, bus, interrupt or peripheral coordination, read the owning
-specifications before design or implementation. The [Machine Loop](Machine%20Loop.md)
-owns master CCK sequencing. The [CPU bus-cycle specification](CPU%20Motorola%20M68000.md)
-defines the four-clock, two-CCK transfer, and [MemoryBus](MemoryBus.md) defines
-how contested Chip RAM keeps the active CPU micro-step pending. Use the
+Before designing or implementing coordination between chips, DMA, the bus,
+interrupts or peripherals, read the specifications for the components involved.
+The [Machine Loop](Machine%20Loop.md) defines master CCK sequencing. The
+[CPU bus-cycle specification](CPU%20Motorola%20M68000.md) defines the
+four-clock, two-CCK transfer. [MemoryBus](MemoryBus.md) describes how
+contention for Chip RAM keeps the active CPU micro-step pending. For
+interfaces, use the
 [register ownership matrix](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md),
 [cross-chip signal catalog](Cross-Chip%20Signals%20and%20Action%20Dispatch%20Catalog.md)
-and [platform invariants](Platform%20Quirks%20and%20Invariants%20Catalog.md) for
-interfaces. Unresolved hardware questions follow the
+and [platform invariants](Platform%20Quirks%20and%20Invariants%20Catalog.md).
+For unresolved hardware questions, follow the
 [source provenance guide](../../../.agents/skills/TA-Hardware-research/references/provenance.md).
 
-The motherboard connects chips through shared address, data and control lines.
-The machine loop and memory bus implement that wiring at the modeled phases.
+On the motherboard, shared address, data and control lines connect the chips.
+The machine loop and memory bus model when signals travel along those lines.
 
 ```mermaid
 flowchart TD
@@ -89,44 +98,46 @@ flowchart TD
 ```
 
 1. **Strict Prohibition of Direct Cross-Chip Signal Smuggling:**
-   - Custom chips (`Agnus`, `Denise`, `Paula`, `CIAs`, `CPU`) **must never** hold direct pointers or invoke mutating methods directly on each other.
-   - All inter-chip interactions (DMA requests, interrupt lines, blanking, strobes) represent physical copper PCB traces coordinated through the machine loop and `MemoryBus`.
+   - Custom chips (`Agnus`, `Denise`, `Paula`, `CIAs`, `CPU`) **must never** hold direct pointers to one another or call one another's mutating methods directly.
+   - The machine loop and `MemoryBus` coordinate all inter-chip interactions, including DMA requests, interrupt lines, blanking and strobes. These interactions represent physical copper traces on the motherboard.
 2. **Agnus as the Exclusive DMA Address Master:**
    - Agnus is the **sole bus master and address generator** for all autonomous Chip RAM DMA channels (Bitplanes, Sprites, Audio, Floppy Disk, Copper, and Blitter).
    - The supported 8370 and 8371 models address the lower 512 KB for DMA. The
-     [Agnus specification](Agnus.md) owns 18-bit OCS word
-     addresses, their shared mask and register-half rules.
-   - Agnus places the memory address onto the Chip RAM address bus and simultaneously asserts the target custom register offset onto the internal Register Address (`RGA`) bus.
+     [Agnus specification](Agnus.md) defines the 18-bit OCS word addresses,
+     their shared mask and the rules for the two register halves.
+   - Agnus places the memory address on the Chip RAM address bus. At the same time, it asserts the target custom register offset on the internal Register Address (`RGA`) bus.
 3. **Specialized Custom Chips as Passive Bus Latchers (Zero Direct Memory Reads):**
-   - Denise and Paula own the receiving latches. Their implementation must not
-     hold direct Chip RAM views or `PhysicalMemory` references. For
-     [disk DMA](DMA.md), Agnus supplies the address in both directions and Paula
+   - Denise and Paula own their receiving latches. Their implementations
+     must not hold direct Chip RAM views or `PhysicalMemory` references. For
+     [disk DMA](DMA.md), Agnus supplies the address in both directions. Paula
      supplies or receives the holding-register word.
-   - Specialized chips **never initiate autonomous memory reads**. During an assigned DMA slot, the memory system reads the 16-bit word from Chip RAM onto the shared data bus, and the receiving chip passively latches the word into its internal holding register (`BPLxDAT`, `SPRxDAT`, `AUDxDAT`, `DSKDAT`) upon matching its `RGA` strobe.
+   - Specialized chips **never initiate autonomous memory reads**. In an assigned DMA slot, the memory system reads a 16-bit word from Chip RAM and places it on the shared data bus. When the receiving chip sees a matching `RGA` strobe, it latches the word into its internal holding register (`BPLxDAT`, `SPRxDAT`, `AUDxDAT`, `DSKDAT`).
 4. **`MachineLoop` as Motherboard PCB Simulator:**
-   - The top-level `A500Machine` resolves wiring after producer work. Each recipient owns incoming inputs and samples them at the explicit [Machine Loop phases](Machine%20Loop.md#connections-advanced-within-the-step).
-   - CIA IRQ, Agnus INT3, TOD, connector controls/status and RGA synchronization pass through that boundary. The receiver owns edge detection or input sampling; motherboard delivery does not substitute a register write for a physical pin.
-   - Granted RGA/data words use the existing MemoryBus and register queues, retaining an output until acceptance. Disk and audio requests pass through DMAL, with register data accepted by the target chip. No chip notifies or mutates a peer directly.
+   - After producers finish their work, the top-level `A500Machine` resolves the wired signals. Each recipient owns its incoming inputs and samples them at the explicit [Machine Loop phases](Machine%20Loop.md#connections-advanced-within-the-step).
+   - CIA IRQ, Agnus INT3, TOD, connector controls and status, and RGA synchronization all cross that boundary. The receiver detects edges or samples input levels. The motherboard delivers the physical pin signal without substituting a register write.
+   - Granted RGA/data words travel through the existing MemoryBus and register queues. The output is held until acceptance. Disk and audio requests travel through DMAL, and the target chip accepts the register data. Chips may neither notify peers directly nor mutate them directly.
 
 ---
 
 ## 2. Workspace Crate Architecture & Dependencies
 
-The codebase is organized as a Cargo workspace with chip and peripheral crates located under `crates/`. Contained engines use Rust modules inside their owner; a detailed design chapter does not imply a separate Cargo package.
+The Cargo workspace keeps chip and peripheral crates under `crates/`.
+Each contained engine is a Rust module within the crate that owns it.
+An engine can have its own design chapter without a separate Cargo package.
 
-Direct dependencies between workspace crates must follow the explicit rules in
+Direct dependencies between workspace crates must follow the rules in
 [`APPROVED_CRATE_DEPENDENCIES`](../../../tools/verification/checks/check_architecture.py).
-Production, test and build dependencies have separate permissions. The architecture
-test checks Cargo metadata, including aliases, optional dependencies and every
-target platform. A new crate or dependency requires an explicit rule before it
-can pass verification. Re-exports count as dependencies; removing an unused
-dependency does not require keeping its declaration.
+The permissions distinguish production, test and build dependencies. The
+architecture test checks Cargo metadata for each target platform, including
+aliases and optional dependencies. Verification requires an explicit rule
+for a new crate or dependency. Re-exports count as dependencies. If you remove
+an unused dependency, you may also remove its declaration.
 
-The [save format](Application/SaveState.md) is a higher-level consumer of the
-[Machine Loop](Machine%20Loop.md). It owns JSON and PNG previews; frontends own file access.
-The core owns pure snapshots and signal transport. No subsystem depends on the
-save format. Beam counters belong to Agnus; receiver synchronization travels
-as RGA events rather than an Agnus counter projection.
+The [save format](Application/SaveState.md) uses the
+[Machine Loop](Machine%20Loop.md) at a higher level. The save format handles JSON and PNG previews. Frontends handle file
+access, and the core provides pure snapshots and transports signals. Subsystems have no dependency on the save
+format. Agnus owns the beam counters. Receivers synchronize through RGA
+events without receiving a projection of those counters.
 
 ```mermaid
 graph TD
@@ -232,46 +243,65 @@ graph TD
     TR --> DIS
 ```
 
-The diagram shows ownership and selected connections; internal module nodes
-are not Cargo packages. Direct dependency declarations remain in the living
-Cargo manifests and the architecture check linked above.
+The diagram shows ownership and selected connections. A node for an
+internal module denotes part of its owning crate. For direct dependencies,
+see the current Cargo manifests and the architecture check described above.
 
-GUI host-key translation reuses the keyboard's named modifier keycodes. This
-dependency shares encodings; the machine owner still applies all input events.
+The GUI uses the keyboard's named modifier keycodes when it translates host
+key events, so both share the same encodings. The machine owner still
+applies all input events.
 
 ### Workspace layout
 
-Keep crates flat under `crates/*`. Each library declares `src/<crate_directory>.rs` as its Cargo target. Workspace crates and helper tools use named roots. `lib.rs` is prohibited.
+Keep crates flat under `crates/*`. Each library declares
+`src/<crate_directory>.rs` as its Cargo target. Workspace crates and helper
+tools use named roots. `lib.rs` is prohibited.
 
-The machine facade exposes peer subsystems side by side for frontends. Peers do not re-export each other merely because they collaborate. The shared `config` crate is foundational.
+The machine facade exposes peer subsystems side by side to frontends.
+Collaboration alone does not justify peer-to-peer re-exports. The shared
+`config` crate provides a foundation for the workspace.
 
-Contained engines are modules of their owner. Agnus owns Copper, Blitter and DMA. Denise owns sprites. Paula owns audio and interrupts. Game Ports owns mouse and joystick. Use flat source files with subsystem prefixes and explicit re-exports of subsystem namespaces and useful primary types. Glob exports are prohibited. The owner still re-exports retained child crates such as Denise's `frame_builder`.
+Put each contained engine in a module of its owner. Agnus owns Copper,
+Blitter and DMA. Denise owns sprites. Paula owns audio and interrupts.
+Game Ports owns mouse and joystick. Use flat source files with subsystem
+prefixes. Re-export subsystem namespaces and useful primary types explicitly.
+Glob exports are prohibited. Owners still re-export retained child crates,
+such as Denise's `frame_builder`.
 
-The [CPU instruction source layout](CPU%20Motorola%20M68000.md#instruction-source-layout) defines exact instruction file groupings. Follow the [internal migration contract](../../../.agents/references/internal-migrations.md) before changing an interface or generated format.
+The [CPU instruction source layout](CPU%20Motorola%20M68000.md#instruction-source-layout)
+defines the exact instruction file groupings. Follow the
+[internal migration contract](../../../.agents/references/internal-migrations.md)
+before changing an interface or generated format.
 
 ### Chipset design chapters
 
-[Agnus](Agnus.md) owns the [DMA](DMA.md), [Copper](Copper.md) and [Blitter](Blitter.md) chapters. [Denise](Denise.md) owns [Sprites](Sprites.md) and uses the separate [Frame Buffer](Frame%20Buffer.md) component. [Paula](Paula.md) owns [Audio](Audio.md) and [Interrupts](Interrupts.md). [Game Ports](Game%20Ports.md) owns [Mouse](Mouse.md) and [Joystick](Joystick.md). These chapters retain their hardware contracts and references, while their `tracked_paths` point to the owning crate's files and tests.
+[Agnus](Agnus.md) owns the [DMA](DMA.md), [Copper](Copper.md) and
+[Blitter](Blitter.md) chapters. [Denise](Denise.md) owns [Sprites](Sprites.md)
+and uses the separate [Frame Buffer](Frame%20Buffer.md) component.
+[Paula](Paula.md) owns [Audio](Audio.md) and [Interrupts](Interrupts.md).
+[Game Ports](Game%20Ports.md) owns [Mouse](Mouse.md) and [Joystick](Joystick.md).
+Each chapter retains the hardware contract and references for its part of
+the design. Its `tracked_paths` point to files and tests in the owning crate.
 
 
 ---
 
 ## 3. External Interfaces & Data Flow
 
-- **ROM & Disk Injection**: Kickstart ROM images and disk buffers are injected from the outside as raw byte slices (&[u8]).
-- **Decoupled Host I/O**:
-  - Video rendering outputs into a dedicated frame buffer.
-  - Audio outputs into decoupled sample ring buffers.
-  - Save states serialize machine state to/from JSON, excluding the live [RTC](RTC.md) and its separately persisted battery offset (see [SaveState.md](Application/SaveState.md)).
+- **ROM & Disk Injection** supplies Kickstart ROM images and disk buffers from outside the emulator as raw byte slices (&[u8]).
+- **Decoupled Host I/O**
+  - The video renderer writes to a dedicated frame buffer.
+  - Audio output goes to separate sample ring buffers.
+  - Save states serialize machine state to JSON and restore it from JSON. They exclude the live [RTC](RTC.md) and its separately persisted battery offset. See [SaveState.md](Application/SaveState.md).
 
 ---
 
 ## 4. Subsystem Reference Links
 
-Hardware explanations in the subsystem notes describe the behavior to
-reconstruct from the cited Amiga manuals. Links to Rust source show the
-current implementation, whose coverage must be checked separately; a source
-link does not establish that every described hardware path is implemented.
+The subsystem notes describe the hardware behavior to reconstruct and cite
+the Amiga manuals that explain it. The Rust source links point to the
+current implementation. Check what the implementation covers before drawing
+conclusions about a hardware path described here.
 
 - [CPU Motorola M68000.md](CPU%20Motorola%20M68000.md): External CPU state, bus interface, prefetch, exceptions, interrupts, and startup.
 - [CPU Micro-Step State Machine.md](CPU%20Micro-Step%20State%20Machine.md): Internal microsteps, CCK bus phases, waits, and execution state.

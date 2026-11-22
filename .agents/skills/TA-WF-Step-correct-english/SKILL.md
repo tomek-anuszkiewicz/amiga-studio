@@ -7,12 +7,13 @@ description: Scan explicitly selected repository text, correct English, assess u
 
 Apply the [result contract](../../references/workflow-contract.md).
 
-Use only when the user requests this operation. The input is the selected files
-or an expressly requested full repository audit. A request to write or implement
-something does not invoke this skill. Ordinary
+Use this skill only when the user requests an English check. The user selects
+the files or expressly requests a full repository audit. Requests to write or
+implement something follow their own procedures. Ordinary
 [vocabulary-only maintenance](../../references/workflow-contract.md#vocabulary-only-maintenance)
-does not require invoking this skill or running its scanner. Respect a report-only assignment; otherwise
-the operation permits contextual text corrections and justified vocabulary entries.
+can proceed without this skill or its scanner. If the user asks for a report
+only, report the findings. Otherwise, make contextual text corrections and add
+justified vocabulary entries.
 
 Run the existing scanner for the selected scope:
 
@@ -24,13 +25,14 @@ For an explicitly requested full audit, omit `files <paths>`. The scanner and
 `tools/verification/checks/check_english.json` own discovery, exclusions and
 vocabulary formats. Do not expand the requested scope to unrelated text.
 Use the language-related [prose criteria](../../references/narrative-criteria.md)
-within these corrections, preserving meaning and document structure; an article
-reorganization requires its own assignment.
+for these corrections. Preserve meaning and document structure. Reorganizing an
+article requires its own assignment.
 
-Read each finding in its surrounding sentence, identifier or example. The scanner
-reports dictionary absence, not an established language error. Check unfamiliar
-technical terms against local definitions and API usage or authoritative sources;
-uppercase spelling or occurrence in source alone does not prove validity.
+Read each finding in its surrounding sentence, identifier or example. A finding
+means the scanner could not find the word in its dictionary. Check unfamiliar
+technical terms against local definitions and API usage or authoritative sources
+before deciding whether to correct them. A term written in uppercase or present
+in the source still needs this evidence.
 
 - Correct clear spelling, non-English or awkward prose while preserving meaning.
   Avoid unrelated rewrites. Ordinary comments and prose remain editable.
@@ -43,20 +45,20 @@ uppercase spelling or occurrence in source alone does not prove validity.
   names. Include any required inflections explicitly. Keep valid technical wording
   instead of replacing it with an unnatural dictionary-friendly phrase.
 - Use the scanner configuration's exact-file `file_words` entry for a necessary
-  literal or deliberate invalid example confined to that file. Do not add a typo
-  in ordinary prose to an exception list. Neither bulk-copying findings nor the
-  scanner's acceptance substitutes for contextual review.
+  literal or deliberately invalid example confined to that file. Correct typos
+  in ordinary prose. Assess each finding in context before deciding whether an
+  exception is warranted, even when the scanner would accept a bulk addition.
 
 Resolve clear cases without asking the programmer. Report only unresolved meaning,
 unverifiable terms or choices that would alter behavior or an external contract.
 For each, give the file, line, context, evidence and concrete options. Report read
 or scanner errors separately from vocabulary findings.
 
-After authored-text corrections, repeat the same selected scan. For vocabulary-only
-additions, apply the shared maintenance rule and continue without another scan,
-checks or review. Summarize the additions and their reasons without claiming a
-fresh passing command. Retain earlier scan outcomes. Unresolved language findings,
-read errors or scanner execution errors leave the assessment incomplete.
+Repeat the same selected scan after correcting authored text. When you only add
+vocabulary, apply the shared maintenance rule and continue without another
+scan, checks or review. Say what you added and why, and attribute the retained
+scan results to the earlier run. Unresolved language findings, read errors or
+scanner execution errors leave the assessment incomplete.
 
 This operation does not stage, commit, publish, change scanner logic/scope or
 launch another skill. Authority to edit justified exact-file vocabulary entries

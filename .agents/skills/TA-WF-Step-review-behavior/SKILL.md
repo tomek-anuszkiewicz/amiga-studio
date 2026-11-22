@@ -7,9 +7,10 @@ description: Review behavior, specification compliance and affected interactions
 
 Apply [the result contract](../../references/workflow-contract.md) and
 [independent review contract](../../references/review-common.md).
-Role: `TA-code-reviewer`; lane: `behavior`.
-Inputs: exact baseline/candidate, assigned scope, relevant requirements, available
-evidence and proposed partition when preparing a batch.
+The main session assigns the `behavior` review to `TA-code-reviewer` and supplies
+the exact baseline and candidate, assigned scope, relevant requirements and
+available evidence. When preparing a batch, it also supplies the proposed
+grouping of changes.
 
 1. Check input identities and fresh reviewer context. Read only
    [this lane's criteria](references/behavior.md) plus relevant requirements.
@@ -25,22 +26,29 @@ evidence and proposed partition when preparing a batch.
    Select affected specifications through Design `tracked_paths`, explicit
    requirement changes and the exact path-boundary rules in the shared
    [documentation criteria](../../references/documentation-criteria.md#select-the-complete-intended-scope).
-   Include both rename/delete endpoints and selected new files; unrelated working
-   edits cannot satisfy an index candidate. Trace changed requirements into
-   affected unchanged callers/tests. Compare approved behavior and tests against
-   requirements and source evidence; code agreement does not waive a requirement.
+   Include both rename/delete endpoints and selected new files. When reviewing
+   a candidate from the index, use the selected staged contents as evidence.
+   Results that depend on unrelated working files leave the staged candidate
+   unverified.
+   Trace changed requirements into all affected callers and tests, including
+   unchanged ones. Compare approved behavior and tests against requirements
+   and source evidence. Approved requirements remain in force regardless of
+   how the current code behaves.
    Report unmet requirements, unsupported claims and specification conflicts.
-   For an assigned minor-roadmap/major-milestone stage or whole-subsystem parity
-   assessment, establish the complete stage and interactions, including unchanged
-   code. Missing stage scope is an input gap, not permission to choose a chip.
+   For an assigned minor-roadmap stage, major-milestone stage or parity
+   assessment of an entire subsystem, establish the full scope and its
+   interactions, including unchanged code. If stage scope is missing, report
+   the missing input and leave the choice of chip open.
    Run the existing workspace-wide static comparison without narrowing it:
    `python tools/verification/checks/audit_semantic_sync.py --semantic-sync`.
-   Retain matching current evidence when supplied. A script pass alone is not
-   semantic proof. Assess stage-wide behavior, timing, ownership and interactions
-   against approved specifications; identify documentation/provenance gaps for
-   the documentation lane and record overlap with a scoped compliance assessment.
-3. Return the scoped verdict, inspected paths/inputs, findings, actual evidence and
-   limitations in text and JSON. Identify cross-lane issues without delegating them.
+   Retain supplied evidence when it matches the current candidate. Also assess
+   behavior, timing, ownership and interactions across the stage against the
+   approved specifications. This assessment is needed even if the script
+   passes. Identify documentation and provenance gaps for the documentation
+   lane and record overlap with any scoped compliance assessment.
+3. In text and JSON, report the verdict for the assigned scope, the paths and
+   inputs inspected, findings, actual evidence and limitations. Identify issues
+   that affect other review lanes without delegating them.
 
 Stop after the assigned assessment. Do not select another lane, dispatch reviewers,
 edit source/tests/documents, start a verification profile or treat findings as

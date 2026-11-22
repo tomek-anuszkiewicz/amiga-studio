@@ -14,27 +14,29 @@ tracked_paths:
 # Amiga 500 Configuration Specification (`A500Config`)
 
 > [!NOTE]
-> All ROM binaries, disk images, and memory configurations are injected into the core externally as raw byte slices (`&[u8]`), preserving WASM portability and system independence (see [AGENTS.md](../../../AGENTS.md)).
-> Implementation resides in the dedicated foundational crate [`crates/config`](../../../crates/config).
-> Physical memory layout is applied in [Physical Memory.md](Physical%20Memory.md), motherboard routing in [MemoryBus.md](MemoryBus.md), RTC models in [RTC.md](RTC.md), chipset variants in [Agnus.md](Agnus.md) and [Denise.md](Denise.md), and system coordinator setup in [Machine Loop.md](Machine%20Loop.md).
+> The core receives all ROM binaries, disk images and memory configurations from outside the core as raw byte slices (`&[u8]`). This keeps the core portable to WASM and independent of the host system. See [AGENTS.md](../../../AGENTS.md).
+> The dedicated foundational crate [`crates/config`](../../../crates/config) implements configuration.
+> The components that apply the configuration handle physical memory layout in [Physical Memory.md](Physical%20Memory.md), motherboard routing in [MemoryBus.md](MemoryBus.md), RTC models in [RTC.md](RTC.md), chipset variants in [Agnus.md](Agnus.md) and [Denise.md](Denise.md), and system coordinator setup in [Machine Loop.md](Machine%20Loop.md).
 
-The shared [address bounds](../../../crates/config/src/address_map.rs) define
-CIA banks `$A0-$BF` and custom banks `$DE-$DF` for all presets. Physical-memory
-classification and the production router import these same definitions.
-[MemoryBus](MemoryBus.md#cia-and-boot-overlay) owns register selection and
-transaction acceptance; these constants do not instantiate devices.
+All presets use the same CIA banks `$A0-$BF` and custom banks `$DE-$DF`.
+The physical memory code and the production router both import the same
+[address bounds](../../../crates/config/src/address_map.rs) to classify
+addresses. These constants define address ranges only. During a transaction,
+[MemoryBus](MemoryBus.md#cia-and-boot-overlay) selects the register and decides
+whether to accept the access.
 
-Beam position remains in [Agnus](Agnus.md#motherboard-transport-boundary)
-as its `hpos`/`vpos` counters and field/line state. Configuration retains hardware presets,
-register definitions, the shared mutation queue and `big_array` Serde support.
-The array helper is below subsystem crates and has no dependency on the
-high-level [save format](Application/SaveState.md).
+Configuration provides hardware presets, register definitions, the shared
+mutation queue and `big_array` Serde support. The array helper sits below the
+subsystem crates and works independently of the high-level [save format](Application/SaveState.md).
+The `hpos`/`vpos` counters and field/line state that track the beam belong to
+[Agnus](Agnus.md#motherboard-transport-boundary).
 
 ---
 
 ## 1. Focused Scope: 3 Canonical Hardware Presets
 
-To achieve cycle-exact emulation and eliminate configuration explosion, the emulator core is configured exclusively through **three canonical hardware presets**:
+The core supports exactly **three canonical hardware presets**. Limiting the
+set of hardware combinations supports the goal of cycle-exact emulation.
 
 | Preset | Installed memory | RTC |
 | --- | --- | --- |
@@ -49,68 +51,76 @@ port 1 and a joystick on port 2. Kickstart 1.2/1.3 is supplied externally.
 
 ## 2. Configuration Immutability & Data Structure
 
-[`A500Config`](../../../crates/config/src/config.rs) permits atomic preset
-changes rather than independently mutable memory and device settings. This keeps
-the supported configurations within the three deliberate profiles above. Changes to internal configurations follow the [internal migration contract](../../../.agents/references/internal-migrations.md).
+To keep memory and device settings within the three supported profiles,
+[`A500Config`](../../../crates/config/src/config.rs) allows changes to those
+settings only by switching the entire preset atomically. Changes to internal
+configurations follow the
+[internal migration contract](../../../.agents/references/internal-migrations.md).
 
 ---
 
 ## 3. ROM & Image Injection Interfaces
 
-Because the emulator core is system-agnostic and decoupled from the host filesystem, all ROMs and disk images are injected strictly as external byte slices (`&[u8]`):
-- **Kickstart ROM Injection**: All presets support exactly 256 KiB (262144 bytes), matching the factory Kickstart 1.2/1.3 configuration. ROM injection through `PhysicalMemory::write_bytes_debug()` rejects every other image length before changing memory. The debugger and GUI propagate this error; larger upgraded ROMs are outside the supported configuration.
-- **Floppy ADF Injection**: Disk drives accept ADF images as raw byte slices `&[u8]`, enabling seamless operation in both desktop environments and WebAssembly canvas contexts.
-- **Zero Host I/O in Core**: No `std::fs` operations exist inside the core emulation engine.
+The emulator core is independent of the host system and its filesystem. The
+host must supply ROMs and disk images as external byte slices (`&[u8]`).
+
+- **Kickstart ROM Injection** accepts exactly 256 KiB (262144 bytes) in every preset, matching the factory Kickstart 1.2/1.3 configuration. `PhysicalMemory::write_bytes_debug()` rejects every other image length before it changes memory. The debugger and GUI pass along that error. Larger upgraded ROMs are outside the supported configuration.
+- **Floppy ADF Injection** supplies raw byte slices `&[u8]` to the disk drives. The same interface works in desktop environments and WebAssembly canvas contexts.
+- **Zero Host I/O in Core** keeps `std::fs` operations outside the core emulation engine.
 
 ---
 
 ## Named frontend configurations
 
-The frontend composes these three presets with ROM selection, four drive
-connection choices and two independent game-port devices. Peripheral attachment
-is separate from memory/chipset selection. Each global configuration has a stable
-ID, editable name and reusable keyboard/controller mapping references. Renaming
-it preserves game associations. No per-game inheritance or hardware overrides
-are provided. Desktop settings persist on the host; browser settings persist in
-browser storage without caching ROM or disk contents. Reopening the browser
-requires explicit reselection of unavailable assets.
+The frontend combines one of the three presets with a ROM selection, four drive
+connection choices and two independent game-port devices. The user chooses
+peripheral attachments separately from memory and chipset. Each global
+configuration has a stable ID, an editable name and references to reusable
+keyboard and controller mappings. Renaming the configuration preserves its game
+associations. The scope excludes per-game inheritance and hardware overrides.
+The desktop frontend saves its settings on the host. The browser frontend
+saves settings in browser storage without caching the ROM or disk contents.
+When the user reopens the browser, they must select any unavailable assets
+again.
 
-The [GUI](Application/GUI.md) owns configuration editing and launch validation.
-Saved machine hardware, ROM and drive progress are authoritative on restore.
-Launch choices are separate from game-port attachments and host input settings.
-The active session keeps its named configuration identity when another profile
-is selected for a future launch. Its committed controls determine port attachment
-and host mappings after every player load, even when the captured device types differ.
-Host paths, controller identities, mappings and presentation preferences never
-belong to the machine snapshot. Editing launch choices does not change the
-existing machine or prevent its continuation.
+The user edits configurations in the [GUI](Application/GUI.md), which also
+validates their launch choices. The saved machine hardware, ROM and drive
+progress govern restoration. Launch choices are independent of game-port
+attachments and host input settings. The GUI applies edits to launch choices
+only on an explicit launch. The user can still continue the existing machine.
+The active session keeps its named configuration identity when the user selects
+another profile for a future launch. After each player load, the active session
+uses its committed controls to determine port attachments and host mappings,
+even if the captured device types differ. Host paths, controller identities, mappings and
+presentation preferences stay outside the machine snapshot.
 
 ## 5. Deferred Peripheral Extension
 
-Extended peripherals remain deferred; see the [deferred peripheral work](../../../ROADMAP.md#deferred-bus-and-peripherals).
+Extended peripherals remain deferred. See the [deferred peripheral work](../../../ROADMAP.md#deferred-bus-and-peripherals).
 
 ---
 
 ## Shared propagation state
 
 The shared [MutationQueue](../../../crates/config/src/mutation.rs) preserves
-issue order. Pipeline writes coexist; OverwritePending replaces only a pending
-write with the same destination and mode and places the replacement after
-retained writes. Zero-delay writes are refused, and overflow stops the owner
-before changing pending or due data rather than applying a write early. A
-replacement at capacity remains valid. CIA retains its separate falling-E
-capture boundary; [MemoryBus](MemoryBus.md#custom-registers-and-specialized-chips)
-owns custom-register delays and routing.
+issue order. Pipeline writes can share the queue. OverwritePending replaces
+only a pending write with the same destination and mode. The queue puts the
+replacement after the retained writes. It refuses zero-delay writes. If an
+insertion would overflow, the owner stops before changing pending or due data,
+and the write stays unapplied. An entry can be replaced even at full capacity.
+CIA captures writes at its own falling-E boundary. Custom-register delays and
+routing belong to [MemoryBus](MemoryBus.md#custom-registers-and-specialized-chips).
 
-All writes due at a tick are selected before chip application. Writes staged
-during application cannot join that tick's due set. Snapshots retain pending
-writes rather than the already committed observation; reset cancels both.
-Loading rejects excessive capacity or zero remaining delay. Already committed
-observations must not be delivered again after restoration or cloning.
+At each tick the queue selects all due writes before the chip applies any of
+them. Any writes staged while the chip applies them must wait for a later
+tick. Snapshots save pending writes only. Reset cancels pending writes and
+the observation of an already committed write. The loader rejects stored
+state with too many entries or a write with zero remaining delay. Restoration
+and cloning must avoid delivering committed observations again.
 
 ## 6. Reference Documentation & Upstream Ground Truth
 
-- [Amiga Hardware Reference Manual: Appendix D (System Memory Map)](../Reference/Hardware%20Reference%20Manual/12%20-%20Appendix%20D%20-%20System%20Memory%20Map.md): Memory map boundaries for 512 KB Chip, 512 KB Slow, and 8 MB Auto-Config address spaces.
-- [A500/A2000 Technical Reference Manual: Section 1 (Summary of Differences)](../Reference/A500%20A2000%20Technical%20Reference%20Manual/01%20-%20Section%201%20Summary%20of%20Differences.md): Motherboard revision differences, video timing selection, and expansion bus options.
-- [Configuration Subsystem Implementation Source](../../../crates/config/src/config.rs): Rust implementation of `A500Config`, hardware presets (`Bare512k`, `Standard1Mb`, `ExpandedPowerUser`), and video standards.
-- [Mutation queue](../../../crates/config/src/mutation.rs): Fixed storage, issue ordering, due observations and pending-state serialization shared by custom chips and CIA.
+- The address boundaries for 512 KB Chip, 512 KB Slow and the 8 MB Auto-Config address space are documented in the [Amiga Hardware Reference Manual: Appendix D (System Memory Map)](../Reference/Hardware%20Reference%20Manual/12%20-%20Appendix%20D%20-%20System%20Memory%20Map.md).
+- Motherboard revision differences, video timing selection and expansion bus options are described in the [A500/A2000 Technical Reference Manual: Section 1 (Summary of Differences)](../Reference/A500%20A2000%20Technical%20Reference%20Manual/01%20-%20Section%201%20Summary%20of%20Differences.md).
+- The Rust source implements `A500Config`, the hardware presets `Bare512k`, `Standard1Mb` and `ExpandedPowerUser`, and the video standards. [Configuration Subsystem Implementation Source](../../../crates/config/src/config.rs)
+- The queue used by custom chips and CIA provides fixed storage, issue ordering, due observations and pending-state serialization. [Mutation queue](../../../crates/config/src/mutation.rs)

@@ -1,10 +1,11 @@
 # Skill result contract
 
-The user selects outcomes, operations and any combined sequence through ordinary
-language or named skills. The main session follows the routing and subagent
-settings in [AGENTS.md](../../AGENTS.md#user-selected-operations). Perform only the
-assigned scope and respect existing authorization. A result does not launch another
-skill, require a lifecycle stage or grant permission to commit, merge, push or delete.
+The user chooses the outcome, the operations and any sequence of operations
+through ordinary language or by naming skills. The main session uses the
+routing and subagent settings in [AGENTS.md](../../AGENTS.md#user-selected-operations).
+Work within the assigned scope and existing authorization. A result alone
+triggers no other skill or lifecycle stage and grants no permission to commit,
+merge, push or delete.
 
 ## Inputs and outputs
 
@@ -24,18 +25,20 @@ Required fields:
 - `findings`: concrete problems found within the assignment.
 - `remaining_work`: unfinished work, missing inputs and decisions still needed.
 
-Use empty arrays where appropriate. An assessment can complete with findings;
-a completed assessment does not mean its subject passed. Never describe an unrun
-check as passing. State the relevant file, behavior and consequence in findings.
-Include useful output paths in check summaries without inventing file hashes,
-candidate seals or execution identities.
+Use empty arrays where appropriate. Completing an assessment means the assessor
+finished the assignment. Include any problems the assessor found. Report a check
+as passing only when it ran and passed. Give the relevant
+file, behavior and consequence for each finding. Include useful output paths in
+check summaries without inventing file hashes, candidate seals or execution
+identities.
 
 Return JSON directly in the conversation unless the user or selected tool needs a
 saved result. A separate matching Markdown file, automatic renderer, validation
-command, round ledger and guidance record are not required. The schema describes
-format; it does not verify claims or select a next step. Report missing inputs
-and stop the dependent work. Respect a round limit only when supplied for the
-assignment.
+command, round ledger and guidance record are unnecessary for this contract.
+The schema defines the format and leaves verification of claims and selection
+of the next step to the authorized work. Report missing inputs and stop the
+work that depends on them. Respect a round limit only when the assignment
+supplies one.
 
 ## Independent operations
 
@@ -59,12 +62,11 @@ checks, reviews, analysis or evidence validation because of the addition. A
 request to add vocabulary needs no preliminary scan either. Do not count this
 maintenance as a corrective pass or trigger targeted/final review rounds.
 
-An already reported unknown-word finding may be resolved by this contextual
-vocabulary decision. Retain the original scan outcome and say that the entry was
-added without a rerun; do not invent a fresh passing command. The addition does
-not invalidate checks of unchanged code or text. In mixed work, continue the
-independently required work for the other changes. Run an extra scan only when
-the user explicitly requests one or a separate authored-text change requires it.
+Accepting a word in context can resolve an unknown-word finding from a completed
+scan. Keep the original scan outcome and report the added entry. State that the
+scan did not run again. Existing checks of unchanged code or text still apply. When the assignment includes other changes, continue the work those
+changes independently require. Run an extra scan only when the user
+explicitly requests one or a separate authored-text change requires it.
 
 Planning, implementation, review, verification and Git operations remain available
 when selected. A selected compound skill includes its stated internal steps and

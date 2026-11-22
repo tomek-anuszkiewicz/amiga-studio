@@ -1,9 +1,11 @@
 # Book-to-Markdown
 
-This program imports completed [PDF-to-Markdown](../pdf-to-markdown/README.md)
-preparation into a local book editor and exports chapter Markdown. The editor
-shows the source PDF alongside Accepted and Working versions. Import and review
-do not acquire a PDF or run the preparation stages.
+Book-to-Markdown imports the results of completed PDF preparation into a
+local book editor and exports Markdown chapters. In the editor, you can view
+the source PDF alongside Working, the version you edit, and Accepted, the
+version you compare it with. PDF acquisition and preparation are separate
+steps from import and review.
+[PDF-to-Markdown](../pdf-to-markdown/README.md)
 
 Run the commands below from the repository root.
 
@@ -11,7 +13,7 @@ Run the commands below from the repository root.
 
 ### Background server on Windows
 
-For an already imported book, use the controller so the console remains free:
+Use the server controller to review an imported book while keeping the console free.
 
 ```powershell
 ./tools/bootstrap/book-to-markdown/review-server.ps1 start
@@ -20,16 +22,16 @@ For an already imported book, use the controller so the console remains free:
 ./tools/bootstrap/book-to-markdown/review-server.ps1 stop
 ```
 
-The controller starts the `book-review` service on demand. Port 8765 uses the
-shared Compose project `amiga`. The controller manages only Book Review.
-Use `-Port <number>` or `BOOK_REVIEW_PORT` to select a different port, which
-uses a separate project for the checkout and port. Choose an imported book from
-the **Book** list at `http://127.0.0.1:8765/`. Check `/api/status` for pending rendering and
-render errors per opened book. Compose owns the process. The service listens on
-the container interface and publishes the port on host loopback only.
+The controller manages only Book Review and starts the `book-review` service
+on demand. Compose owns the process. Port 8765 uses the shared Compose project
+`amiga`. If you select a different port with `-Port <number>` or `BOOK_REVIEW_PORT`,
+the controller uses a separate project for that checkout and port. The service
+listens on the container interface and publishes the port only on host loopback.
+Choose an imported book from the **Book** list at `http://127.0.0.1:8765/`.
+Check `/api/status` for pending rendering or render errors for each opened book.
 
-The controller uses `compose.yaml` beside this program and a generated ignored
-mount override. Defaults are `tools/bootstrap/books` for the library,
+The controller uses `compose.yaml` beside this program and generates a mount
+override that Git ignores. It defaults to `tools/bootstrap/books` for the library,
 `tools/bootstrap/book-to-markdown/config.yaml` for model settings and
 `.agent/tmp/book-review-diagnostics` in the primary checkout for container
 diagnostics. The controller creates that default diagnostics directory on start.
@@ -39,11 +41,11 @@ use explicitly selected paths. Use an existing, dedicated directory for an
 explicit diagnostics path, separate from workflow evidence, session archives
 and controller files. Keep the configuration outside the writable library and
 diagnostics roots. Existing source PDFs, identity files, preparation directories and
-copied PDF pages are read-only mounts. The library catalog is read-only;
-existing imported variant directories are writable to preserve atomic swaps
-of Working, Accepted and the root `book.json`. Assets stay in those host-backed
-directories. Restart with a fresh
-mount override after importing another variant or changing its source layout.
+copied PDF pages are read-only mounts. The library catalog is read-only. Existing imported variant directories are
+writable so the editor can replace
+Working, Accepted and the root `book.json` atomically. Assets stay in those
+host-backed directories. Restart with a fresh mount override after importing
+another variant or changing its source layout.
 
 The image combines the pinned Python and JavaScript dependencies with bundled
 Chromium. Host `book_review.py` continues to default to Edge.
@@ -51,26 +53,25 @@ Chromium. Host `book_review.py` continues to default to Edge.
 Before switching an existing default-port installation to `amiga`, stop it
 with its original controller and settings. Use the same checkout and mount
 settings for subsequent lifecycle commands. Stop any old native server before
-using Compose. Foreground and
-Compose servers and explicit book-writing jobs share the variant's
+using Compose. Foreground servers, Compose servers and explicit book-writing
+jobs share the variant's
 `.book-review-writer` directory. Ownership starts before a selected book is
 opened and ends after its writers finish. An interrupted process can leave
 an empty claim directory. Confirm that every writer for the exact variant has
 exited before removing that claim.
 
-The list discovers `tools/bootstrap/books/<book-id>/<variant>/working/book.json`.
-Names come from book directories; multiple imported variants of the same book
-include their variant names. Import a book before opening it; reload to refresh
-the list after an import. Opening the catalog does not import or render books.
-Rendering starts when a book is selected.
+The list finds imported books at `tools/bootstrap/books/<book-id>/<variant>/working/book.json`.
+It takes names from the book directories and includes variant names when a book
+has multiple imported variants. Import a book before opening it and reload the
+catalog after importing to refresh the list. Opening the catalog only lists
+existing imports. Selecting a book starts rendering.
 
 Each book has its own URL, Working/Accepted data, render queue, task state, last
 PDF page and PDF pane width. Switching books reloads the editor, clearing open
 dialogs and temporary selections. Reopening the catalog restores the last
 selected book when it is still available. Separate browser tabs can edit
-different books without changing each other's selection. Render viewport and
-browser channel are server settings; Codex model settings remain in the shared
-`config.yaml`. TOC settings are stored in each book's recipe. Use only one
+different books without changing each other's selection. The server settings control the render viewport and browser channel. The
+shared `config.yaml` still holds the Codex model settings. TOC settings are stored in each book's recipe. Use only one
 server or standalone renderer for a book at a time.
 
 Working updates refresh changed chapters while retaining unchanged elements and
@@ -138,7 +139,7 @@ can use it.
 
 ### Starting a new review
 
-Install the local review dependencies once:
+Install the local review dependencies once.
 
 ```powershell
 python -m pip install -r tools/bootstrap/book-to-markdown/requirements.txt
@@ -152,17 +153,21 @@ to `book_review.py`.
 Prepare the selected PDF pages through Stage 08 and check that Stages 02, 06, 07
 and 08 succeeded.
 
-Import selects each page's latest available JSON in this order: Stage 08, 07, 05,
-04, then 03. Stages 04, 05, 07 and 08 contain only changed pages; an empty directory
-does not mean that preparation failed. An empty `segments` list in the latest
-page JSON excludes that page. Import keeps physical-page order and uses all
-retained pages, regardless of the last invocation's page range.
+For each page, import looks for JSON from Stage 08, 07, 05, 04 and 03, in that
+order, and uses the first file it finds. Stages 04, 05, 07 and 08 write only
+changed pages, so their directories can be empty after successful preparation.
+An empty `segments` list in the selected page JSON excludes that page. Import
+keeps all retained pages in physical-page order, regardless of the last
+invocation's page range.
 
-Before creating PDF text references, import decodes HTML entities for angle
-brackets inside parsed Markdown math. Named and numeric entities become `<` and
-`>`; code, preformatted text and ordinary HTML entities remain unchanged.
+When import parses Markdown math, it decodes named and numeric HTML entities
+for angle brackets into `<` and `>` before creating PDF text references.
+This decoding is confined to angle-bracket entities in parsed math. It leaves
+code, preformatted text and ordinary HTML entities as written.
 
-Then start a fresh review:
+**Import deletes and rebuilds Working, Accepted and the copied PDF pages.** It
+discards existing review edits and settings. Run these commands for a fresh
+review. To resume a review, open the existing book.
 
 ```powershell
 $Book = "tools/bootstrap/books/test-book-example-4567/78e52f075e17"
@@ -171,16 +176,15 @@ python tools/bootstrap/book-to-markdown/book_review.py render --book $Book
 ./tools/bootstrap/book-to-markdown/review-server.ps1 start
 ```
 
-**Import deletes and rebuilds Working, Accepted and the copied PDF pages.** It
-discards existing review edits and settings. Do not rerun it to continue a
-review. The first render initializes Accepted from the new Working book.
+The first render initializes Accepted from the new Working book.
 Selecting a book also renders when needed, so the separate `render` command
 is optional. Choose the imported book in the browser after starting the server.
 
 For a foreground server, run
 `python tools/bootstrap/book-to-markdown/book_review.py serve`
-and stop it with Ctrl+C. `--port` changes its port; `--width` changes the
-preparation browser viewport, not the displayed document width.
+and stop it with Ctrl+C. Use `--port` to change the port. Use `--width` to
+change the browser viewport used during preparation. The displayed document
+width is separate.
 
 ### Reconstructing a cloned book
 
@@ -206,47 +210,48 @@ The command checks `source.json` when present and compares a tracked
 bytes may differ across preparation runs; `import-book` reports that difference
 and validates that the saved text ranges still resolve. A matching source PDF
 and stable positioned text are required for reliable source references.
-It refuses to replace an existing Working or Accepted review. Existing recipes
-with edited image assets beyond a single PDF crop need those assets or an
-explicit image transformation recipe; `import-book` reports that case instead
-of silently substituting another image. Run [source validation](#source-validation)
-and inspect the PDF after reconstruction; validation cannot prove that a range
-points to the intended printed occurrence.
+It refuses to replace an existing Working or Accepted review. If a recipe
+uses an edited image that requires more than a single PDF crop, it needs the
+edited asset or an explicit image transformation recipe. `import-book` reports
+this case without substituting another image. After reconstruction, run
+[source validation](#source-validation) and inspect the PDF. A range can pass
+validation while pointing to the wrong printed occurrence.
 
 ### Continuing a review
 
-Edit Working in the browser. The PDF pane shows the original prepared pages;
-Accepted is the comparison baseline. **Accept Changes** publishes the completed
-Working revision to Accepted and the variant-root `book.json`.
-**Discard Changes** restores the complete Working bundle from Accepted; an element's
-**Discard** restores only that element's properties. Neither action commits or
-uploads files.
+Edit Working in the browser. Compare it with the original prepared pages in
+the PDF pane and with the Accepted baseline. **Accept Changes** publishes the
+completed Working revision to Accepted and the variant-root `book.json`.
+**Discard Changes** restores the complete Working bundle from Accepted. An
+element's **Discard** restores only that element's properties. These actions
+operate on local review files without committing or uploading them.
 
 Use **Book Actions → Clean direct book text** to preview possible PDF references
 for plain book text. Confirm each proposed occurrence against the PDF before
-applying it. **Show source differences** marks source-backed corrections in
-yellow, accepted text without a source address in blue, and pending plain text
-in purple. These colors are review aids, not proof of transcription quality.
+applying it. **Show source differences** helps with that review by marking
+source-backed corrections in yellow, accepted text without a source address
+in blue and pending plain text in purple. Transcription quality still depends
+on checking the source.
 
-Use **Book Actions → List unmatched book text** for a read-only list of all
-text without a PDF source reference, including accepted literals, chapter
-titles and hidden elements. Each fragment includes its PDF page, element and
-context. HTML tags and math command names are omitted; words and numbers
-inside formulas remain. The list does not apply matches or change either book
-version. Statistics count all fragments and show how many contain at least
-three letters. Only that latter group is listed; digits and punctuation do not
-count toward the letter threshold.
+Use **Book Actions → List unmatched book text** to find text without a PDF
+source reference, including accepted literals, chapter titles and hidden
+elements. Each listed fragment includes its PDF page, element and context.
+The list omits HTML tags and math command names but includes words and
+numbers inside formulas. This action is read-only and applies no matches.
+The statistics count all fragments and report how many contain at least three
+letters. The list displays only those fragments. It counts only letters
+toward the threshold, excluding digits and punctuation.
 Use **Go to Book** beside a fragment to navigate to its element and highlight
 the text. Navigation also reveals a hidden element when necessary.
 
 Use **Book Actions → Rename Chapters** to edit Working chapter titles and Markdown
-filenames together. The generated table of contents has its own entry. Chapter
-titles remain separate from filenames: edited chapter titles are aligned to PDF
-text blocks where possible. **Clean direct book text** checks remaining direct
-title text, including an edited contents title.
-Filenames must be unique bundle-local `.md` names. Saving a rename updates
-Working Markdown exports and contents links; the old generated filenames are
-removed. Accept Changes publishes the renamed recipe and files.
+filenames together. The generated table of contents has its own entry. Each
+chapter title is separate from its filename. The editor aligns changed titles
+to PDF text blocks where possible. **Clean direct book text** checks title text
+that still has no reference, including an edited contents title.
+Filenames must be unique `.md` names within the bundle. Saving a rename updates
+the Working Markdown exports and contents links and removes the old generated
+filenames. Accept Changes publishes the renamed recipe and files.
 
 Refresh a complete Working Markdown export after the current revision renders:
 
@@ -262,23 +267,23 @@ python tools/bootstrap/book-to-markdown/book_review.py publish --book $Book
 ```
 
 The directory name comes from the book directory above the variant. Publication
-uses the files already in Accepted, converts generated block links to ordinary
-Markdown links to chapter headings, and omits review-only element anchors and
-Obsidian block IDs from the published copy. Working and Accepted stay intact.
+takes the files already in Accepted, then converts generated block links to
+ordinary Markdown links to chapter headings and leaves review-only element
+anchors and Obsidian block IDs out of the published copy.
 Repeated heading text receives a numeric suffix in the published chapter and
 contents entry so every link names one heading. Publication also writes each
 visible image's `description` from the accepted root `book.json` to
-`assets/<image-name>.txt`. Images without a description have no sidecar;
-hidden images are omitted. The command requires the root and Accepted recipes
-to match, leaves review files intact, and refuses to replace an existing
-Reference directory.
-The published contents use relative Markdown links that can be navigated in
+`assets/<image-name>.txt`. The command skips the sidecar when an image has no description. It omits
+hidden images. The command requires the root and Accepted recipes
+to match and refuses to replace an existing Reference directory. It leaves
+Working and Accepted intact.
+The published contents use relative Markdown links you can follow in
 Obsidian and a standard Markdown preview. The review exports still use Obsidian
 block links so identical headings retain distinct destinations during editing.
 Before a commit, review each published Markdown file and add the `book`,
 `chapter`, and content-based tags described in
 [Reference Book Metadata](reference-book-metadata.md).
-The commit check reports missing structural metadata; an agent asks before
+The commit check reports missing structural metadata. An agent asks before
 editing frontmatter.
 
 ## Book authoring sequence
@@ -294,8 +299,8 @@ editing frontmatter.
    manual recipes remains in the
    [roadmap](../../../ROADMAP.md#step-11-four-manual-pdf-to-book-json-conversion).
 
-The workflow below lets someone with a matching PDF continue from a committed
-recipe, add descriptions, publish Markdown, and index it for RAG.
+With a matching PDF and a committed recipe, you can reconstruct the book,
+add descriptions, publish Markdown and index it for RAG.
 
 ## Documentation bootstrap from an accepted `book.json`
 
@@ -308,8 +313,9 @@ The RAG CLI and shared index state file are configured in the
 1. Run `book_review.py import-book --book <variant-directory>` to rebuild the
    editor from the accepted recipe and PDF. Then render and open the review
    server as in [reconstructing a cloned book](#reconstructing-a-cloned-book).
-   `import-book` refuses an existing Working or Accepted bundle, so use it for
-   a clean reconstruction, not to resume an active review.
+   `import-book` refuses an existing Working or Accepted bundle. Use it to
+   reconstruct the book from the recipe and resume active reviews by opening
+   the existing book.
 2. Validate the reconstructed book and inspect its text, tables, graphics,
    chapter links, and PDF references. If image or table descriptions are still
    missing, use the Book Review Codex actions on Working, inspect the results
@@ -333,7 +339,7 @@ The RAG CLI and shared index state file are configured in the
 
 ## Source catalog and variant layout
 
-Local source variants live under `tools/bootstrap/books/`:
+The default local catalog stores source variants under `tools/bootstrap/books/`.
 
 ```text
 tools/bootstrap/books/<book-id>/<first-12-characters-of-sha256>/
@@ -346,8 +352,8 @@ The current composite Test Book variant is
 `test-book-example-4567/78e52f075e17`. Its
 [page tracker](../books/test-book-example-4567/78e52f075e17/test_pages_tracker.md)
 records the source variants and 160-page assembly order. The other source
-variants are identified by their own `source.json` files. Source PDFs and
-generated outputs remain local; the metadata is tracked.
+variants have their own `source.json` files. Git tracks the metadata, while
+source PDFs and generated outputs stay local.
 
 When acquiring a source PDF, compare its **full** SHA-256 with the variant's
 `source.json`, copy the matching file to `source.pdf`, and verify the copied
@@ -357,29 +363,30 @@ file's hash. For example:
 Get-FileHash -LiteralPath './downloaded.pdf' -Algorithm SHA256
 ```
 
-A different hash requires the matching source or a separate variant; changing
-an existing variant's hash does not make a different PDF equivalent.
+If the hash differs, obtain the matching source or create a separate variant.
+Changing an existing variant's hash cannot make a different PDF equivalent.
 
 ## Editing and publication
 
-`working/book.json` is the authored review model. The variant-root
-`book.json` is the accepted recipe intended for later publication; generated
+`working/book.json` stores the authored review model. The variant-root
+`book.json` stores the accepted recipe for later publication. Generated
 Markdown, renders and assets are replaceable local outputs. The PDF supplies
-source text and graphics. A recipe records chapter order, element roles and
-visibility, Markdown structure, source regions and explicit corrections.
+source text and graphics, and the recipe records chapter order, element roles
+and visibility, Markdown structure, source regions and explicit corrections.
 
 Source-derived `md_text`, chapter titles and filenames use Stage 02 physical
 page, block and Unicode character ranges. For example,
 `{{text page=3 block=1 chars=0:6}}` selects characters 0 through 5.
 `{{accepted text="Vision"}}` records visible text without a PDF address.
 Formatting around references remains literal Markdown or HTML.
-`resolved_md_text` is derived display text, not authored recipe content.
+The editor derives `resolved_md_text` for display from authored recipe content.
 The [element vocabulary](elements.md) lists supported types and roles.
 
-Import aligns the latest prepared page text with Stage 02 PDF text, but OCR and repeated
-phrases can produce uncertain or incorrect source attribution. The reviewer
-must check the actual PDF. The recipe stores reviewed decisions so later
-reconstruction can avoid repeating model inference through `import-book`.
+Import aligns the latest prepared page text with Stage 02 PDF text. OCR and
+repeated phrases can make source attribution uncertain or incorrect, so the
+reviewer must check the actual PDF. The recipe stores reviewed decisions so
+`import-book` can use them during later reconstruction without repeating model
+inference.
 
 ### Source validation
 
@@ -389,12 +396,13 @@ python tools/bootstrap/book-to-markdown/book_review.py validate --book $Book
 
 This read-only command checks Working recipe references and reports visible
 literal content without source addresses. It prints JSON and exits with code 1
-when the audit fails. It does not change the book or prove that a valid range
-identifies the correct printed occurrence.
+when the audit fails. A valid range still needs to be checked against the PDF
+to confirm that it identifies the correct printed occurrence.
 
-Math formatting and spacing commands need no source address, but their text
-arguments do. Other math commands are reported as `unreferenced_math_command`;
-the renderer checks whether their syntax is supported.
+Math formatting and spacing commands need no source address. Their text
+arguments still need one. Source validation reports other math commands as
+`unreferenced_math_command`. The renderer checks whether it supports their
+syntax.
 
 ## Codex Working task
 
@@ -403,12 +411,13 @@ to describe one selected image or table. The suggested tasks and description
 rules live in [`prompts/`](prompts/); the authored `description` field and its
 rendering are defined in [elements.md](elements.md#notes-legends-and-groups).
 
-Codex edits Working at the current revision; Accepted and PDF sources remain
-read-only. One-element transformations preserve source content by default;
-their rules are in the [transformation prompt](prompts/codex-edit.md). Review
+Codex edits Working at the current revision. Accepted and PDF sources are
+read-only. One-element transformations preserve source content by default and
+follow the [transformation prompt](prompts/codex-edit.md). Review
 changes before acceptance. **Cancel task**, Escape, and
-**Stop task** interrupt the active request; edits already saved to Working
-remain. The model and effort are selected in [config.yaml](config.yaml).
+**Stop task** interrupt the active request. Working retains edits that have
+already been saved. The model and effort are selected in
+[config.yaml](config.yaml).
 
 Task and element-transform diagnostics use `book-codex-agent/<request-id>/`
 and `book-codex/<request-id>/` within the selected diagnostics directory.

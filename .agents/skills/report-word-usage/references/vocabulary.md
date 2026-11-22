@@ -1,46 +1,47 @@
 # Word filters and their sources
 
-The report uses two local word lists. Lines beginning with `#` are comments;
-other lines contain individual lowercase word forms. The lists affect this report
-only. They do not change the repository's spelling checker or verification gates.
+The report uses two local lists to exclude words from its ranking. Lines
+beginning with `#` are comments. Each other line contains one lowercase word
+form. The repository's spelling checker and verification gates use their own
+rules.
 
 ## Common English
 
-`assets/common-words.txt` is derived from the New General Service List 1.2 by
-Charles Browne, Brent Culligan and Joseph Phillips. The 2,809 headwords, their
-listed inflected forms and the supplementary words provide a practical filter
-for general English. They are not an exhaustive classification of A1–B2 words.
+`assets/common-words.txt` draws on the New General Service List 1.2 by Charles
+Browne, Brent Culligan and Joseph Phillips. Its 2,809 headwords, listed
+inflected forms and supplementary words provide a practical filter for general
+English. An exhaustive classification of A1–B2 words is outside the filter's
+scope.
 
-The initial list combines the word cells from these official downloads, removes
-comment lines and duplicate forms, converts letters to lowercase, and sorts the
-result:
+For the initial list, the project collected the word cells from both official
+downloads below. It removed comment lines and duplicate forms, converted the
+letters to lowercase and sorted the result.
 
 - [NGSL 1.2 lemmatized for research](https://www.newgeneralservicelist.com/s/NGSL_12_lemmatized_for_research.csv).
 - [NGSL supplementary words](https://www.newgeneralservicelist.com/s/SUP_lemmatized.csv).
 
-The [NGSL project](https://www.newgeneralservicelist.com/new-general-service-list)
-publishes the source material under
+The NGSL project publishes the source material under Creative Commons
+Attribution-ShareAlike 4.0. The derived common-word list retains that license
+and attribution. The steps above changed its format. Reports use the stored
+list and skip downloads. [NGSL project](https://www.newgeneralservicelist.com/new-general-service-list),
 [Creative Commons Attribution-ShareAlike 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
-That license and attribution apply to the derived common-word list. The changes
-described above concern its format; the report does not download updates.
 
 ## Project vocabulary
 
-`assets/project-words.txt` is a static starting list of hardware names, tools,
+`assets/project-words.txt` starts with a fixed list of hardware names, tools,
 formats and ordinary project terms, including `amiga`, `git`, `workflow` and
-`milestone`. It was assembled from the repository's existing programming,
-hardware, software and name vocabularies under
-`tools/verification/checks/english_words/`, with the terms selected during the
-initial word-frequency analysis. Later spelling-dictionary changes do not alter
-this report's filter automatically.
+`milestone`. The project used its initial word-frequency analysis to select
+terms from the repository's programming, hardware, software and name
+vocabularies under `tools/verification/checks/english_words/`. Later spelling-dictionary changes
+affect this report's filter only when the report's list is updated.
 
-A word's repeated appearance in instructions does not by itself make it project
-vocabulary. Consider what it names and inspect its uses. For example, `closure`
-and `explicit` remain candidates: their presence may need an explanation of the
-actual action or condition.
+To decide whether a word belongs in the project vocabulary, read its uses
+and consider what it names. Frequent use in instructions alone gives
+insufficient evidence. `closure` and `explicit` remain candidates for review
+because a reader may need the actual action or condition spelled out.
 
-During a report, suggest additions without changing either list. Identify whether
-each suggestion is ordinary English or an established project term, and give a
-reason based on the inspected examples. Update the appropriate list when the user
-selects that maintenance. Do not replace contextual assessment with a growing
-list of words that have become familiar through repetition.
+During a report, suggest additions and leave both lists unchanged. Say
+whether each suggestion is ordinary English or an established project term and
+explain it using the examples you read. Update the appropriate list when the
+user selects that maintenance. Continue to assess each word in context, even
+when repetition makes it familiar.

@@ -1,11 +1,13 @@
 # Agent roles
 
-The main session coordinates the engineer's selected work and assigns specialist
-roles to its component operations. A role describes who performs an assignment;
-a [skill](../../.agents/skills/README.md) describes the operation, inputs and
-stopping boundary. [AGENTS.md](../../AGENTS.md#subagent-assignment-and-model-selection)
-owns delegation and model/effort policy. The role TOML files in this directory
-define the specialist instructions.
+The engineer selects the work. The main session coordinates it and assigns a
+specialist to each operation that calls for one. The role TOML files in this
+directory give the assigned specialists their role instructions. The skill
+explains what the specialist does, what inputs to use and when the assignment
+ends. [Skills](../../.agents/skills/README.md)
+
+The root instructions govern delegation and the choice of model and reasoning
+effort. [AGENTS.md](../../AGENTS.md#subagent-assignment-and-model-selection)
 
 ## Roles and responsibilities
 
@@ -17,51 +19,60 @@ define the specialist instructions.
 | [TA-test-runner](TA-test-runner.toml) | Execute selected tests, checkers and coverage measurements; report actual logs and outcomes without repairs |
 | [TA-hardware-researcher](TA-hardware-researcher.toml) | Investigate selected hardware sources while distinguishing manuals, physical measurements and reference-model behavior |
 
-One planner handles both planning and test design in the same assignment. The
-implementer turns approved scenarios into executable tests. The tests reviewer
-assesses assertions, meaningful missing scenarios, supplied coverage, required
-verification gates and evidence freshness; the runner collects measurements.
-Selected corrective work can add tests for already approved behavior. New behavior
-or scope retains its applicable decision boundary.
+One planner creates or amends the change plan and test design in the same
+assignment.
+The implementer turns approved scenarios into executable tests. The tests
+reviewer checks what the tests assert, which important scenarios are missing,
+what coverage the evidence shows, which verification gates apply and whether
+the evidence still applies to the candidate. The test runner collects
+measurements.
+An assignment to correct a finding can add tests for already approved behavior.
+New behavior or scope still requires the applicable decision.
 
-Review assignments use fresh independent contexts. The tests reviewer is a separate
-instance from the author and behavior/architecture reviewers. Multiple instances
-of one role can run independently or in parallel within available runtime slots.
-Parallel test commands need isolated writable outputs; coverage measurements
-sharing counters run serially. The [workflow guide](../../.agents/skills/README.md)
-shows where these assignments participate, including the review rounds.
+Each review starts in a fresh, independent context. The tests reviewer runs
+in an instance separate from the author and the behavior and architecture
+reviewers. The runtime can run multiple instances of one role independently
+or in parallel within its available slots. Parallel test commands need
+separate writable outputs. Run coverage measurements one at a time when
+they share counters. The workflow guide shows where each assignment fits,
+including the review rounds. [Workflow guide](../../.agents/skills/README.md)
 
 ## Model and reasoning selection
 
-The main session reads the actual assignment and resolves each subagent's model
-and reasoning effort before launch, including corrective work. Use the precedence,
-defaults and hardware-behavior rule in the
-[root policy](../../AGENTS.md#subagent-assignment-and-model-selection).
-The project [configuration](../config.toml) provides fallback defaults; role files
-leave model settings unset so assignment-specific choices can apply.
+Before each launch, the main session reads the assignment and selects the
+subagent's model and reasoning effort. It makes this selection again for
+corrective work. Follow the root policy for precedence, defaults and changes
+to hardware behavior. [Root policy](../../AGENTS.md#subagent-assignment-and-model-selection)
 
-For example, the coordinator identifies a chipset timing change in an implementation
-assignment and selects the policy's contextual model/effort pair. A later repair
-assignment resolves its settings again. Reviewers and command runners receive
-their own settings. Main workflows run on the main session's current model;
-loading a skill does not switch that model.
+The project configuration supplies fallback defaults. The role files leave
+model settings unset so the choices for the assignment can take effect.
+[Project configuration](../config.toml)
 
-Before each launch, the coordinator announces the role, model, effort and reason,
-then supplies the selected skill, checkout, requirements, plan/findings, write scope
-and result boundary. Role instructions and assignment scope do not establish a
-runtime sandbox. A loaded definition does not prove the runtime created an
-independent agent or applied a particular model.
+When the coordinator identifies a chipset timing change in an implementation
+assignment, it selects the model and reasoning effort required by the hardware
+rule. It makes a fresh selection for a later repair and selects settings
+separately for reviewers and command runners. The main session uses its
+current model throughout the main workflow, including when it loads a skill.
 
-The policy is an instruction to the coordinator, not a built-in semantic
-classifier. New role/configuration metadata may require a new session to load.
-Confirm effective settings from runtime evidence when available and report launch
-or observation gaps explicitly. An unavailable role or setting remains an actual
-launch gap rather than permission to substitute another model silently.
+Before each launch, the coordinator announces the role, model, reasoning effort
+and reason for the selection. It gives the subagent the selected skill, checkout,
+requirements, plan and findings, scope of permitted edits and expected result.
+The role instructions and assignment describe the work. Sandbox restrictions
+come from the runtime. Check runtime evidence to confirm that an independent
+agent started and used the selected model.
+
+The coordinator interprets each agent's assignment to determine which policy
+rules apply. The runtime may need a new session to load new role or
+configuration metadata. When runtime evidence is available, use it to confirm
+the effective settings. State when a launch failed or the runtime provided too
+little evidence to confirm the result. If a role or setting is unavailable,
+report which assignment could not launch as specified and leave the work for
+the selected role and settings.
 
 ## Results
 
-Specialist assignments return an explanation and JSON under the shared
-[result contract](../../.agents/references/workflow-contract.md). A completed
-assessment can contain findings; it does not mean the assessed change passed.
-Findings do not start repairs or another operation automatically. The engineer's
-authorization can cover a combined sequence of assignments.
+Specialists return an explanation and JSON. An assessment can be complete
+while the assessed change still has open findings. The engineer's
+authorization determines whether repair or another operation follows and can
+cover a sequence of assignments.
+[Result contract](../../.agents/references/workflow-contract.md)

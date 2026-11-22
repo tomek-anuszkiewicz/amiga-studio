@@ -13,37 +13,83 @@ tracked_paths:
 ---
 # MemoryBus
 
-[`MemoryBus<'a>`](../../../crates/memory_bus/src/memory_bus.rs) is the motherboard address router presented to the M68000 as an [`AddressBus`](../../../crates/physical_memory/src/address_bus.rs). It connects a CPU access to [`PhysicalMemory`](../../../crates/physical_memory/src/physical_memory.rs), a custom-chip register, a CIA, or the RTC. It is a temporary collection of mutable references, not an owner of RAM, chips, or the machine clock. [`A500Machine`](../../../crates/machine_loop/src/machine_loop.rs) owns those components and creates the router when it needs one.
+The M68000 requests a read or write through the address-bus interface.
+The motherboard router decodes the address and sends the access to
+physical memory, a custom-chip register, a CIA, or the RTC.
+[`MemoryBus<'a>`](../../../crates/memory_bus/src/memory_bus.rs),
+[`AddressBus`](../../../crates/physical_memory/src/address_bus.rs), and
+[`PhysicalMemory`](../../../crates/physical_memory/src/physical_memory.rs)
 
-The CPU knows the `AddressBus` interface, whose accesses return `BusResult::Ready(value)` or `BusResult::WaitState`. `PhysicalMemory` also implements that interface for direct or synthetic use; a production CPU step in `A500Machine::step_cck()` receives `MemoryBus`. The CPU handles instruction sequencing and address errors; the router does not decode instructions or advance time.
+The machine owns RAM, the chips, and the machine clock. When it needs the
+router, it creates it from temporary mutable references to the components.
+[`A500Machine`](../../../crates/machine_loop/src/machine_loop.rs)
+
+Through `AddressBus`, a CPU access returns `BusResult::Ready(value)` or
+`BusResult::WaitState`. `PhysicalMemory` implements the same interface for
+direct or synthetic use. During production stepping,
+`A500Machine::step_cck()` supplies `MemoryBus`. The CPU handles instruction
+sequencing and address errors. The router only dispatches accesses. The
+machine loop advances time.
 
 ## A CPU access through the router
 
-`A500Machine::step_cck()` increments its CCK counter and advances other subsystems before stepping the CPU. In that subsystem step, Agnus advances against Chip RAM, and the machine copies `agnus.chip_ram_blocked` into `physical_memory.chip_ram_blocked`. The machine then constructs `MemoryBus` from mutable references to physical memory, Agnus, Denise, Paula, CIA-A, CIA-B, and RTC and passes it to `cpu.step_cck()`. Thus an attempted CPU Chip/Slow RAM access sees the contention state for that step. A `WaitState` keeps the CPU bus micro-step pending; the rest of the machine still advances on subsequent CCKs. The [Machine Loop](Machine%20Loop.md) describes the complete step order, while [DMA](DMA.md) owns the Agnus slot schedule.
+`A500Machine::step_cck()` increments its CCK counter and advances the other
+subsystems before the CPU. During that work, Agnus advances against Chip
+RAM and the machine copies `agnus.chip_ram_blocked` into
+`physical_memory.chip_ram_blocked`. The machine then creates `MemoryBus`
+from mutable references to physical memory, Agnus, Denise, Paula,
+CIA-A, CIA-B, and RTC, and passes it to `cpu.step_cck()`.
 
-The production CPU path records a shared-bus wait in Agnus when a Chip/Slow
-RAM or custom-register access is refused. The first refusal starts the denial
-count; Agnus counts subsequent CCKs while that request remains pending. A
-successful access releases it. Internal CPU work and private RAM/ROM do not
-create requests or force Blitter yields. Custom-register CPU accesses check bus
-availability before any live-read effect or register insertion; the common
-Copper/DMA register issue methods retain their separate already-granted path.
-The CPU retains the refused operation in its existing micro-step, without a
-second copy of its address or write data in the chipset. See [DMA](DMA.md) for
-priority. These are functional request and retry semantics; sub-CCK Gary/CPU
-edge calibration remains outside reconstruction acceptance.
+A CPU access to Chip or Slow RAM therefore sees the contention state for
+that step. A `WaitState` keeps the CPU bus micro-step pending while the
+rest of the machine continues to advance on subsequent CCKs. The machine
+loop specifies the complete step order. The DMA specification defines the
+Agnus slot schedule. [Machine Loop](Machine%20Loop.md) and [DMA](DMA.md)
 
-On an A500 motherboard, Gary decodes the CPU address to select RAM, ROM, or a device and controls the connection between the CPU data bus and the shared Chip RAM data bus. [Agnus](Agnus.md) schedules access to that shared bus and generates the DRAM addresses and timing. When Agnus needs the bus, it requests it from Gary. Gary then delays the CPU's transfer acknowledgment until the bus is available, leaving the CPU access pending. This is the hardware reason for the Chip/Slow RAM wait state described above; Gary does not choose which DMA channel runs.
+When the production CPU path refuses a Chip or Slow RAM access or a
+custom-register access, it records a shared-bus wait in Agnus. The first
+refusal starts the denial count. Agnus counts subsequent CCKs while the
+request is pending. A successful access releases it. Internal CPU work
+and private RAM or ROM accesses create no such request and impose no
+Blitter yield.
 
-A bidirectional, tri-state data latch sits between the CPU and shared data buses. While enabled, a latch passes the input word; when closed, it retains the last sampled word. Its outputs can also be disconnected electrically. Gary controls this path so a granted CPU transfer can move data in the required direction, while an Agnus DMA transfer leaves the CPU side isolated from the shared bus. "Buffer" here means a small, temporary holding and isolation stage, not a second RAM store or a cache. It is also distinct from the holding registers in Denise and Paula, which capture DMA data for display or audio after Agnus selects their register. The emulator models the resulting address routing and CPU wait state; it has no separate Gary chip or motherboard latch state.
+Before a CPU access to a custom register has a live-read effect or
+inserts a register entry, it checks bus availability. The common Copper
+and DMA issue methods use their separate path for already-granted access.
+The CPU keeps the refused operation in its existing micro-step. The
+chipset holds no second copy of its address or write data. These rules
+define functional request and retry behavior. Sub-CCK calibration of
+Gary and CPU edges remains outside reconstruction acceptance. [DMA](DMA.md)
 
-Every `MemoryBus` byte or word access masks the address to 24 bits and selects
-its upper eight bits (`addr >> 16`). Banks `$A0-$BF` route to the CIA decoder,
-`$DC` to RTC, and `$DE-$DF` to the shared custom-register decoder. Other banks
-delegate to `PhysicalMemory`. Shared bank bounds in
-[`address_map.rs`](../../../crates/config/src/address_map.rs) keep production
-routing and physical classification consistent. Device classification in the
-physical bank table provides placeholders, not live chip access.
+On an A500 motherboard, Gary decodes the CPU address to select RAM, ROM,
+or a device. It also controls the connection between the CPU data bus
+and the shared Chip RAM data bus. Agnus schedules access to the shared
+bus, including which DMA channel runs, and generates the DRAM addresses
+and timing. When Agnus requests the bus, Gary delays the CPU transfer
+acknowledgment until the bus is available. The pending CPU access is what
+the Chip or Slow RAM wait state models. [Agnus](Agnus.md)
+
+A bidirectional, tri-state data latch connects the CPU and shared data
+buses. While enabled it passes the input word. When closed it retains the
+last sampled word. Its outputs can also disconnect electrically. Gary
+sets the direction for a granted CPU transfer and isolates the CPU side
+from the shared bus during an Agnus DMA transfer.
+
+The motherboard buffer holds data in transit and isolates the buses. It
+provides neither additional RAM storage nor a cache. Denise and Paula
+capture display or audio DMA data in their own holding registers when
+Agnus selects the corresponding register. The emulator reproduces the
+resulting address routing and CPU wait state. It has no separate Gary
+component or motherboard latch state.
+
+For every byte or word access, `MemoryBus` masks the address to 24 bits
+and uses the upper eight bits (`addr >> 16`) to select the bank. It routes
+banks `$A0-$BF` to the CIA decoder, `$DC` to RTC, and `$DE-$DF` to the
+shared custom-register decoder. It sends other banks to `PhysicalMemory`.
+Shared bank bounds keep production routing and physical classification
+consistent. The physical bank table uses device classes for placeholder
+responses. Live chip access goes through the router.
+[`address_map.rs`](../../../crates/config/src/address_map.rs)
 
 | Address selected by the implementation | CPU access destination and behavior |
 | --- | --- |
@@ -55,13 +101,21 @@ physical bank table provides placeholders, not live chip access.
 | `$DE0000-$DFFFFF` | Custom-register routing, using the low register-offset bits. These addresses alias the same 512-byte register window in the current router. |
 | `$F80000-$FFFFFF` | Kickstart ROM. The fixed 256 KiB image repeats across this 512 KiB range. CPU ROM writes are ignored. |
 
-The preset table and installed storage are built in [`presets.rs`](../../../crates/physical_memory/src/presets.rs) and `PhysicalMemory::from_config()`. Unmapped physical-memory reads return the fixed `OPEN_BUS_BYTE` placeholder (`$FF`); word reads return `OPEN_BUS_WORD` (`$FFFF`). CIA inactive lanes and absent RTC responses use the same placeholder. See the [open-bus quirk](Platform%20Quirks%20and%20Invariants%20Catalog.md#open-bus-and-opposite-direction-register-access). The map above describes implemented dispatch rather than every address reserved by Amiga hardware.
+The map lists the emulator's implemented dispatch. Hardware address
+reservations have a separate scope. The preset table and installed storage
+come from the preset definitions and `PhysicalMemory::from_config()`.
+[`presets.rs`](../../../crates/physical_memory/src/presets.rs)
+
+Unmapped byte reads in physical memory return the fixed `OPEN_BUS_BYTE`
+placeholder (`$FF`). Word reads return `OPEN_BUS_WORD` (`$FFFF`).
+Inactive CIA lanes and absent RTC responses use the same placeholder.
+[Open-bus quirk](Platform%20Quirks%20and%20Invariants%20Catalog.md#open-bus-and-opposite-direction-register-access)
 
 ### CIA and boot overlay
 
-Canonical CIA-A addresses are `$BFE001-$BFEF01`; CIA-B uses
-`$BFD000-$BFDF00`. Within banks `$A0-$BF`, A12 low selects CIA-A and A13 low
-selects CIA-B:
+CIA-A's canonical addresses are `$BFE001-$BFEF01`. CIA-B uses
+`$BFD000-$BFDF00`. Within banks `$A0-$BF`, A12 low selects CIA-A and A13
+low selects CIA-B.
 
 | A13/A12 | Receivers | Word read lanes |
 | --- | --- | --- |
@@ -70,104 +124,252 @@ selects CIA-B:
 | `10` | CIA-A | `$FF` high, CIA-A low |
 | `11` | Neither | `$FFFF` |
 
-A11..A8 select the register. A20..A14 and A7..A1 are mirrors. The decoder
-normalizes each selected receiver to its full named canonical address in
-[`cia_reg`](../../../crates/config/src/registers.rs), then calls that instance's
-concrete register method. CIA receives no motherboard address. Selector B
-reads `$FF`, ignores writes and does not synchronize. Byte reads reach only
-the selected chip on the addressed lane; inactive lanes use fixed `$FF` without
-read effects. Byte writes reach every selected chip regardless of parity.
-Word writes supply the high byte to CIA-B and the low byte to CIA-A.
+A11..A8 select the register. A20..A14 and A7..A1 are mirrors. For each
+selected chip, the decoder finds the full named canonical address and
+calls that instance's concrete register method. It passes no motherboard
+address to the CIA. [`cia_reg`](../../../crates/config/src/registers.rs)
 
-Selection, synchronization, acceptance and falling-E capture are separate.
-Before a word read or a write can produce any register effect, all receiving
-CIAs must be synchronized. Each selected receiver starts its countdown on the
-first attempt. The sixteen-slot CIA buffers exceed legal CPU traffic: an
-accepted write commits one CCK later, before the next synchronized transfer.
-CIA writes preflight all selected queues before consuming synchronization or
-staging either recipient. An attempted overflow is fatal, not a WaitState; direct
-setter injection must drain before CPU traffic resumes, as specified by [CIA](CIA.md#runtime-register-capture-and-bus-synchronization).
-A refused transfer neither consumes synchronization nor acknowledges a read
-or inserts a write in any receiver. Acceptance consumes all ready receivers
-together, with one event per selected chip; it never splits a word into two
-independently accepted byte operations. Debug reads reuse the same selection
-and canonical identities without clocking, synchronization or read effects.
+Selector B reads `$FF`, ignores writes, and does not synchronize. Byte
+reads reach only the selected chip on the addressed lane. Inactive lanes
+return fixed `$FF` without read effects. Byte writes reach every selected
+chip regardless of parity. Word writes pass the high byte to CIA-B and
+the low byte to CIA-A.
 
-The A500 Rev. 6A/7 [CIA sheet](https://www.amigawiki.org/dnl/schematics/A500_R6.pdf#page=7)
-shows U37 combining `VMA*` with A12/A13 for the two independent active-low
-selects, A11..A8 feeding RS3..RS0, and CIA-A/B wired to D7..D0/D15..D8.
-The [processor sheet](https://www.amigawiki.org/dnl/schematics/A500_R6.pdf#page=3)
-shows Gary's VPA and the CPU/shared-bus latches. HRM Appendix F's address-decode
-paragraph prescribes canonical software addresses and includes inconsistent
-binary/parity examples; these are not an exhaustive electrical alias table.
-The approved model decodes `$A0-$BF`, consistent with its upper-three-bit `101`
-qualification and the [Minimig CIA equations](../../../ref_src/minimig/software%20and%20firmware/old/source/fpga%20core/Gary.v).
+The first access attempt selects the receivers and starts each selected
+CIA's synchronization countdown. A word read or a write can affect a
+register only after all receiving CIAs have synchronized and the transfer
+has been accepted. An accepted write commits on falling E one CCK later,
+before the next synchronized transfer. This spacing keeps legal CPU traffic
+below the capacity of the sixteen-slot CIA buffers.
+
+Before a CIA write uses the synchronization state or stages an entry, it
+checks all selected queues. An attempt to insert beyond capacity is
+fatal and offers no WaitState retry. Direct setter injection must drain
+before CPU traffic resumes. [CIA](CIA.md#runtime-register-capture-and-bus-synchronization)
+
+Only an accepted transfer can consume synchronization, acknowledge a
+read, or insert a write in a receiver. Acceptance consumes synchronization
+for all ready receivers together, with one event per selected chip. A word
+transfer has a single acceptance across its byte lanes. Debug reads use
+the same selection and canonical register identities without clocking,
+synchronization, or read effects.
+
+The A500 Rev. 6A/7 CIA sheet shows U37 combining `VMA*` with A12/A13
+for the two independent active-low selects. It also shows A11..A8 feeding
+RS3..RS0 and CIA-A/B wired to D7..D0/D15..D8.
+[CIA sheet](https://www.amigawiki.org/dnl/schematics/A500_R6.pdf#page=7)
+
+The processor sheet shows Gary's VPA and the latches between the CPU and
+shared buses. [Processor sheet](https://www.amigawiki.org/dnl/schematics/A500_R6.pdf#page=3)
+
+The address-decode paragraph in HRM Appendix F prescribes canonical
+addresses for software. Its binary and parity examples are inconsistent
+and leave the full set of electrical aliases unspecified. The approved
+model decodes `$A0-$BF` by qualifying the upper three bits as `101`, in
+line with the Minimig CIA equations.
+[Minimig CIA equations](../../../ref_src/minimig/software%20and%20firmware/old/source/fpga%20core/Gary.v)
+
+vAmiga's memory decoder corroborates CIA selection, write fan-out, and
+`$DE/$DF` custom routing. vAmiga sometimes uses the CPU instruction register
+for inactive read lanes. This emulator uses fixed `$FF`.
 [vAmiga's memory decoder](../../../ref_src/vAmiga/Core/Components/Memory/Memory.cpp)
-corroborates selection, write fan-out and `$DE/$DF` custom routing. Its inactive
-read lanes sometimes use the CPU instruction register; this emulator retains
-fixed `$FF`. The [replacement Gary](../../../ref_src/amiga_replacement_project/gary/Gary.v)
-at revision `143ad5f1b5acae093ea66186e832a8ab4fb1bc0f` instead qualifies CIA with
-A23..A20=`1011` and also decodes RTC/ROM/custom mirrors outside this task.
-Those differences remain outside the implemented map. These models do not establish measured
-silicon timing or other board revisions. The contract applies to the supported
-OCS 8371 PAL and 8370 NTSC presets, with installed RAM and RTC taking their
-specified ranges; no additional `$C0-$DD` custom mirrors are enabled.
 
-CIA-A pin PA0 drives OVL. When a queued `PRA` or `DDRA` write commits on falling E, CIA-A reports a generic port change. The machine routes it through `MemoryBus::update_ciaa_overlay()` in that same modeled phase, updating the low-memory mapping from `(PRA | !DDRA) & $01`: an input pin is pulled high, while an output pin drives the stored `PRA` bit. OVL high calls `map_kickstart_to_low_memory()`; OVL low calls `map_chip_ram_to_low_memory()`. The pending write leaves the previous mapping intact. CIA-B never drives this helper. This is the effect of the committed CIA pin level, with no additional CCK propagation stage. [CIA](CIA.md#runtime-register-capture-and-bus-synchronization) specifies the separate synchronization, acceptance and capture boundaries. The [8520 port specification](../Reference/Hardware%20Reference%20Manual/14%20-%20Appendix%20F%20-%20Complex%20Interface%20Adapters.md#io-ports-pra-prb-ddra-ddrb) defines direction control and pull-ups. [vAmiga](../../../ref_src/vAmiga/Core/Components/CIA/CIA.cpp) updates memory selection when PA0 changes, while the [Minimig Gary decoder](../../../ref_src/minimig/software%20and%20firmware/old/source/fpga%20core/Gary.v) and [Amiga Replacement Project Gary decoder](../../../ref_src/amiga_replacement_project/gary/Gary.v) use OVL directly in their address equations. These models support omitting an additional clocked propagation stage; they do not establish zero physical propagation time.
+The replacement Gary at revision `143ad5f1b5acae093ea66186e832a8ab4fb1bc0f`
+qualifies CIA with A23..A20=`1011`. It also decodes RTC, ROM, and custom
+mirrors outside this task. Those differences remain outside the implemented
+map. The models describe their own decoding and leave measured silicon
+timing and other board revisions unverified.
+[Replacement Gary](../../../ref_src/amiga_replacement_project/gary/Gary.v)
 
-`PhysicalMemory` changes banks `$00-$07` between ROM and Chip RAM handlers. At construction and reset it engages the ROM overlay, consistent with CIA-A PA0 being an input with a pull-up, so reset vectors can be read from low memory. Cold reset clears RAM; warm reset preserves it. Storage mapping and resets belong to physical memory and the machine, not to a persistent `MemoryBus` state.
+The contract covers the supported OCS 8371 PAL and 8370 NTSC presets.
+Installed RAM and RTC use their specified ranges. Additional
+`$C0-$DD` custom mirrors remain disabled.
+
+CIA-A pin PA0 drives OVL. When a queued `PRA` or `DDRA` write commits
+on falling E, CIA-A reports a generic port change. In the same modeled
+phase, the machine routes the change through `MemoryBus::update_ciaa_overlay()`
+and derives the pin level from `(PRA | !DDRA) & $01`. An input pin is
+pulled high. An output pin drives the stored `PRA` bit. When OVL is high
+the router calls `map_kickstart_to_low_memory()`. When OVL is low it calls
+`map_chip_ram_to_low_memory()`. The previous mapping stays in effect
+while a write is pending. CIA-A alone drives this helper. The committed
+pin level takes effect without an additional CCK propagation stage. The
+CIA specification defines the separate synchronization, acceptance, and
+capture boundaries. [CIA](CIA.md#runtime-register-capture-and-bus-synchronization)
+
+The 8520 port specification defines direction control and pull-ups.
+[8520 port specification](../Reference/Hardware%20Reference%20Manual/14%20-%20Appendix%20F%20-%20Complex%20Interface%20Adapters.md#io-ports-pra-prb-ddra-ddrb)
+
+vAmiga changes memory selection when PA0 changes. The Minimig and Amiga
+Replacement Project Gary decoders use OVL directly in their address
+equations. These models support omitting an additional clocked stage.
+Physical propagation time remains unmeasured by this evidence.
+[vAmiga](../../../ref_src/vAmiga/Core/Components/CIA/CIA.cpp),
+[Minimig Gary decoder](../../../ref_src/minimig/software%20and%20firmware/old/source/fpga%20core/Gary.v),
+and [Amiga Replacement Project Gary decoder](../../../ref_src/amiga_replacement_project/gary/Gary.v)
+
+`PhysicalMemory` switches banks `$00-$07` between ROM and Chip RAM
+handlers. At construction and reset, it engages the ROM overlay so the
+CPU can read reset vectors from low memory. At both points, CIA-A pin PA0
+is an input pulled high, which matches the overlay setting. Cold reset
+clears RAM. Warm reset preserves it. Physical memory and the machine own
+storage mapping and resets. The temporary `MemoryBus` carries no persistent
+state for either.
 
 ### Custom registers and specialized chips
 
-For banks `$DE` and `$DF`, `addr & $01FE` selects an even register offset. A word operation reaches a single custom register. A byte read takes the high or low byte of that register according to address bit 0. A byte write duplicates its value onto both halves of a 16-bit word before calling `write_custom_word()`. Every modeled data write calls a concrete queued setter on each receiving chip through one offset match. Address strobes act immediately at accepted selection and allocate no queue entry. A pending value cannot alter a read, child component, restart action or output before commitment. Unmatched offsets remain ignored.
+In banks `$DE` and `$DF`, `addr & $01FE` selects an even register offset.
+A word operation reaches a single custom register. A byte read takes
+the high or low byte according to address bit 0. A byte write duplicates
+its value onto both halves of a 16-bit word, then calls
+`write_custom_word()`.
 
-`read_custom_word()` dispatches readable registers to Agnus, Denise, or Paula. Examples include Agnus beam and DMA status, Denise joystick and collision status, and Paula interrupt, audio-control, and disk status. A live `CLXDAT` or `DSKBYTR` read may have a chip-defined side effect. Reading `COPJMP1` or `COPJMP2` strobes Agnus's Copper and returns `$FFFF`. Unhandled reads, including most reads of write-only registers, return `$FFFF`; see the [open-bus quirk](Platform%20Quirks%20and%20Invariants%20Catalog.md#open-bus-and-opposite-direction-register-access). `read_custom_word_debug()` uses non-mutating chip inspection methods and does not issue the Copper strobes.
+For a modeled data write, one offset match calls a concrete queued
+setter on each receiving chip. While a value is pending, reads, child
+components, restart actions, and outputs still see the previous state.
+Address strobes act as soon as they are accepted and use no queue entry.
+The router ignores unmatched write offsets.
 
-`write_custom_word()` routes `DMACON` to both Agnus and Paula. It routes `BPLCON0`, `DIWSTRT`/`DIWSTOP`, and sprite position/control registers to both Denise and Agnus. The chips independently latch the DIW fields used for vertical bitplane DMA and horizontal pixel clipping. The router sends other listed display, sprite data, color, and input registers to Denise; listed interrupt, disk, serial, potentiometer, and audio registers to Paula; and explicitly listed Agnus registers to Agnus. Unmatched offsets are ignored without staging a chip mutation. The [register ownership matrix](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md) gives the broader register context, while this dispatch is the implemented CPU/Copper write path.
+`read_custom_word()` routes readable registers to Agnus, Denise, or Paula.
+Examples include Agnus beam and DMA status, Denise joystick and collision
+status, and Paula interrupt, audio-control, and disk status. A live
+`CLXDAT` or `DSKBYTR` read may have a side effect defined by its chip.
+Reading `COPJMP1` or `COPJMP2` strobes Agnus's Copper and returns `$FFFF`.
+Unhandled reads, including most reads of write-only registers, also return
+`$FFFF`. `read_custom_word_debug()` inspects the chips without mutating
+state or issuing Copper strobes.
+[Open-bus quirk](Platform%20Quirks%20and%20Invariants%20Catalog.md#open-bus-and-opposite-direction-register-access)
 
-The custom chips use fixed-capacity ordered propagation queues. Each setter reports acceptance; an attempted insertion beyond capacity is a fatal internal model failure. Shared-register arms preflight every required receiver before inserting any event, so overflow cannot partially apply a fan-out. Ordinary bus contention still returns `WaitState`; queue exhaustion never becomes a retry. The CPU receives `Ready` after insertion; acknowledgment does not imply commitment. All custom data writes currently use `Pipeline`, preserving every accepted operation. The current model retains concrete reference timings recorded in the timing research and uses **1 CCK** where timing remains unresolved. Reference-model timing and the fallback are not universal silicon measurements. Reads observe current state at accepted selection without flushing pending writes. CIA capture and RTC accesses retain their separate contracts.
+`write_custom_word()` routes `DMACON` to Agnus and Paula. It routes
+`BPLCON0`, `DIWSTRT`/`DIWSTOP`, and sprite position and control registers
+to Denise and Agnus. Each chip independently latches the DIW fields
+it uses, for vertical bitplane DMA in Agnus and horizontal pixel clipping
+in Denise. The router sends the other listed display, sprite data, color,
+and input registers to Denise. It sends listed interrupt, disk, serial,
+potentiometer, and audio registers to Paula and the explicitly listed
+Agnus registers to Agnus. Unmatched offsets stage no chip mutation.
+This dispatch is the implemented CPU and Copper write path. The ownership
+matrix provides the broader register context.
+[Register ownership matrix](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md)
 
-DMACON retains **2 CCK** for Agnus and Paula. BPLCON0 and DIWSTRT/STOP retain **4 CCK** for Agnus and **1 CCK** for Denise; DDFSTRT/STOP retain **4 CCK** for Agnus. INTENA/INTREQ retain **1 CCK**. Remaining custom data writes use the **1 CCK** fallback, including pointers, palette, audio data and controls, and Blitter/Copper data registers. Address strobes COPJMP1/2 and STREQU/STRVBL/STRHOR/STRLONG act immediately without queue capacity checks. Data-bearing triggers such as BLTSIZE and BPL1DAT act when their queued data commits; downstream engine scheduling remains separate. Electrical INT2/INT3/INT6 levels are sampled by [Paula](Paula.md#register-propagation) after due writes and consume no register queue slot.
+The custom chips hold accepted writes in ordered queues with fixed
+capacity. Each setter reports whether it accepted the write. For a
+shared register, the router checks every required receiver's capacity
+before inserting any entry. If a queue would overflow, the model stops
+before that write changes any recipient. Ordinary bus contention instead
+returns `WaitState` for retry. After a successful insertion the CPU receives
+`Ready`, and the write commits later.
 
-These `delay_cck` values and per-register `MutationMode` choices describe the current implementation and remain provisional under the [register mutation parameter policy](../../../.agents/references/register-mutation-modeling.md#provisional-register-mutation-parameters). Both the one-CCK fallback and the concrete reference-model delays share this status.
+All custom data writes currently use `Pipeline` to preserve every accepted
+operation. The model uses the concrete reference timings recorded in the
+timing research and falls back to **1 CCK** where timing is unresolved.
+Neither the reference timings nor the fallback establish universal
+silicon timing. A read observes current state at accepted selection
+without flushing pending writes. CIA capture and RTC access follow their
+own contracts.
 
-Writes issued after a chip step start counting on its next step. The machine issues Copper register writes and bitplane DMA data after all three custom chips have stepped, before the CPU phase, in Copper-then-DMA order; the CPU issues afterward. This deterministic provisional order does not establish physical simultaneous-access priority. All recipients therefore count from the same boundary, independently of host method ordering. CPU CCK1/CCK2 acceptance still follows the CPU's existing bus protocol; an unaccepted transfer inserts nothing. Live COPJMP reads keep their immediate read-side strobe and fixed open-bus result. Autonomous DMA pointer increments, counter changes, pin sampling and interrupt generation remain separate from register-bus writes.
+DMACON retains **2 CCK** for Agnus and Paula. BPLCON0 and DIWSTRT/STOP
+retain **4 CCK** for Agnus and **1 CCK** for Denise. Agnus retains
+**4 CCK** for DDFSTRT/STOP. INTENA/INTREQ retain **1 CCK**. Other custom
+data writes use the **1 CCK** fallback, including pointers, palette,
+audio data and controls, and Blitter/Copper data registers.
 
-Neither Denise nor Paula owns a `PhysicalMemory` reference. [Agnus](Agnus.md) owns DMA addressing and arbitration. The machine supplies Agnus with Chip RAM during its step, delivers a polled bitplane word to Denise, and handles the currently modeled floppy DMA transfer through physical memory. A pending Copper write goes through `self.memory_bus().write_custom_word(reg, val, producer)`, so Copper and CPU writes share register dispatch. Other cross-chip signals and DMA data movement are coordinated by the machine, not by general CPU address reads through `MemoryBus`.
+Address strobes COPJMP1/2 and STREQU/STRVBL/STRHOR/STRLONG act immediately
+without a queue capacity check. Data-bearing triggers such as BLTSIZE
+and BPL1DAT take effect when their queued data commits. The engine
+schedules subsequent work separately. Paula samples electrical
+INT2/INT3/INT6 levels after applying due writes and uses no register
+queue slot for them. [Paula](Paula.md#register-propagation)
+
+These `delay_cck` values and per-register `MutationMode` choices
+describe the current implementation. The one-CCK fallback and the
+concrete reference-model delays are both provisional.
+[Register mutation parameter policy](../../../.agents/references/register-mutation-modeling.md#provisional-register-mutation-parameters)
+
+A write issued after a chip step starts counting its delay on the chip's
+next step. After all three custom chips step, the machine issues Copper
+register writes and then bitplane DMA data. The CPU issues its accesses
+afterward, in the CPU phase. Recipients therefore count from the same
+boundary regardless of host method ordering. This provisional order
+defines deterministic model behavior. Priority during simultaneous
+physical accesses remains unverified by it.
+
+CPU CCK1/CCK2 acceptance follows the CPU's existing bus protocol. A
+transfer inserts an entry only if accepted. Live COPJMP reads keep their
+immediate read-side strobe and fixed open-bus result. Autonomous DMA
+pointer increments, counter changes, pin sampling, and interrupt
+generation are separate operations from register-bus writes.
+
+Agnus owns DMA addressing and arbitration. The machine gives Agnus
+access to Chip RAM during its step, polls for a bitplane word to deliver
+to Denise, and handles the currently modeled floppy DMA transfer through
+physical memory. Denise and Paula hold no `PhysicalMemory` reference.
+[Agnus](Agnus.md)
+
+The machine passes a pending Copper write through
+`self.memory_bus().write_custom_word(reg, val, producer)`. Copper and
+CPU writes therefore use the same register dispatch. For other cross-chip
+signals and DMA data movement, the machine coordinates the transfer
+without going through general CPU address reads in `MemoryBus`.
 
 #### Owner delivery and functional reconstruction
 
-The [register matrix](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md#modeled-interfaces-and-timing)
-separates documented hardware identities from modeled dispatch. The live
-[router](../../../crates/memory_bus/src/custom_registers.rs) supplies the named
-interfaces; the timing and acceptance contract is defined above. Agnus owns
-Copper and Blitter register delivery. A returned due `(offset, value)` proves
-that the owner consumed its event; functional correctness needs engine observations.
+The register matrix identifies the documented hardware registers and the
+corresponding modeled dispatch. The live router supplies the named
+interfaces under the timing and acceptance rules above.
+[Register matrix](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md#modeled-interfaces-and-timing)
+and [router](../../../crates/memory_bus/src/custom_registers.rs)
 
-[Native disk verification](../../../ROADMAP.md#native-disk-verification) exercises
-selected reconstructed register and receiver effects through guest programs;
-complete register-wide behavioral coverage is not established by those cases.
+Agnus owns Copper and Blitter register delivery. A due `(offset, value)`
+returned by the owner shows that it consumed its event. Checking functional
+correctness also requires observing the engine.
 
-All pending custom events live in serializable chip state, along with retained
-Copper/bitplane outputs that have not yet entered a destination queue. Reset
-cancels pending events. Restore resumes the remaining delays without issuing
-another write. The CPU holds the same active micro-step and payload on
-`WaitState`, so a rejected transfer cannot mature; only an accepted transfer
-can later be returned due. Shared preflight stops the failed owner on overflow before
-any destination accepts the write. Paula has 32 register-write slots; Agnus
-and Denise each have 64. Interrupt input levels use no register slot.
-All matured entries are returned in retained order as a borrowed slice from
-each custom chip step. The [shared queue](Configuration.md#shared-propagation-state)
-owns occupied storage, due-result lifetime and serialization; changing its
-representation does not move acceptance, commitment or pin-sampling phases.
+Guest programs exercise selected reconstructed register and receiver
+effects. Other register behavior falls outside what these cases establish.
+[Native disk verification](../../../ROADMAP.md#native-disk-verification)
+
+Serializable chip state retains every pending custom event and any Copper
+or bitplane output still waiting to enter a destination queue. Reset cancels
+pending events. Loading a snapshot restores the remaining delays without
+reissuing a write. If a CPU transfer receives `WaitState`, the CPU keeps
+the same active micro-step and payload for the next attempt. An entry can
+become due only after its transfer is accepted.
+
+For a shared write, the preflight check stops the failed owner on overflow
+before any destination accepts the write. Paula has 32 register-write
+slots. Agnus and Denise each have 64. Interrupt input levels use no
+register slot.
+
+Each custom chip step returns every matured entry in retained order as a
+borrowed slice. The shared queue owns occupied storage, the lifetime of
+due results, and serialization. Acceptance, commitment, and pin sampling
+keep their existing phases if the queue representation changes.
+[Shared queue](Configuration.md#shared-propagation-state)
 
 ### RTC and exceptional access paths
 
-The router forwards addresses `$DC0000-$DC003F` to [`RtcMsm6242b`](../../../crates/rtc/src/rtc.rs). The RTC itself returns `$FF` and ignores writes on even bytes or when its model is `None`; on odd bytes it selects one of 16 four-bit registers using `(addr >> 2) & $0F`. Word operations split into two byte lanes in big-endian order. The [RTC calendar](RTC.md) follows the latest supplied host UTC sample and its independent battery offset. The router handles mapped register accesses without stepping the clock or reading host time.
+The router forwards addresses `$DC0000-$DC003F` to the RTC. Word
+operations split into two byte lanes in big-endian order. On even bytes
+or when its model is `None`, the RTC returns `$FF` and ignores writes.
+For an odd byte with a clock installed, it selects one of 16 four-bit
+registers using `(addr >> 2) & $0F`.
+[`RtcMsm6242b`](../../../crates/rtc/src/rtc.rs)
 
-`write_tas_byte()` implements the modeled TAS read-modify-write exception. It checks the physical-memory bank classification: on Chip or Slow RAM it waits if Chip RAM is blocked and otherwise completes without storing the byte. Other targets use the ordinary byte write. This is specific to the TAS write phase; ordinary writes to these RAM banks use their memory handlers.
+The RTC calendar uses the latest supplied host UTC sample and its
+independent battery offset. The router handles mapped register accesses
+without advancing the clock or reading host time. [RTC calendar](RTC.md)
 
-The bus also exposes inspection paths. `read_word_debug()` uses side-effect-free custom and CIA reads, or physical-memory debug reads, without CPU wait states. `write_bytes_debug()` delegates directly to physical memory for debugger or test injection. The RTC debug word path currently calls its ordinary read method, which is read-only. These APIs are not CPU timing paths.
+`write_tas_byte()` checks the bank classification for the write phase
+of a TAS read-modify-write operation. For Chip or Slow RAM, it waits if
+Chip RAM is blocked. Once granted, the access completes without storing
+the byte. Other targets use the ordinary byte write, and ordinary writes
+to these RAM banks still use their memory handlers.
+
+Inspection paths bypass CPU timing. `read_word_debug()` uses
+side-effect-free custom and CIA reads or physical-memory debug reads
+without CPU wait states. The RTC debug word path currently calls
+the ordinary RTC read method, which is read-only. `write_bytes_debug()`
+goes directly to physical memory for debugger or test injection.
 
 ## Reference Documentation & Upstream Ground Truth
 

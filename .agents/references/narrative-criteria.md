@@ -10,17 +10,19 @@ them does not authorize rewriting unrelated text or expanding a link, metadata,
 language, specification or architecture assessment into a general editorial audit.
 Diary preparation and compaction retain their own criteria.
 
-State the document's purpose and main useful conclusion early. Use concrete terms,
-active sentences and enough context for the intended reader to follow the reasoning.
-Explain mechanisms, constraints and consequences together; distinguish observed
-evidence, approved requirements, inference and unresolved questions. Use headings,
-lists, tables and diagrams when they make the content easier to understand, rather
-than imposing a fixed template. Remove repetition and filler while preserving
+State the document's purpose and main conclusion early. Use concrete terms,
+active sentences and enough context for the intended reader to follow the
+reasoning. Explain how something works, what limits it and what follows from
+those limits. Make clear which details come from observations or approved
+requirements, which you infer and which questions remain open. Choose headings,
+lists, tables and diagrams that help the reader understand the material. A
+fixed template is unnecessary. Remove repetition and filler while preserving
 substantive reasoning, evidence, caveats and useful links.
 
-Match the structure to the genre. Specifications expose contracts, constraints
-and their evidence; plans expose scope, decisions and acceptance criteria;
-procedures expose inputs, actions and observable outcomes. Keep operational detail
+Match the structure to the type of document. In a specification, state the
+contracts and constraints and show the evidence behind them. In a plan, state
+the scope, decisions and acceptance criteria. In a procedure, describe the
+inputs, actions and observable outcomes. Keep operational detail
 with its owner under [document/instruction ownership](information-hierarchy.md).
 For selected reorganizations, read the complete target and its relevant source
 evidence, then compare before and after for retained knowledge and resolving links.
@@ -41,16 +43,15 @@ to the article instead of mechanically imposing an outline.
 | Tactical workflow | Relevant procedures, evidence boundaries and operational requirements, linking their owners |
 | Synthesis and references | Connections and useful sources without repeating the article |
 
-Place new findings where they advance that argument; do not append important
-conclusions at the bottom by default. A changed thesis belongs near the opening,
-an essential methodology step with the solution, and an operational command with
-the tactical procedure. Inspect trailing sections and appendices for misplaced
+Place new findings where they advance the argument. Put a changed thesis near
+the opening, explain an essential methodology step with the solution and put
+an operational command with the procedure that uses it. Inspect trailing sections and appendices for misplaced
 high-impact conclusions.
 
 Preserve substantive mechanisms, evidence, caveats, formulas, timing tables,
-diagrams and useful links when restructuring. Remove duplication; move detail to
-linked owning references when authorized. Do not discard unique reasoning to meet
-a size target. Apply [Documentation Value](documentation-criteria.md#documentation-value)
+diagrams and useful links when restructuring. Remove duplication and, when
+authorized, move detail to the reference that owns it and link to it. Preserve
+unique reasoning even when working toward a size target. Apply [Documentation Value](documentation-criteria.md#documentation-value)
 to choose retained knowledge, and distinguish established evidence from inference.
 Compare the final diff for completeness and resolving links. Ordinary article work
 does not authorize staging, commits or unrelated audits.

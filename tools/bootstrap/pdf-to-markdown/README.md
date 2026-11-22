@@ -1,13 +1,15 @@
 # PDF-to-Markdown
 
-Prepare PDF page images, positioned text, logical objects and transcribed tables
-for [book-to-markdown](../book-to-markdown/README.md). Preparation ends at Stage 08;
-book chapter generation is handled by the separate Book-to-Markdown program.
+PDF-to-Markdown prepares PDF page images, positioned text, logical objects and
+transcribed tables for [book-to-markdown](../book-to-markdown/README.md).
+Preparation ends at Stage 08. The separate Book-to-Markdown program generates
+book chapters.
 
 ## Run an attempt
 
 Install dependencies with `python -m pip install -r tools/bootstrap/pdf-to-markdown/requirements.txt`
-and authenticate with `codex login`. Run from the repository root:
+and authenticate with `codex login`. Run the following command from the
+repository root.
 
 ```powershell
 python tools/bootstrap/pdf-to-markdown/pipeline.py `
@@ -16,35 +18,41 @@ python tools/bootstrap/pdf-to-markdown/pipeline.py `
 ```
 
 Without `--workspace`, the program creates and uses `<PDF_DIRECTORY>/pdf-to-markdown/`.
-This directory, named `pdf-to-markdown`, is the default for subsequent development.
-Pass `--workspace` only when a separate attempt directory is needed. For status
-without `--pdf` or `--workspace`, the default is `pdf-to-markdown/` in the current directory.
+Continue development in that default `pdf-to-markdown` directory. Pass
+`--workspace` only when you need a separate directory for an attempt. A status
+request with neither `--pdf` nor `--workspace` looks for `pdf-to-markdown/`
+in the current directory.
 
 Supply the original `--pdf` on every conversion or restart. If the workspace has
 no `config.yaml`, the program copies `tools/bootstrap/pdf-to-markdown/config.yaml`
-there automatically. An existing workspace config is preserved without rewriting.
-Edit that local file to configure Stage 01 OCR, shared rendering DPI, and
-model/effort for Stages 03, 05 and 08. Missing preparation fields use the repository
-defaults without rewriting an existing workspace config.
-Existing workspace configs need an `llm.stages.08_proofreading` model/effort pair
-before running Stage 08; the pipeline does not rewrite them.
-Inference uses ChatGPT authentication, original-detail images and a 180-second
-request timeout. `llm.concurrency` limits simultaneous requests within each stage
-(repository default: 1). Stages 03 and 08 run per page;
-Stage 05 runs per table, including tables on the same page. Stages remain
-sequential. Each worker owns a separate Codex transport; one coordinator saves
-page results, preserving source object order. Metrics writes are serialized.
-On failure or Ctrl+C, workers stop taking new jobs and receive a shared
-cancellation signal that interrupts request delays, retry waits and active
-transports. Responses that finish before cancellation may still be saved.
+there automatically. It leaves an existing workspace configuration file as
+written and uses repository defaults for missing preparation fields. Edit the
+local file to configure Stage 01 OCR, shared rendering DPI, and the model and
+effort for Stages 03, 05 and 08. An existing workspace configuration needs an
+`llm.stages.08_proofreading` model and effort pair before Stage 08 can run.
+
+Model requests use ChatGPT authentication, original-detail images and a
+180-second timeout. `llm.concurrency` limits simultaneous requests within each
+stage and defaults to 1 in the repository. Stages 03 and 08 work one job per
+page. Stage 05 works one job per table, and its limit includes tables on the
+same page. The stages themselves run in order. Each worker uses its own
+Codex transport to send requests and receive responses. A single coordinator
+saves results by page and preserves the source object order. The program
+writes metrics one at a time.
+
+On failure or Ctrl+C, the workers stop taking new jobs. A shared cancellation
+signal interrupts request delays, retry waits and active transports. The
+coordinator may still save responses that finish before cancellation.
 HTTP 429/503, `rateLimitExceeded` and `serverOverloaded` pause and retry the same
-request with exponential backoff; see the
-[shared client retry policy](../conversion/README.md#execution). Usage and
-session-budget limits still stop the stage.
-The limit applies to one pipeline invocation, not other Codex sessions or
-concurrent pipeline processes. It is a conservative starting value, not a
-provider-guaranteed safe account limit. Edit the attempt's local `config.yaml`
-to change an existing workspace's limit.
+request with exponential backoff, which increases the wait between retries.
+Usage and session-budget limits still stop the stage. See the
+[shared client retry policy](../conversion/README.md#execution).
+
+The concurrency limit applies to one pipeline invocation. Other Codex sessions
+and concurrent pipeline processes can issue their own requests. The default is
+a conservative starting value and carries no provider guarantee for account
+usage. Edit the attempt's local `config.yaml` to change an existing workspace's
+limit.
 For a rate-limited attempt, set `llm.concurrency: 1` and
 `llm.post_request_delay_seconds` in its local `config.yaml`. This delays each
 new model request until the configured time has elapsed after the previous
@@ -53,8 +61,8 @@ immediately and do not reset the delay.
 Pass `--trace-codex` to show spacing waits, requests sent to Codex and their
 completion or failure. Cached results and streaming notification fragments
 produce no trace events. The trace omits prompt, image and response content.
-Stage 08 also prints each selected page's request, response call and cache-hit
-counts, and completion without requiring this flag.
+Even without this flag, Stage 08 reports each selected page's request, the
+response call and cache-hit counts, and when processing finishes.
 For a saved live log, pipe through
 `Tee-Object` in PowerShell (include stderr with `2>&1`).
 Rendering uses `rendering.dpi` (default 300 DPI) in Stages 01 and 02.
@@ -64,8 +72,9 @@ the selected stages, including request delays and retry backoff. It uses
 [`SetThreadExecutionState`](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-setthreadexecutionstate)
 with `ES_CONTINUOUS | ES_SYSTEM_REQUIRED` and restores the previous thread state
 on success, failure or Ctrl+C. The display may still turn off, and manual sleep
-remains available. No power plan is changed. Status-only invocations and other
-operating systems do not acquire this request.
+remains available. The pipeline leaves the power plan unchanged and requests
+this behavior only on Windows when running stages. A status-only invocation
+makes no such request.
 
 ## Stages and outputs
 
@@ -80,11 +89,13 @@ operating systems do not acquire this request.
 | [07: Callouts](stages/07_repair_callouts/README.md) | Only pages changed by assembling adjacent advisory labels/bodies as Markdown callouts in `07_repair_callouts/` |
 | [08: Proofreading](stages/08_proofreading/README.md) | Only pages changed by source-supported text corrections in `08_proofreading/` |
 
-Stage 03 supplies the base page objects. Stages 04, 05, 07 and 08 save full-page
-replacements only when their data changes; an empty directory is valid for each
-of these stages. Stage 04 saves an empty `segments` list when filtering empties a
-page, so later readers omit it instead of restoring excluded objects.
-Each reader chooses the latest available JSON up to its input stage.
+Stage 03 supplies the initial page objects. To read a page, a later stage
+looks up the latest available JSON through its input stage. Stages 04, 05, 07
+and 08 save a full-page replacement only if the page data changes. An empty
+output directory is therefore valid for each of these stages. If Stage 04
+removes every object on a page, it saves an empty `segments` list. Later readers
+omit the page when they see that version, which keeps filtered objects out of
+their results.
 Stage 06 reads Stages 05, 04 and 03 and extracts graphic crops from Stage 02 PNGs.
 Stage 07 uses the same page collection to repair callouts. Stage 08 reads
 Stages 07, 05, 04 and 03 and reviews text-only ambiguities against Stage 02 page
@@ -93,20 +104,22 @@ Stage 06 graphic assets and pages resolved in order from Stages 08, 07, 05, 04 a
 
 ### Physical-page selection
 
-`--page-ranges` selects physical 1-based pages for this invocation, for example
-`"2-3,7"`. Stage 01 always prepares or reuses the complete PDF; Stages 02–08
-process only selected input pages. Omission selects all available pages.
+Use `--page-ranges` to select physical pages for this invocation, counting from 1.
+For example, `"2-3,7"` selects the indicated pages. Stage 01 always prepares or
+reuses the complete PDF. Stages 02–08 process only the selected input pages.
+Omit the range to select all available pages.
 
 ## Restart and status
 
-Use `--from-stage` and `--to-stage` to run an interval; equal values run one stage.
+Use `--from-stage` and `--to-stage` to run a range of stages. Set them to the same
+value to run one stage.
 Starting a stage clears its results and all later stage results, even when
-`--to-stage` stops earlier. With `--page-ranges`, Stages 02–08 clear page files
-for the selected pages, including Stage 06 graphic crops; other pages remain.
+`--to-stage` stops earlier. With `--page-ranges`, Stages 02–08 clear files for the
+selected pages, including Stage 06 graphic crops, and retain the other pages.
 Without a range, these stage directories are cleared completely. Stage 01 always
 clears its whole workspace directory, while preserving the sibling OCR PDF.
-Retained predecessors must have successful statuses.
-Completed stages are not automatically skipped.
+Any earlier stages whose results the run retains must have successful
+statuses. The pipeline still runs selected stages that finished earlier.
 
 Preparation caches and the Codex request cache survive restart. Stages 01, 02 and 06
 restore matching preparation results instead of repeating OCR, rendering, text
@@ -132,37 +145,40 @@ identity including Pillow, and crop contract version. Workspace paths, page
 ranges and segment IDs are excluded; the same source crop can be restored under
 the current segment filename without repeating extraction.
 
-Each entry has a completion manifest with the input identity and output hashes.
-Missing, incomplete or damaged entries are recomputed; only complete results are
-published. Hits copy files into the ordinary output paths and print `[cache]`.
-The first execution with this cache may recompute old outputs, which are not
-imported into it. Deleting a prepared output alone restores it from cache; remove
-the matching cache entry as well to force fresh preparation with unchanged inputs.
-Neither cache reuse nor successful preparation establishes transcription quality.
+Each entry has a completion manifest that identifies the input and lists the
+output hashes. If an entry is missing, incomplete or damaged, the pipeline
+recomputes the result and publishes it only when complete. On a hit it copies
+the files into the ordinary output paths and prints `[cache]`. The cache does
+not import old outputs, so the first execution with it may recompute them.
+If you delete only a prepared output, the next run restores it from cache.
+Remove the matching cache entry as well to force fresh preparation with unchanged
+inputs. Transcription quality remains unverified by cache reuse or successful
+preparation.
 
-`stage_status.json` records the last invocation's execution, page range and request
-metrics, not accumulated page coverage. Restart invalidates the selected stage
-and all later completion statuses before cleanup, including partial restarts.
-Book import reads all retained pages across Stages 03 through 08 rather
-than restricting the book to the last invocation's range. Inspect status with:
+`stage_status.json` records execution, page range and request metrics for the
+most recent invocation only. It does not accumulate page coverage. Before
+clearing outputs on restart, the pipeline invalidates completion statuses for
+the selected stage and all later stages, including on a partial restart.
+Book import reads all retained pages across Stages 03 through 08, regardless
+of the last invocation's range. Use the following command to inspect status.
 
 ```powershell
 python tools/bootstrap/pdf-to-markdown/pipeline.py --pdf "<PDF_DIRECTORY>/source.pdf" --status
 ```
 
 PDF worker responses use the fixed shared cache at
-`tools/bootstrap/.cache/codex`. Cache identity uses stable
-operation IDs (`pdf_page_to_objects`, `pdf_table_to_markup`,
-`pdf_page_proofreading`), independent of stage names and numbering. Prompts,
-inputs, model settings and isolated execution settings
-participate in the key. The pipeline has no `--config`, `--cache-dir` or `--verbose` options.
+`tools/bootstrap/.cache/codex`. The cache key uses operation IDs that stay the
+same if stage names or numbering change (`pdf_page_to_objects`,
+`pdf_table_to_markup`, `pdf_page_proofreading`). The key also includes the
+prompts, inputs, model settings and isolated execution settings. The pipeline
+has no `--config`, `--cache-dir` or `--verbose` options.
 
 Model requests contain only the stage prompt, source JSON where needed, and the
 page or table image where required. Stage 08 first sends compact text objects and
-short neighboring excerpts; only pages with unresolved items receive a second
-request with the page image. The shared transport clears base/developer
-instructions and
-does not send output schemas, separate type lists or examples outside the prompt.
+short neighboring excerpts. It follows up with the page image only for pages
+with unresolved items. The shared transport clears base and developer
+instructions and sends no output schemas, separate type lists or examples
+outside the stage prompt.
 Stage 03 chooses `type` and nullable `role` independently in one image-and-text
 request. Roles are `caption`, `legend`, `note` and `footnote`; they are preserved
 through filtering, table transcription and final callout preparation into book
@@ -173,14 +189,14 @@ Agent development guidance is in the [bootstrap instructions](../AGENTS.md#conve
 ## Tests
 
 PDF execution, OCR profile and page-selection tests live in `tests/` beside this
-program. Run them from the repository root:
+program. Run them from the repository root.
 
 ```powershell
 python tools/verification/run_unittest.py discover -s tools/bootstrap/pdf-to-markdown/tests -q
 ```
 
 Shared conversion transport tests live in `tools/bootstrap/conversion/tests/`.
-A successful stage confirms execution, not transcription quality.
+A successful stage confirms execution and leaves transcription quality unverified.
 Stages 03 and 05 parse JSON without local response-schema enforcement. Stage 08
 validates patch fields and target segment IDs before applying text replacements.
 Shared execution and cache behavior are documented in the

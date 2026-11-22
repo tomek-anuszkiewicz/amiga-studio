@@ -13,11 +13,31 @@ tracked_paths:
 ---
 # Physical Memory
 
-[`PhysicalMemory`](../../../crates/physical_memory/src/physical_memory.rs) owns the Amiga 500's RAM and Kickstart ROM buffers, the 24-bit bank table, the low-memory boot overlay, and the current CPU memory-contention flag. It supplies byte and big-endian word storage operations. The [motherboard router](MemoryBus.md) handles live CIA, RTC, and custom-register access; the [machine loop](Machine%20Loop.md) owns the storage and coordinates its use with the CPU and Agnus. Physical memory has no direct references to those devices.
+The physical-memory component owns the Amiga 500's RAM and Kickstart ROM
+buffers, the 24-bit bank table, the low-memory boot overlay, and the current
+CPU memory-contention flag. It provides byte and big-endian word storage
+operations. [`PhysicalMemory`](../../../crates/physical_memory/src/physical_memory.rs)
+
+The machine loop owns the storage component and coordinates its use by the
+CPU and Agnus. The motherboard router handles live CIA, RTC, and
+custom-register access. Physical memory holds no direct device references.
+[Motherboard router](MemoryBus.md) and [machine loop](Machine%20Loop.md)
 
 ## Installed storage and address decoding
 
-The 16 MB CPU address space is classified by a 256-entry table of 64 KB banks. [`presets.rs`](../../../crates/physical_memory/src/presets.rs) builds a table for each [configuration preset](Configuration.md); each [`BankHandler`](../../../crates/physical_memory/src/map.rs) supplies byte and word read/write functions, including separate debugger operations. The selected bank is `(addr >> 16) & $FF`. `MemoryBus` first masks CPU addresses to 24 bits and routes device banks; `PhysicalMemory` selects handlers for storage and open bus. A bank's CIA, RTC, or custom-chip classification does not make a direct `PhysicalMemory` access reach the live device.
+Each configuration preset defines a 256-entry table of 64 KB banks covering
+the 16 MB CPU address space. Each bank handler supplies byte and word reads
+and writes, with separate operations for the debugger.
+[`presets.rs`](../../../crates/physical_memory/src/presets.rs),
+[configuration preset](Configuration.md), and
+[`BankHandler`](../../../crates/physical_memory/src/map.rs)
+
+Bank selection uses `(addr >> 16) & $FF`. For a CPU access, `MemoryBus`
+first masks the address to 24 bits and routes device banks. For storage and
+open bus, `PhysicalMemory` selects the bank handler. When a caller reaches
+a CIA, RTC, or custom-chip bank directly through `PhysicalMemory`, the
+handler uses the corresponding placeholder behavior and leaves the live
+device untouched.
 
 | Address | Installed behavior in the current presets |
 | --- | --- |
@@ -34,45 +54,104 @@ The 16 MB CPU address space is classified by a 256-entry table of 64 KB banks. [
 | `$E00000-$F7FFFF` | Open bus; expansion and diagnostic ROM regions are not installed by these presets. |
 | `$F80000-$FFFFFF` | Kickstart ROM. The fixed 256 KiB image repeats across this 512 KiB window. CPU writes do not modify ROM. |
 
-This table describes the emulator's installed handlers, not a promise that every hardware-reserved address is usable RAM. The [Hardware Reference Manual's system map](../Reference/Hardware%20Reference%20Manual/12%20-%20Appendix%20D%20-%20System%20Memory%20Map.md) identifies an 8 MB primary Auto-config area (`$200000-$9FFFFF`) and locates a 256 KB system ROM at `$FC0000-$FFFFFF`. The current expanded preset populates only the first 4 MB of that expansion area; the emulator also decodes Kickstart from `$F80000` as a mirror of the same 256 KiB image. The manual's map is a hardware address-space guide, not the layout of allocations made by AmigaOS.
+The table describes the handlers installed by the emulator. The manual
+describes hardware address-space reservations. The layout of allocations
+made by AmigaOS is outside the manual map's scope. The manual identifies an
+8 MB primary Auto-config area (`$200000-$9FFFFF`) and places a 256 KB system
+ROM at `$FC0000-$FFFFFF`.
+The current expanded preset populates only the first 4 MB of that expansion
+area. The emulator also decodes Kickstart from `$F80000` as a mirror of
+the same 256 KiB image.
+[Hardware Reference Manual's system map](../Reference/Hardware%20Reference%20Manual/12%20-%20Appendix%20D%20-%20System%20Memory%20Map.md)
 
 ## Boot overlay and reset
 
-Construction and both reset paths engage the ROM overlay by changing banks `$00-$07` from Chip RAM handlers to Kickstart handlers. CPU reads of the reset vectors at `$000000` and `$000004` therefore see ROM. When a queued CIA-A `PRA` or `DDRA` write commits, the [machine loop](Machine%20Loop.md) routes its generic port change through [`MemoryBus`](MemoryBus.md#cia-and-boot-overlay) in that same phase and applies the PA0 output level: OVL high selects Kickstart ROM, and OVL low selects Chip RAM. An input PA0 is pulled high. A pending CIA write leaves the map intact; routing the committed pin introduces no extra propagation stage. Switching handlers does not copy or erase Chip RAM. Direct Agnus DMA reads and writes use the counted `ChipRamAccess` word methods, so they bypass the CPU overlay.
+Construction and both reset paths engage the ROM overlay by switching banks
+`$00-$07` from Chip RAM handlers to Kickstart handlers. The CPU then reads its
+reset vectors at `$000000` and `$000004` from ROM.
 
-`reset()` clears installed Chip, Slow, and Fast RAM to zero, clears `chip_ram_blocked`, and restores the overlay. `reset_warm()` preserves RAM while clearing the contention flag and restoring the overlay. Both retain the ROM image. When no ROM has been injected, construction supplies a 256 KB `$FF` image with synthetic initial stack-pointer and program-counter vectors for headless startup; this is an emulator fallback, not a Kickstart ROM.
+Until a queued CIA-A `PRA` or `DDRA` write commits, the previous overlay
+mapping stays in effect. On commitment, CIA-A reports a generic port change
+and the machine loop passes it through the motherboard router. The router
+applies the PA0 level in that same phase, with no extra propagation stage.
+The pull-up keeps PA0 high when it is an input. A high OVL level selects
+Kickstart ROM, and a low level selects Chip RAM.
+[Machine loop](Machine%20Loop.md) and
+[`MemoryBus`](MemoryBus.md#cia-and-boot-overlay)
+
+Switching handlers leaves the contents of Chip RAM intact. Agnus bypasses
+the CPU overlay for direct DMA reads and writes by using the counted
+`ChipRamAccess` word methods.
+
+`reset()` clears installed Chip, Slow, and Fast RAM to zero, clears
+`chip_ram_blocked`, and restores the overlay. `reset_warm()` preserves RAM,
+clears the contention flag, and restores the overlay. Both retain the ROM
+image. When no ROM has been injected, construction supplies a fallback 256 KB
+`$FF` image with synthetic initial stack-pointer and program-counter vectors
+so the emulator can start headless.
 
 ## Runtime access admission
 
-Chip RAM bytes and their access budget are private. Agnus, its Copper, Blitter,
-bitplane, sprite, audio and disk engines use the foundational `ChipRamAccess`
-word interface. It supplies no raw storage or budget-reset operation. CPU storage
-handlers participate in the same budget after ordinary contention has granted
-access. One completed byte or word transfer is permitted in a machine CCK,
-regardless of direction or producer; a second transfer is fatal before reading
-or changing storage. Register delivery and refresh are not RAM transfers.
-Independent Fast RAM, ROM and device accesses do not consume this shared budget.
+Physical memory keeps Chip RAM bytes and the access budget private. Agnus
+and its Copper, Blitter, bitplane, sprite, audio, and disk engines use the
+foundational `ChipRamAccess` word interface, which exposes word operations
+without access to raw storage or a way to reset the budget. CPU storage
+handlers use the same budget once the ordinary contention check grants access.
+The budget allows one completed byte or word transfer in a machine CCK,
+regardless of direction or producer. A second transfer in that CCK causes a
+fatal emulation error before storage is read or changed. Register delivery and
+refresh perform no RAM data transfer. Independent Fast RAM, ROM, and device
+accesses are outside the shared RAM transfer budget.
 
-The machine supplies its current CCK before subsystem and CPU work. Admission
-remembers only the last actual access CCK: at least one CCK must separate
-transfers, with no per-cycle clearing or producer/address history. Failure
-diagnostics identify the previous and current CCKs. A CPU access also passes
-the independent [CPU cycle-spacing guard](CPU%20Micro-Step%20State%20Machine.md#bus-admission-guard).
-A subsystem-only step advances the master CCK too. Clone and serialization
-preserve the access timestamp; restore cannot create a second opportunity in
-the saved CCK. Reset translates that timestamp with the clock origin, preserving
-its wrapping distance from the current CCK; it does not grant an extra access.
-Standalone CPU/storage execution advances its CCK through `AddressBus`, whereas
-the production router uses the existing machine CCK. Debug access,
-injection and reset/prefetch setup consume no runtime budget.
+The machine supplies its current CCK before subsystem and CPU work.
+Physical memory compares that value with the CCK of the last actual access
+and requires at least one CCK between transfers. The check stores only the
+last access time. It needs no per-cycle clearing or history of producers
+or addresses. If it rejects a transfer, the diagnostic reports the previous
+and current CCKs. The CPU also checks its bus-cycle spacing independently.
+[CPU cycle-spacing guard](CPU%20Micro-Step%20State%20Machine.md#bus-admission-guard)
+
+A subsystem-only step also advances the master CCK. Cloning and serialization
+preserve the access timestamp, so restoration still enforces the budget for
+the saved CCK. Reset adjusts the timestamp with the clock origin, preserving
+its wrapping distance from the current CCK and carrying the budget across
+the reset. Standalone CPU and storage execution advances its CCK through
+`AddressBus`. The production router uses the current machine CCK. Debug
+access, injection, and reset or prefetch setup consume no runtime budget.
 
 ## Access semantics
 
-Chip RAM and installed Slow RAM handlers return `BusResult::WaitState` while `chip_ram_blocked` is set. The [machine loop](Machine%20Loop.md) copies Agnus's arbitration result into that flag before the CPU step; the CPU keeps its pending bus micro-step until a later grant. Fast RAM, ROM, and open-bus handlers do not test that flag. [DMA](DMA.md) defines the slot ownership; `PhysicalMemory` only enforces the supplied contention result. Direct Chip RAM word operations bypass this CPU wait state for machine-coordinated DMA.
+Before the CPU step, the machine loop copies Agnus's arbitration result
+into `chip_ram_blocked`. While the flag is set, the Chip RAM and installed
+Slow RAM handlers return `BusResult::WaitState`. The CPU keeps its bus
+micro-step pending until a later grant. Fast RAM, ROM, and open-bus handlers
+work independently of the flag. `PhysicalMemory` enforces the result it
+receives. The DMA specification defines who owns the slot, and
+machine-coordinated DMA bypasses this CPU wait state through direct Chip RAM
+word operations. [Machine loop](Machine%20Loop.md) and [DMA](DMA.md)
 
-RAM word handlers store the high byte at the lower address and the low byte at the next address. Unmapped reads return the fixed `OPEN_BUS_BYTE` placeholder (`$FF`); word reads return `OPEN_BUS_WORD` (`$FFFF`). See the [open-bus quirk](Platform%20Quirks%20and%20Invariants%20Catalog.md#open-bus-and-opposite-direction-register-access) for the hardware limitation. Unmapped writes complete without storage. ROM writes through the normal CPU path likewise complete without modifying the image.
+RAM word handlers store the high byte at the lower address and the low byte
+at the next address. Unmapped byte reads return the fixed `OPEN_BUS_BYTE`
+placeholder (`$FF`). Unmapped word reads return `OPEN_BUS_WORD` (`$FFFF`).
+[Open-bus hardware limits](Platform%20Quirks%20and%20Invariants%20Catalog.md#open-bus-and-opposite-direction-register-access)
 
-The debug byte/word handlers bypass contention and device side effects. `write_bytes_debug()` uses them for memory injection, including ROM loading. A block targeting or crossing into the high ROM window must contain exactly 262144 bytes; other sizes return an error before any write. Unlike CPU ROM writes, individual debug byte/word writes can patch the image, but never resize it. Every ROM access uses the fixed `$3FFFF` mask, including the low-memory overlay. The private ROM buffer retains its fixed length, and deserialization rejects snapshots containing any other ROM size. A direct debug access to `$A0-$BF`, `$DC`, or `$DE-$DF` sees the physical bank's placeholder behavior, not live peripheral registers. Use the [router's debug interface](MemoryBus.md) when inspection needs device-aware decoding.
+Unmapped writes complete without storing data. ROM writes through the normal
+CPU path also complete and leave the image intact.
+
+The debug byte and word handlers bypass contention and device side
+effects. `write_bytes_debug()` uses those handlers to inject memory,
+including loading ROM. If a block starts in or crosses into the high
+ROM window, it must contain exactly 262144 bytes. For any other size
+the operation returns an error before writing anything. An individual
+debug byte or word write can patch the ROM without resizing it. Every
+ROM access uses the fixed `$3FFFF` mask, including accesses through
+the low-memory overlay. The private buffer remains fixed in length,
+and deserialization rejects snapshots containing a different ROM size.
+
+A direct debug access to `$A0-$BF`, `$DC`, or `$DE-$DF` uses the physical
+bank's placeholder behavior. Use the motherboard router's debug interface
+when inspection needs to decode live peripheral registers.
+[Router's debug interface](MemoryBus.md)
 
 ## Reference Documentation & Upstream Ground Truth
 

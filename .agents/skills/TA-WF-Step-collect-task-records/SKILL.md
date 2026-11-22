@@ -9,11 +9,12 @@ Apply the [result contract](../../references/workflow-contract.md). Use the
 [capture guide](../../../tools/workflow/capture/README.md#preserve-selected-files-at-task-closure)
 for the existing commands and formats.
 
-For a selected copy, identify the known files and registered execution directory.
-Run `records.py preserve` with its explicit input list. Keep unfinished producers
-and source files available; use archived paths printed by the command on a retry.
-Return actual copied locations and blocked paths. There is no publication record
-or graph-refresh prerequisite. Stop after copying.
+Identify the files selected for copying and the registered execution directory
+where the copies belong. Run `records.py preserve` with the explicit input list.
+Keep the source files and any processes still producing them available. On a
+retry, use the archived paths the command printed. Report where the copies were
+saved and which paths were blocked. Copying requires neither a publication record nor
+a graph refresh. Stop after copying.
 
 For ignored test outputs before worktree removal, use the independent
 [artifact tool](../../../tools/artifacts/README.md) through the cleanup skill.

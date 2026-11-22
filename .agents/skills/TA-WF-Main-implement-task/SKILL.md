@@ -9,11 +9,12 @@ Apply the [result contract](../../references/workflow-contract.md). This compoun
 operation runs in the selected task worktree. Inputs: the plan, agreed scenarios,
 requirements, write scope, available execution context and any supplied limits.
 
-The main session coordinates. Delegate each implementation or corrective pass to
-`TA-implementer` using the [subagent policy](../../../AGENTS.md#subagent-assignment-and-model-selection).
-Resolve model and effort for the actual assignment before each launch, including
-repairs. Assign independent reviews and selected command/coverage execution to
-their respective roles under the same policy.
+The main session coordinates the operation. It assigns implementation and each
+corrective pass to `TA-implementer`. It assigns independent reviews, selected
+command runs and coverage measurements to the roles responsible for those jobs.
+Before each launch, the main session chooses the model and reasoning effort for
+that assignment. Follow the
+[subagent policy](../../../AGENTS.md#subagent-assignment-and-model-selection).
 
 Apply [vocabulary-only maintenance](../../references/workflow-contract.md#vocabulary-only-maintenance)
 at every stage, including a task consisting solely of such additions. It does not
@@ -32,7 +33,8 @@ those steps still apply to the other selected changes.
    If coverage assessment is part of the assignment, give existing applicable
    reports to the tests reviewer or have `TA-test-runner` collect the selected
    scope through [TA-WF-Step-measure-coverage](../TA-WF-Step-measure-coverage/SKILL.md) first.
-   Missing measurement remains an explicit gap, not an inferred missing test.
+   If the measurement is missing, report which coverage evidence is unavailable.
+   Assess whether a test case is absent using evidence about the tests themselves.
 3. Collect reviewer findings and reported test/verification failures with their
    actual evidence. Run
    [TA-WF-Step-challenge-findings](../TA-WF-Step-challenge-findings/SKILL.md) in a fresh
@@ -55,8 +57,9 @@ those steps still apply to the other selected changes.
      corrective pass and repeat affected checks. Then proceed to the final review.
 
    The initial implementation and assessment do not count as a corrective pass.
-   New findings or failures do not reset the count. Missing requirements,
-   protected-change approval or work beyond the selected scope returns to the user.
+   New findings or failures do not reset the count. Ask the user to resolve
+   missing requirements, approve protected changes or decide whether to include
+   work outside the selected scope.
    Corrective passes can include meaningful test cases for already approved
    behavior based on the tests reviewer's coverage/assertion findings. Refresh a
    selected coverage measurement when needed to assess the added tests against
@@ -70,12 +73,12 @@ those steps still apply to the other selected changes.
    If required findings, failed checks or required evidence gaps remain, stop for
    the user's manual decision. Do not start another corrective pass or review
    round, even if only one corrective pass was used, or report the task as verified.
-6. Return changed paths, actual tests/reviews, challenge decisions, completed
-   review rounds and corrective passes, repairs and remaining work in text and
-   JSON. State when a manual decision is needed. Leave source, tests and
-   documentation as working files. Commit-time English checks belong to the next
-   selected commit operation, unless explicitly included here. Ordinary task
-   implementation does not require a diary entry.
+6. Report the changed paths, tests and reviews that ran, challenge decisions,
+   completed review rounds and corrective passes, repairs and remaining work
+   in text and JSON. State when the user needs to decide how to proceed. Leave
+   source, tests and documentation as working files. Commit-time English checks
+   belong to the next selected commit operation, unless explicitly included
+   here. Ordinary task implementation does not require a diary entry.
 
 Stop before staging, commits, merge, worktree removal or final master verification.
 Do not synchronize master into the task branch as a review prerequisite.
