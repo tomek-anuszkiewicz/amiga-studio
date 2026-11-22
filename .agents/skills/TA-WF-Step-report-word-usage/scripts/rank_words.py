@@ -79,6 +79,11 @@ REFERENCE_DEFINITION = re.compile(
 )
 LINK_LABEL = re.compile(r"\[(?:\\.|[^\[\]\\\n]|\[[^\[\]\n]*\])*\](?=[(\[])")
 REFERENCE_LABEL = re.compile(r"\[[^\]\n]*\]")
+PARAGRAPH_BREAK = re.compile(r"\n[ \t]*\n")
+MULTILINE_LINK_BODY = re.compile(
+    r"""(?:<(?:\\.|[^<>\\\n])*>|[^\s<>]+)"""
+    r"""(?:\s+(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\((?:\\.|[^()\\])*\)))?"""
+)
 UNDERSCORE_EMPHASIS = re.compile(r"(?<!\w)(_[_]?)(?=\S)([^_\n]+?)(?<=\S)\1(?!\w)")
 NONPROSE = re.compile(
     r"</?[A-Za-z][^<>\n]*>|<[^<>\s]+>|\[\^[^\]\n]+\]"
@@ -168,26 +173,30 @@ def blank(text):
 
 
 def block_lines(lines):
+    """Yield prose and backtick fence content separately for each source line."""
     start = 0
     if lines and lines[0].rstrip() == "---":
         start = next((number + 1 for number, line in enumerate(lines[1:], 1)
                       if line.rstrip() in {"---", "..."}), 0)
     for line in lines[:start]:
-        yield blank(line)
+        yield blank(line), ""
 
     fence = None
     comment = False
     for line in lines[start:]:
         marker = FENCE.match(line) if not comment else None
         if fence:
+            content = ""
             if (marker and marker[1][0] == fence[0] and len(marker[1]) >= len(fence)
                     and not marker[2].strip()):
                 fence = None
-            yield blank(line)
+            elif fence[0] == "`":
+                content = line
+            yield blank(line), content
             continue
         if marker and (marker[1][0] == "~" or "`" not in marker[2]):
             fence = marker[1]
-            yield blank(line)
+            yield blank(line), ""
             continue
 
         cursor = 0
@@ -204,7 +213,7 @@ def block_lines(lines):
                     break
                 comment = match[0] == "<!--"
                 cursor = match.start() if comment else match.end()
-        yield line
+        yield line, ""
 
 
 def inline_code(match):
@@ -223,52 +232,76 @@ def wiki_label(match):
     return blank(match[0][:match.start(1) - match.start()]) + target + "  "
 
 
-def destination_end(line, start):
+def destination_end(text, start):
     """Find the matching parenthesis, accounting for escapes and link titles."""
     depth = 0
     quoted = None
     cursor = start
-    while cursor < len(line):
-        char = line[cursor]
-        if char == "\\":
+    while cursor < len(text):
+        char = text[cursor]
+        if char == "\n" and PARAGRAPH_BREAK.match(text, cursor):
+            break
+        if char == "\\" and text[cursor + 1:cursor + 2] != "\n":
             cursor += 2
             continue
         if quoted:
             if char == quoted:
                 quoted = None
-        elif char == "<":
+        elif char == "<" and depth == 1:
             quoted = ">"
-        elif char in "\"'" and line[cursor - 1].isspace():
+        elif char in "\"'" and depth == 1 and text[cursor - 1].isspace():
             quoted = char
         elif char == "(":
             depth += 1
         elif char == ")":
             depth -= 1
             if not depth:
+                # A later closing parenthesis belongs to the link only if the
+                # intervening text has the shape of a destination and title.
+                body = text[start + 1:cursor]
+                if "\n" in body and body.strip() and not MULTILINE_LINK_BODY.fullmatch(body.strip()):
+                    break
                 return cursor + 1
         cursor += 1
     return start
 
 
-def hide_link_destinations(line):
-    for label in LINK_LABEL.finditer(line):
+def hide_link_destinations(text):
+    pieces = []
+    cursor = 0
+    for label in LINK_LABEL.finditer(text):
+        if label.start() < cursor:
+            continue
         start = label.end()
-        if line[start] == "(":
-            end = destination_end(line, start)
+        if text[start] == "(":
+            end = destination_end(text, start)
         else:
-            reference = REFERENCE_LABEL.match(line, start)
+            reference = REFERENCE_LABEL.match(text, start)
             end = reference.end() if reference else start
-        line = line[:start] + blank(line[start:end]) + line[end:]
-    return line
+        if end > start:
+            pieces.extend((text[cursor:start], blank(text[start:end])))
+            cursor = end
+    pieces.append(text[cursor:])
+    return "".join(pieces)
+
+
+def link_lines(text):
+    text = WIKI_LINK.sub(wiki_label, text)
+    text = REFERENCE_DEFINITION.sub(lambda match: blank(match[0]), text)
+    return hide_link_destinations(text).split("\n")
 
 
 def prose_lines(lines):
-    text = "\n".join(block_lines(lines))
-    text = INLINE_CODE.sub(inline_code, text)
-    text = WIKI_LINK.sub(wiki_label, text)
-    text = REFERENCE_DEFINITION.sub(lambda match: blank(match[0]), text)
-    for line in text.split("\n"):
-        line = hide_link_destinations(line)
+    prose, fenced = [], []
+    for prose_line, fenced_line in block_lines(lines):
+        prose.append(prose_line)
+        fenced.append(fenced_line)
+
+    # Inline spans can cross lines, so keep literal fence contents out of that pass.
+    prose = link_lines(INLINE_CODE.sub(inline_code, "\n".join(prose)))
+    fenced = link_lines("\n".join(fenced))
+    for prose_line, fenced_line in zip(prose, fenced, strict=True):
+        line = fenced_line or prose_line
         line = UNDERSCORE_EMPHASIS.sub(lambda match: f"{blank(match[1])}{match[2]}{blank(match[1])}", line)
         yield NONPROSE.sub(lambda match: blank(match[0]), line)
 

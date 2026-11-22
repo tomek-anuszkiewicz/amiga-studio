@@ -1,4 +1,5 @@
 # Reviewed programming vocabulary. One explicit term per line.
+abspath
 accessor
 accessors
 addr

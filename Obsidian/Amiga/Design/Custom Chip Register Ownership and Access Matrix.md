@@ -1,4 +1,4 @@
-﻿---
+---
 title: "Custom Chip Register Ownership and Access Matrix"
 aliases: ["Custom Chip Register Matrix", "Custom Register Map", "Hardware Register Catalog", "Chipset Register Reference"]
 tags: ["amiga", "design", "registers", "agnus", "denise", "paula", "memory-map"]

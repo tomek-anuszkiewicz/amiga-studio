@@ -129,7 +129,7 @@ semantics separately from the structural refresh.
 full milestone profile, removes the selected completed roadmap item after
 success and compacts its settled diary history through
 [diary compaction](../../../../.agents/skills/TA-WF-Step-compact-diary/SKILL.md).
-It then uses [report-word-usage](../../../../.agents/skills/report-word-usage/SKILL.md)
+It then uses [Report Word Usage](../../../../.agents/skills/TA-WF-Step-report-word-usage/SKILL.md)
 to rank unusual words in the final project documentation, assess their use in
 context and suggest vocabulary exclusions. This editorial report does not change
 the test profile or set a word-frequency threshold for completion. The standalone
@@ -322,7 +322,7 @@ triggers above for commit and milestone profiles.
 | **L2** | **Production Integration** | `python tools/verification/verify.py test rust crate machine_loop` | Existing or extended fixtures protect the affected coordination |
 | **L3** | **CPU Vectors and Synthetic Contention** | `python tools/verification/verify.py test runner singlestep` | Selected vectors pass state, clocks and timed bus comparisons; limits reported |
 | **L4** | **Whole-Machine Captures** | Unavailable; needs a future execution and comparison entry point | Hardware workload and expected capture comparison |
-| **Separate gate** | **Architecture and Quality** | Relevant `check` command; full profile before an authorized commit | Static constraints pass; source review remains necessary |
+| **Separate gate** | **Architecture and Quality** | Relevant `check` command. Run the full profile after commit during final master verification. | Static constraints pass; source review remains necessary |
 
 ---
 

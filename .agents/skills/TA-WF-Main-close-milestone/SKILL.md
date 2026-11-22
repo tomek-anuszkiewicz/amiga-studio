@@ -31,7 +31,7 @@ milestone or remove an unfinished requirement implicitly.
    milestone closure also authorizes this step. Preserve unrelated and unfinished
    entries, unique decisions and their evidence. Report if you find no
    applicable history. If compaction or its checks fail, report partial closure.
-5. Apply [report-word-usage](../report-word-usage/SKILL.md) after the roadmap and
+5. Apply [TA-WF-Step-report-word-usage](../TA-WF-Step-report-word-usage/SKILL.md) after the roadmap and
    diary edits. Show the 20 highest-ranked words, assess their use in context and
    suggest additions to the report's static vocabulary exclusions. This step
    reports possible wording problems; it does not rewrite documentation, update

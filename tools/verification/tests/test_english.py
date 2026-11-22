@@ -14,6 +14,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "checks"))
 import check_english as english
 
 
+REPORT_WORD_USAGE = Path(".agents/skills/TA-WF-Step-report-word-usage")
+REPORT_WORD_LISTS = (
+    REPORT_WORD_USAGE / "assets/common-words.txt",
+    REPORT_WORD_USAGE / "assets/project-words.txt",
+)
+
+
 class EnglishScope(unittest.TestCase):
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
@@ -73,10 +80,15 @@ class EnglishScope(unittest.TestCase):
         subprocess.run(["git", "init", "--quiet", str(self.root)], check=True, capture_output=True)
         self.write(".gitignore", "ignored/\n")
         tracked = self.write("src/tracked.rs", "Valid English text.")
-        subprocess.run(["git", "-C", str(self.root), "add", "src/tracked.rs"],
-                       check=True, capture_output=True)
+        for relative in REPORT_WORD_LISTS:
+            self.write(relative, "wrong" * 8)
+        subprocess.run(["git", "-C", str(self.root), "add", "src/tracked.rs",
+                        REPORT_WORD_LISTS[0].as_posix()], check=True, capture_output=True)
         new = self.write("docs/new.md", "Valid English text.")
         neighbor = self.write("ref_src-other/example.md", "Valid English text.")
+        report = self.write(REPORT_WORD_USAGE / "SKILL.md", "Valid English text.")
+        asset = self.write(REPORT_WORD_USAGE / "assets/notes.txt", "Valid English text.")
+        same_name = self.write("docs/project-words.txt", "Valid English text.")
         for name in ("ref_src/example.md", "nested/target/example.rs", "graphify-out/example.json",
                      "tools/bootstrap/books/example.md", ".agent/tasks/plan.md",
                      "ignored/example.md", "docs/package.bin", "docs/Cargo.lock"):
@@ -84,7 +96,40 @@ class EnglishScope(unittest.TestCase):
         scope = json.loads(english.SCOPE_FILE.read_text(encoding="utf-8"))
         with patch.object(english, "REPO_ROOT", self.root):
             targets = english.repository_targets(scope)
-        self.assertEqual(set(targets), {self.root / ".gitignore", tracked, new, neighbor})
+        self.assertEqual(set(targets), {self.root / ".gitignore", tracked, new, neighbor,
+                                       report, asset, same_name})
+
+    def test_explicit_report_word_lists_are_ignored(self):
+        paths = []
+        for relative in REPORT_WORD_LISTS:
+            target = self.write(relative, "wrong" * 8)
+            paths.extend((target, relative, relative.parent / ".." / "assets" / relative.name))
+        result, output = self.scan(paths)
+        self.assertEqual(result, 0, output)
+        self.assertIn("English scan: 0 files;", output)
+
+    def test_report_word_lists_do_not_supply_accepted_vocabulary(self):
+        terms = ("wrong" * 8, "wrong" * 9)
+        for relative, term in zip(REPORT_WORD_LISTS, terms):
+            self.write(relative, term)
+        scope_text = english.SCOPE_FILE.read_text(encoding="utf-8")
+        scope_file = self.write(english.SCOPE_FILE.relative_to(english.REPO_ROOT), scope_text)
+        for relative in json.loads(scope_text)["word_lists"]:
+            vocabulary_file = (scope_file.parent / relative).resolve().relative_to(self.root)
+            if not (self.root / vocabulary_file).is_file():
+                self.write(vocabulary_file, "word\n")
+        other_files = (
+            self.write(REPORT_WORD_USAGE / "assets/notes.txt", terms[0]),
+            self.write("docs/project-words.txt", terms[1]),
+            self.write("tools/bootstrap/book-to-markdown/package-lock.json", terms[0]),
+        )
+        with patch.object(english, "SCOPE_FILE", scope_file):
+            result, output = self.scan([*REPORT_WORD_LISTS, *other_files])
+        self.assertEqual(result, 1, output)
+        self.assertIn("English scan: 3 files;", output)
+        self.assertIn("3 unknown word occurrences", output)
+        for path, term in zip(other_files, (*terms, terms[0])):
+            self.assertIn(f"Unknown English vocabulary in {path}:\n  Line 1: [{term}]", output)
 
     def test_exact_file_terms_do_not_hide_findings_in_another_file(self):
         term = "wrong" * 8

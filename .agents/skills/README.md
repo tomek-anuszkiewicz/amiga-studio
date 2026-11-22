@@ -216,13 +216,13 @@ flowchart TD
     Passed -->|No| Keep["Retain roadmap item; report actual failure or<br/>missing evidence"]
     Passed -->|Yes| Remove["Remove verified completed scope; check roadmap and<br/>affected references"]
     Remove --> Diary["TA-WF-Step-compact-diary for settled milestone<br/>history"]
-    Diary --> Words["report-word-usage: rank words and assess their use<br/>in the final documentation"]
+    Diary --> Words["TA-WF-Step-report-word-usage: rank words and assess their use<br/>in the final documentation"]
     Words --> Result["Return removed scope, retained work, actual checks<br/>and word-usage findings"]
 ```
 
 The included components are
 [compact-diary](TA-WF-Step-compact-diary/SKILL.md) and
-[report-word-usage](report-word-usage/SKILL.md). The word report includes 20 ranked
+[Report Word Usage](TA-WF-Step-report-word-usage/SKILL.md). The word report includes 20 ranked
 candidates, an assessment of their use and suggested vocabulary exclusions. It
 does not edit text or set a word-frequency pass/fail threshold. This operation
 runs the existing full milestone test profile, including full SingleStep

@@ -107,15 +107,16 @@ for the change. Use the source locations the report marks as unexecuted to
 identify and test missing behavior.
 [Coverage workflow](../tools/verification/README.md#coverage-guided-testing)
 
-The repository launchers print a case report kept in the primary checkout. Use
-it to find native diagnostics, tell which groups ran fresh or were reused, and
-read durations when available.
+When case reporting is enabled for a task, the launcher prints the path to the
+report in the primary checkout. Use it to find case attempts, durations when
+available, and links to native diagnostics for that invocation.
 [Case-report reference and launchers](../tools/verification/README.md#case-reports)
 
 To assess the result, check which suites ran, whether they used full or sampled
 inputs, and whether a failure or missing asset limited the run. A pass covers
-the cases and assertions that ran. When you repeat batch verification, it can
-reuse successful groups whose inputs still match and whose evidence is intact.
+the cases and assertions that ran. Each verification run executes its selected
+checks afresh, even if they passed in an earlier run. The timing report records
+the wall times of the commands that ran.
 The official verdict still requires every final gate. The evidence applies only
 to the candidate as verified, with its changes taken together. The testing
 specification covers the broader design and verification strategy.

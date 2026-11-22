@@ -34,7 +34,7 @@ for associating a report with a task execution.
 | `test runner singlestep [case FILTER] [full|sample N]` | Full vectors by default; explicit positive sampling limit overrides inherited environment |
 | `check all` | All commit quality gates without crate coverage or ordinary tests |
 | `check architecture [case FILTER]` | Python repository architecture checks; no Rust compilation |
-| `check english [files PATH...]` | Full language audit or explicit files; task plans under `.agent/tasks/` are always excluded |
+| `check english [files PATH...]` | English Word Checks skip task plans under `.agent/tasks/` and the two Report Word Usage word lists in both repository scans and explicit file scans. |
 | `check code|hardware|formatting|clippy` | One quality gate |
 | `check build [crate NAME]` | Cargo compilation check; workspace by default |
 | `check web` | Build the browser application through Trunk and nightly; Cargo lint warnings fail |

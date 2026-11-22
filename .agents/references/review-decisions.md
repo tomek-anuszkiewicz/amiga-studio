@@ -31,11 +31,15 @@ this intermediate state.
 ## RD-003 Prepared and unchanged workflow environment
 
 The workflow assumes that the configuration for the activity-recording services
-already exists and is available, and that Git ignore rules stay the same. Ignore
-findings that demand extra handling for starting a task without that
-configuration, copying records while it is unavailable, or copying the same
-outputs again after Git ignore rules change. These scenarios fall outside the
-required operating conditions.
+already exists and is available, Git ignore rules stay the same, and archive
+destinations are ignored and untracked. Ignore findings that demand extra
+handling for starting a task without that configuration, copying records while
+it is unavailable, or changes to a file's ignored or tracked status during the
+workflow. Also ignore scenarios in which an ignored archive directory contains
+a tracked or otherwise nonignored destination. This includes reusing an
+identical existing file without repeating its exact-path ignore check, and
+copying the same outputs again after Git ignore rules change. These scenarios
+fall outside the required operating conditions.
 
 ## RD-004 Effects of changing workflow tools
 

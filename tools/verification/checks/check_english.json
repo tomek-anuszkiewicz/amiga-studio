@@ -28,6 +28,10 @@
   "always_excluded_directories": [
     ".agent/tasks"
   ],
+  "always_excluded_files": [
+    ".agents/skills/TA-WF-Step-report-word-usage/assets/common-words.txt",
+    ".agents/skills/TA-WF-Step-report-word-usage/assets/project-words.txt"
+  ],
   "excluded_files": [
     "benchmarks/m68k_benchmark_baseline.csv",
     "benchmarks/m68k_benchmark_baseline.json",
@@ -73,7 +77,11 @@
     "english_words/names.txt"
   ],
   "file_words": {
-    ".agents/skills/report-word-usage/scripts/rank_words.py": [
+    ".agents/skills/TA-WF-Step-report-word-usage/tests/test_rank_words.py": [
+      "quartzdestination", "secrettitle", "referencekey", "referencetitle",
+      "hiddenpath", "hiddentitle"
+    ],
+    ".agents/skills/TA-WF-Step-report-word-usage/scripts/rank_words.py": [
       "mypy", "virtualenv", "tox", "nox", "refsrc", "refsource", "refsources",
       "revsrc", "revsource", "revsources", "referencesrc", "referencesource",
       "referencesources", "nonprose", "za"

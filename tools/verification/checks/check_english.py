@@ -43,10 +43,12 @@ def repository_targets(scope):
     command.extend(f":(glob,exclude){directory}/**" for directory in
                    scope["excluded_directories"] + scope["always_excluded_directories"])
     result = subprocess.run(command, cwd=REPO_ROOT, capture_output=True, check=True)
+    excluded_files = set(scope["excluded_files"])
+    excluded_files.update(scope.get("always_excluded_files", ()))
     targets = []
     for relative in sorted(set(result.stdout.decode("utf-8").split("\0")) - {""}):
         path = Path(relative)
-        if relative in scope["excluded_files"]:
+        if relative in excluded_files:
             continue
         if path.suffix.lower() not in scope["text_extensions"] and path.name not in scope["text_filenames"]:
             continue
@@ -177,8 +179,8 @@ def scan_files(targets, scope, vocabulary, workers):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("files", nargs="*", type=Path,
-                        help="Explicit files; always-excluded directories still apply. "
-                             "By default scan the full repository using check_english.json")
+                        help="By default, scan the repository using check_english.json. "
+                             "Always-excluded files and directories are also skipped when supplied explicitly.")
     args = parser.parse_args()
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -186,7 +188,11 @@ def main():
         scope = json.loads(SCOPE_FILE.read_text(encoding="utf-8"))
         validate_file_words(scope)
         vocabulary = load_vocabulary(scope)
-        targets = args.files or repository_targets(scope)
+        if args.files:
+            excluded_files = {REPO_ROOT / relative for relative in scope.get("always_excluded_files", ())}
+            targets = [path for path in args.files if Path(os.path.abspath(path)) not in excluded_files]
+        else:
+            targets = repository_targets(scope)
         excluded = [(REPO_ROOT / directory).resolve() for directory in scope["always_excluded_directories"]]
         targets = [path for path in targets
                    if not any(path.resolve().is_relative_to(directory) for directory in excluded)]

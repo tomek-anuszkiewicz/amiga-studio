@@ -1,5 +1,5 @@
 ---
-name: report-word-usage
+name: TA-WF-Step-report-word-usage
 description: Rank uncommon words in project-authored Markdown, assess vague wording in context, and suggest vocabulary exclusions. Use for a requested word-usage report or the report included in milestone completion.
 ---
 
@@ -14,7 +14,7 @@ milestone completion have their own checks. Follow the
 From the selected checkout, run:
 
 ```text
-python .agents/skills/report-word-usage/scripts/rank_words.py --output .agent/tmp/word-usage/report.json
+python .agents/skills/TA-WF-Step-report-word-usage/scripts/rank_words.py --output .agent/tmp/word-usage/report.json
 ```
 
 The script reads the current contents of tracked Markdown and new Markdown
@@ -32,9 +32,11 @@ outside the scan and the word counts. Include these notices so the user can
 decide whether each directory belongs in a future scan or in the ignore rules.
 
 The report uses bundled lists of excluded words, so it needs no downloads
-or installed language packages. It ignores letter case, counts different
-word forms separately and skips metadata, code examples, paths and link
-destinations when it counts prose. [Common words](assets/common-words.txt),
+or installed language packages. It ignores letter case and counts different
+word forms separately. It includes the contents of blocks opened with three or
+more backticks and skips their fence markers and language labels. It excludes
+metadata, tilde-fenced blocks, paths and link destinations.
+[Common words](assets/common-words.txt),
 [project vocabulary](assets/project-words.txt),
 [sources and maintenance guidance](references/vocabulary.md).
 
