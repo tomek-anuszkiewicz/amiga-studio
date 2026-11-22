@@ -1,11 +1,15 @@
-"""Word rankings and source samples from Markdown with fenced blocks."""
+"""Word rankings, Markdown source samples and Git file selection."""
 
+import json
+import os
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
 import unittest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
+sys.path.insert(0, str(SCRIPTS))
 from rank_words import build_report
 
 
@@ -306,3 +310,126 @@ class FencedBlockRankingTests(unittest.TestCase):
         self.assertEqual({row["word"]: row["samples"][0]["line"] for row in report["ranking"]}, {
             "rhythmic": 1, "quixotic": 5, "spectral": 6,
         })
+
+    def test_named_references_in_labels_count_visible_text_with_original_samples(self):
+        line = r"[Peregrination &alefsym; \&copy; &amp;reg;](quartzdestination 'secrettitle')"
+        report = self.report_for({"docs/entities.md": line})
+
+        self.assertEqual(report["token_count"], 3)
+        self.assertEqual(report["ranking"], [
+            {"word": word, "count": 1, "document_count": 1, "samples": [
+                {"path": "docs/entities.md", "line": 1, "context": line},
+            ]}
+            for word in ("copy", "peregrination", "reg")
+        ])
+
+    def test_numeric_references_join_visible_words_and_preserve_long_line_columns(self):
+        tail = ' &alefsym; &#113;uix&#x6F;tic](hiddenpath "secrettitle") Spectral'
+        line = "> [folder/" + "x" * 150 + tail
+        report = self.report_for({
+            "docs/entities.md": f"{line}\n\nLoqu&#97;cious",
+        })
+
+        self.assertEqual(report["token_count"], 3)
+        self.assertEqual(report["ranking"], [
+            {"word": word, "count": 1, "document_count": 1, "samples": [
+                {"path": "docs/entities.md", "line": number, "context": context},
+            ]}
+            for word, number, context in (
+                ("loquacious", 3, "Loqu&#97;cious"),
+                ("quixotic", 1, "\u2026" + "x" * 59 + tail),
+                ("spectral", 1, "\u2026" + "x" * 13 + tail),
+            )
+        ])
+
+    def test_escaped_brackets_keep_visible_label_without_admitting_paths(self):
+        line = r'[\[Cadence\]](hiddenpath "secrettitle") Spectral'
+        report = self.report_for({
+            "docs/labels.md": (
+                f"{line}\n"
+                r"[folder\amber](hiddenpath) [folder\\amber](hiddenpath)"
+                "\n[`hidden phrase`](hiddenpath)"
+            ),
+        })
+
+        self.assertEqual(report["token_count"], 2)
+        self.assertEqual(report["ranking"], [
+            {"word": word, "count": 1, "document_count": 1, "samples": [
+                {"path": "docs/labels.md", "line": 1, "context": line},
+            ]}
+            for word in ("cadence", "spectral")
+        ])
+
+    def test_backtick_body_keeps_literal_entities_and_inline_code(self):
+        line = '`opal cadence` [Peregrination &alefsym; qui&#120;otic](hiddenpath "secrettitle")'
+        report = self.report_for({"docs/example.md": f"```markdown\n{line}\n```"})
+
+        self.assertEqual(report["token_count"], 6)
+        self.assertEqual(report["ranking"], [
+            {"word": word, "count": 1, "document_count": 1, "samples": [
+                {"path": "docs/example.md", "line": 2, "context": line},
+            ]}
+            for word in ("alefsym", "cadence", "opal", "otic", "peregrination", "qui")
+        ])
+
+    def test_image_label_keeps_visible_text_at_its_source_offset(self):
+        tail = r' ![\[Cad&#101;nce\]](docs/image.png "secrettitle")'
+        line = "folder/" + "x" * 150 + tail
+        report = self.report_for({"docs/image.md": line})
+
+        self.assertEqual(report["token_count"], 1)
+        self.assertEqual(report["ranking"], [{
+            "word": "cadence", "count": 1, "document_count": 1, "samples": [{
+                "path": "docs/image.md", "line": 1, "context": "\u2026" + "x" * 65 + tail,
+            }],
+        }])
+
+
+class WordUsageCommandTests(unittest.TestCase):
+    def test_cli_ranks_current_git_files_and_lists_unclassified_names(self):
+        root = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
+        environment = {key: value for key, value in os.environ.items() if not key.upper().startswith("GIT_")}
+        environment.update(GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1")
+        sources = {
+            ".gitignore": b"/docs/ignored.md\n",
+            "docs/tracked.md": b"Loquacious\n",
+            "docs/new.md": b"Quixotic\n",
+            "docs/ignored.md": b"Peregrination\n",
+            "docs/ref_src/imported.md": b"Rhythmic\n",
+            "unclassified/topics.md": b"Unclassified \xff\n",
+        }
+        for name, content in sources.items():
+            path = root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(content)
+
+        for arguments in (("init", "--quiet"), ("add", "--", ".gitignore", "docs/tracked.md")):
+            subprocess.run(["git", *arguments], cwd=root, env=environment, check=True, capture_output=True)
+        (root / "docs/tracked.md").write_bytes(b"Cadence Cadence\n")
+
+        output = "report.json"
+        result = subprocess.run(
+            [sys.executable, str(SCRIPTS / "rank_words.py"), "--root", str(root), "--output", output],
+            cwd=root, env=environment, capture_output=True, text=True, encoding="utf-8", check=False,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("Unclassified Markdown names in unclassified: 1", result.stdout)
+        report = json.loads((root / output).read_text(encoding="utf-8"))
+        self.assertTrue(report["complete"], report["issues"])
+        self.assertEqual(report["document_count"], 2)
+        self.assertEqual(report["scanned_paths"], ["docs/new.md", "docs/tracked.md"])
+        self.assertEqual(report["token_count"], 3)
+        self.assertEqual(report["candidate_count"], 3)
+        self.assertEqual(report["ranking"], [
+            {"word": "cadence", "count": 2, "document_count": 1, "samples": [
+                {"path": "docs/tracked.md", "line": 1, "context": "Cadence Cadence"},
+            ]},
+            {"word": "quixotic", "count": 1, "document_count": 1, "samples": [
+                {"path": "docs/new.md", "line": 1, "context": "Quixotic"},
+            ]},
+        ])
+        self.assertEqual(report["unclassified_directories"], [
+            {"directory": "unclassified", "markdown_count": 1, "examples": ["unclassified/topics.md"]},
+        ])
+        self.assertEqual(report["discovery_issues"], [])

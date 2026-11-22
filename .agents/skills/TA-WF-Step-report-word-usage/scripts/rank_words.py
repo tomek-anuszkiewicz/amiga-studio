@@ -206,14 +206,17 @@ def build_report(root, paths, filters, limit):
         group_summary = scope[SOURCE_ROOTS[location]]
         group_summary["document_count"] += 1
         in_document = Counter()
-        for number, line in enumerate(prose_lines(lines), 1):
+        for number, slots in enumerate(prose_lines(lines), 1):
+            line = "".join(slots)
+            source_columns = [column for column, text in enumerate(slots) for _ in text]
             for word, position in words(line):
                 group_summary["token_count"] += 1
                 if word in excluded:
                     continue
                 if word not in in_document and len(samples[word]) < 3:
+                    context = sample_context(lines[number - 1], source_columns[position])
                     samples[word].append({"path": path, "line": number,
-                                          "context": sample_context(lines[number - 1], position)})
+                                          "context": context})
                 in_document[word] += 1
         counts.update(in_document)
         documents.update(in_document.keys())

@@ -4,7 +4,7 @@ import re
 
 from markdown_it import MarkdownIt
 from markdown_it.rules_block import reference
-from markdown_it.rules_inline import autolink, backticks, emphasis, html_inline, image, link
+from markdown_it.rules_inline import autolink, backticks, emphasis, entity, escape, html_inline, image, link
 
 
 WIKI_LINK = re.compile(r"!?\[\[([^\]\n]+)\]\]")
@@ -36,6 +36,18 @@ def hide_consumed(state, start, _token_count):
     hide(state, start, state.pos)
 
 
+def keep_decoded_text(state, start, _token_count):
+    if not state.env["decode_text"]:
+        return
+    token = state.tokens[-1]
+    if token.type == "text_special" and token.content != token.markup:
+        # Store the parser's text in the first source column of the entity or
+        # escape. Empty slots keep the other columns available for alignment.
+        state.env["visible"][start:state.pos] = [token.content] + [""] * (state.pos - start - 1)
+    elif token.type == "hardbreak":
+        hide(state, start, state.pos)
+
+
 def keep_code_word(state, start, token_count):
     if len(state.tokens) == token_count or state.tokens[-1].type != "code_inline":
         return
@@ -57,7 +69,7 @@ def keep_link_label(state, start, _token_count):
         # Image alt text is parsed in its own string. Apply its mask at the
         # known label offset because its inline positions start at zero.
         label = state.src[opening + 1:end]
-        visible, _ = visible_inline(state.md, label, state.env)
+        visible, _ = visible_inline(state.md, label, state.env, decode_text=state.env["decode_text"])
         state.env["visible"][opening + 1:end] = visible
 
 
@@ -115,6 +127,8 @@ def parser(literal=False):
         ("autolink", autolink, hide_consumed),
         ("backticks", backticks.backtick, keep_code_word),
         ("emphasis", emphasis.tokenize, mark_emphasis),
+        ("entity", entity, keep_decoded_text),
+        ("escape", escape, keep_decoded_text),
         ("html_inline", html_inline, hide_consumed),
         ("image", image, keep_link_label),
         ("link", link, keep_link_label),
@@ -134,28 +148,42 @@ MARKDOWN = parser()
 FENCED_MARKDOWN = parser(literal=True)
 
 
-def visible_inline(md, source, env):
-    inline_env = {"source": source, "visible": list(source), "references": env.get("references", {})}
+def visible_inline(md, source, env, *, decode_text):
+    inline_env = {"source": source, "visible": list(source), "decode_text": decode_text,
+                  "references": env.get("references", {})}
     md.inline.parse(source, md, inline_env, [])
-    return "".join(inline_env["visible"]), inline_env.get("open_comment")
+    return inline_env["visible"], inline_env.get("open_comment")
 
 
-def visible_block(md, token, env):
-    body = token.content.removesuffix("\n")
+def inline_lines(md, body, env, source_lines, *, decode_text):
+    slots, open_comment = visible_inline(md, body, env, decode_text=decode_text)
+    if open_comment is not None:
+        return [], open_comment
+    visible = []
+    start = 0
+    for line, source in zip(body.split("\n"), source_lines, strict=True):
+        end = start + len(line)
+        visible.append(align_line(line, slots[start:end], source))
+        start = end + 1
+    return visible, None
+
+
+def visible_block(token, body, env, source_lines):
     if token.type != "fence":
-        return visible_inline(md, body, env)
+        return inline_lines(MARKDOWN, body, env, source_lines, decode_text=token.type == "inline")
 
     # A fenced example can contain Markdown links split across lines. Parse
     # its paragraphs and definitions without interpreting any inner fences.
     example_env = {"references": dict(env.get("references", {}))}
     lines = body.split("\n")
-    visible = [""] * len(lines)
+    visible = [[] for _ in lines]
     for part in FENCED_MARKDOWN.parse(token.content, example_env):
         if part.type == "inline":
             start, end = part.map
-            kept, _ = visible_inline(FENCED_MARKDOWN, part.content, example_env)
-            visible[start:end] = aligned_lines(part.content, kept, lines[start:end])
-    return "\n".join(visible), None
+            visible[start:end], _ = inline_lines(FENCED_MARKDOWN, part.content, example_env,
+                                                 lines[start:end], decode_text=False)
+    return [align_line(line, kept, source)
+            for line, kept, source in zip(lines, visible, source_lines, strict=True)], None
 
 
 def source_column(line, fragment):
@@ -163,16 +191,14 @@ def source_column(line, fragment):
     return line.replace("\0", "\ufffd").rindex(fragment)
 
 
-def aligned_lines(text, visible, source_lines):
-    """Restore the column of each line after the block parser strips its container."""
-    for line, kept, source in zip(text.split("\n"), visible.split("\n"), source_lines, strict=True):
-        fragment = line.lstrip(" \t")
-        if not fragment:
-            yield ""
-            continue
-        # The block parser can add leading spaces when consuming part of a tab.
-        column = source_column(source, fragment)
-        yield " " * column + kept[len(line) - len(fragment):]
+def align_line(line, slots, source):
+    """Restore source columns after the block parser strips the container."""
+    fragment = line.lstrip(" \t")
+    if not fragment:
+        return []
+    # The block parser can add leading spaces when consuming part of a tab.
+    column = source_column(source, fragment)
+    return [" "] * column + slots[len(line) - len(fragment):]
 
 
 def hide_continuing_comment(lines, first, body, opening):
@@ -186,6 +212,7 @@ def hide_continuing_comment(lines, first, body, opening):
 
 
 def prose_lines(lines):
+    """Return visible text indexed by original line and column."""
     start = 0
     if lines and lines[0].rstrip() == "---":
         start = next((number + 1 for number, line in enumerate(lines[1:], 1)
@@ -193,7 +220,7 @@ def prose_lines(lines):
 
     source = lines[start:]
     while True:
-        visible = [""] * len(source)
+        visible = [[] for _ in source]
         env = {}
         for token in MARKDOWN.parse("\n".join(source), env):
             if not token.content or token.type not in {"code_block", "fence", "html_block", "inline"}:
@@ -203,12 +230,12 @@ def prose_lines(lines):
             first = token.map[0] + (token.type == "fence")
             body = token.content.removesuffix("\n")
             last = first + body.count("\n") + 1
-            kept, open_comment = visible_block(MARKDOWN, token, env)
+            kept, open_comment = visible_block(token, body, env, source[first:last])
             if open_comment is not None:
                 # An inline comment can span blocks in the report. Hide it and
                 # let Markdown-it classify the surrounding blocks again.
                 hide_continuing_comment(source, first, body, open_comment)
                 break
-            visible[first:last] = aligned_lines(body, kept, source[first:last])
+            visible[first:last] = kept
         else:
-            return [""] * start + visible
+            return [[] for _ in range(start)] + visible

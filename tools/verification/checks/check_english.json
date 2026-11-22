@@ -79,7 +79,8 @@
   "file_words": {
     ".agents/skills/TA-WF-Step-report-word-usage/tests/test_rank_words.py": [
       "quartzdestination", "secrettitle", "referencekey", "referencetitle",
-      "hiddenpath", "hiddentitle", "brontolith"
+      "hiddenpath", "hiddentitle", "brontolith",
+      "alefsym", "cious", "loqu", "nce", "qui", "uix", "xff"
     ],
     ".agents/skills/TA-WF-Step-report-word-usage/scripts/markdown_text.py": [
       "lheading", "za"
