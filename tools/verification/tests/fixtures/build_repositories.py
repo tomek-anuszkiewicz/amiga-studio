@@ -1,8 +1,6 @@
-"""Rebuild the verification suite's Git snapshots using native Git and verification commands."""
+"""Rebuild the verification suite's Git snapshots using native Git."""
 
 from contextlib import contextmanager
-from datetime import datetime
-from itertools import count
 import json
 import os
 from pathlib import Path
@@ -10,16 +8,10 @@ import subprocess
 import sys
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
-from uuid import UUID
 from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from git_fixtures import ARCHIVE
-from test_evidence import ContinuationTests
-from test_integration import IntegrationTests
-import evidence
-import integration
-import timing_report
 
 
 DATE = "2000-01-01T00:00:00+00:00"
@@ -72,16 +64,6 @@ def commit(root, message):
 def temporary_root():
     with TemporaryDirectory() as temporary:
         yield Path(temporary).resolve()
-
-
-@contextmanager
-def fixture_case(kind, root):
-    case = kind()
-    try:
-        case.configure(root)
-        yield case
-    finally:
-        case.doCleanups()
 
 
 def tracked_index(root):
@@ -183,117 +165,10 @@ def build_worktree(archive):
         save(archive, "worktree-conflict", parent, root)
 
 
-def make_portable_evidence(root, directory):
-    record = integration.read(directory / "commit.json")
-    record["checkout"] = ""
-    for group in record["groups"].values():
-        group["elapsed_seconds"] = 0.0
-        for _, command, _ in group["commands"]:
-            command[0] = "python"
-        group["identity"] = ""
-        artifacts = group["artifacts"]
-        for relative in list(artifacts):
-            if not relative.endswith(".log"):
-                continue
-            log = directory / relative
-            portable = log.with_name("fixture.log")
-            write(portable.parent, portable.name, log.read_text(encoding="utf-8").replace(sys.executable, "python"))
-            log.unlink()
-            del artifacts[relative]
-            artifacts[portable.relative_to(directory).as_posix()] = evidence.file_digest(portable)
-    if "timing_report" in record and "path" in record["timing_report"]:
-        timing = record["timing_report"]
-        for row in timing["rows"]:
-            for command in row["commands"]:
-                command[0] = "python"
-            if row["seconds"] is not None:
-                row["seconds"] = 0.0
-        report = directory / timing["path"]
-        timing.update(generation_seconds=0.0, write_seconds=0.0, wall_seconds_before_report=0.0)
-        write(report.parent, report.name,
-              timing_report.render(root, "commit", record["head"], timing["rows"], 0.0))
-        timing["sha256"] = evidence.file_digest(report)
-
-    # The verification lock is transient, even when its file persists.
-    (root / ".agent/tmp/verification.lock").unlink(missing_ok=True)
-    write(directory, "commit.json", json.dumps(record, indent=2) + "\n")
-    return record
-
-
-def build_evidence(archive):
-    for state in ("evidence-passed", "evidence-diary"):
-        with temporary_root() as root, fixture_case(ContinuationTests, root) as case:
-            init(root, {".gitignore": ".agent/\n", "source.rs": "fn main() {}\n", case.words: "accepted\n"})
-            write(root, "source.rs", "fn main() { /* changed */ }\n")
-            if state == "evidence-passed":
-                save(archive, "evidence", root, root)
-            else:
-                write(root, "DIARY.md", "First entry.\n")
-                case.include_diary_groups()
-            if case.run_profile() != 0:
-                raise ValueError(case.output)
-            make_portable_evidence(root, case.directory)
-            save(archive, state, root, root)
-
-
-def save_integration(archive, name, case, sources=(), linked=()):
-    relative_sources = [{**item, "root": Path(item["root"]).relative_to(case.parent).as_posix()} for item in sources]
-    if case.record.is_file():
-        record = integration.read(case.record)
-        if not relative_sources:
-            relative_sources = [{**item, "root": Path(item["root"]).name} for item in record["sources"]]
-        record["evidence"] = make_portable_evidence(case.source, case.directory)
-        for key in ("source_root", "target_root", "evidence_directory"):
-            record[key] = Path(record[key]).relative_to(case.parent).as_posix()
-        record["sources"] = relative_sources
-        record["review_artifacts"] = {
-            Path(name).relative_to(case.parent).as_posix(): digest
-            for name, digest in record["review_artifacts"].items()
-        }
-        if record["sources_explicit"]:
-            record["review"]["sources"] = evidence.digest(relative_sources)
-            for artifact, data in (("sources.json", relative_sources), ("review.json", record["review"])):
-                path = write(case.source, ".agent/tmp/" + artifact, json.dumps(data))
-                record["review_artifacts"][path.relative_to(case.parent).as_posix()] = evidence.file_digest(path)
-        write(case.directory, case.record.name, json.dumps(record, indent=2) + "\n")
-    save(archive, name, case.parent, case.target, (case.source, *linked),
-         metadata={"base": case.base, "sources": relative_sources})
-
-
-def build_integration(archive):
-    for state in ("integration-sealed", "integration-published", "integration-combined-sealed"):
-        with temporary_root() as root, fixture_case(IntegrationTests, root) as case:
-            init(case.target, {".gitignore": ".agent/\n.env\nignored*\ntarget/\n", "value.txt": "baseline\n"},
-                 branch="master", exclude="/tools/worktree.ps1\n")
-            case.base = case.git(case.target, "rev-parse", "HEAD")
-            case.git(case.target, "worktree", "add", "-q", "-b", "task", str(case.source), case.base)
-            case.configure_verifier()
-            if state == "integration-combined-sealed":
-                sources = case.arrange_sources()
-                linked = [Path(item["root"]) for item in sources[1:]]
-                save_integration(archive, "integration-assembled", case, sources, linked)
-                case.prepare(sources=sources)
-                save_integration(archive, state, case, sources, linked)
-            else:
-                if state == "integration-sealed":
-                    save_integration(archive, "integration", case)
-                case.prepare()
-                if state == "integration-published":
-                    integration.publish(case.source, case.record)
-                    integration.cleanup_record(integration.read(case.record)).unlink()
-                save_integration(archive, state, case)
-
-
 def build(output):
-    serial = count(1)
-    with patch.dict(os.environ, ENVIRONMENT), \
-         patch.object(evidence.uuid, "uuid4", side_effect=lambda: UUID(int=next(serial))), \
-         patch.object(timing_report, "datetime") as clock, ZipFile(output, "w") as archive:
-        clock.now.return_value = datetime.fromisoformat(DATE)
+    with patch.dict(os.environ, ENVIRONMENT), ZipFile(output, "w") as archive:
         build_small(archive)
         build_worktree(archive)
-        build_evidence(archive)
-        build_integration(archive)
 
 
 if __name__ == "__main__":
