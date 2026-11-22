@@ -24,12 +24,9 @@ to their owning lane while reporting any demonstrated cross-lane issue.
 For changed PowerShell tools, apply the relevant
 [PowerShell result criteria](../../TA-write-powershell/references/acceptance.md).
 
-For workflow guidance, retain one receiving-session procedure and the existing
-schema's skill/role mapping. Keep data validation/rendering separate from human
-authorization and execution; reject competing menus, duplicate registries and
-obsolete result-field consumers after an internal migration.
-
-The skill recommendation matrix has one data owner and a derived readable view.
-Reuse the existing skill/role mapping; row/cell validation is data checking, not
-an authorization engine, scheduler or second role registry. Keep direct invocation
-independent from official recommendation membership.
+For workflow changes, check that the main session follows
+[AGENTS.md](../../../../AGENTS.md#user-selected-operations) when coordinating the
+user-selected operation. The selected skill owns its procedure and stopping boundary.
+Keep result formatting and data validation separate from authorization and execution.
+Check affected consumers against the current
+[result contract](../../../references/workflow-contract.md) after an internal migration.
