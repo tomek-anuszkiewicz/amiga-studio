@@ -2,6 +2,9 @@
 
 ## All selected documentation
 
+Apply the [shared communication rules](../../AGENTS.md#communication), providing
+the context and explanations needed by the document's intended reader.
+
 Apply these criteria within the assigned writing or review scope. A reference to
 them does not authorize rewriting unrelated text or expanding a link, metadata,
 language, specification or architecture assessment into a general editorial audit.

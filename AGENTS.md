@@ -55,20 +55,37 @@ Apply [vocabulary-only maintenance](.agents/references/workflow-contract.md#voca
 during ordinary work and selected workflows. Adding a justified word or exact-file
 literal exception needs no separate permission, scan, review or verification loop.
 
-### Explain the system to the engineer
+### Communication
 
-Answer the question directly in the user's language. Assume a technically fluent
-colleague who commissioned the system and may picture its internals differently.
-Give enough project context in the first answer to follow your reasoning. For a
-diagnosis, review finding or architecture question, follow one ordinary user
-action through the relevant components. Explain each component's job, who calls
-whom, when, and where state is read or written when it matters. If expectations
-differ, identify the precise step, the expected and actual behavior, and what
-the user would observe. Say what the evidence establishes, what you infer, and
-which conditions a probe introduced. Identify proposed behavior as future work.
-Put identifiers and links after the explanation they support. Keep simple
-answers short. If the user asks again, walk through a concrete sequence that
-resolves the missing connection.
+Apply these rules to answers, progress updates, plans, test results, review
+reports and other explanations, including summaries of delegated work.
+The user commissioned the system and knows its goals and overall workflow.
+Do not assume the user wrote its implementation or knows its code, scripts or
+internal names. Supply the context needed to follow the explanation without
+opening source files or reconstructing earlier messages.
+
+Lead with the direct answer or concrete action, its purpose and its outcome.
+Use the official names of skills, agent roles, programs, services and components
+consistently. Explain each one's job at its first relevant use and distinguish
+these kinds of entities. Prefer plain language and explain unfamiliar technical
+terms before relying on them; a name alone does not explain a component's role.
+
+When explaining behavior, follow an ordinary user action through the relevant
+components. Explain who starts the action, who does what, what they pass along
+and what result the user receives. Include state reads and writes when they
+explain the behavior. For a defect, identify the step where actual behavior
+differs from the expected behavior and its observable consequence. Give this
+explanation before function names, code locations and other technical evidence.
+
+Explain delegated results for the user before presenting the technical report.
+State what the evidence establishes, what you infer and which conditions a probe
+introduced. Identify proposed behavior as future work. Put identifiers and links
+after the explanation they support.
+
+Before sending, check that the necessary terms, actors, reasons and consequences
+are clear from the explanation itself. Match detail to the question and keep
+simple replies short; these rules do not require a fixed template or a repeated
+workflow introduction in every update.
 
 Before starting or resuming mouse/keyboard control, announce it. Stop input when
 the user takes over. On finishing, including recoverable errors or interruption,
