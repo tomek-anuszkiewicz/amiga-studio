@@ -88,3 +88,17 @@ for shortcuts and debugging workflows.
 The developer guide provides an overview of the emulator, verification and
 ways to work with the project.
 [**Developer Guide & Technical Index**](docs/developers.md)
+
+## Check Development Dependencies
+
+Run this command with Python 3.11 or later from the checkout to see available
+updates, installation differences and checks that could not finish.
+
+```powershell
+python tools/check_updates.py
+```
+
+The report covers development tools and packages declared in project files. It
+shows versions alongside findings. Run the command with another Python
+interpreter to inspect that interpreter's packages. The report leaves
+dependencies and project files in place.

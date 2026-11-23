@@ -558,3 +558,13 @@ tokenize
 focusable
 ime
 uncaptured
+deduplicates
+devrelease
+fnmatch
+fnmatchcase
+isdisjoint
+plistlib
+prereleases
+releaselevel
+semver
+shlex

@@ -1264,3 +1264,11 @@ lemmatized
 resized
 mdurl
 sqlite
+ini
+lts
+nodejs
+npipe
+npmjs
+plist
+pypi
+xz
