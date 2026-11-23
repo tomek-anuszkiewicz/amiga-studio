@@ -12,5 +12,6 @@
   },
   "git.detectWorktrees": true,
   "scm.alwaysShowRepositories": true,
-  "scm.repositories.selectionMode": "multiple"
+  "scm.repositories.selectionMode": "multiple",
+  "git.ignoreLimitWarning": true
 }
