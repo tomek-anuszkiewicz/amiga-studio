@@ -113,6 +113,9 @@ impl MachineOwner {
 
     pub fn collect_input(&mut self, event: crate::host_input::HostInputEvent) {
         if self.session.is_running && !self.session.pause_pending() {
+            if let crate::host_input::HostInputEvent::ReleaseMouse { port } = event {
+                self.playback.input.pending.discard_mouse(port);
+            }
             self.playback.collected_input.push(event);
         }
     }

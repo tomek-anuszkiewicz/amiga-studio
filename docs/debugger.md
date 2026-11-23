@@ -59,8 +59,10 @@ snapshot, the emulator uses the ROM stored in it and displays **ROM: from saved 
 
 Game View keeps the File, State, Run/Stop, speed, FPS visibility, theme and zoom
 controls. Choose **Debug View** or press the fixed F12 key to return to inspection.
-The middle mouse button releases input capture without pausing. You can assign a
-keyboard release binding in Configurations, where it starts unassigned. Reset
+The keyboard works while the running session is active. Click the display to
+capture the mouse. The middle mouse button frees the mouse while play
+continues. You can assign a mouse release key in Configurations, where it
+starts unassigned. Reset
 has no keyboard shortcut. Game View disconnects debugger panels and shortcuts,
 breakpoints, disassembly, trace collection, CPU history and memory diff capture.
 The CPU's STOP instruction still allows the chips to run and deliver interrupts.

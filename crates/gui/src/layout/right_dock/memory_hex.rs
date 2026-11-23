@@ -364,9 +364,11 @@ pub(crate) fn render_memory_hex(
         if refresh {
             data.address = format!("{:06X}", *base_addr);
         }
-        if ui
-            .add(egui::TextEdit::singleline(&mut data.address).desired_width(70.0))
-            .lost_focus()
+        if crate::keyboard_input::text_edit(
+            ui,
+            egui::TextEdit::singleline(&mut data.address).desired_width(70.0),
+        )
+        .lost_focus()
             && ui.is_enabled()
         {
             let clean = data.address.trim().trim_start_matches('$');
@@ -438,7 +440,7 @@ pub(crate) fn render_memory_hex(
                                     ui.scope_builder(
                                         egui::UiBuilder::new().max_rect(cell_rect),
                                         |ui| {
-                                            let edit_res = ui.add(
+                                            let edit_res = crate::keyboard_input::text_edit(ui,
                                                 egui::TextEdit::singleline(&mut edit_buffer.1)
                                                     .margin(egui::Margin::ZERO)
                                                     .desired_width(CELL_WIDTH)

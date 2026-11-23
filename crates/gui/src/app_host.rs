@@ -11,6 +11,7 @@ use std::collections::{HashMap, VecDeque};
 pub(crate) enum HostEffect {
     Clock,
     Run,
+    Pause,
     Command,
     Inspection,
     File(FileCompletion),
@@ -23,8 +24,11 @@ pub struct AppHost {
     #[cfg(not(target_arch = "wasm32"))]
     pub(crate) native_gamepads: bool,
     pub(crate) keyboard_pending: VecDeque<(crate::host_input::HostInputEvent, u64)>,
+    view_release_generation: Option<u64>,
     #[cfg(not(target_arch = "wasm32"))]
     pub(crate) pointer: crate::window_pointer::WindowPointer,
+    #[cfg(not(target_arch = "wasm32"))]
+    pending_pointer: crate::host_input::InputQueue,
     pub status: HostStatus,
     pub data: Option<Box<HostInspection>>,
     pub presented: Option<crate::host_video::FrameInfo>,
@@ -48,6 +52,7 @@ impl AppHost {
         self.commands.clear();
         self.inspector_request = false;
         self.activation_pending = false;
+        self.view_release_generation = None;
         self.status.running = false;
         self.status.continuous_run = false;
         self.status.pause_pending = false;
@@ -60,6 +65,13 @@ impl AppHost {
             }
             self.presented = None;
             self.inspector_revision = None;
+            self.keyboard_pending.clear();
+            self.view_release_generation = None;
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                self.pointer.release();
+                self.pending_pointer.clear();
+            }
         }
         self.status = status;
     }
@@ -70,8 +82,11 @@ impl AppHost {
             #[cfg(not(target_arch = "wasm32"))]
             native_gamepads: false,
             keyboard_pending: VecDeque::new(),
+            view_release_generation: None,
             #[cfg(not(target_arch = "wasm32"))]
             pointer: Default::default(),
+            #[cfg(not(target_arch = "wasm32"))]
+            pending_pointer: Default::default(),
             status: owner.status(),
             data: None,
             presented: None,
@@ -92,17 +107,29 @@ impl AppHost {
         let effect = match &command {
             HostCommand::SupplyUtc(_) => HostEffect::Clock,
             HostCommand::Run => HostEffect::Run,
+            HostCommand::Pause => HostEffect::Pause,
             _ => HostEffect::Command,
         };
         self.queue_effect(command, effect);
     }
 
     pub fn is_idle(&self) -> bool {
+        #[cfg(not(target_arch = "wasm32"))]
+        if !self.pending_pointer.is_empty() {
+            return false;
+        }
         self.queued.is_empty()
             && self.pending.is_empty()
             && self.commands.is_empty()
+            && self.keyboard_pending.is_empty()
+            && self.view_release_generation.is_none()
             && !self.status.pause_pending
             && !self.activation_pending
+    }
+
+    pub(crate) fn release_input_for_view_change(&mut self) {
+        self.keyboard_pending.clear();
+        self.view_release_generation = Some(self.status.generation);
     }
 
     pub(crate) fn can_edit(&self) -> bool {
@@ -116,6 +143,18 @@ impl AppHost {
                 .values()
                 .all(|effect| matches!(effect, HostEffect::Clock))
             && self.commands.is_empty()
+    }
+
+    pub(crate) fn pause_requested(&self) -> bool {
+        self.status.pause_pending
+            || self
+                .queued
+                .iter()
+                .any(|(_, effect)| matches!(effect, HostEffect::Pause))
+            || self
+                .pending
+                .values()
+                .any(|effect| matches!(effect, HostEffect::Pause))
     }
 
     pub(crate) fn continuous_requested(&self) -> bool {
@@ -294,7 +333,7 @@ impl crate::EmulatorApp {
                 HostEffect::File(action) => self.complete_file_action(action, reply.value),
                 HostEffect::Player(action) => self.complete_player(action, reply.value),
                 HostEffect::Configuration => self.complete_configuration_save(reply.value),
-                HostEffect::Command | HostEffect::Run => {
+                HostEffect::Command | HostEffect::Run | HostEffect::Pause => {
                     if let Err(error) = reply.value {
                         self.file_error = Some(error);
                     }
@@ -345,82 +384,66 @@ impl crate::EmulatorApp {
 }
 
 impl crate::EmulatorApp {
-    pub(crate) fn update_input_capture(&mut self, ctx: &egui::Context) {
+    pub(crate) fn finish_ui_pass(&mut self, ctx: &egui::Context, first_pass: bool) {
+        if first_pass {
+            self.poll_file_dialog(ctx);
+        }
+        crate::layout::file_dialogs::render(self, ctx);
+
+        self.host.flush();
+        self.host.request_submission_retry(ctx);
+        if first_pass {
+            self.update_host_input(ctx);
+        }
+    }
+
+    pub(crate) fn update_host_input(&mut self, ctx: &egui::Context) {
+        let mut policy = self.keyboard_policy(ctx);
+        let capture_requested = ctx
+            .data_mut(|data| data.remove_temp::<bool>(egui::Id::new("capture_requested")))
+            .unwrap_or(false);
+        self.player.captured = policy.gameplay_active()
+            && self.host.view_release_generation.is_none()
+            && (self.player.captured || capture_requested);
+        if ctx.input(|input| input.pointer.button_pressed(egui::PointerButton::Middle)) {
+            self.player.captured = false;
+        }
+        #[cfg(target_arch = "wasm32")]
+        if crate::host_runtime::take_pointer_capture_loss() {
+            self.player.captured = false;
+        }
+        if self.player.captured {
+            if let Some(error) = self
+                .player
+                .active_configuration
+                .as_ref()
+                .and_then(|configuration| self.player.catalog.validate(configuration).err())
+            {
+                self.player.captured = false;
+                self.file_error = Some(format!(
+                    "Correct input configuration before capture: {error}"
+                ));
+                policy.gui_owns_input = true;
+            }
+        }
+        let mouse = self.player.captured;
+        let gameplay = policy.gameplay_active();
+        if !gameplay {
+            self.host
+                .keyboard_pending
+                .retain(|(event, _)| *event == crate::host_input::HostInputEvent::ReleaseAll);
+        }
+        let frontend = policy.frontend_active();
+        crate::keyboard_input::with_inbox(ctx, |inbox| {
+            inbox.set_policy(policy, self.host.status.generation);
+        });
+
         if self.host.error.is_some() {
             return;
         }
         if let Some(runtime) = &self.host.runtime {
-            let focused = ctx.input(|input| input.focused);
-            let screen_focus = ctx.memory(|memory| {
-                memory.has_focus(egui::Id::new(
-                    crate::layout::main_viewport::amiga_screen::SCREEN_INPUT_ID,
-                ))
-            });
-            let host_text_focus = ctx
-                .memory(|memory| memory.focused())
-                .is_some_and(|id| egui::TextEdit::load_state(ctx, id).is_some());
-            if ctx
-                .data_mut(|data| data.remove_temp::<bool>(egui::Id::new("capture_requested")))
-                .unwrap_or(false)
-            {
-                self.player.captured = true;
-            }
-            if self.player.captured
-                && ctx.input(|input| input.pointer.button_pressed(egui::PointerButton::Middle))
-            {
-                self.player.captured = false;
-            }
-            if !focused
-                || self.host.status.pause_pending
-                || !self.host.status.running
-                || self.player.screen != crate::player::PlayerScreen::Session
-                || (ctx.wants_keyboard_input() && !screen_focus)
-            {
-                self.player.captured = false;
-            }
-            if self.player.captured {
-                if let Some(error) = self
-                    .player
-                    .active_configuration
-                    .as_ref()
-                    .and_then(|configuration| self.player.catalog.validate(configuration).err())
-                {
-                    self.player.captured = false;
-                    self.file_error = Some(format!(
-                        "Correct input configuration before capture: {error}"
-                    ));
-                }
-            }
-            #[cfg(target_arch = "wasm32")]
-            if crate::host_runtime::take_pointer_capture_loss() {
-                self.player.captured = false;
-            }
-            let enabled = self.player.captured;
-            if !enabled && screen_focus {
-                ctx.memory_mut(|memory| {
-                    memory.surrender_focus(egui::Id::new(
-                        crate::layout::main_viewport::amiga_screen::SCREEN_INPUT_ID,
-                    ));
-                });
-            }
-            ctx.memory_mut(|memory| {
-                memory.set_focus_lock_filter(
-                    egui::Id::new(crate::layout::main_viewport::amiga_screen::SCREEN_INPUT_ID),
-                    egui::EventFilter {
-                        tab: enabled,
-                        horizontal_arrows: enabled,
-                        vertical_arrows: enabled,
-                        escape: enabled,
-                    },
-                )
-            });
             let sender = runtime.input_sender();
-            let actions = sender.frontend_actions(
-                focused
-                    && (!host_text_focus || screen_focus)
-                    && self.player.screen == crate::player::PlayerScreen::Session
-                    && self.player.pending_launch.is_none(),
-            );
+            let actions = sender.frontend_actions(frontend);
             let configuration_applied =
                 self.player
                     .active_configuration
@@ -428,72 +451,76 @@ impl crate::EmulatorApp {
                     .is_none_or(|configuration| {
                         sender.configure(&configuration.controls, &self.player.catalog.mappings)
                     });
-            if !configuration_applied {
-                ctx.request_repaint_after(crate::host_runtime::HOST_RETRY_DELAY);
-            }
             if let Some(pads) = sender.gamepads() {
                 self.player.gamepads = pads;
             }
-            let gamepads = focused
-                && (!host_text_focus || screen_focus)
-                && self.player.screen == crate::player::PlayerScreen::Session
-                && self.player.pending_launch.is_none()
-                && self.host.status.running
-                && !self.host.status.pause_pending;
-            let capture_applied = sender.set_enabled(enabled, gamepads);
-            self.host.activation_pending = !configuration_applied || !capture_applied;
-            if !capture_applied {
-                ctx.request_repaint_after(crate::host_runtime::HOST_RETRY_DELAY);
-            }
-            // Keep keys queued until both host mapping and capture have been applied.
-            if enabled && configuration_applied && capture_applied {
+            let activation_applied = configuration_applied
+                && sender.apply_input_activation(
+                    gameplay,
+                    mouse,
+                    gameplay,
+                    self.host.view_release_generation,
+                );
+            self.host.activation_pending = !configuration_applied || !activation_applied;
+            if self.host.activation_pending {
+                ctx.request_repaint_after(HOST_RETRY_DELAY);
+            } else {
+                self.host.view_release_generation = None;
                 while let Some(&(event, generation)) = self.host.keyboard_pending.front() {
+                    #[cfg(target_arch = "wasm32")]
+                    if crate::host_runtime::host_release_pending() {
+                        ctx.request_repaint_after(HOST_RETRY_DELAY);
+                        break;
+                    }
                     if !sender.try_keyboard_event(event, generation) {
-                        ctx.request_repaint_after(crate::host_runtime::HOST_RETRY_DELAY);
+                        ctx.request_repaint_after(HOST_RETRY_DELAY);
                         break;
                     }
                     self.host.keyboard_pending.pop_front();
                 }
             }
+
             #[cfg(not(target_arch = "wasm32"))]
             {
-                ctx.send_viewport_cmd(egui::ViewportCommand::CursorGrab(if enabled {
+                ctx.send_viewport_cmd(egui::ViewportCommand::CursorGrab(if mouse {
                     egui::CursorGrab::Locked
                 } else {
                     egui::CursorGrab::None
                 }));
-                ctx.send_viewport_cmd(egui::ViewportCommand::CursorVisible(!enabled));
-                if enabled {
+                ctx.send_viewport_cmd(egui::ViewportCommand::CursorVisible(!mouse));
+                if mouse {
                     for event in ctx.input(|input| input.events.clone()) {
                         if let Some(event) = self.host.pointer.translate(&event, true) {
-                            self.player.pending_pointer.push(event);
+                            self.host.pending_pointer.push(event);
                         }
                     }
-                    while let Some(event) = self.player.pending_pointer.first() {
-                        if !sender.try_host_event(event, self.host.status.generation) {
-                            ctx.request_repaint_after(crate::host_runtime::HOST_RETRY_DELAY);
-                            break;
+                    if !self.host.activation_pending {
+                        while let Some(event) = self.host.pending_pointer.first() {
+                            if !sender.try_host_event(event, self.host.status.generation) {
+                                ctx.request_repaint_after(HOST_RETRY_DELAY);
+                                break;
+                            }
+                            self.host.pending_pointer.pop();
                         }
-                        self.player.pending_pointer.pop();
                     }
                 } else {
                     self.host.pointer.release();
-                    self.player.pending_pointer.clear();
+                    self.host.pending_pointer.clear();
                 }
             }
             #[cfg(not(target_arch = "wasm32"))]
             if self.host.native_gamepads && !runtime.start_native_gamepads() {
-                ctx.request_repaint_after(crate::host_runtime::HOST_RETRY_DELAY);
+                ctx.request_repaint_after(HOST_RETRY_DELAY);
             }
             if let Some(actions) = actions {
                 for action in actions {
                     self.apply_frontend_action(action);
                 }
+                if self.host.view_release_generation.is_some() {
+                    self.refresh_keyboard_policy(ctx);
+                    ctx.request_repaint();
+                }
             }
         }
-        if !self.player.captured {
-            self.host.keyboard_pending.clear();
-        }
-        self.refresh_keyboard_policy(ctx);
     }
 }

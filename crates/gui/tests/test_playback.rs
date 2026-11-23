@@ -2,7 +2,7 @@
 
 mod common;
 use config::{A500Config, VideoStandard};
-use egui::{Context, Event, Key, Modifiers, RawInput};
+use egui::{Context, RawInput};
 use egui_kittest::{kittest::Queryable, Harness};
 use gui::host_commands::HostCommand;
 use gui::{DebuggerSession, EmulatorApp, ViewMode};
@@ -87,23 +87,17 @@ fn frame_shortcut_and_toolbar_controls_are_operable() {
     app.view_mode = ViewMode::Developer;
     let ctx = Context::default();
     common::settle(&mut app, &ctx);
-    let _ = ctx.run(
-        RawInput {
-            events: vec![Event::Key {
-                key: Key::F11,
-                physical_key: None,
-                pressed: true,
-                repeat: false,
-                modifiers: Modifiers::SHIFT,
-            }],
-            modifiers: Modifiers::SHIFT,
-            ..Default::default()
-        },
-        |ctx| {
-            common::keyboard::inject_taps(ctx, app.host.status.generation);
-            app.update_ui(ctx)
-        },
-    );
+    // Publish the idle debugger keyboard policy before the window events.
+    let _ = ctx.run(RawInput::default(), |ctx| app.update_ui(ctx));
+    gui::keyboard_input::receive_key(&ctx, common::keyboard::key("ShiftLeft", true), None);
+    for pressed in [true, false] {
+        assert!(gui::keyboard_input::receive_key(
+            &ctx,
+            common::keyboard::key("F11", pressed),
+            None,
+        ));
+    }
+    gui::keyboard_input::receive_key(&ctx, common::keyboard::key("ShiftLeft", false), None);
     common::wait(&mut app, &ctx, |app| {
         !app.host.status.running && app.host.status.field_number == 1
     });

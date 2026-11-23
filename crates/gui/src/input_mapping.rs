@@ -54,18 +54,31 @@ impl InputMapping {
             .extend(self.available.iter().map(|p| p.identity.clone()));
         self.pads.clear();
     }
-    pub fn release_capture(&mut self) -> HostInputEvent {
+    pub(crate) fn release_for_view_change(&mut self) {
         self.held.clear();
-        let mut joysticks = [None; 2];
-        if let Some((configuration, _)) = &self.configuration {
-            for (port, binding) in configuration.ports.iter().enumerate() {
-                if let InputSource::Gamepad { identity, .. } = &binding.source {
-                    joysticks[port] = self.pads.get(identity).copied();
-                }
-            }
-        }
-        HostInputEvent::ReleaseCapture { joysticks }
+        self.pads.retain(|_, contacts| *contacts == [false; 6]);
+        self.blocked_pads.extend(
+            self.available
+                .iter()
+                .filter(|pad| !self.pads.contains_key(&pad.identity))
+                .map(|pad| pad.identity.clone()),
+        );
     }
+    pub(crate) fn mouse_release(&self, default_port: usize) -> Option<HostInputEvent> {
+        let port = self.mouse_port(default_port)?;
+        Some(HostInputEvent::ReleaseMouse { port })
+    }
+
+    fn mouse_port(&self, default_port: usize) -> Option<usize> {
+        match &self.configuration {
+            Some((configuration, _)) => configuration
+                .ports
+                .iter()
+                .position(|port| port.source == InputSource::SystemMouse),
+            None => Some(default_port),
+        }
+    }
+
     pub fn keyboard(&mut self, code: u8, pressed: bool) -> Vec<HostInputEvent> {
         if pressed {
             if !self.held.insert(code) {
@@ -120,11 +133,7 @@ impl InputMapping {
         let Some((configuration, _)) = &self.configuration else {
             return vec![event];
         };
-        let Some(port) = configuration
-            .ports
-            .iter()
-            .position(|p| p.source == InputSource::SystemMouse)
-        else {
+        let Some(port) = self.mouse_port(0) else {
             return Vec::new();
         };
         vec![match event {
@@ -185,6 +194,16 @@ impl InputMapping {
         axes: &[f32],
         buttons: &[bool],
     ) -> Vec<HostInputEvent> {
+        self.sample_gamepad(identity, axes, buttons, true)
+    }
+
+    pub(crate) fn sample_gamepad(
+        &mut self,
+        identity: &str,
+        axes: &[f32],
+        buttons: &[bool],
+        fresh: bool,
+    ) -> Vec<HostInputEvent> {
         let Some((configuration, catalog)) = &self.configuration else {
             return Vec::new();
         };
@@ -219,9 +238,19 @@ impl InputMapping {
             contacts[1] |= y > mapping.threshold;
             contacts[2] |= x < -mapping.threshold;
             contacts[3] |= x > mapping.threshold;
+            let neutral = contacts == [false; 6];
+            if !fresh {
+                // A later native event can sample this old press again.
+                if !neutral && self.pads.get(identity) == Some(&[false; 6]) {
+                    self.pads.remove(identity);
+                    self.blocked_pads.insert(identity.to_owned());
+                }
+                continue;
+            }
             if self.blocked_pads.contains(identity) {
-                if contacts.iter().all(|c| !c) {
+                if neutral {
                     self.blocked_pads.remove(identity);
+                    self.pads.insert(identity.to_owned(), contacts);
                 }
                 continue;
             }

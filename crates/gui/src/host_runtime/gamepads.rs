@@ -16,7 +16,7 @@ pub fn collect_native_gamepad(
         return;
     };
     let fresh = observed >= mailboxes.gamepads_started_at;
-    let active = mailboxes.gamepads_active() && fresh;
+    let active = mailboxes.gamepads_active();
     if mailboxes.sample_gamepads(gamepads.samples(), active, fresh) {
         sender.repaint.request_repaint();
     }

@@ -555,3 +555,6 @@ unapplied
 autolink
 rindex
 tokenize
+focusable
+ime
+uncaptured

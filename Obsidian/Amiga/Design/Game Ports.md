@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "game_ports"
 status: "active"
 created: 2026-09-13
-updated: 2026-11-17
+updated: 2026-11-23
 related: ["[Mouse.md](Mouse.md)", "[Joystick.md](Joystick.md)", "[Denise.md](Denise.md)", "[Paula.md](Paula.md)", "[CIA.md](CIA.md)", "[Machine Loop.md](Machine%20Loop.md)", "[General Architecture.md](General%20Architecture.md)"]
 tracked_paths:
   - "crates/game_ports"
@@ -39,9 +39,10 @@ communicate with the devices without holding direct references to them.
 
 Every mouse or joystick event names a physical destination port. The input
 helpers deliver the event only if that port has the matching device type.
-Releasing host input neutralizes both ports and the keyboard. The release
-leaves device types and mouse quadrature position intact. The
-[GUI](Application/GUI.md) owns host source selection and reusable mappings.
+A full host input release neutralizes both ports and the keyboard. A mouse
+release clears its buttons and pending movement. Both operations preserve
+device types and mouse quadrature position. The [GUI input rules](Application/GUI.md#input-and-output)
+define when the frontend releases each control and how it selects host sources.
 Serialized controller state holds no host handles for them.
 
 The frontend uses the current committed controls to select each port's device

@@ -224,7 +224,7 @@ fn gamepad_save_preserves_capture_generation_and_held_contacts() {
     common::settle(&mut app, &ctx);
     let generation = app.host.status.generation;
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
-    while !sender.set_enabled(true, true) {
+    while !sender.set_enabled(true, true, true) {
         assert!(std::time::Instant::now() < deadline);
         std::thread::yield_now();
     }
@@ -391,6 +391,13 @@ fn focused_host_text_prevents_frontend_shortcuts() {
         egui::Key::F2,
         egui::Key::F12,
     ] {
+        let _ = ctx.run(egui::RawInput::default(), |ctx| {
+            egui::Window::new("Host editor").show(ctx, |ui| {
+                ui.add(egui::TextEdit::singleline(&mut text).id(egui::Id::new("host-editor")))
+                    .request_focus();
+            });
+            app.update_ui(ctx);
+        });
         let _ = ctx.run(
             egui::RawInput {
                 events: vec![egui::Event::Key {

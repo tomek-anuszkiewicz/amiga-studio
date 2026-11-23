@@ -53,7 +53,8 @@ pub(crate) fn render_memory_search(
                 let btn_width = 95.0;
                 let text_width =
                     (ui.available_width() - btn_width - ui.spacing().item_spacing.x).max(80.0);
-                ui.add(
+                crate::keyboard_input::text_edit(
+                    ui,
                     egui::TextEdit::singleline(&mut state.query)
                         .hint_text(hint)
                         .desired_width(text_width),

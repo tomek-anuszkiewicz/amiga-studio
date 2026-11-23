@@ -183,7 +183,7 @@ fn playback_toolbar_and_preferences_fit_supported_window_widths() {
 fn test_simulated_f12_view_mode_toggle() {
     let ctx = egui::Context::default();
     let mut app = EmulatorApp::default();
-    common::settle(&mut app, &egui::Context::default());
+    common::settle(&mut app, &ctx);
     assert_eq!(app.view_mode, ViewMode::Developer);
 
     // 1. Press F12 -> switch to ScreenOnly
@@ -254,6 +254,7 @@ fn test_simulated_run_and_step_shortcuts() {
 
     // 1. Press F10 -> Step 1 instruction
     assert_eq!(common::inspect(&mut app).instructions_executed, 0);
+    common::settle(&mut app, &ctx);
     let input_f10 = RawInput {
         events: vec![Event::Key {
             key: Key::F10,
@@ -930,38 +931,23 @@ fn test_memory_hex_right_margin_invariance() {
 fn test_microcode_toggle_and_clock_metrics() {
     let ctx = egui::Context::default();
     let mut app = EmulatorApp::default();
-    common::settle(&mut app, &egui::Context::default());
-    assert!(app.show_microcode);
-
-    // Press F8 -> toggles microcode visibility off
-    let input_f8 = RawInput {
-        events: vec![Event::Key {
-            key: Key::F8,
-            physical_key: None,
-            pressed: true,
-            repeat: false,
-            modifiers: Modifiers::NONE,
-        }],
-        ..Default::default()
-    };
-    let _ = ctx.run(input_f8.clone(), |ctx| {
-        {
-            common::keyboard::inject_taps(ctx, app.host.status.generation);
-            app.update_ui(ctx)
-        };
-    });
-    common::settle(&mut app, &ctx);
-    assert!(!app.show_microcode);
-
-    // Press F8 again -> toggles microcode visibility on
-    let _ = ctx.run(input_f8, |ctx| {
-        {
-            common::keyboard::inject_taps(ctx, app.host.status.generation);
-            app.update_ui(ctx)
-        };
-    });
+    app.view_mode = ViewMode::Developer;
     common::settle(&mut app, &ctx);
     assert!(app.show_microcode);
+
+    for visible in [false, true] {
+        // Publish the idle debugger keyboard policy before the window events.
+        let _ = ctx.run(RawInput::default(), |ctx| app.update_ui(ctx));
+        for pressed in [true, false] {
+            assert!(gui::keyboard_input::receive_key(
+                &ctx,
+                common::keyboard::key("F8", pressed),
+                None,
+            ));
+        }
+        common::settle(&mut app, &ctx);
+        assert_eq!(app.show_microcode, visible);
+    }
 
     // Load code and step CCK to verify micro-step clock metrics
     let code = [0x32, 0x00, 0x4E, 0x75]; // MOVE.W D0, D1
@@ -1344,7 +1330,7 @@ fn test_memory_hex_vertical_scrollbar_interaction() {
 fn test_f12_toggles_views_and_middle_mouse_releases_capture() {
     let ctx = egui::Context::default();
     let mut app = EmulatorApp::default();
-    common::settle(&mut app, &egui::Context::default());
+    common::settle(&mut app, &ctx);
     assert_eq!(app.view_mode, ViewMode::Developer);
 
     // 1. Press F12 -> Switch to ScreenOnly
@@ -2384,6 +2370,7 @@ fn test_simulated_quick_save_and_load_shortcuts() {
     }
     assert_eq!(common::inspect(&mut app).debugger.current_cck, 300);
     assert!(!app.host.status.quick_slots[0]);
+    common::settle(&mut app, &ctx);
 
     // 1. Simulate F6 (Quick Save Slot 1)
     let input_f6 = RawInput {

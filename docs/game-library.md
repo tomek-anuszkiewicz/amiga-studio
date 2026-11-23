@@ -16,14 +16,14 @@ If the connection is unavailable, reassign it. After reconnecting a controller
 or after the app loses focus, release any held controller inputs before using
 them again.
 
-Click the Amiga display to capture keyboard and mouse input. The middle mouse
-button always releases capture without pausing. You can assign a release key in
-Configurations, where it starts unassigned. F12 is fixed and always switches
-Game/Debug. F5 pauses or resumes, F6 saves to slot 1, and F9 loads slot 1. You can
+The keyboard works as soon as the running session is active. Click the Amiga
+display to capture the mouse. The middle mouse button frees the mouse while
+play continues. You can assign a mouse release key in Configurations, where
+it starts unassigned. F12 switches between Game and Debug views. F5 pauses or resumes, F6 saves to slot 1, and F9 loads slot 1. You can
 reassign those three keys. Use the interface to reset. Reset has no keyboard
 shortcut. Escape and F2 otherwise reach the Amiga. The browser still uses Escape
-to release pointer lock. Editing a host text field takes priority over guest
-input.
+to release pointer lock. Host text editors and dialogs take priority over
+guest input.
 
 Gamepads work in an active, running session even without capture. Configuration
 screens and inactive app windows disable gameplay input. The right player panel

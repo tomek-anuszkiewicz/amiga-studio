@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "cia"
 status: "active"
 created: 2026-09-02
-updated: 2026-11-17
+updated: 2026-11-23
 related: ["[CIA.md](CIA.md)", "[Machine Loop.md](Machine%20Loop.md)", "[General Architecture.md](General%20Architecture.md)"]
 tracked_paths:
   - "crates/keyboard"
@@ -89,7 +89,10 @@ The controller queues input in a ten-keycode type-ahead ring. If an attempt to
 queue an ordinary keycode finds the ring already full, the controller retains
 the queued codes and reports `$FA` after draining them. It uses key state to
 suppress duplicate physical transitions. The frontend releases held keys when
-it loses input capture or after a successful user load. The release preserves
+gameplay loses keyboard ownership, on a view change, on queue overflow and
+after a successful user load. Gameplay loses keyboard ownership when the session
+becomes inactive, stops running or hands input to a host editor or dialog.
+[GUI input rules](Application/GUI.md#input-and-output). The release preserves
 any active or retried byte. Releases that do not fit the ring stay pending.
 They follow existing ring data and any due overflow report, or take newly
 available ring entries before fresh host transitions so a release precedes a

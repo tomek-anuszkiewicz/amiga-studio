@@ -24,7 +24,8 @@ struct Mailboxes {
     replies: VecDeque<HostReply>,
     status: HostStatus,
     input: InputQueue,
-    input_enabled: bool,
+    keyboard_enabled: bool,
+    mouse_enabled: bool,
     frontend_enabled: bool,
     gamepad_enabled: bool,
     mapping: crate::input_mapping::InputMapping,
@@ -34,12 +35,12 @@ struct Mailboxes {
 }
 
 impl Mailboxes {
-    fn input_active(&self) -> bool {
-        self.input_enabled && self.status.running && !self.status.pause_pending
+    fn gameplay_active(&self) -> bool {
+        self.status.running && !self.status.pause_pending
     }
 
     fn gamepads_active(&self) -> bool {
-        self.gamepad_enabled && self.status.running && !self.status.pause_pending
+        self.gamepad_enabled && self.gameplay_active()
     }
 
     fn sample_gamepads(
@@ -67,10 +68,12 @@ impl Mailboxes {
                 self.frontend_enabled && frontend_allowed,
             );
             if active {
-                for event in self
-                    .mapping
-                    .gamepad(&sample.identity, &sample.axes, &sample.buttons)
-                {
+                for event in self.mapping.sample_gamepad(
+                    &sample.identity,
+                    &sample.axes,
+                    &sample.buttons,
+                    frontend_allowed,
+                ) {
                     self.push_input(event);
                 }
             }
@@ -84,7 +87,9 @@ impl Mailboxes {
             HostInputEvent::MouseMotion { .. } | HostInputEvent::MouseButtons { .. } => {
                 self.mapping.pointer(event)
             }
-            HostInputEvent::ReleaseCapture { .. } => vec![self.mapping.release_capture()],
+            HostInputEvent::ReleaseMouse { port } => {
+                self.mapping.mouse_release(port).into_iter().collect()
+            }
             HostInputEvent::ReleaseAll => {
                 self.mapping.release();
                 vec![event]
@@ -101,7 +106,11 @@ impl Mailboxes {
             self.input.clear();
             self.input_generation = self.status.generation;
         }
+        let overflow = self.input.overflow_count;
         self.input.push(event);
+        if overflow != self.input.overflow_count {
+            self.mapping.release();
+        }
     }
 }
 
@@ -164,7 +173,8 @@ impl HostRuntime {
                 replies: VecDeque::with_capacity(HOST_QUEUE_CAPACITY),
                 status,
                 input: Default::default(),
-                input_enabled: false,
+                keyboard_enabled: false,
+                mouse_enabled: false,
                 frontend_enabled: false,
                 gamepad_enabled: false,
                 mapping: Default::default(),
@@ -628,7 +638,7 @@ fn run_native(
 #[cfg(target_arch = "wasm32")]
 mod browser;
 #[cfg(target_arch = "wasm32")]
-pub(crate) use browser::take_pointer_capture_loss;
+pub(crate) use browser::{host_release_pending, host_window_active, take_pointer_capture_loss};
 #[cfg(target_arch = "wasm32")]
 use browser::{set_host_input_enabled, start_web};
 

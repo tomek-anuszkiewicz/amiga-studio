@@ -896,7 +896,7 @@ fn developer_image_click_admits_input_and_window_focus_loss_releases_it() {
         )
     };
 
-    // Developer view must reject host input until the image is clicked.
+    // Developer view keeps the mouse free until the image is clicked.
     press();
     assert_eq!(sample(&mut app, true), (0x40, 0x0500));
     let image_id = egui::Id::new("amiga-screen-input");
@@ -917,7 +917,7 @@ fn developer_image_click_admits_input_and_window_focus_loss_releases_it() {
         );
     }
     common::settle(&mut app, &context);
-    assert!(context.memory(|memory| memory.has_focus(image_id)));
+    assert!(app.player.captured);
     press();
     assert_eq!(sample(&mut app, true), (0, 0));
 
@@ -948,7 +948,7 @@ fn runtime_input_capture_pause_reset_and_load_release_obsolete_controls() {
     };
     let capture = |enabled| {
         let deadline = Instant::now() + Duration::from_secs(10);
-        while !sender.set_enabled(enabled, false) {
+        while !sender.set_enabled(true, enabled, false) {
             assert!(Instant::now() < deadline);
             std::thread::yield_now();
         }
@@ -1110,7 +1110,7 @@ fn running_restore_and_keyboard_reset_invalidate_cached_controller_contacts() {
                 &ConfigurationCatalog::default().mappings,
             )
         });
-        retry(&mut || sender.set_enabled(true, true));
+        retry(&mut || sender.set_enabled(true, true, true));
         assert!(wait_reply(&mut host, HostCommand::Run).value.is_ok());
         let generation = host.status().generation;
         let sample = |generation, pressed| {
@@ -1173,7 +1173,7 @@ fn running_restore_and_keyboard_reset_invalidate_cached_controller_contacts() {
         let generation = host.status().generation;
         assert!(host.status().running);
         for captured in [false, true, false] {
-            retry(&mut || sender.set_enabled(captured, true));
+            retry(&mut || sender.set_enabled(true, captured, true));
             delivered(&mut host);
             assert_eq!(
                 snapshot(&mut host)
