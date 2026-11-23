@@ -5,6 +5,22 @@ changes and affected interactions against approved requirements. The user
 chooses the scope and which reviews to run. There is no mandatory set of review
 areas or rounds.
 
+For a change review, assess the delivered changes identified by the supplied
+commit range, diff or file list, together with their affected interactions.
+Within each file, follow the changes and their consequences. Read unchanged
+callers, dependencies, tests and specifications as needed to assess those
+consequences.
+
+For each finding, identify the delivered change that introduced, made reachable
+or worsened the issue, or the approved requirement assigned to that change that
+remains unmet. Keep unrelated pre-existing defects in separate optional
+observations; they do not expand the assigned review or repair scope. A broader
+stage or repository assessment requires an explicit assignment.
+
+Run required checks and audits at their prescribed scope and report their actual
+failures even when they concern unchanged files. The finding-scope rule does not
+reduce those checks or turn a failed required check into a pass.
+
 Use fresh context for an independent review. Report inherited author history or
 missing inputs that limit independence. Read relevant source and requirements
 before accepting an author's explanation. Reviewers report findings without
