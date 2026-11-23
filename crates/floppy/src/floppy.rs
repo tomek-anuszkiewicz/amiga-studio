@@ -1,7 +1,7 @@
 //! Amiga 500 floppy drive controls, sense lines and host-owned image buffers.
 //!
 //! Models the 3.5-inch Double Density drive mechanics (80 cylinders, 2 heads,
-//! Chinon FB-354 / Sony MPF-110), track geometry, and multi-chip hardware coordination
+//! Chinon F-354E), track geometry, and multi-chip hardware coordination
 //! across CIA-A sensing ($BFE001), CIA-B mechanics ($BFD100), and Paula MFM DMA ($DFF020..$DFF024).
 
 pub mod mfm;
@@ -28,6 +28,9 @@ const BIT_STATUS_TRACK_ZERO_SHIFT: u8 = 4;
 const BIT_STATUS_WRITE_PROTECT_SHIFT: u8 = 3;
 const BIT_STATUS_CHANGED_SHIFT: u8 = 2;
 const STATUS_RELEASED: u8 = 0x3C;
+const HEAD_TRAVEL_US: u32 = 3_000;
+const HEAD_SETTLE_US: u32 = 15_000;
+const SIDE_READ_RECOVERY_US: u32 = 100;
 
 /// Standard Double Density disk geometry constants
 const CYLINDERS_PER_DISK: u8 = 80;
@@ -36,6 +39,22 @@ const TRACKS_PER_DISK: usize = (CYLINDERS_PER_DISK as usize) * (HEADS_PER_DISK a
 pub const SECTORS_PER_TRACK: usize = 11;
 pub const SECTOR_DATA_BYTES: usize = 512;
 pub const FORMATTED_DISK_BYTES: usize = TRACKS_PER_DISK * SECTORS_PER_TRACK * SECTOR_DATA_BYTES; // 901,120 bytes (880 KB)
+
+/// Writable tracks of a disk, independent of the drive that holds it.
+#[derive(Debug)]
+pub struct FloppyDisk {
+    tracks: Vec<media::Track>,
+    write_protected: bool,
+}
+
+impl FloppyDisk {
+    pub fn from_adf(data: &[u8]) -> Option<Self> {
+        (data.len() == FORMATTED_DISK_BYTES).then(|| Self {
+            tracks: media::encode_disk(data),
+            write_protected: false,
+        })
+    }
+}
 
 /// Individual 3.5-inch floppy disk drive (DF0: to DF3:)
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -46,7 +65,7 @@ pub struct FloppyDrive {
     pub cylinder: u8,
     /// Active head/surface (0 = Lower, 1 = Upper)
     pub side: u8,
-    /// True if drive spindle motor is spinning
+    /// MOTOR command latched at selection.
     pub motor_on: bool,
     /// True if drive unit is currently selected by CIA-B
     pub selected: bool,
@@ -58,9 +77,18 @@ pub struct FloppyDrive {
     /// cleared only when a disk is present AND a step pulse is received!
     pub disk_change_flip_flop: bool,
     /// Prepared circular raw tracks, including usable media in serialized state.
-    track_data: Option<Vec<u8>>,
+    track_data: Option<Vec<media::Track>>,
+    clock_hz: u32,
+    spindle_speed: u32,
+    spindle_fraction: u32,
     rotation_bit: u32,
     cell_phase: u32,
+    index_window: bool,
+    /// Destination cylinder and remaining travel in CCK.
+    head_travel: Option<(u8, u32)>,
+    settle_cck: u32,
+    read_recovery_cck: u32,
+    writing: bool,
 }
 
 impl Default for FloppyDrive {
@@ -75,8 +103,16 @@ impl Default for FloppyDrive {
             write_protected: false,
             disk_change_flip_flop: true, // Power-on with no disk inserted
             track_data: None,
+            clock_hz: config::VideoStandard::Pal.color_clock_hz(),
+            spindle_speed: 0,
+            spindle_fraction: 0,
             rotation_bit: 0,
             cell_phase: 0,
+            index_window: false,
+            head_travel: None,
+            settle_cck: 0,
+            read_recovery_cck: 0,
+            writing: false,
         }
     }
 }
@@ -87,48 +123,102 @@ impl FloppyDrive {
         self.side = LOWER_SIDE;
         self.motor_on = false;
         self.selected = false;
+        self.spindle_speed = 0;
+        self.head_travel = None;
+        self.settle_cck = 0;
+        self.read_recovery_cck = 0;
+        self.writing = false;
     }
 
     /// Action method: sets head side (0 = lower head, 1 = upper head)
     #[inline]
     fn set_side(&mut self, side: u8) {
-        self.side = side.min(HEADS_PER_DISK - 1);
+        if self.side != side {
+            self.side = side;
+            self.read_recovery_cck = self
+                .read_recovery_cck
+                .max(self.delay_us(SIDE_READ_RECOVERY_US));
+        }
     }
 
     /// Action method: steps the head one cylinder inward or outward.
     /// If a disk is inserted, receiving a step pulse clears the `_CHNG` flip-flop.
     fn step_pulse(&mut self, inward: bool) {
-        if inward {
-            if self.cylinder < CYLINDERS_PER_DISK - 1 {
-                self.cylinder += 1;
-            }
-        } else if self.cylinder > 0 {
-            self.cylinder -= 1;
-        }
-
-        // Hardware quirk: step pulse clears the disk change flip-flop if a disk is in the drive
         if self.disk_inserted {
             self.disk_change_flip_flop = false;
         }
+        let next = if inward {
+            (self.cylinder + 1).min(CYLINDERS_PER_DISK - 1)
+        } else {
+            self.cylinder.saturating_sub(1)
+        };
+        if next != self.cylinder && self.head_travel.is_none() {
+            self.head_travel = Some((next, self.delay_us(HEAD_TRAVEL_US)));
+            self.settle_cck = self.delay_us(HEAD_SETTLE_US);
+        }
+    }
+
+    fn delay_us(&self, micros: u32) -> u32 {
+        (u64::from(self.clock_hz) * u64::from(micros)).div_ceil(1_000_000) as u32
+    }
+
+    fn advance_head(&mut self) {
+        if let Some((next, remaining)) = &mut self.head_travel {
+            *remaining -= 1;
+            if *remaining == 0 {
+                self.cylinder = *next;
+                self.head_travel = None;
+            }
+        } else if self.settle_cck != 0 {
+            self.settle_cck -= 1;
+        }
+        if self.read_recovery_cck != 0 {
+            self.read_recovery_cck -= 1;
+        }
+    }
+
+    fn has_spindle_work(&self) -> bool {
+        self.spindle_speed != 0 || (self.disk_inserted && self.motor_on) || self.writing
+    }
+
+    fn needs_media_step(&self) -> bool {
+        self.connected
+            && (self.track_data.is_some()
+                || self.has_spindle_work()
+                || self.head_travel.is_some()
+                || self.settle_cck != 0
+                || self.read_recovery_cck != 0)
     }
 
     /// Inserts a floppy disk image into the drive
     pub fn insert_disk(&mut self, data: &[u8]) -> bool {
-        if data.len() != FORMATTED_DISK_BYTES {
+        let Some(mut disk) = FloppyDisk::from_adf(data) else {
             return false;
-        }
-        self.track_data = Some(media::encode_disk(data));
-        self.disk_inserted = true;
-        // Inserting a disk trips the change flip-flop until stepped
-        self.disk_change_flip_flop = true;
+        };
+        disk.write_protected = self.write_protected;
+        self.replace_disk(Some(disk));
         true
     }
 
     /// Ejects the disk from the drive
     pub fn eject_disk(&mut self) {
-        self.track_data = None;
-        self.disk_inserted = false;
+        self.replace_disk(None);
+    }
+
+    /// Moves the disk and its write protection tab, retaining drive mechanics.
+    pub fn replace_disk(&mut self, disk: Option<FloppyDisk>) -> Option<FloppyDisk> {
+        let ejected = self.track_data.take().map(|tracks| FloppyDisk {
+            tracks,
+            write_protected: self.write_protected,
+        });
+        self.disk_inserted = disk.is_some();
         self.disk_change_flip_flop = true;
+        self.writing = false;
+        if let Some(disk) = disk {
+            self.write_protected = disk.write_protected;
+            self.track_data = Some(disk.tracks);
+        }
+        ejected
     }
 
     /// Returns true if the drive head is at Track 0 (cylinder 0)
@@ -140,7 +230,7 @@ impl FloppyDrive {
     /// Returns true if the drive is ready (spindle motor spinning and disk inserted)
     #[inline]
     pub fn is_ready(&self) -> bool {
-        self.motor_on && self.disk_inserted
+        self.motor_on && self.disk_inserted && self.spindle_speed == self.nominal_spindle_speed()
     }
 
     /// Returns true if the write protection tab is engaged
@@ -172,30 +262,26 @@ pub struct FloppyController {
     pub drives: [FloppyDrive; FLOPPY_DRIVE_COUNT],
     /// Last applied controls, for motor-selection and step edge detection.
     pub prev_ciab_prb: u8,
-    clock_hz: u32,
     media_output_active: bool,
 }
 
 impl Default for FloppyController {
     fn default() -> Self {
-        Self {
-            pins: FloppyPins::default(),
-            drives: core::array::from_fn(|index| FloppyDrive {
-                connected: index == 0,
-                ..FloppyDrive::default()
-            }),
-            prev_ciab_prb: CONTROL_RELEASED,
-            clock_hz: config::VideoStandard::Pal.color_clock_hz(),
-            media_output_active: false,
-        }
+        Self::new(config::VideoStandard::Pal)
     }
 }
 
 impl FloppyController {
     pub fn new(video: config::VideoStandard) -> Self {
         Self {
-            clock_hz: video.color_clock_hz(),
-            ..Self::default()
+            pins: FloppyPins::default(),
+            drives: core::array::from_fn(|index| FloppyDrive {
+                connected: index == 0,
+                clock_hz: video.color_clock_hz(),
+                ..FloppyDrive::default()
+            }),
+            prev_ciab_prb: CONTROL_RELEASED,
+            media_output_active: false,
         }
     }
 
@@ -244,8 +330,8 @@ impl FloppyController {
                     LOWER_SIDE
                 },
                 step: if selected
-                    && previous & BIT_CONTROL_STEP != 0
-                    && control & BIT_CONTROL_STEP == 0
+                    && previous & BIT_CONTROL_STEP == 0
+                    && control & BIT_CONTROL_STEP != 0
                 {
                     Some(control & BIT_CONTROL_DIRECTION == 0)
                 } else {
@@ -260,7 +346,9 @@ impl FloppyController {
         let current = self.pins.control_input;
         let previous = self.prev_ciab_prb;
         if current == previous {
-            self.step_media();
+            if self.media_output_active || self.drives.iter().any(FloppyDrive::needs_media_step) {
+                self.step_media();
+            }
             return;
         }
         let controls = self.control_states(current);
@@ -280,12 +368,18 @@ impl FloppyController {
 
     fn step_media(&mut self) {
         // Unattached deterministic pin fixtures retain control of the connector.
-        let attached = self.drives.iter().any(|drive| drive.track_data.is_some());
+        let mut attached = false;
         let mut read_high = true;
         let mut index_high = true;
         for drive in &mut self.drives {
-            let (transition, index) = drive.step_rotation(self.clock_hz);
-            if drive.connected && drive.selected {
+            if drive.connected {
+                attached |= drive.track_data.is_some();
+                drive.advance_head();
+                if !drive.has_spindle_work() {
+                    continue;
+                }
+                let (transition, index) =
+                    drive.step_rotation(!self.pins.write_enable_high, !self.pins.write_data_high);
                 read_high &= !transition;
                 index_high &= !index;
             }

@@ -258,6 +258,7 @@ impl HostRuntime {
                 | HostCommand::ResetWarm
                 | HostCommand::Launch { .. }
                 | HostCommand::RestorePlayer { .. }
+                | HostCommand::LoadPlayerQuick { .. }
                 | HostCommand::ReconfigurePorts(_)
                 | HostCommand::LoadQuickSlot { .. }
                 | HostCommand::LoadRom(_)

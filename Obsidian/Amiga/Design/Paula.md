@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "paula"
 status: "active"
 created: 2026-09-06
-updated: 2026-11-17
+updated: 2026-11-23
 related: ["[Audio.md](Audio.md)", "[Interrupts.md](Interrupts.md)", "[Floppy.md](Floppy.md)", "[Game Ports.md](Game%20Ports.md)", "[Agnus.md](Agnus.md)", "[DMA.md](DMA.md)", "[Machine Loop.md](Machine%20Loop.md)"]
 tracked_paths:
   - "crates/paula"
@@ -197,10 +197,18 @@ The pointer and count advance only on actual transfers. Paula requests
 DSKBLK when the count reaches zero, and any write words already in the
 FIFO continue through the serial output.
 
-WORDSYNC waits for a match and aligns subsequent words. Each match can
-request DSKSYN even when WORDSYNC is disabled. MSBSYNC skips zero bits
-before each byte's leading one. DSKBYTR.DMAON requires the armed/active
-engine and both DMACON gates.
+With WORDSYNC enabled, Paula waits for the first DSKSYNC match and starts
+read DMA with the following word. Each later match sets the boundary for
+the next word. If the match completes a word, Paula queues it when space is available.
+If it ends between word boundaries, Paula discards the partial word.
+If a read starts on the first of two consecutive `$4489` sync marks,
+the second mark is the first DMA word.
+[HRM Chapter 8, DSKSYNC](../Reference/Hardware%20Reference%20Manual/08%20-%20Chapter%208%20-%20Interface%20Hardware.md#dsksync--disk-input-synchronizer)
+and [Inside Paula's Floppy Controller, Part I, section 4.9 and Figure 4-4](https://www.techtravels.org/wp-content/uploads/2026/08/Inside_Paulas_Floppy_Controller_Part_I.pdf?v=20260904#page=28)
+
+Each match can request DSKSYN even when WORDSYNC is disabled. MSBSYNC skips
+zero bits before each byte's leading one. DSKBYTR.DMAON requires the
+armed/active engine and both DMACON gates.
 
 The CCK-level data separator uses nominal seven-clock fast and fourteen-clock
 slow bit cells. A falling read pulse re-anchors the cell, and the separator

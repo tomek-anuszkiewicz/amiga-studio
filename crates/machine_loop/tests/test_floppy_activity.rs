@@ -101,10 +101,19 @@ fn head_steps_survive_round_trip_and_counter_wrap_without_motor_or_media() {
     common::cia::write_byte(m, 0xbfd100, 0xf5);
     m.step_cycles(2);
     m.paula.disk_activity.sequences[0] = u64::MAX;
-    for controls in [0xf4, 0xf7, 0xf6] {
-        common::cia::write_byte(m, 0xbfd100, controls);
-    }
-    m.step_cycles(2);
+    common::cia::write_byte(m, 0xbfd100, 0xf4);
+    m.step_cycles(10);
+    assert_eq!(m.paula.disk_activity.sequences[0], u64::MAX);
+    common::cia::write_byte(m, 0xbfd100, 0xf5);
+    m.step_cycles(63_847);
+    assert_eq!(m.paula.disk_activity.sequences[0], 0);
+    assert_eq!(m.floppy.drives[0].cylinder, 1);
+    common::cia::write_byte(m, 0xbfd100, 0xf7);
+    m.step_cycles(10);
+    common::cia::write_byte(m, 0xbfd100, 0xf6);
+    m.step_cycles(10);
+    common::cia::write_byte(m, 0xbfd100, 0xf7);
+    m.step_cycles(10_643);
     assert_eq!(m.floppy.drives[0].cylinder, 0);
     assert_eq!(m.paula.disk_activity.sequences, [1, 0, 0, 0]);
     m.step_cycles(100);

@@ -41,51 +41,63 @@ fn read_requests_use_the_last_available_disk_slots() {
 #[test]
 fn read_fifo_resynchronizes_and_counts_only_selected_dma_words() {
     for (control, clocks) in [(0x0500, 7), (0x0400, 14)] {
-        let mut paula = arm(0x8003, control);
+        let mut paula = arm(0x8004, control);
         paula
             .disk_activity
             .set_recipients([true, false, true, false]);
         send_bits(&mut paula, 0x1234, 16, clocks);
         assert_eq!(paula.disk.buffered_words(), 0);
         assert_eq!(paula.disk_dma_word(), None);
-        for word in [0x4489, 0x5a42, 0x4489, 0xa55a, 0xffff] {
-            send_bits(&mut paula, word, 16, clocks);
-        }
+        send_bits(&mut paula, 0x4489, 16, clocks);
+        assert_eq!(paula.disk.buffered_words(), 0);
+        assert_eq!(paula.interrupts.intreq & 0x1000, 0x1000);
+        paula.set_intreq(0x1000);
+        send_bits(&mut paula, 0x5a42, 16, clocks);
+        assert_eq!(paula.interrupts.intreq & 0x1000, 0);
+        send_bits(&mut paula, 0x4489, 16, clocks);
+        assert_eq!(paula.disk.buffered_words(), 2);
+        assert_eq!(paula.interrupts.intreq & 0x1000, 0x1000);
+        assert_eq!(paula.dsklen, 0x8004);
+        assert_eq!(paula.disk_activity.sequences, [0; 4]);
+        check_read_transfer(&mut paula, 0x5a42, 3, 1);
+        send_bits(&mut paula, 0xa55a, 16, clocks);
+        send_bits(&mut paula, 0xffff, 16, clocks);
         assert_eq!(paula.disk.buffered_words(), 3);
         assert_eq!(paula.dsklen, 0x8003);
-        assert_eq!(paula.interrupts.intreq & 0x1000, 0x1000);
-        assert_eq!(paula.disk_activity.sequences, [0; 4]);
+        assert_eq!(paula.disk_activity.sequences, [1, 0, 1, 0]);
         assert_eq!(paula.peek_dskbytr(), 0xc0ff);
         assert_eq!(paula.read_dskbytr(), 0xc0ff);
         assert_eq!(paula.peek_dskbytr(), 0x40ff);
         assert_eq!(paula.read_dskbytr(), 0x40ff);
-        assert_eq!(paula.disk_activity.sequences, [1, 0, 1, 0]);
+        assert_eq!(paula.disk_activity.sequences, [2, 0, 2, 0]);
         paula.strobe_sync(0x03c);
         assert_eq!(paula.sync.dmal_frame & 0xff, 0xa8);
-        for (word, remaining) in [(0x5a42, 2), (0xa55a, 1), (0xffff, 0)] {
-            let before = (paula.disk.buffered_words(), paula.dsklen, paula.dskdat);
-            assert_eq!(paula.disk_dma_word(), Some(word));
-            assert_eq!(paula.disk_dma_word(), Some(word));
-            assert_eq!(
-                (paula.disk.buffered_words(), paula.dsklen, paula.dskdat),
-                before
-            );
-            let activity = paula.disk_activity.sequences;
-            assert_eq!(paula.disk_dma_word(), Some(word));
-            assert_eq!(paula.disk_activity.sequences, activity);
-            assert_eq!(paula.take_disk_dma_word(), Some(word));
-            let events = 4 - u64::from(remaining);
-            assert_eq!(paula.disk_activity.sequences, [events, 0, events, 0]);
-            assert_eq!(paula.dsklen & 0x3fff, remaining);
+        for (word, remaining, events) in [(0x4489, 2, 3), (0xa55a, 1, 4), (0xffff, 0, 5)] {
+            check_read_transfer(&mut paula, word, remaining, events);
         }
         assert_eq!(paula.disk_dma_word(), None);
         assert_eq!(paula.take_disk_dma_word(), None);
-        assert_eq!(paula.disk_activity.sequences, [4, 0, 4, 0]);
+        assert_eq!(paula.disk_activity.sequences, [5, 0, 5, 0]);
         assert!(!paula.dma_active);
         paula.step_cck();
         assert_eq!(paula.interrupts.intreq & 2, 2);
         assert_eq!(paula.peek_dskbytr() & 0x4000, 0);
     }
+}
+
+fn check_read_transfer(paula: &mut Paula, word: u16, remaining: u16, events: u64) {
+    let before = (paula.disk.buffered_words(), paula.dsklen, paula.dskdat);
+    let activity = paula.disk_activity.sequences;
+    assert_eq!(paula.disk_dma_word(), Some(word));
+    assert_eq!(paula.disk_dma_word(), Some(word));
+    assert_eq!(
+        (paula.disk.buffered_words(), paula.dsklen, paula.dskdat),
+        before
+    );
+    assert_eq!(paula.disk_activity.sequences, activity);
+    assert_eq!(paula.take_disk_dma_word(), Some(word));
+    assert_eq!(paula.disk_activity.sequences, [events, 0, events, 0]);
+    assert_eq!(paula.dsklen & 0x3fff, remaining);
 }
 
 #[test]

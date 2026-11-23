@@ -254,6 +254,15 @@ impl EmulatorApp {
             return;
         }
         if let Ok(HostValue::PlayerRestored(association)) = &value {
+            for id in association.mounted.iter().flatten() {
+                if !self.player.disks.iter().any(|disk| &disk.id == id) {
+                    self.player.disks.push(crate::player::SessionDisk {
+                        id: id.clone(),
+                        label: id.clone(),
+                        bytes: None,
+                    });
+                }
+            }
             self.player.mounted = association.mounted.clone();
             self.player.captured = false;
         }

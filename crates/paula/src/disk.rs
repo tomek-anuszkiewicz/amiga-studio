@@ -200,11 +200,7 @@ impl Paula {
                     | u16::from(self.disk.data_shift as u8);
             }
         }
-        if matched && self.adkcon & BIT_WORD_SYNC != 0 {
-            self.disk.sync_wait = false;
-            self.disk.byte_bits = 0;
-            self.disk.word_bits = 0;
-        } else if self.disk.word_bits == WORD_BITS {
+        if self.disk.word_bits == WORD_BITS {
             self.disk.word_bits = 0;
             if self.disk_dma_enabled()
                 && !self.disk.sync_wait
@@ -212,6 +208,11 @@ impl Paula {
             {
                 self.disk.push(self.disk.data_shift);
             }
+        }
+        if matched && self.adkcon & BIT_WORD_SYNC != 0 {
+            self.disk.sync_wait = false;
+            self.disk.byte_bits = 0;
+            self.disk.word_bits = 0;
         }
     }
 

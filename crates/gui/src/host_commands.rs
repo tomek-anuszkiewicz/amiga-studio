@@ -75,6 +75,11 @@ pub enum HostCommand {
         ports: [debugger::launch::DeviceKind; 2],
         resume: bool,
     },
+    LoadPlayerQuick {
+        json: String,
+        game_id: String,
+        ports: [debugger::launch::DeviceKind; 2],
+    },
     SaveQuickSlot(usize),
     LoadQuickSlot {
         slot: usize,

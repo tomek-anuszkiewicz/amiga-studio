@@ -7,7 +7,7 @@ use crate::host_commands::{
 use crate::host_video::{FrameInfo, VideoExchange, VideoExchangeError};
 use crate::layout::left_dock::registers::EditRegister;
 use crate::playback::Playback;
-use debugger::DebuggerSession;
+use debugger::{launch::DetachedDisks, DebuggerSession};
 use std::time::Duration;
 
 #[derive(Debug)]
@@ -21,6 +21,9 @@ pub struct MachineOwner {
     revision: u64,
     association: debugger::SaveAssociation,
     quick_associations: [debugger::SaveAssociation; debugger::session::QUICK_SLOT_COUNT],
+    disk_session: u64,
+    quick_disk_sessions: [u64; debugger::session::QUICK_SLOT_COUNT],
+    detached_disks: DetachedDisks,
 }
 
 impl MachineOwner {
@@ -29,16 +32,20 @@ impl MachineOwner {
     }
 
     pub fn new(session: Box<DebuggerSession>) -> Self {
+        let generation = 1;
         Self {
             session,
             playback: Playback::default(),
-            generation: 1,
+            generation,
             publication: 0,
             pending_image: true,
             shutdown: false,
             revision: 0,
             association: debugger::SaveAssociation::default(),
             quick_associations: std::array::from_fn(|_| debugger::SaveAssociation::default()),
+            disk_session: generation,
+            quick_disk_sessions: [generation; debugger::session::QUICK_SLOT_COUNT],
+            detached_disks: DetachedDisks::default(),
         }
     }
 
@@ -140,6 +147,58 @@ impl MachineOwner {
         debugger::launch::reconcile_ports(&mut self.session, ports);
     }
 
+    fn start_disk_session(&mut self, generation: u64) {
+        self.disk_session = generation;
+        self.detached_disks = DetachedDisks::default();
+    }
+
+    fn restored_disk_ids<'a>(
+        state: &debugger::A500State,
+        association: &'a debugger::SaveAssociation,
+    ) -> [Option<&'a str>; config::FLOPPY_DRIVE_COUNT] {
+        std::array::from_fn(|index| {
+            if state.floppy.drives[index].disk_inserted {
+                association.mounted[index].as_deref()
+            } else {
+                None
+            }
+        })
+    }
+
+    fn restore_player(
+        &mut self,
+        json: &str,
+        game_id: Option<&str>,
+        ports: [debugger::launch::DeviceKind; 2],
+        resume: bool,
+        quick_load: bool,
+    ) -> Result<HostValue, String> {
+        let saved = debugger::SaveState::from_json(json).map_err(|e| e.to_string())?;
+        let association = saved.header.association;
+        if association.game_id.as_deref() != game_id
+            || (quick_load && self.association.game_id.as_deref() != game_id)
+        {
+            return Err("This save belongs to a different game".into());
+        }
+        if quick_load {
+            self.detached_disks.retain_before_quick_load(
+                &mut self.session,
+                &self.association.mounted,
+                Self::restored_disk_ids(&saved.state, &association),
+            );
+        }
+        self.session.load_state(&saved.state);
+        self.association = association;
+        self.finish_user_load(ports);
+        if !quick_load {
+            self.start_disk_session(self.generation);
+        }
+        if resume {
+            self.session.toggle_run();
+        }
+        Ok(HostValue::PlayerRestored(self.association.clone()))
+    }
+
     fn apply(&mut self, command: HostCommand) -> Result<HostValue, String> {
         match command {
             HostCommand::Run => {
@@ -184,34 +243,45 @@ impl MachineOwner {
                 game_id,
                 ports,
                 resume,
+            } => return self.restore_player(&json, game_id.as_deref(), ports, resume, false),
+            HostCommand::LoadPlayerQuick {
+                json,
+                game_id,
+                ports,
             } => {
-                let saved = debugger::SaveState::from_json(&json).map_err(|e| e.to_string())?;
-                if saved.header.association.game_id != game_id {
-                    return Err("This save belongs to a different game".into());
-                }
-                self.session.load_state(&saved.state);
-                self.association = saved.header.association;
-                self.finish_user_load(ports);
-                if resume {
-                    self.session.toggle_run();
-                }
-                return Ok(HostValue::PlayerRestored(self.association.clone()));
+                return self.restore_player(&json, Some(&game_id), ports, true, true);
             }
             HostCommand::SaveQuickSlot(slot) => {
                 self.session
                     .save_quick_slot(slot)
                     .map_err(|e| e.to_string())?;
                 self.quick_associations[slot - 1] = self.association.clone();
+                self.quick_disk_sessions[slot - 1] = self.disk_session;
             }
             HostCommand::LoadQuickSlot { slot, ports } => {
-                if let Some(association) = self.quick_associations.get(slot.wrapping_sub(1)) {
+                let index = slot.wrapping_sub(1);
+                if let Some(association) = self.quick_associations.get(index) {
                     self.validate_game(association)?;
+                    if self.quick_disk_sessions[index] == self.disk_session {
+                        if let Some(state) = &self.session.quick_slots[index] {
+                            let restored = Self::restored_disk_ids(state, association);
+                            self.detached_disks.retain_before_quick_load(
+                                &mut self.session,
+                                &self.association.mounted,
+                                restored,
+                            );
+                        }
+                    }
                 }
                 self.session
                     .load_quick_slot(slot)
                     .map_err(|e| e.to_string())?;
-                self.association = self.quick_associations[slot - 1].clone();
+                self.association = self.quick_associations[index].clone();
                 self.finish_user_load(ports);
+                let disk_session = self.quick_disk_sessions[index];
+                if disk_session != self.disk_session {
+                    self.start_disk_session(disk_session);
+                }
                 return Ok(HostValue::PlayerRestored(self.association.clone()));
             }
             HostCommand::Launch { setup, association } => {
@@ -229,13 +299,25 @@ impl MachineOwner {
                 self.session = replacement;
                 self.association = association;
                 self.new_generation();
+                self.start_disk_session(self.generation);
             }
             HostCommand::MountDisk {
                 drive,
                 bytes,
                 disk_id,
             } => {
-                debugger::launch::mount(&mut self.session, drive, bytes.as_deref())?;
+                let mounted_id = self
+                    .association
+                    .mounted
+                    .get(drive)
+                    .and_then(Option::as_deref);
+                self.detached_disks.mount(
+                    &mut self.session,
+                    drive,
+                    mounted_id,
+                    disk_id.as_deref(),
+                    bytes.as_deref(),
+                )?;
                 self.association.mounted[drive] = disk_id;
             }
             HostCommand::LoadRom(bytes) => {

@@ -91,6 +91,11 @@ pub(crate) enum PendingLaunch {
         save: Option<std::path::PathBuf>,
         normal_boot: bool,
     },
+    #[cfg(not(target_arch = "wasm32"))]
+    LibraryQuick {
+        game: crate::game_library::LibraryGame,
+        save: std::path::PathBuf,
+    },
 }
 
 impl PlayerState {
@@ -207,6 +212,10 @@ impl EmulatorApp {
                 save,
                 normal_boot,
             } => self.start_library_game(game, save, normal_boot),
+            #[cfg(not(target_arch = "wasm32"))]
+            PendingLaunch::LibraryQuick { game, save } => {
+                self.open_library_game(game, Some(save), false, true);
+            }
         }
     }
 
@@ -457,14 +466,15 @@ impl EmulatorApp {
     }
 
     pub(crate) fn mount_player_disk(&mut self, drive: usize, id: Option<String>) {
-        let bytes = id
-            .as_ref()
-            .and_then(|id| self.player.disks.iter().find(|disk| &disk.id == id))
-            .and_then(|disk| disk.bytes.clone());
-        if id.is_some() && bytes.is_none() {
-            self.file_error = Some("Disk is unavailable; return to setup".into());
-            return;
-        }
+        let bytes = if let Some(id) = &id {
+            let Some(disk) = self.player.disks.iter().find(|disk| &disk.id == id) else {
+                self.file_error = Some("Disk is unavailable; return to setup".into());
+                return;
+            };
+            disk.bytes.clone()
+        } else {
+            None
+        };
         self.player.captured = false;
         self.player.busy = true;
         self.host.queue_effect(
@@ -503,11 +513,9 @@ impl EmulatorApp {
                 .and_then(|name| {
                     crate::game_library::relative_asset(&game.directory.join("saves"), name.trim())
                 }) {
-                Ok(path) => self.request_player_launch(PendingLaunch::Library {
-                    game,
-                    save: Some(path),
-                    normal_boot: false,
-                }),
+                Ok(path) => {
+                    self.request_player_launch(PendingLaunch::LibraryQuick { game, save: path })
+                }
                 Err(error) => self.file_error = Some(format!("Quick slot unavailable: {error}")),
             }
         }
@@ -576,6 +584,17 @@ impl EmulatorApp {
         game: crate::game_library::LibraryGame,
         save: Option<std::path::PathBuf>,
         normal_boot: bool,
+    ) {
+        self.open_library_game(game, save, normal_boot, false);
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn open_library_game(
+        &mut self,
+        game: crate::game_library::LibraryGame,
+        save: Option<std::path::PathBuf>,
+        normal_boot: bool,
+        quick_load: bool,
     ) {
         let prepared = (|| {
             let continuing =
@@ -647,11 +666,20 @@ impl EmulatorApp {
                 let saved = debugger::SaveState::from_json(&json).map_err(|e| e.to_string())?;
                 game.manifest
                     .validate_association(&saved.header.association)?;
-                HostCommand::RestorePlayer {
-                    json,
-                    game_id: Some(game.manifest.id.clone()),
-                    ports: configuration.controls.ports.each_ref().map(|p| p.device),
-                    resume: true,
+                let ports = configuration.controls.ports.each_ref().map(|p| p.device);
+                if quick_load {
+                    HostCommand::LoadPlayerQuick {
+                        json,
+                        game_id: game.manifest.id.clone(),
+                        ports,
+                    }
+                } else {
+                    HostCommand::RestorePlayer {
+                        json,
+                        game_id: Some(game.manifest.id.clone()),
+                        ports,
+                        resume: true,
+                    }
                 }
             } else {
                 let rom = std::fs::read(&configuration.launch.rom).map_err(|e| {

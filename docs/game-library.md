@@ -82,6 +82,13 @@ directly and resumes the session. It bypasses boot and the current hardware
 preset. Host input still needs a compatible configuration. Slot saves also
 persist per game.
 
+When an Amiga program writes to disk A, you can switch to disk B and reinsert
+A later in the same session. A still contains the program's changes, and the
+original ADF file stays unchanged. A save file carries the disks inserted when
+you save. If you want to open a changed disk in a later session, insert it
+before saving. A quick load during the session restores the slot's mounted
+disks and keeps the other disks you have used in that session.
+
 To prepare an initial state, start its game and save progress. Copy that save
 outside `saves/` and set `initial_state` to the relative filename. Ordinary saves
 leave the initial state intact. If loading it fails, the app shows an error.
@@ -95,5 +102,5 @@ files again after reopening because the browser build keeps their bytes only for
 the session. This iteration has no browser library, bundle loader or persistent
 browser save catalog.
 
-Saves explicitly use schema 14. The app leaves earlier snapshots in place and
-cannot load or migrate them. Media writes and ADF write-back remain unavailable.
+Saves explicitly use schema 15. The app leaves earlier snapshots in place and
+cannot load or migrate them.
