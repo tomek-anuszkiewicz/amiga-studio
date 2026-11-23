@@ -271,8 +271,9 @@ def check_graphify(area, probe):
             area.record("current", "Graphify installed pin")
         candidate = pip_index(probe, "graphifyy", Version)[0]
         if candidate > Version(pin):
-            area.record("pin review", "Graphify", observed=observed or "not installed", declared=pin,
-                        candidate=str(candidate), source=PYPI)
+            use_pin = observed is None or Version(observed) != Version(pin)
+            area.record("pin review", "Graphify", observed=pin if use_pin else observed, declared=pin,
+                        candidate=str(candidate), source=PYPI, detail="project pin" if use_pin else None)
         else:
             area.record("current", "Graphify PyPI release")
     except (*DATA_ERRORS, SyntaxError) as error:

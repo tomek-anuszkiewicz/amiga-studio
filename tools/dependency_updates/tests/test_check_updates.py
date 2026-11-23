@@ -1,8 +1,9 @@
 """Fixture checks for the manual dependency report."""
 
 from collections import Counter
-from contextlib import redirect_stdout
+from contextlib import contextmanager, redirect_stdout
 import ctypes
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from io import StringIO
 import json
 import os
@@ -10,6 +11,7 @@ from pathlib import Path
 import shutil
 import sys
 from tempfile import TemporaryDirectory
+from threading import Event, Thread
 from types import SimpleNamespace
 import unittest
 from unittest.mock import Mock, patch
@@ -24,6 +26,19 @@ def rendered(area):
     out = StringIO()
     Report(out).write_area(area)
     return out.getvalue()
+
+
+@contextmanager
+def serve_http(handler):
+    with ThreadingHTTPServer(("127.0.0.1", 0), handler) as server:
+        thread = Thread(target=server.serve_forever, kwargs={"poll_interval": 0.05})
+        thread.start()
+        try:
+            with patch.dict(os.environ, {"no_proxy": "127.0.0.1"}):
+                yield f"http://127.0.0.1:{server.server_port}"
+        finally:
+            server.shutdown()
+            thread.join()
 
 
 class FlushedOutput(StringIO):
@@ -57,6 +72,65 @@ class UpdateFixtures(unittest.TestCase):
 
     def write_json(self, name, data):
         return self.write(name, json.dumps(data))
+
+    def test_http_probe_limits_total_time_when_body_keeps_arriving(self):
+        sent = Event()
+        stop = Event()
+
+        class Handler(BaseHTTPRequestHandler):
+            def do_GET(self):
+                if self.path == "/redirect":
+                    self.send_response(302)
+                    self.send_header("Location", "/slow")
+                    self.end_headers()
+                    return
+                self.send_response(200)
+                self.send_header("Content-Length", "12")
+                self.end_headers()
+                try:
+                    for index in range(12):
+                        self.wfile.write(b"a")
+                        if index == 1:
+                            sent.set()
+                        if stop.wait(0.2):
+                            return
+                except OSError:
+                    pass
+
+            def log_message(self, *_args):
+                pass
+
+        with serve_http(Handler) as url:
+            try:
+                with patch.object(common, "HTTP_DEADLINE", 1.2, create=True):
+                    with self.assertRaisesRegex(ProbeError, "timed out"):
+                        self.probe.http(f"{url}/redirect", "text/plain")
+                self.assertTrue(sent.is_set(), "the redirected response must start before the deadline")
+            finally:
+                stop.set()
+
+    def test_http_probe_caches_successes_and_reports_only_safe_http_error_details(self):
+        requests = []
+
+        class Handler(BaseHTTPRequestHandler):
+            def do_GET(self):
+                requests.append((self.path, self.headers["Accept"]))
+                if self.path == "/releases":
+                    self.send_response(200)
+                    self.end_headers()
+                    self.wfile.write(b'{"version": "1.2.3"}')
+                else:
+                    self.send_error(503, "fixture-password")
+
+            def log_message(self, *_args):
+                pass
+
+        with serve_http(Handler) as url:
+            for _ in range(2):
+                self.assertEqual(self.probe.http(f"{url}/releases"), {"version": "1.2.3"})
+            with self.assertRaisesRegex(ProbeError, "^source returned HTTP 503$"):
+                self.probe.http(f"{url}/unavailable", "text/plain")
+        self.assertEqual(requests, [("/releases", "application/json"), ("/unavailable", "text/plain")])
 
     def test_cargo_reports_only_changes_tied_to_direct_declarations_by_locked_version(self):
         self.write("Cargo.toml", """
@@ -180,6 +254,39 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
                       rendered(area))
         self.assertEqual(config.read_bytes(), original)
 
+    def test_failed_crates_index_keeps_each_direct_lock_version(self):
+        self.write("Cargo.toml", '[workspace]\nmembers = ["apps/*"]\n')
+        self.write("apps/gui/Cargo.toml", '[package]\nname = "gui"\n[dependencies]\negui = "0.32"\n')
+        self.write("apps/preview/Cargo.toml", '[package]\nname = "preview"\n[dependencies]\negui = "0.31"\n')
+        self.write("Cargo.lock", """
+[[package]]
+name = "gui"
+version = "0.1.0"
+dependencies = ["egui 0.32.3"]
+[[package]]
+name = "preview"
+version = "0.1.0"
+dependencies = ["egui 0.31.1"]
+[[package]]
+name = "egui"
+version = "0.32.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+[[package]]
+name = "egui"
+version = "0.31.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+""")
+        area = Area("Cargo")
+        with (patch.object(cargo, "cargo_configuration", return_value=False),
+              patch.object(self.probe, "http", side_effect=ProbeError("fixture index unavailable")) as http,
+              patch.object(self.probe, "run", return_value="Locking 0 packages") as run):
+            cargo.check_crates(area, self.probe, self.tracked)
+        http.assert_called_once_with("https://index.crates.io/eg/ui/egui", "text/plain")
+        self.assertEqual(run.call_args.args[0][:4], ["cargo", "+stable", "update", "--dry-run"])
+        self.assertEqual(area.counts, {"inconclusive": 2, "current": 2})
+        self.assertIn("egui (gui) 0.32.3 (fixture index unavailable)", rendered(area))
+        self.assertIn("egui (preview) 0.31.1 (fixture index unavailable)", rendered(area))
+
     def test_nested_python_requirements_keep_pins_and_query_once_across_files(self):
         self.write("first/requirements.txt", "-r nested/include.txt\n")
         self.write("first/nested/include.txt", "-r ../packages.txt\n")
@@ -225,6 +332,35 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
         self.assertIn("Missing\n    missing not installed", result)
         self.assertNotIn("transit", result)
         self.assertNotIn("2.0rc1", result)
+
+    def test_python_package_pin_review_uses_the_pin_when_installation_is_newer(self):
+        self.write("book/requirements.txt", "playwright==1.63.0\n")
+        _, _, Version = python_packages.packaging_api()
+
+        def releases(_probe, name, _version):
+            return [Version("1.64.0"), Version("1.63.0")] if name == "playwright" else [Version("25.0")]
+
+        area = Area("Python")
+        with (patch.object(python_packages.metadata, "distribution", return_value=SimpleNamespace(version="1.65.0")),
+              patch.object(python_packages, "pip_index", side_effect=releases),
+              patch.object(self.probe, "run", return_value="pip 25.0 from installed pip")):
+            python_packages.check_python_packages(area, self.probe, self.tracked)
+        result = rendered(area)
+        self.assertIn("Requires changing project requirements\n    playwright 1.63.0 -> 1.64.0 (project pin)", result)
+        self.assertIn("Installation or lockfile differences\n    playwright 1.65.0", result)
+        self.assertEqual(area.counts, {"pin review": 1, "drift": 1, "current": 1})
+
+    def test_graphify_pin_review_uses_the_pin_when_installation_is_newer(self):
+        self.write("tools/graphify/refresh.py", 'GRAPHIFY_VERSION = "0.9.74"\n')
+        _, _, Version = python_packages.packaging_api()
+        area = Area("Setup")
+        with (patch.object(setup_tools.metadata, "version", return_value="0.9.76"),
+              patch.object(setup_tools, "pip_index", return_value=[Version("0.9.75")])):
+            setup_tools.check_graphify(area, self.probe)
+        result = rendered(area)
+        self.assertIn("Requires changing project requirements\n    Graphify 0.9.74 -> 0.9.75 (project pin)", result)
+        self.assertIn("Installation or lockfile differences\n    Graphify 0.9.76", result)
+        self.assertEqual(area.counts, {"pin review": 1, "drift": 1})
 
     def test_pip_keeps_only_the_public_index_when_falling_back_to_text(self):
         _, _, Version = python_packages.packaging_api()
@@ -317,15 +453,99 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
         area = Area("Node.js and npm")
         with (patch.object(self.probe, "run", return_value="v24.1.0"),
               patch.object(node_packages, "check_node"),
-              patch.object(node_packages, "npm_runtime", return_value=("10.0.0", "24.1.0", "node", "npm-cli.js")),
+              patch.object(node_packages, "npm_runtime", return_value=("10.0.0", "24.1.0", "node", "npm-cli.js", "npm")),
               patch.object(self.probe, "http", side_effect=ProbeError("fixture registry unavailable"))):
             node_packages.check_node_packages(area, self.probe, set())
         self.assertIn("Could not check\n    npm 10.0.0 (fixture registry unavailable)", rendered(area))
         self.assertNotIn("npm uses Node.js", rendered(area))
 
-    def test_npm_queries_only_packages_declared_in_manifest_without_node_modules(self):
+    def npm_fixture_environment(self):
         if not shutil.which("npm.cmd" if sys.platform == "win32" else "npm"):
-            self.skipTest("npm is required to execute its semver rules")
+            self.skipTest("npm is required to read its configuration and interpret package specs")
+        userconfig = self.write("user.npmrc", "")
+        globalconfig = self.write("global.npmrc", "")
+        env = {key: value for key, value in os.environ.items() if not key.lower().startswith("npm_config_")}
+        return {**env, "npm_config_userconfig": str(userconfig), "npm_config_globalconfig": str(globalconfig)}
+
+    def write_book_npm_inputs(self):
+        directory = "tools/bootstrap/book-to-markdown"
+        for name in ("package.json", "package-lock.json"):
+            path = f"{directory}/{name}"
+            self.write(path, (check_updates.ROOT / path).read_text(encoding="utf-8"))
+        return directory
+
+    def test_npm_does_not_query_public_package_when_config_replaces_the_lock_registry(self):
+        env = self.npm_fixture_environment()
+        directory = self.write_book_npm_inputs()
+        package = "https://registry.npmjs.org/katex"
+        private = "https://mirror.example.invalid/npm/"
+        for setting in ("project npmrc", "environment", "protected credentials"):
+            with self.subTest(setting=setting):
+                registry = ("https://fixture-user:fixture-password@mirror.example.invalid/npm/"
+                            if setting == "protected credentials" else private)
+                configured = dict(env)
+                if setting != "project npmrc":
+                    configured["npm_config_registry"] = registry
+                self.write(f"{directory}/.npmrc", f"registry={private}\n" if setting == "project npmrc" else "")
+                area = Area("Node.js and npm")
+                with (patch.dict(os.environ, configured, clear=True),
+                      patch.object(node_packages, "check_node"),
+                      patch.object(self.probe, "http", return_value={"name": "npm", "versions": {"99.0.0": {}}})
+                      as http):
+                    node_packages.check_node_packages(area, self.probe, self.tracked)
+                self.assertNotIn(package, [call.args[0] for call in http.call_args_list])
+                http.assert_called_once_with("https://registry.npmjs.org/npm", "application/vnd.npm.install-v1+json")
+                expected = "Could not check\n    katex 0.18.2 ("
+                if setting != "protected credentials":
+                    expected += "the configured npm registry needs a separate check)"
+                self.assertIn(expected, rendered(area))
+                self.assertNotIn("fixture-password", rendered(area))
+
+    def test_npm_does_not_query_public_package_for_new_direct_sources_with_the_old_lock(self):
+        env = self.npm_fixture_environment()
+        directory = self.write_book_npm_inputs()
+        for spec in ("https://fixture-user:fixture-password@packages.example.invalid/katex.tgz",
+                     "git+https://fixture-user:fixture-password@git.example.invalid/katex.git#main", "1.2.3-fixture.tgz"):
+            with self.subTest(scheme=spec.split(":", 1)[0]):
+                self.write_json(f"{directory}/package.json", {"dependencies": {"katex": spec}})
+                area = Area("Node.js and npm")
+                with (patch.dict(os.environ, env, clear=True), patch.object(node_packages, "check_node"),
+                      patch.object(self.probe, "http", return_value={"name": "npm", "versions": {"99.0.0": {}}})
+                      as http):
+                    node_packages.check_node_packages(area, self.probe, self.tracked)
+                http.assert_called_once_with("https://registry.npmjs.org/npm", "application/vnd.npm.install-v1+json")
+                self.assertIn("Could not check\n    katex 0.18.2 (the version or dependency source needs a separate check)",
+                              rendered(area))
+                self.assertIsNone(next(row for row in area.findings if row.item == "katex").declared)
+                self.assertNotIn("fixture-password", rendered(area))
+
+    def test_npm_checks_scoped_packages_only_when_that_scope_uses_the_public_registry(self):
+        env = self.npm_fixture_environment()
+        self.write("tools/book/.npmrc", "@mirror:registry=https://mirror.example.invalid/npm/\n")
+        dependencies = {"@mirror/widget": "1.0.0", "@public/widget": "1.0.0"}
+        self.write_json("tools/book/package.json", {"dependencies": dependencies})
+        self.write_json("tools/book/package-lock.json", {"packages": {
+            f"node_modules/{name}": {"version": version,
+                                     "resolved": f"https://registry.npmjs.org/{name}/-/widget-{version}.tgz"}
+            for name, version in dependencies.items()
+        }})
+        area = Area("Node.js and npm")
+
+        def http(url, _accept):
+            name = "npm" if url.endswith("/npm") else "@public/widget"
+            return {"name": name, "versions": {"100.0.0": {}}}
+
+        with (patch.dict(os.environ, env, clear=True), patch.object(node_packages, "check_node"),
+              patch.object(self.probe, "http", side_effect=http) as requests):
+            node_packages.check_node_packages(area, self.probe, self.tracked)
+        self.assertCountEqual([call.args[0] for call in requests.call_args_list],
+                              ["https://registry.npmjs.org/npm", "https://registry.npmjs.org/%40public%2Fwidget"])
+        report = rendered(area)
+        self.assertIn("@mirror/widget 1.0.0 (the configured npm registry needs a separate check)", report)
+        self.assertIn("@public/widget 1.0.0 -> 100.0.0", report)
+
+    def test_npm_queries_only_packages_declared_in_manifest_without_node_modules(self):
+        env = self.npm_fixture_environment()
         self.write_json("tools/book/package.json", {"dependencies": {"katex": "0.18.2"}})
         self.write_json("tools/book/package-lock.json", {"packages": {
             "": {"dependencies": {"katex": "0.18.2"}},
@@ -348,9 +568,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
         area = Area("Node.js and npm")
         self.assertFalse((self.root / "tools/book/node_modules").exists())
-        with patch.object(self.probe, "http", side_effect=http) as requests, patch.object(node_packages, "check_node"):
+        with (patch.dict(os.environ, env, clear=True), patch.object(self.probe, "http", side_effect=http) as requests,
+              patch.object(node_packages, "check_node")):
             node_packages.check_node_packages(area, self.probe, self.tracked)
-        self.assertCountEqual([call.args[0].rsplit("/", 1)[-1] for call in requests.call_args_list], ["npm", "katex"])
+        self.assertCountEqual([call.args[0] for call in requests.call_args_list],
+                              ["https://registry.npmjs.org/npm", "https://registry.npmjs.org/katex"])
         self.assertCountEqual([
             (row.status, row.item, row.observed, row.declared, row.candidate, row.context)
             for row in area.findings if row.item != "npm"
@@ -367,9 +589,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
     def test_current_edge_is_sufficient_without_a_bundled_browser_or_its_metadata(self):
         edge = self.write("Edge/msedge.exe", "")
         playwright = SimpleNamespace(locate_file=lambda path: self.root / path)
-        releases = [{"Product": "Stable", "Releases": [
-            {"Platform": "Windows", "Architecture": "x64", "ProductVersion": "150.0.1.2"},
-        ]}]
+        releases = [
+            {"Product": "Beta", "Releases": [
+                {"Platform": "Windows", "Architecture": "x64", "ProductVersion": "151.0.1.2"},
+            ]},
+            {"Product": "Stable", "Releases": [
+                {"Platform": "Windows", "Architecture": "arm64", "ProductVersion": "150.0.1.5"},
+                {"Platform": "MacOS", "Architecture": "universal", "ProductVersion": "150.0.1.4"},
+                {"Platform": "Windows", "Architecture": "x86", "ProductVersion": "150.0.1.3"},
+                {"Platform": "Windows", "Architecture": "x64", "ProductVersion": "150.0.1.2"},
+            ]},
+        ]
         area = Area("Book Review browsers")
         with (patch.object(browsers.metadata, "distribution", return_value=playwright),
               patch.object(self.probe, "run", return_value=json.dumps(str(edge))) as commands,
@@ -382,6 +612,27 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
         requests.assert_called_once_with(browsers.EDGE_RELEASES)
         self.assertEqual(area.counts, {"current": 1})
         self.assertEqual(rendered(area), "  No findings.\n")
+
+    def test_edge_uses_the_newest_release_for_the_matching_stable_platform_and_architecture(self):
+        edge = self.write("Edge/msedge.exe", "")
+        releases = [
+            {"Product": "Dev", "Releases": [
+                {"Platform": "Windows", "Architecture": "x64", "ProductVersion": "152.0.2.1"},
+            ]},
+            {"Product": "Stable", "Releases": [
+                {"Platform": "Windows", "Architecture": "x64", "ProductVersion": "150.0.1.2"},
+                {"Platform": "Windows", "Architecture": "x64", "ProductVersion": "150.0.1.3"},
+                {"Platform": "Linux", "Architecture": "x64", "ProductVersion": "150.0.1.4"},
+                {"Platform": "Windows", "Architecture": "arm64", "ProductVersion": "150.0.1.5"},
+            ]},
+        ]
+        area = Area("Book Review browsers")
+        with (patch.object(browsers, "edge_installed_version", return_value=((150, 0, 1, 1), "windows", "x64")),
+              patch.object(self.probe, "http", return_value=releases) as requests):
+            browsers.check_edge(area, self.probe, edge)
+        requests.assert_called_once_with("https://edgeupdates.microsoft.com/api/products")
+        self.assertEqual(area.counts, {"update": 1})
+        self.assertIn("Microsoft Edge Stable 150.0.1.1 -> 150.0.1.3", rendered(area))
 
     def test_missing_edge_is_reported_as_the_default_book_review_browser(self):
         playwright = SimpleNamespace(locate_file=lambda path: self.root / path)
@@ -454,6 +705,43 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
                 if status == "inconclusive":
                     self.assertIn("Could not check\n    Rust Stable 1.100.0", rendered(area))
                 components.assert_called_once_with(area, self.probe, "stable", stable, "Stable setup fixture")
+
+    def test_nextest_compares_the_installation_with_historical_and_upstream_versions_independently(self):
+        nextest_command = ["cargo", "nextest", "--version"]
+        nextest_url = "https://api.github.com/repos/nextest-rs/nextest/releases/latest"
+        for installed, status, candidate in (("0.9.152", "update", "0.9.170"),
+                                             ("0.9.170", "baseline difference", None)):
+            with self.subTest(installed=installed):
+                area = Area("Rust toolchains and Cargo tools")
+
+                def run(command):
+                    if command == ["rustup", "show", "active-toolchain"]:
+                        return "stable-x86_64-pc-windows-msvc (default)"
+                    if command == ["rustup", "toolchain", "list"]:
+                        return ""
+                    if command == ["trunk", "--version"] or command == ["cargo", "llvm-cov", "--version"]:
+                        return "1.0.0"
+                    self.assertEqual(command, nextest_command)
+                    return f"cargo-nextest {installed}"
+
+                def http(url):
+                    tag = "cargo-nextest-0.9.170" if url == nextest_url else "v1.0.0"
+                    return {"tag_name": tag, "draft": False, "prerelease": False}
+
+                with (patch.object(self.probe, "run", side_effect=run) as commands,
+                      patch.object(self.probe, "http", side_effect=http) as requests,
+                      patch.object(setup_tools, "check_rustup")):
+                    setup_tools.check_rust(area, self.probe, self.tracked)
+                self.assertEqual([call.args[0] for call in commands.call_args_list].count(nextest_command), 1)
+                self.assertEqual([call.args[0] for call in requests.call_args_list].count(nextest_url), 1)
+                rows = [row for row in area.findings if row.item.startswith("cargo-nextest")]
+                self.assertEqual([(row.status, row.observed, row.candidate) for row in rows],
+                                 [(status, installed, candidate)])
+                if candidate is None:
+                    self.assertIn("Historical version differences\n    cargo-nextest 0.9.170 (historical version 0.9.152)",
+                                  rendered(area))
+                else:
+                    self.assertIn("Updates available\n    cargo-nextest 0.9.152 -> 0.9.170", rendered(area))
 
     def test_windows_checks_availability_and_compares_separate_pwsh_release(self):
         area = Area("Setup")
@@ -587,7 +875,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
              patch.object(cargo, "cargo_configuration", return_value=False), redirect_stdout(summary):
             self.assertEqual(check_updates.main([]), 0)
         report = summary.getvalue()
-        self.assertIn("Could not check\n    lemma (top) (fixture source returned HTTP 503)", report)
+        self.assertIn("Could not check\n    lemma (top) 1.0.0 (fixture source returned HTTP 503)", report)
         self.assertIn("Updates within current requirements\n    lemma 1.0.0 -> 1.0.1", report)
         self.assertIn(f" -> {python_candidate} (selected release series)", report)
         self.assertIn("Partial report", report)

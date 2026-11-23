@@ -275,7 +275,10 @@ def check_crates(area, probe, tracked):
             direct_locks.append((decl, locked))
             latest = releases[decl.name]
             if isinstance(latest, ProbeError):
-                raise latest
+                for row in locked:
+                    area.incomplete(item, CRATES_INDEX, latest, observed=row["version"],
+                                    declared=decl.requirement, context=context)
+                continue
             for row in locked:
                 observed = stable_crate_version(row["version"])
                 if cargo_allows(decl.requirement, latest):

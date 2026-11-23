@@ -1,6 +1,7 @@
 """Compare Node release lines and npm lock entries using npm's semver rules."""
 
 from collections import defaultdict
+from contextlib import contextmanager
 from datetime import date, datetime, timezone
 import json
 import os
@@ -17,6 +18,7 @@ from .common import DATA_ERRORS, ProbeError, triplet, version_text
 NODE_INDEX = "https://nodejs.org/dist/index.json"
 NODE_SCHEDULE = "https://raw.githubusercontent.com/nodejs/Release/main/schedule.json"
 NPM_REGISTRY = "https://registry.npmjs.org"
+NPM_NAME = re.compile(r"(?:@[a-zA-Z0-9_.-]+/)?[a-zA-Z0-9_.-]+")
 NPM_DEPENDENCIES = ("dependencies", "devDependencies", "optionalDependencies", "peerDependencies")
 
 
@@ -60,13 +62,10 @@ def installed_npm_cli(probe, location, version):
     return None
 
 
-def npm_runtime(probe):
-    launcher = shutil.which("npm.cmd" if sys.platform == "win32" else "npm")
-    if not launcher:
-        raise ProbeError("npm is unavailable")
-    executable = Path(launcher)
+@contextmanager
+def npm_environment(probe):
     probe.scratch.mkdir(parents=True, exist_ok=True)
-    with TemporaryDirectory(prefix="npm-version-", dir=probe.scratch) as scratch:
+    with TemporaryDirectory(prefix="npm-probe-", dir=probe.scratch) as scratch:
         settings = {
             "npm_config_cache": scratch, "npm_config_logs_dir": scratch, "npm_config_logs_max": "0",
             "npm_config_timing": "false", "npm_config_update_notifier": "false", "npm_config_offline": "true",
@@ -76,6 +75,15 @@ def npm_runtime(probe):
         keys = {key.lower() for key in settings}
         env = {key: None for key in os.environ if key.lower() in keys}
         env.update(settings)
+        yield env
+
+
+def npm_runtime(probe):
+    launcher = shutil.which("npm.cmd" if sys.platform == "win32" else "npm")
+    if not launcher:
+        raise ProbeError("npm is unavailable")
+    executable = Path(launcher)
+    with npm_environment(probe) as env:
         # With no version argument this lists versions without updating the package.
         versions = json.loads(probe.run([launcher, "version", "--json"], env=env))
         installed, runtime = versions["npm"], versions["node"]
@@ -96,17 +104,28 @@ def npm_runtime(probe):
             matches = {path for candidate in candidates if (path := installed_npm_cli(probe, candidate, installed))}
             if len(matches) == 1:
                 cli = matches.pop()
-        return installed, runtime, node, str(cli) if cli else None
+        return installed, runtime, node, str(cli) if cli else None, launcher
 
 
 SEMVER_QUERY = """
 const fs = require("node:fs");
 const { createRequire } = require("node:module");
-const semver = createRequire(process.argv[1])("semver");
+const requireNpm = createRequire(process.argv[1]);
+const semver = requireNpm("semver");
 const rows = JSON.parse(fs.readFileSync(0, "utf8"));
-const results = rows.map(({ version, ranges, candidates, engine }) => {
+const packageArg = rows.some(row => row.name) ? requireNpm("npm-package-arg") : null;
+const results = rows.map(({ name, version, ranges, candidates, engine }) => {
     if (!semver.valid(version) || ranges.some(range => semver.validRange(range) === null)) {
         return null;
+    }
+    if (name) {
+        try {
+            if (!ranges.every(range => ["version", "range"].includes(packageArg.resolve(name, range).type))) {
+                return null;
+            }
+        } catch {
+            return null;
+        }
     }
     const releases = candidates.filter(([candidate]) => semver.valid(candidate) &&
         !semver.prerelease(candidate) && semver.gt(candidate, version));
@@ -122,13 +141,61 @@ process.stdout.write(JSON.stringify(results));
 
 
 def npm_metadata(probe, name):
-    if not re.fullmatch(r"(?:@[a-zA-Z0-9_.-]+/)?[a-zA-Z0-9_.-]+", name):
+    if not NPM_NAME.fullmatch(name):
         raise ProbeError("invalid npm registry package name")
     data = probe.http(f"{NPM_REGISTRY}/{quote(name, safe='')}", "application/vnd.npm.install-v1+json")
     if data["name"] != name or not data["versions"]:
         raise ProbeError("npm did not report matching package releases")
     return [(version, entry.get("engines", {}).get("node"))
             for version, entry in data["versions"].items()]
+
+
+def npm_semver(probe, node, cli, queries):
+    if not node or not cli:
+        raise ProbeError("could not identify the installed npm package matching the resolved launcher")
+    output = probe.run([node, "-e", SEMVER_QUERY, cli], input_text=json.dumps(queries), timeout=12,
+                       env={"NODE_OPTIONS": None, "NODE_PATH": None})
+    results = json.loads(output)
+    if not isinstance(results, list) or len(results) != len(queries):
+        raise ProbeError("npm semver did not return a result for each checked package")
+    return results
+
+
+def npm_config(probe, launcher, directory, env, keys):
+    output = probe.run([launcher, "config", "get", *keys], cwd=directory, env=env)
+    if len(keys) == 1:
+        return {keys[0]: output}
+    pairs = [line.partition("=") for line in output.splitlines()]
+    if any(not separator for _, separator, _ in pairs) or sorted(key for key, _, _ in pairs) != sorted(keys):
+        raise ProbeError("npm did not report the requested registry settings")
+    return {key: value for key, _, value in pairs}
+
+
+def public_npm_scopes(probe, launcher, directory, scopes):
+    public_urls = {NPM_REGISTRY, NPM_REGISTRY + "/"}
+    with npm_environment(probe) as env:
+        config = npm_config(probe, launcher, directory, env, ["registry", "scope"])
+        # npm can resolve a public tarball through the configured default registry.
+        if config["registry"] not in public_urls:
+            return set()
+        fallback = config["scope"].removeprefix("@")
+        if fallback and not re.fullmatch(r"[a-zA-Z0-9_.-]+", fallback):
+            raise ProbeError("npm reported an unrecognized default scope")
+        fallback_key = f"@{fallback}:registry" if fallback else None
+        keys = {scope: f"{scope}:registry" for scope in scopes if scope}
+        settings = set(keys.values())
+        if fallback_key:
+            settings.add(fallback_key)
+        registries = npm_config(probe, launcher, directory, env, sorted(settings)) if settings else {}
+
+    public = set()
+    for scope in scopes:
+        registry = registries.get(keys.get(scope), "undefined")
+        if registry == "undefined":
+            registry = registries.get(fallback_key, "undefined")
+        if registry in public_urls or registry == "undefined":
+            public.add(scope)
+    return public
 
 
 def declared_dependencies(manifest):
@@ -141,6 +208,69 @@ def declared_dependencies(manifest):
         if group != "optionalDependencies":
             required.update(declarations)
     return requirements, required
+
+
+def public_npm_packages(area, probe, path, tracked, *, launcher, node, cli):
+    manifest = PurePosixPath(path)
+    owner = manifest.parent.name or "checkout root"
+    lockfile = str(manifest.with_name("package-lock.json"))
+    if lockfile not in tracked:
+        raise ProbeError("no tracked package-lock.json accompanies the manifest")
+    packages = probe.json(lockfile)["packages"]
+    dependencies, required = declared_dependencies(probe.json(path))
+    pending = []
+    for name, requirements in sorted(dependencies.items()):
+        data = packages.get(f"node_modules/{name}")
+        if data is None:
+            if name in required:
+                area.incomplete(name, lockfile, "a declared dependency is missing from the lockfile", context=owner)
+            continue
+        observed = data.get("version")
+        resolved = urlsplit(data.get("resolved", ""))
+        if (data.get("link") or data.get("name", name) != name or not NPM_NAME.fullmatch(name)
+                or resolved.scheme != "https" or resolved.netloc != "registry.npmjs.org"):
+            area.incomplete(name, lockfile, "check the declared package source separately",
+                            observed=observed, context=owner)
+            continue
+        pending.append((name, observed, sorted(requirements)))
+    if not pending:
+        return
+
+    try:
+        # Validate the current declarations before using the lockfile to look up any package.
+        queries = [{"name": name, "version": observed, "ranges": ranges, "candidates": []}
+                   for name, observed, ranges in pending]
+        results = npm_semver(probe, node, cli, queries)
+        registry_packages = []
+        for (name, observed, ranges), result in zip(pending, results):
+            if result is None:
+                area.incomplete(name, path, "the version or dependency source needs a separate check",
+                                observed=observed, context=owner)
+            else:
+                registry_packages.append((name, observed, ranges))
+    except DATA_ERRORS as error:
+        for name, observed, _ in pending:
+            area.incomplete(name, path, error if isinstance(error, ProbeError) else "invalid npm semver result",
+                            observed=observed, context=owner)
+        return
+    if not registry_packages:
+        return
+
+    def scope(name):
+        return name.partition("/")[0] if name.startswith("@") else None
+
+    try:
+        scopes = public_npm_scopes(probe, launcher, probe.root / manifest.parent,
+                                  {scope(name) for name, _, _ in registry_packages})
+        reason = "the configured npm registry needs a separate check"
+    except DATA_ERRORS:
+        scopes = set()
+        reason = "could not identify the configured npm registry"
+    for name, observed, ranges in registry_packages:
+        if scope(name) in scopes:
+            yield name, observed, ranges, owner
+        else:
+            area.incomplete(name, path, reason, observed=observed, context=owner)
 
 
 def check_node_packages(area, probe, tracked):
@@ -166,9 +296,9 @@ def check_node_packages(area, probe, tracked):
                             error if isinstance(error, ProbeError) else "invalid npm registry response",
                             observed=observed, declared=declaration, context=context)
 
-    npm_node = npm_cli = None
+    npm_node = npm_cli = launcher = None
     try:
-        installed, runtime, npm_node, npm_cli = npm_runtime(probe)
+        installed, runtime, npm_node, npm_cli, launcher = npm_runtime(probe)
         if runtime != node_version:
             area.notes.append(f"npm uses Node.js {runtime}.")
         collect("npm", installed, [], engine=runtime)
@@ -178,42 +308,18 @@ def check_node_packages(area, probe, tracked):
 
     packages_paths = sorted(path for path in tracked if PurePosixPath(path).name == "package.json")
     for path in packages_paths:
-        manifest_path = PurePosixPath(path)
-        owner = manifest_path.parent.name or "checkout root"
-        lockfile = str(manifest_path.with_name("package-lock.json"))
         try:
-            if lockfile not in tracked:
-                raise ProbeError("no tracked package-lock.json accompanies the manifest")
-            packages = probe.json(lockfile)["packages"]
-            dependencies, required = declared_dependencies(probe.json(path))
-            for name, requirements in sorted(dependencies.items()):
-                data = packages.get(f"node_modules/{name}")
-                if data is None:
-                    if name in required:
-                        area.incomplete(name, lockfile, "a declared dependency is missing from the lockfile", context=owner)
-                    continue
-                name = data.get("name") or name
-                resolved = urlsplit(data.get("resolved", ""))
-                ranges = sorted(requirements)
-                if (data.get("link") or resolved.scheme != "https" or resolved.netloc != "registry.npmjs.org"
-                        or any(value.startswith(("npm:", "file:", "git:")) for value in ranges)):
-                    area.incomplete(name, lockfile, "check the declared package source separately", context=owner)
-                    continue
-                collect(name, data["version"], ranges, context=owner, declaration=", ".join(ranges))
+            for name, observed, ranges, owner in public_npm_packages(area, probe, path, tracked, launcher=launcher,
+                                                                    node=npm_node, cli=npm_cli):
+                collect(name, observed, ranges, context=owner, declaration=", ".join(ranges))
         except DATA_ERRORS as error:
-            area.incomplete(f"npm packages ({owner})", lockfile,
+            owner = PurePosixPath(path).parent.name or "checkout root"
+            area.incomplete(f"npm packages ({owner})", path,
                             error if isinstance(error, ProbeError) else "invalid npm manifest or lockfile")
     if not rows:
         return
     try:
-        if not npm_cli or not npm_node:
-            raise ProbeError("could not identify the installed npm package matching the resolved launcher")
-        output = probe.run([npm_node, "-e", SEMVER_QUERY, npm_cli],
-                           input_text=json.dumps([row[-1] for row in rows]), timeout=12,
-                           env={"NODE_OPTIONS": None, "NODE_PATH": None})
-        results = json.loads(output)
-        if not isinstance(results, list) or len(results) != len(rows):
-            raise ProbeError("npm semver did not return a result for each checked package")
+        results = npm_semver(probe, npm_node, npm_cli, [row[-1] for row in rows])
     except DATA_ERRORS as error:
         for item, observed, declared, context, _ in rows:
             area.incomplete(item, NPM_REGISTRY,

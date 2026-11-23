@@ -3,16 +3,14 @@
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field, replace
 from functools import lru_cache
-import http.client
 import json
 import os
 from pathlib import Path
 import re
 import subprocess
+import sys
 import tomllib
 from typing import Callable
-from urllib.error import HTTPError
-from urllib.request import Request, urlopen
 
 
 class ProbeError(Exception):
@@ -21,6 +19,8 @@ class ProbeError(Exception):
 
 DATA_ERRORS = (OSError, ValueError, LookupError, TypeError, AttributeError, ProbeError)
 TRIPLE = re.compile(r"(?<![\w.])v?(\d+)\.(\d+)\.(\d+)(?![\w.-])")
+HTTP_DEADLINE = 7
+HTTP_WORKER = Path(__file__).with_name("http_fetch.py").resolve()
 
 
 def triplet(value):
@@ -67,16 +67,22 @@ class Probes:
 
     @staticmethod
     def _http(url, accept="application/json"):
-        headers = {"Accept": accept, "User-Agent": "Amiga-development-dependency-check"}
         try:
-            with urlopen(Request(url, headers=headers), timeout=7) as response:
-                data = response.read(24 * 1024 * 1024 + 1)
-                if len(data) > 24 * 1024 * 1024:
-                    raise ProbeError("source response exceeded the size limit")
+            # Stop the entire fetch, including redirects and a body that keeps sending bytes.
+            result = subprocess.run([sys.executable, "-I", "-B", "-S", str(HTTP_WORKER)],
+                                    input=json.dumps([url, accept]).encode("utf-8"), stdout=subprocess.PIPE,
+                                    stderr=subprocess.DEVNULL, timeout=HTTP_DEADLINE, check=True)
+            status, _, data = result.stdout.partition(b"\n")
+            if status == b"ok":
                 return json.loads(data) if accept.endswith("json") else data.decode("utf-8")
-        except HTTPError as error:
-            raise ProbeError(f"source returned HTTP {error.code}") from None
-        except (http.client.HTTPException, OSError, ValueError):
+            if status == b"oversize":
+                raise ProbeError("source response exceeded the size limit")
+            if re.fullmatch(rb"HTTP [0-9]{3}", status):
+                raise ProbeError(f"source returned {status.decode('ascii')}")
+            raise ValueError("unreadable HTTP response")
+        except subprocess.TimeoutExpired:
+            raise ProbeError(f"source request timed out after {HTTP_DEADLINE} seconds") from None
+        except (subprocess.CalledProcessError, OSError, ValueError):
             raise ProbeError("source did not return readable data before the network limit") from None
 
     def tracked_files(self):

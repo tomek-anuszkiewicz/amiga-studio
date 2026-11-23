@@ -155,7 +155,8 @@ def candidate_rows(area, item, installed, specifiers, releases, *, context=None,
     # Project pins supply a release baseline even when the local installation drifts.
     exact = {part.version for specifier in specifiers for part in specifier
              if part.operator == "==" and "*" not in part.version}
-    baseline = type(releases[0])(next(iter(exact))) if len(exact) == 1 else installed
+    pin = type(releases[0])(next(iter(exact))) if len(exact) == 1 else None
+    baseline = pin if pin is not None else installed
     newer = [version for version in releases if baseline is None or version > baseline]
     if not newer:
         area.record("current", item)
@@ -169,8 +170,9 @@ def candidate_rows(area, item, installed, specifiers, releases, *, context=None,
                     within_requirements=update and declared is not None)
     latest = newer[0]
     if latest != allowed:
-        area.record("pin review", item, observed=observed, declared=declared, candidate=str(latest),
-                    source=PYPI, context=context)
+        use_pin = pin is not None and pin != installed
+        area.record("pin review", item, observed=str(pin) if use_pin else observed, declared=declared,
+                    candidate=str(latest), source=PYPI, context=context, detail="project pin" if use_pin else None)
 
 
 def check_python_packages(area, probe, tracked):
