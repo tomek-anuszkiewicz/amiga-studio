@@ -163,7 +163,11 @@ impl EmulatorApp {
         self.player.library_editor = Some(draft);
     }
 
-    fn complete_library_edit(&mut self, game: crate::game_library::LibraryGame, edits_active: bool) {
+    fn complete_library_edit(
+        &mut self,
+        game: crate::game_library::LibraryGame,
+        edits_active: bool,
+    ) {
         self.file_error = None;
         if edits_active {
             // The machine retains its mounted bytes. Newly imported disks become selectable.

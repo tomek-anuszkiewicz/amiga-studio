@@ -93,7 +93,10 @@ impl LibraryGame {
         self.manifest.id == other.manifest.id
             && (self.directory == other.directory
                 || self.directory.canonicalize().is_ok_and(|directory| {
-                    other.directory.canonicalize().is_ok_and(|other| directory == other)
+                    other
+                        .directory
+                        .canonicalize()
+                        .is_ok_and(|other| directory == other)
                 }))
     }
 }
@@ -278,7 +281,9 @@ pub fn persist_screenshot(
     // On Windows, tempfile passes paths directly to Win32 during publication.
     #[cfg(windows)]
     let directory = directory.canonicalize()?;
-    let mut pending = tempfile::Builder::new().suffix(".pending").tempfile_in(&directory)?;
+    let mut pending = tempfile::Builder::new()
+        .suffix(".pending")
+        .tempfile_in(&directory)?;
     write_png(pending.as_file_mut())?;
     pending.as_file().sync_all()?;
     for serial in 1..=u32::MAX {
