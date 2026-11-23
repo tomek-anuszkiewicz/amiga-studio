@@ -21,7 +21,7 @@ pub const CRB_COUNT_ECLOCK: u8 = 0;
 pub const CRB_COUNT_CNT: u8 = 1;
 pub const CRB_COUNT_TA_UNDERFLOW: u8 = 2;
 pub const CRB_COUNT_TA_UNDERFLOW_CNT_HIGH: u8 = 3;
-const BIT_CRB_ALARM_WRITE: u8 = 0x80;
+const BIT_CRB_ALARM_SELECT: u8 = 0x80;
 
 pub const BIT_ICR_TIMER_A: u8 = 0x01;
 pub const BIT_ICR_TIMER_B: u8 = 0x02;
@@ -142,11 +142,13 @@ impl Cia {
         (self.visible_tod() >> 8) as u8
     }
 
-    /// Reads the high byte and holds the counter on the falling edge.
+    /// Reads the visible high byte. In time mode, falling E latches the value seen here.
     pub fn todhi(&mut self) -> u8 {
         let value = self.visible_tod();
-        self.tod_read_value = value;
-        self.tod_read_latch = Some(true);
+        if (self.crb & BIT_CRB_ALARM_SELECT) == 0 {
+            self.tod_read_value = value;
+            self.tod_read_latch = Some(true);
+        }
         (value >> 16) as u8
     }
 
@@ -309,7 +311,7 @@ impl Cia {
     }
 
     fn apply_todlo(&mut self, val: u8) {
-        if (self.crb & BIT_CRB_ALARM_WRITE) != 0 {
+        if (self.crb & BIT_CRB_ALARM_SELECT) != 0 {
             self.tod_alarm = (self.tod_alarm & MASK_TOD_LOW_WRITE_PRESERVE) | (val as u32);
         } else {
             self.tod = (self.tod & MASK_TOD_LOW_WRITE_PRESERVE) | (val as u32);
@@ -323,7 +325,7 @@ impl Cia {
     }
 
     fn apply_todmid(&mut self, val: u8) {
-        if (self.crb & BIT_CRB_ALARM_WRITE) != 0 {
+        if (self.crb & BIT_CRB_ALARM_SELECT) != 0 {
             self.tod_alarm =
                 (self.tod_alarm & MASK_TOD_MIDDLE_WRITE_PRESERVE) | ((val as u32) << 8);
         } else {
@@ -338,7 +340,7 @@ impl Cia {
     }
 
     fn apply_todhi(&mut self, val: u8) {
-        if (self.crb & BIT_CRB_ALARM_WRITE) != 0 {
+        if (self.crb & BIT_CRB_ALARM_SELECT) != 0 {
             self.tod_alarm = (self.tod_alarm & MASK_TOD_HIGH_WRITE_PRESERVE) | ((val as u32) << 16);
         } else {
             self.tod = (self.tod & MASK_TOD_HIGH_WRITE_PRESERVE) | ((val as u32) << 16);
