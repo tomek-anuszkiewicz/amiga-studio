@@ -89,7 +89,7 @@ sequenceDiagram
     Note over CPU: Wait for E synchronization
     CPU->>Gate: VMA* asserted, address remains valid
     Gate->>CIA: CS* = VMA* OR A12/A13
-    CPU->>CIA: E active; write data or read selection
+    CPU->>CIA: E active. Write data or read selection
     CIA-->>CPU: Read data, if reading
     Note over CPU,CIA: CPU samples at S6, releases strobes at S7 / E falling
     CPU->>Gate: Release VMA* and address strobes
