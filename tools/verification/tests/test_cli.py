@@ -543,9 +543,18 @@ class ExecutionTests(unittest.TestCase):
                     if 'SINGLESTEP_RESULTS_DIR' in overrides:
                         child = "import os; from pathlib import Path; out = Path(os.environ['SINGLESTEP_RESULTS_DIR']); out.mkdir(parents=True); [(out / name).write_text('{}') for name in ('run.json', 'timing.json', 'summary.json', 'execution.log')]"
                     return native([sys.executable, '-c', child], overrides, **options)
-                with patch.object(verify, 'execute_command', side_effect=substitute), patch.object(verify, 'stable_update_notice', return_value=''), patch.object(execution, 'REPO_ROOT', self.root), contextlib.redirect_stdout(io.StringIO()) as output:
+                with (patch.object(verify, 'execute_command', side_effect=substitute),
+                      patch.object(execution, 'REPO_ROOT', self.root),
+                      patch.object(subprocess, 'check_output', return_value='rustc 1.99.0') as compiler_probe,
+                      patch('urllib.request.urlopen') as release_probe,
+                      contextlib.redirect_stdout(io.StringIO()) as output):
+                    release_probe.return_value.__enter__.return_value.read.return_value = (
+                        b'[pkg.rust]\nversion = "1.100.0"\n')
                     code = verify.main([*arguments, '--results-dir', f'.agent/tmp/profile-test/{index}'])
                 self.assertEqual(code, int(failed is not None), output.getvalue())
+                release_probe.assert_not_called()
+                compiler_probe.assert_not_called()
+                self.assertNotIn('Stable update', output.getvalue())
                 observed_gates = [(command, overrides) for command, overrides in observed if any((part in quality or part.endswith('/run_singlestep.py') for part in command))]
                 self.assertCountEqual([command[1] for command, _ in observed_gates], launched)
                 self.assertFalse(any((part.endswith('/check_english.py') for command, _ in observed for part in command)))

@@ -127,8 +127,7 @@ command = [sys.executable, "-c", f"raise SystemExit({int(child_status)})"]
 phases = [("Fixture", [("Controlled child", command, {})])]
 with (patch.object(verify, "REPO_ROOT", Path.cwd()),
       patch.object(execution, "REPO_ROOT", Path.cwd()),
-      patch.object(verify, "select_phases", return_value=phases),
-      patch.object(verify, "stable_update_notice", return_value="")):
+      patch.object(verify, "select_phases", return_value=phases)):
     sys.exit(verify.select_and_run([profile], time.perf_counter()))
 """
         for profile, code, outcome, child_result in (("commit", 0, "passed", "executed"),
