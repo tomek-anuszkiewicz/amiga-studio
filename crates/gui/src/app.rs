@@ -360,8 +360,11 @@ impl EmulatorApp {
         }
         let in_session = self.player.screen == crate::player::PlayerScreen::Session;
         if in_session {
-            // The screenshot action refers to the image shown when the player clicked.
             render_top_menu_bar(self, ctx);
+            if self.view_mode == ViewMode::ScreenOnly {
+                // Handle screenshot clicks before installing the pending image.
+                self.render_player_controls(ctx);
+            }
         }
         if let Some((info, image)) = next_image {
             self.host.presented = Some(info);
@@ -377,9 +380,6 @@ impl EmulatorApp {
             self.host.flush();
             self.host.request_submission_retry(ctx);
             return;
-        }
-        if self.view_mode == ViewMode::ScreenOnly {
-            self.render_player_controls(ctx);
         }
         self.inspection.frozen = (self.host.continuous_requested()
             || (self.host.inspector_revision.is_none() && self.host.data.is_some()))

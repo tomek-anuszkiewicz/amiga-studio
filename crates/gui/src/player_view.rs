@@ -232,6 +232,19 @@ impl EmulatorApp {
             {
                 self.load_player();
             }
+            #[cfg(not(target_arch = "wasm32"))]
+            if self.player.active_game.is_some()
+                && ui
+                    .push_id("amiga-game-screenshot-button", |ui| {
+                        ui.button("Screenshot")
+                            .on_hover_text("Save the displayed Amiga image to this game's Screenshots folder.")
+                            .clicked()
+                    })
+                    .inner
+            {
+                self.take_game_screenshot();
+                ui.ctx().request_repaint();
+            }
         });
         #[cfg(not(target_arch = "wasm32"))]
         if let Some(save) = self.player.saves.first() {

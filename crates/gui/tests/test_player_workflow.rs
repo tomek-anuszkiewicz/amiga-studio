@@ -530,8 +530,11 @@ fn screenshot_clicks_keep_the_active_game_destination_and_existing_files() {
     let bounds = screenshot.rect();
     assert!(bounds.is_positive());
     assert!(h.ctx.screen_rect().contains_rect(bounds));
-    let slower = h.get_by_label("Slower").rect();
-    assert!(bounds.top() < slower.bottom() && bounds.bottom() > slower.top());
+    for label in ["Save", "Load"] {
+        let control = h.get_by_label(label).rect();
+        assert!(bounds.top() < control.bottom() && bounds.bottom() > control.top());
+        assert!(bounds.left() >= control.right());
+    }
     screenshot.click();
     h.step();
     assert_eq!(directory_files(&directory), [directory.join("screenshot-1.png")]);

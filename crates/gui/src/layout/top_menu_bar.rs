@@ -108,18 +108,6 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
                     });
                 });
 
-                #[cfg(not(target_arch = "wasm32"))]
-                if !developer
-                    && app.player.active_game.is_some()
-                    && ui.push_id("amiga-game-screenshot-button", |ui| {
-                        ui.button("Screenshot")
-                            .on_hover_text("Save the displayed Amiga image to this game's Screenshots folder.")
-                            .clicked()
-                    }).inner
-                {
-                    app.take_game_screenshot();
-                }
-
                 ui.separator();
 
                 // --- 2. Execution Controls ---
