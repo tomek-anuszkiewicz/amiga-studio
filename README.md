@@ -27,28 +27,36 @@ code and how the test harness evolved.
 
 ---
 
-## Current Runnable Demo
+## Current Status
 
-The emulator is under active development. A playable Amiga system is still
-pending. The desktop application opens the game library, and the browser
-build opens manual setup. Both screens let you open the
-**Developer Studio & M68000 Debugger** to run standalone processor programs.
-[Game library and manual setup](docs/game-library.md)
+The emulator is under active development. On Windows, the native app can boot
+Workbench 1.3 with Kickstart 1.3 and run *Cadaver: The Last Supper* from an ADF
+floppy disk image.
+
+![Workbench 1.3 desktop with the Workbench disk window, Utilities drawer, and analog Clock open](docs/images/workbench-1.3.png)
+
+*Workbench 1.3 after booting from ADF, with Utilities and Clock open.*
+
+![Isometric view of the Entrance Hall in Cadaver: The Last Supper](docs/images/cadaver-the-last-supper.png)
+
+*Cadaver: The Last Supper running from ADF, in the Entrance Hall on Day 1.*
 
 The roadmap tracks the remaining implementation work. [Development roadmap](ROADMAP.md)
 
-To run an example program, launch the emulator, choose **Debug**, then select
-**File → Load Binary** and open one of the example `.bin` files. These
-programs are designed to load at address `$001000`.
-[`examples/m68k/`](examples/m68k)
+## Run the Emulator
 
 ### Native Desktop Application
 
-Run the Developer Studio in a standalone desktop window.
+From the repository root, build and launch the native app in release mode.
 
 ```powershell
 cargo run --release -p gui
 ```
+
+The desktop app opens the game library. Choose your library folder to find and
+launch games. To boot a disk directly, open **Manual setup**, select your own
+supported Kickstart ROM and ADF disk image, and choose **Start**.
+[Game library and manual setup](docs/game-library.md)
 
 ### Web Browser
 
@@ -60,11 +68,18 @@ rustup toolchain install nightly --component rust-src --target wasm32-unknown-un
 ./tools/web.ps1 serve
 ```
 
-Open the address printed by Trunk. The browser build uses shared Wasm memory
-and a dedicated worker that runs the machine. The web launcher rebuilds the
-Rust standard library with atomic support and serves the required
+Open the address printed by Trunk to reach manual setup. The browser build uses
+shared Wasm memory and a dedicated worker that runs the machine. The web launcher
+rebuilds the Rust standard library with atomic support and serves the required
 cross-origin isolation headers. `./tools/web.ps1 build` writes an
 independent build under `.agent/tmp/web-dist`. [Web launcher](tools/web.ps1)
+
+## Developer Studio & M68000 Debugger
+
+To run a standalone processor program on desktop or in the browser, choose
+**Debug**, then select **File → Load Binary** and open one of the example
+`.bin` files. These programs are designed to load at address `$001000`.
+[`examples/m68k/`](examples/m68k)
 
 The debugger guide covers all controls and gives step-by-step instructions
 for shortcuts and debugging workflows.
