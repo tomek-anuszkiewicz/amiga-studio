@@ -82,10 +82,9 @@ fn accepted_frontend_bindings_without_amiga_positions_dispatch_both_edges() {
 }
 
 #[test]
-fn text_focus_capture_pause_and_reacquisition_gate_guest_input() {
+fn gui_ownership_pause_and_reacquisition_gate_guest_input() {
     for (field, expected) in [
-        ("text", "gui_text_focus"),
-        ("capture", "capture_disabled"),
+        ("editor or dialog", "gui_owns_input"),
         ("pause", "pause_pending"),
         ("focus", "window_inactive"),
         ("session", "not_session_screen"),
@@ -95,8 +94,7 @@ fn text_focus_capture_pause_and_reacquisition_gate_guest_input() {
     ] {
         let mut policy = policy();
         match field {
-            "text" => policy.text_focus = true,
-            "capture" => policy.captured = false,
+            "editor or dialog" => policy.gui_owns_input = true,
             "pause" => policy.pause_pending = true,
             "session" => policy.session = false,
             "launch" => policy.pending_launch = true,
@@ -131,7 +129,6 @@ fn text_focus_capture_pause_and_reacquisition_gate_guest_input() {
     }
     let mut router = KeyboardRouter::default();
     let mut policy = policy();
-    policy.captured = false;
     policy.running = false;
     assert_eq!(
         router.route(&key("F5", true), &policy),
@@ -151,7 +148,6 @@ fn text_focus_capture_pause_and_reacquisition_gate_guest_input() {
 #[test]
 fn standard_commands_accept_both_modifier_sides_and_keypad_aliases_without_capture() {
     let mut policy = policy();
-    policy.captured = false;
     policy.running = false;
     for modifier in ["ControlLeft", "ControlRight", "MetaLeft", "MetaRight"] {
         for (physical, action) in [
@@ -186,56 +182,26 @@ fn standard_commands_accept_both_modifier_sides_and_keypad_aliases_without_captu
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 #[test]
-fn native_ingress_preserves_metadata_and_bounds_the_queue_with_a_release_marker() {
-    let ctx = egui::Context::default();
-    ctx.data_mut(|data| data.insert_temp(egui::Id::new("window_keyboard_generation"), 41u64));
-    let event = gui::keyboard_input::PhysicalKey {
-        physical: "SuperLeft".into(),
-        logical: "different logical key".into(),
-        pressed: true,
-        repeat: true,
-        synthetic: true,
-    };
-    gui::window_keyboard::receive_key(&ctx, event.clone());
-    type RawKeys = Vec<(String, String, bool, bool, bool, u64)>;
-    let raw = ctx
-        .data_mut(|data| data.remove_temp::<RawKeys>(egui::Id::new("window_keyboard_events")))
-        .unwrap();
+fn recognized_command_repeats_are_consumed_without_a_second_press() {
+    let mut policy = policy();
+    policy.bindings.release = "Enter".into();
+    let mut router = KeyboardRouter::default();
+    let mut enter = key("Enter", true);
     assert_eq!(
-        raw,
-        vec![(
-            "SuperLeft".into(),
-            "different logical key".into(),
-            true,
-            true,
-            true,
-            41
-        )]
+        router.route(&enter, &policy),
+        KeyRoute::Command {
+            action: KeyCommand::Release,
+            pressed: true
+        },
     );
-    for _ in 0..gui::host_input::INPUT_QUEUE_CAPACITY {
-        gui::window_keyboard::receive_key(&ctx, event.clone());
-    }
-    ctx.data_mut(|data| data.insert_temp(egui::Id::new("window_keyboard_generation"), 42u64));
-    gui::window_keyboard::receive_key(&ctx, key("KeyB", false));
-    let raw = ctx
-        .data_mut(|data| data.remove_temp::<RawKeys>(egui::Id::new("window_keyboard_events")))
-        .unwrap();
-    assert_eq!(raw.len(), 2);
+    enter.repeat = true;
+    assert_eq!(router.route(&enter, &policy), KeyRoute::Consumed);
     assert_eq!(
-        raw[0],
-        (
-            "__overflow__".into(),
-            String::new(),
-            false,
-            false,
-            false,
-            42
-        )
-    );
-    assert_eq!(
-        raw[1],
-        ("KeyB".into(), "KeyB".into(), false, false, false, 42)
+        router.route(&key("Enter", false), &policy),
+        KeyRoute::Command {
+            action: KeyCommand::Release,
+            pressed: false
+        },
     );
 }

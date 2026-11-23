@@ -307,7 +307,7 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
                 // --- 6. View Mode Toggle ---
                 if ui
                     .button(if developer { "🎮 Game View (F12)" } else { "Debug View (F12)" })
-                    .on_hover_text("Switch between Game and Debug views. Returning to Debug requests a pause at the next completed field. F12 toggles; the middle mouse button releases input capture.")
+                    .on_hover_text("Switch views and release held gameplay controls. Returning to Debug requests a pause at the next completed field. The middle mouse button frees only the mouse.")
                     .clicked()
                 {
                     app.set_view_mode(if developer { crate::ViewMode::ScreenOnly } else { crate::ViewMode::Developer });
@@ -319,13 +319,13 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
             });
             ui.horizontal_wrapped(|ui| {
         ui.small(if app.player.captured {
-            "Input captured. Middle mouse releases; F12 switches Game/Debug."
+            "Mouse captured. Middle mouse frees it. F12 switches Game/Debug."
         } else {
-            "Input free. Click the Amiga display to capture keyboard and mouse. F12 switches Game/Debug."
+            "Mouse free. Click the Amiga display to capture it. F12 switches Game/Debug."
         });
         if let Some(configuration) = &app.player.active_configuration {
             if !configuration.controls.host.frontend.release.is_empty() {
-                ui.small(format!("Release key: {}", configuration.controls.host.frontend.release));
+                ui.small(format!("Mouse release key: {}", configuration.controls.host.frontend.release));
             }
         }
             });

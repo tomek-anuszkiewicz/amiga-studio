@@ -353,12 +353,10 @@ fn a_field_boundary_preserves_the_remaining_ordered_input_for_the_next_slice() {
 }
 
 #[test]
-fn window_shortcuts_disabled_capture_and_key_groups_keep_their_contracts() {
+fn window_shortcuts_key_groups_and_uncaptured_pointer_keep_their_contracts() {
     use common::keyboard::{button, translate};
     let mut events = gui::keyboard_input::KeyboardRouter::default();
     let mut pointer = gui::window_pointer::WindowPointer::default();
-    assert_eq!(translate(&mut events, "KeyA", true, false), None);
-    assert_eq!(translate(&mut events, "KeyA", false, false), None);
     assert_eq!(
         pointer.translate(&button(egui::PointerButton::Primary, true), false),
         None
@@ -400,7 +398,7 @@ fn window_shortcuts_disabled_capture_and_key_groups_keep_their_contracts() {
 }
 
 #[test]
-fn full_release_survives_capture_release_and_clears_held_controller_contacts() {
+fn full_release_survives_mouse_release_and_clears_held_controller_contacts() {
     for overflow in [false, true] {
         let mut session = session(VideoStandard::Pal);
         session.toggle_run();
@@ -430,9 +428,7 @@ fn full_release_survives_capture_release_and_clears_held_controller_contacts() {
         } else {
             input.pending.push(HostInputEvent::ReleaseAll);
         }
-        input.pending.push(HostInputEvent::ReleaseCapture {
-            joysticks: [None, Some([false, false, false, false, true, false])],
-        });
+        input.pending.push(HostInputEvent::ReleaseMouse { port: 0 });
         assert_eq!(input.pending.first(), Some(HostInputEvent::ReleaseAll));
         input.run_slice(&mut session, 1);
         assert_eq!(
@@ -444,7 +440,7 @@ fn full_release_survives_capture_release_and_clears_held_controller_contacts() {
 }
 
 #[test]
-fn capture_release_keeps_fresh_controller_edges_after_a_full_release() {
+fn mouse_release_keeps_fresh_keys_and_controller_edges_after_a_full_release() {
     let mut session = session(VideoStandard::Pal);
     session.toggle_run();
     let mut input = InputConsumer::default();
@@ -464,20 +460,20 @@ fn capture_release_keeps_fresh_controller_edges_after_a_full_release() {
         code: 0x20,
         pressed: true,
     });
-    input.pending.push(HostInputEvent::ReleaseCapture {
-        joysticks: [None, Some([false, false, false, false, true, false])],
-    });
+    input.pending.push(HostInputEvent::ReleaseMouse { port: 0 });
     assert_eq!(input.pending.first(), Some(HostInputEvent::ReleaseAll));
-    input.run_slice(&mut session, 3);
+    input.run_slice(&mut session, 4);
     assert_eq!(
         session.machine.game_ports.sample_ciaa_port_a_inputs() & 0x80,
         0
     );
+    let keyboard = serde_json::to_value(&session.machine.keyboard).unwrap();
+    assert_ne!(keyboard["held"][0].as_u64().unwrap() & (1 << 0x20), 0);
     assert!(input.pending.is_empty());
 }
 
 #[test]
-fn capture_release_drops_keyboard_joystick_edges_after_a_full_release() {
+fn mouse_release_discards_stale_motion_and_buttons_but_keeps_joystick_edges() {
     let mut session = session(VideoStandard::Pal);
     session.toggle_run();
     let mut input = InputConsumer::default();
@@ -491,14 +487,74 @@ fn capture_release_drops_keyboard_joystick_edges_after_a_full_release() {
         fire1: true,
         fire2: false,
     });
-    input.pending.push(HostInputEvent::ReleaseCapture {
-        joysticks: [None; 2],
+    input.pending.push(HostInputEvent::MouseMotion {
+        port: 0,
+        dx: 20,
+        dy: 20,
     });
+    input.pending.push(HostInputEvent::MouseButtons {
+        port: 0,
+        left: true,
+        right: true,
+        middle: false,
+    });
+    input.pending.push(HostInputEvent::ReleaseMouse { port: 0 });
     input.run_slice(&mut session, 3);
     assert_eq!(
-        session.machine.game_ports.sample_ciaa_port_a_inputs() & 0x80,
-        0x80,
-        "A keyboard joystick press must be discarded when capture ends"
+        session.machine.game_ports.sample_ciaa_port_a_inputs() & 0xc0,
+        0x40
     );
+    assert_eq!(session.machine.denise.joy0dat(), 0);
     assert!(input.pending.is_empty());
+}
+
+#[test]
+fn repeated_mouse_release_on_second_port_freezes_its_quadrature_without_releasing_joystick() {
+    use debugger::launch::DeviceKind;
+    let mut session = session(VideoStandard::Pal);
+    debugger::launch::reconcile_ports(&mut session, [DeviceKind::Joystick, DeviceKind::Mouse]);
+    session.toggle_run();
+    let mut input = InputConsumer::default();
+    input.pending.push(HostInputEvent::Joystick {
+        port: 0,
+        up: false,
+        down: false,
+        left: false,
+        right: false,
+        fire1: true,
+        fire2: false,
+    });
+    input.pending.push(HostInputEvent::MouseButtons {
+        port: 1,
+        left: true,
+        right: true,
+        middle: false,
+    });
+    input.pending.push(HostInputEvent::MouseMotion {
+        port: 1,
+        dx: 100,
+        dy: 0,
+    });
+    input.run_slice(&mut session, 3);
+    let before = serde_json::to_value(session.machine.game_ports.state.port2).unwrap();
+    assert_eq!(before["Mouse"]["pending_x"], 99);
+    assert_ne!(before["Mouse"]["phase_x"], 0);
+    assert_eq!(
+        session.machine.game_ports.sample_ciaa_port_a_inputs() & 0xc0,
+        0
+    );
+
+    let release = HostInputEvent::ReleaseMouse { port: 1 };
+    input.pending.push(release);
+    input.pending.push(release);
+    input.run_slice(&mut session, 4);
+    let after = serde_json::to_value(session.machine.game_ports.state.port2).unwrap();
+    assert_eq!(after["Mouse"]["phase_x"], before["Mouse"]["phase_x"]);
+    assert_eq!(after["Mouse"]["pending_x"], 0);
+    assert_eq!(after["Mouse"]["left_button"], false);
+    assert_eq!(after["Mouse"]["right_button"], false);
+    assert_eq!(
+        session.machine.game_ports.sample_ciaa_port_a_inputs() & 0xc0,
+        0x80
+    );
 }

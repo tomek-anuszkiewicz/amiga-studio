@@ -163,7 +163,7 @@ impl EmulatorApp {
         ui.small("F12 switches Game/Debug. The middle mouse button always releases capture.");
         for (label, key) in [
             (
-                "Release capture key (optional)",
+                "Mouse release key (optional)",
                 &mut configuration.controls.host.frontend.release,
             ),
             (

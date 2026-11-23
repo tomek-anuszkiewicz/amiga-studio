@@ -143,15 +143,14 @@ pub(crate) fn render_amiga_screen(
             .intersect(response.rect)
             .intersect(ui.clip_rect()),
         egui::Id::new(SCREEN_INPUT_ID),
-        egui::Sense::click(),
+        egui::Sense::click() - egui::Sense::focusable_noninteractive(),
     );
     if input.clicked_by(egui::PointerButton::Primary) {
-        input.request_focus();
         ui.ctx()
             .data_mut(|data| data.insert_temp(egui::Id::new("capture_requested"), true));
     }
     input.on_hover_text(
-        "Click to send keyboard and mouse input to the Amiga. Frontend shortcuts remain available.",
+        "Click to capture the mouse. The keyboard works while the running session is active.",
     );
 
     // Outer CRT Bezel

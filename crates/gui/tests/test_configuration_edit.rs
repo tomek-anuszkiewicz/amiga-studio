@@ -631,6 +631,7 @@ fn quick_load_rejects_unavailable_current_controller_without_mutation() {
         identity: "missing".into(),
         mapping: "arrows".into(),
     };
+    common::settle_harness(&mut h);
     // Exercise the real frontend shortcut, rather than the owner rejection.
     h.key_press(egui::Key::F9);
     common::settle_harness(&mut h);

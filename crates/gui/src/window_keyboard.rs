@@ -1,10 +1,10 @@
 //! Full physical keyboard input through eframe's public external-event-loop API.
 
-use crate::keyboard_input::{PhysicalKey, WindowKey, WINDOW_KEYS_ID, WINDOW_KEY_GENERATION_ID};
+use crate::keyboard_input::{receive_focus, receive_key, receive_pointer_press, PhysicalKey};
 use std::sync::OnceLock;
 use winit::{
     application::ApplicationHandler,
-    event::{DeviceEvent, DeviceId, ElementState, StartCause, WindowEvent},
+    event::{DeviceEvent, DeviceId, ElementState, MouseButton, StartCause, WindowEvent},
     event_loop::{ActiveEventLoop, EventLoop},
     window::WindowId,
 };
@@ -30,6 +30,7 @@ pub fn run_native(
         app,
         context: &context,
         primary_window: None,
+        cursor_position: None,
     })?;
     Ok(())
 }
@@ -38,6 +39,7 @@ struct KeyboardApplication<'a> {
     app: eframe::EframeWinitApplication<'a>,
     context: &'a OnceLock<egui::Context>,
     primary_window: Option<WindowId>,
+    cursor_position: Option<winit::dpi::PhysicalPosition<f64>>,
 }
 
 impl ApplicationHandler<eframe::UserEvent> for KeyboardApplication<'_> {
@@ -45,7 +47,30 @@ impl ApplicationHandler<eframe::UserEvent> for KeyboardApplication<'_> {
         // Eframe creates the application's primary window first.
         if *self.primary_window.get_or_insert(id) == id {
             if let Some(ctx) = self.context.get() {
-                collect_window_key(ctx, &event);
+                match &event {
+                    WindowEvent::CursorMoved { position, .. } => {
+                        self.cursor_position = Some(*position)
+                    }
+                    WindowEvent::CursorLeft { .. } => self.cursor_position = None,
+                    WindowEvent::MouseInput {
+                        state: ElementState::Pressed,
+                        button: MouseButton::Left,
+                        ..
+                    } => {
+                        if let Some(position) = self.cursor_position {
+                            let scale = ctx.pixels_per_point();
+                            receive_pointer_press(
+                                ctx,
+                                egui::pos2(position.x as f32 / scale, position.y as f32 / scale),
+                            );
+                        }
+                    }
+                    _ => {}
+                }
+                if collect_window_key(ctx, &event) {
+                    ctx.request_repaint();
+                    return;
+                }
             }
         }
         self.app.window_event(event_loop, id, event);
@@ -84,7 +109,7 @@ impl ApplicationHandler<eframe::UserEvent> for KeyboardApplication<'_> {
     }
 }
 
-fn collect_window_key(ctx: &egui::Context, event: &WindowEvent) {
+fn collect_window_key(ctx: &egui::Context, event: &WindowEvent) -> bool {
     let key = match event {
         WindowEvent::KeyboardInput {
             event,
@@ -100,43 +125,12 @@ fn collect_window_key(ctx: &egui::Context, event: &WindowEvent) {
             repeat: event.repeat,
             synthetic: *is_synthetic,
         },
-        WindowEvent::Focused(false) => PhysicalKey {
-            physical: "__focus_lost__".into(),
-            logical: String::new(),
-            pressed: false,
-            repeat: false,
-            synthetic: false,
-        },
-        _ => return,
-    };
-    receive_key(ctx, key);
-}
-
-/// Queue a physical key supplied by the native window backend.
-pub fn receive_key(ctx: &egui::Context, key: PhysicalKey) {
-    ctx.data_mut(|data| {
-        let generation = data
-            .get_temp::<u64>(egui::Id::new(WINDOW_KEY_GENERATION_ID))
-            .unwrap_or(0);
-        let events = data.get_temp_mut_or_default::<Vec<WindowKey>>(egui::Id::new(WINDOW_KEYS_ID));
-        if events.len() >= crate::host_input::INPUT_QUEUE_CAPACITY {
-            events.clear();
-            events.push((
-                "__overflow__".into(),
-                String::new(),
-                false,
-                false,
-                false,
-                generation,
-            ));
+        WindowEvent::Focused(focused) => {
+            receive_focus(ctx, *focused, None);
+            return false;
         }
-        events.push((
-            key.physical,
-            key.logical,
-            key.pressed,
-            key.repeat,
-            key.synthetic,
-            generation,
-        ));
-    });
+        _ => return false,
+    };
+    // Forward GUI-owned keys to eframe so editors keep native IME and clipboard behavior.
+    receive_key(ctx, key, None)
 }

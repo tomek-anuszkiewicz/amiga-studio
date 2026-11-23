@@ -163,7 +163,8 @@ pub(crate) fn render_registers(
                                         ui.input(|i| i.key_pressed(egui::Key::Escape));
                                     let resp = ui
                                         .push_id("edit_d", |ui| {
-                                            let r = ui.add(
+                                            let r = crate::keyboard_input::text_edit(
+                                                ui,
                                                 egui::TextEdit::singleline(buf)
                                                     .desired_width(75.0)
                                                     .font(egui::TextStyle::Monospace),
@@ -267,7 +268,8 @@ pub(crate) fn render_registers(
                                         ui.input(|i| i.key_pressed(egui::Key::Escape));
                                     let resp = ui
                                         .push_id("edit_a", |ui| {
-                                            let r = ui.add(
+                                            let r = crate::keyboard_input::text_edit(
+                                                ui,
                                                 egui::TextEdit::singleline(buf)
                                                     .desired_width(75.0)
                                                     .font(egui::TextStyle::Monospace),
@@ -365,7 +367,8 @@ pub(crate) fn render_registers(
                             let esc_pressed = ui.input(|i| i.key_pressed(egui::Key::Escape));
                             let resp = ui
                                 .push_id("edit_sp", |ui| {
-                                    let r = ui.add(
+                                    let r = crate::keyboard_input::text_edit(
+                                        ui,
                                         egui::TextEdit::singleline(buf)
                                             .desired_width(75.0)
                                             .font(egui::TextStyle::Monospace),
@@ -446,7 +449,7 @@ pub(crate) fn render_registers(
                             let enter_pressed = ui.input(|i| i.key_pressed(egui::Key::Enter));
                             let esc_pressed = ui.input(|i| i.key_pressed(egui::Key::Escape));
                             let resp = ui.push_id("edit_pc", |ui| {
-                                let r = ui.add(
+                                let r = crate::keyboard_input::text_edit(ui,
                                     egui::TextEdit::singleline(buf)
                                         .desired_width(70.0)
                                         .font(egui::TextStyle::Monospace),
@@ -508,7 +511,7 @@ pub(crate) fn render_registers(
                             let enter_pressed = ui.input(|i| i.key_pressed(egui::Key::Enter));
                             let esc_pressed = ui.input(|i| i.key_pressed(egui::Key::Escape));
                             let resp = ui.push_id("edit_sr", |ui| {
-                                let r = ui.add(
+                                let r = crate::keyboard_input::text_edit(ui,
                                     egui::TextEdit::singleline(buf)
                                         .desired_width(45.0)
                                         .font(egui::TextStyle::Monospace),

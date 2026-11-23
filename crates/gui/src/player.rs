@@ -37,8 +37,6 @@ pub struct PlayerState {
     pub mounted: [Option<String>; 4],
     pub active_configuration: Option<NamedConfiguration>,
     pub captured: bool,
-    #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) pending_pointer: crate::host_input::InputQueue,
     pub show_saves: bool,
     pub(crate) pending_launch: Option<PendingLaunch>,
     pub initial_error: bool,
@@ -117,7 +115,14 @@ impl EmulatorApp {
             self.enter_player_screen(PlayerScreen::Session, mode);
             return;
         }
-        if self.view_mode == ViewMode::ScreenOnly && mode == ViewMode::Developer {
+        if self.view_mode == mode {
+            return;
+        }
+        if self.player.screen == PlayerScreen::Session {
+            self.player.captured = false;
+            self.host.release_input_for_view_change();
+        }
+        if mode == ViewMode::Developer {
             self.host.queue(HostCommand::Pause);
         }
         self.view_mode = mode;
@@ -127,7 +132,7 @@ impl EmulatorApp {
 
     pub(crate) fn apply_frontend_action(&mut self, action: crate::player_config::FrontendAction) {
         use crate::player_config::FrontendAction;
-        if action != FrontendAction::Save {
+        if !matches!(action, FrontendAction::Save | FrontendAction::Debug) {
             self.player.captured = false;
         }
         match action {

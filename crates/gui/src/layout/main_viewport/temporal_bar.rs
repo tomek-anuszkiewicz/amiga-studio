@@ -201,7 +201,7 @@ pub(crate) fn render_temporal_bar(
 
             // Direct CCK Target Jump Input
             ui.label(RichText::new("Jump CCK:").color(tokens.text_secondary));
-            let resp = ui.add(
+            let resp = crate::keyboard_input::text_edit(ui,
                 egui::TextEdit::singleline(&mut app.target_cck_input)
                     .desired_width(65.0)
                     .font(egui::TextStyle::Monospace),

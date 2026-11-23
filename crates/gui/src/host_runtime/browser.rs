@@ -21,8 +21,11 @@ extern "C" {
         input: wasm_bindgen::JsValue,
     ) -> Result<web_sys::Worker, wasm_bindgen::JsValue>;
     pub(crate) fn take_pointer_capture_loss() -> bool;
+    pub(crate) fn host_window_active() -> bool;
+    pub(crate) fn host_release_pending() -> bool;
+    pub(super) fn discard_buffered_host_controls() -> String;
     pub(super) fn set_host_input_enabled(
-        enabled: bool,
+        mouse: bool,
         gamepads: bool,
         interval_ms: f64,
         generation: u64,
@@ -50,7 +53,6 @@ pub(super) fn start_web(
     use wasm_bindgen::closure::Closure;
     const BIT_MOUSE_LEFT: u32 = 1;
     const BIT_MOUSE_RIGHT: u32 = 1 << 1;
-    const BIT_MOUSE_MIDDLE: u32 = 1 << 2;
 
     let mut slot = WEB_OWNER
         .try_lock()
@@ -71,7 +73,19 @@ pub(super) fn start_web(
                 return sender.browser_gamepads(&code, generation);
             }
             if kind == "key" {
-                return sender.browser_key(&code, generation);
+                return sender.browser_key(&code, generation, bits != 0);
+            }
+            if kind == "primary-press" {
+                let scale = sender.repaint.zoom_factor();
+                crate::keyboard_input::receive_pointer_press(
+                    &sender.repaint,
+                    egui::pos2(dx as f32 / scale, dy as f32 / scale),
+                );
+                return true;
+            }
+            if kind == "focus" {
+                sender.browser_focus(generation, bits != 0);
+                return true;
             }
             let event = match kind.as_str() {
                 "motion" => HostInputEvent::MouseMotion { port: 0, dx, dy },
@@ -79,12 +93,10 @@ pub(super) fn start_web(
                     port: 0,
                     left: bits & BIT_MOUSE_LEFT != 0,
                     right: bits & BIT_MOUSE_RIGHT != 0,
-                    middle: bits & BIT_MOUSE_MIDDLE != 0,
+                    middle: false,
                 },
                 "release" => HostInputEvent::ReleaseAll,
-                "capture-release" => HostInputEvent::ReleaseCapture {
-                    joysticks: [None; 2],
-                },
+                "mouse-release" => HostInputEvent::ReleaseMouse { port: 0 },
                 _ => return true,
             };
             sender.try_host_event(event, generation)

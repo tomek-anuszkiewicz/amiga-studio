@@ -170,7 +170,8 @@ pub(crate) fn render_breakpoints_panel(
                 ui.collapsing("➕ Add New PC Breakpoint", |ui| {
                     ui.horizontal(|ui| {
                         ui.label("PC ($):");
-                        ui.add(
+                        crate::keyboard_input::text_edit(
+                            ui,
                             egui::TextEdit::singleline(&mut form.new_pc_str)
                                 .desired_width(70.0)
                                 .font(egui::TextStyle::Monospace),
@@ -205,7 +206,8 @@ pub(crate) fn render_breakpoints_panel(
                                 });
 
                             ui.label("$");
-                            ui.add(
+                            crate::keyboard_input::text_edit(
+                                ui,
                                 egui::TextEdit::singleline(&mut form.new_cond_val_str)
                                     .desired_width(60.0)
                                     .font(egui::TextStyle::Monospace),
@@ -325,13 +327,15 @@ pub(crate) fn render_breakpoints_panel(
                 ui.collapsing("➕ Add New Watchpoint", |ui| {
                     ui.horizontal(|ui| {
                         ui.label("Start ($):");
-                        ui.add(
+                        crate::keyboard_input::text_edit(
+                            ui,
                             egui::TextEdit::singleline(&mut form.new_wp_start_str)
                                 .desired_width(70.0)
                                 .font(egui::TextStyle::Monospace),
                         );
                         ui.label("End ($):");
-                        ui.add(
+                        crate::keyboard_input::text_edit(
+                            ui,
                             egui::TextEdit::singleline(&mut form.new_wp_end_str)
                                 .desired_width(70.0)
                                 .font(egui::TextStyle::Monospace),

@@ -78,7 +78,7 @@ pub(crate) fn render_disassembly(
     // 1. Navigation & Jump Bar
     ui.horizontal(|ui| {
         ui.label("Goto:");
-        let response = ui.add(
+        let response = crate::keyboard_input::text_edit(ui,
             egui::TextEdit::singleline(goto_addr_str)
                 .desired_width(70.0)
                 .hint_text("000000"),
@@ -321,7 +321,7 @@ pub(crate) fn render_disassembly(
                                 let mut cancel = false;
 
                                 if let Some(edit) = active_edit.as_mut() {
-                                    let edit_resp = ui.add(
+                                    let edit_resp = crate::keyboard_input::text_edit(ui,
                                         egui::TextEdit::singleline(&mut edit.text)
                                             .desired_width(180.0)
                                             .font(egui::TextStyle::Monospace),

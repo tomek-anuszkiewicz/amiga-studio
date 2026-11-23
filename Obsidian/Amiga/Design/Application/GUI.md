@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "gui"
 status: "active"
 created: 2026-09-05
-updated: 2026-11-17
+updated: 2026-11-23
 related: ["[egui Guidelines.md](../egui%20Guidelines.md)", "[Debugger.md](Debugger.md)", "[General Architecture.md](../General%20Architecture.md)", "[Keyboard.md](../Keyboard.md)", "[Mouse.md](../Mouse.md)", "[Audio.md](../Audio.md)", "[Denise.md](../Denise.md)", "[RTC.md](../RTC.md)"]
 tracked_paths:
   - "crates/gui"
@@ -104,10 +104,12 @@ shows that the controller produced output. Establishing whether the disk
 image changed or was saved requires separate evidence.
 [Floppy](../Floppy.md#autonomous-adf-reads-and-continuation)
 
-The views share one machine. F12 always switches between them and is fixed.
-The middle mouse button always releases pointer and keyboard capture without
-pausing. The guest never receives that button. The optional keyboard binding
-for release starts unassigned, and Escape and F2 otherwise remain guest keys.
+The views share one machine. Use F12 or the toolbar to switch views.
+Switching from a running Developer Studio session to Game keeps the machine
+running in the same input generation.
+The middle mouse button releases the mouse without pausing. The guest never
+receives that button. The optional binding for mouse release starts unassigned,
+and Escape and F2 otherwise remain guest keys.
 Pause/resume and quick save/load are configurable and start at F5, F6 and F9.
 Reset has no keyboard shortcut. Debugger stepping shortcuts are fixed and work
 only in Developer Studio.
@@ -221,16 +223,26 @@ The basic adapter forwards transitions reported by the host. Reconstructing
 missing host events or A500 matrix ghosting is outside its scope. Fidelity for
 original keyboard combinations remains pending. [6.2 work](../../../../ROADMAP.md#task-6-2)
 
-Clicking the Amiga image captures relative pointer input and gives the image
-keyboard focus. Activating the window alone captures neither device. Releasing
-capture returns keyboard focus to the interface. A visible session shows its
-capture state and the controls for release. Browser pointer lock retains the
-browser's own Escape release behavior.
+Game and Developer Studio sessions accept physical gameplay keys while the
+machine is running in an active window. On the web, the document must have
+focus and be visible. Clicking the Amiga image captures relative mouse
+movement and buttons. The keyboard works before capture and after mouse
+release. The session shows the mouse capture state and how to release it.
+The browser can also release pointer lock with Escape.
 
-On both hosts, focused text controls get the first chance to use a key event.
-The frontend then checks configured actions, keyboard joystick bindings and,
-finally, the remaining guest keys. The guest keyboard receives only keys that
-earlier handlers did not consume. Frontend bindings resolve host positions
+Switching views releases held Amiga keys, mouse buttons, keyboard joystick
+contacts and selected gamepad contacts. Keys held through the switch must be
+released and freshly pressed. A held gamepad must return to neutral before
+a new direction or button press reaches the guest. Selecting the current
+view preserves held input.
+
+Host text editors and dialogs own keyboard input while in use. Otherwise the
+frontend gives application commands priority, followed by keyboard joystick
+bindings and the remaining guest keys. Accepted gameplay keys bypass widget
+navigation and activation. Once a press triggers an application command, the
+frontend consumes its repeats and release even if an editor or dialog gains
+focus in the meantime. The guest keyboard receives keys that earlier handlers
+did not consume. Frontend bindings resolve host positions
 independently of guest keycodes, including keys with no Amiga counterpart.
 Each event carries its destination port.
 
@@ -242,10 +254,11 @@ is unavailable or ambiguous. Reconnecting a controller must avoid replaying
 stale held input. Changes to the configuration or source, disconnect, focus
 loss, pause, reset and load release the affected controls.
 
-Gamepads can drive a running session while its application window is active,
-without pointer or keyboard capture. Configuration screens, controller
-assignment and host text editing disable gameplay input. Releasing only
-pointer/keyboard capture preserves the selected gamepads' current contacts.
+Gamepads can drive an active, running session with the mouse free or
+captured. Configuration screens, controller assignment, host editors and
+dialogs suspend gameplay. Releasing the mouse clears its queued movement and
+buttons while preserving quadrature phase, held keys, keyboard joystick
+contacts and selected gamepad contacts.
 
 Ordered, bounded queues publish input immediately. The owner admits it at
 three evenly spaced times per emulated field, determined by the current
@@ -257,9 +270,11 @@ a CCK sample before its successor. Guest software may miss a short electrical
 pulse. Keyboard bytes still pass through the controller queue and serial pins.
 Mouse quadrature continues at the existing CCK rate without smoothing.
 
-Keys received while host mapping or capture activation is pending stay queued
-until the owner can accept them. Focus loss, pause and queue overflow discard
-pending input and release controls. Reset, successful load and keyboard reset
+Keys received while host mapping or keyboard activation is pending stay
+queued until the owner can accept them. Focus loss, editor or dialog
+ownership, pause and queue overflow discard pending gameplay input and
+release controls. Gameplay resumes on fresh physical presses after a key has
+been released. Reset, successful load and keyboard reset
 invalidate the old input generation. Window keyboard buffers and queued input
 carry their session generation. Entries from stale generations are discarded.
 

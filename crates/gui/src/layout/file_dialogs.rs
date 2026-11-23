@@ -85,9 +85,36 @@ pub(super) fn render_recent_files(app: &mut EmulatorApp, ui: &mut egui::Ui) {
     }
 }
 
+const BINARY_DIALOG: &str = "load-binary-dialog";
+const ERROR_DIALOG: &str = "file-error-dialog";
+
+pub(crate) fn limit_dialog_focus(app: &EmulatorApp, ctx: &egui::Context) {
+    let id = if app.load_binary_modal_open {
+        BINARY_DIALOG
+    } else if app.file_error.is_some() {
+        ERROR_DIALOG
+    } else {
+        return;
+    };
+    let layer = egui::LayerId::new(egui::Order::Foreground, egui::Id::new(id));
+    let focused = ctx.memory(|memory| memory.focused());
+    let outside = focused.filter(|id| {
+        ctx.read_response(*id)
+            .is_none_or(|response| response.layer_id != layer)
+    });
+    ctx.memory_mut(|memory| {
+        memory.set_modal_layer(layer);
+        if let Some(id) = outside {
+            memory.surrender_focus(id);
+        }
+    });
+}
+
 pub fn render(app: &mut EmulatorApp, ctx: &egui::Context) {
     if app.load_binary_modal_open {
         egui::Window::new("Load Binary into Memory")
+            .id(egui::Id::new(BINARY_DIALOG))
+            .order(egui::Order::Foreground)
             .collapsible(false)
             .resizable(false)
             .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
@@ -136,6 +163,8 @@ pub fn render(app: &mut EmulatorApp, ctx: &egui::Context) {
             "File loading failed"
         };
         egui::Window::new(title)
+            .id(egui::Id::new(ERROR_DIALOG))
+            .order(egui::Order::Foreground)
             .collapsible(false)
             .resizable(false)
             .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])

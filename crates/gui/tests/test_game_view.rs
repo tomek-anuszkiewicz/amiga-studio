@@ -252,7 +252,13 @@ fn capture_guidance_remains_visible_in_both_views_and_compact_windows() {
                 app,
             );
         common::settle_harness(&mut harness);
-        let bounds = harness.get_by_label("Input free. Click the Amiga display to capture keyboard and mouse. F12 switches Game/Debug.").accesskit_node().bounding_box().unwrap();
+        let bounds = harness
+            .get_by_label(
+                "Mouse free. Click the Amiga display to capture it. F12 switches Game/Debug.",
+            )
+            .accesskit_node()
+            .bounding_box()
+            .unwrap();
         assert!(bounds.y0 >= 0.0 && bounds.y1 < 150.0);
         assert!(bounds.x0 >= 0.0 && bounds.x1 <= 720.0);
     }

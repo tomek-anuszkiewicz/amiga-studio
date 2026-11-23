@@ -4,10 +4,9 @@ use gui::keyboard_input::{KeyRoute, KeyboardPolicy, KeyboardRouter, PhysicalKey}
 pub fn policy() -> KeyboardPolicy {
     KeyboardPolicy {
         focused: true,
-        text_focus: false,
+        gui_owns_input: false,
         session: true,
         pending_launch: false,
-        captured: true,
         running: true,
         pause_pending: false,
         developer: false,
@@ -31,7 +30,7 @@ pub fn translate(
     enabled: bool,
 ) -> Option<HostInputEvent> {
     let mut policy = policy();
-    policy.captured = enabled;
+    policy.running = enabled;
     match router.route(&key(physical, pressed), &policy) {
         KeyRoute::Amiga { code, pressed } => Some(HostInputEvent::Key { code, pressed }),
         _ => None,
@@ -100,11 +99,17 @@ pub fn inject_taps(ctx: &egui::Context, generation: u64) {
             }
         }
     });
-    if !raw.is_empty() {
-        let raw: Vec<_> = raw
-            .into_iter()
-            .map(|(p, l, d, r, s)| (p, l, d, r, s, generation))
-            .collect();
-        ctx.data_mut(|data| data.insert_temp(egui::Id::new("window_keyboard_events"), raw));
+    for (physical, logical, pressed, repeat, synthetic) in raw {
+        gui::keyboard_input::receive_key(
+            ctx,
+            PhysicalKey {
+                physical,
+                logical,
+                pressed,
+                repeat,
+                synthetic,
+            },
+            Some(generation),
+        );
     }
 }

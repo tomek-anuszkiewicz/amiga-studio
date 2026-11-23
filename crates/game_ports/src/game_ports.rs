@@ -287,14 +287,21 @@ impl GamePorts {
         }
     }
 
+    /// Releases the addressed mouse while preserving its quadrature phase.
+    pub fn release_mouse(&mut self, port: usize) {
+        if let Some(PortDevice::Mouse(mouse)) = self.device_mut(port) {
+            mouse.set_left_button(false);
+            mouse.set_right_button(false);
+            mouse.set_middle_button(false);
+            mouse.release_motion();
+        }
+    }
+
     /// Releases host controls without resetting quadrature phases or device types.
     pub fn release_controls(&mut self) {
         for port in 0..2 {
-            self.set_mouse_buttons(port, false, false, false);
+            self.release_mouse(port);
             self.set_joystick(port, [false; 6]);
-            if let Some(PortDevice::Mouse(mouse)) = self.device_mut(port) {
-                mouse.release_motion();
-            }
         }
     }
 }

@@ -314,6 +314,7 @@ impl EmulatorApp {
     /// Renders one complete UI frame using owner replies, image notifications, and docked panels
     pub fn update_ui(&mut self, ctx: &egui::Context) {
         let first_pass = ctx.output(|output| output.num_completed_passes == 0);
+        crate::keyboard_input::begin_editor_collection(ctx);
         self.poll_host(ctx, first_pass);
         self.poll_configuration_save(ctx);
 
@@ -338,8 +339,11 @@ impl EmulatorApp {
             let previous = self.host.status;
             self.host.accept_status(status);
             if previous != status {
-                if previous.generation != status.generation && self.host.data.is_none() {
-                    self.inspection.ready = false;
+                if previous.generation != status.generation {
+                    self.player.captured = false;
+                    if self.host.data.is_none() {
+                        self.inspection.ready = false;
+                    }
                 }
                 if previous.running && !status.running {
                     self.disassembly_view_addr = None;
@@ -357,15 +361,10 @@ impl EmulatorApp {
                 }
             }
         }
+        crate::layout::file_dialogs::limit_dialog_focus(self, ctx);
         if self.player.screen != crate::player::PlayerScreen::Session {
             self.render_player_screen(ctx);
-            if first_pass {
-                self.poll_file_dialog(ctx);
-                self.update_input_capture(ctx);
-            }
-            crate::layout::file_dialogs::render(self, ctx);
-            self.host.flush();
-            self.host.request_submission_retry(ctx);
+            self.finish_ui_pass(ctx, first_pass);
             return;
         }
         render_top_menu_bar(self, ctx);
@@ -389,8 +388,7 @@ impl EmulatorApp {
                 egui::CentralPanel::default().show(ctx, |ui| {
                     ui.label("Preparing debugger inspection...");
                 });
-                self.host.flush();
-                self.host.request_submission_retry(ctx);
+                self.finish_ui_pass(ctx, first_pass);
                 return;
             };
             let original_breakpoints = data.debugger.breakpoints.clone();
@@ -777,6 +775,10 @@ impl EmulatorApp {
         if self.view_mode == ViewMode::Developer && !self.inspection.frozen {
             self.inspection.ready = true;
         }
+        self.finish_ui_pass(ctx, first_pass);
+    }
+
+    fn finish_ui_pass(&mut self, ctx: &egui::Context, first_pass: bool) {
         if first_pass {
             self.poll_file_dialog(ctx);
         }
@@ -785,7 +787,7 @@ impl EmulatorApp {
         self.host.flush();
         self.host.request_submission_retry(ctx);
         if first_pass {
-            self.update_input_capture(ctx);
+            self.update_host_input(ctx);
         }
     }
 }

@@ -32,8 +32,8 @@ pub enum HostInputEvent {
         fire1: bool,
         fire2: bool,
     },
-    ReleaseCapture {
-        joysticks: [Option<[bool; 6]>; 2],
+    ReleaseMouse {
+        port: usize,
     },
     ReleaseAll,
 }
@@ -47,21 +47,11 @@ pub struct InputQueue {
 
 impl InputQueue {
     pub fn push(&mut self, event: HostInputEvent) {
-        if let HostInputEvent::ReleaseCapture { joysticks } = event {
-            if self.events.contains(&HostInputEvent::ReleaseAll) {
-                // Keep fresh gamepad edges, while dropping keyboard joystick input.
-                self.events.retain(|pending| match pending {
-                    HostInputEvent::ReleaseAll => true,
-                    HostInputEvent::Joystick { port, .. } => {
-                        joysticks.get(*port).is_some_and(Option::is_some)
-                    }
-                    _ => false,
-                });
+        if let HostInputEvent::ReleaseMouse { port } = event {
+            self.discard_mouse(port);
+            if self.events.contains(&HostInputEvent::ReleaseAll) || self.events.contains(&event) {
                 return;
             }
-            self.events.clear();
-            self.events.push_back(event);
-            return;
         }
         if self.events.len() == INPUT_QUEUE_CAPACITY || event == HostInputEvent::ReleaseAll {
             self.events.clear();
@@ -72,6 +62,17 @@ impl InputQueue {
             return;
         }
         self.events.push_back(event);
+    }
+
+    pub(crate) fn discard_mouse(&mut self, port: usize) {
+        self.events.retain(|event| {
+            !matches!(
+                event,
+                HostInputEvent::MouseMotion { port: pending, .. }
+                    | HostInputEvent::MouseButtons { port: pending, .. }
+                    if *pending == port
+            )
+        });
     }
 
     pub fn clear(&mut self) {
@@ -147,14 +148,8 @@ impl InputConsumer {
                     .machine
                     .game_ports
                     .set_joystick(port, [up, down, left, right, fire1, fire2]),
-                HostInputEvent::ReleaseCapture { joysticks } => {
-                    Self::release_controls(session);
-                    // Restore controller contacts before the next electrical sample.
-                    for (port, contacts) in joysticks.into_iter().enumerate() {
-                        if let Some(contacts) = contacts {
-                            session.machine.game_ports.set_joystick(port, contacts);
-                        }
-                    }
+                HostInputEvent::ReleaseMouse { port } => {
+                    session.machine.game_ports.release_mouse(port);
                 }
                 HostInputEvent::ReleaseAll => Self::release_controls(session),
             }

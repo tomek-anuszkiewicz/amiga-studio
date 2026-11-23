@@ -420,11 +420,12 @@ impl EmulatorApp {
 impl EmulatorApp {
     fn open_file_dialog(&mut self, action: FileAction) {
         self.player.captured = false;
+        self.host.keyboard_pending.clear();
         if self
             .host
             .runtime
             .as_ref()
-            .is_some_and(|runtime| !runtime.input_sender().set_enabled(false, false))
+            .is_some_and(|runtime| !runtime.input_sender().set_enabled(false, false, false))
         {
             self.player.dialog = Some(NativeDialog::Open(action));
             return;
@@ -534,11 +535,12 @@ impl EmulatorApp {
 
     pub(crate) fn open_save_state_dialog(&mut self) {
         self.player.captured = false;
+        self.host.keyboard_pending.clear();
         if self
             .host
             .runtime
             .as_ref()
-            .is_some_and(|runtime| !runtime.input_sender().set_enabled(false, false))
+            .is_some_and(|runtime| !runtime.input_sender().set_enabled(false, false, false))
         {
             self.player.dialog = Some(NativeDialog::Save);
             return;
