@@ -79,7 +79,7 @@
   "file_words": {
     "tools/dependency_updates/browsers.py": ["mz"],
     "tools/dependency_updates/cargo.py": ["vers"],
-    "tools/dependency_updates/node_packages.py": ["rcompare"],
+    "tools/dependency_updates/node_packages.py": ["rcompare", "vnd"],
     "tools/dependency_updates/python_packages.py": ["za"],
     "tools/dependency_updates/setup_tools.py": ["taiki"],
     "tools/dependency_updates/tests/test_check_updates.py": ["aaaaaaaaaaaa", "aabbcc", "abc", "bbbbbbbbbbbb", "ddeeff", "vers", "vnd"],
