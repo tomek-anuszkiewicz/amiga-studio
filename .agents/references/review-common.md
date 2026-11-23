@@ -40,6 +40,12 @@ your probe forces a state, its result applies under the conditions it created.
 Trace a supported path that leads to the reported problem.
 Distinguish an observed failure from a hypothesis or missing evidence.
 
+For workflow findings, identify the user action or step in the ordinary
+workflow that supplies the triggering input or creates the state. If the
+reviewer supplied that condition, describe what the probe showed under it.
+Before requesting or upholding a required repair, show how the assigned
+workflow reaches the condition or cite an explicit requirement that covers it.
+
 ## Review after correction
 
 [Vocabulary-only maintenance](workflow-contract.md#vocabulary-only-maintenance)
