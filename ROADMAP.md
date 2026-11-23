@@ -38,6 +38,7 @@
   - [7.8: Full Frontend Control with a Gamepad (Deferred)](#task-7-8)
   - [7.9: Turbo Floppy Mode](#task-7-9)
   - [7.10: Automatic Disk Swapping (Deferred Exploration)](#task-7-10)
+  - [7.11: Backward Compatibility for Save States](#task-7-11)
 - [Step 8: Real-World Amiga Workloads & Pipeline Optimization (Post-Boot)](#step-8)
   - [8.1: Deferred Full-OS & MFM Floppy vAmigaTS Test Suites Verification Gate](#task-8-1)
   - [8.2: End-to-End Bootable ADF Integration Testing](#task-8-2)
@@ -363,6 +364,7 @@ expansion-connector INT2/INT6 sources (12.3) retain their deferred scope.
   - **WASM sequencing:** Retain explicit save-file import/export and session quick slots for current manual setup. Implement a persistent browser save catalog with export/import alongside future bundle support, including storage-failure reporting and separation from the supplied initial state. Browser configuration persistence in 7.1 does not depend on this later catalog.
   - Make existing quick save/load readily accessible in both views and define their persistence alongside the catalog. Keep manual saves and quick slots distinct from automatic rewind history; filenames or internal identifiers need not become mandatory display names.
   - Restore saved hardware configuration, ROM, execution state and embedded media coherently, together with the frontend's game and mounted-disk identities. Preserve the active CPU micro-execution path during branches, exceptions and interrupted transfers; opcode-only reconstruction is insufficient. Saved machine state takes precedence over later edits to a named configuration; resolve incompatible host bindings without silently replacing saved hardware.
+  - The catalog must open older saves as required by [7.11](#task-7-11).
   - **Gate:** Save multiple unnamed states, verify correct thumbnails and real creation times, reopen the application/page and restore the selected state. Check both views, quick save/load, required media and identical continued execution on native and WASM; verify that a new user save does not replace the bundled starting state.
 
 <a id="task-7-4"></a>
@@ -416,6 +418,12 @@ expansion-connector INT2/INT6 sources (12.3) retain their deferred scope.
   - Explore an optional system that recognizes a game's request for another disk and selects it from the ordered media list in 7.2/7.5. Keep this distant work separate from manual disk controls.
   - Evaluate screen OCR for disk-request text and numbers (for example, disks 1-4), and consider game-specific memory signatures. The choice remains open and both approaches need evidence of reliability. Recognizing a number on its own is insufficient to identify a disk request. Determine how to match a request to the correct image and drive, and how to handle uncertain or repeated requests while keeping manual control available.
   - **Exploration gate:** Demonstrate recognition and correct swaps on selected multi-disk games, including unrelated screen numbers, ambiguous prompts and repeated requests; record supported cases, false detections and limitations before deciding whether to implement broader support.
+
+<a id="task-7-11"></a>
+
+- **7.11: Backward Compatibility for Save States**
+  - Every new emulator version must load valid save states created by any earlier version and resume the saved machine state, even when the file format or internal state representation changes. Users can open their original save files directly in the current version.
+  - **Gate:** Keep representative saves from every historical file layout, including distinct layouts that used the same version number. Verify that the current emulator loads each file and correctly resumes execution.
 
 ---
 
