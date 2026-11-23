@@ -23,10 +23,12 @@ Git already provides the configuration at that revision.
 ## RD-002 Uncommitted changes during final verification
 
 Ignore findings that final verification selects tests from uncommitted changes
-instead of changes already recorded in commits. Pending files are a normal
-intermediate state that the user resolves by discarding or committing changes.
-New commits undergo verification; no additional mechanism is required to handle
-this intermediate state.
+instead of changes already recorded in commits. Pending edits are normal input
+and new commits undergo verification. In a full English scan, also ignore
+findings that demand an incomplete result solely because an ordinary directory
+occupies the working-tree path of a regular file still in the Git index. Scan
+the eligible files in the replacement directory and validate vocabulary removals
+against the current working tree. Restoring the file changes the scan inputs.
 
 ## RD-003 Prepared and unchanged workflow environment
 
@@ -51,3 +53,9 @@ tests of tools using the changed code and tests of later use of a generated
 report. Also ignore obsolete columns, descriptions and links left in report
 templates after changes to these programs. This exclusion includes effects
 that appear during a later invocation.
+
+## RD-005 Filesystem links and path redirection
+
+Review ordinary file paths across operating systems. Ignore findings that depend
+on symbolic links, hard links, junctions or equivalent filesystem aliases or
+redirection. Apply any explicit link-handling requirement in the assigned scope.
