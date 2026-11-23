@@ -29,7 +29,6 @@ class WholeFilePreservationTests(unittest.TestCase):
         restore_capture("preservation", self.folder)
         self.archive = self.primary / ".agent/task-archives/trial/execution"
         self.selection = self.task / ".agent/tmp/selected.json"
-        self.register()
 
     def git(self, *arguments):
         return subprocess.check_output(["git", *arguments], cwd=self.primary)
@@ -41,13 +40,6 @@ class WholeFilePreservationTests(unittest.TestCase):
 
     def item(self, name, source, path, complete=True):
         return {"id": name, "source": str(source), "path": path, "complete": complete}
-
-    def register(self):
-        registration = {"schema_version": 1, "task_id": "trial", "execution_id": "execution",
-                        "git_common_dir": str(self.primary / ".git"), "start_utc": "2026-11-19T10:00:00Z",
-                        "root_thread_id": "38e0b2b3-5101-4730-a1e0-6ea70126e200"}
-        path = self.archive / "registration.json"
-        self.write(path, json.dumps(registration).encode())
 
     def run_selection(self, items, primary=None):
         self.write(self.selection, json.dumps({"files": items}).encode())
@@ -71,7 +63,7 @@ class WholeFilePreservationTests(unittest.TestCase):
         opened = []
 
         def observe(path, *args, **kwargs):
-            if path not in {self.selection, self.archive / "registration.json"}:
+            if path != self.selection:
                 opened.append(path)
             return native_open(path, *args, **kwargs)
 
@@ -96,8 +88,24 @@ class WholeFilePreservationTests(unittest.TestCase):
         self.assertEqual(decoy.read_bytes(), b"must remain unobserved")
         self.assertEqual({path.relative_to(self.archive).as_posix() for path in self.archive.rglob("*") if path.is_file()},
                          {"sessions/main.jsonl", "sessions/agent.jsonl", "outputs/execution.txt",
-                          "otel/events.jsonl", "registration.json"})
+                          "otel/events.jsonl"})
         self.assertFalse(self.git("ls-files", "--", ".agent"))
+
+    def test_copy_never_reads_an_existing_registration(self):
+        registration = self.write(self.archive / "registration.json", b"unreadable registration")
+        log = self.write(self.folder / "session.jsonl", b"finished session")
+        native_open = Path.open
+
+        def open_without_registration(path, *args, **kwargs):
+            if path == registration:
+                raise AssertionError("Attempted to open the registration")
+            return native_open(path, *args, **kwargs)
+
+        with patch.object(Path, "open", open_without_registration):
+            result = self.run_selection([self.item("session", log, "sessions/main.jsonl")])
+        self.assertIn("[COPIED] session: sessions/main.jsonl", result)
+        self.assertEqual(registration.read_bytes(), b"unreadable registration")
+        self.assertEqual((self.archive / "sessions/main.jsonl").read_bytes(), log.read_bytes())
 
     def test_collisions_keep_distinct_sources_without_reading_occupied_entries(self):
         self.write(self.archive / "same.log", b"original")
@@ -108,7 +116,7 @@ class WholeFilePreservationTests(unittest.TestCase):
         native_open = Path.open
 
         def observe(path, *args, **kwargs):
-            if path not in {self.selection, self.archive / "registration.json"}:
+            if path != self.selection:
                 opened.append(path)
             return native_open(path, *args, **kwargs)
 
@@ -140,7 +148,7 @@ class WholeFilePreservationTests(unittest.TestCase):
         self.assertIn("[RETAINED] first", result)
         self.assertIn("[COPIED] second", result)
         self.assertEqual({path.name for path in self.archive.rglob("*.json")},
-                         {"first.json", "second.json", "registration.json"})
+                         {"first.json", "second.json"})
         self.assertEqual((self.archive / "blocked/second.json").read_bytes(), second.read_bytes())
 
     def test_actual_live_writers_are_never_read_before_completion(self):
@@ -207,8 +215,7 @@ class WholeFilePreservationTests(unittest.TestCase):
         sentinel = self.write(self.folder / "outside/sentinel.txt", b"do not change")
         other = self.write(self.archive.parent / "other/sentinel.txt", b"other execution")
         selected = [self.item("source", source, "sentinel.txt")]
-        (self.archive / "registration.json").unlink()
-        self.archive.rmdir()
+        self.archive.parent.mkdir(parents=True, exist_ok=True)
         try:
             self.archive.symlink_to(sentinel.parent, target_is_directory=True)
         except OSError as error:
@@ -224,7 +231,7 @@ class WholeFilePreservationTests(unittest.TestCase):
             self.archive.unlink()
         else:
             self.archive.rmdir()
-        self.register()
+        self.archive.mkdir()
         leaf = self.archive / "sentinel.txt"
         try:
             leaf.symlink_to(sentinel)

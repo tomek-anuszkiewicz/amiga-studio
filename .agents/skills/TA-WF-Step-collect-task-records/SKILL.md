@@ -1,20 +1,20 @@
 ---
 name: TA-WF-Step-collect-task-records
-description: Preserve selected whole files in an existing execution archive.
+description: Copy finished task outputs and logs to the selected task archive.
 ---
 
-# Preserve selected task records
+# Copy task outputs and logs
 
-Apply the [result contract](../../references/workflow-contract.md). Use the
-[capture guide](../../../tools/workflow/capture/README.md#preserve-selected-files-at-task-closure)
-for the existing commands and formats.
+Apply the [result contract](../../references/workflow-contract.md). After the
+tests and other producers finish, use the
+[artifact tool](../../../tools/artifacts/README.md#preserve-task-outputs) to
+copy their results and logs. For a dedicated checkout, use the known output
+locations and include any custom paths. For the shared primary checkout, supply
+the paths produced by the task. Use task and execution names to locate the
+archive. Copying works independently of telemetry registration and time windows.
 
-Identify the files selected for copying and the registered execution directory
-where the copies belong. Run `records.py preserve` with the explicit input list.
-Keep the source files and any processes still producing them available. On a
-retry, use the archived paths the command printed. Report where the copies were
-saved and which paths were blocked. Copying requires neither a publication record nor
-a graph refresh. Stop after copying.
-
-For ignored test outputs before worktree removal, use the independent
-[artifact tool](../../../tools/artifacts/README.md) through the cleanup skill.
+For selected whole files outside the checkout, such as completed session logs,
+use the [capture guide](../../../tools/workflow/capture/README.md#preserve-selected-files-at-task-closure).
+Keep source files and earlier copies if a copy fails. On retry, use any archive
+paths already reported. Return the actual destinations and any blocked paths.
+Stop after copying.

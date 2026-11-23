@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 import hashlib
 import json
 import ntpath
@@ -148,24 +148,6 @@ def rollout_header(stream, thread: str, common: Path, *, resolve_common=None) ->
     if actual != common:
         raise CaptureError("The selected rollout belongs to a different Git repository.")
     return info
-
-
-def after_turn_boundary(codex_home: Path, common: Path, thread: str, turn: str, *, resolve_common=None) -> str:
-    candidates = rollout_paths(codex_home, thread)
-    if len(candidates) != 1:
-        raise CaptureError("Exactly one rollout is required for the selected control turn.")
-    with candidates.pop().open("rb") as stream:
-        rollout_header(stream, thread, common, resolve_common=resolve_common)
-        for line in stream:
-            if not line.endswith(b"\n"):
-                break
-            event = json.loads(line)
-            if event.get("type") != "event_msg":
-                continue
-            payload = event["payload"]
-            if payload.get("type") == "task_complete" and payload.get("turn_id") == turn:
-                return utc(timestamp(event["timestamp"]) + timedelta(microseconds=1))
-    raise CaptureError("The selected control turn has no completed event in the rollout.")
 
 
 def read_json(path: Path) -> dict:
@@ -322,11 +304,9 @@ class RegistrationIndex:
             self.selections.setdefault(selected["id"], []).append((path, registration, selected))
 
 
-def require_available_range(project: Project, thread: str, boundary: str, except_path: Path | None = None):
+def require_available_range(project: Project, thread: str, boundary: str):
     starts = epoch_ns(boundary)
-    for path, previous in project.registrations():
-        if path == except_path:
-            continue
+    for _, previous in project.registrations():
         for selection in previous["threads"]:
             if selection["id"] != thread:
                 continue

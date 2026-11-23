@@ -90,7 +90,7 @@ def private_archive(primary, task_id, namespace):
     if any(linked(path) for path in (archive, *archive.parents)):
         raise ValueError("Private archive cannot use a linked path")
     if git(primary, "check-ignore", "--quiet", "--", str(archive / "probe")).returncode:
-        raise ValueError("Private archive directory must be ignored by Git before capture")
+        raise ValueError("Private archive directory must be ignored by Git")
     tracked = git(primary, "ls-files", "-z", "--", ".agent/task-archives")
     if tracked.returncode or tracked.stdout:
         raise ValueError("Private archive files must stay outside Git")
@@ -713,11 +713,10 @@ def render(report):
 
 
 def preserve(args):
-    from preservation import copy_selected, registered_execution, selected_files
+    from preservation import copy_selected, selected_files
 
     primary, _, archive = archive_context(args)
     files = selected_files(json_object(args.input), archive_path)
-    registered_execution(primary, args.task_id, args.execution_id)
     copy_selected(primary, archive, files)
     return 0
 

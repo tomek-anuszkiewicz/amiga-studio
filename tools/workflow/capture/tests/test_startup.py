@@ -812,6 +812,7 @@ class RegistrationControlTests(ServiceFixture, unittest.TestCase):
     def host_transport(self, _port, key, request, deadline):
         from control import send_registration
 
+        self.assertIsNone(request["after_turn"])
         return send_registration(self.port, key, request, deadline)
 
     def collector(self, endpoint, payload, token, timeout):
@@ -835,7 +836,7 @@ class RegistrationControlTests(ServiceFixture, unittest.TestCase):
     def cli(self, action, execution="a", thread=ROOT_THREAD, **kwargs):
         args = SimpleNamespace(
             action=action, execution=execution, task="fixture", project=self.primary, port=None, codex_home=None,
-            collector_image=None, otel=action == "start", at=None, after_turn=None, turn_id=None,
+            collector_image=None, otel=action == "start", at=None, turn_id=None,
         )
         vars(args).update(kwargs)
         with patch("register.Path.cwd", return_value=self.primary), patch.dict(os.environ):
@@ -932,23 +933,68 @@ class RegistrationControlTests(ServiceFixture, unittest.TestCase):
         self.assertEqual(self.archive_labels("a"), {"closed"})
         self.assertEqual(self.archive_labels("b"), {"new-root", "new-continuation"})
 
-    def test_arming_replaces_the_pending_index_entry_before_admission(self):
+    def test_receiver_rejects_retired_controls_without_activating_a_saved_pending_range(self):
+        setup = str(UUID(int=40))
+        path = self.registration()
+        path.parent.mkdir(parents=True)
+        write_json(path, {
+            "schema_version": 1, "task_id": "fixture", "execution_id": "a",
+            "git_common_dir": str(self.project.common), "root_thread_id": ROOT_THREAD,
+            "otel": True, "start_utc": START, "end_utc": None, "pending_after_turn_id": setup,
+            "threads": [{"id": ROOT_THREAD, "start_utc": START, "end_utc": None}],
+        })
         self.receiver()
+        self.rollout(ROOT_THREAD, events=[{
+            "type": "event_msg", "timestamp": "2026-11-18T10:00:00.000010Z",
+            "payload": {"type": "task_complete", "turn_id": setup},
+        }])
+        self.rollout(OTHER_THREAD)
+        self.rollout(CONTINUATION)
+        original = path.read_bytes()
+        for action, changes, message in (
+            ("start", {"execution": "b", "thread": OTHER_THREAD, "after_turn": setup}, "Delayed activation"),
+            ("arm", {"thread": None}, "Unknown registration operation"),
+        ):
+            with self.subTest(action=action):
+                code, reply = self.direct(action, signer=self.key, **changes)
+                self.assertEqual(code, 400)
+                self.assertIn(message, reply["error"])
+                self.assertEqual(path.read_bytes(), original)
+                self.assertFalse(self.registration("b").exists())
+        self.otlp([log_record(ROOT_THREAD, AT + 25000, "pending")])
+        self.assertEqual(self.archive_labels("a"), set())
+        with self.assertRaisesRegex(CaptureError, "saved registration never activated"):
+            self.cli("include", thread=CONTINUATION, at="2026-11-18T10:00:00.000025Z")
+        self.assertEqual(path.read_bytes(), original)
+        self.cli("stop", at="2026-11-18T10:00:00.000030Z")
+        self.assertEqual(read_json(path).get("pending_after_turn_id"), setup)
+        self.otlp([log_record(ROOT_THREAD, AT + 25000, "late-pending")])
+        self.assertEqual(self.archive_labels("a"), set())
+
+    def test_receiver_respects_a_saved_after_turn_bound_for_late_records(self):
         setup, work = str(UUID(int=40)), str(UUID(int=41))
+        start = "2026-11-18T10:00:00.000011Z"
+        end = "2026-11-18T10:00:00.000030Z"
+        path = self.registration()
+        path.parent.mkdir(parents=True)
+        write_json(path, {
+            "schema_version": 1, "task_id": "fixture", "execution_id": "a",
+            "git_common_dir": str(self.project.common), "root_thread_id": ROOT_THREAD,
+            "otel": True, "start_utc": start, "end_utc": end, "after_turn_id": setup,
+            "threads": [{"id": ROOT_THREAD, "start_utc": start, "end_utc": end}],
+        })
+        self.receiver()
         events = []
         for turn, first, last in ((setup, "000001", "000010"), (work, "000020", "000030")):
             for kind, fraction in (("task_started", first), ("task_complete", last)):
                 events.append({"type": "event_msg", "timestamp": f"2026-11-18T10:00:00.{fraction}Z",
                                "payload": {"type": kind, "turn_id": turn}})
         self.rollout(ROOT_THREAD, events=events)
-        self.cli("start", after_turn=setup)
-        pending = read_json(self.registration())
-        self.otlp([log_record(ROOT_THREAD, epoch_ns(pending["start_utc"]) + 1, "pending")])
-        self.assertEqual(self.archive_labels("a"), set())
-        self.cli("arm", thread=None)
+        excluded = log_record(ROOT_THREAD, AT + 25000, "excluded-turn")
+        excluded["attributes"].append(attribute("turn.id", setup))
         with patch.object(self.project, "registrations", side_effect=AssertionError("Archive scanned again")):
             self.otlp([log_record(ROOT_THREAD, AT + 5000, "setup"),
-                       log_record(ROOT_THREAD, AT + 25000, "work")])
+                       excluded, log_record(ROOT_THREAD, AT + 25000, "work")])
         self.assertEqual(self.archive_labels("a"), {"work"})
 
     def test_failed_registration_write_keeps_the_cached_range_open(self):
@@ -1074,6 +1120,17 @@ class RegistrationControlTests(ServiceFixture, unittest.TestCase):
                 arguments()
         self.assertEqual(error.exception.code, 2)
 
+    def test_retired_cli_controls_are_rejected_before_service_access(self):
+        options = ["--project", str(self.primary), "--task", "fixture", "--execution", "a"]
+        for action, selection in (("start", ["--after-turn", ROOT_THREAD]), ("arm", [])):
+            with self.subTest(action=action), \
+                    patch("register.host_request", side_effect=AssertionError("Accessed capture services")), \
+                    patch.object(sys, "argv", ["register.py", action, *options, *selection]), \
+                    redirect_stderr(io.StringIO()):
+                with self.assertRaises(SystemExit) as error:
+                    main()
+                self.assertEqual(error.exception.code, 2)
+
     def test_start_restores_missing_or_stopped_collector_from_the_saved_installation(self):
         self.receiver()
         running = {name: {"Id": name, "State": {"Running": True}}
@@ -1107,32 +1164,35 @@ class RegistrationControlTests(ServiceFixture, unittest.TestCase):
         self.assertEqual(saved_settings(self.project), settings)
         self.assertEqual(list(self.project.registrations()), [])
 
-    def test_changed_source_closes_only_the_owned_range_and_can_arm_and_include(self):
+    def test_changed_source_closes_only_the_owned_range_and_can_start_and_include(self):
         self.receiver()
         self.rollout(ROOT_THREAD)
         self.rollout(CONTINUATION)
         self.cli("start", at=START)
         turn = str(UUID(int=40))
+        next_turn = str(UUID(int=41))
         end = "2026-11-18T10:00:00.000050Z"
+        next_start = "2026-11-18T10:00:00.000081Z"
+        self.rollout(ROOT_THREAD, events=[
+            {"type": "event_msg", "timestamp": end,
+             "payload": {"type": "task_complete", "turn_id": turn}},
+            {"type": "event_msg", "timestamp": next_start,
+             "payload": {"type": "task_started", "turn_id": next_turn}},
+        ])
         with patch("compose_service.SOURCE", self.modified_source()):
             receipt = self.cli("stop", at=end, turn_id=turn)
+            started = self.cli("start", execution="b", at=next_start, turn_id=next_turn)
+            self.cli("include", execution="b", thread=CONTINUATION, at="2026-11-18T10:00:00.000090Z")
         record = read_json(self.registration())
         self.assertEqual(receipt["registration"], self.registration().relative_to(self.primary).as_posix())
         self.assertEqual(record["end_utc"], end)
         self.assertEqual(record["end_turn_id"], turn)
         self.assertEqual(record["threads"], [{"id": ROOT_THREAD, "start_utc": "2026-11-18T10:00:00.000000Z",
                                               "end_utc": end, "end_turn_id": turn}])
-        self.rollout(ROOT_THREAD, events=[{
-            "type": "event_msg", "timestamp": "2026-11-18T10:00:00.000080Z",
-            "payload": {"type": "task_complete", "turn_id": turn},
-        }])
-        self.assertTrue(self.cli("start", execution="b", after_turn=turn)["pending"])
-        armed = self.cli("arm", execution="b", thread=None)
-        self.assertEqual(armed["boundary_utc"], "2026-11-18T10:00:00.000081Z")
-        self.assertFalse(armed["pending"])
-        self.cli("include", execution="b", thread=CONTINUATION, at="2026-11-18T10:00:00.000090Z")
-        self.assertEqual([item["id"] for item in read_json(self.registration("b"))["threads"]],
-                         [ROOT_THREAD, CONTINUATION])
+        after = read_json(self.registration("b"))
+        self.assertEqual(started["boundary_utc"], next_start)
+        self.assertEqual(after["start_turn_id"], next_turn)
+        self.assertEqual([item["id"] for item in after["threads"]], [ROOT_THREAD, CONTINUATION])
         self.exec.assert_not_called()
 
     def test_invalid_credentials_identity_rollout_and_boundaries_keep_registry_intact(self):

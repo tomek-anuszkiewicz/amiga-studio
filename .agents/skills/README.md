@@ -186,14 +186,14 @@ the selected task resources. See
 flowchart TD
     Evidence["Confirm current final master evidence and<br/>integration"]
     Evidence --> Preserve["Preserve reports, outputs and needed plan/context"]
-    Preserve --> Copy["Use artifact tool; TA-WF-Step-collect-task-records<br/>for selected additional files when needed"]
-    Copy --> Remove["Remove selected worktree, merged branch and<br/>completed plan copies"]
+    Preserve --> Copy["TA-WF-Step-collect-task-records copies outputs<br/>from the task checkout and selected paths on master"]
+    Copy --> Remove["Remove selected task resources and<br/>completed plan copies"]
     Remove --> Graph["TA-Graphify-refresh for project on final local<br/>master"]
     Graph --> Result["Return archive, cleanup outcomes and graph freshness<br/>limits"]
 ```
 
 Component procedures:
-[collect-task-records](TA-WF-Step-collect-task-records/SKILL.md) when needed and
+[collect-task-records](TA-WF-Step-collect-task-records/SKILL.md) and
 [Graphify-refresh](TA-Graphify-refresh/SKILL.md).
 The [artifact tool](../../tools/artifacts/README.md), `tools/worktree.ps1` and
 ordinary Git and file operations preserve and remove the selected resources.

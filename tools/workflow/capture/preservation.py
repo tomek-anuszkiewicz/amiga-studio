@@ -7,7 +7,7 @@ import shutil
 from tempfile import NamedTemporaryFile
 
 from record_sources import identifier, linked, safe_file
-from registry import Project, git, read_json, thread_id, timestamp
+from registry import git
 
 
 @dataclass(frozen=True)
@@ -69,26 +69,6 @@ def copy_whole(primary, source, destination):
         finally:
             output.close()
             temporary.unlink()
-
-
-def registered_execution(primary, task_id, execution_id):
-    """Read only the known registration and return its stable identity."""
-    project = Project(primary, primary)
-    path = project.registration_path(task_id, execution_id)
-    project.require_ignored(path)
-    try:
-        registration = read_json(safe_file(path, single_link=True))
-        if (registration["schema_version"] != 1
-                or registration["task_id"] != task_id or registration["execution_id"] != execution_id
-                or not project.matches_common(registration["git_common_dir"])
-                or "pending_after_turn_id" in registration):
-            raise ValueError("Registration does not identify this active or completed execution")
-        start = registration["start_utc"]
-        timestamp(start)
-        return {"task_id": task_id, "execution_id": execution_id,
-                "root_thread_id": thread_id(registration["root_thread_id"]), "start_utc": start}
-    except (KeyError, OSError, TypeError, ValueError) as error:
-        raise ValueError(f"Cannot use the existing capture registration for {task_id}/{execution_id}: {error}") from error
 
 
 def copy_selected(primary, archive, selected):

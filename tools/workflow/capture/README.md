@@ -370,16 +370,13 @@ maintenance.
 
 ### Historical and dedicated CLI capture
 
-Use `start` without `--otel` for dedicated native evidence and explicitly
-selected artifacts. For a dedicated CLI probe with OTLP, select `--otel` and use
-a unique execution ID in the project. `--at` selects a historical interval.
-`--after-turn <setup-turn-id>` leaves a selected interval pending until a control
-turn finishes. Run `arm` after the control turn so the saved interval starts
-immediately after its recorded completion.
+Use `start` without `--otel` for dedicated native evidence. For a dedicated CLI
+probe with OTLP, select `--otel` and use a unique execution ID in the project.
+Use `--at` with an observed UTC time to start a historical interval. Add
+`--turn-id` when the evidence identifies the first turn in that interval.
 
 ```text
-python tools/workflow/capture/register.py start --project <primary> --task <task> --execution <execution>
-python tools/workflow/capture/register.py arm --project <primary> --task <task> --execution <execution>
+python tools/workflow/capture/register.py start --project <primary> --task <task> --execution <execution> --at <observed-utc> --turn-id <first-turn-id>
 ```
 
 These historical and native-only selections remain valid for evidence
@@ -389,6 +386,13 @@ preserve its `--json` output as bytes. The earlier dedicated pilot found
 identifiable spans and no identifiable metric points. Preserve the chosen
 Collector image identity, configuration, source IDs and any transformation
 when interpreting a dedicated probe.
+
+The registration CLI has retired delayed activation, and the updated Receiver
+rejects those requests. The host sends `after_turn` as `null` because installed
+v1 Receivers require the field. A previously saved `after_turn_id` still bounds
+archive inspection and telemetry admission. A registration saved with
+`pending_after_turn_id` cannot admit telemetry. Close it with `stop` if it is
+still open.
 
 ## Capture a stage
 
@@ -410,17 +414,15 @@ writes.
 
 ## Preserve selected files at task closure
 
-Preserve selected session files, inputs, results and logs in their existing
-private execution directory when requested. This copies whole original files
-without a publication record or closure stage. Existing telemetry stays in place.
-Use the task and execution IDs from the selected registration.
+Use the [artifact tool](../../artifacts/README.md#preserve-task-outputs) to gather
+the task's usual test results and logs. Use `records.py preserve` for selected
+whole files such as completed session logs outside the checkout. The task and
+execution IDs select the destination directory. The command can create the
+directory and does not read a registration or contact the capture services.
 
 ```text
 python tools/workflow/capture/records.py preserve --primary <primary> --task-id <task> --execution-id <execution> --input <selected-files.json>
 ```
-
-For ignored test outputs before task worktree removal, the independent
-[artifact tool](../../artifacts/README.md) also works without telemetry registration.
 
 Use stable IDs for the selected files. A path into the execution directory names
 an already preserved file; otherwise use the known absolute source path and the

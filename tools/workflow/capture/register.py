@@ -12,8 +12,8 @@ from confirmation import DEFAULT_WAIT_SECONDS, STARTUP_SECONDS, baseline, confir
 from control import IDENTITY, control_key, registration_request, send_registration, status
 from record_sources import safe_file
 from registry import (
-    CaptureError, Project, add_thread, after_turn_boundary, close_registration, read_json,
-    require_available_range, rollout_header, rollout_paths, thread_id, timestamp, utc, write_json,
+    CaptureError, Project, add_thread, close_registration, read_json, rollout_header, rollout_paths,
+    thread_id, timestamp, utc, write_json,
 )
 
 
@@ -21,8 +21,8 @@ def default_codex_home():
     return Path(os.environ.get("CODEX_HOME") or Path.home() / ".codex")
 
 
-def boundary(value: str | None, *, now=None) -> str:
-    now = now or datetime.now(UTC)
+def boundary(value: str | None) -> str:
+    now = datetime.now(UTC)
     chosen = timestamp(value) if value else now
     if chosen > now:
         raise CaptureError("The selected capture boundary is in the future.")
@@ -37,14 +37,13 @@ def verify_mounted_rollout(project, codex_home, thread, resolve_common):
         rollout_header(stream, thread, project.common, resolve_common=resolve_common)
 
 
-def register(project, args, thread, *, deadline=None, startup=None, resolve_common=None, host_now=None,
-             registrations=None):
+def register(project, args, thread, *, deadline=None, startup=None, registrations=None):
     path = project.registration_path(args.task, args.execution)
     stage = "Execution registration"
     timeout = min(30, deadline.remaining(stage)) if deadline else 30
     with project.lock(timeout):
         project.require_ignored(path)
-        at = boundary(getattr(args, "at", None), now=host_now)
+        at = boundary(getattr(args, "at", None))
         turn = getattr(args, "turn_id", None)
         if args.action == "start":
             if path.exists():
@@ -62,8 +61,6 @@ def register(project, args, thread, *, deadline=None, startup=None, resolve_comm
             }
             if turn is not None:
                 data["start_turn_id"] = turn
-            if args.after_turn is not None:
-                data["pending_after_turn_id"] = args.after_turn
             if startup is not None:
                 data["startup"] = startup
             add_thread(project, data, thread, at, turn)
@@ -77,22 +74,9 @@ def register(project, args, thread, *, deadline=None, startup=None, resolve_comm
                 raise CaptureError("Capture registration belongs to a different Git repository.")
             if data["end_utc"] is not None:
                 raise CaptureError("The requested execution has already ended.")
-            if args.action == "arm":
-                thread = thread_id(data["root_thread_id"])
-                turn = data.get("pending_after_turn_id")
-                if turn is None:
-                    raise CaptureError("This execution has no pending control turn.")
-                completed = after_turn_boundary(
-                    args.codex_home, project.common, thread, turn, resolve_common=resolve_common,
-                )
-                at = boundary(completed, now=host_now)
-                require_available_range(project, thread, at, except_path=path)
-                data["start_utc"] = at
-                data["threads"][0]["start_utc"] = at
-                data["after_turn_id"] = data.pop("pending_after_turn_id")
-            elif args.action == "include":
+            if args.action == "include":
                 if "pending_after_turn_id" in data:
-                    raise CaptureError("Arm capture before including a continuation.")
+                    raise CaptureError("The saved registration never activated. Close it with stop.")
                 if timestamp(at) < timestamp(data["start_utc"]):
                     raise CaptureError("The continuation precedes the start of the execution.")
                 add_thread(project, data, thread, at, turn)
@@ -107,7 +91,6 @@ def register(project, args, thread, *, deadline=None, startup=None, resolve_comm
     report = {
         "task_id": data["task_id"], "execution_id": data["execution_id"],
         "thread_id": thread, "boundary_utc": at, "turn_id": turn,
-        "pending": "pending_after_turn_id" in data,
         "action": args.action, "registration": path.relative_to(project.primary).as_posix(),
     }
     if startup is not None:
@@ -119,7 +102,7 @@ def controlled_registration(project, request, registrations):
     request = registration_request(request)
     args = argparse.Namespace(
         action=request["action"], task=request["task"], execution=request["execution"], otel=request["otel"],
-        at=request["at"], turn_id=request["turn_id"], after_turn=request["after_turn"], codex_home=MOUNTED_HOME,
+        at=request["at"], turn_id=request["turn_id"],
     )
     thread = request["thread"]
     deadline = Deadline(request["deadline_ns"])
@@ -129,10 +112,9 @@ def controlled_registration(project, request, registrations):
     if (args.action == "start" and args.otel) or (args.action == "include" and read_json(path)["otel"]):
         verify_mounted_rollout(project, MOUNTED_HOME, thread, resolve_common)
     startup = None
-    if args.action == "start" and args.otel and not (args.at or args.after_turn):
+    if args.action == "start" and args.otel and args.at is None:
         startup = {"deadline_ns": deadline.expires_ns, "baseline": baseline(project, path)}
-    return register(project, args, thread, deadline=deadline, startup=startup, resolve_common=resolve_common,
-                    registrations=registrations)
+    return register(project, args, thread, deadline=deadline, startup=startup, registrations=registrations)
 
 
 def port(value):
@@ -152,7 +134,7 @@ def wait_seconds(value):
 def arguments():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="action", required=True)
-    for action in ("provision", "start", "confirm", "arm", "include", "stop", "status"):
+    for action in ("provision", "start", "confirm", "include", "stop", "status"):
         command = commands.add_parser(action)
         command.add_argument("--project", required=True, type=Path, help="Primary checkout root.")
         if action not in ("provision", "status"):
@@ -168,13 +150,10 @@ def arguments():
         if action in ("provision", "start", "status"):
             command.add_argument("--port", type=port, help="Receiver's host port. Defaults to 4318 at provision.")
         if action == "start":
-            start = command.add_mutually_exclusive_group()
-            start.add_argument("--at", help="Historical boundary for a selected evidence archive.")
-            start.add_argument("--after-turn", type=thread_id, help="Wait to arm after this control turn.")
+            command.add_argument("--at", help="Historical boundary for a selected evidence archive.")
             command.add_argument("--otel", action="store_true", help="Ensure Compose OTLP services and register.")
         if action in ("provision", "start"):
             command.add_argument("--collector-image", help="Override the pinned Collector at initial provision.")
-        if action in ("provision", "start", "arm"):
             command.add_argument("--codex-home", type=Path, help="Defaults to the service's saved Codex home if any.")
         if action == "confirm":
             command.add_argument("--wait-seconds", type=wait_seconds, default=DEFAULT_WAIT_SECONDS)
@@ -225,22 +204,18 @@ def host_request(args):
             if args.codex_home is None and saved_settings(project) is None:
                 args.codex_home = default_codex_home()
             return ComposeService(project, args, deadline).ensure(cwd, status)
-    thread = None if action == "arm" else thread_id(os.environ.get("CODEX_THREAD_ID"))
+    thread = thread_id(os.environ.get("CODEX_THREAD_ID"))
     path = project.registration_path(args.task, args.execution)
     if action == "confirm":
         return confirm(project, path, thread, args.wait_seconds, Deadline)
     use_otel = action == "start" and args.otel
     legacy = getattr(args, "legacy_installed", False)
-    at, turn, after = (getattr(args, name, None) for name in ("at", "turn_id", "after_turn"))
-    if action == "start" and after and turn:
-        raise CaptureError("An after-turn start cannot also specify a start turn ID.")
+    at, turn = args.at, args.turn_id
     with project.launcher_lock(timeout=min(30, deadline.remaining("Execution registration"))):
         saved = saved_settings(project)
         if not use_otel and saved is None:
             if legacy:
                 raise CaptureError("There is no verified pre-REST installation to close.")
-            if action in ("start", "arm") and args.codex_home is None:
-                args.codex_home = default_codex_home()
             return register(project, args, thread, deadline=deadline)
         if saved is None and args.codex_home is None:
             args.codex_home = default_codex_home()
@@ -271,7 +246,7 @@ def host_request(args):
     report = send_registration(service.port, key, {
         **{field: health[field] for field in IDENTITY},
         "action": action, "task": args.task, "execution": args.execution, "thread": thread,
-        "at": at, "turn_id": turn, "after_turn": after, "otel": use_otel,
+        "at": at, "turn_id": turn, "after_turn": None, "otel": use_otel,
         "deadline_ns": deadline.expires_ns,
     }, deadline)
     if use_otel:

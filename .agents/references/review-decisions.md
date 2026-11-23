@@ -33,13 +33,15 @@ this intermediate state.
 The workflow assumes that the configuration for the activity-recording services
 already exists and is available, Git ignore rules stay the same, and archive
 destinations are ignored and untracked. Ignore findings that demand extra
-handling for starting a task without that configuration, copying records while
-it is unavailable, or changes to a file's ignored or tracked status during the
-workflow. Also ignore scenarios in which an ignored archive directory contains
+handling for starting a task without that configuration, or changes to a file's
+ignored or tracked status during the workflow. Also ignore scenarios in which
+an ignored archive directory contains
 a tracked or otherwise nonignored destination. This includes reusing an
 identical existing file without repeating its exact-path ignore check, and
 copying the same outputs again after Git ignore rules change. These scenarios
-fall outside the required operating conditions.
+fall outside the required operating conditions. The service-configuration
+assumption does not apply to ordinary
+[file preservation](../skills/TA-WF-Step-collect-task-records/SKILL.md).
 
 ## RD-004 Effects of changing workflow tools
 

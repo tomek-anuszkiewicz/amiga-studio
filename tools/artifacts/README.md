@@ -71,34 +71,40 @@ Keep the assessment in the conversation. It needs no report files, scheduled
 jobs or hooks. If a scan fails, report the resulting limit on storage evidence.
 Verification of the code change still stands if it was independently established.
 
-## Preserve outputs before removing a worktree
+## Preserve task outputs
 
-From a checkout that will remain, run this command after tests and any other
-processes writing outputs have finished.
+Run collection after tests and any other processes writing outputs have
+finished. Choose the task's ignored archive in the primary checkout. For a
+dedicated task worktree, run this command from a checkout that will remain.
 
 ```text
-python tools/artifacts/preserve.py --worktree <task-checkout> --destination <primary-checkout>/.agent/task-archives/<archive-name>/outputs
+python tools/artifacts/preserve.py --worktree <task-checkout> --destination <primary-checkout>/.agent/task-archives/<selected-task-archive>/outputs
 ```
 
-Choose a Git-ignored destination inside the primary checkout and outside the
-task checkout. The tool copies ignored files under `.agent/tmp/verification`,
-`.agent/tmp/verify`, `.agent/tmp/singlestep`, `.agent/tmp/coverage`,
-`.agent/task-archives` and `benchmarks/results`. It leaves source files in place,
-checks copied content and refuses linked paths. It preserves differing existing
-files under separate names and can reuse identical files at the destination.
+The tool copies ignored files from `.agent/tmp/verification`, `.agent/tmp/verify`,
+`.agent/tmp/singlestep`, `.agent/tmp/coverage` and `benchmarks/results` in that
+worktree. Add `--include <relative-path>` for custom outputs such as
+`.agent/tmp/<task>` and any task reports stored in a local archive directory.
 
-Native test reports normally already live in the primary checkout's
-`.agent/task-archives/` and survive task removal there. Local timing reports,
-coverage JSON/gap summaries, SingleStep outputs, command logs and benchmark
-measurements may still live in the task checkout and are included above.
+For work performed on the shared primary checkout, pass that checkout as
+`--worktree` and use repeated `--include` options for the paths the task's
+commands produced. Select the run's subdirectory when a directory holds outputs
+from several runs.
 
-Use repeated `--include <relative-path>` for known custom results, screenshots or
-other requested ignored files. The tool does not copy all ignored assets, ROMs,
-reference books, `.env`, build targets or arbitrary temporary directories.
-Inspect the scope the tool reports. If it copied zero files, check whether the
-scope included each custom output. Stop cleanup if copying
-fails or is incomplete. Worktree removal, commits, merges, registration and
-telemetry are outside the preservation tool's duties.
+```text
+python tools/artifacts/preserve.py --worktree <primary-checkout> --destination <primary-checkout>/.agent/task-archives/<selected-task-archive>/outputs --include .agent/tmp/verification/<run> --include benchmarks/results/<run>
+```
+
+Reports written directly to an archive in the primary checkout stay at their
+existing paths. Include an individual archived report to record its path in the
+result. The tool skips archive directories in the primary checkout during
+discovery.
+It keeps the source files, checks copied content and refuses linked paths. When
+a destination exists, it can reuse an identical file or keep both versions at
+separate paths. Inspect the reported destinations and include any missing custom
+outputs. If a copy fails, keep the source and earlier copies, and resolve the
+failure before cleanup. Copying works independently of telemetry and time
+windows.
 
 [TA-WF-Main-close-task](../../.agents/skills/TA-WF-Main-close-task/SKILL.md) runs preservation
 before the existing `tools/worktree.ps1` removal command.

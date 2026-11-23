@@ -49,32 +49,26 @@ class ControlBusy(CaptureError):
 
 
 def registration_request(data):
+    # The installed v1 Receiver requires this exact set of fields.
     fields = {*IDENTITY, "action", "task", "execution", "thread", "at", "turn_id", "after_turn", "otel", "deadline_ns"}
     if not isinstance(data, dict) or set(data) != fields:
         raise CaptureError("Invalid capture control request fields.")
     action = data["action"]
-    if action not in ("start", "include", "arm", "stop"):
+    if action not in ("start", "include", "stop"):
         raise CaptureError("Unknown registration operation.")
+    if data["after_turn"] is not None:
+        raise CaptureError("Delayed activation is no longer supported.")
     for field in ("task", "execution"):
         segment(data[field])
-    if action == "arm":
-        if data["thread"] is not None:
-            raise CaptureError("Arm uses the root thread stored in the registration.")
-    else:
-        thread_id(data["thread"])
-    for field in ("turn_id", "after_turn"):
-        if data[field] is not None:
-            thread_id(data[field])
+    thread_id(data["thread"])
+    if data["turn_id"] is not None:
+        thread_id(data["turn_id"])
     if data["at"] is not None:
         timestamp(data["at"])
     if type(data["deadline_ns"]) is not int or not 0 < data["deadline_ns"] < 2**63:
         raise CaptureError("Invalid capture control deadline.")
     if type(data["otel"]) is not bool or (action != "start" and data["otel"]):
         raise CaptureError("Invalid capture mode.")
-    if (action != "start" and data["after_turn"] is not None
-            or action == "arm" and (data["at"] is not None or data["turn_id"] is not None)
-            or data["after_turn"] is not None and (data["at"] is not None or data["turn_id"] is not None)):
-        raise CaptureError("Invalid registration boundary options.")
     return data
 
 

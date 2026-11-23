@@ -19,12 +19,10 @@ records at the end of the turn. Once the record confirms registration, start
 planning or executing the plan. Return the registration, the confirming record
 and the observed state of the shared services.
 
-For separately selected historical or native-only evidence, record the
-requested boundary. For a historical next-turn start, register the control turn
-and arm the saved selection after you observe that turn complete. Record
-continuations explicitly. When stopping, preserve the last included boundary
-and allow attributable records to arrive late. Leave both shared Compose
-services running. Stop before collection.
+For separately selected historical or native-only evidence, give `start` the
+observed time and turn ID when applicable. Record continuations explicitly. When
+stopping, preserve the last included boundary and allow attributable records to
+arrive late. Leave both shared Compose services running. Stop before collection.
 
 Include the actual output location and observations in the common result.
 Use existing archive files directly for the handoff.

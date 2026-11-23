@@ -46,18 +46,55 @@ class PreserveTests(unittest.TestCase):
     def test_defaults_keep_reports_and_skip_build_assets_and_tracked_files(self):
         paths = (".agent/tmp/verification/diagnostics/run/test-runtime-report.md",
                  ".agent/tmp/verify/command.log", ".agent/tmp/singlestep/summary.json",
-                 ".agent/tmp/coverage/gaps.md", "benchmarks/results/run/result.csv")
-        for path in paths:
-            self.output(path)
+                 ".agent/tmp/coverage/gaps.md", "benchmarks/results/run/result.csv",
+                 ".agent/tmp/task/custom/detail.txt")
+        for index, path in enumerate(paths):
+            self.output(path, bytes([index, 255]))
         self.output("target/debug/application.exe")
         self.output(".agent/tmp/other/rom.bin")
+        self.output(".agent/task-archives/other/outputs/old.json")
         self.output(".agent/tmp/verification/tracked.txt")
         self.git(self.worktree, "add", "-f", ".agent/tmp/verification/tracked.txt")
-        result = preservation.preserve(self.worktree, self.destination)
+        result = preservation.preserve(self.worktree, self.destination, [".agent/tmp/task"])
         self.assertEqual({item["source"] for item in result["files"]}, set(paths))
-        for path in paths:
-            self.assertEqual((self.destination / path).read_bytes(), (self.worktree / path).read_bytes())
+        for index, path in enumerate(paths):
+            self.assertEqual((self.destination / path).read_bytes(), bytes([index, 255]))
         self.assertTrue((self.worktree / "target/debug/application.exe").exists())
+
+    def test_shared_primary_copies_the_selected_run_and_keeps_archived_reports_in_place(self):
+        current_run = ".agent/tmp/verify/current"
+        current_path = f"{current_run}/report.log"
+        native_report = ".agent/task-archives/task/test-runs/report.md"
+        fixtures = {current_path: b"task output", native_report: b"native report",
+                    ".agent/tmp/verify/previous/report.log": b"another run",
+                    ".agent/task-archives/other/outputs/old.json": b"prior archive"}
+        for relative, data in fixtures.items():
+            path = self.primary / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(data)
+        selection = [current_run, native_report]
+        first = preservation.preserve(self.primary, self.destination, selection)
+        self.assertEqual((first["copied"], first["reused"]), (1, 1))
+        self.assertEqual({item["archive"] for item in first["files"]},
+                         {native_report, (self.destination / current_path).relative_to(self.primary).as_posix()})
+
+        selection.extend((self.destination.relative_to(self.primary).as_posix(),
+                          ".agent/task-archives/other"))
+        native_iterdir = Path.iterdir
+
+        def list_run(path):
+            if path.is_relative_to(self.primary / ".agent/task-archives"):
+                raise AssertionError(f"Walked an archive directory: {path}")
+            return native_iterdir(path)
+
+        with patch.object(Path, "iterdir", list_run):
+            second = preservation.preserve(self.primary, self.destination, selection)
+        self.assertEqual((second["copied"], second["reused"]), (0, 2))
+        self.assertEqual([file for file in self.destination.rglob("*") if file.is_file()],
+                         [self.destination / current_path])
+        self.assertEqual((self.destination / current_path).read_bytes(), b"task output")
+        for relative, data in fixtures.items():
+            self.assertEqual((self.primary / relative).read_bytes(), data)
 
     def test_custom_outputs_retry_and_collision_keep_both_versions(self):
         source = self.output(".agent/screenshots/frame.png", b"first")
@@ -79,7 +116,7 @@ class PreserveTests(unittest.TestCase):
         for include in ("../primary/.gitignore", ".agent/missing", ".gitignore"):
             with self.subTest(include=include), self.assertRaises(ValueError):
                 preservation.preserve(self.worktree, self.destination, [include])
-        with self.assertRaises(ValueError):
+        with self.assertRaisesRegex(ValueError, "Select the task's output paths"):
             preservation.preserve(self.primary, self.destination)
 
     def test_unreadable_nested_directory_fails_preservation(self):
@@ -127,7 +164,8 @@ class PreserveTests(unittest.TestCase):
                 raise OSError("disk unavailable")
             return native(primary, source, target)
 
-        with patch.object(preservation, "copy_whole", side_effect=copy), self.assertRaises(OSError):
+        with (patch.object(preservation, "copy_whole", side_effect=copy),
+              self.assertRaisesRegex(OSError, "Cannot preserve .*b.json")):
             preservation.preserve(self.worktree, self.destination)
         self.assertTrue((self.destination / ".agent/tmp/coverage/a.json").exists())
         self.assertTrue((self.worktree / ".agent/tmp/coverage/b.json").exists())
