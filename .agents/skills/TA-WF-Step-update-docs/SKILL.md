@@ -38,6 +38,8 @@ if the document target is missing or ambiguous.
    relevant evidence. Trace the argument, then place each important conclusion
    with the reasoning it supports, including conclusions previously buried near
    the end.
+   Apply the shared [Mermaid diagram criteria](../../references/documentation-criteria.md#mermaid-diagrams)
+   to new or edited Mermaid diagrams.
    Preserve source-backed hardware explanations, independent requirements, provenance and
    unique rationale. Do not document a contradiction as accepted behavior.
    Omit straightforward code narration unless it adds independent value. Missing

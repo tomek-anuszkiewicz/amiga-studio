@@ -48,6 +48,8 @@ authored text or other verification configuration keep their normal requirements
    and [Documentation Value](../../references/documentation-criteria.md#documentation-value),
    with the shared [prose and narrative criteria](../../references/narrative-criteria.md)
    appropriate to each updated document's genre.
+   Apply the shared [Mermaid diagram criteria](../../references/documentation-criteria.md#mermaid-diagrams)
+   to new or edited Mermaid diagrams.
    A code edit alone does not require more prose. Preserve independent requirements
    and source-backed knowledge; update necessary links, examples and metadata.
    Honor an explicit documentation-preservation boundary and report required

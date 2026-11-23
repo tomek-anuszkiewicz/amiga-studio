@@ -51,6 +51,12 @@ incorrect code. Preserve source books, imported references, conversion prompts a
 generated artifacts. This editorial policy applies to project-authored explanations,
 not rewriting their sources or executable instructions.
 
+## Mermaid diagrams
+
+Use a period instead of a literal semicolon in Mermaid sequence message
+labels. When adding or editing a Mermaid diagram, open the document in
+VS Code's Markdown preview and confirm that the complete diagram renders.
+
 ## Select the complete intended scope
 
 Identify the baseline, selected paths and hunks, new files and proposed groups
