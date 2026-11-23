@@ -87,10 +87,10 @@ in the player panel to save the Amiga image displayed at the time of the click.
 The player saves the whole image at its source dimensions and colors, including
 edges clipped by the viewport. Each click creates a new PNG in `Screenshots/`
 under the active game's directory, even after browsing another game. The player
-publishes the PNG only after the whole file is written. If capture fails, the
-player reports the error, the game remains usable, and existing PNGs stay
-intact. Manual and browser sessions do not offer this action. Screenshot has no
-keyboard shortcut.
+publishes the PNG only after the whole file is written. A successful capture
+displays no notification. If capture fails, the player reports the error, the
+game remains usable, and existing PNGs stay intact. Manual and browser sessions
+do not offer this action. Screenshot has no keyboard shortcut.
 
 Each connected drive has a fixed-position activity light beside its DF label.
 Effective CIA-B selection or motor changes, active STEP edges, disk DMA reads,

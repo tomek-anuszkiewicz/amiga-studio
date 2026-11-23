@@ -1,6 +1,5 @@
 use super::EmulatorApp;
 use crate::game_library::{persist_screenshot, LibraryGame};
-use crate::layout::top_menu_bar::TOAST_DURATION_FRAMES;
 use image::{codecs::png::PngEncoder, ExtendedColorType, ImageEncoder};
 use std::io::{Error, Write};
 
@@ -32,7 +31,7 @@ impl EmulatorApp {
             .iter()
             .flat_map(egui::Color32::to_srgba_unmultiplied)
             .collect();
-        match persist_screenshot(game, |file| {
+        if let Err(error) = persist_screenshot(game, |file| {
             // The encoder writes its final chunk on drop. Encode into memory so
             // every byte reaches the file through a write that reports errors.
             let mut png = Vec::new();
@@ -41,10 +40,7 @@ impl EmulatorApp {
                 .map_err(Error::other)?;
             file.write_all(&png)
         }) {
-            Ok(()) => {
-                self.toast_message = Some(("Screenshot saved".into(), TOAST_DURATION_FRAMES));
-            }
-            Err(error) => self.file_error = Some(format!("Could not save screenshot: {error}")),
+            self.file_error = Some(format!("Could not save screenshot: {error}"));
         }
     }
 }

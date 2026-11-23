@@ -243,7 +243,6 @@ impl EmulatorApp {
                     .inner
             {
                 self.take_game_screenshot();
-                ui.ctx().request_repaint();
             }
         });
         #[cfg(not(target_arch = "wasm32"))]

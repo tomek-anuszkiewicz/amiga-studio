@@ -538,6 +538,7 @@ fn screenshot_clicks_keep_the_active_game_destination_and_existing_files() {
     screenshot.click();
     h.step();
     assert_eq!(directory_files(&directory), [directory.join("screenshot-1.png")]);
+    assert!(h.state().toast_message.is_none());
     h.get_by_label("Screenshot").click_accesskit();
     h.step();
     let created = directory_files(&directory);
