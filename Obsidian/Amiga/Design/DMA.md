@@ -124,7 +124,7 @@ sequenceDiagram
         RAM-->>Agnus: Read word, or accept supplied write word
         Agnus->>Bus: Retain selected RGA and data output
         Bus->>Latch: Accept into the named receiving interface
-        Latch-->>Bus: Accepted; queue overflow stops the owner
+        Latch-->>Bus: Accepted. Queue overflow stops the owner
         Note over Latch: Existing capture delay, then local processing
     else Higher-priority or ineligible
         Note over Req,Agnus: No word/pointer completion merely from requesting
