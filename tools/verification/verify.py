@@ -68,6 +68,9 @@ def main(argv=None):
                         lambda report: select_and_run(argv, started, report), cwd=REPO_ROOT)
 
 
+def standalone_english(args):
+    return args.command == "check" and args.name == "english"
+
 
 def select_and_run(argv, started, archive=None):
     if archive:
@@ -92,7 +95,7 @@ def select_and_run(argv, started, archive=None):
         if archive:
             archive.event("invocation_error", detail=str(error))
         print(f"{result_label(False)} Verification I/O error: {error}")
-        return 1
+        return 2 if standalone_english(args) else 1
     except KeyboardInterrupt:
         if archive:
             archive.event("interrupted")
@@ -188,15 +191,15 @@ def group_command(report, command, overrides, index, log_level, log_dir):
         if log:
             context[COMMAND_LOG] = str(log)
         report.event("command_started", command=command, artifact=report.link(log))
-    ok, detail, seconds = execute_command(command, context, log_level=log_level, log_dir=log_dir)
+    code, detail, seconds = execute_command(command, context, log_level=log_level, log_dir=log_dir)
     if report:
-        report.event("command_finished", command=command, outcome="passed" if ok else "failed",
+        report.event("command_finished", command=command, outcome="passed" if code == 0 else "failed",
                      detail=detail, seconds=seconds)
         if log and not log.is_file():
             # Tests may replace the executor. A real launch error is already returned by it.
             if detail.startswith("Cannot launch command"):
                 report.record_error("Command log is unavailable")
-    return ok, detail, seconds
+    return code, detail, seconds
 
 
 
@@ -209,6 +212,8 @@ def finish_group(report, code):
 
 def execute_diagnostic(args, phases, results_dir, started, archive=None):
     own_report = args.command == "runner" and args.action in ("bench", "analyze", "refresh")
+    native_english_status = standalone_english(args)
+    error_code = 2 if native_english_status else 1
     directory = None if own_report else REPO_ROOT / ".agent/tmp/verification/diagnostics" / uuid4().hex
     phase_timings = [
         [measurement(phase, name, name, "missing", commands=[command])
@@ -235,9 +240,10 @@ def execute_diagnostic(args, phases, results_dir, started, archive=None):
                 group = reserve_group(archive, phase, name, [(name, command, overrides)])
                 code = None
                 try:
-                    ok, detail, elapsed = group_command(group, command, overrides, 0, args.log_level,
-                                                        results_dir / "verify" if results_dir else None)
-                    code = 0 if ok else 1
+                    native_code, detail, elapsed = group_command(
+                        group, command, overrides, 0, args.log_level, results_dir / "verify" if results_dir else None)
+                    ok = native_code == 0
+                    code = native_code if native_english_status else int(not ok)
                 except KeyboardInterrupt:
                     code = 130
                     raise
@@ -246,7 +252,7 @@ def execute_diagnostic(args, phases, results_dir, started, archive=None):
                 row.update(status="executed" if ok else "failed", seconds=elapsed)
                 active = None
                 if not ok:
-                    exit_code = 1
+                    exit_code = code
                 blocked = blocked or phase in ("Preflight", "Build checks") and not ok
                 print(f"{result_label(ok)} {name} ({elapsed:.2f}s): {detail}", flush=True)
                 if not ok and (phase == "Coverage" or args.command == "runner" and args.action in ("bench", "profile")):
@@ -259,7 +265,7 @@ def execute_diagnostic(args, phases, results_dir, started, archive=None):
             status = "interrupted"
             print(f"{result_label(False)} Verification interrupted; repeat the same command.")
         else:
-            exit_code = 1
+            exit_code = error_code
             status = "failed"
             print(f"{result_label(False)} Diagnostic execution failed: {error}")
         if active is None:
@@ -273,8 +279,8 @@ def execute_diagnostic(args, phases, results_dir, started, archive=None):
                 retain_timing(archive, REPO_ROOT, published)
         except (OSError, RuntimeError) as error:
             print(f"{result_label(False)} Cannot write timing report: {error}")
-            if exit_code == 0:
-                exit_code = 1
+            if exit_code != 130:
+                exit_code = error_code
     print(f"{result_label(exit_code == 0)} {args.command} verification")
     return exit_code
 

@@ -75,3 +75,17 @@ assignment may explicitly include several stages. State actual checks and
 outstanding work at the end; do not impose an automatic transition.
 Telemetry registration and execution archives use the separate
 [capture tools](../../tools/workflow/capture/README.md) when selected.
+
+### Validated vocabulary removals
+
+When the engineer explicitly selects [vocabulary optimization](../skills/TA-WF-Step-optimize-english-vocabulary/SKILL.md),
+the assignee may remove the exact batch of declarations accepted by the read-only
+validator on complete repository evidence. The validator must show that the
+batch leaves the same unknown words at the same source occurrences. Recheck
+discovery and input contents before editing. Repeat validation when either changes.
+Run a full scan of the edited tree and compare the observed findings with the
+validated outcome. This vocabulary maintenance requires no emulator tests.
+
+Keep incidental removal candidates in the findings of the selected language
+operation. The [protected verification rules](protected-verification.md#protected-verification)
+govern all other removals and changes to the checker or its policy.

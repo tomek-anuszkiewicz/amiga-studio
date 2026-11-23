@@ -278,10 +278,16 @@ def check_commands(name, words):
     if name == "all" and not words:
         return [*check_commands("english", []), *select_quality_commands("commit")]
     if name == "english":
-        if words and (words[0] != "files" or len(words) == 1):
-            raise ValueError("Use check english [files PATH ...]")
+        if not words:
+            scanner_args = []
+        elif words[0] == "files" and len(words) > 1:
+            scanner_args = ["--", *words[1:]]
+        elif len(words) == 2 and words[0] == "removals" and words[1].strip():
+            scanner_args = ["--removals", words[1]]
+        else:
+            raise ValueError("Use check english [files PATH ... | removals PATH]")
         return [("Strict English Policy",
-                 [sys.executable, "tools/verification/checks/check_english.py", *words[1:]], {})]
+                 [sys.executable, "tools/verification/checks/check_english.py", *scanner_args], {})]
     if name == "build":
         values = keyword_values(words, ("crate",))
         target = ["-p", values["crate"]] if values else ["--workspace"]

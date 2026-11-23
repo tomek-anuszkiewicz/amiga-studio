@@ -34,7 +34,8 @@ for associating a report with a task execution.
 | `test runner singlestep [case FILTER] [full|sample N]` | Full vectors by default; explicit positive sampling limit overrides inherited environment |
 | `check all` | All commit quality gates without crate coverage or ordinary tests |
 | `check architecture [case FILTER]` | Python repository architecture checks; no Rust compilation |
-| `check english [files PATH...]` | English Word Checks skip task plans under `.agent/tasks/` and the two Report Word Usage word lists in both repository scans and explicit file scans. |
+| `check english [files PATH...]` | Full or selected-file English scan with a vocabulary report |
+| `check english removals PATH` | Read-only validation of the combined effect of the proposed removals |
 | `check code|hardware|formatting|clippy` | One quality gate |
 | `check build [crate NAME]` | Cargo compilation check; workspace by default |
 | `check web` | Build the browser application through Trunk and nightly; Cargo lint warnings fail |
@@ -102,6 +103,51 @@ Use the [CPU diagnostic guidance](../../.agents/references/cpu-diagnostics.md)
 when investigating an isolated instruction mismatch. Full standalone SingleStep
 requires its explicitly selected complete scope; do not expand a diagnostic
 sample into the full suite.
+
+## English vocabulary
+
+`check english` scans eligible tracked and nonignored new files. `check english
+files PATH...` uses the specified files. Both skip `.agent/tasks/` and the two
+Report Word Usage word lists. Each completed scan prints an `[INFO] English scan
+report` line naming its UTF-8 JSON report under `.agent/tmp/english/`. The path
+identifies this invocation and also appears in its command log. Use that path
+when reading results from concurrent runs.
+
+| Standalone exit code | Meaning |
+| --- | --- |
+| 0 | The scan passed. The report may still contain removal candidates. |
+| 1 | The scan found unknown words or rejected a proposed batch. |
+| 2 | A scan or verification error prevented a reliable result. An absent or invalid report also yields this status. |
+
+Aggregate checks continue to record English as a pass or failure. The report
+gives the scan `scope`, `requested_files`, `target_count`, `scanned_count`,
+`complete` and `exit_code`. Read all entries in `findings` together.
+
+- `unknown_word` gives the source path, line, word and preview.
+- `unused_entry_candidate` gives the declaration identity and the reason it might
+  be removable. Only a complete repository scan establishes absence across the
+  selected corpus. A file scan can assess allowances for the owners it read.
+- `scan_error` identifies the failed phase, affected path when known and
+  diagnostic. The report retains observations from inputs already processed.
+
+`deferred_owners` records allowances whose owners could not supply sufficient
+evidence for removal. `inputs` records the eligible paths and input byte digests
+for the current scan, along with the Git commits that establish owner deletions.
+
+`check english removals PATH` reads a JSON array of the exact `entry` objects
+from current removal candidates. A `word_list` entry identifies its list path
+and one-based line. A `file_word` entry identifies the configuration path, the
+exact owner and the zero-based array position. Both include the stored spelling
+and normalized term. The check simulates removing all proposed declarations
+together, including changes to the scanned list text. It compares unknown words
+at their source occurrences. The report includes the checked entries, the
+differences, any deferred entries and `validation.accepted`. Acceptance requires
+complete evidence.
+An accepted batch can return 1 if it preserves unresolved unknowns.
+
+Use the [vocabulary optimization procedure](../../.agents/skills/TA-WF-Step-optimize-english-vocabulary/SKILL.md)
+for an explicitly selected cleanup. Reports are disposable and capture the
+inputs of one invocation.
 
 ## Browser build verification
 

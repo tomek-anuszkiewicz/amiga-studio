@@ -27,6 +27,12 @@ including additions made during ordinary work. They need no separate approval or
 follow-up checks. This exception does not cover scanner logic, discovery,
 exclusions or other verification policy changes.
 
+The engineer may explicitly select an English vocabulary cleanup. That selection
+authorizes removal of the exact declarations accepted by the
+[vocabulary removal procedure](workflow-contract.md#validated-vocabulary-removals).
+A scan or a request to correct English supplies no removal authorization. Other
+vocabulary removals require approval of their concrete diff.
+
 ## Reference Artifact Integrity
 
 Reference traces, CSV baselines, cycle totals and SingleStep vectors are protected.

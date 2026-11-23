@@ -1,5 +1,6 @@
 """Shared command execution, filtered diagnostics and persistent logs."""
 from contextlib import ExitStack
+import json
 import os
 import re
 import subprocess
@@ -14,6 +15,8 @@ from run_rust_tests import is_rust_test
 
 
 COMMAND_LOG = "AMIGA_TEST_COMMAND_LOG"
+ENGLISH_SCANNER = "tools/verification/checks/check_english.py"
+ENGLISH_REPORT_MARKER = "[INFO] English scan report: "
 
 
 def open_command_log(stack, path):
@@ -81,6 +84,81 @@ def diagnostic_level(line):
     return None
 
 
+def valid_english_entry(entry):
+    match entry:
+        case {"path": str(path), "spelling": str(spelling), "term": str(term)} if path and spelling and term:
+            if entry.get("type") == "word_list":
+                line = entry.get("line")
+                return type(line) is int and line > 0
+            if entry.get("type") == "file_word":
+                owner = entry.get("owner")
+                position = entry.get("position")
+                return isinstance(owner, str) and bool(owner) and type(position) is int and position >= 0
+    return False
+
+
+def valid_english_finding(finding):
+    match finding:
+        case {"kind": "unknown_word", "path": str(path), "line": line, "word": str(word), "preview": str()}:
+            return bool(path and word) and type(line) is int and line > 0
+        case {"kind": "unused_entry_candidate", "entry": entry, "reason": str(reason)}:
+            return bool(reason) and valid_english_entry(entry)
+        case {"kind": "scan_error", "phase": str(phase), "diagnostic": str(diagnostic)}:
+            path = finding.get("path")
+            return bool(phase and diagnostic) and (path is None or isinstance(path, str) and bool(path))
+    return False
+
+
+def requested_english_files(root, args):
+    paths = (Path(os.path.abspath(root / arg)) for arg in args)
+    return [(path.relative_to(root) if path.is_relative_to(root) else path).as_posix() for path in paths]
+
+
+def validate_english_report(cwd, args, code, locators):
+    if len(locators) != 1:
+        raise ValueError(f"Expected one English scan report locator, found {len(locators)}")
+    locator, separator, summary = locators[0].removeprefix(ENGLISH_REPORT_MARKER).partition(" | ")
+    if not separator or not summary or not re.fullmatch(r"\.agent/tmp/english/[^/\\:]+\.json", locator):
+        raise ValueError(f"Invalid English scan report locator: {locator}")
+    root = Path(cwd).resolve()
+    path = root / locator
+    if path.resolve() != path:
+        raise ValueError(f"Invalid English scan report location: {locator}")
+    report = json.loads(path.read_text(encoding="utf-8"))
+    removal = args[:1] == ["--removals"]
+    file_args = args[1:] if args[:1] == ["--"] else args
+    requested_files = [] if removal else requested_english_files(root, file_args)
+    scope = "files" if requested_files else "repository"
+    if not isinstance(report, dict) or report.get("scope") != scope or report.get("requested_files") != requested_files:
+        raise ValueError(f"English scan report selection does not match the command: {locator}")
+    targets = report.get("target_count")
+    scanned = report.get("scanned_count")
+    complete = report.get("complete")
+    findings = report.get("findings")
+    if (type(targets) is not int or type(scanned) is not int or not 0 <= scanned <= targets
+            or type(complete) is not bool or complete != (code != 2) or (complete and scanned != targets)
+            or not isinstance(findings, list) or not all(map(valid_english_finding, findings))):
+        raise ValueError(f"Invalid English scan report contents: {locator}")
+    if code not in (0, 1, 2) or type(report.get("exit_code")) is not int or report["exit_code"] != code:
+        raise ValueError(f"English scan report status does not match scanner exit code {code}: {locator}")
+    validation = report.get("validation")
+    if removal:
+        if (not isinstance(validation, dict) or type(validation.get("accepted")) is not bool
+                or (validation["accepted"] and not complete)):
+            raise ValueError(f"Invalid English removal decision: {locator}")
+    elif "validation" in report:
+        raise ValueError(f"Unexpected English removal decision: {locator}")
+    kinds = {finding["kind"] for finding in findings}
+    if "scan_error" in kinds:
+        expected_code = 2
+    elif "unknown_word" in kinds or (removal and not validation["accepted"]):
+        expected_code = 1
+    else:
+        expected_code = 0
+    if code != expected_code:
+        raise ValueError(f"English scan report findings do not match scanner exit code {code}: {locator}")
+
+
 def run_cmd(cmd, cwd=None, env=None, log_level="warn", log_dir=None, native=None):
     cwd = REPO_ROOT if cwd is None else cwd
     print(f"[CMD] {subprocess.list2cmdline(cmd)}", flush=True)
@@ -88,6 +166,7 @@ def run_cmd(cmd, cwd=None, env=None, log_level="warn", log_dir=None, native=None
     log_dir = Path(log_dir) if log_dir is not None else REPO_ROOT / ".agent/tmp/verify"
     log_dir.mkdir(parents=True, exist_ok=True)
     start = time.time()
+    detail = None
     with ExitStack() as stack:
         log = stack.enter_context(tempfile.NamedTemporaryFile(
             mode="w", encoding="utf-8", dir=log_dir,
@@ -102,12 +181,18 @@ def run_cmd(cmd, cwd=None, env=None, log_level="warn", log_dir=None, native=None
         context_left = 0
         error_seen = False
         exact_test_count = None
+        english = cmd[1:2] == [ENGLISH_SCANNER]
+        english_locators = []
         with subprocess.Popen(native or cmd, cwd=cwd, env=env, stdout=subprocess.PIPE,
                               stderr=subprocess.STDOUT, text=True, encoding="utf-8",
                               errors="replace") as process:
             for line in process.stdout:
                 log.write(line)
                 mirror = mirror_output(mirror, line)
+                if english and line.startswith(ENGLISH_REPORT_MARKER):
+                    english_locators.append(line.rstrip())
+                    context_left = 0
+                    continue
                 if cmd[:2] == ["cargo", "test"] and "--exact" in cmd:
                     count = re.fullmatch(r"running (\d+) tests?", line.strip())
                     if count:
@@ -132,6 +217,18 @@ def run_cmd(cmd, cwd=None, env=None, log_level="warn", log_dir=None, native=None
                 else:
                     context_left = 0
             code = process.wait()
+        if english:
+            try:
+                validate_english_report(cwd, cmd[2:], code, english_locators)
+            except (OSError, ValueError, RuntimeError) as error:
+                detail = f"Cannot use English scan report: {error} (scanner exit code {code})"
+                diagnostic = f"[ERROR] {detail}\n"
+                log.write(diagnostic)
+                mirror_output(mirror, diagnostic)
+                error_seen = True
+                code = 2
+            else:
+                print_info(english_locators[0].removeprefix("[INFO] "))
     if cmd[:2] == ["cargo", "test"] and "--exact" in cmd and code == 0 and exact_test_count != 1:
         print(f"[FAIL] --exact selected {exact_test_count or 0} tests; expected one.", flush=True)
         error_seen = True
@@ -148,7 +245,7 @@ def run_cmd(cmd, cwd=None, env=None, log_level="warn", log_dir=None, native=None
         except ValueError:
             display_path = str(log_path)
         print(f"[LOG] {display_path}", flush=True)
-    return code, elapsed
+    return code, detail or f"command exited with code {code}", elapsed
 
 def execute_command(command, overrides, log_level="warn", log_dir=None):
     env = os.environ.copy()
@@ -172,8 +269,7 @@ def execute_command(command, overrides, log_level="warn", log_dir=None):
         options = {"env": env, "log_level": log_level, "log_dir": log_dir}
         if native:
             options["native"] = native
-        code, elapsed = run_cmd(command, **options)
+        return run_cmd(command, **options)
     except OSError as error:
-        return False, f"Cannot launch command: {error}", 0
-    detail = f"command exited with code {code}"
-    return code == 0, detail, elapsed
+        code = 2 if command[1:2] == [ENGLISH_SCANNER] else 1
+        return code, f"Cannot launch command: {error}", 0

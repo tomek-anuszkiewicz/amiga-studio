@@ -18,7 +18,7 @@ COMMAND_TREE = """Command tree (run from the repository root):
   ├─ check
   │  ├─ all
   │  ├─ architecture [case FILTER]
-  │  ├─ english [files PATH...]
+  │  ├─ english [files PATH... | removals PATH]
   │  ├─ code
   │  ├─ hardware
   │  ├─ formatting
@@ -52,6 +52,7 @@ EXAMPLES = """Examples (run from the repository root):
   python tools/verification/verify.py test runner singlestep case test_add_b sample 500
   python tools/verification/verify.py test runner singlestep case test_add_b --exact sample 5 --results-dir .agent/tmp/experiments/add
   python tools/verification/verify.py check architecture case test_file_size_limits
+  python tools/verification/verify.py check english removals .agent/tmp/proposal.json
   python tools/verification/verify.py runner bench inventory
   python tools/verification/verify.py runner bench case add/add_w_d1_d0 duration-ms 50 series 1
   python tools/verification/verify.py runner bench cases .agent/tmp/benchmark_cases.txt
@@ -67,7 +68,11 @@ policy retain their full scope. The plan explains the selected test scope.
 Without directory selectors, test python runs only contracts affected by changed
 tool inputs. Explicit directory selection runs that suite even on a clean tree.
 Commit excludes full SingleStep. Milestone runs full SingleStep.
-The full English scan runs through check english.
+The full English scan runs through check english. The removals selector checks
+a proposed batch without writing vocabulary. Standalone English checks print the
+path to each available scan report and return 0 for a pass, including a scan with
+removal candidates only, 1 for unknown words or rejected removals, and 2 for an
+operational error. Check all uses aggregate pass or fail.
 """
 
 

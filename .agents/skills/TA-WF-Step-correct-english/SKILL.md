@@ -28,8 +28,16 @@ Use the language-related [prose criteria](../../references/narrative-criteria.md
 for these corrections. Preserve meaning and document structure. Reorganizing an
 article requires its own assignment.
 
-Read each finding in its surrounding sentence, identifier or example. A finding
-means the scanner could not find the word in its dictionary. Check unfamiliar
+Open the JSON report named in the `English scan report` line from this invocation,
+including when the command returns zero. Read `findings` and the completeness and
+exit status fields. Treat an absent or invalid report as a scanner error and use
+the current command log to diagnose it. Report `scan_error` findings and deferred
+owners. Report `unused_entry_candidate` findings as information within the
+selected operation. Deletion requires the separately selected removal procedure.
+[English scan report contract](../../../tools/verification/README.md#english-vocabulary)
+
+Read each `unknown_word` in its surrounding sentence, identifier or example.
+The scanner found no accepted spelling for that word in this context. Check unfamiliar
 technical terms against local definitions and API usage or authoritative sources
 before deciding whether to correct them. A term written in uppercase or present
 in the source still needs this evidence.

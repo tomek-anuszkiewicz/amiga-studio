@@ -1,8 +1,13 @@
 """Behavioral contracts for focused selection and completion verification."""
+from concurrent.futures import ThreadPoolExecutor
 import contextlib
 from hashlib import sha256
 import io
+import json
+import os
 from pathlib import Path
+import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -37,7 +42,7 @@ class SelectionTests(unittest.TestCase):
                     _, args = parse_args(argv)
                     self.assertIsNone(args)
             help_text = output.getvalue()
-            for command in ('milestone [singlestep]', 'crate NAME [suite NAME] [case FILTER]', 'python [directory PATH [file PATTERN] [case FILTER]]', 'singlestep [case FILTER] [full|sample N]', 'architecture [case FILTER]', 'analyze RUN_DIRECTORY'):
+            for command in ('milestone [singlestep]', 'crate NAME [suite NAME] [case FILTER]', 'python [directory PATH [file PATTERN] [case FILTER]]', 'singlestep [case FILTER] [full|sample N]', 'architecture [case FILTER]', 'english [files PATH... | removals PATH]', 'analyze RUN_DIRECTORY'):
                 self.assertIn(command, help_text)
 
     def test_focused_rust_preserves_suite_and_case_without_completion(self):
@@ -332,7 +337,12 @@ class SelectionTests(unittest.TestCase):
         scanner = [sys.executable, 'tools/verification/checks/check_english.py']
         plain = ('Strict English Policy', scanner, {})
         self.assertEqual(selected('check english'), [plain])
-        self.assertEqual(selected('check english files docs/testing.md AGENTS.md'), [('Strict English Policy', scanner + ['docs/testing.md', 'AGENTS.md'], {})])
+        self.assertEqual(selected('check english files docs/testing.md AGENTS.md'), [('Strict English Policy', scanner + ['--', 'docs/testing.md', 'AGENTS.md'], {})])
+        self.assertEqual(selected(['check', 'english', 'files', '--', '--removals']),
+                         [('Strict English Policy', scanner + ['--', '--removals'], {})])
+        proposal = '.agent/tmp/removal proposal.json'
+        self.assertEqual(selected(['check', 'english', 'removals', proposal]),
+                         [('Strict English Policy', scanner + ['--removals', proposal], {})])
         all_checks = selected('check all')
         self.assertEqual([name for name, _, _ in all_checks], ['Strict English Policy', 'Obsidian Frontmatter', 'Formatting', 'Clippy Invariants', 'WebAssembly build', 'Architecture Rules', 'Hardware Quality', 'Code Quality'])
         self.assertEqual([command for _, command, _ in all_checks if scanner[1] in command], [scanner])
@@ -357,7 +367,7 @@ class SelectionTests(unittest.TestCase):
         self.assertEqual(selected('runner refresh filtered_run')[0][1][1:], ['tools/verification/cpu_performance_tests.py', 'refresh', 'filtered_run'])
 
     def test_refresh_allows_intended_current_snapshot_change(self):
-        with tempfile.TemporaryDirectory() as temporary, patch.object(verify, 'REPO_ROOT', Path(temporary)), patch.object(verify, 'execute_command', return_value=(True, 'refreshed', 0.1)), contextlib.redirect_stdout(io.StringIO()):
+        with tempfile.TemporaryDirectory() as temporary, patch.object(verify, 'REPO_ROOT', Path(temporary)), patch.object(verify, 'execute_command', return_value=(0, 'refreshed', 0.1)), contextlib.redirect_stdout(io.StringIO()):
             self.assertEqual(verify.main(['runner', 'refresh', 'filtered_run']), 0)
 
     def test_gui_keeps_its_separate_native_options(self):
@@ -368,6 +378,11 @@ class SelectionTests(unittest.TestCase):
             with self.subTest(sentence=sentence), self.assertRaises(ValueError):
                 selected(sentence)
 
+    def test_removals_requires_exactly_one_proposal_path(self):
+        for extra in ([], [' '], ['proposal.json', 'other.json']):
+            with self.subTest(extra=extra), self.assertRaisesRegex(ValueError, 'removals PATH'):
+                selected(['check', 'english', 'removals', *extra])
+
 class CommandExecutionTests(unittest.TestCase):
 
     def test_exact_rust_run_rejects_zero_matching_tests(self):
@@ -377,7 +392,7 @@ class CommandExecutionTests(unittest.TestCase):
             process.stdout = [f"running {count} test{('s' if count != 1 else '')}\n"]
             process.wait.return_value = 0
             with self.subTest(count=count), tempfile.TemporaryDirectory() as temporary, patch.object(execution.subprocess, 'Popen', return_value=process), contextlib.redirect_stdout(io.StringIO()):
-                code, _ = execution.run_cmd(['cargo', 'test', '--', 'case', '--exact'], log_dir=temporary)
+                code, _, _ = execution.run_cmd(['cargo', 'test', '--', 'case', '--exact'], log_dir=temporary)
             self.assertEqual(code, expected)
 
 class ExecutionTests(unittest.TestCase):
@@ -389,6 +404,127 @@ class ExecutionTests(unittest.TestCase):
         restore_repository('empty', self.root)
         ignore_archive(self.root)
         self.enterContext(patch.object(verify, 'REPO_ROOT', self.root))
+
+    def english_scanner_path(self):
+        scanner = self.root / 'tools/verification/checks/check_english.py'
+        scanner.parent.mkdir(parents=True, exist_ok=True)
+        return scanner
+
+    def test_english_requires_a_readable_report_from_its_child(self):
+        scanner = self.english_scanner_path()
+        path = self.root / '.agent/tmp/english/example.json'
+        path.parent.mkdir(parents=True)
+        marker = '[INFO] English scan report: .agent/tmp/english/example.json | scope=repository'
+        valid = {'scope': 'repository', 'requested_files': [], 'target_count': 0,
+                 'scanned_count': 0, 'complete': True, 'exit_code': 0, 'findings': []}
+        for label, content, markers, args in (
+            ('unannounced', json.dumps(valid), [], []),
+            ('missing', None, [marker], []),
+            ('malformed', '{', [marker], []),
+            ('wrong status', json.dumps({**valid, 'exit_code': 1}), [marker], []),
+            ('incomplete success', json.dumps({**valid, 'complete': False}), [marker], []),
+            ('missing finding fields', json.dumps({**valid, 'findings': [{'kind': 'unused_entry_candidate'}]}), [marker], []),
+            ('multiple', json.dumps(valid), [marker, marker], []),
+            ('failed removal with success status', json.dumps({**valid, 'validation': {'accepted': False}}),
+             [marker], ['removals', 'proposal.json']),
+        ):
+            with self.subTest(label=label):
+                if content is None:
+                    path.unlink(missing_ok=True)
+                else:
+                    path.write_text(content, encoding='utf-8')
+                scanner.write_text(''.join(f'print({line!r})\n' for line in markers), encoding='utf-8')
+                with patch.object(execution, 'REPO_ROOT', self.root), contextlib.redirect_stdout(io.StringIO()) as output:
+                    self.assertEqual(verify.main(['check', 'english', *args]), 2, output.getvalue())
+                self.assertIn('Cannot use English scan report:', output.getvalue())
+                self.assertIn('(scanner exit code 0)', output.getvalue())
+                self.assertNotIn(marker, output.getvalue())
+
+    def test_check_all_keeps_aggregate_failure_and_runs_other_checks(self):
+        scanner = self.english_scanner_path()
+        report = self.root / '.agent/tmp/english/example.json'
+        report.parent.mkdir(parents=True)
+        report.write_text(json.dumps({'scope': 'repository', 'requested_files': [], 'target_count': 0,
+                                      'scanned_count': 0, 'complete': False, 'exit_code': 2,
+                                      'findings': [{'kind': 'scan_error', 'phase': 'configuration',
+                                                    'diagnostic': 'Malformed configuration'}]}), encoding='utf-8')
+        marker = '[INFO] English scan report: .agent/tmp/english/example.json | scope=repository'
+        scanner.write_text(f'print({marker!r})\nraise SystemExit(2)\n', encoding='utf-8')
+        next_command = ('Next quality check', [sys.executable, '-c', 'print("[INFO] Other check ran.")'], {})
+        with patch.object(execution, 'REPO_ROOT', self.root), \
+             patch.object(selection, 'select_quality_commands', return_value=[next_command]), \
+             contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(verify.main(['check', 'all']), 1, output.getvalue())
+        self.assertIn('command exited with code 2', output.getvalue())
+        self.assertIn(marker, output.getvalue())
+        self.assertIn('[INFO] Other check ran.', output.getvalue())
+        self.assertIn('[FAIL] check verification', output.getvalue())
+
+    def test_english_cli_publishes_unique_reports_with_native_status(self):
+        scanner = self.english_scanner_path()
+        scripts = Path(verify.__file__).parent
+        for script in scripts.glob('*.py'):
+            shutil.copyfile(script, scanner.parents[1] / script.name)
+        shutil.copyfile(scripts / 'checks/check_english.py', scanner)
+        source = self.root / 'notes with spaces.md'
+        source.write_text('These are words.\n', encoding='utf-8')
+        config = scanner.with_suffix('.json')
+        scope = {'word_lists': [], 'file_words': {source.name: ['words']},
+                 'always_excluded_directories': [], 'excluded_directories': ['.agent'],
+                 'excluded_directory_names': [], 'excluded_files': [], 'text_extensions': ['.md'],
+                 'text_filenames': []}
+        config.write_text(json.dumps(scope), encoding='utf-8')
+        baseline_config = config.read_bytes()
+        proposal = self.root / '.agent/tmp/removal proposal.json'
+        proposal.parent.mkdir(parents=True)
+        proposal.write_text(json.dumps([{'type': 'file_word', 'path': config.relative_to(self.root).as_posix(),
+                                        'owner': source.name, 'position': 0, 'spelling': 'words', 'term': 'words'}]),
+                            encoding='utf-8')
+        environment = {**os.environ, 'AMIGA_TEST_TASK_ID': 'english-cli-fixture',
+                       'AMIGA_TEST_EXECUTION_ID': 'english-cli-fixture', 'AMIGA_TEST_PARENT_INVOCATION_ID': ''}
+        command = [sys.executable, 'tools/verification/verify.py', 'check', 'english']
+
+        def run(*args):
+            return subprocess.run([*command, *args], cwd=self.root, env=environment,
+                                  capture_output=True, encoding='utf-8', timeout=60)
+
+        def read_report(result, code, kinds, complete=True):
+            self.assertEqual(result.returncode, code, result.stdout + result.stderr)
+            reports = [line for line in result.stdout.splitlines() if line.startswith('[INFO] English scan report: ')]
+            self.assertEqual(len(reports), 1, result.stdout)
+            locator = reports[0].removeprefix('[INFO] English scan report: ').split(' | ')[0]
+            report = json.loads((self.root / locator).read_text(encoding='utf-8'))
+            self.assertEqual(report['exit_code'], code)
+            self.assertEqual(report['complete'], complete)
+            self.assertCountEqual([finding['kind'] for finding in report['findings']], kinds)
+            return locator, report
+
+        with ThreadPoolExecutor(max_workers=2) as workers:
+            concurrent = workers.submit(run, 'files', str(source))
+            first = run('files', './' + source.name)
+            second = concurrent.result()
+        first_locator, first_report = read_report(first, 0, ['unused_entry_candidate'])
+        second_locator, _ = read_report(second, 0, ['unused_entry_candidate'])
+        self.assertNotEqual(first_locator, second_locator)
+        self.assertEqual(first_report['requested_files'], [source.name])
+        report_logs = (self.root / '.agent/task-archives/english-cli-fixture/english-cli-fixture/test-runs').glob('*/command-1.log')
+        self.assertTrue(any(first_locator in log.read_text(encoding='utf-8') for log in report_logs))
+
+        _, validation = read_report(run('removals', str(proposal)), 0, ['unused_entry_candidate'])
+        self.assertIs(validation['validation']['accepted'], True)
+        self.assertEqual(config.read_bytes(), baseline_config)
+        unknown = 'wrong' * 8
+        source.write_text(f'These are words. {unknown}.\n', encoding='utf-8')
+        _, with_unknown = read_report(run('files', source.name), 1, ['unknown_word', 'unused_entry_candidate'])
+        finding, = (item for item in with_unknown['findings'] if item['kind'] == 'unknown_word')
+        self.assertEqual((finding['word'], finding['path'], finding['line']), (unknown, source.name, 1))
+        unreadable = self.root / 'unreadable.md'
+        unreadable.write_bytes(bytes([255]))
+        _, incomplete = read_report(run('files', source.name, unreadable.name), 2,
+                                    ['unknown_word', 'unused_entry_candidate', 'scan_error'], complete=False)
+        self.assertEqual((incomplete['target_count'], incomplete['scanned_count']), (2, 1))
+        config.write_text('{', encoding='utf-8')
+        read_report(run('files', source.name), 2, ['scan_error'], complete=False)
 
     def test_cold_profiles_launch_the_remaining_commands_and_keep_gate_failures(self):
         note = self.root / 'docs/testing.md'
@@ -428,14 +564,14 @@ class ExecutionTests(unittest.TestCase):
         self.assertFalse((self.root / '.agent/tmp/verification/diagnostics').exists())
 
     def test_results_directory_reaches_execution_and_singlestep_environment(self):
-        with patch.object(verify, 'execute_command', return_value=(True, 'ok', 0)) as execute, contextlib.redirect_stdout(io.StringIO()):
+        with patch.object(verify, 'execute_command', return_value=(0, 'ok', 0)) as execute, contextlib.redirect_stdout(io.StringIO()):
             self.assertEqual(verify.main(['test', 'runner', 'singlestep', 'case', 'test_add_b', '--results-dir', '.agent/tmp/experiments/add']), 0)
         self.assertEqual(execute.call_args.kwargs['log_dir'], self.root / '.agent/tmp/experiments/add/verify')
         self.assertEqual(execute.call_args.args[1]['SINGLESTEP_RESULTS_DIR'], str(self.root / '.agent/tmp/experiments/add/singlestep'))
 
     def test_diagnostic_reports_are_unique_and_external_logs_keep_their_route(self):
         diagnostics = self.root / '.agent/tmp/verification/diagnostics'
-        with tempfile.TemporaryDirectory() as temporary, patch.object(verify, 'execute_command', side_effect=[(True, 'ok', 1), (False, 'failed', 2)]) as execute, contextlib.redirect_stdout(io.StringIO()) as output:
+        with tempfile.TemporaryDirectory() as temporary, patch.object(verify, 'execute_command', side_effect=[(0, 'ok', 1), (1, 'failed', 2)]) as execute, contextlib.redirect_stdout(io.StringIO()) as output:
             external = Path(temporary)
             args = ['test', 'runner', 'singlestep', 'case', 'test_add_b', '--results-dir', str(external)]
             self.assertEqual(verify.main(args), 0, output.getvalue())
@@ -465,7 +601,7 @@ class ExecutionTests(unittest.TestCase):
 
     def test_diagnostic_interrupt_retains_completed_and_interrupted_commands(self):
         (self.root / '.gitignore').write_text('.agent/tmp/\n', encoding='utf-8')
-        with patch.object(verify, 'execute_command', side_effect=[(True, 'ok', 1.25), KeyboardInterrupt()]) as execute, contextlib.redirect_stdout(io.StringIO()) as output:
+        with patch.object(verify, 'execute_command', side_effect=[(0, 'ok', 1.25), KeyboardInterrupt()]) as execute, contextlib.redirect_stdout(io.StringIO()) as output:
             self.assertEqual(verify.main(['test', 'python']), 130)
         self.assertEqual(execute.call_count, 2)
         report = self.read_diagnostic_report(output.getvalue())
@@ -476,7 +612,7 @@ class ExecutionTests(unittest.TestCase):
     def test_diagnostic_command_error_preserves_completed_measurement(self):
         (self.root / '.gitignore').write_text('.agent/tmp/\n', encoding='utf-8')
         for error in (OSError('command unavailable'), RuntimeError('command unavailable')):
-            with self.subTest(error=type(error).__name__), patch.object(verify, 'execute_command', side_effect=[(True, 'ok', 1.25), error]) as execute, contextlib.redirect_stdout(io.StringIO()) as output:
+            with self.subTest(error=type(error).__name__), patch.object(verify, 'execute_command', side_effect=[(0, 'ok', 1.25), error]) as execute, contextlib.redirect_stdout(io.StringIO()) as output:
                 self.assertEqual(verify.main(['test', 'python']), 1)
             self.assertEqual(execute.call_count, 2)
             report = self.read_diagnostic_report(output.getvalue())
@@ -485,7 +621,7 @@ class ExecutionTests(unittest.TestCase):
             self.assertIn('Diagnostic execution failed: command unavailable', output.getvalue())
 
     def test_diagnostic_coverage_preparation_failure_retains_pending_scopes(self):
-        with patch.object(verify, 'execute_command', return_value=(False, 'preparation failed', 2)) as execute, contextlib.redirect_stdout(io.StringIO()) as output:
+        with patch.object(verify, 'execute_command', return_value=(1, 'preparation failed', 2)) as execute, contextlib.redirect_stdout(io.StringIO()) as output:
             self.assertEqual(verify.main(['test', 'coverage', 'workspace']), 1)
         execute.assert_called_once()
         report = self.read_diagnostic_report(output.getvalue())
@@ -503,8 +639,8 @@ class ExecutionTests(unittest.TestCase):
                 raise OSError('write unavailable')
             return original_open(path, mode, *args, **kwargs)
         for failure, message in ((patch.object(Path, 'open', fail_report_open), 'write unavailable'), (patch.object(timing_report, 'git', side_effect=RuntimeError('revision unavailable')), 'revision unavailable')):
-            with self.subTest(message=message), failure, patch.object(verify, 'execute_command', return_value=(True, 'ok', 4)) as execute, contextlib.redirect_stdout(io.StringIO()) as output:
-                self.assertEqual(verify.main(['check', 'english']), 1)
+            with self.subTest(message=message), failure, patch.object(verify, 'execute_command', return_value=(0, 'ok', 4)) as execute, contextlib.redirect_stdout(io.StringIO()) as output:
+                self.assertEqual(verify.main(['check', 'english']), 2)
             execute.assert_called_once()
             self.assertIn(f'Cannot write timing report: {message}', output.getvalue())
             self.assertNotIn('[TIMING] Report SHA-256:', output.getvalue())
@@ -514,7 +650,7 @@ class ExecutionTests(unittest.TestCase):
 
     def test_inventory_runs_without_candidate_generation(self):
         for success in (True, False):
-            with self.subTest(success=success), patch.object(verify, 'execute_command', return_value=(success, 'result', 0)) as execute, contextlib.redirect_stdout(io.StringIO()):
+            with self.subTest(success=success), patch.object(verify, 'execute_command', return_value=(int(not success), 'result', 0)) as execute, contextlib.redirect_stdout(io.StringIO()):
                 self.assertEqual(verify.main(['runner', 'bench', 'inventory']), 0 if success else 1)
             self.assertEqual(execute.call_count, 1)
             self.assertEqual(execute.call_args_list[0].args[0][:2], ['cargo', 'bench'])
