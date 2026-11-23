@@ -6,9 +6,16 @@ use gui::{host_commands::HostCommand, AppTheme, EmulatorApp, ViewMode};
 
 fn pending_step_session() -> gui::DebuggerSession {
     let mut session = gui::DebuggerSession::new();
+    // Give the CPU a valid idle loop during the CIA writes in this ROM-free fixture.
+    session.load_binary(0x1000, &[0x60, 0xfe], true).unwrap();
     use physical_memory::{AddressBus, BusResult};
     let m = &mut session.machine;
-    for (address, value) in [(0xbfd100, 0xff), (0xbfd300, 0xff), (0xbfd100, 0xf5)] {
+    for (address, value) in [
+        (0xbfd100, 0xff),
+        (0xbfd300, 0xff),
+        (0xbfd100, 0xf5),
+        (0xbfd100, 0xf4),
+    ] {
         loop {
             if matches!(
                 m.memory_bus().write_byte(address, value),
@@ -20,11 +27,11 @@ fn pending_step_session() -> gui::DebuggerSession {
         }
         m.step_cck();
     }
-    m.step_cycles(2);
+    m.step_cycles(10); // Hold STEP low before leaving its rising edge pending.
     m.paula.disk_activity.sequences[0] = u64::MAX;
     loop {
         if matches!(
-            m.memory_bus().write_byte(0xbfd100, 0xf4),
+            m.memory_bus().write_byte(0xbfd100, 0xf5),
             BusResult::Ready(())
         ) {
             break;

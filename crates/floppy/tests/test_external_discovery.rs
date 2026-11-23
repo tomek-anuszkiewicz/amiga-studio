@@ -6,11 +6,24 @@ fn connected_empty_external_drives_identify_and_disconnected_drives_release_read
     assert!(controller
         .set_connections([true, true, true, false])
         .is_ok());
-    for drive in 1..4 {
+    for (drive, inserted) in [(1, false), (2, true), (3, false)] {
+        if controller.drives[drive].connected {
+            assert!(controller.drives[drive].insert_disk(&vec![0; floppy::FORMATTED_DISK_BYTES]));
+        }
         let select = 1 << (drive + 3);
         // Technical Reference Manual: establish motor, select, deselect;
         // then establish motor off and select before reading the 32-bit ID.
-        for control in [0x7f, 0x7f & !select, 0x7f, 0xff, 0xff & !select, 0xff] {
+        for control in [0x7f, 0x7f & !select] {
+            controller.pins.control_input = control;
+            controller.step_cck();
+        }
+        for _ in 0..20_000 {
+            controller.step_cck();
+        }
+        if drive == 1 {
+            controller.drives[drive].eject_disk(); // Read its ID while coasting without media.
+        }
+        for control in [0x7f, 0xff, 0xff & !select, 0xff] {
             controller.pins.control_input = control;
             controller.step_cck();
         }
@@ -24,6 +37,6 @@ fn connected_empty_external_drives_identify_and_disconnected_drives_release_read
             controller.step_cck();
         }
         assert_eq!(identity, if drive == 3 { 0 } else { u32::MAX });
-        assert!(!controller.drives[drive].disk_inserted);
+        assert_eq!(controller.drives[drive].disk_inserted, inserted);
     }
 }

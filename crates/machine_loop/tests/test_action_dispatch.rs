@@ -267,13 +267,15 @@ fn test_end_to_end_floppy_bus_control_and_sensor_readback() {
     machine.step_cck();
 
     // Step 3: Return _STEP high (bit 0 = 1 -> 0x75)
+    machine.step_cycles(10);
     assert_eq!(
         common::cia::write_byte(&mut machine, 0xBFD100, 0x75),
         BusResult::Ready(())
     );
     machine.step_cck();
 
-    // Head stepped from cylinder 0 to cylinder 1!
+    assert_eq!(machine.floppy.drives[0].cylinder, 0);
+    machine.step_cycles(10_641); // 3 ms of physical travel at the PAL clock.
     assert_eq!(machine.floppy.drives[0].cylinder, 1);
 
     // Step CCK updates peripheral pins into CIA-A

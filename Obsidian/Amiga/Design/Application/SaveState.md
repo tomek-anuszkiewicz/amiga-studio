@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "general"
 status: "active"
 created: 2026-08-31
-updated: 2026-11-17
+updated: 2026-11-23
 related: ["[General Architecture.md](../General%20Architecture.md)", "[MemoryBus.md](../MemoryBus.md)", "[CPU Motorola M68000.md](../CPU%20Motorola%20M68000.md)", "[Machine Loop.md](../Machine%20Loop.md)", "[Agnus.md](../Agnus.md)", "[RTC.md](../RTC.md)"]
 tracked_paths:
   - "crates/machine_loop/src/state.rs"
@@ -42,7 +42,7 @@ the GUI reads and writes those documents. The file content and version
 validation rules still apply after the removal of direct file helpers.
 [frontend](GUI.md#input-and-output)
 
-The decoded file must have the supported schema version before restoration.
+The loader checks that the file uses schema version 15 before restoring it.
 The envelope contains `header` and a boxed `state` value, which keeps large
 serialized payloads off the call stack. The JSON holds an ordinary state
 object. Earlier layouts have no compatibility parser. Frontends and the
@@ -50,7 +50,7 @@ debugger use the save_state crate for persistence. In-memory quick slots
 keep only the machine value. The schema changes and user-data preservation
 rules are defined in the [internal migration contract](../../../../.agents/references/internal-migrations.md).
 
-Schema version 14 uses access timestamps in place of CPU admission countdowns
+The state uses access timestamps in place of CPU admission countdowns
 and shared Chip RAM transfer descriptions. It retains the active CPU sequence
 identity, CPU bus-cycle start, pending refused operation and last shared Chip
 RAM access. Cloning or restoring preserves an occupied cycle without creating
@@ -58,9 +58,9 @@ another transfer opportunity. Pending keyboard releases survive a full
 type-ahead queue, preserving release delivery through another capture and exact
 restoration.
 
-The snapshot records physical drive attachment and player association. It
-embeds usable floppy raw tracks, spindle phase and mid-transfer connector
-state, so the frontend can restore the machine without the original ADF file.
+The snapshot records which drives are attached and the player association.
+It embeds the current contents of mounted disks, including guest writes. The
+frontend can restore those disks without the original ADF files.
 The chipset activity observations preserve drive attribution across the
 captured control boundary, so they still identify which drives a transfer
 belonged to. When the frontend restores the machine, it starts drive-activity
@@ -125,6 +125,15 @@ game ID and four stable mounted-disk IDs. ROM and media bytes stay embedded in
 the machine. Host handles and library paths stay outside machine state.
 Desktop games have durable save catalogs and per-game quick slots. Manual
 browser mode retains file import/export and session slots.
+
+A save file contains the disks mounted when the player saves. Opening it as a
+new session starts with those disks and any available source ADFs. During a
+session, a quick load restores the mounted disks from its slot. The player
+keeps disks absent from the slot, including disks displaced from a drive by
+the load. When an existing copy uniquely matches a restored copy, the slot's
+contents take precedence. The drive assignment identifies independent copies
+with the same disk ID when placement resolves the match. Loading a slot from an
+earlier manual session starts with that slot's mounted disks.
 
 Initial states are immutable launch assets stored separately from user saves.
 If an initial state is invalid, the frontend offers normal boot as an explicit

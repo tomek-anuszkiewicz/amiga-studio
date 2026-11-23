@@ -82,6 +82,15 @@ save/load, Library/Setup and Debug access. Narrow windows collapse the same
 controls. The panel is present once, in the player view. Screen scaling
 preserves the aspect ratio of the complete framebuffer.
 
+When a guest writes to a player disk, the new contents follow that disk through
+ejection and reinsertion during the session. The original ADF stays unchanged.
+The player uses the disk ID when selecting a detached copy. It prefers the copy
+last removed from the requested drive. A single detached copy can move to
+another connected drive. If several copies are available from other drives,
+the player reports the ambiguity and leaves all drives as they were. Copies
+mounted simultaneously are independent. The [save state specification](SaveState.md#player-progress)
+defines what a quick load or saved file restores.
+
 In a native library session, click **Screenshot** on the Game toolbar to save
 the displayed Amiga image. The player saves the whole image at its source
 dimensions and colors, including edges clipped by the viewport. Each click

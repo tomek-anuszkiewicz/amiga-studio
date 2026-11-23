@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "floppy"
 status: "active"
 created: 2026-09-06
-updated: 2026-11-17
+updated: 2026-11-23
 related: ["[CIA.md](CIA.md)", "[Paula.md](Paula.md)", "[Agnus.md](Agnus.md)", "[DMA.md](DMA.md)", "[MemoryBus.md](MemoryBus.md)", "[Machine Loop.md](Machine%20Loop.md)"]
 tracked_paths:
   - "crates/floppy"
@@ -64,8 +64,13 @@ configured as input releases high. The controller keeps the previous pin
 levels so it can distinguish a selection or step edge from a held level.
 Drive ready, track-zero, write-protect and change sense return on CIA-A
 PA5-PA2, separately from data bytes and DMA. On selection, the drive latches the MOTOR level already on the connector.
-A falling STEP edge moves the selected drive's head in the delivered
-direction. SIDE selects the surface. A low level from a
+Software sets direction before driving STEP low. When the delivered STEP
+level rises from low to high on CIA-B PB0, the selected drive acknowledges
+CHANGE if a disk is present and starts head travel in the delivered direction
+if it can move. [Service manual, Interface Signals, p. 2-4](https://markfixesstuff.com/wp-content/uploads/2026/11/Commodore-Amiga-2000-Service-Manual-Main-Unit-1989.pdf#page=78),
+[head positioning timing, p. 2-8](https://markfixesstuff.com/wp-content/uploads/2026/11/Commodore-Amiga-2000-Service-Manual-Main-Unit-1989.pdf#page=82)
+
+SIDE selects the surface. A low level from a
 selected sense output takes precedence over a high level. The motherboard
 captures control delivery and the resulting status return as separate hops.
 HRM Chapter 8 Table 8-5 requires separate writes to establish MOTOR before
@@ -107,8 +112,8 @@ when no drive is connected. See the [Technical Reference Manual, external disk i
 All bits of the single supported external device ID are identical. When a
 connected drive is selected with the motor off, it asserts READY whether or
 not media is present, so the model needs no shifting state for that ID. With
-the motor on, READY still reflects media and speed. The model leaves spindle
-acceleration unmodeled. Attachments persist in snapshots and through reset.
+the motor on, READY requires inserted media and nominal spindle speed.
+Attachments persist in snapshots and through reset.
 
 ## Autonomous ADF reads and continuation
 
@@ -117,25 +122,76 @@ tracks before execution. Invalid size leaves the current medium unchanged.
 Each sector has four preamble bytes, two $4489 sync words, odd/even header and
 label data, masked XOR checksums and odd/even payload. Clock bits carry the
 preceding data bit across boundaries. Eleven 1,088-byte sectors and a 532-byte
-gap form a circular 12,500-byte track. The read model assumes an ideal 300 RPM and 500,000 raw cells per second.
+gap form a circular 12,500-byte track. At 300 RPM the drive reads 500,000 raw cells per second.
 The HRM FAST setting specifies two microseconds per cell.
 
-The [media engine](../../../crates/floppy/src/media.rs) advances every
-running spindle, even if the drive is deselected. The engine uses a rational phase accumulator to convert the configured
-PAL/NTSC CCK frequency into cell timing. It retains the fractional remainder
-across cells, avoiding a fixed rounding to seven CCK per cell. Selection,
-side changes and STEP let the current angular phase continue. At the connector, a low level takes
-precedence for selected transitions and INDEX. Each pulse lasts one CCK and
-marks a sampled event without representing a calibrated analog width. The
-model leaves spindle acceleration, head settling and magnetic writing unmodeled.
+## Spindle, heads and magnetic recording
 
-A snapshot embeds usable raw tracks and saves spindle phase, mechanics,
-controls and pending pins. It can resume without the host image file.
-[Paula](Paula.md#reconstructed-disk-engine-contract) owns data separation, the
-FIFO, synchronization and write serialization. The drive does not interpret
-sectors during execution. Write-data and gate routing remain in place. Read
-boot evidence leaves writes to media and persistence back to the host ADF
-unverified.
+The standard drive models the Chinon F-354E DD mechanism. Commodore's A500
+parts list identifies the F-354E eject button as part 604130-18 and a Chinon
+3.5-inch drive assembly as part 312554-01. The F-354E service data specifies
+300 RPM, 0.5 s from power-on to
+ready, 3 ms track-to-track and 15 ms settling. The model uses nominal values.
+The exact acceleration curve, stopping time and transient head signals have
+no physical measurement here. [1991 Commodore parts list, A500](https://de.scribd.com/document/853133254/Commodore-ersatzteilliste-91),
+[F-354E service data](https://markfixesstuff.com/wp-content/uploads/2026/11/Commodore-Amiga-2000-Service-Manual-Main-Unit-1989.pdf#page=120)
+
+A stationary empty drive latches MOTOR on and waits for a disk. Inserting
+a disk with MOTOR on, or latching MOTOR on with a disk already present,
+starts the same linear acceleration from rest to operating speed in 500 ms.
+With MOTOR off, insertion leaves a stationary drive at rest. The rule for
+starting an empty drive follows the generic Commodore interface description.
+[Service manual, Interface Signals, p. 2-4](https://markfixesstuff.com/wp-content/uploads/2026/11/Commodore-Amiga-2000-Service-Manual-Main-Unit-1989.pdf#page=78)
+
+Motor-off decelerates the spindle linearly to rest in
+80 ms from full speed. The stopping time follows the
+[vAmiga comparison model](../../../ref_src/vAmiga/Core/Peripherals/Drive/FloppyDrive.cpp).
+Reversing the motor command starts from the current speed. Inserting a disk preserves the current speed and
+angle. A deselected drive continues moving. Selecting a drive with media at
+operating speed can return READY immediately. Ejection releases media signals
+while the spindle continues.
+
+Each CCK the drive samples its delivered controls, advances mechanical
+timers and speed, then integrates the resulting speed into angular position.
+It retains fractional motion between ticks. A full turn at speed takes
+one fifth of the configured PAL or NTSC color-clock frequency in CCK.
+The initial head position is at the start of sector zero. Each crossing of
+that position starts an INDEX pulse. The aperture covers 2,000 of the
+100,000 cells, giving 4 ms low at full speed within the generic 1 to 8 ms
+interface range. INDEX and the recorded transitions follow the same
+angle during acceleration, coast and seeks. READ DATA pulses last one CCK.
+[Drive interface timing](https://markfixesstuff.com/wp-content/uploads/2026/11/Commodore-Amiga-2000-Service-Manual-Main-Unit-1989.pdf#page=84)
+
+A selected STEP acknowledges CHANGE when media is present, including at a
+cylinder stop. A movement reaches the adjacent cylinder after 3 ms. TRACK0
+follows that physical arrival. Each subsequent valid movement starts its own
+travel and final 15 ms settling interval. The model ignores a further step
+during travel. Software establishes direction separately and waits at least
+18 ms before reversal. Fixed travel and settling times give repeatable reads.
+The head supplies no recorded flux during travel or settling. This approximates
+unmeasured transients. READY continues to indicate media and spindle speed.
+During acceleration the head reads the medium at its current angular speed.
+
+SIDE selects the other surface at the current cylinder. The model allows
+100 us for read data after a side change and 1.2 ms after a write ends.
+These are conservative read-recovery times from the generic timing diagram.
+Software keeps SIDE stable for 100 us before writing and for 1.3 ms after
+writing. [Drive read recovery](https://markfixesstuff.com/wp-content/uploads/2026/11/Commodore-Amiga-2000-Service-Manual-Main-Unit-1989.pdf#page=82),
+[HRM disk signals](../Reference/Hardware%20Reference%20Manual/08%20-%20Chapter%208%20-%20Interface%20Hardware.md#table-8-5-disk-subsystem)
+
+An asserted write gate overwrites the angular interval swept by a selected,
+settled head on writable media. Each active-low write pulse records a
+transition and the intervening positions are erased. The drive retains the
+position of each pulse to one CCK at nominal speed. This distinguishes
+Paula's write clock from the spacing of an ADF's prepared cells. The
+recorded interval may cross INDEX or end within a byte. All other positions
+retain their previous transitions. Writes change the in-memory raw track.
+The host ADF remains untouched.
+
+A snapshot embeds the resulting raw tracks, fractional spindle angle, speed,
+head travel, read recovery and connector levels. It can resume without the
+host image file. [Paula](Paula.md#reconstructed-disk-engine-contract) owns
+data separation, the FIFO, synchronization and write serialization.
 
 The [autonomous DMA tests](../../../crates/machine_loop/tests/test_floppy_media_dma.rs)
 check exact successive raw words, track wrap, CPU contention, reset and

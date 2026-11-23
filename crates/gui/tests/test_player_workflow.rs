@@ -358,6 +358,8 @@ fn player_disk_selection_and_ejection_publish_only_acknowledged_mounts() {
         root.join("kick.rom").to_string_lossy().into_owned();
     app.start_library_game(game.clone(), None, false);
     common::command(&mut app, HostCommand::Pause);
+    gui::game_library::persist_save(game, &common::snapshot_json(&mut app), Some(1)).unwrap();
+    app.navigate_player(PlayerScreen::Session);
     let mut h = Harness::builder()
         .with_size(egui::vec2(1280.0, 900.0))
         .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
@@ -385,6 +387,47 @@ fn player_disk_selection_and_ejection_publish_only_acknowledged_mounts() {
     assert!(h.state().player.mounted[0].is_none());
     assert!(!h.state().host.status.drives[0].inserted);
     assert!(!common::snapshot(h.state_mut()).floppy.drives[0].disk_inserted);
+
+    let source = game.directory.join("second.adf");
+    assert_eq!(std::fs::read(&source).unwrap(), vec![0x33; 901120]);
+    std::fs::remove_file(&source).unwrap();
+    h.state_mut().set_view_mode(ViewMode::Developer);
+    common::settle_harness(&mut h);
+    h.get_by_label("State").click_accesskit();
+    common::settle_harness(&mut h);
+    h.get_by_label_contains("Quick Load Slot 1 (F9)")
+        .click_accesskit();
+    common::settle_harness(&mut h);
+    h.get_by_label("Replace session").click_accesskit();
+    common::settle_harness(&mut h);
+    assert_eq!(h.state().player.mounted[0].as_deref(), Some("disk-one"));
+    assert!(h.state().player.disks[1].bytes.is_none());
+    open_df0(&mut h);
+    h.get_by_label("2 - Disk 2").click();
+    common::settle_harness(&mut h);
+    assert_eq!(h.state().player.mounted[0].as_deref(), Some("disk-two"));
+    assert_eq!(
+        serde_json::to_value(&common::snapshot(h.state_mut()).floppy.drives[0]).unwrap()
+            ["track_data"],
+        serde_json::to_value(&expected.machine.floppy.drives[0]).unwrap()["track_data"]
+    );
+
+    open_df0(&mut h);
+    h.get_by_label("Eject / Empty").click();
+    common::settle_harness(&mut h);
+    std::fs::write(source, vec![0x44; 901120]).unwrap();
+    h.state_mut().start_library_game(game.clone(), None, false);
+    common::settle_harness(&mut h);
+    open_df0(&mut h);
+    h.get_by_label("2 - Disk 2").click();
+    common::settle_harness(&mut h);
+    assert_eq!(h.state().player.mounted[0].as_deref(), Some("disk-two"));
+    assert!(expected.machine.floppy.drives[0].insert_disk(&vec![0x44; 901120]));
+    assert_eq!(
+        serde_json::to_value(&common::snapshot(h.state_mut()).floppy.drives[0]).unwrap()
+            ["track_data"],
+        serde_json::to_value(&expected.machine.floppy.drives[0]).unwrap()["track_data"]
+    );
 }
 
 #[test]
