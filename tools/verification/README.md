@@ -418,10 +418,12 @@ already tests that behavior. Add or extend tests for gaps within the selected
 scope, following the
 [coverage criteria](../../.agents/references/testing-criteria.md#coverage-and-adequacy-assessment).
 Rerun coverage after test or production changes. Use only evidence from a
-successful run whose source and index remained unchanged. Before an authorized
-commit, review the final commit report alongside the assertions. Report existing
-unrelated gaps separately. Do not suppress them or create a permanent coverage
-exception list. Execution coverage shows what ran in the instrumented code. Assertion quality,
+successful run whose source and index remained unchanged. Review selected
+diagnostic coverage alongside the assertions during development. Review the
+final profile report after commit and integration on local master through
+[TA-WF-Main-verify-master](../../.agents/skills/TA-WF-Main-verify-master/SKILL.md).
+Report existing unrelated gaps separately. Do not suppress them or create a
+permanent coverage exception list. Execution coverage shows what ran in the instrumented code. Assertion quality,
 complete hardware scenarios and performance require other evidence.
 
 ### Selection from changed inputs
