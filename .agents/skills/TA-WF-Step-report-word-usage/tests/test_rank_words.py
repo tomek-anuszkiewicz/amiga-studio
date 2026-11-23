@@ -384,6 +384,124 @@ class FencedBlockRankingTests(unittest.TestCase):
             }],
         }])
 
+    def test_formatted_words_rank_whole_in_prose_and_link_and_image_labels(self):
+        lines = [
+            'Pere**grin**ation [Qui*xo*tic](hiddenpath "secrettitle")',
+            "Lo***qua***cious",
+            "Spec**tra**_l_",
+            "Spec*tro*sco**py** [__Chim__](hiddenpath)*eri*cal",
+            '![Calli*gra*phy](hiddenimage "secrettitle")',
+            "![Rhyth**mic**][nameref]",
+            "",
+            '[nameref]: hiddenimage "secrettitle"',
+        ]
+        report = self.report_for({"docs/formatting.md": "\n".join(lines)})
+
+        self.assertEqual(report["token_count"], 8)
+        self.assertEqual(report["ranking"], [
+            {"word": word, "count": 1, "document_count": 1, "samples": [
+                {"path": "docs/formatting.md", "line": number, "context": lines[number - 1]},
+            ]}
+            for word, number in (
+                ("calligraphy", 5), ("chimerical", 4), ("loquacious", 2),
+                ("peregrination", 1), ("quixotic", 1), ("rhythmic", 6),
+                ("spectral", 3), ("spectroscopy", 4),
+            )
+        ])
+
+    def test_hidden_link_newlines_join_letters_but_visible_breaks_keep_words_apart(self):
+        lines = [
+            "> folder/" + "x" * 150 + " [Qui](",
+            '> hiddenpath "secrettitle"',
+            "> )xo*tic*",
+            "> [Cadence",
+            "> Timbre](hiddenpath)",
+            "> Spectral  ",
+            "> Opal",
+            ">",
+            "> Amber",
+        ]
+        report = self.report_for({"docs/multiline.md": "\n".join(lines)})
+
+        self.assertEqual(report["token_count"], 6)
+        self.assertEqual(report["ranking"], [
+            {"word": word, "count": 1, "document_count": 1, "samples": [
+                {"path": "docs/multiline.md", "line": number, "context": context},
+            ]}
+            for word, number, context in (
+                ("amber", 9, lines[8]), ("cadence", 4, lines[3]), ("opal", 7, lines[6]),
+                ("quixotic", 1, "\u2026" + "x" * 68 + " [Qui]("),
+                ("spectral", 6, "> Spectral"), ("timbre", 5, lines[4]),
+            )
+        ])
+
+    def test_html_formatting_and_comments_join_letters_while_layout_preserves_boundaries(self):
+        lines = [
+            'Per<em class="opaque">e<strong>gri</strong>n</em>ation',
+            "Qui<!--hiddencomment",
+            "secrettitle-->xo*tic* Rhyth<!--opaque-->mic",
+            'Cadence<br>Spectral Opal<img src="hiddenimage">Amber',
+            "Timbre![Cal*li*graphy](hiddenimage)Loquacious",
+            "",
+            '<p>Chi<span title=">">mer</span>ical</p>',
+        ]
+        report = self.report_for({"docs/html.md": "\n".join(lines)})
+
+        self.assertEqual(report["token_count"], 11)
+        self.assertEqual(report["ranking"], [
+            {"word": word, "count": 1, "document_count": 1, "samples": [
+                {"path": "docs/html.md", "line": number, "context": lines[number - 1]},
+            ]}
+            for word, number in (
+                ("amber", 4), ("cadence", 4), ("calligraphy", 5), ("chimerical", 7),
+                ("loquacious", 5), ("opal", 4), ("peregrination", 1), ("quixotic", 2),
+                ("rhythmic", 3), ("spectral", 4), ("timbre", 5),
+            )
+        ])
+
+    def test_preserves_literal_markers_code_and_path_filtering(self):
+        lines = [
+            "Pere**gri&#110;ation**",
+            r"\*Chi*mer*ical\* &#42;Rhyth*mic*&#42; Qui\*xo\*tic",
+            "qui_xo_tic Cadence** **folder**/hiddenpath",
+            "Spec` tra `l `hidden phrase` `Opal`",
+        ]
+        report = self.report_for({"docs/literals.md": "\n".join(lines)})
+
+        self.assertEqual(report["token_count"], 8)
+        self.assertEqual(report["ranking"], [
+            {"word": word, "count": 1, "document_count": 1, "samples": [
+                {"path": "docs/literals.md", "line": number, "context": lines[number - 1]},
+            ]}
+            for word, number in (
+                ("cadence", 3), ("chimerical", 2), ("opal", 4), ("peregrination", 1),
+                ("qui", 2), ("rhythmic", 2), ("spectral", 4), ("tic", 2),
+            )
+        ])
+
+    def test_strikethrough_ranks_whole_words_while_fenced_examples_stay_literal(self):
+        lines = [
+            "Cal~~li~~graphy Semi~opa~que",
+            "```markdown",
+            "Cad**en**ce qui_xo_tic Per~~egrin~~ation",
+            "```",
+            "~~~",
+            "secrettitle",
+            "~~~",
+        ]
+        report = self.report_for({"docs/strikethrough.md": "\n".join(lines)})
+
+        self.assertEqual(report["token_count"], 8)
+        self.assertEqual(report["ranking"], [
+            {"word": word, "count": 1, "document_count": 1, "samples": [
+                {"path": "docs/strikethrough.md", "line": number, "context": lines[number - 1]},
+            ]}
+            for word, number in (
+                ("ation", 3), ("cad", 3), ("calligraphy", 1), ("egrin", 3),
+                ("opa", 1), ("per", 3), ("que", 1), ("semi", 1),
+            )
+        ])
+
 
 class WordUsageCommandTests(unittest.TestCase):
     def test_cli_ranks_current_git_files_and_lists_unclassified_names(self):

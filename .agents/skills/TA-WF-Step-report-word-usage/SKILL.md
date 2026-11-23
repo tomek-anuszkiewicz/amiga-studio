@@ -38,7 +38,9 @@ words. It ignores letter case and counts different word forms separately.
 It includes backtick-fenced bodies, including in quotes and lists, and skips
 their fence markers and language labels. It counts visible link labels and
 excludes link destinations, titles, frontmatter, comments in ordinary Markdown,
-tilde-fenced blocks and paths. Samples show the original source line.
+tilde-fenced blocks and paths. In ordinary Markdown, emphasis, strong emphasis,
+and paired double tildes for strikethrough can appear within a word.
+Samples show the original line where the visible word begins.
 [Common words](assets/common-words.txt),
 [project vocabulary](assets/project-words.txt),
 [sources and maintenance guidance](references/vocabulary.md).
