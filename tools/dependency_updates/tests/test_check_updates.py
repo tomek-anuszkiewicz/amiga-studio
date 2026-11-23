@@ -287,6 +287,38 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
         self.assertIn("egui (gui) 0.32.3 (fixture index unavailable)", rendered(area))
         self.assertIn("egui (preview) 0.31.1 (fixture index unavailable)", rendered(area))
 
+    def test_incomplete_cargo_comparison_keeps_the_exact_linked_prerelease(self):
+        self.write("Cargo.toml", '[package]\nname = "top"\n[dependencies]\nlemma = "=1.2.3-rc.1"\n')
+        self.write("Cargo.lock", """
+[[package]]
+name = "top"
+version = "0.1.0"
+dependencies = ["lemma 1.2.3-rc.1"]
+[[package]]
+name = "lemma"
+version = "1.2.3-rc.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+[[package]]
+name = "lemma"
+version = "1.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+""")
+        index = json.dumps({"name": "lemma", "vers": "1.2.3", "yanked": False})
+        unavailable = "fixture index unavailable"
+        for response, reason in ((ProbeError(unavailable), unavailable),
+                                 (index, "no matching stable registry version could be tied to this declaration")):
+            with self.subTest(reason=reason):
+                area = Area("Cargo")
+                with (patch.object(cargo, "cargo_configuration", return_value=False),
+                      patch.object(self.probe, "http", side_effect=[response]) as http,
+                      patch.object(self.probe, "run", return_value="Locking 0 packages")):
+                    cargo.check_crates(area, self.probe, self.tracked)
+                http.assert_called_once_with("https://index.crates.io/le/mm/lemma", "text/plain")
+                self.assertEqual(area.counts, {"inconclusive": 1})
+                self.assertEqual([(row.item, row.context, row.observed, row.detail) for row in area.findings],
+                                 [("lemma", "top", "1.2.3-rc.1", reason)])
+                self.assertIn(f"lemma 1.2.3-rc.1 ({reason})", rendered(area))
+
     def test_nested_python_requirements_keep_pins_and_query_once_across_files(self):
         self.write("first/requirements.txt", "-r nested/include.txt\n")
         self.write("first/nested/include.txt", "-r ../packages.txt\n")
@@ -519,6 +551,30 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
                 self.assertIsNone(next(row for row in area.findings if row.item == "katex").declared)
                 self.assertNotIn("fixture-password", rendered(area))
 
+    def test_npm_treats_the_default_https_port_as_the_public_registry(self):
+        env = self.npm_fixture_environment()
+        directory = self.write_book_npm_inputs()
+        lockfile = self.root / directory / "package-lock.json"
+        original_lock = lockfile.read_text(encoding="utf-8")
+        public = "https://registry.npmjs.org/"
+        with_port = "https://registry.npmjs.org:443/"
+
+        def http(url, _accept):
+            name = url.rsplit("/", 1)[-1]
+            return {"name": name, "versions": {"99.0.0": {}}}
+
+        for registry, locked_registry in ((with_port, public), (public, with_port)):
+            with self.subTest(registry=registry, locked_registry=locked_registry):
+                self.write(f"{directory}/.npmrc", f"registry={registry}\n")
+                self.write(f"{directory}/package-lock.json", original_lock.replace(public, locked_registry))
+                area = Area("Node.js and npm")
+                with (patch.dict(os.environ, env, clear=True), patch.object(node_packages, "check_node"),
+                      patch.object(self.probe, "http", side_effect=http) as requests):
+                    node_packages.check_node_packages(area, self.probe, self.tracked)
+                self.assertCountEqual([call.args[0] for call in requests.call_args_list],
+                                      [public + "npm", public + "katex"])
+                self.assertIn("katex 0.18.2 -> 99.0.0", rendered(area))
+
     def test_npm_checks_scoped_packages_only_when_that_scope_uses_the_public_registry(self):
         env = self.npm_fixture_environment()
         self.write("tools/book/.npmrc", "@mirror:registry=https://mirror.example.invalid/npm/\n")
@@ -543,6 +599,40 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
         report = rendered(area)
         self.assertIn("@mirror/widget 1.0.0 (the configured npm registry needs a separate check)", report)
         self.assertIn("@public/widget 1.0.0 -> 100.0.0", report)
+
+    def test_npm_requires_public_scope_metadata_and_a_public_locked_source(self):
+        env = self.npm_fixture_environment()
+        public = "https://registry.npmjs.org/"
+        private = "https://mirror.example.invalid/npm/"
+        locked_registries = {"@public/widget": public, "@public/other": private, "@mirror/widget": public}
+        self.write_json("tools/book/package.json", {"dependencies": dict.fromkeys(locked_registries, "1.0.0")})
+        self.write_json("tools/book/package-lock.json", {"packages": {
+            f"node_modules/{name}": {"version": "1.0.0", "resolved": f"{registry}{name}/-/widget-1.0.0.tgz"}
+            for name, registry in locked_registries.items()
+        }})
+
+        def http(url, _accept):
+            name = "npm" if url.endswith("/npm") else "@public/widget"
+            return {"name": name, "versions": {"99.0.0": {}}}
+
+        for replacement in ("never", "npmjs", "always"):
+            with self.subTest(replacement=replacement):
+                self.write("tools/book/.npmrc", f"registry={private}\n@public:registry={public}\n"
+                                              f"replace-registry-host={replacement}\n")
+                area = Area("Node.js and npm")
+                with (patch.dict(os.environ, env, clear=True), patch.object(node_packages, "check_node"),
+                      patch.object(self.probe, "http", side_effect=http) as requests):
+                    node_packages.check_node_packages(area, self.probe, self.tracked)
+                expected = [public + "npm"]
+                if replacement == "never":
+                    expected.append(public + "%40public%2Fwidget")
+                    self.assertIn("@public/widget 1.0.0 -> 99.0.0", rendered(area))
+                else:
+                    self.assertIn("@public/widget 1.0.0 (the configured npm registry needs a separate check)",
+                                  rendered(area))
+                self.assertCountEqual([call.args[0] for call in requests.call_args_list], expected)
+                self.assertIn("@public/other 1.0.0 (check the declared package source separately)", rendered(area))
+                self.assertIn("@mirror/widget 1.0.0 (the configured npm registry needs a separate check)", rendered(area))
 
     def test_npm_queries_only_packages_declared_in_manifest_without_node_modules(self):
         env = self.npm_fixture_environment()
@@ -587,7 +677,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
         self.assertFalse((self.root / "tools/book/node_modules").exists())
 
     def test_current_edge_is_sufficient_without_a_bundled_browser_or_its_metadata(self):
+        node = shutil.which("node")
+        if node is None:
+            self.skipTest("Node.js is required to run the Playwright driver fixture")
         edge = self.write("Edge/msedge.exe", "")
+        chromium = self.root / "Chromium/chrome.exe"
+        paths = json.dumps({"msedge": str(edge), "chromium": str(chromium)})
+        self.write("playwright/driver/package/lib/coreBundle.js", f"""
+const paths = {paths};
+exports.registry = {{
+    findExecutable(channel) {{
+        return {{ executablePath: () => paths[channel] }};
+    }}
+}};
+""")
         playwright = SimpleNamespace(locate_file=lambda path: self.root / path)
         releases = [
             {"Product": "Beta", "Releases": [
@@ -601,13 +704,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
             ]},
         ]
         area = Area("Book Review browsers")
-        with (patch.object(browsers.metadata, "distribution", return_value=playwright),
-              patch.object(self.probe, "run", return_value=json.dumps(str(edge))) as commands,
+        with (patch.dict(os.environ, {"PLAYWRIGHT_NODEJS_PATH": node}),
+              patch.object(browsers.metadata, "distribution", return_value=playwright),
               patch.object(browsers, "edge_installed_version", return_value=((150, 0, 1, 2), "windows", "x64"))
               as read_version,
               patch.object(self.probe, "http", return_value=releases) as requests):
             browsers.check_browsers(area, self.probe, self.tracked)
-        commands.assert_called_once()
         read_version.assert_called_once_with(self.probe, edge)
         requests.assert_called_once_with(browsers.EDGE_RELEASES)
         self.assertEqual(area.counts, {"current": 1})

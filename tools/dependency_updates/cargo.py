@@ -147,7 +147,7 @@ def registry_release(probe, name):
     return max(stable)
 
 
-def locked_for(declaration, packages):
+def linked_packages(declaration, packages):
     candidates = [p for p in packages if p["name"] == declaration.name and p.get("source") in REGISTRY_SOURCES]
     if not candidates:
         return []
@@ -158,8 +158,7 @@ def locked_for(declaration, packages):
     return [p for p in candidates if any(
         link in links for link in (p["name"], f'{p["name"]} {p["version"]}',
                                     f'{p["name"]} {p["version"]} ({p["source"]})')
-    ) and ((version := stable_crate_version(p["version"])) is not None
-           and cargo_allows(declaration.requirement, version))]
+    )]
 
 
 def cargo_configuration(probe):
@@ -269,11 +268,20 @@ def check_crates(area, probe, tracked):
                             declared=decl.requirement, context=context)
             continue
         try:
-            locked = locked_for(decl, packages)
-            if not locked:
-                raise ProbeError("no matching stable registry version could be tied to this declaration")
-            direct_locks.append((decl, locked))
+            linked = linked_packages(decl, packages)
             latest = releases[decl.name]
+            locked = [row for row in linked if (version := stable_crate_version(row["version"])) is not None
+                      and cargo_allows(decl.requirement, version)]
+            if not locked:
+                reason = "no matching stable registry version could be tied to this declaration"
+                requirement = decl.requirement.strip()
+                exact = requirement[1:].strip() if requirement.startswith("=") else None
+                if len(linked) != 1 or linked[0]["version"] != exact:
+                    raise ProbeError(reason)
+                area.incomplete(item, CRATES_INDEX, latest if isinstance(latest, ProbeError) else reason,
+                                observed=exact, declared=decl.requirement, context=context)
+                continue
+            direct_locks.append((decl, locked))
             if isinstance(latest, ProbeError):
                 for row in locked:
                     area.incomplete(item, CRATES_INDEX, latest, observed=row["version"],

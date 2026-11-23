@@ -126,6 +126,7 @@ hashlib
 hashtable
 haspopup
 hexdigest
+hostname
 href
 html
 idx

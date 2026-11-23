@@ -18,6 +18,7 @@ from .common import DATA_ERRORS, ProbeError, triplet, version_text
 NODE_INDEX = "https://nodejs.org/dist/index.json"
 NODE_SCHEDULE = "https://raw.githubusercontent.com/nodejs/Release/main/schedule.json"
 NPM_REGISTRY = "https://registry.npmjs.org"
+NPM_REGISTRY_HOST = urlsplit(NPM_REGISTRY).hostname
 NPM_NAME = re.compile(r"(?:@[a-zA-Z0-9_.-]+/)?[a-zA-Z0-9_.-]+")
 NPM_DEPENDENCIES = ("dependencies", "devDependencies", "optionalDependencies", "peerDependencies")
 
@@ -171,12 +172,22 @@ def npm_config(probe, launcher, directory, env, keys):
     return {key: value for key, _, value in pairs}
 
 
+def is_public_npm_url(value, *, registry=False):
+    try:
+        url = urlsplit(value)
+        return (url.scheme == "https" and url.hostname == NPM_REGISTRY_HOST and url.port in (None, 443)
+                and url.username is None and url.password is None
+                and (not registry or (url.path in ("", "/") and not url.query and not url.fragment)))
+    except ValueError:
+        return False
+
+
 def public_npm_scopes(probe, launcher, directory, scopes):
-    public_urls = {NPM_REGISTRY, NPM_REGISTRY + "/"}
     with npm_environment(probe) as env:
-        config = npm_config(probe, launcher, directory, env, ["registry", "scope"])
+        config = npm_config(probe, launcher, directory, env, ["registry", "scope", "replace-registry-host"])
+        default = config["registry"]
         # npm can resolve a public tarball through the configured default registry.
-        if config["registry"] not in public_urls:
+        if config["replace-registry-host"] != "never" and not is_public_npm_url(default, registry=True):
             return set()
         fallback = config["scope"].removeprefix("@")
         if fallback and not re.fullmatch(r"[a-zA-Z0-9_.-]+", fallback):
@@ -193,7 +204,9 @@ def public_npm_scopes(probe, launcher, directory, scopes):
         registry = registries.get(keys.get(scope), "undefined")
         if registry == "undefined":
             registry = registries.get(fallback_key, "undefined")
-        if registry in public_urls or registry == "undefined":
+        if registry == "undefined":
+            registry = default
+        if is_public_npm_url(registry, registry=True):
             public.add(scope)
     return public
 
@@ -226,9 +239,8 @@ def public_npm_packages(area, probe, path, tracked, *, launcher, node, cli):
                 area.incomplete(name, lockfile, "a declared dependency is missing from the lockfile", context=owner)
             continue
         observed = data.get("version")
-        resolved = urlsplit(data.get("resolved", ""))
         if (data.get("link") or data.get("name", name) != name or not NPM_NAME.fullmatch(name)
-                or resolved.scheme != "https" or resolved.netloc != "registry.npmjs.org"):
+                or not is_public_npm_url(data.get("resolved", ""))):
             area.incomplete(name, lockfile, "check the declared package source separately",
                             observed=observed, context=owner)
             continue
