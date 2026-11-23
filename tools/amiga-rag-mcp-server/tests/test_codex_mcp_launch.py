@@ -29,8 +29,11 @@ class CodexMcpLaunchTests(unittest.TestCase):
             codex_home = root / "codex"
             codex_home.mkdir()
             project = json.dumps(os.path.normcase(REPOSITORY_ROOT), ensure_ascii=False)
+            # Background plugin downloads can hold files open after the app-server exits.
             (codex_home / "config.toml").write_text(
-                f'[projects.{project}]\ntrust_level = "trusted"\n', encoding="utf-8",
+                "[features]\nplugins = false\nremote_plugin = false\n\n"
+                f'[projects.{project}]\ntrust_level = "trusted"\n',
+                encoding="utf-8",
             )
             # The project supplies MCP settings. Keep Codex's writable state with the fixture.
             environment = dict(os.environ, CODEX_HOME=str(codex_home), CODEX_SQLITE_HOME=str(codex_home))
