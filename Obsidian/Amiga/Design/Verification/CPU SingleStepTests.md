@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "m68000"
 status: "active"
 created: 2026-08-31
-updated: 2026-11-16
+updated: 2026-11-23
 related: ["[CPU Motorola M68000.md](../CPU%20Motorola%20M68000.md)", "[CPU Micro-Step State Machine.md](../CPU%20Micro-Step%20State%20Machine.md)", "[CPU Instruction Benchmarking.md](../Performance/CPU%20Instruction%20Benchmarking.md)"]
 tracked_paths:
   - "crates/test_runner/tests"
@@ -152,10 +152,11 @@ production memory path separately.
 
 For a failure, the runner identifies the JSON file and vector and reports
 expected and actual CPU state, clock count and bus-transaction differences.
-Status flags and register differences help locate the mismatch. Standalone runs
-default to `.agent/tmp/singlestep/`. Milestone verification saves reports under
-its profile directory. The verification reference explains how to select the
-output directory and where to find archived evidence.
+Status flags and register differences help locate the mismatch. Standalone and
+milestone runs default to `.agent/tmp/singlestep/` when `SINGLESTEP_RESULTS_DIR`
+is unset. Pass `--results-dir PATH` to the verifier to save SingleStep reports
+in `PATH/singlestep/`. The verification reference explains where to find archived
+evidence.
 [Verification reference](../../../../tools/verification/README.md#saved-singlestep-reports)
 
 The selected directory contains these artifacts.

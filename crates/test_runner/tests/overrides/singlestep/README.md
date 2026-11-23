@@ -18,12 +18,13 @@ The loader fails if the suite has no test with the specified name or has more
 than one. For a unique name match, the loader checks the stored digest and fails
 if the record changed, including when upstream fixes the original expectation.
 Review that upstream change, then revisit and remove the obsolete entry.
-The loader applies overrides before filtering and
-sampling. Each selected vector still runs through the normal comparator, which
-checks registers, listed RAM, instruction clocks, and timed bus transactions.
-Every selected case must execute to count as passed. SingleStep lists the
-overrides it executed in its JSON results and gives their count in the Markdown
-summary. DMA logs how many corrected vectors its sampler selects.
+The loader applies overrides before filtering and sampling. The runner
+initializes the memory fixture from `initial.ram`. For every selected vector it
+compares the final CPU registers and prefetch words, instruction clocks, and
+timed bus callbacks, including each transfer's address and data. The loader
+retains `final.ram` as reference data only. Every selected case must execute to
+count as passed. SingleStep lists the overrides it executed in its JSON results
+and gives their count in the Markdown summary.
 
 ## ASL.b records 1583 and 1761
 
