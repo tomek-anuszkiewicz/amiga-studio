@@ -478,7 +478,8 @@ fn saved_progress_and_artwork(game: &LibraryGame) -> (Vec<(PathBuf, Vec<u8>)>, V
             (save.path, bytes)
         })
         .collect();
-    let artwork = std::fs::read(game.directory.join(game.manifest.artwork.as_ref().unwrap())).unwrap();
+    let artwork =
+        std::fs::read(game.directory.join(game.manifest.artwork.as_ref().unwrap())).unwrap();
     (saves, artwork)
 }
 
@@ -522,7 +523,10 @@ fn screenshot_clicks_keep_the_active_game_destination_and_existing_files() {
     assert_eq!(h.state().player.selected_game, Some(1));
     h.get_by_label("Return to session").click_accesskit();
     common::settle_harness(&mut h);
-    assert_eq!(h.state().player.active_game.as_ref().unwrap().manifest.id, "one");
+    assert_eq!(
+        h.state().player.active_game.as_ref().unwrap().manifest.id,
+        "one"
+    );
 
     let directory = screenshot_directory(one);
     assert!(!directory.exists());
@@ -537,7 +541,10 @@ fn screenshot_clicks_keep_the_active_game_destination_and_existing_files() {
     }
     screenshot.click();
     h.step();
-    assert_eq!(directory_files(&directory), [directory.join("screenshot-1.png")]);
+    assert_eq!(
+        directory_files(&directory),
+        [directory.join("screenshot-1.png")]
+    );
     assert!(h.state().toast_message.is_none());
     h.get_by_label("Screenshot").click_accesskit();
     h.step();
@@ -547,7 +554,10 @@ fn screenshot_clicks_keep_the_active_game_destination_and_existing_files() {
         assert_eq!(path.extension().unwrap(), "png");
         image::open(path).unwrap();
     }
-    let previous: Vec<_> = created.iter().map(|path| std::fs::read(path).unwrap()).collect();
+    let previous: Vec<_> = created
+        .iter()
+        .map(|path| std::fs::read(path).unwrap())
+        .collect();
     let occupied = directory.join("screenshot-3.png");
     std::fs::write(&occupied, b"existing file").unwrap();
     h.get_by_label("Screenshot").click_accesskit();
@@ -632,7 +642,8 @@ fn screenshot_uses_every_displayed_pixel_at_a_clipped_scale_during_run_and_reset
         assert!(h.output().shapes.iter().any(|shape| match &shape.shape {
             egui::Shape::Mesh(mesh) if mesh.texture_id == texture => {
                 let bounds = mesh.calc_bounds();
-                bounds.width() > shape.clip_rect.width() && bounds.height() > shape.clip_rect.height()
+                bounds.width() > shape.clip_rect.width()
+                    && bounds.height() > shape.clip_rect.height()
             }
             _ => false,
         }));
@@ -694,7 +705,9 @@ fn screenshot_uses_every_displayed_pixel_at_a_clipped_scale_during_run_and_reset
             assert_eq!(decoded.dimensions(), (width as u32, height as u32));
             assert_eq!(decoded.as_raw(), &expected);
             assert!(h.state().file_error.is_none());
-            let Some((pending, generation, running)) = pending else { break };
+            let Some((pending, generation, running)) = pending else {
+                break;
+            };
             if let Some(presented) = h.state().host.presented.filter(|info| *info != previous) {
                 assert_eq!(h.state().host.status.running, running);
                 assert_eq!(presented.generation, generation);
@@ -732,7 +745,8 @@ fn screenshot_rejects_the_previous_game_image_when_the_new_library_reuses_its_id
         app.player.active_game.is_some() && app.host.presented.is_some()
     });
 
-    h.state_mut().start_library_game(second.clone(), None, false);
+    h.state_mut()
+        .start_library_game(second.clone(), None, false);
     let deadline = Instant::now() + Duration::from_secs(10);
     // Supply a click on the update that accepts the new game, before the GUI
     // has drawn any of its images. Earlier clicks still belong to the first game.
