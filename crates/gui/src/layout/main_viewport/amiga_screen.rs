@@ -63,6 +63,8 @@ pub(crate) struct ScreenTexture {
     texture: Option<egui::TextureHandle>,
     options: egui::TextureOptions,
     first_pixel: Color32,
+    #[cfg(not(target_arch = "wasm32"))]
+    displayed: Option<egui::ImageData>,
 }
 
 impl std::fmt::Debug for ScreenTexture {
@@ -102,6 +104,12 @@ impl ScreenTexture {
 
     pub(crate) fn update(&mut self, ctx: &egui::Context, image: egui::ColorImage) {
         self.first_pixel = image.pixels.first().copied().unwrap_or(Color32::BLACK);
+        #[cfg(not(target_arch = "wasm32"))]
+        let image = {
+            let data = egui::ImageData::from(image);
+            self.displayed = Some(data.clone());
+            data
+        };
         if let Some(texture) = self.texture.as_mut() {
             texture.set(image, self.options);
         } else {
@@ -111,6 +119,17 @@ impl ScreenTexture {
 
     pub(crate) fn image(&self) -> Option<SizedTexture> {
         self.texture.as_ref().map(SizedTexture::from_handle)
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) fn displayed(&self) -> Option<&egui::ColorImage> {
+        let egui::ImageData::Color(image) = self.displayed.as_ref()?;
+        Some(image)
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) fn clear_capture(&mut self) {
+        self.displayed = None;
     }
 }
 

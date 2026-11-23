@@ -133,7 +133,7 @@ pub fn render(app: &mut EmulatorApp, ctx: &egui::Context) {
         let title = if app.host.error.is_some() {
             "Emulation stopped"
         } else {
-            "File loading failed"
+            "File operation failed"
         };
         egui::Window::new(title)
             .collapsible(false)

@@ -88,6 +88,17 @@ pub struct LibraryGame {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
+impl LibraryGame {
+    pub(crate) fn same_entry(&self, other: &Self) -> bool {
+        self.manifest.id == other.manifest.id
+            && (self.directory == other.directory
+                || self.directory.canonicalize().is_ok_and(|directory| {
+                    other.directory.canonicalize().is_ok_and(|other| directory == other)
+                }))
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 #[derive(Debug, Default)]
 pub struct GameLibrary {
     pub games: Vec<LibraryGame>,
@@ -252,6 +263,36 @@ pub fn persist_save(
         return Ok(path);
     }
     Err("No available save filename".into())
+}
+
+/// Writes a new screenshot to the game directory and publishes it after the write succeeds.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn persist_screenshot(
+    game: &LibraryGame,
+    write_png: impl FnOnce(&mut std::fs::File) -> std::io::Result<()>,
+) -> std::io::Result<()> {
+    use std::io::{Error, ErrorKind};
+
+    let directory = game.directory.join("Screenshots");
+    std::fs::create_dir_all(&directory)?;
+    // On Windows, tempfile passes paths directly to Win32 during publication.
+    #[cfg(windows)]
+    let directory = directory.canonicalize()?;
+    let mut pending = tempfile::Builder::new().suffix(".pending").tempfile_in(&directory)?;
+    write_png(pending.as_file_mut())?;
+    pending.as_file().sync_all()?;
+    for serial in 1..=u32::MAX {
+        let path = directory.join(format!("screenshot-{serial}.png"));
+        if path.try_exists()? {
+            continue;
+        }
+        match pending.persist_noclobber(&path) {
+            Ok(_) => return Ok(()),
+            Err(error) if error.error.kind() == ErrorKind::AlreadyExists => pending = error.file,
+            Err(error) => return Err(error.error),
+        }
+    }
+    Err(Error::other("No available screenshot filename"))
 }
 
 #[cfg(not(target_arch = "wasm32"))]

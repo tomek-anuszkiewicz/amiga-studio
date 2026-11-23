@@ -59,3 +59,11 @@ that appear during a later invocation.
 Review ordinary file paths across operating systems. Ignore findings that depend
 on symbolic links, hard links, junctions or equivalent filesystem aliases or
 redirection. Apply any explicit link-handling requirement in the assigned scope.
+
+## RD-006 Manual filesystem changes during application use
+
+Ignore findings that depend on a user manually editing, replacing, moving,
+renaming, or removing a file or directory outside the application while an
+active session or operation relies on it. The application may rely on the paths
+and data it obtained before that change. Apply any explicit requirement to
+handle external changes during the session or operation.

@@ -11,6 +11,7 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 import json
 from pathlib import Path
 from threading import Thread
+from urllib.parse import urlparse
 
 from playwright.sync_api import sync_playwright
 
@@ -62,7 +63,10 @@ def check_workflow(browser, url, rom, disk, output):
 
     stage = "startup"
     try:
-        page.goto(url)
+        with page.expect_response(
+            lambda response: urlparse(response.url).path.endswith("/gui_bg.wasm")
+        ) as wasm:
+            page.goto(url)
         page.wait_for_function("globalThis.observedGeneration === 1", timeout=30000)
         page.wait_for_timeout(800)
         counts = []
@@ -87,6 +91,14 @@ def check_workflow(browser, url, rom, disk, output):
         page.wait_for_function("globalThis.observedGeneration === 2", timeout=30000)
         page.wait_for_timeout(600)
         page.screenshot(path=str(output / "game.png"))
+        stage = "browser toolbar eligibility"
+        # The canvas toolbar exposes no DOM or AccessKit nodes. Check the loaded
+        # Wasm for a shared control and the native button's application-specific ID.
+        application = wasm.value.body()
+        assert b"Debug View (F12)" in application
+        assert b"amiga-game-screenshot-button" not in application, (
+            "Native screenshot button ID found in browser Wasm"
+        )
         stage = "save export"
         with page.expect_download(timeout=30000) as download:
             click(1084, 244)
@@ -172,7 +184,8 @@ def check_workflow(browser, url, rom, disk, output):
         return {"browser": browser.version, "paused_notifications": counts,
                 "saved_cck": saved["state"]["cck"], "restored_cck": restored["state"]["cck"],
                 "schema": saved["header"]["version"], "current_ports": current["state"]["game_ports"]["state"]["port2"],
-                "configuration_cancel": True, "stopped_configuration_save": True, "errors": errors}
+                "configuration_cancel": True, "stopped_configuration_save": True,
+                "native_screenshot_action_excluded": True, "errors": errors}
     except Exception:
         page.screenshot(path=str(output / "failure.png"))
         print(f"Failed browser workflow stage: {stage}")
