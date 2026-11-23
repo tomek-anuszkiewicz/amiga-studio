@@ -176,7 +176,11 @@ impl ScreenCapture {
     }
 
     pub fn apply(&mut self, output: &egui::FullOutput) {
-        for (id, delta) in &output.textures_delta.set {
+        self.apply_delta(&output.textures_delta);
+    }
+
+    pub fn apply_delta(&mut self, textures: &egui::TexturesDelta) {
+        for (id, delta) in &textures.set {
             if delta.pos.is_none() && delta.image.size() == self.size {
                 self.id = Some(*id);
             }

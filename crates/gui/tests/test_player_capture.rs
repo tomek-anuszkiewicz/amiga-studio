@@ -518,16 +518,22 @@ fn middle_mouse_cancels_motion_and_buttons_but_preserves_keyboard_and_joystick()
 }
 
 fn pad(sender: &gui::host_runtime::HostInputSender, generation: u64, pressed: bool) {
+    // Standard controller south and up buttons.
+    pad_buttons(sender, generation, if pressed { &[0, 12] } else { &[] });
+}
+
+fn pad_buttons(sender: &gui::host_runtime::HostInputSender, generation: u64, pressed: &[usize]) {
+    let mut buttons = vec![false; 16];
+    for &index in pressed {
+        buttons[index] = true;
+    }
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
     loop {
-        let mut buttons = vec![false; 16];
-        buttons[0] = pressed; // Standard controller south button.
-        buttons[12] = pressed; // Standard controller up button.
         let sample = gui::input_mapping::GamepadSample {
             identity: "pad".into(),
             name: "Test controller".into(),
             axes: vec![0.0, 0.0],
-            buttons,
+            buttons: buttons.clone(),
         };
         if sender.try_gamepads(vec![sample], generation, true) {
             return;
@@ -1241,6 +1247,201 @@ fn an_open_binary_dialog_without_text_focus_suspends_gameplay_and_shortcuts() {
     wait_guest_key(&mut app, &ctx, 0x35, true);
     window_keys(&mut app, &ctx, &[("KeyB", false, generation)]);
     wait_guest_key(&mut app, &ctx, 0x35, false);
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn saved_progress_harness(
+    configuration: gui::player_config::NamedConfiguration,
+) -> egui_kittest::Harness<'static, EmulatorApp> {
+    use gui::game_library::{GameManifest, LibraryGame};
+
+    let (mut app, _) = running_with(ViewMode::ScreenOnly, true, configuration);
+    // Associate the running fixture with a native game that has no saves.
+    app.player.active_game = Some(LibraryGame {
+        directory: std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../.agent/tmp")
+            .join(format!("saved-progress-chooser-{}", std::process::id())),
+        manifest: GameManifest {
+            id: "chooser".into(),
+            title: "Chooser test".into(),
+            configuration: "standard".into(),
+            disks: Vec::new(),
+            mounted: [None, None, None, None],
+            initial_state: None,
+            artwork: None,
+            description: None,
+        },
+        description: String::new(),
+        artwork: None,
+    });
+    egui_kittest::Harness::builder()
+        .with_size(egui::vec2(1280.0, 900.0))
+        .build_state(|ctx, app| app.update_ui(ctx), app)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[test]
+fn saved_progress_chooser_blocks_session_input_until_fresh_input_after_close() {
+    use egui_kittest::kittest::Queryable;
+    use gui::host_input::HostInputEvent;
+    use gui::player_config::{InputSource, NamedConfiguration};
+
+    let mut configuration = NamedConfiguration::default();
+    configuration.controls.ports[1].source = InputSource::Gamepad {
+        identity: "pad".into(),
+        mapping: "arrows".into(),
+    };
+    let mut h = saved_progress_harness(configuration);
+    let ctx = h.ctx.clone();
+    let generation = h.state().host.status.generation;
+    let sender = h.state().host.runtime.as_ref().unwrap().input_sender();
+    common::settle_harness(&mut h);
+    assert!(h.state().player.captured, "{:?}", h.state().file_error);
+    delivered(h.state_mut(), &ctx);
+    pad(&sender, generation, false);
+    pad(&sender, generation, true);
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    while !sender.try_host_event(
+        HostInputEvent::MouseButtons {
+            port: 0,
+            left: true,
+            right: false,
+            middle: false,
+        },
+        generation,
+    ) {
+        assert!(std::time::Instant::now() < deadline);
+        std::thread::yield_now();
+    }
+    queue_window_keys(&ctx, &[("KeyA", true, generation)]);
+    delivered(h.state_mut(), &ctx);
+    let before = owner_snapshot(h.state_mut());
+    assert!(saved_key_held(&before, 0x20));
+    assert_eq!(before.game_ports.sample_ciaa_port_a_inputs() & 0xc0, 0);
+    assert!(h.state().player.captured);
+
+    let load = h.get_by_label("Load").rect().center();
+    let mouse_button = |pressed| egui::Event::PointerButton {
+        pos: load,
+        button: egui::PointerButton::Primary,
+        pressed,
+        modifiers: egui::Modifiers::NONE,
+    };
+    h.input_mut()
+        .events
+        .extend([egui::Event::PointerMoved(load), mouse_button(true)]);
+    h.step();
+    h.input_mut().events.push(mouse_button(false));
+    // Native ingress queues shortcuts before egui handles the click.
+    queue_window_keys(&ctx, &[("F12", true, generation)]);
+    h.step();
+    assert!(h.state().player.show_saves);
+    assert!(!h.state().player.captured);
+    assert_eq!(h.state().view_mode, ViewMode::ScreenOnly);
+    queue_window_keys(&ctx, &[("F12", false, generation)]);
+    for physical in ["KeyB", "F12"] {
+        assert!(
+            !gui::keyboard_input::receive_key(
+                &ctx,
+                common::keyboard::key(physical, true),
+                Some(generation)
+            ),
+            "{physical} still belongs to the session while Saved progress is open"
+        );
+    }
+    h.get_by_label("Pause").click();
+    h.step();
+    delivered(h.state_mut(), &ctx);
+    let suspended = owner_snapshot(h.state_mut());
+    assert!(!saved_key_held(&suspended, 0x20));
+    assert!(!saved_key_held(&suspended, 0x35));
+    assert_eq!(
+        suspended.game_ports.sample_ciaa_port_a_inputs() & 0xc0,
+        0xc0
+    );
+    assert_eq!(h.state().view_mode, ViewMode::ScreenOnly);
+    assert!(h.state().host.status.running);
+    assert!(h.state().player.show_saves);
+
+    h.get_by_label("Close").click();
+    h.step();
+    assert!(!h.state().player.show_saves);
+    let mut repeat = common::keyboard::key("KeyB", true);
+    repeat.repeat = true;
+    gui::keyboard_input::receive_key(&ctx, repeat, Some(generation));
+    pad(&sender, generation, true);
+    delivered(h.state_mut(), &ctx);
+    let closed = owner_snapshot(h.state_mut());
+    assert!(!saved_key_held(&closed, 0x20));
+    assert!(!saved_key_held(&closed, 0x35));
+    assert_eq!(closed.game_ports.sample_ciaa_port_a_inputs() & 0xc0, 0xc0);
+    assert!(!h.state().player.captured);
+
+    queue_window_keys(
+        &ctx,
+        &[("KeyB", false, generation), ("KeyB", true, generation)],
+    );
+    pad(&sender, generation, false);
+    pad(&sender, generation, true);
+    delivered(h.state_mut(), &ctx);
+    let resumed = owner_snapshot(h.state_mut());
+    assert!(saved_key_held(&resumed, 0x35));
+    assert_eq!(resumed.game_ports.sample_ciaa_port_a_inputs() & 0xc0, 0x40);
+    assert_eq!(h.state().host.status.generation, generation);
+    assert!(h.state().host.status.running);
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[test]
+fn gamepad_load_discards_pause_from_the_same_sample_until_a_fresh_press() {
+    use egui_kittest::kittest::Queryable;
+    use gui::player_config::{FrontendAction, GamepadShortcut, InputSource, NamedConfiguration};
+
+    const LOAD: usize = 9;
+    const PAUSE: usize = 8;
+
+    let mut configuration = NamedConfiguration::default();
+    configuration.controls.ports[1].source = InputSource::Gamepad {
+        identity: "pad".into(),
+        mapping: "arrows".into(),
+    };
+    configuration.controls.host.gamepad_shortcuts =
+        [(LOAD, FrontendAction::Load), (PAUSE, FrontendAction::Pause)]
+            .map(|(button, action)| GamepadShortcut {
+                identity: "pad".into(),
+                button,
+                action,
+            })
+            .into();
+    let mut h = saved_progress_harness(configuration);
+    common::settle_harness(&mut h);
+    assert!(h.state().host.status.running);
+    assert!(h.state().player.captured);
+    let generation = h.state().host.status.generation;
+    let sender = h.state().host.runtime.as_ref().unwrap().input_sender();
+
+    pad_buttons(&sender, generation, &[]);
+    // One poll queues the shortcuts in configuration order, Load before Pause.
+    pad_buttons(&sender, generation, &[LOAD, PAUSE]);
+    common::wait_harness(&mut h, |app| app.player.show_saves);
+    assert!(h.query_by_label("Saved progress").is_some());
+    assert!(h.state().host.status.running);
+    assert!(!h.state().player.captured);
+
+    h.get_by_label("Close").click();
+    common::settle_harness(&mut h);
+    assert!(h.query_by_label("Saved progress").is_none());
+    assert!(h.state().host.status.running);
+    // The same Pause press remains held through dismissal and the next poll.
+    pad_buttons(&sender, generation, &[PAUSE]);
+    common::settle_harness(&mut h);
+    assert!(h.state().host.status.running);
+    assert_eq!(h.state().host.status.generation, generation);
+
+    pad_buttons(&sender, generation, &[]);
+    pad_buttons(&sender, generation, &[PAUSE]);
+    common::wait_harness(&mut h, |app| !app.host.status.running);
+    assert!(!h.state().player.show_saves);
 }
 
 #[test]

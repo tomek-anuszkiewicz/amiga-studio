@@ -17,11 +17,11 @@ impl EmulatorApp {
             let generation = decision.generation;
             match decision.route {
                 KeyRoute::Command { action, pressed } => {
-                    if pressed {
+                    if pressed && !self.player.show_saves {
                         self.apply_key_command(action, ctx);
                     }
                 }
-                KeyRoute::Amiga { code, pressed } => {
+                KeyRoute::Amiga { code, pressed } if !self.player.show_saves => {
                     if self.host.keyboard_pending.len() == INPUT_QUEUE_CAPACITY {
                         self.host.keyboard_pending.clear();
                         self.host
@@ -40,7 +40,7 @@ impl EmulatorApp {
                         .keyboard_pending
                         .push_back((HostInputEvent::ReleaseAll, generation));
                 }
-                KeyRoute::Consumed | KeyRoute::Rejected(_) => {}
+                KeyRoute::Amiga { .. } | KeyRoute::Consumed | KeyRoute::Rejected(_) => {}
             }
         }
     }
@@ -49,10 +49,17 @@ impl EmulatorApp {
         let focused_text = ctx
             .memory(|memory| memory.focused())
             .is_some_and(|id| egui::TextEdit::load_state(ctx, id).is_some());
-        let dialog = self.load_binary_modal_open
+        let dialog = self.player.show_saves
+            || self.load_binary_modal_open
             || self.file_error.is_some()
             || self.file_picker_open()
-            || ctx.memory(|memory| memory.top_modal_layer().is_some());
+            || ctx.memory(|memory| {
+                // egui reports the previous pass's layer. The chooser's state
+                // determines ingress ownership on the opening and closing passes.
+                memory.top_modal_layer().is_some_and(|layer| {
+                    layer.id != egui::Id::new(crate::player_view::SAVED_PROGRESS_DIALOG)
+                })
+            });
         #[cfg(not(target_arch = "wasm32"))]
         let focused = ctx.input(|input| input.focused);
         #[cfg(target_arch = "wasm32")]
@@ -88,7 +95,7 @@ impl EmulatorApp {
         }
     }
 
-    pub(crate) fn refresh_keyboard_policy(&self, ctx: &egui::Context) {
+    fn refresh_keyboard_policy(&self, ctx: &egui::Context) {
         let policy = self.keyboard_policy(ctx);
         with_inbox(ctx, |inbox| {
             inbox.set_policy(policy, self.host.status.generation)

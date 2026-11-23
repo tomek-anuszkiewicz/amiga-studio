@@ -493,10 +493,98 @@ fn game_app(root: &Path) -> EmulatorApp {
     app
 }
 
+fn session_harness_builder() -> egui_kittest::HarnessBuilder<EmulatorApp> {
+    egui_kittest::Harness::builder().with_size(egui::vec2(1280.0, 900.0))
+}
+
 fn session_harness(app: EmulatorApp) -> egui_kittest::Harness<'static, EmulatorApp> {
-    egui_kittest::Harness::builder()
-        .with_size(egui::vec2(1280.0, 900.0))
-        .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app)
+    session_harness_builder().build_state(|ctx, app| app.update_ui(ctx), app)
+}
+
+#[test]
+fn saved_progress_selection_restores_only_after_replacement_is_confirmed() {
+    use egui_kittest::kittest::Queryable;
+
+    const SAVED_D7: u32 = 0x1234_5678;
+    const LIVE_D7: u32 = 0x8765_4321;
+
+    let (root, library) = library();
+    let game = &library.games[0];
+    let mut app = game_app(&root);
+    app.start_library_game(game.clone(), None, false);
+    let mut h = session_harness(app);
+    common::settle_harness(&mut h);
+    h.get_by_label("Pause").click();
+    common::wait_harness(&mut h, |app| !app.host.status.running);
+    common::command(
+        h.state_mut(),
+        HostCommand::SetRegister {
+            register: gui::EditRegister::D(7),
+            value: SAVED_D7,
+        },
+    );
+    h.get_by_label("Save").click();
+    common::settle_harness(&mut h);
+    let saves = gui::game_library::saves(game).unwrap();
+    assert_eq!(saves.len(), 1);
+    let saved =
+        debugger::SaveState::from_json(&std::fs::read_to_string(&saves[0].path).unwrap()).unwrap();
+    assert_eq!(saved.header.version, debugger::SAVE_STATE_VERSION);
+    assert_eq!(saved.state.cpu.d_long(7), SAVED_D7);
+
+    common::command(
+        h.state_mut(),
+        HostCommand::SetRegister {
+            register: gui::EditRegister::D(7),
+            value: LIVE_D7,
+        },
+    );
+    let live = common::snapshot(h.state_mut());
+    assert_eq!(live.cpu.d_long(7), LIVE_D7);
+    let generation = h.state().host.status.generation;
+
+    let choose_save = |h: &mut egui_kittest::Harness<'_, EmulatorApp>| {
+        h.get_by_label("Load").click();
+        common::settle_harness(h);
+        assert!(h.query_by_label("Saved progress").is_some());
+        assert!(h.query_by_label("Replace session").is_none());
+
+        h.get_by_label("Resume").click();
+        common::settle_harness(h);
+        assert!(!h.state().host.status.running);
+        h.get_by_label_contains("Continue - ").click();
+        common::settle_harness(h);
+        assert!(h.query_by_label("Saved progress").is_none());
+        assert!(h.query_by_label("Replace session").is_some());
+
+        h.get_by_label("Resume").click();
+        common::settle_harness(h);
+        assert!(h.query_by_label("Keep current session").is_some());
+        assert!(!h.state().host.status.running);
+        assert_eq!(h.state().host.status.generation, generation);
+        assert_eq!(common::snapshot(h.state_mut()), live);
+    };
+
+    choose_save(&mut h);
+    h.get_by_label("Keep current session").click();
+    common::settle_harness(&mut h);
+    assert!(h.query_by_label("Replace session").is_none());
+    assert_eq!(h.state().host.status.generation, generation);
+    assert_eq!(common::snapshot(h.state_mut()), live);
+
+    choose_save(&mut h);
+    h.get_by_label("Replace session").click();
+    common::settle_harness(&mut h);
+    assert!(h.query_by_label("Replace session").is_none());
+    assert!(h.state().host.status.running);
+    assert_eq!(h.state().player.screen, PlayerScreen::Session);
+    assert!(h.state().file_error.is_none());
+    let restored = debugger::SaveState::from_json(&common::snapshot_json(h.state_mut())).unwrap();
+    assert_eq!(restored.state.cpu.d_long(7), SAVED_D7);
+    assert_eq!(
+        restored.header.association.game_id.as_deref(),
+        Some(game.manifest.id.as_str())
+    );
 }
 
 fn screenshot_directory(game: &LibraryGame) -> PathBuf {
@@ -626,6 +714,50 @@ fn screenshot_pixel(x: usize, y: usize, width: usize, height: usize) -> [u8; 4] 
     }
 }
 
+struct ScreenTextureObserver {
+    size: [usize; 2],
+    capture: common::ScreenCapture,
+}
+
+impl egui_kittest::TestRenderer for ScreenTextureObserver {
+    fn handle_delta(&mut self, delta: &egui::TexturesDelta) {
+        self.capture.apply_delta(delta);
+    }
+
+    fn render(
+        &mut self,
+        _ctx: &egui::Context,
+        output: &egui::FullOutput,
+    ) -> Result<image::RgbaImage, String> {
+        let texture = self.capture.id.ok_or("The game texture was not uploaded")?;
+        let clipped = output.shapes.iter().any(|shape| match &shape.shape {
+            egui::Shape::Mesh(mesh) if mesh.texture_id == texture => {
+                let bounds = mesh.calc_bounds();
+                bounds.width() > shape.clip_rect.width()
+                    && bounds.height() > shape.clip_rect.height()
+            }
+            _ => false,
+        });
+        if !clipped {
+            return Err("The game texture must fill a clipped mesh".into());
+        }
+        let [width, height] = self.size;
+        if self.capture.pixels.len() != width * height {
+            return Err("The observed texture has an unexpected pixel count".into());
+        }
+        // Return the full uploaded texture, including parts clipped in the viewport.
+        let pixel_at = |x: u32, y: u32| {
+            let pixel = self.capture.pixels[y as usize * width + x as usize];
+            image::Rgba(pixel.to_srgba_unmultiplied())
+        };
+        Ok(image::RgbaImage::from_fn(
+            width as u32,
+            height as u32,
+            pixel_at,
+        ))
+    }
+}
+
 #[test]
 fn screenshot_uses_every_displayed_pixel_at_a_clipped_scale_during_run_and_reset() {
     use config::VideoStandard;
@@ -660,36 +792,32 @@ fn screenshot_uses_every_displayed_pixel_at_a_clipped_scale_during_run_and_reset
         // Attach the fixture game while the real host presents the prepared machine image.
         app.player.active_game = Some(game.clone());
         app.screen_scale = gui::ScreenScale::Four;
-        let mut h = session_harness(app);
+        // The paused image can arrive during harness construction. Observe each
+        // texture update starting with the first frame.
+        let mut h = session_harness_builder()
+            .renderer(ScreenTextureObserver {
+                size: [width, height],
+                capture: common::ScreenCapture::new([width, height]),
+            })
+            .build_state(|ctx, app| app.update_ui(ctx), app);
         h.ctx.set_zoom_factor(1.25);
-        let mut displayed = common::ScreenCapture::new([width, height]);
         let deadline = Instant::now() + Duration::from_secs(10);
         loop {
-            displayed.apply(h.output());
-            if h.state().host.is_idle() && displayed.id.is_some() && h.ctx.zoom_factor() == 1.25 {
+            if h.state().host.is_idle()
+                && h.state().host.presented.is_some()
+                && h.ctx.zoom_factor() == 1.25
+            {
                 break;
             }
             assert!(
                 Instant::now() < deadline,
-                "Prepared texture did not reach Game view"
+                "Prepared {standard:?} texture did not reach Game view at 1.25 zoom"
             );
             h.step();
             std::thread::sleep(Duration::from_millis(1));
         }
-        let texture = displayed.id.unwrap();
-        assert!(displayed
-            .pixels
-            .iter()
-            .zip(expected.chunks_exact(4))
-            .all(|(pixel, rgba)| pixel.to_srgba_unmultiplied().as_slice() == rgba));
-        assert!(h.output().shapes.iter().any(|shape| match &shape.shape {
-            egui::Shape::Mesh(mesh) if mesh.texture_id == texture => {
-                let bounds = mesh.calc_bounds();
-                bounds.width() > shape.clip_rect.width()
-                    && bounds.height() > shape.clip_rect.height()
-            }
-            _ => false,
-        }));
+        let observed_texture = h.render().unwrap();
+        assert_eq!(observed_texture.as_raw(), &expected);
 
         let previous = h.state().host.presented.unwrap();
         let pending = if let Some(mut command) = command {
@@ -755,12 +883,8 @@ fn screenshot_uses_every_displayed_pixel_at_a_clipped_scale_during_run_and_reset
                 assert_eq!(h.state().host.status.running, running);
                 assert_eq!(presented.generation, generation);
                 assert_eq!(presented.publication, pending);
-                displayed.apply(h.output());
-                assert!(displayed
-                    .pixels
-                    .iter()
-                    .zip(expected.chunks_exact(4))
-                    .any(|(pixel, rgba)| pixel.to_srgba_unmultiplied().as_slice() != rgba));
+                let observed_texture = h.render().unwrap();
+                assert_ne!(observed_texture.as_raw(), &expected);
                 break;
             }
             assert!(

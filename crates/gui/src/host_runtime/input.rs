@@ -74,16 +74,13 @@ impl HostInputSender {
         true
     }
 
-    pub fn frontend_actions(
-        &self,
-        enabled: bool,
-    ) -> Option<Vec<crate::player_config::FrontendAction>> {
-        let Ok(mut mailboxes) = self.shared.mailboxes.try_lock() else {
-            return None;
-        };
-        mailboxes.frontend_enabled = enabled;
-        let actions = std::mem::take(&mut mailboxes.mapping.actions);
-        Some(if enabled { actions } else { Vec::new() })
+    pub(crate) fn take_frontend_actions(&self) -> Vec<crate::player_config::FrontendAction> {
+        self.shared
+            .mailboxes
+            .try_lock()
+            .ok()
+            .map(|mut mailboxes| std::mem::take(&mut mailboxes.mapping.actions))
+            .unwrap_or_default()
     }
 
     pub fn try_host_event(&self, event: HostInputEvent, generation: u64) -> bool {
@@ -117,7 +114,7 @@ impl HostInputSender {
     }
 
     pub fn set_enabled(&self, keyboard: bool, mouse: bool, gamepads: bool) -> bool {
-        self.apply_input_activation(keyboard, mouse, gamepads, None)
+        self.apply_input_activation(keyboard, mouse, gamepads, None, None)
     }
 
     pub(crate) fn apply_input_activation(
@@ -125,6 +122,7 @@ impl HostInputSender {
         keyboard: bool,
         mouse: bool,
         gamepads: bool,
+        frontend: Option<bool>,
         view_release_generation: Option<u64>,
     ) -> bool {
         let Ok(mut mailboxes) = self.shared.mailboxes.try_lock() else {
@@ -162,6 +160,12 @@ impl HostInputSender {
         mailboxes.keyboard_enabled = keyboard;
         mailboxes.mouse_enabled = mouse;
         mailboxes.gamepad_enabled = gamepads;
+        if let Some(frontend) = frontend {
+            mailboxes.frontend_enabled = frontend;
+            if !frontend {
+                mailboxes.mapping.actions.clear();
+            }
+        }
         #[cfg(target_arch = "wasm32")]
         let (interval, generation) = (
             mailboxes.status.input_poll_seconds * 1000.0,

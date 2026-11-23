@@ -279,6 +279,11 @@ dialogs suspend gameplay. Releasing the mouse clears its queued movement and
 buttons while preserving quadrature phase, held keys, keyboard joystick
 contacts and selected gamepad contacts.
 
+On native hosts, Load opens the Saved progress dialog for the active library
+game. Opening it releases mouse capture and gives the dialog control of input
+while the machine keeps its current run or pause state. Close returns to the
+session. Choosing a save opens the replacement confirmation.
+
 Ordered, bounded queues publish input immediately. The owner admits it at
 three evenly spaced times per emulated field, determined by the current
 PAL/NTSC and interlace geometry. Initialization aligns the first input grid

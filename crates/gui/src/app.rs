@@ -323,7 +323,7 @@ impl EmulatorApp {
 
         // Check for drag-and-dropped files onto the emulator window
         let dropped_files = ctx.input(|i| i.raw.dropped_files.clone());
-        if first_pass {
+        if first_pass && !self.player.show_saves {
             for file in dropped_files {
                 self.accept_dropped_file(file);
             }
@@ -371,6 +371,12 @@ impl EmulatorApp {
                 self.render_player_controls(ctx);
             }
         }
+        if first_pass {
+            // The session controls can open Saved progress in the same pass
+            // as keys queued by the window. Dispatch the keys after that click.
+            self.handle_keyboard_input(ctx);
+        }
+        self.render_player_confirmation(ctx);
         if let Some((info, image)) = next_image {
             self.host.presented = Some(info);
             self.screen_texture.update(ctx, image);

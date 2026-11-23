@@ -377,9 +377,7 @@ impl crate::EmulatorApp {
         }
         if first_pass {
             self.host.refresh_utc(crate::host_clock::utc_now());
-            self.handle_keyboard_input(ctx);
         }
-        self.render_player_confirmation(ctx);
     }
 }
 
@@ -387,13 +385,29 @@ impl crate::EmulatorApp {
     pub(crate) fn finish_ui_pass(&mut self, ctx: &egui::Context, first_pass: bool) {
         if first_pass {
             self.poll_file_dialog(ctx);
+            self.handle_gamepad_actions(ctx);
         }
+        #[cfg(not(target_arch = "wasm32"))]
+        self.render_saved_progress(ctx);
         crate::layout::file_dialogs::render(self, ctx);
 
         self.host.flush();
         self.host.request_submission_retry(ctx);
         if first_pass {
             self.update_host_input(ctx);
+        }
+    }
+
+    fn handle_gamepad_actions(&mut self, ctx: &egui::Context) {
+        if self.keyboard_policy(ctx).frontend_active() {
+            if let Some(runtime) = &self.host.runtime {
+                for action in runtime.input_sender().take_frontend_actions() {
+                    self.apply_frontend_action(action);
+                    if self.player.show_saves {
+                        break;
+                    }
+                }
+            }
         }
     }
 
@@ -443,7 +457,6 @@ impl crate::EmulatorApp {
         }
         if let Some(runtime) = &self.host.runtime {
             let sender = runtime.input_sender();
-            let actions = sender.frontend_actions(frontend);
             let configuration_applied =
                 self.player
                     .active_configuration
@@ -459,6 +472,7 @@ impl crate::EmulatorApp {
                     gameplay,
                     mouse,
                     gameplay,
+                    Some(frontend),
                     self.host.view_release_generation,
                 );
             self.host.activation_pending = !configuration_applied || !activation_applied;
@@ -511,15 +525,6 @@ impl crate::EmulatorApp {
             #[cfg(not(target_arch = "wasm32"))]
             if self.host.native_gamepads && !runtime.start_native_gamepads() {
                 ctx.request_repaint_after(HOST_RETRY_DELAY);
-            }
-            if let Some(actions) = actions {
-                for action in actions {
-                    self.apply_frontend_action(action);
-                }
-                if self.host.view_release_generation.is_some() {
-                    self.refresh_keyboard_policy(ctx);
-                    ctx.request_repaint();
-                }
             }
         }
     }

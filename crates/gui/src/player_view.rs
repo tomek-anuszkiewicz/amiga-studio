@@ -4,6 +4,8 @@ use crate::host_commands::HostCommand;
 use crate::player::{PlayerScreen, SessionDisk};
 use crate::{EmulatorApp, ViewMode};
 
+pub const SAVED_PROGRESS_DIALOG: &str = "saved-progress";
+
 impl EmulatorApp {
     pub(crate) fn render_player_screen(&mut self, ctx: &egui::Context) {
         egui::TopBottomPanel::top("player_navigation").show(ctx, |ui| {
@@ -150,15 +152,25 @@ impl EmulatorApp {
                     .show(ui, |ui| self.player_controls(ui));
             });
         }
-        #[cfg(not(target_arch = "wasm32"))]
-        if self.player.show_saves {
-            let mut open = true;
-            egui::Window::new("Saved progress")
-                .open(&mut open)
-                .show(ctx, |ui| {
-                    self.render_save_catalog(ui, true);
-                });
-            self.player.show_saves = open;
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) fn render_saved_progress(&mut self, ctx: &egui::Context) {
+        if !self.player.show_saves || self.file_error.is_some() || self.load_binary_modal_open {
+            return;
+        }
+        let close = egui::Modal::new(egui::Id::new(SAVED_PROGRESS_DIALOG)).show(ctx, |ui| {
+            ui.heading("Saved progress");
+            egui::ScrollArea::vertical()
+                .max_height(ctx.screen_rect().height() * 0.7)
+                .show(ui, |ui| self.render_save_catalog(ui, true));
+            ui.button("Close").clicked()
+        });
+        if close.inner {
+            self.player.show_saves = false;
+        }
+        if !self.player.show_saves {
+            ctx.request_repaint();
         }
     }
 
