@@ -9,6 +9,99 @@ use config::custom_reg;
 mod common;
 use common::MachineHarness;
 use denise::frame_builder;
+use machine_loop::{A500Machine, A500State};
+
+fn step_to_beam(machine: &mut A500Machine, line: u16, hpos: u16) {
+    for _ in 0..32 * 227 {
+        if (machine.agnus.vpos, machine.agnus.hpos) == (line, hpos) {
+            return;
+        }
+        machine.step_cck();
+    }
+    panic!("Agnus did not reach line {line}, CCK {hpos}");
+}
+
+#[test]
+fn test_kit_dma_draws_the_final_word_across_the_right_edge_on_consecutive_rows() {
+    use custom_reg::{agnus as a, denise as d};
+
+    let mut machine = MachineHarness::new().machine;
+    machine.cpu.state.set_stopped(true);
+    // $20 through $D8 inclusive gives 24 eight-CCK groups, one word per group.
+    let base = 0x4000u16;
+    let stride = 24 * 2;
+    let final_words = [0x0000u16, 0xa6d3, 0x5b2d];
+    for (row, word) in final_words.into_iter().enumerate() {
+        let address = u32::from(base) + (row as u32 + 1) * stride - 2;
+        machine.physical_memory.write_word_debug(address, word);
+    }
+    for (register, value) in [
+        (a::REGISTER_BPL1PTH, 0),
+        (a::REGISTER_BPL1PTL, base),
+        (d::REGISTER_DIWSTRT, 0x1b51),
+        (d::REGISTER_DIWSTOP, 0x37d1),
+        (a::REGISTER_DDFSTRT, 0x20),
+        (a::REGISTER_DDFSTOP, 0xd8),
+        (a::REGISTER_BPL1MOD, 0),
+        (a::REGISTER_BPL2MOD, 0),
+        (d::REGISTER_BPLCON0, 0x1200),
+        (d::REGISTER_BPLCON1, 0),
+        (d::REGISTER_COLOR00, 0),
+        (d::REGISTER_COLOR01, 0x0fff),
+        (a::REGISTER_DMACON, 0x8300),
+    ] {
+        machine
+            .memory_bus()
+            .write_custom_word(register, value, "DMA");
+    }
+
+    let mut snapshots = Vec::new();
+    for (row, word) in final_words.into_iter().enumerate() {
+        let line = 27 + row as u16;
+        let next_address = u32::from(base) + (row as u32 + 1) * stride;
+        step_to_beam(&mut machine, line, 0xde);
+        assert_eq!(machine.agnus.bplpt[0], next_address - 2);
+        machine.step_cck();
+        assert_eq!(machine.agnus.bplpt[0], next_address);
+        machine.step_cck();
+        assert_eq!(machine.denise.bpldat[0], word);
+        if line == 28 {
+            // Agnus asserts STRHOR at CCK 1. Denise consumes it one CCK later.
+            for hpos in [1, 2] {
+                step_to_beam(&mut machine, line + 1, hpos);
+                snapshots.push(serde_json::to_vec(&machine.save_state()).unwrap());
+            }
+        }
+    }
+    step_to_beam(&mut machine, 30, 20);
+    let finished = machine.save_state();
+    for json in snapshots {
+        let state: A500State = serde_json::from_slice(&json).unwrap();
+        let mut restored = MachineHarness::new().machine;
+        restored.load_state(&state);
+        step_to_beam(&mut restored, 30, 20);
+        assert!(
+            restored.save_state() == finished,
+            "snapshot continuation diverged"
+        );
+    }
+
+    // The last fetch is at Agnus $DF. The word starts shifting at receiver
+    // CCK 223. Its first stored pair is (223 - 49) * 4 + 2 = column 698.
+    for (row, word) in [(0, final_words[1]), (2, final_words[2])] {
+        for x in 0..720 {
+            let set = x >= 698 && word & (0x8000 >> ((x - 698) / 2)) != 0;
+            let expected = if set { 0xffffffff } else { 0xff000000 };
+            for y in row..row + 2 {
+                assert_eq!(
+                    machine.denise.frame_builder.get_pixel(x, y),
+                    expected,
+                    "x={x}, y={y}"
+                );
+            }
+        }
+    }
+}
 
 #[test]
 fn test_display_window_register_configuration_and_geometry() {

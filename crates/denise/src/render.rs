@@ -17,14 +17,17 @@ const BIT_SECOND_PRIORITY_SHIFT: u16 = 3;
 impl Denise {
     pub(super) fn render_cck(&mut self, horizontal: u16, vertical: u16) {
         if horizontal == 0 {
-            self.last_ham_rgb = self.color[0];
             self.bpl_armed = false;
-            self.shifters.fill(0);
-            self.scroll_history.fill(0);
-            self.pipeline_pixels_valid.fill(false);
             // Compare the restart value before advancing to the delayed pair.
             self.horizontal_window(RECEIVER_DIW_COUNT_ORIGIN);
         }
+        if horizontal == HBLANK_START_CCK {
+            self.last_ham_rgb = self.color[0];
+        }
+        // The counter prefix finishes the preceding display line. Its 18 CCKs
+        // drain even a full lores word plus 15 scroll bits. A fresh BPL1DAT
+        // commit can arm the new line during that interval.
+        let shifting = self.bpl_armed || horizontal < HBLANK_START_CCK;
         self.sprites.step_cck(horizontal);
         self.advance_frame_cursor(horizontal, vertical);
         let blank =
@@ -37,7 +40,7 @@ impl Denise {
                 self.horizontal_window(position + DIW_COUNT_LEAD);
                 self.sprites
                     .evaluate_pixel(position, &self.clxcon, &mut self.clxdat);
-                if self.bpl_armed {
+                if shifting {
                     self.shift_pixel();
                     if hires {
                         self.shift_pixel();
@@ -61,11 +64,7 @@ impl Denise {
             let sprite = self
                 .sprites
                 .evaluate_pixel(position, &self.clxcon, &mut self.clxdat);
-            let first = if self.bpl_armed {
-                self.shift_pixel()
-            } else {
-                0
-            };
+            let first = if shifting { self.shift_pixel() } else { 0 };
             let compose = |this: &mut Self, planes: u8| {
                 if in_window {
                     let planes = planes & plane_mask;
@@ -84,11 +83,7 @@ impl Denise {
             };
             let color = compose(self, first);
             let next = if hires {
-                let second = if self.bpl_armed {
-                    self.shift_pixel()
-                } else {
-                    0
-                };
+                let second = if shifting { self.shift_pixel() } else { 0 };
                 [color, compose(self, second)]
             } else {
                 [color; 2]
