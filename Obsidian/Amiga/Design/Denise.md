@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "denise"
 status: "active"
 created: 2026-09-06
-updated: 2026-11-17
+updated: 2026-11-23
 related: ["[Sprites.md](Sprites.md)", "[Frame Buffer.md](Frame%20Buffer.md)", "[Agnus.md](Agnus.md)", "[Game Ports.md](Game%20Ports.md)"]
 tracked_paths:
   - "crates/denise"
@@ -47,11 +47,11 @@ data and supports fewer planes.
 
 Dual-playfield mode groups odd and even planes into two independently
 positioned pictures. Each has transparent pixels, and display priority decides
-which picture is visible where they overlap. Hold-and-modify (HAM) uses six
-planes differently: some pixel codes choose a palette color, while others
-change one red, green, or blue component of the preceding pixel's color.
-The official playfield chapter describes these modes for the A500; this
-overview stays within the behavior supported by that source.
+which picture is visible where they overlap. In hold-and-modify (HAM) mode,
+some pixel codes choose a palette color while others change one red, green,
+or blue component of the preceding pixel's color. The
+[Hardware Reference Manual](../Reference/Hardware%20Reference%20Manual/03%20-%20Chapter%203%20-%20Playfield%20Hardware.md#hold-and-modify-mode)
+describes these modes and specifies five or six bitplanes for HAM.
 
 ## Reconstructed pixel processing
 
@@ -61,9 +61,23 @@ commits, Denise loads all six data latches into the shifters. A new write to tha
 latches do not reload on their own. High resolution shifts four bits per CCK. Low resolution shifts two
 and uses two samples per pixel on the shared high-resolution framebuffer
 grid. BPLCON1 delays the odd and even plane streams independently by 0-15
-pixel periods and keeps their history across adjacent words. The local line
-boundary resets serialization and the color held by HAM. Mid-line register
+pixel periods and keeps their history across adjacent words. Mid-line register
 writes still take effect at their commit phase.
+
+In the emulator, the horizontal counter wrap clears the flag that enables
+bitplane output for the next line. Denise continues shifting pending bitplane
+data at the start of the new count. While vertical blanking is inactive, the
+pending pixels finish the previous visible row. If vertical blanking starts
+at the field boundary, the shifters still advance and Denise skips the
+remaining pixel writes. The frame builder clears the unwritten row tail.
+[Frame Buffer](Frame%20Buffer.md#field-assembly-and-snapshots)
+
+A `BPL1DAT` write that commits between the wrap and horizontal blanking can
+enable output for the new line. At the start of horizontal blanking, the
+emulator initializes the held HAM color from `COLOR00` as part of its display
+timing model. The hardware manual specifies that no data is displayed during
+vertical blanking.
+[Hardware Reference Manual, Chapter 3](../Reference/Hardware%20Reference%20Manual/03%20-%20Chapter%203%20-%20Playfield%20Hardware.md#maximum-display-window-size)
 
 Denise decodes the current pixel using the committed mode, whether palette,
 dual-playfield, HAM6 or Extra Half-Brite. HAM modifies one component of the
@@ -86,8 +100,9 @@ delay would clip the first two hires samples of the ordinary Workbench
 window. The counter origin agrees with the [ARP Denise reconstruction](../../../ref_src/amiga_replacement_project/denise/src/denise.v).
 Its exact relationship to this emulator's CCK delivery remains a model choice.
 
-HAM and Extra Half-Brite require six low-resolution planes; BPU=7 remains a
-distinct decoding case. Pending BPLCON0 writes must not affect the active mode.
+In the emulator, HAM and Extra Half-Brite each require six low-resolution
+planes. Five-plane HAM remains outside the model. BPU=7 remains a distinct
+decoding case. Pending BPLCON0 writes must not affect the active mode.
 
 The renderer advances that two-sample output pipeline as a pair. Low resolution
 composes one color for both new samples; high resolution composes each sample

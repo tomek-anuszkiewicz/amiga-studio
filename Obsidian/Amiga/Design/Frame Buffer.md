@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "frame_builder"
 status: "active"
 created: 2026-09-19
-updated: 2026-11-17
+updated: 2026-11-23
 related: ["[Denise.md](Denise.md)", "[Agnus.md](Agnus.md)", "[GUI.md](Application/GUI.md)"]
 tracked_paths:
   - "crates/frame_builder"
@@ -47,8 +47,8 @@ in the 752 x 484 native capture and needs no resizing. These coordinates describ
 physical beam remains uncalibrated. Chip pipelines and
 collision detection continue to advance outside the rectangle. Blanked parts
 inside it appear black. The right edge crosses the horizontal counter wrap.
-The first two CCKs after a short line finish the row. After a long line,
-the row ends after one CCK.
+With visible output, the row finishes two CCKs after a short line and one
+CCK after a long line.
 
 A fixed high-resolution, interlaced spatial grid preserves mixed-resolution
 content, including changes within a line. A low-resolution pixel occupies two consecutive horizontal samples. A
@@ -82,8 +82,9 @@ from DIW or colors.
 ## Field assembly and snapshots
 
 Denise derives field and visible-line boundaries from received equalization,
-blank and horizontal strobes. Counter positions before HBLANK complete the
-preceding visible line; its field parity survives the counter wrap. The first
+blank and horizontal strobes. After a line strobe, counter positions before
+HBLANK still belong to the preceding row and keep its field parity. Vertical
+blanking can suppress the final pixels at the field boundary. The first
 partial field does not publish a completed frame. Before execution, machine configuration selects the fixed geometry for the
 video standard. Each completed frame increments the host refresh generation
 and keeps the dimensions unchanged.
