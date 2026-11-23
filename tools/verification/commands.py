@@ -125,12 +125,6 @@ PYTHON_SUITES = (
     (CAPTURE_CONTRACTS, "tools/workflow/capture/tests"),
 )
 
-PARALLEL_PYTHON_DIRECTORIES = tuple(
-    directory for name, directory in PYTHON_SUITES
-    if name in ("Verification CLI contracts", CAPTURE_CONTRACTS)
-)
-
-
 CAPTURE_TEST_INPUTS = (
     "tools/verification/run_tests.py", "tools/verification/worker_processes.py",
     "tools/verification/case_report.py", "tools/verification/repository.py",
@@ -183,7 +177,7 @@ def verification_contract_input(path):
 
 
 def python_commands(directory=None, pattern=None, case=None, changes=None, include_bootstrap=True):
-    parallel_directories = {REPO_ROOT / suite for suite in PARALLEL_PYTHON_DIRECTORIES}
+    registered_directories = {REPO_ROOT / suite for _, suite in PYTHON_SUITES}
     selections = PYTHON_SUITES if directory is None else [("Python contracts", directory)]
     if directory is None and not include_bootstrap:
         selections = [(name, target) for name, target in selections
@@ -200,9 +194,10 @@ def python_commands(directory=None, pattern=None, case=None, changes=None, inclu
             path = REPO_ROOT / path
         if not path.is_dir():
             raise ValueError(f"Python test directory does not exist: {target}")
-        if path.resolve() == REPO_ROOT / "tools/bootstrap/book-to-markdown/tests":
+        resolved = path.resolve()
+        if resolved == REPO_ROOT / "tools/bootstrap/book-to-markdown/tests":
             command = [sys.executable, "tools/bootstrap/book-to-markdown/run_tests.py"]
-        elif path.resolve() in parallel_directories:
+        elif resolved in registered_directories:
             command = [sys.executable, "tools/verification/run_tests.py", "-s", str(target), "-q"]
         else:
             command = [sys.executable, "tools/verification/run_unittest.py", "discover", "-s", str(target), "-q"]

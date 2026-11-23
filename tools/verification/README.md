@@ -370,12 +370,21 @@ Preserve local timing reports, coverage and other ignored outputs with the
 
 ### Bounded parallel execution
 
-The existing Python test runner limits the number of workers for eligible cases.
-It runs cases serially where justified. Rust test runners keep their native
-scheduling. The verifier runs its selected command groups in order. A failed
-preliminary or build check defers subsequent expensive phases. A failed coverage
-step stops its bundle. Give independent coverage exports separate writable counters.
-Separate verifier invocations share no batch lock or saved-evidence protocol.
+The verifier runs Bootstrap, Graphify, Conversion, HTML, PDF, RAG, Artifact,
+Verification CLI and Workflow capture tests through `run_tests.py`. Each unittest
+method runs in its own process with a private working directory and temporary
+directory. The runner limits concurrent workers within the group and honors
+explicit serial markers. The verifier finishes one group before starting the
+next. Directory, file and case filters apply before workers start.
+
+Book Review uses its dedicated runner and shared browser lifecycle. Explicitly
+selected directories outside the registered groups use standard unittest
+discovery. Rust test runners keep their native scheduling.
+
+A failed preliminary or build check defers subsequent expensive phases. A failed
+coverage step stops its bundle. Give independent coverage exports separate
+writable counters. Separate verifier invocations share no batch lock or
+saved-evidence protocol.
 
 ### Coverage-guided testing
 

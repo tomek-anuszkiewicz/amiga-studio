@@ -101,6 +101,8 @@ class ClientTests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.cache = ResponseCache(Path(self.tmp.name) / "codex")
+        self.metrics = Path(self.tmp.name) / "metrics.json"
+        self.enterContext(patch.dict(os.environ, {"LLM_STAGE_METRICS_FILE": str(self.metrics)}))
 
     def client(self, transport):
         return HtmlClient(config(), transport=transport, cache=self.cache)
@@ -232,6 +234,9 @@ class ClientTests(unittest.TestCase):
             self.assertEqual((replay.call_count, replay.cached_call_count), (0, 1))
             self.assertEqual(replay.metrics[-1]["stage"], "renamed_stage")
         self.assertEqual(unused.calls, [])
+        written = json.loads(self.metrics.read_text(encoding="utf-8"))
+        self.assertEqual([(request["stage"], request["cached"]) for request in written["requests"]],
+                         [("html_to_markdown", False), ("renamed_stage", True)])
 
     def test_capacity_backoff_doubles_and_resets_after_success(self):
         instances, calls = [], []
@@ -638,42 +643,62 @@ class TransportTests(unittest.TestCase):
 
 class ParallelConversionTests(unittest.TestCase):
     def test_coordinator_interrupt_stops_worker_capacity_retries(self):
-        entered, interrupted = threading.Event(), threading.Event()
+        waiting, woken = threading.Event(), threading.Event()
+        cancelled = threading.Event()
+        condition_wait = cancelled._cond.wait
         calls, accepted = [], []
-        get = Queue.get
 
         class CapacityTransport(FakeTransport):
             def run(self, selected, prompt, **options):
                 calls.append(prompt)
                 if len(calls) == 1:
-                    entered.set()
                     raise CodexRetryableError("rateLimitExceeded")
                 return {"text": '{"signal":"CCK"}', "status": "completed"}
 
-        def interrupt(queue, *args, **kwargs):
-            if not interrupted.is_set():
-                self.assertTrue(entered.wait(2), "Worker did not make its first request")
-                interrupted.set()
-                raise KeyboardInterrupt
-            return get(queue, *args, **kwargs)
+        def observe_wait(timeout):
+            # Event.wait holds the condition lock here. Event.set can acquire it
+            # once Condition.wait has registered the worker and released the lock.
+            waiting.set()
+            notified = condition_wait(timeout)
+            if notified:
+                woken.set()
+            return notified
 
-        def wait(seconds):
-            self.assertTrue(interrupted.wait(2), "Coordinator did not interrupt")
+        class InterruptingQueue(Queue):
+            interrupted = False
+            woke_after_interrupt = None
+
+            def get(self):
+                if not self.interrupted:
+                    self.interrupted = True
+                    if not waiting.wait(2):
+                        raise AssertionError("Worker did not enter the retry wait")
+                    raise KeyboardInterrupt
+                if self.woke_after_interrupt is None:
+                    self.woke_after_interrupt = woken.wait(2)
+                    if not self.woke_after_interrupt:
+                        # Release the worker for cleanup if cancellation failed.
+                        cancelled.set()
+                return super().get()
 
         with tempfile.TemporaryDirectory() as directory:
             def factory(*args, **kwargs):
                 return CodexClient(*args, **kwargs, transport=CapacityTransport(),
-                                   cache=ResponseCache(Path(directory)))
+                                   cache=ResponseCache(Path(directory) / "cache"))
 
             configured = config()
             configured["llm"]["concurrency"] = 2
-            with patch("conversion.parallel.Queue.get", new=interrupt), \
-                    patch("conversion.client.time.sleep", side_effect=wait), \
+            results = InterruptingQueue(maxsize=2)
+            with patch("conversion.parallel.Queue", return_value=results), \
+                    patch("conversion.parallel.Event", return_value=cancelled), \
+                    patch.object(cancelled._cond, "wait", new=observe_wait), \
+                    patch.dict(os.environ, {"LLM_STAGE_METRICS_FILE": str(Path(directory) / "metrics.json")}), \
                     redirect_stderr(StringIO()):
                 with self.assertRaises(KeyboardInterrupt):
                     convert_parallel(configured, stage="html_to_markdown", operation="interrupted-retry",
                                      jobs=[0], convert=lambda client, job: client.generate_json("retry"),
                                      accept=lambda *result: accepted.append(result), client_factory=factory)
+        self.assertTrue(results.woke_after_interrupt, "Coordinator cancellation did not wake the retry wait")
         self.assertEqual(calls, ["retry"])
         self.assertEqual(accepted, [])
 

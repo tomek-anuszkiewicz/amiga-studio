@@ -20,7 +20,7 @@ import timing_report
 from impact import RustScope
 
 def selected(sentence, changes=()):
-    _, args = parse_args(sentence.split())
+    _, args = parse_args(sentence.split() if isinstance(sentence, str) else sentence)
     return [item for _, commands in select_phases(args, set(changes)) for item in commands]
 from test_case_report import ignore_archive
 
@@ -64,24 +64,50 @@ class SelectionTests(unittest.TestCase):
         self.assertEqual(commands[0][1], ['cargo', 'test', '--release', '--no-run', '-p', 'test_runner', '--tests', '--benches'])
 
     def test_python_selection_preserves_directory_file_and_case(self):
-        commands = selected('test python directory tools/bootstrap/tests file test_bootstrap_contract.py case test_all')
-        self.assertEqual(len(commands), 1)
-        self.assertEqual(commands[0][1][1:], ['tools/verification/run_unittest.py', 'discover', '-s', 'tools/bootstrap/tests', '-q', '-p', 'test_bootstrap_contract.py', '-k', 'test_all'])
-        book = selected('test python directory tools/bootstrap/book-to-markdown/tests file test_book_review_overflow.py case test_pdf_page')
-        self.assertEqual(book[0][1][1:], ['tools/bootstrap/book-to-markdown/run_tests.py', '-p', 'test_book_review_overflow.py', '-k', 'test_pdf_page'])
-        focused = selected('test python directory tools/verification/tests file test_cli.py case test_focused')
-        self.assertEqual(focused[0][1][1:], ['tools/verification/run_tests.py', '-s', 'tools/verification/tests', '-q', '-p', 'test_cli.py', '-k', 'test_focused'])
+        suites = (
+            ('Bootstrap contracts', 'tools/bootstrap/tests'),
+            ('Graphify contracts', 'tools/graphify/tests'),
+            ('Conversion contracts', 'tools/bootstrap/conversion/tests'),
+            ('HTML conversion contracts', 'tools/bootstrap/html-to-markdown/tests'),
+            ('PDF conversion contracts', 'tools/bootstrap/pdf-to-markdown/tests'),
+            ('Book review contracts', 'tools/bootstrap/book-to-markdown/tests'),
+            ('RAG MCP contracts', 'tools/amiga-rag-mcp-server/tests'),
+            ('Artifact report contracts', 'tools/artifacts/tests'),
+            ('Verification CLI contracts', 'tools/verification/tests'),
+            ('Workflow capture contracts', 'tools/workflow/capture/tests'),
+        )
+        repo = Path(__file__).resolve().parents[3]
+        owning_changes = [f'{directory}/test_trial.py' for _, directory in suites]
+        batch = selected('test python', reversed(owning_changes))
+        self.assertEqual([name for name, _, _ in batch], [name for name, _ in suites])
+        for (name, directory), automatic in zip(suites, batch, strict=True):
+            for target in (directory, str(repo / directory)):
+                with self.subTest(name=name, target=target):
+                    if name == 'Book review contracts':
+                        runner = [sys.executable, 'tools/bootstrap/book-to-markdown/run_tests.py']
+                    else:
+                        runner = [sys.executable, 'tools/verification/run_tests.py', '-s', target, '-q']
+                    focused, = selected(['test', 'python', 'directory', target,
+                                         'file', 'test_*.py', 'case', 'trial'])
+                    self.assertEqual(focused, ('Python contracts', [*runner, '-p', 'test_*.py', '-k', 'trial'], {}))
+                    if target == directory:
+                        self.assertEqual(automatic, (name, runner, {}))
+
         defaults = {name: command for name, command, _ in selected('test python', ['tools/verification/run_tests.py'])}
         self.assertEqual(defaults['Verification CLI contracts'], [sys.executable, 'tools/verification/run_tests.py', '-s', 'tools/verification/tests', '-q'])
         self.assertEqual(set(defaults), {'Verification CLI contracts', 'Workflow capture contracts'})
-        for group, directory in (('Workflow capture contracts', 'tools/workflow/capture/tests'),):
-            with self.subTest(group=group):
-                runner = [sys.executable, 'tools/verification/run_tests.py', '-s', directory, '-q']
-                self.assertEqual(defaults[group], runner)
-                named, = selected(f'test python directory {directory} file test_*.py case trial')
-                self.assertEqual(named[1], [*runner, '-p', 'test_*.py', '-k', 'trial'])
-                batch = {name: command for name, command, _ in selected('commit', [directory + '/test_trial.py'])}
-                self.assertEqual(batch[group], runner)
+        capture = 'Workflow capture contracts'
+        runner = [sys.executable, 'tools/verification/run_tests.py', '-s', 'tools/workflow/capture/tests', '-q']
+        self.assertEqual(defaults[capture], runner)
+        commit = {name: command for name, command, _ in selected('commit', ['tools/workflow/capture/tests/test_trial.py'])}
+        self.assertEqual(commit[capture], runner)
+
+    def test_focused_python_keeps_unregistered_directories_on_standard_discovery(self):
+        with tempfile.TemporaryDirectory(prefix='unregistered python suite ') as directory:
+            command, = selected(['test', 'python', 'directory', directory,
+                                 'file', 'test_sample.py', 'case', 'test_sample'])
+            self.assertEqual(command, ('Python contracts', [sys.executable, 'tools/verification/run_unittest.py',
+                              'discover', '-s', directory, '-q', '-p', 'test_sample.py', '-k', 'test_sample'], {}))
 
     def test_default_python_selection_skips_unrelated_changes(self):
         for changes in ([], ['crates/cpu/src/state.rs'], ['docs/testing.md'], ['tools/bootstrap/conversion-old/client.py']):
@@ -175,7 +201,20 @@ class SelectionTests(unittest.TestCase):
         commands = selected('commit', ['tools/bootstrap/book-to-markdown/review/service.py'])
         self.assertFalse(any(('llvm-cov' in item[1] or item[1][:2] == ['cargo', 'test'] for item in commands)))
         self.assertTrue(any((any((part.endswith('checks/check_architecture.py') for part in item[1])) for item in commands)))
-        self.assertEqual([name for name, command, _ in commands if 'discover' in command], ['Bootstrap contracts', 'Graphify contracts', 'Conversion contracts', 'HTML conversion contracts', 'PDF conversion contracts', 'RAG MCP contracts', 'Artifact report contracts'])
+        suites = (
+            ('Bootstrap contracts', 'tools/bootstrap/tests'),
+            ('Graphify contracts', 'tools/graphify/tests'),
+            ('Conversion contracts', 'tools/bootstrap/conversion/tests'),
+            ('HTML conversion contracts', 'tools/bootstrap/html-to-markdown/tests'),
+            ('PDF conversion contracts', 'tools/bootstrap/pdf-to-markdown/tests'),
+            ('RAG MCP contracts', 'tools/amiga-rag-mcp-server/tests'),
+            ('Artifact report contracts', 'tools/artifacts/tests'),
+        )
+        runner = 'tools/verification/run_tests.py'
+        self.assertEqual(
+            [item for item in commands if runner in item[1] or 'discover' in item[1]],
+            [(name, [sys.executable, runner, '-s', directory, '-q'], {}) for name, directory in suites],
+        )
         self.assertTrue(any(('tools/bootstrap/book-to-markdown/run_tests.py' in item[1] for item in commands)))
 
     def test_language_data_keeps_commit_gates_without_expanding_rust(self):

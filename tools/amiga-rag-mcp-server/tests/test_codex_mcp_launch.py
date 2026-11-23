@@ -2,6 +2,7 @@
 
 import importlib.util
 import json
+import os
 from pathlib import Path
 import queue
 import shutil
@@ -21,9 +22,21 @@ HAS_FASTMCP = importlib.util.find_spec("fastmcp") is not None
 class CodexMcpLaunchTests(unittest.TestCase):
     def test_project_session_discovers_tools_from_unrelated_host_directory(self):
         messages = queue.Queue()
-        with tempfile.TemporaryDirectory() as host_directory:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            host_directory = root / "host"
+            host_directory.mkdir()
+            codex_home = root / "codex"
+            codex_home.mkdir()
+            project = json.dumps(os.path.normcase(REPOSITORY_ROOT), ensure_ascii=False)
+            (codex_home / "config.toml").write_text(
+                f'[projects.{project}]\ntrust_level = "trusted"\n', encoding="utf-8",
+            )
+            # The project supplies MCP settings. Keep Codex's writable state with the fixture.
+            environment = dict(os.environ, CODEX_HOME=str(codex_home), CODEX_SQLITE_HOME=str(codex_home))
             process = subprocess.Popen(
                 [CODEX_EXECUTABLE, "app-server", "--stdio"], cwd=host_directory,
+                env=environment,
                 stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
                 text=True, encoding="utf-8", errors="replace",
             )
@@ -74,9 +87,10 @@ class CodexMcpLaunchTests(unittest.TestCase):
                 try:
                     process.wait(timeout=5)
                 except subprocess.TimeoutExpired:
-                    process.terminate()
+                    process.kill()
                     process.wait(timeout=5)
                 reader.join(timeout=2)
+                self.assertFalse(reader.is_alive(), "Codex output pipe remained open after process exit")
                 process.stdout.close()
 
 

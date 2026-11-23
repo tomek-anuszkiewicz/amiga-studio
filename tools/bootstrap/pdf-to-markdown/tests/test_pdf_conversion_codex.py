@@ -5,6 +5,8 @@ import importlib.util
 import contextlib
 import io
 import json
+import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -54,12 +56,15 @@ class PdfArtifactIdentityTests(unittest.TestCase):
         seeded_prompt = 'Frozen page:\n{"segments": [{"type": "graphic", "bbox": [1, 2, 3, 4]}]}'
         result = {"status": "completed", "text": '{"rotation": 0}', "usage": {"inputTokens": 12}}
         with tempfile.TemporaryDirectory() as directory:
-            cache = ResponseCache(Path(directory) / "cache")
+            root = Path(directory)
+            cache = ResponseCache(root / "cache")
+            metrics = root / "metrics.json"
+            self.enterContext(patch.dict(os.environ, {"LLM_STAGE_METRICS_FILE": str(metrics)}))
             transport = Mock()
             transport.run.side_effect = AssertionError("Preloaded cache must avoid inference")
             with CodexClient(config, stage=stage, cache=cache, transport=transport, operation="pdf_page_to_objects") as client:
                 cache.save(identity(client.selected, seeded_prompt, [], operation="pdf_page_to_objects"), result)
-                path = Path(directory) / "page.json"
+                path = root / "page.json"
                 write_json(path, {"segments": [{"type": "graphic", "bbox": [1, 2, 3, 4],
                                               "rotation": 0, "md_text": None,
                                               "continuation": False, "heading_level": None}]})
@@ -68,6 +73,9 @@ class PdfArtifactIdentityTests(unittest.TestCase):
                 self.assertEqual(client.generate_json(prompt), {"rotation": 0})
                 transport.run.assert_not_called()
                 self.assertEqual((client.call_count, client.cached_call_count), (0, 1))
+            written = read_json(metrics)
+            self.assertEqual(written["llm_cached_calls"], 1)
+            self.assertEqual([request["stage"] for request in written["requests"]], [stage])
 
     def test_read_preserves_extracted_text_prompt_data(self):
         value = {"blocks": [{"type": 0, "bbox": [1, 2, 3, 4], "text": "Source"}]}
@@ -91,11 +99,9 @@ class PdfArtifactIdentityTests(unittest.TestCase):
 
 class PdfOcrValidationTests(unittest.TestCase):
     def setUp(self):
-        self.cache = tempfile.TemporaryDirectory()
-        self.addCleanup(self.cache.cleanup)
-        cache = patch("common.pdf_cache.DEFAULT_CACHE", Path(self.cache.name))
-        cache.start()
-        self.addCleanup(cache.stop)
+        self.root = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.cache = self.root / "cache"
+        self.enterContext(patch("common.pdf_cache.DEFAULT_CACHE", self.cache))
 
     def test_preprocessing_cache_reuses_pages_and_invalidates_changed_inputs(self):
         spec = importlib.util.spec_from_file_location(
@@ -186,7 +192,7 @@ class PdfOcrValidationTests(unittest.TestCase):
                     image.save(source)
                 stage.extract_crops(workspace, pages=[1])
                 self.assertEqual(len(extracted), 2)
-                for cached in (Path(self.cache.name) / "06_extract_crops").glob("*/crop.png"):
+                for cached in (self.cache / "06_extract_crops").glob("*/crop.png"):
                     cached.write_bytes(b"damaged cache entry")
                 stage.extract_crops(workspace, pages=[1])
                 self.assertEqual(len(extracted), 3)
@@ -217,38 +223,58 @@ class PdfOcrValidationTests(unittest.TestCase):
             self.assertEqual(extract.call_count, 1)
 
     def test_pipeline_directory_reuses_shared_pdf_and_restart_keeps_it(self):
-        with tempfile.TemporaryDirectory() as directory:
-            book = Path(directory)
-            source = book / "source.pdf"
-            with pymupdf.open() as document:
-                for number in range(1, 4):
-                    document.new_page(width=200, height=200).insert_text((20, 40), f"Page {number}")
-                document.save(source)
-            command = [sys.executable, str(ROOT / "tools/bootstrap/pdf-to-markdown/pipeline.py")]
-            first, second = book / "pdf-to-markdown", book / "workspace/second"
-            result = subprocess.run(command + ["--pdf", str(book),
-                                    "--page-ranges", "1-2", "--from-stage", "01", "--to-stage", "02"],
-                                    capture_output=True, text=True)
-            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-            self.assertEqual((first / "config.yaml").read_bytes(),
-                             (ROOT / "tools/bootstrap/pdf-to-markdown/config.yaml").read_bytes())
-            prepared = book / "source-ocr.pdf"
-            before, mtime = prepared.read_bytes(), prepared.stat().st_mtime_ns
-            result = subprocess.run(command + ["--pdf", str(book), "--workspace", str(second),
-                                    "--page-ranges", "2-3", "--from-stage", "01", "--to-stage", "02"],
-                                    capture_output=True, text=True)
-            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-            self.assertIn("[cache] Stage 01", result.stdout)
-            result = subprocess.run(command + ["--pdf", str(source), "--workspace", str(second), "--from-stage", "02", "--to-stage", "02"],
-                                    capture_output=True, text=True)
-            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-            self.assertEqual(prepared.read_bytes(), before)
-            self.assertEqual(prepared.stat().st_mtime_ns, mtime)
-            self.assertEqual(sorted(p.name for p in (second / "02_preprocess").glob("*.png")),
-                             ["page_0001.png", "page_0002.png", "page_0003.png"])
-            for suffix in ("json", "png"):
-                self.assertEqual((first / f"02_preprocess/page_0002.{suffix}").read_bytes(),
-                                 (second / f"02_preprocess/page_0002.{suffix}").read_bytes())
+        bootstrap = ROOT / "tools/bootstrap"
+        fixture_bootstrap = self.root / "tools/bootstrap"
+        fixture_pipeline = fixture_bootstrap / "pdf-to-markdown"
+        fixture_pipeline.mkdir(parents=True)
+        # Each subprocess resolves the preparation cache relative to the imported tool tree.
+        for name in ("pipeline.py", "config.yaml"):
+            shutil.copyfile(bootstrap / "pdf-to-markdown" / name, fixture_pipeline / name)
+        for name in ("pdf-to-markdown/common", "pdf-to-markdown/stages", "conversion"):
+            shutil.copytree(bootstrap / name, fixture_bootstrap / name,
+                            ignore=shutil.ignore_patterns("__pycache__", ".cache", "tests"))
+        cache = fixture_bootstrap / ".cache/pdf"
+        self.assertFalse(cache.exists())
+
+        book = self.root / "book"
+        book.mkdir()
+        source = book / "source.pdf"
+        with pymupdf.open() as document:
+            for number in range(1, 4):
+                document.new_page(width=200, height=200).insert_text((20, 40), f"Page {number}")
+            document.save(source)
+
+        def run_pipeline(*arguments):
+            completed = subprocess.run([sys.executable, str(fixture_pipeline / "pipeline.py"), *arguments],
+                                       cwd=self.root, capture_output=True, text=True)
+            self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
+            return completed.stdout
+
+        first, second = book / "pdf-to-markdown", book / "workspace/second"
+        run_pipeline("--pdf", str(book), "--page-ranges", "1-2", "--from-stage", "01", "--to-stage", "02")
+        self.assertEqual((first / "config.yaml").read_bytes(),
+                         (bootstrap / "pdf-to-markdown/config.yaml").read_bytes())
+        prepared = book / "source-ocr.pdf"
+        before, mtime = prepared.read_bytes(), prepared.stat().st_mtime_ns
+        entries = list((cache / "01_text_layer").glob("*/manifest.json"))
+        self.assertEqual(len(entries), 1)
+        self.assertEqual(entries[0].with_name("prepared.pdf").read_bytes(), before)
+        self.assertTrue(entries[0].with_name("provenance.json").is_file())
+        self.assertEqual(len(list((cache / "02_preprocess").glob("*/manifest.json"))), 2)
+
+        output = run_pipeline("--pdf", str(book), "--workspace", str(second), "--page-ranges", "2-3",
+                              "--from-stage", "01", "--to-stage", "02")
+        self.assertIn("[cache] Stage 01", output)
+        self.assertIn("[cache] Stage 02: restored page_0002", output)
+        run_pipeline("--pdf", str(source), "--workspace", str(second), "--from-stage", "02", "--to-stage", "02")
+        self.assertEqual(prepared.read_bytes(), before)
+        self.assertEqual(prepared.stat().st_mtime_ns, mtime)
+        self.assertEqual(sorted(p.name for p in (second / "02_preprocess").glob("*.png")),
+                         ["page_0001.png", "page_0002.png", "page_0003.png"])
+        self.assertEqual(len(list((cache / "02_preprocess").glob("*/manifest.json"))), 3)
+        for suffix in ("json", "png"):
+            self.assertEqual((first / f"02_preprocess/page_0002.{suffix}").read_bytes(),
+                             (second / f"02_preprocess/page_0002.{suffix}").read_bytes())
 
     def test_full_document_ocr_includes_textless_pages_outside_fragment(self):
         spec = importlib.util.spec_from_file_location(
