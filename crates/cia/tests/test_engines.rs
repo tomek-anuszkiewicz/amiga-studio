@@ -293,13 +293,15 @@ fn tod_alarm_is_write_only_and_counter_wrap_preserves_the_read_latch() {
     capture(&mut cia);
     assert_eq!(cia.tod, 0xfffffe);
     assert!(cia.set_crb(0x80));
+    // The pending alarm selection leaves this time-mode read eligible to latch.
+    assert_eq!(cia.todhi(), 0xff);
     capture(&mut cia);
     assert!(cia.set_todhi(0));
     assert!(cia.set_todmid(0));
     assert!(cia.set_todlo(0));
     assert!(cia.set_icr(0x84));
     capture(&mut cia);
-    assert_eq!(cia.todhi(), 0xff, "alarm selection does not affect reads");
+    assert_eq!(cia.todhi(), 0xff, "alarm mode still reads the held time");
     capture(&mut cia);
     for expected in [0xffffff, 0] {
         cia.receive_tod_pin(false);
@@ -309,12 +311,33 @@ fn tod_alarm_is_write_only_and_counter_wrap_preserves_the_read_latch() {
         assert_eq!(cia.tod, expected, "a held input does not count again");
     }
     assert_eq!(cia.icr_debug(), 0x84);
+    assert_eq!(cia.todhi(), 0xff);
     assert_eq!(cia.todmid(), 0xff);
     assert_eq!(cia.todlo(), 0xfe);
     capture(&mut cia);
     assert_eq!(cia.todlo(), 0);
     assert_eq!(cia.icr(), 0x84);
     assert!(!cia.irq_pending());
+
+    assert!(cia.set_crb(0));
+    capture(&mut cia);
+    assert!(cia.set_todhi(0x65));
+    assert!(cia.set_todlo(0));
+    capture(&mut cia);
+    assert!(cia.set_crb(0x80));
+    capture(&mut cia);
+
+    // CRB still selects the alarm when this high-byte read occurs.
+    assert!(cia.set_crb(0));
+    assert_eq!(cia.todhi(), 0x65, "alarm mode still reads the live time");
+    capture(&mut cia);
+    cia.receive_tod_pin(false);
+    cia.receive_tod_pin(true);
+    assert_eq!(
+        cia.todlo(),
+        1,
+        "the high-byte read left the counter visible"
+    );
 }
 
 #[test]

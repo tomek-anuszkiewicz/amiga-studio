@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "cia"
 status: "active"
 created: 2026-09-06
-updated: 2026-11-16
+updated: 2026-11-23
 related: ["[Machine Loop.md](Machine%20Loop.md)", "[MemoryBus.md](MemoryBus.md)", "[Keyboard.md](Keyboard.md)", "[Floppy.md](Floppy.md)", "[Paula.md](Paula.md)"]
 tracked_paths:
   - "crates/cia"
@@ -53,8 +53,8 @@ with different port wiring. Address bits 11–8 select the internal register.
 CIA-A uses the odd-byte lane at `$BFE001–$BFEF01` and CIA-B uses the even-byte
 lane at `$BFD000–$BFDF00`. [Appendix D](../Reference/Hardware%20Reference%20Manual/12%20-%20Appendix%20D%20-%20System%20Memory%20Map.md)
 These addresses are separate from the [Agnus, Denise, and Paula register block](Custom%20Chip%20Register%20Ownership%20and%20Access%20Matrix.md).
-The tables describe documented hardware behavior. Implementation coverage is
-outside their scope. [8520 register and port maps in Appendix F](../Reference/Hardware%20Reference%20Manual/14%20-%20Appendix%20F%20-%20Complex%20Interface%20Adapters.md)
+The tables follow the documented register map. The TOD high-byte entries
+include the alarm-mode rule described below. [8520 register and port maps in Appendix F](../Reference/Hardware%20Reference%20Manual/14%20-%20Appendix%20F%20-%20Complex%20Interface%20Adapters.md)
 
 The tables give canonical software addresses. The motherboard also routes
 `$A0-$BF` aliases and can select both chips at once. A word read from both
@@ -74,10 +74,11 @@ uses the E-Clock gives no CCK delay by itself.
 
 Reading a timer address returns the running counter. Writing it updates a
 separate reload latch. A high-byte write can load the counter and starts it
-in one-shot mode. At TOD addresses, reads always return the time counter.
+in one-shot mode. At TOD addresses, reads return the live or held time.
 Writes target time when `CRB7=0` or the alarm when `CRB7=1`. A write to the TOD
-clock stops it until a write to the low byte. A read of the TOD high byte holds
-a snapshot until a read of the low byte. Reading `ICR` returns and clears
+clock stops it until a write to the low byte. Reading the high byte can hold a
+new snapshot only in time mode. A low-byte read releases the snapshot in
+either mode. Reading `ICR` returns and clears
 pending interrupt status. Writing `ICR` sets or clears selected mask bits
 according to bit 7. The `LOAD` bit in `CRA` and `CRB` acts as a write strobe and
 reads back as zero. When enabled, timer output can replace PB6 or PB7.
@@ -96,12 +97,12 @@ reads back as zero. When enabled, timer output can replace PB6 or PB7.
 | `$BFE701` | `TBHI` counter high | `TBHI` latch high | RW | Timer B | Unknown | High-byte write can load or start the timer according to its mode. |
 | `$BFE801` | `TODLO` time low | `TODLO` time/alarm low | RW | TOD / alarm | Unknown | Low-byte read releases a held TOD snapshot. |
 | `$BFE901` | `TODMID` time middle | `TODMID` time/alarm middle | RW | TOD / alarm | Unknown | Middle byte of the 24-bit event count. |
-| `$BFEA01` | `TODHI` time high | `TODHI` time/alarm high | RW | TOD / alarm | Unknown | High-byte read captures a stable TOD snapshot. |
+| `$BFEA01` | `TODHI` time high | `TODHI` time/alarm high | RW | TOD / alarm | Unknown | High-byte read captures a new snapshot only with `CRB7=0`. |
 | `$BFEB01` | — | — | Unconnected | None specified | Unknown | Appendix F labels selector `B` not used. |
 | `$BFEC01` | `SDR` received data | `SDR` transmit data | RW | Keyboard serial link | Unknown | Synchronous serial data; CIA-A receives the keyboard stream. |
 | `$BFED01` | `ICR` pending status | `ICR` interrupt mask | COR / write | Interrupt output `INT2` | Unknown | Read clears status and releases IRQ; bit 7 of a write selects set or clear for masked sources. |
 | `$BFEE01` | `CRA` control bits | `CRA` control and `LOAD` strobe | RW | Timer A, PB6, serial mode | Unknown | Timer A mode and source; `LOAD` bit reads as zero. |
-| `$BFEF01` | `CRB` control bits | `CRB` control and `LOAD` strobe | RW | Timer B, PB7, TOD | Unknown | Timer B mode; bit 7 selects TOD time or alarm writes. |
+| `$BFEF01` | `CRB` control bits | `CRB` control and `LOAD` strobe | RW | Timer B, PB7, TOD | Unknown | Timer B mode. Bit 7 selects time or alarm writes and permits a new TOD snapshot only when clear. |
 
 ### CIA-B
 
@@ -117,17 +118,21 @@ reads back as zero. When enabled, timer output can replace PB6 or PB7.
 | `$BFD700` | `TBHI` counter high | `TBHI` latch high | RW | Timer B | Unknown | High-byte write can load or start the timer according to its mode. |
 | `$BFD800` | `TODLO` time low | `TODLO` time/alarm low | RW | TOD / alarm | Unknown | Low-byte read releases a held TOD snapshot. |
 | `$BFD900` | `TODMID` time middle | `TODMID` time/alarm middle | RW | TOD / alarm | Unknown | Middle byte of the 24-bit event count. |
-| `$BFDA00` | `TODHI` time high | `TODHI` time/alarm high | RW | TOD / alarm | Unknown | High-byte read captures a stable TOD snapshot. |
+| `$BFDA00` | `TODHI` time high | `TODHI` time/alarm high | RW | TOD / alarm | Unknown | High-byte read captures a new snapshot only with `CRB7=0`. |
 | `$BFDB00` | — | — | Unconnected | None specified | Unknown | Appendix F labels selector `B` not used. |
 | `$BFDC00` | `SDR` received data | `SDR` transmit data | RW | Serial circuit | Unknown | Register exists, but the Amiga assigns no serial peripheral to CIA-B. |
 | `$BFDD00` | `ICR` pending status | `ICR` interrupt mask | COR / write | Interrupt output `INT6` | Unknown | Read clears status and releases IRQ; bit 7 of a write selects set or clear for masked sources. |
 | `$BFDE00` | `CRA` control bits | `CRA` control and `LOAD` strobe | RW | Timer A, PB6, serial mode | Unknown | Timer A mode and source; `LOAD` bit reads as zero. |
-| `$BFDF00` | `CRB` control bits | `CRB` control and `LOAD` strobe | RW | Timer B, PB7, TOD | Unknown | Timer B mode; bit 7 selects TOD time or alarm writes. |
+| `$BFDF00` | `CRB` control bits | `CRB` control and `LOAD` strobe | RW | Timer B, PB7, TOD | Unknown | Timer B mode. Bit 7 selects time or alarm writes and permits a new TOD snapshot only when clear. |
 
 ## Reconstructed engine contract
 
-The timer, SDR, port and TOD descriptions in HRM Appendix F govern both
-instances. Timer A counts either E or positive CNT edges. Timer B counts E,
+Both instances follow the timer, SDR, port and TOD descriptions in HRM
+Appendix F, with an exception for TOD latch acquisition. An accepted TODHI
+read can acquire a new latch only when committed CRB bit 7 is clear.
+[Evidence for the TOD latch rule](#reference-documentation-and-source)
+
+Timer A counts either E or positive CNT edges. Timer B counts E,
 CNT, Timer A underflows, or Timer A underflows while CNT is high. A counter
 reloads on underflow. In one-shot mode, the underflow also clears START.
 Force-load and high-byte writes take effect at the existing falling edge of E.
@@ -177,11 +182,13 @@ Debug reads reuse the ordinary side-effect-free readers for PRA, directions,
 timers, SDR and controls. They use `prb_debug` to inspect PRB without starting
 PC, and `icr_debug` for ICR. The TOD debug readers
 `todlo_debug/todmid_debug/todhi_debug` return the live time counter and leave
-the held snapshot unread and unchanged. Live TOD reads use the held value
-when the latch is active. A live high-byte read schedules capture of the
-count in the latch, and a live low-byte read schedules release of the latch.
-Both actions take effect at falling E. A live ICR read acknowledges the
-interrupt only after the bus accepts the access. These access rules provide
+the held snapshot unread and unchanged. When a snapshot is held, live TOD
+reads return its bytes in either mode. An accepted low-byte read returns
+the visible low byte and schedules release. An accepted high-byte read
+schedules capture of the visible count only when committed CRB bit 7 is
+clear. Pending capture and release take effect at falling E.
+A live ICR read acknowledges the interrupt only after the bus accepts the
+access. These access rules provide
 no certification of electrical pin or engine correctness.
 
 The register-family sections in
@@ -196,7 +203,8 @@ CRA/CRB bits 0–4 select start, timer output on PB6/PB7, toggle/pulse,
 one-shot/continuous and force-load. CRA bit 5 selects the count input, bit 6
 selects serial direction and bit 7 is unused. CRB bits 6–5 select E, CNT,
 Timer A underflow, or underflow gated by CNT. CRB bit 7 selects time or alarm
-writes. LOAD triggers an action and has no stored readable bit. Accepted
+writes and enables a new TOD read latch only in time mode. LOAD triggers an
+action and has no stored readable bit. Accepted
 live reads and committed writes to Port B schedule `PC` pulses. The
 three-E-cycle pulse scheduling is separate from the register capture delay.
 There is no attached parallel endpoint.
@@ -381,5 +389,6 @@ unspecified delays as unknown.
 - The CCK model uses a reference-emulator synchronization countdown from [vAmiga Agnus](../../../ref_src/vAmiga/Core/Components/Agnus/Agnus.cpp).
 - The [replacement-project CIA](../../../ref_src/amiga_replacement_project/cia/cia8520.v) and its [TOD helper](../../../ref_src/amiga_replacement_project/cia/cia_tod.v) supply reconstructed edge ordering for writes, timer counts and TOD read latches. Measuring silicon delays requires separate evidence.
 - Timer modes, TOD latching, serial shifting, port pins and interrupt output are described in the [Amiga Hardware Reference Manual, Appendix F](../Reference/Hardware%20Reference%20Manual/14%20-%20Appendix%20F%20-%20Complex%20Interface%20Adapters.md).
+- Appendix F describes the high-byte latch without an alarm-mode exception. The vAmigaTS results reported for an A500 8A show a frozen middle byte in `latch6` and a counting middle byte in `latch9`, which selects the alarm for the high-byte read and then returns to time mode. The tests observe subsequent reads. The emulator adopts the vAmiga and WinUAE rule that checks CRB bit 7 at the high-byte read. [vAmigaTS results](../../../ref_src/vAmigaTS/CIA/TOD/tod/README.md#latch1-to-latch9), [vAmiga register reads](../../../ref_src/vAmiga/Core/Components/CIA/CIARegs.cpp), [WinUAE TOD reads](https://github.com/tonioni/WinUAE/blob/95462f58f85eca77541f777a708e441db274a98b/cia.cpp#L1601-L1612).
 - The CIA byte lanes and addresses are mapped separately from the custom register block in the [Amiga Hardware Reference Manual, Appendix D](../Reference/Hardware%20Reference%20Manual/12%20-%20Appendix%20D%20-%20System%20Memory%20Map.md).
 - [Machine Loop.md](Machine%20Loop.md) describes how the two CIA instances connect to the machine.

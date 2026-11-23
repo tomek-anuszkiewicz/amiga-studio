@@ -503,6 +503,49 @@ fn each_canonical_cia_write_selects_one_receiver_and_one_capture() {
 }
 
 #[test]
+fn alarm_mode_tod_high_read_leaves_subsequent_time_reads_live() {
+    use cia_reg::{cia_a, cia_b};
+    for (control, high, middle, low) in [
+        (
+            cia_a::REGISTER_CRB,
+            cia_a::REGISTER_TODHI,
+            cia_a::REGISTER_TODMID,
+            cia_a::REGISTER_TODLO,
+        ),
+        (
+            cia_b::REGISTER_CRB,
+            cia_b::REGISTER_TODHI,
+            cia_b::REGISTER_TODMID,
+            cia_b::REGISTER_TODLO,
+        ),
+    ] {
+        let mut motherboard = TestMotherboard::new();
+        let mut bus = motherboard.router();
+        assert_eq!(sync_write_byte(&mut bus, high, 0x12), BusResult::Ready(()));
+        assert_eq!(sync_write_byte(&mut bus, low, 0x23), BusResult::Ready(()));
+        assert_eq!(
+            sync_write_byte(&mut bus, control, 0x80),
+            BusResult::Ready(())
+        );
+
+        // The 68000 CLR.B reads the destination before writing zero to it.
+        assert_eq!(sync_read_byte(&mut bus, high), BusResult::Ready(0x12));
+        assert_eq!(sync_write_byte(&mut bus, high, 0), BusResult::Ready(()));
+
+        assert_eq!(sync_write_byte(&mut bus, control, 0), BusResult::Ready(()));
+        for (address, byte) in [(high, 0x65), (middle, 0x23), (low, 0x41)] {
+            assert_eq!(
+                sync_write_byte(&mut bus, address, byte),
+                BusResult::Ready(())
+            );
+        }
+        assert_eq!(sync_read_byte(&mut bus, high), BusResult::Ready(0x65));
+        assert_eq!(sync_read_byte(&mut bus, middle), BusResult::Ready(0x23));
+        assert_eq!(sync_read_byte(&mut bus, low), BusResult::Ready(0x41));
+    }
+}
+
+#[test]
 fn refused_live_icr_reads_have_no_acknowledgment_effect() {
     let mut motherboard = TestMotherboard::new();
     motherboard.cia_a.icr_data = 0x81;
