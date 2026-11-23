@@ -40,6 +40,7 @@ def selected_files(worktree, includes, destination, *, shared):
     roots = includes if shared else (*DEFAULTS, *includes)
     selected = set()
     for name in roots:
+        explicit = name in includes
         relative = PurePosixPath(name)
         if relative.is_absolute() or not relative.parts or ".." in relative.parts or ":" in name or "\\" in name:
             raise ValueError(f"Expected a worktree-relative output path: {name}")
@@ -55,7 +56,7 @@ def selected_files(worktree, includes, destination, *, shared):
             except (FileNotFoundError, NotADirectoryError):
                 if path != source:
                     raise
-                if name in includes:
+                if explicit:
                     raise ValueError(f"Selected output does not exist: {name}") from None
                 continue
             if S_ISDIR(mode):
@@ -68,6 +69,9 @@ def selected_files(worktree, includes, destination, *, shared):
                 continue
             if not S_ISREG(mode):
                 continue
+            if explicit and path == source:
+                selected.add(path)
+                continue
             relative_path = path.relative_to(worktree).as_posix()
             # check-ignore respects tracked files, including force-added ignored paths.
             ignored = subprocess.run(["git", "check-ignore", "--quiet", "--", relative_path],
@@ -76,7 +80,7 @@ def selected_files(worktree, includes, destination, *, shared):
                 raise ValueError(ignored.stderr.decode("utf-8", errors="replace"))
             if ignored.returncode == 0:
                 selected.add(path)
-            elif name in includes:
+            elif explicit:
                 raise ValueError(f"Selected output is not ignored: {relative_path}")
     return sorted(selected)
 

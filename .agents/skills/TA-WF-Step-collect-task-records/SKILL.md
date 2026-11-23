@@ -10,8 +10,10 @@ tests and other producers finish, use the
 [artifact tool](../../../tools/artifacts/README.md#preserve-task-outputs) to
 copy their results and logs. For a dedicated checkout, use the known output
 locations and include any custom paths. For the shared primary checkout, supply
-the paths produced by the task. Use task and execution names to locate the
-archive. Copying works independently of telemetry registration and time windows.
+the paths produced by the task. When the closure caller selects a task plan to
+retain, give the artifact tool its exact checkout-relative path with `--include`.
+Use task and execution names to locate the archive. Copying works independently
+of telemetry registration and time windows.
 
 For selected whole files outside the checkout, such as completed session logs,
 use the [capture guide](../../../tools/workflow/capture/README.md#preserve-selected-files-at-task-closure).

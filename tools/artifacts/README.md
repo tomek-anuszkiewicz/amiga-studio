@@ -83,8 +83,12 @@ python tools/artifacts/preserve.py --worktree <task-checkout> --destination <pri
 
 The tool copies ignored files from `.agent/tmp/verification`, `.agent/tmp/verify`,
 `.agent/tmp/singlestep`, `.agent/tmp/coverage` and `benchmarks/results` in that
-worktree. Add `--include <relative-path>` for custom outputs such as
-`.agent/tmp/<task>` and any task reports stored in a local archive directory.
+worktree. Use `--include <relative-path>` to select a custom output directory
+such as `.agent/tmp/<task>` or an individual file. When scanning an included
+directory, the tool rejects tracked files and files Git does not ignore. To
+preserve an individual file such as a tracked task plan, pass its exact path
+relative to the source checkout. The tool uses the file's current contents
+regardless of whether Git tracks or ignores it.
 
 For work performed on the shared primary checkout, pass that checkout as
 `--worktree` and use repeated `--include` options for the paths the task's

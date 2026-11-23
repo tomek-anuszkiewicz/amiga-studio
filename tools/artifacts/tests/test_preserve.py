@@ -109,15 +109,42 @@ class PreserveTests(unittest.TestCase):
         self.assertEqual((self.primary / first["files"][0]["archive"]).read_bytes(), b"first")
         self.assertEqual((self.primary / third["files"][0]["archive"]).read_bytes(), b"second")
 
-    def test_invalid_locations_missing_selection_and_tracked_input_are_rejected(self):
+    def test_explicit_tracked_files_preserve_worktree_bytes_and_keep_index(self):
+        plan = self.output("plans/task.md", b"staged plan\n")
+        self.git(self.worktree, "add", "plans/task.md")
+        plan.write_bytes(b"current plan\r\n")
+        expected = {".gitignore": (self.worktree / ".gitignore").read_bytes(),
+                    "plans/task.md": b"current plan\r\n"}
+        staged = self.git(self.worktree, "ls-files", "--stage")
+
+        result = preservation.preserve(self.worktree, self.destination, list(expected))
+
+        self.assertEqual((result["copied"], result["reused"]), (2, 0))
+        self.assertEqual({item["source"] for item in result["files"]}, set(expected))
+        for path, content in expected.items():
+            self.assertEqual((self.destination / path).read_bytes(), content)
+            self.assertEqual((self.worktree / path).read_bytes(), content)
+        self.assertEqual(self.git(self.worktree, "ls-files", "--stage"), staged)
+
+    def test_invalid_locations_and_missing_selection_are_rejected(self):
         for destination in (self.worktree / ".agent/archive", self.root / "outside", self.primary / "public"):
             with self.subTest(destination=destination), self.assertRaises(ValueError):
                 preservation.preserve(self.worktree, destination)
-        for include in ("../primary/.gitignore", ".agent/missing", ".gitignore"):
+        for include in ("../primary/.gitignore", ".agent/missing"):
             with self.subTest(include=include), self.assertRaises(ValueError):
                 preservation.preserve(self.worktree, self.destination, [include])
         with self.assertRaisesRegex(ValueError, "Select the task's output paths"):
             preservation.preserve(self.primary, self.destination)
+
+    def test_included_directory_rejects_a_tracked_descendant(self):
+        directory = ".agent/screenshots"
+        relative = f"{directory}/frame.png"
+        self.output(relative)
+        self.git(self.worktree, "add", "-f", relative)
+
+        with self.assertRaisesRegex(ValueError, "Selected output is not ignored"):
+            preservation.preserve(self.worktree, self.destination, [directory])
+        self.assertFalse((self.destination / relative).exists())
 
     def test_unreadable_nested_directory_fails_preservation(self):
         include = ".agent/screenshots"
