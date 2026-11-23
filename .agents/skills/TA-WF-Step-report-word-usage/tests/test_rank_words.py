@@ -504,10 +504,18 @@ class FencedBlockRankingTests(unittest.TestCase):
 
 
 class WordUsageCommandTests(unittest.TestCase):
+    def setUp(self):
+        self.root = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
+        self.environment = {key: value for key, value in os.environ.items() if not key.upper().startswith("GIT_")}
+        self.environment.update(GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1")
+
+    def run_report(self):
+        return subprocess.run(
+            [sys.executable, str(SCRIPTS / "rank_words.py"), "--root", str(self.root), "--output", "report.json"],
+            cwd=self.root, env=self.environment, capture_output=True, text=True, encoding="utf-8", check=False,
+        )
+
     def test_cli_ranks_current_git_files_and_lists_unclassified_names(self):
-        root = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
-        environment = {key: value for key, value in os.environ.items() if not key.upper().startswith("GIT_")}
-        environment.update(GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1")
         sources = {
             ".gitignore": b"/docs/ignored.md\n",
             "docs/tracked.md": b"Loquacious\n",
@@ -517,23 +525,18 @@ class WordUsageCommandTests(unittest.TestCase):
             "unclassified/topics.md": b"Unclassified \xff\n",
         }
         for name, content in sources.items():
-            path = root / name
+            path = self.root / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(content)
 
         for arguments in (("init", "--quiet"), ("add", "--", ".gitignore", "docs/tracked.md")):
-            subprocess.run(["git", *arguments], cwd=root, env=environment, check=True, capture_output=True)
-        (root / "docs/tracked.md").write_bytes(b"Cadence Cadence\n")
+            subprocess.run(["git", *arguments], cwd=self.root, env=self.environment, check=True, capture_output=True)
+        (self.root / "docs/tracked.md").write_bytes(b"Cadence Cadence\n")
 
-        output = "report.json"
-        result = subprocess.run(
-            [sys.executable, str(SCRIPTS / "rank_words.py"), "--root", str(root), "--output", output],
-            cwd=root, env=environment, capture_output=True, text=True, encoding="utf-8", check=False,
-        )
-
+        result = self.run_report()
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("Unclassified Markdown names in unclassified: 1", result.stdout)
-        report = json.loads((root / output).read_text(encoding="utf-8"))
+        report = json.loads((self.root / "report.json").read_text(encoding="utf-8"))
         self.assertTrue(report["complete"], report["issues"])
         self.assertEqual(report["document_count"], 2)
         self.assertEqual(report["scanned_paths"], ["docs/new.md", "docs/tracked.md"])
@@ -551,3 +554,32 @@ class WordUsageCommandTests(unittest.TestCase):
             {"directory": "unclassified", "markdown_count": 1, "examples": ["unclassified/topics.md"]},
         ])
         self.assertEqual(report["discovery_issues"], [])
+
+    def test_cli_reports_missing_tracked_source_and_keeps_readable_ranking(self):
+        (self.root / "docs").mkdir()
+        available = "docs/available.md"
+        missing = "docs/missing.md"
+        (self.root / available).write_bytes(b"the\n\nCadence Cadence quixotic\n")
+        (self.root / missing).write_bytes(b"Peregrination\n")
+        for arguments in (("init", "--quiet"), ("add", "--", available, missing)):
+            subprocess.run(["git", *arguments], cwd=self.root, env=self.environment, check=True, capture_output=True)
+        (self.root / missing).unlink()
+
+        result = self.run_report()
+
+        self.assertEqual(result.returncode, 1, result.stderr)
+        report = json.loads((self.root / "report.json").read_text(encoding="utf-8"))
+        self.assertIs(report["complete"], False)
+        self.assertEqual([(issue["path"], issue["kind"]) for issue in report["issues"]], [(missing, "missing")])
+        self.assertEqual(report["document_count"], 1)
+        self.assertEqual(report["scanned_paths"], [available])
+        self.assertEqual(report["token_count"], 4)
+        self.assertEqual(report["candidate_count"], 3)
+        self.assertEqual(report["ranking"], [
+            {"word": "cadence", "count": 2, "document_count": 1, "samples": [
+                {"path": available, "line": 3, "context": "Cadence Cadence quixotic"},
+            ]},
+            {"word": "quixotic", "count": 1, "document_count": 1, "samples": [
+                {"path": available, "line": 3, "context": "Cadence Cadence quixotic"},
+            ]},
+        ])
