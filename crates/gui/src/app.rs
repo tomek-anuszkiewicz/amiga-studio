@@ -23,6 +23,9 @@ use crate::theme::AppTheme;
 use debugger::temporal::DEFAULT_TEMPORAL_CAPACITY;
 use debugger::DebuggerSession;
 
+#[cfg(not(target_arch = "wasm32"))]
+mod screenshot;
+
 pub(crate) const RTC_BATTERY_STORAGE_KEY: &str = "rtc_battery";
 
 const WIDE_LAYOUT_MIN_WIDTH: f32 = 1680.0;
@@ -327,6 +330,7 @@ impl EmulatorApp {
 
         self.screen_texture.set_scale(self.screen_scale);
         let consume_image = first_pass && self.host.error.is_none();
+        let mut next_image = None;
         if let Some(runtime) = self.host.runtime.as_mut().filter(|_| consume_image) {
             let result = runtime.try_consume(|info, status, pixels| {
                 if !status.running && info.cck != status.cck {
@@ -347,17 +351,23 @@ impl EmulatorApp {
                 ctx.request_repaint();
             }
             match result {
-                Ok(VideoRead::Frame(Some((info, image)))) => {
-                    self.host.presented = Some(info);
-                    self.screen_texture.update(ctx, image);
-                }
+                Ok(VideoRead::Frame(image)) => next_image = image,
                 Ok(_) => {}
                 Err(error) => {
                     self.file_error = Some(format!("Could not read machine image: {error}"))
                 }
             }
         }
-        if self.player.screen != crate::player::PlayerScreen::Session {
+        let in_session = self.player.screen == crate::player::PlayerScreen::Session;
+        if in_session {
+            // The screenshot action refers to the image shown when the player clicked.
+            render_top_menu_bar(self, ctx);
+        }
+        if let Some((info, image)) = next_image {
+            self.host.presented = Some(info);
+            self.screen_texture.update(ctx, image);
+        }
+        if !in_session {
             self.render_player_screen(ctx);
             if first_pass {
                 self.poll_file_dialog(ctx);
@@ -368,7 +378,6 @@ impl EmulatorApp {
             self.host.request_submission_retry(ctx);
             return;
         }
-        render_top_menu_bar(self, ctx);
         if self.view_mode == ViewMode::ScreenOnly {
             self.render_player_controls(ctx);
         }

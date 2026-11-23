@@ -2,11 +2,11 @@
 #![allow(clippy::unwrap_used, clippy::panic)]
 mod common;
 use egui_kittest::kittest::NodeT;
-use gui::game_library::{GameDisk, GameLibrary, GameManifest};
+use gui::game_library::{GameDisk, GameLibrary, GameManifest, LibraryGame};
 use gui::host_commands::HostCommand;
 use gui::player::PlayerScreen;
 use gui::{EmulatorApp, ViewMode};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 fn root() -> PathBuf {
     let directory = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -258,6 +258,64 @@ fn library_continue_restores_selected_games_save_instead_of_active_game() {
 }
 
 #[test]
+fn library_continue_uses_the_selected_configuration_when_two_roots_reuse_a_game_id() {
+    use debugger::launch::DeviceKind;
+    use egui_kittest::kittest::Queryable;
+    use gui::library_edit::GameDraft;
+
+    let (first_root, first_library) = library();
+    let (second_root, second_library) = library();
+    let first = &first_library.games[0];
+    let mut draft = GameDraft::edit(second_library.games[0].clone());
+    draft.configuration = "swapped".into();
+    let second = draft.save(&second_root).unwrap();
+    assert_eq!(first.manifest.id, second.manifest.id);
+
+    let mut app = game_app(&first_root);
+    let mut configuration = app.player.catalog.configurations[0].clone();
+    configuration.id = "swapped".into();
+    configuration.name = "Swapped ports".into();
+    configuration.controls.ports.swap(0, 1);
+    app.player.catalog.configurations.push(configuration);
+    app.start_library_game(second.clone(), None, false);
+    common::command(&mut app, HostCommand::Pause);
+    let json = common::snapshot_json(&mut app);
+    gui::game_library::persist_save(&second, &json, None).unwrap();
+
+    app.start_library_game(first.clone(), None, false);
+    let mut h = session_harness(app);
+    common::settle_harness(&mut h);
+    assert_eq!(
+        h.state().host.status.ports,
+        [DeviceKind::Mouse, DeviceKind::Joystick]
+    );
+    h.get_by_label("Library").click_accesskit();
+    common::settle_harness(&mut h);
+    // Supply the path the native folder picker would return.
+    h.state_mut().player.catalog.library_root = second_root.to_string_lossy().into_owned();
+    h.get_by_label("Refresh").click_accesskit();
+    common::settle_harness(&mut h);
+    h.get_by_label("one").click_accesskit();
+    common::settle_harness(&mut h);
+    h.get_by_label_contains("Continue - ").click_accesskit();
+    common::settle_harness(&mut h);
+    h.get_by_label("Replace session").click_accesskit();
+    common::settle_harness(&mut h);
+
+    let app = h.state();
+    assert!(app.file_error.is_none());
+    assert_eq!(app.player.screen, PlayerScreen::Session);
+    assert_eq!(
+        app.player.active_configuration.as_ref().unwrap().id,
+        "swapped"
+    );
+    assert_eq!(
+        app.host.status.ports,
+        [DeviceKind::Joystick, DeviceKind::Mouse]
+    );
+}
+
+#[test]
 fn player_disk_selection_and_ejection_publish_only_acknowledged_mounts() {
     use egui_kittest::{kittest::Queryable, Harness};
     fn open_df0(h: &mut Harness<'_, EmulatorApp>) {
@@ -380,4 +438,486 @@ fn manual_start_requires_valid_rom_media_attachment_and_available_sources() {
     h.run_steps(2);
     assert!(h.get_by_label("Start").accesskit_node().is_disabled());
     assert_eq!(h.state().host.status.cck, 0);
+}
+
+fn game_app(root: &Path) -> EmulatorApp {
+    let mut app = EmulatorApp::default();
+    app.set_view_mode(ViewMode::ScreenOnly);
+    app.player.catalog.configurations[0].launch.rom =
+        root.join("kick.rom").to_string_lossy().into_owned();
+    app.player.catalog.library_root = root.to_string_lossy().into_owned();
+    app.player.library = GameLibrary::discover(root).unwrap();
+    app
+}
+
+fn session_harness(app: EmulatorApp) -> egui_kittest::Harness<'static, EmulatorApp> {
+    egui_kittest::Harness::builder()
+        .with_size(egui::vec2(1280.0, 900.0))
+        .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app)
+}
+
+fn screenshot_directory(game: &LibraryGame) -> PathBuf {
+    game.directory.join("Screenshots")
+}
+
+fn directory_files(directory: &Path) -> Vec<PathBuf> {
+    let mut paths: Vec<_> = std::fs::read_dir(directory)
+        .unwrap()
+        .map(|entry| entry.unwrap().path())
+        .collect();
+    paths.sort();
+    paths
+}
+
+fn saved_progress_and_artwork(game: &LibraryGame) -> (Vec<(PathBuf, Vec<u8>)>, Vec<u8>) {
+    let saves = gui::game_library::saves(game)
+        .unwrap()
+        .into_iter()
+        .map(|save| {
+            let bytes = std::fs::read(&save.path).unwrap();
+            (save.path, bytes)
+        })
+        .collect();
+    let artwork = std::fs::read(game.directory.join(game.manifest.artwork.as_ref().unwrap())).unwrap();
+    (saves, artwork)
+}
+
+#[test]
+fn screenshot_clicks_keep_the_active_game_destination_and_existing_files() {
+    use egui_kittest::kittest::Queryable;
+
+    let (root, library) = library();
+    let [one, two] = library.games.as_slice() else {
+        panic!("Expected two fixture games");
+    };
+    for (game, color) in [(one, [12, 34, 56]), (two, [78, 90, 12])] {
+        image::save_buffer(
+            game.directory.join(game.manifest.artwork.as_ref().unwrap()),
+            &color,
+            1,
+            1,
+            image::ColorType::Rgb8,
+        )
+        .unwrap();
+    }
+    let mut app = game_app(&root);
+    app.start_library_game(one.clone(), None, false);
+    let mut h = session_harness(app);
+    common::wait_harness(&mut h, |app| {
+        app.player.active_game.is_some() && app.host.presented.is_some()
+    });
+    h.get_by_label("Pause").click_accesskit();
+    common::wait_harness(&mut h, |app| !app.host.status.running);
+    let save = common::snapshot_json(h.state_mut());
+    gui::game_library::persist_save(one, &save, Some(1)).unwrap();
+    let mut other_save = debugger::SaveState::from_json(&save).unwrap();
+    other_save.header.association.game_id = Some(two.manifest.id.clone());
+    gui::game_library::persist_save(two, &other_save.to_json().unwrap(), None).unwrap();
+    let before = [one, two].map(saved_progress_and_artwork);
+
+    h.get_by_label("Library").click_accesskit();
+    common::settle_harness(&mut h);
+    h.get_by_label("two").click_accesskit();
+    common::settle_harness(&mut h);
+    assert_eq!(h.state().player.selected_game, Some(1));
+    h.get_by_label("Return to session").click_accesskit();
+    common::settle_harness(&mut h);
+    assert_eq!(h.state().player.active_game.as_ref().unwrap().manifest.id, "one");
+
+    let directory = screenshot_directory(one);
+    assert!(!directory.exists());
+    let screenshot = h.get_by_label("Screenshot");
+    let bounds = screenshot.rect();
+    assert!(bounds.is_positive());
+    assert!(h.ctx.screen_rect().contains_rect(bounds));
+    let slower = h.get_by_label("Slower").rect();
+    assert!(bounds.top() < slower.bottom() && bounds.bottom() > slower.top());
+    screenshot.click();
+    h.step();
+    assert_eq!(directory_files(&directory), [directory.join("screenshot-1.png")]);
+    h.get_by_label("Screenshot").click_accesskit();
+    h.step();
+    let created = directory_files(&directory);
+    assert_eq!(created.len(), 2);
+    for path in &created {
+        assert_eq!(path.extension().unwrap(), "png");
+        image::open(path).unwrap();
+    }
+    let previous: Vec<_> = created.iter().map(|path| std::fs::read(path).unwrap()).collect();
+    let occupied = directory.join("screenshot-3.png");
+    std::fs::write(&occupied, b"existing file").unwrap();
+    h.get_by_label("Screenshot").click_accesskit();
+    h.step();
+    assert_eq!(directory_files(&directory).len(), 4);
+    assert_eq!(std::fs::read(occupied).unwrap(), b"existing file");
+    for (path, bytes) in created.iter().zip(previous) {
+        assert_eq!(std::fs::read(path).unwrap(), bytes);
+    }
+    image::open(directory.join("screenshot-4.png")).unwrap();
+    assert!(!screenshot_directory(two).exists());
+    assert_eq!([one, two].map(saved_progress_and_artwork), before);
+    assert!(h.state().file_error.is_none());
+}
+
+fn screenshot_pixel(x: usize, y: usize, width: usize, height: usize) -> [u8; 4] {
+    match (x, y) {
+        (0, 0) => [255, 0, 0, 255],
+        (_, 0) if x == width - 1 => [0, 255, 0, 255],
+        (0, _) if y == height - 1 => [0, 0, 255, 255],
+        _ if x == width - 1 && y == height - 1 => [255, 255, 0, 255],
+        _ => [(x % 223) as u8, (y % 227) as u8, ((x + y) % 229) as u8, 255],
+    }
+}
+
+#[test]
+fn screenshot_uses_every_displayed_pixel_at_a_clipped_scale_during_run_and_reset() {
+    use config::VideoStandard;
+    use egui_kittest::kittest::Queryable;
+    use std::time::{Duration, Instant};
+
+    for (standard, height, command) in [
+        (VideoStandard::Pal, 568, None),
+        (VideoStandard::Ntsc, 480, Some(HostCommand::Run)),
+        (VideoStandard::Pal, 568, Some(HostCommand::Reset)),
+    ] {
+        let (_, library) = library();
+        let game = &library.games[0];
+        let mut session = Box::new(gui::DebuggerSession::from_config(
+            config::A500Config::standard_1mb(standard),
+        ));
+        session.load_binary(0x1000, &[0x60, 0xfe], true).unwrap();
+        let frame = &mut session.machine.denise.frame_builder;
+        let width = 720;
+        let stride = frame.row_stride();
+        let mut expected = Vec::new();
+        for y in 0..height {
+            for x in 0..width {
+                let rgba = screenshot_pixel(x, y, width, height);
+                let [r, g, b, a] = rgba;
+                frame.frame_buffer_mut()[y * stride + x] = u32::from_be_bytes([a, r, g, b]);
+                expected.extend_from_slice(&rgba);
+            }
+        }
+        let mut app = EmulatorApp::with_session(session);
+        app.set_view_mode(ViewMode::ScreenOnly);
+        // Attach the fixture game while the real host presents the prepared machine image.
+        app.player.active_game = Some(game.clone());
+        app.screen_scale = gui::ScreenScale::Four;
+        let mut h = session_harness(app);
+        h.ctx.set_zoom_factor(1.25);
+        let mut displayed = common::ScreenCapture::new([width, height]);
+        let deadline = Instant::now() + Duration::from_secs(10);
+        loop {
+            displayed.apply(h.output());
+            if h.state().host.is_idle() && displayed.id.is_some() && h.ctx.zoom_factor() == 1.25 {
+                break;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "Prepared texture did not reach Game view"
+            );
+            h.step();
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        let texture = displayed.id.unwrap();
+        assert!(displayed
+            .pixels
+            .iter()
+            .zip(expected.chunks_exact(4))
+            .all(|(pixel, rgba)| pixel.to_srgba_unmultiplied().as_slice() == rgba));
+        assert!(h.output().shapes.iter().any(|shape| match &shape.shape {
+            egui::Shape::Mesh(mesh) if mesh.texture_id == texture => {
+                let bounds = mesh.calc_bounds();
+                bounds.width() > shape.clip_rect.width() && bounds.height() > shape.clip_rect.height()
+            }
+            _ => false,
+        }));
+
+        let previous = h.state().host.presented.unwrap();
+        let pending = if let Some(mut command) = command {
+            // Let the worker change the machine without advancing the GUI.
+            let runtime = h.state_mut().host.runtime.as_mut().unwrap();
+            let running = matches!(&command, HostCommand::Run);
+            let generation = if running {
+                previous.generation
+            } else {
+                previous.generation.wrapping_add(1)
+            };
+            let deadline = Instant::now() + Duration::from_secs(10);
+            loop {
+                match runtime.submit(command) {
+                    Ok(_) => break,
+                    Err(busy) => command = busy.0,
+                }
+                runtime.poll().unwrap();
+                assert!(Instant::now() < deadline, "Could not submit the command");
+                std::thread::sleep(Duration::from_millis(1));
+            }
+            let pending = loop {
+                runtime.poll().unwrap();
+                let status = runtime.status();
+                if status.running == running
+                    && status.generation == generation
+                    && status.publication > previous.publication
+                {
+                    break status.publication;
+                }
+                assert!(
+                    Instant::now() < deadline,
+                    "The new image did not reach the exchange"
+                );
+                std::thread::sleep(Duration::from_millis(1));
+            };
+            assert_eq!(h.state().host.presented, Some(previous));
+            Some((pending, generation, running))
+        } else {
+            assert!(!h.state().host.status.running);
+            None
+        };
+
+        // Contention may postpone the upload. Keep clicking the old texture until
+        // one click and the pending upload complete in the same update.
+        let deadline = Instant::now() + Duration::from_secs(10);
+        let mut captures = 0;
+        loop {
+            h.get_by_label("Screenshot").click_accesskit();
+            h.step();
+            captures += 1;
+            let files = directory_files(&screenshot_directory(game));
+            assert_eq!(files.len(), captures);
+            let path = screenshot_directory(game).join(format!("screenshot-{captures}.png"));
+            let decoded = image::open(path).unwrap().into_rgba8();
+            assert_eq!(decoded.dimensions(), (width as u32, height as u32));
+            assert_eq!(decoded.as_raw(), &expected);
+            assert!(h.state().file_error.is_none());
+            let Some((pending, generation, running)) = pending else { break };
+            if let Some(presented) = h.state().host.presented.filter(|info| *info != previous) {
+                assert_eq!(h.state().host.status.running, running);
+                assert_eq!(presented.generation, generation);
+                assert_eq!(presented.publication, pending);
+                displayed.apply(h.output());
+                assert!(displayed
+                    .pixels
+                    .iter()
+                    .zip(expected.chunks_exact(4))
+                    .any(|(pixel, rgba)| pixel.to_srgba_unmultiplied().as_slice() != rgba));
+                break;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "The click did not coincide with the pending upload"
+            );
+        }
+    }
+}
+
+#[test]
+fn screenshot_rejects_the_previous_game_image_when_the_new_library_reuses_its_id() {
+    use egui_kittest::kittest::Queryable;
+    use std::time::{Duration, Instant};
+
+    let (root, first_library) = library();
+    let (_, second_library) = library();
+    let first = &first_library.games[0];
+    let second = &second_library.games[0];
+    assert_eq!(first.manifest.id, second.manifest.id);
+    let mut app = game_app(&root);
+    app.start_library_game(first.clone(), None, false);
+    let mut h = session_harness(app);
+    common::wait_harness(&mut h, |app| {
+        app.player.active_game.is_some() && app.host.presented.is_some()
+    });
+
+    h.state_mut().start_library_game(second.clone(), None, false);
+    let deadline = Instant::now() + Duration::from_secs(10);
+    // Supply a click on the update that accepts the new game, before the GUI
+    // has drawn any of its images. Earlier clicks still belong to the first game.
+    loop {
+        h.get_by_label("Screenshot").click_accesskit();
+        h.step();
+        let active = h.state().player.active_game.as_ref().unwrap();
+        if active.directory == second.directory {
+            break;
+        }
+        assert!(Instant::now() < deadline, "The new game did not start");
+        std::thread::sleep(Duration::from_millis(1));
+    }
+    assert_eq!(
+        h.state().file_error.as_deref(),
+        Some("Could not save screenshot: No game image is available")
+    );
+    let directory = screenshot_directory(second);
+    assert!(!directory.exists());
+
+    h.get_by_label("Close").click_accesskit();
+    common::wait_harness(&mut h, |app| {
+        app.file_error.is_none() && app.host.presented.is_some()
+    });
+    h.get_by_label("Screenshot").click_accesskit();
+    h.step();
+    let files = directory_files(&directory);
+    assert_eq!(files, [directory.join("screenshot-1.png")]);
+    image::open(&files[0]).unwrap();
+}
+
+#[test]
+fn screenshot_stays_with_the_active_game_after_editing_the_same_id_in_another_library() {
+    use egui_kittest::kittest::Queryable;
+
+    let (first_root, first_library) = library();
+    let (second_root, second_library) = library();
+    let first = &first_library.games[0];
+    let second = &second_library.games[0];
+    assert_eq!(first.manifest.id, second.manifest.id);
+    let mut app = game_app(&first_root);
+    app.start_library_game(first.clone(), None, false);
+    let mut h = session_harness(app);
+    common::wait_harness(&mut h, |app| {
+        app.player.active_game.is_some() && app.host.presented.is_some()
+    });
+
+    h.get_by_label("Library").click_accesskit();
+    common::settle_harness(&mut h);
+    // Supply the path the native folder picker would return.
+    h.state_mut().player.catalog.library_root = second_root.to_string_lossy().into_owned();
+    h.get_by_label("Refresh").click_accesskit();
+    common::settle_harness(&mut h);
+    h.get_by_label("one").click_accesskit();
+    common::settle_harness(&mut h);
+    h.get_by_label("Edit game").click_accesskit();
+    common::settle_harness(&mut h);
+    h.state_mut().player.library_editor.as_mut().unwrap().name = "Renamed".into();
+    h.step();
+    h.get_by_label("Save game").click_accesskit();
+    common::settle_harness(&mut h);
+    assert!(h.state().file_error.is_none());
+    assert!(h.state().player.library_editor.is_none());
+    let renamed = second_root.join("Renamed");
+    assert!(renamed.join("game.json").is_file());
+    assert!(!second.directory.exists());
+
+    h.get_by_label("Return to session").click_accesskit();
+    common::settle_harness(&mut h);
+    let directory = screenshot_directory(first);
+    assert!(!directory.exists());
+    h.get_by_label("Screenshot").click_accesskit();
+    h.step();
+    let files = directory_files(&directory);
+    assert_eq!(files, [directory.join("screenshot-1.png")]);
+    image::open(&files[0]).unwrap();
+    assert!(!renamed.join("Screenshots").exists());
+    assert_eq!(
+        h.state().player.active_game.as_ref().unwrap().directory,
+        first.directory
+    );
+}
+
+#[test]
+fn screenshot_button_is_available_in_library_game_view_only() {
+    use egui_kittest::kittest::Queryable;
+
+    let (root, library) = library();
+    let mut manual = game_app(&root);
+    manual.start_manual();
+    let mut h = session_harness(manual);
+    common::wait_harness(&mut h, |app| app.player.active_configuration.is_some());
+    assert_eq!(h.state().player.screen, PlayerScreen::Session);
+    assert!(h.query_by_label("Screenshot").is_none());
+
+    let mut app = game_app(&root);
+    app.start_library_game(library.games[0].clone(), None, false);
+    let mut h = session_harness(app);
+    common::wait_harness(&mut h, |app| app.player.active_game.is_some());
+    assert!(!h.get_by_label("Screenshot").accesskit_node().is_disabled());
+    h.get_by_label("Debug View (F12)").click_accesskit();
+    common::settle_harness(&mut h);
+    assert_eq!(h.state().view_mode, ViewMode::Developer);
+    assert!(h.query_by_label("Screenshot").is_none());
+}
+
+#[test]
+fn screenshot_directory_failure_is_visible_and_the_game_can_resume() {
+    use egui_kittest::kittest::Queryable;
+
+    let (root, library) = library();
+    let game = &library.games[0];
+    let blocked = screenshot_directory(game);
+    std::fs::write(&blocked, b"keep this file").unwrap();
+    let mut app = game_app(&root);
+    app.start_library_game(game.clone(), None, false);
+    let mut h = session_harness(app);
+    common::wait_harness(&mut h, |app| {
+        app.player.active_game.is_some() && app.host.presented.is_some() && app.host.status.running
+    });
+    h.get_by_label("Pause").click_accesskit();
+    common::wait_harness(&mut h, |app| !app.host.status.running);
+    let before = h.state().host.status;
+    h.get_by_label("Screenshot").click_accesskit();
+    h.run_steps(2);
+    let error = h.state().file_error.as_ref().unwrap();
+    assert!(error.starts_with("Could not save screenshot:"));
+    assert!(h.get_all_by_value(error.as_str()).next().is_some());
+    assert!(h.state().toast_message.is_none());
+    assert_eq!(std::fs::read(blocked).unwrap(), b"keep this file");
+    assert_eq!(h.state().host.status.generation, before.generation);
+    assert_eq!(h.state().host.status.cck, before.cck);
+    h.get_by_label("Close").click_accesskit();
+    h.step();
+    assert!(h.state().file_error.is_none());
+    h.get_by_label("Resume").click_accesskit();
+    common::wait_harness(&mut h, |app| {
+        app.host.status.running && app.host.status.cck > before.cck
+    });
+}
+
+#[test]
+fn screenshot_write_error_preserves_existing_images_and_hides_partial_output() {
+    use std::io::{Error, Write};
+
+    let (_, library) = library();
+    let game = &library.games[0];
+    let directory = screenshot_directory(game);
+    std::fs::create_dir(&directory).unwrap();
+    let prior = directory.join("screenshot-1.png");
+    image::save_buffer(&prior, &[10, 20, 30], 1, 1, image::ColorType::Rgb8).unwrap();
+    let before = std::fs::read(&prior).unwrap();
+    let error = gui::game_library::persist_screenshot(game, |file| {
+        file.write_all(b"\x89PNG\r\n\x1a\n")?;
+        assert!(!directory.join("screenshot-2.png").exists());
+        Err(Error::other("simulated full disk"))
+    })
+    .unwrap_err();
+    assert_eq!(error.to_string(), "simulated full disk");
+    assert_eq!(std::fs::read(&prior).unwrap(), before);
+    assert_eq!(directory_files(&directory), [prior]);
+}
+
+#[cfg(windows)]
+#[test]
+fn screenshot_publishes_a_png_beyond_the_legacy_windows_path_limit() {
+    use std::os::windows::ffi::OsStrExt;
+
+    let (root, library) = library();
+    let root = std::path::absolute(root).unwrap();
+    assert!(!root.as_os_str().as_encoded_bytes().starts_with(br"\\?\"));
+    // Keep the game readable through its ordinary path and put the PNG beyond MAX_PATH.
+    let padding = 235_usize.saturating_sub(root.as_os_str().encode_wide().count() + 1);
+    let game_directory = root.join("g".repeat(padding.max(1)));
+    std::fs::rename(&library.games[0].directory, &game_directory).unwrap();
+    let game = GameLibrary::discover(&root).unwrap().games.remove(0);
+    assert_eq!(game.directory, game_directory);
+    let directory = screenshot_directory(&game);
+    let path = directory.join("screenshot-1.png");
+    assert!(path.as_os_str().encode_wide().count() >= 260);
+
+    let expected = image::RgbImage::from_pixel(1, 1, image::Rgb([10, 20, 30]));
+    gui::game_library::persist_screenshot(&game, |file| {
+        image::DynamicImage::ImageRgb8(expected.clone())
+            .write_to(file, image::ImageFormat::Png)
+            .map_err(std::io::Error::other)
+    })
+    .unwrap();
+    let files = directory_files(&directory);
+    assert_eq!(files, [path]);
+    assert_eq!(image::open(&files[0]).unwrap().to_rgb8(), expected);
 }

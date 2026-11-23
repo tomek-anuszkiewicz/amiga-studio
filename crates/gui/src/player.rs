@@ -242,9 +242,7 @@ impl EmulatorApp {
                 self.player.disks = disks;
                 self.player.mounted = association.mounted;
                 #[cfg(not(target_arch = "wasm32"))]
-                {
-                    self.player.active_game = game;
-                }
+                self.associate_library_game(game);
                 self.player.screen = PlayerScreen::Session;
                 self.player.initial_error = false;
                 self.loaded_rom_name = Some("player session".into());
@@ -582,7 +580,7 @@ impl EmulatorApp {
                     .player
                     .active_game
                     .as_ref()
-                    .is_some_and(|active| active.manifest.id == game.manifest.id)
+                    .is_some_and(|active| active.same_entry(&game))
             {
                 self.player
                     .active_configuration

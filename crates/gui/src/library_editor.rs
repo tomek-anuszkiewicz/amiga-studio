@@ -146,9 +146,15 @@ impl EmulatorApp {
             return;
         }
         if save {
+            let edits_active = self
+                .player
+                .active_game
+                .as_ref()
+                .zip(draft.original.as_ref())
+                .is_some_and(|(active, original)| active.same_entry(original));
             match draft.save(Path::new(&self.player.catalog.library_root)) {
                 Ok(game) => {
-                    self.complete_library_edit(game);
+                    self.complete_library_edit(game, edits_active);
                     return;
                 }
                 Err(error) => self.file_error = Some(error),
@@ -157,14 +163,9 @@ impl EmulatorApp {
         self.player.library_editor = Some(draft);
     }
 
-    fn complete_library_edit(&mut self, game: crate::game_library::LibraryGame) {
+    fn complete_library_edit(&mut self, game: crate::game_library::LibraryGame, edits_active: bool) {
         self.file_error = None;
-        if self
-            .player
-            .active_game
-            .as_ref()
-            .is_some_and(|active| active.manifest.id == game.manifest.id)
-        {
+        if edits_active {
             // The machine retains its mounted bytes. Newly imported disks become selectable.
             for disk in &game.manifest.disks {
                 if !self
