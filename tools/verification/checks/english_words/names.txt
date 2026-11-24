@@ -58,6 +58,7 @@ pyspellchecker
 qdrant
 roboto
 rustc
+rustdoc
 rustfmt
 rustup
 sallen
