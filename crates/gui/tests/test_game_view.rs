@@ -65,12 +65,12 @@ fn game_toolbar_supports_files_manual_states_speed_fps_and_return_to_debug() {
     for label in [
         "File",
         "State",
-        "▶ Run (F5)",
+        "▶ Run",
         "Slower",
         "Faster",
         "1x",
         "FPS",
-        "Debug View (F12)",
+        "Debug View",
     ] {
         let bounds = harness
             .get_by_label(label)
@@ -79,18 +79,13 @@ fn game_toolbar_supports_files_manual_states_speed_fps_and_return_to_debug() {
             .unwrap();
         assert!(bounds.x0 >= 0.0 && bounds.x1 <= 1024.0);
     }
-    for label in [
-        "Step Frame (Shift+F11)",
-        "⏭ Step Inst (F10)",
-        "⏯ Step CCK (F11)",
-        "⏮ Rewind (Shift+F10)",
-    ] {
+    for label in ["Step Frame", "⏭ Step Inst", "⏯ Step CCK", "⏮ Rewind"] {
         assert!(harness.query_by_label(label).is_none());
     }
     harness.get_by_label("File").click_accesskit();
     common::settle_harness(&mut harness);
     harness.get_by_label("Load ROM from File...");
-    harness.get_by_label("📁 Load Binary... (Ctrl+O)");
+    harness.get_by_label("📁 Load Binary...");
     harness.get_by_label("File").click_accesskit();
     common::settle_harness(&mut harness);
     harness.get_by_label("FPS").click_accesskit();
@@ -105,10 +100,10 @@ fn game_toolbar_supports_files_manual_states_speed_fps_and_return_to_debug() {
     assert_eq!(harness.state().host.status.speed, 1.0);
     harness.get_by_label("State").click_accesskit();
     common::settle_harness(&mut harness);
-    harness.get_by_label("💾 Save State to File... (Ctrl+S)");
-    harness.get_by_label("📂 Load State from File... (Ctrl+L)");
+    harness.get_by_label("💾 Save State to File...");
+    harness.get_by_label("📂 Load State from File...");
     harness
-        .get_by_label("⚡ Quick Save Slot 1 (F6)")
+        .get_by_label("⚡ Quick Save Slot 1")
         .click_accesskit();
     common::settle_harness(&mut harness);
     assert!(harness.state().host.status.quick_slots[0]);
@@ -121,20 +116,18 @@ fn game_toolbar_supports_files_manual_states_speed_fps_and_return_to_debug() {
     );
     harness.get_by_label("State").click_accesskit();
     common::settle_harness(&mut harness);
-    harness
-        .get_by_label("🔄 Quick Load Slot 1 (F9)")
-        .click_accesskit();
+    harness.get_by_label("Quick Load Slot 1").click_accesskit();
     common::settle_harness(&mut harness);
     assert_eq!(common::inspect(harness.state_mut()).cpu.d_long(0), 0);
     assert_eq!(
         harness.state().loaded_rom_name.as_deref(),
         Some("from saved state")
     );
-    harness.get_by_label("▶ Run (F5)").click_accesskit();
+    harness.get_by_label("▶ Run").click_accesskit();
     harness.run_steps(2);
     common::settle_harness(&mut harness);
     assert!(harness.state().host.status.running);
-    harness.get_by_label("⏹ Stop (F5)").click_accesskit();
+    harness.get_by_label("⏹ Stop").click_accesskit();
     harness.run_steps(2);
     common::settle_harness(&mut harness);
     assert!(!harness.state().host.status.running);
@@ -156,10 +149,10 @@ fn game_toolbar_supports_files_manual_states_speed_fps_and_return_to_debug() {
     harness.get_by_label("125%").click_accesskit();
     common::settle_harness(&mut harness);
     assert_eq!(harness.ctx.zoom_factor(), 1.25);
-    harness.get_by_label("Debug View (F12)").click_accesskit();
+    harness.get_by_label("Debug View").click_accesskit();
     common::settle_harness(&mut harness);
     assert_eq!(harness.state().view_mode, ViewMode::Developer);
-    harness.get_by_label("Step Frame (Shift+F11)");
+    harness.get_by_label("Step Frame");
 }
 
 #[test]
@@ -265,4 +258,87 @@ fn capture_guidance_remains_visible_in_both_views_and_compact_windows() {
         assert!(bounds.y0 >= 0.0 && bounds.y1 < 150.0);
         assert!(bounds.x0 >= 0.0 && bounds.x1 <= 720.0);
     }
+}
+
+#[test]
+fn shortcut_hover_shows_active_bindings_and_only_applicable_equivalents() {
+    use gui::player::PlayerScreen;
+
+    let mut session = Box::new(gui::DebuggerSession::new());
+    session.load_binary(0x1000, &[0x60, 0xfe], true).unwrap();
+    let mut app = EmulatorApp::with_session(session);
+    app.set_view_mode(ViewMode::ScreenOnly);
+    app.player.active_configuration = Some(Default::default());
+    let mut h = Harness::builder()
+        .with_size(egui::vec2(1280.0, 900.0))
+        .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
+    h.ctx
+        .style_mut(|style| style.interaction.tooltip_delay = 0.0);
+    common::settle_harness(&mut h);
+
+    h.get_by_label("Resume").hover();
+    common::settle_harness(&mut h);
+    h.get_by_label("Keyboard: F5");
+    h.get_by_label_contains("Resume the same machine");
+
+    h.state_mut().navigate_player(PlayerScreen::Configuration);
+    common::settle_harness(&mut h);
+    h.get_by_label("F5").click_accesskit();
+    common::settle_harness(&mut h);
+    tap_physical(&mut h, "F7");
+    h.get_by_label("Save").click_accesskit();
+    common::settle_harness(&mut h);
+    h.get_by_label("Resume").hover();
+    common::settle_harness(&mut h);
+    h.get_by_label("Keyboard: F7");
+    assert!(h.query_by_label("Keyboard: F5").is_none());
+    tap_physical(&mut h, "F7");
+    common::wait_harness(&mut h, |app| app.host.status.running);
+    h.get_by_label("Pause").hover();
+    common::settle_harness(&mut h);
+    h.get_by_label("Keyboard: F7");
+    h.get_by_label("Pause after the current video field completes.");
+
+    tap_physical(&mut h, "F7");
+    common::wait_harness(&mut h, |app| !app.host.status.running);
+    h.get_by_label("Reset").hover();
+    common::settle_harness(&mut h);
+    h.get_by_label_contains("Reset and run the current machine");
+    assert!(h.query_by_label_contains("Keyboard:").is_none());
+
+    h.get_by_label("Debug View").hover();
+    common::settle_harness(&mut h);
+    h.get_by_label("Keyboard: F12");
+    tap_physical(&mut h, "F12");
+    assert_eq!(h.state().view_mode, ViewMode::Developer);
+    h.get_by_label("Step Frame").hover();
+    common::settle_harness(&mut h);
+    h.get_by_label("Keyboard: Shift+F11");
+    let frame = h.state().host.status.field_number;
+    let generation = h.state().host.status.generation;
+    gui::keyboard_input::receive_key(
+        &h.ctx,
+        common::keyboard::key("ShiftLeft", true),
+        Some(generation),
+    );
+    tap_physical(&mut h, "F11");
+    gui::keyboard_input::receive_key(
+        &h.ctx,
+        common::keyboard::key("ShiftLeft", false),
+        Some(generation),
+    );
+    common::wait_harness(&mut h, |app| app.host.status.field_number > frame);
+    assert!(!h.state().host.status.running);
+}
+
+fn tap_physical(h: &mut Harness<'_, EmulatorApp>, key: &str) {
+    let generation = h.state().host.status.generation;
+    for pressed in [true, false] {
+        assert!(gui::keyboard_input::receive_key(
+            &h.ctx,
+            common::keyboard::key(key, pressed),
+            Some(generation)
+        ));
+    }
+    common::settle_harness(h);
 }

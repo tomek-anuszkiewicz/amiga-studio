@@ -1,7 +1,8 @@
 //! Shared physical keyboard policy for window and browser events.
 
 use crate::host_keys::{amiga_key_code, frontend_key_position};
-use crate::player_config::FrontendBindings;
+use crate::player_config::{FrontendAction, FrontendBindings};
+use crate::shortcuts::{ShortcutModifier, FIXED_SHORTCUTS};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, serde::Deserialize)]
@@ -72,6 +73,7 @@ enum HeldKey {
     Guest,
     Command(KeyCommand),
     Blocked,
+    Recorded,
 }
 
 #[derive(Debug, Default, Clone)]
@@ -85,6 +87,15 @@ pub(crate) struct KeyboardDecision {
     pub generation: u64,
 }
 
+#[derive(Debug, Default, Clone)]
+pub(crate) enum KeyRecording {
+    #[default]
+    Idle,
+    Waiting,
+    Received(String),
+    Cancelled,
+}
+
 /// Both platforms use this inbox before sending a key to their egui adapter.
 #[derive(Debug, Default, Clone)]
 pub(crate) struct KeyboardInbox {
@@ -92,6 +103,7 @@ pub(crate) struct KeyboardInbox {
     policy: Option<KeyboardPolicy>,
     generation: u64,
     pending: Vec<KeyboardDecision>,
+    recording: KeyRecording,
 }
 
 const KEYBOARD_INBOX_ID: &str = "keyboard_routing_inbox";
@@ -168,8 +180,29 @@ pub fn receive_pointer_press(ctx: &egui::Context, position: egui::Pos2) {
 }
 
 impl KeyboardInbox {
+    pub(crate) fn start_recording(&mut self) {
+        self.router.suspend();
+        self.recording = KeyRecording::Waiting;
+    }
+
+    pub(crate) fn stop_recording(&mut self) {
+        self.recording = KeyRecording::Idle;
+    }
+
+    pub(crate) fn take_recording(&mut self) -> KeyRecording {
+        match self.recording {
+            KeyRecording::Received(_) => {
+                std::mem::replace(&mut self.recording, KeyRecording::Waiting)
+            }
+            KeyRecording::Cancelled => std::mem::take(&mut self.recording),
+            KeyRecording::Idle => KeyRecording::Idle,
+            KeyRecording::Waiting => KeyRecording::Waiting,
+        }
+    }
+
     pub fn set_policy(&mut self, mut policy: KeyboardPolicy, generation: u64) {
         if self.generation != generation {
+            self.cancel_recording();
             self.router.suspend();
             self.pending.clear();
             self.generation = generation;
@@ -217,8 +250,15 @@ impl KeyboardInbox {
             // and synthesized presses cannot establish fresh gameplay input.
             self.router.release();
             if !focused {
+                self.cancel_recording();
                 self.release_pending();
             }
+        }
+    }
+
+    fn cancel_recording(&mut self) {
+        if !matches!(self.recording, KeyRecording::Idle) {
+            self.recording = KeyRecording::Cancelled;
         }
     }
 
@@ -229,6 +269,17 @@ impl KeyboardInbox {
         let Some(policy) = &mut self.policy else {
             return false;
         };
+        if policy.focused
+            && matches!(
+                self.recording,
+                KeyRecording::Waiting | KeyRecording::Received(_)
+            )
+        {
+            if self.router.capture_key(&key) && matches!(self.recording, KeyRecording::Waiting) {
+                self.recording = KeyRecording::Received(key.physical);
+            }
+            return true;
+        }
         let route = self.router.route(&key, policy);
         match route {
             KeyRoute::Consumed => return true,
@@ -297,10 +348,22 @@ impl KeyboardRouter {
 
     fn suspend(&mut self) {
         for state in self.held.values_mut() {
-            if !matches!(state, HeldKey::Command(_)) {
+            if !matches!(state, HeldKey::Command(_) | HeldKey::Recorded) {
                 *state = HeldKey::Blocked;
             }
         }
+    }
+
+    fn capture_key(&mut self, key: &PhysicalKey) -> bool {
+        if !key.pressed {
+            self.held.remove(&key.physical);
+            return false;
+        }
+        let fresh = !key.repeat && !key.synthetic && !self.held.contains_key(&key.physical);
+        if fresh {
+            self.held.insert(key.physical.clone(), HeldKey::Recorded);
+        }
+        fresh
     }
 
     pub fn route(&mut self, key: &PhysicalKey, policy: &KeyboardPolicy) -> KeyRoute {
@@ -313,6 +376,9 @@ impl KeyboardRouter {
         } else {
             self.held.remove(&key.physical)
         };
+        if previous == Some(HeldKey::Recorded) {
+            return KeyRoute::Consumed;
+        }
         if let Some(HeldKey::Command(action)) = previous {
             return if key.pressed {
                 KeyRoute::Consumed
@@ -383,51 +449,46 @@ impl KeyboardRouter {
     fn held(&self, physical: &str) -> bool {
         self.held
             .get(physical)
-            .is_some_and(|key| *key != HeldKey::Blocked)
+            .is_some_and(|key| !matches!(key, HeldKey::Blocked | HeldKey::Recorded))
     }
 
     fn command(&self, physical: &str, policy: &KeyboardPolicy) -> Option<KeyCommand> {
-        use KeyCommand::*;
-        if physical == "F12" {
-            return Some(ToggleView);
-        }
         let command = ["ControlLeft", "ControlRight", "MetaLeft", "MetaRight"]
             .into_iter()
             .any(|key| self.held(key));
-        if command {
-            let action = match physical {
-                "KeyO" => Some(LoadBinary),
-                "KeyS" => Some(SaveState),
-                "KeyL" => Some(LoadState),
-                "Equal" | "NumpadAdd" => Some(ZoomIn),
-                "Minus" | "NumpadSubtract" => Some(ZoomOut),
-                "Digit0" | "Numpad0" => Some(NormalZoom),
-                _ => None,
-            };
-            if action.is_some() {
-                return action;
-            }
+        let fixed = FIXED_SHORTCUTS.iter().find(|shortcut| {
+            shortcut.position == physical
+                && match shortcut.modifier {
+                    ShortcutModifier::None => true,
+                    ShortcutModifier::Command => command,
+                    _ => false,
+                }
+        });
+        if let Some(shortcut) = fixed {
+            return Some(shortcut.action);
         }
-        for (binding, action) in [
-            (&policy.bindings.release, Release),
-            (&policy.bindings.pause, Pause),
-            (&policy.bindings.save, QuickSave),
-            (&policy.bindings.load, QuickLoad),
-        ] {
-            if frontend_key_position(binding) == Some(physical) {
-                return Some(action);
-            }
+        if let Some(action) = FrontendAction::EDITABLE_KEYS.into_iter().find(|action| {
+            frontend_key_position(policy.bindings.binding(*action)) == Some(physical)
+        }) {
+            return Some(action.into());
         }
         if policy.developer && !policy.running && policy.can_edit {
             let shift = self.held("ShiftLeft") || self.held("ShiftRight");
-            return match physical {
-                "F10" => Some(if shift { HistoryBack } else { StepInstruction }),
-                "F11" => Some(if shift { StepField } else { StepCck }),
-                "F8" => Some(Microcode),
-                "KeyT" if self.held("AltLeft") || self.held("AltRight") => Some(Recording),
-                _ => None,
-            };
+            let alt = self.held("AltLeft") || self.held("AltRight");
+            return FIXED_SHORTCUTS.iter().find_map(|shortcut| {
+                (shortcut.position == physical
+                    && match shortcut.modifier {
+                        ShortcutModifier::Debugger => true,
+                        ShortcutModifier::DebuggerUnshifted => !shift,
+                        ShortcutModifier::DebuggerShift => shift,
+                        ShortcutModifier::DebuggerAlt => alt,
+                        _ => false,
+                    })
+                .then_some(shortcut.action)
+            });
         }
         None
     }
 }
+
+pub(crate) const VIEW_SWITCH_KEY: &str = "F12";

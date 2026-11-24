@@ -38,8 +38,8 @@ pub(crate) const SCANCODE_KEY_D: u8 = 0x22;
 const SCANCODE_KEY_F: u8 = 0x23;
 const SCANCODE_KEY_G: u8 = 0x24;
 const SCANCODE_KEY_H: u8 = 0x25;
-const SCANCODE_KEY_J: u8 = 0x26;
-const SCANCODE_KEY_K: u8 = 0x27;
+pub(crate) const SCANCODE_KEY_J: u8 = 0x26;
+pub(crate) const SCANCODE_KEY_K: u8 = 0x27;
 const SCANCODE_KEY_L: u8 = 0x28;
 const SCANCODE_SEMICOLON: u8 = 0x29;
 const SCANCODE_QUOTE: u8 = 0x2a;
@@ -47,9 +47,9 @@ const SCANCODE_INTL_BACKSLASH: u8 = 0x30;
 const SCANCODE_NUMPAD4: u8 = 0x2d;
 const SCANCODE_NUMPAD5: u8 = 0x2e;
 const SCANCODE_NUMPAD6: u8 = 0x2f;
-const SCANCODE_KEY_Z: u8 = 0x31;
-const SCANCODE_KEY_X: u8 = 0x32;
-pub(crate) const SCANCODE_KEY_C: u8 = 0x33;
+pub(crate) const SCANCODE_KEY_Z: u8 = 0x31;
+pub(crate) const SCANCODE_KEY_X: u8 = 0x32;
+const SCANCODE_KEY_C: u8 = 0x33;
 const SCANCODE_KEY_V: u8 = 0x34;
 const SCANCODE_KEY_B: u8 = 0x35;
 const SCANCODE_KEY_N: u8 = 0x36;
@@ -61,12 +61,12 @@ pub(crate) const SCANCODE_NUMPAD_DECIMAL: u8 = 0x3c;
 const SCANCODE_NUMPAD7: u8 = 0x3d;
 const SCANCODE_NUMPAD8: u8 = 0x3e;
 const SCANCODE_NUMPAD9: u8 = 0x3f;
-pub(crate) const SCANCODE_SPACE: u8 = 0x40;
+const SCANCODE_SPACE: u8 = 0x40;
 const SCANCODE_BACKSPACE: u8 = 0x41;
 const SCANCODE_TAB: u8 = 0x42;
 const SCANCODE_NUMPAD_ENTER: u8 = 0x43;
 const SCANCODE_ENTER: u8 = 0x44;
-const SCANCODE_ESCAPE: u8 = 0x45;
+pub(crate) const SCANCODE_ESCAPE: u8 = 0x45;
 const SCANCODE_DELETE: u8 = 0x46;
 const SCANCODE_NUMPAD_SUBTRACT: u8 = 0x4a;
 pub(crate) const SCANCODE_ARROW_UP: u8 = 0x4c;
@@ -94,107 +94,193 @@ const SCANCODE_ALT_RIGHT: u8 = 0x65;
 
 pub(crate) const MAX_AMIGA_KEYCODE: u8 = 0x7f;
 
-pub fn amiga_key_code(code: &str) -> Option<u8> {
-    Some(match code {
-        "Backquote" => SCANCODE_BACKQUOTE,
-        "Digit1" => SCANCODE_DIGIT1,
-        "Digit2" => SCANCODE_DIGIT2,
-        "Digit3" => SCANCODE_DIGIT3,
-        "Digit4" => SCANCODE_DIGIT4,
-        "Digit5" => SCANCODE_DIGIT5,
-        "Digit6" => SCANCODE_DIGIT6,
-        "Digit7" => SCANCODE_DIGIT7,
-        "Digit8" => SCANCODE_DIGIT8,
-        "Digit9" => SCANCODE_DIGIT9,
-        "Digit0" => SCANCODE_DIGIT0,
-        "Minus" => SCANCODE_MINUS,
-        "Equal" => SCANCODE_EQUAL,
-        "Backslash" => SCANCODE_BACKSLASH,
-        "Numpad0" => SCANCODE_NUMPAD0,
-        "KeyQ" => SCANCODE_KEY_Q,
-        "KeyW" => SCANCODE_KEY_W,
-        "KeyE" => SCANCODE_KEY_E,
-        "KeyR" => SCANCODE_KEY_R,
-        "KeyT" => SCANCODE_KEY_T,
-        "KeyY" => SCANCODE_KEY_Y,
-        "KeyU" => SCANCODE_KEY_U,
-        "KeyI" => SCANCODE_KEY_I,
-        "KeyO" => SCANCODE_KEY_O,
-        "KeyP" => SCANCODE_KEY_P,
-        "BracketLeft" => SCANCODE_BRACKET_LEFT,
-        "BracketRight" => SCANCODE_BRACKET_RIGHT,
-        "Numpad1" => SCANCODE_NUMPAD1,
-        "Numpad2" => SCANCODE_NUMPAD2,
-        "Numpad3" => SCANCODE_NUMPAD3,
-        "KeyA" => SCANCODE_KEY_A,
-        "KeyS" => SCANCODE_KEY_S,
-        "KeyD" => SCANCODE_KEY_D,
-        "KeyF" => SCANCODE_KEY_F,
-        "KeyG" => SCANCODE_KEY_G,
-        "KeyH" => SCANCODE_KEY_H,
-        "KeyJ" => SCANCODE_KEY_J,
-        "KeyK" => SCANCODE_KEY_K,
-        "KeyL" => SCANCODE_KEY_L,
-        "Semicolon" => SCANCODE_SEMICOLON,
-        "Quote" => SCANCODE_QUOTE,
-        "IntlBackslash" => SCANCODE_INTL_BACKSLASH,
-        "Numpad4" => SCANCODE_NUMPAD4,
-        "Numpad5" => SCANCODE_NUMPAD5,
-        "Numpad6" => SCANCODE_NUMPAD6,
-        "KeyZ" => SCANCODE_KEY_Z,
-        "KeyX" => SCANCODE_KEY_X,
-        "KeyC" => SCANCODE_KEY_C,
-        "KeyV" => SCANCODE_KEY_V,
-        "KeyB" => SCANCODE_KEY_B,
-        "KeyN" => SCANCODE_KEY_N,
-        "KeyM" => SCANCODE_KEY_M,
-        "Comma" => SCANCODE_COMMA,
-        "Period" => SCANCODE_PERIOD,
-        "Slash" => SCANCODE_SLASH,
-        "NumpadDecimal" => SCANCODE_NUMPAD_DECIMAL,
-        "Numpad7" => SCANCODE_NUMPAD7,
-        "Numpad8" => SCANCODE_NUMPAD8,
-        "Numpad9" => SCANCODE_NUMPAD9,
-        "Space" => SCANCODE_SPACE,
-        "Backspace" => SCANCODE_BACKSPACE,
-        "Tab" => SCANCODE_TAB,
-        "NumpadEnter" => SCANCODE_NUMPAD_ENTER,
-        "Enter" => SCANCODE_ENTER,
-        "Escape" => SCANCODE_ESCAPE,
-        "Delete" => SCANCODE_DELETE,
-        "NumpadSubtract" => SCANCODE_NUMPAD_SUBTRACT,
-        "ArrowUp" => SCANCODE_ARROW_UP,
-        "ArrowDown" => SCANCODE_ARROW_DOWN,
-        "ArrowRight" => SCANCODE_ARROW_RIGHT,
-        "ArrowLeft" => SCANCODE_ARROW_LEFT,
-        "F1" => SCANCODE_F1,
-        "F2" => SCANCODE_F2,
-        "F3" => SCANCODE_F3,
-        "F4" => SCANCODE_F4,
-        "F5" => SCANCODE_F5,
-        "F6" => SCANCODE_F6,
-        "F7" => SCANCODE_F7,
-        "F8" => SCANCODE_F8,
-        "F9" => SCANCODE_F9,
-        "F10" => SCANCODE_F10,
-        "NumpadDivide" => SCANCODE_NUMPAD_DIVIDE,
-        "NumpadMultiply" => SCANCODE_NUMPAD_MULTIPLY,
-        "NumpadAdd" => SCANCODE_NUMPAD_ADD,
-        "Insert" => SCANCODE_INSERT,
-        "ShiftLeft" => SCANCODE_SHIFT_LEFT,
-        "ShiftRight" => SCANCODE_SHIFT_RIGHT,
-        "CapsLock" => SCANCODE_CAPS_LOCK,
-        "ControlLeft" | "ControlRight" => SCANCODE_CTRL,
-        "AltLeft" => SCANCODE_ALT_LEFT,
-        "AltRight" => SCANCODE_ALT_RIGHT,
-        "MetaLeft" => SCANCODE_L_AMIGA,
-        "MetaRight" => SCANCODE_R_AMIGA,
-        _ => return None,
+const AMIGA_KEY_POSITIONS: &[(&str, u8)] = &[
+    ("Backquote", SCANCODE_BACKQUOTE),
+    ("Digit1", SCANCODE_DIGIT1),
+    ("Digit2", SCANCODE_DIGIT2),
+    ("Digit3", SCANCODE_DIGIT3),
+    ("Digit4", SCANCODE_DIGIT4),
+    ("Digit5", SCANCODE_DIGIT5),
+    ("Digit6", SCANCODE_DIGIT6),
+    ("Digit7", SCANCODE_DIGIT7),
+    ("Digit8", SCANCODE_DIGIT8),
+    ("Digit9", SCANCODE_DIGIT9),
+    ("Digit0", SCANCODE_DIGIT0),
+    ("Minus", SCANCODE_MINUS),
+    ("Equal", SCANCODE_EQUAL),
+    ("Backslash", SCANCODE_BACKSLASH),
+    ("Numpad0", SCANCODE_NUMPAD0),
+    ("KeyQ", SCANCODE_KEY_Q),
+    ("KeyW", SCANCODE_KEY_W),
+    ("KeyE", SCANCODE_KEY_E),
+    ("KeyR", SCANCODE_KEY_R),
+    ("KeyT", SCANCODE_KEY_T),
+    ("KeyY", SCANCODE_KEY_Y),
+    ("KeyU", SCANCODE_KEY_U),
+    ("KeyI", SCANCODE_KEY_I),
+    ("KeyO", SCANCODE_KEY_O),
+    ("KeyP", SCANCODE_KEY_P),
+    ("BracketLeft", SCANCODE_BRACKET_LEFT),
+    ("BracketRight", SCANCODE_BRACKET_RIGHT),
+    ("Numpad1", SCANCODE_NUMPAD1),
+    ("Numpad2", SCANCODE_NUMPAD2),
+    ("Numpad3", SCANCODE_NUMPAD3),
+    ("KeyA", SCANCODE_KEY_A),
+    ("KeyS", SCANCODE_KEY_S),
+    ("KeyD", SCANCODE_KEY_D),
+    ("KeyF", SCANCODE_KEY_F),
+    ("KeyG", SCANCODE_KEY_G),
+    ("KeyH", SCANCODE_KEY_H),
+    ("KeyJ", SCANCODE_KEY_J),
+    ("KeyK", SCANCODE_KEY_K),
+    ("KeyL", SCANCODE_KEY_L),
+    ("Semicolon", SCANCODE_SEMICOLON),
+    ("Quote", SCANCODE_QUOTE),
+    ("IntlBackslash", SCANCODE_INTL_BACKSLASH),
+    ("Numpad4", SCANCODE_NUMPAD4),
+    ("Numpad5", SCANCODE_NUMPAD5),
+    ("Numpad6", SCANCODE_NUMPAD6),
+    ("KeyZ", SCANCODE_KEY_Z),
+    ("KeyX", SCANCODE_KEY_X),
+    ("KeyC", SCANCODE_KEY_C),
+    ("KeyV", SCANCODE_KEY_V),
+    ("KeyB", SCANCODE_KEY_B),
+    ("KeyN", SCANCODE_KEY_N),
+    ("KeyM", SCANCODE_KEY_M),
+    ("Comma", SCANCODE_COMMA),
+    ("Period", SCANCODE_PERIOD),
+    ("Slash", SCANCODE_SLASH),
+    ("NumpadDecimal", SCANCODE_NUMPAD_DECIMAL),
+    ("Numpad7", SCANCODE_NUMPAD7),
+    ("Numpad8", SCANCODE_NUMPAD8),
+    ("Numpad9", SCANCODE_NUMPAD9),
+    ("Space", SCANCODE_SPACE),
+    ("Backspace", SCANCODE_BACKSPACE),
+    ("Tab", SCANCODE_TAB),
+    ("NumpadEnter", SCANCODE_NUMPAD_ENTER),
+    ("Enter", SCANCODE_ENTER),
+    ("Escape", SCANCODE_ESCAPE),
+    ("Delete", SCANCODE_DELETE),
+    ("NumpadSubtract", SCANCODE_NUMPAD_SUBTRACT),
+    ("ArrowUp", SCANCODE_ARROW_UP),
+    ("ArrowDown", SCANCODE_ARROW_DOWN),
+    ("ArrowRight", SCANCODE_ARROW_RIGHT),
+    ("ArrowLeft", SCANCODE_ARROW_LEFT),
+    ("F1", SCANCODE_F1),
+    ("F2", SCANCODE_F2),
+    ("F3", SCANCODE_F3),
+    ("F4", SCANCODE_F4),
+    ("F5", SCANCODE_F5),
+    ("F6", SCANCODE_F6),
+    ("F7", SCANCODE_F7),
+    ("F8", SCANCODE_F8),
+    ("F9", SCANCODE_F9),
+    ("F10", SCANCODE_F10),
+    ("NumpadDivide", SCANCODE_NUMPAD_DIVIDE),
+    ("NumpadMultiply", SCANCODE_NUMPAD_MULTIPLY),
+    ("NumpadAdd", SCANCODE_NUMPAD_ADD),
+    ("Insert", SCANCODE_INSERT),
+    ("ShiftLeft", SCANCODE_SHIFT_LEFT),
+    ("ShiftRight", SCANCODE_SHIFT_RIGHT),
+    ("CapsLock", SCANCODE_CAPS_LOCK),
+    ("ControlLeft", SCANCODE_CTRL),
+    ("ControlRight", SCANCODE_CTRL),
+    ("AltLeft", SCANCODE_ALT_LEFT),
+    ("AltRight", SCANCODE_ALT_RIGHT),
+    ("MetaLeft", SCANCODE_L_AMIGA),
+    ("MetaRight", SCANCODE_R_AMIGA),
+];
+
+pub fn amiga_key_code(position: &str) -> Option<u8> {
+    AMIGA_KEY_POSITIONS
+        .iter()
+        .find_map(|&(key, code)| (key == position).then_some(code))
+}
+
+pub(crate) fn host_key_name(position: &str) -> String {
+    if let Some(letter) = position
+        .strip_prefix("Key")
+        .filter(|letter| letter.len() == 1)
+    {
+        return letter.into();
+    }
+    if let Some(digit) = position
+        .strip_prefix("Digit")
+        .filter(|digit| digit.len() == 1)
+    {
+        return digit.into();
+    }
+    if let Some(key) = position.strip_prefix("Numpad") {
+        return format!(
+            "Keypad {}",
+            match key {
+                "Add" => "+",
+                "Subtract" => "-",
+                "Multiply" => "*",
+                "Divide" => "/",
+                "Decimal" => ".",
+                _ => key,
+            }
+        );
+    }
+    match position {
+        "ArrowUp" => "Up arrow",
+        "ArrowDown" => "Down arrow",
+        "ArrowLeft" => "Left arrow",
+        "ArrowRight" => "Right arrow",
+        "Backquote" => "`",
+        "BracketLeft" => "[",
+        "BracketRight" => "]",
+        "Minus" => "-",
+        "Equal" => "=",
+        "Backslash" => "\\",
+        "IntlBackslash" => "International backslash",
+        "Semicolon" => ";",
+        "Quote" => "'",
+        "Comma" => ",",
+        "Period" => ".",
+        "Slash" => "/",
+        "ShiftLeft" => "Left Shift",
+        "ShiftRight" => "Right Shift",
+        "ControlLeft" | "ControlRight" => "Ctrl",
+        "AltLeft" => "Left Alt",
+        "AltRight" => "Right Alt",
+        "MetaLeft" => "Left Windows / Command",
+        "MetaRight" => "Right Windows / Command",
+        "CapsLock" => "Caps Lock",
+        "PageUp" => "Page Up",
+        "PageDown" => "Page Down",
+        _ => position,
+    }
+    .into()
+}
+
+fn amiga_key_position(code: u8) -> Option<&'static str> {
+    AMIGA_KEY_POSITIONS
+        .iter()
+        .find_map(|&(position, key)| (key == code).then_some(position))
+}
+
+pub(crate) fn host_name_for_code(code: u8) -> String {
+    amiga_key_position(code).map_or_else(|| "Unrecognized key".into(), host_key_name)
+}
+
+pub(crate) fn amiga_key_name(code: u8) -> String {
+    match code {
+        SCANCODE_L_AMIGA => "Left Amiga".into(),
+        SCANCODE_R_AMIGA => "Right Amiga".into(),
+        _ => host_name_for_code(code),
+    }
+}
+
+pub(crate) fn amiga_destinations() -> impl Iterator<Item = u8> {
+    AMIGA_KEY_POSITIONS.iter().filter_map(|&(position, code)| {
+        (amiga_key_position(code) == Some(position)).then_some(code)
     })
 }
 
 /// Frontend bindings name physical key positions, excluding derived text commands.
-pub fn frontend_key(name: &str) -> Option<egui::Key> {
+fn frontend_key(name: &str) -> Option<egui::Key> {
     use egui::Key;
     let key = Key::from_name(name)?;
     match key {
@@ -214,9 +300,13 @@ pub fn frontend_key(name: &str) -> Option<egui::Key> {
 
 /// Resolve a frontend binding independently of whether the guest has this key.
 pub fn frontend_key_position(name: &str) -> Option<&'static str> {
-    use egui::Key;
     let key = frontend_key(name)?;
-    Some(match key {
+    Some(frontend_position(key))
+}
+
+fn frontend_position(key: egui::Key) -> &'static str {
+    use egui::Key;
+    match key {
         Key::A => "KeyA",
         Key::B => "KeyB",
         Key::C => "KeyC",
@@ -262,10 +352,19 @@ pub fn frontend_key_position(name: &str) -> Option<&'static str> {
         Key::ArrowLeft => "ArrowLeft",
         Key::ArrowRight => "ArrowRight",
         _ => key.name(),
+    }
+}
+
+pub(crate) fn record_frontend_key(position: &str) -> Option<&'static str> {
+    egui::Key::ALL.iter().find_map(|&key| {
+        let name = key.name();
+        (frontend_key_position(name) == Some(position)).then_some(name)
     })
 }
 
-/// Resolve guest keycodes only for binding conflicts with guest input mappings.
-pub fn frontend_key_code(name: &str) -> Option<u8> {
-    amiga_key_code(frontend_key_position(name)?)
+pub(crate) fn frontend_binding_name(binding: &str) -> String {
+    if binding.is_empty() {
+        return "Unassigned".into();
+    }
+    frontend_key_position(binding).map_or_else(|| "Unrecognized key".into(), host_key_name)
 }

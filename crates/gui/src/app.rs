@@ -264,9 +264,11 @@ impl EmulatorApp {
             }
         }
         if let Some(storage) = cc.storage {
-            if let Some(catalog) =
-                eframe::get_value(storage, crate::player_config::CONFIG_STORAGE_KEY)
-            {
+            if let Some(mut catalog) = eframe::get_value::<crate::player_config::ConfigurationCatalog>(
+                storage,
+                crate::player_config::CONFIG_STORAGE_KEY,
+            ) {
+                app.player.settings_dirty |= catalog.introduce_keyboard_presets();
                 app.player.catalog = catalog;
             }
         }

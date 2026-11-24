@@ -1,7 +1,9 @@
 //! Catalog transaction and stopped owner coordination for the configuration screen.
 
 use crate::app_host::HostEffect;
+use crate::configuration_bindings::BindingRecording;
 use crate::host_commands::{HostCommand, HostValue};
+use crate::input_mapping::GamepadRecording;
 use crate::player::PlayerScreen;
 use crate::player_config::ConfigurationCatalog;
 use crate::{EmulatorApp, ViewMode};
@@ -9,6 +11,10 @@ use crate::{EmulatorApp, ViewMode};
 #[derive(Debug)]
 pub struct ConfigurationEdit {
     pub catalog: ConfigurationCatalog,
+    pub(crate) recording: Option<BindingRecording>,
+    pub(crate) mapping_controller: Option<String>,
+    pub(crate) new_guest_key: u8,
+    pub(crate) expanded_mapping: Option<String>,
     origin: PlayerScreen,
     origin_mode: ViewMode,
     pub(crate) destination: Option<PlayerScreen>,
@@ -16,6 +22,14 @@ pub struct ConfigurationEdit {
     pub(crate) saving: bool,
     ready: bool,
     pub(crate) error: Option<String>,
+}
+
+impl ConfigurationEdit {
+    pub(crate) fn gamepad_recording(&self) -> Option<&GamepadRecording> {
+        self.recording
+            .as_ref()
+            .and_then(|recording| recording.controller.as_ref())
+    }
 }
 
 impl EmulatorApp {
@@ -97,6 +111,10 @@ impl EmulatorApp {
     pub(crate) fn begin_configuration_edit(&mut self) {
         self.player.editor = Some(ConfigurationEdit {
             catalog: self.player.catalog.clone(),
+            recording: None,
+            mapping_controller: None,
+            new_guest_key: crate::host_keys::SCANCODE_ESCAPE,
+            expanded_mapping: None,
             origin: self.player.screen,
             origin_mode: self.view_mode,
             destination: None,
@@ -157,6 +175,7 @@ impl EmulatorApp {
         // A failed session-entry validation keeps a clean editor with its
         // original Cancel destination, rather than opening an editor from itself.
         editor.catalog = self.player.catalog.clone();
+        editor.recording = None;
         editor.destination = None;
         editor.destination_developer = false;
         editor.saving = false;
@@ -176,6 +195,16 @@ impl EmulatorApp {
         let validation = (|| {
             editor.catalog.validate_all()?;
             if let Some(active) = &self.player.active_configuration {
+                for mapping in &self.player.catalog.mappings {
+                    if active.controls.uses_mapping(&mapping.id)
+                        && editor.catalog.mapping(&mapping.id).is_none()
+                    {
+                        return Err(format!(
+                            "{} is still used by the active session ({}).",
+                            mapping.name, active.name
+                        ));
+                    }
+                }
                 let configuration = editor
                     .catalog
                     .configurations

@@ -172,7 +172,7 @@ fn active_running_sessions_deliver_keys_and_keyboard_joystick_with_the_mouse_fre
         window_keys(
             &mut app,
             &ctx,
-            &[("ArrowUp", true, generation), ("Numpad0", true, generation)],
+            &[("ArrowUp", true, generation), ("KeyZ", true, generation)],
         );
         delivered(&mut app, &ctx);
         assert!(fire(&mut app));
@@ -181,14 +181,11 @@ fn active_running_sessions_deliver_keys_and_keyboard_joystick_with_the_mouse_fre
             1
         );
         assert!(!guest_key_held(&mut app, 0x4c));
-        assert!(!guest_key_held(&mut app, 0x0f));
+        assert!(!guest_key_held(&mut app, 0x31));
         window_keys(
             &mut app,
             &ctx,
-            &[
-                ("ArrowUp", false, generation),
-                ("Numpad0", false, generation),
-            ],
+            &[("ArrowUp", false, generation), ("KeyZ", false, generation)],
         );
         delivered(&mut app, &ctx);
         assert!(!fire(&mut app));
@@ -588,6 +585,10 @@ fn owner_snapshot(app: &mut EmulatorApp) -> Box<debugger::A500State> {
 }
 
 fn click_view_toolbar(app: &mut EmulatorApp, ctx: &egui::Context) {
+    let label = match app.view_mode {
+        ViewMode::Developer => "🎮 Game View",
+        ViewMode::ScreenOnly => "Debug View",
+    };
     ctx.enable_accesskit();
     let tree = ui_frame(app, ctx, vec![])
         .platform_output
@@ -597,11 +598,10 @@ fn click_view_toolbar(app: &mut EmulatorApp, ctx: &egui::Context) {
         .nodes
         .iter()
         .find_map(|(id, node)| {
-            node.label()
-                .is_some_and(|label| label.ends_with("View (F12)"))
+            (node.role() == egui::accesskit::Role::Button && node.label() == Some(label))
                 .then_some(*id)
         })
-        .unwrap();
+        .unwrap_or_else(|| panic!("Missing {label} toolbar button"));
     ui_frame(
         app,
         ctx,
@@ -1402,11 +1402,11 @@ fn saved_progress_chooser_blocks_session_input_until_fresh_input_after_close() {
 
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
-fn gamepad_load_discards_pause_from_the_same_sample_until_a_fresh_press() {
-    use egui_kittest::kittest::Queryable;
+fn gamepad_quick_slots_use_press_edges_and_discard_same_sample_pause_on_load() {
     use gui::player_config::{FrontendAction, GamepadShortcut, InputSource, NamedConfiguration};
 
-    const LOAD: usize = 9;
+    const QUICK_SAVE: usize = 4;
+    const QUICK_LOAD: usize = 9;
     const PAUSE: usize = 8;
 
     let mut configuration = NamedConfiguration::default();
@@ -1414,43 +1414,47 @@ fn gamepad_load_discards_pause_from_the_same_sample_until_a_fresh_press() {
         identity: "pad".into(),
         mapping: "arrows".into(),
     };
-    configuration.controls.host.gamepad_shortcuts =
-        [(LOAD, FrontendAction::Load), (PAUSE, FrontendAction::Pause)]
-            .map(|(button, action)| GamepadShortcut {
-                identity: "pad".into(),
-                button,
-                action,
-            })
-            .into();
-    let mut h = saved_progress_harness(configuration);
+    configuration.controls.host.gamepad_shortcuts = [
+        (QUICK_SAVE, FrontendAction::Save),
+        (QUICK_LOAD, FrontendAction::Load),
+        (PAUSE, FrontendAction::Pause),
+    ]
+    .map(|(button, action)| GamepadShortcut {
+        identity: "pad".into(),
+        button,
+        action,
+    })
+    .into();
+    let (app, _) = running_with(ViewMode::ScreenOnly, false, configuration);
+    let mut h = egui_kittest::Harness::builder()
+        .with_size(egui::vec2(1280.0, 900.0))
+        .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
     common::settle_harness(&mut h);
-    assert!(h.state().host.status.running);
-    assert!(h.state().player.captured);
     let generation = h.state().host.status.generation;
     let sender = h.state().host.runtime.as_ref().unwrap().input_sender();
 
     pad_buttons(&sender, generation, &[]);
-    // One poll queues the shortcuts in configuration order, Load before Pause.
-    pad_buttons(&sender, generation, &[LOAD, PAUSE]);
-    common::wait_harness(&mut h, |app| app.player.show_saves);
-    assert!(h.query_by_label("Saved progress").is_some());
+    pad_buttons(&sender, generation, &[QUICK_SAVE]);
+    common::wait_harness(&mut h, |app| app.host.status.quick_slots[0]);
     assert!(h.state().host.status.running);
-    assert!(!h.state().player.captured);
-
-    h.get_by_label("Close").click();
-    common::settle_harness(&mut h);
-    assert!(h.query_by_label("Saved progress").is_none());
-    assert!(h.state().host.status.running);
-    // The same Pause press remains held through dismissal and the next poll.
-    pad_buttons(&sender, generation, &[PAUSE]);
-    common::settle_harness(&mut h);
-    assert!(h.state().host.status.running);
-    assert_eq!(h.state().host.status.generation, generation);
+    assert!(!h.state().player.show_saves);
+    assert!(h.state().file_error.is_none());
 
     pad_buttons(&sender, generation, &[]);
-    pad_buttons(&sender, generation, &[PAUSE]);
-    common::wait_harness(&mut h, |app| !app.host.status.running);
+    pad_buttons(&sender, generation, &[QUICK_LOAD, PAUSE]);
+    common::wait_harness(&mut h, |app| app.host.status.generation > generation);
+    let restored = h.state().host.status.generation;
+    assert!(!h.state().host.status.running);
     assert!(!h.state().player.show_saves);
+    assert!(h.state().file_error.is_none());
+
+    pad_buttons(&sender, restored, &[QUICK_LOAD, PAUSE]);
+    common::settle_harness(&mut h);
+    assert_eq!(h.state().host.status.generation, restored);
+    assert!(!h.state().host.status.running);
+    pad_buttons(&sender, restored, &[]);
+    pad_buttons(&sender, restored, &[PAUSE]);
+    common::wait_harness(&mut h, |app| app.host.status.running);
 }
 
 #[test]

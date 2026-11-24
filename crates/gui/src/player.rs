@@ -136,20 +136,6 @@ impl EmulatorApp {
             .queue(HostCommand::SetDebuggerEnabled(mode == ViewMode::Developer));
     }
 
-    pub(crate) fn apply_frontend_action(&mut self, action: crate::player_config::FrontendAction) {
-        use crate::player_config::FrontendAction;
-        if !matches!(action, FrontendAction::Save | FrontendAction::Debug) {
-            self.player.captured = false;
-        }
-        match action {
-            FrontendAction::Release => {}
-            FrontendAction::Pause => self.toggle_run(),
-            FrontendAction::Save => self.save_player(None),
-            FrontendAction::Load => self.load_player(),
-            FrontendAction::Debug => self.set_view_mode(crate::ViewMode::Developer),
-        }
-    }
-
     pub fn navigate_player(&mut self, screen: PlayerScreen) {
         self.player.captured = false;
         self.host.queue(HostCommand::Pause);

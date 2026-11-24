@@ -5,7 +5,8 @@
 use crate::app::EmulatorApp;
 use crate::app_host::HostEffect;
 use crate::file_actions::FileCompletion;
-use crate::host_commands::{HistoryCommand, HostCommand};
+use crate::host_commands::HostCommand;
+use crate::keyboard_input::KeyCommand;
 use crate::theme::AppTheme;
 
 const ZOOM_SELECTION_TOLERANCE: f32 = 0.01;
@@ -22,7 +23,10 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
 
                 // --- 1. File Menu ---
                 ui.menu_button("File", |ui| {
-                    if ui.button("📁 Load Binary... (Ctrl+O)").clicked() {
+                    if app.shortcut_tooltip(
+                        ui.button("📁 Load Binary..."), KeyCommand::LoadBinary,
+                        "Choose a raw program to load into Amiga memory.",
+                    ).clicked() {
                         app.open_load_binary_dialog();
                         ui.close_kind(egui::UiKind::Menu);
                     }
@@ -53,35 +57,42 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
 
                 // --- 2. State Menu ---
                 ui.menu_button("State", |ui| {
-                    if ui.button("💾 Save State to File... (Ctrl+S)").clicked() {
+                    if app.shortcut_tooltip(
+                        ui.button("💾 Save State to File..."), KeyCommand::SaveState,
+                        "Export a snapshot of the current machine.",
+                    ).clicked() {
                         app.open_save_state_dialog();
                         ui.close_kind(egui::UiKind::Menu);
                     }
 
-                    if ui.button("📂 Load State from File... (Ctrl+L)").clicked() {
+                    if app.shortcut_tooltip(
+                        ui.button("📂 Load State from File..."), KeyCommand::LoadState,
+                        "Choose saved progress or import a machine snapshot.",
+                    ).clicked() {
                         app.open_load_state_dialog();
                         ui.close_kind(egui::UiKind::Menu);
                     }
 
                     ui.separator();
 
-                    if ui.button("⚡ Quick Save Slot 1 (F6)").clicked() {
+                    if app.shortcut_tooltip(
+                        ui.button("⚡ Quick Save Slot 1"), KeyCommand::QuickSave,
+                        "Save current progress to quick slot 1.",
+                    ).clicked() {
                         quick_save_slot(app, 1);
                         ui.close_kind(egui::UiKind::Menu);
                     }
 
-                    let slot1_label = if quick_slot_available(app, 1) {
-                        "🔄 Quick Load Slot 1 (F9)"
+                    let slot1_available = quick_slot_available(app, 1);
+                    let slot1_label = if slot1_available {
+                        "Quick Load Slot 1"
                     } else {
-                        "🔄 Quick Load Slot 1 (Empty)"
+                        "Quick Load Slot 1 (Empty)"
                     };
-                    if ui
-                        .add_enabled(
-                            quick_slot_available(app, 1),
-                            egui::Button::new(slot1_label),
-                        )
-                        .clicked()
-                    {
+                    if app.shortcut_tooltip(
+                        ui.add_enabled(slot1_available, egui::Button::new(slot1_label)),
+                        KeyCommand::QuickLoad, "Restore the state stored in quick slot 1.",
+                    ).on_disabled_hover_text("Quick slot 1 is empty.").clicked() {
                         quick_load_slot(app, 1);
                         ui.close_kind(egui::UiKind::Menu);
                     }
@@ -114,46 +125,36 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
                 let run_label = if app.host.status.pause_pending {
                     "Pausing..."
                 } else if app.host.status.running {
-                    if developer { "⏸ Pause (F5)" } else { "⏹ Stop (F5)" }
+                    if developer { "⏸ Pause" } else { "⏹ Stop" }
                 } else {
-                    "▶ Run (F5)"
+                    "▶ Run"
                 };
                 let run_button = egui::Button::new(run_label).fill(if app.host.status.running {
                     egui::Color32::from_rgb(180, 140, 20)
                 } else {
                     egui::Color32::from_rgb(34, 139, 34)
                 });
-                if ui.add_enabled(!app.host.status.pause_pending, run_button)
-                    .on_hover_text("Run at the selected PAL/NTSC speed, or pause after the current video field completes (F5).")
+                if app.shortcut_tooltip(
+                    ui.add_enabled(!app.host.status.pause_pending, run_button), KeyCommand::Pause,
+                    app.execution_help(),
+                ).on_disabled_hover_text("Waiting for the machine owner to finish pausing.")
                     .clicked() {
-                    app.toggle_run();
+                    app.apply_key_command(KeyCommand::Pause, ctx);
                 }
 
                 if developer {
-                    if ui.add_enabled(!app.host.status.running && app.host.can_edit(), egui::Button::new("⏭ Step Inst (F10)"))
-                        .on_hover_text("Execute the current CPU instruction, even at a breakpoint. The image may be partway through a field.")
-                        .clicked() {
-                        app.disassembly_view_addr = None;
-                        app.host.queue(HostCommand::StepInstruction);
-                    }
-
-                    if ui.add_enabled(!app.host.status.running && app.host.can_edit(), egui::Button::new("⏯ Step CCK (F11)"))
-                        .on_hover_text("Advance the entire machine by one Color Clock. The image may be partway through a field.")
-                        .clicked() {
-                        app.disassembly_view_addr = None;
-                        app.host.queue(HostCommand::StepCck);
-                    }
-
-                    if ui.add_enabled(!app.host.status.running && app.host.can_edit(), egui::Button::new("Step Frame (Shift+F11)"))
-                        .on_hover_text("Advance to the next completed PAL/NTSC video field and pause, including while the CPU is stopped. Breakpoints and CPU halts take precedence.")
-                        .clicked() {
-                        app.disassembly_view_addr = None;
-                        app.host.queue(HostCommand::StepField);
-                    }
-
-                    if ui.add_enabled(!app.host.status.running && app.host.can_edit(), egui::Button::new("⏮ Rewind (Shift+F10)")).clicked() {
-                        app.disassembly_view_addr = None;
-                        app.host.queue(HostCommand::History(HistoryCommand::Backward));
+                    let can_step = !app.host.status.running && app.host.can_edit();
+                    for (label, action, description) in [
+                        ("⏭ Step Inst", KeyCommand::StepInstruction, "Execute the current CPU instruction, even at a breakpoint. The image may be partway through a field."),
+                        ("⏯ Step CCK", KeyCommand::StepCck, "Advance the entire machine by one Color Clock. The image may be partway through a field."),
+                        ("Step Frame", KeyCommand::StepField, "Advance to the next completed PAL/NTSC video field and pause, including while the CPU is stopped. Breakpoints and CPU halts take precedence."),
+                        ("⏮ Rewind", KeyCommand::HistoryBack, "Go back one instruction in the recorded history."),
+                    ] {
+                        if app.shortcut_tooltip(
+                            ui.add_enabled(can_step, egui::Button::new(label)), action, description,
+                        ).on_disabled_hover_text("Pause the machine before using this control.").clicked() {
+                            app.apply_key_command(action, ctx);
+                        }
                     }
                 }
 
@@ -259,9 +260,10 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
                 egui::ComboBox::from_id_salt("zoom_selector")
                     .selected_text(format!("{:.0}%", zoom * 100.0))
                     .show_ui(ui, |ui| {
-                        if ui
-                            .selectable_label((zoom - 1.0).abs() < ZOOM_SELECTION_TOLERANCE, "100%")
-                            .clicked()
+                        if app.shortcut_tooltip(
+                            ui.selectable_label((zoom - 1.0).abs() < ZOOM_SELECTION_TOLERANCE, "100%"),
+                            KeyCommand::NormalZoom, "Restore normal interface size.",
+                        ).clicked()
                         {
                             ctx.set_zoom_factor(1.0);
                         }
@@ -305,9 +307,11 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
                 ui.separator();
 
                 // --- 6. View Mode Toggle ---
-                if ui
-                    .button(if developer { "🎮 Game View (F12)" } else { "Debug View (F12)" })
-                    .on_hover_text("Switch views and release held gameplay controls. Returning to Debug requests a pause at the next completed field. The middle mouse button frees only the mouse.")
+                if app.shortcut_tooltip(
+                    ui.button(if developer { "🎮 Game View" } else { "Debug View" }),
+                    KeyCommand::ToggleView,
+                    "Switch views and release held gameplay controls. Returning to Debug pauses at the next completed field. The middle mouse button frees only the mouse.",
+                )
                     .clicked()
                 {
                     app.set_view_mode(if developer { crate::ViewMode::ScreenOnly } else { crate::ViewMode::Developer });
@@ -325,7 +329,7 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
         });
         if let Some(configuration) = &app.player.active_configuration {
             if !configuration.controls.host.frontend.release.is_empty() {
-                ui.small(format!("Mouse release key: {}", configuration.controls.host.frontend.release));
+                ui.small(format!("Mouse release key: {}", crate::host_keys::frontend_binding_name(&configuration.controls.host.frontend.release)));
             }
         }
             });

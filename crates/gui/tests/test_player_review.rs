@@ -290,7 +290,15 @@ fn gamepad_save_preserves_capture_generation_and_held_contacts() {
     assert!(app.player.captured);
     assert!(app.host.status.running);
     assert_eq!(app.host.status.generation, generation);
-    let json = std::fs::read_to_string(&app.player.saves[0].path).unwrap();
+    let save_path = &app.player.saves[0].path;
+    let slot_name = std::fs::read_to_string(save_path.with_file_name("slot-1.txt"))
+        .expect("Controller Quick save did not publish slot 1");
+    assert_eq!(
+        slot_name.trim(),
+        save_path.file_name().unwrap().to_str().unwrap(),
+        "Quick slot 1 must point to the new save"
+    );
+    let json = std::fs::read_to_string(save_path).unwrap();
     let saved = debugger::SaveState::from_json(&json).unwrap();
     assert!(saved.state.game_ports.fire1_port1());
     assert!(saved.state.game_ports.fire1_port2());

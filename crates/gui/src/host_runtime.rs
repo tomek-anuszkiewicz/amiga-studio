@@ -5,6 +5,7 @@ use crate::host_failure::HostFailure;
 use crate::host_input::{HostInputEvent, InputQueue};
 use crate::host_owner::MachineOwner;
 use crate::host_video::{FrameInfo, VideoExchange, VideoExchangeError, VideoRead};
+use crate::input_mapping::{GamepadRecorder, GamepadSample};
 use std::collections::VecDeque;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, TryLockError};
@@ -29,6 +30,8 @@ struct Mailboxes {
     frontend_enabled: bool,
     gamepad_enabled: bool,
     mapping: crate::input_mapping::InputMapping,
+    gamepad_samples: Vec<GamepadSample>,
+    gamepad_recorder: Option<GamepadRecorder>,
     input_generation: u64,
     #[cfg(not(target_arch = "wasm32"))]
     gamepads_started_at: std::time::SystemTime,
@@ -57,11 +60,15 @@ impl Mailboxes {
                 name: pad.name.clone(),
             })
             .collect();
+        let recording_change = self
+            .gamepad_recorder
+            .as_mut()
+            .is_some_and(|recorder| recorder.sample(&samples, frontend_allowed));
         let devices_changed = self.mapping.available != devices;
         for event in self.mapping.update_devices(devices) {
             self.push_input(event);
         }
-        for sample in samples {
+        for sample in &samples {
             self.mapping.frontend_gamepad(
                 &sample.identity,
                 &sample.buttons,
@@ -78,7 +85,8 @@ impl Mailboxes {
                 }
             }
         }
-        devices_changed || self.mapping.actions.len() != actions_before
+        self.gamepad_samples = samples;
+        devices_changed || recording_change || self.mapping.actions.len() != actions_before
     }
 
     fn resolve_input(&mut self, event: HostInputEvent) {
@@ -178,6 +186,8 @@ impl HostRuntime {
                 frontend_enabled: false,
                 gamepad_enabled: false,
                 mapping: Default::default(),
+                gamepad_samples: Vec::new(),
+                gamepad_recorder: None,
                 input_generation: status.generation,
                 #[cfg(not(target_arch = "wasm32"))]
                 gamepads_started_at: std::time::SystemTime::now(),

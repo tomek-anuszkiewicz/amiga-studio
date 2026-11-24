@@ -402,8 +402,13 @@ impl crate::EmulatorApp {
         if self.keyboard_policy(ctx).frontend_active() {
             if let Some(runtime) = &self.host.runtime {
                 for action in runtime.input_sender().take_frontend_actions() {
-                    self.apply_frontend_action(action);
-                    if self.player.show_saves {
+                    use crate::player_config::FrontendAction;
+                    if action == FrontendAction::Debug {
+                        self.set_view_mode(crate::ViewMode::Developer);
+                    } else {
+                        self.apply_key_command(action.into(), ctx);
+                    }
+                    if action == FrontendAction::Load {
                         break;
                     }
                 }
@@ -450,6 +455,14 @@ impl crate::EmulatorApp {
         let frontend = policy.frontend_active();
         crate::keyboard_input::with_inbox(ctx, |inbox| {
             inbox.set_policy(policy, self.host.status.generation);
+            if !self.player.editor.as_ref().is_some_and(|editor| {
+                editor
+                    .recording
+                    .as_ref()
+                    .is_some_and(|recording| recording.controller.is_none())
+            }) {
+                inbox.stop_recording();
+            }
         });
 
         if self.host.error.is_some() {
@@ -474,6 +487,10 @@ impl crate::EmulatorApp {
                     gameplay,
                     Some(frontend),
                     self.host.view_release_generation,
+                    self.player
+                        .editor
+                        .as_ref()
+                        .and_then(|editor| editor.gamepad_recording()),
                 );
             self.host.activation_pending = !configuration_applied || !activation_applied;
             if self.host.activation_pending {

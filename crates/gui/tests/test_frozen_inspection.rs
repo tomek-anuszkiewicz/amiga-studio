@@ -30,7 +30,9 @@ fn texts(output: &egui::FullOutput) -> Vec<String> {
         match shape {
             egui::Shape::Text(text) => {
                 let label = text.galley.text();
-                if !label.contains("(F5)") && !label.contains(" ● [") && !label.starts_with("FPS:")
+                if !matches!(label, "▶ Run" | "⏸ Pause" | "⏹ Stop")
+                    && !label.contains(" ● [")
+                    && !label.starts_with("FPS:")
                 {
                     texts.push(label.to_owned());
                 }
@@ -82,7 +84,7 @@ fn run_retains_inspector_text_and_rows_until_stop_then_steps_refresh() {
     let before = texts(harness.output());
     assert!(before.iter().any(|s| s == "$00112233"));
     assert!(before.iter().any(|s| s.starts_with("00003000:")));
-    harness.get_by_label("▶ Run (F5)").click_accesskit();
+    harness.get_by_label("▶ Run").click_accesskit();
     common::wait_harness(&mut harness, |app| app.host.status.running);
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
     loop {
@@ -141,7 +143,7 @@ fn run_retains_inspector_text_and_rows_until_stop_then_steps_refresh() {
         .is_empty());
     assert_same_text(texts(harness.output()), before.clone());
 
-    harness.get_by_label("⏸ Pause (F5)").click_accesskit();
+    harness.get_by_label("⏸ Pause").click_accesskit();
     harness.run_steps(2);
     common::settle_harness(&mut harness);
     common::wait_harness(&mut harness, |app| !app.host.status.running);
@@ -394,7 +396,7 @@ fn run_keeps_an_open_editor_inactive_across_keyboard_input_and_resize() {
     common::settle_harness(&mut harness);
     assert!(!harness.state().host.status.running);
     assert_eq!(common::read_cpu(harness.state_mut()).d_long(7), 0);
-    harness.get_by_label("▶ Run (F5)").click_accesskit();
+    harness.get_by_label("▶ Run").click_accesskit();
     harness.run_steps(2);
     common::settle_harness(&mut harness);
     assert!(harness.state().host.status.running);
@@ -434,7 +436,7 @@ fn binary_load_during_run_retains_inspectors_until_the_owner_stops() {
             inspection_app(),
         );
     common::settle_harness(&mut harness);
-    harness.get_by_label("\u{25b6} Run (F5)").click_accesskit();
+    harness.get_by_label("\u{25b6} Run").click_accesskit();
     common::wait_harness(&mut harness, |app| app.host.status.running);
     let generation = harness.state().host.status.generation;
     harness.state_mut().pending_binary = Some(gui::BinarySource::Bytes {
@@ -454,9 +456,7 @@ fn binary_load_during_run_retains_inspectors_until_the_owner_stops() {
     );
     assert!(!harness.state().load_binary_modal_open);
     harness.get_by_label("$00112233");
-    harness
-        .get_by_label("\u{23f8} Pause (F5)")
-        .click_accesskit();
+    harness.get_by_label("\u{23f8} Pause").click_accesskit();
     common::wait_harness(&mut harness, |app| !app.host.status.running);
     let data = harness.state().host.data.as_ref().unwrap();
     assert_eq!(data.memory.read_word_debug(0x4000), 0x4e71);

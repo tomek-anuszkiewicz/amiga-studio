@@ -1,5 +1,6 @@
 //! Library, manual setup and compact gameplay controls.
 
+use crate::keyboard_input::KeyCommand;
 use crate::player::{PlayerScreen, SessionDisk};
 use crate::{EmulatorApp, ViewMode};
 
@@ -48,6 +49,7 @@ impl EmulatorApp {
                 PlayerScreen::Session => {}
             });
         });
+        self.render_binding_recording(ctx);
     }
 
     pub(crate) fn configuration_selector(&mut self, ui: &mut egui::Ui) {
@@ -211,15 +213,16 @@ impl EmulatorApp {
         } else {
             "Resume"
         };
-        if ui
-            .add_enabled(!self.player.busy, egui::Button::new(execution_label))
-            .on_hover_text(
-                "Pause at the field boundary or resume the same machine and mounted media.",
+        if self
+            .shortcut_tooltip(
+                ui.add_enabled(!self.player.busy, egui::Button::new(execution_label)),
+                KeyCommand::Pause,
+                self.execution_help(),
             )
+            .on_disabled_hover_text("Wait for the current operation to finish.")
             .clicked()
         {
-            self.player.captured = false;
-            self.toggle_run();
+            self.apply_key_command(KeyCommand::Pause, ui.ctx());
         }
         #[cfg(not(target_arch = "wasm32"))]
         let library_game = self.player.active_game.is_some();
@@ -238,18 +241,21 @@ impl EmulatorApp {
             self.reset_player();
         }
         ui.horizontal(|ui| {
-            if ui
-                .add_enabled(!self.player.busy, egui::Button::new("Save"))
-                .on_hover_text("Capture the current machine and preview; associated desktop games create a new durable save.")
-                .clicked()
-            {
+            let save = ui.add_enabled(!self.player.busy, egui::Button::new("Save"));
+            let description = "Capture the current machine and preview. For desktop library games, create a new save.";
+            let save = if library_game {
+                save.on_hover_text(description).on_disabled_hover_text(description)
+            } else {
+                self.shortcut_tooltip(save, KeyCommand::SaveState, description)
+            };
+            if save.clicked() {
                 self.save_player(None);
             }
-            if ui
-                .add_enabled(!self.player.busy, egui::Button::new("Load"))
-                .on_hover_text("Choose saved progress for this game, or import a snapshot file in manual mode.")
-                .clicked()
-            {
+            if self.shortcut_tooltip(
+                ui.add_enabled(!self.player.busy, egui::Button::new("Load")),
+                KeyCommand::LoadState,
+                "Choose saved progress for this game, or import a snapshot file in manual mode.",
+            ).on_disabled_hover_text("Wait for the current operation to finish.").clicked() {
                 self.load_player();
             }
             #[cfg(not(target_arch = "wasm32"))]
@@ -280,7 +286,14 @@ impl EmulatorApp {
         if ui.button("Setup").clicked() {
             self.navigate_player(PlayerScreen::Setup);
         }
-        if ui.button("Debug").clicked() {
+        if self
+            .shortcut_tooltip(
+                ui.button("Debug"),
+                KeyCommand::ToggleView,
+                "Open Developer Studio and pause at the next completed field.",
+            )
+            .clicked()
+        {
             self.player.captured = false;
             self.set_view_mode(ViewMode::Developer);
         }
@@ -426,7 +439,7 @@ impl EmulatorApp {
                 preview(ui, ("save", &save.path), &save.header.screenshot_png, 110.0);
                 if ui
                     .button(format!(
-                        "Continue - {}",
+                        "Load state - {}",
                         crate::host_clock::format_utc(save.header.timestamp)
                     ))
                     .clicked()

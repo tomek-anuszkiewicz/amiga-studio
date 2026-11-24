@@ -8,28 +8,18 @@ ADF images, then choose Start. You can leave drives empty.
 
 Each configuration combines one of the three supported memory presets with a
 PAL/NTSC setting, ROM, attached drives and input mappings. DF0 is always attached.
-You can attach external drives as needed. Configure the devices before you choose
-their host input sources. Keyboard mappings use physical Amiga key positions in
-hexadecimal. By default, the joystick uses the arrow keys, numpad 0 and numpad
-decimal. When you select a controller, the app binds that specific connection.
-If the connection is unavailable, reassign it. After reconnecting a controller
-or after the app loses focus, release any held controller inputs before using
-them again.
+You can attach external drives as needed. Choose a device and its host source
+for each port. Use the [player controls guide](player/README.md) to record
+bindings and choose a keyboard joystick preset. The app binds the controller
+connection you select. If it becomes unavailable, select an available
+controller. After reconnecting or returning focus to the app, release any
+held controller inputs before using them again.
 
-The keyboard works as soon as the running session is active. Click the Amiga
-display to capture the mouse. The middle mouse button frees the mouse while
-play continues. You can assign a mouse release key in Configurations, where
-it starts unassigned. F12 switches between Game and Debug views. F5 pauses or resumes, F6 saves to slot 1, and F9 loads slot 1. You can
-reassign those three keys. Use the interface to reset. Reset has no keyboard
-shortcut. Escape and F2 otherwise reach the Amiga. The browser still uses Escape
-to release pointer lock. Host text editors and dialogs take priority over
-guest input.
-
-Gamepads work in an active, running session even without capture. Configuration
-screens and inactive app windows disable gameplay input. The right player panel
-shows activity and has four disk dropdowns, plus controls for ejecting,
-pausing/resuming, resetting and saving/loading. Small windows move these controls
-below the display. Debug uses the same machine.
+Keyboard and controller input work as soon as the running session is active.
+Configuration screens, text editors and dialogs own their input while in use.
+The player panel shows drive activity and has controls to swap disks, pause,
+reset, save and load. Small windows move these controls below the display.
+Developer Studio uses the same machine.
 
 ## Add or edit a desktop game
 
@@ -96,7 +86,7 @@ relative media paths valid. Another installation must
 supply its own configuration and ROM.
 
 Save creates a new file in the game's `saves/` directory with a preview and a UTC
-creation time. Continue restores the saved hardware, ROM and current media
+creation time. **Load state** restores the saved hardware, ROM and current media
 directly and resumes the session. It bypasses boot and the current hardware
 preset. Host input still needs a compatible configuration. Slot saves also
 persist per game.

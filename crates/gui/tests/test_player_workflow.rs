@@ -260,12 +260,12 @@ fn library_continue_restores_selected_games_save_instead_of_active_game() {
     h.get_by_label("one").click_accesskit();
     common::settle_harness(&mut h);
     assert_eq!(h.state().player.saves.len(), 1);
-    h.get_by_label_contains("Continue - ").click_accesskit();
+    h.get_by_label_contains("Load state - ").click_accesskit();
     common::settle_harness(&mut h);
     h.get_by_label("Keep current session").click_accesskit();
     common::settle_harness(&mut h);
     assert_eq!(common::snapshot(h.state_mut()), before);
-    h.get_by_label_contains("Continue - ").click_accesskit();
+    h.get_by_label_contains("Load state - ").click_accesskit();
     common::settle_harness(&mut h);
     h.get_by_label("Replace session").click_accesskit();
     common::settle_harness(&mut h);
@@ -324,7 +324,7 @@ fn library_continue_uses_the_selected_configuration_when_two_roots_reuse_a_game_
     common::settle_harness(&mut h);
     h.get_by_label("one").click_accesskit();
     common::settle_harness(&mut h);
-    h.get_by_label_contains("Continue - ").click_accesskit();
+    h.get_by_label_contains("Load state - ").click_accesskit();
     common::settle_harness(&mut h);
     h.get_by_label("Replace session").click_accesskit();
     common::settle_harness(&mut h);
@@ -568,7 +568,7 @@ fn player_disk_selection_and_ejection_publish_only_acknowledged_mounts() {
     common::settle_harness(&mut h);
     h.get_by_label("State").click_accesskit();
     common::settle_harness(&mut h);
-    h.get_by_label_contains("Quick Load Slot 1 (F9)")
+    h.get_by_label_contains("Quick Load Slot 1")
         .click_accesskit();
     common::settle_harness(&mut h);
     h.get_by_label("Replace session").click_accesskit();
@@ -1196,7 +1196,7 @@ fn saved_progress_selection_restores_only_after_replacement_is_confirmed() {
         h.get_by_label("Resume").click();
         common::settle_harness(h);
         assert!(!h.state().host.status.running);
-        h.get_by_label_contains("Continue - ").click();
+        h.get_by_label_contains("Load state - ").click();
         common::settle_harness(h);
         assert!(h.query_by_label("Saved progress").is_none());
         assert!(h.query_by_label("Replace session").is_some());
@@ -1658,7 +1658,7 @@ fn screenshot_button_is_available_in_library_game_view_only() {
     let mut h = session_harness(app);
     common::wait_harness(&mut h, |app| app.player.active_game.is_some());
     assert!(!h.get_by_label("Screenshot").accesskit_node().is_disabled());
-    h.get_by_label("Debug View (F12)").click_accesskit();
+    h.get_by_label("Debug View").click_accesskit();
     common::settle_harness(&mut h);
     assert_eq!(h.state().view_mode, ViewMode::Developer);
     assert!(h.query_by_label("Screenshot").is_none());
