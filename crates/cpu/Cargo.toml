@@ -11,8 +11,9 @@ path = "src/cpu.rs"
 config = { workspace = true }
 physical_memory = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
+
+[dev-dependencies]
 serde_json = { workspace = true }
-bitflags = { workspace = true }
 
 [lints]
 workspace = true

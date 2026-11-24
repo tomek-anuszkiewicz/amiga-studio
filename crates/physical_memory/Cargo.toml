@@ -11,6 +11,8 @@ path = "src/physical_memory.rs"
 config = { workspace = true }
 rtc = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
+
+[dev-dependencies]
 serde_json = { workspace = true }
 
 [lints]
