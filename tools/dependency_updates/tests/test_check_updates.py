@@ -9,17 +9,19 @@ import json
 import os
 from pathlib import Path
 import shutil
+import subprocess
 import sys
 from tempfile import TemporaryDirectory
 from threading import Event, Thread
+from time import monotonic
 from types import SimpleNamespace
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import ANY, Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import check_updates
 from dependency_updates import browsers, cargo, common, docker_tools, node_packages, python_packages, setup_tools
-from dependency_updates.common import Area, Finding, ProbeError, Probes, Report
+from dependency_updates.common import Area, CommandFailed, Finding, ProbeError, Probes, Report
 
 
 def rendered(area):
@@ -176,7 +178,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 """)
         before = lock.read_bytes()
 
-        def http(url, accept):
+        def http(url, accept, *, batch):
             self.assertEqual((url, accept), ("https://index.crates.io/le/mm/lemma", "text/plain"))
             return "\n".join(json.dumps({"name": "lemma", "vers": version, "yanked": yanked})
                              for version, yanked in [("1.3.0", False), ("2.2.0", False),
@@ -246,7 +248,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
              patch.object(self.probe, "run", return_value="Locking 0 packages") as run:
             cargo.check_crates(area, self.probe, self.tracked)
         run.assert_not_called()
-        http.assert_called_once_with("https://index.crates.io/le/mm/lemma", "text/plain")
+        http.assert_called_once_with("https://index.crates.io/le/mm/lemma", "text/plain", batch=ANY)
         self.assertEqual(area.counts, {"pin review": 1, "inconclusive": 1})
         self.assertIn(Finding("pin review", "lemma", observed="1.0.0", declared="1.0", candidate="2.0.0",
                               source=cargo.CRATES_INDEX, context="top"), area.findings)
@@ -281,7 +283,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
               patch.object(self.probe, "http", side_effect=ProbeError("fixture index unavailable")) as http,
               patch.object(self.probe, "run", return_value="Locking 0 packages") as run):
             cargo.check_crates(area, self.probe, self.tracked)
-        http.assert_called_once_with("https://index.crates.io/eg/ui/egui", "text/plain")
+        http.assert_called_once_with("https://index.crates.io/eg/ui/egui", "text/plain", batch=ANY)
         self.assertEqual(run.call_args.args[0][:4], ["cargo", "+stable", "update", "--dry-run"])
         self.assertEqual(area.counts, {"inconclusive": 2, "current": 2})
         self.assertIn("egui (gui) 0.32.3 (fixture index unavailable)", rendered(area))
@@ -313,7 +315,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
                       patch.object(self.probe, "http", side_effect=[response]) as http,
                       patch.object(self.probe, "run", return_value="Locking 0 packages")):
                     cargo.check_crates(area, self.probe, self.tracked)
-                http.assert_called_once_with("https://index.crates.io/le/mm/lemma", "text/plain")
+                http.assert_called_once_with("https://index.crates.io/le/mm/lemma", "text/plain", batch=ANY)
                 self.assertEqual(area.counts, {"inconclusive": 1})
                 self.assertEqual([(row.item, row.context, row.observed, row.detail) for row in area.findings],
                                  [("lemma", "top", "1.2.3-rc.1", reason)])
@@ -765,17 +767,19 @@ exports.registry = {{
         nightly = "nightly-x86_64-pc-windows-msvc"
         stable_source = "https://static.rust-lang.org/dist/channel-rust-stable.toml"
         nightly_source = "https://static.rust-lang.org/dist/channel-rust-nightly.toml"
-        local = ["rustc 1.99.0 (abc123 2026-10-01)", "rustc 1.102.0-nightly (aabbcc 2026-11-13)"]
+        host = "x86_64-pc-windows-msvc"
+        local = [f"rustc 1.99.0 (abc123 2026-10-01)\nhost: {host}",
+                 f"rustc 1.102.0-nightly (aabbcc 2026-11-13)\nhost: {host}"]
         remote = ['[pkg.rust]\nversion = "1.100.0 (def456 2026-11-09)"\n',
                   '[pkg.rust]\nversion = "1.102.0-nightly (ddeeff 2026-11-15)"\n']
         with (patch.object(self.probe, "run", side_effect=local) as run,
               patch.object(self.probe, "http", side_effect=remote) as http,
               patch.object(setup_tools, "rust_components")):
-            setup_tools.rust_one_channel(area, self.probe, "stable", stable, "Stable setup fixture")
-            setup_tools.rust_one_channel(area, self.probe, "nightly", nightly, "Nightly setup fixture")
+            setup_tools.check_rust_toolchain(area, self.probe, stable, native=True, browser=False)
+            setup_tools.check_rust_toolchain(area, self.probe, nightly, native=False, browser=True)
         self.assertEqual([call.args[0] for call in run.call_args_list], [
-            ["rustup", "run", stable, "rustc", "--version"],
-            ["rustup", "run", nightly, "rustc", "--version"],
+            ["rustup", "run", stable, "rustc", "--version", "--verbose"],
+            ["rustup", "run", nightly, "rustc", "--version", "--verbose"],
         ])
         self.assertEqual([call.args for call in http.call_args_list], [
             (stable_source, "text/plain"), (nightly_source, "text/plain"),
@@ -787,6 +791,159 @@ exports.registry = {{
         ])
         self.assertEqual(rendered(area).count("Rust Stable 1.99.0"), 1)
 
+    def rust_role_report(self, native, browser, versions, components, targets):
+        area = Area("Rust toolchains and Cargo tools")
+
+        def run(command, *, env=None):
+            if command == ["rustup", "show", "active-toolchain"]:
+                self.assertIn(env, (None, {"RUSTUP_TOOLCHAIN": "nightly"}))
+                selection = browser if env else native
+                if isinstance(selection, ProbeError):
+                    raise selection
+                return selection
+            if command[:2] == ["rustup", "run"]:
+                selected = command[2]
+                self.assertIn(selected, versions)
+                if command[3] == "rustc":
+                    self.assertEqual(command[4:], ["--version", "--verbose"])
+                    return f"rustc {versions[selected]}\nhost: x86_64-pc-windows-msvc"
+                return ""
+            if command[:1] == ["rustup"] and command[1] in {"component", "target"}:
+                self.assertEqual(command[2:-1], ["list", "--installed", "--toolchain"])
+                installed = components if command[1] == "component" else targets
+                return "\n".join(installed[command[-1]])
+            self.fail(f"unexpected command {command!r}")
+
+        def release(url, accept):
+            self.assertEqual(accept, "text/plain")
+            version = {
+                "https://static.rust-lang.org/dist/channel-rust-stable.toml": "1.100.0",
+                "https://static.rust-lang.org/dist/channel-rust-nightly.toml": "1.102.0-nightly (ddeeff 2026-11-15)",
+            }[url]
+            return f'[pkg.rust]\nversion = "{version}"\n'
+
+        with (patch.object(self.probe, "run", side_effect=run) as commands,
+              patch.object(self.probe, "http", side_effect=release) as requests,
+              patch.object(setup_tools, "check_rustup"),
+              patch.object(setup_tools, "check_tool_release", return_value=setup_tools.NEXTEST_BASELINE)):
+            setup_tools.check_rust(area, self.probe, self.tracked)
+        releases = [call.args[0] for call in requests.call_args_list]
+        selection_environments = [call.kwargs.get("env") for call in commands.call_args_list
+                                  if call.args[0] == ["rustup", "show", "active-toolchain"]]
+        self.assertEqual(selection_environments, [None, {"RUSTUP_TOOLCHAIN": "nightly"}])
+        return area, [call.args[0] for call in commands.call_args_list], releases
+
+    def test_rust_probes_only_the_selected_native_and_browser_toolchains(self):
+        host = "x86_64-pc-windows-msvc"
+        stable = f"stable-{host}"
+        nightly = f"nightly-{host}"
+        other_stable = "stable-i686-pc-windows-msvc"
+        dated = f"nightly-2026-11-11-{host}"
+        versions = {
+            stable: "1.100.0",
+            nightly: "1.102.0-nightly (aabbcc 2026-11-13)",
+            other_stable: "1.99.0",
+            dated: "1.102.0-nightly (d0d0d0 2026-11-10)",
+        }
+        area, commands, releases = self.rust_role_report(
+            f"{stable} (default)", f"{nightly} (overridden by environment variable RUSTUP_TOOLCHAIN)",
+            {**versions, "stable": versions[other_stable], "nightly": versions[dated]},
+            {stable: ["cargo", "clippy", "rustfmt", "llvm-tools-preview"], nightly: ["cargo", "rust-src"],
+             "stable": [], "nightly": []},
+            {stable: [host], nightly: ["wasm32-unknown-unknown"], "stable": [], "nightly": []},
+        )
+
+        self.assertCountEqual([tuple(command) for command in commands], [
+            ("rustup", "show", "active-toolchain"),
+            ("rustup", "show", "active-toolchain"),
+            ("rustup", "run", stable, "rustc", "--version", "--verbose"),
+            ("rustup", "component", "list", "--installed", "--toolchain", stable),
+            ("rustup", "target", "list", "--installed", "--toolchain", stable),
+            ("rustup", "run", stable, "cargo", "--version"),
+            ("rustup", "run", stable, "cargo", "clippy", "--version"),
+            ("rustup", "run", stable, "rustfmt", "--version"),
+            ("rustup", "run", nightly, "rustc", "--version", "--verbose"),
+            ("rustup", "component", "list", "--installed", "--toolchain", nightly),
+            ("rustup", "target", "list", "--installed", "--toolchain", nightly),
+            ("rustup", "run", nightly, "cargo", "--version"),
+        ])
+        self.assertEqual(releases, [
+            "https://static.rust-lang.org/dist/channel-rust-stable.toml",
+            "https://static.rust-lang.org/dist/channel-rust-nightly.toml",
+        ])
+        self.assertEqual([(row.item, row.status) for row in area.findings], [("Rust Nightly", "update")])
+        report = rendered(area)
+        self.assertNotIn("1.100.0", report)
+        self.assertIn("Rust Nightly 1.102.0-nightly (2026-11-13) -> 1.102.0-nightly (2026-11-15)", report)
+
+    def test_rust_checks_combined_requirements_once_for_a_shared_nightly(self):
+        nightly = "nightly-x86_64-pc-windows-msvc"
+        area, commands, releases = self.rust_role_report(
+            f"{nightly} (default)", f"{nightly} (overridden by environment variable RUSTUP_TOOLCHAIN)",
+            {nightly: "1.102.0-nightly (aabbcc 2026-11-13)"}, {nightly: ["rustfmt"]}, {nightly: []},
+        )
+        self.assertEqual(releases, ["https://static.rust-lang.org/dist/channel-rust-nightly.toml"])
+        self.assertEqual(commands.count(["rustup", "run", nightly, "rustc", "--version", "--verbose"]), 1)
+        self.assertEqual(commands.count(["rustup", "run", nightly, "rustfmt", "--version"]), 1)
+        self.assertEqual(commands.count(["rustup", "component", "list", "--installed", "--toolchain", nightly]), 1)
+        self.assertEqual(commands.count(["rustup", "target", "list", "--installed", "--toolchain", nightly]), 1)
+        self.assertCountEqual([(row.status, row.item) for row in area.findings], [
+            ("update", "Rust Nightly"),
+            ("missing", "Rust Nightly cargo"),
+            ("missing", "Rust Nightly clippy"),
+            ("missing", "Rust Nightly llvm-tools-preview"),
+            ("missing", "Rust Nightly rust-src"),
+            ("missing", "Rust Nightly target wasm32-unknown-unknown"),
+            ("missing", "Rust Nightly target x86_64-pc-windows-msvc"),
+        ])
+        self.assertEqual(rendered(area).count("Rust Nightly cargo not installed"), 1)
+
+    def test_rust_compares_browser_nightly_independently_of_a_pinned_or_custom_native_toolchain(self):
+        nightly = "nightly-x86_64-pc-windows-msvc"
+        host = "x86_64-pc-windows-msvc"
+        for native, compiler in ((f"1.98.0-{host}", "1.98.0"), ("linked build", "1.98.0-dev+branch.1")):
+            with self.subTest(native=native):
+                area, commands, releases = self.rust_role_report(
+                    f"{native} (default)", nightly,
+                    {native: compiler, nightly: "1.102.0-nightly (aabbcc 2026-11-13)"},
+                    {native: ["cargo", "clippy", "rustfmt", "llvm-tools-preview"], nightly: ["cargo", "rust-src"]},
+                    {native: [host], nightly: ["wasm32-unknown-unknown"]},
+                )
+                self.assertEqual(releases, ["https://static.rust-lang.org/dist/channel-rust-nightly.toml"])
+                self.assertIn(["rustup", "run", native, "cargo", "--version"], commands)
+                self.assertIn(["rustup", "target", "list", "--installed", "--toolchain", native], commands)
+                self.assertCountEqual([(row.status, row.item, row.observed) for row in area.findings], [
+                    ("inconclusive", f"Rust native toolchain {native}", compiler),
+                    ("update", "Rust Nightly", "1.102.0-nightly (2026-11-13)"),
+                ])
+                self.assertIn("this selection has no rolling Stable or Nightly release comparison", rendered(area))
+
+    def test_rust_keeps_the_other_toolchain_result_after_an_unavailable_selection(self):
+        stable = "stable-x86_64-pc-windows-msvc"
+        nightly = "nightly-x86_64-pc-windows-msvc"
+        absent = CommandFailed(
+            1, f"error: override toolchain '{nightly}' is not installed: "
+               "the RUSTUP_TOOLCHAIN environment variable specifies an uninstalled toolchain\n",
+        )
+        for native, browser, successful, channel, unavailable, status in (
+            (stable, absent, stable, "stable", "browser Nightly", "missing"),
+            (CommandFailed(1, "private fixture diagnostic"), nightly, nightly, "nightly", "native", "inconclusive"),
+            (f"{stable}\n{nightly}", nightly, nightly, "nightly", "native", "inconclusive"),
+        ):
+            with self.subTest(native=native, browser=browser):
+                area, commands, releases = self.rust_role_report(
+                    native, browser,
+                    {successful: "1.99.0" if channel == "stable" else "1.102.0-nightly (aabbcc 2026-11-13)"},
+                    {successful: ["cargo", "clippy", "rustfmt", "llvm-tools-preview", "rust-src"]},
+                    {successful: ["x86_64-pc-windows-msvc", "wasm32-unknown-unknown"]},
+                )
+                self.assertEqual(releases, [f"https://static.rust-lang.org/dist/channel-rust-{channel}.toml"])
+                self.assertEqual(commands.count(["rustup", "show", "active-toolchain"]), 2)
+                self.assertCountEqual([(row.status, row.item) for row in area.findings], [
+                    (status, f"Rust {unavailable} toolchain"), ("update", f"Rust {channel.title()}"),
+                ])
+                self.assertNotIn("private fixture diagnostic", rendered(area))
+
     def test_rust_stable_counts_current_only_after_a_comparable_release_response(self):
         stable = "stable-x86_64-pc-windows-msvc"
         release = '[pkg.rust]\nversion = "1.100.0"\n'
@@ -796,17 +953,21 @@ exports.registry = {{
             ("prerelease", "rustc 1.100.0", '[pkg.rust]\nversion = "1.102.0-nightly"\n', "inconclusive"),
             ("malformed", "rustc 1.100.0", "not valid TOML", "inconclusive"),
             ("offline", "rustc 1.100.0", ProbeError("fixture source unavailable"), "inconclusive"),
+            ("deadline", "rustc 1.100.0", common.HttpDeadline(7), "inconclusive"),
         ):
             with (self.subTest(label=label),
-                  patch.object(self.probe, "run", return_value=installed),
+                  patch.object(self.probe, "run", return_value=f"{installed}\nhost: x86_64-pc-windows-msvc"),
                   patch.object(self.probe, "http", side_effect=[response]),
                   patch.object(setup_tools, "rust_components") as components):
                 area = Area("Rust")
-                setup_tools.rust_one_channel(area, self.probe, "stable", stable, "Stable setup fixture")
+                setup_tools.check_rust_toolchain(area, self.probe, stable, native=True, browser=False)
                 self.assertEqual(area.counts, {status: 1})
                 if status == "inconclusive":
                     self.assertIn("Could not check\n    Rust Stable 1.100.0", rendered(area))
-                components.assert_called_once_with(area, self.probe, "stable", stable, "Stable setup fixture")
+                components.assert_called_once_with(
+                    area, self.probe, stable, "Rust Stable", "x86_64-pc-windows-msvc",
+                    True, False, setup_tools.NATIVE_RUST_SETUP,
+                )
 
     def test_nextest_compares_the_installation_with_historical_and_upstream_versions_independently(self):
         nextest_command = ["cargo", "nextest", "--version"]
@@ -816,11 +977,7 @@ exports.registry = {{
             with self.subTest(installed=installed):
                 area = Area("Rust toolchains and Cargo tools")
 
-                def run(command):
-                    if command == ["rustup", "show", "active-toolchain"]:
-                        return "stable-x86_64-pc-windows-msvc (default)"
-                    if command == ["rustup", "toolchain", "list"]:
-                        return ""
+                def run(command, **_options):
                     if command == ["trunk", "--version"] or command == ["cargo", "llvm-cov", "--version"]:
                         return "1.0.0"
                     self.assertEqual(command, nextest_command)
@@ -832,6 +989,7 @@ exports.registry = {{
 
                 with (patch.object(self.probe, "run", side_effect=run) as commands,
                       patch.object(self.probe, "http", side_effect=http) as requests,
+                      patch.object(setup_tools, "rust_selection", return_value=None),
                       patch.object(setup_tools, "check_rustup")):
                     setup_tools.check_rust(area, self.probe, self.tracked)
                 self.assertEqual([call.args[0] for call in commands.call_args_list].count(nextest_command), 1)
@@ -946,7 +1104,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
         major, minor, patch_version = sys.version_info[:3]
         python_candidate = f"{major}.{minor}.{patch_version + 1}"
 
-        def http(url, *_args):
+        def http(url, *_args, **_kwargs):
             if url == python_packages.PYTHON_RELEASES:
                 self.assertIn("lemma 1.0.0 -> 1.0.1", summary.flushed)
                 self.assertIn("Checking Python and pip...", summary.flushed)
@@ -984,6 +1142,123 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
         self.assertNotIn("Report complete", report)
         self.assertNotIn("Coverage", report)
         self.assertNotIn("\x1b[", report)
+
+    def test_crates_index_deadline_exits_cli_while_an_earlier_lookup_is_pending(self):
+        self.write("Cargo.toml", '''
+[package]
+name = "top"
+[dependencies]
+aahelp = "1"
+zzlate = "1"
+''')
+        self.write("Cargo.lock", '''
+[[package]]
+name = "top"
+version = "0.1.0"
+dependencies = ["aahelp", "zzlate"]
+[[package]]
+name = "aahelp"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+[[package]]
+name = "zzlate"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+''')
+        primary_started = Event()
+        sibling_started = Event()
+        sibling_disconnected = Event()
+
+        class Handler(BaseHTTPRequestHandler):
+            def do_GET(self):
+                self.send_response(200)
+                self.send_header("Content-Length", "100")
+                self.end_headers()
+                self.wfile.write(b"x")
+                self.connection.settimeout(10)
+                is_sibling = self.path == "/aa/he/aahelp"
+                (sibling_started if is_sibling else primary_started).set()
+                try:
+                    disconnected = not self.connection.recv(1)
+                except ConnectionResetError:
+                    disconnected = True
+                if is_sibling and disconnected:
+                    sibling_disconnected.set()
+
+            def log_message(self, *_args):
+                pass
+
+        script = '''
+from pathlib import Path
+import sys
+from threading import Event
+from time import sleep
+
+sys.path.insert(0, sys.argv[1])
+import check_updates
+from dependency_updates import cargo, common
+
+check_updates.ROOT = Path(sys.argv[2])
+cargo.CRATES_INDEX = sys.argv[3]
+common.HTTP_DEADLINE = 3.5
+check_updates.check_rust = lambda *_: None
+cargo.cargo_configuration = lambda *_: False
+probe = common.Probes(check_updates.ROOT)
+probe.tracked_files = lambda: {"Cargo.toml", "Cargo.lock"}
+http = probe.http
+primary_lookup = Event()
+
+def stagger(url, *args, **kwargs):
+    if url.endswith("/zzlate"):
+        primary_lookup.set()
+    elif url.endswith("/aahelp"):
+        if not primary_lookup.wait(3):
+            raise AssertionError("the primary lookup did not start")
+        sleep(2)
+    return http(url, *args, **kwargs)
+
+def command(command, **_kwargs):
+    print(f"unexpected probe command: {command}", flush=True)
+    raise common.ProbeError("fixture command unavailable")
+
+probe.http = stagger
+probe.run = command
+check_updates.Probes = lambda _: probe
+check_updates.check_python = lambda *_: print("unexpected Python area", flush=True)
+for name in ("check_browsers", "check_node_packages", "check_setup", "check_docker"):
+    setattr(check_updates, name, check_updates.check_python)
+sys.exit(check_updates.main([]))
+'''
+        tools = Path(check_updates.__file__).parent
+        with serve_http(Handler) as url:
+            command = [sys.executable, "-B", "-c", script, str(tools), str(self.root), url]
+            with subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                  encoding="utf-8") as checker:
+                try:
+                    self.assertTrue(primary_started.wait(8), "the lookup that reaches its deadline must start")
+                    self.assertTrue(sibling_started.wait(8), "an earlier lookup must already be in flight")
+                    started = monotonic()
+                    stdout, stderr = checker.communicate(timeout=10)
+                    pending_time = monotonic() - started
+                    self.assertTrue(sibling_disconnected.wait(1), "the pending lookup's connection must close")
+                finally:
+                    if checker.poll() is None:
+                        checker.kill()
+                        checker.communicate()
+
+        self.assertLess(pending_time, 2.8, f"checker waited for the sibling lookup: {stdout!r}, {stderr!r}")
+        self.assertNotEqual(checker.returncode, 0)
+        self.assertIn("Cargo", stderr)
+        self.assertIn("crates.io", stderr)
+        self.assertIn("timed out after 3.5 seconds", stderr)
+        self.assertNotIn(url, stdout + stderr)
+        self.assertIn("Checking direct crates on crates.io...", stdout)
+        self.assertNotIn("Checking what Cargo can resolve", stdout)
+        self.assertNotIn("unexpected probe command", stdout)
+        self.assertNotIn("Checking Python and pip", stdout)
+        self.assertNotIn("unexpected Python area", stdout)
+        self.assertNotIn("Partial report.", stdout)
+        self.assertNotIn("Report complete.", stdout)
 
     def test_report_deduplicates_findings_and_keeps_missing_and_failed_checks_visible(self):
         private = "https://fixture-user:fixture-password@example.invalid/simple"
@@ -1069,13 +1344,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
         for remote_nightly in (local_nightly, "1.102.0-nightly (ddeeff 2026-11-15)"):
             with self.subTest(remote_nightly=remote_nightly):
                 area = Area("Rust toolchains and Cargo tools")
-                local = ["rustc 1.100.0", f"rustc {local_nightly}"]
+                host = "x86_64-pc-windows-msvc"
+                local = [f"rustc 1.100.0\nhost: {host}", f"rustc {local_nightly}\nhost: {host}"]
                 remote = ['[pkg.rust]\nversion = "1.100.0"\n', f'[pkg.rust]\nversion = "{remote_nightly}"\n']
                 with (patch.object(self.probe, "run", side_effect=local),
                       patch.object(self.probe, "http", side_effect=remote),
                       patch.object(setup_tools, "rust_components")):
-                    setup_tools.rust_one_channel(area, self.probe, "stable", stable, "Stable setup fixture")
-                    setup_tools.rust_one_channel(area, self.probe, "nightly", nightly, "Nightly setup fixture")
+                    setup_tools.check_rust_toolchain(area, self.probe, stable, native=True, browser=False)
+                    setup_tools.check_rust_toolchain(area, self.probe, nightly, native=False, browser=True)
                 out = StringIO()
                 report = Report(out)
                 report.start_area(area.name)

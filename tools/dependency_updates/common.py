@@ -9,12 +9,29 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+from threading import Lock
 import tomllib
 from typing import Callable
 
 
 class ProbeError(Exception):
     """A probe could not establish its result."""
+
+
+class CommandFailed(ProbeError):
+    """A command returned a failure status with diagnostics for its caller."""
+
+    def __init__(self, returncode, stderr):
+        super().__init__(f"command exited with status {returncode}")
+        self.stderr = stderr or ""
+
+
+class HttpDeadline(ProbeError):
+    """The HTTP worker exceeded the request deadline."""
+
+    def __init__(self, seconds):
+        super().__init__(f"source request timed out after {seconds:g} seconds")
+        self.seconds = seconds
 
 
 DATA_ERRORS = (OSError, ValueError, LookupError, TypeError, AttributeError, ProbeError)
@@ -35,11 +52,49 @@ def version_text(version):
     return ".".join(map(str, version))
 
 
+class HttpBatch:
+    """Run HTTP workers that stop together when one reaches its deadline."""
+
+    def __init__(self):
+        self.lock = Lock()
+        self.processes = set()
+        self.stopped = False
+
+    def stop(self):
+        with self.lock:
+            self.stopped = True
+            for process in self.processes:
+                if process.poll() is None:
+                    process.kill()
+
+    def fetch(self, payload):
+        command = [sys.executable, "-I", "-B", "-S", str(HTTP_WORKER)]
+        with self.lock:
+            if self.stopped:
+                raise ProbeError("source request cancelled")
+            process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+            self.processes.add(process)
+        try:
+            with process:
+                try:
+                    output, _ = process.communicate(payload, timeout=HTTP_DEADLINE)
+                except subprocess.TimeoutExpired:
+                    self.stop()
+                    process.communicate()
+                    raise HttpDeadline(HTTP_DEADLINE) from None
+                if process.returncode:
+                    raise subprocess.CalledProcessError(process.returncode, command)
+                return output
+        finally:
+            with self.lock:
+                self.processes.discard(process)
+
+
 class Probes:
     def __init__(self, root):
         self.root = root
         self.scratch = root / ".agent/tmp"
-        self.http = lru_cache(maxsize=None)(self._http)
+        self._cached_http = lru_cache(maxsize=None)(self._http)
 
     def run(self, command, *, timeout=8, env=None, input_text=None, cwd=None, combine=False):
         environment = {**os.environ, "RUSTUP_AUTO_INSTALL": "0", "PYTHONDONTWRITEBYTECODE": "1",
@@ -60,19 +115,24 @@ class Probes:
         except subprocess.TimeoutExpired:
             raise ProbeError(f"command timed out after {timeout} seconds") from None
         except subprocess.CalledProcessError as error:
-            raise ProbeError(f"command exited with status {error.returncode}") from None
+            raise CommandFailed(error.returncode, error.stderr) from None
         except OSError:
             raise ProbeError("the command could not run") from None
         return result.stdout.rstrip()
 
+    def http(self, url, accept="application/json", *, batch=None):
+        if batch is None:
+            return self._cached_http(url, accept)
+        return self._http(url, accept, batch)
+
     @staticmethod
-    def _http(url, accept="application/json"):
+    def _http(url, accept, batch=None):
+        if batch is None:
+            batch = HttpBatch()
         try:
             # Stop the entire fetch, including redirects and a body that keeps sending bytes.
-            result = subprocess.run([sys.executable, "-I", "-B", "-S", str(HTTP_WORKER)],
-                                    input=json.dumps([url, accept]).encode("utf-8"), stdout=subprocess.PIPE,
-                                    stderr=subprocess.DEVNULL, timeout=HTTP_DEADLINE, check=True)
-            status, _, data = result.stdout.partition(b"\n")
+            response = batch.fetch(json.dumps([url, accept]).encode("utf-8"))
+            status, _, data = response.partition(b"\n")
             if status == b"ok":
                 return json.loads(data) if accept.endswith("json") else data.decode("utf-8")
             if status == b"oversize":
@@ -80,8 +140,6 @@ class Probes:
             if re.fullmatch(rb"HTTP [0-9]{3}", status):
                 raise ProbeError(f"source returned {status.decode('ascii')}")
             raise ValueError("unreadable HTTP response")
-        except subprocess.TimeoutExpired:
-            raise ProbeError(f"source request timed out after {HTTP_DEADLINE} seconds") from None
         except (subprocess.CalledProcessError, OSError, ValueError):
             raise ProbeError("source did not return readable data before the network limit") from None
 

@@ -10,13 +10,15 @@ import shutil
 import sys
 import tomllib
 
-from .common import DATA_ERRORS, ProbeError, triplet, version_text
+from .common import CommandFailed, DATA_ERRORS, ProbeError, triplet, version_text
 from .python_packages import PYPI, packaging_api, pip_index
 
 
 GITHUB_RELEASES = "https://api.github.com/repos"
 DEVELOPER_SETUP = ".agents/references/developer-setup.md"
 RUSTUP_RELEASE = "https://static.rust-lang.org/rustup/release-stable.toml"
+NATIVE_RUST_SETUP = "tools/verification/README.md"
+BROWSER_RUST_SETUP = "tools/web.ps1 and developer setup"
 NEXTEST_BASELINE = (0, 9, 152)
 NEXTEST_BASELINE_SOURCE = "tools/verification/README.md at 0fa1472 (historical pin)"
 
@@ -61,51 +63,85 @@ def check_rustup(area, probe):
                         observed=observed)
 
 
-def rust_components(area, probe, channel, installed, setup):
+def rust_selection(area, probe, role, setup, env=None):
+    item = f"Rust {role} toolchain"
     try:
-        components = set(probe.run(["rustup", "component", "list", "--installed", "--toolchain", channel]).splitlines())
-        targets = set(probe.run(["rustup", "target", "list", "--installed", "--toolchain", channel]).splitlines())
-        host = installed.split("-", 1)[1]
-        required = [("cargo", "cargo", ["cargo", "--version"])]
-        if channel == "stable":
-            required += [("clippy", "clippy", ["cargo", "clippy", "--version"]),
-                         ("rustfmt", "rustfmt", ["rustfmt", "--version"]),
-                         ("llvm-tools", "llvm-tools-preview", None)]
+        output = probe.run(["rustup", "show", "active-toolchain"], env=env)
+        active = re.fullmatch(r"(.+?) \((?:default|overridden by .+)\)", output)
+        if active:
+            return active[1]
+        if re.fullmatch(r"\S+", output):
+            return output
+        raise ProbeError("rustup did not identify a single active toolchain")
+    except ProbeError as error:
+        if isinstance(error, CommandFailed) and re.search(
+            r"^error: (?:override )?toolchain '[^'\r\n]+' is not installed(?:: [^\r\n]+)?$",
+            error.stderr, flags=re.MULTILINE,
+        ):
+            area.record("missing", item, observed="not installed", source=setup)
         else:
-            required += [("rust-src", "rust-src", None)]
-        for name, label, command in required:
-            item = f"Rust {channel} {label}"
-            matches = {name, f"{name}-{host}", label, f"{label}-{host}"} & components
-            if not matches:
-                area.record("missing", item, observed="not installed", declared=label, source=setup)
+            area.incomplete(item, setup, error)
+        return None
+
+
+def rust_installed(area, probe, installed, item, setup, kind):
+    try:
+        return set(probe.run(["rustup", kind, "list", "--installed", "--toolchain", installed]).splitlines())
+    except ProbeError as error:
+        area.incomplete(f"{item} {kind} list", setup, error)
+        return None
+
+
+def rust_components(area, probe, installed, item, host, native, browser, setup):
+    components = rust_installed(area, probe, installed, item, setup, "component")
+    required = [("cargo", "cargo", ["cargo", "--version"])]
+    if native:
+        required += [("clippy", "clippy", ["cargo", "clippy", "--version"]),
+                     ("rustfmt", "rustfmt", ["rustfmt", "--version"]),
+                     ("llvm-tools", "llvm-tools-preview", None)]
+    if browser:
+        required.append(("rust-src", "rust-src", None))
+    for name, label, command in required:
+        component = f"{item} {label}"
+        if components is not None:
+            aliases = {name, label}
+            if host:
+                aliases.update({f"{name}-{host}", f"{label}-{host}"})
+            elif name != "rust-src":
+                aliases.update(value for value in components if value.startswith((f"{name}-", f"{label}-")))
+            if not aliases & components:
+                area.record("missing", component, observed="not installed", declared=label, source=setup)
                 continue
-            if command is not None:
-                try:
-                    probe.run(["rustup", "run", channel, *command])
-                except ProbeError as error:
-                    area.incomplete(item, setup, error)
-                    continue
-            area.record("current", item)
-        target = "wasm32-unknown-unknown" if channel == "nightly" else host
-        if target in targets:
-            area.record("current", f"Rust {channel} target {target}")
-        else:
-            area.record("missing", f"Rust {channel} target {target}", observed="not installed", declared=target,
-                        source=setup)
-    except DATA_ERRORS as error:
-        area.incomplete(f"Rust {channel} components and targets", setup,
-                        error if isinstance(error, ProbeError) else "invalid rustup component or target data")
+        if command is not None:
+            try:
+                probe.run(["rustup", "run", installed, *command])
+            except ProbeError as error:
+                area.incomplete(component, setup, error)
+                continue
+        if command is not None or components is not None:
+            area.record("current", component)
+
+    targets = rust_installed(area, probe, installed, item, setup, "target")
+    required_targets = set()
+    if native and host:
+        required_targets.add(host)
+    elif native:
+        area.incomplete(f"{item} host target", setup, "rustc did not identify the toolchain host")
+    if browser:
+        required_targets.add("wasm32-unknown-unknown")
+    if targets is not None:
+        for target in sorted(required_targets):
+            if target in targets:
+                area.record("current", f"{item} target {target}")
+            else:
+                area.record("missing", f"{item} target {target}", observed="not installed", declared=target,
+                            source=setup)
 
 
-def rust_one_channel(area, probe, channel, installed, setup):
+def compare_rust_channel(area, probe, channel, installed, compiler, observed):
     source = f"https://static.rust-lang.org/dist/channel-rust-{channel}.toml"
-    observed = None
     item = f"Rust {channel.title()}"
     try:
-        compiler = probe.run(["rustup", "run", installed, "rustc", "--version"])
-        known = re.match(r"rustc (\d+\.\d+\.\d+(?:-nightly)?)(?: \([0-9a-f]+ (\d{4}-\d\d-\d\d)\))?", compiler)
-        if known:
-            observed = known[1] + (f" ({known[2]})" if channel == "nightly" and known[2] else "")
         manifest = tomllib.loads(probe.http(source, "text/plain"))
         remote = manifest["pkg"]["rust"]["version"]
         if channel == "stable":
@@ -130,34 +166,47 @@ def rust_one_channel(area, probe, channel, installed, setup):
             elif local_date == remote_date and local_hash != remote_hash:
                 raise ProbeError("Nightly compiler builds differ on the same commit date")
             else:
-                area.record("current", "Rust Nightly")
+                area.record("current", item)
     except DATA_ERRORS as error:
         area.incomplete(item, source, error if isinstance(error, ProbeError) else "could not read comparable channel versions",
                         observed=observed, context=installed)
-    rust_components(area, probe, channel, installed, setup)
+
+
+def check_rust_toolchain(area, probe, installed, native, browser):
+    setup = NATIVE_RUST_SETUP if native else BROWSER_RUST_SETUP
+    if native and browser:
+        setup = f"{NATIVE_RUST_SETUP}, {BROWSER_RUST_SETUP}"
+    role = "native" if native else "browser"
+    item = f"Rust {role} toolchain {installed}"
+    host = None
+    try:
+        compiler, _, metadata = probe.run(["rustup", "run", installed, "rustc", "--version", "--verbose"]).partition("\n")
+        host_match = re.search(r"^host: (\S+)$", metadata, flags=re.MULTILINE)
+        host = host_match[1] if host_match else None
+        version = re.match(r"rustc (\S+)(?: \([0-9a-f]+ (\d{4}-\d\d-\d\d)\))?", compiler)
+        observed = version[1] if version else None
+        if version and version[2] and version[1].endswith("-nightly"):
+            observed += f" ({version[2]})"
+        channel = installed.partition("-")[0]
+        if channel in {"stable", "nightly"} and installed == f"{channel}-{host}":
+            item = f"Rust {channel.title()}"
+            compare_rust_channel(area, probe, channel, installed, compiler, observed)
+        else:
+            reason = ("this selection has no rolling Stable or Nightly release comparison" if host
+                      else "rustc did not identify the toolchain host for a release comparison")
+            area.incomplete(item, setup, reason, observed=observed)
+    except ProbeError as error:
+        area.incomplete(item, setup, error)
+    rust_components(area, probe, installed, item, host, native, browser, setup)
 
 
 def check_rust(area, probe, _tracked):
-    try:
-        active = probe.run(["rustup", "show", "active-toolchain"])
-        area.notes.append(f"Active Rust toolchain: {active.split()[0]}.")
-        area.record("current", "active toolchain identified")
-    except (ProbeError, IndexError) as error:
-        area.incomplete("active Rust toolchain", DEVELOPER_SETUP,
-                        error if isinstance(error, ProbeError) else "rustup did not identify an active toolchain")
-    try:
-        installed = [row.split()[0] for row in probe.run(["rustup", "toolchain", "list"]).splitlines() if row]
-    except ProbeError as error:
-        area.incomplete("installed Rust toolchains", DEVELOPER_SETUP, error)
-    else:
-        for channel, setup in (("stable", "tools/verification/README.md"),
-                               ("nightly", "tools/web.ps1 and developer setup")):
-            channels = [toolchain for toolchain in installed if toolchain.startswith(channel + "-")
-                        and not re.match(r"nightly-\d{4}-\d{2}-\d{2}", toolchain)]
-            if not channels:
-                area.record("missing", f"Rust {channel.title()}", observed="not installed", declared=channel, source=setup)
-            for toolchain in channels:
-                rust_one_channel(area, probe, channel, toolchain, setup)
+    native = rust_selection(area, probe, "native", NATIVE_RUST_SETUP)
+    browser = rust_selection(area, probe, "browser Nightly", BROWSER_RUST_SETUP, {"RUSTUP_TOOLCHAIN": "nightly"})
+    if native is not None:
+        check_rust_toolchain(area, probe, native, native=True, browser=native == browser)
+    if browser is not None and browser != native:
+        check_rust_toolchain(area, probe, browser, native=False, browser=True)
     check_rustup(area, probe)
     check_tool_release(area, probe, "Trunk", ["trunk", "--version"], "trunk-rs/trunk", "tools/web.ps1")
     check_tool_release(area, probe, "cargo-llvm-cov", ["cargo", "llvm-cov", "--version"],

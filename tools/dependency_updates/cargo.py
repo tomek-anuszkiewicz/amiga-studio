@@ -1,7 +1,7 @@
 """Read Cargo declarations, registry releases and the resolver's dry run."""
 
 from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 import fnmatch
 import json
@@ -10,7 +10,7 @@ from pathlib import Path, PurePosixPath
 import re
 from tempfile import TemporaryDirectory
 
-from .common import DATA_ERRORS, ProbeError
+from .common import DATA_ERRORS, HttpBatch, HttpDeadline, ProbeError
 
 
 CRATES_IO = "registry+https://github.com/rust-lang/crates.io-index"
@@ -18,6 +18,10 @@ CRATES_INDEX = "https://index.crates.io"
 REGISTRY_SOURCES = {CRATES_IO, "sparse+https://index.crates.io/"}
 DEPENDENCY_SECTIONS = ("dependencies", "dev-dependencies", "build-dependencies")
 VERSION = r"(\d+(?:\.\d+){0,2})(?:\.([*xX]))?"
+
+
+class CargoReleaseTimeout(Exception):
+    """A crates.io deadline stopped the dependency report."""
 
 
 def stable_crate_version(value):
@@ -130,14 +134,14 @@ def declarations(probe, tracked):
                 yield Declaration(path, member, package, requirement, source)
 
 
-def registry_release(probe, name):
+def registry_release(probe, name, batch):
     name = name.lower()
     if not re.fullmatch(r"[a-z0-9_-]+", name):
         raise ProbeError("invalid crates.io package name")
     index_path = (f"{len(name)}/{name}" if len(name) < 3 else f"3/{name[0]}/{name}" if len(name) == 3
                   else f"{name[:2]}/{name[2:4]}/{name}")
     url = f"{CRATES_INDEX}/{index_path}"
-    versions = [json.loads(line) for line in probe.http(url, "text/plain").splitlines()]
+    versions = [json.loads(line) for line in probe.http(url, "text/plain", batch=batch).splitlines()]
     if not versions or any(row["name"].lower() != name for row in versions):
         raise ProbeError("crates.io returned no matching package data")
     candidates = [stable_crate_version(row["vers"]) for row in versions if row["yanked"] is False]
@@ -252,14 +256,28 @@ def check_crates(area, probe, tracked):
     query_names = sorted({decl.name for decl in direct if decl.source in REGISTRY_SOURCES})
     area.announce("  Checking direct crates on crates.io...")
 
+    batch = HttpBatch()
+
     def lookup(name):
         try:
-            return registry_release(probe, name)
+            return registry_release(probe, name, batch)
+        except HttpDeadline:
+            raise
         except DATA_ERRORS as error:
             return error if isinstance(error, ProbeError) else ProbeError("invalid crates.io index data")
 
+    releases = {}
     with ThreadPoolExecutor(max_workers=6) as workers:
-        releases = dict(zip(query_names, workers.map(lookup, query_names)))
+        pending = {workers.submit(lookup, name): name for name in query_names}
+        try:
+            for result in as_completed(pending):
+                releases[pending[result]] = result.result()
+        except HttpDeadline as error:
+            for result in pending:
+                result.cancel()
+            raise CargoReleaseTimeout(
+                f"Cargo package release lookup on crates.io timed out after {error.seconds:g} seconds."
+            ) from None
     for decl in direct:
         item = decl.name
         context = decl.member

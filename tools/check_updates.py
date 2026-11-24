@@ -10,7 +10,7 @@ if __name__ == "__main__":
     sys.dont_write_bytecode = True
 
 from dependency_updates.browsers import check_browsers
-from dependency_updates.cargo import check_crates
+from dependency_updates.cargo import CargoReleaseTimeout, check_crates
 from dependency_updates.common import Area, DATA_ERRORS, ProbeError, Probes, Report
 from dependency_updates.docker_tools import check_docker
 from dependency_updates.node_packages import check_node_packages
@@ -63,7 +63,11 @@ def main(argv=None):
     parser.parse_args(argv)
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-    report(Probes(ROOT), sys.stdout)
+    try:
+        report(Probes(ROOT), sys.stdout)
+    except CargoReleaseTimeout as error:
+        print(f"Error: {error}", file=sys.stderr)
+        return 1
     return 0
 
 
