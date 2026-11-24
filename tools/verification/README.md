@@ -126,12 +126,17 @@ Cargo determines which dependency tables and targets this check covers. See
 [Cargo's unused dependency lint](https://doc.rust-lang.org/stable/cargo/reference/lints.html#unused_dependencies).
 
 Install the public probe's Python dependencies with
-`python -m pip install -r tools/verification/requirements.txt`. The probe copies
-the current working inputs to a disposable workspace. For each feature selection,
-it runs a pristine Cargo check and then checks all eligible functions with
-crate-only visibility in one batch. A simple public re-export in the selected
-package keeps the function public. The builds make `dead_code` a warning so
-Cargo can reach workspace consumers, including integration test targets.
+`python -m pip install -r tools/verification/requirements.txt`. The probe runs
+Cargo with `--offline`. Before running the probe, populate the Cargo cache for
+the checkout's lockfile, for example with `cargo fetch --locked` from the same
+checkout. If a missing dependency blocks the pristine build, the report records
+the failed baseline and the comparison is unavailable for that feature selection.
+
+The probe copies the current working inputs to a disposable workspace. For each
+feature selection, it runs a pristine Cargo check and then checks all eligible
+functions with crate-only visibility in one batch. A simple public re-export in
+the selected package keeps the function public. The builds make `dead_code` a
+warning so Cargo can reach workspace consumers, including integration test targets.
 
 A new warning identifies a candidate in the edited source. A precise reference
 reported in any build excludes that function from the candidate list. Silence
