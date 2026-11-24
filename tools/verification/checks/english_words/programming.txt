@@ -270,6 +270,7 @@ splitlines
 src
 srcdoc
 srcset
+srgba
 sse
 startendtag
 startswith
@@ -293,6 +294,7 @@ tabindex
 tarball
 tbody
 tcp
+tempdir
 tempfile
 textarea
 textwrap
@@ -321,6 +323,7 @@ unicodedata
 unittest
 unroute
 unshift
+unshifted
 urlparse
 urlsplit
 usize

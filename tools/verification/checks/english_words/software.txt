@@ -562,6 +562,7 @@ reparse
 repo
 req
 resampling
+rescan
 resizable
 resize
 resizes
@@ -695,6 +696,8 @@ uhres
 ultrawide
 unaries
 unary
+unassign
+unassigns
 uncached
 uncontended
 underflowed

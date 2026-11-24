@@ -2,6 +2,7 @@
 swiftshader
 amd
 amigatestkit
+arboard
 arial
 astra
 attackwave

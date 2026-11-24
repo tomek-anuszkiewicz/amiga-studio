@@ -345,7 +345,7 @@ fn assert_uploaded_artwork_preview(output: &egui::FullOutput, expected: &image::
         .shapes
         .iter()
         .find_map(|shape| {
-            // egui paints an unrotated image as a textured rectangle.
+            // With no rotation, egui draws the image as a textured rectangle.
             let egui::Shape::Rect(rect) = &shape.shape else {
                 return None;
             };
