@@ -39,7 +39,7 @@ execution bounds and instruction count. The first timed execution establishes
 the observed total instructions and CPU clocks. Every later execution in the
 same attempt must match both totals. The runner resets CPU and memory outside
 the timed interval for each complete program.
-[Runner](../../../../benchmarks/m68k/runner.rs)
+[Runner](../../../../crates/test_runner/benches/bench_instructions/runner.rs)
 
 The command selects all cases by default. A filter selects every match for
 one exact case ID, mnemonic, or declared four-digit primary opcode. The filter

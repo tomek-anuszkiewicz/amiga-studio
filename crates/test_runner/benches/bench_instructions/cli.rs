@@ -2,7 +2,6 @@
 
 mod inventory;
 mod platform;
-#[path = "../../../../benchmarks/m68k/runner.rs"]
 mod runner;
 
 fn benchmarks_dir() -> std::path::PathBuf {
