@@ -1,6 +1,8 @@
 """Repository architecture checks; source inspection requires no Rust build."""
+from dataclasses import dataclass
 import json
 from pathlib import Path
+import re
 import subprocess
 import sys
 import tomllib
@@ -58,6 +60,29 @@ APPROVED_CRATE_DEPENDENCIES = {
 }
 
 
+RUST_NAME = r"(?:r#)?[^\W\d]\w*"
+RUST_TOKEN = re.compile(
+    rf'(?P<comment>//[^\n]*|/\*)'
+    rf'|(?:br|cr|r)(?P<hashes>\#*)".*?"(?P=hashes)'
+    rf'|(?:b|c)?"(?:\\.|[^"\\])*"'
+    rf"""|b?'(?:\\(?:u\{{[0-9a-fA-F_]+\}}|x[0-9a-fA-F]{{2}}|.)|[^'\\\n])'"""
+    rf"|{RUST_NAME}|[^\s]",
+    re.DOTALL,
+)
+RUST_COMMENT_DELIMITER = re.compile(r"/\*|\*/")
+RUST_ESCAPE = re.compile(r"\\(?:x([0-9a-fA-F]{2})|u\{([0-9a-fA-F_]+)\}|(\n\s*)|(.))")
+RUST_ESCAPES = {"n": "\n", "r": "\r", "t": "\t", "0": "\0", "\\": "\\", '"': '"', "'": "'"}
+
+
+@dataclass
+class RustModule:
+    name: str
+    line: int
+    path_literal: str | None
+    conditional_path: bool
+    body: list["RustModule"] | None
+
+
 def source_files(directory):
     return sorted(path for path in directory.rglob("*.rs") if path.is_file() and path.suffix == ".rs")
 
@@ -71,6 +96,182 @@ def read_lines(path):
     if lines[-1] == "":
         lines.pop()
     return [line.removesuffix("\r") if index < terminated else line for index, line in enumerate(lines)]
+
+
+def rust_tokens(source):
+    tokens = []
+    ends = {}
+    opened = []
+    closers = {")": "(", "]": "[", "}": "{"}
+    line = 1
+    offset = 0
+    while match := RUST_TOKEN.search(source, offset):
+        line += source.count("\n", offset, match.start())
+        offset = match.end()
+        token = match[0]
+        if token == "/*":
+            depth = 1
+            for delimiter in RUST_COMMENT_DELIMITER.finditer(source, offset):
+                depth += 1 if delimiter[0] == "/*" else -1
+                if not depth:
+                    offset = delimiter.end()
+                    break
+            else:
+                offset = len(source)
+        if not match["comment"]:
+            index = len(tokens)
+            if token in ("(", "[", "{"):
+                opened.append(index)
+            elif token in closers and opened and tokens[opened[-1]][0] == closers[token]:
+                ends[opened.pop()] = index
+            tokens.append((token, line))
+        line += source.count("\n", match.start(), offset)
+    return tokens, ends
+
+
+def rust_path_value(literal):
+    if literal.startswith("r"):
+        return literal[literal.index('"') + 1:literal.rindex('"')]
+
+    def unescape(match):
+        hexadecimal, unicode, continuation, escape = match.groups()
+        if hexadecimal or unicode:
+            return chr(int((hexadecimal or unicode).replace("_", ""), 16))
+        return "" if continuation else RUST_ESCAPES[escape]
+
+    try:
+        return RUST_ESCAPE.sub(unescape, literal[1:-1])
+    except (KeyError, ValueError):
+        return None
+
+
+def conditional_rust_path(tokens, ends, arguments):
+    # The first cfg_attr argument is a predicate. Inspect the attributes that follow it.
+    stop = ends[arguments]
+    index = arguments + 1
+    while index < stop:
+        if tokens[index][0] == "," and index + 1 < stop:
+            name = tokens[index + 1][0]
+            if name == "path":
+                return True
+            if name == "cfg_attr" and index + 2 in ends:
+                if conditional_rust_path(tokens, ends, index + 2):
+                    return True
+        index = ends.get(index, index) + 1
+    return False
+
+
+def rust_modules(source):
+    tokens, ends = rust_tokens(source)
+
+    def scope(index, stop):
+        modules = []
+        literal = None
+        conditional = False
+        while index < stop:
+            token, line = tokens[index]
+            following = tokens[index + 1][0] if index + 1 < stop else ""
+            if token == "#" and following == "[" and index + 1 in ends:
+                end = ends[index + 1]
+                attribute = [part for part, _ in tokens[index + 2:end]]
+                if len(attribute) == 3 and attribute[:2] == ["path", "="]:
+                    value = attribute[2]
+                    if value.startswith('"') or (value.startswith(('r"', "r#")) and '"' in value):
+                        literal = value
+                elif attribute[:2] == ["cfg_attr", "("] and index + 3 in ends:
+                    conditional |= conditional_rust_path(tokens, ends, index + 3)
+                index = end + 1
+                continue
+            if token == "pub":
+                index = ends.get(index + 1, index) + 1 if following == "(" else index + 1
+                continue
+            if token == "#" and following == "!":
+                index = ends.get(index + 2, index)
+            elif token == "mod" and re.fullmatch(RUST_NAME, following) and index + 2 < stop:
+                end = index + 2
+                if tokens[end][0] == ";":
+                    modules.append(RustModule(following.removeprefix("r#"), line, literal, conditional, None))
+                    index = end
+                elif tokens[end][0] == "{" and end in ends:
+                    body = scope(end + 1, ends[end])
+                    modules.append(RustModule(following.removeprefix("r#"), line, literal, conditional, body))
+                    index = ends[end]
+            elif token == "!" and index > 0 and re.fullmatch(RUST_NAME, tokens[index - 1][0]):
+                # Macro token trees can contain text that looks like a module item.
+                opening = index + 2 if tokens[index - 1][0] == "macro_rules" else index + 1
+                index = ends.get(opening, index)
+            elif index in ends:
+                modules.extend(scope(index + 1, ends[index]))
+                index = ends[index]
+            index += 1
+            literal = None
+            conditional = False
+        return modules
+
+    return scope(0, len(tokens))
+
+
+def rust_module_path_violations(root, files, targets):
+    sources = {}
+    violations = set()
+    seen = set()
+
+    def file_modules(path):
+        if path not in sources:
+            source = path.read_text(encoding="utf-8")
+            sources[path] = rust_modules(source) if re.search(r"\bmod\b", source) else []
+        return sources[path]
+
+    def visit(path, modules, ancestors, path_base, module_dir, stack):
+        for item in modules:
+            value = rust_path_value(item.path_literal) if item.path_literal is not None else None
+            names = (*ancestors, item.name)
+            if item.body is not None:
+                base = module_dir / item.name if value is None else path_base / value
+                visit(path, item.body, names, base, base, () if item.conditional_path else stack)
+                continue
+            if item.conditional_path:
+                continue
+            if value is not None:
+                target = Path(value)
+                if path in files and target.name.endswith(".rs") and target.name != "mod.rs":
+                    stem = target.name.removesuffix(".rs")
+                    shortened = [stem[len(name) + 1:] for name in reversed(ancestors)
+                                 if stem.startswith(name + "_") and stem != name + "_"]
+                    if item.name != stem and item.name not in shortened:
+                        expected = shortened[0] if shortened else stem
+                        violations.add(
+                            f"{path.relative_to(root).as_posix()}:{item.line}: "
+                            f"{item.path_literal} declares '{item.name}', expected '{expected}'"
+                        )
+                candidates = (path_base / target,)
+            else:
+                candidates = (module_dir / (item.name + ".rs"), module_dir / item.name / "mod.rs")
+            if stack:
+                existing = [candidate.resolve() for candidate in candidates if candidate.is_file()]
+                if len(existing) == 1 and existing[0].is_relative_to(root):
+                    child = existing[0]
+                    # Rust gives files loaded with #[path] the same directory rules as mod.rs.
+                    directory = child.parent
+                    if value is None and child.name != "mod.rs":
+                        directory = child.with_suffix("")
+                    visit_file(child, names, directory, stack)
+
+    def visit_file(path, ancestors, module_dir, stack):
+        key = (path, ancestors, module_dir)
+        if path in stack or key in seen:
+            return
+        seen.add(key)
+        visit(path, file_modules(path), ancestors, path.parent, module_dir, (*stack, path))
+
+    for target in targets:
+        path = Path(target["src_path"]).resolve()
+        if path.is_relative_to(root) and path.is_file():
+            visit_file(path, (target["name"].replace("-", "_"),), path.parent, ())
+    # Inspect unreferenced files too. Only their explicit inline nesting is known.
+    for path in files.difference(sources):
+        visit(path, file_modules(path), (), path.parent, path.parent, ())
+    return sorted(violations)
 
 
 class ArchitectureChecks(unittest.TestCase):
@@ -90,13 +291,16 @@ class ArchitectureChecks(unittest.TestCase):
     def no_violations(self, violations, description):
         self.assertFalse(violations, description + "\n" + "\n".join(violations))
 
-    def test_workspace_crate_dependencies_follow_approved_rules(self):
+    def cargo_metadata(self):
         result = subprocess.run(
             ["cargo", "metadata", "--format-version", "1", "--no-deps", "--offline", "--locked"],
             cwd=self.root, capture_output=True, text=True, encoding="utf-8",
         )
         self.assertEqual(result.returncode, 0, "Cargo metadata failed:\n" + result.stderr)
-        metadata = json.loads(result.stdout)
+        return json.loads(result.stdout)
+
+    def test_workspace_crate_dependencies_follow_approved_rules(self):
+        metadata = self.cargo_metadata()
         members = {
             package["name"]: package for package in metadata["packages"]
             if package["id"] in metadata["workspace_members"]
@@ -365,6 +569,24 @@ class ArchitectureChecks(unittest.TestCase):
             if expected not in (crate / "Cargo.toml").read_text(encoding="utf-8"):
                 violations.append(f"{self.relative(crate)}/Cargo.toml: Missing [lib] configuration with '{expected}'")
         self.no_violations(violations, "Architecture Rule Violation: Crate root naming")
+
+    def test_rust_module_paths(self):
+        files = {
+            path for crate in (self.root / "crates").glob("*")
+            for directory in ("src", "tests", "examples", "benches")
+            for path in source_files(crate / directory)
+        }
+        if not files:
+            return
+        metadata = self.cargo_metadata()
+        targets = [
+            target for package in metadata["packages"] if package["id"] in metadata["workspace_members"]
+            for target in package["targets"]
+        ]
+        self.no_violations(
+            rust_module_path_violations(self.root, files, targets),
+            "Architecture Rule Violation: Rust module names in direct path declarations",
+        )
 
     def test_canonical_test_file_naming_convention(self):
         violations = []

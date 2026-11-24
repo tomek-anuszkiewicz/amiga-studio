@@ -36,6 +36,7 @@ class ArchitectureContracts(unittest.TestCase):
         self.assertEqual(result.wasSuccessful(), passes, result.failures)
         if detail:
             self.assertIn(detail, result.failures[0][1])
+        return result.failures[0][1] if result.failures else ""
 
     def dependency_workspace(self):
         self.write("Cargo.toml", '''[workspace]
@@ -282,6 +283,121 @@ edition = "2021"
         self.write("crates/cpu/Cargo.toml", '[package]\nname = "cpu"\n')
         self.write("crates/cpu/tests/test_cpu.rs", "#[test]\nfn test_cpu() {}\n")
         self.check(name, False, "crates/cpu: Missing expected crate root")
+
+    def module_workspace(self, *names):
+        members = ", ".join(f'"crates/{name}"' for name in names)
+        self.write("Cargo.toml", f'[workspace]\nresolver = "2"\nmembers = [{members}]\n')
+        for name in names:
+            self.write(f"crates/{name}/Cargo.toml", f"""[package]
+name = "{name}"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+path = "src/{name}.rs"
+""")
+            self.write(f"crates/{name}/src/{name}.rs", "")
+
+    def test_module_paths_accept_only_actual_ancestors(self):
+        name = "test_rust_module_paths"
+        self.module_workspace("agnus", "paula")
+        self.write("crates/agnus/src/agnus.rs", 'mod blitter;\nmod sibling;\n'
+                   '#[path = "agnus_line.rs"]\nmod line;\n')
+        line = '#[path = "blitter_line.rs"]\n#[allow(dead_code)]\npub(crate) mod line;\n'
+        self.write("crates/agnus/src/blitter.rs", line)
+        self.write("crates/agnus/src/blitter_line.rs", "")
+        self.write("crates/agnus/src/agnus_line.rs", "")
+        self.write("crates/agnus/src/sibling.rs", "")
+
+        self.write("crates/paula/src/paula.rs", "mod audio;\n")
+        self.write("crates/paula/src/audio.rs", '#[path = "audio_output.rs"]\nmod output;\n')
+        self.write("crates/paula/src/audio_output.rs", '#[path = "audio_tables.rs"]\nmod tables;\n')
+        self.write("crates/paula/src/audio_tables.rs", "")
+        self.check(name, True)
+
+        self.write("crates/agnus/src/blitter.rs", "")
+        self.write("crates/agnus/src/sibling.rs", line)
+        output = self.check(name, False)
+        self.assertEqual([line for line in output.splitlines() if line.startswith("crates/")], [
+            """crates/agnus/src/sibling.rs:3: "blitter_line.rs" declares 'line', expected 'blitter_line'""",
+        ])
+
+        self.write("crates/agnus/src/sibling.rs", "")
+        self.write("crates/paula/src/audio_output.rs", '#[path = "audio_output_tables.rs"]\nmod tables;\n')
+        self.write("crates/paula/src/audio_output_tables.rs", "")
+        output = self.check(name, False)
+        self.assertEqual([line for line in output.splitlines() if line.startswith("crates/")], [
+            """crates/paula/src/audio_output.rs:2: "audio_output_tables.rs" declares 'tables', expected 'output_tables'""",
+        ])
+
+    def test_module_paths_report_filename_based_names(self):
+        name = "test_rust_module_paths"
+        self.module_workspace("agnus", "machine_loop", "test_runner")
+        self.write("crates/agnus/src/agnus.rs", "mod blitter;\n")
+        self.write("crates/agnus/src/blitter_control.rs", "")
+        self.write("crates/machine_loop/tests/test_audio_spectrum.rs",
+                   '#[path = "audio_spectrum/attachment.rs"]\nmod attachment;\n')
+        self.write("crates/machine_loop/tests/audio_spectrum/attachment.rs", "")
+        self.write("crates/machine_loop/tests/programs/display/mixed_scene/host.rs", "")
+        self.write("benchmarks/m68k/runner.rs", "")
+        manifest = self.root / "crates/test_runner/Cargo.toml"
+        self.write("crates/test_runner/Cargo.toml", manifest.read_text(encoding="utf-8") + """
+[[bench]]
+name = "bench_instructions"
+path = "benches/bench_instructions/cli.rs"
+""")
+        cases = (
+            ("crates/agnus/src/blitter.rs", "blitter_control.rs", "registers", "control"),
+            ("crates/machine_loop/examples/mixed_scene.rs", "../tests/programs/display/mixed_scene/host.rs",
+             "scene", "host"),
+            ("crates/test_runner/benches/bench_instructions/cli.rs", "../../../../benchmarks/m68k/runner.rs",
+             "asm_runner", "runner"),
+        )
+        for file, target, declared, _ in cases:
+            self.write(file, f'#[path = "{target}"]\nmod {declared};\n')
+        bench_directory = "crates/test_runner/benches/bench_instructions/"
+        bench_cli = bench_directory + "cli.rs"
+        bench_source = (self.root / bench_cli).read_text(encoding="utf-8")
+        self.write(bench_cli, bench_source + '#[path = "bench_instructions_inventory.rs"]\nmod inventory;\n')
+        self.write(bench_directory + "bench_instructions_inventory.rs", "")
+
+        output = self.check(name, False)
+        self.assertEqual([line for line in output.splitlines() if line.startswith("crates/")], [
+            """crates/agnus/src/blitter.rs:2: "blitter_control.rs" declares 'registers', expected 'control'""",
+            """crates/machine_loop/examples/mixed_scene.rs:2: "../tests/programs/display/mixed_scene/host.rs" """
+            "declares 'scene', expected 'host'",
+            """crates/test_runner/benches/bench_instructions/cli.rs:2: "../../../../benchmarks/m68k/runner.rs" """
+            "declares 'asm_runner', expected 'runner'",
+        ])
+        for file, _, declared, expected in cases:
+            source = (self.root / file).read_text(encoding="utf-8")
+            self.write(file, source.replace(f"mod {declared};", f"mod {expected};"))
+        self.check(name, True)
+
+    def test_module_paths_skip_declarations_without_a_direct_file_path(self):
+        self.module_workspace("agnus")
+        self.write("crates/agnus/src/agnus.rs", """mod ordinary;
+#[path = "legacy/mod.rs"]
+mod legacy_name;
+#[cfg_attr(any(), path = "conditional.rs")]
+mod conditional_name;
+/* /* nested */ #[path = "comment.rs"] mod fake; */
+const TEXT: &str = r#"#[path = "string.rs"] mod fake;"#;
+mod wrapper {
+    #[path =
+        "wrapper_actual.rs"]
+    #[allow(dead_code)]
+    pub(super) mod wrong;
+}
+""")
+        self.write("crates/agnus/src/ordinary.rs", "")
+        self.write("crates/agnus/src/legacy/mod.rs", "")
+        self.write("crates/agnus/src/conditional_name.rs", "")
+        self.write("crates/agnus/src/wrapper/wrapper_actual.rs", "")
+        output = self.check("test_rust_module_paths", False)
+        self.assertEqual([line for line in output.splitlines() if line.startswith("crates/")], [
+            """crates/agnus/src/agnus.rs:12: "wrapper_actual.rs" declares 'wrong', expected 'actual'""",
+        ])
 
     def test_test_file_names_apply_only_to_direct_rust_files(self):
         name = "test_canonical_test_file_naming_convention"
