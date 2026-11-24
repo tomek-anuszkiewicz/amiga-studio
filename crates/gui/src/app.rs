@@ -367,7 +367,7 @@ impl EmulatorApp {
         if in_session {
             render_top_menu_bar(self, ctx);
             if self.view_mode == ViewMode::ScreenOnly {
-                // Handle screenshot clicks before installing the pending image.
+                // Capture the displayed frame before installing the pending image.
                 self.render_player_controls(ctx);
             }
         }

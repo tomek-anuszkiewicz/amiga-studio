@@ -390,6 +390,17 @@ impl crate::EmulatorApp {
         #[cfg(not(target_arch = "wasm32"))]
         self.render_saved_progress(ctx);
         crate::layout::file_dialogs::render(self, ctx);
+        #[cfg(not(target_arch = "wasm32"))]
+        crate::window_keyboard::with_artwork_paste(ctx, |paste| {
+            paste.active = self.player.screen == crate::player::PlayerScreen::Library
+                && self.player.library_editor.is_some()
+                && self.player.pending_launch.is_none()
+                && self.file_error.is_none()
+                && !self.load_binary_modal_open;
+            if !paste.active {
+                paste.pending = None;
+            }
+        });
 
         self.host.flush();
         self.host.request_submission_retry(ctx);

@@ -1345,6 +1345,27 @@ fn screenshot_clicks_keep_the_active_game_destination_and_existing_files() {
     image::open(directory.join("screenshot-4.png")).unwrap();
     assert!(!screenshot_directory(two).exists());
     assert_eq!([one, two].map(saved_progress_and_artwork), before);
+    let numbered = directory_files(&directory)
+        .into_iter()
+        .map(|path| (path.clone(), std::fs::read(path).unwrap()))
+        .collect::<Vec<_>>();
+    let other_files = directory_files(&two.directory);
+    h.get_by_label("Cover").click_accesskit();
+    h.step();
+    assert!(image::open(one.directory.join("cover.png")).is_ok());
+    assert_eq!(directory_files(&two.directory), other_files);
+    assert_eq!([one, two].map(saved_progress_and_artwork), before);
+    assert_eq!(
+        directory_files(&directory),
+        numbered
+            .iter()
+            .map(|(path, _)| path)
+            .cloned()
+            .collect::<Vec<_>>()
+    );
+    for (path, bytes) in numbered {
+        assert_eq!(std::fs::read(path).unwrap(), bytes);
+    }
     assert!(h.state().file_error.is_none());
 }
 
@@ -1520,6 +1541,15 @@ fn screenshot_uses_every_displayed_pixel_at_a_clipped_scale_during_run_and_reset
             assert_eq!(decoded.dimensions(), (width as u32, height as u32));
             assert_eq!(decoded.as_raw(), &expected);
             assert!(h.state().file_error.is_none());
+            if pending.is_none() {
+                h.get_by_label("Cover").click_accesskit();
+                h.step();
+                let cover = image::open(game.directory.join("cover.png"))
+                    .unwrap()
+                    .into_rgba8();
+                assert_eq!(cover.dimensions(), (width as u32, height as u32));
+                assert_eq!(cover.as_raw(), &expected);
+            }
             let Some((pending, generation, running)) = pending else {
                 break;
             };
@@ -1635,6 +1665,10 @@ fn screenshot_stays_with_the_active_game_after_editing_the_same_id_in_another_li
     assert_eq!(files, [directory.join("screenshot-1.png")]);
     image::open(&files[0]).unwrap();
     assert!(!renamed.join("Screenshots").exists());
+    h.get_by_label("Cover").click_accesskit();
+    h.step();
+    assert!(image::open(first.directory.join("cover.png")).is_ok());
+    assert!(!renamed.join("cover.png").exists());
     assert_eq!(
         h.state().player.active_game.as_ref().unwrap().directory,
         first.directory
@@ -1642,7 +1676,7 @@ fn screenshot_stays_with_the_active_game_after_editing_the_same_id_in_another_li
 }
 
 #[test]
-fn screenshot_button_is_available_in_library_game_view_only() {
+fn capture_buttons_are_adjacent_in_regular_and_compact_library_game_views_only() {
     use egui_kittest::kittest::Queryable;
 
     let (root, library) = library();
@@ -1652,16 +1686,324 @@ fn screenshot_button_is_available_in_library_game_view_only() {
     common::wait_harness(&mut h, |app| app.player.active_configuration.is_some());
     assert_eq!(h.state().player.screen, PlayerScreen::Session);
     assert!(h.query_by_label("Screenshot").is_none());
+    assert!(h.query_by_label("Cover").is_none());
 
     let mut app = game_app(&root);
     app.start_library_game(library.games[0].clone(), None, false);
     let mut h = session_harness(app);
     common::wait_harness(&mut h, |app| app.player.active_game.is_some());
-    assert!(!h.get_by_label("Screenshot").accesskit_node().is_disabled());
+    let assert_capture_controls = |h: &egui_kittest::Harness<'_, EmulatorApp>| {
+        let screenshot = h.get_by_label("Screenshot");
+        let cover = h.get_by_label("Cover");
+        assert!(!screenshot.accesskit_node().is_disabled());
+        assert!(!cover.accesskit_node().is_disabled());
+        assert!(h.ctx.screen_rect().contains_rect(cover.rect()));
+        assert!(cover.rect().left() >= screenshot.rect().right());
+        assert!(cover.rect().top() < screenshot.rect().bottom());
+        assert!(cover.rect().bottom() > screenshot.rect().top());
+    };
+    assert_capture_controls(&h);
+    h.set_size(egui::vec2(640.0, 720.0));
+    common::settle_harness(&mut h);
+    h.get_by_label("Game controls").click_accesskit();
+    common::settle_harness(&mut h);
+    assert_capture_controls(&h);
     h.get_by_label("Debug View (F12)").click_accesskit();
     common::settle_harness(&mut h);
     assert_eq!(h.state().view_mode, ViewMode::Developer);
     assert!(h.query_by_label("Screenshot").is_none());
+    assert!(h.query_by_label("Cover").is_none());
+}
+
+#[derive(Default)]
+struct CoverTextureObserver {
+    covers: std::collections::HashMap<egui::TextureId, egui::ColorImage>,
+}
+
+impl egui_kittest::TestRenderer for CoverTextureObserver {
+    fn handle_delta(&mut self, delta: &egui::TexturesDelta) {
+        for (id, update) in &delta.set {
+            let egui::ImageData::Color(image) = &update.image;
+            if image.size == [720, 568] && update.pos.is_none() {
+                self.covers.insert(*id, image.as_ref().clone());
+            }
+        }
+        for id in &delta.free {
+            self.covers.remove(id);
+        }
+    }
+
+    fn render(
+        &mut self,
+        _ctx: &egui::Context,
+        output: &egui::FullOutput,
+    ) -> Result<image::RgbaImage, String> {
+        let image = output
+            .shapes
+            .iter()
+            .find_map(|shape| {
+                let egui::Shape::Rect(rect) = &shape.shape else {
+                    return None;
+                };
+                let brush = rect.brush.as_ref()?;
+                let bounds = rect.rect;
+                (rect.fill.a() > 0
+                    && shape.clip_rect.contains_rect(bounds)
+                    && (bounds.width() - 110.0).abs() <= 1.0)
+                    .then(|| self.covers.get(&brush.fill_texture_id))
+                    .flatten()
+            })
+            .ok_or("The library did not draw the captured cover")?;
+        assert!(output.shapes.iter().any(|shape| matches!(
+            &shape.shape,
+            egui::Shape::Text(text) if text.galley.text() == "one"
+        )));
+        let bytes = image
+            .pixels
+            .iter()
+            .flat_map(egui::Color32::to_srgba_unmultiplied)
+            .collect();
+        image::RgbaImage::from_raw(720, 568, bytes).ok_or_else(|| "Unexpected cover size".into())
+    }
+}
+
+#[test]
+fn cover_replaces_one_png_and_updates_the_drawn_thumbnail_at_each_precedence() {
+    use egui_kittest::kittest::Queryable;
+
+    for (declared, higher_priority) in [
+        (Some("alternate.png"), Some("alternate.png")),
+        (None, Some("cover.jpg")),
+        (None, None),
+    ] {
+        let (root, library) = library();
+        let one = &library.games[0];
+        let png = one.directory.join("cover.png");
+        image::RgbImage::from_pixel(5, 3, image::Rgb([12, 34, 56]))
+            .save(&png)
+            .unwrap();
+        let competing = higher_priority.map(|name| {
+            let path = one.directory.join(name);
+            image::RgbImage::from_pixel(8, 3, image::Rgb([240, 16, 63]))
+                .save(&path)
+                .unwrap();
+            let bytes = std::fs::read(&path).unwrap();
+            (path, bytes)
+        });
+        let manifest_path = one.directory.join("game.json");
+        let mut manifest = serde_json::to_value(&one.manifest).unwrap();
+        manifest["artwork"] = serde_json::json!(declared);
+        manifest["custom"] = serde_json::json!({"preserve": [1, 2]});
+        let before = serde_json::to_vec(&manifest).unwrap();
+        std::fs::write(&manifest_path, &before).unwrap();
+        let files_before = directory_files(&one.directory);
+
+        let mut session = Box::new(gui::DebuggerSession::new());
+        session.load_binary(0x1000, &[0x60, 0xfe], true).unwrap();
+        let frame = &mut session.machine.denise.frame_builder;
+        let stride = frame.row_stride();
+        let first = image::RgbaImage::from_fn(720, 568, |x, y| {
+            let rgba = screenshot_pixel(x as usize, y as usize, 720, 568);
+            let [r, g, b, a] = rgba;
+            frame.frame_buffer_mut()[y as usize * stride + x as usize] =
+                u32::from_be_bytes([a, r, g, b]);
+            image::Rgba(rgba)
+        });
+        let mut app = EmulatorApp::with_session(session);
+        app.set_view_mode(ViewMode::ScreenOnly);
+        app.player.catalog.library_root = root.to_string_lossy().into_owned();
+        app.player.library = GameLibrary::discover(&root).unwrap();
+        app.player.active_game = Some(app.player.library.games[0].clone());
+        app.screen_scale = gui::ScreenScale::Four;
+        let mut h = session_harness_builder()
+            .renderer(CoverTextureObserver::default())
+            .build_state(|ctx, app| app.update_ui(ctx), app);
+        common::wait_harness(&mut h, |app| app.host.presented.is_some());
+        h.get_by_label("Library").click_accesskit();
+        common::settle_harness(&mut h);
+        h.get_by_label("two").click_accesskit();
+        common::settle_harness(&mut h);
+        h.get_by_label("Return to session").click_accesskit();
+        common::settle_harness(&mut h);
+        let capture = |h: &mut egui_kittest::Harness<'_, EmulatorApp>| {
+            h.get_by_label("Cover").click_accesskit();
+            h.step();
+            assert!(h.state().file_error.is_none());
+            let captured = image::open(&png).unwrap().into_rgba8();
+            h.get_by_label("Library").click_accesskit();
+            common::settle_harness(h);
+            assert_eq!(h.state().player.selected_game, Some(1));
+            assert_eq!(h.render().unwrap(), captured);
+            captured
+        };
+        assert_eq!(capture(&mut h), first);
+        let manifest_after_first = std::fs::read(&manifest_path).unwrap();
+        if let Some((path, bytes)) = &competing {
+            manifest["artwork"] = serde_json::json!("cover.png");
+            assert_eq!(
+                serde_json::from_slice::<serde_json::Value>(&manifest_after_first).unwrap(),
+                manifest
+            );
+            assert_eq!(std::fs::read(path).unwrap(), *bytes);
+        } else {
+            assert_eq!(manifest_after_first, before);
+        }
+        h.get_by_label("Return to session").click_accesskit();
+        common::settle_harness(&mut h);
+        let first_generation = h.state().host.presented.unwrap().generation;
+        h.state_mut().host.queue(HostCommand::Reset);
+        common::wait_harness(&mut h, |app| {
+            app.host
+                .presented
+                .is_some_and(|image| image.generation != first_generation)
+        });
+        let second = capture(&mut h);
+        assert_ne!(second, first);
+        assert_eq!(std::fs::read(&manifest_path).unwrap(), manifest_after_first);
+        assert_eq!(directory_files(&one.directory), files_before);
+        if let Some((path, bytes)) = &competing {
+            assert_eq!(std::fs::read(path).unwrap(), *bytes);
+        }
+
+        let mut reopened = game_app(&root);
+        reopened.navigate_player(PlayerScreen::Library);
+        let mut reopened = session_harness_builder()
+            .renderer(CoverTextureObserver::default())
+            .build_state(|ctx, app| app.update_ui(ctx), reopened);
+        common::settle_harness(&mut reopened);
+        assert_eq!(reopened.render().unwrap(), second);
+    }
+}
+
+#[test]
+fn cover_write_failure_keeps_previous_png_and_manifest_and_manifest_failure_allows_retry() {
+    use egui_kittest::kittest::Queryable;
+    use std::io::{Error, Write};
+
+    let (root, library) = library();
+    let game = &library.games[0];
+    let previous = image::RgbImage::from_pixel(2, 1, image::Rgb([200, 30, 50]));
+    previous
+        .save(game.directory.join("missing-cover.png"))
+        .unwrap();
+    let cover = game.directory.join("cover.png");
+    previous.save(&cover).unwrap();
+    let previous_cover = std::fs::read(&cover).unwrap();
+    let manifest = game.directory.join("game.json");
+    let before = std::fs::read(&manifest).unwrap();
+    let files_before = directory_files(&game.directory);
+    let error = gui::game_library::persist_cover(game, |file| {
+        file.write_all(b"\x89PNG\r\n\x1a\n")?;
+        assert_eq!(std::fs::read(&cover)?, previous_cover);
+        Err(Error::other("simulated full disk"))
+    })
+    .unwrap_err();
+    assert_eq!(error, "simulated full disk");
+    assert_eq!(std::fs::read(&cover).unwrap(), previous_cover);
+    assert_eq!(std::fs::read(&manifest).unwrap(), before);
+    assert_eq!(directory_files(&game.directory), files_before);
+
+    let blocker = game.directory.join("game.json.pending");
+    std::fs::create_dir(&blocker).unwrap();
+    let mut app = game_app(&root);
+    app.start_library_game(game.clone(), None, false);
+    let mut h = session_harness(app);
+    common::wait_harness(&mut h, |app| {
+        app.player.active_game.is_some() && app.host.presented.is_some()
+    });
+    h.get_by_label("Pause").click_accesskit();
+    common::wait_harness(&mut h, |app| !app.host.status.running);
+    h.get_by_label("Cover").click_accesskit();
+    h.step();
+    let error = h.state().file_error.as_deref().unwrap();
+    assert!(error.contains("Saved cover.png but could not select it in game.json"));
+    assert!(h.get_all_by_value(error).next().is_some());
+    assert_eq!(std::fs::read(&manifest).unwrap(), before);
+    assert_eq!(
+        image::open(&cover).unwrap().to_rgba8().dimensions(),
+        (720, 568)
+    );
+    assert_ne!(std::fs::read(&cover).unwrap(), previous_cover);
+    let discovered = GameLibrary::discover(&root).unwrap();
+    assert_eq!(
+        image::load_from_memory(discovered.games[0].artwork.as_deref().unwrap())
+            .unwrap()
+            .to_rgb8(),
+        previous
+    );
+
+    std::fs::remove_dir(&blocker).unwrap();
+    h.get_by_label("Close").click_accesskit();
+    h.step();
+    h.get_by_label("Cover").click_accesskit();
+    h.step();
+    assert!(h.state().file_error.is_none());
+    let discovered = GameLibrary::discover(&root).unwrap();
+    assert_eq!(
+        discovered.games[0].manifest.artwork.as_deref(),
+        Some("cover.png")
+    );
+    assert_eq!(
+        discovered.games[0].artwork.as_deref().unwrap(),
+        std::fs::read(&cover).unwrap()
+    );
+    h.get_by_label("Resume").click_accesskit();
+    common::wait_harness(&mut h, |app| app.host.status.running);
+}
+
+#[test]
+fn cover_before_the_new_game_displays_a_frame_preserves_that_games_existing_artwork() {
+    use egui_kittest::kittest::Queryable;
+    use std::time::{Duration, Instant};
+
+    let (root, first_library) = library();
+    let (_, second_library) = library();
+    let first = &first_library.games[0];
+    let second = &second_library.games[0];
+    assert_eq!(first.manifest.id, second.manifest.id);
+    let cover = second.directory.join("cover.png");
+    image::RgbImage::from_pixel(2, 1, image::Rgb([20, 60, 100]))
+        .save(&cover)
+        .unwrap();
+    let png = std::fs::read(&cover).unwrap();
+    let manifest_path = second.directory.join("game.json");
+    let manifest = std::fs::read(&manifest_path).unwrap();
+    let mut app = game_app(&root);
+    app.start_library_game(first.clone(), None, false);
+    let mut h = session_harness(app);
+    common::wait_harness(&mut h, |app| {
+        app.player.active_game.is_some() && app.host.presented.is_some()
+    });
+    h.state_mut()
+        .start_library_game(second.clone(), None, false);
+    let deadline = Instant::now() + Duration::from_secs(10);
+    loop {
+        h.get_by_label("Cover").click_accesskit();
+        h.step();
+        if h.state().player.active_game.as_ref().unwrap().directory == second.directory {
+            break;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "The second library game did not start"
+        );
+        std::thread::sleep(Duration::from_millis(1));
+    }
+    assert_eq!(
+        h.state().file_error.as_deref(),
+        Some("Could not save cover: No game image is available")
+    );
+    assert_eq!(std::fs::read(&cover).unwrap(), png);
+    assert_eq!(std::fs::read(&manifest_path).unwrap(), manifest);
+
+    h.get_by_label("Close").click_accesskit();
+    common::wait_harness(&mut h, |app| {
+        app.file_error.is_none() && app.host.presented.is_some()
+    });
+    h.get_by_label("Cover").click_accesskit();
+    h.step();
+    assert!(h.state().file_error.is_none());
+    assert_ne!(std::fs::read(cover).unwrap(), png);
 }
 
 #[test]

@@ -237,7 +237,10 @@ impl EmulatorApp {
         {
             self.reset_player();
         }
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
+            if library_game {
+                ui.spacing_mut().item_spacing.x = 4.0;
+            }
             if ui
                 .add_enabled(!self.player.busy, egui::Button::new("Save"))
                 .on_hover_text("Capture the current machine and preview; associated desktop games create a new durable save.")
@@ -253,16 +256,27 @@ impl EmulatorApp {
                 self.load_player();
             }
             #[cfg(not(target_arch = "wasm32"))]
-            if self.player.active_game.is_some()
-                && ui
+            if library_game {
+                if ui
                     .push_id("amiga-game-screenshot-button", |ui| {
                         ui.button("Screenshot")
                             .on_hover_text("Save the displayed Amiga image to this game's Screenshots folder.")
                             .clicked()
                     })
                     .inner
-            {
-                self.take_game_screenshot();
+                {
+                    self.take_game_screenshot();
+                }
+                if ui
+                    .push_id("amiga-game-cover-button", |ui| {
+                        ui.button("Cover")
+                            .on_hover_text("Use the displayed Amiga image as the active game's library cover.")
+                            .clicked()
+                    })
+                    .inner
+                {
+                    self.capture_library_cover();
+                }
             }
         });
         #[cfg(not(target_arch = "wasm32"))]
@@ -326,8 +340,12 @@ impl EmulatorApp {
         ui.horizontal_wrapped(|ui| {
             for (index, game) in self.player.library.games.iter().enumerate() {
                 ui.vertical(|ui| {
-                    if let Some(bytes) = &game.artwork {
-                        preview(ui, ("cover", &game.manifest.id), bytes, 110.0);
+                    if !game
+                        .artwork
+                        .as_deref()
+                        .is_some_and(|bytes| preview(ui, ("cover", &game.directory), bytes, 110.0))
+                    {
+                        ui.weak("No cover image");
                     }
                     if ui
                         .selectable_label(selected == Some(index), &game.manifest.title)
@@ -358,9 +376,7 @@ impl EmulatorApp {
         ui.heading(&game.manifest.title);
         if ui
             .add_enabled(!self.player.busy, egui::Button::new("Edit game"))
-            .on_hover_text(
-                "Change this game's name, folder, description, configuration or disk list",
-            )
+            .on_hover_text("Change this game's name, cover, description, configuration or disks")
             .clicked()
         {
             self.open_library_editor(Some(game.clone()));
@@ -492,26 +508,60 @@ fn disk_dropdown(
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn preview(ui: &mut egui::Ui, id: impl std::hash::Hash, bytes: &[u8], width: f32) {
-    let id = ui.id().with((id, egui::Id::new(bytes)));
-    let texture = ui
-        .ctx()
-        .data_mut(|data| data.get_temp::<egui::TextureHandle>(id));
-    let texture = texture.or_else(|| {
-        let image = image::load_from_memory(bytes).ok()?.into_rgba8();
-        let size = [image.width() as usize, image.height() as usize];
-        let texture = ui.ctx().load_texture(
-            format!("{id:?}"),
-            egui::ColorImage::from_rgba_unmultiplied(size, image.as_raw()),
-            egui::TextureOptions::LINEAR,
-        );
-        ui.ctx()
-            .data_mut(|data| data.insert_temp(id, texture.clone()));
-        Some(texture)
-    });
-    if let Some(texture) = texture {
-        ui.add(egui::Image::new(&texture).max_width(width));
-    }
+pub(crate) fn preview(
+    ui: &mut egui::Ui,
+    id: impl std::hash::Hash,
+    bytes: &[u8],
+    width: f32,
+) -> bool {
+    draw_image_preview(ui, id, egui::Id::new(bytes), width, || {
+        crate::library_edit::decode_artwork(bytes)
+            .ok()
+            .map(std::borrow::Cow::Owned)
+    })
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) fn draw_image_preview<'a>(
+    ui: &mut egui::Ui,
+    id: impl std::hash::Hash,
+    revision: egui::Id,
+    width: f32,
+    image: impl FnOnce() -> Option<std::borrow::Cow<'a, image::RgbaImage>>,
+) -> bool {
+    type Preview = (egui::Id, Option<egui::TextureHandle>);
+    let id = ui.id().with(id);
+    let cached = ui.data(|data| data.get_temp::<Preview>(id));
+    let texture = if let Some((_, texture)) = cached.filter(|(current, _)| *current == revision) {
+        texture
+    } else {
+        let texture = image().map(|image| {
+            let max_edge =
+                u32::try_from(ui.input(|input| input.max_texture_side)).unwrap_or(u32::MAX);
+            let image = if image.width().max(image.height()) > max_edge {
+                std::borrow::Cow::Owned(
+                    image::DynamicImage::ImageRgba8(image.into_owned())
+                        .thumbnail(max_edge, max_edge)
+                        .into_rgba8(),
+                )
+            } else {
+                image
+            };
+            let size = [image.width() as usize, image.height() as usize];
+            ui.ctx().load_texture(
+                format!("{id:?}"),
+                egui::ColorImage::from_rgba_unmultiplied(size, image.as_raw()),
+                egui::TextureOptions::LINEAR,
+            )
+        });
+        ui.data_mut(|data| data.insert_temp(id, (revision, texture.clone())));
+        texture
+    };
+    let Some(texture) = texture else {
+        return false;
+    };
+    ui.add(egui::Image::new(&texture).max_size(egui::vec2(ui.available_width().min(width), width)));
+    true
 }
 
 pub fn configuration_selector(

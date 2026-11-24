@@ -62,9 +62,18 @@ A successful Reset starts execution even if you had paused. If the player cannot
 prepare an assigned disk or the drive is disconnected, it reports the problem
 and keeps the session's current disks and execution state.
 
-For a cover, place **cover.jpg**, **cover.jpeg** or **cover.png** next to game.json
-and click **Refresh**. No manifest edit is needed. A declared artwork path takes
-precedence over this filename convention. JPEG and PNG covers are supported.
+Under **Cover image** in Add game or Edit game, click **Choose image...** to
+select a JPEG or PNG, or copy an image and press **Ctrl+V** (**Command+V** on
+macOS). The editor shows a proportional preview. Text pastes normally into
+text fields. **Save game** stores a copy in the game folder. You can then move
+or delete the source file or replace the clipboard contents. **Cancel** leaves
+the game's files as they were.
+
+During a library game, use **Cover** beside **Screenshot** to set the running
+game's thumbnail from the complete displayed image. Each capture replaces
+`cover.png` beside `game.json`. Return to the library to see the new thumbnail.
+**Screenshot** creates a separate numbered file in `Screenshots/`. Saved
+progress carries its own preview.
 
 ## Prepare a game manually
 
@@ -94,6 +103,11 @@ configuration and Save game to write that association. You can rename
 configurations while keeping their IDs. Moving a game directory keeps its
 relative media paths valid. Another installation must
 supply its own configuration and ROM.
+
+If `artwork` is `null`, the library checks `cover.jpg`, `cover.jpeg` and
+`cover.png` beside `game.json` in that order. A declared JPEG or PNG path takes
+precedence. A missing or unreadable cover shows a placeholder. Use **Refresh**
+after changing a cover file outside the app.
 
 Save creates a new file in the game's `saves/` directory with a preview and a UTC
 creation time. Continue restores the saved hardware, ROM and current media

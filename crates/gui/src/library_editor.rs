@@ -2,6 +2,7 @@
 
 use crate::library_edit::{validate_game_name, GameDraft};
 use crate::EmulatorApp;
+use std::borrow::Cow;
 use std::path::Path;
 
 impl EmulatorApp {
@@ -22,9 +23,12 @@ impl EmulatorApp {
         } else {
             "Add game"
         });
+        let name_id = ui.make_persistent_id("game_name");
+        let description_id = ui.make_persistent_id("game_description");
         let label = ui.label("Game name");
         let response = ui.add(
             egui::TextEdit::singleline(&mut draft.name)
+                .id(name_id)
                 .hint_text("Game name")
                 .desired_width(400.0),
         );
@@ -49,6 +53,7 @@ impl EmulatorApp {
         let label = ui.label("Description (optional)");
         let response = ui.add(
             egui::TextEdit::multiline(&mut draft.description)
+                .id(description_id)
                 .desired_rows(4)
                 .desired_width(f32::INFINITY),
         );
@@ -74,15 +79,7 @@ impl EmulatorApp {
                 }
             });
         ui.separator();
-        ui.strong("Cover image (optional)");
-        ui.label("Place cover.jpg, cover.jpeg or cover.png in the game folder, then Refresh the library. JPEG and PNG are supported.");
-        if let Some(path) = draft
-            .original
-            .as_ref()
-            .and_then(|game| game.manifest.artwork.as_ref())
-        {
-            ui.label(format!("This game uses its declared cover: {path}"));
-        }
+        render_artwork(ui, &mut draft, [name_id, description_id]);
         ui.separator();
         ui.strong("Disks");
         if let Some(game) = &draft.original {
@@ -243,4 +240,64 @@ impl EmulatorApp {
             Err(error) => self.file_error = Some(error),
         }
     }
+}
+
+fn render_artwork(ui: &mut egui::Ui, draft: &mut GameDraft, text_fields: [egui::Id; 2]) {
+    ui.strong("Cover image (optional)");
+    let paste_hint = if cfg!(target_os = "macos") {
+        "Paste an image with Command+V."
+    } else {
+        "Paste an image with Ctrl+V."
+    };
+    ui.horizontal_wrapped(|ui| {
+        if ui
+            .button("Choose image...")
+            .on_hover_text(
+                "Select a JPEG or PNG to preview and store with this game when you save.",
+            )
+            .clicked()
+        {
+            if let Some(path) = rfd::FileDialog::new()
+                .add_filter("JPEG and PNG images", &["jpg", "jpeg", "png"])
+                .pick_file()
+            {
+                draft.artwork_error = draft.choose_artwork(&path).err();
+            }
+        }
+        ui.label(paste_hint);
+    });
+
+    let paste = crate::window_keyboard::with_artwork_paste(ui.ctx(), |paste| paste.pending.take());
+    if let Some(paste) = paste {
+        let text_paste = ui
+            .memory(|memory| memory.focused().is_some_and(|id| text_fields.contains(&id)))
+            && ui.input(|input| {
+                input
+                    .events
+                    .iter()
+                    .any(|event| matches!(event, egui::Event::Paste(_)))
+            });
+        if !text_paste {
+            draft.artwork_error = paste.and_then(|image| draft.set_artwork(image)).err();
+        }
+    }
+
+    let preview = if let Some(artwork) = &draft.artwork {
+        crate::player_view::draw_image_preview(ui, "draft_cover", artwork.revision, 160.0, || {
+            Some(Cow::Borrowed(&artwork.image))
+        })
+    } else {
+        draft
+            .original
+            .as_ref()
+            .and_then(|game| game.artwork.as_deref())
+            .is_some_and(|bytes| crate::player_view::preview(ui, "draft_cover", bytes, 160.0))
+    };
+    if !preview {
+        ui.weak("No cover image");
+    }
+    if let Some(error) = &draft.artwork_error {
+        ui.colored_label(ui.visuals().error_fg_color, error);
+    }
+    ui.small("With no declared image, the library checks cover.jpg, cover.jpeg and cover.png in that order. Refresh after changing those files.");
 }
