@@ -61,6 +61,27 @@ authored text or other verification configuration keep their normal requirements
    cases where supported. Mark cases that need to run in sequence and report
    unexpected sequential execution. Follow the shared criteria for test
    placement and isolation.
+
+   In Implement Task and during Verify Master repairs, format Rust source and
+   test edits after the last Rust edit of each pass, before inspecting the diff
+   in point 3. This includes the initial implementation and each test-driven
+   repair before handoff to the runner. On master, format each repair before
+   its scoped commit, refreshed checks and follow-up review.
+
+   Run `cargo fmt --all` from the Cargo workspace root when every write it
+   would make is within scope. If it might touch unrelated work, first preview
+   the differences with `cargo fmt --all -- --check`. Inspect every difference,
+   including those in previously clean files and unrelated parts of task files.
+   If any difference falls outside scope, apply only the separable task
+   formatting suggestions by hand. Preserve the Git index and unrelated
+   working-tree edits. Leave inseparable suggestions unapplied and report their
+   locations and any unrelated differences that still affect the formatting gate.
+
+   If the formatter cannot complete, read its diagnostic and inspect the
+   working-tree diff for partial writes. Correct an in-scope cause and retry
+   within the same pass. If the failure persists or the correction would exceed
+   scope, report the cause, the affected edits and what still needs formatting.
+   Leave readiness unverified.
 3. Check affected implementation and tests, including unchanged files when the
    selected behavior or requirements affect them. Editorial changes alone do not
    require code changes. Run the assigned focused checks and review the diff
