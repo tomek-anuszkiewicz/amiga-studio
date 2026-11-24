@@ -674,16 +674,38 @@ fn view_change_releases_gameplay(start: ViewMode, via_toolbar: bool) {
     assert_eq!(app.view_mode, expected_view);
     if expected_view == ViewMode::Developer {
         common::wait(&mut app, &ctx, |app| !app.host.status.running);
-        let mut paused = owner_snapshot(&mut app);
+        let paused_cck = app.host.status.cck;
+        let paused = owner_snapshot(&mut app);
         assert!(!app.host.status.running);
+        assert_eq!(paused.cck, paused_cck);
+        assert!(!saved_key_held(&paused, 0x20), "Amiga A key at pause");
+        for (port, label) in [
+            (paused.game_ports.port1(), "Keyboard joystick"),
+            (paused.game_ports.port2(), "Gamepad"),
+        ] {
+            let device = serde_json::to_value(port).unwrap();
+            let contacts = device["Joystick"]["direction_contacts"].as_u64().unwrap();
+            assert_eq!(contacts & 1, 0, "{label} Up contact at pause");
+        }
         assert!(
             !paused.game_ports.fire1_port2(),
             "Gamepad fire contact at pause"
         );
-        // Pause can release contacts before the next CCK samples the direction pins.
-        // Refresh those pins on the detached snapshot while the machine stays paused.
-        paused.game_ports.step_cck();
-        assert_held_view_controls(&paused, false);
+
+        // The machine samples the released contacts on the next CCK.
+        let step = common::idle_command(&mut app, HostCommand::StepCck);
+        assert!(
+            matches!(step.value, Ok(HostValue::Done)),
+            "Single CCK step failed: {:?}",
+            step.value
+        );
+        assert!(!step.status.running);
+        assert_eq!(step.status.cck, paused_cck + 1);
+        let sampled = owner_snapshot(&mut app);
+        assert!(!app.host.status.running);
+        assert_eq!(sampled.cck, step.status.cck);
+        assert_held_view_controls(&sampled, false);
+        assert_ne!(sampled.cia_a.pins.port_a_input & 0x80, 0, "CIA-A Fire pin");
         common::command(&mut app, HostCommand::Run);
     }
     delivered(&mut app, &ctx);
