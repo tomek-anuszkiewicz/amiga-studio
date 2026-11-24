@@ -925,10 +925,12 @@ exports.registry = {{
             1, f"error: override toolchain '{nightly}' is not installed: "
                "the RUSTUP_TOOLCHAIN environment variable specifies an uninstalled toolchain\n",
         )
-        for native, browser, successful, channel, unavailable, status in (
-            (stable, absent, stable, "stable", "browser Nightly", "missing"),
-            (CommandFailed(1, "private fixture diagnostic"), nightly, nightly, "nightly", "native", "inconclusive"),
-            (f"{stable}\n{nightly}", nightly, nightly, "nightly", "native", "inconclusive"),
+        no_active = CommandFailed(1, "error: no active toolchain\r\n")
+        for native, browser, successful, channel, unavailable, status, observed in (
+            (stable, absent, stable, "stable", "browser Nightly", "missing", "not installed"),
+            (no_active, nightly, nightly, "nightly", "native", "missing", "no active toolchain configured"),
+            (CommandFailed(1, "private fixture diagnostic"), nightly, nightly, "nightly", "native", "inconclusive", None),
+            (f"{stable}\n{nightly}", nightly, nightly, "nightly", "native", "inconclusive", None),
         ):
             with self.subTest(native=native, browser=browser):
                 area, commands, releases = self.rust_role_report(
@@ -942,6 +944,8 @@ exports.registry = {{
                 self.assertCountEqual([(row.status, row.item) for row in area.findings], [
                     (status, f"Rust {unavailable} toolchain"), ("update", f"Rust {channel.title()}"),
                 ])
+                if observed:
+                    self.assertIn(observed, rendered(area))
                 self.assertNotIn("private fixture diagnostic", rendered(area))
 
     def test_rust_stable_counts_current_only_after_a_comparable_release_response(self):

@@ -79,6 +79,8 @@ def rust_selection(area, probe, role, setup, env=None):
             error.stderr, flags=re.MULTILINE,
         ):
             area.record("missing", item, observed="not installed", source=setup)
+        elif isinstance(error, CommandFailed) and error.stderr.strip() == "error: no active toolchain":
+            area.record("missing", item, observed="no active toolchain configured", source=setup)
         else:
             area.incomplete(item, setup, error)
         return None
