@@ -12,10 +12,10 @@ pub mod phase;
 
 #[path = "blitter_area.rs"]
 mod area;
+#[path = "blitter_control.rs"]
+mod control;
 #[path = "blitter_line_engine.rs"]
 mod line_engine;
-#[path = "blitter_control.rs"]
-mod registers;
 
 use crate::register_bits::{blitter_fields as field, bltcon};
 pub use line::LineDrawer;

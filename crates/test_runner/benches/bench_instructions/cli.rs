@@ -1,9 +1,9 @@
 //! Cargo entry point for M68000 instruction benchmarks.
 
-#[path = "../../../../benchmarks/m68k/runner.rs"]
-mod asm_runner;
 mod inventory;
 mod platform;
+#[path = "../../../../benchmarks/m68k/runner.rs"]
+mod runner;
 
 fn benchmarks_dir() -> std::path::PathBuf {
     std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../.agent/tmp/benchmarks")
@@ -76,7 +76,7 @@ fn main() {
     };
     match command {
         Command::MeasureCase(case_id, duration, series, report_path) => {
-            if let Err(error) = asm_runner::measure(&case_id, duration, series, &report_path) {
+            if let Err(error) = runner::measure(&case_id, duration, series, &report_path) {
                 eprintln!("ASM benchmark failed: {error}");
                 std::process::exit(1);
             }

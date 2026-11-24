@@ -1,5 +1,5 @@
 #[path = "common/frame.rs"]
-mod receiver;
+mod frame;
 
 #[path = "frame/fields.rs"]
 mod fields;

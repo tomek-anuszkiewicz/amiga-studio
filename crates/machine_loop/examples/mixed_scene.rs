@@ -1,7 +1,7 @@
 //! Run the same standalone guest as the GUI, with deterministic host input.
 
 #[path = "../tests/programs/display/mixed_scene/host.rs"]
-mod scene;
+mod host;
 
 use std::io::{BufWriter, Write};
 use std::path::Path;
@@ -43,7 +43,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         _ => return Err("Expected audit or bench; use --help".into()),
     };
     let mut fields = if audit { 32u64 } else { 120 };
-    let mut warmup = scene::WARMUP_FIELDS;
+    let mut warmup = host::WARMUP_FIELDS;
     let mut series = if audit { 1u64 } else { 3 };
     let mut standard = VideoStandard::Pal;
     let mut output = None;
@@ -68,26 +68,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if fields == 0 || series == 0 || (audit && series != 1) {
         return Err("Fields and series must be positive; audit uses one series".into());
     }
-    let mut machine = scene::machine(standard);
+    let mut machine = host::machine(standard);
     for field in 0..warmup {
-        scene::run_field(&mut machine, field);
+        host::run_field(&mut machine, field);
     }
-    let before = scene::progress(&machine);
+    let before = host::progress(&machine);
     let initial = machine.save_state();
     let mut timings = Vec::new();
-    let mut activity = scene::Activity::default();
+    let mut activity = host::Activity::default();
     let mut previous_result = None;
     for run in 0..series {
         // Every series executes the same guest work and external event schedule.
         machine.load_state(&initial);
         if audit {
             for field in warmup..warmup + fields {
-                scene::audit_field(&mut machine, field, &mut activity);
+                host::audit_field(&mut machine, field, &mut activity);
             }
         } else {
             let start = Instant::now();
             for field in warmup..warmup + fields {
-                scene::run_field(&mut machine, field);
+                host::run_field(&mut machine, field);
             }
             let seconds = start.elapsed().as_secs_f64();
             println!(
@@ -105,7 +105,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         previous_result = Some(result);
     }
-    let after = scene::progress(&machine);
+    let after = host::progress(&machine);
     let report = json!({
         "mode": if audit { "audit" } else { "bench" },
         "standard": format!("{standard:?}"),

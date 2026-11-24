@@ -2,14 +2,14 @@ use config::VideoStandard;
 use paula::audio::{Audio, StereoSample, AUDIO_RING_BUFFER_CAPACITY, AUDIO_SAMPLE_RATE};
 
 #[path = "../src/audio_tables.rs"]
-mod tables;
+mod audio_tables;
 
 fn table(standard: VideoStandard, filter: bool) -> &'static [i32; 2048] {
     match (standard, filter) {
-        (VideoStandard::Pal, false) => &tables::BLEP_A500_PAL_FILTER_OFF,
-        (VideoStandard::Pal, true) => &tables::BLEP_A500_PAL_FILTER_ON,
-        (VideoStandard::Ntsc, false) => &tables::BLEP_A500_NTSC_FILTER_OFF,
-        (VideoStandard::Ntsc, true) => &tables::BLEP_A500_NTSC_FILTER_ON,
+        (VideoStandard::Pal, false) => &audio_tables::BLEP_A500_PAL_FILTER_OFF,
+        (VideoStandard::Pal, true) => &audio_tables::BLEP_A500_PAL_FILTER_ON,
+        (VideoStandard::Ntsc, false) => &audio_tables::BLEP_A500_NTSC_FILTER_OFF,
+        (VideoStandard::Ntsc, true) => &audio_tables::BLEP_A500_NTSC_FILTER_ON,
     }
 }
 
@@ -45,7 +45,7 @@ fn reference(events: &[(u64, i32)], sample: u64, clock: u32, table: &[i32]) -> i
 
 #[test]
 fn all_channels_reconstruct_signed_steps_at_fractional_pcm_instants() {
-    assert_eq!(tables::BLEP_TABLE_LENGTH, 2048);
+    assert_eq!(audio_tables::BLEP_TABLE_LENGTH, 2048);
     assert_eq!(AUDIO_SAMPLE_RATE, 44_100);
     for standard in [VideoStandard::Pal, VideoStandard::Ntsc] {
         for filter in [false, true] {

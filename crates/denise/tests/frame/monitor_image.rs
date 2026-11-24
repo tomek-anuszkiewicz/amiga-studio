@@ -1,4 +1,4 @@
-use crate::receiver::Video;
+use crate::frame::Video;
 use config::VideoStandard;
 use denise::frame_builder::OPAQUE_BLACK;
 const RED: u32 = 0xfff00000;

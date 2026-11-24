@@ -1,4 +1,4 @@
-use crate::receiver::Video;
+use crate::frame::Video;
 
 #[test]
 fn framebuffer_keeps_visible_dimensions_with_a_fixed_row_stride() {

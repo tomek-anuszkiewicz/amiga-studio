@@ -6,7 +6,7 @@ use config::custom_reg;
 use serde::{Deserialize, Serialize};
 
 #[path = "copper_control.rs"]
-mod registers;
+mod control;
 
 /// Instruction progress survives both arbitration denial and DMA suspension.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]

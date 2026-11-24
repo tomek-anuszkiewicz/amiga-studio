@@ -4,7 +4,7 @@ mod common;
 use gui::host_video;
 #[path = "../src/layout/main_viewport/amiga_screen.rs"]
 #[allow(dead_code)]
-pub mod screen;
+pub mod amiga_screen;
 use egui::{pos2, vec2, Color32, Context, ImageData, RawInput, Rect, TextureOptions, ViewportId};
 use egui_kittest::{
     kittest::{by, Queryable},
@@ -30,7 +30,7 @@ fn conversion_respects_visible_rows_and_argb_alpha() {
         0xff123456, 0x80102030, 0x00112233, 0xff00ff00, 0xff00ff00, 0xffabcdef, 0xffffffff,
         0xff000000, 0xffff0000, 0xffff0000,
     ];
-    let image = screen::ScreenTexture::convert(info, &raw);
+    let image = amiga_screen::ScreenTexture::convert(info, &raw);
     assert_eq!(image.size, [3, 2]);
     assert_eq!(
         image.pixels,
@@ -210,8 +210,11 @@ fn switching_filters_keeps_the_published_image_until_the_next_field() {
         field_odd: frame.field_odd,
         complete: false,
     };
-    let mut texture = screen::ScreenTexture::default();
-    let mut image = Some(screen::ScreenTexture::convert(info, frame.frame_buffer()));
+    let mut texture = amiga_screen::ScreenTexture::default();
+    let mut image = Some(amiga_screen::ScreenTexture::convert(
+        info,
+        frame.frame_buffer(),
+    ));
     let published = ctx.run(RawInput::default(), |ctx| {
         if let Some(image) = image.take() {
             texture.update(ctx, image);
@@ -233,8 +236,8 @@ fn switching_filters_keeps_the_published_image_until_the_next_field() {
     session.machine.denise.frame_builder.frame_buffer_mut()[0] = 0xffff0000;
 
     for (scale, expected) in [
-        (screen::ScreenScale::Two, TextureOptions::NEAREST),
-        (screen::ScreenScale::Fit, TextureOptions::LINEAR),
+        (amiga_screen::ScreenScale::Two, TextureOptions::NEAREST),
+        (amiga_screen::ScreenScale::Fit, TextureOptions::LINEAR),
     ] {
         let output = ctx.run(RawInput::default(), |_| texture.set_scale(scale));
         let updates: Vec<_> = output

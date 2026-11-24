@@ -1,4 +1,4 @@
-use crate::receiver::Video;
+use crate::frame::Video;
 
 #[test]
 fn alternate_fields_keep_the_other_parity_and_progressive_lines_are_doubled() {
