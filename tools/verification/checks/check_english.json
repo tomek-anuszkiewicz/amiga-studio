@@ -103,22 +103,24 @@
       "referencesources", "nonprose", "za"
     ],
     "tools/artifacts/tests/test_preserve.py": ["gpgsign", "qb", "qm"],
-    "DIARY.md": ["beh", "wf", "wv"],
+    "DIARY.md": ["beh", "wv"],
     ".agents/references/review-decisions.md": ["beh"],
-    "tools/workflow/tests/test_review_routing.py": ["ap", "qm", "wf"],
-    "tools/workflow/review_routing.py": ["unassessed"],
-    "tools/workflow/review_inputs.py": ["fsmonitor", "nowarn"],
+    "tools/workflow/tests/test_review_routing.py": [],
+    "tools/workflow/review_routing.py": [],
+    "tools/workflow/review_inputs.py": [],
+    "tools/workflow/capture/tests/capture_fixtures.py": ["getgid", "getuid", "linesep"],
+    "tools/workflow/capture/tests/fixtures/build_record_inputs.py": ["nunparsed", "unignored", "xfe", "xff"],
     "tools/workflow/capture/tests/test_startup.py": ["getresponse", "joinpath", "xb"],
-    "tools/workflow/capture/tests/test_preservation.py": ["nunparsed", "unignored", "xfe", "xff"],
+    "tools/workflow/capture/tests/test_preservation.py": ["unignored"],
     "tools/workflow/capture/receiver.py": ["fstat", "nofollow", "nonblock", "nonregular", "xb"],
     "tools/workflow/capture/control.py": ["fromhex", "getresponse"],
     "tools/workflow/capture/compose_service.py": ["aq", "cls", "exclusiveaddruse", "fdcwd", "getgid", "getuid", "isabs", "noreplace", "normpath", "ntpath", "posixpath", "renameat", "renamex", "setsockopt", "xb"],
     "tools/workflow/capture/README.md": ["aq", "lexists", "mnt", "statvfs", "uncredentialed", "xb", "za"],
     "tools/verification/tests/test_parallel_runner.py": ["addaudithook", "runpy", "uncatchable"],
-    "tools/verification/tests/test_integration_closure.py": ["deinstrumentation", "deliberatebadliteral", "suposed", "worddzexcluded", "worddzignored", "worddzplan", "worddztracked", "worddzuntracked", "wordingxunknown", "xff"],
+    "tools/verification/tests/test_integration_closure.py": [],
     "tools/verification/run_unittest.py": ["runpy"],
     "tools/verification/run_tests.py": ["issubclass"],
-    "tools/verification/integration_closure.py": ["cacheinfo"],
+    "tools/verification/integration_closure.py": [],
     "tools/verification/case_report.py": ["cls", "relpath", "za"],
     "tools/bootstrap/tests/test_bootstrap_contract.py": ["dp", "errorlevel"],
     "tools/bootstrap/book-to-markdown/tests/test_review_server_controller.py": ["getsockname", "ip", "oneoff"],
@@ -154,17 +156,7 @@
       "efa",
       "efb"
     ],
-    "tools/bootstrap/pdf-to-markdown/stages/10_proofread_stream/prompt.md": [
-      "audovol",
-      "coproc",
-      "ecooo",
-      "essor",
-      "hardw",
-      "hcooo",
-      "ield",
-      "ooo",
-      "playf"
-    ],
+    "tools/bootstrap/pdf-to-markdown/stages/10_proofread_stream/prompt.md": [],
     "crates/debugger/tests/test_sample_binaries.rs": [
       "zelur",
       "agima"
@@ -177,19 +169,8 @@
       "zelur",
       "agima"
     ],
-    "tools/bootstrap/pdf-to-markdown/stages/10_proofread_stream/proofread_stream.py": [
-      "coproc",
-      "ecooo",
-      "essor",
-      "hardw",
-      "hcooo",
-      "ield",
-      "ooo",
-      "playf"
-    ],
-    "tools/bootstrap/pdf-to-markdown/stages/12_generate_properties/prompt.md": [
-      "hardw"
-    ],
+    "tools/bootstrap/pdf-to-markdown/stages/10_proofread_stream/proofread_stream.py": [],
+    "tools/bootstrap/pdf-to-markdown/stages/12_generate_properties/prompt.md": [],
     ".agents/references/developer-setup.md": [
       "bookjson",
       "toolsbootstrapbootstrapps",
@@ -203,23 +184,9 @@
     "tools/bootstrap/html-to-markdown/references/llm-transcription-prompt.md": [
       "regchanges"
     ],
-    "tools/bootstrap/pdf-to-markdown/stages/04_stream_reduction/prompt_seam.md": [
-      "instruc",
-      "tion"
-    ],
-    "tools/bootstrap/pdf-to-markdown/stages/09_transform_prose/prompt.md": [
-      "ecooo",
-      "hcooo",
-      "ooo"
-    ],
-    "tools/bootstrap/book-to-markdown/prompts/proofreading.md": [
-      "audovol",
-      "coproc",
-      "essor",
-      "hardw",
-      "ield",
-      "playf"
-    ],
+    "tools/bootstrap/pdf-to-markdown/stages/04_stream_reduction/prompt_seam.md": [],
+    "tools/bootstrap/pdf-to-markdown/stages/09_transform_prose/prompt.md": [],
+    "tools/bootstrap/book-to-markdown/prompts/proofreading.md": [],
     "tools/bootstrap/pdf-to-markdown/tests/test_pdf_conversion_codex.py": [
       "obj"
     ],
@@ -337,27 +304,17 @@
     "tools/verification/tests/test_cli.py": ["xb"],
     "tools/verification/tests/test_impact.py": ["qm"],
     "tools/verification/timing_report.py": ["xb"],
-    "tools/workflow/capture/tests/test_records.py": ["qb", "qm"],
-    "tools/workflow/capture/environment.py": ["containerenv", "dockerenv", "lld", "shrinkwrap", "vv", "xhigh"],
+    "tools/workflow/capture/tests/test_records.py": [],
+    "tools/workflow/capture/environment.py": ["containerenv", "dockerenv", "lld", "shrinkwrap", "vv"],
     "tools/workflow/capture/collector.yaml": ["bearertokenauth"],
     "tools/workflow/capture/record_sources.py": ["aws", "gcloud", "gnupg", "kdbx", "kube", "netrc", "npmrc", "pem", "pfx", "pypirc", "rsa", "za"],
     "tools/workflow/capture/registry.py": ["za", "isreserved", "ntpath"],
     "tools/workflow/result.schema.json": [
       "za"
     ],
-    "tools/workflow/skill-matrix.json": [
-      "cln", "cmt", "dia", "grf", "lnk", "mrg", "obs", "pln",
-      "prf", "psh", "qry", "rty", "spc", "syn", "ver"
-    ],
-    "docs/workflow-skill-matrix.md": [
-      "cln", "cmt", "dia", "grf", "lnk", "mrg", "obs", "pln",
-      "prf", "psh", "qry", "rty", "spc", "syn", "ver"
-    ],
-    "docs/ai_agents.md": [
-      "astra", "xhigh"
-    ],
-    ".agents/references/workflow-runtime.md": [
-      "overridable", "xhigh"
-    ]
+    "tools/workflow/skill-matrix.json": [],
+    "docs/workflow-skill-matrix.md": [],
+    "docs/ai_agents.md": [],
+    ".agents/references/workflow-runtime.md": []
   }
 }
