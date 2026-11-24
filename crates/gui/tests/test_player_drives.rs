@@ -1,9 +1,9 @@
 #![allow(clippy::unwrap_used, clippy::panic)]
 use debugger::{
-    launch::{DeviceKind, MachineSetup},
+    launch::{DeviceKind, MachineSetup, StartupDisk},
     DebuggerSession,
 };
-use gui::host_commands::{HostCommand, HostReply, HostRequest, HostValue};
+use gui::host_commands::{GameStartup, HostCommand, HostReply, HostRequest, HostValue};
 use gui::host_owner::MachineOwner;
 use gui::host_video::VideoExchange;
 use physical_memory::{AddressBus, BusResult};
@@ -264,6 +264,167 @@ fn guest_read_adf_payload(owner: &mut MachineOwner, drive: usize) -> u32 {
     let even = odd + 256;
     let long = |index| (u32::from(words[index]) << 16) | u32::from(words[index + 1]);
     ((long(odd) & 0x55555555) << 1) | (long(even) & 0x55555555)
+}
+
+fn saved_machine(owner: &mut MachineOwner) -> debugger::SaveState {
+    let HostValue::Snapshot(json) = execute(owner, HostCommand::SaveSnapshot) else {
+        panic!("Missing machine snapshot");
+    };
+    debugger::SaveState::from_json(&json).unwrap()
+}
+
+fn raw_tracks(state: &debugger::A500State, drive: usize) -> serde_json::Value {
+    serde_json::to_value(&state.floppy.drives[drive]).unwrap()["track_data"].clone()
+}
+
+fn game_reset(disks: [Option<(&str, Option<u8>)>; 4]) -> HostCommand {
+    HostCommand::ResetPlayer(Some(GameStartup {
+        game_id: "game".into(),
+        disks: disks.map(|disk| {
+            disk.map(|(id, source)| StartupDisk {
+                id: id.into(),
+                bytes: source.map(|fill| vec![fill; ADF_BYTES]),
+            })
+        }),
+    }))
+}
+
+#[test]
+fn startup_reset_preserves_written_copies_and_uses_slot_contents_when_moving_disks() {
+    let mut owner = owner_with_latched_motors();
+    let mut initial = saved_machine(&mut owner);
+    initial.header.association.game_id = Some("game".into());
+    let ports = owner.status().ports;
+    execute(
+        &mut owner,
+        HostCommand::RestorePlayer {
+            json: initial.to_json().unwrap(),
+            game_id: Some("game".into()),
+            ports,
+            resume: false,
+        },
+    );
+
+    for (drive, id, last_word) in [
+        (0, "a", 0x9252),
+        (1, "shared", 0x9492),
+        (2, "shared", 0x9294),
+    ] {
+        mount(&mut owner, drive, Some(id), Some(0));
+        let mut marker = WRITE_WORDS;
+        marker[7] = last_word;
+        guest_write(&mut owner, drive, marker);
+        assert_eq!(guest_read_marker(&mut owner, drive), marker[2..]);
+    }
+    execute(&mut owner, HostCommand::SaveQuickSlot(1));
+    let written = saved_machine(&mut owner);
+    assert_ne!(raw_tracks(&written.state, 1), raw_tracks(&written.state, 2));
+    mount(&mut owner, 1, None, None);
+    mount(&mut owner, 2, None, None);
+
+    // Two modified copies have no preference for DF0. Even a readable source
+    // image must not silently replace either copy or cause a partial remount.
+    let before = saved_machine(&mut owner);
+    for running in [false, true] {
+        if running {
+            execute(&mut owner, HostCommand::Run);
+        }
+        let prior = owner.status();
+        assert_eq!(prior.running, running);
+        let rejected = request(
+            &mut owner,
+            game_reset([
+                Some(("shared", Some(0))),
+                Some(("source", Some(0x44))),
+                None,
+                None,
+            ]),
+        );
+        assert!(rejected.value.unwrap_err().contains("ambiguous"));
+        assert_eq!(rejected.status.generation, prior.generation);
+        assert_eq!(rejected.status.cck, prior.cck);
+        assert_eq!(rejected.status.running, running);
+        let after = saved_machine(&mut owner);
+        assert_eq!(before.state, after.state);
+        assert_eq!(before.header.association, after.header.association);
+    }
+
+    let reset = request(
+        &mut owner,
+        game_reset([
+            Some(("source", Some(0x44))),
+            Some(("shared", None)),
+            Some(("shared", None)),
+            None,
+        ]),
+    );
+    assert!(reset.status.running);
+    assert_eq!(reset.status.cck, 0);
+    let HostValue::PlayerReset(ids) = reset.value.unwrap() else {
+        panic!("Missing reset disk association");
+    };
+    assert_eq!(
+        ids,
+        [
+            Some("source".into()),
+            Some("shared".into()),
+            Some("shared".into()),
+            None
+        ]
+    );
+    let reset = saved_machine(&mut owner);
+    assert_eq!(reset.header.association.mounted, ids);
+    let mut source = DebuggerSession::new();
+    assert!(source.machine.floppy.drives[0].insert_disk(&vec![0x44; ADF_BYTES]));
+    assert_eq!(
+        raw_tracks(&reset.state, 0),
+        raw_tracks(&debugger::SaveState::capture(&source.machine).state, 0)
+    );
+    for drive in [1, 2] {
+        assert_eq!(
+            raw_tracks(&reset.state, drive),
+            raw_tracks(&written.state, drive)
+        );
+    }
+
+    execute(
+        &mut owner,
+        game_reset([None, Some(("shared", None)), Some(("a", None)), None]),
+    );
+    let moved = saved_machine(&mut owner);
+    assert!(!moved.state.floppy.drives[0].disk_inserted);
+    assert_eq!(raw_tracks(&moved.state, 2), raw_tracks(&written.state, 0));
+
+    execute(&mut owner, HostCommand::LoadQuickSlot { slot: 1, ports });
+    let loaded = saved_machine(&mut owner);
+    assert_eq!(loaded.state.floppy.drives, written.state.floppy.drives);
+    assert_eq!(loaded.header.association, written.header.association);
+    execute(
+        &mut owner,
+        game_reset([
+            Some(("shared", None)),
+            Some(("shared", None)),
+            Some(("a", None)),
+            None,
+        ]),
+    );
+    let reset_from_slot = saved_machine(&mut owner);
+    assert_eq!(
+        reset_from_slot.header.association.mounted,
+        [
+            Some("shared".into()),
+            Some("shared".into()),
+            Some("a".into()),
+            None
+        ]
+    );
+    for (drive, original) in [(0, 2), (1, 1), (2, 0)] {
+        assert_eq!(
+            raw_tracks(&reset_from_slot.state, drive),
+            raw_tracks(&written.state, original)
+        );
+    }
+    assert!(!reset_from_slot.state.floppy.drives[3].connected);
 }
 
 #[test]

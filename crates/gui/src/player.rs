@@ -71,6 +71,7 @@ pub(crate) enum PlayerEffect {
         drive: usize,
         id: Option<String>,
     },
+    Reset,
     #[cfg(not(target_arch = "wasm32"))]
     Save {
         game: crate::game_library::LibraryGame,
@@ -225,18 +226,20 @@ impl EmulatorApp {
         value: Result<HostValue, String>,
     ) {
         self.player.busy = false;
-        #[cfg(not(target_arch = "wasm32"))]
-        let capturing = matches!(&effect, PlayerEffect::Save { .. });
-        #[cfg(target_arch = "wasm32")]
-        let capturing = false;
-        if !capturing {
-            self.player.captured = false;
-        }
+        let release_capture = match &effect {
+            PlayerEffect::Reset => value.is_ok(),
+            #[cfg(not(target_arch = "wasm32"))]
+            PlayerEffect::Save { .. } => false,
+            _ => true,
+        };
+        self.player.captured &= !release_capture;
         let value = match value {
             Ok(value) => value,
             Err(error) => {
                 self.file_error = Some(error);
-                self.player.initial_error = true;
+                if !matches!(&effect, PlayerEffect::Reset) {
+                    self.player.initial_error = true;
+                }
                 return;
             }
         };
@@ -266,6 +269,11 @@ impl EmulatorApp {
                 self.refresh_player_saves();
             }
             PlayerEffect::Mount { drive, id } => self.player.mounted[drive] = id,
+            PlayerEffect::Reset => {
+                if let HostValue::PlayerReset(mounted) = value {
+                    self.player.mounted = mounted;
+                }
+            }
             #[cfg(not(target_arch = "wasm32"))]
             PlayerEffect::Save { game, slot } => {
                 if let HostValue::Snapshot(json) = value {
@@ -487,6 +495,39 @@ impl EmulatorApp {
         );
     }
 
+    pub(crate) fn reset_player(&mut self) {
+        #[cfg(not(target_arch = "wasm32"))]
+        let startup = if let Some(game) = &self.player.active_game {
+            if let Err(error) = game.manifest.validate() {
+                self.file_error = Some(error);
+                return;
+            }
+            Some(crate::host_commands::GameStartup {
+                game_id: game.manifest.id.clone(),
+                disks: game.manifest.mounted.each_ref().map(|id| {
+                    id.as_ref().map(|id| debugger::launch::StartupDisk {
+                        id: id.clone(),
+                        bytes: self
+                            .player
+                            .disks
+                            .iter()
+                            .find(|disk| &disk.id == id)
+                            .and_then(|disk| disk.bytes.clone()),
+                    })
+                }),
+            })
+        } else {
+            None
+        };
+        #[cfg(target_arch = "wasm32")]
+        let startup = None;
+        self.player.busy = true;
+        self.host.queue_effect(
+            HostCommand::ResetPlayer(startup),
+            HostEffect::Player(PlayerEffect::Reset),
+        );
+    }
+
     pub(crate) fn save_player(&mut self, slot: Option<usize>) {
         #[cfg(not(target_arch = "wasm32"))]
         if let Some(game) = self.player.active_game.clone() {
@@ -597,6 +638,7 @@ impl EmulatorApp {
         quick_load: bool,
     ) {
         let prepared = (|| {
+            game.manifest.validate()?;
             let continuing =
                 save.is_some() || (!normal_boot && game.manifest.initial_state.is_some());
             let configuration_id = if continuing
@@ -633,29 +675,19 @@ impl EmulatorApp {
                         .map(|p| game.directory.join(p))
                 }
             });
-            let disks =
-                game.manifest
-                    .disks
-                    .iter()
-                    .map(|disk| {
-                        let source = std::fs::read(crate::game_library::relative_asset(
-                            &game.directory,
-                            &disk.path,
-                        )?);
-                        let bytes = if state_path.is_some() {
-                            source.ok()
-                        } else {
-                            Some(source.map_err(|e| {
-                                format!("Select a readable disk {}: {e}", disk.label)
-                            })?)
-                        };
-                        Ok(SessionDisk {
-                            id: disk.id.clone(),
-                            label: disk.label.clone(),
-                            bytes,
-                        })
+            let disks = game
+                .manifest
+                .disks
+                .iter()
+                .map(|disk| {
+                    let path = crate::game_library::relative_asset(&game.directory, &disk.path)?;
+                    Ok(SessionDisk {
+                        id: disk.id.clone(),
+                        label: disk.display_name().into(),
+                        bytes: std::fs::read(path).ok(),
                     })
-                    .collect::<Result<Vec<_>, String>>()?;
+                })
+                .collect::<Result<Vec<_>, String>>()?;
             let association = debugger::SaveAssociation {
                 game_id: Some(game.manifest.id.clone()),
                 mounted: game.manifest.mounted.clone(),
@@ -682,15 +714,34 @@ impl EmulatorApp {
                     }
                 }
             } else {
+                let mut media = [const { None }; config::FLOPPY_DRIVE_COUNT];
+                for (drive, id) in association.mounted.iter().enumerate() {
+                    if let Some(id) = id {
+                        if !configuration.launch.drives[drive] {
+                            return Err(format!(
+                                "DF{drive} is disconnected in the game's configuration"
+                            ));
+                        }
+                        let disk = disks
+                            .iter()
+                            .find(|disk| &disk.id == id)
+                            .ok_or_else(|| format!("Unknown startup disk {id} for DF{drive}"))?;
+                        let bytes = disk.bytes.as_ref().ok_or_else(|| {
+                            format!("Startup disk {} for DF{drive} is unavailable", disk.label)
+                        })?;
+                        if !debugger::launch::disk_image_is_supported(bytes) {
+                            return Err(format!(
+                                "Startup disk {} for DF{drive} is an unsupported ADF ({} bytes)",
+                                disk.label,
+                                bytes.len()
+                            ));
+                        }
+                        media[drive] = Some(bytes.clone());
+                    }
+                }
                 let rom = std::fs::read(&configuration.launch.rom).map_err(|e| {
                     format!("Select a readable Kickstart ROM in configuration: {e}")
                 })?;
-                let media = std::array::from_fn(|drive| {
-                    association.mounted[drive]
-                        .as_ref()
-                        .and_then(|id| disks.iter().find(|disk| &disk.id == id))
-                        .and_then(|disk| disk.bytes.clone())
-                });
                 HostCommand::Launch {
                     setup: debugger::launch::MachineSetup {
                         config: config::A500Config::from_preset(

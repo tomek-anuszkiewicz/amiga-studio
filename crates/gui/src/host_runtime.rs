@@ -256,6 +256,7 @@ impl HostRuntime {
             &command,
             HostCommand::Reset
                 | HostCommand::ResetWarm
+                | HostCommand::ResetPlayer(_)
                 | HostCommand::Launch { .. }
                 | HostCommand::RestorePlayer { .. }
                 | HostCommand::LoadPlayerQuick { .. }
@@ -324,7 +325,12 @@ impl HostRuntime {
                 return Ok(Vec::new());
             }
         };
-        if mailboxes.status.revision >= self.status.revision {
+        let generation_acknowledged = self
+            .generation_barrier
+            .is_none_or(|id| mailboxes.replies.iter().any(|reply| reply.id == id));
+        if (generation_acknowledged || mailboxes.status.generation == self.status.generation)
+            && mailboxes.status.revision >= self.status.revision
+        {
             self.status = mailboxes.status;
         }
         if let Some(error) = self

@@ -281,6 +281,23 @@ impl MachineOwner {
                 self.session.reset_warm();
                 self.new_generation();
             }
+            HostCommand::ResetPlayer(startup) => {
+                if let Some(startup) = startup {
+                    if self.association.game_id.as_ref() != Some(&startup.game_id) {
+                        return Err("Startup disks belong to a different game".into());
+                    }
+                    self.detached_disks.restore_startup(
+                        &mut self.session,
+                        &self.association.mounted,
+                        &startup.disks,
+                    )?;
+                    self.association.mounted = startup.disks.map(|disk| disk.map(|disk| disk.id));
+                }
+                self.session.reset();
+                self.new_generation();
+                self.session.toggle_run();
+                return Ok(HostValue::PlayerReset(self.association.mounted.clone()));
+            }
             HostCommand::SupplyUtc(utc) => self.session.machine.rtc.supply_host_utc(utc),
             HostCommand::LoadRtcBattery(battery) => self.session.machine.rtc.load_battery(battery),
             HostCommand::Shutdown => {

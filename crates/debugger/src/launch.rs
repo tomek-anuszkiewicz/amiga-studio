@@ -107,6 +107,18 @@ fn unsupported_image(bytes: &[u8]) -> String {
 #[derive(Debug, Default)]
 pub struct DetachedDisks([HashMap<String, FloppyDisk>; FLOPPY_DRIVE_COUNT]);
 
+#[derive(Debug)]
+pub struct StartupDisk {
+    pub id: String,
+    pub bytes: Option<Vec<u8>>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum DiskLocation {
+    Mounted(usize),
+    Detached(usize),
+}
+
 impl DetachedDisks {
     fn available_drives<'a>(&'a self, id: &'a str) -> impl Iterator<Item = usize> + 'a {
         self.0
@@ -161,6 +173,102 @@ impl DetachedDisks {
 
         if let (Some(id), Some(ejected)) = (mounted_id, drive.replace_disk(next)) {
             self.0[index].insert(id.to_owned(), ejected);
+        }
+        session.machine.refresh_disk_activity_context();
+        Ok(())
+    }
+
+    /// Resolves the whole startup assignment before moving or ejecting any disk.
+    pub fn restore_startup(
+        &mut self,
+        session: &mut DebuggerSession,
+        mounted: &[Option<String>; FLOPPY_DRIVE_COUNT],
+        startup: &[Option<StartupDisk>; FLOPPY_DRIVE_COUNT],
+    ) -> Result<(), String> {
+        let drives = &mut session.machine.floppy.drives;
+        let mut locations = [None; FLOPPY_DRIVE_COUNT];
+        for (index, disk) in startup.iter().enumerate() {
+            if let Some(disk) = disk {
+                if !drives[index].connected {
+                    return Err(format!("DF{index} is disconnected in this session"));
+                }
+                if drives[index].disk_inserted && mounted[index].as_ref() == Some(&disk.id) {
+                    locations[index] = Some(DiskLocation::Mounted(index));
+                } else if self.0[index].contains_key(&disk.id) {
+                    locations[index] = Some(DiskLocation::Detached(index));
+                }
+            }
+        }
+
+        let mut prepared = [const { None }; FLOPPY_DRIVE_COUNT];
+        for (index, disk) in startup.iter().enumerate() {
+            let Some(disk) = disk else { continue };
+            if locations[index].is_some() {
+                continue;
+            }
+            let mut sources = mounted
+                .iter()
+                .enumerate()
+                .filter(|(index, id)| drives[*index].disk_inserted && id.as_ref() == Some(&disk.id))
+                .map(|(index, _)| DiskLocation::Mounted(index))
+                .chain(self.available_drives(&disk.id).map(DiskLocation::Detached))
+                .filter(|source| {
+                    !startup.iter().zip(locations).any(|(requested, location)| {
+                        location == Some(*source)
+                            && requested
+                                .as_ref()
+                                .is_some_and(|requested| requested.id == disk.id)
+                    })
+                });
+            if let Some(source) = sources.next() {
+                let multiple_destinations = startup.iter().zip(locations).enumerate().any(
+                    |(target, (requested, location))| {
+                        target != index
+                            && location.is_none()
+                            && requested
+                                .as_ref()
+                                .is_some_and(|requested| requested.id == disk.id)
+                    },
+                );
+                if sources.next().is_some() || multiple_destinations {
+                    return Err(format!(
+                        "Startup disk {} for DF{index} has ambiguous session copies or destinations",
+                        disk.id
+                    ));
+                }
+                locations[index] = Some(source);
+            } else {
+                let bytes = disk.bytes.as_deref().ok_or_else(|| {
+                    format!("Startup disk {} for DF{index} is unavailable", disk.id)
+                })?;
+                prepared[index] = prepare_disk(Some(bytes))
+                    .map_err(|error| format!("Startup disk {} for DF{index}: {error}", disk.id))?;
+            }
+        }
+
+        // Take all displaced media first so startup assignments can swap drives.
+        let mut displaced = std::array::from_fn::<_, FLOPPY_DRIVE_COUNT, _>(|index| {
+            if drives[index].disk_inserted && locations[index] != Some(DiskLocation::Mounted(index))
+            {
+                drives[index].replace_disk(None)
+            } else {
+                None
+            }
+        });
+        for (index, disk) in startup.iter().enumerate() {
+            let Some(disk) = disk else { continue };
+            let media = match locations[index] {
+                Some(DiskLocation::Mounted(source)) if source == index => continue,
+                Some(DiskLocation::Mounted(source)) => displaced[source].take(),
+                Some(DiskLocation::Detached(source)) => self.0[source].remove(&disk.id),
+                None => prepared[index].take(),
+            };
+            drives[index].replace_disk(media);
+        }
+        for (index, media) in displaced.into_iter().enumerate() {
+            if let (Some(id), Some(media)) = (&mounted[index], media) {
+                self.0[index].insert(id.clone(), media);
+            }
         }
         session.machine.refresh_disk_activity_context();
         Ok(())

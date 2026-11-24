@@ -3,7 +3,7 @@
 mod common;
 
 use gui::game_library::GameLibrary;
-use gui::library_edit::{validate_game_name, GameDraft};
+use gui::library_edit::{validate_game_name, GameDraft, StartupDisk};
 use std::path::{Path, PathBuf};
 
 fn root() -> PathBuf {
@@ -29,6 +29,85 @@ fn add_disk(draft: &mut GameDraft, directory: &Path, value: u8) -> PathBuf {
 }
 
 #[test]
+fn startup_choices_follow_pending_disk_ids_across_removal_save_and_normal_boot() {
+    let root = root();
+    let mut draft = GameDraft::new("standard".into());
+    draft.name = "Startup choices".into();
+    draft.select_startup_disk(0, None);
+    add_disk(&mut draft, &root, 0x11);
+    let second = add_disk(&mut draft, &root, 0x22);
+    let third = add_disk(&mut draft, &root, 0x33);
+    let first_key = draft.imports()[0].key();
+    let second_choice = Some(StartupDisk::Pending(draft.imports()[1].key()));
+    let third_choice = Some(StartupDisk::Pending(draft.imports()[2].key()));
+    assert_eq!(draft.startup_disk(0), None, "DF0 was explicitly left empty");
+    draft.select_startup_disk(1, Some(StartupDisk::Pending(first_key)));
+    draft.select_startup_disk(2, third_choice.clone());
+    draft.select_startup_disk(3, second_choice.clone());
+    draft.remove_import(first_key);
+    assert_eq!(draft.startup_disk(1), None);
+    assert_eq!(draft.startup_disk(2), third_choice);
+    assert_eq!(draft.startup_disk(3), second_choice);
+    assert!(draft
+        .save(&root, [true, true, true, false])
+        .unwrap_err()
+        .contains("DF3 is disconnected"));
+    assert!(!root.join(&draft.name).exists());
+
+    let game = draft.save(&root, [true; 4]).unwrap();
+    let expected_ids = [None, None, Some("disk-2".into()), Some("disk-1".into())];
+    assert_eq!(game.manifest.mounted, expected_ids);
+    let reopened = GameDraft::edit(GameLibrary::discover(&root).unwrap().games.remove(0));
+    assert_eq!(
+        std::array::from_fn(|drive| reopened.startup_disk(drive)),
+        expected_ids.clone().map(|id| id.map(StartupDisk::Existing))
+    );
+    assert_eq!(
+        reopened
+            .startup_choices()
+            .map(|(_, name)| name)
+            .collect::<Vec<_>>(),
+        ["source-34.adf", "source-51.adf"]
+    );
+
+    let mut rom = vec![0; 262144];
+    rom[..4].copy_from_slice(&0x70000u32.to_be_bytes());
+    rom[4..8].copy_from_slice(&0xfc0100u32.to_be_bytes());
+    rom[0x100..0x102].copy_from_slice(&[0x60, 0xfe]);
+    let rom_path = root.join("kick.rom");
+    std::fs::write(&rom_path, rom).unwrap();
+    let mut app = gui::EmulatorApp::default();
+    let launch = &mut app.player.catalog.configurations[0].launch;
+    launch.rom = rom_path.to_string_lossy().into_owned();
+    launch.drives = [true, true, true, false];
+    app.start_library_game(game.clone(), None, true);
+    common::settle(&mut app, &egui::Context::default());
+    assert!(app
+        .file_error
+        .as_deref()
+        .unwrap()
+        .contains("DF3 is disconnected"));
+    assert!(app.player.active_game.is_none());
+    app.player.catalog.configurations[0].launch.drives[3] = true;
+    app.start_library_game(game, None, true);
+    let state = common::snapshot(&mut app);
+    assert_eq!(app.player.mounted, expected_ids);
+    let mut expected = debugger::DebuggerSession::new();
+    expected.machine.floppy.set_connections([true; 4]).unwrap();
+    let expected = &mut expected.machine.floppy.drives;
+    assert!(expected[2].insert_disk(&std::fs::read(third).unwrap()));
+    assert!(expected[3].insert_disk(&std::fs::read(second).unwrap()));
+    for (actual, expected) in state.floppy.drives.iter().zip(expected) {
+        assert_eq!(actual.connected, expected.connected);
+        assert_eq!(actual.disk_inserted, expected.disk_inserted);
+        assert_eq!(
+            serde_json::to_value(actual).unwrap()["track_data"],
+            serde_json::to_value(expected).unwrap()["track_data"]
+        );
+    }
+}
+
+#[test]
 fn create_import_and_rename_preserve_media_ids_saved_progress_and_other_files() {
     let root = root();
     let mut draft = GameDraft::new("standard".into());
@@ -40,7 +119,7 @@ fn create_import_and_rename_preserve_media_ids_saved_progress_and_other_files() 
         !root.join(&draft.name).exists(),
         "Picking files must not publish a game"
     );
-    let mut game = draft.save(&root).unwrap();
+    let mut game = draft.save(&root, [true; 4]).unwrap();
     assert_eq!(game.directory.file_name().unwrap(), "A new game");
     assert_eq!(game.description, draft.description);
     assert_eq!(
@@ -71,7 +150,7 @@ fn create_import_and_rename_preserve_media_ids_saved_progress_and_other_files() 
     edit.name = "Renamed game".into();
     edit.description = "Edited description".into();
     let third = add_disk(&mut edit, &root, 0x33);
-    let updated = edit.save(&root).unwrap();
+    let updated = edit.save(&root, [true; 4]).unwrap();
     assert!(!game.directory.exists());
     assert_eq!(updated.manifest.id, id);
     assert_eq!(&updated.manifest.disks[..2], before_disks);
@@ -102,7 +181,7 @@ fn invalid_names_images_and_destination_collisions_leave_existing_game_untouched
     let root = root();
     let mut draft = GameDraft::new("standard".into());
     draft.name = "Original".into();
-    let game = draft.save(&root).unwrap();
+    let game = draft.save(&root, [true; 4]).unwrap();
     let original = std::fs::read(game.directory.join("game.json")).unwrap();
     for invalid in [
         "",
@@ -119,7 +198,7 @@ fn invalid_names_images_and_destination_collisions_leave_existing_game_untouched
         assert!(validate_game_name(invalid).is_err(), "{invalid}");
         let mut edit = GameDraft::edit(game.clone());
         edit.name = invalid.into();
-        assert!(edit.save(&root).is_err());
+        assert!(edit.save(&root, [true; 4]).is_err());
         assert_eq!(
             std::fs::read(game.directory.join("game.json")).unwrap(),
             original
@@ -128,13 +207,13 @@ fn invalid_names_images_and_destination_collisions_leave_existing_game_untouched
     let bad = root.join("bad.adf");
     std::fs::write(&bad, b"unsupported disk").unwrap();
     assert!(draft.add_disk(&bad).is_err());
-    assert!(draft.imports.is_empty());
+    assert!(draft.imports().is_empty());
     std::fs::create_dir(root.join("Other")).unwrap();
     std::fs::write(root.join("Other/preserve.txt"), b"unrelated").unwrap();
     let mut edit = GameDraft::edit(game.clone());
     edit.name = "Other".into();
     edit.description = "Must not be written".into();
-    assert!(edit.save(&root).is_err());
+    assert!(edit.save(&root, [true; 4]).is_err());
     assert_eq!(
         std::fs::read(game.directory.join("game.json")).unwrap(),
         original
@@ -151,7 +230,7 @@ fn jpeg_and_png_covers_are_discovered_and_refresh_reads_replacements() {
     let root = root();
     let mut draft = GameDraft::new("standard".into());
     draft.name = "Covered game".into();
-    let game = draft.save(&root).unwrap();
+    let game = draft.save(&root, [true; 4]).unwrap();
     let cover = game.directory.join("cover.jpg");
     let image = image::RgbImage::from_pixel(2, 2, image::Rgb([240, 20, 10]));
     image.save(&cover).unwrap();
@@ -203,12 +282,37 @@ fn jpeg_and_png_covers_are_discovered_and_refresh_reads_replacements() {
 
 #[test]
 fn editor_cancel_does_not_write_and_save_updates_the_active_games_path_without_restarting() {
-    use egui_kittest::{kittest::Queryable, Harness};
+    use egui_kittest::{
+        kittest::{NodeT, Queryable},
+        Harness,
+    };
+    fn select_startup(h: &mut Harness<'_, gui::EmulatorApp>, drive: &str, disk: &str) {
+        let row = h
+            .get_all_by_value(drive)
+            .find(|node| node.accesskit_node().role() == egui::accesskit::Role::Label)
+            .unwrap()
+            .accesskit_node()
+            .bounding_box()
+            .unwrap();
+        h.get_all_by_role(egui::accesskit::Role::ComboBox)
+            .find(|node| {
+                node.accesskit_node()
+                    .bounding_box()
+                    .is_some_and(|b| b.x0 >= row.x1 && b.y0 < row.y1 && b.y1 > row.y0)
+            })
+            .unwrap()
+            .click();
+        common::settle_harness(h);
+        h.get_by_role_and_label(egui::accesskit::Role::Button, disk)
+            .click();
+        common::settle_harness(h);
+    }
+
     let root = root();
     let mut draft = GameDraft::new("standard".into());
     draft.name = "Before".into();
     add_disk(&mut draft, &root, 0x44);
-    let game = draft.save(&root).unwrap();
+    let game = draft.save(&root, [true; 4]).unwrap();
     let rom_path = root.join("kick.rom");
     let mut rom = vec![0; 262144];
     rom[..4].copy_from_slice(&0x70000u32.to_be_bytes());
@@ -217,6 +321,7 @@ fn editor_cancel_does_not_write_and_save_updates_the_active_games_path_without_r
     std::fs::write(&rom_path, rom).unwrap();
     let mut app = gui::EmulatorApp::default();
     app.player.catalog.configurations[0].launch.rom = rom_path.to_string_lossy().into_owned();
+    app.player.catalog.configurations[0].launch.drives[1] = true;
     app.start_library_game(game.clone(), None, false);
     common::settle(&mut app, &egui::Context::default());
     app.player.catalog.library_root = root.to_string_lossy().into_owned();
@@ -240,6 +345,27 @@ fn editor_cancel_does_not_write_and_save_updates_the_active_games_path_without_r
     harness.get_by_label("Cancel").click_accesskit();
     common::settle_harness(&mut harness);
     assert!(!root.join("Cancelled").exists());
+    let manifest_path = game.directory.join("game.json");
+    let before_cancel = std::fs::read(&manifest_path).unwrap();
+    let before_media = common::snapshot(harness.state_mut());
+    harness.get_by_label("Edit game").click_accesskit();
+    common::settle_harness(&mut harness);
+    select_startup(&mut harness, "DF0", "Empty");
+    assert_eq!(
+        harness
+            .state()
+            .player
+            .library_editor
+            .as_ref()
+            .unwrap()
+            .startup_disk(0),
+        None
+    );
+    harness.get_by_label("Cancel").click_accesskit();
+    common::settle_harness(&mut harness);
+    assert_eq!(std::fs::read(manifest_path).unwrap(), before_cancel);
+    assert_eq!(common::snapshot(harness.state_mut()), before_media);
+
     harness.get_by_label("Edit game").click_accesskit();
     common::settle_harness(&mut harness);
     harness
@@ -256,6 +382,8 @@ fn editor_cancel_does_not_write_and_save_updates_the_active_games_path_without_r
         0x55,
     );
     common::settle_harness(&mut harness);
+    select_startup(&mut harness, "DF0", "Empty");
+    select_startup(&mut harness, "DF1", "source-85.adf");
     let generation = harness.state().host.status.generation;
     let before = common::snapshot(harness.state_mut());
     harness.get_by_label("Save game").click_accesskit();
@@ -271,11 +399,38 @@ fn editor_cancel_does_not_write_and_save_updates_the_active_games_path_without_r
     let active = harness.state().player.active_game.as_ref().unwrap();
     assert_eq!(active.directory.file_name().unwrap(), "After");
     assert_eq!(active.manifest.id, game.manifest.id);
+    let startup = [None, Some("disk-2".into()), None, None];
+    assert_eq!(active.manifest.mounted, startup);
     assert_eq!(harness.state().player.disks.len(), 2);
     assert_eq!(harness.state().player.mounted[0].as_deref(), Some("disk-1"));
     assert_eq!(
         harness.state().player.disks[1].bytes.as_deref().unwrap(),
         vec![0x55; 901120]
+    );
+
+    let other_root = tempfile::tempdir().unwrap();
+    let mut other = GameDraft::new("standard".into());
+    other.name = "Another game".into();
+    add_disk(&mut other, other_root.path(), 0x66);
+    let other = other.save(other_root.path(), [true; 4]).unwrap();
+    assert_eq!(other.manifest.id, game.manifest.id);
+    let app = harness.state_mut();
+    app.player.catalog.library_root = other_root.path().to_string_lossy().into_owned();
+    app.player.library = GameLibrary::discover(other_root.path()).unwrap();
+    app.player.selected_game = Some(0);
+    app.navigate_player(gui::player::PlayerScreen::Session);
+    common::settle_harness(&mut harness);
+    harness.get_by_label("Reset").click_accesskit();
+    common::wait_harness(&mut harness, |app| app.host.status.generation > generation);
+    assert_eq!(harness.state().player.mounted, startup);
+    assert!(harness.state().host.status.running);
+    let state = common::snapshot(harness.state_mut());
+    assert!(!state.floppy.drives[0].disk_inserted);
+    let mut expected = debugger::DebuggerSession::new();
+    assert!(expected.machine.floppy.drives[1].insert_disk(&vec![0x55; 901120]));
+    assert_eq!(
+        serde_json::to_value(&state.floppy.drives[1]).unwrap()["track_data"],
+        serde_json::to_value(&expected.machine.floppy.drives[1]).unwrap()["track_data"]
     );
 }
 
@@ -286,7 +441,7 @@ fn invalid_manifests_and_duplicate_ids_are_reported_without_hiding_valid_games()
     let mut draft = GameDraft::new("standard".into());
     draft.name = "Valid".into();
     add_disk(&mut draft, &root, 0x11);
-    let game = draft.save(&root).unwrap();
+    let game = draft.save(&root, [true; 4]).unwrap();
     let valid = game.manifest.clone();
     for (manifest, expected) in [
         (
@@ -379,7 +534,7 @@ fn stale_edit_rejects_external_manifest_and_description_changes_without_writes()
     let mut draft = GameDraft::new("standard".into());
     draft.name = "Original".into();
     draft.description = "Original description".into();
-    let game = draft.save(&root).unwrap();
+    let game = draft.save(&root, [true; 4]).unwrap();
     for manifest_change in [false, true] {
         let mut edit = GameDraft::edit(game.clone());
         edit.name = "Rename must fail".into();
@@ -400,7 +555,10 @@ fn stale_edit_rejects_external_manifest_and_description_changes_without_writes()
             description,
         )
         .unwrap();
-        assert!(edit.save(&root).unwrap_err().contains("changed on disk"));
+        assert!(edit
+            .save(&root, [true; 4])
+            .unwrap_err()
+            .contains("changed on disk"));
         assert_eq!(
             std::fs::read(game.directory.join("game.json")).unwrap(),
             manifest

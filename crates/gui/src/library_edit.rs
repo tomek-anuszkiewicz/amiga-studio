@@ -7,8 +7,21 @@ use std::path::Path;
 
 #[derive(Debug, Clone)]
 pub struct ImportedDisk {
+    key: u64,
     pub name: String,
     bytes: Vec<u8>,
+}
+
+impl ImportedDisk {
+    pub fn key(&self) -> u64 {
+        self.key
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StartupDisk {
+    Existing(String),
+    Pending(u64),
 }
 
 #[derive(Debug, Clone)]
@@ -17,7 +30,10 @@ pub struct GameDraft {
     pub name: String,
     pub description: String,
     pub configuration: String,
-    pub imports: Vec<ImportedDisk>,
+    imports: Vec<ImportedDisk>,
+    next_import: u64,
+    startup: [Option<StartupDisk>; config::FLOPPY_DRIVE_COUNT],
+    suggest_df0: bool,
 }
 
 impl GameDraft {
@@ -28,6 +44,9 @@ impl GameDraft {
             description: String::new(),
             configuration,
             imports: Vec::new(),
+            next_import: 0,
+            startup: Default::default(),
+            suggest_df0: true,
         }
     }
 
@@ -36,9 +55,20 @@ impl GameDraft {
             name: game.manifest.title.clone(),
             description: game.description.clone(),
             configuration: game.manifest.configuration.clone(),
+            startup: game
+                .manifest
+                .mounted
+                .clone()
+                .map(|id| id.map(StartupDisk::Existing)),
             original: Some(game),
             imports: Vec::new(),
+            next_import: 0,
+            suggest_df0: false,
         }
+    }
+
+    pub fn imports(&self) -> &[ImportedDisk] {
+        &self.imports
     }
 
     /// Read and validate before the draft can affect library files.
@@ -51,6 +81,7 @@ impl GameDraft {
             ));
         }
         self.imports.push(ImportedDisk {
+            key: self.next_import,
             name: path
                 .file_name()
                 .ok_or("Select a disk file")?
@@ -58,13 +89,67 @@ impl GameDraft {
                 .into_owned(),
             bytes,
         });
+        self.next_import += 1;
         Ok(())
     }
 
-    pub fn save(&self, root: &Path) -> Result<LibraryGame, String> {
+    pub fn remove_import(&mut self, key: u64) {
+        self.imports.retain(|disk| disk.key != key);
+        for selection in &mut self.startup {
+            if *selection == Some(StartupDisk::Pending(key)) {
+                *selection = None;
+            }
+        }
+    }
+
+    pub fn startup_choices(&self) -> impl Iterator<Item = (StartupDisk, &str)> {
+        self.original
+            .iter()
+            .flat_map(|game| &game.manifest.disks)
+            .map(|disk| (StartupDisk::Existing(disk.id.clone()), disk.display_name()))
+            .chain(
+                self.imports
+                    .iter()
+                    .map(|disk| (StartupDisk::Pending(disk.key), disk.name.as_str())),
+            )
+    }
+
+    pub fn startup_disk(&self, drive: usize) -> Option<StartupDisk> {
+        if drive == 0 && self.suggest_df0 {
+            self.startup_choices().next().map(|(disk, _)| disk)
+        } else {
+            self.startup[drive].clone()
+        }
+    }
+
+    pub fn select_startup_disk(&mut self, drive: usize, disk: Option<StartupDisk>) {
+        if drive == 0 {
+            self.suggest_df0 = false;
+        }
+        self.startup[drive] = disk;
+    }
+
+    pub fn save(
+        &self,
+        root: &Path,
+        connected: [bool; config::FLOPPY_DRIVE_COUNT],
+    ) -> Result<LibraryGame, String> {
         validate_game_name(&self.name)?;
         if self.configuration.trim().is_empty() {
             return Err("Select a named configuration".into());
+        }
+        let startup = std::array::from_fn(|drive| self.startup_disk(drive));
+        for (drive, disk) in startup.iter().enumerate() {
+            if let Some(disk) = disk {
+                if !connected[drive] {
+                    return Err(format!("DF{drive} is disconnected in the selected configuration. Choose Empty or another configuration."));
+                }
+                if !self.startup_choices().any(|(choice, _)| choice == *disk) {
+                    return Err(format!(
+                        "The startup disk selected for DF{drive} is unavailable"
+                    ));
+                }
+            }
         }
         let root = root
             .canonicalize()
@@ -114,7 +199,7 @@ impl GameDraft {
         manifest.title.clone_from(&self.name);
         manifest.configuration.clone_from(&self.configuration);
         if let Some(directory) = original_directory {
-            self.write_assets(&directory, &mut manifest)?;
+            self.write_assets(&directory, &mut manifest, &startup)?;
             if directory != destination {
                 std::fs::rename(&directory, &destination).map_err(|e| format!("Changes saved, but the folder could not be renamed: {e}. Refresh the library."))?;
             }
@@ -123,7 +208,7 @@ impl GameDraft {
             let staging = root.join(format!(".{}.pending", manifest.id));
             std::fs::create_dir(&staging).map_err(|e| e.to_string())?;
             let result = self
-                .write_assets(&staging, &mut manifest)
+                .write_assets(&staging, &mut manifest, &startup)
                 .and_then(|()| std::fs::rename(&staging, &destination).map_err(|e| e.to_string()));
             if let Err(error) = result {
                 // Both paths have the canonical library root as their immediate parent.
@@ -140,9 +225,17 @@ impl GameDraft {
         load_game(&destination)
     }
 
-    fn write_assets(&self, directory: &Path, manifest: &mut GameManifest) -> Result<(), String> {
+    fn write_assets(
+        &self,
+        directory: &Path,
+        manifest: &mut GameManifest,
+        startup: &[Option<StartupDisk>; config::FLOPPY_DRIVE_COUNT],
+    ) -> Result<(), String> {
         use std::io::Write;
-        let first_disk = manifest.disks.is_empty();
+        manifest.mounted = startup.each_ref().map(|disk| match disk {
+            Some(StartupDisk::Existing(id)) => Some(id.clone()),
+            _ => None,
+        });
         if !self.imports.is_empty() {
             std::fs::create_dir_all(directory.join("disks")).map_err(|e| e.to_string())?;
         }
@@ -164,14 +257,16 @@ impl GameDraft {
                 .open(directory.join(&path))
                 .map_err(|e| e.to_string())?;
             output.write_all(&disk.bytes).map_err(|e| e.to_string())?;
+            for (drive, selection) in startup.iter().enumerate() {
+                if *selection == Some(StartupDisk::Pending(disk.key)) {
+                    manifest.mounted[drive] = Some(id.clone());
+                }
+            }
             manifest.disks.push(GameDisk {
                 id,
                 label: disk.name.clone(),
                 path,
             });
-        }
-        if first_disk {
-            manifest.mounted[0] = manifest.disks.first().map(|disk| disk.id.clone());
         }
         let changed_description = self
             .original
