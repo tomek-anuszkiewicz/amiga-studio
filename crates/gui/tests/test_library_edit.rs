@@ -4,11 +4,12 @@ mod common;
 
 use egui_kittest::{
     kittest::{NodeT, Queryable},
-    Harness,
+    Harness, HarnessBuilder,
 };
-use gui::game_library::GameLibrary;
+use gui::game_library::{GameLibrary, GameManifest};
 use gui::library_edit::{validate_game_name, GameDraft, StartupDisk};
 use gui::player_config::ConfigurationCatalog;
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 fn root() -> PathBuf {
@@ -294,10 +295,18 @@ fn jpeg_and_png_covers_are_discovered_and_refresh_reads_replacements() {
 }
 
 fn artwork_harness(root: &Path, width: f32) -> Harness<'static, gui::EmulatorApp> {
+    artwork_harness_with(root, width, Harness::builder())
+}
+
+fn artwork_harness_with(
+    root: &Path,
+    width: f32,
+    builder: HarnessBuilder<gui::EmulatorApp>,
+) -> Harness<'static, gui::EmulatorApp> {
     let mut app = gui::EmulatorApp::default();
     app.player.library_root = Some(root.to_path_buf());
     app.navigate_player(gui::player::PlayerScreen::Library);
-    let mut harness = Harness::builder()
+    let mut harness = builder
         .with_size(egui::vec2(width, 900.0))
         .build_state(|ctx, app| app.update_ui(ctx), app);
     let timeout = std::time::Duration::from_secs(10);
@@ -349,6 +358,146 @@ fn assert_uploaded_artwork_preview(output: &egui::FullOutput, expected: &image::
         .expect("The chosen image texture must actually be drawn");
     let expected_aspect = expected.width() as f32 / expected.height() as f32;
     assert!((bounds.width() / bounds.height() - expected_aspect).abs() < 0.03);
+}
+
+const COVER_TEST_GAME: &str = "Patterned game";
+const COVER_TEST_SIZE: [usize; 2] = [120, 60];
+
+#[derive(Default)]
+struct DrawnCover {
+    textures: HashMap<egui::TextureId, egui::ColorImage>,
+}
+
+impl egui_kittest::TestRenderer for DrawnCover {
+    fn handle_delta(&mut self, delta: &egui::TexturesDelta) {
+        for (id, update) in &delta.set {
+            let egui::ImageData::Color(image) = &update.image;
+            if update.pos.is_none() && image.size == COVER_TEST_SIZE {
+                self.textures.insert(*id, image.as_ref().clone());
+            }
+        }
+        for id in &delta.free {
+            self.textures.remove(id);
+        }
+    }
+
+    fn render(
+        &mut self,
+        _ctx: &egui::Context,
+        output: &egui::FullOutput,
+    ) -> Result<image::RgbaImage, String> {
+        let title = output
+            .shapes
+            .iter()
+            .find_map(|shape| match &shape.shape {
+                egui::Shape::Text(text) if text.galley.text() == COVER_TEST_GAME => {
+                    Some(text.galley.rect.translate(text.pos.to_vec2()))
+                }
+                _ => None,
+            })
+            .ok_or("The Library did not draw the edited game's tile")?;
+        let image = tile_rect(output, title, |rect| {
+            rect.fill.a() > 0 && rect.brush.is_some()
+        })
+        .and_then(|rect| self.textures.get(&rect.brush.as_ref()?.fill_texture_id))
+        .ok_or("The Library did not draw a cover above the edited game's title")?;
+        let bytes = image
+            .pixels
+            .iter()
+            .flat_map(egui::Color32::to_srgba_unmultiplied)
+            .collect();
+        image::RgbaImage::from_raw(image.size[0] as u32, image.size[1] as u32, bytes)
+            .ok_or_else(|| "Unexpected cover size".into())
+    }
+}
+
+#[test]
+fn saved_paste_and_file_covers_are_drawn_on_the_first_return_to_library() {
+    use egui::accesskit::Role;
+    use gui::window_keyboard::receive_artwork_paste;
+
+    let root = root();
+    let [width, height] = COVER_TEST_SIZE.map(|side| side as u32);
+    let original = image::RgbaImage::from_fn(width, height, |x, y| {
+        image::Rgba([x as u8, y as u8, 40, 255])
+    });
+    let pasted = image::RgbaImage::from_fn(width, height, |x, y| {
+        image::Rgba([160, x as u8, y as u8, 255])
+    });
+    let chosen = image::RgbaImage::from_fn(width, height, |x, y| {
+        image::Rgba([y as u8, 240, x as u8, 255])
+    });
+    let source = root.join("replacement.png");
+    chosen.save(&source).unwrap();
+    let mut draft = GameDraft::new("standard".into());
+    draft.name = COVER_TEST_GAME.into();
+    let game = draft.save(&root, [true; 4]).unwrap();
+    original.save(game.directory.join("cover.png")).unwrap();
+
+    let mut h = artwork_harness_with(
+        &root,
+        1024.0,
+        Harness::builder().renderer(DrawnCover::default()),
+    );
+    assert!(h
+        .get_by_role_and_label(Role::Button, COVER_TEST_GAME)
+        .rect()
+        .is_positive());
+    assert_eq!(h.render().unwrap(), original);
+    h.get_by_role_and_label(Role::Button, COVER_TEST_GAME)
+        .click_accesskit();
+    common::settle_harness(&mut h);
+
+    for (expected, source) in [(&pasted, None), (&chosen, Some(source.as_path()))] {
+        h.get_by_label("Edit game").click_accesskit();
+        common::settle_harness(&mut h);
+        if let Some(source) = source {
+            // Supply the path the native file picker would return.
+            h.state_mut()
+                .player
+                .library_editor
+                .as_mut()
+                .unwrap()
+                .choose_artwork(source)
+                .unwrap();
+        } else {
+            receive_artwork_paste(&h.ctx, || Ok(Some(pasted.clone())));
+        }
+        h.step();
+        assert_uploaded_artwork_preview(h.output(), expected);
+
+        h.get_by_label("Save game").click_accesskit();
+        h.step();
+        assert!(h.state().file_error.is_none());
+        assert!(h.state().player.library_editor.is_none());
+        let entry = &h.state().player.library.games[0];
+        assert_eq!(entry.manifest.id, game.manifest.id);
+        assert_eq!(
+            &image::load_from_memory(entry.artwork.as_deref().unwrap())
+                .unwrap()
+                .into_rgba8(),
+            expected,
+            "The Save game action must update the in-memory entry immediately"
+        );
+        // Save can finish while egui is still drawing the editor. Observe the
+        // first pass with the Library tile, including if it drew on the click.
+        if h.query_by_role_and_label(Role::Button, COVER_TEST_GAME)
+            .is_none()
+        {
+            h.step();
+        }
+        assert!(h
+            .get_by_role_and_label(Role::Button, COVER_TEST_GAME)
+            .rect()
+            .is_positive());
+        assert_eq!(&h.render().unwrap(), expected);
+
+        let manifest: GameManifest =
+            serde_json::from_slice(&std::fs::read(game.directory.join("game.json")).unwrap())
+                .unwrap();
+        let asset = game.directory.join(manifest.artwork.unwrap());
+        assert_eq!(&image::open(asset).unwrap().into_rgba8(), expected);
+    }
 }
 
 #[test]
@@ -483,12 +632,25 @@ fn artwork_paste_routes_only_to_the_active_editor_and_keeps_text_paste_and_cance
     receive_artwork_paste(&h.ctx, || panic!("Manual setup must not read image paste"));
 }
 
-#[test]
-fn an_unreadable_declared_cover_shows_a_placeholder_and_allows_launch() {
-    let root = root();
+fn cover_tiles_fixture(root: &Path) -> GameManifest {
+    let mut draft = GameDraft::new("standard".into());
+    draft.name = "Artwork".into();
+    let game = draft.save(root, [true; 4]).unwrap();
+    image::RgbImage::from_fn(180, 90, |x, y| {
+        if (x / 18 + y / 18).is_multiple_of(2) {
+            image::Rgb([42, 120, 171])
+        } else {
+            image::Rgb([203, 161, 80])
+        }
+    })
+    .save(game.directory.join("cover.png"))
+    .unwrap();
+    let mut draft = GameDraft::new("standard".into());
+    draft.name = "Missing cover".into();
+    draft.save(root, [true; 4]).unwrap();
     let mut draft = GameDraft::new("standard".into());
     draft.name = "Corrupt cover".into();
-    let game = draft.save(&root, [true; 4]).unwrap();
+    let game = draft.save(root, [true; 4]).unwrap();
     let mut manifest = game.manifest;
     manifest.artwork = Some("cover.jpg".into());
     std::fs::write(
@@ -516,8 +678,99 @@ fn an_unreadable_declared_cover_shows_a_placeholder_and_allows_launch() {
         .to_string(),
     )
     .unwrap();
+    manifest
+}
+
+fn tile_rect(
+    output: &egui::FullOutput,
+    title: egui::Rect,
+    matches: impl Fn(&egui::epaint::RectShape) -> bool,
+) -> Option<&egui::epaint::RectShape> {
+    let rects = output.shapes.iter().filter_map(|shape| {
+        let egui::Shape::Rect(rect) = &shape.shape else {
+            return None;
+        };
+        (shape.clip_rect.contains_rect(rect.rect)
+            && rect.rect.bottom() <= title.top()
+            && rect.rect.x_range().intersects(title.x_range())
+            && matches(rect))
+        .then_some(rect)
+    });
+    rects.max_by(|a, b| a.rect.bottom().total_cmp(&b.rect.bottom()))
+}
+
+fn empty_cover(output: &egui::FullOutput, title: egui::Rect, stroke: egui::Stroke) -> egui::Rect {
+    let outline = tile_rect(output, title, |rect| !rect.stroke.is_empty())
+        .expect("The tile must draw an outline above the title");
+    assert_eq!(outline.stroke, stroke);
+    assert_eq!(outline.fill, egui::Color32::TRANSPARENT);
+    assert!(outline.brush.is_none());
+    let interior = outline.rect.shrink(2.0);
+    assert!(!output.shapes.iter().any(|shape| {
+        if matches!(&shape.shape, egui::Shape::Rect(rect) if std::ptr::eq(rect, outline)) {
+            return false;
+        }
+        let bounds = shape
+            .shape
+            .visual_bounding_rect()
+            .intersect(shape.clip_rect);
+        let is_background = bounds.contains_rect(outline.rect) && bounds != outline.rect;
+        bounds.intersect(interior).is_positive() && !is_background
+    }));
+    outline.rect
+}
+
+#[test]
+fn missing_and_unreadable_covers_reserve_a_blank_frame_and_allow_launch() {
+    let root = root();
+    let manifest = cover_tiles_fixture(&root);
     let mut h = artwork_harness(&root, 1024.0);
-    assert!(h.get_all_by_value("No cover image").next().is_some());
+    let spacing = h.ctx.style().spacing.item_spacing.y;
+    let stroke = h.ctx.style().visuals.widgets.noninteractive.bg_stroke;
+    for width in [1024.0, 250.0, 104.0] {
+        h.set_size(egui::vec2(width, 900.0));
+        common::settle_harness(&mut h);
+        let artwork_title = h.get_by_label("Artwork").rect();
+        let corrupt_title = h.get_by_label("Corrupt cover").rect();
+        let missing_title = h.get_by_label("Missing cover").rect();
+        let output = h.output();
+        assert!(h.query_all_by_value("No cover image").next().is_none());
+        let corrupt = empty_cover(output, corrupt_title, stroke);
+        let missing = empty_cover(output, missing_title, stroke);
+        let side = corrupt.width();
+        assert_eq!(corrupt.size(), egui::Vec2::splat(side));
+        assert_eq!(missing.size(), corrupt.size());
+        assert!((corrupt_title.top() - corrupt.bottom() - spacing).abs() < 1.0);
+        assert!((missing_title.top() - missing.bottom() - spacing).abs() < 1.0);
+        let artwork = tile_rect(output, artwork_title, |rect| rect.brush.is_some())
+            .expect("The tile must draw artwork above the title")
+            .rect;
+        assert!((artwork.width() / artwork.height() - 2.0).abs() < 0.03);
+        assert!((artwork.width() - side).abs() < 1.0);
+        let artwork_slot = egui::Rect::from_min_size(
+            egui::pos2(artwork.left(), artwork_title.top() - spacing - side),
+            egui::Vec2::splat(side),
+        );
+        assert!(artwork_slot.expand(1.0).contains_rect(artwork));
+        for rect in [corrupt, missing, artwork_slot] {
+            assert!(h.ctx.screen_rect().contains_rect(rect));
+        }
+        if width == 1024.0 {
+            assert_eq!(side, 110.0);
+            assert_eq!(artwork_title.top(), corrupt_title.top());
+            assert_eq!(corrupt_title.top(), missing_title.top());
+        } else if width == 250.0 {
+            assert_eq!(side, 110.0);
+            assert_eq!(artwork_title.top(), corrupt_title.top());
+            assert!(missing.top() > corrupt_title.bottom());
+        } else {
+            assert!(side > 0.0 && side < 110.0);
+            assert!(corrupt.top() > artwork_title.bottom());
+            assert!(missing.top() > corrupt_title.bottom());
+        }
+    }
+    h.set_size(egui::vec2(1024.0, 900.0));
+    common::settle_harness(&mut h);
     h.get_by_label("Corrupt cover").click_accesskit();
     common::settle_harness(&mut h);
     h.get_by_label("Start game").click_accesskit();

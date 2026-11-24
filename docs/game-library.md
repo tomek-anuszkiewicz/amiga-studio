@@ -92,9 +92,10 @@ and keeps the session's current disks and execution state.
 Under **Cover image** in Add game or Edit game, click **Choose image...** to
 select a JPEG or PNG, or copy an image and press **Ctrl+V** (**Command+V** on
 macOS). The editor shows a proportional preview. Text pastes normally into
-text fields. **Save game** stores a copy in the game folder. You can then move
-or delete the source file or replace the clipboard contents. **Cancel** leaves
-the game's files as they were.
+text fields. **Save game** stores a copy in the game folder and shows the new
+cover on the game's tile when the Library returns. You can then move or delete
+the source file or replace the clipboard contents. **Cancel** leaves the game's
+files as they were.
 
 During a library game, use **Cover** beside **Screenshot** to set the running
 game's thumbnail from the complete displayed image. Each capture replaces
@@ -133,8 +134,9 @@ supply its own configuration and ROM.
 
 If `artwork` is `null`, the library checks `cover.jpg`, `cover.jpeg` and
 `cover.png` beside `game.json` in that order. A declared JPEG or PNG path takes
-precedence. A missing or unreadable cover shows a placeholder. The library
-picks up cover changes automatically.
+precedence. A missing or unreadable cover shows a blank outlined square above
+the game's selectable name. You can still start the game. The library picks up
+cover changes automatically.
 
 Save creates a new file in the game's `saves/` directory with a preview and a UTC
 creation time. Continue restores the saved hardware, ROM and current media

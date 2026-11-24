@@ -121,18 +121,23 @@ media in place.
 
 The desktop library uses the declared artwork path when present. With no
 declared path, it checks `cover.jpg`, `cover.jpeg` and `cover.png` in that order.
-The first existing file determines the cover. The library shows a placeholder
-if the resolved JPEG or PNG is missing or unreadable. Launch does not depend
-on it. File notifications refresh covers after changes on disk.
+The first existing file determines the cover. Each Library tile reserves a
+square above its selectable title, up to 110 points per side and limited by the
+available width. Artwork fits inside the square at its original proportions.
+If the selected cover is missing or unreadable, the square shows a blank frame
+with the current theme's outline. The game remains playable. File notifications
+refresh covers after changes on disk.
 
 In Add game or Edit game, choose a JPEG or PNG file or paste an image with
 Ctrl+V (Command+V on macOS). The editor previews the image at its original
 proportions. A focused text field keeps its ordinary text paste. Image paste
 belongs to the editor and does not reach the emulated machine. A rejected image
 leaves the current draft preview intact and the editor reports why. Save game
-stores and selects a copy in the game directory. Cancel discards the image with
-the draft. The saved image remains available after the source file or clipboard
-contents change.
+stores and selects a copy in the game directory. When a save replaces an
+existing game's cover, the first Library view after Save game shows the new
+image immediately, independently of the background rescan. Cancel discards the
+image with the draft. The saved image remains available after the source file
+or clipboard contents change.
 
 In manual setup, the user can select a supported ROM and zero to four disks.
 Launch validates every asset before replacing the active machine. Returning to

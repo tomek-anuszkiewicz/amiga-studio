@@ -430,32 +430,34 @@ impl EmulatorApp {
         let mut selected = None;
         let mut visible = 0;
         let mut selected_visible = false;
-        ui.horizontal_wrapped(|ui| {
-            for game in &self.player.library.games {
-                if !filter.is_empty() && !game.manifest.title.to_lowercase().contains(&filter) {
-                    continue;
+        let cover_side = ui.available_width().min(110.0);
+        ui.with_layout(
+            egui::Layout::left_to_right(egui::Align::Min).with_main_wrap(true),
+            |ui| {
+                for game in &self.player.library.games {
+                    if !filter.is_empty() && !game.manifest.title.to_lowercase().contains(&filter) {
+                        continue;
+                    }
+                    visible += 1;
+                    let is_selected = self.player.selected_game.as_ref() == Some(&game.manifest.id);
+                    selected_visible |= is_selected;
+                    ui.allocate_ui_with_layout(
+                        egui::Vec2::splat(cover_side),
+                        egui::Layout::top_down(egui::Align::Min),
+                        |ui| {
+                            library_cover(ui, game, cover_side);
+                            if ui
+                                .selectable_label(is_selected, &game.manifest.title)
+                                .clicked()
+                            {
+                                selected = Some(game.manifest.id.clone());
+                                selected_visible = true;
+                            }
+                        },
+                    );
                 }
-                visible += 1;
-                let is_selected = self.player.selected_game.as_ref() == Some(&game.manifest.id);
-                selected_visible |= is_selected;
-                ui.vertical(|ui| {
-                    if !game
-                        .artwork
-                        .as_deref()
-                        .is_some_and(|bytes| preview(ui, ("cover", &game.directory), bytes, 110.0))
-                    {
-                        ui.weak("No cover image");
-                    }
-                    if ui
-                        .selectable_label(is_selected, &game.manifest.title)
-                        .clicked()
-                    {
-                        selected = Some(game.manifest.id.clone());
-                        selected_visible = true;
-                    }
-                });
-            }
-        });
+            },
+        );
         if let Some(id) = selected {
             if self.player.selected_game.as_ref() != Some(&id) {
                 self.player.selected_game = Some(id);
@@ -634,6 +636,31 @@ fn disk_dropdown(
                 );
             }
         });
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn library_cover(ui: &mut egui::Ui, game: &crate::game_library::LibraryGame, side: f32) {
+    let size = egui::Vec2::splat(side);
+    ui.allocate_ui_with_layout(
+        size,
+        egui::Layout::centered_and_justified(egui::Direction::TopDown),
+        |ui| {
+            ui.set_min_size(size);
+            if !game
+                .artwork
+                .as_deref()
+                .is_some_and(|bytes| preview(ui, ("cover", &game.directory), bytes, side))
+            {
+                let outline = &ui.visuals().widgets.noninteractive;
+                ui.painter().rect_stroke(
+                    ui.min_rect(),
+                    outline.corner_radius,
+                    outline.bg_stroke,
+                    egui::StrokeKind::Inside,
+                );
+            }
+        },
+    );
 }
 
 #[cfg(not(target_arch = "wasm32"))]
