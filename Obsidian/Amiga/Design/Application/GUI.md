@@ -62,9 +62,10 @@ input generation.
 The desktop library provides Add game and Edit game forms. The user enters a
 name, an optional description and a named configuration, and selects ADF files
 to import individually. **Startup disks** lets the user choose a game disk,
-pending import or Empty for each drive from DF0 through DF3. A new game
-suggests the first disk for DF0 until the user makes a choice. Saving copies
-the imported disks into the game directory and records the chosen disk IDs.
+pending import or Empty for each drive from DF0 through DF3. All four choices
+start empty for a new game. Importing disks leaves those choices as set by the
+user. Saving copies the imported disks into the game directory, stores paths
+relative to that directory and records the chosen disk IDs.
 Assignments require drives connected in the chosen configuration. The game's
 name is also its folder name. Renaming preserves game and disk IDs, saves,
 initial states and other files. The library rejects invalid names and existing
@@ -94,10 +95,15 @@ current hardware configuration stays in effect and each assigned drive must
 already be connected. A failure preserves the current media and execution
 state and reports the cause. A manual session keeps its inserted media.
 
-Normal boot uses the game's saved startup assignments. A progress or initial
-state load restores its snapshot's mounted arrangement. Player Reset boots
-from the current ROM with the prepared media. Debugger cold and warm resets,
-guest RESET and keyboard reset retain their existing hardware behavior.
+In the library, **Start game** loads a configured initial state and boots
+normally when no initial state is configured. If loading the initial state
+fails, the library reports the error and offers **Boot normally without initial
+state**. Normal boot uses the game's saved startup assignments. If all four
+assignments are empty, normal boot and player Reset leave all drives empty.
+Loading an initial state or progress restores the inserted disks and empty
+drives recorded in that snapshot. Player Reset boots from the current ROM with
+the prepared media. Debugger cold and warm resets, guest RESET and keyboard
+reset retain their existing hardware behavior.
 
 When a guest writes to a player disk, the new contents follow that disk through
 ejection and reinsertion during the session. The original ADF stays unchanged.
@@ -105,11 +111,12 @@ The player uses the disk ID when selecting a detached copy. It prefers the copy
 last removed from the requested drive. A single detached copy can move to
 another connected drive. If several copies are available from other drives,
 the player reports the ambiguity and leaves all drives as they were. Copies
-mounted simultaneously are independent. On player Reset the owner uses
-matching mounted or detached copies before opening startup media from a source
-ADF. Copies already in their requested drive or last removed from it take
-priority. A remaining copy can move when its source and destination are
-unambiguous. The [save state specification](SaveState.md#player-progress)
+mounted simultaneously are independent. On player Reset, the owner first looks
+for matching mounted or detached copies. Copies already in their requested drive
+or last removed from it take priority. A remaining copy can move when its source
+and destination are unambiguous. When no matching copy is available, the owner
+prepares the disk from the source ADF bytes already loaded for the session.
+The [save state specification](SaveState.md#player-progress)
 defines what a quick load or saved file restores.
 
 In a native library session, click **Screenshot** beside **Save** and **Load**

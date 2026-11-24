@@ -391,33 +391,125 @@ fn open_player_drive(h: &mut egui_kittest::Harness<'_, EmulatorApp>, drive_label
         h.step();
         assert!(
             std::time::Instant::now() < deadline,
-            "DF0 menu did not open"
+            "{drive_label} menu did not open"
         );
     }
+}
+
+const ADF_BYTES: usize = 901_120;
+type DiskLayout<'a> = [Option<(&'a str, &'a str, u8)>; 4];
+
+fn assert_player_disk_labels(h: &egui_kittest::Harness<'_, EmulatorApp>, layout: DiskLayout<'_>) {
+    assert_eq!(
+        h.state().player.mounted,
+        layout.map(|disk| disk.map(|(id, _, _)| id.to_owned()))
+    );
+    for (drive, disk) in layout.into_iter().enumerate() {
+        let status = h.state().host.status.drives[drive];
+        assert!(status.connected, "DF{drive} should be attached");
+        assert_eq!(status.inserted, disk.is_some(), "DF{drive} owner status");
+        assert_player_drive_text(
+            h,
+            &format!("DF{drive}:"),
+            disk.map_or("Empty", |(_, label, _)| label),
+        );
+    }
+}
+
+fn assert_player_disk_layout(
+    h: &mut egui_kittest::Harness<'_, EmulatorApp>,
+    layout: DiskLayout<'_>,
+) -> debugger::SaveState {
+    assert_player_disk_labels(h, layout);
+    let snapshot = debugger::SaveState::from_json(&common::snapshot_json(h.state_mut())).unwrap();
+    assert_eq!(
+        snapshot.header.association.mounted,
+        h.state().player.mounted
+    );
+    for (drive, expected) in snapshot.state.floppy.drives.iter().zip(layout) {
+        assert!(drive.connected);
+        assert_eq!(drive.disk_inserted, expected.is_some());
+        if let Some((id, _, fill)) = expected {
+            assert_eq!(
+                drive.tracks_match_adf(&vec![fill; ADF_BYTES]),
+                Some(true),
+                "Full tracks for {id}"
+            );
+        }
+    }
+    snapshot
+}
+
+#[test]
+fn unassigned_imports_stay_empty_on_boot_and_reset_and_remain_available() {
+    use egui_kittest::kittest::Queryable;
+    use gui::library_edit::GameDraft;
+
+    let root = root();
+    std::fs::write(root.join("kick.rom"), rom()).unwrap();
+    let mut draft = GameDraft::new("standard".into());
+    draft.name = "Unassigned imports".into();
+    let imports = [("first.adf", 0x12), ("second.adf", 0x34)];
+    for (name, fill) in imports {
+        let source = root.join(name);
+        std::fs::write(&source, vec![fill; ADF_BYTES]).unwrap();
+        draft.add_disk(&source).unwrap();
+    }
+    assert_eq!(
+        std::array::from_fn(|drive| draft.startup_disk(drive)),
+        [const { None }; 4]
+    );
+    let game = draft.save(&root, [true; 4]).unwrap();
+    assert_eq!(game.manifest.mounted, [const { None }; 4]);
+
+    for (name, _) in imports {
+        std::fs::remove_file(root.join(name)).unwrap();
+    }
+    let reopened = GameLibrary::discover(&root).unwrap().games.remove(0);
+    let edit = GameDraft::edit(reopened.clone());
+    assert_eq!(
+        std::array::from_fn(|drive| edit.startup_disk(drive)),
+        [const { None }; 4]
+    );
+    assert_eq!(reopened.manifest.disks.len(), imports.len());
+    for (disk, (name, fill)) in reopened.manifest.disks.iter().zip(imports) {
+        let relative = Path::new(&disk.path);
+        assert!(relative.is_relative() && relative.starts_with("disks"));
+        assert_eq!(disk.label, name);
+        assert_eq!(
+            std::fs::read(reopened.directory.join(relative)).unwrap(),
+            vec![fill; ADF_BYTES]
+        );
+    }
+
+    let mut app = game_app(&root);
+    app.player.catalog.configurations[0].launch.drives = [true; 4];
+    app.start_library_game(reopened.clone(), None, true);
+    let mut h = session_harness(app);
+    common::wait_harness(&mut h, |app| app.host.status.running);
+    assert_player_disk_layout(&mut h, [None; 4]);
+
+    open_player_drive(&mut h, "DF2:");
+    h.get_by_label("2 - second.adf").click();
+    common::settle_harness(&mut h);
+    assert_player_disk_layout(
+        &mut h,
+        [None, None, Some(("disk-2", "second.adf", 0x34)), None],
+    );
+
+    let generation = h.state().host.status.generation;
+    h.get_by_label("Reset").click_accesskit();
+    common::wait_harness(&mut h, |app| app.host.status.generation > generation);
+    assert_player_disk_layout(&mut h, [None; 4]);
+    assert_eq!(
+        std::fs::read(reopened.directory.join(&reopened.manifest.disks[1].path)).unwrap(),
+        vec![0x34; ADF_BYTES]
+    );
 }
 
 #[test]
 fn player_disk_selection_and_ejection_publish_only_acknowledged_mounts() {
     use egui_kittest::{kittest::Queryable, Harness};
-    use gui::host_commands::{HostObservation, HostValue};
-
-    fn df0(app: &mut EmulatorApp, adf_byte: Option<u8>) -> (bool, Option<bool>) {
-        let reply = common::idle_command(
-            app,
-            HostCommand::Observe(HostObservation::Drive {
-                drive: 0,
-                expected_adf: adf_byte.map(|byte| vec![byte; 901120]),
-            }),
-        );
-        let Ok(HostValue::Drive {
-            inserted,
-            tracks_match,
-        }) = reply.value
-        else {
-            panic!("Missing DF0 observation: {:?}", reply.value);
-        };
-        (inserted, tracks_match)
-    }
 
     let (root, mut library) = library();
     let game = &mut library.games[0];
@@ -447,7 +539,7 @@ fn player_disk_selection_and_ejection_publish_only_acknowledged_mounts() {
     assert_eq!(h.state().player.mounted[0].as_deref(), Some("disk-two"));
     assert!(h.state().host.status.drives[0].inserted);
     assert_eq!(
-        df0(h.state_mut(), Some(0x33)),
+        observe_drive(h.state_mut(), 0, Some(0x33)),
         (true, Some(true)),
         "DF0 did not receive the selected disk's complete tracks"
     );
@@ -459,7 +551,7 @@ fn player_disk_selection_and_ejection_publish_only_acknowledged_mounts() {
     common::settle_harness(&mut h);
     assert!(h.state().player.mounted[0].is_none());
     assert!(!h.state().host.status.drives[0].inserted);
-    assert_eq!(df0(h.state_mut(), None), (false, None));
+    assert_eq!(observe_drive(h.state_mut(), 0, None), (false, None));
 
     let source = game.directory.join("second.adf");
     assert_eq!(std::fs::read(&source).unwrap(), vec![0x33; 901120]);
@@ -480,7 +572,7 @@ fn player_disk_selection_and_ejection_publish_only_acknowledged_mounts() {
     common::settle_harness(&mut h);
     assert_eq!(h.state().player.mounted[0].as_deref(), Some("disk-two"));
     assert_eq!(
-        df0(h.state_mut(), Some(0x33)),
+        observe_drive(h.state_mut(), 0, Some(0x33)),
         (true, Some(true)),
         "DF0 did not reinsert the detached disk's complete tracks"
     );
@@ -496,10 +588,34 @@ fn player_disk_selection_and_ejection_publish_only_acknowledged_mounts() {
     common::settle_harness(&mut h);
     assert_eq!(h.state().player.mounted[0].as_deref(), Some("disk-two"));
     assert_eq!(
-        df0(h.state_mut(), Some(0x44)),
+        observe_drive(h.state_mut(), 0, Some(0x44)),
         (true, Some(true)),
         "DF0 reused detached tracks instead of opening the new source"
     );
+}
+
+fn observe_drive(
+    app: &mut EmulatorApp,
+    drive: usize,
+    adf_byte: Option<u8>,
+) -> (bool, Option<bool>) {
+    use gui::host_commands::{HostObservation, HostValue};
+
+    let reply = common::idle_command(
+        app,
+        HostCommand::Observe(HostObservation::Drive {
+            drive,
+            expected_adf: adf_byte.map(|byte| vec![byte; ADF_BYTES]),
+        }),
+    );
+    let Ok(HostValue::Drive {
+        inserted,
+        tracks_match,
+    }) = reply.value
+    else {
+        panic!("Missing DF{drive} observation: {:?}", reply.value);
+    };
+    (inserted, tracks_match)
 }
 
 #[test]
@@ -573,6 +689,157 @@ fn session_harness(app: EmulatorApp) -> egui_kittest::Harness<'static, EmulatorA
     session_harness_builder().build_state(|ctx, app| app.update_ui(ctx), app)
 }
 
+fn add_library_disk(game: &mut LibraryGame, id: &str, label: &str, fill: u8) -> PathBuf {
+    let path = format!("{id}.adf");
+    let source = game.directory.join(&path);
+    std::fs::write(&source, vec![fill; ADF_BYTES]).unwrap();
+    game.manifest.disks.push(GameDisk {
+        id: id.into(),
+        label: label.into(),
+        path,
+    });
+    source
+}
+
+#[test]
+fn initial_state_and_normal_boot_use_their_own_disk_layouts() {
+    use debugger::launch::{DeviceKind, MachineSetup};
+    use egui_kittest::kittest::Queryable;
+
+    const INITIAL_D7: u32 = 0x1234_5678;
+    const LIVE_D7: u32 = 0x8765_4321;
+
+    let (root, library) = library();
+    let mut game = library.games[0].clone();
+    add_library_disk(&mut game, "disk-two", "Disk 2", 0x22);
+    add_library_disk(&mut game, "disk-three", "Disk 3", 0x33);
+    let startup = [
+        Some(("disk-one", "Disk 1", 0x11)),
+        None,
+        Some(("disk-three", "Disk 3", 0x33)),
+        None,
+    ];
+    let initial = [
+        None,
+        Some(("disk-two", "Disk 2", 0x22)),
+        None,
+        Some(("disk-three", "Disk 3", 0x43)),
+    ];
+    let mut reset_layout = startup;
+    reset_layout[2] = initial[3];
+    game.manifest.mounted = startup.map(|disk| disk.map(|(id, _, _)| id.to_owned()));
+    game.manifest.initial_state = Some("initial.json".into());
+    std::fs::write(
+        game.directory.join("game.json"),
+        serde_json::to_vec(&game.manifest).unwrap(),
+    )
+    .unwrap();
+    let mut machine = MachineSetup {
+        config: config::A500Config::default(),
+        ports: [DeviceKind::Mouse, DeviceKind::Joystick],
+        drives: [true; 4],
+        rom: rom(),
+        disks: initial.map(|disk| disk.map(|(_, _, fill)| vec![fill; ADF_BYTES])),
+    }
+    .prepare()
+    .unwrap();
+    machine.machine.cpu.state.set_d_long(7, INITIAL_D7);
+    let mut saved = debugger::SaveState::capture(&machine.machine);
+    saved.header.association.game_id = Some(game.manifest.id.clone());
+    saved.header.association.mounted = initial.map(|disk| disk.map(|(id, _, _)| id.to_owned()));
+    let initial_path = game.directory.join("initial.json");
+    std::fs::write(&initial_path, saved.to_json().unwrap()).unwrap();
+
+    let mut app = game_app(&root);
+    app.player.catalog.configurations[0].launch.drives = [true; 4];
+    app.navigate_player(PlayerScreen::Library);
+    let mut h = session_harness_builder().build_state(
+        |ctx, app| {
+            // The click frame can send a command, and its next poll is in the next frame.
+            ctx.options_mut(|options| options.max_passes = std::num::NonZeroUsize::MIN);
+            app.update_ui(ctx);
+        },
+        app,
+    );
+    common::settle_harness(&mut h);
+    h.get_by_label("one").click_accesskit();
+    common::settle_harness(&mut h);
+    h.get_by_label("Start game").click_accesskit();
+    common::wait_harness(&mut h, |app| app.host.status.running);
+    h.get_by_label("Pause").click_accesskit();
+    common::wait_harness(&mut h, |app| !app.host.status.running);
+    assert_eq!(
+        assert_player_disk_layout(&mut h, initial)
+            .state
+            .cpu
+            .d_long(7),
+        INITIAL_D7
+    );
+
+    let generation = h.state().host.status.generation;
+    h.get_by_label("Reset").click_accesskit();
+    h.step();
+    assert!(
+        h.state().player.busy,
+        "Reset must be queued before its acknowledgement"
+    );
+    assert_eq!(h.state().host.status.generation, generation);
+    assert!(!h.state().host.status.running);
+    h.get_by_label("Resume");
+    assert_player_disk_labels(&h, initial);
+
+    common::wait_harness(&mut h, |app| app.host.status.generation > generation);
+    assert!(h.state().host.status.running);
+    assert!(!h.state().player.busy);
+    h.get_by_label("Pause");
+    assert_eq!(
+        assert_player_disk_layout(&mut h, reset_layout)
+            .state
+            .cpu
+            .d_long(7),
+        0
+    );
+
+    std::fs::write(initial_path, b"invalid initial state").unwrap();
+    h.get_by_label("Library").click_accesskit();
+    common::settle_harness(&mut h);
+    common::command(
+        h.state_mut(),
+        HostCommand::SetRegister {
+            register: gui::EditRegister::D(7),
+            value: LIVE_D7,
+        },
+    )
+    .value
+    .unwrap();
+    h.get_by_label("Start game").click_accesskit();
+    common::settle_harness(&mut h);
+    h.get_by_label("Replace session").click_accesskit();
+    common::settle_harness(&mut h);
+    assert!(h.state().file_error.is_some());
+    assert!(h.state().player.initial_error);
+    let generation = h.state().host.status.generation;
+    assert!(!h.state().host.status.running);
+    assert_eq!(common::snapshot(h.state_mut()).cpu.d_long(7), LIVE_D7);
+
+    h.get_by_label("Close").click_accesskit();
+    common::settle_harness(&mut h);
+    h.get_by_label("Boot normally without initial state")
+        .click_accesskit();
+    common::settle_harness(&mut h);
+    h.get_by_label("Replace session").click_accesskit();
+    common::wait_harness(&mut h, |app| app.host.status.generation > generation);
+    assert!(h.state().host.status.running);
+    assert!(h.state().file_error.is_none());
+    assert_eq!(
+        assert_player_disk_layout(&mut h, startup)
+            .state
+            .cpu
+            .d_long(7),
+        0
+    );
+}
+
 #[test]
 fn player_reset_runs_after_running_paused_and_loaded_sessions() {
     use egui_kittest::kittest::Queryable;
@@ -580,15 +847,32 @@ fn player_reset_runs_after_running_paused_and_loaded_sessions() {
     let (root, library) = library();
     let game = &library.games[0];
     let mut observations = Vec::new();
+    let manual_disks = [
+        None,
+        Some(("disk-two", "Disk 2", 0x22)),
+        None,
+        Some(("disk-three", "Disk 3", 0x33)),
+    ];
+    let assert_manual_media = |h: &mut egui_kittest::Harness<'_, EmulatorApp>| {
+        assert_player_disk_labels(h, manual_disks);
+        for (drive, disk) in manual_disks.into_iter().enumerate() {
+            assert_eq!(
+                observe_drive(h.state_mut(), drive, disk.map(|(_, _, fill)| fill)),
+                (disk.is_some(), disk.map(|_| true)),
+                "Manual Reset must preserve the full tracks or empty state of DF{drive}"
+            );
+        }
+    };
     for library_game in [true, false] {
         let mut app = game_app(&root);
         if library_game {
             app.start_library_game(game.clone(), None, true);
         } else {
-            app.player.catalog.configurations[0].launch.drives[1] = true;
+            app.player.catalog.configurations[0].launch.drives = [true; 4];
             for (drive, id, label, fill) in [
                 (0, "disk-one", "Disk 1", 0x11),
                 (1, "disk-two", "Disk 2", 0x22),
+                (3, "disk-three", "Disk 3", 0x33),
             ] {
                 app.player.setup_disks.push(gui::player::SessionDisk {
                     id: id.into(),
@@ -602,7 +886,7 @@ fn player_reset_runs_after_running_paused_and_loaded_sessions() {
         let mut h = session_harness(app);
         common::wait_harness(&mut h, |app| app.host.status.running);
         let progress = common::snapshot_json(h.state_mut());
-        for (paused, loaded) in [(false, false), (true, false), (false, true)] {
+        for (paused, loaded) in [(false, false), (true, false), (false, true), (true, true)] {
             if loaded {
                 let generation = h.state().host.status.generation;
                 if library_game {
@@ -636,7 +920,14 @@ fn player_reset_runs_after_running_paused_and_loaded_sessions() {
             assert_eq!(before.running, !paused);
             assert!(!before.drives[0].inserted);
             let manual_disk = (!library_game).then(|| "disk-two".into());
-            assert_eq!(h.state().player.mounted, [None, manual_disk, None, None]);
+            let third_manual_disk = (!library_game).then(|| "disk-three".into());
+            assert_eq!(
+                h.state().player.mounted,
+                [None, manual_disk, None, third_manual_disk]
+            );
+            if !library_game {
+                assert_manual_media(&mut h);
+            }
             h.get_by_label("Reset").click_accesskit();
             common::wait_harness(&mut h, |app| app.host.status.generation > before.generation);
             let reset = h.state().host.status;
@@ -665,6 +956,9 @@ fn player_reset_runs_after_running_paused_and_loaded_sessions() {
                 associations.clone(),
                 pause_visible,
             ));
+            if !library_game {
+                assert_manual_media(&mut h);
+            }
         }
     }
     eprintln!("Reset observations (game, paused, loaded, prior CCK, running after Reset, Reset CCK, later CCK, inserted, IDs, Pause visible): {observations:#?}");
@@ -675,21 +969,24 @@ fn player_reset_runs_after_running_paused_and_loaded_sessions() {
             running && pause_visible && later_cck > reset_cck,
             "Reset must run and advance without Resume"
         );
-        assert_eq!(inserted, [library_game, !library_game, false, false]);
+        assert_eq!(
+            inserted,
+            [library_game, !library_game, false, !library_game]
+        );
         assert_eq!(
             ids,
             [
                 library_game.then(|| "disk-one".into()),
                 (!library_game).then(|| "disk-two".into()),
                 None,
-                None,
+                (!library_game).then(|| "disk-three".into()),
             ]
         );
     }
 }
 
 #[test]
-fn unavailable_or_disconnected_startup_disk_rejects_player_reset_without_changes() {
+fn unavailable_invalid_or_disconnected_startup_disk_rejects_player_reset_without_changes() {
     use egui_kittest::kittest::{by, Queryable};
     let (root, library) = library();
     let mut game = library.games[0].clone();
@@ -700,23 +997,36 @@ fn unavailable_or_disconnected_startup_disk_rejects_player_reset_without_changes
         label: "Disk 2".into(),
         path: "second.adf".into(),
     });
+    add_library_disk(&mut game, "disk-three", "Disk 3", 0x44);
     let mut app = game_app(&root);
     app.player.catalog.configurations[0].launch.drives = [true, true, true, false];
     app.start_library_game(game.clone(), None, true);
     let progress = common::snapshot_json(&mut app);
     let save = gui::game_library::persist_save(&game, &progress, None).unwrap();
     drop(app);
-    std::fs::remove_file(source).unwrap();
+    std::fs::remove_file(&source).unwrap();
 
-    for (drive, expected_error) in [(2, "unavailable"), (3, "disconnected")] {
-        game.manifest.mounted = [None, Some("disk-one".into()), None, None];
+    let invalid_adf = b"readable but invalid ADF";
+    for (drive, earlier_disk, invalid, expected_error) in [
+        (2, "disk-one", false, "unavailable"),
+        (3, "disk-one", false, "disconnected"),
+        // DF1 requires a valid, previously unused ADF before preparing the invalid DF2.
+        (2, "disk-three", true, "Unsupported ADF length"),
+    ] {
+        if invalid {
+            std::fs::write(&source, invalid_adf).unwrap();
+        }
+        game.manifest.mounted = [None, Some(earlier_disk.into()), None, None];
         game.manifest.mounted[drive] = Some("disk-two".into());
         let mut app = game_app(&root);
         app.player.catalog.configurations[0].launch.drives = [true, true, true, false];
         app.start_library_game(game.clone(), Some(save.clone()), false);
         let mut h = session_harness(app);
         common::wait_harness(&mut h, |app| app.host.status.running);
-        assert!(h.state().player.disks[1].bytes.is_none());
+        assert_eq!(
+            h.state().player.disks[1].bytes.as_deref(),
+            invalid.then_some(invalid_adf.as_slice())
+        );
         let mounted = [Some("disk-one".into()), None, None, None];
         let before = common::snapshot(h.state_mut());
         assert!(before.floppy.drives[0].disk_inserted);
@@ -759,6 +1069,66 @@ fn unavailable_or_disconnected_startup_disk_rejects_player_reset_without_changes
             assert_eq!(snapshot.header.association.mounted, mounted);
             assert_eq!(snapshot.state.floppy.drives, before.floppy.drives);
         }
+    }
+}
+
+#[test]
+fn normal_boot_with_a_missing_or_invalid_required_adf_keeps_the_current_machine() {
+    use egui_kittest::kittest::{by, Queryable};
+
+    let (root, library) = library();
+    let mut next = library.games[1].clone();
+    let required = add_library_disk(&mut next, "required", "Required disk", 0x33);
+    next.manifest.mounted[2] = Some("required".into());
+    std::fs::remove_file(&required).unwrap();
+
+    let mut app = game_app(&root);
+    app.player.catalog.configurations[0].launch.drives = [true; 4];
+    app.start_library_game(library.games[0].clone(), None, true);
+    let mut h = session_harness(app);
+    common::wait_harness(&mut h, |app| app.host.status.running);
+    h.get_by_label("Pause").click_accesskit();
+    common::wait_harness(&mut h, |app| !app.host.status.running);
+    let layout = [Some(("disk-one", "Disk 1", 0x11)), None, None, None];
+    let before = assert_player_disk_layout(&mut h, layout);
+    let prior = h.state().host.status;
+
+    for (bytes, expected_error) in [
+        (None, "unavailable"),
+        (
+            Some(b"readable but invalid ADF".as_slice()),
+            "unsupported ADF",
+        ),
+    ] {
+        if let Some(bytes) = bytes {
+            std::fs::write(&required, bytes).unwrap();
+        }
+        h.state_mut().start_library_game(next.clone(), None, true);
+        common::wait_harness(&mut h, |app| app.file_error.is_some());
+        let error = h.state().file_error.as_deref().unwrap();
+        assert!(error.contains("Required disk for DF2"), "{error}");
+        assert!(error.contains(expected_error), "{error}");
+        h.get(
+            by().role(egui::accesskit::Role::Label)
+                .value(error)
+                .predicate(|node| !node.is_hidden()),
+        );
+        assert_eq!(h.state().host.status.generation, prior.generation);
+        assert_eq!(
+            h.state().host.status.drive_reset_sequence,
+            prior.drive_reset_sequence
+        );
+        assert!(!h.state().host.status.running);
+        assert_eq!(
+            h.state().player.active_game.as_ref().unwrap().manifest.id,
+            library.games[0].manifest.id
+        );
+        h.get_by_label("Close").click_accesskit();
+        common::settle_harness(&mut h);
+        h.get_by_label("Resume");
+        let after = assert_player_disk_layout(&mut h, layout);
+        assert_eq!(after.header.association, before.header.association);
+        assert_eq!(after.state, before.state);
     }
 }
 

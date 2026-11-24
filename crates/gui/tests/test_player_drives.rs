@@ -322,8 +322,6 @@ fn startup_reset_preserves_written_copies_and_uses_slot_contents_when_moving_dis
     mount(&mut owner, 1, None, None);
     mount(&mut owner, 2, None, None);
 
-    // Two modified copies have no preference for DF0. Even a readable source
-    // image must not silently replace either copy or cause a partial remount.
     let before = saved_machine(&mut owner);
     for running in [false, true] {
         if running {
@@ -331,22 +329,49 @@ fn startup_reset_preserves_written_copies_and_uses_slot_contents_when_moving_dis
         }
         let prior = owner.status();
         assert_eq!(prior.running, running);
-        let rejected = request(
-            &mut owner,
-            game_reset([
-                Some(("shared", Some(0))),
-                Some(("source", Some(0x44))),
-                None,
-                None,
-            ]),
-        );
-        assert!(rejected.value.unwrap_err().contains("ambiguous"));
-        assert_eq!(rejected.status.generation, prior.generation);
-        assert_eq!(rejected.status.cck, prior.cck);
-        assert_eq!(rejected.status.running, running);
-        let after = saved_machine(&mut owner);
-        assert_eq!(before.state, after.state);
-        assert_eq!(before.header.association, after.header.association);
+        for (disk, destination, startup) in [
+            // Two written copies have no preference for DF0.
+            (
+                "shared",
+                "DF0",
+                [
+                    Some(("shared", Some(0))),
+                    Some(("source", Some(0x44))),
+                    None,
+                    None,
+                ],
+            ),
+            // One written copy in DF0 has no preference between DF1 and DF2.
+            (
+                "a",
+                "DF1",
+                [
+                    Some(("source", Some(0x44))),
+                    Some(("a", Some(0))),
+                    Some(("a", Some(0))),
+                    None,
+                ],
+            ),
+        ] {
+            let rejected = request(&mut owner, game_reset(startup));
+            let error = rejected.value.unwrap_err();
+            assert!(error.contains("ambiguous"), "{error}");
+            assert!(
+                error.contains(&format!("Startup disk {disk} for {destination}")),
+                "{error}"
+            );
+            assert_eq!(rejected.status.generation, prior.generation);
+            assert_eq!(rejected.status.cck, prior.cck);
+            assert_eq!(rejected.status.running, running);
+            assert_eq!(
+                rejected.status.drive_reset_sequence,
+                prior.drive_reset_sequence
+            );
+            assert_eq!(rejected.status.drives, prior.drives);
+            let after = saved_machine(&mut owner);
+            assert_eq!(before.state, after.state);
+            assert_eq!(before.header.association, after.header.association);
+        }
     }
 
     let reset = request(

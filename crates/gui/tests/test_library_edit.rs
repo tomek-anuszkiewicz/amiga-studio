@@ -115,6 +115,7 @@ fn create_import_and_rename_preserve_media_ids_saved_progress_and_other_files() 
     draft.description = "A short description".into();
     let first = add_disk(&mut draft, &root, 0x11);
     let second = add_disk(&mut draft, &root, 0x22);
+    draft.select_startup_disk(0, Some(StartupDisk::Pending(draft.imports()[0].key())));
     assert!(
         !root.join(&draft.name).exists(),
         "Picking files must not publish a game"
@@ -312,6 +313,7 @@ fn editor_cancel_does_not_write_and_save_updates_the_active_games_path_without_r
     let mut draft = GameDraft::new("standard".into());
     draft.name = "Before".into();
     add_disk(&mut draft, &root, 0x44);
+    draft.select_startup_disk(0, Some(StartupDisk::Pending(draft.imports()[0].key())));
     let game = draft.save(&root, [true; 4]).unwrap();
     let rom_path = root.join("kick.rom");
     let mut rom = vec![0; 262144];
@@ -412,6 +414,7 @@ fn editor_cancel_does_not_write_and_save_updates_the_active_games_path_without_r
     let mut other = GameDraft::new("standard".into());
     other.name = "Another game".into();
     add_disk(&mut other, other_root.path(), 0x66);
+    other.select_startup_disk(0, Some(StartupDisk::Pending(other.imports()[0].key())));
     let other = other.save(other_root.path(), [true; 4]).unwrap();
     assert_eq!(other.manifest.id, game.manifest.id);
     let app = harness.state_mut();

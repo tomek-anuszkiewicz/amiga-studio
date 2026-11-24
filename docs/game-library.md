@@ -36,10 +36,10 @@ below the display. Debug uses the same machine.
 Choose a library directory and click **Add game**. Enter the name that the app
 will use for both the game and its folder, then select a named configuration.
 You can add a description. Click **Add disk...** once per ADF. Under
-**Startup disks**, choose a disk or **Empty** for each drive. For a new game,
-DF0 suggests the first disk until you choose a disk or **Empty** yourself.
-Use connected drives for your assignments. **Save game** copies the selected
-ADFs into the game folder and keeps the original files intact.
+**Startup disks**, choose a disk or **Empty** for each drive. All four drives
+start set to **Empty**. After adding a disk, select it for a connected drive
+if you want it inserted at startup. **Save game** copies the imported ADFs into
+the game's `disks/` folder and keeps the original files intact.
 
 Select an existing entry and click **Edit game** to change its name, description
 or configuration, append more disks or change its startup assignments.
@@ -47,14 +47,20 @@ Renaming moves the whole folder, including saved progress and any initial state,
 and preserves disk IDs. Cancel discards the draft without writing files. Use
 the player panel to switch or eject disks during play.
 
-**Boot normally** inserts the startup disks and starts the game. **Reset** in
-the player panel inserts the active game's saved startup disks, clears drives
-set to **Empty** and boots with the current hardware and ROM. Editing startup
-choices during a session takes effect at the next Reset or normal boot. In
-manual sessions, Reset keeps the disks currently inserted. A successful Reset
-starts execution even if you had paused. If the player cannot prepare an
-assigned disk or the drive is disconnected, it reports the problem and keeps
-the session's current disks and execution state.
+Click **Start game** in the library. The app loads the game's initial state if
+one is configured. Otherwise it boots normally with your saved startup disks.
+If the initial state fails to load, choose **Boot normally without initial
+state** to start with those disks. Loading an initial state or saved progress
+restores the inserted disks and empty drives recorded in that save.
+
+**Reset** in the player panel inserts the active game's saved startup disks,
+clears drives set to **Empty** and boots with the current hardware and ROM. If
+all four choices are **Empty**, normal boot and game Reset leave every drive
+empty. Editing startup choices during a session takes effect at the next Reset
+or normal boot. In manual sessions, Reset keeps the disks currently inserted.
+A successful Reset starts execution even if you had paused. If the player cannot
+prepare an assigned disk or the drive is disconnected, it reports the problem
+and keeps the session's current disks and execution state.
 
 For a cover, place **cover.jpg**, **cover.jpeg** or **cover.png** next to game.json
 and click **Refresh**. No manifest edit is needed. A declared artwork path takes
@@ -100,12 +106,14 @@ A later in the same session. A still contains the program's changes, and the
 original ADF file stays unchanged. A save file carries the disks inserted when
 you save. If you want to open a changed disk in a later session, insert it
 before saving. A quick load during the session restores the slot's mounted
-disks and keeps the other disks you have used in that session.
+disks and keeps the other disks you have used in that session. On game Reset,
+the app uses matching copies from the session when available. If no matching
+copy is available for a startup disk, it prepares one from the source ADF
+bytes already loaded for the session.
 
 To prepare an initial state, start its game and save progress. Copy that save
 outside `saves/` and set `initial_state` to the relative filename. Ordinary saves
-leave the initial state intact. If loading it fails, the app shows an error.
-You can explicitly choose Boot normally without initial state.
+leave the initial state intact.
 
 ## Browser storage
 
