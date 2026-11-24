@@ -135,8 +135,8 @@ fn window_keys(app: &mut EmulatorApp, ctx: &egui::Context, edges: &[(&str, bool,
     draw(app, ctx, None);
 }
 
-fn guest_key_held(app: &mut EmulatorApp, code: usize) -> bool {
-    saved_key_held(&owner_snapshot(app), code)
+fn guest_key_held(app: &mut EmulatorApp, code: u8) -> bool {
+    common::observe_input(app, Some(code)).key_held.unwrap()
 }
 
 fn saved_key_held(state: &debugger::A500State, code: usize) -> bool {
@@ -144,7 +144,7 @@ fn saved_key_held(state: &debugger::A500State, code: usize) -> bool {
     keyboard["held"][code / 64].as_u64().unwrap() & (1 << (code % 64)) != 0
 }
 
-fn wait_guest_key(app: &mut EmulatorApp, ctx: &egui::Context, code: usize, held: bool) {
+fn wait_guest_key(app: &mut EmulatorApp, ctx: &egui::Context, code: u8, held: bool) {
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
     loop {
         common::settle(app, ctx);
@@ -543,9 +543,26 @@ fn pad_buttons(sender: &gui::host_runtime::HostInputSender, generation: u64, pre
     }
 }
 fn delivered(app: &mut EmulatorApp, ctx: &egui::Context) {
+    // The snapshot preserves the timing of fixtures that pause at a field boundary.
+    delivered_after(app, ctx, |app| {
+        let _ = owner_snapshot(app);
+    });
+}
+
+fn delivered_after_input_read(app: &mut EmulatorApp, ctx: &egui::Context) {
+    delivered_after(app, ctx, |app| {
+        let _ = common::observe_input(app, None);
+    });
+}
+
+fn delivered_after(
+    app: &mut EmulatorApp,
+    ctx: &egui::Context,
+    read_owner: impl FnOnce(&mut EmulatorApp),
+) {
     common::settle(app, ctx);
     // Establish an owner barrier after submission; cached GUI telemetry may predate it.
-    let _ = fire(app);
+    read_owner(app);
     let before = app.host.status.input_deliveries;
     common::wait(app, ctx, |app| {
         app.host.status.input_deliveries >= before + 2
@@ -556,38 +573,18 @@ fn delivered(app: &mut EmulatorApp, ctx: &egui::Context) {
 fn fire(app: &mut EmulatorApp) -> bool {
     owner_snapshot(app).game_ports.sample_ciaa_port_a_inputs() & 0x80 == 0
 }
+
+fn observed_fire(app: &mut EmulatorApp) -> bool {
+    common::observe_input(app, None).ciaa_port_a_inputs & 0x80 == 0
+}
 fn owner_snapshot(app: &mut EmulatorApp) -> Box<debugger::A500State> {
-    // Observe the owner without drawing a default, focused GUI frame.
-    assert!(
-        app.host.is_idle(),
-        "GUI replies must be settled before observation"
-    );
-    let runtime = app.host.runtime.as_mut().unwrap();
-    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
-    let mut command = HostCommand::SaveSnapshot;
-    let request = loop {
-        match runtime.submit(command) {
-            Ok(request) => break request,
-            Err(busy) => command = busy.0,
-        }
-        runtime.poll().unwrap();
-        assert!(std::time::Instant::now() < deadline);
-        std::thread::sleep(std::time::Duration::from_millis(1));
+    let reply = common::idle_command(app, HostCommand::SaveSnapshot);
+    let Ok(HostValue::Snapshot(json)) = reply.value else {
+        panic!("Missing machine snapshot");
     };
-    loop {
-        for reply in runtime.poll().unwrap() {
-            if reply.id == request {
-                let Ok(HostValue::Snapshot(json)) = reply.value else {
-                    panic!("Missing machine snapshot");
-                };
-                let saved = debugger::SaveState::from_json(&json).unwrap();
-                app.host.status = reply.status;
-                return saved.state;
-            }
-        }
-        assert!(std::time::Instant::now() < deadline);
-        std::thread::sleep(std::time::Duration::from_millis(1));
-    }
+    let saved = debugger::SaveState::from_json(&json).unwrap();
+    app.host.status = reply.status;
+    saved.state
 }
 
 fn click_view_toolbar(app: &mut EmulatorApp, ctx: &egui::Context) {
@@ -836,11 +833,11 @@ fn gamepad_plays_without_capture_survives_mouse_release_and_stops_outside_sessio
     let (mut app, ctx) = running_with(ViewMode::ScreenOnly, false, configuration);
     let sender = app.host.runtime.as_ref().unwrap().input_sender();
     let generation = app.host.status.generation;
-    delivered(&mut app, &ctx);
+    delivered_after_input_read(&mut app, &ctx);
     pad(&sender, generation, false);
     pad(&sender, generation, true);
-    delivered(&mut app, &ctx);
-    assert!(fire(&mut app));
+    delivered_after_input_read(&mut app, &ctx);
+    assert!(observed_fire(&mut app));
     assert!(!app.player.captured);
     let _ = ctx.run(egui::RawInput::default(), |ctx| {
         egui::Window::new("Session control").show(ctx, |ui| {
@@ -851,41 +848,41 @@ fn gamepad_plays_without_capture_survives_mouse_release_and_stops_outside_sessio
             app.update_ui(ctx)
         };
     });
-    delivered(&mut app, &ctx);
+    delivered_after_input_read(&mut app, &ctx);
     assert!(
-        fire(&mut app),
+        observed_fire(&mut app),
         "A focused session button must not disable the gamepad"
     );
     window_keys(&mut app, &ctx, &[("ArrowUp", true, generation)]);
-    delivered(&mut app, &ctx);
+    delivered_after_input_read(&mut app, &ctx);
     assert_eq!(
-        owner_snapshot(&mut app).game_ports.pins.direction_pins[0] & 1,
+        common::observe_input(&mut app, None).direction_pins[0] & 1,
         0
     );
     for captured in [true, false] {
         app.player.captured = captured;
         draw(&mut app, &ctx, None);
-        delivered(&mut app, &ctx);
+        delivered_after_input_read(&mut app, &ctx);
         assert!(
-            fire(&mut app),
+            observed_fire(&mut app),
             "Pointer capture changes must preserve controller contacts"
         );
     }
     assert_eq!(
-        owner_snapshot(&mut app).game_ports.pins.direction_pins[0] & 1,
+        common::observe_input(&mut app, None).direction_pins[0] & 1,
         0
     );
     window_keys(&mut app, &ctx, &[("ArrowUp", false, generation)]);
-    delivered(&mut app, &ctx);
+    delivered_after_input_read(&mut app, &ctx);
     assert_eq!(
-        owner_snapshot(&mut app).game_ports.pins.direction_pins[0] & 1,
+        common::observe_input(&mut app, None).direction_pins[0] & 1,
         1
     );
-    assert!(fire(&mut app));
+    assert!(observed_fire(&mut app));
     pad(&sender, generation.wrapping_add(1), false);
-    delivered(&mut app, &ctx);
+    delivered_after_input_read(&mut app, &ctx);
     assert!(
-        fire(&mut app),
+        observed_fire(&mut app),
         "Obsolete-generation controller samples must be discarded"
     );
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
@@ -896,9 +893,9 @@ fn gamepad_plays_without_capture_survives_mouse_release_and_stops_outside_sessio
         assert!(std::time::Instant::now() < deadline);
         std::thread::yield_now();
     }
-    delivered(&mut app, &ctx);
+    delivered_after_input_read(&mut app, &ctx);
     assert!(
-        fire(&mut app),
+        observed_fire(&mut app),
         "Browser capture-loss ingress must retain the held controller after capture is disabled"
     );
     let mut text = String::new();
@@ -914,9 +911,9 @@ fn gamepad_plays_without_capture_survives_mouse_release_and_stops_outside_sessio
         };
     });
     pad(&sender, generation, true);
-    delivered(&mut app, &ctx);
+    delivered_after_input_read(&mut app, &ctx);
     assert!(
-        !fire(&mut app),
+        !observed_fire(&mut app),
         "Text editing must release and suppress gamepad contacts"
     );
     ctx.memory_mut(|memory| memory.surrender_focus(text_id));
@@ -924,22 +921,22 @@ fn gamepad_plays_without_capture_survives_mouse_release_and_stops_outside_sessio
     common::settle(&mut app, &ctx);
     pad(&sender, generation, false);
     pad(&sender, generation, true);
-    delivered(&mut app, &ctx);
-    assert!(fire(&mut app));
+    delivered_after_input_read(&mut app, &ctx);
+    assert!(observed_fire(&mut app));
     app.player.screen = gui::player::PlayerScreen::Configuration;
     draw(&mut app, &ctx, None);
     pad(&sender, generation, true);
-    delivered(&mut app, &ctx);
-    assert!(!fire(&mut app));
+    delivered_after_input_read(&mut app, &ctx);
+    assert!(!observed_fire(&mut app));
     app.player.screen = gui::player::PlayerScreen::Session;
     draw(&mut app, &ctx, None);
     pad(&sender, generation, true);
-    delivered(&mut app, &ctx);
-    assert!(!fire(&mut app), "Held controls must not replay on return");
+    delivered_after_input_read(&mut app, &ctx);
+    assert!(!observed_fire(&mut app), "Held controls must not replay on return");
     pad(&sender, generation, false);
     pad(&sender, generation, true);
-    delivered(&mut app, &ctx);
-    assert!(fire(&mut app));
+    delivered_after_input_read(&mut app, &ctx);
+    assert!(observed_fire(&mut app));
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
     loop {
         let _ = ctx.run(
@@ -953,13 +950,13 @@ fn gamepad_plays_without_capture_survives_mouse_release_and_stops_outside_sessio
             },
         );
         pad(&sender, generation, true);
-        if app.host.is_idle() && !fire(&mut app) {
+        if app.host.is_idle() && !observed_fire(&mut app) {
             break;
         }
         assert!(std::time::Instant::now() < deadline);
         std::thread::sleep(std::time::Duration::from_millis(1));
     }
-    assert!(!fire(&mut app));
+    assert!(!observed_fire(&mut app));
 }
 
 #[test]
@@ -1474,9 +1471,8 @@ fn pending_keyboard_retry_overflow_across_frames_discards_backlog_and_releases_k
     draw(&mut app, &ctx, None);
     wait_guest_key(&mut app, &ctx, 0x35, false);
     assert!(!guest_key_held(&mut app, 0x20));
-    let keyboard = serde_json::to_value(&owner_snapshot(&mut app).keyboard).unwrap();
-    assert_eq!(
-        keyboard["caps_lock_active"], false,
+    assert!(
+        !common::observe_input(&mut app, None).caps_lock_active,
         "Discarded Caps Lock press was replayed"
     );
     assert!(app.player.captured);

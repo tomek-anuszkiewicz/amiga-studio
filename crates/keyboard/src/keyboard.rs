@@ -133,6 +133,12 @@ impl Keyboard {
         }
     }
 
+    /// Whether the physical key represented by this raw code is held.
+    pub fn is_key_held(&self, raw_code: u8) -> bool {
+        let code = usize::from(raw_code & MASK_KEY_CODE);
+        self.held[code / KEY_WORD_BITS] & (1u64 << (code % KEY_WORD_BITS)) != 0
+    }
+
     fn change_key(&mut self, code: u8, down: bool) -> bool {
         let word = usize::from(code) / KEY_WORD_BITS;
         let bit = 1u64 << (usize::from(code) % KEY_WORD_BITS);

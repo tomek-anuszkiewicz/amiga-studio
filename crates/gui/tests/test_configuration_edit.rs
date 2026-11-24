@@ -407,7 +407,14 @@ fn busy_or_stopped_owner_cannot_publish_configuration_draft() {
         let mut h = editor();
         let committed = h.state().player.catalog.clone();
         let controls = h.state().player.active_configuration.clone();
-        let machine = common::snapshot(h.state_mut());
+        let (cck, machine) = if shutdown {
+            let reply = common::idle_command(h.state_mut(), HostCommand::ReadCpu);
+            assert!(reply.value.is_ok());
+            (reply.status.cck, None)
+        } else {
+            let state = common::snapshot(h.state_mut());
+            (state.cck, Some(state))
+        };
         let generation = h.state().host.status.generation;
         h.state_mut()
             .player
@@ -428,7 +435,7 @@ fn busy_or_stopped_owner_cannot_publish_configuration_draft() {
         assert_eq!(h.state().player.catalog, committed);
         assert_eq!(h.state().player.active_configuration, controls);
         assert_eq!(h.state().host.status.generation, generation);
-        assert_eq!(h.state().host.status.cck, machine.cck);
+        assert_eq!(h.state().host.status.cck, cck);
         assert_eq!(
             h.state()
                 .player
@@ -446,7 +453,7 @@ fn busy_or_stopped_owner_cannot_publish_configuration_draft() {
         } else {
             "Wait for the current machine to pause before saving"
         });
-        if !shutdown {
+        if let Some(machine) = machine {
             assert_eq!(common::snapshot(h.state_mut()), machine);
         }
         h.state_mut().cancel_configuration_edit();

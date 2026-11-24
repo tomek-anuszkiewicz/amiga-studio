@@ -72,10 +72,13 @@ fn harness(app: EmulatorApp) -> Harness<'static, EmulatorApp> {
 }
 #[test]
 fn returning_from_configuration_applies_new_host_bindings_without_replacing_hardware() {
+    use gui::input_mapping::GamepadSample;
+
     let root = root();
     let mut app = started(&root);
+    let ctx = egui::Context::default();
     app.navigate_player(PlayerScreen::Configuration);
-    common::settle(&mut app, &egui::Context::default());
+    common::settle(&mut app, &ctx);
     let before = common::snapshot(&mut app);
     app.player
         .active_configuration
@@ -96,12 +99,27 @@ fn returning_from_configuration_applies_new_host_bindings_without_replacing_hard
     edited.controls.host.frontend.release = "F3".into();
     edited.controls.host.mouse_sensitivity = 1.5;
     edited.launch.preset = config::A500Preset::ExpandedPowerUser;
-    app.player.gamepads = vec![gui::input_mapping::GamepadInfo {
-        identity: "new".into(),
-        name: "Reconnected controller".into(),
-    }];
+    let sender = app.host.runtime.as_ref().unwrap().input_sender();
+    common::wait(&mut app, &ctx, |app| {
+        if app.player.gamepads.iter().any(|pad| pad.identity == "new") {
+            return true;
+        }
+        sender.try_gamepads(
+            vec![GamepadSample {
+                identity: "new".into(),
+                name: "Reconnected controller".into(),
+                axes: vec![0.0; 2],
+                buttons: vec![false; 16],
+            }],
+            app.host.status.generation,
+            true,
+        );
+        false
+    });
     app.save_configuration_edit();
-    common::settle(&mut app, &egui::Context::default());
+    common::wait(&mut app, &ctx, |app| {
+        app.player.editor.is_none() && app.player.screen == PlayerScreen::Session
+    });
     app.navigate_player(PlayerScreen::Session);
     let active = app.player.active_configuration.as_ref().unwrap();
     assert!(
@@ -111,7 +129,7 @@ fn returning_from_configuration_applies_new_host_bindings_without_replacing_hard
     assert_eq!(active.controls.host.frontend.release, "F3");
     assert_eq!(active.controls.host.mouse_sensitivity, 1.5);
     assert_eq!(active.launch.preset, config::A500Preset::Standard1Mb);
-    common::settle(&mut app, &egui::Context::default());
+    common::settle(&mut app, &ctx);
     assert_eq!(common::snapshot(&mut app), before);
 }
 
@@ -254,13 +272,13 @@ fn gamepad_save_preserves_capture_generation_and_held_contacts() {
         app.host.status.input_deliveries >= deliveries + 2
     });
     assert!(app.player.captured);
-    let before = common::snapshot(&mut app);
+    let before = common::observe_input(&mut app, None);
     assert!(
-        before.game_ports.fire1_port1(),
+        before.fire1_pressed[0],
         "mouse input must be held before Save"
     );
     assert!(
-        before.game_ports.fire1_port2(),
+        before.fire1_pressed[1],
         "joystick input must be held before Save"
     );
     let previous_saves = app.player.saves.len();
@@ -299,8 +317,7 @@ fn editing_native_rom_reference_does_not_boot_cached_previous_rom() {
     common::wait(&mut app, &egui::Context::default(), |app| {
         !app.host.status.running
     });
-    let state = common::snapshot(&mut app);
-    assert_eq!(state.physical_memory.read_byte_debug(0xfc0200), 0x22);
+    assert_eq!(common::read_memory(&mut app, 0xfc0200, 1), [0x22]);
 }
 #[test]
 fn library_start_requires_confirmation_and_cancel_preserves_the_current_session() {
@@ -372,10 +389,8 @@ fn durable_slot_four_is_loadable_from_the_menu_after_reopening() {
     common::command(h.state_mut(), HostCommand::Pause);
     common::wait_harness(&mut h, |app| !app.host.status.running);
     assert_eq!(
-        common::snapshot(h.state_mut())
-            .physical_memory
-            .read_word_debug(0xc00100),
-        0xcafe
+        common::read_memory(h.state_mut(), 0xc00100, 2),
+        [0xca, 0xfe]
     );
 }
 #[test]
@@ -435,28 +450,16 @@ fn direct_rom_replacement_requires_confirmation_and_can_be_cancelled() {
     app.load_rom_file(&path);
     let mut h = harness(app);
     assert_eq!(
-        common::snapshot(h.state_mut())
-            .physical_memory
-            .read_byte_debug(0xfc0200),
-        0x11,
+        common::read_memory(h.state_mut(), 0xfc0200, 1),
+        [0x11],
         "Direct ROM loading replaced the machine before confirmation"
     );
     h.get_by_label("Keep current session").click_accesskit();
     common::settle_harness(&mut h);
-    assert_eq!(
-        common::snapshot(h.state_mut())
-            .physical_memory
-            .read_byte_debug(0xfc0200),
-        0x11
-    );
+    assert_eq!(common::read_memory(h.state_mut(), 0xfc0200, 1), [0x11]);
     h.state_mut().load_rom_file(&path);
     common::settle_harness(&mut h);
     h.get_by_label("Replace session").click_accesskit();
     common::settle_harness(&mut h);
-    assert_eq!(
-        common::snapshot(h.state_mut())
-            .physical_memory
-            .read_byte_debug(0xfc0200),
-        0x22
-    );
+    assert_eq!(common::read_memory(h.state_mut(), 0xfc0200, 1), [0x22]);
 }

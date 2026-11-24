@@ -6,7 +6,7 @@ use config::{A500Config, VideoStandard};
 use gui::host_commands::{HostCommand, HostRequest};
 use gui::host_input::{HostInputEvent, InputConsumer, InputQueue, INPUT_QUEUE_CAPACITY};
 use gui::host_owner::MachineOwner;
-use gui::host_video::VideoExchange;
+use gui::host_video::{VideoExchange, VideoRead};
 use gui::DebuggerSession;
 
 fn session(standard: VideoStandard) -> Box<DebuggerSession> {
@@ -132,19 +132,27 @@ fn delivery_boundaries_are_spaced_and_input_arrivals_do_not_postpone_them() {
                 }
                 let mut owner = MachineOwner::new(source);
                 let video = VideoExchange::new(vec![0; owner.video_storage_len()]);
-                owner.publish(&video).unwrap();
-                video.try_consume(1, |_, _| ()).unwrap();
-                owner.execute(HostRequest {
+                let variant = (standard, interlace, lifecycle);
+                let initial = owner.status();
+                let generation = initial.generation;
+                assert!(owner.publish(&video).unwrap(), "{variant:?}");
+                assert!(matches!(
+                    video.try_consume(generation, |_, _| ()).unwrap(),
+                    VideoRead::Frame(())
+                ));
+                let run = owner.execute(HostRequest {
                     id: 1,
-                    generation: 1,
+                    generation,
                     command: HostCommand::Run,
                 });
-                let mut boundaries = Vec::new();
+                assert!(run.value.is_ok() && run.status.running, "{variant:?}");
+                let expected_fields = if interlace { 2 } else { 1 };
                 let mut fields = Vec::new();
-                let mut previous_deliveries = 0;
-                let mut previous_field = 0;
+                let mut deliveries = Vec::new();
+                let mut previous_deliveries = initial.input_deliveries;
+                let mut previous_cck = initial.cck;
+                let mut previous_field = initial.field_number;
                 for tick in 0..1000 {
-                    let field_before = owner.status().field_number;
                     owner.collect_input(HostInputEvent::MouseMotion {
                         port: 0,
                         dx: 1,
@@ -153,34 +161,63 @@ fn delivery_boundaries_are_spaced_and_input_arrivals_do_not_postpone_them() {
                     owner.advance(tick as f64 / 10_000.0, || 0.0);
                     let status = owner.status();
                     if status.input_deliveries != previous_deliveries {
-                        boundaries.push((field_before, status.last_input_cck));
-                        assert_eq!(status.input_deliveries, previous_deliveries + 1);
+                        assert_eq!(
+                            status.input_deliveries,
+                            previous_deliveries + 1,
+                            "{variant:?}: {status:?}"
+                        );
+                        deliveries.push(status.last_input_cck);
                         previous_deliveries = status.input_deliveries;
                     }
-                    if status.field_number != previous_field {
-                        fields.push((status.field_number, status.input_deliveries, status.cck));
-                        previous_field = status.field_number;
+                    let published = owner.publish(&video).unwrap();
+                    if status.field_number == previous_field {
+                        assert!(!published, "{variant:?}: partial field {status:?}");
+                        continue;
                     }
-                    owner.publish(&video).unwrap();
-                    video.try_consume(1, |_, _| ()).unwrap();
-                }
-                assert!(fields.len() >= 4, "{standard:?}: {fields:?}");
-                assert_eq!(fields[0].1, 3, "First {standard:?} field: {fields:?}");
-                for pair in fields.windows(2) {
-                    assert_eq!(pair[1].1 - pair[0].1, 3, "{standard:?}: {fields:?}");
-                }
-                for field in 0..previous_field {
-                    let group: Vec<_> = boundaries
-                        .iter()
-                        .filter(|(number, _)| *number == field)
-                        .map(|(_, cck)| *cck)
-                        .collect();
-                    assert_eq!(group.len(), 3);
-                    let gaps: Vec<_> = group.windows(2).map(|pair| pair[1] - pair[0]).collect();
-                    assert!(
-                        gaps.iter().max().unwrap() - gaps.iter().min().unwrap() <= 1,
-                        "{standard:?}: {gaps:?}"
+                    assert!(published, "{variant:?}: field {status:?} was not published");
+                    let VideoRead::Frame(info) =
+                        video.try_consume(generation, |info, _| info).unwrap()
+                    else {
+                        panic!("{variant:?}: missing published field {status:?}");
+                    };
+                    assert_eq!(
+                        info.field_number,
+                        previous_field + 1,
+                        "{variant:?}: {info:?}"
                     );
+                    assert_eq!(
+                        info.field_number, status.field_number,
+                        "{variant:?}: {info:?}"
+                    );
+                    assert_eq!(info.cck, status.cck, "{variant:?}: {info:?}");
+                    assert!(info.complete, "{variant:?}: {info:?}");
+                    assert_eq!(info.interlaced, interlace, "{variant:?}: {info:?}");
+                    let [first, middle, last] = deliveries.as_slice() else {
+                        panic!("{variant:?}: field {info:?} had deliveries {deliveries:?}");
+                    };
+                    assert!(
+                        previous_cck <= *first && first < middle && middle < last && *last < info.cck,
+                        "{variant:?}: field after CCK {previous_cck} ended at {info:?} with deliveries {deliveries:?}"
+                    );
+                    assert!(
+                        (middle - first).abs_diff(last - middle) <= 1,
+                        "{variant:?}: field {info:?} had uneven deliveries {deliveries:?}"
+                    );
+                    previous_field = info.field_number;
+                    previous_cck = info.cck;
+                    fields.push(info);
+                    deliveries.clear();
+                    if fields.len() == expected_fields {
+                        break;
+                    }
+                }
+                assert_eq!(
+                    fields.len(),
+                    expected_fields,
+                    "{variant:?}: completed {fields:?}, pending deliveries {deliveries:?}"
+                );
+                if let [first, second] = fields.as_slice() {
+                    assert_ne!(first.field_odd, second.field_odd, "{variant:?}: {fields:?}");
                 }
             }
         }
@@ -330,10 +367,33 @@ fn admitted_key_releases_and_joystick_events_reach_device_pins() {
 fn a_field_boundary_preserves_the_remaining_ordered_input_for_the_next_slice() {
     let mut session = session(VideoStandard::Pal);
     session.toggle_run();
-    let mut completed = session.clone();
-    completed.run_frame_slice(debugger::session::MAX_FRAME_SLICE_CCK);
-    let boundary = completed.machine.cck;
-    session.run_frame_slice(boundary as usize - 1);
+    let initial_field = session.machine.denise.frame_builder.frame_number;
+    let mut saw_field_start = false;
+    let before_boundary = (0..debugger::session::MAX_FRAME_SLICE_CCK).any(|_| {
+        let mut sync = session.machine.denise.sync;
+        if sync.field_started() {
+            saw_field_start = true;
+        } else if saw_field_start {
+            // After the next equalization edge, the receiver finishes the
+            // previous field at the blanking threshold of the new field.
+            sync.hpos = sync.hpos.wrapping_add(1);
+            if sync.field_started() {
+                return true;
+            }
+        }
+        session.machine.step_cck();
+        false
+    });
+    assert!(
+        before_boundary,
+        "Denise did not approach the next field boundary"
+    );
+    assert_eq!(
+        session.machine.denise.frame_builder.frame_number,
+        initial_field
+    );
+    assert!(!session.at_frame_boundary());
+    let boundary = session.machine.cck + 1;
     let mut input = InputConsumer::default();
     for left in [true, false] {
         input.pending.push(HostInputEvent::MouseButtons {
@@ -345,9 +405,15 @@ fn a_field_boundary_preserves_the_remaining_ordered_input_for_the_next_slice() {
     }
     input.run_slice(&mut session, 8);
     assert_eq!(session.machine.cck, boundary);
+    assert!(session.at_frame_boundary());
+    assert_eq!(
+        session.machine.denise.frame_builder.frame_number,
+        initial_field + 1
+    );
     assert_eq!(session.machine.cia_a.pins.port_a_input & 0x40, 0);
     assert!(!input.pending.is_empty());
     input.run_slice(&mut session, 1);
+    assert_eq!(session.machine.cck, boundary + 1);
     assert_eq!(session.machine.cia_a.pins.port_a_input & 0x40, 0x40);
     assert!(input.pending.is_empty());
 }

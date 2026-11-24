@@ -136,7 +136,6 @@ fn launch_save_reopen_relocate_and_restore_embedded_media_without_original_asset
     );
     assert_eq!(reopened.player.mounted[0].as_deref(), Some("disk-one"));
     // A save from the other game fails before replacing the healthy paused machine.
-    let before = common::snapshot(&mut reopened);
     let other = library
         .games
         .iter()
@@ -146,7 +145,7 @@ fn launch_save_reopen_relocate_and_restore_embedded_media_without_original_asset
     reopened.start_library_game(other, Some(saves[0].path.clone()), false);
     common::settle(&mut reopened, &ctx);
     assert!(reopened.file_error.is_some());
-    assert_eq!(common::snapshot(&mut reopened), before);
+    assert_eq!(common::snapshot(&mut reopened), restored);
 }
 #[test]
 fn invalid_launch_and_mount_keep_previous_machine_and_confirmed_labels() {
@@ -318,6 +317,26 @@ fn library_continue_uses_the_selected_configuration_when_two_roots_reuse_a_game_
 #[test]
 fn player_disk_selection_and_ejection_publish_only_acknowledged_mounts() {
     use egui_kittest::{kittest::Queryable, Harness};
+    use gui::host_commands::{HostObservation, HostValue};
+
+    fn df0(app: &mut EmulatorApp, adf_byte: Option<u8>) -> (bool, Option<bool>) {
+        let reply = common::idle_command(
+            app,
+            HostCommand::Observe(HostObservation::Drive {
+                drive: 0,
+                expected_adf: adf_byte.map(|byte| vec![byte; 901120]),
+            }),
+        );
+        let Ok(HostValue::Drive {
+            inserted,
+            tracks_match,
+        }) = reply.value
+        else {
+            panic!("Missing DF0 observation: {:?}", reply.value);
+        };
+        (inserted, tracks_match)
+    }
+
     fn open_df0(h: &mut Harness<'_, EmulatorApp>) {
         let row = h
             .get_all_by_value("DF0:")
@@ -371,12 +390,10 @@ fn player_disk_selection_and_ejection_publish_only_acknowledged_mounts() {
     common::settle_harness(&mut h);
     assert_eq!(h.state().player.mounted[0].as_deref(), Some("disk-two"));
     assert!(h.state().host.status.drives[0].inserted);
-    let state = common::snapshot(h.state_mut());
-    let mut expected = debugger::DebuggerSession::new();
-    assert!(expected.machine.floppy.drives[0].insert_disk(&vec![0x33; 901120]));
     assert_eq!(
-        serde_json::to_value(&state.floppy.drives[0]).unwrap()["track_data"],
-        serde_json::to_value(&expected.machine.floppy.drives[0]).unwrap()["track_data"]
+        df0(h.state_mut(), Some(0x33)),
+        (true, Some(true)),
+        "DF0 did not receive the selected disk's complete tracks"
     );
     common::settle_harness(&mut h);
     open_df0(&mut h);
@@ -386,7 +403,7 @@ fn player_disk_selection_and_ejection_publish_only_acknowledged_mounts() {
     common::settle_harness(&mut h);
     assert!(h.state().player.mounted[0].is_none());
     assert!(!h.state().host.status.drives[0].inserted);
-    assert!(!common::snapshot(h.state_mut()).floppy.drives[0].disk_inserted);
+    assert_eq!(df0(h.state_mut(), None), (false, None));
 
     let source = game.directory.join("second.adf");
     assert_eq!(std::fs::read(&source).unwrap(), vec![0x33; 901120]);
@@ -407,9 +424,9 @@ fn player_disk_selection_and_ejection_publish_only_acknowledged_mounts() {
     common::settle_harness(&mut h);
     assert_eq!(h.state().player.mounted[0].as_deref(), Some("disk-two"));
     assert_eq!(
-        serde_json::to_value(&common::snapshot(h.state_mut()).floppy.drives[0]).unwrap()
-            ["track_data"],
-        serde_json::to_value(&expected.machine.floppy.drives[0]).unwrap()["track_data"]
+        df0(h.state_mut(), Some(0x33)),
+        (true, Some(true)),
+        "DF0 did not reinsert the detached disk's complete tracks"
     );
 
     open_df0(&mut h);
@@ -422,11 +439,10 @@ fn player_disk_selection_and_ejection_publish_only_acknowledged_mounts() {
     h.get_by_label("2 - Disk 2").click();
     common::settle_harness(&mut h);
     assert_eq!(h.state().player.mounted[0].as_deref(), Some("disk-two"));
-    assert!(expected.machine.floppy.drives[0].insert_disk(&vec![0x44; 901120]));
     assert_eq!(
-        serde_json::to_value(&common::snapshot(h.state_mut()).floppy.drives[0]).unwrap()
-            ["track_data"],
-        serde_json::to_value(&expected.machine.floppy.drives[0]).unwrap()["track_data"]
+        df0(h.state_mut(), Some(0x44)),
+        (true, Some(true)),
+        "DF0 reused detached tracks instead of opening the new source"
     );
 }
 

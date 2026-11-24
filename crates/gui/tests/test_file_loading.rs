@@ -55,8 +55,8 @@ fn invalid_rom_keeps_the_dialog_open_and_can_be_retried() {
 fn invalid_snapshot_rom_displays_a_dismissible_error_without_restoring() {
     let path = fixture_path("state.json");
     let mut app = EmulatorApp::default();
-    let before = common::snapshot(&mut app);
     let mut json = common::snapshot_json(&mut app);
+    let before = *debugger::SaveState::from_json(&json).unwrap().state;
     let key = json.find("\"kickstart_rom\"").unwrap();
     let start = key + json[key..].find('[').unwrap() + 1;
     let end = start + json[start..].find(']').unwrap();

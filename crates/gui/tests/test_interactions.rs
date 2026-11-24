@@ -14,51 +14,54 @@ fn screen_uploads_the_visible_framebuffer_unchanged_and_preserves_its_geometry()
         (config::VideoStandard::Ntsc, 263, 21, 228),
     ] {
         for interlaced in [false, true] {
-            for view in [ViewMode::Developer, ViewMode::ScreenOnly] {
-                let mut session = Box::new(gui::DebuggerSession::from_config(
-                    config::A500Config::standard_1mb(standard),
-                ));
-                let denise = &mut session.machine.denise;
-                denise.bplcon0 = (if interlaced { 4 } else { 0 }).into();
-                for _field in 0..2 {
-                    for line in 0..lines {
-                        if line == 0 {
-                            denise.strobe_strequ();
-                        } else if line < blanks {
-                            denise.strobe_strvbl();
-                        } else {
-                            denise.strobe_strhor();
-                        }
-                        for _ in 0..ccks {
-                            denise.step_cck();
-                        }
+            let mut session = Box::new(gui::DebuggerSession::from_config(
+                config::A500Config::standard_1mb(standard),
+            ));
+            let denise = &mut session.machine.denise;
+            denise.bplcon0 = (if interlaced { 4 } else { 0 }).into();
+            for _field in 0..2 {
+                for line in 0..lines {
+                    if line == 0 {
+                        denise.strobe_strequ();
+                    } else if line < blanks {
+                        denise.strobe_strvbl();
+                    } else {
+                        denise.strobe_strhor();
+                    }
+                    for _ in 0..ccks {
+                        denise.step_cck();
                     }
                 }
-                denise.strobe_strequ();
-                for _ in 0..19 {
-                    denise.step_cck();
-                }
-                let frame = &mut denise.frame_builder;
-                let stride = frame.row_stride();
-                let height = frame.height as usize;
-                let image_width = 720;
-                let image_height = if standard == config::VideoStandard::Pal {
-                    568
-                } else {
-                    480
-                };
-                frame.frame_buffer_mut().fill(0xff00ff00);
-                for y in 0..height {
-                    let color = if y % 2 == 0 { 0xff0000ff } else { 0xffff0000 };
-                    let start = y * stride;
-                    frame.frame_buffer_mut()[start..start + stride].fill(color);
-                    // Keep both outer columns of the monitor image, including corners.
-                    frame.frame_buffer_mut()[start] = 0xffffffff;
-                    frame.frame_buffer_mut()[start + image_width - 1] = 0xffffffff;
-                }
-                let before = frame.clone();
-                let expected_cck = session.machine.cck;
-                let mut app = EmulatorApp::with_session(session);
+            }
+            denise.strobe_strequ();
+            for _ in 0..19 {
+                denise.step_cck();
+            }
+            let frame = &mut denise.frame_builder;
+            let stride = frame.row_stride();
+            let height = frame.height as usize;
+            let image_width = 720;
+            let image_height = if standard == config::VideoStandard::Pal {
+                568
+            } else {
+                480
+            };
+            frame.frame_buffer_mut().fill(0xff00ff00);
+            for y in 0..height {
+                let color = if y % 2 == 0 { 0xff0000ff } else { 0xffff0000 };
+                let start = y * stride;
+                frame.frame_buffer_mut()[start..start + stride].fill(color);
+                // Keep both outer columns of the monitor image, including corners.
+                frame.frame_buffer_mut()[start] = 0xffffffff;
+                frame.frame_buffer_mut()[start + image_width - 1] = 0xffffffff;
+            }
+            let before = frame.clone();
+            let expected_cck = session.machine.cck;
+            for (view, source) in [
+                (ViewMode::Developer, session.clone()),
+                (ViewMode::ScreenOnly, session),
+            ] {
+                let mut app = EmulatorApp::with_session(source);
                 app.view_mode = view;
                 let ctx = egui::Context::default();
                 let viewport =
@@ -2364,11 +2367,13 @@ fn test_simulated_quick_save_and_load_shortcuts() {
     let mut app = EmulatorApp::default();
     common::settle(&mut app, &egui::Context::default());
 
-    // Advance 300 CCKs
-    for _ in 0..300 {
+    let saved_cck = 2;
+    let later_cck = 5;
+    for _ in 0..saved_cck {
         app.host.queue(HostCommand::StepCck);
     }
-    assert_eq!(common::inspect(&mut app).debugger.current_cck, 300);
+    assert_eq!(common::inspect(&mut app).debugger.current_cck, saved_cck);
+    assert_eq!(app.host.status.cck, saved_cck);
     assert!(!app.host.status.quick_slots[0]);
     common::settle(&mut app, &ctx);
 
@@ -2400,11 +2405,11 @@ fn test_simulated_quick_save_and_load_shortcuts() {
         .0
         .contains("Quick-saved"));
 
-    // Advance 500 more CCKs
-    for _ in 0..500 {
+    for _ in saved_cck..later_cck {
         app.host.queue(HostCommand::StepCck);
     }
-    assert_eq!(common::inspect(&mut app).debugger.current_cck, 800);
+    assert_eq!(common::inspect(&mut app).debugger.current_cck, later_cck);
+    assert_eq!(app.host.status.cck, later_cck);
 
     // 2. Simulate F9 (Quick Load Slot 1)
     let input_f9 = RawInput {
@@ -2425,8 +2430,8 @@ fn test_simulated_quick_save_and_load_shortcuts() {
     });
     common::settle(&mut app, &ctx);
 
-    assert_eq!(common::inspect(&mut app).debugger.current_cck, 300);
-    assert_eq!(app.host.status.cck, 300);
+    assert_eq!(common::inspect(&mut app).debugger.current_cck, saved_cck);
+    assert_eq!(app.host.status.cck, saved_cck);
     assert!(app.toast_message.as_ref().unwrap().0.contains("Restored"));
 }
 
@@ -2436,11 +2441,12 @@ fn test_ctrl_r_leaves_machine_unchanged() {
     let mut app = EmulatorApp::default();
     common::settle(&mut app, &egui::Context::default());
 
-    for _ in 0..100 {
+    let cck = 2;
+    for _ in 0..cck {
         app.host.queue(HostCommand::StepCck);
     }
     common::settle(&mut app, &ctx);
-    assert_eq!(app.host.status.cck, 100);
+    assert_eq!(app.host.status.cck, cck);
 
     let ctrl_r = RawInput {
         modifiers: Modifiers::COMMAND,
@@ -2461,8 +2467,8 @@ fn test_ctrl_r_leaves_machine_unchanged() {
     });
     common::settle(&mut app, &ctx);
 
-    assert_eq!(app.host.status.cck, 100);
-    assert_eq!(common::inspect(&mut app).debugger.current_cck, 100);
+    assert_eq!(app.host.status.cck, cck);
+    assert_eq!(common::inspect(&mut app).debugger.current_cck, cck);
 }
 
 #[test]

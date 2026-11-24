@@ -34,6 +34,7 @@ pub enum HostCommand {
     ResetWarm,
     ReadCpu,
     Inspect,
+    Observe(HostObservation),
     History(HistoryCommand),
     ClearTrace,
     SetBreakpoints(debugger::BreakpointManager),
@@ -97,6 +98,32 @@ pub struct HostRequest {
     pub command: HostCommand,
 }
 
+/// Targeted owner reads that can also run during playback.
+#[derive(Debug)]
+pub enum HostObservation {
+    Input {
+        key: Option<u8>,
+    },
+    Execution {
+        data_register: usize,
+        word_address: Option<u32>,
+    },
+    Drive {
+        drive: usize,
+        expected_adf: Option<Vec<u8>>,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct InputObservation {
+    pub ciaa_port_a_inputs: u8,
+    pub potgor: u16,
+    pub direction_pins: [u8; 2],
+    pub fire1_pressed: [bool; 2],
+    pub key_held: Option<bool>,
+    pub caps_lock_active: bool,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct HostStatus {
     pub revision: u64,
@@ -126,8 +153,20 @@ pub struct HostStatus {
 #[derive(Debug)]
 pub enum HostValue {
     Done,
+    Input(InputObservation),
+    Execution {
+        data_register: u32,
+        memory_word: Option<u16>,
+    },
+    Drive {
+        inserted: bool,
+        tracks_match: Option<bool>,
+    },
     Cpu(Box<CpuState>),
-    Memory { address: u32, bytes: Vec<u8> },
+    Memory {
+        address: u32,
+        bytes: Vec<u8>,
+    },
     Snapshot(String),
     PlayerRestored(debugger::SaveAssociation),
     Inspection(Box<crate::host_inspection::HostInspection>),

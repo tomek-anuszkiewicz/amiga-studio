@@ -1,8 +1,8 @@
 //! Complete machine ownership and host pacing, without thread or browser handles.
 
 use crate::host_commands::{
-    HistoryCommand, HostCommand, HostReply, HostRequest, HostStatus, HostValue,
-    MAX_INSPECTION_BYTES,
+    HistoryCommand, HostCommand, HostObservation, HostReply, HostRequest, HostStatus, HostValue,
+    InputObservation, MAX_INSPECTION_BYTES,
 };
 use crate::host_video::{FrameInfo, VideoExchange, VideoExchangeError};
 use crate::layout::left_dock::registers::EditRegister;
@@ -93,6 +93,7 @@ impl MachineOwner {
     }
 
     pub fn execute(&mut self, request: HostRequest) -> HostReply {
+        let observing = matches!(&request.command, HostCommand::Observe(_));
         if !matches!(
             &request.command,
             HostCommand::SupplyUtc(_)
@@ -100,21 +101,78 @@ impl MachineOwner {
                 | HostCommand::ReadCpu
                 | HostCommand::ReadMemory { .. }
                 | HostCommand::SaveSnapshot
+                | HostCommand::Observe(_)
         ) {
             self.revision = self.revision.wrapping_add(1);
         }
         let value = if request.generation != self.generation {
             Err("Command belongs to an obsolete runtime generation".into())
+        } else if let HostCommand::Observe(observation) = request.command {
+            self.observe(observation)
         } else {
             self.apply(request.command)
         };
-        if !self.session.is_running {
+        if !observing && !self.session.is_running {
             self.playback.reset_timing();
         }
         HostReply {
             id: request.id,
             status: self.status(),
             value,
+        }
+    }
+
+    fn observe(&self, observation: HostObservation) -> Result<HostValue, String> {
+        let machine = &self.session.machine;
+        match observation {
+            HostObservation::Input { key } => {
+                let ports = &machine.game_ports;
+                Ok(HostValue::Input(InputObservation {
+                    ciaa_port_a_inputs: ports.sample_ciaa_port_a_inputs(),
+                    potgor: ports.potgor(),
+                    direction_pins: ports.pins.direction_pins,
+                    fire1_pressed: [ports.fire1_port1(), ports.fire1_port2()],
+                    key_held: key.map(|code| machine.keyboard.is_key_held(code)),
+                    caps_lock_active: machine.keyboard.caps_lock_active,
+                }))
+            }
+            HostObservation::Execution {
+                data_register,
+                word_address,
+            } => {
+                if data_register >= cpu::state::REGISTER_COUNT {
+                    return Err("Invalid CPU register index".into());
+                }
+                Ok(HostValue::Execution {
+                    data_register: machine.cpu.state.d_long(data_register),
+                    memory_word: word_address.map(|address| {
+                        machine
+                            .physical_memory
+                            .read_word_debug(address & physical_memory::MASK_PHYSICAL_ADDRESS)
+                    }),
+                })
+            }
+            HostObservation::Drive {
+                drive,
+                expected_adf,
+            } => {
+                let drive = machine
+                    .floppy
+                    .drives
+                    .get(drive)
+                    .ok_or_else(|| "Invalid floppy drive index".to_string())?;
+                let tracks_match = expected_adf
+                    .map(|adf| {
+                        drive
+                            .tracks_match_adf(&adf)
+                            .ok_or_else(|| "Invalid ADF size".to_string())
+                    })
+                    .transpose()?;
+                Ok(HostValue::Drive {
+                    inserted: drive.disk_inserted,
+                    tracks_match,
+                })
+            }
         }
     }
 

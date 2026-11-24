@@ -186,9 +186,9 @@ fn game_menu_reloads_rom_and_keeps_binary_directory_separate() {
         binary.parent()
     );
     assert_eq!(app.file_history.rom_directory.as_deref(), path.parent());
-    for _ in 0..10 {
-        common::command(&mut app, gui::host_commands::HostCommand::StepCck);
-    }
+    let step = common::command(&mut app, gui::host_commands::HostCommand::StepCck);
+    assert!(step.value.is_ok());
+    assert_eq!(step.status.cck, 1);
     let mut harness = Harness::builder()
         .with_size(egui::vec2(1024.0, 600.0))
         .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);

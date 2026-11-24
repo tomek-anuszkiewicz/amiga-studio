@@ -2,7 +2,7 @@
 
 use egui::{Context, RawInput};
 use egui_kittest::Harness;
-use gui::host_commands::{HostCommand, HostReply, HostValue};
+use gui::host_commands::{HostCommand, HostObservation, HostReply, HostValue, InputObservation};
 use gui::{EmulatorApp, ViewMode};
 use std::time::{Duration, Instant};
 
@@ -73,6 +73,17 @@ pub fn confirm_replacement(app: &mut EmulatorApp) {
 /// Uses the production command boundary while the GUI has no outstanding replies.
 pub fn command(app: &mut EmulatorApp, command: HostCommand) -> HostReply {
     settle(app, &Context::default());
+    let reply = idle_command(app, command);
+    app.host.status = app.host.runtime.as_ref().unwrap().status();
+    reply
+}
+
+/// Polls the owner after GUI replies have settled, without drawing another frame.
+pub fn idle_command(app: &mut EmulatorApp, command: HostCommand) -> HostReply {
+    assert!(
+        app.host.is_idle(),
+        "GUI replies must settle before polling the owner"
+    );
     let runtime = app.host.runtime.as_mut().unwrap();
     let deadline = Instant::now() + Duration::from_secs(10);
     let mut pending = command;
@@ -88,7 +99,6 @@ pub fn command(app: &mut EmulatorApp, command: HostCommand) -> HostReply {
     loop {
         for reply in runtime.poll().unwrap() {
             if reply.id == id {
-                app.host.status = runtime.status();
                 return reply;
             }
         }
@@ -98,6 +108,37 @@ pub fn command(app: &mut EmulatorApp, command: HostCommand) -> HostReply {
         );
         std::thread::sleep(Duration::from_millis(1));
     }
+}
+
+pub fn observe_input(app: &mut EmulatorApp, key: Option<u8>) -> InputObservation {
+    let reply = idle_command(app, HostCommand::Observe(HostObservation::Input { key }));
+    app.host.status = reply.status;
+    let Ok(HostValue::Input(input)) = reply.value else {
+        panic!("Missing owner input observation: {:?}", reply.value);
+    };
+    input
+}
+
+pub fn read_cpu(app: &mut EmulatorApp) -> Box<cpu::CpuState> {
+    let reply = idle_command(app, HostCommand::ReadCpu);
+    let Ok(HostValue::Cpu(cpu)) = reply.value else {
+        panic!("Missing stopped CPU observation: {:?}", reply.value);
+    };
+    cpu
+}
+
+pub fn read_memory(app: &mut EmulatorApp, address: u32, length: usize) -> Vec<u8> {
+    let reply = idle_command(app, HostCommand::ReadMemory { address, length });
+    let Ok(HostValue::Memory {
+        address: actual,
+        bytes,
+    }) = reply.value
+    else {
+        panic!("Missing stopped memory observation: {:?}", reply.value);
+    };
+    assert_eq!(actual, address);
+    assert_eq!(bytes.len(), length);
+    bytes
 }
 
 pub fn inspect(app: &mut EmulatorApp) -> Box<gui::host_inspection::HostInspection> {

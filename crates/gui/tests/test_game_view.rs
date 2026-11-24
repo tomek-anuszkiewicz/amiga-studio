@@ -21,6 +21,9 @@ fn game_execution_does_not_collect_debugger_data() {
     assert!(owner.publish(&exchange).unwrap());
     for tick in 0..=20 {
         owner.advance(f64::from(tick) / 1000.0, || 0.0);
+        if owner.status().field_number != 0 {
+            break;
+        }
     }
     assert_eq!(owner.status().field_number, 1);
     owner.execute(HostRequest {

@@ -3,7 +3,7 @@
 
 mod common;
 
-use gui::host_commands::{HistoryCommand, HostCommand, HostReply, HostValue};
+use gui::host_commands::{HistoryCommand, HostCommand, HostObservation, HostReply, HostValue};
 use gui::host_owner::MachineOwner;
 use gui::host_runtime::HostRuntime;
 use gui::host_video::VideoRead;
@@ -523,6 +523,93 @@ fn obsolete_generation_rejects_memory_writes_without_advancing_the_machine() {
 }
 
 #[test]
+fn targeted_owner_reads_preserve_machine_state_and_reject_obsolete_generations() {
+    use gui::host_commands::HostRequest;
+
+    let address = 0xc00100;
+    let mut source = session();
+    source
+        .machine
+        .physical_memory
+        .write_word_debug(address, 0xcafe);
+    source.machine.cpu.state.set_d_long(0, 0x1234_5678);
+    source.machine.keyboard.key_down(0x20);
+    source.machine.step_cycles(3);
+    let exact = source.machine.save_state();
+    let mut owner = MachineOwner::new(source);
+    let generation = owner.status().generation;
+    let request = |id, generation, command| HostRequest {
+        id,
+        generation,
+        command,
+    };
+    let execution = || {
+        HostCommand::Observe(HostObservation::Execution {
+            data_register: 0,
+            word_address: Some(address),
+        })
+    };
+    let input = || HostCommand::Observe(HostObservation::Input { key: Some(0x20) });
+    let run = owner.execute(request(1, generation, HostCommand::Run));
+    assert!(run.value.is_ok() && run.status.running);
+    let live = owner.execute(request(2, generation, execution()));
+    assert_eq!(live.id, 2);
+    assert_eq!(live.status, run.status);
+    assert!(matches!(
+        live.value,
+        Ok(HostValue::Execution {
+            data_register: 0x1234_5678,
+            memory_word: Some(0xcafe),
+        })
+    ));
+    let keys = owner.execute(request(3, generation, input()));
+    assert_eq!(keys.id, 3);
+    assert_eq!(keys.status, run.status);
+    let Ok(HostValue::Input(keys)) = keys.value else {
+        panic!("Missing held-key observation");
+    };
+    assert_eq!(keys.key_held, Some(true));
+    assert!(owner
+        .execute(request(4, generation, HostCommand::Inspect))
+        .value
+        .is_err());
+    let saved = owner.execute(request(5, generation, HostCommand::SaveSnapshot));
+    assert_eq!(saved.status, run.status);
+    let Ok(HostValue::Snapshot(json)) = saved.value else {
+        panic!("Missing unchanged machine state");
+    };
+    assert_eq!(*debugger::SaveState::from_json(&json).unwrap().state, exact);
+
+    let reset = owner.execute(request(6, generation, HostCommand::Reset));
+    assert!(reset.value.is_ok());
+    assert_eq!(reset.status.generation, generation + 1);
+    assert_eq!(reset.status.cck, 0);
+    let obsolete = owner.execute(request(7, generation, execution()));
+    assert_eq!(obsolete.id, 7);
+    assert_eq!(obsolete.status, reset.status);
+    assert_eq!(
+        obsolete.value.unwrap_err(),
+        "Command belongs to an obsolete runtime generation"
+    );
+    let fresh = owner.execute(request(8, reset.status.generation, execution()));
+    assert_eq!(fresh.id, 8);
+    assert_eq!(fresh.status, reset.status);
+    assert!(matches!(
+        fresh.value,
+        Ok(HostValue::Execution {
+            data_register: 0,
+            memory_word: Some(0),
+        })
+    ));
+    let keys = owner.execute(request(9, reset.status.generation, input()));
+    assert_eq!(keys.status, reset.status);
+    let Ok(HostValue::Input(keys)) = keys.value else {
+        panic!("Missing reset key state");
+    };
+    assert_eq!(keys.key_held, Some(false));
+}
+
+#[test]
 fn reset_changes_generation_and_releases_old_output_without_displaying_it() {
     let mut host = start_host();
     let before = host.status().generation;
@@ -834,6 +921,17 @@ fn snapshot(host: &mut HostRuntime) -> debugger::SaveState {
     debugger::SaveState::from_json(&json).unwrap()
 }
 
+fn input_contacts(host: &mut HostRuntime) -> gui::host_commands::InputObservation {
+    let reply = wait_reply(
+        host,
+        HostCommand::Observe(HostObservation::Input { key: None }),
+    );
+    let Ok(HostValue::Input(input)) = reply.value else {
+        panic!("Missing owner input observation: {:?}", reply.value);
+    };
+    input
+}
+
 #[test]
 fn developer_image_click_admits_input_and_window_focus_loss_releases_it() {
     use gui::host_input::HostInputEvent;
@@ -882,18 +980,15 @@ fn developer_image_click_admits_input_and_window_focus_loss_releases_it() {
         loop {
             // Honor repaint retries while preserving the simulated window focus.
             draw(app, focused, vec![]);
-            // Direct snapshot polling must not consume GUI-owned command replies.
+            // Direct owner polling must not consume GUI-owned command replies.
             if app.host.status.input_deliveries >= before + 2 && app.host.is_idle() {
                 break;
             }
             assert!(Instant::now() < deadline, "Input delivery did not progress");
             std::thread::sleep(Duration::from_millis(1));
         }
-        let state = snapshot(app.host.runtime.as_mut().unwrap()).state;
-        (
-            state.game_ports.sample_ciaa_port_a_inputs() & 0x40,
-            state.game_ports.potgor() & 0x0500,
-        )
+        let input = common::observe_input(app, None);
+        (input.ciaa_port_a_inputs & 0x40, input.potgor & 0x0500)
     };
 
     // Developer view keeps the mouse free until the image is clicked.
@@ -958,48 +1053,21 @@ fn runtime_input_capture_pause_reset_and_load_release_obsolete_controls() {
     send(buttons, host.status().generation);
     let before = host.status().input_deliveries;
     wait_status(&mut host, |status| status.input_deliveries >= before + 2);
-    assert_eq!(
-        snapshot(&mut host)
-            .state
-            .game_ports
-            .sample_ciaa_port_a_inputs()
-            & 0x40,
-        0x40
-    );
+    assert_eq!(input_contacts(&mut host).ciaa_port_a_inputs & 0x40, 0x40);
     capture(true);
     send(buttons, host.status().generation);
     let before = host.status().input_deliveries;
     wait_status(&mut host, |status| status.input_deliveries >= before + 2);
-    assert_eq!(
-        snapshot(&mut host)
-            .state
-            .game_ports
-            .sample_ciaa_port_a_inputs()
-            & 0x40,
-        0
-    );
-    let held = snapshot(&mut host).to_json().unwrap();
+    assert_eq!(input_contacts(&mut host).ciaa_port_a_inputs & 0x40, 0);
+    let held = snapshot(&mut host);
     // Capturing while held is observational; loading must release this actual
     // saved contact state rather than rely on a neutral fixture.
-    assert_eq!(
-        snapshot(&mut host)
-            .state
-            .game_ports
-            .sample_ciaa_port_a_inputs()
-            & 0x40,
-        0
-    );
+    assert_eq!(held.state.game_ports.sample_ciaa_port_a_inputs() & 0x40, 0);
+    assert_eq!(input_contacts(&mut host).ciaa_port_a_inputs & 0x40, 0);
     capture(false);
     let before = host.status().input_deliveries;
     wait_status(&mut host, |status| status.input_deliveries >= before + 2);
-    assert_eq!(
-        snapshot(&mut host)
-            .state
-            .game_ports
-            .sample_ciaa_port_a_inputs()
-            & 0x40,
-        0x40
-    );
+    assert_eq!(input_contacts(&mut host).ciaa_port_a_inputs & 0x40, 0x40);
     capture(true);
     send(buttons, host.status().generation);
     assert!(wait_reply(&mut host, HostCommand::Pause).value.is_ok());
@@ -1008,18 +1076,11 @@ fn runtime_input_capture_pause_reset_and_load_release_obsolete_controls() {
     assert!(wait_reply(&mut host, HostCommand::Run).value.is_ok());
     let before = host.status().input_deliveries;
     wait_status(&mut host, |status| status.input_deliveries >= before + 2);
-    assert_eq!(
-        snapshot(&mut host)
-            .state
-            .game_ports
-            .sample_ciaa_port_a_inputs()
-            & 0x40,
-        0x40
-    );
+    assert_eq!(input_contacts(&mut host).ciaa_port_a_inputs & 0x40, 0x40);
     for command in [
         HostCommand::ResetWarm,
         HostCommand::RestorePlayer {
-            json: held,
+            json: held.to_json().unwrap(),
             game_id: None,
             ports: [
                 debugger::launch::DeviceKind::Mouse,
@@ -1033,14 +1094,7 @@ fn runtime_input_capture_pause_reset_and_load_release_obsolete_controls() {
         let reply = wait_reply(&mut host, command);
         assert!(reply.value.is_ok());
         assert_eq!(reply.status.generation, generation + 1);
-        assert_eq!(
-            snapshot(&mut host)
-                .state
-                .game_ports
-                .sample_ciaa_port_a_inputs()
-                & 0x40,
-            0x40
-        );
+        assert_eq!(input_contacts(&mut host).ciaa_port_a_inputs & 0x40, 0x40);
         assert!(wait_reply(
             &mut host,
             HostCommand::WriteMemory {
@@ -1067,14 +1121,7 @@ fn runtime_input_capture_pause_reset_and_load_release_obsolete_controls() {
         send(buttons, generation); // Capture is active: only the generation check rejects this.
         let before = host.status().input_deliveries;
         wait_status(&mut host, |status| status.input_deliveries >= before + 2);
-        assert_eq!(
-            snapshot(&mut host)
-                .state
-                .game_ports
-                .sample_ciaa_port_a_inputs()
-                & 0x40,
-            0x40
-        );
+        assert_eq!(input_contacts(&mut host).ciaa_port_a_inputs & 0x40, 0x40);
     }
 }
 
@@ -1090,7 +1137,7 @@ fn running_restore_and_keyboard_reset_invalidate_cached_controller_contacts() {
         session.load_rom(&rom).unwrap();
         let mut host =
             HostRuntime::start(MachineOwner::new(session), egui::Context::default()).unwrap();
-        let neutral = snapshot(&mut host);
+        let neutral = (!keyboard_reset).then(|| snapshot(&mut host));
         let sender = host.input_sender();
         let mut configuration = NamedConfiguration::default();
         configuration.controls.ports[1].source = InputSource::Gamepad {
@@ -1135,14 +1182,7 @@ fn running_restore_and_keyboard_reset_invalidate_cached_controller_contacts() {
         sample(generation, false);
         sample(generation, true);
         delivered(&mut host);
-        assert_eq!(
-            snapshot(&mut host)
-                .state
-                .game_ports
-                .sample_ciaa_port_a_inputs()
-                & 0x80,
-            0
-        );
+        assert_eq!(input_contacts(&mut host).ciaa_port_a_inputs & 0x80, 0);
         if keyboard_reset {
             for code in [0x63, 0x66, 0x67] {
                 retry(&mut || {
@@ -1157,6 +1197,7 @@ fn running_restore_and_keyboard_reset_invalidate_cached_controller_contacts() {
             }
             wait_status(&mut host, |status| status.generation != generation);
         } else {
+            let neutral = neutral.unwrap();
             let ports = debugger::launch::state_port_kinds(&neutral.state.game_ports);
             assert!(wait_reply(
                 &mut host,
@@ -1176,11 +1217,7 @@ fn running_restore_and_keyboard_reset_invalidate_cached_controller_contacts() {
             retry(&mut || sender.set_enabled(true, captured, true));
             delivered(&mut host);
             assert_eq!(
-                snapshot(&mut host)
-                    .state
-                    .game_ports
-                    .sample_ciaa_port_a_inputs()
-                    & 0x80,
+                input_contacts(&mut host).ciaa_port_a_inputs & 0x80,
                 0x80,
                 "A capture change replayed contacts from the previous generation"
             );
@@ -1188,24 +1225,13 @@ fn running_restore_and_keyboard_reset_invalidate_cached_controller_contacts() {
         sample(generation, true);
         delivered(&mut host);
         assert_eq!(
-            snapshot(&mut host)
-                .state
-                .game_ports
-                .sample_ciaa_port_a_inputs()
-                & 0x80,
+            input_contacts(&mut host).ciaa_port_a_inputs & 0x80,
             0x80,
             "A held control must be released before it can play after reset or restore"
         );
         sample(generation, false);
         sample(generation, true);
         delivered(&mut host);
-        assert_eq!(
-            snapshot(&mut host)
-                .state
-                .game_ports
-                .sample_ciaa_port_a_inputs()
-                & 0x80,
-            0
-        );
+        assert_eq!(input_contacts(&mut host).ciaa_port_a_inputs & 0x80, 0);
     }
 }

@@ -3,7 +3,7 @@
 mod common;
 use egui::{Event, Key, Modifiers};
 use egui_kittest::{kittest::Queryable, Harness};
-use gui::host_commands::HostCommand;
+use gui::host_commands::{HostCommand, HostObservation, HostValue};
 use gui::{EmulatorApp, ViewMode};
 
 fn inspection_app() -> EmulatorApp {
@@ -83,19 +83,19 @@ fn run_retains_inspector_text_and_rows_until_stop_then_steps_refresh() {
     assert!(before.iter().any(|s| s == "$00112233"));
     assert!(before.iter().any(|s| s.starts_with("00003000:")));
     harness.get_by_label("▶ Run (F5)").click_accesskit();
-    harness.run_steps(4);
-    common::settle_harness(&mut harness);
-    assert!(harness.state().host.status.running);
-    assert_ne!(
-        common::snapshot(harness.state_mut()).cpu.d_long(0),
-        0x112233
-    );
-    assert_ne!(
-        common::snapshot(harness.state_mut())
-            .physical_memory
-            .read_word_debug(0x3000),
-        0
-    );
+    common::wait_harness(&mut harness, |app| app.host.status.running);
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    loop {
+        let (d0, word) = live_execution(harness.state_mut(), 0, Some(0x3000));
+        if d0 != 0x112233 && word.unwrap() != 0 {
+            break;
+        }
+        assert!(
+            std::time::Instant::now() < deadline,
+            "Running loop did not change D0 and $3000: {d0:#x}, {word:?}"
+        );
+        common::settle_harness(&mut harness);
+    }
     assert_same_text(texts(harness.output()), before.clone());
     assert!(harness
         .state()
@@ -181,6 +181,29 @@ fn run_retains_inspector_text_and_rows_until_stop_then_steps_refresh() {
         .unwrap()
         .temporal
         .is_empty());
+}
+
+fn live_execution(
+    app: &mut gui::EmulatorApp,
+    data_register: usize,
+    word_address: Option<u32>,
+) -> (u32, Option<u16>) {
+    let reply = common::idle_command(
+        app,
+        HostCommand::Observe(HostObservation::Execution {
+            data_register,
+            word_address,
+        }),
+    );
+    assert!(reply.status.running);
+    let Ok(HostValue::Execution {
+        data_register,
+        memory_word,
+    }) = reply.value
+    else {
+        panic!("Missing live execution observation: {:?}", reply.value);
+    };
+    (data_register, memory_word)
 }
 
 #[test]
@@ -275,9 +298,9 @@ fn breakpoint_refreshes_the_first_stopped_frame_and_reset_load_invalidate_data()
     assert!(texts(&output).contains(&"CCK: 0".to_string()));
     assert!(!texts(&output).contains(&"$00112233".to_string()));
     common::command(&mut app, HostCommand::Pause);
-    let loaded = common::snapshot(&mut app);
-    assert_eq!(loaded.cpu.instruction_pc(), 0xfc0008);
-    assert_eq!(&loaded.physical_memory.kickstart_rom()[..10], &rom[..10]);
+    common::wait(&mut app, &ctx, |app| !app.host.status.running);
+    assert_eq!(common::read_cpu(&mut app).instruction_pc(), 0xfc0008);
+    assert_eq!(common::read_memory(&mut app, 0xfc0000, 10), &rom[..10]);
 }
 
 #[test]
@@ -370,7 +393,7 @@ fn run_keeps_an_open_editor_inactive_across_keyboard_input_and_resize() {
     harness.run_steps(2);
     common::settle_harness(&mut harness);
     assert!(!harness.state().host.status.running);
-    assert_eq!(common::snapshot(harness.state_mut()).cpu.d_long(7), 0);
+    assert_eq!(common::read_cpu(harness.state_mut()).d_long(7), 0);
     harness.get_by_label("▶ Run (F5)").click_accesskit();
     harness.run_steps(2);
     common::settle_harness(&mut harness);
@@ -379,7 +402,7 @@ fn run_keeps_an_open_editor_inactive_across_keyboard_input_and_resize() {
     harness.set_size(egui::vec2(1280.0, 720.0));
     harness.run_steps(2);
     common::settle_harness(&mut harness);
-    assert_eq!(common::snapshot(harness.state_mut()).cpu.d_long(7), 0);
+    assert_eq!(live_execution(harness.state_mut(), 7, None), (0, None));
     assert_eq!(
         harness.state().active_reg_edit.as_ref().unwrap().1,
         "DEADBEEF"

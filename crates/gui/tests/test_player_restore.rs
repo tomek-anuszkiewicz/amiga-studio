@@ -72,6 +72,17 @@ fn keyboard_guest() -> Box<DebuggerSession> {
     session
 }
 
+fn advance_until_received(guest: &mut DebuggerSession, address: u32, expected: u8, max_cck: u64) {
+    for _ in 0..max_cck {
+        guest.machine.step_cck();
+        if guest.machine.physical_memory.read_byte_debug(address) == expected {
+            return;
+        }
+    }
+    let actual = guest.machine.physical_memory.read_byte_debug(address);
+    panic!("After {max_cck} CCKs, guest byte ${address:06X} was {actual:#04x}, expected {expected:#04x}");
+}
+
 #[test]
 fn held_snapshot_load_delivers_keyup_to_a_guest_during_transfer_and_with_full_queue() {
     for full in [false, true] {
@@ -118,7 +129,8 @@ fn held_snapshot_load_delivers_keyup_to_a_guest_during_transfer_and_with_full_qu
         assert_eq!(loaded.state.cpu, held.state.cpu);
         let mut guest = DebuggerSession::new();
         guest.load_state(&loaded.state);
-        guest.machine.step_cycles(80_000);
+        let release_offset = if full { 11 } else { 1 };
+        advance_until_received(&mut guest, 0xc01000 + release_offset, 0x94, 80_000);
         let received = |offset: u32| {
             guest
                 .machine
@@ -136,17 +148,15 @@ fn held_snapshot_load_delivers_keyup_to_a_guest_during_transfer_and_with_full_qu
             }
         }
         assert_eq!(
-            received(if full { 11 } else { 1 }),
+            received(release_offset),
             0x94,
             "guest did not receive release"
         );
         guest.machine.keyboard.key_down(0x35);
-        guest.machine.step_cycles(15_000);
+        let next_address = 0xc01000 + release_offset + 1;
+        advance_until_received(&mut guest, next_address, 0x95, 15_000);
         assert_eq!(
-            guest
-                .machine
-                .physical_memory
-                .read_byte_debug(if full { 0xc0100c } else { 0xc01002 }),
+            guest.machine.physical_memory.read_byte_debug(next_address),
             0x95
         );
     }

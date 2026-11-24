@@ -205,6 +205,13 @@ impl FloppyDrive {
         self.replace_disk(None);
     }
 
+    /// Compares every stored track with the encoded ADF, including raw writes.
+    /// Returns `None` when the supplied bytes do not form a standard ADF.
+    pub fn tracks_match_adf(&self, data: &[u8]) -> Option<bool> {
+        let expected = FloppyDisk::from_adf(data)?;
+        Some(self.track_data.as_ref() == Some(&expected.tracks))
+    }
+
     /// Moves the disk and its write protection tab, retaining drive mechanics.
     pub fn replace_disk(&mut self, disk: Option<FloppyDisk>) -> Option<FloppyDisk> {
         let ejected = self.track_data.take().map(|tracks| FloppyDisk {
