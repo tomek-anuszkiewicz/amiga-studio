@@ -34,8 +34,7 @@ scenarios, observations and decisions without imposing an article structure.
    assignment stops before implementation, and a code edit does not always
    require a separate test-design assignment.
 3. Within Plan Change, put the scenarios, expected observations and acceptance
-   criteria in the same plan file at the selected `.agent/tasks/` path, or in
-   the same conversational draft when saving was not requested. For standalone
+   criteria in the plan, using the output selected by Plan Change. For standalone
    test design, use the selected output and cite the exact input revision when
    it comes from a saved plan. When amending a plan, retain unaffected scenario
    IDs and identify superseded expectations. Record existing protection, scenario IDs,

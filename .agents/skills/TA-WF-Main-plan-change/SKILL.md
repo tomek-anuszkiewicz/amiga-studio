@@ -1,6 +1,6 @@
 ---
 name: TA-WF-Main-plan-change
-description: Create or amend a change plan and its test design together, with scope, acceptance criteria, risks and decisions; no implementation.
+description: Prepare or update a change plan in .agent/tasks/ with its test design, scope, acceptance criteria, risks and decisions.
 ---
 
 # Plan the selected change
@@ -34,14 +34,15 @@ design valid, retain it and report that assessment instead of duplicating it.
 The planning operation includes designing the tests. Writing and running the
 tests are later steps.
 
-Use a conversational draft with the scenarios unless the user asks to save
-the plan. Save a plan and its test design together in one English file at the
-authorized `.agent/tasks/` path. On amendment, incorporate applicable scenarios
-from any older linked test-design document into the plan. Include expected
-observations and acceptance criteria in either format.
+A request to prepare a plan authorizes saving it. Use the requirements and
+decisions from the discussion. Write each requested plan and its test design
+together in one English Markdown file under `.agent/tasks/`. When updating an
+existing plan, edit its file and incorporate applicable scenarios from any
+older linked test-design document. If the user explicitly asks for a chat-only
+draft, present the plan and scenarios in the conversation.
 
-The planner returns the summary, risks, decisions and any saved location to the
-main session. List unresolved behavior and missing authorization among the open
-decisions. The main session reports the result using the shared result contract.
+The planner returns the summary, risks, decisions and path of each saved plan
+to the main session. List unresolved behavior and missing authorization among
+the open decisions. The main session links each saved plan in its reply.
 Planning ends with the plan and reconciled scenarios. It requires no telemetry
 registration, checkout provisioning or implementation.

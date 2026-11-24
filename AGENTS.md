@@ -133,7 +133,7 @@ Running `verify.py check all` includes completing its English operation.
 
 | Request | Main skill | Result |
 | --- | --- | --- |
-| Create or amend a plan | [TA-WF-Main-plan-change](.agents/skills/TA-WF-Main-plan-change/SKILL.md) | One plan with its test design |
+| Prepare or update a plan, including after discussing a change | [TA-WF-Main-plan-change](.agents/skills/TA-WF-Main-plan-change/SKILL.md) | Save each requested plan with its test design in `.agent/tasks/` and link it in the reply. Give a chat-only draft when explicitly requested. |
 | Execute an approved plan | [TA-WF-Main-implement-task](.agents/skills/TA-WF-Main-implement-task/SKILL.md) | Unstaged changes and applicable test outcomes |
 | Commit and integrate selected work | [TA-WF-Main-commit-changes](.agents/skills/TA-WF-Main-commit-changes/SKILL.md) | Selected commits and actual local integration outcome |
 | Verify delivered work on master | [TA-WF-Main-verify-master](.agents/skills/TA-WF-Main-verify-master/SKILL.md) | Checks, review findings and any scoped corrective commits |
