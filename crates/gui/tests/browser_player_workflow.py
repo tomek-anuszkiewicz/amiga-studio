@@ -169,6 +169,9 @@ def check_workflow(browser, url, rom, disk, output):
         assert b"amiga-game-screenshot-button" not in application, (
             "Native screenshot button ID found in browser Wasm"
         )
+        assert b"amiga-game-cover-button" not in application, (
+            "Native cover button ID found in browser Wasm"
+        )
         stage = "save export"
         saved_path = output / "exported.json"
         saved = export_state(saved_path)
@@ -239,7 +242,8 @@ def check_workflow(browser, url, rom, disk, output):
                 "schema": saved["header"]["version"], "current_ports": current["state"]["game_ports"]["state"]["port2"],
                 "configuration_cancel": True, "stopped_configuration_save": True,
                 "disk_swap_retained_raw_tracks": True, "embedded_disk_reinserted": True,
-                "native_screenshot_action_excluded": True, "errors": errors}
+                "native_screenshot_action_excluded": True,
+                "native_cover_action_excluded": True, "errors": errors}
     except Exception:
         page.screenshot(path=str(output / "failure.png"))
         print(f"Failed browser workflow stage: {stage}")

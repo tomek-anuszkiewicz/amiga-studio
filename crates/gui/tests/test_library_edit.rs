@@ -285,6 +285,222 @@ fn jpeg_and_png_covers_are_discovered_and_refresh_reads_replacements() {
     assert!(image::load_from_memory(png.artwork.as_ref().unwrap()).is_ok());
 }
 
+fn artwork_harness(root: &Path, width: f32) -> Harness<'static, gui::EmulatorApp> {
+    let mut app = gui::EmulatorApp::default();
+    app.player.catalog.library_root = root.to_string_lossy().into_owned();
+    app.player.library = GameLibrary::discover(root).unwrap();
+    app.navigate_player(gui::player::PlayerScreen::Library);
+    Harness::builder()
+        .with_size(egui::vec2(width, 900.0))
+        .build_state(|ctx, app| app.update_ui(ctx), app)
+}
+
+fn assert_uploaded_artwork_preview(output: &egui::FullOutput, expected: &image::RgbaImage) {
+    let size = [expected.width() as usize, expected.height() as usize];
+    let (id, uploaded) = output
+        .textures_delta
+        .set
+        .iter()
+        .find_map(|(id, delta)| {
+            let egui::ImageData::Color(image) = &delta.image;
+            (image.size == size).then_some((*id, image))
+        })
+        .expect("The chosen image must be uploaded");
+    let actual: Vec<_> = uploaded
+        .pixels
+        .iter()
+        .flat_map(egui::Color32::to_srgba_unmultiplied)
+        .collect();
+    assert_eq!(&actual, expected.as_raw());
+    let bounds = output
+        .shapes
+        .iter()
+        .find_map(|shape| {
+            // egui paints an unrotated image as a textured rectangle.
+            let egui::Shape::Rect(rect) = &shape.shape else {
+                return None;
+            };
+            let brush = rect.brush.as_ref()?;
+            (brush.fill_texture_id == id
+                && rect.fill.a() > 0
+                && shape.clip_rect.intersect(rect.rect).is_positive())
+            .then_some(rect.rect)
+        })
+        .expect("The chosen image texture must actually be drawn");
+    let expected_aspect = expected.width() as f32 / expected.height() as f32;
+    assert!((bounds.width() / bounds.height() - expected_aspect).abs() < 0.03);
+}
+
+#[test]
+fn selected_jpeg_previews_and_saves_after_source_deletion_and_rejecting_an_invalid_image() {
+    let root = root();
+    let source = root.join("source.jpg");
+    image::RgbImage::from_fn(180, 90, |x, y| image::Rgb([x as u8, y as u8, 100]))
+        .save(&source)
+        .unwrap();
+    let expected = image::open(&source).unwrap().into_rgba8();
+    let invalid = root.join("invalid.png");
+    std::fs::write(&invalid, b"not an image").unwrap();
+    let mut h = artwork_harness(&root, 1024.0);
+    h.get_by_label("Add game").click_accesskit();
+    common::settle_harness(&mut h);
+    assert!(h.get_by_label("Choose image...").rect().is_positive());
+    let draft = h.state_mut().player.library_editor.as_mut().unwrap();
+    draft.name = "Owned artwork".into();
+    // Supply the path the native file picker would return.
+    draft.choose_artwork(&source).unwrap();
+    assert!(!root.join("Owned artwork").exists());
+    std::fs::remove_file(source).unwrap();
+    h.step();
+    assert_uploaded_artwork_preview(h.output(), &expected);
+    let draft = h.state_mut().player.library_editor.as_mut().unwrap();
+    assert!(draft
+        .choose_artwork(&invalid)
+        .unwrap_err()
+        .contains("JPEG or PNG"));
+    h.get_by_label("Save game").click_accesskit();
+    common::settle_harness(&mut h);
+    assert!(h.state().file_error.is_none());
+    let reopened = GameLibrary::discover(&root).unwrap();
+    let game = &reopened.games[0];
+    assert_eq!(game.manifest.title, "Owned artwork");
+    let asset = game
+        .directory
+        .join(game.manifest.artwork.as_deref().unwrap());
+    assert_eq!(image::open(asset).unwrap().into_rgba8(), expected);
+}
+
+#[test]
+fn artwork_paste_routes_only_to_the_active_editor_and_keeps_text_paste_and_cancel() {
+    use gui::window_keyboard::receive_artwork_paste;
+
+    let root = root();
+    let mut h = artwork_harness(&root, 640.0);
+    receive_artwork_paste(&h.ctx, || {
+        panic!("The library list must not read image paste")
+    });
+    h.get_by_label("Add game").click_accesskit();
+    common::settle_harness(&mut h);
+    assert!(h
+        .get_all_by_value(if cfg!(target_os = "macos") {
+            "Paste an image with Command+V."
+        } else {
+            "Paste an image with Ctrl+V."
+        })
+        .next()
+        .is_some());
+    h.state_mut().player.library_editor.as_mut().unwrap().name = "Pasted artwork".into();
+    let expected =
+        image::RgbaImage::from_fn(80, 160, |x, y| image::Rgba([50, x as u8, y as u8, 255]));
+    assert!(!gui::keyboard_input::receive_key(
+        &h.ctx,
+        common::keyboard::key("KeyV", true),
+        None
+    ));
+    receive_artwork_paste(&h.ctx, || Ok(Some(expected.clone())));
+    h.step();
+    assert_uploaded_artwork_preview(h.output(), &expected);
+    assert!(!root.join("Pasted artwork").exists());
+
+    receive_artwork_paste(&h.ctx, || Ok(Some(image::RgbaImage::new(0, 9))));
+    h.step();
+    assert!(h
+        .get_all_by_value("The image has no pixels")
+        .next()
+        .is_some());
+    h.get_by_role(egui::accesskit::Role::MultilineTextInput)
+        .focus();
+    h.step();
+    // The window can receive both an image and text for a single clipboard action.
+    receive_artwork_paste(&h.ctx, || {
+        Ok(Some(image::RgbaImage::from_pixel(
+            2,
+            3,
+            image::Rgba([240, 31, 15, 255]),
+        )))
+    });
+    h.input_mut()
+        .events
+        .push(egui::Event::Paste("Pasted description".into()));
+    h.step();
+    let draft = h.state().player.library_editor.as_ref().unwrap();
+    assert_eq!(draft.description, "Pasted description");
+    h.get_by_label("Save game").click_accesskit();
+    common::settle_harness(&mut h);
+    let reopened = GameLibrary::discover(&root).unwrap();
+    let game = &reopened.games[0];
+    let asset = game
+        .directory
+        .join(game.manifest.artwork.as_deref().unwrap());
+    let file_bytes = std::fs::read(&asset).unwrap();
+    assert_eq!(image::open(&asset).unwrap().into_rgba8(), expected);
+    let mut filenames: Vec<_> = std::fs::read_dir(&game.directory)
+        .unwrap()
+        .map(|entry| entry.unwrap().file_name())
+        .collect();
+    filenames.sort();
+    let manifest_path = game.directory.join("game.json");
+    let manifest_bytes = std::fs::read(&manifest_path).unwrap();
+
+    h.get_by_label("Edit game").click_accesskit();
+    common::settle_harness(&mut h);
+    let replacement = image::RgbaImage::from_pixel(2, 3, image::Rgba([240, 31, 15, 255]));
+    receive_artwork_paste(&h.ctx, || Ok(Some(replacement.clone())));
+    h.step();
+    assert_uploaded_artwork_preview(h.output(), &replacement);
+    h.get_by_label("Cancel").click_accesskit();
+    common::settle_harness(&mut h);
+    assert_eq!(std::fs::read(asset).unwrap(), file_bytes);
+    assert_eq!(std::fs::read(manifest_path).unwrap(), manifest_bytes);
+    let mut after: Vec<_> = std::fs::read_dir(&game.directory)
+        .unwrap()
+        .map(|entry| entry.unwrap().file_name())
+        .collect();
+    after.sort();
+    assert_eq!(after, filenames);
+    h.get_by_label("Manual setup").click_accesskit();
+    common::settle_harness(&mut h);
+    receive_artwork_paste(&h.ctx, || panic!("Manual setup must not read image paste"));
+}
+
+#[test]
+fn an_unreadable_declared_cover_shows_a_placeholder_and_allows_launch() {
+    let root = root();
+    let mut draft = GameDraft::new("standard".into());
+    draft.name = "Corrupt cover".into();
+    let game = draft.save(&root, [true; 4]).unwrap();
+    let mut manifest = game.manifest;
+    manifest.artwork = Some("cover.jpg".into());
+    std::fs::write(
+        game.directory.join("game.json"),
+        serde_json::to_vec(&manifest).unwrap(),
+    )
+    .unwrap();
+    std::fs::write(game.directory.join("cover.jpg"), b"corrupt contents").unwrap();
+    image::RgbImage::from_pixel(2, 2, image::Rgb([100, 20, 251]))
+        .save(game.directory.join("cover.png"))
+        .unwrap();
+    let rom_path = root.join("kick.rom");
+    let mut rom = vec![0; 262144];
+    rom[..4].copy_from_slice(&0x70000u32.to_be_bytes());
+    rom[4..8].copy_from_slice(&0xfc0100u32.to_be_bytes());
+    rom[0x100..0x102].copy_from_slice(&[0x60, 0xfe]);
+    std::fs::write(&rom_path, rom).unwrap();
+    let mut h = artwork_harness(&root, 1024.0);
+    h.state_mut().player.catalog.configurations[0].launch.rom =
+        rom_path.to_string_lossy().into_owned();
+    assert!(h.get_all_by_value("No cover image").next().is_some());
+    h.get_by_label("Corrupt cover").click_accesskit();
+    common::settle_harness(&mut h);
+    h.get_by_label("Start game").click_accesskit();
+    common::wait_harness(&mut h, |app| app.player.active_game.is_some());
+    assert!(h.state().file_error.is_none());
+    assert_eq!(
+        h.state().player.active_game.as_ref().unwrap().manifest.id,
+        manifest.id
+    );
+}
+
 fn startup_dropdown<'a>(
     h: &'a Harness<'_, gui::EmulatorApp>,
     drive: &str,

@@ -1645,6 +1645,7 @@ dependencies = [
 name = "gui"
 version = "0.1.0"
 dependencies = [
+ "arboard",
  "config",
  "console_error_panic_hook",
  "cpu",

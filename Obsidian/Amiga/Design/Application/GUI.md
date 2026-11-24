@@ -73,10 +73,20 @@ destination folders without overwriting another game. Cancel leaves the files
 as they were. Editing a running game's startup assignments leaves its current
 media in place.
 
-For optional covers, the library uses the declared artwork path. Without a
-declared path, it looks for cover.jpg, cover.jpeg or cover.png in the game
-directory. It supports JPEG and PNG. The editor explains the file convention,
-and Refresh reloads changes to covers.
+The desktop library uses the declared artwork path when present. With no
+declared path, it checks `cover.jpg`, `cover.jpeg` and `cover.png` in that order.
+The first existing file determines the cover. The library shows a placeholder if the
+resolved JPEG or PNG is missing or unreadable. Launch does not depend on it.
+Use Refresh to read external changes to cover files.
+
+In Add game or Edit game, choose a JPEG or PNG file or paste an image with
+Ctrl+V (Command+V on macOS). The editor previews the image at its original
+proportions. A focused text field keeps its ordinary text paste. Image paste
+belongs to the editor and does not reach the emulated machine. A rejected image
+leaves the current draft preview intact and the editor reports why. Save game
+stores and selects a copy in the game directory. Cancel discards the image with
+the draft. The saved image remains available after the source file or clipboard
+contents change.
 
 In manual setup, the user can select a supported ROM and zero to four disks.
 Launch validates every asset before replacing the active machine. Returning to
@@ -128,6 +138,21 @@ publishes the PNG only after the whole file is written. A successful capture
 displays no notification. If capture fails, the player reports the error, the
 game remains usable, and existing PNGs stay intact. Manual and browser sessions
 do not offer this action. Screenshot has no keyboard shortcut.
+
+**Cover** follows **Screenshot** in the regular and compact player controls for
+a native library session. It captures the same complete displayed frame and
+replaces `cover.png` beside the active game's `game.json`. Numbered screenshots
+and save previews have separate destinations. When another artwork path or
+conventional JPEG takes precedence, the player changes only the manifest's
+`artwork` field to select the PNG. When `cover.png` already wins, the manifest
+keeps its original bytes. Other artwork files remain available. The new cover
+appears on return to the library.
+
+A failed frame capture or PNG write leaves the previous cover and manifest
+intact. If the PNG is complete but the manifest update fails, the old manifest
+still selects the previous artwork and the player reports that it saved the
+PNG but could not select it. The session remains usable and the player can
+retry. Cover is available only in the native library player.
 
 Each connected drive has a fixed-position activity light beside its DF label.
 Effective CIA-B selection or motor changes, active STEP edges, disk DMA reads,

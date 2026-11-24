@@ -1,7 +1,8 @@
 //! Desktop library drafts and explicit import/rename operations.
 
 use crate::game_library::{
-    load_game, relative_asset, write_manifest, GameDisk, GameManifest, LibraryGame,
+    load_game, persist_numbered_png, relative_asset, write_manifest, write_rgba_png, GameDisk,
+    GameManifest, LibraryGame,
 };
 use std::path::Path;
 
@@ -25,11 +26,19 @@ pub enum StartupDisk {
 }
 
 #[derive(Debug, Clone)]
+pub(crate) struct DraftArtwork {
+    pub(crate) image: image::RgbaImage,
+    pub(crate) revision: egui::Id,
+}
+
+#[derive(Debug, Clone)]
 pub struct GameDraft {
     pub original: Option<LibraryGame>,
     pub name: String,
     pub description: String,
     pub configuration: String,
+    pub(crate) artwork: Option<DraftArtwork>,
+    pub(crate) artwork_error: Option<String>,
     imports: Vec<ImportedDisk>,
     next_import: u64,
     startup: [Option<StartupDisk>; config::FLOPPY_DRIVE_COUNT],
@@ -42,6 +51,8 @@ impl GameDraft {
             name: String::new(),
             description: String::new(),
             configuration,
+            artwork: None,
+            artwork_error: None,
             imports: Vec::new(),
             next_import: 0,
             startup: Default::default(),
@@ -59,6 +70,8 @@ impl GameDraft {
                 .clone()
                 .map(|id| id.map(StartupDisk::Existing)),
             original: Some(game),
+            artwork: None,
+            artwork_error: None,
             imports: Vec::new(),
             next_import: 0,
         }
@@ -66,6 +79,22 @@ impl GameDraft {
 
     pub fn imports(&self) -> &[ImportedDisk] {
         &self.imports
+    }
+
+    pub fn choose_artwork(&mut self, path: &Path) -> Result<(), String> {
+        let bytes =
+            std::fs::read(path).map_err(|error| format!("Could not open image: {error}"))?;
+        self.set_artwork(decode_artwork(&bytes)?)
+    }
+
+    pub(crate) fn set_artwork(&mut self, image: image::RgbaImage) -> Result<(), String> {
+        let (width, height) = image.dimensions();
+        if width == 0 || height == 0 {
+            return Err("The image has no pixels".into());
+        }
+        let revision = egui::Id::new((width, height, image.as_raw()));
+        self.artwork = Some(DraftArtwork { image, revision });
+        Ok(())
     }
 
     /// Read and validate before the draft can affect library files.
@@ -272,9 +301,43 @@ impl GameDraft {
             manifest.description = Some(path);
         }
         manifest.validate()?;
-        let bytes = serde_json::to_vec_pretty(manifest).map_err(|e| e.to_string())?;
-        write_manifest(directory, &bytes)
+        let new_artwork = self
+            .artwork
+            .as_ref()
+            .map(|artwork| {
+                let image = &artwork.image;
+                persist_numbered_png(directory, "artwork", |file| {
+                    write_rgba_png(file, image.as_raw(), image.width(), image.height())
+                })
+                .map_err(|error| format!("Could not store the cover image: {error}"))
+            })
+            .transpose()?;
+        if let Some(path) = &new_artwork {
+            manifest.artwork = Some(path.clone());
+        }
+        let saved = serde_json::to_vec_pretty(manifest)
+            .map_err(|error| error.to_string())
+            .and_then(|bytes| write_manifest(directory, &bytes));
+        if let Err(error) = saved {
+            if let Some(path) = new_artwork {
+                std::fs::remove_file(directory.join(path)).map_err(|cleanup| {
+                    format!("{error}. Could not remove the unselected cover image: {cleanup}")
+                })?;
+            }
+            return Err(error);
+        }
+        Ok(())
     }
+}
+
+pub(crate) fn decode_artwork(bytes: &[u8]) -> Result<image::RgbaImage, String> {
+    let format = match image::guess_format(bytes) {
+        Ok(format @ (image::ImageFormat::Jpeg | image::ImageFormat::Png)) => format,
+        _ => return Err("Choose a JPEG or PNG image".into()),
+    };
+    image::load_from_memory_with_format(bytes, format)
+        .map(image::DynamicImage::into_rgba8)
+        .map_err(|error| format!("Could not read image: {error}"))
 }
 
 /// Preserve the entered name exactly while rejecting unsafe Windows folder names.

@@ -6,6 +6,7 @@ use winit::{
     application::ApplicationHandler,
     event::{DeviceEvent, DeviceId, ElementState, MouseButton, StartCause, WindowEvent},
     event_loop::{ActiveEventLoop, EventLoop},
+    keyboard::{Key, KeyCode, ModifiersState, PhysicalKey as WinitKey},
     window::WindowId,
 };
 
@@ -31,6 +32,7 @@ pub fn run_native(
         context: &context,
         primary_window: None,
         cursor_position: None,
+        modifiers: ModifiersState::empty(),
     })?;
     Ok(())
 }
@@ -40,6 +42,7 @@ struct KeyboardApplication<'a> {
     context: &'a OnceLock<egui::Context>,
     primary_window: Option<WindowId>,
     cursor_position: Option<winit::dpi::PhysicalPosition<f64>>,
+    modifiers: ModifiersState,
 }
 
 impl ApplicationHandler<eframe::UserEvent> for KeyboardApplication<'_> {
@@ -48,6 +51,8 @@ impl ApplicationHandler<eframe::UserEvent> for KeyboardApplication<'_> {
         if *self.primary_window.get_or_insert(id) == id {
             if let Some(ctx) = self.context.get() {
                 match &event {
+                    WindowEvent::ModifiersChanged(modifiers) => self.modifiers = modifiers.state(),
+                    WindowEvent::Focused(false) => self.modifiers = ModifiersState::empty(),
                     WindowEvent::CursorMoved { position, .. } => {
                         self.cursor_position = Some(*position)
                     }
@@ -70,6 +75,9 @@ impl ApplicationHandler<eframe::UserEvent> for KeyboardApplication<'_> {
                 if collect_window_key(ctx, &event) {
                     ctx.request_repaint();
                     return;
+                }
+                if artwork_paste_pressed(&event, self.modifiers) {
+                    receive_artwork_paste(ctx, read_clipboard_image);
                 }
             }
         }
@@ -107,6 +115,76 @@ impl ApplicationHandler<eframe::UserEvent> for KeyboardApplication<'_> {
     fn memory_warning(&mut self, event_loop: &ActiveEventLoop) {
         self.app.memory_warning(event_loop);
     }
+}
+
+fn artwork_paste_pressed(event: &WindowEvent, modifiers: ModifiersState) -> bool {
+    let WindowEvent::KeyboardInput {
+        event,
+        is_synthetic: false,
+        ..
+    } = event
+    else {
+        return false;
+    };
+    let paste_modifier =
+        modifiers.control_key() || (cfg!(target_os = "macos") && modifiers.super_key());
+    paste_modifier
+        && !modifiers.alt_key()
+        && !modifiers.shift_key()
+        && event.state == ElementState::Pressed
+        && !event.repeat
+        && (event.physical_key == WinitKey::Code(KeyCode::KeyV)
+            || matches!(&event.logical_key, Key::Character(key) if key.eq_ignore_ascii_case("v")))
+}
+
+#[derive(Clone, Default)]
+pub(crate) struct ArtworkPaste {
+    pub(crate) active: bool,
+    pub(crate) pending: Option<Result<image::RgbaImage, String>>,
+}
+
+pub(crate) fn with_artwork_paste<T>(
+    ctx: &egui::Context,
+    operation: impl FnOnce(&mut ArtworkPaste) -> T,
+) -> T {
+    ctx.data_mut(|data| {
+        operation(data.get_temp_mut_or_default(egui::Id::new("library_artwork_paste")))
+    })
+}
+
+/// Delivers a native paste shortcut to the active artwork editor.
+///
+/// The window supplies a clipboard reader and still forwards the key to eframe
+/// so text fields can receive their usual paste event.
+pub fn receive_artwork_paste(
+    ctx: &egui::Context,
+    read_image: impl FnOnce() -> Result<Option<image::RgbaImage>, String>,
+) {
+    if !with_artwork_paste(ctx, |paste| paste.active) {
+        return;
+    }
+    let image = read_image().transpose();
+    if image.is_some() {
+        with_artwork_paste(ctx, |paste| paste.pending = image);
+        ctx.request_repaint();
+    }
+}
+
+fn read_clipboard_image() -> Result<Option<image::RgbaImage>, String> {
+    let image = match arboard::Clipboard::new().and_then(|mut clipboard| clipboard.get_image()) {
+        Ok(image) => image,
+        Err(arboard::Error::ContentNotAvailable) => return Ok(None),
+        Err(error) => {
+            return Err(format!(
+                "Could not read an image from the clipboard: {error}"
+            ))
+        }
+    };
+    let width = u32::try_from(image.width).map_err(|_| "Clipboard image is too wide")?;
+    let height = u32::try_from(image.height).map_err(|_| "Clipboard image is too tall")?;
+    image::RgbaImage::from_raw(width, height, image.bytes.into_owned())
+        .map(Some)
+        .ok_or_else(|| "The clipboard image has invalid pixel data".into())
 }
 
 fn collect_window_key(ctx: &egui::Context, event: &WindowEvent) -> bool {

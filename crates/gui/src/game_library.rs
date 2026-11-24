@@ -172,24 +172,70 @@ pub(crate) fn load_game(directory: &Path) -> Result<LibraryGame, String> {
         .and_then(|path| relative_asset(directory, path).ok())
         .and_then(|path| std::fs::read_to_string(path).ok())
         .unwrap_or_default();
-    let artwork_path = manifest
-        .artwork
-        .as_ref()
-        .map(|path| relative_asset(directory, path))
-        .transpose()?
-        .or_else(|| {
-            ["cover.jpg", "cover.jpeg", "cover.png"]
-                .iter()
-                .map(|name| directory.join(name))
-                .find(|path| path.is_file())
-        });
-    let artwork = artwork_path.and_then(|path| std::fs::read(path).ok());
+    let artwork = artwork_path(directory, &manifest).and_then(|path| std::fs::read(path).ok());
     Ok(LibraryGame {
         directory: directory.to_path_buf(),
         manifest,
         description,
         artwork,
     })
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+const COVER_PNG: &str = "cover.png";
+
+#[cfg(not(target_arch = "wasm32"))]
+fn artwork_path(directory: &Path, manifest: &GameManifest) -> Option<PathBuf> {
+    if let Some(path) = &manifest.artwork {
+        return Some(directory.join(path));
+    }
+    ["cover.jpg", "cover.jpeg", COVER_PNG]
+        .into_iter()
+        .map(|name| directory.join(name))
+        .find(|path| path.is_file())
+}
+
+/// Replace the captured PNG and select it if another artwork path has priority.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn persist_cover(
+    game: &LibraryGame,
+    write_png: impl FnOnce(&mut std::fs::File) -> std::io::Result<()>,
+) -> Result<(), String> {
+    let directory = game.directory.canonicalize().map_err(|e| e.to_string())?;
+    let bytes = std::fs::read(directory.join("game.json")).map_err(|e| e.to_string())?;
+    let manifest: GameManifest = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
+    manifest.validate()?;
+    if manifest.id != game.manifest.id {
+        return Err("The active game's entry changed on disk".into());
+    }
+    let cover = directory.join(COVER_PNG);
+    let pending = stage_png(&directory, write_png).map_err(|e| e.to_string())?;
+    pending.persist(&cover).map_err(|e| e.error.to_string())?;
+    let selected = artwork_path(&directory, &manifest);
+    if selected.is_some_and(|path| {
+        path == cover
+            || (cfg!(windows)
+                && path
+                    .canonicalize()
+                    .ok()
+                    .zip(cover.canonicalize().ok())
+                    .is_some_and(|(selected, cover)| selected == cover))
+    }) {
+        return Ok(());
+    }
+    let select_cover = || {
+        let current = std::fs::read(directory.join("game.json")).map_err(|e| e.to_string())?;
+        if current != bytes {
+            return Err("The game manifest changed while saving the cover. Try again.".into());
+        }
+        let mut document: serde_json::Value =
+            serde_json::from_slice(&current).map_err(|e| e.to_string())?;
+        document["artwork"] = serde_json::Value::String(COVER_PNG.into());
+        let updated = serde_json::to_vec_pretty(&document).map_err(|e| e.to_string())?;
+        write_manifest(&directory, &updated)
+    };
+    select_cover()
+        .map_err(|error| format!("Saved cover.png but could not select it in game.json: {error}"))
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -288,30 +334,66 @@ pub fn persist_screenshot(
     game: &LibraryGame,
     write_png: impl FnOnce(&mut std::fs::File) -> std::io::Result<()>,
 ) -> std::io::Result<()> {
-    use std::io::{Error, ErrorKind};
-
     let directory = game.directory.join("Screenshots");
     std::fs::create_dir_all(&directory)?;
+    persist_numbered_png(&directory, "screenshot", write_png).map(|_| ())
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) fn persist_numbered_png(
+    directory: &Path,
+    stem: &str,
+    write_png: impl FnOnce(&mut std::fs::File) -> std::io::Result<()>,
+) -> std::io::Result<String> {
+    use std::io::{Error, ErrorKind};
+
     // On Windows, tempfile passes paths directly to Win32 during publication.
-    #[cfg(windows)]
     let directory = directory.canonicalize()?;
-    let mut pending = tempfile::Builder::new()
-        .suffix(".pending")
-        .tempfile_in(&directory)?;
-    write_png(pending.as_file_mut())?;
-    pending.as_file().sync_all()?;
+    let mut pending = stage_png(&directory, write_png)?;
     for serial in 1..=u32::MAX {
-        let path = directory.join(format!("screenshot-{serial}.png"));
+        let name = format!("{stem}-{serial}.png");
+        let path = directory.join(&name);
         if path.try_exists()? {
             continue;
         }
-        match pending.persist_noclobber(&path) {
-            Ok(_) => return Ok(()),
+        match pending.persist_noclobber(path) {
+            Ok(_) => return Ok(name),
             Err(error) if error.error.kind() == ErrorKind::AlreadyExists => pending = error.file,
             Err(error) => return Err(error.error),
         }
     }
-    Err(Error::other("No available screenshot filename"))
+    Err(Error::other(format!("No available {stem} filename")))
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn stage_png(
+    directory: &Path,
+    write_png: impl FnOnce(&mut std::fs::File) -> std::io::Result<()>,
+) -> std::io::Result<tempfile::NamedTempFile> {
+    let mut pending = tempfile::Builder::new()
+        .suffix(".pending")
+        .tempfile_in(directory)?;
+    write_png(pending.as_file_mut())?;
+    pending.as_file().sync_all()?;
+    Ok(pending)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) fn write_rgba_png(
+    file: &mut std::fs::File,
+    pixels: &[u8],
+    width: u32,
+    height: u32,
+) -> std::io::Result<()> {
+    use image::{codecs::png::PngEncoder, ExtendedColorType, ImageEncoder};
+    use std::io::{Error, Write};
+
+    // Write the complete encoded PNG through an operation that reports errors.
+    let mut png = Vec::new();
+    PngEncoder::new(&mut png)
+        .write_image(pixels, width, height, ExtendedColorType::Rgba8)
+        .map_err(Error::other)?;
+    file.write_all(&png)
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -323,9 +405,14 @@ pub fn write_manifest(directory: &Path, bytes: &[u8]) -> Result<(), String> {
         .create_new(true)
         .open(&pending)
         .map_err(|e| e.to_string())?;
-    file.write_all(bytes)
-        .and_then(|_| file.sync_all())
-        .map_err(|e| e.to_string())?;
+    let written = file.write_all(bytes).and_then(|_| file.sync_all());
     drop(file);
-    std::fs::rename(pending, directory.join("game.json")).map_err(|e| e.to_string())
+    if let Err(error) = written.and_then(|_| std::fs::rename(&pending, directory.join("game.json")))
+    {
+        std::fs::remove_file(pending).map_err(|cleanup| {
+            format!("{error}. Could not remove the temporary manifest: {cleanup}")
+        })?;
+        return Err(error.to_string());
+    }
+    Ok(())
 }
