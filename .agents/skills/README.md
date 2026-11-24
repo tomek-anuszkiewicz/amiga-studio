@@ -99,21 +99,25 @@ the integrated files, including conflict resolutions.
 rounds below. Tests and reviews use the delivered scope directly on master.
 The main session includes applicable pending files and preserves unrelated work.
 
+Before each round, run the full English scan with validated dictionary
+maintenance and commit any authorized language edits and repairs. In round 1,
+run the applicable tests with coverage where supported and the required gates.
+In later rounds, refresh affected results and reuse results whose inputs still
+match. Independently challenge the findings and reported check failures from
+each round. If a required issue needs the engineer's decision or required
+evidence remains missing, report it and leave readiness unverified.
+
 ```mermaid
 flowchart TD
-    Start["Identify the delivered scope on master"]
-    Start --> English["Full English scan and validated dictionary maintenance"]
-    English --> Commits["Commit any authorized language edits and selected repairs"]
-    Commits --> Checks["Run applicable tests with coverage where supported<br/>and other required gates. Reuse current evidence when applicable"]
-    Checks --> Review["Current review round<br/>Assess coverage and assertions where applicable"]
-    Review --> Challenge["Independently challenge findings and reported check failures"]
-    Challenge --> Next{"What does the current round require?"}
-    Next -->|Supported repair within the two-pass limit| Repair["TA-WF-Step-implement-change"]
-    Repair --> English
-    Next -->|Targeted reassessment complete| Final["Select final full review"]
-    Final --> English
-    Next -->|Required evidence passes and reviews complete| Result["Return final master assessment"]
-    Next -->|Required issue still needs a decision| Report["Report the issue and leave readiness unverified"]
+    Start["Identify the delivered scope on master"] --> Initial["Round 1. Review the full change"]
+    Initial -->|Required checks and reviews pass| Result["Return final master assessment"]
+    Initial -->|Confirmed issue can be repaired within scope| FirstRepair["Apply the first repair"]
+    FirstRepair --> Targeted["Round 2. Recheck the repair<br/>in the review areas that raised the repaired findings"]
+    Targeted -->|No further repair needed| Final["Round 3. Review the full change with the repairs in place"]
+    Targeted -->|Another confirmed issue can be repaired within scope| SecondRepair["Apply the second repair"]
+    SecondRepair --> Final
+    Final -->|Required checks and reviews pass| Result
+    Final -->|Required issue remains| Report["Report the issue and leave readiness unverified"]
 ```
 
 Use [Correct English](TA-WF-Step-correct-english/SKILL.md),
@@ -189,7 +193,7 @@ coverage and gate results.
 | Round | Scope | What follows |
 | --- | --- | --- |
 | 1. Initial review | All applicable independent assignments assess the delivered change and affected interactions | Finish when required evidence and findings permit it. Send supported in-scope repairs to the implementer. |
-| 2. Targeted reassessment | Fresh reviewers reassess the repaired findings and affected interactions. Include the tests reviewer for refreshed coverage and affected assertions when applicable. | Use the remaining corrective pass for a supported issue within scope. Proceed to the full review after corrective work. |
+| 2. Targeted reassessment | Assign fresh reviewers only to the review areas that raised the repaired findings. They check the repairs and affected interactions. Also include the tests reviewer when affected assertions or refreshed coverage need reassessment. | Use the remaining corrective pass for a supported issue within scope. Proceed to the full review after corrective work. |
 | 3. Final full review | All initial assignments and any newly affected scope review the delivered change with corrections applied | Reuse current test and coverage data when inputs match. Return any required issue that remains. |
 
 When no reviewer needs to reassess a repair or inspect updated coverage and
