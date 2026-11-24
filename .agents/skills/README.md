@@ -70,7 +70,7 @@ flowchart TD
     Existing --> Assign
     Provision -->|Preparation failed| Report
     Assign --> Implement["Implement the change, format Rust edits and inspect the diff"]
-    Implement --> Targets{"Compiled targets selected?"}
+    Implement --> Targets{"Any targets to compile?"}
     Targets -->|No| Tests["TA-test-runner runs applicable tests"]
     Targets -->|Yes| Compile["TA-implementer compiles the selected targets<br/>Maximum three attempts"]
     Compile -->|All targets compiled| Tests
