@@ -268,7 +268,13 @@ fn shortcut_hover_shows_active_bindings_and_only_applicable_equivalents() {
     session.load_binary(0x1000, &[0x60, 0xfe], true).unwrap();
     let mut app = EmulatorApp::with_session(session);
     app.set_view_mode(ViewMode::ScreenOnly);
-    app.player.active_configuration = Some(Default::default());
+    #[cfg(not(target_arch = "wasm32"))]
+    let library = tempfile::tempdir().unwrap();
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        app.player.library_root = Some(library.path().to_path_buf());
+    }
+    app.player.activate_selected_configuration();
     let mut h = Harness::builder()
         .with_size(egui::vec2(1280.0, 900.0))
         .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
