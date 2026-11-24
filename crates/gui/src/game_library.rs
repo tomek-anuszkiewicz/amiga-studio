@@ -10,6 +10,7 @@ pub struct GameDisk {
     pub path: String,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl GameDisk {
     pub(crate) fn display_name(&self) -> &str {
         if self.label.trim().is_empty() {
