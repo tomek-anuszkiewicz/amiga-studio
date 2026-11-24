@@ -1,6 +1,5 @@
 //! Library, manual setup and compact gameplay controls.
 
-use crate::host_commands::HostCommand;
 use crate::player::{PlayerScreen, SessionDisk};
 use crate::{EmulatorApp, ViewMode};
 
@@ -207,12 +206,13 @@ impl EmulatorApp {
             });
         }
         ui.separator();
+        let execution_label = if self.host.status.running {
+            "Pause"
+        } else {
+            "Resume"
+        };
         if ui
-            .button(if self.host.status.running {
-                "Pause"
-            } else {
-                "Resume"
-            })
+            .add_enabled(!self.player.busy, egui::Button::new(execution_label))
             .on_hover_text(
                 "Pause at the field boundary or resume the same machine and mounted media.",
             )
@@ -221,13 +221,21 @@ impl EmulatorApp {
             self.player.captured = false;
             self.toggle_run();
         }
+        #[cfg(not(target_arch = "wasm32"))]
+        let library_game = self.player.active_game.is_some();
+        #[cfg(target_arch = "wasm32")]
+        let library_game = false;
+        let reset_help = if library_game {
+            "Restore this game's startup disks, then reset and run with the current hardware and ROM."
+        } else {
+            "Reset and run the current machine with the disks already inserted."
+        };
         if ui
-            .button("Reset")
-            .on_hover_text("Reset the current machine, retaining mounted media")
+            .add_enabled(!self.player.busy, egui::Button::new("Reset"))
+            .on_hover_text(reset_help)
             .clicked()
         {
-            self.player.captured = false;
-            self.host.queue(HostCommand::Reset);
+            self.reset_player();
         }
         ui.horizontal(|ui| {
             if ui

@@ -10,6 +10,19 @@ pub struct GameDisk {
     pub path: String,
 }
 
+impl GameDisk {
+    pub(crate) fn display_name(&self) -> &str {
+        if self.label.trim().is_empty() {
+            Path::new(&self.path)
+                .file_name()
+                .and_then(|name| name.to_str())
+                .unwrap_or(&self.id)
+        } else {
+            &self.label
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GameManifest {
     pub id: String,

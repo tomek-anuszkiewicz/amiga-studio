@@ -323,7 +323,9 @@ fn unfinished_fields_continue_on_the_worker_and_still_service_controls() {
     let paused = wait_reply(&mut host, HostCommand::Pause);
     assert!(paused.value.is_ok());
     assert!(paused.status.pause_pending);
-    assert!(wait_reply(&mut host, HostCommand::Reset).value.is_ok());
+    let reset = wait_reply(&mut host, HostCommand::Reset);
+    assert!(reset.value.is_ok());
+    assert!(!reset.status.running);
     assert!(!host.status().running);
     assert!(wait_reply(&mut host, HostCommand::Shutdown).value.is_ok());
 }

@@ -20,6 +20,12 @@ pub enum HistoryCommand {
 }
 
 #[derive(Debug)]
+pub struct GameStartup {
+    pub game_id: String,
+    pub disks: [Option<debugger::launch::StartupDisk>; config::FLOPPY_DRIVE_COUNT],
+}
+
+#[derive(Debug)]
 pub enum HostCommand {
     Run,
     Pause,
@@ -32,6 +38,7 @@ pub enum HostCommand {
     SetDebuggerEnabled(bool),
     Reset,
     ResetWarm,
+    ResetPlayer(Option<GameStartup>),
     ReadCpu,
     Inspect,
     History(HistoryCommand),
@@ -130,6 +137,7 @@ pub enum HostValue {
     Memory { address: u32, bytes: Vec<u8> },
     Snapshot(String),
     PlayerRestored(debugger::SaveAssociation),
+    PlayerReset([Option<String>; config::FLOPPY_DRIVE_COUNT]),
     Inspection(Box<crate::host_inspection::HostInspection>),
 }
 

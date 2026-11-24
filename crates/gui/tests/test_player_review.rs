@@ -41,7 +41,7 @@ fn started(root: &Path) -> EmulatorApp {
             .games
             .remove(0)
     } else {
-        draft.save(root).unwrap()
+        draft.save(root, [true; 4]).unwrap()
     };
     let mut app = EmulatorApp::default();
     app.player.catalog.library_root = root.to_string_lossy().into_owned();

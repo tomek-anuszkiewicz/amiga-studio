@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "gui"
 status: "active"
 created: 2026-09-05
-updated: 2026-11-23
+updated: 2026-11-24
 related: ["[egui Guidelines.md](../egui%20Guidelines.md)", "[Debugger.md](Debugger.md)", "[General Architecture.md](../General%20Architecture.md)", "[Keyboard.md](../Keyboard.md)", "[Mouse.md](../Mouse.md)", "[Audio.md](../Audio.md)", "[Denise.md](../Denise.md)", "[RTC.md](../RTC.md)"]
 tracked_paths:
   - "crates/gui"
@@ -61,12 +61,16 @@ input generation.
 
 The desktop library provides Add game and Edit game forms. The user enters a
 name, an optional description and a named configuration, and selects ADF files
-to import individually. Saving copies the imported disks into the game
-directory. The game's name is also its folder name. Renaming preserves game/disk
-IDs, saves, initial states and other files. The library rejects invalid names
-and existing destination folders without overwriting another game. Cancel
-leaves the files as they were. The running session keeps the same machine when
-its library metadata changes.
+to import individually. **Startup disks** lets the user choose a game disk,
+pending import or Empty for each drive from DF0 through DF3. A new game
+suggests the first disk for DF0 until the user makes a choice. Saving copies
+the imported disks into the game directory and records the chosen disk IDs.
+Assignments require drives connected in the chosen configuration. The game's
+name is also its folder name. Renaming preserves game and disk IDs, saves,
+initial states and other files. The library rejects invalid names and existing
+destination folders without overwriting another game. Cancel leaves the files
+as they were. Editing a running game's startup assignments leaves its current
+media in place.
 
 For optional covers, the library uses the declared artwork path. Without a
 declared path, it looks for cover.jpg, cover.jpeg or cover.png in the game
@@ -82,13 +86,30 @@ save/load, Library/Setup and Debug access. Narrow windows collapse the same
 controls. The panel is present once, in the player view. Screen scaling
 preserves the aspect ratio of the complete framebuffer.
 
+**Reset** in the player panel cold-resets the current machine and starts
+execution, including when the player paused before clicking it. For a library
+game, the owner first restores the active game's startup assignments, including
+empty drives. It prepares the complete set before changing any drive. The
+current hardware configuration stays in effect and each assigned drive must
+already be connected. A failure preserves the current media and execution
+state and reports the cause. A manual session keeps its inserted media.
+
+Normal boot uses the game's saved startup assignments. A progress or initial
+state load restores its snapshot's mounted arrangement. Player Reset boots
+from the current ROM with the prepared media. Debugger cold and warm resets,
+guest RESET and keyboard reset retain their existing hardware behavior.
+
 When a guest writes to a player disk, the new contents follow that disk through
 ejection and reinsertion during the session. The original ADF stays unchanged.
 The player uses the disk ID when selecting a detached copy. It prefers the copy
 last removed from the requested drive. A single detached copy can move to
 another connected drive. If several copies are available from other drives,
 the player reports the ambiguity and leaves all drives as they were. Copies
-mounted simultaneously are independent. The [save state specification](SaveState.md#player-progress)
+mounted simultaneously are independent. On player Reset the owner uses
+matching mounted or detached copies before opening startup media from a source
+ADF. Copies already in their requested drive or last removed from it take
+priority. A remaining copy can move when its source and destination are
+unambiguous. The [save state specification](SaveState.md#player-progress)
 defines what a quick load or saved file restores.
 
 In a native library session, click **Screenshot** beside **Save** and **Load**

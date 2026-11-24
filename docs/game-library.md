@@ -35,15 +35,26 @@ below the display. Debug uses the same machine.
 
 Choose a library directory and click **Add game**. Enter the name that the app
 will use for both the game and its folder, then select a named configuration.
-You can add a description. Click **Add disk...** once per ADF. **Save game**
-copies the ADFs into the game folder and assigns the first one to DF0. The
-original files stay untouched. For a ROM-only machine, leave the disk list empty.
+You can add a description. Click **Add disk...** once per ADF. Under
+**Startup disks**, choose a disk or **Empty** for each drive. For a new game,
+DF0 suggests the first disk until you choose a disk or **Empty** yourself.
+Use connected drives for your assignments. **Save game** copies the selected
+ADFs into the game folder and keeps the original files intact.
 
 Select an existing entry and click **Edit game** to change its name, description
-or configuration or append more disks. Renaming moves the whole folder, including
-saved progress and any initial state. Disk IDs and assignments stay the same.
-Cancel discards the draft without writing files. The editor keeps existing media.
-Use the player panel to switch or eject them.
+or configuration, append more disks or change its startup assignments.
+Renaming moves the whole folder, including saved progress and any initial state,
+and preserves disk IDs. Cancel discards the draft without writing files. Use
+the player panel to switch or eject disks during play.
+
+**Boot normally** inserts the startup disks and starts the game. **Reset** in
+the player panel inserts the active game's saved startup disks, clears drives
+set to **Empty** and boots with the current hardware and ROM. Editing startup
+choices during a session takes effect at the next Reset or normal boot. In
+manual sessions, Reset keeps the disks currently inserted. A successful Reset
+starts execution even if you had paused. If the player cannot prepare an
+assigned disk or the drive is disconnected, it reports the problem and keeps
+the session's current disks and execution state.
 
 For a cover, place **cover.jpg**, **cover.jpeg** or **cover.png** next to game.json
 and click **Refresh**. No manifest edit is needed. A declared artwork path takes
@@ -70,10 +81,12 @@ Create one subdirectory per game and place a `game.json` inside it.
 ```
 
 Give each disk a unique ID within its game. Asset paths are relative to the game
-directory. You can launch without artwork or a description, even if the optional
-files are missing. Use Edit game to select a configuration and Save game to write
-that association. You can rename configurations while keeping their IDs. Moving
-a game directory keeps its relative media paths valid. Another installation must
+directory. The four `mounted` positions specify the startup disk IDs for DF0
+through DF3. Use `null` for an empty drive. You can launch without artwork or a
+description, even if the optional files are missing. Use Edit game to select a
+configuration and Save game to write that association. You can rename
+configurations while keeping their IDs. Moving a game directory keeps its
+relative media paths valid. Another installation must
 supply its own configuration and ROM.
 
 Save creates a new file in the game's `saves/` directory with a preview and a UTC

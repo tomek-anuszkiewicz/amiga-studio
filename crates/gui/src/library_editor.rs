@@ -87,11 +87,11 @@ impl EmulatorApp {
         ui.strong("Disks");
         if let Some(game) = &draft.original {
             for (index, disk) in game.manifest.disks.iter().enumerate() {
-                ui.label(format!("{}. {}", index + 1, disk.label));
+                ui.label(format!("{}. {}", index + 1, disk.display_name()));
             }
         }
         let mut remove = None;
-        for (index, disk) in draft.imports.iter().enumerate() {
+        for disk in draft.imports() {
             ui.horizontal(|ui| {
                 ui.label(format!("To copy: {}", disk.name));
                 if ui
@@ -101,35 +101,74 @@ impl EmulatorApp {
                     )
                     .clicked()
                 {
-                    remove = Some(index);
+                    remove = Some(disk.key());
                 }
             });
         }
-        if let Some(index) = remove {
-            draft.imports.remove(index);
+        if let Some(key) = remove {
+            draft.remove_import(key);
         }
         if ui.button("Add disk...").on_hover_text("Select one standard 880 KiB ADF. Repeat for more disks; files are copied when you save the game.").clicked() {
             if let Some(path) = rfd::FileDialog::new().add_filter("Amiga disk images", &["adf"]).pick_file() {
                 if let Err(error) = draft.add_disk(&path) { self.file_error = Some(error); }
             }
         }
-        ui.small("The first disk starts in DF0 for a new game. Existing assignments stay unchanged; switch disks in the player panel.");
-        if let Some(error) = &self.file_error {
-            ui.colored_label(ui.visuals().error_fg_color, error);
-        }
-        ui.separator();
-        let configured = self
+        let connected = self
             .player
             .catalog
             .configurations
             .iter()
-            .any(|c| c.id == draft.configuration);
+            .find(|configuration| configuration.id == draft.configuration)
+            .map(|configuration| configuration.launch.drives);
+        ui.separator();
+        ui.strong("Startup disks");
+        for drive in 0..config::FLOPPY_DRIVE_COUNT {
+            ui.horizontal(|ui| {
+                let label = ui.label(format!("DF{drive}"));
+                let selected = draft.startup_disk(drive);
+                let selected_label = selected.as_ref().map_or("Empty", |disk| {
+                    draft
+                        .startup_choices()
+                        .find_map(|(choice, name)| (choice == *disk).then_some(name))
+                        .unwrap_or("Unavailable disk")
+                });
+                let mut change = None;
+                egui::ComboBox::from_id_salt(("startup_disk", drive))
+                    .selected_text(selected_label)
+                    .show_ui(ui, |ui| {
+                        if ui.selectable_label(selected.is_none(), "Empty").clicked() {
+                            change = Some(None);
+                        }
+                        for (disk, name) in draft.startup_choices() {
+                            if ui
+                                .selectable_label(selected.as_ref() == Some(&disk), name)
+                                .clicked()
+                            {
+                                change = Some(Some(disk));
+                            }
+                        }
+                    })
+                    .response
+                    .labelled_by(label.id)
+                    .on_hover_text("Choose the disk to insert on normal boot or player Reset");
+                if let Some(choice) = change {
+                    draft.select_startup_disk(drive, choice);
+                }
+                if connected.is_some_and(|drives| !drives[drive]) {
+                    ui.weak("Disconnected");
+                }
+            });
+        }
+        if let Some(error) = &self.file_error {
+            ui.colored_label(ui.visuals().error_fg_color, error);
+        }
+        ui.separator();
         let mut save = false;
         let mut cancel = false;
         ui.horizontal(|ui| {
             save = ui
                 .add_enabled(
-                    configured && validate_game_name(&draft.name).is_ok(),
+                    connected.is_some() && validate_game_name(&draft.name).is_ok(),
                     egui::Button::new("Save game"),
                 )
                 .on_hover_text(
@@ -145,14 +184,14 @@ impl EmulatorApp {
             self.file_error = None;
             return;
         }
-        if save {
+        if let Some(connected) = connected.filter(|_| save) {
             let edits_active = self
                 .player
                 .active_game
                 .as_ref()
                 .zip(draft.original.as_ref())
                 .is_some_and(|(active, original)| active.same_entry(original));
-            match draft.save(Path::new(&self.player.catalog.library_root)) {
+            match draft.save(Path::new(&self.player.catalog.library_root), connected) {
                 Ok(game) => {
                     self.complete_library_edit(game, edits_active);
                     return;
@@ -180,7 +219,7 @@ impl EmulatorApp {
                 {
                     self.player.disks.push(crate::player::SessionDisk {
                         id: disk.id.clone(),
-                        label: disk.label.clone(),
+                        label: disk.display_name().into(),
                         bytes: std::fs::read(game.directory.join(&disk.path)).ok(),
                     });
                 }
