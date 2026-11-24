@@ -205,13 +205,16 @@ For standalone implementation and master repairs that change GUI code,
 workspace manifests or the browser build pipeline, include
 `python tools/verification/verify.py check web`. During
 [Implement Task](../../.agents/skills/TA-WF-Main-implement-task/SKILL.md),
-run the applicable tests and defer standalone gates to the selected final
-verification. Every `commit` profile selects
-the same `WebAssembly build` gate after preflight and before coverage. The gate
-invokes `tools/web.ps1 build`, which processes assets through Trunk and uses the
-production shared memory flags. The launcher sets `CARGO_BUILD_WARNINGS=deny`,
-so Cargo lint warnings such as unused workspace dependencies fail both ordinary
-web builds and the gate.
+the implementer runs `./tools/web.ps1 build` when the browser target is
+selected. The runner can use that distribution on the same inputs for
+the selected browser interaction test. Implement Task defers standalone
+gates to final verification when selected.
+
+Every `commit` profile selects the same `WebAssembly build` gate after
+preflight and before coverage. The gate invokes `tools/web.ps1 build`, which
+processes assets through Trunk and uses the production shared memory flags.
+The launcher sets `CARGO_BUILD_WARNINGS=deny`, so Cargo lint warnings such as
+unused workspace dependencies fail both ordinary web builds and the gate.
 This does not change the centrally reviewed Clippy permissions. Non-lint Cargo
 warnings are outside this Cargo setting's scope.
 

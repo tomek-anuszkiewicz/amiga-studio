@@ -86,11 +86,16 @@ authored text or other verification configuration keep their normal requirements
    selected behavior or requirements affect them. Editorial changes alone do not
    require code changes. Run the assigned focused checks and review the diff
    against authorized scope.
-   In [Implement Task](../TA-WF-Main-implement-task/SKILL.md), the designated
-   runner executes the selected tests. Inspect the changed files and diff, then
-   return them for that run. Use only the agreed scenarios and actual test
-   failures to guide work. Standalone build and quality gates, including
-   `check web`, belong outside this stage.
+   In the initial [Implement Task](../TA-WF-Main-implement-task/SKILL.md)
+   assignment, compile the selected targets as described below. Return the
+   changed files, diff inspection and compilation evidence to the main
+   session. The designated runner executes the selected tests. For a
+   test-driven repair, format the edits as applicable, inspect the diff and
+   return the change for the failed and affected tests. The compilation
+   procedure below applies only before the first test handoff. Use the
+   agreed scenarios and actual compiler or test failures to guide work.
+   Standalone build and quality gates, including `check web`, belong to
+   standalone work and master repairs.
    In standalone work and master repairs, use the assigned focused checks.
    Repeat checks for changed inputs, failures or unresolved concerns. Use
    `verify.py test python` for affected Python contracts and shared inputs.
@@ -101,6 +106,40 @@ authored text or other verification configuration keep their normal requirements
 4. Return changes, actual checks, findings and remaining work to the main
    session under the shared result contract. Report any selected runs still
    due from the designated runner.
+
+## Compile before test handoff
+
+Use this procedure for the initial Implement Task assignment when the main
+session selects compiled targets. If none apply, return the change after diff
+inspection for the ordinary test procedure.
+
+1. Compile the selected production and test targets on the formatted working
+   files, using the assigned packages, features, target platforms and
+   profiles. Use commands that compile without starting test cases. For
+   example, `cargo test -p gui --no-run` compiles the native GUI package's
+   test targets. For a selected integration suite, use
+   `cargo test -p gui --test test_player_review --no-run` and compile any
+   separately selected production targets. Plain `cargo check -p gui`,
+   which the verifier uses for `check build crate gui`, omits integration
+   test targets by default.
+2. When the browser build is selected, run `./tools/web.ps1 build` from
+   PowerShell. It builds the production distribution with the project's
+   nightly toolchain and shared-memory settings. Record the distribution
+   location for the browser test on the same inputs.
+3. Count the first compilation as attempt 1. One attempt covers one working
+   version even when the selected targets require several commands. Success
+   on every selected target ends the loop immediately. After attempt 1 or 2,
+   repair only an in-scope compiler failure identified by its diagnostic.
+   Format any Rust edits as above, inspect the diff and compile all selected
+   targets on the repaired inputs. Each retry uses one attempt even if it
+   exposes a different diagnostic.
+4. Stop after a third failure. Return sooner if a command is interrupted, a
+   prerequisite is missing or the cause requires work outside the write
+   scope. Report each attempt's number, actual commands, packages and targets,
+   effective features, platform, profile, build settings and exit results.
+   Include relevant diagnostics with file and line when available, the
+   corrections made and any targets or tests still unrun. Confirm that any
+   successful evidence still matches the working inputs at handoff.
 
 ## Selected repairs
 
