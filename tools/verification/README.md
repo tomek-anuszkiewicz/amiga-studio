@@ -39,6 +39,9 @@ for associating a report with a task execution.
 | `check code|hardware|formatting|clippy` | One quality gate |
 | `check build [crate NAME]` | Cargo compilation check; workspace by default |
 | `check web` | Build the browser application through Trunk and nightly; Cargo lint warnings fail |
+| `check unused dependencies` | Check dependency declarations in all workspace packages |
+| `check unused dependencies crate NAME` | Check dependency declarations in one workspace package |
+| `check unused public crate NAME` | Probe unrestricted public declarations in one workspace package |
 | `runner build` | Compile release test and benchmark targets without running them |
 | `runner bench [case ID\|mnemonic NAME\|opcode XXXX] [duration-ms N] [series N]` | CPU performance test measurement |
 | `runner gui -- OPTIONS` | GUI inspector capture |
@@ -46,8 +49,9 @@ for associating a report with a task execution.
 
 `--plan` previews the exact child commands and their environment. `--log-level
 full|warn|error` controls output. Both options may appear among the command's
-selectors. `--results-dir PATH` puts verifier logs in `PATH/verify/` and SingleStep
-reports and history in `PATH/singlestep/`. The verifier resolves relative paths
+selectors. `--results-dir PATH` puts verifier logs in `PATH/verify/`, SingleStep
+reports and history in `PATH/singlestep/`, and each public probe in a separate
+directory under `PATH`. The verifier resolves relative paths
 from the repository root. Give each experiment a new directory to keep its
 SingleStep history separate. Other tools, including coverage and benchmarks,
 keep their own output paths.
@@ -103,6 +107,32 @@ Use the [CPU diagnostic guidance](../../.agents/references/cpu-diagnostics.md)
 when investigating an isolated instruction mismatch. Full standalone SingleStep
 requires its explicitly selected complete scope; do not expand a diagnostic
 sample into the full suite.
+
+## Unused Rust dependencies and public declarations
+
+```powershell
+python tools/verification/verify.py check unused dependencies
+python tools/verification/verify.py check unused dependencies crate cpu
+python tools/verification/verify.py check unused public crate cpu
+```
+
+The dependency commands run Cargo's compilation check for the selected
+packages. They execute zero test suites and return a failing result when
+Cargo reports an unused dependency in a selected package. Each finding names
+the dependency and gives its manifest path and line. Coverage reads Cargo's
+build diagnostics from its existing nextest invocation, including on a warm
+build. The test outcomes are recorded separately from the dependency verdict.
+Cargo determines which dependency tables and targets this check covers. See
+[Cargo's unused dependency lint](https://doc.rust-lang.org/stable/cargo/reference/lints.html#unused_dependencies).
+
+Install the public probe's Python dependencies with
+`python -m pip install -r tools/verification/requirements.txt`. The probe copies
+the current working inputs to a disposable workspace. It restricts one public
+declaration at a time and compares compiler diagnostics from the named package
+and its workspace consumers, including integration test targets. The
+`unused-public-*/report.json` file records observations and incomplete
+comparisons. The default report directory is `.agent/tmp/verify/`. A comparison
+with no relevant diagnostic is inconclusive.
 
 ## English vocabulary
 

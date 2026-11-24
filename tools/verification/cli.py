@@ -24,6 +24,8 @@ COMMAND_TREE = """Command tree (run from the repository root):
   │  ├─ formatting
   │  ├─ clippy
   │  ├─ web
+  │  ├─ unused dependencies [crate NAME]
+  │  ├─ unused public crate NAME
   │  └─ build [crate NAME]
   └─ runner
      ├─ build
@@ -53,6 +55,9 @@ EXAMPLES = """Examples (run from the repository root):
   python tools/verification/verify.py test runner singlestep case test_add_b --exact sample 5 --results-dir .agent/tmp/experiments/add
   python tools/verification/verify.py check architecture case test_file_size_limits
   python tools/verification/verify.py check english removals .agent/tmp/proposal.json
+  python tools/verification/verify.py check unused dependencies
+  python tools/verification/verify.py check unused dependencies crate cpu
+  python tools/verification/verify.py check unused public crate cpu
   python tools/verification/verify.py runner bench inventory
   python tools/verification/verify.py runner bench case add/add_w_d1_d0 duration-ms 50 series 1
   python tools/verification/verify.py runner bench cases .agent/tmp/benchmark_cases.txt
@@ -98,7 +103,7 @@ def parser():
     root.add_argument("--log-level", choices=("full", "warn", "error"), default="warn",
                       help="Child output detail; every run saves full logs")
     root.add_argument("--results-dir", metavar="PATH",
-                      help="Store verifier logs and SingleStep reports under PATH")
+                      help="Store verifier logs, SingleStep and public probe reports under PATH")
     root.add_argument("--exact", action="store_true",
                       help="Match one Rust suite test or SingleStep group exactly")
     commands = root.add_subparsers(dest="command", required=True)
@@ -120,7 +125,7 @@ def parser():
     runner.add_argument("words", nargs="*", metavar="SELECTOR")
     checks = commands.add_parser("check", help="Run an individual quality or compilation check")
     checks.add_argument("name", choices=("all", "architecture", "english", "code", "hardware",
-                                         "formatting", "clippy", "web", "build"))
+                                         "formatting", "clippy", "web", "unused", "build"))
     checks.add_argument("words", nargs="*", metavar="SELECTOR")
     runs = commands.add_parser("runner", help="Reports, CPU benchmarks and GUI captures")
     runs.add_argument("action", choices=("build", "bench", "gui", "analyze", "refresh"))

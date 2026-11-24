@@ -42,7 +42,9 @@ class SelectionTests(unittest.TestCase):
                     _, args = parse_args(argv)
                     self.assertIsNone(args)
             help_text = output.getvalue()
-            for command in ('milestone [singlestep]', 'crate NAME [suite NAME] [case FILTER]', 'python [directory PATH [file PATTERN] [case FILTER]]', 'singlestep [case FILTER] [full|sample N]', 'architecture [case FILTER]', 'english [files PATH... | removals PATH]', 'analyze RUN_DIRECTORY'):
+            for command in ('milestone [singlestep]', 'crate NAME [suite NAME] [case FILTER]', 'python [directory PATH [file PATTERN] [case FILTER]]', 'singlestep [case FILTER] [full|sample N]', 'architecture [case FILTER]', 'english [files PATH... | removals PATH]', 'analyze RUN_DIRECTORY',
+                            'check unused dependencies\n', 'check unused dependencies crate cpu\n',
+                            'check unused public crate cpu\n'):
                 self.assertIn(command, help_text)
 
     def test_focused_rust_preserves_suite_and_case_without_completion(self):
@@ -409,6 +411,54 @@ class ExecutionTests(unittest.TestCase):
         scanner = self.root / 'tools/verification/checks/check_english.py'
         scanner.parent.mkdir(parents=True, exist_ok=True)
         return scanner
+
+    def test_unused_dispatch_and_previews_use_only_the_selected_command(self):
+        results = self.root / 'reported'
+        forms = (
+            ([], ['cargo', 'check', '--workspace']),
+            (['crate', 'cpu'], ['cargo', 'check', '-p', 'cpu']),
+            (None, [sys.executable, 'tools/verification/unused_public.py', 'cpu', '--results-dir',
+                    str(results)]),
+        )
+        for package, command in forms:
+            words = ['public', 'crate', 'cpu'] if package is None else ['dependencies', *package]
+            arguments = ['check', 'unused', *words, '--results-dir', str(results)]
+            with self.subTest(words=words), \
+                 patch.object(selection, 'workspace_packages', return_value=([], {self.root: 'cpu'})), \
+                 patch.object(verify, 'execute_command', return_value=(0, 'ok', 0)) as execute, \
+                 contextlib.redirect_stdout(io.StringIO()) as output:
+                self.assertEqual(verify.main([*arguments, '--plan']), 0)
+                execute.assert_not_called()
+                self.assertFalse(results.exists())
+                self.assertIn(subprocess.list2cmdline(command), output.getvalue())
+                self.assertEqual(verify.main(arguments), 0)
+                execute.assert_called_once()
+                self.assertEqual(execute.call_args.args[0], command)
+                self.assertEqual(execute.call_args.kwargs.get('check_unused', False), package is not None)
+                self.assertEqual(execute.call_args.kwargs['log_dir'], results / 'verify')
+
+    def test_invalid_unused_selectors_stop_before_preview_or_dispatch(self):
+        invalid = [[], ['stray'], ['public']]
+        for mode in ('dependencies', 'public'):
+            invalid.extend([mode, *words] for words in (
+                ['crate'], ['crate', ''], ['crate', 'missing'], ['crate', 'cpu@0.1.0'],
+                ['crate', 'cpu', 'crate', 'cpu'], ['crate', 'cpu', 'other'],
+                ['crate', 'cpu', 'file', 'crates/cpu/src/cpu.rs'], ['crate', 'cpu', 'line', '12'],
+            ))
+        for words in invalid:
+            unknown = bool(words and words[-1] in ('missing', 'cpu@0.1.0'))
+            for options in ([], ['--plan']):
+                with self.subTest(words=words, options=options), \
+                     patch.object(selection, 'workspace_packages', return_value=([], {self.root: 'cpu'})) as packages, \
+                     patch.object(verify, 'execute_command') as execute, \
+                     contextlib.redirect_stderr(io.StringIO()) as diagnostics, \
+                     self.assertRaises(SystemExit) as status:
+                    verify.main(['check', 'unused', *words, *options])
+                self.assertEqual(status.exception.code, 2)
+                execute.assert_not_called()
+                self.assertEqual(packages.call_count, int(unknown))
+                expected = 'Unknown workspace package' if unknown else 'Use check unused dependencies'
+                self.assertIn(expected, diagnostics.getvalue())
 
     def test_english_requires_a_readable_report_from_its_child(self):
         scanner = self.english_scanner_path()

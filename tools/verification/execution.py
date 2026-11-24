@@ -12,6 +12,7 @@ from pathlib import Path
 from case_report import CONTEXT
 from repository import REPO_ROOT
 from run_rust_tests import is_rust_test
+from unused_dependencies import UnusedDependencies
 
 
 COMMAND_LOG = "AMIGA_TEST_COMMAND_LOG"
@@ -159,7 +160,7 @@ def validate_english_report(cwd, args, code, locators):
         raise ValueError(f"English scan report findings do not match scanner exit code {code}: {locator}")
 
 
-def run_cmd(cmd, cwd=None, env=None, log_level="warn", log_dir=None, native=None):
+def run_cmd(cmd, cwd=None, env=None, log_level="warn", log_dir=None, native=None, check_unused=False):
     cwd = REPO_ROOT if cwd is None else cwd
     print(f"[CMD] {subprocess.list2cmdline(cmd)}", flush=True)
     isolated_log = log_dir is not None
@@ -183,12 +184,16 @@ def run_cmd(cmd, cwd=None, env=None, log_level="warn", log_dir=None, native=None
         exact_test_count = None
         english = cmd[1:2] == [ENGLISH_SCANNER]
         english_locators = []
+        coverage = cmd[:3] == ["cargo", "llvm-cov", "nextest"]
+        unused = UnusedDependencies(coverage) if check_unused or coverage else None
         with subprocess.Popen(native or cmd, cwd=cwd, env=env, stdout=subprocess.PIPE,
                               stderr=subprocess.STDOUT, text=True, encoding="utf-8",
                               errors="replace") as process:
             for line in process.stdout:
                 log.write(line)
                 mirror = mirror_output(mirror, line)
+                if unused:
+                    unused.consume(line)
                 if english and line.startswith(ENGLISH_REPORT_MARKER):
                     english_locators.append(line.rstrip())
                     context_left = 0
@@ -217,6 +222,24 @@ def run_cmd(cmd, cwd=None, env=None, log_level="warn", log_dir=None, native=None
                 else:
                     context_left = 0
             code = process.wait()
+        if unused:
+            try:
+                findings = unused.findings(cwd, cmd)
+            except (OSError, RuntimeError, ValueError) as error:
+                findings = []
+                diagnostics = [f"[ERROR] Cannot identify the selected dependency declarations: {error}"]
+            else:
+                diagnostics = [f"[FAIL] Unused dependency {finding}" for finding in findings]
+            for diagnostic in diagnostics:
+                print(diagnostic, flush=True)
+                log.write(diagnostic + "\n")
+                mirror = mirror_output(mirror, diagnostic + "\n")
+            if diagnostics:
+                error_seen = True
+                result = f"command exited with code {code}"
+                evidence = "unused dependencies: " + ", ".join(findings) if findings else diagnostics[0]
+                detail = f"{result} | {evidence}"
+                code = code or 1
         if english:
             try:
                 validate_english_report(cwd, cmd[2:], code, english_locators)
@@ -247,7 +270,7 @@ def run_cmd(cmd, cwd=None, env=None, log_level="warn", log_dir=None, native=None
         print(f"[LOG] {display_path}", flush=True)
     return code, detail or f"command exited with code {code}", elapsed
 
-def execute_command(command, overrides, log_level="warn", log_dir=None):
+def execute_command(command, overrides, log_level="warn", log_dir=None, check_unused=False):
     env = os.environ.copy()
     env["PYTHONIOENCODING"] = "utf-8"
     env["PYTHONUNBUFFERED"] = "1"
@@ -269,6 +292,8 @@ def execute_command(command, overrides, log_level="warn", log_dir=None):
         options = {"env": env, "log_level": log_level, "log_dir": log_dir}
         if native:
             options["native"] = native
+        if check_unused:
+            options["check_unused"] = True
         return run_cmd(command, **options)
     except OSError as error:
         code = 2 if command[1:2] == [ENGLISH_SCANNER] else 1

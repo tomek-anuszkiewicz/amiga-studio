@@ -7,6 +7,7 @@ from impact import RustScope, select_rust_scope, workspace_packages
 
 
 CAPTURE_CONTRACTS = "Workflow capture contracts"
+PUBLIC_PROBE = "tools/verification/unused_public.py"
 
 
 def singlestep_command(profile="verification", case=None, exact=False):
@@ -270,13 +271,36 @@ def harness_commands(words, exact=False):
     return [("SingleStepTests", singlestep_command(case=values.get("case"), exact=exact), env)]
 
 
-def check_commands(name, words):
+def unused_commands(words, results_dir):
+    forms = "Use check unused dependencies [crate NAME] or check unused public crate NAME"
+    if not words or words[0] not in ("dependencies", "public"):
+        raise ValueError(forms)
+    action = words[0]
+    if action == "dependencies" and len(words) == 1:
+        return [("Unused Rust dependencies", ["cargo", "check", "--workspace"], {})]
+    if len(words) != 3 or words[1] != "crate" or not words[2].strip():
+        raise ValueError(forms)
+    package = words[2]
+    _, roots = workspace_packages(REPO_ROOT)
+    if package not in roots.values():
+        raise ValueError(f"Unknown workspace package: {package}")
+    if action == "dependencies":
+        return [("Unused Rust dependencies", ["cargo", "check", "-p", package], {})]
+    command = [sys.executable, PUBLIC_PROBE, package]
+    if results_dir is not None:
+        command += ["--results-dir", str(results_dir)]
+    return [("Unused public Rust declarations", command, {})]
+
+
+def check_commands(name, words, results_dir=None):
     from cli import keyword_values
     labels = {"formatting": "Formatting", "clippy": "Clippy Invariants",
               "architecture": "Architecture Rules", "hardware": "Hardware Quality", "code": "Code Quality",
               "web": "WebAssembly build"}
     if name == "all" and not words:
         return [*check_commands("english", []), *select_quality_commands("commit")]
+    if name == "unused":
+        return unused_commands(words, results_dir)
     if name == "english":
         if not words:
             scanner_args = []
@@ -346,7 +370,7 @@ def runner_commands(action, words):
     raise ValueError(f"Unsupported runner action: {action}")
 
 
-def select_phases(args, changes, explanations=None):
+def select_phases(args, changes, explanations=None, *, results_dir=None):
     from cli import keyword_values
     if args.command in ("commit", "milestone"):
         if args.exact:
@@ -379,7 +403,7 @@ def select_phases(args, changes, explanations=None):
     if args.command == "check":
         if args.exact:
             raise ValueError("--exact requires a focused Rust or SingleStep case")
-        selected = check_commands(args.name, args.words)
+        selected = check_commands(args.name, args.words, results_dir)
     elif args.command == "runner":
         if args.exact:
             raise ValueError("--exact requires a focused Rust or SingleStep case")

@@ -77,7 +77,7 @@ def run_verification(parser, args, started, archive=None):
         explanations = []
         if completion:
             explanations.append("Selected paths: " + ", ".join(sorted(changes)))
-        phases = select_phases(args, changes, explanations)
+        phases = select_phases(args, changes, explanations, results_dir=results_dir)
     except (RuntimeError, OSError, ValueError) as error:
         if archive:
             archive.event("selection_error", detail=str(error), started=0)
@@ -141,7 +141,7 @@ def reserve_group(archive, phase, name, commands):
 
 
 
-def group_command(report, command, overrides, index, log_level, log_dir):
+def group_command(report, command, overrides, index, log_level, log_dir, check_unused=False):
     context = overrides
     if report:
         context = report.child_environment(overrides)
@@ -149,10 +149,11 @@ def group_command(report, command, overrides, index, log_level, log_dir):
         if log:
             context[COMMAND_LOG] = str(log)
         report.event("command_started", command=command, artifact=report.link(log))
-    code, detail, seconds = execute_command(command, context, log_level=log_level, log_dir=log_dir)
+    options = {"check_unused": True} if check_unused else {}
+    code, detail, seconds = execute_command(command, context, log_level=log_level, log_dir=log_dir, **options)
     if report:
         report.event("command_finished", command=command, outcome="passed" if code == 0 else "failed",
-                     detail=detail, seconds=seconds)
+                     detail=detail, seconds=seconds, exit_code=code)
         if log and not log.is_file():
             # Tests may replace the executor. A real launch error is already returned by it.
             if detail.startswith("Cannot launch command"):
@@ -170,6 +171,7 @@ def finish_group(report, code):
 
 def execute_diagnostic(args, phases, results_dir, started, archive=None):
     own_report = args.command == "runner" and args.action in ("bench", "analyze", "refresh")
+    check_unused = args.command == "check" and args.name == "unused" and args.words[0] == "dependencies"
     native_english_status = standalone_english(args)
     error_code = 2 if native_english_status else 1
     directory = None if own_report else REPO_ROOT / ".agent/tmp/verification/diagnostics" / uuid4().hex
@@ -199,7 +201,8 @@ def execute_diagnostic(args, phases, results_dir, started, archive=None):
                 code = None
                 try:
                     native_code, detail, elapsed = group_command(
-                        group, command, overrides, 0, args.log_level, results_dir / "verify" if results_dir else None)
+                        group, command, overrides, 0, args.log_level,
+                        results_dir / "verify" if results_dir else None, check_unused)
                     ok = native_code == 0
                     code = native_code if native_english_status else int(not ok)
                 except KeyboardInterrupt:
