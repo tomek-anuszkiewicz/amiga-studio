@@ -6,18 +6,18 @@ use std::io::{ErrorKind, Write};
 use std::path::{Component, Path, PathBuf};
 
 const CATALOG_NAME: &str = "configurations.json";
-pub(crate) const SETTINGS_KEY: &str = "native_player_settings";
-pub(crate) type CatalogRead = Result<(ConfigurationCatalog, Option<Vec<u8>>), String>;
+pub const SETTINGS_KEY: &str = "native_player_settings";
+pub type CatalogRead = Result<(ConfigurationCatalog, Option<Vec<u8>>), String>;
 
 #[derive(Debug, Default, Deserialize, Serialize)]
-pub(crate) struct NativePlayerSettings {
+pub struct NativePlayerSettings {
     pub root: Option<PathBuf>,
     pub selected: String,
     pub migrated_legacy: bool,
 }
 
 #[derive(Deserialize)]
-pub(crate) struct LegacyCatalog {
+pub struct LegacyCatalog {
     configurations: Vec<NamedConfiguration>,
     mappings: Vec<JoystickMapping>,
     pub selected: String,
@@ -52,18 +52,18 @@ impl Contents {
     }
 }
 
-pub(crate) fn same_profiles(a: &ConfigurationCatalog, b: &ConfigurationCatalog) -> bool {
+pub fn same_profiles(a: &ConfigurationCatalog, b: &ConfigurationCatalog) -> bool {
     a.configurations == b.configurations
         && a.mappings == b.mappings
         && a.next_mapping_id == b.next_mapping_id
 }
 
-pub(crate) fn open(root: &Path, selected: &str) -> CatalogRead {
+pub fn open(root: &Path, selected: &str) -> CatalogRead {
     std::fs::read_dir(root).map_err(|error| format!("Could not open library: {error}"))?;
     read(root, selected)
 }
 
-pub(crate) fn read(root: &Path, selected: &str) -> CatalogRead {
+pub fn read(root: &Path, selected: &str) -> CatalogRead {
     let path = root.join(CATALOG_NAME);
     let source =
         read_optional(&path).map_err(|error| format!("Could not read {CATALOG_NAME}: {error}"))?;
@@ -78,7 +78,7 @@ pub(crate) fn read(root: &Path, selected: &str) -> CatalogRead {
     Ok((catalog, source))
 }
 
-pub(crate) fn empty_catalog() -> ConfigurationCatalog {
+pub fn empty_catalog() -> ConfigurationCatalog {
     ConfigurationCatalog {
         configurations: Vec::new(),
         mappings: Vec::new(),
@@ -97,7 +97,7 @@ fn validate(catalog: &ConfigurationCatalog) -> Result<(), String> {
     Ok(())
 }
 
-pub(crate) fn rom_path(root: &Path, reference: &str) -> Result<PathBuf, String> {
+pub fn rom_path(root: &Path, reference: &str) -> Result<PathBuf, String> {
     let path = Path::new(reference);
     if reference.is_empty()
         || path
@@ -114,7 +114,7 @@ pub(crate) fn rom_path(root: &Path, reference: &str) -> Result<PathBuf, String> 
 }
 
 #[derive(Debug)]
-pub(crate) struct CatalogWrite {
+pub struct CatalogWrite {
     path: PathBuf,
     expected: Option<Vec<u8>>,
     bytes: Vec<u8>,

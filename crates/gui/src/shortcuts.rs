@@ -20,7 +20,7 @@ impl From<FrontendAction> for KeyCommand {
 }
 
 #[derive(Clone, Copy)]
-pub(crate) enum ShortcutModifier {
+pub enum ShortcutModifier {
     None,
     Command,
     Debugger,
@@ -29,7 +29,7 @@ pub(crate) enum ShortcutModifier {
     DebuggerAlt,
 }
 
-pub(crate) struct FixedShortcut {
+pub struct FixedShortcut {
     pub(crate) action: KeyCommand,
     pub(crate) position: &'static str,
     pub(crate) modifier: ShortcutModifier,
@@ -45,7 +45,7 @@ impl FixedShortcut {
     }
 }
 
-pub(crate) const FIXED_SHORTCUTS: &[FixedShortcut] = {
+pub const FIXED_SHORTCUTS: &[FixedShortcut] = {
     use crate::keyboard_input::VIEW_SWITCH_KEY;
     use KeyCommand::*;
     use ShortcutModifier::*;

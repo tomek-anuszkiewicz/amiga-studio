@@ -385,10 +385,10 @@ impl EmulatorApp {
                     #[cfg(not(target_arch = "wasm32"))]
                     let error = {
                         editor.write = None;
-                        editor
-                            .rollback_error
-                            .take()
-                            .map_or(error.clone(), |save| format!("{save}. {error}"))
+                        match editor.rollback_error.take() {
+                            Some(save) => format!("{save}. {error}"),
+                            None => error,
+                        }
                     };
                     editor.error = Some(error);
                 }

@@ -677,12 +677,7 @@ fn library_cover(ui: &mut egui::Ui, game: &crate::game_library::LibraryGame, sid
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub(crate) fn preview(
-    ui: &mut egui::Ui,
-    id: impl std::hash::Hash,
-    bytes: &[u8],
-    width: f32,
-) -> bool {
+pub fn preview(ui: &mut egui::Ui, id: impl std::hash::Hash, bytes: &[u8], width: f32) -> bool {
     draw_image_preview(ui, id, egui::Id::new(bytes), width, || {
         crate::library_edit::decode_artwork(bytes)
             .ok()
@@ -691,7 +686,7 @@ pub(crate) fn preview(
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub(crate) fn draw_image_preview<'a>(
+pub fn draw_image_preview<'a>(
     ui: &mut egui::Ui,
     id: impl std::hash::Hash,
     revision: egui::Id,
@@ -754,7 +749,7 @@ pub fn configuration_selector(
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub(crate) fn choose_configuration<'a>(
+pub fn choose_configuration<'a>(
     ui: &mut egui::Ui,
     label: &'static str,
     selected: &mut String,

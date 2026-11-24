@@ -6,25 +6,14 @@ File selection exercises the ordinary HTML input fallback; physical controls
 and File System Access permission dialogs remain interactive checks.
 """
 import argparse
-from functools import partial
 from hashlib import sha256
-from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 import json
 from pathlib import Path
-from threading import Thread
 from urllib.parse import urlparse
 
 from playwright.sync_api import sync_playwright
 
-
-class IsolatedFiles(SimpleHTTPRequestHandler):
-    def end_headers(self):
-        self.send_header("Cross-Origin-Opener-Policy", "same-origin")
-        self.send_header("Cross-Origin-Embedder-Policy", "require-corp")
-        super().end_headers()
-
-    def log_message(self, *_args):
-        pass
+from browser_test_server import serve_distribution
 
 
 def first_raw_block(snapshot):
@@ -284,23 +273,15 @@ def main():
     parser.add_argument("--output", type=Path, default=Path(".agent/tmp/browser-player"))
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
-    server = ThreadingHTTPServer(("127.0.0.1", 0), partial(IsolatedFiles, directory=str(args.dist.resolve())))
-    thread = Thread(target=server.serve_forever, daemon=True)
-    thread.start()
-    try:
-        with sync_playwright() as playwright:
-            browser = playwright.chromium.launch(executable_path=args.browser_executable, headless=True,
-                args=["--enable-webgl", "--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"])
-            try:
-                result = check_workflow(browser, f"http://127.0.0.1:{server.server_port}/", args.rom, args.disk, args.output)
-                (args.output / "result.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
-                print(json.dumps(result, indent=2))
-            finally:
-                browser.close()
-    finally:
-        server.shutdown()
-        server.server_close()
-        thread.join()
+    with serve_distribution(args.dist) as url, sync_playwright() as playwright:
+        browser = playwright.chromium.launch(executable_path=args.browser_executable, headless=True,
+            args=["--enable-webgl", "--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"])
+        try:
+            result = check_workflow(browser, url, args.rom, args.disk, args.output)
+            (args.output / "result.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
+            print(json.dumps(result, indent=2))
+        finally:
+            browser.close()
 
 
 if __name__ == "__main__":

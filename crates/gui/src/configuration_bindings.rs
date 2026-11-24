@@ -11,7 +11,7 @@ use crate::player_config::{
 use crate::EmulatorApp;
 
 #[derive(Debug)]
-pub(crate) enum BindingTarget {
+pub enum BindingTarget {
     Frontend(usize, FrontendAction),
     Override {
         profile: usize,
@@ -28,7 +28,7 @@ pub(crate) enum BindingTarget {
 }
 
 #[derive(Debug)]
-pub(crate) struct BindingRecording {
+pub struct BindingRecording {
     pub(crate) controller: Option<GamepadRecording>,
     target: BindingTarget,
     label: String,
@@ -306,7 +306,7 @@ impl EmulatorApp {
     }
 }
 
-pub(crate) fn finish_recording(editor: &mut ConfigurationEdit, ctx: &egui::Context) {
+pub fn finish_recording(editor: &mut ConfigurationEdit, ctx: &egui::Context) {
     editor.recording = None;
     with_inbox(ctx, |inbox| inbox.stop_recording());
     ctx.request_repaint();

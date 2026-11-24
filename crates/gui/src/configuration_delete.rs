@@ -8,7 +8,7 @@ use crate::EmulatorApp;
 use std::path::Path;
 
 #[derive(Debug)]
-pub(crate) struct ConfigurationDeletion {
+pub struct ConfigurationDeletion {
     target: String,
     affected: Vec<LibraryGame>,
     replacement: String,

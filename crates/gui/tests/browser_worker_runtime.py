@@ -1,15 +1,21 @@
 """Check real shared-memory worker startup and idle notifications in Chromium.
 
-Serve the application with tools/web.ps1, then run:
-python crates/gui/tests/browser_worker_runtime.py --browser-executable <chromium-path>
+Build the distribution with tools/web.ps1 build. Use --dist to serve it on loopback.
+
+python crates/gui/tests/browser_worker_runtime.py --browser-executable <chromium-path> --dist .agent/tmp/web-dist
+
+For an already running server, use --url. The default is http://127.0.0.1:8080/.
 Requires the existing Playwright Python package. No browser is installed by this test.
 """
 
 import argparse
+from contextlib import nullcontext
 import json
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
+
+from browser_test_server import serve_distribution
 
 
 def check_startup(browser, url, delayed):
@@ -193,19 +199,22 @@ def check_rust_failure(browser, url, snapshot, screenshot):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--browser-executable", required=True)
-    parser.add_argument("--url", default="http://127.0.0.1:8080/")
+    origin = parser.add_mutually_exclusive_group()
+    origin.add_argument("--url", default="http://127.0.0.1:8080/")
+    origin.add_argument("--dist", type=Path)
     parser.add_argument("--output", type=Path)
     parser.add_argument("--fatal-snapshot", type=Path)
     args = parser.parse_args()
-    with sync_playwright() as playwright:
+    application = serve_distribution(args.dist) if args.dist else nullcontext(args.url)
+    with application as url, sync_playwright() as playwright:
         browser = playwright.chromium.launch(executable_path=args.browser_executable, headless=True,
             args=["--enable-webgl", "--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"])
         results = {"browser": browser.version,
-                   "cases": [check_startup(browser, args.url, delayed) for delayed in (False, True)],
-                   "failure": check_failure_delivery(browser, args.url,
+                   "cases": [check_startup(browser, url, delayed) for delayed in (False, True)],
+                   "failure": check_failure_delivery(browser, url,
                        args.output.with_suffix(".png") if args.output else None)}
         if args.fatal_snapshot:
-            results["rust_failure"] = check_rust_failure(browser, args.url, args.fatal_snapshot,
+            results["rust_failure"] = check_rust_failure(browser, url, args.fatal_snapshot,
                 args.output.with_name(args.output.stem + "-rust.png") if args.output else None)
         browser.close()
     encoded = json.dumps(results, indent=2)
