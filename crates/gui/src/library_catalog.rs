@@ -22,6 +22,8 @@ pub(crate) struct LegacyCatalog {
     mappings: Vec<JoystickMapping>,
     pub selected: String,
     pub library_root: PathBuf,
+    #[serde(default)]
+    next_mapping_id: u64,
 }
 
 #[derive(Debug, Deserialize, PartialEq, Serialize)]
@@ -29,6 +31,8 @@ pub(crate) struct LegacyCatalog {
 struct Contents {
     configurations: Vec<NamedConfiguration>,
     mappings: Vec<JoystickMapping>,
+    #[serde(default)]
+    next_mapping_id: u64,
 }
 
 impl Contents {
@@ -43,12 +47,15 @@ impl Contents {
             configurations: self.configurations,
             mappings: self.mappings,
             selected,
+            next_mapping_id: self.next_mapping_id,
         }
     }
 }
 
 pub(crate) fn same_profiles(a: &ConfigurationCatalog, b: &ConfigurationCatalog) -> bool {
-    a.configurations == b.configurations && a.mappings == b.mappings
+    a.configurations == b.configurations
+        && a.mappings == b.mappings
+        && a.next_mapping_id == b.next_mapping_id
 }
 
 pub(crate) fn open(root: &Path, selected: &str) -> CatalogRead {
@@ -65,8 +72,9 @@ pub(crate) fn read(root: &Path, selected: &str) -> CatalogRead {
     };
     let data: Contents = serde_json::from_slice(bytes)
         .map_err(|error| format!("Could not read {CATALOG_NAME}: {error}"))?;
-    let catalog = data.catalog(selected);
+    let mut catalog = data.catalog(selected);
     validate(&catalog).map_err(|error| format!("Invalid {CATALOG_NAME}: {error}"))?;
+    catalog.introduce_keyboard_presets();
     Ok((catalog, source))
 }
 
@@ -75,6 +83,7 @@ pub(crate) fn empty_catalog() -> ConfigurationCatalog {
         configurations: Vec::new(),
         mappings: Vec::new(),
         selected: String::new(),
+        next_mapping_id: 1,
     }
 }
 
@@ -131,6 +140,7 @@ impl CatalogWrite {
         let contents = Contents {
             configurations: catalog.configurations.clone(),
             mappings: catalog.mappings.clone(),
+            next_mapping_id: catalog.next_mapping_id,
         };
         let bytes = serde_json::to_vec_pretty(&contents).map_err(|error| error.to_string())?;
         let pending = stage(&root, &bytes).map_err(|error| error.to_string())?;
@@ -195,6 +205,7 @@ impl LegacyCatalog {
             configurations: self.configurations,
             mappings: self.mappings,
             selected: self.selected,
+            next_mapping_id: self.next_mapping_id,
         };
         for configuration in &mut catalog.configurations {
             let reference = &mut configuration.launch.rom;
@@ -232,13 +243,19 @@ impl LegacyCatalog {
                 .replace('\\', "/");
         }
         validate(&catalog)?;
+        catalog.introduce_keyboard_presets();
         let installed =
             read_optional(&root.join(CATALOG_NAME)).map_err(|error| error.to_string())?;
         if let Some(bytes) = installed {
             // The library write can complete before native preferences are flushed.
-            if serde_json::from_slice::<Contents>(&bytes)
-                .is_ok_and(|contents| same_profiles(&contents.catalog(&catalog.selected), &catalog))
-            {
+            if serde_json::from_slice::<Contents>(&bytes).is_ok_and(|contents| {
+                let mut current = contents.catalog(&catalog.selected);
+                if validate(&current).is_err() {
+                    return false;
+                }
+                current.introduce_keyboard_presets();
+                same_profiles(&current, &catalog)
+            }) {
                 return Ok(());
             }
             return Err(format!(
@@ -314,7 +331,7 @@ impl crate::EmulatorApp {
         self.install_library_catalog(loaded);
     }
 
-    pub(crate) fn reconcile_library_catalog(&mut self, loaded: CatalogRead) {
+    pub(crate) fn reconcile_library_catalog(&mut self, loaded: CatalogRead, ctx: &egui::Context) {
         if self.player.migration_error.is_some() {
             return;
         }
@@ -322,7 +339,7 @@ impl crate::EmulatorApp {
             Ok((catalog, source)) => {
                 if self.player.library_error.is_some() || self.player.catalog_source != source {
                     self.install_library_catalog(Ok((catalog, source)));
-                    self.refresh_clean_configuration_draft();
+                    self.refresh_clean_configuration_draft(ctx);
                 }
             }
             Err(error) => self.player.library_error = Some(error),

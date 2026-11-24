@@ -52,7 +52,7 @@ fn debugger_run_keeps_video_updates_and_pause_control_while_cpu_status_is_stoppe
             assert!(info.cck > prior_cck);
             assert_eq!(info.field_number, prior_field + 1);
             harness.get_by_label(" \u{25cf} [RUNNING] ");
-            harness.get_by_label("\u{23f8} Pause (F5)");
+            harness.get_by_label("\u{23f8} Pause");
             let size = [info.width, info.height];
             let (texture_id, _) = harness
                 .output()
@@ -72,12 +72,10 @@ fn debugger_run_keeps_video_updates_and_pause_control_while_cpu_status_is_stoppe
         }
         std::thread::sleep(Duration::from_millis(1));
     }
-    harness
-        .get_by_label("\u{23f8} Pause (F5)")
-        .click_accesskit();
+    harness.get_by_label("\u{23f8} Pause").click_accesskit();
     common::wait_harness(&mut harness, |app| !app.host.status.running);
     assert!(!harness.state().host.status.running);
-    harness.get_by_label("\u{25b6} Run (F5)");
+    harness.get_by_label("\u{25b6} Run");
     harness.get_by_label(" \u{25cf} [STOPPED] ");
 }
 
@@ -122,9 +120,7 @@ fn frame_shortcut_and_toolbar_controls_are_operable() {
     harness.get_by_label("1x").click_accesskit();
     common::settle_harness(&mut harness);
     assert_eq!(harness.state().host.status.speed, 1.0);
-    harness
-        .get_by_label("Step Frame (Shift+F11)")
-        .click_accesskit();
+    harness.get_by_label("Step Frame").click_accesskit();
     common::wait_harness(&mut harness, |app| {
         !app.host.status.running && app.host.status.field_number == 2
     });

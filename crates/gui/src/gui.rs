@@ -7,6 +7,7 @@
 pub mod app;
 pub mod app_host;
 mod app_lifecycle;
+mod configuration_bindings;
 #[cfg(not(target_arch = "wasm32"))]
 mod configuration_delete;
 pub mod configuration_edit;

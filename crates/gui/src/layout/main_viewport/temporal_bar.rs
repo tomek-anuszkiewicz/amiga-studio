@@ -5,6 +5,7 @@
 
 use crate::app::EmulatorApp;
 use crate::host_commands::{HistoryCommand, HostCommand};
+use crate::keyboard_input::KeyCommand;
 use egui::RichText;
 
 const PAL_CCK_PER_SECOND: f64 = 3_546_895.0;
@@ -80,9 +81,10 @@ pub(crate) fn render_temporal_bar(
             } else {
                 RichText::new("⏸ Rec: OFF").color(tokens.accent_warning)
             };
-            if ui
-                .button(rec_btn_text)
-                .on_hover_text("Toggle recording of explicit instruction, CCK and frame steps (Alt+T). Continuous Run is not recorded.")
+            if app.shortcut_tooltip(
+                ui.button(rec_btn_text), KeyCommand::Recording,
+                "Toggle recording of individual instruction, Color Clock and video field steps.",
+            )
                 .clicked()
             {
                 app.host.queue(HostCommand::History(HistoryCommand::ToggleRecording));
@@ -110,9 +112,10 @@ pub(crate) fn render_temporal_bar(
                 app.host.queue(HostCommand::History(HistoryCommand::BackwardField));
             }
 
-            if ui
-                .add_enabled(can_step_back, egui::Button::new("◀ -1"))
-                .on_hover_text("Step back 1 instruction (Shift+F10)")
+            if app.shortcut_tooltip(
+                ui.add_enabled(can_step_back, egui::Button::new("◀ -1")),
+                KeyCommand::HistoryBack, "Go back one instruction in the recorded history.",
+            ).on_disabled_hover_text("There is no earlier instruction in the recorded history.")
                 .clicked()
             {
                 app.host.queue(HostCommand::History(HistoryCommand::Backward));

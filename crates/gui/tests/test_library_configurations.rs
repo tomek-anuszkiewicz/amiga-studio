@@ -11,7 +11,7 @@ use egui_kittest::{
 use gui::game_library::{GameDisk, GameLibrary, GameManifest};
 use gui::host_commands::HostCommand;
 use gui::player::PlayerScreen;
-use gui::player_config::{ConfigurationCatalog, NamedConfiguration};
+use gui::player_config::{ConfigurationCatalog, InputSource, NamedConfiguration};
 use gui::EmulatorApp;
 use serde_json::{json, Value};
 use std::{
@@ -34,7 +34,8 @@ fn library(root: &Path, catalog: &ConfigurationCatalog, marker: u8) {
 }
 
 fn write_catalog(root: &Path, catalog: &ConfigurationCatalog) {
-    let contents = json!({"configurations": catalog.configurations, "mappings": catalog.mappings});
+    let mut contents = serde_json::to_value(catalog).unwrap();
+    contents.as_object_mut().unwrap().remove("selected");
     fs::write(catalog_path(root), contents.to_string()).unwrap();
 }
 
@@ -129,6 +130,7 @@ fn changing_library_cancels_dirty_selection_and_keeps_original_machine_and_mappi
     let mut b = a.clone();
     b.mappings[0].keys[0] = 0x17;
     b.configurations[0].name = "Second library profile".into();
+    b.configurations[0].controls.ports[1].source = InputSource::Keyboard("wasd".into());
     b.configurations[0].controls.host.mouse_sensitivity = 1.5;
     library(first.path(), &a, 0x11);
     library(second.path(), &b, 0x22);
@@ -189,6 +191,12 @@ fn changing_library_cancels_dirty_selection_and_keeps_original_machine_and_mappi
     assert_eq!(common::snapshot(h.state_mut()), snapshot);
 
     click(&mut h, "Configurations");
+    click(&mut h, "Arrow keys");
+    assert!(!h
+        .get_by_label("Delete mapping")
+        .accesskit_node()
+        .is_disabled());
+    click(&mut h, "Delete mapping");
     h.state_mut()
         .player
         .editor
@@ -212,6 +220,7 @@ fn changing_library_cancels_dirty_selection_and_keeps_original_machine_and_mappi
         1.0
     );
     assert_eq!(h.state().player.active_mappings, a.mappings);
+    assert!(h.state().player.catalog.mapping("arrows").is_none());
     assert_eq!(
         h.state().player.catalog.configurations[0]
             .controls
@@ -228,7 +237,7 @@ fn changing_library_cancels_dirty_selection_and_keeps_original_machine_and_mappi
     click(&mut h, "Shared game");
     click(&mut h, "Start game");
     click(&mut h, "Replace session");
-    common::wait_harness(&mut h, |app| app.player.active_mappings == b.mappings);
+    common::wait_harness(&mut h, |app| app.player.active_mappings == b.mappings[1..]);
     common::command(h.state_mut(), HostCommand::Pause);
     common::settle_harness(&mut h);
     assert_eq!(common::read_memory(h.state_mut(), 0xfc0200, 1), [0x22]);

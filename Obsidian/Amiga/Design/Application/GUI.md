@@ -327,6 +327,49 @@ local folder. The browser controls directory availability and persistence.
 Access denial alone leaves the file's existence unknown. These file actions
 take place outside emulation. [Host file actions](../../../../crates/gui/src/file_actions.rs)
 
+## Edit input bindings
+
+Open **Configurations** to choose the keyboard, gamepad and emulator
+shortcuts for a configuration. Each binding button shows its current host
+input. Click it and press a supported key or move the selected controller
+input. The editor records one binding at a time. Use **Cancel recording** to
+keep the current binding. Focus loss or a selected controller disconnect also
+ends recording. Recording consumes the press and release, ignores repeated
+events and waits for a held controller input to return to neutral before
+recording it. A rejected input explains what to change so the player can
+try another. **Save** validates and publishes the configuration draft.
+
+**Emulator shortcuts** lists F12 for switching views and middle mouse for
+releasing the mouse. A new configuration has no additional mouse release
+key. F12 is reserved. The editor rejects Escape as a new mouse release key
+and explains this choice when a saved configuration still names it. The
+stored binding remains until the player reassigns or unassigns it.
+**Controller shortcuts** shows controller, button and action names. Without
+an available controller, the section explains why editing is disabled and
+retains the saved assignments. When a controller is available, the player
+can select it in place of an unavailable saved connection. Quick save and
+Quick load use slot 1 for both controller and keyboard shortcuts.
+
+**Amiga keyboard remapping** sends an alternate host key to a named Amiga key
+in one direction. For example, select Amiga Escape and record a spare key.
+A source already assigned to a joystick or emulator shortcut must be freed
+first. Multiple host keys can send the same guest key. The guest receives one
+press and a release when the last source is released. Unused host positions
+follow the ordinary translation.
+
+**Reusable joystick mappings** offers the WASD preset with J/K for Fire 1/2
+and the Arrow keys preset with Z/X for Fire 1/2. The editor names the six
+digital contacts and records the horizontal and vertical controller axes
+with the existing activation threshold. Existing customized mappings and
+configuration selections persist. To delete a mapping, first reassign or
+remove all uses. The editor lists each named configuration and retained
+active session that still uses it. Deleting or creating a mapping in a draft
+takes effect on Save.
+
+Button descriptions show the applicable fixed combinations and the current
+committed keyboard shortcuts. They reflect the current Pause or Resume
+action and retain the description and any disabled reason.
+
 ## Input and output
 
 Host physical key positions map to Amiga keys. Relative mouse movement and

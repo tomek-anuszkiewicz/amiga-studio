@@ -559,7 +559,7 @@ impl crate::EmulatorApp {
                 sync.read_error = None;
                 sync.canonical_root = discovered.canonical_root;
                 self.player.library = discovered.library;
-                self.reconcile_library_catalog(discovered.catalog);
+                self.reconcile_library_catalog(discovered.catalog, ctx);
                 match discovered.selected {
                     Some((id, saves)) if self.player.selected_game.as_ref() == Some(&id) => {
                         self.player.set_selected_saves(saves);

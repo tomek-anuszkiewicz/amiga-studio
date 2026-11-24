@@ -84,9 +84,9 @@ and mappings. A library configuration refers to a Kickstart file by its path
 relative to that root. A library copy carries those profiles and managed assets
 with it. The current user's application storage holds the selected root,
 active editor selection and other host preferences. An accessible library
-without a catalog starts with the built-in profile and mapping. If a catalog
-exists and cannot be read or validated, the desktop reports the problem and
-protects its contents. On first upgrade, the desktop transfers the previous
+without a catalog starts with the built-in profile and keyboard joystick
+presets. If the desktop cannot read or validate an existing catalog, it reports
+the problem and protects its contents. On first upgrade, the desktop transfers the previous
 native catalog into its previously selected library, preserving all IDs. It
 keeps an exact backup of the old settings and reports any conflict or
 unavailable Kickstart that prevents the transfer.

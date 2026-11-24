@@ -1,7 +1,9 @@
 //! Catalog transaction and stopped owner coordination for the configuration screen.
 
 use crate::app_host::HostEffect;
+use crate::configuration_bindings::BindingRecording;
 use crate::host_commands::{HostCommand, HostValue};
+use crate::input_mapping::GamepadRecording;
 use crate::player::PlayerScreen;
 use crate::player_config::ConfigurationCatalog;
 use crate::{EmulatorApp, ViewMode};
@@ -24,6 +26,10 @@ pub struct ConfigurationEdit {
     rollback_error: Option<String>,
     #[cfg(not(target_arch = "wasm32"))]
     pub(crate) deletion: Option<crate::configuration_delete::ConfigurationDeletion>,
+    pub(crate) recording: Option<BindingRecording>,
+    pub(crate) mapping_controller: Option<String>,
+    pub(crate) new_guest_key: u8,
+    pub(crate) expanded_mapping: Option<String>,
     origin: PlayerScreen,
     origin_mode: ViewMode,
     pub(crate) destination: Option<PlayerScreen>,
@@ -31,6 +37,14 @@ pub struct ConfigurationEdit {
     pub(crate) saving: bool,
     ready: bool,
     pub(crate) error: Option<String>,
+}
+
+impl ConfigurationEdit {
+    pub(crate) fn gamepad_recording(&self) -> Option<&GamepadRecording> {
+        self.recording
+            .as_ref()
+            .and_then(|recording| recording.controller.as_ref())
+    }
 }
 
 impl EmulatorApp {
@@ -127,6 +141,10 @@ impl EmulatorApp {
             rollback_error: None,
             #[cfg(not(target_arch = "wasm32"))]
             deletion: None,
+            recording: None,
+            mapping_controller: None,
+            new_guest_key: crate::host_keys::SCANCODE_ESCAPE,
+            expanded_mapping: None,
             origin: self.player.screen,
             origin_mode: self.view_mode,
             destination: None,
@@ -200,6 +218,7 @@ impl EmulatorApp {
             editor.rollback_error = None;
             editor.deletion = None;
         }
+        editor.recording = None;
         editor.destination = None;
         editor.destination_developer = false;
         editor.saving = false;
@@ -234,6 +253,24 @@ impl EmulatorApp {
         let active = self.configuration_being_edited();
         let validation = (|| {
             editor.catalog.validate_all()?;
+            if let Some(active) = self
+                .player
+                .active_configuration
+                .as_ref()
+                .filter(|_| self.player.is_active_library())
+            {
+                for mapping in &self.player.active_mappings {
+                    if active.controls.uses_mapping(&mapping.id)
+                        && editor.baseline.mapping(&mapping.id).is_some()
+                        && editor.catalog.mapping(&mapping.id).is_none()
+                    {
+                        return Err(format!(
+                            "{} is still used by the active session ({}).",
+                            mapping.name, active.name
+                        ));
+                    }
+                }
+            }
             if let Some(configuration) = active {
                 self.host_sources_available(&configuration.controls)?;
             }
@@ -408,8 +445,7 @@ impl EmulatorApp {
     }
 
     fn configuration_being_edited(&self) -> Option<&crate::player_config::NamedConfiguration> {
-        #[cfg(not(target_arch = "wasm32"))]
-        if self.player.active_library_root != self.player.library_root {
+        if !self.player.is_active_library() {
             return None;
         }
         let active = self.player.active_configuration.as_ref()?;
@@ -503,13 +539,16 @@ impl EmulatorApp {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) fn refresh_clean_configuration_draft(&mut self) {
-        if self.player.editor.as_ref().is_some_and(|editor| {
+    pub(crate) fn refresh_clean_configuration_draft(&mut self, ctx: &egui::Context) {
+        if let Some(editor) = self.player.editor.as_mut().filter(|editor| {
             !editor.saving
                 && editor.deletion.is_none()
                 && editor.library_root == self.player.library_root
                 && editor.catalog == editor.baseline
         }) {
+            if editor.recording.is_some() {
+                crate::configuration_bindings::finish_recording(editor, ctx);
+            }
             self.reload_configuration_draft();
         }
     }

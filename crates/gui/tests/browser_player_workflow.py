@@ -165,7 +165,7 @@ def check_workflow(browser, url, rom, disk, output):
         # The canvas toolbar exposes no DOM or AccessKit nodes. Check the loaded
         # Wasm for a shared control and the native button's application-specific ID.
         application = wasm.value.body()
-        assert b"Debug View (F12)" in application
+        assert b"Debug View" in application
         assert b"amiga-game-screenshot-button" not in application, (
             "Native screenshot button ID found in browser Wasm"
         )
@@ -201,9 +201,15 @@ def check_workflow(browser, url, rom, disk, output):
         page.wait_for_timeout(400)
         assert page.evaluate("localStorage.getItem('player_configurations')") == stored_before_edit
         assert page.evaluate("observedGeneration") == 3, "Cancel changed the machine generation"
-        stage = "configuration Save and changed-port return"
+        stage = "record browser keyboard shortcut"
         click(145, 10)
         page.wait_for_timeout(300)
+        page.screenshot(path=str(output / "shortcut-editor.png"))
+        click(113, 562)  # Pause / Resume binding, initially F5.
+        page.screenshot(path=str(output / "shortcut-recording.png"))
+        page.keyboard.press("F7")
+        page.wait_for_timeout(300)
+        stage = "configuration Save and changed-port return"
         click(55, 432)  # Port 2 device dropdown.
         page.wait_for_timeout(200)
         page.screenshot(path=str(output / "port-options.png"))
@@ -227,9 +233,24 @@ def check_workflow(browser, url, rom, disk, output):
         stage = "swap and remount changed disk with only embedded tracks"
         check_remount(current, "embedded-disk", [0xCA, 0xFE, 0xBA, 0xBE] * 4, 7, 190)
         assert sha256(disk.read_bytes()).digest() == disk_digest, "The original ADF changed"
-        stage = "configuration persistence"
+        stage = "dispatch rebound browser shortcut"
         stored = page.evaluate("localStorage.getItem('player_configurations')")
-        assert stored and rom.name in stored, "Selected configuration was not persisted before reopening"
+        assert stored and 'pause:"F7"' in stored, "Recorded key was not published"
+        paused = export_state(output / "before-rebound-shortcut.json")
+        updates = page.evaluate("workerReport.outputs")
+        page.keyboard.press("F7")
+        page.wait_for_function("updates => workerReport.outputs > updates + 3", arg=updates)
+        page.keyboard.press("F7")
+        page.wait_for_timeout(300)
+        advanced = export_state(output / "after-rebound-shortcut.json")
+        assert advanced["state"]["cck"] > paused["state"]["cck"]
+        page.wait_for_timeout(300)
+        stopped = page.evaluate("workerReport.outputs")
+        page.wait_for_timeout(500)
+        assert page.evaluate("workerReport.outputs") == stopped, "F7 did not pause"
+
+        stage = "configuration persistence"
+        assert rom.name in stored, "Selected configuration was not persisted before reopening"
         page.reload()
         page.wait_for_function("globalThis.observedGeneration === 1", timeout=30000)
         page.wait_for_timeout(500)
@@ -241,6 +262,7 @@ def check_workflow(browser, url, rom, disk, output):
                 "saved_cck": saved["state"]["cck"], "restored_cck": restored["state"]["cck"],
                 "schema": saved["header"]["version"], "current_ports": current["state"]["game_ports"]["state"]["port2"],
                 "configuration_cancel": True, "stopped_configuration_save": True,
+                "recorded_keyboard_shortcut": True,
                 "disk_swap_retained_raw_tracks": True, "embedded_disk_reinserted": True,
                 "native_screenshot_action_excluded": True,
                 "native_cover_action_excluded": True, "errors": errors}

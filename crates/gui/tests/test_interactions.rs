@@ -155,7 +155,7 @@ fn playback_toolbar_and_preferences_fit_supported_window_widths() {
                 EmulatorApp::default(),
             );
         common::settle_harness(&mut harness);
-        for label in ["Step Frame (Shift+F11)", "Slower", "Faster", "1x"] {
+        for label in ["Step Frame", "Slower", "Faster", "1x"] {
             let bounds = harness
                 .get_by_label(label)
                 .accesskit_node()

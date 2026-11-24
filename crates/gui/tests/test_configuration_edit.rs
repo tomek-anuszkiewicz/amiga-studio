@@ -765,3 +765,468 @@ fn input_contention_defers_draft_publication_until_sender_recovers() {
     assert_eq!(h.state().host.status.generation, generation + 1);
     assert_eq!(common::snapshot(h.state_mut()), machine);
 }
+
+fn click_binding_control(h: &mut Harness<'_, EmulatorApp>, label: &str) {
+    h.get_by_label(label).click_accesskit();
+    common::settle_harness(h);
+}
+
+#[track_caller]
+fn combo_box_showing<'a>(
+    h: &'a Harness<'_, EmulatorApp>,
+    selected: &str,
+) -> egui_kittest::Node<'a> {
+    // egui paints the selected text without exposing it on the combo box node.
+    h.get_all_by_role(egui::accesskit::Role::ComboBox)
+        .find(|node| {
+            let bounds = node.rect();
+            h.output().shapes.iter().any(|shape| {
+                matches!(
+                    &shape.shape,
+                    egui::Shape::Text(text)
+                        if text.galley.text() == selected
+                            && !text.galley.elided
+                            && bounds.contains(text.pos)
+                            && shape.clip_rect.contains(text.pos)
+                )
+            })
+        })
+        .unwrap_or_else(|| panic!("No visible combo box showing {selected:?}"))
+}
+
+fn physical_edge(
+    h: &mut Harness<'_, EmulatorApp>,
+    position: &str,
+    pressed: bool,
+    repeat: bool,
+) -> bool {
+    let mut key = common::keyboard::key(position, pressed);
+    key.repeat = repeat;
+    gui::keyboard_input::receive_key(&h.ctx, key, Some(h.state().host.status.generation))
+}
+
+fn record_key(h: &mut Harness<'_, EmulatorApp>, position: &str) {
+    assert!(physical_edge(h, position, true, false));
+    common::settle_harness(h);
+    assert!(physical_edge(h, position, false, false));
+    common::settle_harness(h);
+}
+
+fn wait_guest_key(h: &mut Harness<'_, EmulatorApp>, code: u8, held: bool) {
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    loop {
+        common::settle_harness(h);
+        if common::observe_input(h.state_mut(), Some(code)).key_held == Some(held) {
+            return;
+        }
+        assert!(
+            std::time::Instant::now() < deadline,
+            "Guest key {code:#x} did not become held={held}"
+        );
+    }
+}
+
+#[test]
+fn keyboard_binding_buttons_record_fresh_edges_and_keep_draft_isolated() {
+    let mut h = editor();
+    h.set_size(egui::vec2(360.0, 790.0));
+    common::settle_harness(&mut h);
+    for label in [
+        "Emulator shortcuts",
+        "Open developer view: F12",
+        "Release mouse: middle mouse button. You can also assign a key.",
+        "Pause / Resume",
+        "Quick save",
+        "Quick load",
+        "Unassigned",
+    ] {
+        let bounds = h.get_by_label(label).rect();
+        assert!(
+            bounds.left() >= 0.0 && bounds.right() <= 360.0,
+            "{label}: {bounds:?}"
+        );
+    }
+    let before = h.state().player.catalog.clone();
+    click_binding_control(&mut h, "F5");
+    h.get_by_label("Press a key");
+    record_key(&mut h, "F12");
+    h.get_by_label_contains("F12 is reserved");
+    assert_eq!(h.state().view_mode, ViewMode::ScreenOnly);
+    record_key(&mut h, "F6");
+    h.get_by_label_contains("different keys");
+    assert!(physical_edge(&mut h, "F7", true, true));
+    common::settle_harness(&mut h);
+    h.get_by_label("Press a key");
+    click_binding_control(&mut h, "Cancel recording");
+    assert_eq!(h.state().player.editor.as_ref().unwrap().catalog, before);
+
+    click_binding_control(&mut h, "F5");
+    record_key(&mut h, "F7");
+    h.get_by_label("F7");
+    assert_eq!(h.state().player.catalog, before);
+    click_binding_control(&mut h, "Unassigned");
+    record_key(&mut h, "Escape");
+    h.get_by_label_contains("Choose another mouse release key");
+    click_binding_control(&mut h, "Cancel recording");
+    click_binding_control(&mut h, "Unassigned");
+    record_key(&mut h, "F2");
+    click_binding_control(&mut h, "Unassign");
+    h.get_by_label("Unassigned");
+
+    h.set_size(egui::vec2(1280.0, 900.0));
+    common::settle_harness(&mut h);
+    click_binding_control(&mut h, "Amiga keyboard remapping");
+    combo_box_showing(&h, "Escape");
+    click_binding_control(&mut h, "Add key override");
+    h.get_by_label("Host key for Amiga Escape");
+    record_key(&mut h, "ArrowUp");
+    h.get_by_label_contains("Arrow keys Up on port 2");
+    record_key(&mut h, "KeyV");
+    assert_eq!(
+        h.state()
+            .player
+            .editor
+            .as_ref()
+            .unwrap()
+            .catalog
+            .configurations[0]
+            .controls
+            .host
+            .keyboard,
+        vec![(0x34, 0x45)]
+    );
+
+    click_binding_control(&mut h, "Arrow keys");
+    for label in ["Up", "Down", "Left", "Right", "Fire 1", "Fire 2"] {
+        h.get_by_label(label);
+    }
+    click_binding_control(&mut h, "Z");
+    record_key(&mut h, "Escape");
+    let generation = h.state().host.status.generation;
+    click_binding_control(&mut h, "Save");
+    assert_eq!(h.state().host.status.generation, generation + 1);
+    assert!(h.state().player.editor.is_none());
+    assert_eq!(h.state().player.catalog.mappings[0].keys[4], 0x45);
+    assert_eq!(
+        h.state()
+            .player
+            .active_configuration
+            .as_ref()
+            .unwrap()
+            .controls
+            .host
+            .frontend
+            .pause,
+        "F7"
+    );
+    assert_eq!(
+        h.state()
+            .player
+            .catalog
+            .selected()
+            .unwrap()
+            .controls
+            .host
+            .keyboard,
+        vec![(0x34, 0x45)]
+    );
+
+    assert!(physical_edge(&mut h, "F7", true, false));
+    assert!(physical_edge(&mut h, "F7", false, false));
+    common::wait_harness(&mut h, |app| app.host.status.running);
+    assert!(physical_edge(&mut h, "KeyV", true, false));
+    wait_guest_key(&mut h, 0x45, true);
+    assert_eq!(
+        common::observe_input(h.state_mut(), Some(0x34)).key_held,
+        Some(false)
+    );
+    assert!(physical_edge(&mut h, "KeyV", false, false));
+    wait_guest_key(&mut h, 0x45, false);
+    assert!(physical_edge(&mut h, "F7", true, false));
+    assert!(physical_edge(&mut h, "F7", false, false));
+    common::wait_harness(&mut h, |app| !app.host.status.running);
+
+    h.state_mut().navigate_player(PlayerScreen::Configuration);
+    common::settle_harness(&mut h);
+    if h.query_by_label("Remove override").is_none() {
+        click_binding_control(&mut h, "Amiga keyboard remapping");
+    }
+    click_binding_control(&mut h, "Remove override");
+    click_binding_control(&mut h, "Save");
+    assert!(h
+        .state()
+        .player
+        .catalog
+        .selected()
+        .unwrap()
+        .controls
+        .host
+        .keyboard
+        .is_empty());
+}
+
+#[test]
+fn focus_loss_cancels_recording_without_applying_the_queued_press() {
+    let mut h = editor();
+    click_binding_control(&mut h, "F5");
+    assert!(physical_edge(&mut h, "F7", true, false));
+    let generation = h.state().host.status.generation;
+    gui::keyboard_input::receive_focus(&h.ctx, false, Some(generation));
+    h.input_mut().focused = false;
+    common::settle_harness(&mut h);
+    assert!(h.query_by_label("Press a key").is_none());
+    assert_eq!(
+        h.state()
+            .player
+            .editor
+            .as_ref()
+            .unwrap()
+            .catalog
+            .selected()
+            .unwrap()
+            .controls
+            .host
+            .frontend
+            .pause,
+        "F5"
+    );
+    h.input_mut().focused = true;
+    common::settle_harness(&mut h);
+    click_binding_control(&mut h, "F5");
+    record_key(&mut h, "F7");
+    h.get_by_label("F7");
+}
+
+fn sample_edit_pads(
+    h: &mut Harness<'_, EmulatorApp>,
+    pads: &[(&str, &str, Option<usize>, [f32; 4])],
+) {
+    use gui::input_mapping::GamepadSample;
+    let generation = h.state().host.status.generation;
+    let sender = h.state().host.runtime.as_ref().unwrap().input_sender();
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    loop {
+        let samples = pads
+            .iter()
+            .map(|&(identity, name, button, axes)| {
+                let mut buttons = vec![false; 16];
+                if let Some(button) = button {
+                    buttons[button] = true;
+                }
+                GamepadSample {
+                    identity: identity.into(),
+                    name: name.into(),
+                    axes: axes.to_vec(),
+                    buttons,
+                }
+            })
+            .collect();
+        if sender.try_gamepads(samples, generation, true) {
+            break;
+        }
+        assert!(std::time::Instant::now() < deadline);
+        std::thread::yield_now();
+    }
+    common::settle_harness(h);
+}
+
+#[test]
+fn controller_editor_preserves_unavailable_bindings_and_records_selected_fresh_inputs() {
+    use gui::player_config::{FrontendAction, GamepadShortcut};
+    let mut h = editor();
+    h.set_size(egui::vec2(960.0, 1080.0));
+    let original = GamepadShortcut {
+        identity: "selected".into(),
+        button: 9,
+        action: FrontendAction::Pause,
+    };
+    h.state_mut()
+        .player
+        .editor
+        .as_mut()
+        .unwrap()
+        .catalog
+        .configurations[0]
+        .controls
+        .host
+        .gamepad_shortcuts = vec![original.clone()];
+    common::settle_harness(&mut h);
+    h.get_by_label("No controller detected");
+    click_binding_control(&mut h, "Controller shortcuts");
+    assert!(h
+        .get_by_label("Add shortcut")
+        .accesskit_node()
+        .is_disabled());
+    h.get_by_label_contains("Button: Start");
+
+    sample_edit_pads(&mut h, &[("other", "Other pad", None, [0.0; 4])]);
+    assert!(!combo_box_showing(&h, "Unavailable: selected")
+        .accesskit_node()
+        .is_disabled());
+    assert!(h.get_by_label("Start").accesskit_node().is_disabled());
+    let selected = ("selected", "Main pad", None, [0.0; 4]);
+    let other = ("other", "Other pad", None, [0.0; 4]);
+    sample_edit_pads(&mut h, &[selected, other]);
+    combo_box_showing(&h, "Main pad");
+    assert!(!h.get_by_label("Start").accesskit_node().is_disabled());
+    for name in ["Controller", "Button", "Action", "Remove shortcut"] {
+        assert!(h.query_all_by_label(name).count() > 0);
+    }
+    sample_edit_pads(
+        &mut h,
+        &[("selected", "Main pad", Some(9), [0.0; 4]), other],
+    );
+    click_binding_control(&mut h, "Start");
+    sample_edit_pads(
+        &mut h,
+        &[
+            ("selected", "Main pad", Some(9), [0.0; 4]),
+            ("other", "Other pad", Some(4), [0.0; 4]),
+        ],
+    );
+    h.get_by_label("Press a controller input");
+    sample_edit_pads(&mut h, &[selected, other]);
+    sample_edit_pads(
+        &mut h,
+        &[("selected", "Main pad", Some(4), [0.0; 4]), other],
+    );
+    h.get_by_label("Left shoulder");
+    let shortcuts = &h
+        .state()
+        .player
+        .editor
+        .as_ref()
+        .unwrap()
+        .catalog
+        .configurations[0]
+        .controls
+        .host
+        .gamepad_shortcuts;
+    assert_eq!(
+        shortcuts,
+        &[GamepadShortcut {
+            button: 4,
+            ..original
+        }]
+    );
+    assert!(!h.state().host.status.running);
+
+    click_binding_control(&mut h, "Left shoulder");
+    sample_edit_pads(&mut h, &[other]);
+    assert!(h.query_by_label("Press a controller input").is_none());
+    h.get_by_label_contains("recording ended");
+    sample_edit_pads(&mut h, &[selected, other]);
+    click_binding_control(&mut h, "Controller shortcuts");
+    click_binding_control(&mut h, "Arrow keys");
+    combo_box_showing(&h, "Other pad").click();
+    common::settle_harness(&mut h);
+    h.get_by_role_and_label(egui::accesskit::Role::Button, "Main pad")
+        .click();
+    common::settle_harness(&mut h);
+    combo_box_showing(&h, "Main pad");
+    click_binding_control(&mut h, "Left stick horizontal");
+    h.get_by_label("Controller: Main pad");
+    sample_edit_pads(
+        &mut h,
+        &[("selected", "Main pad", None, [0.0, 0.0, 0.48, 0.0]), other],
+    );
+    h.get_by_label("Press a controller input");
+    sample_edit_pads(
+        &mut h,
+        &[("selected", "Main pad", None, [0.0, 0.0, -0.8, 0.0]), other],
+    );
+    h.get_by_label("Right stick horizontal");
+    click_binding_control(&mut h, "Save");
+    let mapping = h.state().player.catalog.mapping("arrows").unwrap();
+    assert_eq!(mapping.axes, [2, 1]);
+    assert_eq!(mapping.threshold, 0.5);
+
+    let mut controls = h
+        .state()
+        .player
+        .active_configuration
+        .as_ref()
+        .unwrap()
+        .controls
+        .clone();
+    controls.ports[1].source = InputSource::Gamepad {
+        identity: "selected".into(),
+        mapping: "arrows".into(),
+    };
+    let mut input = gui::input_mapping::InputMapping::default();
+    input.configure(&controls, &h.state().player.catalog.mappings);
+    input.update_devices(vec![gui::input_mapping::GamepadInfo {
+        identity: "selected".into(),
+        name: "Main pad".into(),
+    }]);
+    input.gamepad("selected", &[0.0; 4], &[]);
+    assert!(input
+        .gamepad("selected", &[0.0, 0.0, -0.48, 0.0], &[])
+        .is_empty());
+    assert_eq!(
+        input.gamepad("selected", &[0.0, 0.0, -0.8, 0.0], &[]),
+        vec![gui::host_input::HostInputEvent::Joystick {
+            port: 1,
+            up: false,
+            down: false,
+            left: true,
+            right: false,
+            fire1: false,
+            fire2: false,
+        }]
+    );
+}
+
+#[test]
+fn mapping_deletion_lists_named_and_retained_session_uses_and_preserves_surviving_ids() {
+    let mut h = editor();
+    h.state_mut()
+        .player
+        .active_configuration
+        .as_mut()
+        .unwrap()
+        .name = "Retained session".into();
+    let draft = &mut h.state_mut().player.editor.as_mut().unwrap().catalog;
+    let mut other = draft.configurations[0].clone();
+    other.id = "other".into();
+    other.name = "Controller profile".into();
+    other.controls.ports[1].source = InputSource::Gamepad {
+        identity: "saved-pad".into(),
+        mapping: "arrows".into(),
+    };
+    draft.configurations.push(other);
+    common::settle_harness(&mut h);
+    click_binding_control(&mut h, "Arrow keys");
+    assert!(h
+        .get_by_label("Delete mapping")
+        .accesskit_node()
+        .is_disabled());
+    h.get_by_label("Configuration: Standard A500");
+    h.get_by_label("Configuration: Controller profile");
+    h.get_by_label("Active session: Retained session");
+    click_binding_control(&mut h, "Arrow keys");
+
+    click_binding_control(&mut h, "WASD");
+    click_binding_control(&mut h, "Delete mapping");
+    click_binding_control(&mut h, "Create mapping");
+    let mapping = h
+        .state()
+        .player
+        .editor
+        .as_ref()
+        .unwrap()
+        .catalog
+        .mappings
+        .last()
+        .unwrap()
+        .id
+        .clone();
+    click_binding_control(&mut h, "Delete mapping");
+    click_binding_control(&mut h, "Create mapping");
+    let draft = &h.state().player.editor.as_ref().unwrap().catalog;
+    assert_eq!(draft.mappings[0].id, "arrows");
+    assert_ne!(draft.mappings.last().unwrap().id, mapping);
+    click_binding_control(&mut h, "Cancel");
+    assert!(h.state().player.catalog.mapping("wasd").is_some());
+    assert!(h.state().player.catalog.mapping(&mapping).is_none());
+}

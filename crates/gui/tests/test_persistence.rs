@@ -370,6 +370,9 @@ fn legacy_settings(root: &std::path::Path, rom: &std::path::Path) -> MemoryStora
         library_root: &'a std::path::Path,
     }
     let mut catalog = ConfigurationCatalog::default();
+    catalog.mappings.truncate(1);
+    catalog.mappings[0].name = "Arrow keys and numpad fire".into();
+    catalog.mappings[0].keys[4..].copy_from_slice(&[0x0f, 0x3c]);
     catalog.configurations[0].launch.rom = rom.to_str().unwrap().into();
     let mut profile = catalog.configurations[0].clone();
     profile.id = "played-profile".into();
@@ -425,8 +428,9 @@ fn legacy_catalog_migrates_once_and_survives_restart_before_the_host_flush() {
             .iter()
             .map(|mapping| mapping.id.as_str())
             .collect::<Vec<_>>(),
-        ["arrows", "extra"]
+        ["arrows", "extra", "wasd"]
     );
+    assert_eq!(catalog.mapping("arrows").unwrap().keys[4..], [0x31, 0x32]);
     let installed = root.path().join("configurations.json");
     let installed_bytes = std::fs::read(&installed).unwrap();
     assert_eq!(
@@ -602,11 +606,11 @@ fn configuration_creation_mapping_and_hardware_edits_persist_through_real_contro
             .catalog
             .mappings
             .len(),
-        2
+        3
     );
     assert_ne!(
         h.state().player.editor.as_ref().unwrap().catalog.mappings[0].id,
-        h.state().player.editor.as_ref().unwrap().catalog.mappings[1].id
+        h.state().player.editor.as_ref().unwrap().catalog.mappings[2].id
     );
     let committed_before = h.state().player.catalog.clone();
     let mut draft_storage = MemoryStorage::new();
@@ -625,8 +629,140 @@ fn configuration_creation_mapping_and_hardware_edits_persist_through_real_contro
     assert_eq!(restored, h.state().player.catalog);
     assert_eq!(restored.selected, selected);
     assert_eq!(
-        restored.mappings[1].keys,
-        [0x11, 0x21, 0x20, 0x22, 0x40, 0x33]
+        restored.mappings[2].keys,
+        [0x11, 0x21, 0x20, 0x22, 0x26, 0x27]
     );
     assert!(!restored.configurations[0].launch.drives[1]);
+}
+
+#[test]
+fn saved_catalog_introduces_presets_once_and_keeps_customized_controls() {
+    use eframe::App;
+    use gui::player::PlayerScreen;
+    use gui::player_config::{ConfigurationCatalog, InputSource};
+
+    for customized in [false, true] {
+        let library = tempfile::tempdir().unwrap();
+        let catalog_path = library.path().join("configurations.json");
+        let mut storage = MemoryStorage::new();
+        let mut older = ConfigurationCatalog::default();
+        older.mappings.truncate(1);
+        older.mappings[0].name = "Arrow keys and numpad fire".into();
+        older.mappings[0].keys[4..].copy_from_slice(&[0x0f, 0x3c]);
+        if customized {
+            older.mappings[0].name = "My joystick".into();
+            older.mappings[0].threshold = 0.7;
+        }
+        let mut custom_profile = older.configurations[0].clone();
+        custom_profile.id = "custom".into();
+        older.selected = custom_profile.id.clone();
+        older.configurations.push(custom_profile);
+        let original = serde_json::to_vec(&serde_json::json!({
+            "configurations": older.configurations,
+            "mappings": older.mappings,
+        }))
+        .unwrap();
+        std::fs::write(&catalog_path, &original).unwrap();
+        let mut previous = EmulatorApp::default();
+        previous.player.library_root = Some(library.path().to_path_buf());
+        previous.player.catalog.selected = older.selected.clone();
+        previous.save(&mut storage);
+
+        let mut app = reopen(&storage);
+        let catalog = &app.player.catalog;
+        assert_eq!(catalog.selected, "custom");
+        assert_eq!(
+            catalog.selected().unwrap().controls.ports[1].source,
+            InputSource::Keyboard("arrows".into())
+        );
+        if customized {
+            assert_eq!(catalog.mapping("arrows"), older.mapping("arrows"));
+            assert_eq!(catalog.mappings.len(), 3);
+        } else {
+            assert_eq!(catalog.mapping("arrows").unwrap().keys[4..], [0x31, 0x32]);
+            assert_eq!(catalog.mappings.len(), 2);
+        }
+        assert_eq!(
+            catalog
+                .mappings
+                .iter()
+                .filter(|mapping| mapping.name == "Arrow keys")
+                .count(),
+            1
+        );
+        assert_eq!(
+            catalog
+                .mappings
+                .iter()
+                .filter(|mapping| mapping.name == "WASD")
+                .count(),
+            1
+        );
+        app.save(&mut storage);
+        assert_eq!(std::fs::read(&catalog_path).unwrap(), original);
+        assert_eq!(reopen(&storage).player.catalog, app.player.catalog);
+
+        app.navigate_player(PlayerScreen::Configuration);
+        let ctx = egui::Context::default();
+        common::settle(&mut app, &ctx);
+        app.player.editor.as_mut().unwrap().catalog.configurations[1].name =
+            "Updated configuration".into();
+        app.save_configuration_edit();
+        common::settle(&mut app, &ctx);
+        assert!(app.player.editor.is_none());
+        assert_ne!(std::fs::read(&catalog_path).unwrap(), original);
+        app.save(&mut storage);
+        assert_eq!(reopen(&storage).player.catalog, app.player.catalog);
+    }
+}
+
+#[test]
+fn editor_mapping_deletion_and_id_allocation_survive_storage_and_reopen() {
+    use eframe::App;
+    use egui_kittest::{kittest::Queryable, Harness};
+    use gui::player::PlayerScreen;
+
+    let mut app = EmulatorApp::default();
+    let library = tempfile::tempdir().unwrap();
+    app.player.library_root = Some(library.path().to_path_buf());
+    app.navigate_player(PlayerScreen::Configuration);
+    let mut h = Harness::builder()
+        .with_size(egui::vec2(1000.0, 900.0))
+        .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
+    common::settle_harness(&mut h);
+    h.get_by_label("WASD").click_accesskit();
+    common::settle_harness(&mut h);
+    h.get_by_label("Delete mapping").click_accesskit();
+    common::settle_harness(&mut h);
+    h.get_by_label("Create mapping").click_accesskit();
+    common::settle_harness(&mut h);
+    h.get_by_label("Delete mapping").click_accesskit();
+    common::settle_harness(&mut h);
+    h.get_by_label("Save").click_accesskit();
+    common::settle_harness(&mut h);
+    assert!(h.state().player.editor.is_none());
+    assert_eq!(h.state().player.catalog.mappings.len(), 1);
+
+    let mut storage = MemoryStorage::new();
+    h.state_mut().save(&mut storage);
+    let mut creation = eframe::CreationContext::_new_kittest(egui::Context::default());
+    creation.storage = Some(&storage);
+    let mut reopened = EmulatorApp::new(&creation);
+    assert!(reopened.player.catalog.mapping("wasd").is_none());
+    assert!(reopened.player.catalog.mapping("mapping-1").is_none());
+    assert_eq!(
+        reopened.player.catalog.mapping("arrows"),
+        h.state().player.catalog.mapping("arrows")
+    );
+    reopened.navigate_player(PlayerScreen::Configuration);
+    let mut h = Harness::builder()
+        .with_size(egui::vec2(1000.0, 900.0))
+        .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), reopened);
+    common::settle_harness(&mut h);
+    h.get_by_label("Create mapping").click_accesskit();
+    common::settle_harness(&mut h);
+    assert_eq!(
+        h.state().player.editor.as_ref().unwrap().catalog.mappings[1].id,
+        "mapping-2"
+    );
 }

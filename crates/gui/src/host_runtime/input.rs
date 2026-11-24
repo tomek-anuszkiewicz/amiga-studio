@@ -1,6 +1,7 @@
 //! GUI-side input activation, configuration and browser ingress.
 
 use super::{HostInputEvent, HostInputSender};
+use crate::input_mapping::{GamepadCapture, GamepadRecorder, GamepadRecording};
 
 impl HostInputSender {
     pub fn configure(
@@ -23,6 +24,21 @@ impl HostInputSender {
             .try_lock()
             .ok()
             .map(|m| m.mapping.available.clone())
+    }
+
+    pub(crate) fn take_gamepad_recording(
+        &self,
+        request: &GamepadRecording,
+    ) -> Option<GamepadCapture> {
+        let Ok(mut mailboxes) = self.shared.mailboxes.try_lock() else {
+            self.repaint.request_repaint_after(super::HOST_RETRY_DELAY);
+            return None;
+        };
+        let recorder = mailboxes
+            .gamepad_recorder
+            .as_mut()
+            .filter(|recorder| &recorder.request == request)?;
+        recorder.captured.take()
     }
 
     #[cfg(target_arch = "wasm32")]
@@ -114,7 +130,7 @@ impl HostInputSender {
     }
 
     pub fn set_enabled(&self, keyboard: bool, mouse: bool, gamepads: bool) -> bool {
-        self.apply_input_activation(keyboard, mouse, gamepads, None, None)
+        self.apply_input_activation(keyboard, mouse, gamepads, None, None, None)
     }
 
     pub(crate) fn apply_input_activation(
@@ -124,10 +140,26 @@ impl HostInputSender {
         gamepads: bool,
         frontend: Option<bool>,
         view_release_generation: Option<u64>,
+        gamepad_recording: Option<&GamepadRecording>,
     ) -> bool {
         let Ok(mut mailboxes) = self.shared.mailboxes.try_lock() else {
             return false;
         };
+        match gamepad_recording {
+            Some(request)
+                if !mailboxes
+                    .gamepad_recorder
+                    .as_ref()
+                    .is_some_and(|recorder| &recorder.request == request) =>
+            {
+                mailboxes.gamepad_recorder = Some(GamepadRecorder::new(
+                    request.clone(),
+                    &mailboxes.gamepad_samples,
+                ));
+            }
+            None => mailboxes.gamepad_recorder = None,
+            _ => {}
+        }
         let gameplay_lost =
             (mailboxes.keyboard_enabled && !keyboard) || (mailboxes.gamepad_enabled && !gamepads);
         let view_changed = view_release_generation == Some(mailboxes.status.generation);
