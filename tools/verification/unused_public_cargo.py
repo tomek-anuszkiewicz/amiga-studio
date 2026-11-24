@@ -8,7 +8,7 @@ import re
 import subprocess
 import tomllib
 
-from unused_public_syntax import target_key
+from unused_public_syntax import target_key, text
 from worker_processes import WorkerProcesses
 
 
@@ -257,6 +257,11 @@ def target_identity(row):
     return row["package_id"], row["target"]["name"], tuple(row["target"]["kind"])
 
 
+def outside_defining_target(diagnostic, declaration, producer_id):
+    return diagnostic["package_id"] != producer_id or all(
+        target != diagnostic["target"] for target, _ in declaration.origins)
+
+
 def diagnostic_key(diagnostic, key_for_span):
     ranges = tuple((*key_for_span(span), span["is_primary"]) for span in spans(diagnostic))
     return (*target_identity(diagnostic),
@@ -288,6 +293,110 @@ def referring_node(discovery, span, offsets):
     if span["macro_expansion"] or not 0 <= start < stop <= len(original):
         return None
     return tree.descendant_for_byte_range(start, stop)
+
+
+def exact_primary_span(diagnostic):
+    primary = [span for span in diagnostic["spans"] if span["is_primary"]]
+    return primary[0] if len(primary) == 1 and not primary[0]["macro_expansion"] else None
+
+
+def associated_call(discovery, diagnostic, offsets):
+    span = exact_primary_span(diagnostic)
+    if span is None:
+        return None
+    node = referring_node(discovery, span, offsets)
+    _, start, stop = offsets.span_key(span)
+    if node is None or node.type != "scoped_identifier" or (node.start_byte, node.end_byte) != (start, stop):
+        return None
+    owner, name = (node.child_by_field_name(field) for field in ("path", "name"))
+    call = node.parent
+    if (call.type == "call_expression" and call.child_by_field_name("function") == node
+            and all(part is not None and part.type == "identifier" for part in (owner, name))):
+        return text(owner).removeprefix("r#"), text(name).removeprefix("r#")
+    return None
+
+
+def retry_candidate(discovery, producer, selected, context):
+    offsets = OriginalOffsets(context["edits"])
+    methods = defaultdict(list)
+    for index, (declaration, _) in enumerate(selected):
+        if declaration.role == "inherent" and len(declaration.enclosing) == 1:
+            owner, = declaration.enclosing
+            methods[owner.removeprefix("r#"), declaration.name.removeprefix("r#")].append(index)
+
+    matches = defaultdict(list)
+    diagnostics = context["batch"]["diagnostics"]
+    for index in context["genuine_error_indices"]:
+        diagnostic = diagnostics[index]
+        if diagnostic["code"] != "E0308":
+            continue
+        for method in methods.get(associated_call(discovery, diagnostic, offsets), ()):
+            matches[method].append(index)
+    if len(matches) == 1:
+        method, = matches
+        declaration, result = selected[method]
+        references = [index for index in matches[method]
+                      if outside_defining_target(diagnostics[index], declaration, producer["id"])]
+        if references and result["activity"] == "confirmed":
+            return method, references
+    return None
+
+
+def retry_resolution(package_names, context, retry):
+    baseline = context["baseline"]
+    diagnostics = context["batch"]["diagnostics"]
+    batch = retry["batch"]
+    if (batch["state"] not in {"succeeded", "failed"}
+            or batch.get("cargo_success") is not (batch["state"] == "succeeded")):
+        return None
+
+    calls = retry["trigger_diagnostic_indices"]
+    affected = {target_identity(diagnostics[index]) for index in calls}
+    units = Counter(target_identity(artifact) for artifact in baseline["artifacts"])
+    artifacts = {artifact_key(artifact) for artifact in batch["artifacts"]}
+    reached = {target_identity(artifact) for artifact in baseline["artifacts"] if artifact_key(artifact) in artifacts}
+    reached.update(target_identity(row) for row in batch["diagnostics"] if row["level"] == "error")
+    if any(units[target] != 1 or target not in reached for target in affected):
+        return None
+    retry_errors = set(retry["genuine_error_indices"])
+    if any(target_identity(batch["diagnostics"][index]) in affected for index in retry_errors):
+        return None
+
+    # A method lookup error can become a precise privacy error at the same method token.
+    retry_offsets = OriginalOffsets(retry["edits"])
+    private_sites = {(target_identity(row), retry_offsets.span_key(span))
+                     for index, row in enumerate(batch["diagnostics"])
+                     if index not in retry_errors and row["level"] == "error" and row["code"] == "E0624"
+                     and (span := exact_primary_span(row)) is not None}
+    resolved = set(calls)
+    offsets = OriginalOffsets(context["edits"])
+    for index in context["genuine_error_indices"]:
+        diagnostic = diagnostics[index]
+        target = target_identity(diagnostic)
+        if diagnostic["code"] != "E0599" or target not in affected:
+            continue
+        span = exact_primary_span(diagnostic)
+        if span is not None and (target, offsets.span_key(span)) in private_sites:
+            resolved.add(index)
+
+    unresolved_packages = {diagnostics[index]["package_id"] for index in context["genuine_error_indices"]
+                           if index not in resolved}
+    resolved_packages = {package_names[package_id] for package_id, _, _ in affected
+                         if package_id not in unresolved_packages and package_id in package_names}
+    resolved_cargo = [error for error in context["cargo_failures"] if (summary := COMPILATION_SUMMARY.match(error))
+                      and summary[1] in resolved_packages]
+    return sorted(resolved), resolved_cargo
+
+
+def effective_build(context):
+    match context:
+        case {
+            "retry": {"state": "accepted", "resolved_error_indices": list(indices),
+                      "resolved_cargo_failures": list(cargo_failures), "batch": {"state": "succeeded" | "failed"} as build},
+            "genuine_error_indices": original_indices, "cargo_failures": original_failures,
+        } if indices and indices == original_indices and cargo_failures == original_failures:
+            return "retry", build
+    return "batch", context["batch"]
 
 
 def referring_site(discovery, span, offsets):
@@ -334,8 +443,8 @@ def build_reach(baseline, batch):
     return finished, unfinished
 
 
-def record_comparison(discovery, producer, package_names, selected, context):
-    baseline, batch = context["baseline"], context["batch"]
+def record_comparison(discovery, producer, package_names, selected, baseline, context):
+    batch = context["batch"]
     producer_id = producer["id"]
     libraries = [unit for unit in baseline["artifacts"]
                  if unit["package_id"] == producer_id and unit["target"]["kind"] == ["lib"] and not unit["test"]]
@@ -386,8 +495,7 @@ def record_comparison(discovery, producer, package_names, selected, context):
                         "kind": referring_site(discovery, span, offsets),
                         "span": {**span, "byte_start": start, "byte_end": stop},
                     })
-                expected = diagnostic["package_id"] != producer_id or all(
-                    target != diagnostic["target"] for target, _ in declaration.origins)
+                expected = outside_defining_target(diagnostic, declaration, producer_id)
                 if expected:
                     expected_errors.add(diagnostic["package_id"])
             result["observations"].append(observation)

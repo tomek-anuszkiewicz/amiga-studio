@@ -13,8 +13,8 @@ import time
 
 from repository import git
 from unused_public_cargo import (
-    DEAD_CODE_FLAG, RESTRICTED, VISIBILITY, build_contexts, build_scope, metadata, probe_rustflags, record_comparison,
-    run_build,
+    DEAD_CODE_FLAG, RESTRICTED, VISIBILITY, OriginalOffsets, build_contexts, build_scope, diagnostic_key,
+    effective_build, metadata, probe_rustflags, record_comparison, retry_candidate, retry_resolution, run_build,
 )
 from unused_public_syntax import Discovery
 
@@ -141,6 +141,54 @@ def select_functions(declarations, units, name):
     return selected
 
 
+def probe_retry(workspace, environment, output, report, discovery, producer, package_names, selected, name, context):
+    candidate = retry_candidate(discovery, producer, selected, context)
+    if candidate is None:
+        return
+    index, calls = candidate
+    declaration, result = selected[index]
+    remaining = selected[:index] + selected[index + 1:]
+    retry = context["retry"] = {
+        "state": "pending", "batch": {"state": "pending"},
+        "restored_visibility": declaration.visibility, "trigger_diagnostic_indices": list(calls),
+        "edits": [other.visibility for other, _ in remaining],
+    }
+    report["active"] = {"phase": "retry", "context": name}
+    print(f"[INFO] Public probe retry for {name}, restoring {'::'.join((*declaration.enclosing, declaration.name))}",
+          flush=True)
+    try:
+        with visibility_edits(workspace, discovery, retry["edits"], retry):
+            try:
+                run_build(workspace, environment, context["command"], output / f"{name}-retry.log", retry["batch"])
+            except OSError:
+                retry["state"] = "inconclusive"
+                return
+    except KeyboardInterrupt:
+        retry["batch"]["state"] = retry["state"] = "interrupted"
+        raise
+
+    observations = [(other, {"observations": []}) for other, _ in remaining]
+    record_comparison(discovery, producer, package_names, observations, context["baseline"], retry)
+    resolution = retry_resolution(package_names, context, retry)
+    if resolution is None:
+        retry.update(state="inconclusive", reason="The retry did not establish the cause in every affected target.")
+        return
+    indices, errors = resolution
+    retry.update(state="accepted", resolved_error_indices=indices, resolved_cargo_failures=errors)
+    result["observations"].extend({"kind": "visibility retry", "diagnostic_index": trigger} for trigger in calls)
+
+    # Retain the first build's evidence and add diagnostics exposed by the retry.
+    first_offsets = OriginalOffsets(context["edits"])
+    first_keys = {diagnostic_key(row, first_offsets.span_key) for row in context["batch"]["diagnostics"]}
+    retry_offsets = OriginalOffsets(retry["edits"])
+    retry_rows = retry["batch"]["diagnostics"]
+    for (_, original), (_, additional) in zip(remaining, observations, strict=True):
+        for observation in additional["observations"]:
+            row = retry_rows[observation["diagnostic_index"]]
+            if diagnostic_key(row, retry_offsets.span_key) not in first_keys:
+                original["observations"].append({**observation, "build": "retry"})
+
+
 def probe_context(workspace, environment, output, report, discovery, producer, package_names, declarations, name,
                   context):
     baseline, batch = context["baseline"], context["batch"]
@@ -163,20 +211,26 @@ def probe_context(workspace, environment, output, report, discovery, producer, p
     report["active"] = {"phase": "batch", "context": name}
     print(f"[INFO] Public probe batch for {name}: {len(selected)} functions", flush=True)
     try:
-        with visibility_edits(workspace, discovery, context["edits"], context):
-            run_build(workspace, environment, command, output / f"{name}-batch.log", batch)
-    except KeyboardInterrupt:
-        batch["state"] = "interrupted"
-        raise
+        try:
+            with visibility_edits(workspace, discovery, context["edits"], context):
+                run_build(workspace, environment, command, output / f"{name}-batch.log", batch)
+        except KeyboardInterrupt:
+            batch["state"] = "interrupted"
+            raise
+        finally:
+            if "artifacts" in batch:
+                record_comparison(discovery, producer, package_names, selected, baseline, context)
+        if batch.get("failure_kind") == "genuine":
+            probe_retry(workspace, environment, output, report, discovery, producer, package_names, selected, name,
+                        context)
     finally:
-        if "artifacts" in batch:
-            record_comparison(discovery, producer, package_names, selected, context)
+        _, effective = effective_build(context)
         for _, result in selected:
             if result["observations"]:
                 result["state"] = "observed"
-            elif batch["state"] == "interrupted":
+            elif batch["state"] == "interrupted" or context.get("retry", {}).get("state") == "interrupted":
                 result["state"] = "interrupted"
-            elif batch["state"] != "succeeded" and batch.get("failure_kind") != "visibility":
+            elif effective["state"] != "succeeded" and effective.get("failure_kind") != "visibility":
                 result.update(state="incomplete", reason="The batch stopped without an attributable diagnostic.")
             elif result["activity"] != "confirmed":
                 result.update(state="activity unresolved", reason="The function's build configuration is uncertain.")
@@ -266,11 +320,13 @@ def write_report(path, report):
 
 
 def summarize(report):
-    incomplete_contexts = [
-        name for name, context in report["contexts"].items()
-        if context["baseline"]["state"] != "succeeded" or context["batch"]["state"] not in {"succeeded", "skipped"}
-        or context.get("unfinished_targets")
-    ]
+    incomplete_contexts = []
+    for name, context in report["contexts"].items():
+        phase, build = effective_build(context)
+        comparison = context["retry"] if phase == "retry" else context
+        if (context["baseline"]["state"] != "succeeded" or build["state"] not in {"succeeded", "skipped"}
+                or comparison.get("unfinished_targets")):
+            incomplete_contexts.append(name)
     report["incomplete_contexts"] = incomplete_contexts
     candidates = report["candidates"] = []
     references = report["confirmed_references"] = []
@@ -285,7 +341,11 @@ def summarize(report):
                     re_exports.append(span)
             for row in result["observations"]:
                 record = {"context": name, "diagnostic_index": row["diagnostic_index"]}
-                if row["kind"] == "privacy":
+                if "build" in row:
+                    record["build"] = row["build"]
+                if row["kind"] == "visibility retry":
+                    used.append({**record, "kind": row["kind"]})
+                elif row["kind"] == "privacy":
                     used.append(record)
                 elif row["kind"] == "dead_code":
                     warnings.append(record)
@@ -331,7 +391,7 @@ def probe_package(root, package, output, *, excluded_output):
             workspace.mkdir()
             configure_probe(root, workspace, output, report, excluded_output)
         incomplete = any(context["baseline"]["state"] != "succeeded" or
-                         context["batch"].get("failure_kind") == "genuine"
+                         effective_build(context)[1].get("failure_kind") == "genuine"
                          for context in report["contexts"].values())
         report["state"] = "partial" if incomplete else "completed"
         code = int(incomplete)

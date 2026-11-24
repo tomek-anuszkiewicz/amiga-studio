@@ -7,6 +7,7 @@ import tempfile
 
 from impact import workspace_packages
 from unused_public import probe_package
+from unused_public_cargo import effective_build
 
 
 def candidate_location(candidate):
@@ -23,16 +24,13 @@ def candidate_location(candidate):
 def build_failures(contexts):
     for name, context in contexts.items():
         match context:
-            case {"baseline": {"state": str(baseline)}, "batch": {"state": str(batch)}}:
-                if baseline != "succeeded":
-                    phase = "baseline"
-                elif batch not in {"succeeded", "skipped"} and not (
-                    batch == "failed" and context["batch"].get("failure_kind") == "visibility"
-                ):
-                    phase = "batch"
-                else:
+            case {"baseline": {"state": str(baseline)} as original, "batch": {"state": str()}}:
+                phase, build = ("baseline", original) if baseline != "succeeded" else effective_build(context)
+                state = build["state"]
+                expected = state in {"succeeded", "skipped"} or (state == "failed" and
+                                                                 build.get("failure_kind") == "visibility")
+                if phase != "baseline" and expected:
                     continue
-                build = context[phase]
                 reason = build.get("reason", f"Cargo exit code {build['exit_code']}" if "exit_code" in build else "")
                 detail = f" ({reason})" if reason else ""
                 yield f"{name} {phase} {build['state']}{detail}", build.get("log")

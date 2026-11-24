@@ -21,6 +21,7 @@ sys.path.insert(0, str(TOOLS))
 from case_report import CONTEXT
 import unused_public
 from unused_public_syntax import Discovery
+from unused_public_workspace import build_failures, check_report
 from worker_processes import WorkerProcesses
 
 
@@ -74,8 +75,9 @@ class PublicProbeTests(unittest.TestCase):
             diagnostics = [
                 (name, phase, row["message"])
                 for name, context in report["contexts"].items()
-                for phase in ("baseline", "batch")
-                for row in context.get(phase, {}).get("diagnostics", [])
+                for phase, build in (("baseline", context["baseline"]), ("batch", context["batch"]),
+                                     ("retry", context.get("retry", {}).get("batch", {})))
+                for row in build.get("diagnostics", [])
             ]
             self.fail(f"{process.stdout}{process.stderr}\nCompiler diagnostics: {diagnostics}")
         return report
@@ -544,6 +546,84 @@ raise SystemExit(probe.main())
         for target in ("bad", "privacy"):
             self.assertTrue(any(row["target"]["name"] == target and row["state"] == "diagnostics emitted"
                                 for row in context["unfinished_targets"]))
+
+    def test_associated_call_retry_finds_use_after_partial_eq_takes_over(self):
+        path = "cpu/src/lib.rs"
+        consumer_path = "cpu/tests/condition.rs"
+        source = ('#[derive(PartialEq)]\n'
+                  'pub struct Condition(u8, u8);\n'
+                  'impl Condition { pub fn eq(left: u8, right: u8) -> Self { Self(left, right) } }\n'
+                  'impl Condition { pub fn run(&self) -> bool { self.0 == self.1 } }\n'
+                  'pub fn touch() {}\n'
+                  'pub fn spare() {}\n')
+        consumer = ('use cpu::Condition;\n'
+                    '#[test] fn checks_condition() {\n'
+                    '    let condition = Condition::eq(7, 9);\n'
+                    '    assert!(!condition.run());\n'
+                    '    cpu::touch();\n'
+                    '}\n')
+        self.write(path, source)
+        self.write(consumer_path, consumer)
+        records = self.root.parent / "cargo-inputs.jsonl"
+        report = self.verify(records)
+        pristine = {path: source, consumer_path: consumer, "client/src/lib.rs": ""}
+        edited = source.replace("pub fn", "pub(crate) fn")
+        restored = edited.replace("pub(crate) fn eq", "pub fn eq")
+        self.assert_builds(records, [(pristine, ()), ({**pristine, path: edited}, ()),
+                                     ({**pristine, path: restored}, ())])
+
+        context = report["contexts"]["default-features"]
+        retry = context["retry"]
+        self.assertEqual(report["state"], "completed")
+        self.assertEqual(retry["state"], "accepted")
+        self.assertEqual(retry["resolved_error_indices"], context["genuine_error_indices"])
+        self.assertEqual(retry["genuine_error_indices"], [])
+        self.assertEqual(list(build_failures(report["contexts"])), [])
+        self.assertEqual(retry["restored_visibility"], self.declarations(report)["crate", "eq"]["visibility_span"])
+        first_log = Path(context["batch"]["log"]).read_text(encoding="utf-8")
+        retry_log = Path(retry["batch"]["log"]).read_text(encoding="utf-8")
+        self.assertIn("error[E0308]", first_log)
+        self.assertIn("error[E0599]", first_log)
+        self.assertNotIn("error[E0308]", retry_log)
+        self.assertNotIn("error[E0599]", retry_log)
+        self.assertIn("error[E0624]", retry_log)
+        self.assertIn("error[E0603]", retry_log)
+
+        used = {(item["module"], item["name"]): item for item in report["confirmed_references"]}
+        self.assertEqual(set(used), {("crate", "eq"), ("crate", "run"), ("crate", "touch")})
+        evidence, = used["crate", "eq"]["observations"]
+        self.assertEqual(evidence["kind"], "visibility retry")
+        diagnostic = context["batch"]["diagnostics"][evidence["diagnostic_index"]]
+        self.assertEqual(diagnostic["code"], "E0308")
+        primary, = (span for span in diagnostic["spans"] if span["is_primary"])
+        self.assertEqual(primary["path"], consumer_path)
+        self.assertEqual(consumer.encode()[primary["byte_start"]:primary["byte_end"]], b"Condition::eq")
+        self.assertEqual({(item["module"], item["name"]) for item in report["candidates"]}, {("crate", "spare")})
+        path, = self.results.glob("unused-public-*/report.json")
+        with contextlib.redirect_stdout(io.StringIO()) as gate_output:
+            self.assertFalse(check_report("cpu", path, 0))
+        self.assertIn("candidate unused public function crate::spare", gate_output.getvalue())
+
+    def test_associated_call_with_two_matching_definitions_stays_partial(self):
+        path = "cpu/src/lib.rs"
+        consumer_path = "cpu/tests/condition.rs"
+        definition = ('#[derive(PartialEq)] pub struct Condition(u8, u8);\n'
+                      'impl Condition { pub fn eq(left: u8, right: u8) -> Self { Self(left, right) } }\n')
+        source = definition + "pub mod alternative {\n" + definition + "}\n"
+        consumer = "use cpu::Condition;\n#[test] fn checks_condition() { let _ = Condition::eq(7, 9); }\n"
+        self.write(path, source)
+        self.write(consumer_path, consumer)
+        records = self.root.parent / "cargo-inputs.jsonl"
+        report = self.verify(records, code=1)
+        pristine = {path: source, consumer_path: consumer, "client/src/lib.rs": ""}
+        edited = source.replace("pub fn", "pub(crate) fn")
+        self.assert_builds(records, [(pristine, ()), ({**pristine, path: edited}, ())])
+        context = report["contexts"]["default-features"]
+        self.assertEqual(report["state"], "partial")
+        self.assertNotIn("retry", context)
+        self.assertIn("E0308", {context["batch"]["diagnostics"][index]["code"]
+                                for index in context["genuine_error_indices"]})
+        self.assertEqual(report["confirmed_references"], [])
 
     def test_no_eligible_functions_skips_batch_after_pristine_baseline(self):
         path = "cpu/src/lib.rs"

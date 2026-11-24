@@ -137,12 +137,19 @@ feature selection, it runs a pristine Cargo check and then checks all eligible
 functions with crate-only visibility in one batch. A simple public re-export in
 the selected package keeps the function public. The builds make `dead_code` a
 warning so Cargo can reach workspace consumers, including integration test targets.
+Narrowing an associated function can make Rust resolve its call to another
+function and report a type error. If the call points to a single narrowed
+function, the probe can restore that function's visibility and rerun the
+check with the other edits in place.
 
 A new warning identifies a candidate in the edited source. A precise reference
 reported in any build excludes that function from the candidate list. Silence
 is inconclusive. The `unused-public-*/report.json` file under `.agent/tmp/verify/`
 records the functions, compiler diagnostics, build logs and consumers Cargo
-reached. It also records omitted configurations and source discovery gaps.
+reached. A retry confirms use when the call error disappears and Cargo
+produces compiler output for every affected target. The report keeps both
+build logs and identifies any unresolved errors. It also records omitted
+configurations and source discovery gaps.
 Inspect callers, re-exports, conditional code and external API obligations before
 proposing a removal. Several functions narrowed together may become unreachable
 as a group.
