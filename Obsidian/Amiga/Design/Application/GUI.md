@@ -27,12 +27,30 @@ Both offer two views of the same emulated machine.
   View switch. Inspection panels and debugger shortcuts are inactive.
 - **Developer Studio** places the screen in a debugging workspace with execution controls and state inspection. The [debugger specification](Debugger.md) defines the behavior behind those controls.
 
-The desktop opens the game library at startup. The browser opens manual setup
-without probing for a bundle or offering a game library. Each globally available
-named configuration has a stable ID and combines the supported hardware
-presets, the ROM choice, connected drives, both port devices and reusable host
-mappings. A game references one configuration and owns its ordered disks,
-description, artwork, initial state and player saves.
+The desktop opens the game library at startup. In Configurations, the player
+chooses a library directory under Application settings and commits it with Save.
+Cancel in either the directory picker or the editor preserves the committed
+directory. The desktop requires a selected, accessible library for library
+operations. When it cannot open that directory, it directs the player to
+Configurations. It stores the selected root, remembered picker directories,
+applicable history and presentation preferences in the current user's native
+application storage. The browser opens manual setup and keeps its named
+settings in browser storage. [Named configurations](../Configuration.md#named-frontend-configurations)
+
+A game references one configuration in its library and owns its ordered disks,
+description, artwork, initial state and player saves. If a launch needs a
+configuration and the reference is absent or unresolved, the player can select
+an existing configuration in that library. The app saves that reference before
+continuing the normal validated launch. Cancel preserves the manifest and the
+live session. If the library has no profiles, the app directs the player to
+create one in Configurations.
+
+Before deleting a configuration, the app lists the games that use it and asks
+the player to confirm. When there are references, the player must select another
+existing configuration. The app checks the affected games' media and startup
+drives, saves and verifies their replacement references, then removes the old
+configuration. If discovery, validation or a write fails, the app keeps the old
+configuration, reports any references it already saved and reloads the library.
 
 The configuration editor opens on its own screen and keeps a separate draft
 of the complete catalog, including profile creation, selection and reusable
@@ -43,13 +61,17 @@ then publishes the committed settings. If Save fails, the draft stays
 available and the committed catalog keeps its previous settings. Cancel
 discards the draft, including invalid edits, and returns to the screen that
 opened the editor. Leaving with unsaved edits offers Save, Discard and Keep
-editing. With no unsaved edits, navigation proceeds directly. Shutdown persists
-only the committed catalog.
+editing. With no unsaved edits, navigation proceeds directly. The editor asks
+the player to finish or discard profile edits before switching libraries.
+The native catalog is written through the editor and explicit catalog actions.
 
 Saving controls updates the active session's named configuration without a
-restart. Selecting another profile selects it for a future launch only. The
-machine remains paused until resumed. RAM, ROM, video and drive choices take
-effect on explicit launch only.
+restart when the editor is working in that session's library and the profile
+still exists there. Selecting another profile or library affects future
+launches. The live machine retains the original library, saves, media and
+committed controls, including after deletion or reassignment of its profile.
+The machine remains paused until resumed. RAM, ROM, video and drive choices
+take effect on explicit launch only.
 
 When port devices change, the machine installs neutral devices only at the
 changed endpoints. Unchanged mice keep their quadrature phase. Before execution

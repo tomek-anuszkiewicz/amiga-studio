@@ -81,8 +81,9 @@ fn startup_choices_follow_pending_disk_ids_across_removal_save_and_normal_boot()
     let rom_path = root.join("kick.rom");
     std::fs::write(&rom_path, rom).unwrap();
     let mut app = gui::EmulatorApp::default();
+    app.player.library_root = Some(root.clone());
     let launch = &mut app.player.catalog.configurations[0].launch;
-    launch.rom = rom_path.to_string_lossy().into_owned();
+    launch.rom = "kick.rom".into();
     launch.drives = [true, true, true, false];
     app.start_library_game(game.clone(), None, true);
     common::settle(&mut app, &egui::Context::default());
@@ -251,7 +252,7 @@ fn jpeg_and_png_covers_are_discovered_and_refresh_reads_replacements() {
         2
     );
     let mut app = gui::EmulatorApp::default();
-    app.player.catalog.library_root = root.to_string_lossy().into_owned();
+    app.player.library_root = Some(root.clone());
     app.player.library = GameLibrary::discover(&root).unwrap();
     app.navigate_player(gui::player::PlayerScreen::Library);
     let ctx = egui::Context::default();
@@ -350,7 +351,7 @@ fn startup_editor_clears_removed_import_and_rejects_disconnected_drive() {
 
     let mut app = gui::EmulatorApp::default();
     app.player.catalog.configurations[0].launch.drives = connected;
-    app.player.catalog.library_root = root.to_string_lossy().into_owned();
+    app.player.library_root = Some(root.clone());
     app.player.library = GameLibrary::discover(&root).unwrap();
     app.player.selected_game = Some(0);
     app.navigate_player(gui::player::PlayerScreen::Library);
@@ -425,11 +426,11 @@ fn editor_cancel_does_not_write_and_save_updates_the_active_games_path_without_r
     rom[0x100..0x102].copy_from_slice(&[0x60, 0xfe]);
     std::fs::write(&rom_path, rom).unwrap();
     let mut app = gui::EmulatorApp::default();
-    app.player.catalog.configurations[0].launch.rom = rom_path.to_string_lossy().into_owned();
+    app.player.library_root = Some(root.clone());
+    app.player.catalog.configurations[0].launch.rom = "kick.rom".into();
     app.player.catalog.configurations[0].launch.drives[1] = true;
     app.start_library_game(game.clone(), None, false);
     common::settle(&mut app, &egui::Context::default());
-    app.player.catalog.library_root = root.to_string_lossy().into_owned();
     app.player.library = GameLibrary::discover(&root).unwrap();
     app.player.selected_game = Some(0);
     app.navigate_player(gui::player::PlayerScreen::Library);
@@ -521,7 +522,7 @@ fn editor_cancel_does_not_write_and_save_updates_the_active_games_path_without_r
     let other = other.save(other_root.path(), [true; 4]).unwrap();
     assert_eq!(other.manifest.id, game.manifest.id);
     let app = harness.state_mut();
-    app.player.catalog.library_root = other_root.path().to_string_lossy().into_owned();
+    app.player.library_root = Some(other_root.path().to_path_buf());
     app.player.library = GameLibrary::discover(other_root.path()).unwrap();
     app.player.selected_game = Some(0);
     app.navigate_player(gui::player::PlayerScreen::Session);

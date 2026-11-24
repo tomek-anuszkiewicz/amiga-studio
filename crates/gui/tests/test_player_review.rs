@@ -44,8 +44,8 @@ fn started(root: &Path) -> EmulatorApp {
         draft.save(root, [true; 4]).unwrap()
     };
     let mut app = EmulatorApp::default();
-    app.player.catalog.library_root = root.to_string_lossy().into_owned();
-    app.player.catalog.configurations[0].launch.rom = rom_path.to_string_lossy().into_owned();
+    app.player.library_root = Some(root.to_path_buf());
+    app.player.catalog.configurations[0].launch.rom = "kick.rom".into();
     app.start_library_game(game, None, false);
     common::settle(&mut app, &egui::Context::default());
     common::command(&mut app, HostCommand::Pause);
@@ -310,7 +310,8 @@ fn editing_native_rom_reference_does_not_boot_cached_previous_rom() {
     std::fs::write(&path, rom(0x22)).unwrap();
     app.player.rom = Some(rom(0x11));
     app.player.rom_configuration_id = Some("standard".into());
-    app.player.catalog.configurations[0].launch.rom = path.to_string_lossy().into_owned();
+    app.player.library_root = Some(root);
+    app.player.catalog.configurations[0].launch.rom = "new.rom".into();
     app.start_manual();
     common::settle(&mut app, &egui::Context::default());
     common::command(&mut app, HostCommand::Pause);

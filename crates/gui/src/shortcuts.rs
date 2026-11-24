@@ -70,7 +70,16 @@ impl EmulatorApp {
             session: self.player.screen == crate::player::PlayerScreen::Session
                 && self.host.error.is_none()
                 && !self.host.status.shutdown,
-            pending_launch: self.player.pending_launch.is_some(),
+            pending_launch: self.player.pending_launch.is_some() || {
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    self.player.missing_configuration.is_some()
+                }
+                #[cfg(target_arch = "wasm32")]
+                {
+                    false
+                }
+            },
             running: self.host.status.running,
             pause_pending: self.host.pause_requested(),
             developer: self.view_mode == ViewMode::Developer,

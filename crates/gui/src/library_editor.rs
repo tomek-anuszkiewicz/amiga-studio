@@ -2,7 +2,6 @@
 
 use crate::library_edit::{validate_game_name, GameDraft};
 use crate::EmulatorApp;
-use std::path::Path;
 
 impl EmulatorApp {
     pub(crate) fn open_library_editor(&mut self, game: Option<crate::game_library::LibraryGame>) {
@@ -33,7 +32,10 @@ impl EmulatorApp {
             .on_hover_text("The game name also determines its directory inside the library");
         ui.label(format!(
             "Folder: {}",
-            Path::new(&self.player.catalog.library_root)
+            self.player
+                .library_root
+                .as_deref()
+                .unwrap_or_else(|| std::path::Path::new(""))
                 .join(&draft.name)
                 .display()
         ));
@@ -168,7 +170,9 @@ impl EmulatorApp {
         ui.horizontal(|ui| {
             save = ui
                 .add_enabled(
-                    connected.is_some() && validate_game_name(&draft.name).is_ok(),
+                    self.player.library_available()
+                        && connected.is_some()
+                        && validate_game_name(&draft.name).is_ok(),
                     egui::Button::new("Save game"),
                 )
                 .on_hover_text(
@@ -184,14 +188,17 @@ impl EmulatorApp {
             self.file_error = None;
             return;
         }
-        if let Some(connected) = connected.filter(|_| save) {
+        if let Some((connected, root)) = connected
+            .zip(self.player.library_root.as_deref())
+            .filter(|_| save)
+        {
             let edits_active = self
                 .player
                 .active_game
                 .as_ref()
                 .zip(draft.original.as_ref())
                 .is_some_and(|(active, original)| active.same_entry(original));
-            match draft.save(Path::new(&self.player.catalog.library_root), connected) {
+            match draft.save(root, connected) {
                 Ok(game) => {
                     self.complete_library_edit(game, edits_active);
                     return;

@@ -131,9 +131,9 @@ impl EmulatorApp {
 
     pub(crate) fn validate_current_input(&self) -> Result<(), String> {
         if let Some(configuration) = self.current_input_configuration() {
-            self.player
-                .catalog
-                .validate_controls(&configuration.controls)?;
+            configuration
+                .controls
+                .validate(self.player.current_mappings())?;
             self.host_sources_available(&configuration.controls)?;
         }
         Ok(())
@@ -320,7 +320,7 @@ impl EmulatorApp {
             }
             FileCompletion::State(message) => {
                 if self.player.active_configuration.is_none() {
-                    self.player.active_configuration = self.player.catalog.selected().cloned();
+                    self.player.activate_selected_configuration();
                 }
                 self.state_loaded(message);
             }
@@ -472,17 +472,6 @@ impl EmulatorApp {
                             _ => None,
                         };
                         self.select_setup_asset(drive, file_name(&path), bytes);
-                        if drive.is_none() {
-                            if let Some(configuration) = self
-                                .player
-                                .catalog
-                                .configurations
-                                .iter_mut()
-                                .find(|c| c.id == self.player.catalog.selected)
-                            {
-                                configuration.launch.rom = path.to_string_lossy().into_owned();
-                            }
-                        }
                     }
                     Err(error) => self.file_error = Some(format!("Could not read asset: {error}")),
                 },

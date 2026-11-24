@@ -427,11 +427,13 @@ impl crate::EmulatorApp {
             self.player.captured = false;
         }
         if self.player.captured {
-            if let Some(error) = self
-                .player
-                .active_configuration
-                .as_ref()
-                .and_then(|configuration| self.player.catalog.validate(configuration).err())
+            if let Some(error) =
+                self.player
+                    .active_configuration
+                    .as_ref()
+                    .and_then(|configuration| {
+                        configuration.validate(self.player.current_mappings()).err()
+                    })
             {
                 self.player.captured = false;
                 self.file_error = Some(format!(
@@ -462,7 +464,7 @@ impl crate::EmulatorApp {
                     .active_configuration
                     .as_ref()
                     .is_none_or(|configuration| {
-                        sender.configure(&configuration.controls, &self.player.catalog.mappings)
+                        sender.configure(&configuration.controls, self.player.current_mappings())
                     });
             if let Some(pads) = sender.gamepads() {
                 self.player.gamepads = pads;

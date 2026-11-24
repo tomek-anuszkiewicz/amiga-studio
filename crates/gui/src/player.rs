@@ -2,7 +2,7 @@
 
 use crate::app_host::HostEffect;
 use crate::host_commands::{HostCommand, HostValue};
-use crate::player_config::{ConfigurationCatalog, NamedConfiguration};
+use crate::player_config::{ConfigurationCatalog, JoystickMapping, NamedConfiguration};
 use crate::{EmulatorApp, ViewMode};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -29,6 +29,8 @@ pub struct PlayerState {
     pub editor: Option<crate::configuration_edit::ConfigurationEdit>,
     pub(crate) settings_dirty: bool,
     pub rom: Option<Vec<u8>>,
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) rom_name: Option<String>,
     pub rom_configuration_id: Option<String>,
     pub rom_reference: Option<String>,
     pub disks: Vec<SessionDisk>,
@@ -36,6 +38,9 @@ pub struct PlayerState {
     pub setup_mounted: [Option<String>; 4],
     pub mounted: [Option<String>; 4],
     pub active_configuration: Option<NamedConfiguration>,
+    pub active_mappings: Vec<JoystickMapping>,
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) active_library_root: Option<std::path::PathBuf>,
     pub captured: bool,
     pub show_saves: bool,
     pub(crate) pending_launch: Option<PendingLaunch>,
@@ -44,6 +49,18 @@ pub struct PlayerState {
     pub gamepads: Vec<crate::input_mapping::GamepadInfo>,
     #[cfg(not(target_arch = "wasm32"))]
     pub library: crate::game_library::GameLibrary,
+    #[cfg(not(target_arch = "wasm32"))]
+    pub library_root: Option<std::path::PathBuf>,
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) library_error: Option<String>,
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) migration_error: Option<String>,
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) migrated_legacy: bool,
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) catalog_source: Option<Vec<u8>>,
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) missing_configuration: Option<MissingConfiguration>,
     #[cfg(not(target_arch = "wasm32"))]
     pub library_editor: Option<crate::library_edit::GameDraft>,
     #[cfg(not(target_arch = "wasm32"))]
@@ -62,10 +79,13 @@ pub struct PlayerState {
 pub(crate) enum PlayerEffect {
     Launch {
         configuration: NamedConfiguration,
+        mappings: Vec<JoystickMapping>,
         disks: Vec<SessionDisk>,
         association: debugger::SaveAssociation,
         #[cfg(not(target_arch = "wasm32"))]
         game: Option<crate::game_library::LibraryGame>,
+        #[cfg(not(target_arch = "wasm32"))]
+        library_root: Option<std::path::PathBuf>,
     },
     Mount {
         drive: usize,
@@ -99,12 +119,72 @@ pub(crate) enum PendingLaunch {
     },
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+#[derive(Debug)]
+pub(crate) struct MissingConfiguration {
+    pub game: crate::game_library::LibraryGame,
+    pub save: Option<std::path::PathBuf>,
+    pub normal_boot: bool,
+    pub replacement: String,
+    pub error: Option<String>,
+}
+
 impl PlayerState {
     pub(crate) fn selected_rom(&self, configuration: &NamedConfiguration) -> Option<&[u8]> {
         self.rom.as_deref().filter(|_| {
             self.rom_configuration_id.as_deref() == Some(&configuration.id)
                 && self.rom_reference.as_deref() == Some(&configuration.launch.rom)
         })
+    }
+
+    pub(crate) fn current_mappings(&self) -> &[JoystickMapping] {
+        if self.active_configuration.is_some() {
+            &self.active_mappings
+        } else {
+            &self.catalog.mappings
+        }
+    }
+
+    /// Records the profile, mappings and library used by a new session.
+    pub fn activate_selected_configuration(&mut self) {
+        self.active_configuration = self.catalog.selected().cloned();
+        self.active_mappings = self.catalog.mappings.clone();
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.active_library_root = self.library_root.clone();
+        }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) fn library_available(&self) -> bool {
+        self.library_error.is_none() && self.library_root.as_ref().is_some_and(|root| root.is_dir())
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn library_contains(&self, game: &crate::game_library::LibraryGame) -> bool {
+        self.library_root
+            .as_deref()
+            .zip(game.directory.parent())
+            .is_some_and(|(root, parent)| {
+                root == parent
+                    || root
+                        .canonicalize()
+                        .ok()
+                        .zip(parent.canonicalize().ok())
+                        .is_some_and(|(root, parent)| root == parent)
+            })
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn native_rom_path(
+        &self,
+        configuration: &NamedConfiguration,
+    ) -> Result<std::path::PathBuf, String> {
+        let root = self
+            .library_root
+            .as_deref()
+            .ok_or("Choose a Kickstart in Manual setup or select a library in Configurations")?;
+        crate::library_catalog::rom_path(root, &configuration.launch.rom)
     }
 }
 
@@ -186,6 +266,17 @@ impl EmulatorApp {
     }
 
     pub(crate) fn request_player_launch(&mut self, launch: PendingLaunch) {
+        #[cfg(not(target_arch = "wasm32"))]
+        if let PendingLaunch::Library {
+            game,
+            save,
+            normal_boot,
+        } = &launch
+        {
+            if self.prompt_for_missing_configuration(game, save.as_deref(), *normal_boot) {
+                return;
+            }
+        }
         let valid_rom = !matches!(&launch, PendingLaunch::Rom { bytes, .. } if bytes.len() != physical_memory::KICKSTART_ROM_SIZE);
         if valid_rom
             && (self.player.active_configuration.is_some()
@@ -247,19 +338,26 @@ impl EmulatorApp {
         match effect {
             PlayerEffect::Launch {
                 configuration,
+                mappings,
                 disks,
                 mut association,
                 #[cfg(not(target_arch = "wasm32"))]
                 game,
+                #[cfg(not(target_arch = "wasm32"))]
+                library_root,
             } => {
                 if let HostValue::PlayerRestored(restored) = value {
                     association = restored;
                 }
                 self.player.active_configuration = Some(configuration);
+                self.player.active_mappings = mappings;
                 self.player.disks = disks;
                 self.player.mounted = association.mounted;
                 #[cfg(not(target_arch = "wasm32"))]
-                self.associate_library_game(game);
+                {
+                    self.player.active_library_root = library_root;
+                    self.associate_library_game(game);
+                }
                 self.player.screen = PlayerScreen::Session;
                 self.player.initial_error = false;
                 self.loaded_rom_name = Some("player session".into());
@@ -332,8 +430,15 @@ impl EmulatorApp {
             .is_some_and(|bytes| bytes.len() == physical_memory::KICKSTART_ROM_SIZE);
         #[cfg(not(target_arch = "wasm32"))]
         let rom_selected = rom_selected
-            || std::fs::metadata(&configuration.launch.rom)
-                .is_ok_and(|metadata| metadata.len() == physical_memory::KICKSTART_ROM_SIZE as u64);
+            || self
+                .player
+                .native_rom_path(configuration)
+                .is_ok_and(|path| {
+                    path.metadata().is_ok_and(|metadata| {
+                        metadata.is_file()
+                            && metadata.len() == physical_memory::KICKSTART_ROM_SIZE as u64
+                    })
+                });
         rom_selected
             && self
                 .player
@@ -372,7 +477,11 @@ impl EmulatorApp {
             None => {
                 #[cfg(not(target_arch = "wasm32"))]
                 {
-                    match std::fs::read(&configuration.launch.rom) {
+                    match self
+                        .player
+                        .native_rom_path(&configuration)
+                        .and_then(|path| std::fs::read(path).map_err(|error| error.to_string()))
+                    {
                         Ok(bytes) => bytes,
                         Err(error) => {
                             self.file_error =
@@ -420,10 +529,13 @@ impl EmulatorApp {
             },
             HostEffect::Player(PlayerEffect::Launch {
                 configuration,
+                mappings: self.player.catalog.mappings.clone(),
                 disks,
                 association,
                 #[cfg(not(target_arch = "wasm32"))]
                 game: None,
+                #[cfg(not(target_arch = "wasm32"))]
+                library_root: self.player.library_root.clone(),
             }),
         );
     }
@@ -457,17 +569,26 @@ impl EmulatorApp {
                 ));
                 return;
             }
-            self.player.settings_dirty = true;
-            self.player.rom_reference = Some(name.clone());
-            if let Some(configuration) = self
+            let Some(configuration) = self
                 .player
                 .catalog
                 .configurations
                 .iter_mut()
                 .find(|c| c.id == self.player.catalog.selected)
+            else {
+                self.file_error = Some("Select a configuration".into());
+                return;
+            };
+            #[cfg(target_arch = "wasm32")]
             {
                 configuration.launch.rom = name;
+                self.player.settings_dirty = true;
             }
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                self.player.rom_name = Some(name);
+            }
+            self.player.rom_reference = Some(configuration.launch.rom.clone());
             self.player.rom = Some(bytes);
             self.player.rom_configuration_id = Some(self.player.catalog.selected.clone());
         }
@@ -575,14 +696,21 @@ impl EmulatorApp {
 
     #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn refresh_library(&mut self) {
-        match crate::game_library::GameLibrary::discover(std::path::Path::new(
-            &self.player.catalog.library_root,
-        )) {
+        let Some(root) = self.player.library_root.as_deref() else {
+            self.player.library = Default::default();
+            self.player.selected_game = None;
+            return;
+        };
+        match crate::game_library::GameLibrary::discover(root) {
             Ok(library) => {
                 self.player.library = library;
                 self.player.selected_game = None;
             }
-            Err(error) => self.file_error = Some(format!("Could not read library: {error}")),
+            Err(error) => {
+                self.player.library = Default::default();
+                self.player.selected_game = None;
+                self.player.library_error = Some(format!("Could not read library: {error}"));
+            }
         }
     }
     #[cfg(not(target_arch = "wasm32"))]
@@ -637,33 +765,39 @@ impl EmulatorApp {
         normal_boot: bool,
         quick_load: bool,
     ) {
+        if self.prompt_for_missing_configuration(&game, save.as_deref(), normal_boot) {
+            return;
+        }
         let prepared = (|| {
             game.manifest.validate()?;
-            let continuing =
-                save.is_some() || (!normal_boot && game.manifest.initial_state.is_some());
-            let configuration_id = if continuing
-                && self
-                    .player
-                    .active_game
-                    .as_ref()
-                    .is_some_and(|active| active.same_entry(&game))
-            {
-                self.player
-                    .active_configuration
-                    .as_ref()
-                    .map_or(&game.manifest.configuration, |active| &active.id)
-            } else {
-                &game.manifest.configuration
-            };
-            let configuration = self
-                .player
-                .catalog
-                .configurations
-                .iter()
-                .find(|c| &c.id == configuration_id)
-                .cloned()
-                .ok_or("Select an existing named configuration for this game")?;
-            self.player.catalog.validate(&configuration)?;
+            let (configuration, mappings, library_root) =
+                if self.continuing_game(&game, save.is_some(), normal_boot) {
+                    (
+                        self.player
+                            .active_configuration
+                            .as_ref()
+                            .ok_or("The active game has no committed controls")?,
+                        &self.player.active_mappings,
+                        &self.player.active_library_root,
+                    )
+                } else {
+                    if !self.player.library_available() || !self.player.library_contains(&game) {
+                        return Err(
+                            "Open this game's library in Configurations before starting it".into(),
+                        );
+                    }
+                    (
+                        self.player
+                            .catalog
+                            .configurations
+                            .iter()
+                            .find(|configuration| configuration.id == game.manifest.configuration)
+                            .ok_or("Configuration missing")?,
+                        &self.player.catalog.mappings,
+                        &self.player.library_root,
+                    )
+                };
+            configuration.validate(mappings)?;
             self.host_sources_available(&configuration.controls)?;
             let state_path = save.or_else(|| {
                 if normal_boot {
@@ -739,9 +873,10 @@ impl EmulatorApp {
                         media[drive] = Some(bytes.clone());
                     }
                 }
-                let rom = std::fs::read(&configuration.launch.rom).map_err(|e| {
-                    format!("Select a readable Kickstart ROM in configuration: {e}")
-                })?;
+                let rom =
+                    std::fs::read(self.player.native_rom_path(configuration)?).map_err(|e| {
+                        format!("Select a readable Kickstart ROM in configuration: {e}")
+                    })?;
                 HostCommand::Launch {
                     setup: debugger::launch::MachineSetup {
                         config: config::A500Config::from_preset(
@@ -756,24 +891,126 @@ impl EmulatorApp {
                     association: association.clone(),
                 }
             };
-            Ok((command, configuration, disks, association))
+            Ok((
+                command,
+                configuration.clone(),
+                mappings.clone(),
+                library_root.clone(),
+                disks,
+                association,
+            ))
         })();
         match prepared {
-            Ok((command, configuration, disks, association)) => {
+            Ok((command, configuration, mappings, library_root, disks, association)) => {
                 self.player.busy = true;
                 self.host.queue_effect(
                     command,
                     HostEffect::Player(PlayerEffect::Launch {
                         configuration,
+                        mappings,
                         disks,
                         association,
                         game: Some(game),
+                        library_root,
                     }),
                 );
             }
             Err(error) => {
                 self.file_error = Some(error);
                 self.player.initial_error = true;
+            }
+        }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn continuing_game(
+        &self,
+        game: &crate::game_library::LibraryGame,
+        has_save: bool,
+        normal_boot: bool,
+    ) -> bool {
+        (has_save || (!normal_boot && game.manifest.initial_state.is_some()))
+            && self
+                .player
+                .active_game
+                .as_ref()
+                .is_some_and(|active| active.same_entry(game))
+            && self.player.active_configuration.is_some()
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn prompt_for_missing_configuration(
+        &mut self,
+        game: &crate::game_library::LibraryGame,
+        save: Option<&std::path::Path>,
+        normal_boot: bool,
+    ) -> bool {
+        if !self.player.library_available()
+            || !self.player.library_contains(game)
+            || self.continuing_game(game, save.is_some(), normal_boot)
+            || self
+                .player
+                .catalog
+                .configurations
+                .iter()
+                .any(|configuration| configuration.id == game.manifest.configuration)
+        {
+            return false;
+        }
+        self.player.missing_configuration = Some(MissingConfiguration {
+            game: game.clone(),
+            save: save.map(std::path::Path::to_path_buf),
+            normal_boot,
+            replacement: String::new(),
+            error: None,
+        });
+        true
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) fn repair_game_configuration(&mut self) {
+        let Some(mut repair) = self.player.missing_configuration.take() else {
+            return;
+        };
+        let result = if self.player.library_available()
+            && self.player.library_contains(&repair.game)
+            && self
+                .player
+                .catalog
+                .configurations
+                .iter()
+                .any(|configuration| configuration.id == repair.replacement)
+        {
+            crate::game_library::replace_configuration(&repair.game, &repair.replacement)
+        } else {
+            Err("Choose an existing configuration from this game's library".into())
+        };
+        match result {
+            Ok(game) => {
+                if let Some(entry) = self
+                    .player
+                    .library
+                    .games
+                    .iter_mut()
+                    .find(|entry| entry.same_entry(&game))
+                {
+                    entry
+                        .manifest
+                        .configuration
+                        .clone_from(&game.manifest.configuration);
+                }
+                self.file_error = None;
+                self.request_player_launch(PendingLaunch::Library {
+                    game,
+                    save: repair.save,
+                    normal_boot: repair.normal_boot,
+                });
+            }
+            Err(error) => {
+                repair.error = Some(format!(
+                    "Could not save the configuration reference: {error}"
+                ));
+                self.player.missing_configuration = Some(repair);
             }
         }
     }

@@ -65,17 +65,23 @@ impl EmulatorApp {
             self.player.rom = None;
         }
         let Some(configuration) = self.player.catalog.selected().cloned() else {
+            #[cfg(not(target_arch = "wasm32"))]
+            ui.label("Choose a library or create a configuration in Configurations.");
             return;
         };
         ui.horizontal_wrapped(|ui| {
             if ui.button("Select Kickstart...").clicked() {
                 self.open_setup_asset(None);
             }
-            ui.label(if configuration.launch.rom.is_empty() {
-                "Kickstart not selected"
-            } else {
-                &configuration.launch.rom
-            });
+            let stored_rom =
+                (!configuration.launch.rom.is_empty()).then_some(configuration.launch.rom.as_str());
+            #[cfg(not(target_arch = "wasm32"))]
+            let stored_rom = self
+                .player
+                .selected_rom(&configuration)
+                .and(self.player.rom_name.as_deref())
+                .or(stored_rom);
+            ui.label(stored_rom.unwrap_or("Kickstart not selected"));
             #[cfg(target_arch = "wasm32")]
             if self.player.selected_rom(&configuration).is_none() {
                 ui.label("Select the ROM again for this session");
@@ -133,6 +139,56 @@ impl EmulatorApp {
             }
         } else if keep {
             self.player.pending_launch = None;
+        }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) fn render_missing_configuration(&mut self, ctx: &egui::Context) {
+        let Some(repair) = &mut self.player.missing_configuration else {
+            return;
+        };
+        let mut save = false;
+        let mut cancel = false;
+        let mut configure = false;
+        let dialog =
+            egui::Modal::new(egui::Id::new("missing-game-configuration")).show(ctx, |ui| {
+                ui.set_max_width((ctx.screen_rect().width() - 40.0).min(430.0));
+                ui.heading("Configuration missing");
+                ui.label(format!(
+                    "{} needs an existing configuration from this library.",
+                    repair.game.manifest.title
+                ));
+                if self.player.catalog.configurations.is_empty() {
+                    ui.label("Create a configuration for this library before starting the game.");
+                    configure = ui.button("Open Configurations").clicked();
+                } else {
+                    choose_configuration(
+                        ui,
+                        "Game configuration",
+                        &mut repair.replacement,
+                        self.player.catalog.configurations.iter(),
+                    );
+                }
+                if let Some(error) = &repair.error {
+                    ui.colored_label(ui.visuals().error_fg_color, error);
+                }
+                ui.horizontal_wrapped(|ui| {
+                    save = ui
+                        .add_enabled(
+                            !repair.replacement.is_empty(),
+                            egui::Button::new("Save reference and continue"),
+                        )
+                        .clicked();
+                    cancel = ui.button("Cancel").clicked();
+                });
+            });
+        if configure {
+            self.player.missing_configuration = None;
+            self.navigate_player(PlayerScreen::Configuration);
+        } else if cancel || dialog.should_close() {
+            self.player.missing_configuration = None;
+        } else if save {
+            self.repair_game_configuration();
         }
     }
 
@@ -293,21 +349,23 @@ impl EmulatorApp {
             return;
         }
         ui.heading("Game library");
+        let available = self.player.library_available();
         ui.horizontal_wrapped(|ui| {
-            if ui.button("Choose library directory...").clicked() {
-                if let Some(path) = rfd::FileDialog::new().pick_folder() {
-                    self.player.catalog.library_root = path.to_string_lossy().into_owned();
-                    self.player.settings_dirty = true;
-                    self.refresh_library();
-                }
-            }
-            if ui.button("Refresh").clicked() {
+            if ui
+                .add_enabled(
+                    self.player.library_root.is_some(),
+                    egui::Button::new("Refresh"),
+                )
+                .clicked()
+            {
+                self.reload_library_catalog();
                 self.refresh_library();
             }
             if ui
                 .add_enabled(
                     !self.player.busy
-                        && std::path::Path::new(&self.player.catalog.library_root).is_dir(),
+                        && available
+                        && !self.player.catalog.configurations.is_empty(),
                     egui::Button::new("Add game"),
                 )
                 .on_hover_text(
@@ -318,7 +376,14 @@ impl EmulatorApp {
                 self.open_library_editor(None);
             }
         });
-        ui.label(&self.player.catalog.library_root);
+        if let Some(error) = &self.player.library_error {
+            ui.colored_label(ui.visuals().error_fg_color, error);
+        }
+        if !available {
+            ui.label("Choose an accessible library directory in Configurations.");
+        } else if self.player.catalog.configurations.is_empty() {
+            ui.label("Create a profile in Configurations before adding games.");
+        }
         for error in &self.player.library.errors {
             ui.colored_label(ui.visuals().error_fg_color, error);
         }
@@ -340,10 +405,6 @@ impl EmulatorApp {
         });
         if selected != self.player.selected_game {
             self.player.selected_game = selected;
-            if let Some(game) = selected.and_then(|i| self.player.library.games.get(i)) {
-                self.player.catalog.selected = game.manifest.configuration.clone();
-                self.player.settings_dirty = true;
-            }
             self.player.saves.clear();
             self.refresh_selected_saves();
         }
@@ -357,7 +418,10 @@ impl EmulatorApp {
         ui.separator();
         ui.heading(&game.manifest.title);
         if ui
-            .add_enabled(!self.player.busy, egui::Button::new("Edit game"))
+            .add_enabled(
+                available && !self.player.busy,
+                egui::Button::new("Edit game"),
+            )
             .on_hover_text(
                 "Change this game's name, folder, description, configuration or disk list",
             )
@@ -380,12 +444,15 @@ impl EmulatorApp {
             .configurations
             .iter()
             .find(|configuration| configuration.id == game.manifest.configuration)
-            .map_or("Missing configuration", |configuration| {
+            .map_or("Configuration missing", |configuration| {
                 configuration.name.as_str()
             });
         ui.label(format!("Configuration: {configuration}"));
         if ui
-            .add_enabled(!self.player.busy, egui::Button::new("Start game"))
+            .add_enabled(
+                available && !self.player.busy,
+                egui::Button::new("Start game"),
+            )
             .clicked()
         {
             self.request_player_launch(crate::player::PendingLaunch::Library {
@@ -394,7 +461,14 @@ impl EmulatorApp {
                 normal_boot: false,
             });
         }
-        if self.player.initial_error && ui.button("Boot normally without initial state").clicked() {
+        if self.player.initial_error
+            && ui
+                .add_enabled(
+                    available && !self.player.busy,
+                    egui::Button::new("Boot normally without initial state"),
+                )
+                .clicked()
+        {
             self.request_player_launch(crate::player::PendingLaunch::Library {
                 game,
                 save: None,
@@ -425,10 +499,13 @@ impl EmulatorApp {
             ui.horizontal(|ui| {
                 preview(ui, ("save", &save.path), &save.header.screenshot_png, 110.0);
                 if ui
-                    .button(format!(
-                        "Continue - {}",
-                        crate::host_clock::format_utc(save.header.timestamp)
-                    ))
+                    .add_enabled(
+                        active || self.player.library_available(),
+                        egui::Button::new(format!(
+                            "Continue - {}",
+                            crate::host_clock::format_utc(save.header.timestamp)
+                        )),
+                    )
                     .clicked()
                 {
                     load = Some(save.path.clone());
@@ -530,6 +607,29 @@ pub fn configuration_selector(
                     configuration.id.clone(),
                     &configuration.name,
                 );
+            }
+        });
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) fn choose_configuration<'a>(
+    ui: &mut egui::Ui,
+    label: &'static str,
+    selected: &mut String,
+    choices: impl Iterator<Item = &'a crate::player_config::NamedConfiguration> + Clone,
+) {
+    let name = choices
+        .clone()
+        .find(|configuration| configuration.id == *selected)
+        .map_or("Choose a configuration", |configuration| {
+            configuration.name.as_str()
+        });
+    egui::ComboBox::new(label, label)
+        .selected_text(name)
+        .truncate()
+        .show_ui(ui, |ui| {
+            for configuration in choices {
+                ui.selectable_value(selected, configuration.id.clone(), &configuration.name);
             }
         });
 }

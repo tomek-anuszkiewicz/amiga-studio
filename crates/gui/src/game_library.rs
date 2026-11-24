@@ -28,6 +28,7 @@ impl GameDisk {
 pub struct GameManifest {
     pub id: String,
     pub title: String,
+    #[serde(default)]
     pub configuration: String,
     pub disks: Vec<GameDisk>,
     pub mounted: [Option<String>; 4],
@@ -130,12 +131,23 @@ impl GameLibrary {
         for entry in entries {
             let entry = entry.map_err(|e| e.to_string())?;
             let directory = entry.path();
-            if !directory.is_dir() {
+            if !entry
+                .file_type()
+                .map_err(|error| error.to_string())?
+                .is_dir()
+            {
                 continue;
             }
             let manifest_path = directory.join("game.json");
-            if !manifest_path.is_file() {
-                continue;
+            match manifest_path.try_exists() {
+                Ok(false) => continue,
+                Ok(true) => {}
+                Err(error) => {
+                    library
+                        .errors
+                        .push(format!("{}: {error}", manifest_path.display()));
+                    continue;
+                }
             }
             let loaded = load_game(&directory).and_then(|game| {
                 if library
@@ -323,9 +335,33 @@ pub fn write_manifest(directory: &Path, bytes: &[u8]) -> Result<(), String> {
         .create_new(true)
         .open(&pending)
         .map_err(|e| e.to_string())?;
-    file.write_all(bytes)
-        .and_then(|_| file.sync_all())
-        .map_err(|e| e.to_string())?;
+    let result = file.write_all(bytes).and_then(|_| file.sync_all());
     drop(file);
-    std::fs::rename(pending, directory.join("game.json")).map_err(|e| e.to_string())
+    let result = result.and_then(|()| std::fs::rename(&pending, directory.join("game.json")));
+    if result.is_err() {
+        let _ = std::fs::remove_file(pending);
+    }
+    result.map_err(|e| e.to_string())
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) fn replace_configuration(
+    game: &LibraryGame,
+    replacement: &str,
+) -> Result<LibraryGame, String> {
+    let path = game.directory.join("game.json");
+    let before = std::fs::read(&path).map_err(|error| error.to_string())?;
+    let manifest: GameManifest =
+        serde_json::from_slice(&before).map_err(|error| error.to_string())?;
+    if manifest != game.manifest {
+        return Err("The game manifest changed on disk. Refresh the library and try again.".into());
+    }
+    let mut document: serde_json::Value =
+        serde_json::from_slice(&before).map_err(|error| error.to_string())?;
+    document["configuration"] = replacement.into();
+    let updated = serde_json::to_vec_pretty(&document).map_err(|error| error.to_string())?;
+    write_manifest(&game.directory, &updated)?;
+    let mut game = game.clone();
+    game.manifest.configuration = replacement.into();
+    Ok(game)
 }

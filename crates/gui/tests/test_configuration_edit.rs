@@ -20,12 +20,15 @@ fn editor() -> Harness<'static, EmulatorApp> {
 
 fn editor_with_session(session: Box<debugger::DebuggerSession>) -> Harness<'static, EmulatorApp> {
     let mut app = EmulatorApp::with_session(session);
-    app.player.active_configuration = Some(NamedConfiguration::default());
+    let library = tempfile::tempdir().unwrap();
+    app.player.library_root = Some(library.path().to_path_buf());
+    app.player.activate_selected_configuration();
     app.navigate_player(PlayerScreen::Configuration);
     let mut h = Harness::builder()
         .with_size(egui::vec2(480.0, 640.0))
         .build_state(
-            |ctx, app: &mut EmulatorApp| {
+            move |ctx, app: &mut EmulatorApp| {
+                let _library = &library;
                 common::keyboard::inject_taps(ctx, app.host.status.generation);
                 app.update_ui(ctx)
             },
@@ -165,6 +168,7 @@ fn invalid_reusable_mapping_cannot_publish_even_when_no_profile_uses_it() {
 
 fn unavailable_controller_navigation(discard: bool) {
     let mut h = editor();
+    h.state_mut().cancel_configuration_edit();
     let source = InputSource::Gamepad {
         identity: "lost-controller".into(),
         mapping: "arrows".into(),
@@ -180,17 +184,9 @@ fn unavailable_controller_navigation(discard: bool) {
     h.state_mut().player.catalog.configurations[0]
         .controls
         .ports[1]
-        .source = source.clone();
-    h.state_mut()
-        .player
-        .editor
-        .as_mut()
-        .unwrap()
-        .catalog
-        .configurations[0]
-        .controls
-        .ports[1]
         .source = source;
+    h.state_mut().navigate_player(PlayerScreen::Configuration);
+    common::settle_harness(&mut h);
     let generation = h.state().host.status.generation;
     let machine = common::snapshot(h.state_mut());
     if discard {
@@ -664,7 +660,9 @@ fn input_contention_defers_draft_publication_until_sender_recovers() {
     // holding the mailbox in its callback cannot lock the GUI context itself.
     let owner_context = egui::Context::default();
     let mut app = EmulatorApp::with_session(Box::new(debugger::DebuggerSession::new()));
-    app.player.active_configuration = Some(NamedConfiguration::default());
+    let library = tempfile::tempdir().unwrap();
+    app.player.library_root = Some(library.path().to_path_buf());
+    app.player.activate_selected_configuration();
     app.navigate_player(PlayerScreen::Configuration);
     common::settle(&mut app, &owner_context);
     let mut h = Harness::builder()

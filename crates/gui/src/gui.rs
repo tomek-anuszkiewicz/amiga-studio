@@ -7,6 +7,8 @@
 pub mod app;
 pub mod app_host;
 mod app_lifecycle;
+#[cfg(not(target_arch = "wasm32"))]
+mod configuration_delete;
 pub mod configuration_edit;
 mod configuration_view;
 pub mod file_actions;
@@ -26,6 +28,8 @@ pub mod input_mapping;
 mod inspection;
 pub mod keyboard_input;
 pub mod layout;
+#[cfg(not(target_arch = "wasm32"))]
+mod library_catalog;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod library_edit;
 #[cfg(not(target_arch = "wasm32"))]

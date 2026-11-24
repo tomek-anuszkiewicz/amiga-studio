@@ -5,10 +5,25 @@ use crate::host_commands::{HostCommand, HostValue};
 use crate::player::PlayerScreen;
 use crate::player_config::ConfigurationCatalog;
 use crate::{EmulatorApp, ViewMode};
+#[cfg(not(target_arch = "wasm32"))]
+use std::path::PathBuf;
 
 #[derive(Debug)]
 pub struct ConfigurationEdit {
     pub catalog: ConfigurationCatalog,
+    baseline: ConfigurationCatalog,
+    #[cfg(not(target_arch = "wasm32"))]
+    pub library_root: Option<PathBuf>,
+    #[cfg(not(target_arch = "wasm32"))]
+    source: Option<Vec<u8>>,
+    #[cfg(not(target_arch = "wasm32"))]
+    write: Option<crate::library_catalog::CatalogWrite>,
+    #[cfg(not(target_arch = "wasm32"))]
+    owner_applied: bool,
+    #[cfg(not(target_arch = "wasm32"))]
+    rollback_error: Option<String>,
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) deletion: Option<crate::configuration_delete::ConfigurationDeletion>,
     origin: PlayerScreen,
     origin_mode: ViewMode,
     pub(crate) destination: Option<PlayerScreen>,
@@ -67,6 +82,8 @@ impl EmulatorApp {
             .as_ref()
             .is_none_or(|editor| editor.destination.is_none() || editor.saving)
         {
+            #[cfg(not(target_arch = "wasm32"))]
+            self.render_configuration_deletion(ctx);
             return;
         }
         let mut save = false;
@@ -97,6 +114,19 @@ impl EmulatorApp {
     pub(crate) fn begin_configuration_edit(&mut self) {
         self.player.editor = Some(ConfigurationEdit {
             catalog: self.player.catalog.clone(),
+            baseline: self.player.catalog.clone(),
+            #[cfg(not(target_arch = "wasm32"))]
+            library_root: self.player.library_root.clone(),
+            #[cfg(not(target_arch = "wasm32"))]
+            source: self.player.catalog_source.clone(),
+            #[cfg(not(target_arch = "wasm32"))]
+            write: None,
+            #[cfg(not(target_arch = "wasm32"))]
+            owner_applied: false,
+            #[cfg(not(target_arch = "wasm32"))]
+            rollback_error: None,
+            #[cfg(not(target_arch = "wasm32"))]
+            deletion: None,
             origin: self.player.screen,
             origin_mode: self.view_mode,
             destination: None,
@@ -117,7 +147,10 @@ impl EmulatorApp {
         if screen == PlayerScreen::Configuration {
             return false;
         }
-        if editor.catalog != self.player.catalog {
+        let dirty = editor.catalog != editor.baseline;
+        #[cfg(not(target_arch = "wasm32"))]
+        let dirty = dirty || editor.library_root != self.player.library_root;
+        if dirty {
             editor.destination = Some(screen);
             return true;
         }
@@ -157,6 +190,16 @@ impl EmulatorApp {
         // A failed session-entry validation keeps a clean editor with its
         // original Cancel destination, rather than opening an editor from itself.
         editor.catalog = self.player.catalog.clone();
+        editor.baseline = self.player.catalog.clone();
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            editor.library_root = self.player.library_root.clone();
+            editor.source = self.player.catalog_source.clone();
+            editor.write = None;
+            editor.owner_applied = false;
+            editor.rollback_error = None;
+            editor.deletion = None;
+        }
         editor.destination = None;
         editor.destination_developer = false;
         editor.saving = false;
@@ -173,15 +216,25 @@ impl EmulatorApp {
         if editor.saving {
             return;
         }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            if editor.library_root != self.player.library_root {
+                self.save_library_root_edit();
+                return;
+            }
+            if !crate::library_catalog::same_profiles(&editor.catalog, &editor.baseline)
+                && !self.player.library_available()
+            {
+                self.configuration_error(
+                    "Choose an accessible library directory before saving profiles".into(),
+                );
+                return;
+            }
+        }
+        let active = self.configuration_being_edited();
         let validation = (|| {
             editor.catalog.validate_all()?;
-            if let Some(active) = &self.player.active_configuration {
-                let configuration = editor
-                    .catalog
-                    .configurations
-                    .iter()
-                    .find(|configuration| configuration.id == active.id)
-                    .ok_or("The active input configuration is missing")?;
+            if let Some(configuration) = active {
                 self.host_sources_available(&configuration.controls)?;
             }
             if self.host.status.running || !self.host.can_edit() {
@@ -193,9 +246,44 @@ impl EmulatorApp {
             Ok(())
         })();
         if let Err(error) = validation {
-            if let Some(editor) = &mut self.player.editor {
-                editor.error = Some(error);
+            self.configuration_error(error);
+            return;
+        }
+        let ports = active
+            .filter(|configuration| {
+                self.player
+                    .active_configuration
+                    .as_ref()
+                    .is_some_and(|active| active.controls != configuration.controls)
+                    || self.player.active_mappings != editor.catalog.mappings
+            })
+            .map(|configuration| configuration.controls.ports.each_ref().map(|p| p.device));
+        #[cfg(not(target_arch = "wasm32"))]
+        let write = if !crate::library_catalog::same_profiles(&editor.catalog, &editor.baseline) {
+            let Some(root) = &self.player.library_root else {
+                return;
+            };
+            match crate::library_catalog::CatalogWrite::prepare(
+                root,
+                editor.source.as_deref(),
+                &editor.catalog,
+            ) {
+                Ok(write) => Some(write),
+                Err(error) => {
+                    self.configuration_error(format!(
+                        "Could not prepare configuration save: {error}"
+                    ));
+                    return;
+                }
             }
+        } else {
+            None
+        };
+        #[cfg(not(target_arch = "wasm32"))]
+        if editor.source != self.player.catalog_source {
+            self.configuration_error(
+                "Configurations changed on disk. Reopen Configurations before saving.".into(),
+            );
             return;
         }
         let Some(editor) = &mut self.player.editor else {
@@ -203,28 +291,13 @@ impl EmulatorApp {
         };
         editor.error = None;
         editor.saving = true;
-        let controls = self
-            .player
-            .active_configuration
-            .as_ref()
-            .and_then(|active| {
-                editor
-                    .catalog
-                    .configurations
-                    .iter()
-                    .find(|c| c.id == active.id)
-            });
-        if let Some(configuration) = controls.filter(|configuration| {
-            self.player
-                .active_configuration
-                .as_ref()
-                .is_some_and(|active| active.controls != configuration.controls)
-                || self.player.catalog.mappings != editor.catalog.mappings
-        }) {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            editor.write = write;
+        }
+        if let Some(ports) = ports {
             self.host.queue_effect(
-                HostCommand::ReconfigurePorts(
-                    configuration.controls.ports.each_ref().map(|p| p.device),
-                ),
+                HostCommand::ReconfigurePorts(ports),
                 HostEffect::Configuration,
             );
         } else {
@@ -234,11 +307,32 @@ impl EmulatorApp {
 
     pub(crate) fn complete_configuration_save(&mut self, result: Result<HostValue, String>) {
         if let Some(editor) = &mut self.player.editor {
+            #[cfg(not(target_arch = "wasm32"))]
+            if let Some(error) = editor.rollback_error.take() {
+                editor.saving = false;
+                editor.error = Some(match result {
+                    Ok(_) => error,
+                    Err(owner) => {
+                        format!("{error}. Previous machine ports could not be restored: {owner}")
+                    }
+                });
+                return;
+            }
             match result {
-                Ok(_) => editor.ready = true,
+                Ok(_) => {
+                    editor.ready = true;
+                    #[cfg(not(target_arch = "wasm32"))]
+                    {
+                        editor.owner_applied = true;
+                    }
+                }
                 Err(error) => {
                     editor.saving = false;
                     editor.error = Some(error);
+                    #[cfg(not(target_arch = "wasm32"))]
+                    {
+                        editor.write = None;
+                    }
                 }
             }
         }
@@ -250,7 +344,16 @@ impl EmulatorApp {
                 if editor.saving {
                     editor.saving = false;
                     editor.ready = false;
-                    editor.error = Some("The machine owner is unavailable".into());
+                    let error = "The machine owner is unavailable".to_string();
+                    #[cfg(not(target_arch = "wasm32"))]
+                    let error = {
+                        editor.write = None;
+                        editor
+                            .rollback_error
+                            .take()
+                            .map_or(error.clone(), |save| format!("{save}. {error}"))
+                    };
+                    editor.error = Some(error);
                 }
             }
         }
@@ -260,40 +363,145 @@ impl EmulatorApp {
         if !editor.ready {
             return;
         }
-        if let Some(active) = &self.player.active_configuration {
-            if let Some(configuration) = editor
-                .catalog
-                .configurations
-                .iter()
-                .find(|c| c.id == active.id)
+        let active = self
+            .configuration_being_edited()
+            .map(|configuration| configuration.controls.clone());
+        if let (Some(controls), Some(runtime)) = (&active, &self.host.runtime) {
+            if !runtime
+                .input_sender()
+                .configure(controls, &editor.catalog.mappings)
             {
-                if let Some(runtime) = &self.host.runtime {
-                    if !runtime
-                        .input_sender()
-                        .configure(&configuration.controls, &editor.catalog.mappings)
-                    {
-                        ctx.request_repaint_after(crate::host_runtime::HOST_RETRY_DELAY);
-                        return;
-                    }
-                }
+                ctx.request_repaint_after(crate::host_runtime::HOST_RETRY_DELAY);
+                return;
             }
         }
         let Some(editor) = self.player.editor.take() else {
             return;
         };
-        if let Some(active) = &mut self.player.active_configuration {
-            if let Some(configuration) = editor
-                .catalog
-                .configurations
-                .iter()
-                .find(|c| c.id == active.id)
-            {
-                active.controls = configuration.controls.clone();
+        #[cfg(not(target_arch = "wasm32"))]
+        let mut editor = editor;
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Some(write) = editor.write.take() {
+            match write.publish() {
+                Ok(source) => self.player.catalog_source = Some(source),
+                Err(error) => {
+                    self.fail_catalog_publication(editor, error);
+                    return;
+                }
             }
+        }
+        if let (Some(controls), Some(active)) = (active, &mut self.player.active_configuration) {
+            active.controls = controls;
+            self.player
+                .active_mappings
+                .clone_from(&editor.catalog.mappings);
         }
         self.player.settings_dirty |= editor.catalog != self.player.catalog;
         self.player.catalog = editor.catalog.clone();
         self.file_error = None;
         self.finish_configuration_navigation(editor);
+    }
+
+    fn configuration_being_edited(&self) -> Option<&crate::player_config::NamedConfiguration> {
+        #[cfg(not(target_arch = "wasm32"))]
+        if self.player.active_library_root != self.player.library_root {
+            return None;
+        }
+        let active = self.player.active_configuration.as_ref()?;
+        let editor = self.player.editor.as_ref()?;
+        let baseline = editor
+            .baseline
+            .configurations
+            .iter()
+            .find(|cfg| cfg.id == active.id)?;
+        let configuration = editor
+            .catalog
+            .configurations
+            .iter()
+            .find(|cfg| cfg.id == active.id)?;
+        let matches_session = baseline.controls == active.controls
+            && editor.baseline.mappings == self.player.active_mappings;
+        let changed_controls = configuration.controls != baseline.controls
+            || editor.catalog.mappings != editor.baseline.mappings;
+        (matches_session || changed_controls).then_some(configuration)
+    }
+
+    pub(crate) fn configuration_error(&mut self, error: String) {
+        if let Some(editor) = &mut self.player.editor {
+            editor.error = Some(error);
+        }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn save_library_root_edit(&mut self) {
+        let Some(editor) = &self.player.editor else {
+            return;
+        };
+        if !crate::library_catalog::same_profiles(&editor.catalog, &editor.baseline) {
+            self.configuration_error("Finish or discard your profile edits before switching libraries. Use Keep current directory to save them here.".into());
+            return;
+        }
+        let target = editor
+            .library_root
+            .as_ref()
+            .ok_or_else(|| "Choose a library directory".to_string())
+            .and_then(|root| {
+                crate::library_catalog::open(root, "")
+                    .map(|(catalog, source)| (root.clone(), catalog, source))
+            });
+        match target {
+            Ok((root, catalog, source)) => {
+                if let Some(editor) = self.player.editor.take() {
+                    self.commit_library_root(root, catalog, source);
+                    self.finish_configuration_navigation(editor);
+                }
+            }
+            Err(error) => self.configuration_error(error),
+        }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn fail_catalog_publication(&mut self, mut editor: ConfigurationEdit, error: String) {
+        let error = format!("Could not save configurations: {error}");
+        editor.ready = false;
+        if let Some(active) = self
+            .player
+            .active_configuration
+            .as_ref()
+            .filter(|_| editor.owner_applied)
+        {
+            editor.rollback_error = Some(error);
+            self.host.queue_effect(
+                HostCommand::ReconfigurePorts(
+                    active.controls.ports.each_ref().map(|port| port.device),
+                ),
+                HostEffect::Configuration,
+            );
+        } else {
+            editor.saving = false;
+            editor.error = Some(error);
+        }
+        editor.owner_applied = false;
+        self.player.editor = Some(editor);
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) fn configuration_deletion_allowed(&self) -> bool {
+        self.player.library_available()
+            && self.player.editor.as_ref().is_some_and(|editor| {
+                !editor.saving
+                    && editor.library_root == self.player.library_root
+                    && crate::library_catalog::same_profiles(&editor.catalog, &editor.baseline)
+                    && editor.catalog.selected().is_some()
+            })
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) fn reload_configuration_draft(&mut self) {
+        if let Some(editor) = &mut self.player.editor {
+            editor.catalog = self.player.catalog.clone();
+            editor.baseline = self.player.catalog.clone();
+            editor.source = self.player.catalog_source.clone();
+        }
     }
 }

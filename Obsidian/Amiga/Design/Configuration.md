@@ -74,25 +74,37 @@ host must supply ROMs and disk images as external byte slices (`&[u8]`).
 
 The frontend combines one of the three presets with a ROM selection, four drive
 connection choices and two independent game-port devices. The user chooses
-peripheral attachments separately from memory and chipset. Each global
+peripheral attachments separately from memory and chipset. Each named
 configuration has a stable ID, an editable name and references to reusable
 keyboard and controller mappings. Renaming the configuration preserves its game
 associations. The scope excludes per-game inheritance and hardware overrides.
-The desktop frontend saves its settings on the host. The browser frontend
-saves settings in browser storage without caching the ROM or disk contents.
-When the user reopens the browser, they must select any unavailable assets
-again.
+
+On desktop, each library's root contains its catalog of named configurations
+and mappings. A library configuration refers to a Kickstart file by its path
+relative to that root. A library copy carries those profiles and managed assets
+with it. The current user's application storage holds the selected root,
+active editor selection and other host preferences. An accessible library
+without a catalog starts with the built-in profile and mapping. If a catalog
+exists and cannot be read or validated, the desktop reports the problem and
+protects its contents. On first upgrade, the desktop transfers the previous
+native catalog into its previously selected library, preserving all IDs. It
+keeps an exact backup of the old settings and reports any conflict or
+unavailable Kickstart that prevents the transfer.
+
+The browser frontend saves named settings in browser storage. When the user
+reopens the browser, they must select any unavailable ROM or disk bytes again.
 
 The user edits configurations in the [GUI](Application/GUI.md), which also
 validates their launch choices. The saved machine hardware, ROM and drive
 progress govern restoration. Launch choices are independent of game-port
 attachments and host input settings. The GUI applies edits to launch choices
 only on an explicit launch. The user can still continue the existing machine.
-The active session keeps its named configuration identity when the user selects
-another profile for a future launch. After each player load, the active session
-uses its committed controls to determine port attachments and host mappings,
-even if the captured device types differ. Host paths, controller identities, mappings and
-presentation preferences stay outside the machine snapshot.
+The active session keeps its library and named configuration identity when the
+user selects another profile or library for a future launch. When loading into
+that session, the player uses its committed controls and mappings to determine
+port attachments and host input, even if the captured device types differ.
+Host paths, controller identities, mappings and presentation preferences stay
+outside the machine snapshot.
 
 ## 5. Deferred Peripheral Extension
 
