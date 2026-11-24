@@ -6,11 +6,12 @@ paragraph, state the claim, the conditions under which it can be ignored and
 the reason. Link the owning requirement where useful. Omit dates, conversation
 history and review verdicts.
 
-Match the current claim and the conditions under which the decision applies.
-A reused finding number is insufficient. Keep general workflow rules in their
-owning instructions and successfully repaired findings in their reports. An
-entry does not override its owning requirement or
-[protected verification](protected-verification.md#protected-verification).
+Use the shared [criteria for reporting findings](review-common.md#which-findings-to-report)
+for general questions about future changes, external file edits and test gaps.
+Keep repaired findings in their review reports. Match each project decision
+below by its subject and conditions. Its owning requirement and
+[protected verification](protected-verification.md#protected-verification)
+take precedence.
 
 ## RD-001 Configured role defaults in environment inventories
 
@@ -32,18 +33,13 @@ against the current working tree. Restoring the file changes the scan inputs.
 
 ## RD-003 Prepared and unchanged workflow environment
 
-The workflow assumes that the configuration for the activity-recording services
-already exists and is available, Git ignore rules stay the same, and archive
-destinations are ignored and untracked. Ignore findings that demand extra
-handling for starting a task without that configuration, or changes to a file's
-ignored or tracked status during the workflow. Also ignore scenarios in which
-an ignored archive directory contains
-a tracked or otherwise nonignored destination. This includes reusing an
-identical existing file without repeating its exact-path ignore check, and
-copying the same outputs again after Git ignore rules change. These scenarios
-fall outside the required operating conditions. The service-configuration
-assumption does not apply to ordinary
-[file preservation](../skills/TA-WF-Step-collect-task-records/SKILL.md).
+Task capture assumes that its service configuration exists and is available.
+Archive operations assume that Git ignore rules and tracking status stay
+unchanged and that each destination in the archive is ignored and untracked,
+including an existing file reused for an identical copy. Assess claims about
+capture and copying under those conditions. For ordinary
+[file preservation](../skills/TA-WF-Step-collect-task-records/SKILL.md)
+the service configuration is optional.
 
 ## RD-004 Effects of changing workflow tools
 
@@ -59,11 +55,3 @@ that appear during a later invocation.
 Review ordinary file paths across operating systems. Ignore findings that depend
 on symbolic links, hard links, junctions or equivalent filesystem aliases or
 redirection. Apply any explicit link-handling requirement in the assigned scope.
-
-## RD-006 Manual filesystem changes during application use
-
-Ignore findings that depend on a user manually editing, replacing, moving,
-renaming, or removing a file or directory outside the application while an
-active session or operation relies on it. The application may rely on the paths
-and data it obtained before that change. Apply any explicit requirement to
-handle external changes during the session or operation.

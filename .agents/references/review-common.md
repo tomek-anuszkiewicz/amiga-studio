@@ -33,18 +33,30 @@ Finding IDs identify findings within their original review. Assess each new clai
 on its evidence. Reviewers and challengers may propose an entry or amendment in
 their results. The main session records a decision only within authorized write scope.
 
-For each concrete issue, explain what triggers it, what should happen, what you
-observed and what consequence follows. Include the relevant location and
-supporting criterion. Preserve supplied finding IDs when reassessing them. If
-your probe forces a state, its result applies under the conditions it created.
-Trace a supported path that leads to the reported problem.
-Distinguish an observed failure from a hypothesis or missing evidence.
+## Which findings to report
 
-For workflow findings, identify the user action or step in the ordinary
-workflow that supplies the triggering input or creates the state. If the
-reviewer supplied that condition, describe what the probe showed under it.
-Before requesting or upholding a required repair, show how the assigned
-workflow reaches the condition or cite an explicit requirement that covers it.
+For a behavior defect, trace a supported action in the current code from its
+caller or workflow step to the incorrect result. State what should happen,
+what happens instead and who or what sees the difference. Cite the relevant
+source and distinguish a result established from code from one observed in a
+run. A rare failure qualifies when the current path can reach it. If an
+explicit requirement covers the case, cite it and show where the change falls
+short, even if no current caller exercises it.
+
+Give particular attention to silent errors. For a test or check that can pass
+with the wrong result, name the behavior it claims to verify, the incorrect
+result it would accept and the input or assertion that allows it. For an
+incomplete report, identify what it omits and how the omission can escape
+notice. Check whether another required check already detects the same error.
+
+A probe establishes what happens under the conditions it supplies. Omit a
+claim that depends solely on a future code change, an unsupported call or a
+departure from the normal procedure. This includes a user manually changing
+files or directories outside the application during an active operation,
+unless handling that change is required. When a future edit or skipped maintenance step
+would already cause the required checks to fail visibly, that failure is the
+expected protection. Report a present gap if those checks could accept a
+wrong result for supported use.
 
 ## Review after correction
 

@@ -25,8 +25,8 @@ even when the original finding came from another reviewer.
    unexecuted functions and source spans, and affected interactions. Separate
    pre-existing gaps, new gaps and measurement limits. Report missing coverage
    as a gap in the inputs. It leaves open whether a test protects the code.
-   Assess the assertions even when coverage shows execution. Flag unsupported
-   or unreachable paths separately.
+   Assess the assertions even when coverage shows execution. Explain any
+   unreachable paths that affect interpretation of the measurement.
 3. Check required gates, actual commands, exit status, output scope and freshness
    against this candidate. Failed, missing, interrupted or unrun checks cannot
    establish readiness. Check applicable protected-change approvals and do not
