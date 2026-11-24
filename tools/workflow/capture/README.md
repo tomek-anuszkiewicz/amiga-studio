@@ -87,13 +87,14 @@ history and a surviving authorized branch. For either retention route, record
 governing workflow, starting code, final code and reviewed candidate identities
 separately. For Git retention also record the original blob locators.
 
-## Confirm telemetry before work
+## Confirm telemetry for implementation
 
 Use the primary checkout for storage even when invoking the procedure from a
 linked worktree. Run the commands under the host account that can access Docker,
 the selected Git checkout and the Codex sessions. The primary checkout must
-ignore the entire archive and contain no tracked files there. Use unique task
-and execution IDs. For a new task, preserve those IDs in the plan after startup.
+ignore the entire archive and contain no tracked files there. Use the plan's
+task ID and a unique execution ID for each recording attempt. Retain the IDs
+with the execution context for the plan.
 
 ### Provision the shared services and configure Codex
 
@@ -333,12 +334,20 @@ original deadline still apply. Exit 1 reports a failed prerequisite, an archive
 error or an expired deadline. Resolve the reported cause and choose a fresh execution
 ID for a new attempt. Close any earlier open registration using the normal stop command.
 
-Require exit 0 and `status = confirmed` before planning or executing the task.
-Confirmation identifies a complete new Collector record from the initiating
-thread, with an event time strictly after registration. Select only records
-that ordinary activity in the active client produced. Keep the proof's archive
-path, byte range, record indexes, digest, event time and observation time with
-the registration receipt.
+Require exit 0 and `status = confirmed` before the first checkout preparation
+or implementation assignment in Implement Task. Planning can finish before
+registration. Confirmation identifies the task, execution and initiating thread
+and a complete new Collector record with an event time strictly after
+registration. Select only records that ordinary activity in the active client
+produced. Keep the proof's archive path, byte range, record indexes, digest,
+event time and observation time with the registration receipt.
+
+For a resume in the same initiating thread and open execution, reuse its
+successful proof. An open registration awaiting confirmation keeps its
+original deadline. Proof from another thread cannot confirm capture for the
+current initiating thread. Obtain applicable live confirmation before dependent
+work. On expiry, retain the failed attempt. A retry keeps the task ID and
+uses a fresh execution ID.
 
 An earlier file, native rollout, HTTP success or manually submitted sample
 provides diagnostic information. Mark manual OTLP requests with
@@ -380,7 +389,7 @@ python tools/workflow/capture/register.py start --project <primary> --task <task
 ```
 
 These historical and native-only selections remain valid for evidence
-collection. Ordinary task startup requires the fresh active-client proof
+collection. Implementation startup requires the fresh active-client proof
 above. Use the same OTLP/HTTP JSON endpoint in any dedicated CLI probe and
 preserve its `--json` output as bytes. The earlier dedicated pilot found
 identifiable spans and no identifiable metric points. Preserve the chosen

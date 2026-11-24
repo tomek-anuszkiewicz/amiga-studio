@@ -107,8 +107,9 @@ sample into the full suite.
 ## English vocabulary
 
 `check english` scans eligible tracked and nonignored new files. `check english
-files PATH...` uses the specified files. Both skip `.agent/tasks/` and the two
-Report Word Usage word lists. Each completed scan prints an `[INFO] English scan
+files PATH...` uses the specified files for diagnostics. A workflow English
+scan always uses the full eligible working tree. Both modes skip
+`.agent/tasks/` and the two Report Word Usage word lists. Each completed scan prints an `[INFO] English scan
 report` line naming its UTF-8 JSON report under `.agent/tmp/english/`. The path
 identifies this invocation and also appears in its command log. Use that path
 when reading results from concurrent runs.
@@ -119,8 +120,12 @@ when reading results from concurrent runs.
 | 1 | The scan found unknown words or rejected a proposed batch. |
 | 2 | A scan or verification error prevented a reliable result. An absent or invalid report also yields this status. |
 
-Aggregate checks continue to record English as a pass or failure. The report
-gives the scan `scope`, `requested_files`, `target_count`, `scanned_count`,
+`check all` runs the full English scan and records its pass or failure.
+A request to run `check all` includes the English operation in the main
+session. The session uses that invocation's scan report even on exit zero.
+[Workflow English checks](../../.agents/references/workflow-contract.md#workflow-english-checks)
+
+The report gives the scan `scope`, `requested_files`, `target_count`, `scanned_count`,
 `complete` and `exit_code`. Read all entries in `findings` together.
 
 - `unknown_word` gives the source path, line, word and preview.
@@ -145,14 +150,20 @@ differences, any deferred entries and `validation.accepted`. Acceptance requires
 complete evidence.
 An accepted batch can return 1 if it preserves unresolved unknowns.
 
-Use the [vocabulary optimization procedure](../../.agents/skills/TA-WF-Step-optimize-english-vocabulary/SKILL.md)
-for an explicitly selected cleanup. Reports are disposable and capture the
-inputs of one invocation.
+The checker and validator leave source files unchanged. Reports capture one
+invocation's inputs and remain disposable. The main session applies validated
+removals within the corrective English operation.
+[Correct English](../../.agents/skills/TA-WF-Step-correct-english/SKILL.md) ·
+[Validate and apply removals](../../.agents/skills/TA-WF-Step-optimize-english-vocabulary/SKILL.md#validate-and-apply-removals)
 
 ## Browser build verification
 
-Run `python tools/verification/verify.py check web` during changes to GUI code,
-workspace manifests or the browser build pipeline. Every `commit` profile selects
+For standalone implementation and master repairs that change GUI code,
+workspace manifests or the browser build pipeline, include
+`python tools/verification/verify.py check web`. During
+[Implement Task](../../.agents/skills/TA-WF-Main-implement-task/SKILL.md),
+run the applicable tests and defer standalone gates to the selected final
+verification. Every `commit` profile selects
 the same `WebAssembly build` gate after preflight and before coverage. The gate
 invokes `tools/web.ps1 build`, which processes assets through Trunk and uses the
 production shared memory flags. The launcher sets `CARGO_BUILD_WARNINGS=deny`,
@@ -434,7 +445,8 @@ saved-evidence protocol.
 
 ### Coverage-guided testing
 
-For an identified diagnostic need or an explicit coverage request, measure without completion gates:
+Use these commands for selected whole-package or workspace tests with coverage.
+They also support a diagnostic measurement without completion gates.
 
 ```powershell
 python tools/verification/verify.py test coverage crate denise
@@ -467,19 +479,20 @@ not every platform or conditional build. Code absent from instrumentation is not
 proven covered. The Markdown report identifies source locations; LLVM's summary
 counts remain authoritative because source spans are not the same as LLVM regions.
 
-Read `gaps.md` and inspect the corresponding production behavior and existing
-assertions. Before declaring a test missing, check whether an omitted suite
-already tests that behavior. Add or extend tests for gaps within the selected
-scope, following the
-[coverage criteria](../../.agents/references/testing-criteria.md#coverage-and-adequacy-assessment).
-Rerun coverage after test or production changes. Use only evidence from a
-successful run whose source and index remained unchanged. Review selected
-diagnostic coverage alongside the assertions during development. Review the
-final profile report after commit and integration on local master through
-[TA-WF-Main-verify-master](../../.agents/skills/TA-WF-Main-verify-master/SKILL.md).
-Report existing unrelated gaps separately. Do not suppress them or create a
-permanent coverage exception list. Execution coverage shows what ran in the instrumented code. Assertion quality,
-complete hardware scenarios and performance require other evidence.
+During [Implement Task](../../.agents/skills/TA-WF-Main-implement-task/SKILL.md),
+the instrumented command supplies test outcomes and any available reports. That
+stage defers assessment of coverage and assertions. For a selected standalone
+assessment or [Verify Master](../../.agents/skills/TA-WF-Main-verify-master/SKILL.md),
+read `gaps.md` with the corresponding production behavior and assertions.
+Check whether an omitted suite already tests the behavior before declaring a
+test missing. Use the [coverage criteria](../../.agents/references/testing-criteria.md#coverage-and-adequacy-assessment)
+to identify meaningful tests or stronger assertions within the approved scope.
+Report pre-existing unrelated gaps separately.
+
+Refresh the measurement after code or test changes when the selected
+assessment requires current evidence. Attribute results to the successful run
+and its source and index inputs. Execution coverage shows what code ran.
+Assertions, complete hardware scenarios and performance need their own evidence.
 
 ### Selection from changed inputs
 
@@ -498,8 +511,8 @@ separate suite; the retired workflow coordinator has no test suite.
 
 Scoped documentation review and metadata/link, semantic, language and diary work
 are selected separately. A successful profile does not assert that those operations
-ran. Use `check english` for a requested full language scan or `check english files
-<paths>` for selected files. Neither creates a sealed publication receipt.
+ran. A due English workflow uses `check english` for the full scan.
+`check english files <paths>` remains available as a diagnostic.
 
 ## 1. M68000 SingleStepTests (Generated Reference Verification)
 

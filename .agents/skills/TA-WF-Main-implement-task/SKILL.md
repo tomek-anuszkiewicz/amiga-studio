@@ -1,84 +1,82 @@
 ---
 name: TA-WF-Main-implement-task
-description: Implement a selected task plan with tests, independent review and challenged findings; allow two corrective passes with targeted reassessment and a final full review after repairs, leaving unresolved issues for manual decision.
+description: Execute an approved plan in the selected checkout, confirm live telemetry, implement the change and run applicable tests with up to two test-driven repairs.
 ---
 
-# Implement and review the selected task
+# Execute the selected plan
 
-Apply the [result contract](../../references/workflow-contract.md). This compound
-operation runs in the selected task worktree. Inputs: the plan, agreed scenarios,
-requirements, write scope, available execution context and any supplied limits.
+The main session prepares the execution, assigns implementation to
+`TA-implementer` and assigns applicable tests to `TA-test-runner`. Use the
+[subagent policy](../../../AGENTS.md#subagent-assignment-and-model-selection)
+for each assignment. Apply the [result contract](../../references/workflow-contract.md).
 
-The main session coordinates the operation. It assigns implementation and each
-corrective pass to `TA-implementer`. It assigns independent reviews, selected
-command runs and coverage measurements to the roles responsible for those jobs.
-Before each launch, the main session chooses the model and reasoning effort for
-that assignment. Follow the
-[subagent policy](../../../AGENTS.md#subagent-assignment-and-model-selection).
+## Prepare and assign the change
 
-Apply [vocabulary-only maintenance](../../references/workflow-contract.md#vocabulary-only-maintenance)
-at every stage, including a task consisting solely of such additions. It does not
-enter the verification/review steps or corrective-pass loop below. In mixed work,
-those steps still apply to the other selected changes.
+1. Identify the selected plan, task ID, approved revision and agreed scenarios.
+   Inspect the current Git checkout, branch and existing worktrees. Establish
+   the intended checkout and branch before writing. For a resume, use the
+   recorded checkout and branch unless the engineer selected another location.
+   Check the approved inputs and identify the last completed step and the next
+   unfinished step. Reuse approved scenarios, including attachments of older
+   plans. Resolve material ambiguities and missing behavior decisions before
+   the work that depends on them.
+2. Use [TA-WF-Step-register-execution](../TA-WF-Step-register-execution/SKILL.md)
+   against the primary checkout, including when implementation will run
+   elsewhere. Keep the plan's task ID, identify the actual initiating VS Code
+   thread and retain the execution's receipt and live confirmation. An execution
+   ID identifies one recording attempt. Require applicable proof before
+   checkout preparation or implementation. Follow the
+   [capture guide](../../../tools/workflow/capture/README.md#register-and-read-the-fresh-event)
+   for reuse in the same open execution and thread, pending confirmation,
+   expiry and retry. Report failed or missing confirmation with the task and
+   attempt preserved.
+3. For an isolated checkout that needs to be created, use
+   [TA-WF-Step-start-plan](../TA-WF-Step-start-plan/SKILL.md) with the selected
+   branch and base. The provisioning script copies the local assets. Place
+   the selected plan and required inputs at their corresponding relative
+   paths. In an authorized existing checkout, including primary `master`,
+   use the governing plan in place. Transfer only missing required inputs
+   and resolve conflicting copies before writing. Check the working plan
+   against the approved inputs before handoff. If preparation fails, report
+   the obstacle and preserve any partial checkout.
+4. In that checkout, assign [TA-WF-Step-implement-change](../TA-WF-Step-implement-change/SKILL.md)
+   to `TA-implementer` with the plan, agreed scenarios, checkout, branch,
+   relevant requirements and write scope. Identify this as an Implement Task
+   assignment. The implementer writes the assigned change, tests and necessary
+   documentation and inspects the diff. Use the same testing procedure in
+   existing and newly provisioned checkouts.
 
-1. Read the working plan and relevant requirements. Execute
-   [TA-WF-Step-implement-change](../TA-WF-Step-implement-change/SKILL.md) for the assigned code,
-   tests, necessary Design documentation and focused checks. Reuse its approved
-   repair/optimization modes only where they belong to the task.
-2. Run review round 1 through
-   [TA-WF-Step-review-code](../TA-WF-Step-review-code/SKILL.md) on the actual task changes and
-   affected interactions, providing requirements and actual check results. Select
-   all applicable reviewer assignments and retain their scopes for the final
-   review. Review is independent of the author and does not modify the files.
-   If coverage assessment is part of the assignment, give existing applicable
-   reports to the tests reviewer or have `TA-test-runner` collect the selected
-   scope through [TA-WF-Step-measure-coverage](../TA-WF-Step-measure-coverage/SKILL.md) first.
-   If the measurement is missing, report which coverage evidence is unavailable.
-   Assess whether a test case is absent using evidence about the tests themselves.
-3. Collect reviewer findings and reported test/verification failures with their
-   actual evidence. Run
-   [TA-WF-Step-challenge-findings](../TA-WF-Step-challenge-findings/SKILL.md) in a fresh
-   independent `TA-code-reviewer` context before selecting repairs. Preserve finding
-   IDs, upheld/rejected claims and missing evidence. A challenge verdict does not
-   turn a failed or missing required check into a pass.
-4. If round 1 and its challenge leave no required issues, finish without further
-   review rounds. Otherwise make up to two corrective passes for in-scope findings
-   and reproduced test/verification failures upheld by the challenge:
+## Run the applicable tests
 
-   - Make the first corrective pass through `TA-WF-Step-implement-change` and
-     repeat affected checks.
-   - Run review round 2 as a targeted reassessment through `TA-WF-Step-review-code`:
-     select only the round 1 reviewer assignments whose findings were upheld by
-     the challenge and selected for repair. Reassess their findings, corrections
-     and affected interactions in fresh independent contexts. If there are no
-     such assignments, assess the rerun checks without adding reviewer assignments.
-     Repeat step 3 on the resulting findings and test/verification failures.
-   - If that assessment leaves supported in-scope issues, make the second
-     corrective pass and repeat affected checks. Then proceed to the final review.
+1. Select the tests that apply to the approved change and give their commands
+   to `TA-test-runner`. Coordinate with the implementer to run each selected
+   suite once on the same inputs. For whole ordinary Rust packages or a
+   planned workspace run, use `python tools/verification/verify.py test coverage crate <name>`
+   or `test coverage workspace` as applicable. Use the normal entry point for a
+   selected harness, Python suite or expressly filtered test. Record an export
+   produced by the selected test command with its location. This stage schedules
+   only applicable tests and their same-run instrumentation. English checks,
+   separate coverage measurement or assessment, reviewer assignments,
+   challenges, aggregate profiles and standalone build or quality gates are
+   outside this stage.
+2. Collect the command, test scope, actual test outcomes and any interruption
+   or unrun work. Finish testing as soon as all applicable tests pass. If no
+   tests apply, explain why. If a run is blocked or a required outcome is
+   unavailable, report what is missing, the cause and any completed results.
+   An export failure after a recorded test pass is a tooling limitation.
+   Report both the actual command outcome and the test pass. A missing
+   outcome or an export failure alone supplies no failing test for a repair.
+3. For a failing in-scope test, give the implementer the failing observation,
+   expected result and relevant output. The implementer investigates and
+   repairs within the approved behavior, test scope and write scope. Give the
+   failed and affected tests back to the runner. Retain other results only
+   while their inputs still apply. Allow at most two corrective passes after
+   initial implementation. A new failure uses the remaining allowance. If the
+   failure persists after the second repair and rerun, is outside scope or
+   needs an unavailable prerequisite, return the evidence for the engineer's
+   decision.
 
-   The initial implementation and assessment do not count as a corrective pass.
-   New findings or failures do not reset the count. Ask the user to resolve
-   missing requirements, approve protected changes or decide whether to include
-   work outside the selected scope.
-   Corrective passes can include meaningful test cases for already approved
-   behavior based on the tests reviewer's coverage/assertion findings. Refresh a
-   selected coverage measurement when needed to assess the added tests against
-   the changed source.
-5. Whenever corrective work was needed after round 1, run final review round 3
-   through `TA-WF-Step-review-code` on the complete task change, including all
-   corrections and affected interactions. Include every round 1 reviewer
-   assignment, even those without findings, and any newly affected review scope.
-   Supply current check/coverage results and repeat step 3 on the final findings.
-   This full review is required even when round 2 found no remaining issues.
-   If required findings, failed checks or required evidence gaps remain, stop for
-   the user's manual decision. Do not start another corrective pass or review
-   round, even if only one corrective pass was used, or report the task as verified.
-6. Report the changed paths, tests and reviews that ran, challenge decisions,
-   completed review rounds and corrective passes, repairs and remaining work
-   in text and JSON. State when the user needs to decide how to proceed. Leave
-   source, tests and documentation as working files. Commit-time English checks
-   belong to the next selected commit operation, unless explicitly included
-   here. Ordinary task implementation does not require a diary entry.
-
-Stop before staging, commits, merge, worktree removal or final master verification.
-Do not synchronize master into the task branch as a review prerequisite.
+Return the changed paths, governing plan, checkout and branch, registration and
+proof locations, test outcomes, repairs and remaining work. Leave the changes
+unstaged. Implementation results describe the tests on the working files.
+Delivery and final verification require their own authorization.

@@ -10,7 +10,9 @@ Start with the approved change and test plans or explicitly assigned equivalent
 requirements, the candidate, the write scope, the relevant specifications and
 the focused checks. A repair may also include selected finding IDs and evidence.
 An optimization needs the selected candidate or a concrete account of how to
-save work, the original baseline and the measurement scope.
+save work, the original baseline and the measurement scope. The main session
+identifies whether the assignment comes from Implement Task, Verify Master
+or a standalone request.
 
 Apply [vocabulary-only maintenance](../../references/workflow-contract.md#vocabulary-only-maintenance)
 to justified word-list and exact-file literal additions. They do not trigger this
@@ -63,15 +65,21 @@ authored text or other verification configuration keep their normal requirements
    selected behavior or requirements affect them. Editorial changes alone do not
    require code changes. Run the assigned focused checks and review the diff
    against authorized scope.
-   Repeat checks only for changed inputs, failures or unresolved concerns. Use
-   `verify.py test python` to check Python contracts for affected owners and
-   shared inputs. Explicit directory selection serves diagnostics. For GUI,
-   workspace-manifest or browser-pipeline changes, include
-   `python tools/verification/verify.py check web`.
-   Keep the candidate stable during checks and isolate concurrent writable targets.
-4. Return changes, actual checks, findings and remaining work in text and JSON.
-   Distinguish implementation from executed verification. No completed-source
-   receipt or delivery declaration is required.
+   In [Implement Task](../TA-WF-Main-implement-task/SKILL.md), the designated
+   runner executes the selected tests. Inspect the changed files and diff, then
+   return them for that run. Use only the agreed scenarios and actual test
+   failures to guide work. Standalone build and quality gates, including
+   `check web`, belong outside this stage.
+   In standalone work and master repairs, use the assigned focused checks.
+   Repeat checks for changed inputs, failures or unresolved concerns. Use
+   `verify.py test python` for affected Python contracts and shared inputs.
+   Explicit directory selection serves diagnostics. For GUI, workspace-manifest
+   or browser-pipeline changes, include `python tools/verification/verify.py check web`.
+   Coordinate with any designated runner to keep the candidate stable, avoid
+   duplicate runs on the same inputs and isolate concurrent writable targets.
+4. Return changes, actual checks, findings and remaining work to the main
+   session under the shared result contract. Report any selected runs still
+   due from the designated runner.
 
 ## Selected repairs
 
@@ -83,9 +91,14 @@ that need to change. Use the [pruning procedure](references/pruning.md) for
 confirmed unused-code findings. A scanner hit needs corroborating evidence
 before you delete code or its tests.
 
-Repeat the original reproduction and relevant focused regressions. Preserve supplied
-finding IDs and report `repaired_pending_verification` until evidence verifies the
-expected behavior. Keep unselected, deferred and unresolved findings visible.
+Use the reported failing test as the original reproduction when its evidence
+establishes the failure. In Implement Task, return the change and original
+reproduction to the designated runner for the failed and affected tests.
+In standalone and master repairs, repeat the original reproduction and
+relevant focused regressions in coordination with the caller. Preserve
+supplied finding IDs and report `repaired_pending_verification` until evidence
+verifies the expected behavior. Keep unselected, deferred and unresolved
+findings visible.
 
 ## Selected optimizations
 

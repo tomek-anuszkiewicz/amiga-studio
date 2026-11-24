@@ -9,10 +9,17 @@ merge, push or delete.
 
 ## Inputs and outputs
 
-Each repository skill returns a concise explanation in the user's language and a
-JSON object following [the result schema](../../tools/workflow/result.schema.json).
-Use English in the JSON and any saved repository artifacts. The two forms describe
-the same outcome, including failures and unfinished work.
+Agents hand off their results to the main session using a concise account
+and an English JSON object following [the result schema](../../tools/workflow/result.schema.json).
+Keep the structured result available to tool consumers. When the engineer
+requests a saved result, write it in English to the agreed path.
+
+The main session reports the outcome, relevant checks and any failure or
+unfinished work to the engineer in plain language, using their language.
+Keep the reply consistent with the structured result and omit serialized JSON
+from every engineer-facing reply. Link to an existing saved result for the
+round when requested or useful. Include at most one clickable result link.
+Save a result file only when the assignment calls for one.
 
 Required fields:
 
@@ -32,9 +39,8 @@ file, behavior and consequence for each finding. Include useful output paths in
 check summaries without inventing file hashes, candidate seals or execution
 identities.
 
-Return JSON directly in the conversation unless the user or selected tool needs a
-saved result. A separate matching Markdown file, automatic renderer, validation
-command, round ledger and guidance record are unnecessary for this contract.
+The structured result needs no matching Markdown file, automatic renderer,
+validation command, round ledger or guidance record.
 The schema defines the format and leaves verification of claims and selection
 of the next step to the authorized work. Report missing inputs and stop the
 work that depends on them. Respect a round limit only when the assignment
@@ -76,16 +82,26 @@ outstanding work at the end; do not impose an automatic transition.
 Telemetry registration and execution archives use the separate
 [capture tools](../../tools/workflow/capture/README.md) when selected.
 
+### Workflow English checks
+
+A workflow English check scans the full eligible working tree. A request to run
+`verify.py check all` selects its English operation as part of the aggregate
+checks. The main session uses the full report from that
+invocation, including on exit zero, and completes the English operation
+without a separate request. The operation corrects authorized text in context,
+adds justified words or exact-file literal allowances, and applies validated
+removals in the same round. An explicit report-only request returns findings
+and candidate removals and leaves the inputs untouched.
+[Correct English](../skills/TA-WF-Step-correct-english/SKILL.md).
+
 ### Validated vocabulary removals
 
-When the engineer explicitly selects [vocabulary optimization](../skills/TA-WF-Step-optimize-english-vocabulary/SKILL.md),
-the assignee may remove the exact batch of declarations accepted by the read-only
-validator on complete repository evidence. The validator must show that the
-batch leaves the same unknown words at the same source occurrences. Recheck
-discovery and input contents before editing. Repeat validation when either changes.
-Run a full scan of the edited tree and compare the observed findings with the
-validated outcome. This vocabulary maintenance requires no emulator tests.
-
-Keep incidental removal candidates in the findings of the selected language
-operation. The [protected verification rules](protected-verification.md#protected-verification)
-govern all other removals and changes to the checker or its policy.
+Use the [vocabulary removal procedure](../skills/TA-WF-Step-optimize-english-vocabulary/SKILL.md#validate-and-apply-removals)
+in the same language operation. Authorization covers exactly the batch
+accepted by the read-only validator on fresh, complete repository evidence.
+The accepted batch must preserve the same unknown words at the same source
+occurrences. Recheck discovery and input contents before editing and repeat
+validation when they change. Compare one full post-edit scan with the accepted
+outcome. This maintenance requires no separate selection or emulator tests.
+The [protected verification rules](protected-verification.md#protected-verification)
+govern other removals and checker or policy changes.

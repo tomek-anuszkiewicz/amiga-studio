@@ -21,5 +21,6 @@ identity and always tell the user which plan governs the work. Report the
 checkout, branch, plan path, commands you ran and any partial failures.
 No source fingerprints, completion receipts or delivery declarations are required.
 
-Stop after task start. Do not implement, stage or commit unless included in the
-same assignment. Telemetry registration remains a separate selected operation.
+A standalone provisioning request ends with the checkout, branch and plan
+result. When Implement Task calls this skill, the main session supplies
+confirmed execution context and uses the prepared checkout for the assignment.

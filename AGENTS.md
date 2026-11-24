@@ -127,20 +127,28 @@ to provide them.
 ## User-Selected Operations
 
 The user chooses the outcome and scope in ordinary language or by naming a
-skill. The main session uses the request and the active task context to choose
-the relevant repository skill, reads it and coordinates the steps within the
-user's authorization. Use `TA-WF-Main-implement-task` to implement an existing
-task. Use the repair mode of `TA-WF-Step-implement-change` to fix identified
-errors in an active task. Use `TA-WF-Main-plan-change` to create or amend a plan.
-A request for an explanation or assessment authorizes inspection. For other
-operations, match the user's intent to the skill descriptions, allowing for
-wording that differs from these examples. Resolve any missing scope before
-starting work that depends on it.
+skill. The main session reads the selected skill and coordinates its steps.
+Running `verify.py check all` includes completing its English operation.
+[Workflow English checks](.agents/references/workflow-contract.md#workflow-english-checks)
 
-Follow the authorization the user gave when you apply a skill. Treat findings,
-recommendations and workflow completion as results. Start another operation or
-stage only when the user's authorization covers it. Commit, publish and clean
-up only within the scope authorized for each action.
+| Request | Main skill | Result |
+| --- | --- | --- |
+| Create or amend a plan | [TA-WF-Main-plan-change](.agents/skills/TA-WF-Main-plan-change/SKILL.md) | One plan with its test design |
+| Execute an approved plan | [TA-WF-Main-implement-task](.agents/skills/TA-WF-Main-implement-task/SKILL.md) | Unstaged changes and applicable test outcomes |
+| Commit and integrate selected work | [TA-WF-Main-commit-changes](.agents/skills/TA-WF-Main-commit-changes/SKILL.md) | Selected commits and actual local integration outcome |
+| Verify delivered work on master | [TA-WF-Main-verify-master](.agents/skills/TA-WF-Main-verify-master/SKILL.md) | Checks, review findings and any scoped corrective commits |
+
+An existing approved plan enters Implement Task directly. When the user
+authorizes implementation, local delivery and final verification together, run
+Implement Task, Commit Changes and Verify Master in that order. A request for
+one stage ends at its result. Required failures or missing evidence stop the work
+that depends on them.
+
+Use the repair mode of `TA-WF-Step-implement-change` to fix identified errors
+in an active task. A request for an explanation or assessment authorizes
+inspection. Match other requests to the relevant skill descriptions and resolve
+missing scope before dependent work. Findings and recommendations are results.
+Commit, publish and clean up only within the scope authorized for each action.
 
 If the user redirects work beyond its approved scope, behavior or acceptance
 criteria, identify which requirement changed and update any active plan to

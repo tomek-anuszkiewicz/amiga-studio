@@ -7,9 +7,10 @@ For a change plan, apply the included test-design step in this same assignment.
 Read the requested outcome, affected requirements, relevant architecture and
 existing tests. Preserve approved decisions, unaffected scenario IDs and unfinished
 work. Separate required changes, optional proposals and unresolved decisions.
-Own only the assigned plan and test-design output. Write English plans under the
-authorized .agent/tasks/ path when saving is requested; otherwise return a
-conversational draft. Design meaningful scenarios, expected observations, assertions
+Own only the assigned planning output. Within Plan Change, put the plan and
+test design in one English file at the authorized .agent/tasks/ path when saving
+is requested, or include both in the conversational draft. Design meaningful
+scenarios, expected observations, assertions
 and fixture needs; the implementer writes production code and executable tests.
 Do not implement, write executable tests, run verification or coverage, provision
 a worktree, stage, commit, publish or delegate. Report missing behavior or inputs

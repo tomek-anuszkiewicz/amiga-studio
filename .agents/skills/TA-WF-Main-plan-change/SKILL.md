@@ -34,14 +34,14 @@ design valid, retain it and report that assessment instead of duplicating it.
 The planning operation includes designing the tests. Writing and running the
 tests are later steps.
 
-Use a conversational draft unless saving a plan is requested. Save formal plans
-in English at the authorized `.agent/tasks/` path. Keep the test design in the
-plan or update its existing linked test-design document. For conversational drafts,
-include the scenarios in the draft. If you save the plan, report where it and the test design are stored. Return
-the summary, risks, decisions and any saved locations in text and JSON. List
-unresolved questions about behavior and missing authorization among the open
-decisions. Planning requires no hashed input record, round history,
-readiness record or telemetry startup.
+Use a conversational draft with the scenarios unless the user asks to save
+the plan. Save a plan and its test design together in one English file at the
+authorized `.agent/tasks/` path. On amendment, incorporate applicable scenarios
+from any older linked test-design document into the plan. Include expected
+observations and acceptance criteria in either format.
 
-Stop after the plan and its reconciled test design. Do not implement or create a
-worktree without that scope.
+The planner returns the summary, risks, decisions and any saved location to the
+main session. List unresolved behavior and missing authorization among the open
+decisions. The main session reports the result using the shared result contract.
+Planning ends with the plan and reconciled scenarios. It requires no telemetry
+registration, checkout provisioning or implementation.

@@ -52,7 +52,7 @@ closure; this skill does not run those tests or reviewers itself.
    preserve completed cleanup and leave removed resources removed.
 6. Return archive/report and retained plan locations, worktree/Git-registration,
    branch and plan outcomes, project graph command/result, semantic limits and
-   any partial failure in text and JSON. Preserve the archive and execution
+   any partial failure under the shared result contract. Preserve the archive and execution
    context. Resume only missing closure work after a partial failure; do not
    recreate removed resources or stop shared services.
 

@@ -1,109 +1,114 @@
 ---
 name: TA-WF-Main-verify-master
-description: Verify integrated local master with English checks, tests and challenged independent review; commit up to two corrective passes, use targeted reassessment and final full review after repairs, and return unresolved issues for manual decision.
+description: Verify delivered work on local master with full English scans, tests with coverage, required gates and challenged independent review, with up to two scoped corrective passes.
 ---
 
-# Verify the integrated change on master
+# Verify the delivered change on master
 
-Apply the [result contract](../../references/workflow-contract.md).
-Use the primary checkout on `master`, the delivered change scope and
-requirements, the requested test selection and the available task and plan
-context. Run this assessment before task closure, while the working plan and
-task resources are still available for the final checks. If resuming an
-assessment after the worktree is gone, use the retained context or delivered
-Git changes. Report any task details you cannot recover and leave the worktree
-absent.
+Apply the [result contract](../../references/workflow-contract.md). The main
+session coordinates the selected assessment directly in the primary checkout on
+`master`. Identify the delivered changes, approved requirements, applicable
+pending files, requested test selection and any available plan and task context.
+Preserve unrelated working files and index entries. If task resources are
+unavailable, use retained evidence or the delivered Git changes and report any
+missing inputs. Use the [subagent policy](../../../AGENTS.md#subagent-assignment-and-model-selection)
+for each assignment, including repairs.
 
-The main session coordinates. Apply the
-[subagent policy](../../../AGENTS.md#subagent-assignment-and-model-selection)
-to each runner, reviewer and corrective implementation assignment. Re-evaluate
-the model and reasoning effort for each correction.
+[Direct vocabulary additions](../../references/workflow-contract.md#vocabulary-only-maintenance)
+alone start no scan, checks, review or corrective pass. Follow the steps below
+for the assessment independently required by the delivered change.
 
-Apply [vocabulary-only maintenance](../../references/workflow-contract.md#vocabulary-only-maintenance)
-at every stage. Such additions do not initiate or repeat the language, test,
-review or corrective-pass steps below. Continue the independently required
-assessment of other delivered changes.
+## Prepare the evidence for each review
 
-1. Inspect master and preserve unrelated files/index entries. Tests and review run
-   directly here. Do not copy master to another branch or compare it with a frozen
-   baseline. Report interference that prevents testing the intended change.
-2. Run [TA-WF-Step-correct-english](../TA-WF-Step-correct-english/SKILL.md) on the
-   delivered authored text as it now exists on master, using the scanner's scope
-   and exclusions. This check is required even when integration had no conflicts
-   and no implementation repairs are needed. If it changes files, use
-   [TA-WF-Main-commit-changes](../TA-WF-Main-commit-changes/SKILL.md) on master to
-   commit only those selected corrections, omitting merge. Unresolved required
-   language findings, read errors or scanner execution errors leave the final
-   assessment incomplete. Resolve known vocabulary findings through the shared
-   maintenance rule without requiring another scan.
-3. Assign the requested tests, quality checks and selected coverage measurements
-   to `TA-test-runner` in this master checkout, using the existing verifier.
-   If no narrower test selection was supplied, use
-   [TA-WF-Step-verify-commit](../TA-WF-Step-verify-commit/SKILL.md) for the ordinary `commit` check
-   profile. This profile does not create commits. Full milestone vectors remain
-   outside this stage unless expressly requested.
-   On a clean master, the verifier's working-file detection misses tool changes
-   that are already committed and merged. Inspect which suites the profile
-   selects. Run the test command explicitly for each affected Python or bootstrap
-   test directory the profile omits. See the
-   [verifier reference](../../../tools/verification/README.md). An empty
-   `test python` selection provides no test coverage for delivered changes.
-4. Run review round 1 through
-   [TA-WF-Step-review-code](../TA-WF-Step-review-code/SKILL.md) on the delivered changes and
-   interactions as they now exist on master, with the actual test results. Select
-   all applicable reviewer assignments and retain their scopes for the final review.
-5. Collect reviewer findings and reported test/verification failures with their
-   actual evidence. Run
-   [TA-WF-Step-challenge-findings](../TA-WF-Step-challenge-findings/SKILL.md) in a fresh
-   independent `TA-code-reviewer` context before selecting repairs. Preserve finding
-   IDs, upheld/rejected claims and missing evidence. A challenge verdict does not
-   turn a failed or missing required check into a pass.
-6. If round 1 and its challenge leave no required issues, finish without further
-   review rounds. Otherwise make up to two corrective passes for findings and
-   reproduced test/verification failures upheld by the challenge within the
-   delivered scope:
+1. Before each review round, including the final full review on unchanged
+   inputs, run [TA-WF-Step-correct-english](../TA-WF-Step-correct-english/SKILL.md)
+   on master. Use its full-checkout scan and validated dictionary maintenance
+   even when the delivered change contains no eligible text. After the
+   language operation, use
+   [TA-WF-Main-commit-changes](../TA-WF-Main-commit-changes/SKILL.md) to commit
+   authorized language and vocabulary edits and the selected corrective
+   changes on master. Preserve unrelated edits and omit merge. Unresolved
+   required language findings or scan errors leave readiness unverified.
+2. For the initial round, have `TA-test-runner` run the applicable tests and
+   gates directly on master, even when implementation tests passed. Use
+   [TA-WF-Step-verify-commit](../TA-WF-Step-verify-commit/SKILL.md) and its
+   existing `commit` profile unless the engineer selected a narrower scope.
+   The profile names checks and has no Git effect. Inspect its actual
+   selection against the delivered work and applicable pending files. Run
+   `python tools/verification/verify.py test python directory <path>` for each
+   affected Python or bootstrap suite omitted by automatic selection after
+   integration. Preserve other required gates and their failure handling.
+   Run the full milestone vectors here only when expressly selected.
+   [Verifier profiles](../../../tools/verification/README.md#completion-verification)
+   · [Working-tree decision RD-002](../../references/review-decisions.md#rd-002-uncommitted-changes-during-final-verification)
+3. Collect coverage in the same run as ordinary Rust tests. The `commit`
+   profile already instruments its selected packages. For planned whole-package
+   or workspace tests outside that profile, use `test coverage crate <name>`
+   or `test coverage workspace` through the verifier. Use the normal command
+   for selected harness, Python and expressly filtered tests and report
+   their instrumentation limits. Record command, checkout, test scope, status,
+   reports and exclusions. A missing required export leaves assessment
+   incomplete even after a test pass. Prose changes can have applicable
+   document checks with no executable change to measure.
+   [Coverage commands and reports](../../../tools/verification/README.md#coverage-guided-testing)
+4. After each repair, repeat the failed and affected tests and other affected
+   gates after the English operation and scoped commits. Use coverage in the
+   same run where supported. Coordinate focused checks with the implementer
+   so each selected suite runs once on the same inputs. Schedule the checks
+   that supply round evidence after the English operation and scoped commits.
+   Keep required reproductions or runs under different conditions. Refresh reports
+   when code, tests, build inputs or measurement scope change. If prior
+   results still apply, identify their original run and retain them. If the
+   final round's language operation changes evidence inputs, refresh the
+   affected results before review.
 
-   - Make the first corrective pass through
-     [TA-WF-Step-implement-change](../TA-WF-Step-implement-change/SKILL.md) and
-     repeat relevant checks.
-   - Run review round 2 as a targeted reassessment through `TA-WF-Step-review-code`:
-     select only the round 1 reviewer assignments whose findings were upheld by
-     the challenge and selected for repair. Reassess their findings, corrections
-     and affected interactions in fresh independent contexts. If there are no
-     such assignments, assess the rerun checks without adding reviewer assignments.
-     Repeat step 5 on the resulting findings and test/verification failures.
-   - If that assessment leaves supported in-scope issues, make the second
-     corrective pass and repeat relevant checks. Then proceed to the final review.
+## Review, challenge and repair
 
-   Work directly on master. For each corrective pass use
-   [TA-WF-Main-commit-changes](../TA-WF-Main-commit-changes/SKILL.md) there to create
-   the corrective commits and repeat English checks, omitting merge, before the
-   next review. The initial assessment does not count as a corrective pass.
-   New findings or failures do not reset the count.
-   Do not weaken checks, change approved behavior or start another task to obtain
-   a pass.
-   Coverage findings can justify adding tests for approved behavior. Before
-   claiming those gaps are closed, refresh the affected coverage measurement
-   so it reflects the current code and tests. Ask the user to resolve missing
-   requirements, approve protected changes or decide whether to include work
-   outside the delivered scope.
-7. Whenever corrective work was needed after round 1, run final review round 3
-   through `TA-WF-Step-review-code` on the complete delivered change as it now
-   exists on master, including all corrections and affected interactions. Include
-   every round 1 reviewer assignment, even those without findings, and any newly
-   affected review scope. Supply current check/coverage results and repeat step 5
-   on the final findings. This full review is required even when round 2 found no
-   remaining issues. If required findings, failed checks or required evidence gaps
-   remain, stop for the user's manual decision. Do not start another corrective
-   pass or review round, even if only one corrective pass was used.
-8. Report the language checks and tests that ran, reviewer findings, challenge
-   decisions, completed review rounds and corrective passes, corrections and
-   commits, report locations and unresolved work in text and JSON. State when the
-   user needs to make a decision. If the final assessment fails or is incomplete,
-   report it as failed or partial even though the work is already integrated.
-   Unresolved required checks or findings block task closure. Omit any claim
-   that the delivered work was rolled back. Wait for a separate selection
-   before cleanup.
+Use [TA-WF-Step-review-code](../TA-WF-Step-review-code/SKILL.md) to coordinate
+the applicable independent reviewers. For code or test changes, give a
+separate [TA-WF-Step-review-tests](../TA-WF-Step-review-tests/SKILL.md)
+reviewer the approved scenarios, test results, measured packages and current
+coverage reports. The reviewer assesses execution and assertions together,
+including executed paths whose assertions would miss the wrong behavior.
+Record missing scenarios and their independently expected observations.
+Distinguish pre-existing gaps and unmeasured suites from gaps in changed
+behavior. [Testing criteria](../../references/testing-criteria.md#coverage-and-adequacy-assessment)
 
-Stop after the final assessment. Do not push, recreate/delete
-worktrees or close a milestone. Further repair work returns to the user.
+In each round, send reviewer findings and reported check failures with their
+evidence to a fresh independent `TA-code-reviewer` using
+[TA-WF-Step-challenge-findings](../TA-WF-Step-challenge-findings/SKILL.md).
+Retain finding IDs, challenge decisions and required evidence gaps. A challenge
+verdict leaves actual check results as recorded.
+
+1. **Initial review.** Use all applicable review assignments on the delivered
+   change and affected interactions. Keep the assignment scopes for the final
+   full review. Finish if no required issues remain. Otherwise send supported
+   in-scope repairs to `TA-implementer` using
+   [TA-WF-Step-implement-change](../TA-WF-Step-implement-change/SKILL.md).
+   Work directly on master. Coverage or assertion findings can justify
+   meaningful tests for approved behavior.
+2. **Targeted reassessment.** After the first repair and refreshed checks,
+   send the upheld, repaired findings and affected interactions to fresh
+   reviewers for the originating assignments. Include the tests reviewer for
+   focused reassessment of affected assertions and refreshed coverage, even
+   if that assignment raised no finding in round 1. Use checks alone when
+   neither the originating reviewers nor a coverage or assertion reassessment
+   is needed. Challenge the resulting findings and reported failures. Make a
+   second corrective pass only for supported issues within scope.
+3. **Final full review.** After any corrective work following round 1, run
+   this review with all initial assignments and any newly affected scope.
+   Check English again. When round 2 leads directly here and evidence inputs
+   still match, reuse its test, gate and coverage results. Challenge final
+   findings and failures. Return any required failure, unresolved finding or
+   evidence gap for the engineer's decision.
+
+The initial assessment uses no corrective pass. Two passes are available in
+total. New findings or failures use the remaining allowance. Return missing
+requirements, protected changes and out-of-scope work for the engineer's
+decision before work that depends on them.
+
+Report scans, tests, gates and coverage, review rounds, findings and challenge
+decisions, corrective changes and commits, report locations and remaining work.
+If verification fails or is incomplete, leave the delivered work in place and
+report that readiness is unverified. Successful final evidence is required
+before separately selected task closure.

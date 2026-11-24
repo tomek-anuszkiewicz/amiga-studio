@@ -27,11 +27,12 @@ including additions made during ordinary work. They need no separate approval or
 follow-up checks. This exception does not cover scanner logic, discovery,
 exclusions or other verification policy changes.
 
-The engineer may explicitly select an English vocabulary cleanup. That selection
-authorizes removal of the exact declarations accepted by the
-[vocabulary removal procedure](workflow-contract.md#validated-vocabulary-removals).
-A scan or a request to correct English supplies no removal authorization. Other
-vocabulary removals require approval of their concrete diff.
+A due corrective English scan, including standalone vocabulary cleanup,
+authorizes exactly the removal batch accepted on fresh, complete repository
+evidence under the [vocabulary removal procedure](workflow-contract.md#validated-vocabulary-removals).
+Confirm the result with the full post-edit comparison. A report-only request
+supplies findings. Other vocabulary removals require approval of their concrete
+diff.
 
 ## Reference Artifact Integrity
 

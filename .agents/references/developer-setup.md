@@ -7,10 +7,13 @@ For a map of the project and an overview of what verification covers, see the
 [developer overview](../../docs/developers.md) and [testing overview](../../docs/testing.md).
 
 TA role definitions live in `.codex/agents/`. Before reporting that a role is
-active, confirm that the runtime loaded it. Skills return text and JSON under
-the shared [result contract](workflow-contract.md). This requires neither a
-result renderer nor a workflow Python dependency. Treat missing setup as a
-missing input, and install dependencies only when the assignment authorizes it.
+active, confirm that the runtime loaded it. Specialists send text and JSON to
+the main session, which reports to the engineer in plain language.
+[Result contract](workflow-contract.md#inputs-and-outputs)
+
+The result contract requires neither a renderer nor a workflow Python
+dependency. Treat missing setup as a missing input, and install dependencies
+only when the assignment authorizes it.
 
 > [!IMPORTANT]
 > Before modifying or extending an emulator subsystem, read the architecture

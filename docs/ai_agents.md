@@ -26,7 +26,9 @@ selects models. Authorize stages one at a time or as a sequence. If your
 authorization covers the next stage, the agent can proceed when the current
 stage ends.
 
-The agent's result describes what changed, which checks ran, what the agent found
-and what remains. The result schema defines the format. The agent needs evidence
-for its claims and your permission for further work.
+The main session explains what changed, which checks ran, what it found and
+what remains. It can link a saved result for the round when useful. The
+schema defines the format for agent handoffs and saved results. The agent
+backs its claims with evidence.
+[Result contract](../.agents/references/workflow-contract.md#inputs-and-outputs) ·
 [Result schema](../tools/workflow/result.schema.json)

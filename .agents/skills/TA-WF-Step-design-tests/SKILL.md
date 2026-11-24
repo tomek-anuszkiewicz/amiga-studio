@@ -33,11 +33,12 @@ scenarios, observations and decisions without imposing an article structure.
    caller to decide on new scenarios outside the approved scope. A test-design
    assignment stops before implementation, and a code edit does not always
    require a separate test-design assignment.
-3. For a saved plan, write the assigned test plan or owned section under
-   `.agent/tasks/` and cite the exact input plan revision. For a conversational
-   planning draft, return the scenarios with that draft without saving a file.
-   When amending a plan, retain the IDs of unaffected scenarios and identify
-   the expectations the amendment supersedes. Record scenario IDs, existing protection,
+3. Within Plan Change, put the scenarios, expected observations and acceptance
+   criteria in the same plan file at the selected `.agent/tasks/` path, or in
+   the same conversational draft when saving was not requested. For standalone
+   test design, use the selected output and cite the exact input revision when
+   it comes from a saved plan. When amending a plan, retain unaffected scenario
+   IDs and identify superseded expectations. Record existing protection, scenario IDs,
    proposed assertions, independent expectations and open decisions in the
    structured result. Report any newly identified
    [protected effect](../../references/protected-verification.md#protected-verification).

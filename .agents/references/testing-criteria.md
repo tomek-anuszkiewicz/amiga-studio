@@ -81,6 +81,10 @@ before repair. Converter work instead follows its
 
 ## Coverage and adequacy assessment
 
+Apply this section when the selected operation assesses coverage or test
+adequacy. An instrumented Implement Task run records test outcomes and available
+reports. Verify Master uses the measured evidence in its independent tests review.
+
 For an assigned coverage assessment, use the canonical coverage results to
 find functions and source spans that did not run in the measured final version.
 Coverage shows which code executed. Read the test assertions to determine which

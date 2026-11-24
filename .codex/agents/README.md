@@ -71,8 +71,9 @@ the selected role and settings.
 
 ## Results
 
-Specialists return an explanation and JSON. An assessment can be complete
-while the assessed change still has open findings. The engineer's
+Specialists send an explanation and JSON to the main session, which reports to
+the engineer in plain language. An assessment can be complete while the change
+still has open findings. The engineer's
 authorization determines whether repair or another operation follows and can
 cover a sequence of assignments.
 [Result contract](../../.agents/references/workflow-contract.md)

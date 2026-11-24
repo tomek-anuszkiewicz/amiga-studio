@@ -6,13 +6,15 @@ scope of the current assignment.
 
 1. Trace the failing data flow, clock phase or state transition to investigate
    its cause. Demonstrate the failure on the original code with a focused test,
-   reproducible case, trace or measurement suited to the issue. Record what the
-   evidence shows and which proposed causes remain hypotheses.
+   reproducible case, trace or measurement suited to the issue. Use a reported
+   test failure when the supplied command, inputs and observed result establish
+   that failure. Record what the evidence shows and which causes remain hypotheses.
 2. Repair the mechanism the evidence identifies, within the assignment. Change
    a shared upstream mechanism only when the evidence shows it causes the failure.
    Reuse its authoritative constants, types and helpers. Preserve unrelated work.
 3. Repeat the original reproduction or measurement and run relevant regression
-   checks for nearby behavior. Keep a repeatable check suited to the defect
+   checks for nearby behavior. In Implement Task, give the designated runner the
+   failed and affected tests for the rerun. Keep a repeatable check suited to the defect
    under the [testing criteria](../../../references/testing-criteria.md).
    The assignment permits planned fixture and assertion repairs. If you
    discover scenarios beyond the agreed test plan, obtain the caller's

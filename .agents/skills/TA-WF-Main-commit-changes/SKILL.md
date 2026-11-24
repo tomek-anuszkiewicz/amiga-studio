@@ -1,6 +1,6 @@
 ---
 name: TA-WF-Main-commit-changes
-description: Partition selected changes into meaningful commits with English checks, then integrate the task branch into local master by fast-forward when possible or merge otherwise; also support scoped commits already on master.
+description: Group and commit selected changes, then integrate the task branch into local master by fast-forward when possible or merge otherwise. Also commit scoped changes directly on master.
 ---
 
 # Commit the selected changes and merge to master
@@ -12,24 +12,15 @@ Inputs: selected task checkout/branch, primary checkout, delivered scope, plan w
 available check results. Selecting this stage authorizes its scoped staging,
 commits and local merge. It does not authorize a push or cleanup.
 
-Apply [vocabulary-only maintenance](../../references/workflow-contract.md#vocabulary-only-maintenance)
-throughout preparation and integration. Those additions do not initiate or repeat
-language scans or other verification. Continue the already selected Git operation;
-other authored-text changes retain their language-check requirements.
-
 1. Inspect the selected changes and existing commits. Group unfinished work
    into one or more commits with a clear purpose. Keep a behavior change with
    its tests and required documentation. Give independent operations their own
    commits when that helps the reader understand them.
    Do not force a single commit, split mechanically by file or rewrite existing
    history without that authorization. Preserve unrelated files and staged versions.
-2. Apply [TA-WF-Step-correct-english](../TA-WF-Step-correct-english/SKILL.md) to the selected authored
-   text, including selected documentation changes, using the existing scanner's scope
-   and exclusions. Correct clear findings and address justified vocabulary
-   additions. If a required language finding remains unresolved, report the gap
-   instead of claiming the check passed. Review `git diff --check` and the selected
-   diff, then stage the selected changes and create meaningful commits with English
-   messages. Preserve unrelated index entries.
+2. Review `git diff --check` and the selected diff. Stage the selected changes
+   and create meaningful commits with English messages. Preserve unrelated index
+   entries.
    A commit does not require a diary entry. Include diary changes only when they
    are already part of the selected work or explicitly requested.
 3. In the primary checkout on local `master`, integrate the selected task branch
@@ -40,14 +31,15 @@ other authored-text changes retain their language-check requirements.
    [the merge procedure](../TA-WF-Main-close-task/references/local-integration.md#merge-conflicts)
    to resolve ordinary conflicts within scope. Stop the dependent work if
    a behavior decision is needed or interference makes integration unsafe.
-   Reconcile overlapping diary and other text changes, and rerun the scoped
-   language check if conflict resolution changes authored text.
+   Reconcile overlapping diary and other text changes within the selected scope.
 4. Return the commits created, scope included, integration outcome, check results
    and remaining work. When working directly on `master` for selected
    final-review corrections, commit just those corrections there and skip
    the merge.
    Report passing tests on master only when there is test evidence for that claim.
 
-Stop with committed work on master or an explained partial failure. Do not run a
-verification/review campaign, delete the worktree/plan/branch or start the final
-master stage. Those are separately selected operations.
+Stop with the actual Git outcome or an explained partial failure. English scans
+and final readiness assessment belong to the separately selected
+[Verify Master](../TA-WF-Main-verify-master/SKILL.md) stage when verifying delivered
+work, including integration resolutions. Cleanup and push require their own
+authorization.

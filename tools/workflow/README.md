@@ -1,10 +1,10 @@
 # Skill results
 
-Repository skills return a written result and a JSON object. Read the shared
-[result contract](../../.agents/references/workflow-contract.md) for the contents
-of the result and [result.schema.json](result.schema.json) for the JSON format.
-The repository provides no result CLI, automatic renderer, skill transition
-matrix, review router or delivery coordinator.
+Agents send a written account and JSON to the main session. The main session
+reports the outcome, checks and outstanding work to the engineer in plain
+language. The reply can link an existing saved result when useful.
+[Result contract](../../.agents/references/workflow-contract.md#inputs-and-outputs) ·
+[Handoff schema](result.schema.json)
 
 The user can select one operation or a sequence. Use ordinary Git commands for
 selected commits and merges. Run the selected checks with the existing

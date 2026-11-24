@@ -1,32 +1,30 @@
 ---
 name: TA-WF-Step-optimize-english-vocabulary
-description: Assess the repository English vocabulary and remove only a validated batch of obsolete declarations when the engineer selects cleanup.
+description: Assess repository English vocabulary and apply validated removals in a corrective scan or standalone cleanup. Support report-only assessment.
 ---
 
 # Optimize the English vocabulary
 
 Apply the [result contract](../../references/workflow-contract.md) and the
 [validated removal rule](../../references/workflow-contract.md#validated-vocabulary-removals).
-The main session carries out this operation in the selected checkout. A request
-to optimize vocabulary selects a full repository assessment and justified edits.
-A report-only request selects the assessment and leaves source files untouched.
+The main session uses this procedure during a due corrective English scan
+or when the engineer selects vocabulary optimization. In standalone work,
+start with the full report and contextual assessment from
+[TA-WF-Step-correct-english](../TA-WF-Step-correct-english/SKILL.md).
+Report-only work returns contextual findings, candidate entries and evidence
+limits before any edits. For corrective work, use the procedure below within
+the same language operation.
 
-1. Run `python tools/verification/verify.py check english` and open the report
-   named by this invocation, including on exit zero. Use the
-   [report contract](../../../tools/verification/README.md#english-vocabulary) to
-   assess all findings and deferred owners. An absent or invalid report is a scan
-   error. For report-only work, describe which entries are candidates, why they
-   qualify and what evidence is missing. Return the assessment before any edits.
-2. In cleanup, use the contextual rules in
-   [TA-WF-Step-correct-english](../TA-WF-Step-correct-english/SKILL.md) in this
-   assignment. Resolve clear unknowns first and preserve unresolved findings.
-   Check each removal candidate against its source, owner, remaining uses and
-   overlapping allowances. Prefer an existing exact-file allowance if it covers
-   all genuine uses. Keep one appropriately categorized global declaration when
-   uses outside those owners require it. Record the reason for retaining an
-   uncertain entry. Use the shared rule for a pure addition. When making removals,
-   use current scanner evidence after any correction or addition.
-3. Write a disposable JSON array under `.agent/tmp/` containing the exact `entry`
+## Validate and apply removals
+
+Use the current full report after any text or vocabulary edits. A report
+with no removal candidates needs no validation. For each candidate, check its
+source, owner, remaining uses and overlapping allowances. Prefer a sufficient
+exact-file allowance for confined uses and an appropriately categorized
+global declaration when uses outside those owners require it. Explain why
+uncertain entries are retained or deferred.
+
+1. Write a disposable JSON array under `.agent/tmp/` containing the exact `entry`
    objects you propose to remove. Run the read-only check on the entire batch.
 
    ```text
@@ -40,7 +38,7 @@ A report-only request selects the assessment and leaves source files untouched.
    sufficient allowance and prefer configured source order among equally suitable
    declarations. Keep groups whose support you cannot establish. Validate the
    resulting batch together. Wait for complete evidence before applying any batch.
-4. Immediately before editing, compare current discovery and input bytes with the
+2. Immediately before editing, compare current discovery and input bytes with the
    validated report. Use the scanner's repository discovery rules and the report's
    input digests. Revalidate after a change, including a newly eligible file or
    an edit to an approved declaration. Apply just the accepted entries to the
@@ -51,7 +49,9 @@ A report-only request selects the assessment and leaves source files untouched.
    index. Check each destination immediately before replacing it. If an edit is
    interrupted or an input changes during application, record the actual edits
    and rebuild the evidence from the current checkout before continuing.
-5. Run the full check on the edited repository and compare the unknowns with the
-   validated outcome, allowing for lines shifted by the accepted edits. Report
-   what was removed, what was kept, unresolved findings and any differences
-   between simulation and the final scan. Leave the edits unstaged.
+3. Run one full check on the edited repository and compare the unknown words
+   and source occurrences with the validated outcome, accounting for line
+   shifts. Report removed, retained and deferred entries and unresolved
+   findings. Investigate any difference and report actual edits with cleanup
+   unconfirmed. This comparison ends the batch within the language operation.
+   Leave the edits unstaged.

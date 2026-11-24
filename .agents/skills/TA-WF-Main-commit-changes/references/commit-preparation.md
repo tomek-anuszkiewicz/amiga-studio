@@ -12,11 +12,6 @@ assignment. A separate stage runs final tests and reviews on the integrated
 change on master. Preparing a commit requires no four-lane reviews, frozen
 trees, seals, publication receipts or reusable-evidence records.
 
-## Coverage during development and review
-
-For selected production changes, assess whether the tests meaningfully protect
-the changed behavior. Apply the shared [testing criteria](../../../references/testing-criteria.md).
-When the assignment includes a coverage measurement, use the existing verifier.
-Report unmeasured areas separately from unresolved gaps in the behaviors that
-tests cover. Missing evidence alone does not start measurement, audits or repairs
-during commit preparation.
+The commit result reports available test evidence. Assessment of assertions
+and coverage belongs to the selected review. For delivered work, see
+[Verify Master](../../TA-WF-Main-verify-master/SKILL.md).

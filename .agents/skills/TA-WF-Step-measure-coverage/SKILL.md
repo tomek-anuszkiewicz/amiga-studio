@@ -13,8 +13,10 @@ execution conditions.
 1. Confirm the selected scope and the availability of required tools and
    fixtures. Read the coverage command contract in the
    [verifier reference](../../../tools/verification/README.md).
-   Ordinary tests exclude `test_runner`.
-   Collect coverage only for the selected request or preparation scope. Wait
+   Ordinary tests exclude `test_runner`. Implement Task uses coverage only
+   as part of its selected test command. Verify Master normally obtains its
+   evidence from the instrumented tests it already runs.
+   Collect a separate measurement only for the selected request or preparation scope. Wait
    until the implementation is stable unless the user expressly requests an
    earlier measurement or there is a diagnostic reason for one. Keep the
    candidate and execution conditions stable.

@@ -1,46 +1,55 @@
 ---
 name: TA-WF-Step-correct-english
-description: Scan explicitly selected repository text, correct English, assess unknown vocabulary in context, and add justified vocabulary or exact-file exceptions without asking about clear cases.
+description: Scan the full eligible working tree, correct authorized English text, assess vocabulary in context and apply validated dictionary maintenance, or report findings only.
 ---
 
-# Correct selected English text and vocabulary
+# Check English and maintain the vocabulary
 
 Apply the [result contract](../../references/workflow-contract.md).
 
-Use this skill only when the user requests an English check. The user selects
-the files or expressly requests a full repository audit. Requests to write or
-implement something follow their own procedures. Ordinary
-[vocabulary-only maintenance](../../references/workflow-contract.md#vocabulary-only-maintenance)
-can proceed without this skill or its scanner. If the user asks for a report
-only, report the findings. Otherwise, make contextual text corrections and add
-justified vocabulary entries.
+The main session uses this procedure for a requested or due English check.
+A request to run `verify.py check all` includes this procedure as part of the
+aggregate check. A named file can set the editing focus. Every workflow scan
+uses the full eligible working tree, even when the task has no changed eligible text.
+Direct [vocabulary additions](../../references/workflow-contract.md#vocabulary-only-maintenance)
+can proceed without a scan.
 
-Run the existing scanner for the selected scope:
+## Collect and read the full report
+
+For `verify.py check all`, use the full report already produced by its English
+step, including when a read-only runner supplies it. Keep the other checks'
+results and failure handling. Refresh an affected check if an edit invalidates
+its inputs.
+
+For English checks outside that aggregate command, run the existing scanner
+in the selected checkout.
 
 ```text
-python tools/verification/verify.py check english files <paths>
+python tools/verification/verify.py check english
 ```
 
-For an explicitly requested full audit, omit `files <paths>`. The scanner and
-`tools/verification/checks/check_english.json` own discovery, exclusions and
-vocabulary formats. Do not expand the requested scope to unrelated text.
-Use the language-related [prose criteria](../../references/narrative-criteria.md)
-for these corrections. Preserve meaning and document structure. Reorganizing an
-article requires its own assignment.
+The scanner reads the current contents of eligible tracked and nonignored
+new files and applies its exclusions, including `.agent/tasks/`.
 
-Open the JSON report named in the `English scan report` line from this invocation,
-including when the command returns zero. Read `findings` and the completeness and
-exit status fields. Treat an absent or invalid report as a scanner error and use
-the current command log to diagnose it. Report `scan_error` findings and deferred
-owners. Report `unused_entry_candidate` findings as information within the
-selected operation. Deletion requires the separately selected removal procedure.
-[English scan report contract](../../../tools/verification/README.md#english-vocabulary)
+Open the JSON report named by the current invocation's `English scan report`
+line, including on exit zero. Read unknown occurrences, removal candidates,
+deferred owners, completeness and errors. Attribute observations to that
+invocation. A missing or invalid report or scanner error leaves the language
+assessment incomplete. [English scan report contract](../../../tools/verification/README.md#english-vocabulary)
+
+## Assess findings in context
 
 Read each `unknown_word` in its surrounding sentence, identifier or example.
-The scanner found no accepted spelling for that word in this context. Check unfamiliar
-technical terms against local definitions and API usage or authoritative sources
-before deciding whether to correct them. A term written in uppercase or present
-in the source still needs this evidence.
+Check unfamiliar technical terms against local definitions and API usage or
+authoritative sources before deciding whether to correct them. Use the
+[prose criteria](../../references/narrative-criteria.md) and preserve meaning
+and document structure. For an explicit report-only request, return contextual
+findings and candidate removals with locations and evidence limits, then stop.
+Leave the working files and Git index untouched.
+
+For corrective work, edit authorized text and preserve other authors' working
+files and staged content, including in shared dictionary files. Report findings
+outside the authorized edit scope.
 
 - Correct clear spelling, non-English or awkward prose while preserving meaning.
   Avoid unrelated rewrites. Ordinary comments and prose remain editable.
@@ -62,12 +71,19 @@ unverifiable terms or choices that would alter behavior or an external contract.
 For each, give the file, line, context, evidence and concrete options. Report read
 or scanner errors separately from vocabulary findings.
 
-Repeat the same selected scan after correcting authored text. When you only add
-vocabulary, apply the shared maintenance rule and continue without another
-scan, checks or review. Say what you added and why, and attribute the retained
-scan results to the earlier run. Unresolved language findings, read errors or
-scanner execution errors leave the assessment incomplete.
+## Finish the language operation
 
-This operation does not stage, commit, publish, change scanner logic/scope or
-launch another skill. Authority to edit justified exact-file vocabulary entries
-does not authorize other scanner configuration changes.
+Repeat the full scan after correcting authored text. When vocabulary additions
+changed scanner inputs and removals are under consideration, obtain a current
+full report before validating them. When the only work is a justified addition,
+retain the original result and apply the shared maintenance rule without
+another scan, checks or review.
+
+If the current report contains removal candidates, use
+[Validate and apply removals](../TA-WF-Step-optimize-english-vocabulary/SKILL.md#validate-and-apply-removals)
+in this operation. Report additions, removals, retained or deferred candidates
+and unresolved findings, including occurrences in unrelated files. An
+unresolved word or a scan error leaves the language result incomplete. Describe
+partial application or a post-edit mismatch using the actual edits and results.
+Leave the edits unstaged. Changes to scanner logic, discovery, exclusions or
+other policies follow [protected verification](../../references/protected-verification.md#protected-verification).

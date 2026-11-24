@@ -1,6 +1,6 @@
 # Task workflow and skills
 
-This guide shows how a task moves from initialization to closure and which
+This guide shows how an approved plan moves through the workflow and which
 skills each main operation uses. Each linked `SKILL.md` explains what the skill
 needs, how to use it and where its work ends. Authorization and assignment
 rules are in [AGENTS.md](../../AGENTS.md). For who performs the work, see
@@ -15,165 +15,115 @@ Findings alone do not expand the authorized scope.
 
 ## Task overview
 
+The engineer can plan a change, execute an existing approved plan or select
+a later operation directly. The arrows below apply only when the engineer
+authorizes the next stage. [Milestone closure](#close-milestone) is a separate
+operation, and push requires its own authorization.
+
 ```mermaid
 flowchart TD
-    Request["Requested outcome"] --> Start["TA-WF-Main-start-task"]
-    Start --> Prepared["Plan and test design ready; task worktree prepared"]
-    Prepared --> Implement["TA-WF-Main-implement-task"]
-    Implement -->|Required checks and review passed| Working["Working files, checks and independent review"]
-    Working --> Commit["TA-WF-Main-commit-changes"]
-    Commit --> Integrated["Commits integrated into local master"]
-    Integrated --> Verify["TA-WF-Main-verify-master"]
-    Verify --> Passed{"Required checks and review passed?"}
-    Passed -->|Yes| Close["TA-WF-Main-close-task"]
-    Close --> Done["Outputs archived; task resources removed; project<br/>graph refreshed"]
-    Passed -->|No| Decision["Report remaining issues for the engineer's decision;<br/>retain task resources"]
+    Request["Plan a change"] --> Plan["TA-WF-Main-plan-change"]
+    Plan --> Ready["Plan with test design"]
+    Ready --> Execute["Engineer requests execution of the approved plan"]
+    Existing["Previously approved plan"] --> Execute
+    Execute --> Implement["TA-WF-Main-implement-task"]
+    Implement --> Result["Unstaged changes and applicable test outcomes"]
+    Result -->|Delivery authorized and applicable tests satisfied| Commit["TA-WF-Main-commit-changes"]
+    Commit --> Integrated["Selected commits integrated into local master"]
+    Integrated -->|Final verification authorized| Verify["TA-WF-Main-verify-master"]
+    Verify --> Passed{"Required evidence and reviews pass?"}
+    Passed -->|Yes, closure authorized| Close["TA-WF-Main-close-task"]
+    Passed -->|Required issue remains| Decision["Report the issue and retain task resources"]
 ```
-
-Standalone [planning](#plan-change) produces a plan and test design without
-provisioning a worktree. Initialization can reuse existing approved inputs.
-[Milestone closure](#close-milestone) is a separate operation. Push is outside
-these task stages.
 
 ## Main operations and their component skills
 
-The diagrams use exact skill names and label direct Git and tool actions by
-the action they perform. The links below each diagram lead to the procedures.
-The `TA-WF-Main-` prefix identifies a main workflow operation. The `TA-WF-Step-`
-prefix identifies a component operation that can also be selected separately.
-
-### Start task
-
-To initialize the selected task, the main session registers the execution and
-provisions the task worktree. One planner prepares both the plan and the test
-design. The operation ends before implementation. See
-[TA-WF-Main-start-task](TA-WF-Main-start-task/SKILL.md).
-
-```mermaid
-flowchart TD
-    Register["TA-WF-Step-register-execution: confirm live<br/>telemetry"]
-    Register --> Plan["TA-WF-Main-plan-change"]
-    Plan --> Design["Includes TA-WF-Step-design-tests in the same planner<br/>assignment"]
-    Design --> Worktree["TA-WF-Step-start-plan: provision worktree and copy<br/>needed inputs"]
-    Worktree --> Result["Return plan, scenarios, checkout, branch and<br/>execution context"]
-```
-
-Component procedures:
-[register-execution](TA-WF-Step-register-execution/SKILL.md),
-[plan-change](TA-WF-Main-plan-change/SKILL.md),
-[design-tests](TA-WF-Step-design-tests/SKILL.md),
-[start-plan](TA-WF-Step-start-plan/SKILL.md).
+Component skills can also be selected independently.
 
 ### Plan change
 
-The planner creates or amends a plan as a standalone operation or as part of
-task initialization. On every revision, the planner checks the test design
-against the revised plan. An editorial amendment can keep scenarios that
-remain valid. The planner defines what to observe and what result to expect.
-The implementer writes the executable tests. See
-[TA-WF-Main-plan-change](TA-WF-Main-plan-change/SKILL.md).
-
-```mermaid
-flowchart TD
-    Inputs["Outcome, requirements, existing decisions and test<br/>protection"]
-    Inputs --> Plan["Define scope, changes, acceptance criteria, risks<br/>and open decisions"]
-    Plan --> Tests["TA-WF-Step-design-tests: reconcile scenarios and<br/>expected observations"]
-    Tests --> Result["Return plan and test design; save only when<br/>requested"]
-```
-
-The included [design-tests](TA-WF-Step-design-tests/SKILL.md) step runs in the same
-planner assignment. Planning stops before implementation, verification and worktree
-provisioning.
+[TA-WF-Main-plan-change](TA-WF-Main-plan-change/SKILL.md) assigns one planner
+to create or amend the plan and use
+[TA-WF-Step-design-tests](TA-WF-Step-design-tests/SKILL.md) in the same
+assignment. The planner puts the change, acceptance criteria, scenarios and
+expected observations in one draft or one requested plan file. On amendment,
+they reconcile affected scenarios and retain applicable IDs. Planning ends
+with that result.
 
 ### Implement task
 
-[TA-WF-Main-implement-task](TA-WF-Main-implement-task/SKILL.md) works in the task
-worktree. Its output is source, tests and necessary documentation as working files,
-with actual check and review results. It stops before staging, commits and merge.
+[TA-WF-Main-implement-task](TA-WF-Main-implement-task/SKILL.md) resolves the
+approved plan and destination and confirms capture against the primary
+checkout. It then assigns the change in the selected checkout and has the
+runner execute the applicable tests.
 
 ```mermaid
 flowchart TD
-    Change["TA-WF-Step-implement-change: code, tests, necessary<br/>Design docs and focused checks"]
-    Change --> Coverage{"Selected coverage needed?"}
-    Coverage -->|Collect or refresh| Measure["TA-WF-Step-measure-coverage"]
-    Coverage -->|Existing applicable evidence or not selected| Review["Shared review and correction flow below"]
-    Measure --> Review
-    Review --> Result["Return working files, checks, review outcomes and<br/>remaining work"]
+    Inputs["Resolve the approved plan, scenarios and destination"]
+    Inputs --> Register["TA-WF-Step-register-execution<br/>Confirm live capture against the primary checkout"]
+    Register -->|Confirmed| Checkout{"Does the selected checkout need provisioning?"}
+    Register -->|Proof unavailable| Report["Report the obstacle and completed work"]
+    Checkout -->|Yes| Provision["TA-WF-Step-start-plan<br/>Create worktree and place required inputs"]
+    Checkout -->|No| Existing["Use the governing plan in the authorized existing checkout"]
+    Provision --> Assign["Check plan inputs and assign TA-WF-Step-implement-change"]
+    Existing --> Assign
+    Provision -->|Preparation failed| Report
+    Assign --> Tests["TA-test-runner runs applicable tests"]
+    Tests -->|Passed or none apply| Result["Return unstaged changes and test outcomes"]
+    Tests -->|Missing required outcome| Report
+    Tests -->|Failing test| Limit{"In scope and fewer than two corrective passes?"}
+    Limit -->|Yes| Repair["Give the failed assertion or observation directly to the implementer"]
+    Repair --> Tests
+    Limit -->|No| Report
 ```
 
-Component procedures:
-[implement-change](TA-WF-Step-implement-change/SKILL.md),
-[measure-coverage](TA-WF-Step-measure-coverage/SKILL.md) when selected,
-[review-code](TA-WF-Step-review-code/SKILL.md),
-[challenge-findings](TA-WF-Step-challenge-findings/SKILL.md).
-The [shared review flow](#three-review-rounds-and-up-to-two-corrective-passes)
-defines the review rounds and corrective passes. Corrections use
-`implement-change` again. Commit-time English checks belong to the
-selected commit operation unless expressly included in implementation.
+The [implementer](TA-WF-Step-implement-change/SKILL.md) inspects their diff.
+The runner reruns the failed and affected tests after a repair. An instrumented
+test can produce reports in the same run. The main session reports a recorded
+pass and any export failure separately. Implement Task ends with actual test
+outcomes and unstaged files.
 
 ### Commit changes and integrate
 
-[TA-WF-Main-commit-changes](TA-WF-Main-commit-changes/SKILL.md) groups the selected
-work into meaningful commits and integrates it into local master. A commit or
-merge alone does not establish that tests passed on master.
-
-```mermaid
-flowchart TD
-    Group["Inspect selected changes and group meaningful<br/>commits"]
-    Group --> English["TA-WF-Step-correct-english"]
-    English --> Commit["Inspect diff; stage selected changes; create commits"]
-    Commit --> Location{"Already working on master?"}
-    Location -->|Yes| Result["Return commits and actual integration outcome"]
-    Location -->|No| Integrate["Fast-forward local master when possible; otherwise<br/>merge"]
-    Integrate --> Conflict{"Authored text changed during conflict resolution?"}
-    Conflict -->|Yes| Recheck["Repeat TA-WF-Step-correct-english on changed text"]
-    Recheck --> Result
-    Conflict -->|No| Result
-```
-
-Use [correct-english](TA-WF-Step-correct-english/SKILL.md) for the language
-checks and ordinary Git commands for commits and integration. If a behavior
-decision is needed or interference makes integration unsafe, stop the work
-that depends on it. The operation ends before final master verification,
-cleanup and push. Include a diary entry only when it belongs to the selected
-work or the engineer separately requests it.
+[TA-WF-Main-commit-changes](TA-WF-Main-commit-changes/SKILL.md) inspects the
+diff, groups and stages only the selected changes, creates commits with English
+messages and integrates a task branch into local master. Use a fast-forward
+when possible and a merge otherwise. Reconcile selected conflicts within scope.
+A scoped commit already on master needs no merge. The result reports the actual
+Git outcome and available checks. A separately selected Verify Master checks
+the integrated files, including conflict resolutions.
 
 ### Verify master
 
-[TA-WF-Main-verify-master](TA-WF-Main-verify-master/SKILL.md) tests and reviews the
-integrated change directly on master while the task plan and resources remain
-available. It includes scoped corrective commits when needed.
+[TA-WF-Main-verify-master](TA-WF-Main-verify-master/SKILL.md) owns the review
+rounds below. Tests and reviews use the delivered scope directly on master.
+The main session includes applicable pending files and preserves unrelated work.
 
 ```mermaid
 flowchart TD
-    Inspect["Inspect delivered scope on master; preserve<br/>unrelated work"]
-    Inspect --> English["TA-WF-Step-correct-english on delivered authored<br/>text"]
-    English --> Changed{"Language corrections made?"}
-    Changed -->|Yes| Commit["TA-WF-Main-commit-changes on master; omit merge"]
-    Changed -->|No| Checks["Run selected tests and quality checks"]
-    Commit --> Checks
-    Checks --> Coverage["TA-WF-Step-measure-coverage when selected"]
-    Coverage --> Review["Shared review and correction flow below; commit<br/>every corrective pass on master"]
-    Review --> Result["Return final assessment, checks, reviews, commits<br/>and remaining issues"]
+    Start["Identify the delivered scope on master"]
+    Start --> English["Full English scan and validated dictionary maintenance"]
+    English --> Commits["Commit any authorized language edits and selected repairs"]
+    Commits --> Checks["Run applicable tests with coverage where supported<br/>and other required gates. Reuse current evidence when applicable"]
+    Checks --> Review["Current review round<br/>Assess coverage and assertions where applicable"]
+    Review --> Challenge["Independently challenge findings and reported check failures"]
+    Challenge --> Next{"What does the current round require?"}
+    Next -->|Supported repair within the two-pass limit| Repair["TA-WF-Step-implement-change"]
+    Repair --> English
+    Next -->|Targeted reassessment complete| Final["Select final full review"]
+    Final --> English
+    Next -->|Required evidence passes and reviews complete| Result["Return final master assessment"]
+    Next -->|Required issue still needs a decision| Report["Report the issue and leave readiness unverified"]
 ```
 
-Component procedures:
-[correct-english](TA-WF-Step-correct-english/SKILL.md),
-[verify-commit](TA-WF-Step-verify-commit/SKILL.md) for the default test profile,
-[measure-coverage](TA-WF-Step-measure-coverage/SKILL.md) when selected,
-[review-code](TA-WF-Step-review-code/SKILL.md),
-[challenge-findings](TA-WF-Step-challenge-findings/SKILL.md),
-[implement-change](TA-WF-Step-implement-change/SKILL.md) for repairs and
-[commit-changes](TA-WF-Main-commit-changes/SKILL.md) for scoped commits on master.
-
-The [shared review flow](#three-review-rounds-and-up-to-two-corrective-passes)
-defines the review rounds and corrective passes. Without a narrower test selection,
-use the existing `commit` verification profile.
-Inspect which tests that profile selects and explicitly run affected Python or
-bootstrap suites that working-file detection would miss after integration. Run
-the full milestone vectors here only when expressly selected. If a required
-check or review fails, leave the assessment incomplete and stop task closure.
-Leave the integrated work in place.
+Use [Correct English](TA-WF-Step-correct-english/SKILL.md),
+[Verify Commit](TA-WF-Step-verify-commit/SKILL.md) for the default verification
+profile, [Review Code](TA-WF-Step-review-code/SKILL.md),
+[Challenge Findings](TA-WF-Step-challenge-findings/SKILL.md) and
+[Commit Changes](TA-WF-Main-commit-changes/SKILL.md) for scoped commits on master.
+The master skill explains how to include affected Python or bootstrap suites
+that the default profile omits after integration. Select full milestone vectors
+here only when requested.
 
 ### Close task
 
@@ -231,51 +181,21 @@ worktree cleanup.
 
 ## Three review rounds and up to two corrective passes
 
-Both implementation and master verification use the flow below. Each invocation
-has its own rounds and corrective passes. The initial implementation or assessment
-does not count as a corrective pass. New findings do not reset the count.
+These rounds belong to [Verify Master](TA-WF-Main-verify-master/SKILL.md).
+Each round checks English before reviewing the evidence. After a correction,
+commit the selected changes directly on master and refresh affected test,
+coverage and gate results.
 
-```mermaid
-flowchart TD
-    R1["Round 1: TA-WF-Step-review-code; all applicable<br/>review assignments"]
-    R1 --> C1["TA-WF-Step-challenge-findings: assess findings and<br/>reported check failures"]
-    C1 --> Issues1{"Required issues remain?"}
-    Issues1 -->|No| Success["Return successful assessment"]
-    Issues1 -->|Supported issues within scope| Fix1["Corrective pass 1: TA-WF-Step-implement-change and<br/>repeat affected checks"]
-    Issues1 -->|Missing input or decision| Manual["Report gap or remaining issues for the engineer's<br/>decision"]
-    Fix1 --> R2["Round 2: targeted TA-WF-Step-review-code; selected<br/>assignments only"]
-    R2 --> C2["TA-WF-Step-challenge-findings on resulting findings<br/>and check failures"]
-    C2 --> Issues2{"Supported issues within scope remain?"}
-    Issues2 -->|Yes| Fix2["Corrective pass 2: TA-WF-Step-implement-change and<br/>repeat affected checks"]
-    Issues2 -->|No| R3["Round 3: full TA-WF-Step-review-code on the complete<br/>corrected change"]
-    Issues2 -->|Missing input or decision| Manual
-    Fix2 --> R3
-    R3 --> C3["TA-WF-Step-challenge-findings on final findings and<br/>check failures"]
-    C3 --> Final{"Required findings, failed checks or evidence gaps<br/>remain?"}
-    Final -->|No| Success
-    Final -->|Yes| Manual
-```
+| Round | Scope | What follows |
+| --- | --- | --- |
+| 1. Initial review | All applicable independent assignments assess the delivered change and affected interactions | Finish when required evidence and findings permit it. Send supported in-scope repairs to the implementer. |
+| 2. Targeted reassessment | Fresh reviewers reassess the repaired findings and affected interactions. Include the tests reviewer for refreshed coverage and affected assertions when applicable. | Use the remaining corrective pass for a supported issue within scope. Proceed to the full review after corrective work. |
+| 3. Final full review | All initial assignments and any newly affected scope review the delivered change with corrections applied | Reuse current test and coverage data when inputs match. Return any required issue that remains. |
 
-| Round | What is assessed | Who participates | What follows |
-| --- | --- | --- | --- |
-| 1: initial review | The complete selected change and affected interactions, with actual check results | All applicable independent reviewer assignments selected for this change | Finish if no required issues remain; otherwise select supported repairs within scope or report a decision gap |
-| 2: targeted reassessment | Findings upheld by the challenge and selected for repair, their corrections and affected interactions | Only the round 1 assignments responsible for those findings, in fresh independent contexts | Make a second corrective pass if supported issues remain; otherwise proceed directly to round 3 |
-| 3: final full review | The complete corrected change and affected interactions, with current checks and selected coverage | Every round 1 assignment, including those previously without findings, plus any newly affected scope | Finish if required evidence and findings permit it; otherwise return to the engineer without another repair or review round |
-
-When no reviewer assignments qualify for targeted reassessment, round 2 may
-consist only of assessing the checks that were rerun. Run round 3 whenever
-round 1 led to corrective work, even if round 2 found no issues after only one
-corrective pass. Bring missing requirements, approval for protected changes
-and work outside the selected scope to the engineer before making repairs that
-depend on those decisions. Evidence from required checks still determines
-whether they pass after a challenge.
-
-Corrections can include code, necessary documentation and meaningful tests or
-assertions for already approved behavior. Refresh affected selected coverage when
-needed to substantiate protection claims after code/test changes. During
-implementation, corrections stay as working files in the task worktree. During
-master verification, each corrective pass includes English checks and scoped
-`TA-WF-Main-commit-changes` commits directly on master before the next review.
+When no reviewer needs to reassess a repair or inspect updated coverage and
+assertions, round 2 can assess the rerun checks alone. Challenge findings and
+reported failures independently in each round. A failed check or missing
+required evidence leaves readiness unverified.
 
 ### What review-code includes
 
@@ -311,6 +231,9 @@ These capabilities support an assigned task or run as selected standalone work:
 
 | Need | Entry point |
 | --- | --- |
+| Confirm live capture for a selected thread | [TA-WF-Step-register-execution](TA-WF-Step-register-execution/SKILL.md) |
+| Provision a selected task worktree | [TA-WF-Step-start-plan](TA-WF-Step-start-plan/SKILL.md) |
+| Design tests for agreed requirements | [TA-WF-Step-design-tests](TA-WF-Step-design-tests/SKILL.md) |
 | Assess, author or restructure documentation | [TA-WF-Step-update-docs](TA-WF-Step-update-docs/SKILL.md) |
 | Capture environment inventory in an existing execution archive | [TA-WF-Step-capture-environment](TA-WF-Step-capture-environment/SKILL.md) |
 | Research manuals, physical measurements or reference models | [TA-Hardware-research](TA-Hardware-research/SKILL.md) |
@@ -329,12 +252,11 @@ skills, not agent roles.
 
 ## Results and tool references
 
-Every skill returns text and JSON with the checks that ran, findings and
-remaining work. See the [result contract](../references/workflow-contract.md).
-The engineer authorizes the next stage, and evidence establishes readiness.
-The [schema](../../tools/workflow/result.schema.json) defines the result format.
-The result needs no handoff ledger, transition matrix, round manifest, candidate
-seal or matching Markdown artifact.
+Agents send a written account and JSON to the main session. The engineer
+receives a plain-language summary of the outcome, relevant checks and
+unfinished work, with an optional link to an existing saved result.
+[Result contract](../references/workflow-contract.md#inputs-and-outputs) ·
+[Handoff schema](../../tools/workflow/result.schema.json)
 
 Use [verification commands](../../tools/verification/README.md) for actual tests,
 quality checks and coverage; full milestone tests are also available without

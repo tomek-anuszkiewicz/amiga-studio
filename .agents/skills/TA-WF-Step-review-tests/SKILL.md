@@ -12,7 +12,10 @@ The coordinating session assigns the `tests` review to `TA-code-reviewer`,
 which assesses tests and coverage in its own independent context. The assignment
 includes approved requirements and scenarios, the exact baseline and candidate,
 the selected test scope and available execution and coverage evidence. It also
-includes the proposed grouping of changes when relevant.
+includes the proposed grouping of changes when relevant. Verify Master supplies
+evidence from its instrumented test run and identifies unmeasured suites. In a
+targeted master reassessment, use the refreshed reports and affected assertions
+even when the original finding came from another reviewer.
 
 1. Trace independent expectations and observable assertions to the behavior and
    interactions they protect. Inspect selected tests, fixture limits, missing
