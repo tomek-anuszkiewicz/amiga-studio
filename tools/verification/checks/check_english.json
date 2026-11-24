@@ -104,7 +104,7 @@
     ],
     "tools/artifacts/tests/test_preserve.py": ["gpgsign", "qb", "qm"],
     "DIARY.md": ["beh", "wv"],
-    ".agents/references/review-decisions.md": ["beh"],
+    ".agents/references/review-decisions.md": [],
     "tools/workflow/tests/test_review_routing.py": [],
     "tools/workflow/review_routing.py": [],
     "tools/workflow/review_inputs.py": [],
@@ -115,7 +115,7 @@
     "tools/workflow/capture/receiver.py": ["fstat", "nofollow", "nonblock", "nonregular", "xb"],
     "tools/workflow/capture/control.py": ["fromhex", "getresponse"],
     "tools/workflow/capture/compose_service.py": ["aq", "cls", "exclusiveaddruse", "fdcwd", "getgid", "getuid", "isabs", "noreplace", "normpath", "ntpath", "posixpath", "renameat", "renamex", "setsockopt", "xb"],
-    "tools/workflow/capture/README.md": ["aq", "lexists", "mnt", "statvfs", "uncredentialed", "xb", "za"],
+    "tools/workflow/capture/README.md": ["uncredentialed"],
     "tools/verification/tests/test_parallel_runner.py": ["addaudithook", "runpy", "uncatchable"],
     "tools/verification/tests/test_integration_closure.py": [],
     "tools/verification/run_unittest.py": ["runpy"],
@@ -126,7 +126,7 @@
     "tools/bootstrap/book-to-markdown/tests/test_review_server_controller.py": ["getsockname", "ip", "oneoff"],
     "tools/bootstrap/book-to-markdown/review-server.ps1": ["ceq", "cmatch", "creplace", "ip", "mnt", "oneoff"],
     "tools/bootstrap/book-to-markdown/container-entrypoint.py": ["creat", "execv", "trunc", "wronly"],
-    ".agents/skills/TA-WF-Main-close-task/references/local-integration.md": ["uncopied"],
+    ".agents/skills/TA-WF-Main-close-task/references/local-integration.md": [],
     "docs/developers.md": [
       "bookjson"
     ],
@@ -151,11 +151,7 @@
     "crates/gui/tests/test_interactions.rs": [
       "zzzzzzzz"
     ],
-    "crates/test_runner/tests/test_benchmark_workloads.rs": [
-      "eeb",
-      "efa",
-      "efb"
-    ],
+    "crates/test_runner/tests/test_benchmark_workloads.rs": [],
     "tools/bootstrap/pdf-to-markdown/stages/10_proofread_stream/prompt.md": [],
     "crates/debugger/tests/test_sample_binaries.rs": [
       "zelur",
@@ -178,9 +174,7 @@
       "sourcesps",
       "documentationps"
     ],
-    "tools/bootstrap/html-to-markdown/README.md": [
-      "regchanges"
-    ],
+    "tools/bootstrap/html-to-markdown/README.md": [],
     "tools/bootstrap/html-to-markdown/references/llm-transcription-prompt.md": [
       "regchanges"
     ],
@@ -253,7 +247,7 @@
       "nold"
     ],
     "tools/bootstrap/book-to-markdown/README.md": [
-      "addo", "userprofile"
+      "userprofile"
     ],
     "tools/bootstrap/book-to-markdown/review/content_validation.py": [
       "za"
@@ -302,16 +296,14 @@
       "\u0142"
     ],
     "tools/verification/tests/test_cli.py": ["xb"],
-    "tools/verification/tests/test_impact.py": ["qm"],
+    "tools/verification/tests/test_impact.py": [],
     "tools/verification/timing_report.py": ["xb"],
     "tools/workflow/capture/tests/test_records.py": [],
     "tools/workflow/capture/environment.py": ["containerenv", "dockerenv", "lld", "shrinkwrap", "vv"],
     "tools/workflow/capture/collector.yaml": ["bearertokenauth"],
-    "tools/workflow/capture/record_sources.py": ["aws", "gcloud", "gnupg", "kdbx", "kube", "netrc", "npmrc", "pem", "pfx", "pypirc", "rsa", "za"],
+    "tools/workflow/capture/record_sources.py": ["za"],
     "tools/workflow/capture/registry.py": ["za", "isreserved", "ntpath"],
-    "tools/workflow/result.schema.json": [
-      "za"
-    ],
+    "tools/workflow/result.schema.json": [],
     "tools/workflow/skill-matrix.json": [],
     "docs/workflow-skill-matrix.md": [],
     "docs/ai_agents.md": [],
