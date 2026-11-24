@@ -45,17 +45,29 @@ pub struct PlayerState {
     #[cfg(not(target_arch = "wasm32"))]
     pub library: crate::game_library::GameLibrary,
     #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) library_sync: Option<crate::library_refresh::NativeLibrary>,
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) watched_setting: String,
+    #[cfg(not(target_arch = "wasm32"))]
     pub library_editor: Option<crate::library_edit::GameDraft>,
     #[cfg(not(target_arch = "wasm32"))]
     pub(crate) game_slots: [bool; debugger::session::QUICK_SLOT_COUNT],
     #[cfg(not(target_arch = "wasm32"))]
     pub(crate) dialog: Option<crate::file_actions::NativeDialog>,
     #[cfg(not(target_arch = "wasm32"))]
-    pub selected_game: Option<usize>,
+    pub selected_game: Option<String>,
+    #[cfg(not(target_arch = "wasm32"))]
+    pub library_filter: String,
+    #[cfg(not(target_arch = "wasm32"))]
+    pub selected_saves: Vec<crate::game_library::PlayerSave>,
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) selected_save_error: Option<String>,
     #[cfg(not(target_arch = "wasm32"))]
     pub active_game: Option<crate::game_library::LibraryGame>,
     #[cfg(not(target_arch = "wasm32"))]
     pub saves: Vec<crate::game_library::PlayerSave>,
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) session_save_error: Option<String>,
 }
 
 #[derive(Debug)]
@@ -284,6 +296,11 @@ impl EmulatorApp {
                                 crate::layout::top_menu_bar::TOAST_DURATION_FRAMES,
                             ));
                             self.refresh_player_saves();
+                            if let Some(sync) = &mut self.player.library_sync {
+                                if sync.owns_game(&game) {
+                                    sync.changed_locally();
+                                }
+                            }
                         }
                         Err(error) => {
                             self.file_error = Some(format!("Could not persist progress: {error}"))
@@ -571,52 +588,6 @@ impl EmulatorApp {
             return;
         }
         self.open_load_state_dialog();
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) fn refresh_library(&mut self) {
-        match crate::game_library::GameLibrary::discover(std::path::Path::new(
-            &self.player.catalog.library_root,
-        )) {
-            Ok(library) => {
-                self.player.library = library;
-                self.player.selected_game = None;
-            }
-            Err(error) => self.file_error = Some(format!("Could not read library: {error}")),
-        }
-    }
-    #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) fn refresh_player_saves(&mut self) {
-        let game = self.player.active_game.as_ref().or_else(|| {
-            self.player
-                .selected_game
-                .and_then(|index| self.player.library.games.get(index))
-        });
-        if let Some(game) = game {
-            match crate::game_library::saves(game) {
-                Ok(saves) => {
-                    self.player.game_slots = std::array::from_fn(|index| {
-                        self.player.active_game.as_ref().is_some_and(|active| {
-                            std::fs::read_to_string(
-                                active
-                                    .directory
-                                    .join(format!("saves/slot-{}.txt", index + 1)),
-                            )
-                            .ok()
-                            .is_some_and(|name| {
-                                saves.iter().any(|save| {
-                                    save.path
-                                        .file_name()
-                                        .is_some_and(|file| file == name.trim())
-                                })
-                            })
-                        })
-                    });
-                    self.player.saves = saves;
-                }
-                Err(error) => self.file_error = Some(error),
-            }
-        }
     }
 
     #[cfg(not(target_arch = "wasm32"))]

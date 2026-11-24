@@ -31,6 +31,9 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+async-channel = "2.5"
+blocking = "1.7"
+notify = "9.0"
 winit = "0.30"
 gilrs = "0.11.2"
 rfd = "0.15"

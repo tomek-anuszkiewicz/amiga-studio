@@ -259,7 +259,7 @@ fn library_continue_restores_selected_games_save_instead_of_active_game() {
     common::settle_harness(&mut h);
     h.get_by_label("one").click_accesskit();
     common::settle_harness(&mut h);
-    assert_eq!(h.state().player.saves.len(), 1);
+    assert_eq!(h.state().player.selected_saves.len(), 1);
     h.get_by_label_contains("Continue - ").click_accesskit();
     common::settle_harness(&mut h);
     h.get_by_label("Keep current session").click_accesskit();
@@ -318,10 +318,8 @@ fn library_continue_uses_the_selected_configuration_when_two_roots_reuse_a_game_
     );
     h.get_by_label("Library").click_accesskit();
     common::settle_harness(&mut h);
-    // Supply the path the native folder picker would return.
-    h.state_mut().player.catalog.library_root = second_root.to_string_lossy().into_owned();
-    h.get_by_label("Refresh").click_accesskit();
-    common::settle_harness(&mut h);
+    common::commit_library_directory(&mut h, &second_root);
+    common::wait_harness(&mut h, |app| app.player.library.games.len() == 2);
     h.get_by_label("one").click_accesskit();
     common::settle_harness(&mut h);
     h.get_by_label_contains("Continue - ").click_accesskit();
@@ -1295,7 +1293,7 @@ fn screenshot_clicks_keep_the_active_game_destination_and_existing_files() {
     common::settle_harness(&mut h);
     h.get_by_label("two").click_accesskit();
     common::settle_harness(&mut h);
-    assert_eq!(h.state().player.selected_game, Some(1));
+    assert_eq!(h.state().player.selected_game.as_deref(), Some("two"));
     h.get_by_label("Return to session").click_accesskit();
     common::settle_harness(&mut h);
     assert_eq!(
@@ -1607,10 +1605,8 @@ fn screenshot_stays_with_the_active_game_after_editing_the_same_id_in_another_li
 
     h.get_by_label("Library").click_accesskit();
     common::settle_harness(&mut h);
-    // Supply the path the native folder picker would return.
-    h.state_mut().player.catalog.library_root = second_root.to_string_lossy().into_owned();
-    h.get_by_label("Refresh").click_accesskit();
-    common::settle_harness(&mut h);
+    common::commit_library_directory(&mut h, &second_root);
+    common::wait_harness(&mut h, |app| app.player.library.games.len() == 2);
     h.get_by_label("one").click_accesskit();
     common::settle_harness(&mut h);
     h.get_by_label("Edit game").click_accesskit();

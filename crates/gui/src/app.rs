@@ -276,10 +276,6 @@ impl EmulatorApp {
             crate::player::PlayerScreen::Library
         };
         app.set_view_mode(ViewMode::ScreenOnly);
-        #[cfg(not(target_arch = "wasm32"))]
-        if !app.player.catalog.library_root.is_empty() {
-            app.refresh_library();
-        }
         app.theme.apply(&cc.egui_ctx);
         app
     }
@@ -320,6 +316,10 @@ impl EmulatorApp {
         crate::keyboard_input::begin_editor_collection(ctx);
         self.poll_host(ctx, first_pass);
         self.poll_configuration_save(ctx);
+        #[cfg(not(target_arch = "wasm32"))]
+        if first_pass {
+            self.poll_library(ctx);
+        }
 
         // Check for drag-and-dropped files onto the emulator window
         let dropped_files = ctx.input(|i| i.raw.dropped_files.clone());

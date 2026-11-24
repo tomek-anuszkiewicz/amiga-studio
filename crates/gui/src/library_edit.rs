@@ -190,23 +190,24 @@ impl GameDraft {
         if let Some(directory) = original_directory {
             self.write_assets(&directory, &mut manifest)?;
             if directory != destination {
-                std::fs::rename(&directory, &destination).map_err(|e| format!("Changes saved, but the folder could not be renamed: {e}. Refresh the library."))?;
+                std::fs::rename(&directory, &destination).map_err(|e| format!("Changes saved, but the folder could not be renamed: {e}. The library will pick up the saved changes."))?;
             }
         } else {
-            // Only the fresh staging directory is disposable; existing game data never are.
-            let staging = root.join(format!(".{}.pending", manifest.id));
+            // The library only discovers direct children. Publish the complete game by renaming it out of the temporary container.
+            let temporary = tempfile::Builder::new()
+                .prefix(".game-import-")
+                .tempdir_in(&root)
+                .map_err(|error| error.to_string())?;
+            let staging = temporary.path().join("game");
             std::fs::create_dir(&staging).map_err(|e| e.to_string())?;
             let result = self
                 .write_assets(&staging, &mut manifest)
                 .and_then(|()| std::fs::rename(&staging, &destination).map_err(|e| e.to_string()));
             if let Err(error) = result {
-                // Both paths have the canonical library root as their immediate parent.
-                if staging.parent() == Some(root.as_path()) {
-                    if let Err(cleanup) = std::fs::remove_dir_all(&staging) {
-                        return Err(format!(
-                            "{error}; temporary game folder could not be removed: {cleanup}"
-                        ));
-                    }
+                if let Err(cleanup) = temporary.close() {
+                    return Err(format!(
+                        "{error}; temporary game folder could not be removed: {cleanup}"
+                    ));
                 }
                 return Err(error);
             }

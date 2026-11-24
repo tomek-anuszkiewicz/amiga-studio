@@ -288,28 +288,42 @@ impl EmulatorApp {
 
     #[cfg(not(target_arch = "wasm32"))]
     fn render_library(&mut self, ui: &mut egui::Ui) {
+        let writable = self
+            .player
+            .library_sync
+            .as_ref()
+            .is_some_and(|sync| sync.writable());
+        if let Some(sync) = &self.player.library_sync {
+            if let Some(error) = &sync.read_error {
+                ui.colored_label(
+                    ui.visuals().error_fg_color,
+                    format!(
+                    "Could not read library: {error}. Choose a usable directory in Configurations."
+                ),
+                );
+            } else if sync.reconciling() {
+                ui.label("Checking the library on disk...");
+            } else if let Some(error) = sync.write_error() {
+                ui.colored_label(ui.visuals().error_fg_color, format!(
+                    "Could not write to the library directory: {error}. Choose a writable directory in Configurations."
+                ));
+            }
+            if let Some(warning) = sync.warning() {
+                ui.colored_label(ui.visuals().error_fg_color, format!(
+                    "Automatic library updates may be incomplete: {warning}. Check the directory in Configurations."
+                ));
+            }
+        } else {
+            ui.label("Choose the library directory in Configurations.");
+        }
         if self.player.library_editor.is_some() {
-            self.render_library_editor(ui);
+            self.render_library_editor(ui, writable);
             return;
         }
         ui.heading("Game library");
         ui.horizontal_wrapped(|ui| {
-            if ui.button("Choose library directory...").clicked() {
-                if let Some(path) = rfd::FileDialog::new().pick_folder() {
-                    self.player.catalog.library_root = path.to_string_lossy().into_owned();
-                    self.player.settings_dirty = true;
-                    self.refresh_library();
-                }
-            }
-            if ui.button("Refresh").clicked() {
-                self.refresh_library();
-            }
             if ui
-                .add_enabled(
-                    !self.player.busy
-                        && std::path::Path::new(&self.player.catalog.library_root).is_dir(),
-                    egui::Button::new("Add game"),
-                )
+                .add_enabled(!self.player.busy && writable, egui::Button::new("Add game"))
                 .on_hover_text(
                     "Create a game folder and copy selected disk images into the library",
                 )
@@ -317,47 +331,74 @@ impl EmulatorApp {
             {
                 self.open_library_editor(None);
             }
+            let label = ui.label("Filter games");
+            crate::keyboard_input::text_edit(
+                ui,
+                egui::TextEdit::singleline(&mut self.player.library_filter)
+                    .id_salt("library-filter")
+                    .desired_width(200.0)
+                    .hint_text("Game name"),
+            )
+            .labelled_by(label.id)
+            .on_hover_text("Keep game names containing this text, ignoring letter case.");
         });
-        ui.label(&self.player.catalog.library_root);
         for error in &self.player.library.errors {
             ui.colored_label(ui.visuals().error_fg_color, error);
         }
-        let mut selected = self.player.selected_game;
+        let filter = self.player.library_filter.to_lowercase();
+        let mut selected = None;
+        let mut visible = 0;
+        let mut selected_visible = false;
         ui.horizontal_wrapped(|ui| {
-            for (index, game) in self.player.library.games.iter().enumerate() {
+            for game in &self.player.library.games {
+                if !filter.is_empty() && !game.manifest.title.to_lowercase().contains(&filter) {
+                    continue;
+                }
+                visible += 1;
+                let is_selected = self.player.selected_game.as_ref() == Some(&game.manifest.id);
+                selected_visible |= is_selected;
                 ui.vertical(|ui| {
                     if let Some(bytes) = &game.artwork {
-                        preview(ui, ("cover", &game.manifest.id), bytes, 110.0);
+                        preview(ui, ("cover", &game.directory), bytes, 110.0);
                     }
                     if ui
-                        .selectable_label(selected == Some(index), &game.manifest.title)
+                        .selectable_label(is_selected, &game.manifest.title)
                         .clicked()
                     {
-                        selected = Some(index);
+                        selected = Some(game.manifest.id.clone());
+                        selected_visible = true;
                     }
                 });
             }
         });
-        if selected != self.player.selected_game {
-            self.player.selected_game = selected;
-            if let Some(game) = selected.and_then(|i| self.player.library.games.get(i)) {
-                self.player.catalog.selected = game.manifest.configuration.clone();
-                self.player.settings_dirty = true;
+        if let Some(id) = selected {
+            if self.player.selected_game.as_ref() != Some(&id) {
+                self.player.selected_game = Some(id);
+                if let Some(game) = self.player.selected_entry() {
+                    self.player.catalog.selected = game.manifest.configuration.clone();
+                    self.player.settings_dirty = true;
+                }
+                self.player.refresh_selected_saves();
             }
-            self.player.saves.clear();
-            self.refresh_selected_saves();
         }
-        let Some(index) = selected else {
+        if !filter.is_empty() && visible == 0 {
+            ui.label("No games match the filter.");
+            return;
+        }
+        if !selected_visible {
             ui.label("Choose a game, or use Add game to create one.");
             return;
-        };
-        let Some(game) = self.player.library.games.get(index).cloned() else {
+        }
+        let Some(game) = self.player.selected_entry().cloned() else {
             return;
         };
         ui.separator();
         ui.heading(&game.manifest.title);
         if ui
-            .add_enabled(!self.player.busy, egui::Button::new("Edit game"))
+            .add_enabled(
+                !self.player.busy && writable,
+                egui::Button::new("Edit game"),
+            )
             .on_hover_text(
                 "Change this game's name, folder, description, configuration or disk list",
             )
@@ -405,23 +446,23 @@ impl EmulatorApp {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    fn refresh_selected_saves(&mut self) {
-        if let Some(game) = self
-            .player
-            .selected_game
-            .and_then(|i| self.player.library.games.get(i))
-        {
-            match crate::game_library::saves(game) {
-                Ok(saves) => self.player.saves = saves,
-                Err(error) => self.file_error = Some(error),
-            }
-        }
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
     fn render_save_catalog(&mut self, ui: &mut egui::Ui, active: bool) {
+        let (saves, error) = if active {
+            (&self.player.saves, &self.player.session_save_error)
+        } else {
+            (
+                &self.player.selected_saves,
+                &self.player.selected_save_error,
+            )
+        };
+        if let Some(error) = error {
+            ui.colored_label(
+                ui.visuals().error_fg_color,
+                format!("Could not list saved progress: {error}"),
+            );
+        }
         let mut load = None;
-        for save in &self.player.saves {
+        for save in saves {
             ui.horizontal(|ui| {
                 preview(ui, ("save", &save.path), &save.header.screenshot_png, 110.0);
                 if ui
@@ -439,10 +480,7 @@ impl EmulatorApp {
             let game = if active {
                 self.player.active_game.clone()
             } else {
-                self.player
-                    .selected_game
-                    .and_then(|i| self.player.library.games.get(i))
-                    .cloned()
+                self.player.selected_entry().cloned()
             };
             if let Some(game) = game {
                 self.request_player_launch(crate::player::PendingLaunch::Library {

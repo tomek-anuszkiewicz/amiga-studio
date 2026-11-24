@@ -1,8 +1,10 @@
 # Game library and manual setup
 
-The desktop app opens to the game library. Select the library's root directory.
-Refresh the library after adding a game directory. To start standalone disks,
-use manual setup. The browser opens to manual setup. Choose a named
+The desktop app opens to the game library. In **Configurations**, choose the
+library directory and click **Save**. **Cancel** keeps the previous directory.
+The library updates automatically when files change. Type part of a game's name
+in **Filter games** to find it, and clear the field to show all games again.
+To start standalone disks, use manual setup. The browser opens to manual setup. Choose a named
 configuration, select a supported 256 KiB Kickstart and any standard 880 KiB DD
 ADF images, then choose Start. You can leave drives empty.
 
@@ -62,9 +64,9 @@ A successful Reset starts execution even if you had paused. If the player cannot
 prepare an assigned disk or the drive is disconnected, it reports the problem
 and keeps the session's current disks and execution state.
 
-For a cover, place **cover.jpg**, **cover.jpeg** or **cover.png** next to game.json
-and click **Refresh**. No manifest edit is needed. A declared artwork path takes
-precedence over this filename convention. JPEG and PNG covers are supported.
+For a cover, place **cover.jpg**, **cover.jpeg** or **cover.png** next to
+`game.json`. The library shows the change automatically. A declared artwork path
+takes precedence over this filename convention. JPEG and PNG covers are supported.
 
 ## Prepare a game manually
 

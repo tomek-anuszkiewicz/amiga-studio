@@ -201,7 +201,15 @@ pub struct PlayerSave {
 
 #[cfg(not(target_arch = "wasm32"))]
 pub fn saves(game: &LibraryGame) -> Result<Vec<PlayerSave>, String> {
-    let directory = game.directory.join("saves");
+    saves_in(&game.directory, &game.manifest)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) fn saves_in(
+    game_directory: &Path,
+    manifest: &GameManifest,
+) -> Result<Vec<PlayerSave>, String> {
+    let directory = game_directory.join("saves");
     if !directory.exists() {
         return Ok(Vec::new());
     }
@@ -214,8 +222,7 @@ pub fn saves(game: &LibraryGame) -> Result<Vec<PlayerSave>, String> {
         let json = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
         let saved = debugger::SaveState::from_json(&json)
             .map_err(|e| format!("{}: {e}", path.display()))?;
-        game.manifest
-            .validate_association(&saved.header.association)?;
+        manifest.validate_association(&saved.header.association)?;
         result.push(PlayerSave {
             path,
             header: saved.header,

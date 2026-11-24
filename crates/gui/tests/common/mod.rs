@@ -178,6 +178,31 @@ pub fn wait_harness(harness: &mut Harness<'_, EmulatorApp>, ready: impl Fn(&Emul
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+pub fn commit_library_directory(
+    harness: &mut Harness<'_, EmulatorApp>,
+    directory: &std::path::Path,
+) {
+    use egui_kittest::kittest::Queryable;
+
+    harness.get_by_label("Configurations").click_accesskit();
+    settle_harness(harness);
+    // The native picker would supply this path to the configuration draft.
+    let root = directory.to_string_lossy().into_owned();
+    harness
+        .state_mut()
+        .player
+        .editor
+        .as_mut()
+        .unwrap()
+        .catalog
+        .library_root = root.clone();
+    harness.get_by_label("Save").click_accesskit();
+    wait_harness(harness, |app| {
+        app.player.editor.is_none() && app.player.catalog.library_root == root
+    });
+}
+
 pub fn wait(
     app: &mut EmulatorApp,
     context: &Context,

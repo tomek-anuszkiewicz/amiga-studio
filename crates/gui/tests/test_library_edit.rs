@@ -252,7 +252,6 @@ fn jpeg_and_png_covers_are_discovered_and_refresh_reads_replacements() {
     );
     let mut app = gui::EmulatorApp::default();
     app.player.catalog.library_root = root.to_string_lossy().into_owned();
-    app.player.library = GameLibrary::discover(&root).unwrap();
     app.navigate_player(gui::player::PlayerScreen::Library);
     let ctx = egui::Context::default();
     let uploaded_color = |output: egui::FullOutput| {
@@ -266,15 +265,22 @@ fn jpeg_and_png_covers_are_discovered_and_refresh_reads_replacements() {
             })
             .expect("The displayed cover must be uploaded")
     };
-    let red = uploaded_color(common::settle(&mut app, &ctx));
+    let red = uploaded_color(common::wait(&mut app, &ctx, |app| {
+        app.player.library.games.len() == 1
+    }));
     assert!(red.r() > red.b());
     image::RgbImage::from_pixel(2, 2, image::Rgb([10, 20, 240]))
         .save(&cover)
         .unwrap();
     let second = GameLibrary::discover(&root).unwrap().games.remove(0);
     assert_ne!(first.artwork, second.artwork);
-    app.player.library = GameLibrary::discover(&root).unwrap();
-    let blue = uploaded_color(common::settle(&mut app, &ctx));
+    let blue = uploaded_color(common::wait(&mut app, &ctx, |app| {
+        app.player
+            .library
+            .games
+            .first()
+            .is_some_and(|game| game.artwork == second.artwork)
+    }));
     assert!(
         blue.b() > blue.r(),
         "Refresh retained the obsolete cover texture"
@@ -351,13 +357,12 @@ fn startup_editor_clears_removed_import_and_rejects_disconnected_drive() {
     let mut app = gui::EmulatorApp::default();
     app.player.catalog.configurations[0].launch.drives = connected;
     app.player.catalog.library_root = root.to_string_lossy().into_owned();
-    app.player.library = GameLibrary::discover(&root).unwrap();
-    app.player.selected_game = Some(0);
+    app.player.selected_game = Some(game.manifest.id.clone());
     app.navigate_player(gui::player::PlayerScreen::Library);
     let mut h = Harness::builder()
         .with_size(egui::vec2(1024.0, 800.0))
         .build_state(|ctx, app: &mut gui::EmulatorApp| app.update_ui(ctx), app);
-    common::settle_harness(&mut h);
+    common::wait_harness(&mut h, |app| app.player.library.games.len() == 1);
     h.get_by_label("Edit game").click_accesskit();
     common::settle_harness(&mut h);
     let draft = h.state_mut().player.library_editor.as_mut().unwrap();
@@ -379,7 +384,10 @@ fn startup_editor_clears_removed_import_and_rejects_disconnected_drive() {
     assert!(error.contains("DF3 is disconnected"), "{error}");
     assert!(h.get_all_by_value(error).next().is_some());
     assert_eq!(std::fs::read(&manifest).unwrap(), before);
-    assert_eq!(h.state().player.selected_game, Some(0));
+    assert_eq!(
+        h.state().player.selected_game.as_ref(),
+        Some(&game.manifest.id)
+    );
     let draft = h.state().player.library_editor.as_ref().unwrap();
     assert_eq!(
         std::array::from_fn(|drive| draft.startup_disk(drive)),
@@ -430,13 +438,12 @@ fn editor_cancel_does_not_write_and_save_updates_the_active_games_path_without_r
     app.start_library_game(game.clone(), None, false);
     common::settle(&mut app, &egui::Context::default());
     app.player.catalog.library_root = root.to_string_lossy().into_owned();
-    app.player.library = GameLibrary::discover(&root).unwrap();
-    app.player.selected_game = Some(0);
+    app.player.selected_game = Some(game.manifest.id.clone());
     app.navigate_player(gui::player::PlayerScreen::Library);
     let mut harness = Harness::builder()
         .with_size(egui::vec2(1024.0, 800.0))
         .build_state(|ctx, app: &mut gui::EmulatorApp| app.update_ui(ctx), app);
-    common::settle_harness(&mut harness);
+    common::wait_harness(&mut harness, |app| app.player.library.games.len() == 1);
     harness.get_by_label("Add game").click_accesskit();
     common::settle_harness(&mut harness);
     harness
@@ -520,11 +527,17 @@ fn editor_cancel_does_not_write_and_save_updates_the_active_games_path_without_r
     other.select_startup_disk(0, Some(StartupDisk::Pending(other.imports()[0].key())));
     let other = other.save(other_root.path(), [true; 4]).unwrap();
     assert_eq!(other.manifest.id, game.manifest.id);
-    let app = harness.state_mut();
-    app.player.catalog.library_root = other_root.path().to_string_lossy().into_owned();
-    app.player.library = GameLibrary::discover(other_root.path()).unwrap();
-    app.player.selected_game = Some(0);
-    app.navigate_player(gui::player::PlayerScreen::Session);
+    common::commit_library_directory(&mut harness, other_root.path());
+    common::wait_harness(&mut harness, |app| {
+        app.player
+            .library
+            .games
+            .first()
+            .is_some_and(|game| game.manifest.title == "Another game")
+    });
+    harness
+        .state_mut()
+        .navigate_player(gui::player::PlayerScreen::Session);
     common::settle_harness(&mut harness);
     harness.get_by_label("Reset").click_accesskit();
     common::wait_harness(&mut harness, |app| app.host.status.generation > generation);

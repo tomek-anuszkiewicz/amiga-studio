@@ -34,6 +34,32 @@ presets, the ROM choice, connected drives, both port devices and reusable host
 mappings. A game references one configuration and owns its ordered disks,
 description, artwork, initial state and player saves.
 
+On desktop, choose the application-wide library directory in Configurations.
+Save commits the directory and stores it for the next launch. Cancel or Discard
+keeps the previous directory. The Library offers Add game when the directory
+is usable for writing. With an unset or unusable directory, it directs the
+player to Configurations.
+
+The Library filters the displayed names by case-insensitive substring as the
+player types. Clearing the field restores the original sorted list. If the
+filter hides the selected game, the player's selection is retained and its
+actions are hidden. Typing belongs to the host text editor.
+
+The desktop subscribes to native filesystem notifications for the committed
+library directory and its subdirectories. Changes from this application and
+external tools trigger the same automatic refresh. The GUI groups bursts of
+notifications and discovers published entries in the background, including
+while the machine is paused. A backend report of missed notifications triggers
+a new scan. If the app cannot watch or read the directory, the Library
+reports that status and points to Configurations.
+
+Refresh retains existing game selections by ID within the same library and
+preserves the filter and unsaved drafts. External edits do not apply settings
+to the live machine. Conflicting game edits still fail at Save. Saving a
+different library directory switches the watcher and discards old-library
+notifications and scan results. The current session keeps its original save
+and media ownership. The desktop releases the watcher at shutdown.
+
 The configuration editor opens on its own screen and keeps a separate draft
 of the complete catalog, including profile creation, selection and reusable
 mappings. Switching profiles in that screen keeps all draft edits. When the
@@ -76,7 +102,7 @@ media in place.
 For optional covers, the library uses the declared artwork path. Without a
 declared path, it looks for cover.jpg, cover.jpeg or cover.png in the game
 directory. It supports JPEG and PNG. The editor explains the file convention,
-and Refresh reloads changes to covers.
+and the library reloads changes to covers automatically.
 
 In manual setup, the user can select a supported ROM and zero to four disks.
 Launch validates every asset before replacing the active machine. Returning to
