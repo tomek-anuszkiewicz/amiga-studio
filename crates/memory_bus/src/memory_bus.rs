@@ -39,16 +39,6 @@ impl<'a> MemoryBus<'a> {
     pub const RTC_END: u32 = 0xDC003F;
 
     const BIT_CIAA_PA_OVL: u8 = 0x01;
-
-    /// Writes an arbitrary byte slice directly to physical memory for debugger/test injection
-    #[inline(always)]
-    pub fn write_bytes_debug(
-        &mut self,
-        addr: u32,
-        data: &[u8],
-    ) -> Result<usize, physical_memory::KickstartSizeError> {
-        self.mem.write_bytes_debug(addr, data)
-    }
 }
 
 impl<'a> AddressBus for MemoryBus<'a> {

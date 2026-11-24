@@ -326,18 +326,6 @@ impl Agnus {
         val
     }
 
-    /// Reads an Agnus register by offset ($000..$1FE).
-    /// Write-only registers return floating open bus $FFFF.
-    #[inline]
-    pub fn read_register(&self, offset: u16) -> u16 {
-        match offset & config::MASK_CUSTOM_REG_OFFSET {
-            reg::REGISTER_DMACONR => self.read_dmaconr(),
-            reg::REGISTER_VPOSR => self.vposr(),
-            reg::REGISTER_VHPOSR => self.vhposr(),
-            _ => config::OPEN_BUS_WORD,
-        }
-    }
-
     /// Reads DMA Control and Blitter status (DMACONR at $DFF002)
     #[inline(always)]
     pub fn dmaconr(&self) -> u16 {

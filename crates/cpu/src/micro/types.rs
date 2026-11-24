@@ -127,16 +127,6 @@ pub struct OpcodeDescriptor {
     pub reg_dst: u8,
 }
 
-impl OpcodeDescriptor {
-    pub const fn new(steps: &'static [MicroStep], reg_src: u8, reg_dst: u8) -> Self {
-        Self {
-            steps,
-            reg_src,
-            reg_dst,
-        }
-    }
-}
-
 impl Default for OpcodeDescriptor {
     fn default() -> Self {
         Self {

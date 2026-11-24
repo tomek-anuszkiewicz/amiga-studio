@@ -279,23 +279,6 @@ impl Paula {
         }
     }
 
-    /// Reads a Paula register by offset ($000..$1FE).
-    /// Write-only registers return floating open bus $FFFF.
-    #[inline]
-    pub fn read_register(&self, offset: u16) -> u16 {
-        match offset & config::MASK_CUSTOM_REG_OFFSET {
-            reg::REGISTER_ADKCONR => self.adkcon,
-            reg::REGISTER_POT0DAT => self.pot0dat,
-            reg::REGISTER_POT1DAT => self.pot1dat,
-            reg::REGISTER_POTGOR => self.potgor,
-            reg::REGISTER_SERDATR => self.serdatr(),
-            reg::REGISTER_DSKBYTR => self.peek_dskbytr(),
-            reg::REGISTER_INTENAR => self.interrupts.read_intenar(),
-            reg::REGISTER_INTREQR => self.interrupts.read_intreqr(),
-            _ => config::OPEN_BUS_WORD,
-        }
-    }
-
     /// Returns composite DSKBYTR status with live flags without side effects (for debuggers and peek inspection)
     #[inline]
     pub fn peek_dskbytr(&self) -> u16 {

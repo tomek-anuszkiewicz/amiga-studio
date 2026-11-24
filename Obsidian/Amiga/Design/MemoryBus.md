@@ -368,8 +368,8 @@ to these RAM banks still use their memory handlers.
 Inspection paths bypass CPU timing. `read_word_debug()` uses
 side-effect-free custom and CIA reads or physical-memory debug reads
 without CPU wait states. The RTC debug word path currently calls
-the ordinary RTC read method, which is read-only. `write_bytes_debug()`
-goes directly to physical memory for debugger or test injection.
+the ordinary RTC read method, which is read-only. The debugger and test
+fixtures inject bytes through `PhysicalMemory::write_bytes_debug()`.
 
 ## Reference Documentation & Upstream Ground Truth
 

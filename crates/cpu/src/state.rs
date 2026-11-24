@@ -236,10 +236,6 @@ impl CpuState {
         &mut self.micro
     }
     #[inline(always)]
-    pub fn set_micro(&mut self, value: crate::micro::CpuMicroState) {
-        self.micro = value;
-    }
-    #[inline(always)]
     pub fn set_cycle_counter(&mut self, value: u64) {
         self.cycle_counter = value;
     }
@@ -554,11 +550,5 @@ impl CpuState {
     #[inline(always)]
     pub fn cycle_counter(&self) -> u64 {
         self.cycle_counter
-    }
-
-    /// Resets the cycle counter to zero
-    #[inline(always)]
-    pub fn reset_cycle_counter(&mut self) {
-        self.cycle_counter = 0;
     }
 }

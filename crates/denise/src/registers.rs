@@ -416,17 +416,6 @@ impl Denise {
         val
     }
 
-    /// Reads register with physical read side-effects (e.g. clearing CLXDAT).
-    /// Write-only registers return floating open bus $FFFF.
-    pub fn read_register(&mut self, offset: u16) -> u16 {
-        match offset & config::MASK_CUSTOM_REG_OFFSET {
-            reg::REGISTER_JOY0DAT => self.joy0dat,
-            reg::REGISTER_JOY1DAT => self.joy1dat,
-            reg::REGISTER_CLXDAT => self.read_clxdat(),
-            _ => config::OPEN_BUS_WORD,
-        }
-    }
-
     /// Reads Joystick/Mouse 0 data register (JOY0DAT at $DFF00A)
     #[inline(always)]
     pub fn joy0dat(&self) -> u16 {
