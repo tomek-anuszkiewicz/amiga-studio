@@ -143,7 +143,7 @@ pub struct NamedConfiguration {
 pub struct LaunchConfiguration {
     pub preset: A500Preset,
     pub video: VideoStandard,
-    /// A native path or browser display name, never proof of browser file access.
+    /// A library-relative native path or browser display name.
     pub rom: String,
     pub drives: [bool; config::FLOPPY_DRIVE_COUNT],
 }
@@ -219,7 +219,6 @@ pub struct ConfigurationCatalog {
     pub configurations: Vec<NamedConfiguration>,
     pub mappings: Vec<JoystickMapping>,
     pub selected: String,
-    pub library_root: String,
 }
 
 impl Default for ConfigurationCatalog {
@@ -227,7 +226,6 @@ impl Default for ConfigurationCatalog {
         Self {
             configurations: vec![NamedConfiguration::default()],
             selected: "standard".into(),
-            library_root: String::new(),
             mappings: vec![JoystickMapping::default()],
         }
     }
@@ -235,7 +233,9 @@ impl Default for ConfigurationCatalog {
 
 impl ConfigurationCatalog {
     pub fn validate_all(&self) -> Result<(), String> {
-        if self.selected().is_none() {
+        if self.selected().is_none()
+            && !(self.selected.is_empty() && self.configurations.is_empty())
+        {
             return Err("Select an existing configuration".into());
         }
         let mut ids = Vec::new();
@@ -278,16 +278,26 @@ impl ConfigurationCatalog {
         self.mappings.iter().find(|m| m.id == id)
     }
     pub fn validate(&self, configuration: &NamedConfiguration) -> Result<(), String> {
-        if !configuration.launch.drives[0] {
+        configuration.validate(&self.mappings)
+    }
+}
+
+impl NamedConfiguration {
+    pub(crate) fn validate(&self, mappings: &[JoystickMapping]) -> Result<(), String> {
+        if !self.launch.drives[0] {
             return Err("The internal DF0 drive must remain connected".into());
         }
-        if configuration.name.trim().is_empty() {
+        if self.name.trim().is_empty() {
             return Err("Enter a configuration name".into());
         }
-        self.validate_controls(&configuration.controls)
+        self.controls.validate(mappings)
     }
+}
 
-    pub fn validate_controls(&self, configuration: &ControlConfiguration) -> Result<(), String> {
+impl ControlConfiguration {
+    pub(crate) fn validate(&self, mappings: &[JoystickMapping]) -> Result<(), String> {
+        let mapping = |id: &str| mappings.iter().find(|mapping| mapping.id == id);
+        let configuration = self;
         if !(MIN_MOUSE_SENSITIVITY..=MAX_MOUSE_SENSITIVITY)
             .contains(&configuration.host.mouse_sensitivity)
         {
@@ -310,7 +320,7 @@ impl ConfigurationCatalog {
                 (DeviceKind::Disconnected, InputSource::None)
                 | (DeviceKind::Mouse, InputSource::SystemMouse) => {}
                 (DeviceKind::Joystick, InputSource::Keyboard(id)) => {
-                    let mapping = self.mapping(id).ok_or("Select an existing input mapping")?;
+                    let mapping = mapping(id).ok_or("Select an existing input mapping")?;
                     for key in mapping.keys {
                         if used_keys.contains(&key) {
                             return Err(format!(
@@ -325,8 +335,9 @@ impl ConfigurationCatalog {
                         return Err("Select a different available controller for each port".into());
                     }
                     used_pads.push(identity.clone());
-                    let mapping = self
-                        .mapping(mapping)
+                    let mapping = mappings
+                        .iter()
+                        .find(|item| item.id == *mapping)
                         .ok_or("Select an existing controller mapping")?;
                     pad_buttons.extend(mapping.buttons.map(|button| (identity.clone(), button)));
                     if !(MIN_CONTROLLER_THRESHOLD..=MAX_CONTROLLER_THRESHOLD)

@@ -3,7 +3,6 @@
 use crate::library_edit::{validate_game_name, GameDraft};
 use crate::EmulatorApp;
 use std::borrow::Cow;
-use std::path::Path;
 
 impl EmulatorApp {
     pub(crate) fn open_library_editor(&mut self, game: Option<crate::game_library::LibraryGame>) {
@@ -37,7 +36,10 @@ impl EmulatorApp {
             .on_hover_text("The game name also determines its directory inside the library");
         ui.label(format!(
             "Folder: {}",
-            Path::new(&self.player.catalog.library_root)
+            self.player
+                .library_root
+                .as_deref()
+                .unwrap_or_else(|| std::path::Path::new(""))
                 .join(&draft.name)
                 .display()
         ));

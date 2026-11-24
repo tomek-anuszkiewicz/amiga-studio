@@ -1,6 +1,7 @@
 //! Native library notifications and background discovery, owned by the frontend.
 
 use crate::game_library::{self, GameLibrary, GameManifest, LibraryGame, PlayerSave};
+use crate::library_catalog::{self, CatalogRead};
 use async_channel::{Receiver, Sender};
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 use std::path::{Path, PathBuf};
@@ -261,6 +262,7 @@ fn read_active_saves(target: &SaveReadTarget) -> Result<SessionSaves, String> {
 #[derive(Debug)]
 struct Discovery {
     library: GameLibrary,
+    catalog: CatalogRead,
     canonical_root: Option<PathBuf>,
     selected: Option<(String, Result<Vec<PlayerSave>, String>)>,
     active: Option<(SaveReadTarget, Result<SessionSaves, String>)>,
@@ -286,6 +288,7 @@ impl Discovery {
         });
         Ok(Self {
             library,
+            catalog: library_catalog::read(root, ""),
             canonical_root: root.canonicalize().ok(),
             selected,
             active,
@@ -302,6 +305,7 @@ struct Scan {
 
 #[derive(Debug)]
 pub(crate) struct NativeLibrary {
+    setting: PathBuf,
     pub root: PathBuf,
     canonical_root: Option<PathBuf>,
     schedule: LibraryRefreshSchedule,
@@ -313,14 +317,19 @@ pub(crate) struct NativeLibrary {
 }
 
 impl NativeLibrary {
-    fn new(root: PathBuf) -> Self {
+    fn new(setting: PathBuf) -> Self {
+        let (root, read_error) = match std::path::absolute(&setting) {
+            Ok(root) => (root, None),
+            Err(error) => (setting.clone(), Some(error.to_string())),
+        };
         Self {
+            setting,
             root,
             canonical_root: None,
             schedule: LibraryRefreshSchedule::default(),
             watch: None,
             job: None,
-            read_error: None,
+            read_error,
             runtime_error: None,
             revision: 0,
         }
@@ -449,6 +458,14 @@ impl NativeLibrary {
 }
 
 impl crate::player::PlayerState {
+    pub(crate) fn clear_library_listing(&mut self) {
+        self.library = GameLibrary::default();
+        self.selected_game = None;
+        self.set_selected_saves(Ok(Vec::new()));
+        self.library_editor = None;
+        self.missing_configuration = None;
+    }
+
     pub(crate) fn selected_entry(&self) -> Option<&crate::game_library::LibraryGame> {
         let id = self.selected_game.as_ref()?;
         self.library
@@ -511,34 +528,29 @@ impl crate::EmulatorApp {
             self.player.library_sync = None;
             return;
         }
-        let setting = &self.player.catalog.library_root;
-        let selection = self.player.selected_game.clone();
-        let active = self.player.active_game.as_ref();
-        if self.player.watched_setting != *setting {
-            self.player.watched_setting.clone_from(setting);
+        let setting = self.player.library_root.as_ref();
+        let watched = self.player.library_sync.as_ref().map(|sync| &sync.setting);
+        if watched != setting {
+            let setting = setting.cloned();
             if self.player.library_sync.take().is_some() {
-                self.player.library = GameLibrary::default();
-                self.player.selected_game = None;
-                self.player.selected_saves.clear();
-                self.player.selected_save_error = None;
-                self.player.library_editor = None;
+                self.player.clear_library_listing();
             }
-            if setting.is_empty() {
-                return;
-            }
-            let mut sync = match std::path::absolute(setting) {
-                Ok(root) => NativeLibrary::new(root),
-                Err(error) => {
-                    let mut sync = NativeLibrary::new(PathBuf::from(setting));
-                    sync.read_error = Some(error.to_string());
-                    self.player.library_sync = Some(sync);
-                    return;
+            if let Some(setting) = setting {
+                let mut sync = NativeLibrary::new(setting);
+                if sync.read_error.is_none() {
+                    sync.scan(
+                        ctx,
+                        true,
+                        self.player.selected_game.clone(),
+                        self.player.active_game.as_ref(),
+                    );
                 }
-            };
-            sync.scan(ctx, true, self.player.selected_game.clone(), active);
-            self.player.library_sync = Some(sync);
+                self.player.library_sync = Some(sync);
+            }
             return;
         }
+        let selection = self.player.selected_game.clone();
+        let active = self.player.active_game.as_ref();
         let Some(sync) = &mut self.player.library_sync else {
             return;
         };
@@ -547,6 +559,7 @@ impl crate::EmulatorApp {
                 sync.read_error = None;
                 sync.canonical_root = discovered.canonical_root;
                 self.player.library = discovered.library;
+                self.reconcile_library_catalog(discovered.catalog);
                 match discovered.selected {
                     Some((id, saves)) if self.player.selected_game.as_ref() == Some(&id) => {
                         self.player.set_selected_saves(saves);

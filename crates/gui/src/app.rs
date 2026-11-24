@@ -263,6 +263,7 @@ impl EmulatorApp {
                 app.apply_preferences(&prefs);
             }
         }
+        #[cfg(target_arch = "wasm32")]
         if let Some(storage) = cc.storage {
             if let Some(catalog) =
                 eframe::get_value(storage, crate::player_config::CONFIG_STORAGE_KEY)
@@ -276,6 +277,13 @@ impl EmulatorApp {
             crate::player::PlayerScreen::Library
         };
         app.set_view_mode(ViewMode::ScreenOnly);
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            if let Some(storage) = cc.storage {
+                app.restore_native_player_settings(storage);
+            }
+            app.reload_library_catalog();
+        }
         app.theme.apply(&cc.egui_ctx);
         app
     }
@@ -377,6 +385,8 @@ impl EmulatorApp {
             self.handle_keyboard_input(ctx);
         }
         self.render_player_confirmation(ctx);
+        #[cfg(not(target_arch = "wasm32"))]
+        self.render_missing_configuration(ctx);
         if let Some((info, image)) = next_image {
             self.host.presented = Some(info);
             self.screen_texture.update(ctx, image);

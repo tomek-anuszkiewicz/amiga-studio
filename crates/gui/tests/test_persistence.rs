@@ -51,7 +51,7 @@ fn library_directory_cancel_discards_the_draft_and_save_reopens_the_committed_ro
     draft.name = "Second library game".into();
     draft.save(second.path(), [true; 4]).unwrap();
     let mut app = EmulatorApp::default();
-    app.player.catalog.library_root = first.path().to_string_lossy().into_owned();
+    app.player.library_root = Some(first.path().to_path_buf());
     app.navigate_player(PlayerScreen::Library);
     let mut h = Harness::builder()
         .with_size(egui::vec2(1024.0, 760.0))
@@ -65,23 +65,14 @@ fn library_directory_cancel_discards_the_draft_and_save_reopens_the_committed_ro
         .next()
         .is_some());
     let second_path = second.path().to_string_lossy();
-    h.state_mut()
-        .player
-        .editor
-        .as_mut()
-        .unwrap()
-        .catalog
-        .library_root = second_path.to_string();
+    h.state_mut().player.editor.as_mut().unwrap().library_root = Some(second.path().to_path_buf());
     h.step();
     assert!(h.get_all_by_value(&second_path).next().is_some());
     h.get_by_label("Cancel").click_accesskit();
     common::settle_harness(&mut h);
-    assert_eq!(
-        h.state().player.catalog.library_root,
-        first.path().to_string_lossy()
-    );
+    assert_eq!(h.state().player.library_root.as_deref(), Some(first.path()));
 
-    common::commit_library_directory(&mut h, second.path());
+    common::select_library(&mut h, second.path());
     let mut storage = MemoryStorage::new();
     h.state_mut().save(&mut storage);
     let mut creation = eframe::CreationContext::_new_kittest(egui::Context::default());
@@ -90,7 +81,10 @@ fn library_directory_cancel_discards_the_draft_and_save_reopens_the_committed_ro
     common::wait(&mut restarted, &creation.egui_ctx, |app| {
         app.player.library.games.len() == 1
     });
-    assert_eq!(restarted.player.catalog.library_root, second_path);
+    assert_eq!(
+        restarted.player.library_root.as_deref(),
+        Some(second.path())
+    );
     assert_eq!(restarted.player.screen, PlayerScreen::Library);
     assert_eq!(
         restarted.player.library.games[0].manifest.title,
@@ -294,27 +288,217 @@ fn battery_offset_persists_separately_and_ui_refreshes_host_utc() {
 }
 
 #[test]
-fn named_hardware_and_input_catalog_survives_framework_storage_without_media_bytes() {
+fn native_catalog_and_host_preferences_survive_separately_after_relocating_the_library() {
     use eframe::App;
+    use gui::player::PlayerScreen;
+    let original = tempfile::tempdir().unwrap();
+    let root = original.path().join("Library");
+    std::fs::create_dir(&root).unwrap();
+    std::fs::write(root.join("kick.rom"), [1; 262144]).unwrap();
     let mut app = EmulatorApp::default();
-    app.player.catalog.configurations[0].name = "Renamed preset".into();
-    app.player.catalog.configurations[0].launch.rom = "kick.rom".into();
-    app.player.catalog.mappings[0].threshold = 0.7;
+    app.player.library_root = Some(root.clone());
+    app.theme = AppTheme::Light;
+    app.navigate_player(PlayerScreen::Configuration);
+    let ctx = egui::Context::default();
+    common::settle(&mut app, &ctx);
+    let draft = &mut app.player.editor.as_mut().unwrap().catalog;
+    draft.configurations[0].name = "Renamed preset".into();
+    draft.configurations[0].launch.rom = "kick.rom".into();
+    draft.mappings[0].threshold = 0.7;
     app.player.rom = Some(vec![1; 262144]);
+    app.save_configuration_edit();
+    common::settle(&mut app, &ctx);
+    assert!(app.player.editor.is_none());
     let mut storage = MemoryStorage::new();
     app.save(&mut storage);
-    let restored: gui::player_config::ConfigurationCatalog =
-        eframe::get_value(&storage, gui::player_config::CONFIG_STORAGE_KEY).unwrap();
-    assert_eq!(restored, app.player.catalog);
-    assert_eq!(restored.configurations[0].id, "standard");
-    let mut reopened = EmulatorApp::default();
-    reopened.player.catalog = restored;
+    assert!(storage
+        .get_string(gui::player_config::CONFIG_STORAGE_KEY)
+        .is_none());
+    let host = storage.get_string("native_player_settings").unwrap();
+    assert!(!host.contains("Renamed preset") && !host.contains("kick.rom"));
+    let persisted = std::fs::read(root.join("configurations.json")).unwrap();
+    let text = std::str::from_utf8(&persisted).unwrap();
+    assert!(text.contains("\"kick.rom\""));
+    assert!(!text.contains("library_root") && text.len() < 4096);
+    let reopened = reopen(&storage);
+    assert_eq!(
+        reopened.player.library_root.as_deref(),
+        Some(root.as_path())
+    );
+    assert_eq!(reopened.theme, AppTheme::Light);
+    assert_eq!(reopened.player.catalog, app.player.catalog);
+    assert_eq!(reopened.player.catalog.configurations[0].id, "standard");
     assert!(reopened.player.rom.is_none());
     assert!(reopened.player.setup_disks.is_empty());
+
+    let destination = tempfile::tempdir().unwrap();
+    let moved = destination.path().join("Moved library");
+    std::fs::rename(&root, &moved).unwrap();
+    let mut different_user = EmulatorApp::default();
+    different_user.navigate_player(PlayerScreen::Configuration);
+    let mut h = egui_kittest::Harness::builder().build_state(
+        |ctx, app: &mut EmulatorApp| app.update_ui(ctx),
+        different_user,
+    );
+    common::settle_harness(&mut h);
+    common::select_library(&mut h, &moved);
+    let reopened = h.state();
+    assert_eq!(reopened.player.catalog, app.player.catalog);
     assert_eq!(
         reopened.player.catalog.selected().unwrap().name,
         "Renamed preset"
     );
+    assert_eq!(reopened.theme, EmulatorApp::default().theme);
+    assert_eq!(std::fs::read(moved.join("kick.rom")).unwrap(), [1; 262144]);
+}
+
+fn reopen(storage: &dyn Storage) -> EmulatorApp {
+    let mut context = eframe::CreationContext::_new_kittest(egui::Context::default());
+    context.storage = Some(storage);
+    EmulatorApp::new(&context)
+}
+
+fn legacy_settings(root: &std::path::Path, rom: &std::path::Path) -> MemoryStorage {
+    use gui::player_config::{
+        ConfigurationCatalog, JoystickMapping, NamedConfiguration, CONFIG_STORAGE_KEY,
+    };
+    #[derive(serde::Serialize)]
+    struct Legacy<'a> {
+        configurations: Vec<NamedConfiguration>,
+        mappings: Vec<JoystickMapping>,
+        selected: &'a str,
+        library_root: &'a std::path::Path,
+    }
+    let mut catalog = ConfigurationCatalog::default();
+    catalog.configurations[0].launch.rom = rom.to_str().unwrap().into();
+    let mut profile = catalog.configurations[0].clone();
+    profile.id = "played-profile".into();
+    profile.name = "My A500".into();
+    catalog.configurations.push(profile);
+    catalog.mappings.push(JoystickMapping {
+        id: "extra".into(),
+        ..JoystickMapping::default()
+    });
+    let mut storage = MemoryStorage::new();
+    eframe::set_value(
+        &mut storage,
+        CONFIG_STORAGE_KEY,
+        &Legacy {
+            configurations: catalog.configurations,
+            mappings: catalog.mappings,
+            selected: "played-profile",
+            library_root: root,
+        },
+    );
+    storage
+}
+
+#[test]
+fn legacy_catalog_migrates_once_and_survives_restart_before_the_host_flush() {
+    use eframe::App;
+    use gui::player_config::CONFIG_STORAGE_KEY;
+    let root = tempfile::tempdir().unwrap();
+    let assets = root.path().join("_shared");
+    std::fs::create_dir(&assets).unwrap();
+    let rom = assets.join("firmware.rom");
+    std::fs::write(&rom, [7; 262144]).unwrap();
+    let mut storage = legacy_settings(root.path(), &rom);
+    let original = storage.get_string(CONFIG_STORAGE_KEY).unwrap();
+    let migrated = reopen(&storage);
+    let catalog = migrated.player.catalog.clone();
+    assert_eq!(catalog.selected, "played-profile");
+    assert_eq!(
+        catalog
+            .configurations
+            .iter()
+            .map(|cfg| cfg.id.as_str())
+            .collect::<Vec<_>>(),
+        ["standard", "played-profile"]
+    );
+    assert!(catalog
+        .configurations
+        .iter()
+        .all(|cfg| cfg.launch.rom == "_shared/firmware.rom"));
+    assert_eq!(
+        catalog
+            .mappings
+            .iter()
+            .map(|mapping| mapping.id.as_str())
+            .collect::<Vec<_>>(),
+        ["arrows", "extra"]
+    );
+    let installed = root.path().join("configurations.json");
+    let installed_bytes = std::fs::read(&installed).unwrap();
+    assert_eq!(
+        std::fs::read_dir(root.path()).unwrap().count(),
+        2,
+        "only the assets and portable catalog belong in the library"
+    );
+    assert_eq!(std::fs::read(&rom).unwrap(), [7; 262144]);
+
+    // Simulate an exit before the first app writes its per-user migration marker.
+    let mut restarted = reopen(&storage);
+    assert_eq!(restarted.player.catalog, catalog);
+    assert_eq!(std::fs::read(&installed).unwrap(), installed_bytes);
+    restarted.save(&mut storage);
+    assert_eq!(
+        storage.get_string(CONFIG_STORAGE_KEY).as_deref(),
+        Some(original.as_str())
+    );
+
+    let mut edited: serde_json::Value = serde_json::from_slice(&installed_bytes).unwrap();
+    edited["configurations"][1]["name"] = "Edited after migration".into();
+    std::fs::write(&installed, serde_json::to_vec(&edited).unwrap()).unwrap();
+    assert_eq!(
+        reopen(&storage).player.catalog.selected().unwrap().name,
+        "Edited after migration"
+    );
+}
+
+#[test]
+fn failed_migration_preserves_the_exact_legacy_data_and_occupied_library() {
+    use eframe::App;
+    use gui::player_config::CONFIG_STORAGE_KEY;
+    let root = tempfile::tempdir().unwrap();
+    let rom = root.path().join("firmware.rom");
+    std::fs::write(&rom, [0; 262144]).unwrap();
+    let installed = root.path().join("configurations.json");
+    let existing = br#"{"configurations":[],"mappings":[]}"#;
+    std::fs::write(&installed, existing).unwrap();
+    let mut storage = legacy_settings(root.path(), &rom);
+    let original = storage.get_string(CONFIG_STORAGE_KEY).unwrap();
+    let mut app = reopen(&storage);
+    assert!(app.player.catalog.configurations.is_empty());
+    app.save(&mut storage);
+    assert_eq!(std::fs::read(&installed).unwrap(), existing);
+    assert_eq!(storage.get_string(CONFIG_STORAGE_KEY).unwrap(), original);
+    let mut h = egui_kittest::Harness::builder()
+        .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
+    use egui_kittest::kittest::Queryable;
+    common::settle_harness(&mut h);
+    assert!(h
+        .query_all_by(|node| node
+            .value()
+            .is_some_and(|value| value.contains("already exists in the previous library")))
+        .next()
+        .is_some());
+    assert!(h.get_by_label("Add game").accesskit_node().is_disabled());
+}
+
+#[test]
+fn legacy_migration_rejects_an_external_rom_without_creating_a_catalog() {
+    use gui::player_config::CONFIG_STORAGE_KEY;
+    let root = tempfile::tempdir().unwrap();
+    let external = tempfile::tempdir().unwrap();
+    let rom = external.path().join("firmware.rom");
+    std::fs::write(&rom, [4; 262144]).unwrap();
+    let storage = legacy_settings(root.path(), &rom);
+    let original = storage.get_string(CONFIG_STORAGE_KEY).unwrap();
+    let app = reopen(&storage);
+    assert!(app.player.catalog.configurations.is_empty());
+    assert!(!root.path().join("configurations.json").exists());
+    assert_eq!(storage.get_string(CONFIG_STORAGE_KEY).unwrap(), original);
+    assert_eq!(std::fs::read(&rom).unwrap(), [4; 262144]);
 }
 
 #[test]
@@ -345,6 +529,8 @@ fn configuration_creation_mapping_and_hardware_edits_persist_through_real_contro
     use eframe::App;
     use egui_kittest::{kittest::Queryable, Harness};
     let mut app = EmulatorApp::default();
+    let library = tempfile::tempdir().unwrap();
+    app.player.library_root = Some(library.path().to_path_buf());
     app.navigate_player(gui::player::PlayerScreen::Configuration);
     let mut h = Harness::builder()
         .with_size(egui::vec2(1280.0, 1800.0))
@@ -425,8 +611,7 @@ fn configuration_creation_mapping_and_hardware_edits_persist_through_real_contro
     let committed_before = h.state().player.catalog.clone();
     let mut draft_storage = MemoryStorage::new();
     h.state_mut().save(&mut draft_storage);
-    let stored_before: gui::player_config::ConfigurationCatalog =
-        eframe::get_value(&draft_storage, gui::player_config::CONFIG_STORAGE_KEY).unwrap();
+    let stored_before = reopen(&draft_storage).player.catalog;
     assert_eq!(
         stored_before, committed_before,
         "shutdown persisted a draft"
@@ -436,8 +621,7 @@ fn configuration_creation_mapping_and_hardware_edits_persist_through_real_contro
     assert!(h.state().player.editor.is_none());
     let mut storage = MemoryStorage::new();
     h.state_mut().save(&mut storage);
-    let restored: gui::player_config::ConfigurationCatalog =
-        eframe::get_value(&storage, gui::player_config::CONFIG_STORAGE_KEY).unwrap();
+    let restored = reopen(&storage).player.catalog;
     assert_eq!(restored, h.state().player.catalog);
     assert_eq!(restored.selected, selected);
     assert_eq!(

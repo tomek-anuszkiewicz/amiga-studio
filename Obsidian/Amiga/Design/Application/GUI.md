@@ -27,18 +27,33 @@ Both offer two views of the same emulated machine.
   View switch. Inspection panels and debugger shortcuts are inactive.
 - **Developer Studio** places the screen in a debugging workspace with execution controls and state inspection. The [debugger specification](Debugger.md) defines the behavior behind those controls.
 
-The desktop opens the game library at startup. The browser opens manual setup
-without probing for a bundle or offering a game library. Each globally available
-named configuration has a stable ID and combines the supported hardware
-presets, the ROM choice, connected drives, both port devices and reusable host
-mappings. A game references one configuration and owns its ordered disks,
-description, artwork, initial state and player saves.
+The desktop opens the game library at startup. In Configurations, the player
+chooses a library directory under Application settings and commits it with Save.
+Cancel in either the directory picker or the editor preserves the committed
+directory. The desktop requires a selected, accessible library for library
+operations. When it cannot open that directory, it directs the player to
+Configurations. It stores the selected root, remembered picker directories,
+applicable history and presentation preferences in the current user's native
+application storage. The browser opens manual setup and keeps its named
+settings in browser storage. [Named configurations](../Configuration.md#named-frontend-configurations)
 
-On desktop, choose the application-wide library directory in Configurations.
-Save commits the directory and stores it for the next launch. Cancel or Discard
-keeps the previous directory. The Library offers Add game when the directory
-is usable for writing. With an unset or unusable directory, it directs the
-player to Configurations.
+A game references one configuration in its library and owns its ordered disks,
+description, artwork, initial state and player saves. If a launch needs a
+configuration and the reference is absent or unresolved, the player can select
+an existing configuration in that library. The app saves that reference before
+continuing the normal validated launch. Cancel preserves the manifest and the
+live session. If the library has no profiles, the app directs the player to
+create one in Configurations.
+
+Before deleting a configuration, the app lists the games that use it and asks
+the player to confirm. When there are references, the player must select another
+existing configuration. The app checks the affected games' media and startup
+drives, saves and verifies their replacement references, then removes the old
+configuration. If discovery, validation or a write fails, the app keeps the old
+configuration, reports any references it already saved and reloads the library.
+
+The Library offers Add game when the selected directory is writable and has a
+configuration. Cancel or Discard in Configurations keeps the previous directory.
 
 The Library filters the displayed names by case-insensitive substring as the
 player types. Clearing the field restores the original sorted list. If the
@@ -54,8 +69,9 @@ a new scan. If the app cannot watch or read the directory, the Library
 reports that status and points to Configurations.
 
 Refresh retains existing game selections by ID within the same library and
-preserves the filter and unsaved drafts. External edits do not apply settings
-to the live machine. Conflicting game edits still fail at Save. Saving a
+preserves the filter and unsaved drafts. Changes to the library's configurations
+and mappings affect future launches. External edits leave the live machine and
+its committed controls unchanged. Conflicting edits fail at Save. Saving a
 different library directory switches the watcher and discards old-library
 notifications and scan results. The current session keeps its original save
 and media ownership. The desktop releases the watcher at shutdown.
@@ -69,13 +85,17 @@ then publishes the committed settings. If Save fails, the draft stays
 available and the committed catalog keeps its previous settings. Cancel
 discards the draft, including invalid edits, and returns to the screen that
 opened the editor. Leaving with unsaved edits offers Save, Discard and Keep
-editing. With no unsaved edits, navigation proceeds directly. Shutdown persists
-only the committed catalog.
+editing. With no unsaved edits, navigation proceeds directly. The editor asks
+the player to finish or discard profile edits before switching libraries.
+The native catalog is written through the editor and explicit catalog actions.
 
 Saving controls updates the active session's named configuration without a
-restart. Selecting another profile selects it for a future launch only. The
-machine remains paused until resumed. RAM, ROM, video and drive choices take
-effect on explicit launch only.
+restart when the editor is working in that session's library and the profile
+still exists there. Selecting another profile or library affects future
+launches. The live machine retains the original library, saves, media and
+committed controls, including after deletion or reassignment of its profile.
+The machine remains paused until resumed. RAM, ROM, video and drive choices
+take effect on explicit launch only.
 
 When port devices change, the machine installs neutral devices only at the
 changed endpoints. Unchanged mice keep their quadrature phase. Before execution

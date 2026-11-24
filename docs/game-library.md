@@ -1,7 +1,8 @@
 # Game library and manual setup
 
-The desktop app opens to the game library. In **Configurations**, choose the
-library directory and click **Save**. **Cancel** keeps the previous directory.
+The desktop app opens to the game library. In **Configurations**, use
+**Choose library directory...** under **Application settings** and click
+**Save**. **Cancel** keeps the previous directory.
 The library updates automatically when files change. Type part of a game's name
 in **Filter games** to find it, and clear the field to show all games again.
 To start standalone disks, use manual setup. The browser opens to manual setup.
@@ -17,6 +18,18 @@ decimal. When you select a controller, the app binds that specific connection.
 If the connection is unavailable, reassign it. After reconnecting a controller
 or after the app loses focus, release any held controller inputs before using
 them again.
+
+On desktop, each library keeps its profiles and reusable mappings in
+`configurations.json`. Keep the Kickstart files inside the library and enter
+their paths relative to the library directory. Copy the entire library to bring
+these profiles, games and assets to another installation. Your library directory
+choice and interface preferences belong to your user account. The first upgrade
+moves previous profiles and mappings into the previously selected library and
+keeps the original data in your user settings for recovery.
+
+Switching libraries changes the profiles available for future launches. You can
+return to the live session and continue using its controls and saves in its
+original library. Finish or discard any profile edits before switching.
 
 The keyboard works as soon as the running session is active. Click the Amiga
 display to capture the mouse. The middle mouse button frees the mouse while
@@ -54,6 +67,18 @@ one is configured. Otherwise it boots normally with your saved startup disks.
 If the initial state fails to load, choose **Boot normally without initial
 state** to start with those disks. Loading an initial state or saved progress
 restores the inserted disks and empty drives recorded in that save.
+
+If the game shows **Configuration missing**, select a profile from the current
+library and click **Save reference and continue**. The app writes that choice
+to the game before it attempts to launch. If there are no profiles to choose
+from, create one in Configurations. Cancel keeps the game's manifest as it was.
+
+To remove a profile, select it in **Configurations** and click **Delete
+configuration**. Review which games use it and choose a replacement when the list
+contains games. The app checks those games' disks and startup drives, saves and
+verifies their new references, then deletes the profile. If an update fails, the
+app keeps the old profile and reports which references it already wrote. Open
+the deletion dialog again to check the remaining references.
 
 **Reset** in the player panel inserts the active game's saved startup disks,
 clears drives set to **Empty** and boots with the current hardware and ROM. If

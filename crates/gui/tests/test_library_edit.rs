@@ -8,6 +8,7 @@ use egui_kittest::{
 };
 use gui::game_library::GameLibrary;
 use gui::library_edit::{validate_game_name, GameDraft, StartupDisk};
+use gui::player_config::ConfigurationCatalog;
 use std::path::{Path, PathBuf};
 
 fn root() -> PathBuf {
@@ -81,8 +82,9 @@ fn startup_choices_follow_pending_disk_ids_across_removal_save_and_normal_boot()
     let rom_path = root.join("kick.rom");
     std::fs::write(&rom_path, rom).unwrap();
     let mut app = gui::EmulatorApp::default();
+    app.player.library_root = Some(root.clone());
     let launch = &mut app.player.catalog.configurations[0].launch;
-    launch.rom = rom_path.to_string_lossy().into_owned();
+    launch.rom = "kick.rom".into();
     launch.drives = [true, true, true, false];
     app.start_library_game(game.clone(), None, true);
     common::settle(&mut app, &egui::Context::default());
@@ -251,7 +253,7 @@ fn jpeg_and_png_covers_are_discovered_and_refresh_reads_replacements() {
         2
     );
     let mut app = gui::EmulatorApp::default();
-    app.player.catalog.library_root = root.to_string_lossy().into_owned();
+    app.player.library_root = Some(root.clone());
     app.navigate_player(gui::player::PlayerScreen::Library);
     let ctx = egui::Context::default();
     let uploaded_color = |output: egui::FullOutput| {
@@ -293,7 +295,7 @@ fn jpeg_and_png_covers_are_discovered_and_refresh_reads_replacements() {
 
 fn artwork_harness(root: &Path, width: f32) -> Harness<'static, gui::EmulatorApp> {
     let mut app = gui::EmulatorApp::default();
-    app.player.catalog.library_root = root.to_string_lossy().into_owned();
+    app.player.library_root = Some(root.to_path_buf());
     app.navigate_player(gui::player::PlayerScreen::Library);
     let mut harness = Harness::builder()
         .with_size(egui::vec2(width, 900.0))
@@ -498,15 +500,23 @@ fn an_unreadable_declared_cover_shows_a_placeholder_and_allows_launch() {
     image::RgbImage::from_pixel(2, 2, image::Rgb([100, 20, 251]))
         .save(game.directory.join("cover.png"))
         .unwrap();
-    let rom_path = root.join("kick.rom");
     let mut rom = vec![0; 262144];
     rom[..4].copy_from_slice(&0x70000u32.to_be_bytes());
     rom[4..8].copy_from_slice(&0xfc0100u32.to_be_bytes());
     rom[0x100..0x102].copy_from_slice(&[0x60, 0xfe]);
-    std::fs::write(&rom_path, rom).unwrap();
+    std::fs::write(root.join("kick.rom"), rom).unwrap();
+    let mut catalog = ConfigurationCatalog::default();
+    catalog.configurations[0].launch.rom = "kick.rom".into();
+    std::fs::write(
+        root.join("configurations.json"),
+        serde_json::json!({
+            "configurations": catalog.configurations,
+            "mappings": catalog.mappings,
+        })
+        .to_string(),
+    )
+    .unwrap();
     let mut h = artwork_harness(&root, 1024.0);
-    h.state_mut().player.catalog.configurations[0].launch.rom =
-        rom_path.to_string_lossy().into_owned();
     assert!(h.get_all_by_value("No cover image").next().is_some());
     h.get_by_label("Corrupt cover").click_accesskit();
     common::settle_harness(&mut h);
@@ -584,7 +594,7 @@ fn startup_editor_clears_removed_import_and_rejects_disconnected_drive() {
 
     let mut app = gui::EmulatorApp::default();
     app.player.catalog.configurations[0].launch.drives = connected;
-    app.player.catalog.library_root = root.to_string_lossy().into_owned();
+    app.player.library_root = Some(root.clone());
     app.player.selected_game = Some(game.manifest.id.clone());
     app.navigate_player(gui::player::PlayerScreen::Library);
     let mut h = Harness::builder()
@@ -661,11 +671,11 @@ fn editor_cancel_does_not_write_and_save_updates_the_active_games_path_without_r
     rom[0x100..0x102].copy_from_slice(&[0x60, 0xfe]);
     std::fs::write(&rom_path, rom).unwrap();
     let mut app = gui::EmulatorApp::default();
-    app.player.catalog.configurations[0].launch.rom = rom_path.to_string_lossy().into_owned();
+    app.player.library_root = Some(root.clone());
+    app.player.catalog.configurations[0].launch.rom = "kick.rom".into();
     app.player.catalog.configurations[0].launch.drives[1] = true;
     app.start_library_game(game.clone(), None, false);
     common::settle(&mut app, &egui::Context::default());
-    app.player.catalog.library_root = root.to_string_lossy().into_owned();
     app.player.selected_game = Some(game.manifest.id.clone());
     app.navigate_player(gui::player::PlayerScreen::Library);
     let mut harness = Harness::builder()
@@ -755,7 +765,7 @@ fn editor_cancel_does_not_write_and_save_updates_the_active_games_path_without_r
     other.select_startup_disk(0, Some(StartupDisk::Pending(other.imports()[0].key())));
     let other = other.save(other_root.path(), [true; 4]).unwrap();
     assert_eq!(other.manifest.id, game.manifest.id);
-    common::commit_library_directory(&mut harness, other_root.path());
+    common::select_library(&mut harness, other_root.path());
     common::wait_harness(&mut harness, |app| {
         app.player
             .library

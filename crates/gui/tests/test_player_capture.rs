@@ -29,6 +29,7 @@ fn running_with(
     common::settle(&mut app, &ctx);
     common::command(&mut app, HostCommand::Run);
     app.player.active_configuration = Some(configuration);
+    app.player.active_mappings = app.player.catalog.mappings.clone();
     app.player.captured = captured;
     common::settle(&mut app, &ctx);
     (app, ctx)
@@ -62,7 +63,7 @@ fn free_mouse_guest_navigation_keys_leave_a_focused_button_alone() {
     app.player.captured = false;
     // The general navigation regression observes guest keys. The configured
     // keyboard joystick has independent coverage in the next test.
-    app.player.catalog.mappings[0].keys[0] = 0x17;
+    app.player.active_mappings[0].keys[0] = 0x17;
     let mut clicked = false;
     let render = |ctx: &egui::Context, app: &mut EmulatorApp, clicked: &mut bool| {
         egui::Window::new("Session controls").show(ctx, |ui| {

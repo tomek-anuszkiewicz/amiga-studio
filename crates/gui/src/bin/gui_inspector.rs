@@ -210,6 +210,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Apply scenario-specific interactions
+    let preview_library = matches!(
+        scenario.as_str(),
+        "configurations" | "configuration_dirty" | "library_editor"
+    )
+    .then(tempfile::tempdir)
+    .transpose()?;
     match scenario.as_str() {
         "live_display" | "live_display_studio" => {
             let deadline = std::time::Instant::now() + OWNER_REPLY_TIMEOUT;
@@ -241,6 +247,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         | "replace_session"
         | "configurations"
         | "configuration_dirty" => {
+            if let Some(library) = &preview_library {
+                harness.state_mut().player.library_root = Some(library.path().to_path_buf());
+            }
             let screen = match scenario.as_str() {
                 "library" | "library_editor" => gui::player::PlayerScreen::Library,
                 "manual_setup" | "replace_session" => gui::player::PlayerScreen::Setup,
@@ -259,12 +268,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let mut draft = gui::library_edit::GameDraft::new("standard".into());
                 draft.name = "Example game".into();
                 draft.description = "Optional notes about the game and its disks.".into();
-                harness.state_mut().player.catalog.library_root = "GameLibrary".into();
                 harness.state_mut().player.library_editor = Some(draft);
             }
             if scenario == "replace_session" {
                 let app = harness.state_mut();
-                app.player.active_configuration = Some(Default::default());
+                app.player.activate_selected_configuration();
                 app.player.catalog.configurations[0].launch.rom = "preview.rom".into();
                 app.player.rom = Some(vec![0; physical_memory::KICKSTART_ROM_SIZE]);
                 app.player.rom_configuration_id = Some("standard".into());

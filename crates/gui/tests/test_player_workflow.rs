@@ -70,8 +70,8 @@ fn launch_save_reopen_relocate_and_restore_embedded_media_without_original_asset
     let (root, library) = library();
     let mut app = EmulatorApp::default();
     app.set_view_mode(ViewMode::ScreenOnly);
-    app.player.catalog.configurations[0].launch.rom =
-        root.join("kick.rom").to_string_lossy().into_owned();
+    app.player.library_root = Some(root.clone());
+    app.player.catalog.configurations[0].launch.rom = "kick.rom".into();
     app.player.catalog.configurations[0].launch.drives[1] = true;
     app.start_library_game(library.games[0].clone(), None, false);
     let ctx = egui::Context::default();
@@ -110,6 +110,7 @@ fn launch_save_reopen_relocate_and_restore_embedded_media_without_original_asset
         .clone();
     let saves = gui::game_library::saves(&game).unwrap();
     let mut reopened = EmulatorApp::default();
+    reopened.player.library_root = Some(root.clone());
     reopened.player.catalog = app.player.catalog.clone();
     reopened.player.catalog.configurations[0].name = "Renamed configuration".into();
     reopened.player.catalog.configurations[0].launch.preset = config::A500Preset::ExpandedPowerUser;
@@ -233,9 +234,8 @@ fn library_continue_restores_selected_games_save_instead_of_active_game() {
     let (root, library) = library();
     let mut app = EmulatorApp::default();
     app.set_view_mode(ViewMode::ScreenOnly);
-    app.player.catalog.library_root = root.to_string_lossy().into_owned();
-    app.player.catalog.configurations[0].launch.rom =
-        root.join("kick.rom").to_string_lossy().into_owned();
+    app.player.library_root = Some(root.clone());
+    app.player.catalog.configurations[0].launch.rom = "kick.rom".into();
     app.start_library_game(library.games[0].clone(), None, false);
     common::command(&mut app, HostCommand::Pause);
     common::command(
@@ -298,17 +298,30 @@ fn library_continue_uses_the_selected_configuration_when_two_roots_reuse_a_game_
     let second = draft.save(&second_root, [true; 4]).unwrap();
     assert_eq!(first.manifest.id, second.manifest.id);
 
-    let mut app = game_app(&first_root);
-    let mut configuration = app.player.catalog.configurations[0].clone();
+    let mut other_app = game_app(&second_root);
+    let mut configuration = other_app.player.catalog.configurations[0].clone();
     configuration.id = "swapped".into();
     configuration.name = "Swapped ports".into();
     configuration.controls.ports.swap(0, 1);
-    app.player.catalog.configurations.push(configuration);
-    app.start_library_game(second.clone(), None, false);
-    common::command(&mut app, HostCommand::Pause);
-    let json = common::snapshot_json(&mut app);
+    other_app.navigate_player(PlayerScreen::Configuration);
+    common::settle(&mut other_app, &egui::Context::default());
+    other_app
+        .player
+        .editor
+        .as_mut()
+        .unwrap()
+        .catalog
+        .configurations
+        .push(configuration);
+    other_app.save_configuration_edit();
+    common::settle(&mut other_app, &egui::Context::default());
+    assert!(other_app.player.editor.is_none());
+    other_app.start_library_game(second.clone(), None, false);
+    common::command(&mut other_app, HostCommand::Pause);
+    let json = common::snapshot_json(&mut other_app);
     gui::game_library::persist_save(&second, &json, None).unwrap();
 
+    let mut app = game_app(&first_root);
     app.start_library_game(first.clone(), None, false);
     let mut h = session_harness(app);
     common::settle_harness(&mut h);
@@ -318,7 +331,7 @@ fn library_continue_uses_the_selected_configuration_when_two_roots_reuse_a_game_
     );
     h.get_by_label("Library").click_accesskit();
     common::settle_harness(&mut h);
-    common::commit_library_directory(&mut h, &second_root);
+    common::select_library(&mut h, &second_root);
     common::wait_harness(&mut h, |app| app.player.library.games.len() == 2);
     h.get_by_label("one").click_accesskit();
     common::settle_harness(&mut h);
@@ -520,8 +533,8 @@ fn player_disk_selection_and_ejection_publish_only_acknowledged_mounts() {
     });
     let mut app = EmulatorApp::default();
     app.set_view_mode(ViewMode::ScreenOnly);
-    app.player.catalog.configurations[0].launch.rom =
-        root.join("kick.rom").to_string_lossy().into_owned();
+    app.player.library_root = Some(root.clone());
+    app.player.catalog.configurations[0].launch.rom = "kick.rom".into();
     app.start_library_game(game.clone(), None, false);
     common::command(&mut app, HostCommand::Pause);
     gui::game_library::persist_save(game, &common::snapshot_json(&mut app), Some(1)).unwrap();
@@ -633,7 +646,8 @@ fn manual_start_requires_valid_rom_media_attachment_and_available_sources() {
     let rom_path = root.join("kick.rom");
     let mut app = EmulatorApp::default();
     app.navigate_player(PlayerScreen::Setup);
-    app.player.catalog.configurations[0].launch.rom = rom_path.to_string_lossy().into_owned();
+    app.player.library_root = Some(root);
+    app.player.catalog.configurations[0].launch.rom = "kick.rom".into();
     let mut h = Harness::builder()
         .with_size(egui::vec2(1280.0, 900.0))
         .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
@@ -681,11 +695,33 @@ fn manual_start_requires_valid_rom_media_attachment_and_available_sources() {
 fn game_app(root: &Path) -> EmulatorApp {
     let mut app = EmulatorApp::default();
     app.set_view_mode(ViewMode::ScreenOnly);
-    app.player.catalog.configurations[0].launch.rom =
-        root.join("kick.rom").to_string_lossy().into_owned();
-    app.player.catalog.library_root = root.to_string_lossy().into_owned();
+    app.player.catalog.configurations[0].launch.rom = "kick.rom".into();
+    app.player.library_root = Some(root.to_path_buf());
     app.player.library = GameLibrary::discover(root).unwrap();
     app
+}
+
+fn select_library_with_current_profiles(
+    h: &mut egui_kittest::Harness<'_, EmulatorApp>,
+    root: &Path,
+) {
+    use egui_kittest::kittest::Queryable;
+
+    let catalog = &h.state().player.catalog;
+    std::fs::write(
+        root.join("configurations.json"),
+        serde_json::json!({
+            "configurations": catalog.configurations,
+            "mappings": catalog.mappings,
+        })
+        .to_string(),
+    )
+    .unwrap();
+    h.get_by_label("Library").click_accesskit();
+    common::settle_harness(h);
+    common::select_library(h, root);
+    h.get_by_label("Return to session").click_accesskit();
+    common::settle_harness(h);
 }
 
 fn session_harness_builder() -> egui_kittest::HarnessBuilder<EmulatorApp> {
@@ -1573,7 +1609,7 @@ fn screenshot_rejects_the_previous_game_image_when_the_new_library_reuses_its_id
     use std::time::{Duration, Instant};
 
     let (root, first_library) = library();
-    let (_, second_library) = library();
+    let (second_root, second_library) = library();
     let first = &first_library.games[0];
     let second = &second_library.games[0];
     assert_eq!(first.manifest.id, second.manifest.id);
@@ -1583,6 +1619,12 @@ fn screenshot_rejects_the_previous_game_image_when_the_new_library_reuses_its_id
     common::wait_harness(&mut h, |app| {
         app.player.active_game.is_some() && app.host.presented.is_some()
     });
+
+    select_library_with_current_profiles(&mut h, &second_root);
+    assert_eq!(
+        h.state().player.active_game.as_ref().unwrap().directory,
+        first.directory
+    );
 
     h.state_mut()
         .start_library_game(second.clone(), None, false);
@@ -1635,7 +1677,7 @@ fn screenshot_stays_with_the_active_game_after_editing_the_same_id_in_another_li
 
     h.get_by_label("Library").click_accesskit();
     common::settle_harness(&mut h);
-    common::commit_library_directory(&mut h, &second_root);
+    common::select_library(&mut h, &second_root);
     common::wait_harness(&mut h, |app| app.player.library.games.len() == 2);
     h.get_by_label("one").click_accesskit();
     common::settle_harness(&mut h);
@@ -1807,7 +1849,7 @@ fn cover_replaces_one_png_and_updates_the_drawn_thumbnail_at_each_precedence() {
         });
         let mut app = EmulatorApp::with_session(session);
         app.set_view_mode(ViewMode::ScreenOnly);
-        app.player.catalog.library_root = root.to_string_lossy().into_owned();
+        app.player.library_root = Some(root.clone());
         app.player.library = GameLibrary::discover(&root).unwrap();
         app.player.active_game = Some(app.player.library.games[0].clone());
         app.screen_scale = gui::ScreenScale::Four;
@@ -1953,7 +1995,7 @@ fn cover_before_the_new_game_displays_a_frame_preserves_that_games_existing_artw
     use std::time::{Duration, Instant};
 
     let (root, first_library) = library();
-    let (_, second_library) = library();
+    let (second_root, second_library) = library();
     let first = &first_library.games[0];
     let second = &second_library.games[0];
     assert_eq!(first.manifest.id, second.manifest.id);
@@ -1970,6 +2012,11 @@ fn cover_before_the_new_game_displays_a_frame_preserves_that_games_existing_artw
     common::wait_harness(&mut h, |app| {
         app.player.active_game.is_some() && app.host.presented.is_some()
     });
+    select_library_with_current_profiles(&mut h, &second_root);
+    assert_eq!(
+        h.state().player.active_game.as_ref().unwrap().directory,
+        first.directory
+    );
     h.state_mut()
         .start_library_game(second.clone(), None, false);
     let deadline = Instant::now() + Duration::from_secs(10);

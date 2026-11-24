@@ -7,37 +7,55 @@ use debugger::launch::DeviceKind;
 impl EmulatorApp {
     pub(crate) fn render_configuration_editor(&mut self, ui: &mut egui::Ui) {
         ui.heading("Configurations");
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.render_library_setting(ui);
+            if self
+                .player
+                .editor
+                .as_ref()
+                .is_some_and(|editor| editor.library_root != self.player.library_root)
+            {
+                ui.label("Save to open the selected library and edit its profiles.");
+                return;
+            }
+            if !self.player.library_available() {
+                ui.label("Choose an accessible library directory to create or edit profiles.");
+                return;
+            }
+            let can_delete = self.configuration_deletion_allowed();
+            if ui.add_enabled(can_delete, egui::Button::new("Delete configuration"))
+                .on_hover_text_at_pointer("Review which games use the selected profile and choose a replacement if needed. Save any profile edits first.")
+                .clicked()
+            {
+                self.begin_configuration_deletion();
+            }
+        }
         let Some(editor) = &mut self.player.editor else {
             return;
         };
         let catalog = &mut editor.catalog;
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            ui.horizontal_wrapped(|ui| {
-                if ui
-                    .button("Choose library directory...")
-                    .on_hover_text("Choose the desktop game library. Save applies this choice.")
-                    .clicked()
-                {
-                    if let Some(path) = rfd::FileDialog::new().pick_folder() {
-                        catalog.library_root = path.to_string_lossy().into_owned();
-                    }
-                }
-                ui.label(if catalog.library_root.is_empty() {
-                    "No library directory selected"
-                } else {
-                    &catalog.library_root
-                });
-            });
-            ui.separator();
-        }
         crate::player_view::configuration_selector(ui, catalog);
         if ui.button("Create configuration").clicked() {
-            let id = format!(
-                "configuration-{}-{}",
-                crate::host_clock::utc_now(),
-                catalog.configurations.len()
-            );
+            let timestamp = crate::host_clock::utc_now();
+            let mut serial = catalog.configurations.len();
+            let id = loop {
+                let id = format!("configuration-{timestamp}-{serial}");
+                if catalog.configurations.iter().all(|cfg| cfg.id != id)
+                    && self
+                        .player
+                        .active_configuration
+                        .as_ref()
+                        .is_none_or(|cfg| cfg.id != id)
+                {
+                    break id;
+                }
+                serial += 1;
+            };
+            let default_mapping = JoystickMapping::default();
+            if catalog.mapping(&default_mapping.id).is_none() {
+                catalog.mappings.push(default_mapping);
+            }
             let configuration = NamedConfiguration {
                 id: id.clone(),
                 name: "New configuration".into(),
@@ -57,38 +75,15 @@ impl EmulatorApp {
         ui.monospace(format!("ID: {}", configuration.id));
         ui.label("Name");
         ui.text_edit_singleline(&mut configuration.name);
-        ui.label("Hardware, ROM and drives apply to a later launch.");
-        egui::ComboBox::from_label("Hardware")
-            .selected_text(format!("{:?}", configuration.launch.preset))
-            .show_ui(ui, |ui| {
-                for preset in [
-                    config::A500Preset::Bare512k,
-                    config::A500Preset::Standard1Mb,
-                    config::A500Preset::ExpandedPowerUser,
-                ] {
-                    ui.selectable_value(
-                        &mut configuration.launch.preset,
-                        preset,
-                        format!("{preset:?}"),
-                    );
-                }
-            });
-        egui::ComboBox::from_label("Video")
-            .selected_text(format!("{:?}", configuration.launch.video))
-            .show_ui(ui, |ui| {
-                ui.selectable_value(
-                    &mut configuration.launch.video,
-                    config::VideoStandard::Pal,
-                    "PAL",
-                );
-                ui.selectable_value(
-                    &mut configuration.launch.video,
-                    config::VideoStandard::Ntsc,
-                    "NTSC",
-                );
-            });
+        hardware_settings(ui, &mut configuration.launch);
         ui.label("Kickstart (256 KiB)");
-        ui.text_edit_singleline(&mut configuration.launch.rom).on_hover_text("Native file path; browser display name only. Select browser ROM bytes again in manual setup.");
+        #[cfg(not(target_arch = "wasm32"))]
+        let rom_help = "Use the path to a 256 KiB ROM inside the library, with / between folders.";
+        #[cfg(target_arch = "wasm32")]
+        let rom_help =
+            "The browser stores the display name. Select the ROM file again in Manual setup.";
+        ui.text_edit_singleline(&mut configuration.launch.rom)
+            .on_hover_text(rom_help);
         ui.horizontal_wrapped(|ui| {
             for drive in 0..4 {
                 ui.add_enabled(
@@ -351,4 +346,114 @@ impl EmulatorApp {
             ui.colored_label(ui.visuals().error_fg_color, error);
         }
     }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn render_library_setting(&mut self, ui: &mut egui::Ui) {
+        let Some(editor) = &mut self.player.editor else {
+            return;
+        };
+        ui.strong("Application settings");
+        ui.label("Game Library directory");
+        if let Some(root) = &editor.library_root {
+            ui.label(root.display().to_string());
+        } else {
+            ui.label("No library directory selected");
+        }
+        ui.horizontal_wrapped(|ui| {
+            if ui.button("Choose library directory...").clicked() {
+                let mut picker = rfd::FileDialog::new();
+                if let Some(directory) = editor.library_root.as_ref().filter(|path| path.is_dir()) {
+                    picker = picker.set_directory(directory);
+                }
+                if let Some(directory) = picker.pick_folder() {
+                    editor.library_root = Some(directory);
+                    editor.error = None;
+                }
+            }
+            if editor.library_root != self.player.library_root
+                && ui.button("Keep current directory").clicked()
+            {
+                editor.library_root.clone_from(&self.player.library_root);
+                editor.error = None;
+            }
+        });
+        if let Some(error) = &self.player.library_error {
+            ui.colored_label(ui.visuals().error_fg_color, error);
+        }
+        if let Some(error) = self
+            .player
+            .library_sync
+            .as_ref()
+            .and_then(|sync| sync.read_error.as_deref())
+        {
+            ui.colored_label(
+                ui.visuals().error_fg_color,
+                format!("Could not read library: {error}"),
+            );
+        }
+        ui.separator();
+    }
+}
+
+fn hardware_settings(ui: &mut egui::Ui, launch: &mut crate::player_config::LaunchConfiguration) {
+    use config::{A500Preset, VideoStandard};
+
+    let hardware = |preset| match preset {
+        A500Preset::Bare512k => ("A500 512 KB", "512 KB Chip RAM. No battery-backed clock."),
+        A500Preset::Standard1Mb => (
+            "A500 1 MB",
+            "512 KB Chip RAM and 512 KB Slow RAM with a battery-backed clock.",
+        ),
+        A500Preset::ExpandedPowerUser => (
+            "A500 5 MB",
+            "512 KB Chip RAM, 512 KB Slow RAM and 4 MB Fast RAM with a battery-backed clock.",
+        ),
+    };
+    let video = |standard| {
+        match standard {
+        VideoStandard::Pal => ("PAL", "50 Hz nominal video timing, 312 lines per non-interlaced short field and a 3.546895 MHz color clock."),
+        VideoStandard::Ntsc => ("NTSC", "60 Hz nominal video timing, 262 lines per non-interlaced short field and a 3.579545 MHz color clock."),
+    }
+    };
+    ui.label("Hardware, video, ROM and drive changes take effect on the next launch.");
+    let label = ui.label("Hardware");
+    egui::ComboBox::from_id_salt("hardware_preset")
+        .selected_text(hardware(launch.preset).0)
+        .show_ui(ui, |ui| {
+            for preset in [
+                A500Preset::Bare512k,
+                A500Preset::Standard1Mb,
+                A500Preset::ExpandedPowerUser,
+            ] {
+                let (name, summary) = hardware(preset);
+                ui.selectable_value(&mut launch.preset, preset, name)
+                    .on_hover_text(summary);
+            }
+        })
+        .response
+        .labelled_by(label.id)
+        .on_hover_ui(|ui| {
+            ui.strong(hardware(launch.preset).0);
+            ui.label(hardware(launch.preset).1);
+            ui.label("Configure attached floppy drives separately below.");
+        });
+    ui.small(hardware(launch.preset).1);
+    let label = ui.label("Video");
+    egui::ComboBox::from_id_salt("video_standard")
+        .selected_text(video(launch.video).0)
+        .show_ui(ui, |ui| {
+            for standard in [VideoStandard::Pal, VideoStandard::Ntsc] {
+                let (name, timing) = video(standard);
+                ui.selectable_value(&mut launch.video, standard, name)
+                    .on_hover_text(timing);
+            }
+        })
+        .response
+        .labelled_by(label.id)
+        .on_hover_ui(|ui| {
+            ui.strong(video(launch.video).0);
+            ui.label(video(launch.video).1);
+            ui.label("Choose the timing expected by the Amiga software.");
+        });
+    ui.small(video(launch.video).1);
 }

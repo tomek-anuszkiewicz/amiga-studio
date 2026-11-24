@@ -92,7 +92,7 @@ fn harness(app: EmulatorApp) -> Harness<'static, EmulatorApp> {
 
 fn browse(root: &Path) -> EmulatorApp {
     let mut app = EmulatorApp::default();
-    app.player.catalog.library_root = root.to_string_lossy().into_owned();
+    app.player.library_root = Some(root.to_path_buf());
     app.navigate_player(PlayerScreen::Library);
     app
 }
@@ -118,7 +118,7 @@ fn native_library_refreshes_while_paused_and_preserves_filter_selection_and_draf
     let mut app = browse(root);
     let ctx = egui::Context::default();
     common::wait(&mut app, &ctx, |app| app.player.library.games.len() == 2);
-    app.player.catalog.configurations[0].launch.rom = rom_path.to_string_lossy().into_owned();
+    app.player.catalog.configurations[0].launch.rom = "kick.rom".into();
     let active = app.player.library.games[0].clone();
     app.start_library_game(active, None, true);
     common::wait(&mut app, &ctx, |app| app.host.status.running);
@@ -275,7 +275,7 @@ fn native_root_replacement_recovers_and_committed_switch_ignores_old_changes() {
 
     h.get_by_label("Restored directory").click_accesskit();
     common::settle_harness(&mut h);
-    common::commit_library_directory(&mut h, &new);
+    common::select_library(&mut h, &new);
     common::wait_harness(&mut h, |app| {
         app.player
             .library

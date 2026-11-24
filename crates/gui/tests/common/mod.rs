@@ -56,6 +56,29 @@ pub fn settle_harness(harness: &mut Harness<'_, EmulatorApp>) {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+pub fn select_library(harness: &mut Harness<'_, EmulatorApp>, root: &std::path::Path) {
+    use egui::accesskit::Role;
+    use egui_kittest::kittest::Queryable;
+
+    harness
+        .get_by_role_and_label(Role::Button, "Configurations")
+        .click_accesskit();
+    settle_harness(harness);
+    // Model the native picker returning a directory to the editor.
+    harness
+        .state_mut()
+        .player
+        .editor
+        .as_mut()
+        .unwrap()
+        .library_root = Some(root.to_path_buf());
+    harness.get_by_label("Save").click_accesskit();
+    settle_harness(harness);
+    assert_eq!(harness.state().player.library_root.as_deref(), Some(root));
+    assert!(harness.state().player.editor.is_none());
+}
+
 pub fn confirm_replacement(app: &mut EmulatorApp) {
     use egui_kittest::kittest::Queryable;
     let mut harness = Harness::builder()
@@ -176,31 +199,6 @@ pub fn wait_harness(harness: &mut Harness<'_, EmulatorApp>, ready: impl Fn(&Emul
         );
         std::thread::sleep(Duration::from_millis(1));
     }
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-pub fn commit_library_directory(
-    harness: &mut Harness<'_, EmulatorApp>,
-    directory: &std::path::Path,
-) {
-    use egui_kittest::kittest::Queryable;
-
-    harness.get_by_label("Configurations").click_accesskit();
-    settle_harness(harness);
-    // The native picker would supply this path to the configuration draft.
-    let root = directory.to_string_lossy().into_owned();
-    harness
-        .state_mut()
-        .player
-        .editor
-        .as_mut()
-        .unwrap()
-        .catalog
-        .library_root = root.clone();
-    harness.get_by_label("Save").click_accesskit();
-    wait_harness(harness, |app| {
-        app.player.editor.is_none() && app.player.catalog.library_root == root
-    });
 }
 
 pub fn wait(

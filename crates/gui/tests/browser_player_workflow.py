@@ -204,10 +204,10 @@ def check_workflow(browser, url, rom, disk, output):
         stage = "configuration Save and changed-port return"
         click(145, 10)
         page.wait_for_timeout(300)
-        click(55, 373)  # Port 2 device dropdown.
+        click(55, 432)  # Port 2 device dropdown.
         page.wait_for_timeout(200)
         page.screenshot(path=str(output / "port-options.png"))
-        click(55, 392)  # Disconnected.
+        click(55, 456)  # Disconnected, the first row in the popup.
         click(23, 789)  # Save, including stopped owner application.
         page.wait_for_function("globalThis.observedGeneration === 4", timeout=30000)
         page.wait_for_timeout(300)
