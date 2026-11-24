@@ -38,6 +38,66 @@ impl Storage for MemoryStorage {
     fn flush(&mut self) {}
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+#[test]
+fn library_directory_cancel_discards_the_draft_and_save_reopens_the_committed_root() {
+    use eframe::App;
+    use egui_kittest::{kittest::Queryable, Harness};
+    use gui::player::PlayerScreen;
+
+    let first = tempfile::tempdir().unwrap();
+    let second = tempfile::tempdir().unwrap();
+    let mut draft = gui::library_edit::GameDraft::new("standard".into());
+    draft.name = "Second library game".into();
+    draft.save(second.path(), [true; 4]).unwrap();
+    let mut app = EmulatorApp::default();
+    app.player.catalog.library_root = first.path().to_string_lossy().into_owned();
+    app.navigate_player(PlayerScreen::Library);
+    let mut h = Harness::builder()
+        .with_size(egui::vec2(1024.0, 760.0))
+        .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
+    common::settle_harness(&mut h);
+    h.get_by_label("Configurations").click_accesskit();
+    common::settle_harness(&mut h);
+    assert!(h.query_by_label("Choose library directory...").is_some());
+    assert!(h
+        .get_all_by_value(first.path().to_str().unwrap())
+        .next()
+        .is_some());
+    let second_path = second.path().to_string_lossy();
+    h.state_mut()
+        .player
+        .editor
+        .as_mut()
+        .unwrap()
+        .catalog
+        .library_root = second_path.to_string();
+    h.step();
+    assert!(h.get_all_by_value(&second_path).next().is_some());
+    h.get_by_label("Cancel").click_accesskit();
+    common::settle_harness(&mut h);
+    assert_eq!(
+        h.state().player.catalog.library_root,
+        first.path().to_string_lossy()
+    );
+
+    common::commit_library_directory(&mut h, second.path());
+    let mut storage = MemoryStorage::new();
+    h.state_mut().save(&mut storage);
+    let mut creation = eframe::CreationContext::_new_kittest(egui::Context::default());
+    creation.storage = Some(&storage);
+    let mut restarted = EmulatorApp::new(&creation);
+    common::wait(&mut restarted, &creation.egui_ctx, |app| {
+        app.player.library.games.len() == 1
+    });
+    assert_eq!(restarted.player.catalog.library_root, second_path);
+    assert_eq!(restarted.player.screen, PlayerScreen::Library);
+    assert_eq!(
+        restarted.player.library.games[0].manifest.title,
+        "Second library game"
+    );
+}
+
 #[test]
 fn test_user_preferences_roundtrip_via_storage() {
     let mut storage = MemoryStorage::new();

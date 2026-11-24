@@ -14,7 +14,7 @@ impl EmulatorApp {
         ));
     }
 
-    pub(crate) fn render_library_editor(&mut self, ui: &mut egui::Ui) {
+    pub(crate) fn render_library_editor(&mut self, ui: &mut egui::Ui, writable: bool) {
         let Some(mut draft) = self.player.library_editor.take() else {
             return;
         };
@@ -165,7 +165,7 @@ impl EmulatorApp {
         ui.horizontal(|ui| {
             save = ui
                 .add_enabled(
-                    connected.is_some() && validate_game_name(&draft.name).is_ok(),
+                    writable && connected.is_some() && validate_game_name(&draft.name).is_ok(),
                     egui::Button::new("Save game"),
                 )
                 .on_hover_text(
@@ -181,14 +181,17 @@ impl EmulatorApp {
             self.file_error = None;
             return;
         }
-        if let Some(connected) = connected.filter(|_| save) {
+        if let Some((connected, sync)) = connected
+            .zip(self.player.library_sync.as_ref())
+            .filter(|_| save)
+        {
             let edits_active = self
                 .player
                 .active_game
                 .as_ref()
                 .zip(draft.original.as_ref())
                 .is_some_and(|(active, original)| active.same_entry(original));
-            match draft.save(Path::new(&self.player.catalog.library_root), connected) {
+            match draft.save(&sync.root, connected) {
                 Ok(game) => {
                     self.complete_library_edit(game, edits_active);
                     return;
@@ -228,16 +231,14 @@ impl EmulatorApp {
             .selected
             .clone_from(&game.manifest.configuration);
         self.player.settings_dirty = true;
-        self.refresh_library();
-        self.player.selected_game = self
-            .player
-            .library
-            .games
-            .iter()
-            .position(|entry| entry.manifest.id == game.manifest.id);
-        match crate::game_library::saves(&game) {
-            Ok(saves) => self.player.saves = saves,
-            Err(error) => self.file_error = Some(error),
+        self.player.selected_game = Some(game.manifest.id.clone());
+        let games = &mut self.player.library.games;
+        games.retain(|entry| entry.manifest.id != game.manifest.id);
+        games.push(game);
+        games.sort_by(|a, b| a.manifest.title.cmp(&b.manifest.title));
+        self.player.refresh_selected_saves();
+        if let Some(sync) = &mut self.player.library_sync {
+            sync.changed_locally();
         }
     }
 }
@@ -299,5 +300,5 @@ fn render_artwork(ui: &mut egui::Ui, draft: &mut GameDraft, text_fields: [egui::
     if let Some(error) = &draft.artwork_error {
         ui.colored_label(ui.visuals().error_fg_color, error);
     }
-    ui.small("With no declared image, the library checks cover.jpg, cover.jpeg and cover.png in that order. Refresh after changing those files.");
+    ui.small("With no declared image, the library checks cover.jpg, cover.jpeg and cover.png in that order. The library picks up file changes automatically.");
 }

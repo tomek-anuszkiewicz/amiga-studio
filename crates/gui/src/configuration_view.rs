@@ -11,6 +11,26 @@ impl EmulatorApp {
             return;
         };
         let catalog = &mut editor.catalog;
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            ui.horizontal_wrapped(|ui| {
+                if ui
+                    .button("Choose library directory...")
+                    .on_hover_text("Choose the desktop game library. Save applies this choice.")
+                    .clicked()
+                {
+                    if let Some(path) = rfd::FileDialog::new().pick_folder() {
+                        catalog.library_root = path.to_string_lossy().into_owned();
+                    }
+                }
+                ui.label(if catalog.library_root.is_empty() {
+                    "No library directory selected"
+                } else {
+                    &catalog.library_root
+                });
+            });
+            ui.separator();
+        }
         crate::player_view::configuration_selector(ui, catalog);
         if ui.button("Create configuration").clicked() {
             let id = format!(

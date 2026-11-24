@@ -13,6 +13,9 @@ impl EmulatorApp {
             .is_some_and(|(active, launched)| active.same_entry(launched))
         {
             self.screen_texture.clear_capture();
+            self.player.saves.clear();
+            self.player.game_slots.fill(false);
+            self.player.session_save_error = None;
         }
         self.player.active_game = game;
     }
@@ -50,7 +53,12 @@ impl EmulatorApp {
             .find(|entry| entry.same_entry(game))
         {
             match load_game(&game.directory) {
-                Ok(updated) => *entry = updated,
+                Ok(updated) => {
+                    *entry = updated;
+                    if let Some(sync) = &mut self.player.library_sync {
+                        sync.changed_locally();
+                    }
+                }
                 Err(error) => {
                     self.file_error = Some(format!(
                         "Cover saved, but the game could not be reloaded: {error}"

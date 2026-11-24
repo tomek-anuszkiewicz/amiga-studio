@@ -323,10 +323,14 @@ fn editing_native_rom_reference_does_not_boot_cached_previous_rom() {
 fn library_start_requires_confirmation_and_cancel_preserves_the_current_session() {
     let root = root();
     let mut app = started(&root);
-    app.player.library = gui::game_library::GameLibrary::discover(&root).unwrap();
-    app.player.selected_game = Some(0);
+    app.player.selected_game = app
+        .player
+        .active_game
+        .as_ref()
+        .map(|game| game.manifest.id.clone());
     app.navigate_player(PlayerScreen::Library);
     let mut h = harness(app);
+    common::wait_harness(&mut h, |app| app.player.library.games.len() == 1);
     let before = common::snapshot(h.state_mut());
     let generation = h.state().host.status.generation;
     h.get_by_label("Start game").click_accesskit();

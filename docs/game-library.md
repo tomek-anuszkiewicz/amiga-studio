@@ -1,10 +1,12 @@
 # Game library and manual setup
 
-The desktop app opens to the game library. Select the library's root directory.
-Refresh the library after adding a game directory. To start standalone disks,
-use manual setup. The browser opens to manual setup. Choose a named
-configuration, select a supported 256 KiB Kickstart and any standard 880 KiB DD
-ADF images, then choose Start. You can leave drives empty.
+The desktop app opens to the game library. In **Configurations**, choose the
+library directory and click **Save**. **Cancel** keeps the previous directory.
+The library updates automatically when files change. Type part of a game's name
+in **Filter games** to find it, and clear the field to show all games again.
+To start standalone disks, use manual setup. The browser opens to manual setup.
+Choose a named configuration, select a supported 256 KiB Kickstart and any
+standard 880 KiB DD ADF images, then choose Start. You can leave drives empty.
 
 Each configuration combines one of the three supported memory presets with a
 PAL/NTSC setting, ROM, attached drives and input mappings. DF0 is always attached.
@@ -106,8 +108,8 @@ supply its own configuration and ROM.
 
 If `artwork` is `null`, the library checks `cover.jpg`, `cover.jpeg` and
 `cover.png` beside `game.json` in that order. A declared JPEG or PNG path takes
-precedence. A missing or unreadable cover shows a placeholder. Use **Refresh**
-after changing a cover file outside the app.
+precedence. A missing or unreadable cover shows a placeholder. The library
+picks up cover changes automatically.
 
 Save creates a new file in the game's `saves/` directory with a preview and a UTC
 creation time. Continue restores the saved hardware, ROM and current media
