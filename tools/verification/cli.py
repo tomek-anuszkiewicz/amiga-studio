@@ -35,6 +35,7 @@ COMMAND_TREE = """Command tree (run from the repository root):
      └─ refresh RUN_DIRECTORY
 
 The test rust, test runner and runner bench branches also accept no selector.
+The unused public check looks for candidate unused public functions in one package.
 Execution options: --plan, --log-level full|warn|error and --results-dir PATH
 may appear anywhere among sentence selectors. --exact requires crate NAME,
 suite NAME and case NAME for Rust, or case NAME for SingleStep groups.

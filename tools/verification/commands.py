@@ -289,7 +289,7 @@ def unused_commands(words, results_dir):
     command = [sys.executable, PUBLIC_PROBE, package]
     if results_dir is not None:
         command += ["--results-dir", str(results_dir)]
-    return [("Unused public Rust declarations", command, {})]
+    return [("Candidate unused public Rust functions", command, {})]
 
 
 def check_commands(name, words, results_dir=None):

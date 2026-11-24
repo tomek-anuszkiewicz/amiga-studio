@@ -41,7 +41,7 @@ for associating a report with a task execution.
 | `check web` | Build the browser application through Trunk and nightly; Cargo lint warnings fail |
 | `check unused dependencies` | Check dependency declarations in all workspace packages |
 | `check unused dependencies crate NAME` | Check dependency declarations in one workspace package |
-| `check unused public crate NAME` | Probe unrestricted public declarations in one workspace package |
+| `check unused public crate NAME` | Find candidate unused public functions in one workspace package |
 | `runner build` | Compile release test and benchmark targets without running them |
 | `runner bench [case ID\|mnemonic NAME\|opcode XXXX] [duration-ms N] [series N]` | CPU performance test measurement |
 | `runner gui -- OPTIONS` | GUI inspector capture |
@@ -108,7 +108,7 @@ when investigating an isolated instruction mismatch. Full standalone SingleStep
 requires its explicitly selected complete scope; do not expand a diagnostic
 sample into the full suite.
 
-## Unused Rust dependencies and public declarations
+## Unused Rust dependencies and public functions
 
 ```powershell
 python tools/verification/verify.py check unused dependencies
@@ -127,12 +127,20 @@ Cargo determines which dependency tables and targets this check covers. See
 
 Install the public probe's Python dependencies with
 `python -m pip install -r tools/verification/requirements.txt`. The probe copies
-the current working inputs to a disposable workspace. It restricts one public
-declaration at a time and compares compiler diagnostics from the named package
-and its workspace consumers, including integration test targets. The
-`unused-public-*/report.json` file records observations and incomplete
-comparisons. The default report directory is `.agent/tmp/verify/`. A comparison
-with no relevant diagnostic is inconclusive.
+the current working inputs to a disposable workspace. For each feature selection,
+it runs a pristine Cargo check and then checks all eligible functions with
+crate-only visibility in one batch. A simple public re-export in the selected
+package keeps the function public. The builds make `dead_code` a warning so
+Cargo can reach workspace consumers, including integration test targets.
+
+A new warning identifies a candidate in the edited source. A precise reference
+reported in any build excludes that function from the candidate list. Silence
+is inconclusive. The `unused-public-*/report.json` file under `.agent/tmp/verify/`
+records the functions, compiler diagnostics, build logs and consumers Cargo
+reached. It also records omitted configurations and source discovery gaps.
+Inspect callers, re-exports, conditional code and external API obligations before
+proposing a removal. Several functions narrowed together may become unreachable
+as a group.
 
 ## English vocabulary
 
