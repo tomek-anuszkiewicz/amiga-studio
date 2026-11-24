@@ -3,7 +3,9 @@ use debugger::{
     launch::{DeviceKind, MachineSetup, StartupDisk},
     DebuggerSession,
 };
-use gui::host_commands::{GameStartup, HostCommand, HostReply, HostRequest, HostValue};
+use gui::host_commands::{
+    GameStartup, HostCommand, HostObservation, HostReply, HostRequest, HostValue,
+};
 use gui::host_owner::MachineOwner;
 use gui::host_video::VideoExchange;
 use physical_memory::{AddressBus, BusResult};
@@ -462,6 +464,23 @@ fn guest_reads_written_disk_after_replacing_it_and_reinserting_it_without_a_snap
         guest_read_marker(&mut owner, 0),
         expected,
         "write before the swap"
+    );
+    let observation = execute(
+        &mut owner,
+        HostCommand::Observe(HostObservation::Drive {
+            drive: 0,
+            expected_adf: Some(vec![0; ADF_BYTES]),
+        }),
+    );
+    assert!(
+        matches!(
+            observation,
+            HostValue::Drive {
+                inserted: true,
+                tracks_match: Some(false),
+            }
+        ),
+        "DF0 should differ from its original ADF after the guest write: {observation:?}"
     );
 
     mount(&mut owner, 0, Some("disk-b"), Some(0x11));

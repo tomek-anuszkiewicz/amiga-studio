@@ -513,7 +513,8 @@ fn player_disk_selection_and_ejection_publish_only_acknowledged_mounts() {
 
     let (root, mut library) = library();
     let game = &mut library.games[0];
-    std::fs::write(game.directory.join("second.adf"), vec![0x33; 901120]).unwrap();
+    let second_adf = vec![0x33; ADF_BYTES];
+    std::fs::write(game.directory.join("second.adf"), &second_adf).unwrap();
     game.manifest.disks.push(GameDisk {
         id: "disk-two".into(),
         label: "Disk 2".into(),
@@ -539,9 +540,16 @@ fn player_disk_selection_and_ejection_publish_only_acknowledged_mounts() {
     assert_eq!(h.state().player.mounted[0].as_deref(), Some("disk-two"));
     assert!(h.state().host.status.drives[0].inserted);
     assert_eq!(
-        observe_drive(h.state_mut(), 0, Some(0x33)),
+        observe_drive(h.state_mut(), 0, Some(second_adf.clone())),
         (true, Some(true)),
         "DF0 did not receive the selected disk's complete tracks"
+    );
+    let mut different_adf = second_adf.clone();
+    different_adf[ADF_BYTES - 1] ^= 1;
+    assert_eq!(
+        observe_drive(h.state_mut(), 0, Some(different_adf)),
+        (true, Some(false)),
+        "DF0 matched an ADF with a different byte on the final track"
     );
     common::settle_harness(&mut h);
     open_player_drive(&mut h, "DF0:");
@@ -554,7 +562,7 @@ fn player_disk_selection_and_ejection_publish_only_acknowledged_mounts() {
     assert_eq!(observe_drive(h.state_mut(), 0, None), (false, None));
 
     let source = game.directory.join("second.adf");
-    assert_eq!(std::fs::read(&source).unwrap(), vec![0x33; 901120]);
+    assert_eq!(std::fs::read(&source).unwrap(), second_adf);
     std::fs::remove_file(&source).unwrap();
     h.state_mut().set_view_mode(ViewMode::Developer);
     common::settle_harness(&mut h);
@@ -572,7 +580,7 @@ fn player_disk_selection_and_ejection_publish_only_acknowledged_mounts() {
     common::settle_harness(&mut h);
     assert_eq!(h.state().player.mounted[0].as_deref(), Some("disk-two"));
     assert_eq!(
-        observe_drive(h.state_mut(), 0, Some(0x33)),
+        observe_drive(h.state_mut(), 0, Some(second_adf)),
         (true, Some(true)),
         "DF0 did not reinsert the detached disk's complete tracks"
     );
@@ -580,7 +588,8 @@ fn player_disk_selection_and_ejection_publish_only_acknowledged_mounts() {
     open_player_drive(&mut h, "DF0:");
     h.get_by_label("Eject / Empty").click();
     common::settle_harness(&mut h);
-    std::fs::write(source, vec![0x44; 901120]).unwrap();
+    let replacement_adf = vec![0x44; ADF_BYTES];
+    std::fs::write(source, &replacement_adf).unwrap();
     h.state_mut().start_library_game(game.clone(), None, false);
     common::settle_harness(&mut h);
     open_player_drive(&mut h, "DF0:");
@@ -588,7 +597,7 @@ fn player_disk_selection_and_ejection_publish_only_acknowledged_mounts() {
     common::settle_harness(&mut h);
     assert_eq!(h.state().player.mounted[0].as_deref(), Some("disk-two"));
     assert_eq!(
-        observe_drive(h.state_mut(), 0, Some(0x44)),
+        observe_drive(h.state_mut(), 0, Some(replacement_adf)),
         (true, Some(true)),
         "DF0 reused detached tracks instead of opening the new source"
     );
@@ -597,7 +606,7 @@ fn player_disk_selection_and_ejection_publish_only_acknowledged_mounts() {
 fn observe_drive(
     app: &mut EmulatorApp,
     drive: usize,
-    adf_byte: Option<u8>,
+    expected_adf: Option<Vec<u8>>,
 ) -> (bool, Option<bool>) {
     use gui::host_commands::{HostObservation, HostValue};
 
@@ -605,7 +614,7 @@ fn observe_drive(
         app,
         HostCommand::Observe(HostObservation::Drive {
             drive,
-            expected_adf: adf_byte.map(|byte| vec![byte; ADF_BYTES]),
+            expected_adf,
         }),
     );
     let Ok(HostValue::Drive {
@@ -857,7 +866,11 @@ fn player_reset_runs_after_running_paused_and_loaded_sessions() {
         assert_player_disk_labels(h, manual_disks);
         for (drive, disk) in manual_disks.into_iter().enumerate() {
             assert_eq!(
-                observe_drive(h.state_mut(), drive, disk.map(|(_, _, fill)| fill)),
+                observe_drive(
+                    h.state_mut(),
+                    drive,
+                    disk.map(|(_, _, fill)| vec![fill; ADF_BYTES])
+                ),
                 (disk.is_some(), disk.map(|_| true)),
                 "Manual Reset must preserve the full tracks or empty state of DF{drive}"
             );

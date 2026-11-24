@@ -2,6 +2,10 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod common;
 
+use egui_kittest::{
+    kittest::{NodeT, Queryable},
+    Harness,
+};
 use gui::game_library::GameLibrary;
 use gui::library_edit::{validate_game_name, GameDraft, StartupDisk};
 use std::path::{Path, PathBuf};
@@ -281,34 +285,133 @@ fn jpeg_and_png_covers_are_discovered_and_refresh_reads_replacements() {
     assert!(image::load_from_memory(png.artwork.as_ref().unwrap()).is_ok());
 }
 
+fn startup_dropdown<'a>(
+    h: &'a Harness<'_, gui::EmulatorApp>,
+    drive: &str,
+) -> egui_kittest::Node<'a> {
+    let row = h
+        .get_all_by_value(drive)
+        .find(|node| node.accesskit_node().role() == egui::accesskit::Role::Label)
+        .unwrap()
+        .accesskit_node()
+        .bounding_box()
+        .unwrap();
+    h.get_all_by_role(egui::accesskit::Role::ComboBox)
+        .find(|node| {
+            node.accesskit_node()
+                .bounding_box()
+                .is_some_and(|b| b.x0 >= row.x1 && b.y0 < row.y1 && b.y1 > row.y0)
+        })
+        .unwrap()
+}
+
+fn select_startup(h: &mut Harness<'_, gui::EmulatorApp>, drive: &str, disk: &str) {
+    startup_dropdown(h, drive).click();
+    common::settle_harness(h);
+    h.get_by_role_and_label(egui::accesskit::Role::Button, disk)
+        .click();
+    common::settle_harness(h);
+}
+
+fn assert_startup_choice(h: &Harness<'_, gui::EmulatorApp>, drive: &str, expected: &str) {
+    let dropdown = startup_dropdown(h, drive).rect();
+    // egui paints the selected text without exposing it on the combo box node.
+    assert!(
+        h.output().shapes.iter().any(|shape| matches!(
+            &shape.shape,
+            egui::Shape::Text(text)
+                if text.galley.text() == expected
+                    && dropdown.contains(text.pos)
+                    && shape.clip_rect.contains(text.pos)
+        )),
+        "{drive} dropdown should display {expected:?}"
+    );
+}
+
+#[test]
+fn startup_editor_clears_removed_import_and_rejects_disconnected_drive() {
+    let root = root();
+    let mut draft = GameDraft::new("standard".into());
+    draft.name = "Startup choices".into();
+    add_disk(&mut draft, &root, 0x44);
+    add_disk(&mut draft, &root, 0x66);
+    for drive in 0..2 {
+        draft.select_startup_disk(
+            drive,
+            Some(StartupDisk::Pending(draft.imports()[drive].key())),
+        );
+    }
+    let connected = [true, true, false, false];
+    let game = draft.save(&root, connected).unwrap();
+    let manifest = game.directory.join("game.json");
+    let before = std::fs::read(&manifest).unwrap();
+    let first_disk_id = &game.manifest.disks[0].id;
+    let second_disk_id = &game.manifest.disks[1].id;
+
+    let mut app = gui::EmulatorApp::default();
+    app.player.catalog.configurations[0].launch.drives = connected;
+    app.player.catalog.library_root = root.to_string_lossy().into_owned();
+    app.player.library = GameLibrary::discover(&root).unwrap();
+    app.player.selected_game = Some(0);
+    app.navigate_player(gui::player::PlayerScreen::Library);
+    let mut h = Harness::builder()
+        .with_size(egui::vec2(1024.0, 800.0))
+        .build_state(|ctx, app: &mut gui::EmulatorApp| app.update_ui(ctx), app);
+    common::settle_harness(&mut h);
+    h.get_by_label("Edit game").click_accesskit();
+    common::settle_harness(&mut h);
+    let draft = h.state_mut().player.library_editor.as_mut().unwrap();
+    add_disk(draft, &root, 0x55);
+    common::settle_harness(&mut h);
+    select_startup(&mut h, "DF0", "source-85.adf");
+    assert_startup_choice(&h, "DF0", "source-85.adf");
+    h.get_by_label("Remove from draft").click_accesskit();
+    common::settle_harness(&mut h);
+    assert!(h.query_by_label("Remove from draft").is_none());
+    assert_startup_choice(&h, "DF0", "Empty");
+    assert_startup_choice(&h, "DF1", "source-102.adf");
+
+    select_startup(&mut h, "DF3", "source-68.adf");
+    assert_startup_choice(&h, "DF3", "source-68.adf");
+    h.get_by_label("Save game").click_accesskit();
+    common::settle_harness(&mut h);
+    let error = h.state().file_error.as_deref().unwrap();
+    assert!(error.contains("DF3 is disconnected"), "{error}");
+    assert!(h.get_all_by_value(error).next().is_some());
+    assert_eq!(std::fs::read(&manifest).unwrap(), before);
+    assert_eq!(h.state().player.selected_game, Some(0));
+    let draft = h.state().player.library_editor.as_ref().unwrap();
+    assert_eq!(
+        std::array::from_fn(|drive| draft.startup_disk(drive)),
+        [
+            None,
+            Some(StartupDisk::Existing(second_disk_id.clone())),
+            None,
+            Some(StartupDisk::Existing(first_disk_id.clone())),
+        ]
+    );
+
+    h.get_by_label("Close").click_accesskit();
+    common::settle_harness(&mut h);
+    select_startup(&mut h, "DF3", "Empty");
+    h.get_by_label("Save game").click_accesskit();
+    common::settle_harness(&mut h);
+    assert!(h.state().player.library_editor.is_none());
+    let saved = GameLibrary::discover(&root).unwrap().games.remove(0);
+    assert_eq!(saved.manifest.disks, game.manifest.disks);
+    assert_eq!(
+        saved.manifest.mounted,
+        [None, Some(second_disk_id.clone()), None, None]
+    );
+    h.get_by_label("Edit game").click_accesskit();
+    common::settle_harness(&mut h);
+    assert_startup_choice(&h, "DF0", "Empty");
+    assert_startup_choice(&h, "DF1", "source-102.adf");
+    assert_startup_choice(&h, "DF3", "Empty");
+}
+
 #[test]
 fn editor_cancel_does_not_write_and_save_updates_the_active_games_path_without_restarting() {
-    use egui_kittest::{
-        kittest::{NodeT, Queryable},
-        Harness,
-    };
-    fn select_startup(h: &mut Harness<'_, gui::EmulatorApp>, drive: &str, disk: &str) {
-        let row = h
-            .get_all_by_value(drive)
-            .find(|node| node.accesskit_node().role() == egui::accesskit::Role::Label)
-            .unwrap()
-            .accesskit_node()
-            .bounding_box()
-            .unwrap();
-        h.get_all_by_role(egui::accesskit::Role::ComboBox)
-            .find(|node| {
-                node.accesskit_node()
-                    .bounding_box()
-                    .is_some_and(|b| b.x0 >= row.x1 && b.y0 < row.y1 && b.y1 > row.y0)
-            })
-            .unwrap()
-            .click();
-        common::settle_harness(h);
-        h.get_by_role_and_label(egui::accesskit::Role::Button, disk)
-            .click();
-        common::settle_harness(h);
-    }
-
     let root = root();
     let mut draft = GameDraft::new("standard".into());
     draft.name = "Before".into();
