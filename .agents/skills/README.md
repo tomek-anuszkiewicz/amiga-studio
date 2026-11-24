@@ -165,10 +165,13 @@ delivered across several tasks.
 
 ```mermaid
 flowchart TD
-    Scope["Select exact completed roadmap scope"] --> Tests["Run full milestone verification profile"]
-    Tests --> Passed{"Full tests passed?"}
-    Passed -->|No| Keep["Retain roadmap item; report actual failure or<br/>missing evidence"]
-    Passed -->|Yes| Remove["Remove verified completed scope; check roadmap and<br/>affected references"]
+    Scope["Select exact completed roadmap scope"] --> Scan["Scan every workspace package for candidate<br/>unused public functions"]
+    Scan --> ScanPassed{"Workspace scan passed?"}
+    ScanPassed -->|No| Keep["Keep roadmap and diary in place<br/>and report the findings or failure"]
+    ScanPassed -->|Yes| Tests["Run full SingleStepTests"]
+    Tests --> Passed{"SingleStepTests passed?"}
+    Passed -->|No| Keep
+    Passed -->|Yes| Remove["Remove verified completed scope<br/>and check the roadmap and affected references"]
     Remove --> Diary["TA-WF-Step-compact-diary for settled milestone<br/>history"]
     Diary --> Words["TA-WF-Step-report-word-usage: rank words and assess their use<br/>in the final documentation"]
     Words --> Result["Return removed scope, retained work, actual checks<br/>and word-usage findings"]
@@ -179,9 +182,9 @@ The included components are
 [Report Word Usage](TA-WF-Step-report-word-usage/SKILL.md). The word report includes 20 ranked
 candidates, an assessment of their use and suggested vocabulary exclusions. It
 does not edit text or set a word-frequency pass/fail threshold. This operation
-runs the existing full milestone test profile, including full SingleStep
-selection. It adds no code review, implementation, commits, merge, push or
-worktree cleanup.
+runs the full milestone profile. After a failure, the engineer directs any
+repairs and commits, and a fresh milestone run must pass both checks before
+the roadmap edit proceeds. The operation ends with the word-usage report.
 
 ## Three review rounds and up to two corrective passes
 

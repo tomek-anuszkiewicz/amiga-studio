@@ -23,7 +23,7 @@ for associating a report with a task execution.
 | Sentence | Scope |
 | --- | --- |
 | `commit` | Selected check profile; excludes full SingleStep |
-| `milestone [singlestep]` | Full SingleStep, with or without the optional selector |
+| `milestone [singlestep]` | Workspace public function scan, then full SingleStep |
 | `test rust [unit|integration|all|workspace]` | Diagnostic tiers; default is unit plus integration; workspace excludes test_runner |
 | `test rust crate NAME [suite NAME] [case FILTER]` | One Cargo package, optionally one integration target and filter |
 | `test coverage crate NAME` | All ordinary tests of one package with detailed coverage; excludes test_runner |
@@ -50,8 +50,8 @@ for associating a report with a task execution.
 `--plan` previews the exact child commands and their environment. `--log-level
 full|warn|error` controls output. Both options may appear among the command's
 selectors. `--results-dir PATH` puts verifier logs in `PATH/verify/`, SingleStep
-reports and history in `PATH/singlestep/`, and each public probe in a separate
-directory under `PATH`. The verifier resolves relative paths
+reports and history in `PATH/singlestep/`, and public probe reports and build
+logs under `PATH`. The verifier resolves relative paths
 from the repository root. Give each experiment a new directory to keep its
 SingleStep history separate. Other tools, including coverage and benchmarks,
 keep their own output paths.
@@ -439,9 +439,21 @@ python tools/verification/verify.py milestone
 These commands run bundles of checks. They leave commits and task closure to
 their respective operations. The commit profile includes quality checks, the
 browser build, ordinary tests and coverage, and selected Python tool suites. The
-milestone profile includes full SingleStep verification. Use `--plan` to inspect
-commands without running them. Use `--results-dir <path>` to select a location
-for logs and SingleStep output.
+milestone profile first scans for candidate unused public functions in every
+Cargo workspace package. It starts full SingleStepTests only after every probe
+succeeds and produces a fresh, valid report with an empty candidate list. The
+scan uses all workspace members, even on a clean tree or when the changes affect
+only a few packages. A package with no eligible functions can pass. The probe
+still recognizes expected compiler errors from its temporary visibility edits.
+The commit profile omits this scan.
+
+Verify prints each candidate's package, function, source location and report.
+Check callers and re-exports and remove confirmed unused code. For a failed or
+incomplete probe, consult the reported reason and any available build log. Each
+sweep keeps its package reports in a new `unused-public-workspace-*` directory
+under `.agent/tmp/verify/` or the selected `--results-dir <path>`. Rerun the
+milestone profile after addressing the findings. Use `--plan` to preview the two
+checks without executing them.
 
 The caller chooses the checkout and keeps shared build and coverage outputs
 isolated. Each invocation executes its selected checks and reports the commands
@@ -455,8 +467,8 @@ language-audit and cleanup authority to their respective operations.
 Each ordinary verifier invocation writes a separate `test-runtime-report.md`
 under `.agent/tmp/verification/diagnostics/`. The console prints the report's path
 and content digest for archive lookup. `--results-dir` controls where the
-verifier writes command logs and SingleStep outputs. Each invocation still needs
-its own verdict.
+verifier writes command logs, public probe reports and SingleStep outputs.
+Each invocation still needs its own verdict.
 
 The report records actual command wall times, failures and unrun work. Cargo
 commands include measured build and execution time together unless the native

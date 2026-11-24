@@ -1,6 +1,6 @@
 ---
 name: TA-WF-Main-close-milestone
-description: Run full milestone tests, remove completed roadmap work, compact its diary history, and report unusual word usage.
+description: Run the workspace public function scan and full SingleStepTests, remove completed roadmap work, compact its diary history, and report unusual word usage.
 ---
 
 # Close the selected verified roadmap milestone
@@ -18,12 +18,17 @@ milestone or remove an unfinished requirement implicitly.
    shared outputs. Run `python tools/verification/verify.py milestone`, adding
    `--results-dir <path>` when selected, under the existing
    [verification command contract](../../../tools/verification/README.md#completion-verification).
-   Use the full profile and the full SingleStep selection. Wait for the command
-   to exit, check its status and inspect the reports. If tests fail, are
-   interrupted or cannot run, leave the selected roadmap item in place and report
-   what happened. Stop without making repairs or substituting a sample run.
-3. After success, remove the selected completed section under the criteria below,
-   update affected numbering/references and run
+   Verify first scans every Cargo workspace package for candidate unused public
+   functions. It runs full SingleStepTests after the scan passes. Wait for Verify
+   to exit, check its status and inspect the reports. If either check fails, is
+   interrupted or cannot run, leave the roadmap and diary in place and report
+   what happened. For each candidate, report the package, function, source
+   location and report path. Tell the engineer to check callers and re-exports
+   and remove confirmed unused code. For a failed probe, report the reason and
+   any available log. The engineer directs repairs and commits. Rerun the full
+   milestone profile after repairs before continuing with closure.
+3. After both checks pass, remove the selected completed section under the
+   criteria below, update affected numbering and references, and run
    `python tools/verification/checks/check_roadmap.py`.
 4. Once verification succeeds and the selected scope is complete, consolidate
    the milestone's settled history using
@@ -38,7 +43,7 @@ milestone or remove an unfinished requirement implicitly.
    word lists or introduce a word-frequency pass/fail threshold. If the report
    cannot be completed, identify the unfinished reporting and preserve the actual
    test, roadmap and diary outcomes.
-6. Return the removed scope, retained work, full-test and roadmap-check results,
+6. Return the removed scope, retained work, verification and roadmap-check results,
    diary changes/structure checks, word-usage assessment, proposed exclusions,
    newly discovered documentation directories and remaining issues.
 

@@ -201,8 +201,15 @@ class SelectionTests(unittest.TestCase):
 
     def test_milestone_retains_separate_scope(self):
         for changes in ([], ['crates/cpu/src/cpu.rs'], ['docs/testing.md']):
-            commands = selected('milestone', changes)
-            self.assertEqual(commands, [('Full SingleStepTests', [sys.executable, 'tools/verification/run_singlestep.py', '--profile', 'verification'], {'SINGLESTEP_FULL': '1', 'SINGLESTEP_LIMIT': 'all'})])
+            for profile in ('milestone', 'milestone singlestep'):
+                with self.subTest(changes=changes, profile=profile):
+                    self.assertEqual(selected(profile, changes), [
+                        ('Workspace unused public Rust functions',
+                         [sys.executable, 'tools/verification/unused_public_workspace.py'], {}),
+                        ('Full SingleStepTests',
+                         [sys.executable, 'tools/verification/run_singlestep.py', '--profile', 'verification'],
+                         {'SINGLESTEP_FULL': '1', 'SINGLESTEP_LIMIT': 'all'}),
+                    ])
 
     def test_commit_skips_rust_but_keeps_quality_and_python_suites_for_bootstrap_changes(self):
         commands = selected('commit', ['tools/bootstrap/book-to-markdown/review/service.py'])
@@ -581,7 +588,10 @@ class ExecutionTests(unittest.TestCase):
         note.parent.mkdir()
         note.write_text('The notes changed.\n', encoding='utf-8')
         quality = ['tools/verification/checks/check_obsidian_frontmatter.py', 'fmt', 'tools/verification/checks/check_architecture.py', 'tools/verification/checks/audit_hardware_quality.py', 'tools/verification/checks/audit_code_quality.py', 'tools/verification/checks/check_clippy_policy.py', '-NoProfile']
-        expected = [(['commit'], quality, None), (['milestone'], ['tools/verification/run_singlestep.py'], None), (['milestone', 'singlestep'], ['tools/verification/run_singlestep.py'], None), (['commit'], quality[:5], 'tools/verification/checks/check_architecture.py')]
+        milestone = ['tools/verification/unused_public_workspace.py', 'tools/verification/run_singlestep.py']
+        expected = [(['commit'], quality, None), (['milestone'], milestone, None),
+                    (['milestone', 'singlestep'], milestone, None),
+                    (['commit'], quality[:5], 'tools/verification/checks/check_architecture.py')]
         native = verify.execute_command
         for index, (arguments, launched, failed) in enumerate(expected):
             with self.subTest(arguments=arguments, fail=failed):
@@ -605,13 +615,36 @@ class ExecutionTests(unittest.TestCase):
                 release_probe.assert_not_called()
                 compiler_probe.assert_not_called()
                 self.assertNotIn('Stable update', output.getvalue())
-                observed_gates = [(command, overrides) for command, overrides in observed if any((part in quality or part.endswith('/run_singlestep.py') for part in command))]
+                observed_gates = [(command, overrides) for command, overrides in observed
+                                  if command[1] in quality or command[1] in milestone]
                 self.assertCountEqual([command[1] for command, _ in observed_gates], launched)
                 self.assertFalse(any((part.endswith('/check_english.py') for command, _ in observed for part in command)))
                 if arguments[0] == 'milestone':
-                    (command, overrides), = observed
+                    (sweep, _), (command, overrides) = observed
+                    self.assertEqual([sweep[1], command[1]], milestone)
+                    self.assertEqual(sweep[2:], ['--results-dir', str(self.root / f'.agent/tmp/profile-test/{index}')])
                     self.assertEqual(command[-2:], ['--profile', 'verification'])
                     self.assertEqual([overrides[name] for name in ('SINGLESTEP_FULL', 'SINGLESTEP_LIMIT')], ['1', 'all'])
+
+    def test_milestone_and_commit_previews_leave_the_sweep_and_singlestep_unexecuted(self):
+        results = self.root / 'reported'
+        sweep = 'Preflight: Workspace unused public Rust functions'
+        singlestep = 'Verification: Full SingleStepTests'
+        for arguments in (['milestone'], ['milestone', 'singlestep'], ['commit']):
+            with self.subTest(arguments=arguments), patch.object(verify, 'execute_command') as execute, \
+                 contextlib.redirect_stdout(io.StringIO()) as output:
+                self.assertEqual(verify.main([*arguments, '--results-dir', str(results), '--plan']), 0)
+                execute.assert_not_called()
+                self.assertFalse(results.exists())
+                plan = output.getvalue()
+                if arguments == ['commit']:
+                    self.assertNotIn(sweep, plan)
+                    self.assertNotIn(singlestep, plan)
+                else:
+                    self.assertLess(plan.index(sweep), plan.index(singlestep))
+                    self.assertIn(subprocess.list2cmdline([
+                        sys.executable, 'tools/verification/unused_public_workspace.py', '--results-dir', str(results),
+                    ]), plan)
 
     def test_plan_shows_isolated_logs_and_singlestep_reports_without_writing(self):
         with patch.object(verify, 'execute_command') as execute, contextlib.redirect_stdout(io.StringIO()) as output:

@@ -210,9 +210,9 @@ def record_discovery(discovery, report, producer):
     return eligible
 
 
-def configure_probe(root, workspace, output, report):
+def configure_probe(root, workspace, output, report, excluded_output):
     report["active"] = {"phase": "capture"}
-    capture(root, workspace, output, report["candidate"])
+    capture(root, workspace, excluded_output, report["candidate"])
     environment = build_environment(workspace.parent)
     report["active"] = {"phase": "build selection"}
     report["cargo"] = toolchain(root, workspace, environment)
@@ -307,9 +307,13 @@ def summarize(report):
 
 
 def run_probe(root, package, results):
-    root = root.resolve()
     results.mkdir(parents=True, exist_ok=True)
     output = Path(tempfile.mkdtemp(prefix="unused-public-", dir=results)).resolve()
+    return probe_package(root, package, output, excluded_output=output)
+
+
+def probe_package(root, package, output, *, excluded_output):
+    root = root.resolve()
     path = output / "report.json"
     print(f"[INFO] Public probe report: {path}", flush=True)
     report = {
@@ -325,7 +329,7 @@ def run_probe(root, package, results):
             sandbox = Path(temporary).resolve()
             workspace = sandbox / "workspace"
             workspace.mkdir()
-            configure_probe(root, workspace, output, report)
+            configure_probe(root, workspace, output, report, excluded_output)
         incomplete = any(context["baseline"]["state"] != "succeeded" or
                          context["batch"].get("failure_kind") == "genuine"
                          for context in report["contexts"].values())
