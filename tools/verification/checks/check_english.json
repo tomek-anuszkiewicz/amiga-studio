@@ -85,6 +85,7 @@
     "tools/dependency_updates/tests/test_check_updates.py": ["aa", "aaaaaaaaaaaa", "aabbcc", "aahelp", "abc", "bbbbbbbbbbbb", "ddeeff", "fwidget", "globalconfig", "npmrc", "tgz", "userconfig", "vers", "vnd", "zzlate"],
     "crates/gui/src/app/screenshot.rs": ["srgba"],
     "crates/gui/src/game_library.rs": ["noclobber"],
+    "crates/gui/tests/test_library_edit.rs": ["tempdir"],
     "crates/gui/tests/test_player_workflow.rs": ["srgba"],
     ".agents/skills/TA-WF-Step-report-word-usage/tests/test_rank_words.py": [
       "quartzdestination", "secrettitle", "referencekey", "referencetitle",
