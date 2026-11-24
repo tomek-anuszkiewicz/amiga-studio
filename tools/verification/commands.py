@@ -390,6 +390,11 @@ def select_phases(args, changes, explanations=None, *, results_dir=None):
         build_checks = {"Clippy Invariants", "WebAssembly build"}
         early = [item for item in quality if item[0] not in build_checks]
         builds = [item for item in quality if item[0] in build_checks]
+        if args.command == "milestone":
+            sweep = [sys.executable, "tools/verification/unused_public_workspace.py"]
+            if results_dir is not None:
+                sweep += ["--results-dir", str(results_dir)]
+            early.append(("Workspace unused public Rust functions", sweep, {}))
         commands = select_tests(
             REPO_ROOT, args.command, verify_singlestep="singlestep" in args.sets,
             changes=changes, rust_scope=rust_scope)
