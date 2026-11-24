@@ -3,7 +3,7 @@
 from collections import Counter
 from contextlib import redirect_stderr, redirect_stdout
 from email.message import Message
-import hashlib
+from functools import cached_property
 from http.client import HTTPConnection
 import io
 import json
@@ -11,14 +11,13 @@ import os
 from pathlib import Path
 import subprocess
 import sys
-from tempfile import TemporaryDirectory
 from threading import Thread
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 from uuid import UUID
 
-from capture_fixtures import restore_capture
+from capture_fixtures import NO_SERVICE_CASES, case_directory, revision_digest
 
 CAPTURE = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(CAPTURE))
@@ -73,15 +72,10 @@ def fake_git(cwd, *args):
 
 class ArchiveProofTests(unittest.TestCase):
     def setUp(self):
-        directory = TemporaryDirectory()
-        self.addCleanup(directory.cleanup)
-        self.primary = Path(directory.name).resolve()
-        restore_capture("proof", self.primary)
+        self.primary = case_directory(self)
         self.project = Project(self.primary, self.primary)
-        self.project.prepare()
         self.registration = self.project.registration_path("fixture", "execution")
         self.logs = self.registration.parent / "otel" / "logs.jsonl"
-        self.logs.parent.mkdir(parents=True)
 
     def register(self, **changes):
         value = {
@@ -99,7 +93,6 @@ class ArchiveProofTests(unittest.TestCase):
     def test_stale_or_ineligible_appends_do_not_confirm_and_a_completed_append_does(self):
         # A preexisting file can even carry a later-looking timestamp.
         prefix = log_line(ROOT_THREAD, AT + 10)
-        self.logs.write_bytes(prefix)
         self.register()
         self.assertEqual(self.read_proof()["status"], "pending")
         invalid = (
@@ -120,9 +113,7 @@ class ArchiveProofTests(unittest.TestCase):
         self.assertEqual(proof["record"]["byte_end"], len(prefix + invalid + valid))
 
     def collector_output(self):
-        output = CollectorOutput(self.project, b"fixture-private-key")
-        output.directory.mkdir(parents=True)
-        return output
+        return CollectorOutput(self.project, b"fixture-private-key")
 
     def test_new_collector_chunks_obey_the_archive_baseline_and_retain_exact_bytes(self):
         output = self.collector_output()
@@ -178,8 +169,6 @@ class ArchiveProofTests(unittest.TestCase):
         self.assertEqual(self.read_proof()["status"], "pending")
 
     def test_native_only_and_wrong_execution_archives_cannot_confirm(self):
-        self.register(otel=False)
-        self.logs.write_bytes(log_line(ROOT_THREAD, AT + 10))
         with self.assertRaisesRegex(CaptureError, "open OTLP registration"):
             self.read_proof()
         self.register()
@@ -189,7 +178,6 @@ class ArchiveProofTests(unittest.TestCase):
         self.assertEqual(self.read_proof()["status"], "pending")
 
     def test_archive_truncation_and_git_ignore_failure_block_confirmation(self):
-        self.logs.write_bytes(log_line(ROOT_THREAD, AT + 10))
         self.register()
         self.logs.write_bytes(b"")
         with self.assertRaisesRegex(CaptureError, "file was truncated"):
@@ -199,7 +187,6 @@ class ArchiveProofTests(unittest.TestCase):
             self.read_proof()
 
     def test_trace_proof_carries_its_event_start_and_indexes(self):
-        self.register()
         trace = {
             "resourceSpans": [{
                 "resource": {"attributes": [attribute("capture.route", ROUTE)]},
@@ -219,17 +206,16 @@ class ArchiveProofTests(unittest.TestCase):
 
 class ServiceFixture:
     def setUp(self):
-        directory = TemporaryDirectory()
-        self.addCleanup(directory.cleanup)
-        root = Path(directory.name).resolve()
-        self.primary = root / "sessions"
-        restore_capture("service", self.primary)
+        if self._testMethodName in NO_SERVICE_CASES:
+            return
+        self.root = case_directory(self)
+        self.primary = self.root / "sessions"
         self.ignore = self.primary / ".gitignore"
-        self.project = Project(self.primary, self.primary)
-        self.project.prepare()
-        self.args = SimpleNamespace(port=4318, codex_home=root / "codex", collector_image=None)
-        for name in ("sessions", "archived_sessions"):
-            (self.args.codex_home / name).mkdir(parents=True)
+        self.args = SimpleNamespace(port=4318, codex_home=self.root / "codex", collector_image=None)
+
+    @cached_property
+    def project(self):
+        return Project(self.primary, self.primary)
 
     def provision(self):
         service = ComposeService(self.project, self.args, Deadline.start(10))
@@ -238,11 +224,18 @@ class ServiceFixture:
 
     def save_revision(self, service, **changes):
         settings = {**service.settings, **changes}
-        identity = hashlib.sha256(json.dumps(settings, sort_keys=True).encode())
-        for name, data in service.contents.items():
-            identity.update(name.encode() + b"\0" + hashlib.sha256(data).digest())
-        write_json(service.root / "compose-settings.json", {**settings, "config_id": identity.hexdigest()})
-        return identity.hexdigest()
+        config_id = revision_digest(settings, service.contents)
+        write_json(service.root / "compose-settings.json", {**settings, "config_id": config_id})
+
+    def load_installation(self):
+        return ComposeService(self.project, self.args, Deadline.start(10), revision="saved")
+
+    def select_settings_input(self):
+        # This case already opened its Project before changing the saved settings.
+        settings = read_json(self.root / "settings-input.json")
+        write_json(self.project.service_root / "compose-settings.json", settings)
+        return settings["config_id"]
+
 
 class ServicePathsTests(ServiceFixture, unittest.TestCase):
     def test_new_installation_derives_a_name_and_reloads_it(self):
@@ -255,8 +248,7 @@ class ServicePathsTests(ServiceFixture, unittest.TestCase):
         self.assertEqual(loaded.config_id, service.config_id)
 
     def test_reloads_compose_name_from_the_saved_revision(self):
-        service = self.provision()
-        config_id = self.save_revision(service, compose_project="amiga-capture")
+        config_id = self.select_settings_input()
         loaded = self.provision()
         self.assertFalse(loaded.new)
         self.assertEqual(loaded.name, "amiga-capture")
@@ -272,17 +264,14 @@ class ServicePathsTests(ServiceFixture, unittest.TestCase):
         )
 
     def test_shared_project_disables_orphan_removal_even_if_enabled_by_the_caller(self):
-        service = self.provision()
-        self.save_revision(service, compose_project="amiga")
+        self.select_settings_input()
         with patch.dict(os.environ, {"COMPOSE_REMOVE_ORPHANS": "true"}):
             loaded = self.provision()
         self.assertEqual(loaded.env["COMPOSE_REMOVE_ORPHANS"], "false")
 
     def test_short_name_requires_full_git_identity_and_matching_options(self):
-        service = self.provision()
-        identity = self.project.identity
-        foreign_identity = identity[:-1] + ("0" if identity[-1] != "0" else "1")
-        self.save_revision(service, compose_project="amiga-capture", project_id=foreign_identity)
+        service = self.load_installation()
+        self.select_settings_input()
         with self.assertRaisesRegex(CaptureError, "settings differ from the saved project"):
             ComposeService(self.project, self.args, Deadline.start(10))
 
@@ -292,10 +281,7 @@ class ServicePathsTests(ServiceFixture, unittest.TestCase):
             ComposeService(self.project, self.args, Deadline.start(10))
 
     def test_saved_compose_name_is_part_of_the_configuration_digest(self):
-        service = self.provision()
-        settings = saved_settings(self.project)
-        settings["compose_project"] = "amiga-capture"
-        write_json(service.root / "compose-settings.json", settings)
+        self.select_settings_input()
         with self.assertRaisesRegex(CaptureError, "different capture service revision"):
             ComposeService(self.project, self.args, Deadline.start(10))
 
@@ -320,7 +306,7 @@ class ServicePathsTests(ServiceFixture, unittest.TestCase):
         self.assertFalse((self.project.archive / "_receiver").exists())
 
     def test_mounted_receiver_accepts_only_archive_and_separate_runtime_data_paths(self):
-        service = self.provision()
+        service = self.load_installation()
         with patch("compose_service.MOUNTED_PROJECT", self.primary), \
                 patch("compose_service.MOUNTED_AUTHORITY", service.authority), \
                 patch("compose_service.MOUNTED_RECEIVER_STATE", self.project.control), \
@@ -343,24 +329,16 @@ class ServicePathsTests(ServiceFixture, unittest.TestCase):
 
     def test_native_receiver_state_cannot_overwrite_tracked_data(self):
         state = self.project.control / "tracked.json"
-        state.write_bytes(b"preserved state\n")
-        fake_git(self.primary, "add", "-f", str(state))
         with self.assertRaisesRegex(CaptureError, "Receiver state contains tracked files"):
             self.project.prepare()
         self.assertEqual(state.read_bytes(), b"preserved state\n")
 
     def test_invalid_saved_revision_is_rejected_before_selecting_runtime_paths(self):
-        service = self.provision()
-        settings = service.root / "compose-settings.json"
-        write_json(settings, {**saved_settings(self.project), "config_id": "../other-installation"})
         with self.assertRaisesRegex(CaptureError, "saved service revision is invalid"):
             Project(self.primary, self.primary)
 
     def test_missing_ignore_rule_or_tracked_content_blocks_private_service_writes(self):
         root = self.primary / ".agent/tools/workflow-capture"
-        self.project.control.rmdir()
-        root.rmdir()
-        self.ignore.write_text(".agent/task-archives/\n", encoding="utf-8")
         with self.assertRaisesRegex(CaptureError, "ignore the entire service directory"):
             self.provision()
         self.assertFalse(root.exists())
@@ -378,8 +356,8 @@ class ServicePathsTests(ServiceFixture, unittest.TestCase):
                      "compose-settings.before-output-isolation-fixture.json"):
             with self.subTest(name=name):
                 path = self.project.archive / "_receiver" / name
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.touch()
+                if name != "compose":
+                    path.touch()
                 with self.assertRaisesRegex(CaptureError, "migrate the legacy service files"):
                     self.provision()
                 self.assertTrue(path.is_file())
@@ -389,65 +367,25 @@ class ServicePathsTests(ServiceFixture, unittest.TestCase):
         for home in (self.project.archive, self.primary.parent):
             with self.subTest(home=home):
                 self.args.codex_home = home
-                for name in ("sessions", "archived_sessions"):
-                    (home / name).mkdir(parents=True, exist_ok=True)
                 with self.assertRaisesRegex(CaptureError, "must be separate from the capture paths"):
                     self.provision()
 
-
     def revised_installation(self):
-        service = self.provision()
-        self.save_revision(service, compose_project="amiga")
-        installed = self.provision()
-        source = self.primary / "selected-source"
-        source.mkdir()
-        for name, data in installed.contents.items():
-            (source / name).write_bytes(data + (b"\n# revised\n" if name == "receiver.py" else b""))
-        args = SimpleNamespace(project=self.primary, rollback=False)
-        return installed, source, args
+        return (self.load_installation(), self.primary / "selected-source",
+                SimpleNamespace(project=self.primary, rollback=False))
 
     def archive_layout_installation(self):
-        service = self.provision()
-        self.save_revision(service, compose_project="amiga")
-        service = self.provision()
-        source = self.primary / "archive-layout-source"
-        source.mkdir()
-        for name, data in service.contents.items():
-            if name == "compose.yaml":
-                prefix = b"      - type: bind\n"
-                blocks = data.split(prefix)
-                data = blocks[0] + b"".join(
-                    prefix + block for block in blocks[1:]
-                    if b"/capture/receiver\n" not in block and b"/capture/collector-output\n" not in block
-                )
-            (source / name).write_bytes(data)
-        with patch("compose_service.SOURCE", source):
-            legacy = ComposeService(self.project, self.args, Deadline.start(10), revision="upgrade")
-            legacy.persist_code()
-            write_json(service.root / "compose-settings.json", {**service.settings, "config_id": legacy.config_id})
-        self.project.control.rmdir()
-        self.project.spool.rmdir()
-        self.project.spool.parent.rmdir()
-        self.project = Project(self.primary, self.primary)
-        self.project.prepare()
-        legacy = ComposeService(self.project, self.args, Deadline.start(10), revision="saved")
-        legacy.persist(self.primary)
+        installed = self.load_installation()
         self.assertEqual(self.project.control, self.project.archive / "_receiver")
         self.assertEqual(self.project.spool, self.project.control / "collector-output")
-        return legacy
+        return installed
 
     def test_upgrade_moves_legacy_state_and_spool_out_of_task_archives(self):
         installed = self.archive_layout_installation()
         cache = installed.control / "lineage-source.json"
-        cache.write_bytes(b'{"descendant":"parent"}\n')
         spool = installed.spool / "logs-pending.jsonl"
-        spool.write_bytes(b'{"pending":true}\n')
         private = installed.control / "control.json"
-        private.write_bytes(b'{"token":"historical-credential"}\n')
         registration = self.project.registration_path("task", "execution")
-        registration.parent.mkdir(parents=True)
-        write_json(registration, dict(schema_version=1, task_id="task", execution_id="execution",
-                                      git_common_dir=str(self.project.common), end_utc=START))
         registered = registration.read_bytes()
         engine = UpgradeEngine(self, installed)
         args = SimpleNamespace(project=self.primary, rollback=False)
@@ -467,7 +405,6 @@ class ServicePathsTests(ServiceFixture, unittest.TestCase):
     def test_failed_layout_switch_restores_old_services_and_preserves_new_pending_output(self):
         installed = self.archive_layout_installation()
         cache = installed.control / "lineage-source.json"
-        cache.write_bytes(b"{}\n")
         engine = UpgradeEngine(self, installed, fail_after_receiver=True)
 
         def docker(*args, **kwargs):
@@ -494,10 +431,8 @@ class ServicePathsTests(ServiceFixture, unittest.TestCase):
     def test_interrupted_spool_copy_leaves_rollback_without_partial_input(self):
         installed = self.archive_layout_installation()
         original = installed.spool / "logs-pending.jsonl"
-        original.write_bytes(b"complete pending output\n")
         args = SimpleNamespace(project=self.primary, rollback=True)
         selected = ComposeService(self.project, args, Deadline.start(10), revision="upgrade")
-        selected.persist(self.primary)
         destination = selected.spool / original.name
         engine = UpgradeEngine(self, installed)
         with patch("compose_service.docker", engine.docker):
@@ -581,9 +516,8 @@ copy_runtime_file(project, source, destination)
         self.assertTrue(all(engine.running.values()))
 
     def test_spool_publication_preserves_a_conflict_created_after_staging(self):
-        service = self.provision()
+        service = self.load_installation()
         original = service.control / "pending.jsonl"
-        original.write_bytes(b"complete pending output\n")
         destination = service.spool / original.name
 
         def publish(temporary, target):
@@ -605,14 +539,10 @@ copy_runtime_file(project, source, destination)
         engine = UpgradeEngine(self, installed)
         args = SimpleNamespace(project=self.primary, rollback=False)
         private = installed.control / "control.json"
-        private.write_bytes(b"historical credential\n")
         pending = installed.spool / "logs-pending.jsonl"
-        pending.write_bytes(b"pending data\n")
         registration = self.project.registration_path("task", "execution")
-        registration.parent.mkdir(parents=True)
-        write_json(registration, dict(schema_version=1, task_id="task", execution_id="execution",
-                                      git_common_dir=str(self.project.common), end_utc=START))
         registered = registration.read_bytes()
+
         def refuse_retention(path, destination):
             self.assertEqual(path, installed.control)
             self.assertFalse((installed.control / "control-mutation").exists())
@@ -655,7 +585,6 @@ copy_runtime_file(project, source, destination)
         engine = UpgradeEngine(self, installed)
         args = SimpleNamespace(project=self.primary, rollback=False)
         historical = installed.control / "historical.txt"
-        historical.write_bytes(b"preserved data\n")
 
         def stop_before_clear(path, settings):
             if PREVIOUS_LAYOUT_CONFIG not in settings:
@@ -685,9 +614,7 @@ copy_runtime_file(project, source, destination)
     def test_existing_previous_layout_blocks_migration_before_services_are_stopped(self):
         installed = self.archive_layout_installation()
         backup = installed.root / "previous-layout" / installed.config_id / "receiver"
-        backup.mkdir(parents=True)
         marker = backup / "preserved.txt"
-        marker.write_bytes(b"previous attempt\n")
         engine = UpgradeEngine(self, installed)
         args = SimpleNamespace(project=self.primary, rollback=False)
         with patch("compose_service.docker", engine.docker), patch("upgrade.status", engine.status):
@@ -700,10 +627,7 @@ copy_runtime_file(project, source, destination)
     def test_layout_migration_collision_preserves_both_spools_and_restores_old_services(self):
         installed = self.archive_layout_installation()
         original = installed.spool / "pending.jsonl"
-        original.write_bytes(b"original output\n")
         destination = installed.root / "collector/spool/pending.jsonl"
-        destination.parent.mkdir(parents=True)
-        destination.write_bytes(b"other output\n")
         engine = UpgradeEngine(self, installed)
         args = SimpleNamespace(project=self.primary, rollback=False)
         with patch("compose_service.docker", engine.docker), patch("upgrade.status", engine.status):
@@ -718,11 +642,7 @@ copy_runtime_file(project, source, destination)
     def test_upgrade_preserves_the_host_settings_and_reuses_the_matching_revision(self):
         installed, source, args = self.revised_installation()
         registration = self.project.registration_path("task", "execution")
-        registration.parent.mkdir(parents=True)
-        write_json(registration, dict(schema_version=1, task_id="task", execution_id="execution",
-                                      git_common_dir=str(self.project.common), end_utc=START))
         spool = self.project.spool / "fixture.jsonl"
-        spool.write_bytes(b"saved spool")
         old_files = [*installed.code.iterdir(), spool, registration,
                      installed.authority / "compose-authority.json"]
         old_bytes = {path: path.read_bytes() for path in old_files}
@@ -758,10 +678,7 @@ copy_runtime_file(project, source, destination)
     def test_upgrade_rejects_open_capture_and_a_changed_installed_snapshot(self):
         installed, source, args = self.revised_installation()
         registration = self.project.registration_path("task", "execution")
-        registration.parent.mkdir(parents=True)
-        record = dict(schema_version=1, task_id="task", execution_id="execution",
-                      git_common_dir=str(self.project.common), end_utc=None)
-        write_json(registration, record)
+        record = read_json(registration)
         with patch("compose_service.SOURCE", source), patch("compose_service.docker") as docker:
             with self.assertRaisesRegex(CaptureError, "Close all capture registrations"):
                 upgrade(args, self.primary)
@@ -781,8 +698,7 @@ class LoopbackReceiver(Receiver):
 
 class RegistrationControlTests(ServiceFixture, unittest.TestCase):
     def receiver(self):
-        self.args.port = 4318
-        self.service = self.provision()
+        self.service = self.load_installation()
         self.key = control_key(self.service.settings["token"], self.service.settings["client_token"])
         self.project.authority = lambda: read_json(self.service.authority / "compose-authority.json")
         self.project.checkouts = lambda: HostCheckouts(
@@ -886,28 +802,13 @@ class RegistrationControlTests(ServiceFixture, unittest.TestCase):
                 for record in scope["logRecords"]}
 
     def modified_source(self):
-        source = self.primary / "published"
-        source.mkdir()
-        for name, content in self.service.contents.items():
-            if name == "receiver.py":
-                content += b"\n# published revision\n"
-            (source / name).write_bytes(content)
-        return source
+        return self.primary / "published"
 
     def test_startup_index_routes_closed_ranges_without_reading_registration_files(self):
         registration = self.registration()
-        registration.parent.mkdir(parents=True)
-        write_json(registration, {
-            "schema_version": 1, "task_id": "fixture", "execution_id": "a",
-            "git_common_dir": str(self.project.common), "root_thread_id": ROOT_THREAD, "otel": True,
-            "start_utc": START, "end_utc": "2026-11-18T10:00:00.000010Z",
-            "threads": [{"id": ROOT_THREAD, "start_utc": START,
-                         "end_utc": "2026-11-18T10:00:00.000010Z"}],
-        })
         with patch.object(self.project, "registrations", wraps=self.project.registrations) as scans:
             self.receiver()
         scans.assert_called_once_with()
-        self.rollout(ROOT_THREAD)
         with patch.object(self.project, "registrations", side_effect=AssertionError("Archive scanned again")), \
                 patch("registry.read_json", side_effect=AssertionError("Registration read again")):
             self.otlp([log_record(ROOT_THREAD, AT + 7000, "first-delayed")])
@@ -919,8 +820,6 @@ class RegistrationControlTests(ServiceFixture, unittest.TestCase):
 
     def test_live_index_keeps_reused_thread_ranges_and_new_continuations(self):
         self.receiver()
-        self.rollout(ROOT_THREAD)
-        self.rollout(CONTINUATION)
         self.cli("start", at=START)
         self.cli("stop", at="2026-11-18T10:00:00.000010Z")
         self.cli("start", execution="b", at="2026-11-18T10:00:00.000020Z")
@@ -936,20 +835,7 @@ class RegistrationControlTests(ServiceFixture, unittest.TestCase):
     def test_receiver_rejects_retired_controls_without_activating_a_saved_pending_range(self):
         setup = str(UUID(int=40))
         path = self.registration()
-        path.parent.mkdir(parents=True)
-        write_json(path, {
-            "schema_version": 1, "task_id": "fixture", "execution_id": "a",
-            "git_common_dir": str(self.project.common), "root_thread_id": ROOT_THREAD,
-            "otel": True, "start_utc": START, "end_utc": None, "pending_after_turn_id": setup,
-            "threads": [{"id": ROOT_THREAD, "start_utc": START, "end_utc": None}],
-        })
         self.receiver()
-        self.rollout(ROOT_THREAD, events=[{
-            "type": "event_msg", "timestamp": "2026-11-18T10:00:00.000010Z",
-            "payload": {"type": "task_complete", "turn_id": setup},
-        }])
-        self.rollout(OTHER_THREAD)
-        self.rollout(CONTINUATION)
         original = path.read_bytes()
         for action, changes, message in (
             ("start", {"execution": "b", "thread": OTHER_THREAD, "after_turn": setup}, "Delayed activation"),
@@ -972,24 +858,8 @@ class RegistrationControlTests(ServiceFixture, unittest.TestCase):
         self.assertEqual(self.archive_labels("a"), set())
 
     def test_receiver_respects_a_saved_after_turn_bound_for_late_records(self):
-        setup, work = str(UUID(int=40)), str(UUID(int=41))
-        start = "2026-11-18T10:00:00.000011Z"
-        end = "2026-11-18T10:00:00.000030Z"
-        path = self.registration()
-        path.parent.mkdir(parents=True)
-        write_json(path, {
-            "schema_version": 1, "task_id": "fixture", "execution_id": "a",
-            "git_common_dir": str(self.project.common), "root_thread_id": ROOT_THREAD,
-            "otel": True, "start_utc": start, "end_utc": end, "after_turn_id": setup,
-            "threads": [{"id": ROOT_THREAD, "start_utc": start, "end_utc": end}],
-        })
+        setup = str(UUID(int=40))
         self.receiver()
-        events = []
-        for turn, first, last in ((setup, "000001", "000010"), (work, "000020", "000030")):
-            for kind, fraction in (("task_started", first), ("task_complete", last)):
-                events.append({"type": "event_msg", "timestamp": f"2026-11-18T10:00:00.{fraction}Z",
-                               "payload": {"type": kind, "turn_id": turn}})
-        self.rollout(ROOT_THREAD, events=events)
         excluded = log_record(ROOT_THREAD, AT + 25000, "excluded-turn")
         excluded["attributes"].append(attribute("turn.id", setup))
         with patch.object(self.project, "registrations", side_effect=AssertionError("Archive scanned again")):
@@ -999,7 +869,6 @@ class RegistrationControlTests(ServiceFixture, unittest.TestCase):
 
     def test_failed_registration_write_keeps_the_cached_range_open(self):
         self.receiver()
-        self.rollout(ROOT_THREAD)
         self.cli("start", at=START)
         original = self.registration().read_bytes()
         with patch("register.write_json", side_effect=OSError("Archive unavailable")):
@@ -1011,7 +880,6 @@ class RegistrationControlTests(ServiceFixture, unittest.TestCase):
 
     def test_failed_admission_write_retries_the_watermark_before_forwarding(self):
         self.receiver()
-        self.rollout(ROOT_THREAD)
         self.cli("start", at=START)
         original = self.registration().read_bytes()
         packet = json.dumps(envelope([log_record(ROOT_THREAD, AT + 9000, "retried")])).encode()
@@ -1025,8 +893,6 @@ class RegistrationControlTests(ServiceFixture, unittest.TestCase):
 
     def test_receiver_restart_restores_saved_registration_changes(self):
         self.receiver()
-        self.rollout(ROOT_THREAD)
-        self.rollout(CONTINUATION)
         self.cli("start", at=START)
         self.cli("include", thread=CONTINUATION, at=START)
         self.otlp([log_record(ROOT_THREAD, AT + 9000, "before-restart")])
@@ -1048,10 +914,6 @@ class RegistrationControlTests(ServiceFixture, unittest.TestCase):
 
     def test_status_combines_readiness_revisions_and_only_open_registrations(self):
         self.receiver()
-        self.rollout(ROOT_THREAD)
-        self.cli("start", execution="closed", at=START)
-        self.cli("stop", execution="closed", at="2026-11-18T10:00:00.000010Z")
-        self.cli("start", execution="open", at="2026-11-18T10:00:00.000020Z")
         original = self.registration("open").read_bytes()
         settings = saved_settings(self.project)
         with patch("compose_service.SOURCE", self.modified_source()), \
@@ -1072,8 +934,6 @@ class RegistrationControlTests(ServiceFixture, unittest.TestCase):
 
     def test_status_reports_stopped_or_missing_services_without_starting_them(self):
         self.receiver()
-        self.rollout(ROOT_THREAD)
-        self.cli("start", at=START)
         for containers, expected in (
             ({"receiver": {"Id": "receiver", "State": {"Running": False}}},
              {"receiver": "stopped", "collector": "missing"}),
@@ -1107,21 +967,21 @@ class RegistrationControlTests(ServiceFixture, unittest.TestCase):
         self.assertEqual(report["saved_config_id"], self.service.config_id)
 
     def test_removed_handoff_command_is_rejected_before_service_access(self):
-        with patch.object(sys, "argv", ["register.py", "handoff", "--project", str(self.primary)]), \
+        with patch.object(sys, "argv", ["register.py", "handoff", "--project", "fixture-project"]), \
                 redirect_stderr(io.StringIO()):
             with self.assertRaises(SystemExit) as error:
                 arguments()
         self.assertEqual(error.exception.code, 2)
 
     def test_removed_recover_command_is_rejected_before_service_access(self):
-        with patch.object(sys, "argv", ["register.py", "recover", "--project", str(self.primary)]), \
+        with patch.object(sys, "argv", ["register.py", "recover", "--project", "fixture-project"]), \
                 redirect_stderr(io.StringIO()):
             with self.assertRaises(SystemExit) as error:
                 arguments()
         self.assertEqual(error.exception.code, 2)
 
     def test_retired_cli_controls_are_rejected_before_service_access(self):
-        options = ["--project", str(self.primary), "--task", "fixture", "--execution", "a"]
+        options = ["--project", "fixture-project", "--task", "fixture", "--execution", "a"]
         for action, selection in (("start", ["--after-turn", ROOT_THREAD]), ("arm", [])):
             with self.subTest(action=action), \
                     patch("register.host_request", side_effect=AssertionError("Accessed capture services")), \
@@ -1140,7 +1000,6 @@ class RegistrationControlTests(ServiceFixture, unittest.TestCase):
                 ("missing", ROOT_THREAD, None),
                 ("stopped", OTHER_THREAD, {"Id": "collector", "State": {"Running": False}}),
             ):
-                self.rollout(thread)
                 initial = {"receiver": running["receiver"]}
                 if collector is not None:
                     initial["collector"] = collector
@@ -1166,8 +1025,6 @@ class RegistrationControlTests(ServiceFixture, unittest.TestCase):
 
     def test_changed_source_closes_only_the_owned_range_and_can_start_and_include(self):
         self.receiver()
-        self.rollout(ROOT_THREAD)
-        self.rollout(CONTINUATION)
         self.cli("start", at=START)
         turn = str(UUID(int=40))
         next_turn = str(UUID(int=41))
@@ -1197,8 +1054,6 @@ class RegistrationControlTests(ServiceFixture, unittest.TestCase):
 
     def test_invalid_credentials_identity_rollout_and_boundaries_keep_registry_intact(self):
         self.receiver()
-        self.rollout(ROOT_THREAD)
-        self.rollout(OTHER_THREAD, cwd=self.primary.parent)
         self.cli("start", at=START)
         original = self.registration().read_bytes()
         foreign_key = control_key("fe" * 32, "de" * 32)
@@ -1231,9 +1086,6 @@ class RegistrationControlTests(ServiceFixture, unittest.TestCase):
 
     def test_admission_watermark_and_closed_range_keep_archive_routes_independent(self):
         self.receiver()
-        for thread in (ROOT_THREAD, CONTINUATION, OTHER_THREAD):
-            self.rollout(thread)
-        self.rollout(CHILD_THREAD, source={"subagent": {"thread_spawn": {"parent_thread_id": ROOT_THREAD}}})
         self.cli("start", at=START)
         self.cli("start", execution="b", thread=OTHER_THREAD, at=START)
         self.cli("include", thread=CONTINUATION, at=START)
@@ -1254,7 +1106,6 @@ class RegistrationControlTests(ServiceFixture, unittest.TestCase):
 
     def test_direct_control_cannot_start_after_upgrade_closed_check(self):
         self.receiver()
-        self.rollout(ROOT_THREAD)
         self.cli("start", at=START)
         args = SimpleNamespace(project=self.primary, rollback=False)
         with self.assertRaisesRegex(CaptureError, "Close all capture registrations"):
@@ -1282,8 +1133,8 @@ class RegistrationControlTests(ServiceFixture, unittest.TestCase):
             self.cli("start", execution="native", otel=False, at=START)
             native = self.cli("stop", execution="native", at="2026-11-18T10:00:00.000003Z")
             self.assertEqual(native["boundary_utc"], "2026-11-18T10:00:00.000003Z")
+        self.provision()
         self.receiver()
-        self.rollout(ROOT_THREAD)
         now = AT + 5000
         with patch("time.time_ns", return_value=now), patch("register.datetime") as clock:
             from datetime import UTC, datetime

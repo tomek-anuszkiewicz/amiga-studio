@@ -7,10 +7,9 @@ from pathlib import Path
 import re
 import subprocess
 import sys
-import tempfile
 import unittest
 
-from capture_fixtures import fixture_git_environment, restore_capture
+from capture_fixtures import case_directory, fixture_git_environment
 
 
 CAPTURE = Path(__file__).resolve().parents[1]
@@ -21,26 +20,13 @@ TASK = "fixture-task"
 
 class PreservationTests(unittest.TestCase):
     def setUp(self):
-        temporary = tempfile.TemporaryDirectory()
-        self.addCleanup(temporary.cleanup)
-        self.root = Path(temporary.name).resolve()
+        self.root = case_directory(self)
         self.primary = self.root / "primary"
         self.source = self.root / "task"
         self.codex = self.root / "fixture-client"
-        ignore = (CAPTURE.parents[2] / ".gitignore").read_bytes().replace(b"\r\n", b"\n")
-        restore_capture("records", self.root)
-        if (self.primary / ".gitignore").read_bytes() == ignore:
-            self.base = json.loads((self.root / "fixture.json").read_bytes())["base"]
-        else:
-            # The contract uses the current checkout's ignore rules.
-            self.refresh_ignore_fixture(ignore)
-
-    def refresh_ignore_fixture(self, ignore):
-        self.write(self.primary / ".gitignore", ignore)
-        self.git(self.primary, "add", ".gitignore")
-        self.git(self.primary, "commit", "--allow-empty", "-qm", "Refresh the ignore rules")
-        self.base = self.git(self.primary, "rev-parse", "HEAD").decode().strip()
-        self.git(self.source, "merge", "--ff-only", self.base)
+        fixture = self.root / "fixture.json"
+        if fixture.is_file():
+            self.base = json.loads(fixture.read_bytes())["base"]
 
     def git(self, checkout, *command):
         return subprocess.check_output(["git", *command], cwd=checkout, env=fixture_git_environment())
@@ -62,16 +48,8 @@ class PreservationTests(unittest.TestCase):
             return json.loads(result.stdout)
         return result.stderr
 
-    def timing(self, profile, attempt, data, checkout=None):
-        checkout = checkout or self.source
-        relative = Path(f".agent/tmp/verification/diagnostics/{attempt}/{REPORT}")
-        report = self.write(checkout / relative, data)
-        selected = {"task_id": TASK, "profile": profile, "attempt": attempt,
-                    "candidate": self.base, "outcome": "passed", "path": relative.as_posix(),
-                    "sha256": sha256(data).hexdigest()}
-        if profile == "diagnostic":
-            selected["invocation"] = "verify.py check english files AGENTS.md"
-        return report, selected
+    def timing_inputs(self):
+        return json.loads((self.root / "timing-inputs.json").read_bytes())
 
     def preserve(self, selection, status=0, checkout=None):
         arguments = self.json_file(self.root / "selected-timing.json", selection)
@@ -85,10 +63,9 @@ class PreservationTests(unittest.TestCase):
         self.assertEqual(self.git(self.primary, "ls-files", "--", ".agent/task-archives"), b"")
 
     def test_timing_receipts_preserve_selected_attempts_and_report_collisions(self):
-        first_report, first = self.timing("commit", "1" * 32, b"first commit report\n")
-        _, later = self.timing("commit", "2" * 32, b"later commit report\n")
-        _, milestone = self.timing("milestone", "3" * 32, b"milestone report\n")
-        pending = self.write(self.source / ".agent/tasks/plan.md", b"unique input\n")
+        first, later, milestone = self.timing_inputs()
+        first_report = self.source / first["path"]
+        pending = self.source / ".agent/tasks/plan.md"
         self.assertIn("producer digest", self.preserve({k: v for k, v in first.items() if k != "sha256"}, 2))
         self.assertIn("producer digest", self.preserve({**first, "sha256": later["sha256"]}, 2))
         self.assertIn("producer digest", self.preserve({**first, "task_id": "other-task"}, 2))
@@ -163,7 +140,8 @@ with (patch.object(verify, "REPO_ROOT", Path.cwd()),
                 self.assertEqual((receipt.parent / REPORT).read_bytes(), data)
 
     def test_timing_rejects_unsafe_or_mismatched_sources_without_publishing(self):
-        report, selected = self.timing("commit", "7" * 32, b"current timing\n")
+        selected = self.timing_inputs()
+        report = self.source / selected["path"]
         self.assertIn("does not identify this verification attempt",
                       self.preserve({**selected, "attempt": "8" * 32}, 2))
         for path in ("../" + selected["path"], report.as_posix()):
@@ -179,7 +157,8 @@ with (patch.object(verify, "REPO_ROOT", Path.cwd()),
         self.assertFalse((self.primary / ".agent/task-archives" / TASK / ".timing-reports").exists())
 
     def test_primary_checkout_can_supply_an_explicitly_selected_diagnostic(self):
-        report, selected = self.timing("diagnostic", "4" * 32, b"diagnostic report\n", self.primary)
+        selected = self.timing_inputs()
+        report = self.primary / selected["path"]
         receipt = Path(self.preserve(selected, checkout=self.primary)["receipt"])
         self.assertEqual((receipt.parent / REPORT).read_bytes(), report.read_bytes())
         self.assertEqual(json.loads(receipt.read_bytes())["invocation"], selected["invocation"])
@@ -194,14 +173,8 @@ with (patch.object(verify, "REPO_ROOT", Path.cwd()),
         execution = "registered"
         thread = "11111111-1111-4111-8111-111111111111"
         turn = "22222222-2222-4222-8222-222222222222"
-        start, middle, end = ("2026-11-18T10:00:00Z", "2026-11-18T10:01:00Z", "2026-11-18T10:02:00Z")
-        rollout = [
-            {"timestamp": start, "type": "session_meta", "payload": {"id": thread, "cwd": str(self.source)}},
-            {"timestamp": middle, "type": "event_msg", "payload": {"type": "task_started", "turn_id": turn}},
-            {"timestamp": end, "type": "event_msg", "payload": {"type": "task_complete", "turn_id": turn}},
-        ]
-        native = self.write(self.codex / f"sessions/rollout-fixture-{thread}.jsonl",
-                            b"".join(json.dumps(row).encode("utf-8") + b"\n" for row in rollout))
+        start, end = ("2026-11-18T10:00:00Z", "2026-11-18T10:02:00Z")
+        native = self.codex / f"sessions/rollout-fixture-{thread}.jsonl"
         registration = ["--project", self.primary, "--task", TASK, "--execution", execution]
         environment = {**os.environ, "CODEX_THREAD_ID": thread}
         self.run_capture("register.py", "start", *registration, "--codex-home", self.codex,
@@ -209,76 +182,18 @@ with (patch.object(verify, "REPO_ROOT", Path.cwd()),
         self.run_capture("register.py", "stop", *registration, "--at", end, "--turn-id", turn, env=environment)
 
         editable = self.source / ".agent/tasks/nested/plan.md"
-        snapshots = self.source / ".agent/tmp/task-inputs" / TASK
-        files = []
-        expected = {}
-        versions = []
-
-        def select(source, destination, data):
-            value = sha256(data).hexdigest()
-            files.append({"kind": "artifact", "source": str(source), "path": destination, "sha256": value})
-            expected[destination] = {"kind": "archive", "path": destination, "sha256": value, "size": len(data)}
-
-        self.write(editable, b"unselected initial draft\n")
-        for version, data in (("start", b"starting\n"), ("revision", b"approved\n"), ("final", b"final\n")):
-            if version == "final":
-                self.write(editable, b"unselected working edit after approval\n")
-            self.write(editable, data)
-            copy = self.write(snapshots / version / "nested/plan.md", editable.read_bytes())
-            select(copy, f"artifacts/worktree/inputs/{version}/nested/plan.md", data)
-            versions.append({"version": version, "path": editable.relative_to(self.source).as_posix(),
-                             "sha256": sha256(data).hexdigest(), "approval": turn})
-        version_map = self.json_file(snapshots / "versions.json",
-                                     {"task_id": TASK, "versions": versions, "final": "final"})
-        select(version_map, "artifacts/worktree/inputs/versions.json", version_map.read_bytes())
-        for profile, attempt, data in (("commit", "5" * 32, b"commit duration\n"),
-                                       ("milestone", "6" * 32, b"milestone duration\n")):
-            report, record = self.timing(profile, attempt, data)
-            destination = f"artifacts/verification/{profile}/{attempt}"
-            select(report, f"{destination}/{REPORT}", data)
-            selected = self.json_file(report.parent / "selection.json", record)
-            select(selected, f"{destination}/selection.json", selected.read_bytes())
-
+        first_source = self.source / ".agent/tmp/task-inputs" / TASK / "start/nested/plan.md"
         args = ["--primary", self.primary, "--task-id", TASK, "--execution-id", execution]
         revision = "20261118T100200000000Z-12345678"
         execution_archive = self.primary / ".agent/task-archives" / TASK / execution
         archive = execution_archive / "revisions" / revision
-        inventory = []
-
-        def archived(path, data, kind, **metadata):
-            self.write(archive / path, data)
-            inventory.append({"path": path, "kind": kind, "size": len(data),
-                              "sha256": sha256(data).hexdigest(), **metadata})
-
-        # Describe an existing revision independently of the retired producer.
-        registration_data = (execution_archive / "registration.json").read_bytes()
-        registered = json.loads(registration_data)
-        archived("registration.json", registration_data, "registration")
-        native_data = native.read_bytes()
-        native_lines = native_data.splitlines(keepends=True)
-        archived(f"rollouts/{thread}.jsonl", native_data, "rollout", source=str(native),
-                 ranges=[{"start": 0, "end": len(native_data), "first_line": 1,
-                          "last_line": len(native_lines)}], whole_source=True)
-        for entry in files:
-            archived(entry["path"], Path(entry["source"]).read_bytes(), "artifact", source=entry["source"])
-        manifest = {
-            "format_version": 1, "tool_version": "records.py/1", "revision": revision,
-            "previous_revision": None, "task_id": TASK, "execution_id": execution,
-            "git_common_dir": registered["git_common_dir"], "root_thread_id": thread,
-            "start_utc": registered["start_utc"], "end_utc": registered["end_utc"],
-            "start_commit": self.base, "workflow_commit": self.base, "final_commit": self.base,
-            "final_candidate": self.base, "outcome": "completed", "collection_status": "collected",
-            "threads": [{"thread_id": thread, "parent_thread_id": None, "source": str(native),
-                         "selection": registered["threads"][0], "turn_ids": [turn],
-                         "segment": f"rollouts/{thread}.jsonl", "cli_version": None,
-                         "last_event": {"timestamp": end, "source_line": len(native_lines),
-                                        "byte_start": len(native_data) - len(native_lines[-1]),
-                                        "byte_end": len(native_data), "type": "event_msg",
-                                        "event": "task_complete", "turn_id": turn, "call_id": None}}],
-            "files": inventory, "gaps": [],
-        }
-        self.json_file(archive / "manifest.json", manifest)
-        first_source = Path(files[0]["source"])
+        manifest = json.loads((archive / "manifest.json").read_bytes())
+        observer = self.root / "observer.json"
+        checks = json.loads(observer.read_bytes())["rows"]
+        expected = {check["path"]: check for row in checks.values()
+                    for check in row["checks"] if check["kind"] == "archive"}
+        self.assertEqual((archive / "registration.json").read_bytes(),
+                         (execution_archive / "registration.json").read_bytes())
         self.assertEqual(first_source.read_bytes(), b"starting\n")
         self.assertFalse(any(item["kind"] == "otel" for item in manifest["files"]))
         self.assertEqual((archive / f"rollouts/{thread}.jsonl").read_bytes(), native.read_bytes())
@@ -287,18 +202,6 @@ with (patch.object(verify, "REPO_ROOT", Path.cwd()),
                          {name for name in expected if "/inputs/" in name})
         approved = archive / "artifacts/worktree/inputs/revision/nested/plan.md"
         self.assertEqual(approved.read_bytes(), b"approved\n")
-        checks = {
-            "starting_inputs": {"checks": [check for path, check in expected.items() if "/inputs/" in path]},
-            "registration_lineage": {"checks": [{"kind": "source_range", "path": f"rollouts/{thread}.jsonl",
-                                                "source": str(native), "start": 0, "end": native.stat().st_size}]},
-            "usage_verification": {"checks": [check for path, check in expected.items() if "/verification/" in path]},
-            "integrity_survival": {"checks": [{"kind": "commit_ref", "commit": self.base, "ref": "refs/heads/master"}]},
-        }
-        observer = self.json_file(self.root / "observer.json", {
-            "identity": {"start_commit": self.base, "workflow_commit": self.base, "final_commit": self.base,
-                         "final_candidate": self.base, "task_id": TASK, "execution_id": execution},
-            "threads": [thread], "rows": checks,
-        })
         result = self.run_capture("records.py", "check", *args, "--revision", revision,
                                   "--expect", observer, status=1)
         self.assertEqual(result["integrity"], "passed")

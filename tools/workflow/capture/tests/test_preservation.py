@@ -8,11 +8,10 @@ import os
 from pathlib import Path
 import subprocess
 import sys
-import tempfile
 import unittest
 from unittest.mock import patch
 
-from capture_fixtures import restore_capture
+from capture_fixtures import case_directory
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import records
@@ -21,12 +20,9 @@ import preservation
 
 class WholeFilePreservationTests(unittest.TestCase):
     def setUp(self):
-        temporary = tempfile.TemporaryDirectory()
-        self.addCleanup(temporary.cleanup)
-        self.folder = Path(temporary.name).resolve()
+        self.folder = case_directory(self)
         self.primary = self.folder / "primary"
         self.task = self.folder / "task"
-        restore_capture("preservation", self.folder)
         self.archive = self.primary / ".agent/task-archives/trial/execution"
         self.selection = self.task / ".agent/tmp/selected.json"
 
@@ -41,8 +37,9 @@ class WholeFilePreservationTests(unittest.TestCase):
     def item(self, name, source, path, complete=True):
         return {"id": name, "source": str(source), "path": path, "complete": complete}
 
-    def run_selection(self, items, primary=None):
-        self.write(self.selection, json.dumps({"files": items}).encode())
+    def run_selection(self, items=None, primary=None):
+        if items is not None:
+            self.write(self.selection, json.dumps({"files": items}).encode())
         args = Namespace(primary=primary or self.primary, task_id="trial", execution_id="execution",
                          input=self.selection, publication=None)
         output = io.StringIO()
@@ -51,14 +48,11 @@ class WholeFilePreservationTests(unittest.TestCase):
         return output.getvalue()
 
     def test_only_selected_files_are_opened_and_archive_residents_are_reused(self):
-        main = self.write(self.folder / "main.jsonl", b'{"opening":1}\r\nunparsed\xff\r\nfinal tail')
-        task_log = self.write(self.task / ".agent/tmp/output.txt", b"raw\r\n\xfe")
-        resident = self.write(self.archive / "sessions/agent.jsonl", b"already archived\r\n\x80")
-        telemetry = self.write(self.archive / "otel/events.jsonl", b"existing telemetry")
-        decoy = self.write(self.folder / "decoy/sessions/other.jsonl", b"must remain unobserved")
-        selected = [self.item("main", main, "sessions/main.jsonl"),
-                    self.item("worker", resident, "sessions/agent.jsonl"),
-                    self.item("log", task_log, "outputs/execution.txt")]
+        main = self.folder / "main.jsonl"
+        task_log = self.task / ".agent/tmp/output.txt"
+        resident = self.archive / "sessions/agent.jsonl"
+        telemetry = self.archive / "otel/events.jsonl"
+        decoy = self.folder / "decoy/sessions/other.jsonl"
         native_open = Path.open
         opened = []
 
@@ -70,7 +64,7 @@ class WholeFilePreservationTests(unittest.TestCase):
         with (patch.object(Path, "open", observe),
               patch.object(preservation.shutil, "copyfileobj", wraps=preservation.shutil.copyfileobj) as copies,
               patch.object(os, "scandir", side_effect=AssertionError("Unexpected enumeration"))):
-            output = self.run_selection(selected)
+            output = self.run_selection()
             self.assertEqual(copies.call_count, 2)
             self.assertEqual(opened, [main, task_log])
             self.assertIn("[RETAINED] worker: sessions/agent.jsonl", output)
@@ -92,8 +86,8 @@ class WholeFilePreservationTests(unittest.TestCase):
         self.assertFalse(self.git("ls-files", "--", ".agent"))
 
     def test_copy_never_reads_an_existing_registration(self):
-        registration = self.write(self.archive / "registration.json", b"unreadable registration")
-        log = self.write(self.folder / "session.jsonl", b"finished session")
+        registration = self.archive / "registration.json"
+        log = self.folder / "session.jsonl"
         native_open = Path.open
 
         def open_without_registration(path, *args, **kwargs):
@@ -102,16 +96,13 @@ class WholeFilePreservationTests(unittest.TestCase):
             return native_open(path, *args, **kwargs)
 
         with patch.object(Path, "open", open_without_registration):
-            result = self.run_selection([self.item("session", log, "sessions/main.jsonl")])
+            result = self.run_selection()
         self.assertIn("[COPIED] session: sessions/main.jsonl", result)
         self.assertEqual(registration.read_bytes(), b"unreadable registration")
         self.assertEqual((self.archive / "sessions/main.jsonl").read_bytes(), log.read_bytes())
 
     def test_collisions_keep_distinct_sources_without_reading_occupied_entries(self):
-        self.write(self.archive / "same.log", b"original")
-        self.write(self.archive / "same-2.log", b"occupied fallback")
-        choices = [self.item(f"log-{index}", self.write(self.folder / f"log-{index}", data), "same.log")
-                   for index, data in enumerate((b"original", b"second source"), 1)]
+        choices = json.loads(self.selection.read_bytes())["files"]
         opened = []
         native_open = Path.open
 
@@ -121,7 +112,7 @@ class WholeFilePreservationTests(unittest.TestCase):
             return native_open(path, *args, **kwargs)
 
         with patch.object(Path, "open", observe):
-            result = self.run_selection(choices)
+            result = self.run_selection()
         self.assertCountEqual(opened, [Path(item["source"]) for item in choices])
         destinations = [self.archive / line.partition(": ")[2] for line in result.splitlines()]
         self.assertEqual(len(set(destinations)), 2)
@@ -132,13 +123,11 @@ class WholeFilePreservationTests(unittest.TestCase):
         self.assertEqual((self.archive / "same-2.log").read_bytes(), b"occupied fallback")
 
     def test_failed_copy_keeps_previous_success_and_retry_copies_only_missing_file(self):
-        first = self.write(self.folder / "first.json", b"complete first")
-        second = self.write(self.folder / "second.json", b"complete second")
-        obstruction = self.write(self.archive / "blocked", b"keep obstruction")
-        choices = [self.item("first", first, "first.json"),
-                   self.item("second", second, "blocked/second.json")]
+        obstruction = self.archive / "blocked"
+        second = self.folder / "second.json"
+        choices = json.loads(self.selection.read_bytes())["files"]
         with self.assertRaisesRegex(ValueError, "Cannot preserve .*blocked/second.json"):
-            self.run_selection(choices)
+            self.run_selection()
         self.assertEqual((self.archive / "first.json").read_bytes(), b"complete first")
         self.assertEqual(obstruction.read_bytes(), b"keep obstruction")
         self.assertFalse(list(self.archive.rglob(".pending-*")))
@@ -159,7 +148,6 @@ class WholeFilePreservationTests(unittest.TestCase):
         )
         for index, parent in enumerate((self.folder, self.task / ".agent/tmp", self.archive)):
             with self.subTest(parent=parent):
-                parent.mkdir(parents=True, exist_ok=True)
                 source = parent / f"live-{index}.jsonl"
                 producer = subprocess.Popen([sys.executable, "-c", script, str(source)], text=True,
                                             stdin=subprocess.PIPE, stdout=subprocess.PIPE)
@@ -187,35 +175,31 @@ class WholeFilePreservationTests(unittest.TestCase):
                         producer.communicate(timeout=10)
 
     def test_selected_file_in_another_execution_is_refused(self):
-        source = self.write(self.archive.parent / "other/output.txt", b"keep other execution")
+        source = self.archive.parent / "other/output.txt"
         with self.assertRaisesRegex(ValueError, "belongs to another private execution"):
-            self.run_selection([self.item("output", source, "output.txt")])
+            self.run_selection()
         self.assertFalse((self.archive / "output.txt").exists())
         self.assertEqual(source.read_bytes(), b"keep other execution")
 
     def test_wrong_root_unignored_and_force_tracked_archive_are_refused(self):
-        source = self.write(self.folder / "source.txt", b"selected")
-        original = [self.item("source", source, "source.txt")]
         with self.assertRaisesRegex(ValueError, "surviving primary checkout"):
-            self.run_selection(original, primary=self.task)
+            self.run_selection(primary=self.task)
         self.write(self.primary / ".gitignore", b"")
         with self.assertRaisesRegex(ValueError, "must be ignored"):
-            self.run_selection(original)
+            self.run_selection()
         self.write(self.primary / ".gitignore", b".agent/\n")
         tracked = self.write(self.archive / "tracked.txt", b"keep staged bytes")
         self.git("add", "-f", str(tracked))
         index = (self.primary / ".git/index").read_bytes()
         with self.assertRaisesRegex(ValueError, "outside Git"):
-            self.run_selection(original)
+            self.run_selection()
         self.assertFalse((self.archive / "source.txt").exists())
         self.assertEqual((self.primary / ".git/index").read_bytes(), index)
 
     def test_redirected_execution_leaf_and_traversal_are_refused(self):
-        source = self.write(self.folder / "source.txt", b"selected")
-        sentinel = self.write(self.folder / "outside/sentinel.txt", b"do not change")
-        other = self.write(self.archive.parent / "other/sentinel.txt", b"other execution")
-        selected = [self.item("source", source, "sentinel.txt")]
-        self.archive.parent.mkdir(parents=True, exist_ok=True)
+        sentinel = self.folder / "outside/sentinel.txt"
+        other = self.archive.parent / "other/sentinel.txt"
+        selected = json.loads(self.selection.read_bytes())["files"]
         try:
             self.archive.symlink_to(sentinel.parent, target_is_directory=True)
         except OSError as error:
@@ -226,7 +210,7 @@ class WholeFilePreservationTests(unittest.TestCase):
             if result.returncode:
                 self.skipTest("Native directory links unavailable in this fixture")
         with self.assertRaisesRegex(ValueError, "linked path"):
-            self.run_selection(selected)
+            self.run_selection()
         if self.archive.is_symlink():
             self.archive.unlink()
         else:
@@ -241,7 +225,7 @@ class WholeFilePreservationTests(unittest.TestCase):
             if result.returncode:
                 self.skipTest("Native leaf links unavailable in this fixture")
         with self.assertRaisesRegex(ValueError, "linked path"):
-            self.run_selection(selected)
+            self.run_selection()
         selected[0]["path"] = "../other/sentinel.txt"
         with self.assertRaisesRegex(ValueError, "Unsafe archive path"):
             self.run_selection(selected)

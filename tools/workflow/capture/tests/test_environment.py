@@ -8,19 +8,18 @@ import json
 from pathlib import Path
 import subprocess
 import sys
-import tempfile
 import unittest
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import environment
 
+from capture_fixtures import case_directory
+
 
 class EnvironmentInventoryTests(unittest.TestCase):
     def setUp(self):
-        temporary = tempfile.TemporaryDirectory()
-        self.addCleanup(temporary.cleanup)
-        self.root = Path(temporary.name)
+        self.root = case_directory(self)
 
     def write(self, name, data):
         path = self.root / name
@@ -33,9 +32,7 @@ class EnvironmentInventoryTests(unittest.TestCase):
         requirements = "tools/verification/requirements.txt"
         original = b"pytest==8.0\n"
         update = b"pytest==8.1\n"
-        self.write(requirements, original)
-        self.write(".codex/config.toml", b"[mcp_servers.fixture]\n")
-        executable = self.write("git.exe", b"original tool")
+        executable = self.root / "git.exe"
         turn = "11111111-1111-4111-8111-111111111111"
 
         def rollout(model, effort):
@@ -51,9 +48,9 @@ class EnvironmentInventoryTests(unittest.TestCase):
                 return original
             return None
 
-        def snapshot(name, model, effort, tool_version):
+        def snapshot(name, session_log, tool_version):
             args = Namespace(governing_commit="HEAD", docker_image=[], node_project=[], shell="PowerShell",
-                             session_log=rollout(model, effort), turn_id=turn)
+                             session_log=session_log, turn_id=turn)
             tool = subprocess.CompletedProcess([str(executable), "--version"], 0,
                                                stdout=f"git version {tool_version}\n".encode())
             with (patch.object(environment, "ROOT", self.root), patch.object(environment, "git_bytes", git_bytes),
@@ -64,7 +61,7 @@ class EnvironmentInventoryTests(unittest.TestCase):
                 captured = environment.capture(args)
             return environment.load_inventory(self.write(name, json.dumps(captured).encode()))
 
-        saved = snapshot("saved.json", "fixture-model", "low", "2.48.0")
+        saved = snapshot("saved.json", self.root / "rollout.jsonl", "2.48.0")
         self.assertEqual(saved["format_version"], 2)
         self.assertEqual(saved["governing_commit"], commit)
         self.assertIsNone(saved["role_settings"])
@@ -78,7 +75,7 @@ class EnvironmentInventoryTests(unittest.TestCase):
 
         self.write(requirements, update)
         self.write("git.exe", b"updated tool")
-        fresh = snapshot("fresh.json", "updated-model", "high", "2.49.0")
+        fresh = snapshot("fresh.json", rollout("updated-model", "high"), "2.49.0")
         changes = environment.compare(saved, fresh)
         self.assertEqual(changes["missing"], [])
         differences = {entry["item"]: (entry["saved"], entry["fresh"]) for entry in changes["changed"]}
@@ -95,7 +92,7 @@ class EnvironmentInventoryTests(unittest.TestCase):
 
     def test_compare_reports_required_format_for_an_unsupported_inventory(self):
         content = b'{"format_version": 1, "probes": []}'
-        saved = self.write("old.json", content)
+        saved = self.root / "old.json"
         arguments = ["environment.py", "compare", str(saved), str(saved)]
         with (patch.object(sys, "argv", arguments), redirect_stderr(io.StringIO()) as errors,
               self.assertRaises(SystemExit) as exit_status):
