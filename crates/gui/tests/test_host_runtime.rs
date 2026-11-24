@@ -609,6 +609,53 @@ fn targeted_owner_reads_preserve_machine_state_and_reject_obsolete_generations()
         panic!("Missing reset key state");
     };
     assert_eq!(keys.key_held, Some(false));
+
+    let mut checkpoint = session();
+    checkpoint.machine.step_cycles(11);
+    let checkpoint_cck = checkpoint.machine.cck;
+    checkpoint.machine.cpu.state.set_d_long(0, 0xa1b2_c3d4);
+    checkpoint
+        .machine
+        .physical_memory
+        .write_word_debug(address, 0xbeef);
+    let restored = owner.execute(request(
+        10,
+        reset.status.generation,
+        HostCommand::RestorePlayer {
+            json: debugger::SaveState::capture(&checkpoint.machine)
+                .to_json()
+                .unwrap(),
+            game_id: None,
+            ports: [
+                debugger::launch::DeviceKind::Mouse,
+                debugger::launch::DeviceKind::Joystick,
+            ],
+            resume: true,
+        },
+    ));
+    assert_eq!(restored.id, 10);
+    assert!(matches!(restored.value, Ok(HostValue::PlayerRestored(_))));
+    assert_eq!(restored.status.generation, reset.status.generation + 1);
+    assert_eq!(restored.status.cck, checkpoint_cck);
+    assert!(restored.status.running);
+
+    let obsolete = owner.execute(request(11, reset.status.generation, execution()));
+    assert_eq!(obsolete.id, 11);
+    assert_eq!(obsolete.status, restored.status);
+    assert_eq!(
+        obsolete.value.unwrap_err(),
+        "Command belongs to an obsolete runtime generation"
+    );
+    let fresh = owner.execute(request(12, restored.status.generation, execution()));
+    assert_eq!(fresh.id, 12);
+    assert_eq!(fresh.status, restored.status);
+    assert!(matches!(
+        fresh.value,
+        Ok(HostValue::Execution {
+            data_register: 0xa1b2_c3d4,
+            memory_word: Some(0xbeef),
+        })
+    ));
 }
 
 #[test]
@@ -769,6 +816,68 @@ fn ordered_command_backpressure_releases_all_replies_without_losing_register_edi
         panic!("Missing final register state");
     };
     assert_eq!(cpu.d_long(3), COMMANDS - 1);
+}
+
+#[test]
+fn queued_memory_write_is_visible_to_a_running_observation() {
+    let address = 0xc00100;
+    let mut host = start_host();
+    let initial = host.status();
+    let deadline = Instant::now() + Duration::from_secs(10);
+    let mut ids = Vec::new();
+    for mut command in [
+        HostCommand::WriteMemory {
+            address,
+            bytes: vec![0x89, 0xab],
+            restart_instruction: false,
+        },
+        HostCommand::Run,
+        HostCommand::Observe(HostObservation::Execution {
+            data_register: 0,
+            word_address: Some(address),
+        }),
+    ] {
+        loop {
+            match host.submit(command) {
+                Ok(id) => {
+                    ids.push(id);
+                    break;
+                }
+                Err(busy) => command = busy.0,
+            }
+            assert!(Instant::now() < deadline, "Queued command was not admitted");
+            std::thread::yield_now();
+        }
+    }
+
+    let mut replies = Vec::new();
+    while replies.len() < ids.len() {
+        replies.extend(host.poll().unwrap());
+        assert!(
+            Instant::now() < deadline,
+            "Queued commands did not all reply"
+        );
+        std::thread::yield_now();
+    }
+    let [edit, run, observed] = replies.as_slice() else {
+        panic!("Expected one reply per queued command: {replies:?}");
+    };
+    assert_eq!([edit.id, run.id, observed.id].as_slice(), ids.as_slice());
+    assert!(matches!(edit.value, Ok(HostValue::Done)));
+    assert!(matches!(run.value, Ok(HostValue::Done)));
+    assert!(!edit.status.running);
+    assert!(run.status.running && observed.status.running);
+    assert_eq!(edit.status.generation, initial.generation);
+    assert_eq!(run.status.generation, initial.generation);
+    assert_eq!(observed.status.generation, initial.generation);
+    assert!(observed.status.cck >= run.status.cck);
+    assert!(matches!(
+        observed.value,
+        Ok(HostValue::Execution {
+            memory_word: Some(0x89ab),
+            ..
+        })
+    ));
 }
 
 #[test]

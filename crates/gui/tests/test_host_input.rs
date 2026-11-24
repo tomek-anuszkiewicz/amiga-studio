@@ -130,9 +130,25 @@ fn delivery_boundaries_are_spaced_and_input_arrivals_do_not_postpone_them() {
                         "CPU"
                     ));
                 }
+                let variant = (standard, interlace, lifecycle);
+                let first_field_origin = {
+                    // Watch Denise reach field assembly without the host scheduler.
+                    let mut probe = source.machine.clone();
+                    for _ in 0..probe.agnus.field_ccks() {
+                        if probe.denise.sync.field_started() {
+                            break;
+                        }
+                        probe.step_cck();
+                    }
+                    assert!(
+                        probe.denise.sync.field_started(),
+                        "{variant:?}: receiver did not start field assembly at {:?}",
+                        probe.denise.sync
+                    );
+                    probe.cck
+                };
                 let mut owner = MachineOwner::new(source);
                 let video = VideoExchange::new(vec![0; owner.video_storage_len()]);
-                let variant = (standard, interlace, lifecycle);
                 let initial = owner.status();
                 let generation = initial.generation;
                 assert!(owner.publish(&video).unwrap(), "{variant:?}");
@@ -195,6 +211,12 @@ fn delivery_boundaries_are_spaced_and_input_arrivals_do_not_postpone_them() {
                     let [first, middle, last] = deliveries.as_slice() else {
                         panic!("{variant:?}: field {info:?} had deliveries {deliveries:?}");
                     };
+                    if fields.is_empty() {
+                        assert_eq!(
+                            *first, first_field_origin,
+                            "{variant:?}: first delivery missed the receiver origin for field {info:?}, deliveries {deliveries:?}"
+                        );
+                    }
                     assert!(
                         previous_cck <= *first && first < middle && middle < last && *last < info.cck,
                         "{variant:?}: field after CCK {previous_cck} ended at {info:?} with deliveries {deliveries:?}"

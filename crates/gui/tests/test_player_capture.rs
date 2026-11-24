@@ -615,9 +615,9 @@ fn click_view_toolbar(app: &mut EmulatorApp, ctx: &egui::Context) {
     );
 }
 
-fn assert_held_view_controls(app: &mut EmulatorApp, held: bool) {
-    let snapshot = owner_snapshot(app);
-    assert_eq!(saved_key_held(&snapshot, 0x20), held, "Amiga A key");
+#[track_caller]
+fn assert_held_view_controls(snapshot: &debugger::A500State, held: bool) {
+    assert_eq!(saved_key_held(snapshot, 0x20), held, "Amiga A key");
     assert_eq!(
         snapshot.game_ports.pins.direction_pins[0] & 1 == 0,
         held,
@@ -655,11 +655,11 @@ fn view_change_releases_gameplay(start: ViewMode, via_toolbar: bool) {
         &[("KeyA", true, generation), ("ArrowUp", true, generation)],
     );
     delivered(&mut app, &ctx);
-    assert_held_view_controls(&mut app, true);
+    assert_held_view_controls(&owner_snapshot(&mut app), true);
     app.set_view_mode(start);
     delivered(&mut app, &ctx);
     assert!(app.host.status.running);
-    assert_held_view_controls(&mut app, true);
+    assert_held_view_controls(&owner_snapshot(&mut app), true);
 
     if via_toolbar {
         click_view_toolbar(&mut app, &ctx);
@@ -674,13 +674,22 @@ fn view_change_releases_gameplay(start: ViewMode, via_toolbar: bool) {
     assert_eq!(app.view_mode, expected_view);
     if expected_view == ViewMode::Developer {
         common::wait(&mut app, &ctx, |app| !app.host.status.running);
-        assert_held_view_controls(&mut app, false);
+        let mut paused = owner_snapshot(&mut app);
+        assert!(!app.host.status.running);
+        assert!(
+            !paused.game_ports.fire1_port2(),
+            "Gamepad fire contact at pause"
+        );
+        // Pause can release contacts before the next CCK samples the direction pins.
+        // Refresh those pins on the detached snapshot while the machine stays paused.
+        paused.game_ports.step_cck();
+        assert_held_view_controls(&paused, false);
         common::command(&mut app, HostCommand::Run);
     }
     delivered(&mut app, &ctx);
     assert!(app.host.status.running);
     assert_eq!(app.host.status.generation, generation);
-    assert_held_view_controls(&mut app, false);
+    assert_held_view_controls(&owner_snapshot(&mut app), false);
     for physical in ["KeyA", "ArrowUp"] {
         let mut key = common::keyboard::key(physical, true);
         key.repeat = true;
@@ -707,7 +716,7 @@ fn view_change_releases_gameplay(start: ViewMode, via_toolbar: bool) {
     pad(&sender, generation, true);
     delivered(&mut app, &ctx);
     assert_eq!(app.view_mode, expected_view);
-    assert_held_view_controls(&mut app, false);
+    assert_held_view_controls(&owner_snapshot(&mut app), false);
 
     window_keys(
         &mut app,
@@ -722,7 +731,7 @@ fn view_change_releases_gameplay(start: ViewMode, via_toolbar: bool) {
         &[("KeyA", true, generation), ("ArrowUp", true, generation)],
     );
     delivered(&mut app, &ctx);
-    assert_held_view_controls(&mut app, true);
+    assert_held_view_controls(&owner_snapshot(&mut app), true);
 }
 
 #[test]
@@ -932,7 +941,10 @@ fn gamepad_plays_without_capture_survives_mouse_release_and_stops_outside_sessio
     draw(&mut app, &ctx, None);
     pad(&sender, generation, true);
     delivered_after_input_read(&mut app, &ctx);
-    assert!(!observed_fire(&mut app), "Held controls must not replay on return");
+    assert!(
+        !observed_fire(&mut app),
+        "Held controls must not replay on return"
+    );
     pad(&sender, generation, false);
     pad(&sender, generation, true);
     delivered_after_input_read(&mut app, &ctx);
