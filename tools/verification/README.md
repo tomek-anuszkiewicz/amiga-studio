@@ -212,10 +212,10 @@ For standalone implementation and master repairs that change GUI code,
 workspace manifests or the browser build pipeline, include
 `python tools/verification/verify.py check web`. During
 [Implement Task](../../.agents/skills/TA-WF-Main-implement-task/SKILL.md),
-the implementer runs `./tools/web.ps1 build` when the browser target is
-selected. The runner can use that distribution on the same inputs for
-the selected browser interaction test. Implement Task defers standalone
-gates to final verification when selected.
+the runner uses a distribution built on the current inputs for a selected
+browser interaction test. If it needs to build that distribution, the runner
+runs `./tools/web.ps1 build` as part of the test assignment. Implement Task
+defers standalone gates to final verification when selected.
 
 Every `commit` profile selects the same `WebAssembly build` gate after
 preflight and before coverage. The gate invokes `tools/web.ps1 build`, which

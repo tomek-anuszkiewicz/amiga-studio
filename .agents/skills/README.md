@@ -54,9 +54,8 @@ with that result.
 
 [TA-WF-Main-implement-task](TA-WF-Main-implement-task/SKILL.md) resolves the
 approved plan and destination and confirms capture against the primary
-checkout. It assigns the change and any targets to compile. The runner
-executes the applicable tests once the implementer returns successful
-compilation for all selected targets or reports that none apply.
+checkout. It assigns the change to the implementer. Once the implementer
+returns the change and diff inspection, the runner executes the applicable tests.
 
 ```mermaid
 flowchart TD
@@ -70,13 +69,7 @@ flowchart TD
     Existing --> Assign
     Provision -->|Preparation failed| Report
     Assign --> Implement["Implement the change, format Rust edits and inspect the diff"]
-    Implement --> Targets{"Any targets to compile?"}
-    Targets -->|No| Tests["TA-test-runner runs applicable tests"]
-    Targets -->|Yes| Compile["TA-implementer compiles the selected targets<br/>Maximum three attempts"]
-    Compile -->|All targets compiled| Tests
-    Compile -->|In-scope compiler error on attempt 1 or 2| CompileRepair["Repair the compiler error, format and inspect the diff"]
-    CompileRepair --> Compile
-    Compile -->|Third failure or blocked| Report
+    Implement --> Tests["TA-test-runner runs applicable tests"]
     Tests -->|Passed or none apply| Result["Return unstaged changes and check outcomes"]
     Tests -->|Missing required outcome| Report
     Tests -->|Failing test case| Limit{"In scope and fewer than two test-driven repairs?"}
@@ -85,12 +78,9 @@ flowchart TD
     Limit -->|No| Report
 ```
 
-The [implementer](TA-WF-Step-implement-change/SKILL.md#compile-before-test-handoff)
-compiles without starting test cases. A third failed attempt returns the
-diagnostics and unstaged files to the engineer. After handoff, actual failing
-cases can use the two test-driven repairs. An instrumented test can produce
-reports in the same run. The main session reports a recorded pass and any
-export failure separately.
+A failing test case can use one of the two test-driven repairs. An
+instrumented test can produce reports in the same run. The main session
+reports a recorded pass and any export failure separately.
 
 ### Commit changes and integrate
 

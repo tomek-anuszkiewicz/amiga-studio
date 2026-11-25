@@ -6,14 +6,11 @@ Use the one assigned TA-WF-Step-implement-change or TA-write-powershell operatio
 relevant shared/domain requirements and nearby examples. Own assigned source,
 tests and documentation necessary for that change; preserve unrelated work and index entries.
 Establish a defect before mutation and verify the failing observation after repair.
-In the initial Implement Task assignment, follow the selected skill's procedure
-to compile the assigned targets on formatted inputs before the test handoff.
-Return the compilation evidence or stopping point to the main session.
-For a test-driven repair, use the reported test failure when it establishes
-the defect. Format Rust edits, inspect the diff and return the change for the
-designated runner's rerun of the failed and affected tests. Standalone build
-and quality gates, including check web, belong to standalone work and master
-repairs.
+In Implement Task, format Rust edits, inspect the diff and return the change
+to the main session for the designated runner. For a test-driven repair, use
+the reported test failure when it establishes the defect. The runner reruns
+the failed and affected tests. Standalone build and quality gates, including
+check web, belong to standalone work and master repairs.
 Selected repairs retain finding IDs. When the assignment includes a coverage or
 review finding, add useful tests and stronger assertions within approved behavior
 and write scope. Report changed behavior, out-of-scope work

@@ -1,6 +1,6 @@
 ---
 name: TA-WF-Main-implement-task
-description: Execute an approved plan, confirm live telemetry, compile selected targets and run applicable tests with up to two test-driven repairs.
+description: Execute an approved plan, confirm live telemetry and run applicable tests with up to two test-driven repairs.
 ---
 
 # Execute the selected plan
@@ -39,38 +39,21 @@ for each assignment. Apply the [result contract](../../references/workflow-contr
    and resolve conflicting copies before writing. Check the working plan
    against the approved inputs before handoff. If preparation fails, report
    the obstacle and preserve any partial checkout.
-4. Select the applicable tests and the production and test targets to compile
-   from the approved plan. Include each selected integration suite and the
-   production browser build when the plan selects the browser platform. Give
-   the implementer the selected packages, targets, features, platforms and
-   profiles, or state that no compiled targets apply.
-5. In that checkout, assign [TA-WF-Step-implement-change](../TA-WF-Step-implement-change/SKILL.md)
+4. In that checkout, assign [TA-WF-Step-implement-change](../TA-WF-Step-implement-change/SKILL.md)
    to `TA-implementer` with the plan, agreed scenarios, checkout, branch,
-   relevant requirements, write scope and target selection. Identify this as
-   the initial Implement Task assignment. The implementer writes the change,
-   tests and necessary documentation, inspects the diff and
-   [compiles the selected targets](../TA-WF-Step-implement-change/SKILL.md#compile-before-test-handoff).
+   relevant requirements and write scope. The implementer writes the change,
+   tests and necessary documentation, formats any Rust edits and inspects the diff.
    Use the same procedure in existing and newly provisioned checkouts.
-
-## Check compilation before testing
-
-Proceed to testing when every selected target has compiled on the current
-formatted inputs. When no compiled targets apply, proceed after the
-implementer returns the change and diff inspection.
-
-If a third compilation attempt fails, return the compilation evidence and
-unstaged files to the engineer for manual assessment. Further edits,
-compilation, tests and delivery await the engineer's decision. When an
-interruption, missing prerequisite or out-of-scope cause prevents completion
-earlier, report the same available evidence and stop at that point. Missing
-compilation evidence for a selected target blocks the handoff.
 
 ## Run the applicable tests
 
-1. Give the selected test commands to `TA-test-runner`. Coordinate with the
-   implementer to run each selected suite once on the same inputs. For a
-   selected browser test, provide the distribution built on those inputs and
-   run the interaction test to establish the browser outcome. For whole
+1. Once the implementer returns the change and diff inspection, select the
+   applicable tests from the approved plan and give their commands to
+   `TA-test-runner`. Coordinate with the implementer to run each selected
+   suite once on the same inputs. For a selected browser interaction test,
+   have the runner use a distribution built on those inputs. Include
+   `./tools/web.ps1 build` in the assignment if the runner needs to build it.
+   Run the interaction test to establish the browser outcome. For whole
    ordinary Rust packages or a planned workspace run, use
    `python tools/verification/verify.py test coverage crate <name>` or
    `test coverage workspace` as applicable. Use the normal entry point for a
@@ -84,11 +67,10 @@ compilation evidence for a selected target blocks the handoff.
    or unrun work. Finish testing as soon as all applicable tests pass. If no
    tests apply, explain why. If a run is blocked or a required outcome is
    unavailable, report what is missing, the cause and any completed results.
-   A build error before cases start leaves those cases unrun. An export
-   failure after a recorded test pass is a tooling limitation. Report both
-   the command outcome and any recorded test pass. A build or export failure
-   alone supplies no failing case for a repair. The pre-test compilation
-   loop ends at handoff.
+   If a build error prevents cases from starting, report the compiler
+   diagnostics and the unrun cases. An export failure after a recorded test
+   pass is a tooling limitation. Report both the command outcome and any
+   recorded test pass.
 3. For a failing in-scope test case, give the implementer the failing
    observation, expected result and relevant output. The implementer repairs
    within the approved behavior, test scope and write scope, then formats any
@@ -96,14 +78,13 @@ compilation evidence for a selected target blocks the handoff.
    to the runner. Include any rebuild needed for those tests to use the
    repaired inputs, such as refreshing a browser distribution after its inputs
    change. Retain other results only while their inputs still apply.
-   Allow at most two test-driven repairs. Compilation attempts use none of
-   this allowance. A new failing case uses the remaining allowance. If the
-   failure persists after the second repair and rerun, is outside scope or
-   needs an unavailable prerequisite, return the evidence for the engineer's
-   decision.
+   Allow at most two test-driven repairs. A new failing case uses the
+   remaining allowance. Return the evidence for the engineer's decision if the
+   failure persists after the second repair and rerun, falls outside scope or
+   needs an unavailable prerequisite.
 
 Return the changed paths, governing plan, checkout and branch, registration and
-proof locations, compilation attempts, test outcomes, repairs and remaining
-work. Leave the changes unstaged. Implementation results describe the checks
+proof locations, test outcomes, repairs and remaining work.
+Leave the changes unstaged. Implementation results describe the checks
 on the working files. Delivery and final verification require their own
 authorization.
