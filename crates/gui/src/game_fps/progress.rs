@@ -1,8 +1,14 @@
 //! Conditions for recognizing Mixed Scene startup and rejecting interrupted sessions.
 
+use crate::host_commands::HostStatus;
+use crate::ScreenScale;
 use serde::Serialize;
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::{Duration, Instant};
+
+pub(super) const BOOT_SPEED: f64 = 1.0;
+pub(super) const DOUBLE_SPEED: f64 = 2.0;
+pub(super) const MEASUREMENT_SPEED: f64 = 4.0;
 
 #[cfg(not(target_arch = "wasm32"))]
 #[derive(Debug, Default)]
@@ -77,4 +83,90 @@ pub(super) fn validate_session(
         return Err("Machine generation changed during the benchmark".into());
     }
     Ok(())
+}
+
+pub(super) fn validate_running(status: HostStatus) -> Result<(), String> {
+    if status.shutdown || status.halted {
+        return Err("Machine owner stopped unexpectedly".into());
+    }
+    if !status.running || !status.continuous_run || status.pause_pending {
+        return Err("The Game session stopped continuous execution".into());
+    }
+    Ok(())
+}
+
+pub(super) fn validate_game_view(in_game: bool, pause_requested: bool) -> Result<(), String> {
+    if !in_game {
+        return Err("The session left Game view".into());
+    }
+    if pause_requested {
+        return Err("The Game session was paused".into());
+    }
+    Ok(())
+}
+
+pub(super) fn validate_speed(actual: f64, expected: f64) -> Result<(), String> {
+    if actual != expected {
+        return Err(format!(
+            "Expected Game speed {expected}×, observed {actual}×"
+        ));
+    }
+    Ok(())
+}
+
+#[derive(Debug)]
+pub(super) struct SpeedChange {
+    previous_speed: f64,
+    pub(super) target_speed: f64,
+    acknowledged: bool,
+}
+
+impl SpeedChange {
+    pub(super) fn new(previous_speed: f64, target_speed: f64) -> Self {
+        Self {
+            previous_speed,
+            target_speed,
+            acknowledged: false,
+        }
+    }
+
+    pub(super) fn acknowledge(&mut self, status: HostStatus) -> Result<(), String> {
+        validate_running(status)?;
+        validate_speed(status.speed, self.target_speed)?;
+        self.acknowledged = true;
+        Ok(())
+    }
+
+    pub(super) fn confirmed(&self, speed: f64) -> Result<bool, String> {
+        if !self.acknowledged && speed == self.previous_speed {
+            return Ok(false);
+        }
+        validate_speed(speed, self.target_speed)?;
+        Ok(self.acknowledged)
+    }
+}
+
+#[derive(Debug, PartialEq, Serialize)]
+pub(super) struct Display {
+    viewport_points: [f32; 2],
+    pixels_per_point: f32,
+    screen_scale: ScreenScale,
+}
+
+impl Display {
+    pub(super) fn current(ctx: &egui::Context, screen_scale: ScreenScale) -> Self {
+        let rect = ctx.viewport_rect();
+        Self {
+            viewport_points: [rect.width(), rect.height()],
+            pixels_per_point: ctx.pixels_per_point(),
+            screen_scale,
+        }
+    }
+
+    pub(super) fn validate(&self, current: &Self) -> Result<(), String> {
+        if self != current {
+            return Err("Game viewport or scale changed during warmup or sampling".into());
+        }
+        Ok(())
+    }
 }

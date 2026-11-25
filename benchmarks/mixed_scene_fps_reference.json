@@ -1,0 +1,326 @@
+{
+  "schema": 2,
+  "calibration": {
+    "source": {
+      "revision": "f23d586814de0530189f32563b98cee717507d31",
+      "worktree_sha256": "ae1efa4a4ffde8f3333b363902645f8f59d0f19ad5d5f22bd04d58d595129117",
+      "dirty": true
+    },
+    "report_sha256": "0f8a9bd796c7ab67712b169f438e0c6f537272e8d17c94d32266c734f4a7c278",
+    "method": "Unrounded median of three release samples per case.",
+    "desktop_repeat": "The initial desktop window lost focus before timing. Only FPS-03 was repeated, with the same source, host settings and executable."
+  },
+  "cases": {
+    "FPS-01": {
+      "reference_fps": 103.26408300504677,
+      "tolerance": 0.05,
+      "compatibility": {
+        "workload": {
+          "sha256": "5fea0f1d89fa92a35e5188f9fc6f2172e57d5fc43919ab7c3afac37526e69c47",
+          "entry": "0x001000",
+          "standard": "PAL",
+          "memory_mib": 1,
+          "model": "A500",
+          "rom": false,
+          "disk": false
+        },
+        "host": {
+          "cpu": "12th Gen Intel(R) Core(TM) i7-12700K",
+          "os": "Windows-11-10.0.26300-SP0",
+          "architecture": "AMD64",
+          "logical_cpus": 20,
+          "power": {
+            "scheme": "Power Scheme GUID: 381b4222-f694-41f0-9685-ff5bb260df2e  (Balanced)",
+            "settings_sha256": "a293354a0cea59be4705552bd01a4d8c2ae1b167b0284ec5f923d276961a9875"
+          }
+        },
+        "build": {
+          "profile": "release",
+          "compiler": "rustc 1.100.0 (0ef1bc386 2026-11-09)\nbinary: rustc\ncommit-hash: 0ef1bc386059596dada8fb65b50425aab2ea637a\ncommit-date: 2026-11-09\nhost: x86_64-pc-windows-msvc\nrelease: 1.100.0\nLLVM version: 23.1.5",
+          "cargo": "cargo 1.100.0 (3acc79c0c 2026-11-05)",
+          "release_overrides": {},
+          "rustflags": {}
+        },
+        "sampling": {
+          "series": 3,
+          "warmup": 32,
+          "fields": 120
+        }
+      },
+      "calibration": {
+        "samples": [
+          {
+            "count": 120,
+            "seconds": 1.1620691,
+            "fps": 103.26408300504677
+          },
+          {
+            "count": 120,
+            "seconds": 1.1721463,
+            "fps": 102.37629893128528
+          },
+          {
+            "count": 120,
+            "seconds": 1.0736744000000003,
+            "fps": 111.76572711429087
+          }
+        ]
+      }
+    },
+    "FPS-02": {
+      "reference_fps": 86.32348286472387,
+      "tolerance": 0.05,
+      "compatibility": {
+        "workload": {
+          "sha256": "5fea0f1d89fa92a35e5188f9fc6f2172e57d5fc43919ab7c3afac37526e69c47",
+          "entry": "0x001000",
+          "standard": "PAL",
+          "memory_mib": 1,
+          "model": "A500",
+          "rom": false,
+          "disk": false
+        },
+        "host": {
+          "cpu": "12th Gen Intel(R) Core(TM) i7-12700K",
+          "os": "Windows-11-10.0.26300-SP0",
+          "architecture": "AMD64",
+          "logical_cpus": 20,
+          "power": {
+            "scheme": "Power Scheme GUID: 381b4222-f694-41f0-9685-ff5bb260df2e  (Balanced)",
+            "settings_sha256": "a293354a0cea59be4705552bd01a4d8c2ae1b167b0284ec5f923d276961a9875"
+          }
+        },
+        "build": {
+          "profile": "release",
+          "compiler": "rustc 1.102.0-nightly (5f4effd57 2026-11-13)\nbinary: rustc\ncommit-hash: 5f4effd579500175af844241eb179e756190f1e7\ncommit-date: 2026-11-13\nhost: x86_64-pc-windows-msvc\nrelease: 1.102.0-nightly\nLLVM version: 23.1.5",
+          "cargo": "cargo 1.102.0-nightly (ede6cefea 2026-11-11)",
+          "release_overrides": {},
+          "trunk": "trunk 0.22.2",
+          "web_pipeline_sha256": "e5deba7f6d172a0828483add2e5a1fbfd82a7d8aef5918fe64e2b951addb8989",
+          "target": "wasm32-unknown-unknown",
+          "shared_memory": true
+        },
+        "sampling": {
+          "series": 3,
+          "warmup": 32,
+          "fields": 120
+        },
+        "browser": {
+          "engine": "Chromium",
+          "version": "158.0.8127.37",
+          "playwright": "1.63.0",
+          "headless": false,
+          "window_size": [
+            1600,
+            1000
+          ],
+          "normal_background_throttling": true
+        }
+      },
+      "calibration": {
+        "samples": [
+          {
+            "count": 120,
+            "seconds": 1.3901200000010432,
+            "fps": 86.32348286472387
+          },
+          {
+            "count": 120,
+            "seconds": 1.4102649999987333,
+            "fps": 85.09039081315056
+          },
+          {
+            "count": 120,
+            "seconds": 1.3680700000002979,
+            "fps": 87.71480991467824
+          }
+        ],
+        "artifact_sha256": "16b05fd9834588db59dc8a0953d5dc2b3cfe03ca3cb1ea27ee0d57397daabf41"
+      }
+    },
+    "FPS-03": {
+      "reference_fps": 97.49774975193571,
+      "tolerance": 0.05,
+      "compatibility": {
+        "workload": {
+          "sha256": "5fea0f1d89fa92a35e5188f9fc6f2172e57d5fc43919ab7c3afac37526e69c47",
+          "entry": "0x001000",
+          "standard": "PAL",
+          "memory_mib": 1,
+          "model": "A500",
+          "boot_mode": "manual-setup-df0",
+          "rom_sha256": "ee05862d8102a08436ac4056da7d549db31625c7d47b24dfb7b3c9a5c113ca53",
+          "adf_sha256": "c1b90bbc7bbf6b63eef2b03013943d55dc6cea611031c8371f2b9e2218bce024"
+        },
+        "host": {
+          "cpu": "12th Gen Intel(R) Core(TM) i7-12700K",
+          "os": "Windows-11-10.0.26300-SP0",
+          "architecture": "AMD64",
+          "logical_cpus": 20,
+          "power": {
+            "scheme": "Power Scheme GUID: 381b4222-f694-41f0-9685-ff5bb260df2e  (Balanced)",
+            "settings_sha256": "a293354a0cea59be4705552bd01a4d8c2ae1b167b0284ec5f923d276961a9875"
+          }
+        },
+        "build": {
+          "profile": "release",
+          "compiler": "rustc 1.100.0 (0ef1bc386 2026-11-09)\nbinary: rustc\ncommit-hash: 0ef1bc386059596dada8fb65b50425aab2ea637a\ncommit-date: 2026-11-09\nhost: x86_64-pc-windows-msvc\nrelease: 1.100.0\nLLVM version: 23.1.5",
+          "cargo": "cargo 1.100.0 (3acc79c0c 2026-11-05)",
+          "release_overrides": {},
+          "rustflags": {},
+          "features": [
+            "game-fps-benchmark"
+          ]
+        },
+        "sampling": {
+          "series": 3,
+          "warmup": 32,
+          "seconds": 10,
+          "speed": 4.0,
+          "metric": "completed-emulated-fields"
+        },
+        "display": {
+          "renderer": "Wgpu Vulkan: NVIDIA GeForce RTX 3060 Ti (610.88)",
+          "pixels_per_point": 1.25,
+          "screen_scale": "Fit",
+          "viewport_points": [
+            1600.0,
+            840.0
+          ],
+          "display_refresh_hz": 120
+        }
+      },
+      "calibration": {
+        "samples": [
+          {
+            "end_field": 1230,
+            "seconds": 10.008142199999998,
+            "speed": 4.0,
+            "start_field": 249,
+            "warmup_start_field": 217,
+            "count": 981,
+            "fps": 98.02019000089749
+          },
+          {
+            "end_field": 1208,
+            "seconds": 10.0078101,
+            "speed": 4.0,
+            "start_field": 249,
+            "warmup_start_field": 217,
+            "count": 959,
+            "fps": 95.82515959210697
+          },
+          {
+            "end_field": 1224,
+            "seconds": 10.0002308,
+            "speed": 4.0,
+            "start_field": 249,
+            "warmup_start_field": 217,
+            "count": 975,
+            "fps": 97.49774975193571
+          }
+        ],
+        "artifact_sha256": "6bbf097ceadf329e3b6c550d2ca77aafd3adfe9a18e9c55ad591142477a8d24b"
+      }
+    },
+    "FPS-04": {
+      "reference_fps": 76.59923400766279,
+      "tolerance": 0.05,
+      "compatibility": {
+        "workload": {
+          "sha256": "5fea0f1d89fa92a35e5188f9fc6f2172e57d5fc43919ab7c3afac37526e69c47",
+          "entry": "0x001000",
+          "standard": "PAL",
+          "memory_mib": 1,
+          "model": "A500",
+          "boot_mode": "manual-setup-df0",
+          "rom_sha256": "ee05862d8102a08436ac4056da7d549db31625c7d47b24dfb7b3c9a5c113ca53",
+          "adf_sha256": "c1b90bbc7bbf6b63eef2b03013943d55dc6cea611031c8371f2b9e2218bce024"
+        },
+        "host": {
+          "cpu": "12th Gen Intel(R) Core(TM) i7-12700K",
+          "os": "Windows-11-10.0.26300-SP0",
+          "architecture": "AMD64",
+          "logical_cpus": 20,
+          "power": {
+            "scheme": "Power Scheme GUID: 381b4222-f694-41f0-9685-ff5bb260df2e  (Balanced)",
+            "settings_sha256": "a293354a0cea59be4705552bd01a4d8c2ae1b167b0284ec5f923d276961a9875"
+          }
+        },
+        "build": {
+          "profile": "release",
+          "compiler": "rustc 1.102.0-nightly (5f4effd57 2026-11-13)\nbinary: rustc\ncommit-hash: 5f4effd579500175af844241eb179e756190f1e7\ncommit-date: 2026-11-13\nhost: x86_64-pc-windows-msvc\nrelease: 1.102.0-nightly\nLLVM version: 23.1.5",
+          "cargo": "cargo 1.102.0-nightly (ede6cefea 2026-11-11)",
+          "release_overrides": {},
+          "trunk": "trunk 0.22.2",
+          "web_pipeline_sha256": "e5deba7f6d172a0828483add2e5a1fbfd82a7d8aef5918fe64e2b951addb8989",
+          "target": "wasm32-unknown-unknown",
+          "shared_memory": true,
+          "features": [
+            "game-fps-benchmark"
+          ]
+        },
+        "sampling": {
+          "series": 3,
+          "warmup": 32,
+          "seconds": 10,
+          "speed": 4.0,
+          "metric": "completed-emulated-fields"
+        },
+        "browser": {
+          "engine": "Chromium",
+          "version": "158.0.8127.37",
+          "playwright": "1.63.0",
+          "headless": false,
+          "window_size": [
+            1600,
+            1000
+          ],
+          "normal_background_throttling": true
+        },
+        "display": {
+          "renderer": "Glow WebGL: ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 Ti (0x00002489) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+          "pixels_per_point": 1.25,
+          "screen_scale": "Fit",
+          "viewport_points": [
+            1587.1875,
+            907.1875
+          ],
+          "display_refresh_hz": 120
+        }
+      },
+      "calibration": {
+        "samples": [
+          {
+            "end_field": 972,
+            "seconds": 10.007689999999478,
+            "speed": 4.0,
+            "start_field": 249,
+            "warmup_start_field": 217,
+            "count": 723,
+            "fps": 72.24444402255043
+          },
+          {
+            "end_field": 1032,
+            "seconds": 10.006675000000744,
+            "speed": 4.0,
+            "start_field": 249,
+            "warmup_start_field": 217,
+            "count": 783,
+            "fps": 78.24776961377698
+          },
+          {
+            "end_field": 1015,
+            "seconds": 10.000099999999627,
+            "speed": 4.0,
+            "start_field": 249,
+            "warmup_start_field": 217,
+            "count": 766,
+            "fps": 76.59923400766279
+          }
+        ],
+        "artifact_sha256": "24cce8ebcc8ed5a539fa7be5d1345b5387193e40d751f74c623809d9c90e5d6c"
+      }
+    }
+  }
+}

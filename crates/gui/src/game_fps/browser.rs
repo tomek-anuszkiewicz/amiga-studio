@@ -1,6 +1,6 @@
 //! Read benchmark inputs supplied by the local browser driver.
 
-use super::{drawing, GameFps, Media};
+use super::{focus, GameFps, Media};
 use crate::EmulatorApp;
 use js_sys::{Promise, Reflect, Uint8Array};
 use wasm_bindgen::{closure::Closure, JsCast, JsValue};
@@ -37,7 +37,7 @@ pub(crate) fn attach(
     if let Some(media) = media {
         let focus = Focus::register(&cc.egui_ctx)
             .map_err(|error| format!("Could not watch Game window focus: {error:?}"))?;
-        GameFps::new(Ok(media), "Glow WebGL".into(), focus).attach(&mut app, &cc.egui_ctx);
+        GameFps::new(Ok(media), "Glow WebGL".into(), focus).attach(&mut app);
     }
     Ok(app)
 }
@@ -66,7 +66,7 @@ impl Focus {
             document,
             listener: Closure::new(move || {
                 if !crate::host_runtime::host_window_active() {
-                    drawing::record_focus_loss(&ctx);
+                    focus::record_focus_loss(&ctx);
                 }
             }),
         };

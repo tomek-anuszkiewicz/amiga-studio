@@ -102,14 +102,18 @@ block readiness even if the caller did not select repairs.
 [Independent review](../../../../.agents/references/review-common.md)
 
 Engineers run four on-demand Mixed Scene FPS cases to compare release builds
-with approved references. Two measure uncapped emulated fields per second in
-the native machine loop and the browser worker. The desktop and browser Game
-cases boot the same workload from DF0 using a private Kickstart 1.3 ROM.
-They confirm guest execution before measuring field images submitted for
-drawing in the foreground at normal playback speed. Engineers continue to
-assess graphical output and other pacing behavior manually. Independent CPU,
-chip, bus, input, host-lifecycle, display-state and continuation tests remain
-available. Audio captures still have spectral and attachment acceptance limits.
+with approved references. All four count completed emulated fields per host
+second. The native machine loop and browser worker run uncapped. The desktop
+and browser Game cases boot the same workload from DF0 using a private
+Kickstart 1.3 ROM, confirm guest progress and measure foreground playback
+at 4x. The report records three samples per case and compares each median
+with its compatible reference. A difference of up to 5% in either direction
+passes, including both endpoints. Any valid Game sample of at least 190 FPS
+fails its case before reference comparison because it approaches the 4x PAL
+playback limit. Engineers continue to assess graphical output and other
+pacing behavior manually. Independent CPU, chip, bus, input, host-lifecycle,
+display-state and continuation tests remain available. Audio captures still
+have spectral and attachment acceptance limits.
 [Mixed Scene benchmark](../../../../tests/mixed_scene/README.md#run-the-fps-regression-cases)
 
 ### Roadmap and milestone completion

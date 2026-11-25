@@ -555,10 +555,18 @@ The emulation core generates audio samples. The GUI is intended to deliver
 those samples to the host playback device. [audio subsystem](../Audio.md)
 
 The on-demand Mixed Scene benchmark boots its ADF from DF0 with an external
-Kickstart 1.3 ROM through Manual Setup. Each Game sample confirms that the guest
-is running before warmup. In the foreground desktop window and browser canvas,
-the benchmark counts distinct completed fields submitted for drawing during
-normal playback. The toolbar continues to count completed emulated fields.
+Kickstart 1.3 ROM through Manual Setup. In the foreground desktop window and
+visible browser tab, each Game sample confirms guest progress and uses the
+ordinary Faster command to reach 4x. Once the running owner confirms 4x,
+the benchmark observes at least 32 more completed fields before timing.
+It reads the machine owner's cumulative completed-field count at the start
+and at the first sampling opportunity at or after ten seconds of monotonic
+host time. The count includes every completed field across batches. The window
+continues to display the latest completed image at its normal presentation rate.
+The Game screen, speed, machine generation, foreground focus, viewport and
+scale must stay valid through warmup and timing. Final guest observations
+must confirm continued progress without faults. A valid sample of at least
+190 FPS fails the Game case because it approaches the 4x PAL playback limit.
 Other host pacing and graphical guest output are assessed manually. Independent
 correctness tests can still use guest programs as fixtures. Input correctness
 and host command and lifecycle checks remain automated.

@@ -23,19 +23,22 @@ ADF = SCENE / "mixed_scene.adf"
 ROM_SIZE = 256 * 1024
 REFERENCE = REPO_ROOT / "benchmarks/mixed_scene_fps_reference.json"
 TEMP_ROOT = REPO_ROOT / ".agent/tmp/mixed-scene-fps"
-SCHEMA = 1
+SCHEMA = 2
 SERIES = 3
 WARMUP = 32
 FIELDS = 120
 SECONDS = 10
+GAME_SPEED = 4.0
+GAME_CAP_WARNING_FPS = 190
 BUILD_TIMEOUT = 900
 SAMPLE_TIMEOUT = 90
 CASES = {
     "FPS-01": "Native machine loop, uncapped",
     "FPS-02": "Browser worker machine loop, uncapped",
-    "FPS-03": "Native Game, 1x",
-    "FPS-04": "Browser Game, 1x",
+    "FPS-03": "Native Game, emulated fields at 4x",
+    "FPS-04": "Browser Game, emulated fields at 4x",
 }
+GAME_CASES = ("FPS-03", "FPS-04")
 
 
 def command(args, *, env=None, timeout=BUILD_TIMEOUT):
@@ -227,22 +230,32 @@ def positive_number(number):
     return type(number) in (int, float) and math.isfinite(number) and number > 0
 
 
+def unsigned_64(value):
+    return type(value) is int and 0 <= value < (1 << 64)
+
+
 def game_sample(result):
     if result.get("error"):
         raise RuntimeError(result["error"])
     generation, sample = result.get("generation"), result.get("sample")
-    if type(generation) is not int or generation <= 1 or not isinstance(sample, dict):
+    if not unsigned_64(generation) or generation <= 1 or not isinstance(sample, dict):
         raise ValueError("Expected a fresh Game generation and a timed interval")
-    count, seconds, delay = (sample.get(key) for key in ("submissions", "seconds", "deadline_delay_seconds"))
-    if (seconds != SECONDS or type(count) is not int or count < 0
-            or type(delay) not in (int, float) or (delay != 0 and not positive_number(delay))):
-        raise ValueError("Expected a complete timed Game interval")
+    warmup_start, start, end = (sample.get(key) for key in (
+        "warmup_start_field", "start_field", "end_field",
+    ))
+    seconds = sample.get("seconds")
+    if not all(unsigned_64(field) for field in (warmup_start, start, end)):
+        raise ValueError("Expected completed-field boundary counts for the Game interval")
+    if not positive_number(seconds) or seconds < SECONDS:
+        raise ValueError(f"Expected a Game interval of at least {SECONDS} seconds")
+    if sample.get("speed") != GAME_SPEED:
+        raise ValueError("Expected the Game interval at 4x speed")
 
     counters = ("cck", "field_number", "fields", "work_loops")
     observed = [result.get(key) for key in ("boot_first", "guest_before", "guest_after")]
     for observation in observed:
         if not isinstance(observation, dict) or any(
-            type(observation.get(key)) is not int or observation[key] < 0
+            not unsigned_64(observation.get(key))
             for key in (*counters, "fault")
         ):
             raise ValueError("Incomplete Game boot or post-timing observation")
@@ -251,16 +264,33 @@ def game_sample(result):
     for before, after in zip(observed, observed[1:]):
         if any(before[key] >= after[key] for key in counters):
             raise ValueError("Game boot or post-timing counters failed to advance")
-    return {"count": count, "seconds": seconds, "deadline_delay_seconds": delay}
+    _, before, after = observed
+    if not before["field_number"] <= warmup_start <= start <= end <= after["field_number"]:
+        raise ValueError("Game field boundaries regressed or fall outside guest observations")
+    if start - warmup_start < WARMUP:
+        raise ValueError(f"Expected at least {WARMUP} completed Game fields before timing")
+    count = end - start
+    return {**sample, "count": count, "fps": count / seconds}
 
 
-def game_report(runs):
-    samples = validate_samples([game_sample(run) for run in runs])
-    settings = [{"renderer": run["renderer"], **run["display"],
-                 "display_refresh_hz": run["display_refresh_hz"]} for run in runs]
-    if any(setting != settings[0] for setting in settings[1:]):
+def record_game_sample(row, report):
+    row.setdefault("raw", []).append(report)
+    sample = game_sample(report)
+    settings = {"renderer": report["renderer"], **report["display"],
+                "display_refresh_hz": report["display_refresh_hz"]}
+    row.setdefault("samples", []).append(sample)
+    if row["compatibility"].setdefault("display", settings) != settings:
         raise ValueError("Game display settings differed between sessions")
-    return samples, settings[0]
+
+
+def game_cap_warning(case, samples):
+    for index, sample in enumerate(samples, start=1):
+        fps = sample["fps"]
+        if fps >= GAME_CAP_WARNING_FPS:
+            return (f"Warning: {case} sample {index} reached {fps:.3f} FPS and is approaching "
+                    "the 4x PAL playback limit. Measuring higher throughput requires a decision "
+                    "about raising the application's playback speed limit.")
+    return None
 
 
 def load_reference(path):
@@ -275,11 +305,15 @@ def load_reference(path):
     return data["cases"], None
 
 
-def compare_case(row, reference, missing_reason=None):
+def compare_case(row, reference, missing_reason=None, *, cap_warning=None):
     result = {**row, "median_fps": None, "reference_fps": None,
-              "tolerance": None, "change_percent": None}
-    if row.get("samples"):
-        result["median_fps"] = statistics.median(sample["fps"] for sample in row["samples"])
+              "tolerance": None, "change_percent": None,
+              "minimum_fps": None, "maximum_fps": None, "reason": None}
+    samples = row.get("samples", [])
+    if len(samples) == SERIES:
+        result["median_fps"] = statistics.median(sample["fps"] for sample in samples)
+    if cap_warning:
+        return {**result, "verdict": "failed", "reason": cap_warning}
     if row.get("error"):
         return {**result, "verdict": "failed", "reason": row["error"]}
     if row.get("missing_input"):
@@ -296,14 +330,25 @@ def compare_case(row, reference, missing_reason=None):
     if reference.get("compatibility") != row["compatibility"]:
         return {**result, "verdict": "unverified", "reason": "Reference settings are incompatible"}
     median = result["median_fps"]
-    limit = fps * (1 - tolerance)
-    return {**result, "change_percent": 100 * (median / fps - 1), "minimum_fps": limit,
-            "verdict": "passed" if median >= limit else "failed"}
+    minimum, maximum = fps * (1 - tolerance), fps * (1 + tolerance)
+    change = 100 * ((median - fps) / fps)
+    result.update(change_percent=change, minimum_fps=minimum, maximum_fps=maximum)
+    if minimum <= median <= maximum:
+        return {**result, "verdict": "passed"}
+    direction = "below" if median < minimum else "above"
+    return {**result, "verdict": "failed",
+            "reason": f"{abs(change):.3f}% {direction} reference (limit {100 * tolerance:g}%)"}
 
 
-def compare_all(cases, path):
+def compare_all(report, path):
+    if (not isinstance(report, dict) or report.get("schema") != SCHEMA
+            or not isinstance(report.get("cases"), dict)):
+        raise ValueError("Result schema is incompatible")
+    cases = {key: report["cases"].get(key, {}) for key in CASES}
+    warnings = {key: game_cap_warning(key, cases[key].get("samples", [])) for key in GAME_CASES}
     references, reason = load_reference(path)
-    rows = {key: compare_case(cases[key], references.get(key), reason) for key in CASES}
+    rows = {key: compare_case(cases[key], None if warnings.get(key) else references.get(key),
+                              reason, cap_warning=warnings.get(key)) for key in CASES}
     return rows, all(row["verdict"] == "passed" for row in rows.values())
 
 
@@ -517,7 +562,7 @@ def browser_game(url, browser, rom):
 
 def measure(row, case, host, directory, args, native):
     wasm = case in ("FPS-02", "FPS-04")
-    game = case in ("FPS-03", "FPS-04")
+    game = case in GAME_CASES
     media = {"rom": False, "disk": False}
     if game:
         try:
@@ -531,7 +576,8 @@ def measure(row, case, host, directory, args, native):
         "host": host,
         "build": build_settings(wasm),
         "sampling": {"series": SERIES, "warmup": WARMUP, **(
-            {"seconds": SECONDS, "speed": 1} if game else {"fields": FIELDS}
+            {"seconds": SECONDS, "speed": GAME_SPEED, "metric": "completed-emulated-fields"}
+            if game else {"fields": FIELDS}
         )},
     }
     row["compatibility"] = compatibility
@@ -550,11 +596,9 @@ def measure(row, case, host, directory, args, native):
         ) as browser:
             compatibility["browser"] = chromium_settings(browser)
             if game:
-                row["raw"] = []
                 for _ in range(SERIES):
                     report = browser_game(url, browser, args.kickstart_rom)
-                    row["raw"].append(report)
-                    game_sample(report)
+                    record_game_sample(row, report)
             else:
                 row["raw"] = browser_bench(url, browser)
     elif game:
@@ -564,18 +608,15 @@ def measure(row, case, host, directory, args, native):
         executable = find_executable(build, "amiga-studio", "bin")
         row["artifact_sha256"] = sha256(Path(executable))
         compatibility["build"]["features"] = ["game-fps-benchmark"]
-        row["raw"] = []
         for index in range(SERIES):
             report = native_game(executable, directory / f"game-{index}", args.native_refresh_hz,
                                  args.kickstart_rom)
-            row["raw"].append(report)
-            game_sample(report)
+            record_game_sample(row, report)
     else:
         row["raw"] = native_bench()
     if game:
         if game_media_identity(args.kickstart_rom) != media:
             raise ValueError("Game boot media changed during the measurements")
-        row["samples"], compatibility["display"] = game_report(row["raw"])
     else:
         row["samples"] = uncapped_samples(row["raw"])
         if wasm:
@@ -585,15 +626,18 @@ def measure(row, case, host, directory, args, native):
 
 
 def print_report(rows):
-    def metric(value, suffix=""):
-        return "—" if value is None else f"{value:.3f}{suffix}"
+    def metric(value, *, signed=False):
+        if value is None:
+            return "—"
+        return f"{value:+.3f}%" if signed else f"{value:.3f}"
 
     print(f"{'Case':<7} {'Median FPS':>11} {'Ref. FPS':>11} {'Change':>10}  Verdict")
     for key, row in rows.items():
         print(f"{key:<7} {metric(row['median_fps']):>11} {metric(row['reference_fps']):>11} "
-              f"{metric(row['change_percent'], '%'):>10}  {row['verdict']}")
+              f"{metric(row['change_percent'], signed=True):>10}  {row['verdict']}")
         if row.get("samples"):
-            print("  " + ", ".join(f"{sample['count']} in {sample['seconds']:.6f}s"
+            print("  " + ", ".join(f"{sample['fps']:.3f} FPS ({sample['count']} fields "
+                                    f"in {sample['seconds']:.6f}s)"
                                    for sample in row["samples"]))
         if row.get("reason"):
             print(f"  {row['reason']}")
@@ -632,8 +676,9 @@ def main(argv=None):
         if source_identity() != source:
             for row in cases.values():
                 row.setdefault("error", "The source checkout changed during the measurements")
-        rows, passed = compare_all(cases, REFERENCE)
-    result = {"schema": SCHEMA, "source": source, "cases": rows, "passed": passed}
+        result = {"schema": SCHEMA, "source": source, "cases": cases}
+        rows, passed = compare_all(result, REFERENCE)
+    result.update(cases=rows, passed=passed)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=args.output.parent,
                                      prefix="fps-", suffix=".json", delete=False) as stream:
