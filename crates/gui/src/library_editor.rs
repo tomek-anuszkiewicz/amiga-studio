@@ -203,7 +203,7 @@ impl EmulatorApp {
                     if let Some(original) = &draft.original {
                         self.relocate_start_state_deletions(original, &saved.game);
                     }
-                    self.complete_library_edit(saved.game, edits_active);
+                    self.complete_library_edit(saved.game, edits_active, ui.ctx());
                     self.file_error =
                         (!saved.import_issues.is_empty()).then(|| saved.import_issues.join("\n"));
                     return;
@@ -218,6 +218,7 @@ impl EmulatorApp {
         &mut self,
         game: crate::game_library::LibraryGame,
         edits_active: bool,
+        ctx: &egui::Context,
     ) {
         self.file_error = None;
         if edits_active {
@@ -239,7 +240,15 @@ impl EmulatorApp {
                     });
                 }
             }
+            let renamed = self
+                .player
+                .active_game
+                .as_ref()
+                .is_some_and(|active| active.manifest.title != game.manifest.title);
             self.player.active_game = Some(game.clone());
+            if renamed {
+                self.sync_session_title(ctx);
+            }
         }
         self.player
             .catalog

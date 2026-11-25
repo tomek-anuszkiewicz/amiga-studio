@@ -43,6 +43,100 @@ impl Storage for MemoryStorage {
     fn flush(&mut self) {}
 }
 
+#[test]
+fn game_splitter_width_roundtrips_through_host_memory_and_clamps_on_resize() {
+    use egui::accesskit::{Orientation, Role};
+    use egui_kittest::{kittest::Queryable, Harness};
+
+    let game_app = || {
+        let mut app = EmulatorApp::default();
+        app.set_view_mode(ViewMode::ScreenOnly);
+        app
+    };
+    let panel_edge = |h: &Harness<'_, EmulatorApp>| {
+        let splitter = h.get_by_role(Role::Splitter);
+        assert_eq!(
+            splitter.accesskit_node().orientation(),
+            Some(Orientation::Vertical)
+        );
+        splitter.rect().center()
+    };
+    let check_display = |h: &Harness<'_, EmulatorApp>| {
+        let info = h.state().host.presented.unwrap();
+        let image = h
+            .output()
+            .shapes
+            .iter()
+            .find_map(|clipped| {
+                if let egui::Shape::Mesh(mesh) = &clipped.shape {
+                    let bounds = mesh.calc_bounds();
+                    (bounds.width() > 50.0 && clipped.clip_rect.expand(0.01).contains_rect(bounds))
+                        .then_some(bounds)
+                } else {
+                    None
+                }
+            })
+            .unwrap();
+        assert!(image.right() < panel_edge(h).x);
+        assert!(
+            (image.width() / image.height() - info.width as f32 / info.height as f32).abs() < 0.001
+        );
+    };
+    let size = egui::vec2(1280.0, 800.0);
+    let mut h = Harness::builder()
+        .with_size(size)
+        .build_ui_state(common::show_full_viewport, game_app());
+    common::settle_harness(&mut h);
+    let machine = common::snapshot(h.state_mut());
+    common::wait_harness(&mut h, |app| app.host.presented.is_some());
+    let original = panel_edge(&h);
+    assert!((size.x - original.x - 220.0).abs() <= 1.0);
+    let moved = original - egui::vec2(207.0, 0.0);
+    h.hover_at(original);
+    h.step();
+    h.drag_at(original);
+    h.step();
+    h.hover_at(moved);
+    h.step();
+    h.drop_at(moved);
+    common::settle_harness(&mut h);
+    let saved_edge = panel_edge(&h);
+    assert!((saved_edge.x - moved.x).abs() <= 2.0);
+    check_display(&h);
+    assert_eq!(common::snapshot(h.state_mut()), machine);
+
+    // Round-trip through eframe's native storage key for persisted egui memory.
+    let mut storage = MemoryStorage::new();
+    h.ctx
+        .memory(|memory| eframe::set_value(&mut storage, "egui", memory));
+    let memory: egui::Memory = eframe::get_value(&storage, "egui").unwrap();
+    let mut reopened = Harness::builder()
+        .with_size(size)
+        .with_context_setup(move |ctx| ctx.memory_mut(|target| *target = memory.clone()))
+        .build_ui_state(common::show_full_viewport, game_app());
+    common::settle_harness(&mut reopened);
+    common::wait_harness(&mut reopened, |app| app.host.presented.is_some());
+    assert!((panel_edge(&reopened).x - saved_edge.x).abs() <= 1.0);
+    reopened.set_size(egui::vec2(900.0, size.y));
+    common::settle_harness(&mut reopened);
+    let bounded = panel_edge(&reopened);
+    assert!((900.0 - bounded.x - 405.0).abs() <= 2.0);
+    check_display(&reopened);
+    assert!(reopened
+        .ctx
+        .content_rect()
+        .contains_rect(reopened.get_by_label("Resume").rect()));
+    reopened.set_size(egui::vec2(740.0, size.y));
+    common::settle_harness(&mut reopened);
+    assert!(reopened.query_by_role(Role::Splitter).is_none());
+    reopened.get_by_label("Game controls").click_accesskit();
+    common::settle_harness(&mut reopened);
+    assert!(reopened
+        .ctx
+        .content_rect()
+        .contains_rect(reopened.get_by_label("Resume").rect()));
+}
+
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn library_directory_cancel_discards_the_draft_and_save_reopens_the_committed_root() {

@@ -330,8 +330,8 @@ impl crate::EmulatorApp {
         }
         for (effect, reply) in completed {
             match effect {
-                HostEffect::File(action) => self.complete_file_action(action, reply.value),
-                HostEffect::Player(action) => self.complete_player(action, reply.value),
+                HostEffect::File(action) => self.complete_file_action(action, reply.value, ctx),
+                HostEffect::Player(action) => self.complete_player(action, reply.value, ctx),
                 HostEffect::Configuration => self.complete_configuration_save(reply.value),
                 HostEffect::Command | HostEffect::Run | HostEffect::Pause => {
                     if let Err(error) = reply.value {

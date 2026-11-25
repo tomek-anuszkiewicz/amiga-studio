@@ -347,7 +347,6 @@ impl MachineOwner {
             }
             HostCommand::Slower => self.playback.slower(),
             HostCommand::Faster => self.playback.faster(),
-            HostCommand::NormalSpeed => self.playback.normal_speed(),
             HostCommand::SetDebuggerEnabled(enabled) => self.session.set_debugger_enabled(enabled),
             HostCommand::Reset => {
                 self.session.reset();

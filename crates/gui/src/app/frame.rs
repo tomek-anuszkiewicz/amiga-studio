@@ -98,7 +98,7 @@ impl EmulatorApp {
         if self.view_mode == ViewMode::ScreenOnly {
             // Game view never invokes inspection panels or their data queries.
             egui::CentralPanel::default().show(ui, |ui| {
-                render_amiga_screen(ui, screen_texture, self.screen_scale, false);
+                render_amiga_screen(ui, screen_texture, self.screen_scale);
             });
         } else {
             // Mode B: Full Developer Studio GUI (Responsive Multi-Tier Architecture)
@@ -389,7 +389,6 @@ impl EmulatorApp {
                                                             ui,
                                                             screen_texture,
                                                             self.screen_scale,
-                                                            false,
                                                         );
                                                     },
                                                 );
@@ -443,12 +442,7 @@ impl EmulatorApp {
                                 egui::vec2(ui.available_width(), screen_h),
                                 egui::Layout::top_down(egui::Align::Center),
                                 |ui| {
-                                    render_amiga_screen(
-                                        ui,
-                                        screen_texture,
-                                        self.screen_scale,
-                                        false,
-                                    );
+                                    render_amiga_screen(ui, screen_texture, self.screen_scale);
                                 },
                             );
 

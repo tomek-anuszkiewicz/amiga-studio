@@ -45,7 +45,7 @@ fn rom() -> Vec<u8> {
 
 fn select_rom(app: &mut EmulatorApp, path: &std::path::Path) {
     let confirmation =
-        app.loaded_rom_name.is_some() || app.host.status.cck != 0 || app.host.status.running;
+        !app.file_history.roms.is_empty() || app.host.status.cck != 0 || app.host.status.running;
     app.load_rom_file(path);
     if confirmation {
         common::confirm_replacement(app);
@@ -150,7 +150,7 @@ fn reopening_and_saving_history_discards_old_program_paths() {
 }
 
 #[test]
-fn game_menu_reloads_rom_and_keeps_disk_directory_separate() {
+fn recorded_rom_can_reload_and_keep_disk_directory_separate() {
     let path = fixture("menu-firmware.bin", &rom());
     let disk_directory = tempfile::tempdir().unwrap();
     let mut app = EmulatorApp::default();
@@ -171,10 +171,9 @@ fn game_menu_reloads_rom_and_keeps_disk_directory_separate() {
         .build_ui_state(|ui, app: &mut EmulatorApp| app.update_ui(ui), app);
     harness.run_steps(2);
     common::settle_harness(&mut harness);
-    harness.get_by_label("File").click_accesskit();
-    harness.run_steps(2);
-    common::settle_harness(&mut harness);
-    harness.get_by_label("menu-firmware.bin").click_accesskit();
+    assert!(harness.query_by_label("File").is_none());
+    let recent = harness.state().file_history.roms[0].clone();
+    harness.state_mut().load_rom_file(&recent);
     harness.run_steps(2);
     common::settle_harness(&mut harness);
     assert!(
@@ -192,10 +191,7 @@ fn game_menu_reloads_rom_and_keeps_disk_directory_separate() {
     assert_eq!(harness.state().file_history.roms.len(), 1);
     std::fs::remove_file(&path).unwrap();
     let before = common::snapshot(harness.state_mut());
-    harness.get_by_label("File").click_accesskit();
-    harness.run_steps(2);
-    common::settle_harness(&mut harness);
-    harness.get_by_label("menu-firmware.bin").click_accesskit();
+    harness.state_mut().load_rom_file(&recent);
     harness.run_steps(2);
     common::settle_harness(&mut harness);
     assert!(harness.state().file_error.is_some());

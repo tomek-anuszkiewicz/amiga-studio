@@ -2,29 +2,58 @@
 
 use crate::keyboard_input::KeyCommand;
 use crate::player::{PlayerScreen, SessionDisk};
-use crate::{EmulatorApp, ViewMode};
+use crate::EmulatorApp;
 
 pub const SAVED_PROGRESS_DIALOG: &str = "saved-progress";
+
+const PLAYER_GUIDE: &str = include_str!("../../../docs/player/README.md");
+const SIDE_PANEL_MIN_WINDOW_WIDTH: f32 = 850.0;
+const SIDE_PANEL_DEFAULT_WIDTH: f32 = 220.0;
+const SIDE_PANEL_MIN_WIDTH: f32 = 192.0;
+const SIDE_PANEL_MAX_WIDTH: f32 = 460.0;
+const DRIVE_LABELS: [&str; config::FLOPPY_DRIVE_COUNT] = ["DF0:", "DF1:", "DF2:", "DF3:"];
 
 impl EmulatorApp {
     pub(crate) fn render_player_screen(&mut self, ui: &mut egui::Ui) {
         egui::Panel::top("player_navigation").show(ui, |ui| {
             ui.horizontal_wrapped(|ui| {
                 #[cfg(not(target_arch = "wasm32"))]
-                if ui.button("Library").clicked() {
+                if ui
+                    .selectable_label(self.player.screen == PlayerScreen::Library, "Library")
+                    .on_hover_text("Browse the desktop game library.")
+                    .clicked()
+                {
                     self.navigate_player(PlayerScreen::Library);
                 }
-                if ui.button("Manual setup").clicked() {
+                if ui
+                    .selectable_label(self.player.screen == PlayerScreen::Setup, "Manual setup")
+                    .on_hover_text(
+                        "Choose a configuration, Kickstart and disks for a manual launch.",
+                    )
+                    .clicked()
+                {
                     self.navigate_player(PlayerScreen::Setup);
                 }
-                if ui.button("Configurations").clicked() {
+                if ui
+                    .selectable_label(
+                        self.player.screen == PlayerScreen::Configuration,
+                        "Configurations",
+                    )
+                    .on_hover_text("Edit hardware and input settings.")
+                    .clicked()
+                {
                     self.navigate_player(PlayerScreen::Configuration);
                 }
-                if ui.button("Return to session").clicked() {
+                ui.separator();
+                if ui
+                    .add(
+                        egui::Button::new(egui::RichText::new("Return to session").strong())
+                            .selected(true),
+                    )
+                    .on_hover_text("Open the current machine with its disks and progress.")
+                    .clicked()
+                {
                     self.navigate_player(PlayerScreen::Session);
-                }
-                if ui.button("Debug").clicked() {
-                    self.set_view_mode(ViewMode::Developer);
                 }
             });
         });
@@ -98,6 +127,8 @@ impl EmulatorApp {
                         ("setup_drive", drive),
                         &mut self.player.setup_mounted[drive],
                         &self.player.setup_disks,
+                        110.0,
+                        "Empty",
                     );
                     if ui.button("Select disk...").clicked() {
                         self.open_setup_asset(Some(drive));
@@ -195,20 +226,70 @@ impl EmulatorApp {
     }
 
     pub(crate) fn render_player_controls(&mut self, ui: &mut egui::Ui) {
-        let wide = ui.viewport_rect().width() >= 850.0;
-        if wide {
+        let available_width = ui.available_width();
+        if available_width >= SIDE_PANEL_MIN_WINDOW_WIDTH {
+            // eframe persists this Panel's size in egui memory, alongside other UI preferences.
             egui::Panel::right("game_controls")
-                .exact_size(220.0)
-                .resizable(false)
+                .default_size(SIDE_PANEL_DEFAULT_WIDTH)
+                .size_range(SIDE_PANEL_MIN_WIDTH..=SIDE_PANEL_MAX_WIDTH.min(available_width * 0.45))
+                .resizable(true)
                 .show(ui, |ui| {
-                    self.player_controls(ui);
+                    ui.set_min_width(ui.available_width());
+                    self.render_player_tabs(ui);
                 });
         } else {
+            let max_content_height = ui.available_height() * 0.55;
             egui::Panel::bottom("compact_game_controls").show(ui, |ui| {
-                egui::CollapsingHeader::new("Game controls")
-                    .show(ui, |ui| self.player_controls(ui));
+                egui::CollapsingHeader::new("Game controls").show(ui, |ui| {
+                    // A bottom panel initially has only its collapsed height. Give
+                    // the scroll area room to measure its body and grow the panel.
+                    ui.set_max_height(max_content_height);
+                    self.render_player_tabs(ui);
+                });
             });
         }
+    }
+
+    fn render_player_tabs(&mut self, ui: &mut egui::Ui) {
+        ui.horizontal_wrapped(|ui| {
+            if ui
+                .selectable_label(!self.player.show_instructions, "Controls")
+                .on_hover_text("Show disk and session controls.")
+                .clicked()
+            {
+                self.player.show_instructions = false;
+            }
+            if ui
+                .selectable_label(self.player.show_instructions, "Instructions")
+                .on_hover_text("Read the built-in player guide while keeping this session open.")
+                .clicked()
+            {
+                self.player.show_instructions = true;
+            }
+        });
+        ui.separator();
+        let tab = if self.player.show_instructions {
+            "instructions"
+        } else {
+            "controls"
+        };
+        egui::ScrollArea::vertical()
+            .id_salt(tab)
+            .max_height(ui.available_height())
+            .auto_shrink([false, true])
+            .show(ui, |ui| {
+                if self.player.show_instructions {
+                    if ui.button("Open Configurations")
+                        .on_hover_text("Pause the session and open the editor for the actual keyboard and controller bindings.")
+                        .clicked()
+                    {
+                        self.navigate_player(PlayerScreen::Configuration);
+                    }
+                    render_player_guide(ui);
+                } else {
+                    self.player_controls(ui);
+                }
+            });
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -232,11 +313,21 @@ impl EmulatorApp {
     }
 
     fn player_controls(&mut self, ui: &mut egui::Ui) {
-        ui.heading("Game");
-        for drive in 0..4 {
+        let label_width = ui
+            .painter()
+            .layout_no_wrap(
+                "DF0:".into(),
+                egui::TextStyle::Body.resolve(ui.style()),
+                ui.visuals().text_color(),
+            )
+            .size()
+            .x;
+        let row_height = ui.spacing().interact_size.y;
+        let activity_width = ui.text_style_height(&egui::TextStyle::Body);
+        for (drive, label) in DRIVE_LABELS.into_iter().enumerate() {
             let status = self.host.status.drives[drive];
             ui.horizontal(|ui| {
-                ui.label(format!("DF{drive}:"));
+                let drive_label = ui.add_sized([label_width, row_height], egui::Label::new(label));
                 if status.connected {
                     let mut selected = self.player.mounted[drive].clone();
                     self.player.drive_activity[drive].show(
@@ -250,16 +341,29 @@ impl EmulatorApp {
                         self.theme.tokens(),
                     );
                     ui.add_enabled_ui(!self.player.busy, |ui| {
-                        disk_dropdown(ui, ("game_drive", drive), &mut selected, &self.player.disks);
+                        let width = ui.available_width();
+                        disk_dropdown(
+                            ui,
+                            ("game_drive", drive),
+                            &mut selected,
+                            &self.player.disks,
+                            width,
+                            if status.inserted {
+                                "Snapshot media"
+                            } else {
+                                "Empty"
+                            },
+                        )
+                        .labelled_by(drive_label.id);
                     });
                     if selected != self.player.mounted[drive] {
                         self.mount_player_disk(drive, selected);
                     }
-                    if status.inserted && self.player.mounted[drive].is_none() {
-                        ui.label("Snapshot media");
-                    }
                 } else {
-                    ui.label("Disconnected");
+                    ui.allocate_space(egui::vec2(activity_width, row_height));
+                    ui.label("Disconnected").on_hover_text(
+                        "This drive is disabled in the active hardware configuration.",
+                    );
                 }
             });
         }
@@ -271,7 +375,10 @@ impl EmulatorApp {
         };
         if self
             .shortcut_tooltip(
-                ui.add_enabled(!self.player.busy, egui::Button::new(execution_label)),
+                ui.add_enabled(
+                    !self.player.busy && !self.host.pause_requested() && self.host.can_edit(),
+                    egui::Button::new(execution_label),
+                ),
                 KeyCommand::Pause,
                 self.execution_help(),
             )
@@ -299,6 +406,7 @@ impl EmulatorApp {
         ui.horizontal_wrapped(|ui| {
             if library_game {
                 ui.spacing_mut().item_spacing.x = 4.0;
+                ui.spacing_mut().button_padding.x = 4.0;
             }
             let save = ui.add_enabled(!self.player.busy, egui::Button::new("Save"));
             let description = "Capture the current machine and preview. For desktop library games, create a new save.";
@@ -319,26 +427,7 @@ impl EmulatorApp {
             }
             #[cfg(not(target_arch = "wasm32"))]
             if library_game {
-                if ui
-                    .push_id("amiga-game-screenshot-button", |ui| {
-                        ui.button("Screenshot")
-                            .on_hover_text("Save the displayed Amiga image to this game's Screenshots folder.")
-                            .clicked()
-                    })
-                    .inner
-                {
-                    self.take_game_screenshot();
-                }
-                if ui
-                    .push_id("amiga-game-cover-button", |ui| {
-                        ui.button("Cover")
-                            .on_hover_text("Use the displayed Amiga image as the active game's library cover.")
-                            .clicked()
-                    })
-                    .inner
-                {
-                    self.capture_library_cover();
-                }
+                self.render_capture_buttons(ui);
             }
         });
         #[cfg(not(target_arch = "wasm32"))]
@@ -350,23 +439,59 @@ impl EmulatorApp {
         }
         ui.separator();
         #[cfg(not(target_arch = "wasm32"))]
-        if ui.button("Library").clicked() {
-            self.navigate_player(PlayerScreen::Library);
-        }
-        if ui.button("Setup").clicked() {
-            self.navigate_player(PlayerScreen::Setup);
-        }
-        if self
-            .shortcut_tooltip(
-                ui.button("Debug"),
-                KeyCommand::ToggleView,
-                "Open Developer Studio and pause at the next completed field.",
-            )
+        if ui
+            .button("Library")
+            .on_hover_text("Pause this session and browse the library.")
             .clicked()
         {
-            self.player.captured = false;
-            self.set_view_mode(ViewMode::Developer);
+            self.navigate_player(PlayerScreen::Library);
         }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn render_capture_buttons(&mut self, ui: &mut egui::Ui) {
+        let font = egui::TextStyle::Button.resolve(ui.style());
+        let text_width = ["Screenshot", "Cover"]
+            .into_iter()
+            .map(|label| {
+                ui.painter()
+                    .layout_no_wrap(label.into(), font.clone(), ui.visuals().text_color())
+                    .size()
+                    .x
+                    .ceil()
+            })
+            .sum::<f32>();
+        let width = text_width + 4.0 * ui.spacing().button_padding.x + ui.spacing().item_spacing.x;
+        ui.allocate_ui_with_layout(
+            egui::vec2(width, ui.spacing().interact_size.y),
+            egui::Layout::left_to_right(egui::Align::Center),
+            |ui| {
+                if ui
+                    .push_id("amiga-game-screenshot-button", |ui| {
+                        ui.button("Screenshot")
+                            .on_hover_text(
+                                "Save the displayed Amiga image to this game's Screenshots folder.",
+                            )
+                            .clicked()
+                    })
+                    .inner
+                {
+                    self.take_game_screenshot();
+                }
+                if ui
+                    .push_id("amiga-game-cover-button", |ui| {
+                        ui.button("Cover")
+                            .on_hover_text(
+                                "Use the displayed Amiga image as the active game's library cover.",
+                            )
+                            .clicked()
+                    })
+                    .inner
+                {
+                    self.capture_library_cover();
+                }
+            },
+        );
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -636,7 +761,9 @@ fn disk_dropdown(
     id: impl egui::AsIdSalt,
     mounted: &mut Option<String>,
     disks: &[SessionDisk],
-) {
+    width: f32,
+    empty_label: &'static str,
+) -> egui::Response {
     let label = mounted
         .as_ref()
         .and_then(|id| disks.iter().find(|disk| &disk.id == id))
@@ -645,13 +772,13 @@ fn disk_dropdown(
                 if mounted.is_some() {
                     "Snapshot media"
                 } else {
-                    "Empty"
+                    empty_label
                 }
             },
             |disk| disk.label.as_str(),
         );
     egui::ComboBox::from_id_salt(id)
-        .width(110.0)
+        .width(width)
         .truncate()
         .selected_text(label)
         .show_ui(ui, |ui| {
@@ -663,7 +790,35 @@ fn disk_dropdown(
                     format!("{} - {}", index + 1, disk.label),
                 );
             }
-        });
+        })
+        .response
+        .on_hover_ui(|ui| {
+            ui.label(label);
+            ui.label("Choose a disk to insert or eject.");
+        })
+}
+
+fn render_player_guide(ui: &mut egui::Ui) {
+    ui.set_max_width(ui.available_width().min(540.0));
+    let mut paragraph = String::new();
+    for line in PLAYER_GUIDE.lines().chain([""]) {
+        if line.is_empty() || line.starts_with('#') {
+            if !paragraph.is_empty() {
+                ui.label(std::mem::take(&mut paragraph));
+                ui.add_space(4.0);
+            }
+            if let Some(title) = line.strip_prefix("# ") {
+                ui.heading(title);
+            } else if let Some(title) = line.strip_prefix("## ") {
+                ui.strong(title);
+            }
+        } else {
+            if !paragraph.is_empty() {
+                paragraph.push(' ');
+            }
+            paragraph.push_str(line);
+        }
+    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]

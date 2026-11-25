@@ -112,15 +112,29 @@ fn frame_shortcut_and_toolbar_controls_are_operable() {
             app,
         );
     common::settle_harness(&mut harness);
-    harness.get_by_label("Faster").click_accesskit();
-    common::settle_harness(&mut harness);
-    assert_eq!(harness.state().host.status.speed, 2.0);
-    harness.get_by_label("Slower").click_accesskit();
-    common::settle_harness(&mut harness);
-    assert_eq!(harness.state().host.status.speed, 1.0);
-    harness.get_by_label("1x").click_accesskit();
-    common::settle_harness(&mut harness);
-    assert_eq!(harness.state().host.status.speed, 1.0);
+    use egui_kittest::kittest::NodeT as _;
+    for (button, speed) in [
+        ("+", 2.0),
+        ("+", 4.0),
+        ("−", 2.0),
+        ("−", 1.0),
+        ("−", 0.5),
+        ("−", 0.25),
+        ("+", 0.5),
+        ("+", 1.0),
+    ] {
+        harness.get_by_label(button).click_accesskit();
+        common::settle_harness(&mut harness);
+        assert_eq!(harness.state().host.status.speed, speed);
+        harness.get_by_label(&format!("Speed {speed:.2}x"));
+        if speed == 4.0 {
+            assert!(harness.get_by_label("+").accesskit_node().is_disabled());
+        }
+        if speed == 0.25 {
+            assert!(harness.get_by_label("−").accesskit_node().is_disabled());
+        }
+    }
+    assert!(harness.query_by_label("1x").is_none());
     harness.get_by_label("Step Frame").click_accesskit();
     common::wait_harness(&mut harness, |app| {
         !app.host.status.running && app.host.status.field_number == 2

@@ -847,6 +847,249 @@ fn session_harness(app: EmulatorApp) -> egui_kittest::Harness<'static, EmulatorA
     session_harness_builder().build_ui_state(|ui, app| app.update_ui(ui), app)
 }
 
+fn caption_commands(output: &egui::FullOutput) -> impl Iterator<Item = &str> {
+    output.viewport_output[&egui::ViewportId::ROOT]
+        .commands
+        .iter()
+        .filter_map(|command| match command {
+            egui::ViewportCommand::Title(title) => Some(title.as_str()),
+            _ => None,
+        })
+}
+
+#[track_caller]
+fn settle_caption(h: &mut egui_kittest::Harness<'_, EmulatorApp>, expected: &[&str]) {
+    let commands = collect_caption_commands(h, |_| true);
+    assert_eq!(commands, expected, "GUI error: {:?}", h.state().file_error);
+}
+
+#[track_caller]
+fn collect_caption_commands(
+    h: &mut egui_kittest::Harness<'_, EmulatorApp>,
+    ready: impl Fn(&EmulatorApp) -> bool,
+) -> Vec<String> {
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    let mut commands = Vec::new();
+    let mut settled = false;
+    loop {
+        h.step();
+        commands.extend(caption_commands(h.output()).map(str::to_owned));
+        let app = h.state();
+        let idle = app.host.is_idle() && !app.player.busy && ready(app);
+        if idle && settled {
+            break;
+        }
+        settled = idle;
+        assert!(
+            std::time::Instant::now() < deadline,
+            "Caption did not settle. GUI error: {:?}",
+            app.file_error
+        );
+        std::thread::sleep(std::time::Duration::from_millis(1));
+    }
+    commands
+}
+
+#[test]
+fn desktop_startup_requests_the_default_root_viewport_caption() {
+    let context = egui::Context::default();
+    let creation = eframe::CreationContext::_new_kittest(context.clone());
+    let mut app = EmulatorApp::new(&creation);
+    let output = common::settle(&mut app, &context);
+    assert_eq!(
+        caption_commands(&output).collect::<Vec<_>>(),
+        ["Amiga 500 Developer Studio"]
+    );
+}
+
+#[test]
+fn caption_identifies_the_acknowledged_session_across_browse_rename_and_replacement() {
+    use egui_kittest::kittest::Queryable;
+
+    const FIRST: &str = "Arctic Trading Expedition";
+    const RENAMED: &str = "Arctic Trading Expedition Deluxe";
+    const SECOND: &str = "Workbench Tools Collection";
+    const SECOND_EDIT: &str = "Workbench Tools Collection Updated";
+
+    let (root, mut library) = library();
+    for (game, title) in library.games.iter_mut().zip([FIRST, SECOND]) {
+        game.manifest.title = title.into();
+        std::fs::write(
+            game.directory.join("game.json"),
+            serde_json::to_vec(&game.manifest).unwrap(),
+        )
+        .unwrap();
+    }
+    let mut app = game_app(&root);
+    app.player.library_root = None;
+    let mut h = session_harness(app);
+    common::settle_harness(&mut h);
+    select_library_with_current_profiles(&mut h, &root);
+    h.get_by_label("Library").click_accesskit();
+    common::settle_harness(&mut h);
+
+    let choose_game = |h: &mut egui_kittest::Harness<'_, EmulatorApp>, name| {
+        h.get_by_role_and_label(egui::accesskit::Role::Button, name)
+            .click_accesskit();
+        settle_caption(h, &[]);
+    };
+    let rename = |h: &mut egui_kittest::Harness<'_, EmulatorApp>, name, expected: &[&str]| {
+        h.get_by_label("Edit game").click_accesskit();
+        settle_caption(h, &[]);
+        h.state_mut().player.library_editor.as_mut().unwrap().name = name;
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+        loop {
+            h.step();
+            let save = h.get_by_label("Save game");
+            if !save.accesskit_node().is_disabled()
+                && h.ctx.content_rect().contains_rect(save.rect())
+            {
+                break;
+            }
+            assert!(
+                std::time::Instant::now() < deadline,
+                "Save game did not become usable"
+            );
+            std::thread::sleep(std::time::Duration::from_millis(1));
+        }
+        h.get_by_label("Save game").click_accesskit();
+        let commands = collect_caption_commands(h, |app| {
+            app.player.library_editor.is_none() || app.file_error.is_some()
+        });
+        assert!(
+            h.state().file_error.is_none(),
+            "Rename failed: {:?}",
+            h.state().file_error
+        );
+        assert!(
+            h.state().player.library_editor.is_none(),
+            "The rename did not commit"
+        );
+        assert_eq!(commands, expected);
+    };
+
+    choose_game(&mut h, FIRST);
+    h.get_by_label("Start game").click_accesskit();
+    settle_caption(&mut h, &[FIRST]);
+    assert!(h.state().host.status.running);
+    h.get_by_label("Pause").click_accesskit();
+    settle_caption(&mut h, &[]);
+    assert!(!h.state().host.status.running);
+    let first_generation = h.state().host.status.generation;
+    let first_snapshot = common::snapshot(h.state_mut());
+
+    h.get_by_label("Library").click_accesskit();
+    settle_caption(&mut h, &[]);
+    choose_game(&mut h, SECOND);
+    h.get_by_label("Return to session").click_accesskit();
+    settle_caption(&mut h, &[]);
+    assert_eq!(h.state().host.status.generation, first_generation);
+    assert_eq!(common::snapshot(h.state_mut()), first_snapshot);
+
+    h.get_by_label("Library").click_accesskit();
+    settle_caption(&mut h, &[]);
+    rename(&mut h, SECOND_EDIT.into(), &[]);
+    choose_game(&mut h, FIRST);
+    rename(&mut h, RENAMED.into(), &[RENAMED]);
+
+    h.get_by_label("Return to session").click_accesskit();
+    settle_caption(&mut h, &[]);
+    assert_eq!(h.state().host.status.generation, first_generation);
+    assert!(!h.state().host.status.running);
+    assert_eq!(common::snapshot(h.state_mut()), first_snapshot);
+    h.get_by_label("Save").click_accesskit();
+    settle_caption(&mut h, &[]);
+    assert_eq!(h.state().player.saves.len(), 1);
+    let save_path = &h.state().player.saves[0].path;
+    let saved =
+        debugger::SaveState::from_json(&std::fs::read_to_string(save_path).unwrap()).unwrap();
+    assert_eq!(saved.header.association.game_id.as_deref(), Some("one"));
+    let sources = debugger::MediaSources {
+        rom: Some(debugger::SourceImage {
+            name: None,
+            bytes: std::fs::read(root.join("kick.rom")).unwrap(),
+        }),
+        disks: [
+            Some(debugger::SourceImage {
+                name: None,
+                bytes: std::fs::read(root.join(RENAMED).join("disks/Disk 1.adf")).unwrap(),
+            }),
+            None,
+            None,
+            None,
+        ],
+    };
+    assert_eq!(*saved.restore(&sources).unwrap(), first_snapshot);
+
+    h.get_by_label("Library").click_accesskit();
+    settle_caption(&mut h, &[]);
+    choose_game(&mut h, SECOND_EDIT);
+
+    h.get_by_label("Start game").click_accesskit();
+    settle_caption(&mut h, &[]);
+    h.get_by_label("Keep current session").click_accesskit();
+    settle_caption(&mut h, &[]);
+    assert_eq!(h.state().host.status.generation, first_generation);
+
+    let disk = root.join(SECOND_EDIT).join("disks/Disk 1.adf");
+    std::fs::write(&disk, [0; 1]).unwrap();
+    h.get_by_label("Start game").click_accesskit();
+    settle_caption(&mut h, &[]);
+    h.get_by_label("Replace session").click_accesskit();
+    settle_caption(&mut h, &[]);
+    assert!(h.state().file_error.is_some());
+    assert_eq!(h.state().host.status.generation, first_generation);
+    assert_eq!(common::snapshot(h.state_mut()), first_snapshot);
+    h.get_by_label("Close").click_accesskit();
+    settle_caption(&mut h, &[]);
+
+    std::fs::write(&disk, vec![0x22; ADF_BYTES]).unwrap();
+    h.get_by_label("Start game").click_accesskit();
+    settle_caption(&mut h, &[]);
+    // Observe the submitted command before another pass can consume the reply.
+    let passes = h.ctx.options(|options| options.max_passes);
+    h.ctx
+        .options_mut(|options| options.max_passes = std::num::NonZeroUsize::MIN);
+    h.get_by_label("Replace session").click_accesskit();
+    h.step();
+    h.ctx.options_mut(|options| options.max_passes = passes);
+    assert!(h.state().player.busy);
+    assert_eq!(
+        h.state()
+            .player
+            .active_game
+            .as_ref()
+            .unwrap()
+            .manifest
+            .title,
+        RENAMED
+    );
+    assert!(caption_commands(h.output()).next().is_none());
+    settle_caption(&mut h, &[SECOND_EDIT]);
+    assert!(h.state().host.status.generation > first_generation);
+
+    h.get_by_label("Library").click_accesskit();
+    settle_caption(&mut h, &[]);
+    choose_game(&mut h, RENAMED);
+    h.get_by_label_contains("Load state - ").click_accesskit();
+    settle_caption(&mut h, &[]);
+    h.get_by_label("Replace session").click_accesskit();
+    settle_caption(&mut h, &[RENAMED]);
+    assert_eq!(
+        h.state().player.active_game.as_ref().unwrap().manifest.id,
+        "one"
+    );
+
+    h.get_by_label("Manual setup").click_accesskit();
+    settle_caption(&mut h, &[]);
+    h.get_by_label("Start").click_accesskit();
+    settle_caption(&mut h, &[]);
+    h.get_by_label("Replace session").click_accesskit();
+    settle_caption(&mut h, &["Amiga 500 Developer Studio"]);
+    assert!(h.state().player.active_game.is_none());
+    assert_eq!(h.state().player.screen, PlayerScreen::Session);
+}
+
 fn add_library_disk(game: &mut LibraryGame, id: &str, label: &str, fill: u8) -> PathBuf {
     let source = game.directory.join("disks").join(label);
     std::fs::write(&source, vec![fill; ADF_BYTES]).unwrap();
@@ -855,6 +1098,62 @@ fn add_library_disk(game: &mut LibraryGame, id: &str, label: &str, fill: u8) -> 
         filename: label.into(),
     });
     source
+}
+
+#[test]
+fn side_panel_stretches_short_long_and_empty_disk_selectors_equally() {
+    use egui::accesskit::Role;
+    use egui_kittest::kittest::Queryable;
+
+    let (root, mut library) = library();
+    let game = &mut library.games[0];
+    let long = "The very long name of the alternate first disk from the Amiga collection.adf";
+    add_library_disk(game, "long-disk", long, 0x41);
+    game.manifest.mounted = [
+        Some("long-disk".into()),
+        Some("disk-one".into()),
+        None,
+        None,
+    ];
+    let mut app = game_app(&root);
+    app.player.catalog.configurations[0].launch.drives = [true, true, true, false];
+    app.start_library_game(game.clone(), None, false);
+    let mut h = session_harness(app);
+    common::settle_harness(&mut h);
+    h.get_by_label("Pause").click_accesskit();
+    common::settle_harness(&mut h);
+    let before = common::snapshot(h.state_mut());
+
+    let selectors = |h: &egui_kittest::Harness<'_, EmulatorApp>| {
+        let controls = ["DF0:", "DF1:", "DF2:"].map(|drive| player_drive_dropdown(h, drive).rect());
+        let first = controls[0];
+        for rect in controls {
+            assert!((rect.left() - first.left()).abs() <= 1.0);
+            assert!((rect.right() - first.right()).abs() <= 1.0);
+            assert!(h.ctx.content_rect().contains_rect(rect));
+        }
+        assert!((h.get_by_label("Disconnected").rect().left() - first.left()).abs() <= 1.0);
+        assert_player_drive_text(h, "DF2:", "Empty");
+        first.width()
+    };
+    let before_width = selectors(&h);
+    let edge = h.get_by_role(Role::Splitter).rect().center();
+    let target = edge - egui::vec2(175.0, 0.0);
+    h.hover_at(edge);
+    h.step();
+    h.drag_at(edge);
+    h.step();
+    h.hover_at(target);
+    h.step();
+    h.drop_at(target);
+    common::settle_harness(&mut h);
+    assert!(selectors(&h) >= before_width + 160.0);
+    h.ctx
+        .global_style_mut(|style| style.interaction.tooltip_delay = 0.0);
+    player_drive_dropdown(&h, "DF0:").hover();
+    common::settle_harness(&mut h);
+    h.get_by_label(long);
+    assert_eq!(common::snapshot(h.state_mut()), before);
 }
 
 #[test]
@@ -1847,7 +2146,7 @@ fn screenshot_stays_with_the_active_game_after_editing_the_same_id_in_another_li
     h.state_mut().player.library_editor.as_mut().unwrap().name = "Renamed".into();
     h.step();
     h.get_by_label("Save game").click_accesskit();
-    common::settle_harness(&mut h);
+    settle_caption(&mut h, &[]);
     assert!(h.state().file_error.is_none());
     assert!(h.state().player.library_editor.is_none());
     let renamed = second_root.join("Renamed");
@@ -1907,7 +2206,14 @@ fn capture_buttons_are_adjacent_in_regular_and_compact_library_game_views_only()
     h.get_by_label("Game controls").click_accesskit();
     common::settle_harness(&mut h);
     assert_capture_controls(&h);
-    h.get_by_label("Debug View").click_accesskit();
+    let generation = h.state().host.status.generation;
+    for pressed in [true, false] {
+        assert!(gui::keyboard_input::receive_key(
+            &h.ctx,
+            common::keyboard::key("F12", pressed),
+            Some(generation)
+        ));
+    }
     common::settle_harness(&mut h);
     assert_eq!(h.state().view_mode, ViewMode::Developer);
     assert!(h.query_by_label("Screenshot").is_none());

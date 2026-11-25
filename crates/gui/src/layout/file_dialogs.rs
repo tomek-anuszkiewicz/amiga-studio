@@ -1,54 +1,6 @@
-//! Recent ROM selection and persistent file-error feedback.
+//! Persistent feedback for failed file operations.
 
 use crate::EmulatorApp;
-
-#[cfg(target_arch = "wasm32")]
-pub(super) fn render_recent_files(app: &mut EmulatorApp, ui: &mut egui::Ui) {
-    ui.separator();
-    ui.label("Recent ROMs");
-    let names = app.browser_history.names();
-    if names.is_empty() {
-        ui.add_enabled(false, egui::Button::new("No recent ROMs"));
-    }
-    for (index, name) in names.iter().enumerate() {
-        if ui.push_id(("rom", index), |ui| {
-            ui.button(name).on_hover_text("Choose a file from this file's folder. Browsers without folder support use their default location.").clicked()
-        }).inner {
-            app.open_recent_browser_file(index);
-            ui.close_kind(egui::UiKind::Menu);
-        }
-    }
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-pub(super) fn render_recent_files(app: &mut EmulatorApp, ui: &mut egui::Ui) {
-    ui.separator();
-    ui.label("Recent ROMs");
-    let mut selected_rom = None;
-    for (index, path) in app.file_history.roms.iter().enumerate() {
-        let name = path.file_name().unwrap_or_default().to_string_lossy();
-        if ui
-            .push_id(("rom", index), |ui| {
-                ui.button(name.as_ref())
-                    .on_hover_ui(|ui| {
-                        ui.label(path.display().to_string());
-                        ui.label("Reload this ROM and reset the machine. Press Run to boot.");
-                    })
-                    .clicked()
-            })
-            .inner
-        {
-            selected_rom = Some(path.clone());
-        }
-    }
-    if app.file_history.roms.is_empty() {
-        ui.add_enabled(false, egui::Button::new("No recent ROMs"));
-    }
-    if let Some(path) = selected_rom {
-        app.load_rom_file(&path);
-        ui.close_kind(egui::UiKind::Menu);
-    }
-}
 
 const ERROR_DIALOG: &str = "file-error-dialog";
 

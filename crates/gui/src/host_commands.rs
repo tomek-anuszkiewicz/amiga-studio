@@ -41,7 +41,6 @@ pub enum HostCommand {
     StepField,
     Slower,
     Faster,
-    NormalSpeed,
     SetDebuggerEnabled(bool),
     Reset,
     ResetWarm,

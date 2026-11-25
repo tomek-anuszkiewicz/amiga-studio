@@ -9,8 +9,10 @@ with links to implementation details.
 ## 1. Launching the Developer Studio
 
 Run the application with `cargo run -p gui`. Start a game from the desktop
-library or use **Manual Setup** to select a Kickstart ROM and bootable disk.
-Press **F12** in the session to pause and open Developer Studio.
+library or use **Manual setup** to select a Kickstart ROM and bootable disk.
+To open Developer Studio from the setup screens, select **Return to session**
+and press **F12**. Pressing **F12** in a game session pauses the machine and
+opens Developer Studio.
 
 ---
 
@@ -26,7 +28,8 @@ Press **F12** in the session to pause and open Developer Studio.
 | **`Shift + F11`** | **Step Frame** | Advances to the next completed PAL/NTSC video field and pauses. Breakpoints and CPU halts take precedence. |
 | **`Alt + T`** | **Toggle Recording** | Activates or pauses temporal execution history recording. |
 
-Use **Slower** and **Faster** to select 0.25x, 0.5x, 1x, 2x or 4x. **1x** is
+Use the minus and plus buttons beside **Speed** to select 0.25x, 0.5x, 1x,
+2x or 4x. **1x** is
 normal PAL/NTSC speed. At normal or slower speed, Run presents each completed
 video field before waiting for the next field deadline. Above 1x, Run executes
 every field and presents only the latest completed image from each batch. The
@@ -42,15 +45,13 @@ timers. During continuous Run, the inspectors retain the last values prepared
 for display, including CPU status and CCK labels. The Pause control, FPS and
 Amiga screen stay live. A CPU halt ends Run and refreshes the inspectors.
 
-Choose **File > Load ROM from File** to install a 256 KiB Kickstart image. The
-emulator resets the machine to the ROM vectors and leaves it paused. The toolbar
-shows the filename. Press **Run** to start execution. If the emulator rejects the
-image, it keeps the current machine and ROM name. The file picker works on desktop
-and WASM. In the browser, you must explicitly choose a file. When you load a
-snapshot, the emulator uses the ROM stored in it and displays **ROM: from saved state**.
+To boot a 256 KiB Kickstart image, choose **Game View**, **Manual setup**,
+then **Select Kickstart...**. Choose **Start** to boot and F12 to return to
+inspection. Loading a snapshot restores the ROM stored in it.
 
-Game View keeps the File, State, Run/Stop, speed, FPS visibility, theme and zoom
-controls. Choose **Debug View** or press the fixed F12 key to return to inspection.
+Game view shows the State menu, speed, measured FPS, theme, zoom and image
+scale. **Pause** and **Resume** are in the player controls. Press F12 or the
+configured shortcut to return to inspection.
 The keyboard works while the running session is active. Click the display to
 capture the mouse. The middle mouse button frees the mouse while play
 continues. You can assign a mouse release key in Configurations, where it

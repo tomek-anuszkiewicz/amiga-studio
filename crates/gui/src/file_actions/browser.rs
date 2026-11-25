@@ -1,4 +1,4 @@
-//! Browser file selection, recent directory references and snapshot downloads.
+//! Browser file selection and snapshot downloads.
 
 use super::{EmulatorApp, FileAction};
 use crate::disk_import::{
@@ -17,9 +17,6 @@ use web_sys::{Document, HtmlAnchorElement};
 
 #[wasm_bindgen(module = "/src/file_actions/browser_files.js")]
 extern "C" {
-    fn restore_history() -> Promise;
-    fn recent_rom_names() -> Array;
-    fn remember_rom(name: &str, handle: &JsValue) -> Promise;
     #[wasm_bindgen(catch)]
     fn pick_file(
         kind: &str,
@@ -33,7 +30,6 @@ extern "C" {
 struct SelectedFile {
     name: String,
     data: Vec<u8>,
-    handle: JsValue,
 }
 
 enum SelectedAssets {
@@ -58,61 +54,9 @@ impl std::fmt::Debug for BrowserFileTask {
     }
 }
 
-#[derive(Default)]
-pub struct BrowserHistory {
-    pending: Vec<JsFuture>,
-}
-
-impl std::fmt::Debug for BrowserHistory {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("BrowserHistory")
-            .field("pending", &self.pending.len())
-            .finish()
-    }
-}
-
-impl BrowserHistory {
-    pub fn restore(&mut self) {
-        self.pending.push(JsFuture::from(restore_history()));
-    }
-
-    pub(super) fn remember(&mut self, name: &str, handle: &JsValue) {
-        self.pending
-            .push(JsFuture::from(remember_rom(name, handle)));
-    }
-
-    pub fn names(&self) -> Vec<String> {
-        recent_rom_names()
-            .iter()
-            .filter_map(|value| value.as_string())
-            .collect()
-    }
-
-    fn poll(&mut self, ctx: &egui::Context) -> Option<String> {
-        let mut error = None;
-        self.pending.retain_mut(|future| {
-            match Pin::new(future).poll(&mut Context::from_waker(Waker::noop())) {
-                Poll::Ready(result) => {
-                    if let Err(reason) = result {
-                        error = Some(format!("Could not persist recent files: {reason:?}"));
-                    }
-                    ctx.request_repaint();
-                    false
-                }
-                Poll::Pending => true,
-            }
-        });
-        if !self.pending.is_empty() {
-            ctx.request_repaint_after(FILE_POLL_INTERVAL);
-        }
-        error
-    }
-}
-
 impl FileAction {
     fn key(self) -> &'static str {
         match self {
-            Self::Rom => "rom",
             Self::State => "state",
             Self::SetupRom => "setup-rom",
             Self::SetupDisk(_) => "setup-disk",
@@ -127,7 +71,7 @@ fn document() -> Result<Document, JsValue> {
 }
 
 impl BrowserFileTask {
-    fn new(action: FileAction, recent_index: i32) -> Result<Self, JsValue> {
+    fn new(action: FileAction) -> Result<Self, JsValue> {
         let extensions = action
             .extensions()
             .iter()
@@ -138,7 +82,7 @@ impl BrowserFileTask {
             action.key(),
             action.title(),
             &extensions,
-            recent_index,
+            NO_RECENT_FILE_INDEX,
             multiple,
         )?;
         let future = Box::pin(async move {
@@ -157,7 +101,6 @@ impl BrowserFileTask {
             Ok(Some(SelectedAssets::Single(SelectedFile {
                 name: file.name(),
                 data: Uint8Array::new(&buffer).to_vec(),
-                handle: selected.get(1),
             })))
         });
         Ok(Self { action, future })
@@ -219,15 +162,7 @@ async fn browser_disk_file(source: JsValue) -> Result<web_sys::File, JsValue> {
 
 impl EmulatorApp {
     pub(super) fn open_file_dialog(&mut self, action: FileAction) {
-        self.open_browser_file_dialog(action, NO_RECENT_FILE_INDEX);
-    }
-
-    pub(crate) fn open_recent_browser_file(&mut self, index: usize) {
-        self.open_browser_file_dialog(FileAction::Rom, index as i32);
-    }
-
-    fn open_browser_file_dialog(&mut self, action: FileAction, recent_index: i32) {
-        match BrowserFileTask::new(action, recent_index) {
+        match BrowserFileTask::new(action) {
             Ok(task) => self.browser_file_task = Some(task),
             Err(error) => self.file_error = Some(format!("Could not open file picker: {error:?}")),
         }
@@ -242,9 +177,6 @@ impl EmulatorApp {
 
     // Host I/O completion is pulled here; it never calls into the machine asynchronously.
     pub(crate) fn poll_file_dialog(&mut self, ctx: &egui::Context) {
-        if let Some(error) = self.browser_history.poll(ctx) {
-            self.file_error = Some(error);
-        }
         let Some(task) = &mut self.browser_file_task else {
             return;
         };
@@ -258,7 +190,7 @@ impl EmulatorApp {
                 self.browser_file_task = None;
                 match result {
                     Ok(Some(SelectedAssets::Single(file))) => {
-                        self.accept_file_data(action, file.name, file.data, file.handle)
+                        self.accept_file_data(action, file.name, file.data)
                     }
                     Ok(Some(SelectedAssets::Disks(selection))) => {
                         if let FileAction::SetupDisk(drive) = action {

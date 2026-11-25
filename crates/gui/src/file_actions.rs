@@ -15,7 +15,6 @@ pub(crate) use history::STORAGE_KEY as HISTORY_STORAGE_KEY;
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) enum FileAction {
-    Rom,
     State,
     SetupRom,
     SetupDisk(usize),
@@ -31,7 +30,6 @@ pub(crate) enum NativeDialog {
 impl FileAction {
     fn title(self) -> &'static str {
         match self {
-            Self::Rom => "Load ROM from File",
             Self::State => "Load State from File",
             Self::SetupRom => "Select Kickstart for Setup",
             Self::SetupDisk(_) => "Select disk for Setup",
@@ -40,7 +38,6 @@ impl FileAction {
 
     fn extensions(self) -> &'static [&'static str] {
         match self {
-            Self::Rom => &["rom", "bin"],
             Self::State => &["json"],
             Self::SetupRom => &["rom", "bin"],
             Self::SetupDisk(_) => DISK_EXTENSIONS,
@@ -58,17 +55,12 @@ fn file_name(path: &std::path::Path) -> String {
 
 #[derive(Debug)]
 pub(crate) enum FileCompletion {
+    #[cfg(not(target_arch = "wasm32"))]
     Rom {
         name: String,
-        #[cfg(not(target_arch = "wasm32"))]
         path: std::path::PathBuf,
-        #[cfg(target_arch = "wasm32")]
-        handle: wasm_bindgen::JsValue,
     },
-    State {
-        message: String,
-        verified_rom: bool,
-    },
+    State(String),
     #[cfg(not(target_arch = "wasm32"))]
     Save(std::path::PathBuf),
     #[cfg(target_arch = "wasm32")]
@@ -243,10 +235,6 @@ impl EmulatorApp {
         self.open_file_dialog(drive.map_or(FileAction::SetupRom, FileAction::SetupDisk));
     }
 
-    pub(crate) fn open_load_rom_dialog(&mut self) {
-        self.open_file_dialog(FileAction::Rom);
-    }
-
     pub(crate) fn open_load_state_dialog(&mut self) {
         #[cfg(not(target_arch = "wasm32"))]
         if self.player.active_game.is_some() {
@@ -260,6 +248,7 @@ impl EmulatorApp {
         &mut self,
         action: FileCompletion,
         value: Result<HostValue, String>,
+        ctx: &egui::Context,
     ) {
         if let Err(error) = value {
             self.file_error = Some(format!("Could not complete file action: {error}"));
@@ -283,18 +272,10 @@ impl EmulatorApp {
         }
         self.file_error = None;
         match action {
-            FileCompletion::Rom {
-                name,
-                #[cfg(not(target_arch = "wasm32"))]
-                path,
-                #[cfg(target_arch = "wasm32")]
-                handle,
-            } => {
-                #[cfg(not(target_arch = "wasm32"))]
+            #[cfg(not(target_arch = "wasm32"))]
+            FileCompletion::Rom { path, .. } => {
                 self.file_history.remember_rom(&path);
-                #[cfg(target_arch = "wasm32")]
-                self.browser_history.remember(&name, &handle);
-                self.loaded_rom_name = Some(name);
+                self.file_loaded_machine = true;
                 self.inspection.ready = false;
                 self.disassembly_view_addr = None;
                 self.toast_message = Some((
@@ -302,10 +283,7 @@ impl EmulatorApp {
                     TOAST_DURATION_FRAMES,
                 ));
             }
-            FileCompletion::State {
-                message,
-                verified_rom,
-            } => {
+            FileCompletion::State(message) => {
                 for disk in &self.player.setup_disks {
                     if !self.player.disks.iter().any(|entry| entry.id == disk.id) {
                         self.player.disks.push(disk.clone());
@@ -314,7 +292,8 @@ impl EmulatorApp {
                 if self.player.active_configuration.is_none() {
                     self.player.activate_selected_configuration();
                 }
-                self.state_loaded(message, verified_rom);
+                self.state_loaded(message);
+                self.sync_session_title(ctx);
             }
             FileCompletion::QuickSave(slot) => {
                 self.toast_message = Some((
@@ -356,20 +335,10 @@ impl EmulatorApp {
     }
 
     #[cfg(target_arch = "wasm32")]
-    fn accept_file_data(
-        &mut self,
-        action: FileAction,
-        name: String,
-        data: Vec<u8>,
-        handle: wasm_bindgen::JsValue,
-    ) {
+    fn accept_file_data(&mut self, action: FileAction, name: String, data: Vec<u8>) {
         match action {
             FileAction::SetupRom => self.select_setup_rom(name, data),
             FileAction::SetupDisk(_) => {}
-            FileAction::Rom => self.request_player_launch(crate::player::PendingLaunch::Rom {
-                bytes: data,
-                completion: FileCompletion::Rom { name, handle },
-            }),
             FileAction::State => match String::from_utf8(data) {
                 Ok(json) => {
                     let command = match self.prepare_state_import(json) {
@@ -381,10 +350,9 @@ impl EmulatorApp {
                     };
                     self.host.queue_effect(
                         command,
-                        HostEffect::File(FileCompletion::State {
-                            message: format!("State loaded from {name}"),
-                            verified_rom: true,
-                        }),
+                        HostEffect::File(FileCompletion::State(format!(
+                            "State loaded from {name}"
+                        ))),
                     )
                 }
                 Err(error) => self.file_error = Some(format!("Could not load {name}: {error}")),
@@ -392,14 +360,9 @@ impl EmulatorApp {
         }
     }
 
-    fn state_loaded(&mut self, message: String, verified_rom: bool) {
+    fn state_loaded(&mut self, message: String) {
         self.inspection.ready = false;
-        let rom_label = if verified_rom {
-            "verified for saved state"
-        } else {
-            "from saved state"
-        };
-        self.loaded_rom_name = Some(rom_label.into());
+        self.file_loaded_machine = true;
         self.file_error = None;
         self.disassembly_view_addr = None;
         self.toast_message = Some((message, TOAST_DURATION_FRAMES));
@@ -420,26 +383,15 @@ impl EmulatorApp {
             self.player.dialog = Some(NativeDialog::Open(action));
             return;
         }
-        let mut dialog = if matches!(action, FileAction::SetupDisk(_)) {
+        let dialog = if matches!(action, FileAction::SetupDisk(_)) {
             self.disk_file_dialog(action.title())
         } else {
             rfd::FileDialog::new()
                 .set_title(action.title())
                 .add_filter("Supported files", action.extensions())
         };
-        let directory = match action {
-            FileAction::Rom => self.file_history.rom_picker_directory(),
-            FileAction::State | FileAction::SetupRom | FileAction::SetupDisk(_) => None,
-        };
-        if let Some(directory) = directory {
-            dialog = dialog.set_directory(directory);
-        }
         if let Some(path) = dialog.pick_file() {
             match action {
-                FileAction::Rom => {
-                    self.file_history.rom_directory = path.parent().map(std::path::Path::to_owned);
-                    self.load_rom_file(&path);
-                }
                 FileAction::State => self.load_state_file(&path),
                 FileAction::SetupRom => match std::fs::read(&path) {
                     Ok(bytes) => self.select_setup_rom(file_name(&path), bytes),
@@ -507,10 +459,10 @@ impl EmulatorApp {
                 };
                 self.host.queue_effect(
                     command,
-                    HostEffect::File(FileCompletion::State {
-                        message: format!("State loaded from {}", path.display()),
-                        verified_rom: true,
-                    }),
+                    HostEffect::File(FileCompletion::State(format!(
+                        "State loaded from {}",
+                        path.display()
+                    ))),
                 )
             }
             Err(error) => {
@@ -566,4 +518,4 @@ impl EmulatorApp {
 mod browser;
 
 #[cfg(target_arch = "wasm32")]
-pub(crate) use browser::{BrowserFileTask, BrowserHistory};
+pub(crate) use browser::BrowserFileTask;

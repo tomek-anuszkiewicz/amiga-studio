@@ -202,7 +202,7 @@ fn unavailable_controller_navigation(discard: bool) {
         common::settle_harness(&mut h);
         h.get_by_label("Discard").click_accesskit();
     } else {
-        h.get_by_label("Debug").click_accesskit();
+        h.state_mut().set_view_mode(ViewMode::Developer);
     }
     common::settle_harness(&mut h);
     assert_eq!(h.state().player.screen, PlayerScreen::Configuration);
@@ -338,7 +338,11 @@ fn developer_navigation_cannot_bypass_dirty_editor() {
 #[test]
 fn return_still_validates_host_sources_and_clean_debug_navigation_leaves_editor() {
     let mut h = editor();
-    h.get_by_label("Debug").click_accesskit();
+    assert!(h.query_by_label("Debug").is_none());
+    h.get_by_label("Return to session").click_accesskit();
+    common::settle_harness(&mut h);
+    assert!(physical_edge(&mut h, "F12", true, false));
+    assert!(physical_edge(&mut h, "F12", false, false));
     common::settle_harness(&mut h);
     assert_eq!(h.state().player.screen, PlayerScreen::Session);
     assert_eq!(h.state().view_mode, ViewMode::Developer);
