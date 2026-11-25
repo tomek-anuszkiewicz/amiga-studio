@@ -7,6 +7,8 @@ use crate::{EmulatorApp, ViewMode};
 
 #[cfg(not(target_arch = "wasm32"))]
 mod library_launch;
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) mod save_catalog;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum PlayerScreen {
@@ -46,7 +48,6 @@ pub struct PlayerState {
     #[cfg(not(target_arch = "wasm32"))]
     pub(crate) active_library_root: Option<std::path::PathBuf>,
     pub captured: bool,
-    pub show_saves: bool,
     pub(crate) pending_launch: Option<PendingLaunch>,
     pub initial_error: bool,
     pub busy: bool,
@@ -70,7 +71,7 @@ pub struct PlayerState {
     #[cfg(not(target_arch = "wasm32"))]
     pub library_editor: Option<crate::library_edit::GameDraft>,
     #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) game_slots: [bool; debugger::session::QUICK_SLOT_COUNT],
+    pub(crate) save_catalog: save_catalog::SaveCatalogActions,
     #[cfg(not(target_arch = "wasm32"))]
     pub(crate) dialog: Option<crate::file_actions::NativeDialog>,
     #[cfg(not(target_arch = "wasm32"))]
@@ -98,6 +99,7 @@ pub(crate) enum PlayerEffect {
         mappings: Vec<JoystickMapping>,
         disks: Vec<SessionDisk>,
         association: debugger::SaveAssociation,
+        initial_state: bool,
         #[cfg(not(target_arch = "wasm32"))]
         game: Option<crate::game_library::LibraryGame>,
         #[cfg(not(target_arch = "wasm32"))]
@@ -109,9 +111,8 @@ pub(crate) enum PlayerEffect {
     },
     Reset,
     #[cfg(not(target_arch = "wasm32"))]
-    Save {
+    QuickSave {
         game: crate::game_library::LibraryGame,
-        slot: Option<usize>,
     },
 }
 
@@ -127,11 +128,6 @@ pub(crate) enum PendingLaunch {
         game: crate::game_library::LibraryGame,
         save: Option<std::path::PathBuf>,
         normal_boot: bool,
-    },
-    #[cfg(not(target_arch = "wasm32"))]
-    LibraryQuick {
-        game: crate::game_library::LibraryGame,
-        save: std::path::PathBuf,
     },
 }
 
@@ -298,7 +294,11 @@ impl EmulatorApp {
             normal_boot,
         } = &launch
         {
-            if self.prompt_for_missing_configuration(game, save.as_deref(), *normal_boot) {
+            if let Some(path) = save {
+                self.load_catalog_save(game.clone(), path.clone(), false);
+                return;
+            }
+            if self.prompt_for_missing_configuration(game, None, *normal_boot) {
                 return;
             }
         }
@@ -329,10 +329,6 @@ impl EmulatorApp {
                 save,
                 normal_boot,
             } => self.start_library_game(game, save, normal_boot),
-            #[cfg(not(target_arch = "wasm32"))]
-            PendingLaunch::LibraryQuick { game, save } => {
-                self.open_library_game(game, Some(save), false, true);
-            }
         }
     }
 
@@ -342,23 +338,28 @@ impl EmulatorApp {
         value: Result<HostValue, String>,
     ) {
         self.player.busy = false;
-        let release_capture = match &effect {
-            PlayerEffect::Reset => value.is_ok(),
-            #[cfg(not(target_arch = "wasm32"))]
-            PlayerEffect::Save { .. } => false,
-            _ => true,
-        };
-        self.player.captured &= !release_capture;
         let value = match value {
             Ok(value) => value,
             Err(error) => {
-                self.file_error = Some(error);
-                if !matches!(&effect, PlayerEffect::Reset) {
-                    self.player.initial_error = true;
-                }
+                self.file_error = Some(match effect {
+                    #[cfg(not(target_arch = "wasm32"))]
+                    PlayerEffect::QuickSave { .. } => {
+                        format!("Could not capture quicksave: {error}")
+                    }
+                    PlayerEffect::Launch { initial_state, .. } => {
+                        self.player.initial_error = initial_state;
+                        error
+                    }
+                    _ => error,
+                });
                 return;
             }
         };
+        #[cfg(not(target_arch = "wasm32"))]
+        let keep_capture = matches!(effect, PlayerEffect::QuickSave { .. });
+        #[cfg(target_arch = "wasm32")]
+        let keep_capture = false;
+        self.player.captured &= keep_capture;
         self.file_error = None;
         match effect {
             PlayerEffect::Launch {
@@ -366,6 +367,7 @@ impl EmulatorApp {
                 mappings,
                 disks,
                 mut association,
+                initial_state: _,
                 #[cfg(not(target_arch = "wasm32"))]
                 game,
                 #[cfg(not(target_arch = "wasm32"))]
@@ -389,7 +391,17 @@ impl EmulatorApp {
                 self.set_view_mode(crate::ViewMode::ScreenOnly);
                 self.inspection.ready = false;
                 #[cfg(not(target_arch = "wasm32"))]
-                self.refresh_player_saves();
+                {
+                    let migration = self
+                        .player
+                        .active_game
+                        .as_ref()
+                        .and_then(|game| crate::game_library::initialize_quicksave(game).err());
+                    self.refresh_player_saves();
+                    if let Some(error) = migration {
+                        self.player.session_save_error = Some(error);
+                    }
+                }
             }
             PlayerEffect::Mount { drive, id } => self.player.mounted[drive] = id,
             PlayerEffect::Reset => {
@@ -398,25 +410,18 @@ impl EmulatorApp {
                 }
             }
             #[cfg(not(target_arch = "wasm32"))]
-            PlayerEffect::Save { game, slot } => {
+            PlayerEffect::QuickSave { game } => {
                 if let HostValue::Snapshot(json) = value {
-                    match crate::game_library::persist_save(&game, &json, slot) {
+                    match crate::game_library::persist_quicksave(&game, &json) {
                         Ok(_) => {
                             self.toast_message = Some((
                                 "Progress saved".into(),
                                 crate::layout::top_menu_bar::TOAST_DURATION_FRAMES,
-                            ));
-                            self.refresh_player_saves();
-                            if let Some(sync) = &mut self.player.library_sync {
-                                if sync.owns_game(&game) {
-                                    sync.changed_locally();
-                                }
-                            }
+                            ))
                         }
-                        Err(error) => {
-                            self.file_error = Some(format!("Could not persist progress: {error}"))
-                        }
+                        Err(error) => self.file_error = Some(error),
                     }
+                    self.refresh_game_saves(&game.directory, &game.manifest.id);
                 }
             }
         }
@@ -572,6 +577,7 @@ impl EmulatorApp {
                 mappings: self.player.catalog.mappings.clone(),
                 disks,
                 association,
+                initial_state: false,
                 #[cfg(not(target_arch = "wasm32"))]
                 game: None,
                 #[cfg(not(target_arch = "wasm32"))]
@@ -681,48 +687,77 @@ impl EmulatorApp {
         );
     }
 
-    pub(crate) fn save_player(&mut self, slot: Option<usize>) {
+    pub(crate) fn quick_save(&mut self) {
+        if self.player.busy {
+            return;
+        }
         #[cfg(not(target_arch = "wasm32"))]
         if let Some(game) = self.player.active_game.clone() {
             self.player.busy = true;
             self.host.queue_effect(
                 HostCommand::SaveSnapshot,
-                HostEffect::Player(PlayerEffect::Save { game, slot }),
+                HostEffect::Player(PlayerEffect::QuickSave { game }),
             );
             return;
         }
-        if let Some(slot) = slot {
-            crate::layout::top_menu_bar::quick_save_slot(self, slot);
-        } else {
-            self.open_save_state_dialog();
-        }
+        self.host.queue_effect(
+            HostCommand::QuickSave,
+            HostEffect::File(crate::file_actions::FileCompletion::QuickSave),
+        );
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) fn load_player_quick(&mut self, slot: usize) {
-        if let Some(game) = self.player.active_game.clone() {
-            let slot_path = game.directory.join(format!("saves/slot-{slot}.txt"));
-            match std::fs::read_to_string(slot_path)
-                .map_err(|e| e.to_string())
-                .and_then(|name| {
-                    crate::game_library::relative_asset(&game.directory.join("saves"), name.trim())
-                }) {
-                Ok(path) => {
-                    self.request_player_launch(PendingLaunch::LibraryQuick { game, save: path })
-                }
-                Err(error) => self.file_error = Some(format!("Quick slot unavailable: {error}")),
-            }
-        }
-    }
-
-    pub(crate) fn load_player(&mut self) {
-        self.player.captured = false;
-        #[cfg(not(target_arch = "wasm32"))]
-        if self.player.active_game.is_some() {
-            self.refresh_player_saves();
-            self.player.show_saves = true;
+    pub(crate) fn quick_load(&mut self) {
+        if !self.quick_load_available() {
             return;
         }
-        self.open_load_state_dialog();
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Some(game) = self.player.active_game.clone() {
+            if let Some(save) = self.player.saves.iter().find(|save| save.quicksave) {
+                self.load_catalog_save(game, save.path.clone(), true);
+            }
+            return;
+        }
+        if let Err(error) = self.validate_current_input() {
+            self.file_error = Some(error);
+            return;
+        }
+        self.host.queue_effect(
+            HostCommand::QuickLoad {
+                ports: self.current_control_ports(),
+            },
+            HostEffect::File(crate::file_actions::FileCompletion::State(
+                "Quicksave restored".into(),
+            )),
+        );
+    }
+
+    pub(crate) fn quick_load_available(&self) -> bool {
+        if self.player.busy {
+            return false;
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Some(game) = &self.player.active_game {
+            return self.player.saves.iter().any(|save| {
+                save.quicksave
+                    && save.header.is_some()
+                    && self
+                        .player
+                        .save_catalog
+                        .deadline(game, &save.path)
+                        .is_none()
+            });
+        }
+        self.host.status.has_quicksave
+    }
+
+    pub(crate) fn editing_save_description(&self) -> bool {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.player.save_catalog.description.is_some()
+        }
+        #[cfg(target_arch = "wasm32")]
+        {
+            false
+        }
     }
 }

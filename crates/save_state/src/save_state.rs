@@ -17,6 +17,8 @@ pub struct SaveStateHeader {
     /// PNG-encoded screenshot bytes captured from Denise frame builder
     pub screenshot_png: Vec<u8>,
     pub association: SaveAssociation,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
 }
 
 /// Portable player association; media contents still belong to the machine.
@@ -75,6 +77,7 @@ impl SaveState {
                 version: SAVE_STATE_VERSION,
                 timestamp: 0,
                 association: SaveAssociation::default(),
+                description: None,
                 screenshot_png: encode_screenshot_png(
                     frame.frame_buffer(),
                     frame.width,

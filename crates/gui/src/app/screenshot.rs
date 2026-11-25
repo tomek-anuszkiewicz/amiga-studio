@@ -14,7 +14,7 @@ impl EmulatorApp {
         {
             self.screen_texture.clear_capture();
             self.player.saves.clear();
-            self.player.game_slots.fill(false);
+            self.player.save_catalog.times.changed();
             self.player.session_save_error = None;
         }
         self.player.active_game = game;

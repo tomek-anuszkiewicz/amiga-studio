@@ -26,12 +26,14 @@ impl EmulatorApp {
         self.poll_configuration_save(ctx);
         #[cfg(not(target_arch = "wasm32"))]
         if first_pass {
+            self.update_save_deletions(ctx);
             self.poll_library(ctx);
+            self.poll_save_times(ctx);
         }
 
         // Check for drag-and-dropped files onto the emulator window
         let dropped_files = ctx.input(|i| i.raw.dropped_files.clone());
-        if first_pass && !self.player.show_saves {
+        if first_pass && !self.editing_save_description() {
             for file in dropped_files {
                 self.accept_dropped_file(file);
             }
@@ -80,7 +82,7 @@ impl EmulatorApp {
             }
         }
         if first_pass {
-            // The session controls can open Saved progress in the same pass
+            // The session controls can open a save editor in the same pass
             // as keys queued by the window. Dispatch the keys after that click.
             self.handle_keyboard_input(ctx);
         }

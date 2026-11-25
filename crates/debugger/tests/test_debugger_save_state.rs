@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-//! Unit tests for DebuggerSession save state and quick-slot features
+//! Unit tests for DebuggerSession save state and quicksave features
 
 use config::{A500Config, A500Preset, VideoStandard};
 use debugger::DebuggerSession;
@@ -38,58 +38,38 @@ fn test_debugger_session_save_and_load() {
 }
 
 #[test]
-fn test_debugger_session_quick_slots() {
+fn quicksave_replaces_the_previous_state_and_restores_the_newest_capture() {
     let mut session = DebuggerSession::from_config(A500Config::from_preset(
         A500Preset::Bare512k,
         VideoStandard::Pal,
     ));
-
-    // Initially all 5 quick slots are empty
-    for i in 1..=5 {
-        assert!(!session.has_quick_slot(i));
-    }
-
-    // Step 250 CCKs and save to Slot 1
+    assert!(session.quicksave().is_none());
+    assert!(session.quick_load().is_err());
+    assert_eq!(session.machine.cck, 0);
     for _ in 0..250 {
         session.step_cck();
     }
-    session
-        .save_quick_slot(1)
-        .expect("Failed to save to quick slot 1");
-    assert!(session.has_quick_slot(1));
-    assert_eq!(session.quick_slots[0].as_deref().unwrap().cck, 250);
-
-    // Step to 750 CCKs and save to Slot 2
+    session.quick_save();
+    let first = session.save_state();
+    assert_eq!(session.quicksave(), Some(&first));
     for _ in 0..500 {
         session.step_cck();
     }
-    session
-        .save_quick_slot(2)
-        .expect("Failed to save to quick slot 2");
-    assert!(session.has_quick_slot(2));
-
-    // Restore Slot 1
-    session
-        .load_quick_slot(1)
-        .expect("Failed to load quick slot 1");
-    assert_eq!(session.machine.cck, 250);
+    session.quick_load().unwrap();
+    assert_eq!(session.save_state(), first);
     assert_eq!(session.debugger.current_cck, 250);
 
-    // Restore Slot 2
-    session
-        .load_quick_slot(2)
-        .expect("Failed to load quick slot 2");
-    assert_eq!(session.machine.cck, 750);
+    for _ in 0..500 {
+        session.step_cck();
+    }
+    session.quick_save();
+    let second = session.save_state();
+    assert_eq!(second.cck, 750);
+    assert_ne!(first, second);
+    session.step_cck();
+    session.quick_load().unwrap();
+    assert_eq!(session.save_state(), second);
     assert_eq!(session.debugger.current_cck, 750);
-
-    // Loading empty Slot 3 must fail
-    assert!(session.load_quick_slot(3).is_err());
-
-    // Invalid slots (0 or 6) must fail
-    assert!(session.save_quick_slot(0).is_err());
-    assert!(session.save_quick_slot(6).is_err());
-    assert!(session.load_quick_slot(0).is_err());
-    assert!(session.load_quick_slot(6).is_err());
 }
 
 #[test]

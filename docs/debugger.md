@@ -66,7 +66,7 @@ starts unassigned. Reset
 has no keyboard shortcut. Game View disconnects debugger panels and shortcuts,
 breakpoints, disassembly, trace collection, CPU history and memory diff capture.
 The CPU's STOP instruction still allows the chips to run and deliver interrupts.
-The emulator saves state only when you request a save from the State menu or one
+The emulator saves state only when you request a save with **Export state file** in the File menu or one
 of its shortcuts.
 
 ---

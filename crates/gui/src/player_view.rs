@@ -4,7 +4,10 @@ use crate::keyboard_input::KeyCommand;
 use crate::player::{PlayerScreen, SessionDisk};
 use crate::{EmulatorApp, ViewMode};
 
-pub const SAVED_PROGRESS_DIALOG: &str = "saved-progress";
+#[cfg(not(target_arch = "wasm32"))]
+mod save_catalog;
+
+pub(crate) const SAVE_DESCRIPTION_DIALOG: &str = "save-description";
 
 impl EmulatorApp {
     pub(crate) fn render_player_screen(&mut self, ui: &mut egui::Ui) {
@@ -197,10 +200,25 @@ impl EmulatorApp {
     pub(crate) fn render_player_controls(&mut self, ui: &mut egui::Ui) {
         let wide = ui.viewport_rect().width() >= 850.0;
         if wide {
+            #[cfg(not(target_arch = "wasm32"))]
+            let resizable = self.player.active_game.is_some();
+            #[cfg(target_arch = "wasm32")]
+            let resizable = false;
             egui::Panel::right("game_controls")
-                .exact_size(220.0)
-                .resizable(false)
+                .default_size(220.0)
+                .size_range(180.0..=340.0)
+                .resizable(resizable)
                 .show(ui, |ui| {
+                    #[cfg(not(target_arch = "wasm32"))]
+                    if resizable {
+                        let bounds = ui.available_rect_before_wrap();
+                        ui.set_min_width(bounds.width());
+                        // Keep the splitter's chosen width even when a child needs more room.
+                        let mut controls = ui.new_child(egui::UiBuilder::new().max_rect(bounds));
+                        controls.shrink_clip_rect(bounds);
+                        self.player_controls(&mut controls);
+                        return;
+                    }
                     self.player_controls(ui);
                 });
         } else {
@@ -208,26 +226,6 @@ impl EmulatorApp {
                 egui::CollapsingHeader::new("Game controls")
                     .show(ui, |ui| self.player_controls(ui));
             });
-        }
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) fn render_saved_progress(&mut self, ctx: &egui::Context) {
-        if !self.player.show_saves || self.file_error.is_some() || self.load_binary_modal_open {
-            return;
-        }
-        let close = egui::Modal::new(egui::Id::unique(SAVED_PROGRESS_DIALOG)).show(ctx, |ui| {
-            ui.heading("Saved progress");
-            egui::ScrollArea::vertical()
-                .max_height(ctx.viewport_rect().height() * 0.7)
-                .show(ui, |ui| self.render_save_catalog(ui, true));
-            ui.button("Close").clicked()
-        });
-        if close.inner {
-            self.player.show_saves = false;
-        }
-        if !self.player.show_saves {
-            ctx.request_repaint();
         }
     }
 
@@ -300,29 +298,38 @@ impl EmulatorApp {
             if library_game {
                 ui.spacing_mut().item_spacing.x = 4.0;
             }
-            let save = ui.add_enabled(!self.player.busy, egui::Button::new("Save"));
-            let description = "Capture the current machine and preview. For desktop library games, create a new save.";
-            let save = if library_game {
-                save.on_hover_text(description)
-            } else {
-                self.shortcut_tooltip(save, KeyCommand::SaveState, description)
-            };
-            if save.on_disabled_hover_text("Wait for the current operation to finish.").clicked() {
-                self.save_player(None);
+            if self
+                .shortcut_tooltip(
+                    ui.add_enabled(!self.player.busy, egui::Button::new("Quick save")),
+                    KeyCommand::QuickSave,
+                    "Capture progress as the current quicksave.",
+                )
+                .on_disabled_hover_text("Wait for the current operation to finish.")
+                .clicked()
+            {
+                self.apply_key_command(KeyCommand::QuickSave, ui.ctx());
             }
-            if self.shortcut_tooltip(
-                ui.add_enabled(!self.player.busy, egui::Button::new("Load")),
-                KeyCommand::LoadState,
-                "Choose saved progress for this game, or import a snapshot file in manual mode.",
-            ).on_disabled_hover_text("Wait for the current operation to finish.").clicked() {
-                self.load_player();
+            if self
+                .shortcut_tooltip(
+                    ui.add_enabled(self.quick_load_available(), egui::Button::new("Quick load")),
+                    KeyCommand::QuickLoad,
+                    "Restore the quicksave and resume play.",
+                )
+                .on_disabled_hover_text("A usable quicksave is required.")
+                .clicked()
+            {
+                self.apply_key_command(KeyCommand::QuickLoad, ui.ctx());
             }
-            #[cfg(not(target_arch = "wasm32"))]
-            if library_game {
+        });
+        #[cfg(not(target_arch = "wasm32"))]
+        if library_game {
+            ui.horizontal(|ui| {
                 if ui
                     .push_id("amiga-game-screenshot-button", |ui| {
                         ui.button("Screenshot")
-                            .on_hover_text("Save the displayed Amiga image to this game's Screenshots folder.")
+                            .on_hover_text(
+                                "Save the displayed Amiga image to this game's Screenshots folder.",
+                            )
                             .clicked()
                     })
                     .inner
@@ -332,21 +339,40 @@ impl EmulatorApp {
                 if ui
                     .push_id("amiga-game-cover-button", |ui| {
                         ui.button("Cover")
-                            .on_hover_text("Use the displayed Amiga image as the active game's library cover.")
+                            .on_hover_text(
+                                "Use the displayed Amiga image as the active game's library cover.",
+                            )
                             .clicked()
                     })
                     .inner
                 {
                     self.capture_library_cover();
                 }
-            }
-        });
-        #[cfg(not(target_arch = "wasm32"))]
-        if let Some(save) = self.player.saves.first() {
-            ui.label(format!(
-                "Latest save: {}",
-                crate::host_clock::format_utc(save.header.timestamp)
-            ));
+            });
+        }
+        if !library_game {
+            ui.horizontal_wrapped(|ui| {
+                if self
+                    .shortcut_tooltip(
+                        ui.add_enabled(!self.player.busy, egui::Button::new("Export state…")),
+                        KeyCommand::SaveState,
+                        "Export the current machine to a snapshot file.",
+                    )
+                    .clicked()
+                {
+                    self.apply_key_command(KeyCommand::SaveState, ui.ctx());
+                }
+                if self
+                    .shortcut_tooltip(
+                        ui.add_enabled(!self.player.busy, egui::Button::new("Import state…")),
+                        KeyCommand::LoadState,
+                        "Restore a machine from a snapshot file.",
+                    )
+                    .clicked()
+                {
+                    self.apply_key_command(KeyCommand::LoadState, ui.ctx());
+                }
+            });
         }
         ui.separator();
         #[cfg(not(target_arch = "wasm32"))]
@@ -366,6 +392,10 @@ impl EmulatorApp {
         {
             self.player.captured = false;
             self.set_view_mode(ViewMode::Developer);
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Some(game) = self.player.active_game.clone() {
+            self.render_session_saves(ui, &game);
         }
     }
 
@@ -548,63 +578,12 @@ impl EmulatorApp {
                 .clicked()
         {
             self.request_player_launch(crate::player::PendingLaunch::Library {
-                game,
+                game: game.clone(),
                 save: None,
                 normal_boot: true,
             });
         }
-        self.render_save_catalog(ui, false);
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    fn render_save_catalog(&mut self, ui: &mut egui::Ui, active: bool) {
-        let (saves, error) = if active {
-            (&self.player.saves, &self.player.session_save_error)
-        } else {
-            (
-                &self.player.selected_saves,
-                &self.player.selected_save_error,
-            )
-        };
-        if let Some(error) = error {
-            ui.colored_label(
-                ui.visuals().error_fg_color,
-                format!("Could not list saved progress: {error}"),
-            );
-        }
-        let mut load = None;
-        for save in saves {
-            ui.horizontal(|ui| {
-                preview(ui, ("save", &save.path), &save.header.screenshot_png, 110.0);
-                if ui
-                    .add_enabled(
-                        active || self.player.library_available(),
-                        egui::Button::new(format!(
-                            "Load state - {}",
-                            crate::host_clock::format_utc(save.header.timestamp)
-                        )),
-                    )
-                    .clicked()
-                {
-                    load = Some(save.path.clone());
-                }
-            });
-        }
-        if let Some(path) = load {
-            let game = if active {
-                self.player.active_game.clone()
-            } else {
-                self.player.selected_entry().cloned()
-            };
-            if let Some(game) = game {
-                self.request_player_launch(crate::player::PendingLaunch::Library {
-                    game,
-                    save: Some(path),
-                    normal_boot: false,
-                });
-                self.player.show_saves = false;
-            }
-        }
+        self.render_save_catalog(ui, &game, false);
     }
 }
 

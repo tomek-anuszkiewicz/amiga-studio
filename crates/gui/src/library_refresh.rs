@@ -1,6 +1,6 @@
 //! Native library notifications and background discovery, owned by the frontend.
 
-use crate::game_library::{self, GameLibrary, GameManifest, LibraryGame, PlayerSave};
+use crate::game_library::{self, GameLibrary, GameManifest, LibraryGame, SaveCatalog};
 use crate::library_catalog::{self, CatalogRead};
 use async_channel::{Receiver, Sender};
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
@@ -8,7 +8,6 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 pub const REFRESH_DELAY: Duration = Duration::from_millis(80);
-const SLOT_COUNT: usize = debugger::session::QUICK_SLOT_COUNT;
 const WRITE_PROBE_PREFIX: &str = ".library-write-check-";
 
 /// The watcher sends hints to one selected root. Each kind occupies one slot.
@@ -230,42 +229,12 @@ impl SaveReadTarget {
 }
 
 #[derive(Debug)]
-pub(crate) struct SessionSaves {
-    pub entries: Vec<PlayerSave>,
-    pub slots: [bool; SLOT_COUNT],
-}
-
-pub(crate) fn read_session_saves(game: &LibraryGame) -> Result<SessionSaves, String> {
-    read_active_saves(&SaveReadTarget::from(game))
-}
-
-fn read_active_saves(target: &SaveReadTarget) -> Result<SessionSaves, String> {
-    let entries = game_library::saves_in(&target.directory, &target.manifest)?;
-    let slots = std::array::from_fn(|index| {
-        std::fs::read_to_string(
-            target
-                .directory
-                .join(format!("saves/slot-{}.txt", index + 1)),
-        )
-        .ok()
-        .is_some_and(|name| {
-            entries.iter().any(|save| {
-                save.path
-                    .file_name()
-                    .is_some_and(|file| file == name.trim())
-            })
-        })
-    });
-    Ok(SessionSaves { entries, slots })
-}
-
-#[derive(Debug)]
 struct Discovery {
     library: GameLibrary,
     catalog: CatalogRead,
     canonical_root: Option<PathBuf>,
-    selected: Option<(String, Result<Vec<PlayerSave>, String>)>,
-    active: Option<(SaveReadTarget, Result<SessionSaves, String>)>,
+    selected: Option<(String, Result<SaveCatalog, String>)>,
+    active: Option<(SaveReadTarget, Result<SaveCatalog, String>)>,
 }
 
 impl Discovery {
@@ -283,7 +252,7 @@ impl Discovery {
                 .map(|game| (id, game_library::saves(game)))
         });
         let active = active.map(|game| {
-            let saves = read_active_saves(&game);
+            let saves = game_library::saves_in(&game.directory, &game.manifest);
             (game, saves)
         });
         Ok(Self {
@@ -358,7 +327,11 @@ impl NativeLibrary {
     }
 
     pub(crate) fn owns_game(&self, game: &LibraryGame) -> bool {
-        game.directory
+        self.owns_game_directory(&game.directory)
+    }
+
+    pub(crate) fn owns_game_directory(&self, directory: &Path) -> bool {
+        directory
             .parent()
             .and_then(|parent| std::path::absolute(parent).ok())
             .is_some_and(|parent| {
@@ -461,7 +434,7 @@ impl crate::player::PlayerState {
     pub(crate) fn clear_library_listing(&mut self) {
         self.library = GameLibrary::default();
         self.selected_game = None;
-        self.set_selected_saves(Ok(Vec::new()));
+        self.set_selected_saves(Ok(SaveCatalog::default()));
         self.library_editor = None;
         self.missing_configuration = None;
     }
@@ -474,14 +447,12 @@ impl crate::player::PlayerState {
             .find(|game| &game.manifest.id == id)
     }
 
-    pub(crate) fn set_selected_saves(
-        &mut self,
-        result: Result<Vec<crate::game_library::PlayerSave>, String>,
-    ) {
+    pub(crate) fn set_selected_saves(&mut self, result: Result<SaveCatalog, String>) {
+        self.save_catalog.times.changed();
         match result {
             Ok(saves) => {
-                self.selected_saves = saves;
-                self.selected_save_error = None;
+                self.selected_saves = saves.entries;
+                self.selected_save_error = saves.warning;
             }
             Err(error) => {
                 self.selected_saves.clear();
@@ -490,15 +461,12 @@ impl crate::player::PlayerState {
         }
     }
 
-    pub(crate) fn set_session_saves(
-        &mut self,
-        result: Result<crate::library_refresh::SessionSaves, String>,
-    ) {
+    pub(crate) fn set_session_saves(&mut self, result: Result<SaveCatalog, String>) {
+        self.save_catalog.times.changed();
         match result {
             Ok(saves) => {
                 self.saves = saves.entries;
-                self.game_slots = saves.slots;
-                self.session_save_error = None;
+                self.session_save_error = saves.warning;
             }
             Err(error) => {
                 self.saves.clear();
@@ -510,7 +478,7 @@ impl crate::player::PlayerState {
     pub(crate) fn refresh_selected_saves(&mut self) {
         let saves = self
             .selected_entry()
-            .map_or_else(|| Ok(Vec::new()), crate::game_library::saves);
+            .map_or_else(|| Ok(SaveCatalog::default()), game_library::saves);
         self.set_selected_saves(saves);
     }
 }
@@ -518,7 +486,7 @@ impl crate::player::PlayerState {
 impl crate::EmulatorApp {
     pub(crate) fn refresh_player_saves(&mut self) {
         if let Some(game) = &self.player.active_game {
-            let saves = crate::library_refresh::read_session_saves(game);
+            let saves = game_library::saves(game);
             self.player.set_session_saves(saves);
         }
     }

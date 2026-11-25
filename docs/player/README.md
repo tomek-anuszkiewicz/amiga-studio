@@ -16,8 +16,9 @@ your changes or **Cancel** to discard the draft.
   To use V as usual again, remove the override and save. A key already used
   for a joystick or emulator shortcut must be freed before you can assign it.
 - **Emulator shortcuts** control the app. Pause / Resume starts at F5, Quick
-  save at F6, and Quick load at F9. Quick actions use slot 1. Hover a
-  session control to see its current keyboard equivalent. F12 switches
+  save at F6, and Quick load at F9. The Quick save and Quick load buttons use
+  those same actions. Hover a session control to see its current keyboard
+  equivalent. F12 switches
   between Game and Developer Studio.
 - **Controller shortcuts** give a connected controller access to emulator
   actions. The app keeps assignments when no controller is detected.

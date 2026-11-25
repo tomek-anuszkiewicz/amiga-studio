@@ -140,23 +140,30 @@ precedence. A missing or unreadable cover shows a blank outlined square above
 the game's selectable name. You can still start the game. The library picks up
 cover changes automatically.
 
-Save creates a new file in the game's `saves/` directory with a preview and a UTC
-creation time. **Load state** restores the saved hardware, ROM and current media
-directly and resumes the session. It bypasses boot and the current hardware
-preset. Host input still needs a compatible configuration. Slot saves also
-persist per game.
+**Quick save** creates a file in the game's `saves/` directory. The new
+quicksave appears at the top of the saved progress list. Earlier quicksaves
+stay in the list as ordinary saves. Each save shows its original local date
+and time and a preview when available. Use **Edit description** to change its
+label while keeping the same file and creation time.
+
+**Quick load** restores the designated quicksave. To open any compatible save,
+choose **Load state** on its row. The saved hardware, ROM and media resume
+directly with the current committed controls. An incompatible or damaged save
+shows its filename and the reason it cannot load. Use **Delete save** to remove
+a save. **Undo** keeps it if chosen within ten seconds. Closing the app during
+that window also keeps it. File import and export remain available in **File**.
 
 When an Amiga program writes to disk A, you can switch to disk B and reinsert
 A later in the same session. A still contains the program's changes, and the
 original ADF file stays unchanged. A save file carries the disks inserted when
 you save. If you want to open a changed disk in a later session, insert it
-before saving. A quick load during the session restores the slot's mounted
+before saving. A quick load during the session restores the quicksave's mounted
 disks and keeps the other disks you have used in that session. On game Reset,
 the app uses matching copies from the session when available. If no matching
 copy is available for a startup disk, it prepares one from the source ADF
 bytes already loaded for the session.
 
-To prepare an initial state, start its game and save progress. Copy that save
+To prepare an initial state, start its game and use **Quick save**. Copy that save
 outside `saves/` and set `initial_state` to the relative filename. Ordinary saves
 leave the initial state intact.
 
@@ -167,8 +174,8 @@ archives. When a selection contains several usable images, choose the one to
 insert. Standard ZIP compression and 7z LZMA or LZMA2 are supported. Choose an
 unencrypted archive.
 
-The browser build supports manual setup, file save/import/export and session
-quick slots. Browser storage retains named settings. Select ROM and disk
+The browser build supports manual setup, explicit file import and export, and
+one in-memory quicksave per open app. Browser storage retains named settings. Select ROM and disk
 files again after reopening because the browser build keeps their bytes only for
 the session. This iteration has no browser library, bundle loader or persistent
 browser save catalog.

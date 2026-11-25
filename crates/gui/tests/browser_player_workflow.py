@@ -25,9 +25,11 @@ CONTROL_POINTS = {
     "Select Kickstart": (65, 108),
     "Select disk": (204, 131),
     "Start": (30, 223),
-    "Game Save": (1090, 264),
-    "Game Load": (1142, 264),
-    "Game Setup": (1094, 296),
+    "Quick save": (1100, 264),
+    "Quick load": (1185, 264),
+    "Export state": (1103, 286),
+    "Import state": (1119, 310),
+    "Game Setup": (1094, 342),
     "Configurations": (161, 12),
     "Configuration Name": (148, 149),
     "Configuration Cancel": (86, 788),
@@ -87,13 +89,13 @@ def check_workflow(browser, url, rom, disk, output):
 
     def export_state(path):
         with page.expect_download(timeout=30000) as download:
-            click("Game Save")
+            click("Export state")
         download.value.save_as(path)
         return json.loads(path.read_text(encoding="utf-8"))
 
     def import_state(path, generation):
         with page.expect_file_chooser() as chooser:
-            click("Game Load")
+            click("Import state")
         chooser.value.set_files(path)
         page.wait_for_function(
             "generation => globalThis.observedGeneration === generation",
@@ -267,6 +269,34 @@ def check_workflow(browser, url, rom, disk, output):
         page.wait_for_timeout(500)
         assert page.evaluate("workerReport.outputs") == stopped, "F7 did not pause"
 
+        stage = "quick actions share the browser session save and retain disk contents"
+        marker = first_raw_block(advanced)["Encoded"]
+        assert marker == [0xCA, 0xFE, 0xBA, 0xBE] * 4
+        click("Quick save")
+        select_disk("DF0 first disk", "replacement before quick load")
+        updates = page.evaluate("workerReport.outputs")
+        page.keyboard.press("F9")
+        page.wait_for_function("globalThis.observedGeneration === 8", timeout=30000)
+        page.wait_for_function("updates => workerReport.outputs > updates + 3", arg=updates)
+        page.keyboard.press("F7")
+        page.wait_for_timeout(300)
+        restored_quick = export_state(output / "quick-button-save.json")
+        assert restored_quick["header"]["association"]["mounted"][0] == "embedded-disk"
+        assert first_raw_block(restored_quick)["Encoded"] == marker
+        assert restored_quick["state"]["cck"] > advanced["state"]["cck"]
+
+        page.keyboard.press("F6")
+        select_disk("DF0 first disk", "replacement before quick load button")
+        updates = page.evaluate("workerReport.outputs")
+        click("Quick load")
+        page.wait_for_function("globalThis.observedGeneration === 9", timeout=30000)
+        page.wait_for_function("updates => workerReport.outputs > updates + 3", arg=updates)
+        page.keyboard.press("F7")
+        page.wait_for_timeout(300)
+        restored_quick = export_state(output / "quick-shortcut-save.json")
+        assert restored_quick["header"]["association"]["mounted"][0] == "embedded-disk"
+        assert first_raw_block(restored_quick)["Encoded"] == marker
+
         stage = "configuration persistence"
         assert rom.name in stored, "Selected configuration was not persisted before reopening"
         page.reload()
@@ -281,6 +311,7 @@ def check_workflow(browser, url, rom, disk, output):
                 "schema": saved["header"]["version"], "current_ports": current["state"]["game_ports"]["state"]["port2"],
                 "configuration_cancel": True, "stopped_configuration_save": True,
                 "recorded_keyboard_shortcut": True,
+                "shared_quicksave_buttons_and_shortcuts": True,
                 "disk_swap_retained_raw_tracks": True, "embedded_disk_reinserted": True,
                 "native_screenshot_action_excluded": True,
                 "native_cover_action_excluded": True, "errors": errors}
@@ -357,7 +388,7 @@ def check_archive_imports(browser, url, rom, output):
             click("Start")
             page.wait_for_function("updates => archiveWorker.outputs > updates + 3", arg=updates, timeout=30000)
             with page.expect_download(timeout=30000) as download:
-                click("Game Save")
+                click("Export state")
             path = output / (filename + ".json")
             download.value.save_as(path)
             snapshot = json.loads(path.read_text(encoding="utf-8"))

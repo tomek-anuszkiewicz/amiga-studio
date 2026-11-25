@@ -160,10 +160,9 @@ fn changing_library_cancels_dirty_selection_and_keeps_original_machine_and_mappi
     common::wait_harness(&mut h, |app| app.player.active_game.is_some());
     common::command(h.state_mut(), HostCommand::Pause);
     let snapshot = common::snapshot(h.state_mut());
-    let save = gui::game_library::persist_save(
+    let save = gui::game_library::persist_quicksave(
         &GameLibrary::discover(first.path()).unwrap().games[0],
         &common::snapshot_json(h.state_mut()),
-        Some(1),
     )
     .unwrap();
     let saved_bytes = fs::read(&save).unwrap();

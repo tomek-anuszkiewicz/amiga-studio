@@ -46,8 +46,7 @@ The loader checks that the file uses schema version 15 before restoring it.
 The envelope contains `header` and a boxed `state` value, which keeps large
 serialized payloads off the call stack. The JSON holds an ordinary state
 object. Earlier layouts have no compatibility parser. Frontends and the
-debugger use the save_state crate for persistence. In-memory quick slots
-keep only the machine value. The schema changes and user-data preservation
+debugger use the save_state crate for persistence. The in-memory quicksave keeps the machine value without a file envelope. The schema changes and user-data preservation
 rules are defined in the [internal migration contract](../../../../.agents/references/internal-migrations.md).
 
 The state uses access timestamps in place of CPU admission countdowns
@@ -120,20 +119,28 @@ controls. [RTC](../RTC.md)
 
 ## Player progress
 
-Save files carry the actual host creation time and a PNG preview, with optional
-game ID and four stable mounted-disk IDs. ROM and media bytes stay embedded in
-the machine. Host handles and library paths stay outside machine state.
-Desktop games have durable save catalogs and per-game quick slots. Manual
-browser mode retains file import/export and session slots.
+Save files carry the host creation time in UTC, a full-resolution PNG preview,
+an optional description, and the game and mounted-disk IDs when available.
+Editing a description preserves the creation time, preview, association and
+machine snapshot. ROM and media bytes stay embedded in the machine. Host
+handles and library paths stay outside machine state.
+
+A desktop library game designates one save as its quicksave. Each Quick save
+writes a new file before replacing the designation. The previous file
+remains ordinary progress. When the game first opens with legacy data, the
+app can designate the existing save that legacy slot 1 references. A recorded
+empty designation prevents legacy data from restoring a cleared designation.
+Manual sessions retain one in-memory quicksave and explicit file import and
+export on desktop and in the browser.
 
 A save file contains the disks mounted when the player saves. Opening it as a
-new session starts with those disks and any available source ADFs. During a
-session, a quick load restores the mounted disks from its slot. The player
-keeps disks absent from the slot, including disks displaced from a drive by
-the load. When an existing copy uniquely matches a restored copy, the slot's
-contents take precedence. The drive assignment identifies independent copies
-with the same disk ID when placement resolves the match. Loading a slot from an
-earlier manual session starts with that slot's mounted disks.
+new session starts with those disks and any available source ADFs. A quick
+load in the same game session restores the saved mounted disks and keeps
+other disks, including disks displaced by the load. When an existing copy
+uniquely matches a restored copy, the saved contents take precedence. The
+drive assignment identifies independent copies with the same disk ID when
+placement resolves the match. A quicksave from an earlier manual session
+opens with its own mounted disks.
 
 Initial states are immutable launch assets stored separately from user saves.
 If an initial state is invalid, the frontend offers normal boot as an explicit
@@ -149,7 +156,7 @@ discriminator identifies the device in the emulated state. The frontend uses
 the current host bindings and allows a different current attachment. Unchanged
 endpoints retain their emulated phase, and changed endpoints start neutral.
 The receivers retain their chip state and sampling phases. Initial states,
-library saves, imported files and quick slots share this policy.
+library saves, imported files and quicksaves share this policy.
 
 ## 3. Differential Save States (`A500DiffState`)
 

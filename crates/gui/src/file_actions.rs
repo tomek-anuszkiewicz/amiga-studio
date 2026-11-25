@@ -110,7 +110,7 @@ pub(crate) enum FileCompletion {
     Save(std::path::PathBuf),
     #[cfg(target_arch = "wasm32")]
     Download,
-    QuickSave(usize),
+    QuickSave,
 }
 
 #[derive(Debug)]
@@ -229,11 +229,6 @@ impl EmulatorApp {
     }
 
     pub(crate) fn open_load_state_dialog(&mut self) {
-        #[cfg(not(target_arch = "wasm32"))]
-        if self.player.active_game.is_some() {
-            self.load_player();
-            return;
-        }
         self.open_file_dialog(FileAction::State);
     }
 
@@ -384,11 +379,8 @@ impl EmulatorApp {
                 }
                 self.state_loaded(message);
             }
-            FileCompletion::QuickSave(slot) => {
-                self.toast_message = Some((
-                    format!("Quick-saved to Slot #{slot}"),
-                    TOAST_DURATION_FRAMES,
-                ));
+            FileCompletion::QuickSave => {
+                self.toast_message = Some(("Progress saved".into(), TOAST_DURATION_FRAMES));
             }
             #[cfg(not(target_arch = "wasm32"))]
             FileCompletion::Save(path) => {

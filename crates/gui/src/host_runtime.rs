@@ -271,7 +271,7 @@ impl HostRuntime {
                 | HostCommand::RestorePlayer { .. }
                 | HostCommand::LoadPlayerQuick { .. }
                 | HostCommand::ReconfigurePorts(_)
-                | HostCommand::LoadQuickSlot { .. }
+                | HostCommand::QuickLoad { .. }
                 | HostCommand::LoadRom(_)
                 | HostCommand::LoadBinary { .. }
         );

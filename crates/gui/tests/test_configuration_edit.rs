@@ -613,7 +613,7 @@ fn switching_profiles_in_dropdown_preserves_both_drafts_until_save_or_cancel() {
 fn quick_load_rejects_unavailable_current_controller_without_mutation() {
     let mut h = editor();
     h.state_mut().cancel_configuration_edit();
-    common::command(h.state_mut(), HostCommand::SaveQuickSlot(1));
+    common::command(h.state_mut(), HostCommand::QuickSave);
     common::command(
         h.state_mut(),
         HostCommand::SetRegister {
@@ -646,7 +646,7 @@ fn quick_load_rejects_unavailable_current_controller_without_mutation() {
         .contains("unavailable"));
     assert_eq!(h.state().host.status.generation, generation);
     assert_eq!(common::snapshot(h.state_mut()), machine);
-    assert!(h.state().host.status.quick_slots[0]);
+    assert!(h.state().host.status.has_quicksave);
 }
 
 #[test]

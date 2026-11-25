@@ -14,7 +14,6 @@ use crate::temporal::{TemporalHistory, DEFAULT_TEMPORAL_CAPACITY, PAL_FRAME_CCK}
 use cpu::CpuState;
 
 pub const MEMORY_DIFF_BYTES: usize = 256;
-pub const QUICK_SLOT_COUNT: usize = 5;
 /// Bounded host work, slightly longer than a normal PAL field.
 pub const MAX_FRAME_SLICE_CCK: usize = 72_000;
 
@@ -46,7 +45,7 @@ pub struct DebuggerSession {
     pub prev_hex_base: u32,
 
     /// Quick Save Slots (slots 1..=5)
-    pub quick_slots: [Option<Box<A500State>>; QUICK_SLOT_COUNT],
+    quicksave: Option<Box<A500State>>,
     /// Live CPU state preserved while scrubbing historical frames
     pub live_cpu_state: Option<CpuState>,
 }
@@ -82,7 +81,7 @@ impl DebuggerSession {
             prev_cpu_state: None,
             prev_hex_bytes: [0; MEMORY_DIFF_BYTES],
             prev_hex_base: 0,
-            quick_slots: [None, None, None, None, None],
+            quicksave: None,
             live_cpu_state: None,
         }
     }
@@ -522,39 +521,24 @@ impl DebuggerSession {
         Ok(())
     }
 
-    /// Saves machine snapshot to an in-memory quick slot (1..=5)
-    pub fn save_quick_slot(&mut self, slot: usize) -> Result<(), SaveStateError> {
-        if slot == 0 || slot > QUICK_SLOT_COUNT {
-            return Err(SaveStateError::CorruptedData(format!(
-                "Invalid quick slot index: {slot} (must be 1..=5)"
-            )));
-        }
-        self.quick_slots[slot - 1] = Some(Box::new(self.save_state()));
-        Ok(())
+    /// Replace the single in-memory quicksave with the current machine state.
+    pub fn quick_save(&mut self) {
+        self.quicksave = Some(Box::new(self.save_state()));
     }
 
-    /// Loads machine snapshot from an in-memory quick slot (1..=5)
-    pub fn load_quick_slot(&mut self, slot: usize) -> Result<(), SaveStateError> {
-        if slot == 0 || slot > QUICK_SLOT_COUNT {
-            return Err(SaveStateError::CorruptedData(format!(
-                "Invalid quick slot index: {slot} (must be 1..=5)"
-            )));
-        }
-        let state = (*self.quick_slots[slot - 1]
+    /// Inspect the stored state without changing the running machine.
+    pub fn quicksave(&self) -> Option<&A500State> {
+        self.quicksave.as_deref()
+    }
+
+    /// Restore the in-memory quicksave. The caller controls whether to resume.
+    pub fn quick_load(&mut self) -> Result<(), SaveStateError> {
+        let state = self
+            .quicksave
             .as_ref()
-            .ok_or_else(|| SaveStateError::CorruptedData(format!("Quick slot {slot} is empty")))?)
-        .clone();
+            .ok_or_else(|| SaveStateError::CorruptedData("No quicksave is available".into()))?
+            .clone();
         self.load_state(&state);
         Ok(())
-    }
-
-    /// Returns true if the specified quick slot (1..=5) is populated
-    #[inline]
-    pub fn has_quick_slot(&self, slot: usize) -> bool {
-        if slot == 0 || slot > QUICK_SLOT_COUNT {
-            false
-        } else {
-            self.quick_slots[slot - 1].is_some()
-        }
     }
 }

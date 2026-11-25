@@ -38,6 +38,8 @@ impl EmulatorApp {
         normal_boot: bool,
         quick_load: bool,
     ) {
+        let explicit_save = save.is_some();
+        let initial_state = !explicit_save && !normal_boot && game.manifest.initial_state.is_some();
         if self.prompt_for_missing_configuration(&game, save.as_deref(), normal_boot) {
             return;
         }
@@ -101,10 +103,8 @@ impl EmulatorApp {
             };
 
             let command = if let Some(path) = state_path {
-                let json = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
-                let saved = debugger::SaveState::from_json(&json).map_err(|e| e.to_string())?;
-                game.manifest
-                    .validate_association(&saved.header.association)?;
+                let (bytes, _) = crate::game_library::read_associated_save(&path, &game.manifest)?;
+                let json = String::from_utf8(bytes).map_err(|error| error.to_string())?;
                 let ports = configuration.controls.ports.each_ref().map(|p| p.device);
                 if quick_load {
                     HostCommand::LoadPlayerQuick {
@@ -183,14 +183,19 @@ impl EmulatorApp {
                         mappings,
                         disks,
                         association,
+                        initial_state,
                         game: Some(game),
                         library_root,
                     }),
                 );
             }
             Err(error) => {
-                self.file_error = Some(error);
-                self.player.initial_error = true;
+                self.file_error = Some(if explicit_save {
+                    format!("Could not load save: {error}")
+                } else {
+                    error
+                });
+                self.player.initial_error = initial_state;
             }
         }
     }

@@ -388,7 +388,7 @@ impl crate::EmulatorApp {
             self.handle_gamepad_actions(ctx);
         }
         #[cfg(not(target_arch = "wasm32"))]
-        self.render_saved_progress(ctx);
+        self.render_save_description(ctx);
         crate::layout::file_dialogs::render(self, ctx);
         #[cfg(not(target_arch = "wasm32"))]
         crate::window_keyboard::with_artwork_paste(ctx, |paste| {

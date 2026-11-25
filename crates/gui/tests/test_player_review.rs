@@ -291,13 +291,14 @@ fn gamepad_save_preserves_capture_generation_and_held_contacts() {
     assert!(app.player.captured);
     assert!(app.host.status.running);
     assert_eq!(app.host.status.generation, generation);
+    assert!(app.player.saves[0].quicksave);
     let save_path = &app.player.saves[0].path;
-    let slot_name = std::fs::read_to_string(save_path.with_file_name("slot-1.txt"))
-        .expect("Controller Quick save did not publish slot 1");
+    let selected = std::fs::read_to_string(save_path.with_file_name("quicksave.txt"))
+        .expect("Controller Quick save did not publish a designation");
     assert_eq!(
-        slot_name.trim(),
+        selected.trim(),
         save_path.file_name().unwrap().to_str().unwrap(),
-        "Quick slot 1 must point to the new save"
+        "The quicksave must point to the new save"
     );
     let json = std::fs::read_to_string(save_path).unwrap();
     let saved = debugger::SaveState::from_json(&json).unwrap();
@@ -359,22 +360,8 @@ fn library_start_requires_confirmation_and_cancel_preserves_the_current_session(
     common::settle_harness(&mut h);
     assert!(h.state().host.status.generation > generation);
 }
-fn open_slot_menu(h: &mut Harness<'_, EmulatorApp>) {
-    h.get_by_label("State").click();
-    common::settle_harness(h);
-    h.get_by_label_contains("Slots 2–5").hover();
-    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
-    while h.query_by_label("Save #4").is_none() {
-        h.step();
-        assert!(
-            std::time::Instant::now() < deadline,
-            "Slots submenu did not open"
-        );
-    }
-}
-
 #[test]
-fn durable_slot_four_is_loadable_from_the_menu_after_reopening() {
+fn durable_quicksave_loads_with_the_button_after_reopening() {
     let root = root();
     let mut app = started(&root);
     common::command(
@@ -386,20 +373,21 @@ fn durable_slot_four_is_loadable_from_the_menu_after_reopening() {
         },
     );
     let mut h = harness(app);
-    open_slot_menu(&mut h);
-    h.get_by_label("Save #4").click_accesskit();
+    h.get_by_label("Quick save").click_accesskit();
     common::wait_harness(&mut h, |app| {
         !app.player.busy && !app.player.saves.is_empty()
     });
     drop(h);
     let app = started(&root);
-    assert!(!app.host.status.quick_slots[3]);
+    assert!(!app.host.status.has_quicksave);
     let mut h = harness(app);
-    open_slot_menu(&mut h);
-    h.get_by_label("Load #4").click_accesskit();
     common::settle_harness(&mut h);
-    h.get_by_label("Replace session").click_accesskit();
-    common::settle_harness(&mut h);
+    let generation = h.state().host.status.generation;
+    h.get_by_label("Quick load").click_accesskit();
+    common::wait_harness(&mut h, |app| {
+        app.host.status.running && app.host.status.generation > generation
+    });
+    assert!(h.query_by_label("Replace session").is_none());
     common::command(h.state_mut(), HostCommand::Pause);
     common::wait_harness(&mut h, |app| !app.host.status.running);
     assert_eq!(
@@ -452,7 +440,7 @@ fn focused_host_text_prevents_frontend_shortcuts() {
         common::settle(&mut app, &ctx);
         assert!(!app.host.status.running, "{key:?} escaped host text focus");
         assert_eq!(app.view_mode, ViewMode::Developer);
-        assert!(!app.host.status.quick_slots[0]);
+        assert!(!app.host.status.has_quicksave);
         assert!(app.file_error.is_none());
     }
 }

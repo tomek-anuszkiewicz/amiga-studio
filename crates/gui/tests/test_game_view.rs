@@ -44,7 +44,7 @@ fn game_execution_does_not_collect_debugger_data() {
     assert!(data.temporal.is_empty());
     assert!(data.previous_cpu.is_none());
     assert_eq!(data.instructions_executed, 0);
-    assert!(owner.status().quick_slots.iter().all(|occupied| !occupied));
+    assert!(!owner.status().has_quicksave);
 }
 
 #[test]
@@ -65,7 +65,6 @@ fn game_toolbar_supports_files_manual_states_speed_fps_and_return_to_debug() {
     common::settle_harness(&mut harness);
     for label in [
         "File",
-        "State",
         "▶ Run",
         "Slower",
         "Faster",
@@ -87,6 +86,8 @@ fn game_toolbar_supports_files_manual_states_speed_fps_and_return_to_debug() {
     common::settle_harness(&mut harness);
     harness.get_by_label("Load ROM from File...");
     harness.get_by_label("📁 Load Binary...");
+    harness.get_by_label("Export state file…");
+    harness.get_by_label("Import state file…");
     harness.get_by_label("File").click_accesskit();
     common::settle_harness(&mut harness);
     harness.get_by_label("FPS").click_accesskit();
@@ -99,15 +100,10 @@ fn game_toolbar_supports_files_manual_states_speed_fps_and_return_to_debug() {
     harness.get_by_label("Slower").click_accesskit();
     common::settle_harness(&mut harness);
     assert_eq!(harness.state().host.status.speed, 1.0);
-    harness.get_by_label("State").click_accesskit();
+    assert!(harness.query_by_label("State").is_none());
+    harness.get_by_label("Quick save").click_accesskit();
     common::settle_harness(&mut harness);
-    harness.get_by_label("💾 Save State to File...");
-    harness.get_by_label("📂 Load State from File...");
-    harness
-        .get_by_label("⚡ Quick Save Slot 1")
-        .click_accesskit();
-    common::settle_harness(&mut harness);
-    assert!(harness.state().host.status.quick_slots[0]);
+    assert!(harness.state().host.status.has_quicksave);
     common::command(
         harness.state_mut(),
         HostCommand::SetRegister {
@@ -115,10 +111,10 @@ fn game_toolbar_supports_files_manual_states_speed_fps_and_return_to_debug() {
             value: 123,
         },
     );
-    harness.get_by_label("State").click_accesskit();
-    common::settle_harness(&mut harness);
-    harness.get_by_label("Quick Load Slot 1").click_accesskit();
-    common::settle_harness(&mut harness);
+    harness.get_by_label("Quick load").click_accesskit();
+    common::wait_harness(&mut harness, |app| app.host.status.running);
+    harness.get_by_label("Pause").click_accesskit();
+    common::wait_harness(&mut harness, |app| !app.host.status.running);
     assert_eq!(common::inspect(harness.state_mut()).cpu.d_long(0), 0);
     assert_eq!(
         harness.state().loaded_rom_name.as_deref(),
