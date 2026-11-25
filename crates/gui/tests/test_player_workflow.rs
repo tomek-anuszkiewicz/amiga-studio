@@ -886,6 +886,25 @@ fn initial_state_and_normal_boot_use_their_own_disk_layouts() {
 #[test]
 fn player_reset_runs_after_running_paused_and_loaded_sessions() {
     use egui_kittest::kittest::Queryable;
+    use gui::host_commands::{HostObservation, HostValue};
+
+    // Slow RAM remains visible when Reset enables the Kickstart overlay.
+    const SLOW_RAM_ADDRESS: u32 = 0xc0_0000;
+    const RAM_SENTINEL: u16 = 0xa55a;
+
+    let read_slow_ram = |app: &mut EmulatorApp| {
+        let reply = common::idle_command(
+            app,
+            HostCommand::Observe(HostObservation::Execution {
+                data_register: 0,
+                word_address: Some(SLOW_RAM_ADDRESS),
+            }),
+        );
+        let Ok(HostValue::Execution { memory_word, .. }) = reply.value else {
+            panic!("Missing Slow RAM observation: {:?}", reply.value);
+        };
+        memory_word
+    };
 
     let (root, library) = library();
     let game = &library.games[0];
@@ -912,6 +931,7 @@ fn player_reset_runs_after_running_paused_and_loaded_sessions() {
     };
     for library_game in [true, false] {
         let mut app = game_app(&root);
+        app.player.catalog.configurations[0].launch.preset = config::A500Preset::Standard1Mb;
         if library_game {
             app.start_library_game(game.clone(), None, true);
         } else {
@@ -975,9 +995,33 @@ fn player_reset_runs_after_running_paused_and_loaded_sessions() {
             if !library_game {
                 assert_manual_media(&mut h);
             }
+            if paused {
+                common::idle_command(
+                    h.state_mut(),
+                    HostCommand::WriteMemory {
+                        address: SLOW_RAM_ADDRESS,
+                        bytes: RAM_SENTINEL.to_be_bytes().to_vec(),
+                        restart_instruction: false,
+                    },
+                )
+                .value
+                .unwrap();
+                assert_eq!(
+                    read_slow_ram(h.state_mut()),
+                    Some(RAM_SENTINEL),
+                    "Slow RAM must contain the test word before Player Reset"
+                );
+            }
             h.get_by_label("Reset").click_accesskit();
             common::wait_harness(&mut h, |app| app.host.status.generation > before.generation);
             let reset = h.state().host.status;
+            if paused {
+                assert_eq!(
+                    read_slow_ram(h.state_mut()),
+                    Some(0),
+                    "Player Reset must clear Slow RAM (library game {library_game}, loaded {loaded})"
+                );
+            }
             if reset.running {
                 common::wait_harness(&mut h, |app| {
                     app.host.status.generation == reset.generation
