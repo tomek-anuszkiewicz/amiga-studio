@@ -151,7 +151,6 @@ fn standard_commands_accept_both_modifier_sides_and_keypad_aliases_without_captu
     policy.running = false;
     for modifier in ["ControlLeft", "ControlRight", "MetaLeft", "MetaRight"] {
         for (physical, action) in [
-            ("KeyO", KeyCommand::LoadBinary),
             ("KeyS", KeyCommand::SaveState),
             ("KeyL", KeyCommand::LoadState),
             ("Equal", KeyCommand::ZoomIn),
@@ -178,6 +177,24 @@ fn standard_commands_accept_both_modifier_sides_and_keypad_aliases_without_captu
                     pressed: false
                 }
             );
+        }
+    }
+}
+
+#[test]
+fn opening_shortcut_no_longer_routes_a_command() {
+    let mut policy = policy();
+    for running in [false, true] {
+        policy.running = running;
+        for modifier in ["ControlLeft", "ControlRight", "MetaLeft", "MetaRight"] {
+            let mut router = KeyboardRouter::default();
+            router.route(&key(modifier, true), &policy);
+            for pressed in [true, false] {
+                assert!(!matches!(
+                    router.route(&key("KeyO", pressed), &policy),
+                    KeyRoute::Command { .. }
+                ));
+            }
         }
     }
 }

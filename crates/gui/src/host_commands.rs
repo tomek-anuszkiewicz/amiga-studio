@@ -60,11 +60,6 @@ pub enum HostCommand {
         register: EditRegister,
         value: u32,
     },
-    LoadBinary {
-        address: u32,
-        bytes: Vec<u8>,
-        prime: bool,
-    },
     Launch {
         setup: debugger::launch::MachineSetup,
         association: debugger::SaveAssociation,

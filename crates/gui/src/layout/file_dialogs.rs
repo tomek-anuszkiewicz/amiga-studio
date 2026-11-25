@@ -1,62 +1,27 @@
-//! Binary loading and persistent file-error feedback.
+//! Recent ROM selection and persistent file-error feedback.
 
 use crate::EmulatorApp;
 
 #[cfg(target_arch = "wasm32")]
 pub(super) fn render_recent_files(app: &mut EmulatorApp, ui: &mut egui::Ui) {
-    for (binary, title, empty) in [
-        (true, "Recent binaries", "No recent binaries"),
-        (false, "Recent ROMs", "No recent ROMs"),
-    ] {
-        ui.separator();
-        ui.label(title);
-        let names = app.browser_history.names(binary);
-        if names.is_empty() {
-            ui.add_enabled(false, egui::Button::new(empty));
-        }
-        for (index, name) in names.iter().enumerate() {
-            if ui.push_id((binary, index), |ui| {
-                ui.button(name).on_hover_text("Choose a file from this file's folder. Browsers without folder support use their default location.").clicked()
-            }).inner {
-                app.open_recent_browser_file(binary, index);
-                ui.close_kind(egui::UiKind::Menu);
-            }
+    ui.separator();
+    ui.label("Recent ROMs");
+    let names = app.browser_history.names();
+    if names.is_empty() {
+        ui.add_enabled(false, egui::Button::new("No recent ROMs"));
+    }
+    for (index, name) in names.iter().enumerate() {
+        if ui.push_id(("rom", index), |ui| {
+            ui.button(name).on_hover_text("Choose a file from this file's folder. Browsers without folder support use their default location.").clicked()
+        }).inner {
+            app.open_recent_browser_file(index);
+            ui.close_kind(egui::UiKind::Menu);
         }
     }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 pub(super) fn render_recent_files(app: &mut EmulatorApp, ui: &mut egui::Ui) {
-    ui.separator();
-    ui.label("Recent binaries");
-    let mut selected_binary = None;
-    for (index, entry) in app.file_history.binaries.iter().enumerate() {
-        let name = entry.path.file_name().unwrap_or_default().to_string_lossy();
-        if ui
-            .push_id(("binary", index), |ui| {
-                ui.button(name.as_ref())
-                    .on_hover_ui(|ui| {
-                        ui.label(entry.path.display().to_string());
-                        ui.label(format!(
-                            "Reload at ${:06X}; set PC: {}.",
-                            entry.target, entry.auto_prime
-                        ));
-                    })
-                    .clicked()
-            })
-            .inner
-        {
-            selected_binary = Some(entry.clone());
-        }
-    }
-    if app.file_history.binaries.is_empty() {
-        ui.add_enabled(false, egui::Button::new("No recent binaries"));
-    }
-    if let Some(entry) = selected_binary {
-        app.load_binary_file(&entry.path, entry.target, entry.auto_prime);
-        ui.close_kind(egui::UiKind::Menu);
-    }
-
     ui.separator();
     ui.label("Recent ROMs");
     let mut selected_rom = None;
@@ -85,18 +50,13 @@ pub(super) fn render_recent_files(app: &mut EmulatorApp, ui: &mut egui::Ui) {
     }
 }
 
-const BINARY_DIALOG: &str = "load-binary-dialog";
 const ERROR_DIALOG: &str = "file-error-dialog";
 
 pub(crate) fn limit_dialog_focus(app: &EmulatorApp, ctx: &egui::Context) {
-    let id = if app.load_binary_modal_open {
-        BINARY_DIALOG
-    } else if app.file_error.is_some() {
-        ERROR_DIALOG
-    } else {
+    if app.file_error.is_none() {
         return;
-    };
-    let layer = egui::LayerId::new(egui::Order::Foreground, egui::Id::unique(id));
+    }
+    let layer = egui::LayerId::new(egui::Order::Foreground, egui::Id::unique(ERROR_DIALOG));
     let focused = ctx.memory(|memory| memory.focused());
     let outside = focused.filter(|id| {
         ctx.read_response(*id)
@@ -111,52 +71,7 @@ pub(crate) fn limit_dialog_focus(app: &EmulatorApp, ctx: &egui::Context) {
 }
 
 pub fn render(app: &mut EmulatorApp, ctx: &egui::Context) {
-    if app.load_binary_modal_open {
-        egui::Window::new("Load Binary into Memory")
-            .id(egui::Id::unique(BINARY_DIALOG))
-            .order(egui::Order::Foreground)
-            .collapsible(false)
-            .resizable(false)
-            .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
-            .show(ctx, |ui| {
-                ui.set_max_width(460.0);
-                if let Some(source) = &app.pending_binary {
-                    ui.label(format!("File: {}", source.name()));
-                }
-                ui.horizontal(|ui| {
-                    ui.label("Target Address:");
-                    ui.add(
-                        egui::TextEdit::singleline(&mut app.load_target_addr_str)
-                            .desired_width(80.0),
-                    )
-                    .on_hover_text("Hexadecimal memory address. Kickstart ROM starts at $FC0000 and is mirrored at $F80000.");
-                });
-                ui.label("Kickstart ROM images must be exactly 256 KiB (262144 bytes).");
-                ui.checkbox(&mut app.load_auto_prime, "Auto-set PC & prime prefetch")
-                    .on_hover_text("Start execution at the target address after a successful load.");
-                if let Some(error) = &app.file_error {
-                    ui.colored_label(ui.visuals().error_fg_color, error);
-                }
-                ui.separator();
-                ui.horizontal(|ui| {
-                    if ui.button("Load into Memory")
-                        .on_hover_text("Load the selected file. Invalid ROM sizes leave the machine unchanged.")
-                        .clicked()
-                    {
-                        let clean = app.load_target_addr_str.trim().trim_start_matches('$').trim_start_matches("0x");
-                        match u32::from_str_radix(clean, 16) {
-                            Ok(target) => app.confirm_binary_load(target, app.load_auto_prime),
-                            Err(_) => app.file_error = Some("Enter a valid hexadecimal target address.".to_string()),
-                        }
-                    }
-                    if ui.button("Cancel").on_hover_text("Close without loading the file.").clicked() {
-                        app.load_binary_modal_open = false;
-                        app.pending_binary = None;
-                        app.file_error = None;
-                    }
-                });
-            });
-    } else if let Some(error) = app.file_error.clone() {
+    if let Some(error) = app.file_error.clone() {
         let title = if app.host.error.is_some() {
             "Emulation stopped"
         } else {

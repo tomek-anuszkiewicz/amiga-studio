@@ -27,7 +27,6 @@ pub enum KeyCommand {
     StepField,
     Microcode,
     Recording,
-    LoadBinary,
     SaveState,
     LoadState,
     ZoomIn,
@@ -306,7 +305,7 @@ impl KeyboardInbox {
                         policy.pause_pending = true;
                         self.router.suspend();
                     }
-                    LoadBinary | LoadState => {
+                    LoadState => {
                         policy.gui_owns_input = true;
                         self.router.suspend();
                     }

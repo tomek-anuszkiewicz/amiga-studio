@@ -11,6 +11,7 @@ use gui::host_commands::{
 };
 use gui::host_owner::MachineOwner;
 use gui::host_video::VideoExchange;
+use gui::EditRegister;
 use physical_memory::{AddressBus, BusResult};
 
 fn rom() -> Vec<u8> {
@@ -193,10 +194,17 @@ fn guest_dma(
 fn load_guest_program(owner: &mut MachineOwner, program: Vec<u8>) {
     execute(
         owner,
-        HostCommand::LoadBinary {
+        HostCommand::WriteMemory {
             address: 0x10000,
             bytes: program,
-            prime: true,
+            restart_instruction: false,
+        },
+    );
+    execute(
+        owner,
+        HostCommand::SetRegister {
+            register: EditRegister::PC,
+            value: 0x10000,
         },
     );
 }

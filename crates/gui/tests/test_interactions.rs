@@ -6,7 +6,6 @@ use egui::{Event, Key, Modifiers, RawInput};
 use egui_kittest::kittest::NodeT;
 use gui::host_commands::{HistoryCommand, HostCommand};
 use gui::{AppTheme, DisasmEditState, EditRegister, EmulatorApp, ViewMode};
-use std::path::PathBuf;
 
 #[test]
 fn screen_uploads_the_visible_framebuffer_unchanged_and_preserves_its_geometry() {
@@ -233,25 +232,13 @@ fn test_simulated_f12_view_mode_toggle() {
 #[test]
 fn test_simulated_run_and_step_shortcuts() {
     let ctx = egui::Context::default();
-    let mut app = EmulatorApp::default();
+    let code = [0x4E, 0x71, 0x4E, 0x71, 0x60, 0xFE];
+    let mut app = common::app_with_program(&code);
     common::settle(&mut app, &egui::Context::default());
     common::command(
         &mut app,
         HostCommand::History(HistoryCommand::ToggleRecording),
     );
-
-    // Load binary code: NOP, NOP, BRA *-0 (infinite loop at $1004)
-    let code = [0x4E, 0x71, 0x4E, 0x71, 0x60, 0xFE];
-    assert!(common::command(
-        &mut app,
-        HostCommand::LoadBinary {
-            address: 0x001000,
-            bytes: code.to_vec(),
-            prime: true
-        }
-    )
-    .value
-    .is_ok());
 
     // 1. Press F10 -> Step 1 instruction
     assert_eq!(common::inspect(&mut app).instructions_executed, 0);
@@ -346,32 +333,23 @@ fn test_simulated_run_and_step_shortcuts() {
 }
 
 #[test]
-fn test_simulated_drag_and_drop_file() {
+fn dropping_a_program_leaves_memory_and_pc_unchanged() {
     let ctx = egui::Context::default();
     let mut app = EmulatorApp::default();
-    common::settle(&mut app, &egui::Context::default());
-    assert!(!app.load_binary_modal_open);
-    assert!(app.pending_binary.is_none());
-
-    // Simulate drag-and-drop of a binary file
-    let input_drop = RawInput {
-        dropped_files: vec![common::dropped_file("test.bin")],
-        ..Default::default()
-    };
-
-    let _ = ctx.run_test_ui(input_drop, |ui| {
-        {
-            common::keyboard::inject_taps(ui.ctx(), app.host.status.generation);
-            app.update_ui(ui)
-        };
-    });
-    common::settle(&mut app, &ctx);
-
-    // Modal should now be open with the dropped file path
-    assert!(app.load_binary_modal_open);
-    assert!(
-        matches!(app.pending_binary, Some(gui::BinarySource::File(ref path)) if path == &PathBuf::from("test.bin"))
+    let before = common::snapshot(&mut app);
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("program.bin");
+    std::fs::write(&path, [0x60, 0xfe]).unwrap();
+    let _ = ctx.run_test_ui(
+        RawInput {
+            dropped_files: vec![common::dropped_file(path)],
+            ..Default::default()
+        },
+        |ui| app.update_ui(ui),
     );
+    common::settle(&mut app, &ctx);
+    assert_eq!(common::snapshot(&mut app), before);
+    assert!(app.file_error.is_none());
 }
 
 #[test]
@@ -432,21 +410,9 @@ fn test_simulated_register_inline_editing() {
 #[test]
 fn test_simulated_disassembly_inline_patching() {
     let ctx = egui::Context::default();
-    let mut app = EmulatorApp::default();
-    common::settle(&mut app, &egui::Context::default());
-
-    // Set up NOP ($4E71) at $001000
     let code = [0x4E, 0x71, 0x4E, 0x75]; // NOP, RTS
-    assert!(common::command(
-        &mut app,
-        HostCommand::LoadBinary {
-            address: 0x001000,
-            bytes: code.to_vec(),
-            prime: true
-        }
-    )
-    .value
-    .is_ok());
+    let mut app = common::app_with_program(&code);
+    common::settle(&mut app, &egui::Context::default());
 
     // Initial instruction at $1000 is NOP
     assert_eq!(
@@ -530,21 +496,9 @@ fn test_simulated_disassembly_inline_patching() {
 #[test]
 fn test_simulated_breakpoint_form_and_trigger() {
     let ctx = egui::Context::default();
-    let mut app = EmulatorApp::default();
-    common::settle(&mut app, &egui::Context::default());
-
-    // Code: NOP ($1000), NOP ($1002), RTS ($1004)
     let code = [0x4E, 0x71, 0x4E, 0x71, 0x4E, 0x75];
-    assert!(common::command(
-        &mut app,
-        HostCommand::LoadBinary {
-            address: 0x001000,
-            bytes: code.to_vec(),
-            prime: true
-        }
-    )
-    .value
-    .is_ok());
+    let mut app = common::app_with_program(&code);
+    common::settle(&mut app, &egui::Context::default());
 
     // Add breakpoint at $001002
     let mut breakpoints = common::inspect(&mut app).debugger.breakpoints;
@@ -573,21 +527,9 @@ fn test_simulated_breakpoint_form_and_trigger() {
 #[test]
 fn test_simulated_temporal_time_travel_navigation() {
     let ctx = egui::Context::default();
-    let mut app = EmulatorApp::default();
-    common::settle(&mut app, &egui::Context::default());
-
-    // Code: NOP, NOP, RTS
     let code = [0x4E, 0x71, 0x4E, 0x71, 0x4E, 0x75];
-    assert!(common::command(
-        &mut app,
-        HostCommand::LoadBinary {
-            address: 0x001000,
-            bytes: code.to_vec(),
-            prime: true
-        }
-    )
-    .value
-    .is_ok());
+    let mut app = common::app_with_program(&code);
+    common::settle(&mut app, &egui::Context::default());
 
     // Enable temporal for time-travel navigation test
     common::command(
@@ -639,21 +581,11 @@ fn test_simulated_temporal_time_travel_navigation() {
 #[test]
 fn test_full_frame_rendering_invariance() {
     let ctx = egui::Context::default();
-    let mut app = EmulatorApp::default();
+    let code = [0x4E, 0x71, 0x32, 0x00, 0x4E, 0x75];
+    let mut app = common::app_with_program(&code);
     common::settle(&mut app, &egui::Context::default());
 
     // Inject code so registers, memory, disassembly, and trace buffers all have live data
-    let code = [0x4E, 0x71, 0x32, 0x00, 0x4E, 0x75];
-    assert!(common::command(
-        &mut app,
-        HostCommand::LoadBinary {
-            address: 0x001000,
-            bytes: code.to_vec(),
-            prime: true
-        }
-    )
-    .value
-    .is_ok());
     common::command(
         &mut app,
         HostCommand::History(HistoryCommand::ToggleRecording),
@@ -780,19 +712,9 @@ fn test_register_edit_focus_and_dismissal_lifecycle() {
 
 #[test]
 fn test_pc_instruction_address_normalization() {
-    let mut app = EmulatorApp::default();
-    common::settle(&mut app, &egui::Context::default());
     let code = [0x4E, 0x71, 0x4E, 0x71];
-    assert!(common::command(
-        &mut app,
-        HostCommand::LoadBinary {
-            address: 0x001000,
-            bytes: code.to_vec(),
-            prime: true
-        }
-    )
-    .value
-    .is_ok());
+    let mut app = common::app_with_program(&code);
+    common::settle(&mut app, &egui::Context::default());
 
     // Hardware prefetch advances PC bus register to $001004
     assert_eq!(common::inspect(&mut app).cpu.pc(), 0x001004);
@@ -804,8 +726,6 @@ fn test_pc_instruction_address_normalization() {
 
 #[test]
 fn test_disassembly_instruction_decoding_fibonacci() {
-    let mut app = EmulatorApp::default();
-    common::settle(&mut app, &egui::Context::default());
     let code: [u8; 20] = [
         0x41, 0xF9, 0x00, 0x00, 0x20, 0x00, // LEA ($002000).L, A0
         0x42, 0x40, // CLR.W D0
@@ -814,16 +734,8 @@ fn test_disassembly_instruction_decoding_fibonacci() {
         0x30, 0xC1, // MOVE.W D1, (A0)+
         0x51, 0xCB, 0xFF, 0xF4, // DBRA D3, $1014
     ];
-    assert!(common::command(
-        &mut app,
-        HostCommand::LoadBinary {
-            address: 0x001000,
-            bytes: code.to_vec(),
-            prime: true
-        }
-    )
-    .value
-    .is_ok());
+    let mut app = common::app_with_program(&code);
+    common::settle(&mut app, &egui::Context::default());
 
     let data = common::inspect(&mut app);
     let (dis0, len0) = debugger::disassemble(0x001000, |a| data.memory.read_word_debug(a));
@@ -844,27 +756,17 @@ fn test_disassembly_instruction_decoding_fibonacci() {
 
 #[test]
 fn test_temporal_inactive_default_and_loop_rewind() {
-    let mut app = EmulatorApp::default();
+    let code = [0x4E, 0x71, 0x4E, 0x71, 0x4E, 0x75];
+    let mut app = common::app_with_program(&code);
     common::settle(&mut app, &egui::Context::default());
     assert!(!common::inspect(&mut app).temporal.is_recording());
     assert_eq!(debugger::temporal::DEFAULT_TEMPORAL_CAPACITY, 25_000);
 
-    // Enable recording and run code
+    // Enable recording before stepping the seeded program.
     common::command(
         &mut app,
         HostCommand::History(HistoryCommand::ToggleRecording),
     );
-    let code = [0x4E, 0x71, 0x4E, 0x71, 0x4E, 0x75];
-    assert!(common::command(
-        &mut app,
-        HostCommand::LoadBinary {
-            address: 0x001000,
-            bytes: code.to_vec(),
-            prime: true
-        }
-    )
-    .value
-    .is_ok());
 
     app.host.queue(HostCommand::StepInstruction);
     app.host.queue(HostCommand::StepInstruction);
@@ -930,7 +832,8 @@ fn test_memory_hex_right_margin_invariance() {
 #[test]
 fn test_microcode_toggle_and_clock_metrics() {
     let ctx = egui::Context::default();
-    let mut app = EmulatorApp::default();
+    let code = [0x32, 0x00, 0x4E, 0x75]; // MOVE.W D0, D1
+    let mut app = common::app_with_program(&code);
     app.view_mode = ViewMode::Developer;
     common::settle(&mut app, &ctx);
     assert!(app.show_microcode);
@@ -948,19 +851,6 @@ fn test_microcode_toggle_and_clock_metrics() {
         common::settle(&mut app, &ctx);
         assert_eq!(app.show_microcode, visible);
     }
-
-    // Load code and step CCK to verify micro-step clock metrics
-    let code = [0x32, 0x00, 0x4E, 0x75]; // MOVE.W D0, D1
-    assert!(common::command(
-        &mut app,
-        HostCommand::LoadBinary {
-            address: 0x001000,
-            bytes: code.to_vec(),
-            prime: true
-        }
-    )
-    .value
-    .is_ok());
 
     // Before stepping, ensure instruction is initiated or step 1 CCK
     app.host.queue(HostCommand::StepCck);
@@ -1446,7 +1336,12 @@ fn test_f12_toggles_views_and_middle_mouse_releases_capture() {
 #[test]
 fn test_disassembly_stepping_multi_word_invariance() {
     let ctx = egui::Context::default();
-    let mut app = EmulatorApp::default();
+    let fibonacci_code = [
+        0x41, 0xF9, 0x00, 0x00, 0x20, 0x00, // LEA ($2000).L, A0
+        0x42, 0x40, // CLR.W D0
+        0x32, 0x3C, 0x00, 0x01, // MOVE.W #1, D1
+    ];
+    let mut app = common::app_with_program(&fibonacci_code);
     common::settle(&mut app, &egui::Context::default());
     common::command(
         &mut app,
@@ -1457,21 +1352,6 @@ fn test_disassembly_stepping_multi_word_invariance() {
     // $1000: 41F9 0000 2000 (LEA ($00002000).L, A0 - 6 bytes)
     // $1006: 4240 (CLR.W D0 - 2 bytes)
     // $1008: 323C 0001 (MOVE.W #1, D1 - 4 bytes)
-    let fibonacci_code = [
-        0x41, 0xF9, 0x00, 0x00, 0x20, 0x00, // LEA ($2000).L, A0
-        0x42, 0x40, // CLR.W D0
-        0x32, 0x3C, 0x00, 0x01, // MOVE.W #1, D1
-    ];
-    assert!(common::command(
-        &mut app,
-        HostCommand::LoadBinary {
-            address: 0x001000,
-            bytes: fibonacci_code.to_vec(),
-            prime: true
-        }
-    )
-    .value
-    .is_ok());
 
     // 1. Initial instruction PC must be exactly $001000
     assert_eq!(common::inspect(&mut app).cpu.instruction_pc(), 0x001000);
@@ -1590,21 +1470,9 @@ fn test_memory_hex_watchpoint_toggle_and_rendering() {
 #[test]
 fn test_disassembly_active_line_highlight_and_column_alignment() {
     let ctx = egui::Context::default();
-    let mut app = EmulatorApp::default();
-    common::settle(&mut app, &egui::Context::default());
-
-    // Load instructions: LEA ($2000).L, A0 ($1000), CLR.W D0 ($1006)
     let code = [0x41, 0xF9, 0x00, 0x00, 0x20, 0x00, 0x42, 0x40];
-    assert!(common::command(
-        &mut app,
-        HostCommand::LoadBinary {
-            address: 0x001000,
-            bytes: code.to_vec(),
-            prime: true
-        }
-    )
-    .value
-    .is_ok());
+    let mut app = common::app_with_program(&code);
+    common::settle(&mut app, &egui::Context::default());
 
     // Initial render at $001000: active line must produce frame highlight shapes
     let mut output_step0 = ctx.run_test_ui(RawInput::default(), |ui| {
@@ -1721,21 +1589,11 @@ fn test_register_inline_edit_focus_cancel_and_commit() {
 #[test]
 fn test_disassembly_inline_patch_focus_cancel_and_commit() {
     let ctx = egui::Context::default();
-    let mut app = EmulatorApp::default();
+    let code = [0x4E, 0x71, 0x4E, 0x75];
+    let mut app = common::app_with_program(&code);
     common::settle(&mut app, &egui::Context::default());
 
     // Inject NOP ($4E71) at $001000
-    let code = [0x4E, 0x71, 0x4E, 0x75];
-    assert!(common::command(
-        &mut app,
-        HostCommand::LoadBinary {
-            address: 0x001000,
-            bytes: code.to_vec(),
-            prime: true
-        }
-    )
-    .value
-    .is_ok());
     assert_eq!(
         common::inspect(&mut app).memory.read_word_debug(0x001000),
         0x4E71
@@ -1799,21 +1657,11 @@ fn test_disassembly_inline_patch_focus_cancel_and_commit() {
 #[test]
 fn test_three_column_layout_stability_and_bounds_invariance() {
     let ctx = egui::Context::default();
-    let mut app = EmulatorApp::default();
+    let code = [0x4E, 0x71, 0x30, 0x3C, 0x12, 0x34, 0x4E, 0x75];
+    let mut app = common::app_with_program(&code);
     common::settle(&mut app, &egui::Context::default());
 
     // Prime with code and CPU registers
-    let code = [0x4E, 0x71, 0x30, 0x3C, 0x12, 0x34, 0x4E, 0x75];
-    assert!(common::command(
-        &mut app,
-        HostCommand::LoadBinary {
-            address: 0x001000,
-            bytes: code.to_vec(),
-            prime: true
-        }
-    )
-    .value
-    .is_ok());
     app.host.queue(HostCommand::StepInstruction);
 
     // 1. Standard HD resolution (1280x720)
@@ -2063,22 +1911,10 @@ fn test_memory_hex_cell_selection_and_row_wrapping_navigation() {
 #[test]
 fn test_disassembly_infinite_scroll_and_pc_snap() {
     let ctx = egui::Context::default();
-    let mut app = EmulatorApp::default();
+    let code = [0x4E, 0x71, 0x4E, 0x71, 0x4E, 0x71, 0x60, 0xFE];
+    let mut app = common::app_with_program(&code);
     common::settle(&mut app, &egui::Context::default());
     let screen_rect = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(1920.0, 1080.0));
-
-    // Load instructions: NOP, NOP, NOP, BRA *-0
-    let code = [0x4E, 0x71, 0x4E, 0x71, 0x4E, 0x71, 0x60, 0xFE];
-    assert!(common::command(
-        &mut app,
-        HostCommand::LoadBinary {
-            address: 0x001000,
-            bytes: code.to_vec(),
-            prime: true
-        }
-    )
-    .value
-    .is_ok());
 
     // Initial state: disassembly_view_addr is None (following current PC)
     assert_eq!(app.disassembly_view_addr, None);

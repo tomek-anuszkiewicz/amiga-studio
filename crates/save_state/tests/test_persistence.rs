@@ -443,23 +443,30 @@ fn file_roundtrip_resumes_blitter_source_carry_and_pending_destination() {
 #[test]
 fn file_roundtrip_preserves_drawn_pixels_and_resumes_active_display() {
     let program =
-        include_bytes!("../../machine_loop/tests/programs/display/live_stripes/program.bin");
+        include_bytes!("../../machine_loop/tests/programs/display/mixed_scene/program.bin");
     let mut machine = A500Machine::new(A500Config::bare_512k(VideoStandard::Pal));
     machine.physical_memory.map_chip_ram_to_low_memory();
     for (offset, byte) in program.iter().copied().enumerate() {
         machine
             .physical_memory
-            .write_chip_byte_debug(((0x1000) as u32).wrapping_add(offset as u32), byte);
+            .write_chip_byte_debug(0x1000 + offset as u32, byte);
     }
     machine.cpu.state.set_sr(0x2700);
     machine.set_pc_and_prime_prefetch(0x1000);
+    for _ in 0..16 {
+        machine.step_frame();
+    }
     for _ in 0..(313 * 228) {
         machine.step_cck();
         if machine.agnus.vpos == 120 && machine.agnus.hpos == 100 {
             break;
         }
     }
-    assert_eq!(machine.agnus.vpos, 120);
+    assert_eq!((machine.agnus.vpos, machine.agnus.hpos), (120, 100));
+    let row = (120 - 28) * 2;
+    let not_yet_drawn = (360..440)
+        .map(|x| machine.denise.frame_builder.get_pixel(x, row))
+        .collect::<Vec<_>>();
     assert_ne!(
         machine
             .denise
@@ -484,11 +491,16 @@ fn file_roundtrip_preserves_drawn_pixels_and_resumes_active_display() {
         assert_eq!(machine.agnus, restored.agnus);
     }
     assert_ne!(
-        restored
+        restored.denise.frame_builder.get_pixel(600 - 196, row),
+        0xff000000
+    );
+    assert!(
+        (360..440).zip(not_yet_drawn).any(|(x, old)| restored
             .denise
             .frame_builder
-            .get_pixel(600 - 196, (120 - 28) * 2),
-        0xff000000
+            .get_pixel(x, row)
+            != old),
+        "Restored display did not draw new pixels farther along the current line"
     );
 }
 

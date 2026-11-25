@@ -8,15 +8,9 @@ with links to implementation details.
 
 ## 1. Launching the Developer Studio
 
-- **Default Launch.** Run the GUI without flags to open it with Developer Studio docked.
-  ```powershell
-  cargo run -p gui
-  ```
-- **From Game Mode.** In clean game mode (`cargo run -p gui -- --game`), press **`F12`** at any time to pause emulation and open Developer Studio.
-- **Direct Binary Loading.** Run this command to load compiled machine code into RAM.
-  ```powershell
-  cargo run -p gui -- --load path/to/game.bin --addr 001000
-  ```
+Run the application with `cargo run -p gui`. Start a game from the desktop
+library or use **Manual Setup** to select a Kickstart ROM and bootable disk.
+Press **F12** in the session to pause and open Developer Studio.
 
 ---
 
@@ -31,8 +25,6 @@ with links to implementation details.
 | **`F11`** | **Step CCK** | Steps 1 Color Clock phase (2 CPU clocks, CCK1 / CCK2). |
 | **`Shift + F11`** | **Step Frame** | Advances to the next completed PAL/NTSC video field and pauses. Breakpoints and CPU halts take precedence. |
 | **`Alt + T`** | **Toggle Recording** | Activates or pauses temporal execution history recording. |
-| **`Ctrl + O`** | **Load Binary** | Opens file dialog to load compiled machine code at an arbitrary RAM address. |
-| **Drag & Drop** | **Binary Loading** | Opens the binary injection dialog for the dropped bytes. Use File > Load ROM from File to boot firmware. |
 
 Use **Slower** and **Faster** to select 0.25x, 0.5x, 1x, 2x or 4x. **1x** is
 normal PAL/NTSC speed. At normal or slower speed, Run presents each completed

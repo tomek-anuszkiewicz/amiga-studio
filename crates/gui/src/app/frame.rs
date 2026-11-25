@@ -32,14 +32,6 @@ impl EmulatorApp {
         #[cfg(not(target_arch = "wasm32"))]
         self.render_start_state_undo(ui);
 
-        // Check for drag-and-dropped files onto the emulator window
-        let dropped_files = ctx.input(|i| i.raw.dropped_files.clone());
-        if first_pass && !self.player.show_saves {
-            for file in dropped_files {
-                self.accept_dropped_file(file);
-            }
-        }
-
         self.screen_texture.set_scale(self.screen_scale);
         let consume_image = first_pass && self.host.error.is_none();
         let mut next_image = None;

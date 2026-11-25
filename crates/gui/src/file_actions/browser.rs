@@ -18,8 +18,8 @@ use web_sys::{Document, HtmlAnchorElement};
 #[wasm_bindgen(module = "/src/file_actions/browser_files.js")]
 extern "C" {
     fn restore_history() -> Promise;
-    fn recent_names(kind: &str) -> Array;
-    fn remember_file(kind: &str, name: &str, handle: &JsValue) -> Promise;
+    fn recent_rom_names() -> Array;
+    fn remember_rom(name: &str, handle: &JsValue) -> Promise;
     #[wasm_bindgen(catch)]
     fn pick_file(
         kind: &str,
@@ -76,18 +76,13 @@ impl BrowserHistory {
         self.pending.push(JsFuture::from(restore_history()));
     }
 
-    pub(super) fn remember(&mut self, action: FileAction, name: &str, handle: &JsValue) {
+    pub(super) fn remember(&mut self, name: &str, handle: &JsValue) {
         self.pending
-            .push(JsFuture::from(remember_file(action.key(), name, handle)));
+            .push(JsFuture::from(remember_rom(name, handle)));
     }
 
-    pub fn names(&self, binary: bool) -> Vec<String> {
-        let action = if binary {
-            FileAction::Binary
-        } else {
-            FileAction::Rom
-        };
-        recent_names(action.key())
+    pub fn names(&self) -> Vec<String> {
+        recent_rom_names()
             .iter()
             .filter_map(|value| value.as_string())
             .collect()
@@ -117,7 +112,6 @@ impl BrowserHistory {
 impl FileAction {
     fn key(self) -> &'static str {
         match self {
-            Self::Binary => "binary",
             Self::Rom => "rom",
             Self::State => "state",
             Self::SetupRom => "setup-rom",
@@ -167,25 +161,6 @@ impl BrowserFileTask {
             })))
         });
         Ok(Self { action, future })
-    }
-
-    fn from_drop(file: egui::DroppedFileHandle) -> Self {
-        let future = Box::pin(async move {
-            let name = file.path().to_string_lossy().into_owned();
-            let data = file
-                .bytes_async()
-                .await
-                .map_err(|error| JsValue::from_str(&error))?;
-            Ok(Some(SelectedAssets::Single(SelectedFile {
-                name,
-                data,
-                handle: JsValue::NULL,
-            })))
-        });
-        Self {
-            action: FileAction::Binary,
-            future,
-        }
     }
 }
 
@@ -243,21 +218,12 @@ async fn browser_disk_file(source: JsValue) -> Result<web_sys::File, JsValue> {
 }
 
 impl EmulatorApp {
-    pub(crate) fn accept_dropped_file(&mut self, file: egui::DroppedFileHandle) {
-        self.browser_file_task = Some(BrowserFileTask::from_drop(file));
-    }
-
     pub(super) fn open_file_dialog(&mut self, action: FileAction) {
         self.open_browser_file_dialog(action, NO_RECENT_FILE_INDEX);
     }
 
-    pub(crate) fn open_recent_browser_file(&mut self, binary: bool, index: usize) {
-        let action = if binary {
-            FileAction::Binary
-        } else {
-            FileAction::Rom
-        };
-        self.open_browser_file_dialog(action, index as i32);
+    pub(crate) fn open_recent_browser_file(&mut self, index: usize) {
+        self.open_browser_file_dialog(FileAction::Rom, index as i32);
     }
 
     fn open_browser_file_dialog(&mut self, action: FileAction, recent_index: i32) {

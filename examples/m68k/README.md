@@ -1,31 +1,18 @@
 # M68000 Standalone Debugger Test Programs
 
-Use these standalone Motorola 68000 test programs to try interactive debugging,
-stepping and inspection in the **Amiga 500 Developer Studio** on the native GUI
-or WebAssembly.
+The headless debugger tests load these Motorola 68000 programs at `$001000`
+and check the results. The programs run entirely on the CPU and need no
+Kickstart ROM or custom chip DMA. They end in a loop at `halt` (`BRA.S halt`,
+machine code `$60FE`).
 
-Each program runs 100% on the CPU and needs no Amiga OS, Kickstart ROM or custom
-chip DMA. The programs load into RAM at `$001000` and finish their work by
-entering an idle loop (`halt: BRA.S halt`, machine code `$60FE`). The CPU
-continues executing that loop until you pause it.
+## 1. Run the sample programs
 
----
+Run from the repository root. The test creates each binary and checks the
+guest results.
 
-## 1. Quick Start: Loading into Debugger
-
-### In the Desktop / Web GUI:
-1. Click **"Load Binary"** (or press the Binary injection button in the toolbar).
-2. Select any `.bin` file from this folder (`examples/m68k/*.bin`).
-3. Set the injection target address to `$001000` (default) and ensure **"Reset PC to injection address"** is checked.
-4. Click **"Inject & Reset PC"**.
-5. Step through instructions with **F10** (Step Instruction), Color Clock phases with **F11** (Step CCK), or run with **F5**.
-
-### Command-Line Launch:
 ```powershell
-cargo run -p gui -- --load examples/m68k/fibonacci.bin
+python tools/verification/verify.py test rust crate debugger suite test_sample_binaries
 ```
-
----
 
 ## 2. Program Catalog
 

@@ -51,7 +51,6 @@ pub const FIXED_SHORTCUTS: &[FixedShortcut] = {
     use ShortcutModifier::*;
     &[
         FixedShortcut::new(ToggleView, VIEW_SWITCH_KEY, None),
-        FixedShortcut::new(LoadBinary, "KeyO", Command),
         FixedShortcut::new(SaveState, "KeyS", Command),
         FixedShortcut::new(LoadState, "KeyL", Command),
         FixedShortcut::new(ZoomIn, "Equal", Command),
@@ -190,7 +189,6 @@ impl EmulatorApp {
             .memory(|memory| memory.focused())
             .is_some_and(|id| egui::TextEdit::load_state(ctx, id).is_some());
         let dialog = self.player.show_saves
-            || self.load_binary_modal_open
             || self.file_error.is_some()
             || self.file_picker_open()
             || ctx.memory(|memory| {
@@ -248,7 +246,7 @@ impl EmulatorApp {
 
     pub(crate) fn apply_key_command(&mut self, action: KeyCommand, ctx: &egui::Context) {
         use KeyCommand::*;
-        if matches!(action, Pause | QuickLoad | LoadBinary | LoadState) {
+        if matches!(action, Pause | QuickLoad | LoadState) {
             self.host.keyboard_pending.clear();
         }
         match action {
@@ -288,7 +286,6 @@ impl EmulatorApp {
             Recording => self
                 .host
                 .queue(HostCommand::History(HistoryCommand::ToggleRecording)),
-            LoadBinary => self.open_load_binary_dialog(),
             SaveState => self.open_save_state_dialog(),
             LoadState => self.open_load_state_dialog(),
             ZoomIn => ctx.set_zoom_factor((ctx.zoom_factor() + ZOOM_STEP).min(MAX_ZOOM)),

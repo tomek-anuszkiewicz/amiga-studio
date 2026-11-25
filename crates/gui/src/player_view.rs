@@ -213,11 +213,7 @@ impl EmulatorApp {
 
     #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn render_saved_progress(&mut self, ctx: &egui::Context) {
-        if !self.player.show_saves
-            || self.editing_start_state_name()
-            || self.file_error.is_some()
-            || self.load_binary_modal_open
-        {
+        if !self.player.show_saves || self.editing_start_state_name() || self.file_error.is_some() {
             return;
         }
         let close = egui::Modal::new(egui::Id::unique(SAVED_PROGRESS_DIALOG)).show(ctx, |ui| {

@@ -14,21 +14,16 @@ fn fixture_path(name: &str) -> PathBuf {
 }
 
 #[test]
-fn invalid_rom_keeps_the_dialog_open_and_can_be_retried() {
+fn invalid_rom_displays_a_dismissible_error_and_can_be_retried() {
     let path = fixture_path("load.rom");
     std::fs::write(&path, vec![0x55; 524288]).unwrap();
     let mut app = EmulatorApp::default();
-    app.pending_binary = Some(gui::BinarySource::File(path.clone()));
-    app.load_binary_modal_open = true;
-    app.load_target_addr_str = "FC0000".to_string();
     let before = common::snapshot(&mut app);
+    app.load_rom_file(&path);
     let mut harness = Harness::builder()
         .with_size(egui::vec2(1024.0, 600.0))
         .build_ui_state(|ui, app: &mut EmulatorApp| app.update_ui(ui), app);
     common::settle_harness(&mut harness);
-    harness.get_by_label("Load into Memory").click_accesskit();
-    common::settle_harness(&mut harness);
-    assert!(harness.state().load_binary_modal_open);
     assert_eq!(common::snapshot(harness.state_mut()), before);
     let error = harness.state().file_error.clone().unwrap();
     assert!(error.contains("256 KiB (262144 bytes)"));
@@ -37,10 +32,11 @@ fn invalid_rom_keeps_the_dialog_open_and_can_be_retried() {
     common::settle_harness(&mut harness);
     assert_eq!(harness.state().file_error.as_ref(), Some(&error));
 
-    std::fs::write(&path, vec![0x4E; 262144]).unwrap();
-    harness.get_by_label("Load into Memory").click_accesskit();
+    harness.get_by_label("Close").click_accesskit();
     common::settle_harness(&mut harness);
-    assert!(!harness.state().load_binary_modal_open);
+    std::fs::write(&path, vec![0x4E; 262144]).unwrap();
+    harness.state_mut().load_rom_file(&path);
+    common::settle_harness(&mut harness);
     assert!(harness.state().file_error.is_none());
     assert_eq!(
         common::inspect(harness.state_mut())

@@ -1129,34 +1129,11 @@ fn a_consumed_quick_save_press_cannot_type_when_an_editor_gains_focus() {
     let first_save_cck = app.host.status.cck;
     common::wait(&mut app, &ctx, |app| app.host.status.cck > first_save_cck);
 
-    app.load_target_addr_str.clear();
-    let directory = tempfile::tempdir().unwrap();
-    let binary_path = directory.path().join("fixture.bin");
-    std::fs::write(&binary_path, [0x60, 0xfe]).unwrap();
-    ctx.enable_accesskit();
-    let _ = ctx.run_test_ui(
-        egui::RawInput {
-            dropped_files: vec![common::dropped_file(binary_path)],
-            ..Default::default()
-        },
-        |ui| app.update_ui(ui),
-    );
-    assert!(app.load_binary_modal_open);
-    let tree = ui_frame(&mut app, &ctx, vec![])
-        .into_platform_output()
-        .accesskit_update
-        .unwrap();
-    let field = tree
-        .nodes
-        .iter()
-        .find_map(|(_, node)| {
-            (node.role() == egui::accesskit::Role::TextInput).then(|| node.bounds().unwrap())
-        })
-        .unwrap();
-    let position = egui::pos2(
-        ((field.x0 + field.x1) / 2.0) as f32,
-        ((field.y0 + field.y1) / 2.0) as f32,
-    );
+    common::command(&mut app, HostCommand::Pause);
+    common::wait(&mut app, &ctx, |app| !app.host.status.running);
+    app.set_view_mode(ViewMode::Developer);
+    common::settle(&mut app, &ctx);
+    let position = memory_search_position(&mut app, &ctx);
     gui::keyboard_input::receive_pointer_press(&ctx, position);
     ui_frame(&mut app, &ctx, editor_click(position));
     let focus = ctx.memory(|memory| memory.focused()).unwrap();
@@ -1188,12 +1165,12 @@ fn a_consumed_quick_save_press_cannot_type_when_an_editor_gains_focus() {
     assert!(!forward(egui::Key::B, "KeyB", true, false, "b"));
     assert!(!forward(egui::Key::B, "KeyB", false, false, "b"));
     common::settle(&mut app, &ctx);
-    assert_eq!(app.load_target_addr_str, "b");
+    assert_eq!(app.memory_search_state.query, "b");
     assert!(repeat_consumed && release_consumed);
     assert!(!guest_key_held(&mut app, 0x20));
     assert!(!guest_key_held(&mut app, 0x35));
     assert_eq!(app.host.status.generation, generation);
-    assert!(app.host.status.running);
+    assert!(!app.host.status.running);
 
     let reply = common::command(
         &mut app,
@@ -1242,12 +1219,14 @@ fn a_text_field_receives_the_first_character_in_the_same_batch_as_its_click() {
 }
 
 #[test]
-fn an_open_binary_dialog_without_text_focus_suspends_gameplay_and_shortcuts() {
+fn a_file_error_without_text_focus_suspends_gameplay_and_shortcuts() {
     let (mut app, ctx) = running_with(ViewMode::ScreenOnly, false, Default::default());
     let generation = app.host.status.generation;
     window_keys(&mut app, &ctx, &[("KeyA", true, generation)]);
     wait_guest_key(&mut app, &ctx, 0x20, true);
-    app.load_binary_modal_open = true;
+    let directory = tempfile::tempdir().unwrap();
+    app.load_rom_file(&directory.path().join("missing.rom"));
+    assert!(app.file_error.is_some());
     draw(&mut app, &ctx, None);
     assert!(ctx.memory(|memory| memory.focused()).is_none());
     window_keys(
@@ -1263,7 +1242,7 @@ fn an_open_binary_dialog_without_text_focus_suspends_gameplay_and_shortcuts() {
     assert_eq!(app.view_mode, ViewMode::ScreenOnly);
     assert!(!app.host.status.quick_slots[0]);
     assert!(!guest_key_held(&mut app, 0x35));
-    app.load_binary_modal_open = false;
+    app.file_error = None;
     draw(&mut app, &ctx, None);
     draw(&mut app, &ctx, None);
     let mut repeated = common::keyboard::key("KeyB", true);

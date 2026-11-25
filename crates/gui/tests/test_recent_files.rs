@@ -55,51 +55,32 @@ fn select_rom(app: &mut EmulatorApp, path: &std::path::Path) {
 }
 
 #[test]
-fn separate_histories_keep_five_successful_files_and_persist_load_options() {
+fn rom_history_keeps_five_successful_files_and_persists_them() {
     let mut app = EmulatorApp::default();
-    let mut binaries = Vec::new();
     let mut roms = Vec::new();
     for index in 0..6 {
-        let binary = fixture(&format!("program-{index}.bin"), &[0x4e, 0x71]);
         let firmware = fixture(&format!("firmware-{index}.rom"), &rom());
-        app.load_binary_file(&binary, 0x1000, true);
-        common::settle(&mut app, &egui::Context::default());
         select_rom(&mut app, &firmware);
-        common::settle(&mut app, &egui::Context::default());
-        binaries.push(binary);
         roms.push(firmware);
     }
-    assert_eq!(app.file_history.binaries.len(), 5);
-    assert_eq!(app.file_history.roms.len(), 5);
-    assert_eq!(app.file_history.binaries[0].path, binaries[5]);
-    assert_eq!(app.file_history.binaries[4].path, binaries[1]);
     assert_eq!(
         app.file_history.roms,
         roms[1..].iter().rev().cloned().collect::<Vec<_>>()
     );
 
-    app.load_binary_file(&binaries[2], 0x2000, false);
-
-    common::settle(&mut app, &egui::Context::default());
     select_rom(&mut app, &roms[3]);
-    common::settle(&mut app, &egui::Context::default());
-    assert_eq!(app.file_history.binaries.len(), 5);
-    assert_eq!(app.file_history.binaries[0].path, binaries[2]);
-    assert_eq!(app.file_history.binaries[0].target, 0x2000);
-    assert!(!app.file_history.binaries[0].auto_prime);
     assert_eq!(app.file_history.roms.len(), 5);
     assert_eq!(app.file_history.roms[0], roms[3]);
 
     let before = app.file_history.clone();
-    app.load_rom_file(&binaries[1]);
+    let wrong_size = fixture("wrong-size.bin", &[0x4e, 0x71]);
+    app.load_rom_file(&wrong_size);
     common::settle(&mut app, &egui::Context::default());
-    app.load_binary_file(&binaries[1], 0xfc0000, false);
-    common::settle(&mut app, &egui::Context::default());
-    app.load_binary_file(&binaries[1].with_extension("missing"), 0x1000, false);
+    app.load_rom_file(&wrong_size.with_extension("missing"));
     common::settle(&mut app, &egui::Context::default());
     assert_eq!(
         app.file_history, before,
-        "Failed loads must not change recent files"
+        "Failed ROM loads must not change recent files"
     );
 
     let mut storage = MemoryStorage::default();
@@ -109,85 +90,77 @@ fn separate_histories_keep_five_successful_files_and_persist_load_options() {
     assert!(storage.get_string(eframe::APP_KEY).is_some());
     let mut context = eframe::CreationContext::_new_kittest(egui::Context::default());
     context.storage = Some(&storage);
-    let reopened = EmulatorApp::new(&context);
-    assert_eq!(reopened.file_history, before);
+    assert_eq!(EmulatorApp::new(&context).file_history, before);
     let empty_storage = MemoryStorage::default();
     context.storage = Some(&empty_storage);
     assert_eq!(
         EmulatorApp::new(&context).file_history,
         FileHistory::default()
     );
-    for path in binaries.iter().chain(&roms) {
+    for path in roms.into_iter().chain([wrong_size]) {
         std::fs::remove_file(path).unwrap();
     }
 }
 
 #[test]
-fn recent_menu_reloads_current_bytes_with_saved_options_and_reports_missing_files() {
-    let path = fixture("menu-program.bin", &[0x4e, 0x71]);
-    let mut app = EmulatorApp::default();
-    app.load_binary_file(&path, 0x2000, false);
-    common::settle(&mut app, &egui::Context::default());
-    let pc = common::inspect(&mut app).cpu.pc();
-    std::fs::write(&path, [0x70, 0x2a]).unwrap();
-    let mut harness = Harness::builder()
-        .with_size(egui::vec2(1024.0, 600.0))
-        .build_ui_state(|ui, app: &mut EmulatorApp| app.update_ui(ui), app);
-    harness.run_steps(2);
-    common::settle_harness(&mut harness);
-    harness.get_by_label("File").click_accesskit();
-    harness.run_steps(2);
-    common::settle_harness(&mut harness);
-    harness.get_by_label("Recent binaries");
-    harness.get_by_label("menu-program.bin").click_accesskit();
-    harness.run_steps(2);
-    common::settle_harness(&mut harness);
-    assert_eq!(
-        common::inspect(harness.state_mut())
-            .memory
-            .read_word_debug(0x2000),
-        0x702a
-    );
-    assert_eq!(common::inspect(harness.state_mut()).cpu.pc(), pc);
-    assert!(!harness.state().load_binary_modal_open);
-    assert_eq!(harness.state().file_history.binaries.len(), 1);
+fn reopening_and_saving_history_discards_old_program_paths() {
+    #[derive(serde::Serialize)]
+    struct LegacyProgram {
+        path: PathBuf,
+        target: u32,
+        auto_prime: bool,
+    }
 
-    std::fs::remove_file(&path).unwrap();
-    let before = common::snapshot(harness.state_mut());
-    harness.get_by_label("File").click_accesskit();
-    harness.run_steps(2);
-    common::settle_harness(&mut harness);
-    harness.get_by_label("menu-program.bin").click_accesskit();
-    harness.run_steps(2);
-    common::settle_harness(&mut harness);
-    assert!(harness.state().file_error.is_some());
-    assert_eq!(common::snapshot(harness.state_mut()), before);
-    assert!(harness.state().file_history.binaries.is_empty());
-    assert!(harness
-        .state()
-        .file_error
-        .as_ref()
-        .unwrap()
-        .contains("Removed from recent binaries"));
+    #[derive(serde::Serialize)]
+    struct LegacyHistory {
+        binary_directory: Option<PathBuf>,
+        rom_directory: Option<PathBuf>,
+        disk_directory: Option<PathBuf>,
+        binaries: Vec<LegacyProgram>,
+        roms: Vec<PathBuf>,
+    }
+
+    let old = LegacyHistory {
+        binary_directory: Some(PathBuf::from("programs")),
+        rom_directory: Some(PathBuf::from("firmware")),
+        disk_directory: Some(PathBuf::from("disks")),
+        binaries: vec![LegacyProgram {
+            path: PathBuf::from("programs/program.bin"),
+            target: 0x1000,
+            auto_prime: true,
+        }],
+        roms: vec![PathBuf::from("firmware/kickstart.rom")],
+    };
     let mut storage = MemoryStorage::default();
-    harness.state_mut().save(&mut storage);
-    let restored: FileHistory = eframe::get_value(&storage, "file_history").unwrap();
-    assert!(restored.binaries.is_empty());
+    eframe::set_value(&mut storage, "file_history", &old);
+    let mut context = eframe::CreationContext::_new_kittest(egui::Context::default());
+    context.storage = Some(&storage);
+    let mut reopened = EmulatorApp::new(&context);
+    assert_eq!(reopened.file_history.roms, old.roms);
+    assert_eq!(reopened.file_history.rom_directory, old.rom_directory);
+    assert_eq!(reopened.file_history.disk_directory, old.disk_directory);
+    reopened.save(&mut storage);
+    let persisted = storage.get_string("file_history").unwrap();
+    for retired in ["binary_directory", "binaries", "program.bin", "auto_prime"] {
+        assert!(
+            !persisted.contains(retired),
+            "{retired} persisted after saving"
+        );
+    }
 }
 
 #[test]
-fn game_menu_reloads_rom_and_keeps_binary_directory_separate() {
-    let path = fixture("menu-firmware.rom", &rom());
-    let binary = fixture("separate-folder/program.bin", &[0x4e, 0x71]);
+fn game_menu_reloads_rom_and_keeps_disk_directory_separate() {
+    let path = fixture("menu-firmware.bin", &rom());
+    let disk_directory = tempfile::tempdir().unwrap();
     let mut app = EmulatorApp::default();
     app.set_view_mode(ViewMode::ScreenOnly);
-    app.load_binary_file(&binary, 0x1000, true);
-    common::settle(&mut app, &egui::Context::default());
+    app.file_history.disk_directory = Some(disk_directory.path().to_owned());
     app.load_rom_file(&path);
     common::settle(&mut app, &egui::Context::default());
     assert_eq!(
-        app.file_history.binary_directory.as_deref(),
-        binary.parent()
+        app.file_history.disk_picker_directory(),
+        Some(disk_directory.path())
     );
     assert_eq!(app.file_history.rom_directory.as_deref(), path.parent());
     let step = common::command(&mut app, gui::host_commands::HostCommand::StepCck);
@@ -201,7 +174,7 @@ fn game_menu_reloads_rom_and_keeps_binary_directory_separate() {
     harness.get_by_label("File").click_accesskit();
     harness.run_steps(2);
     common::settle_harness(&mut harness);
-    harness.get_by_label("menu-firmware.rom").click_accesskit();
+    harness.get_by_label("menu-firmware.bin").click_accesskit();
     harness.run_steps(2);
     common::settle_harness(&mut harness);
     assert!(
@@ -222,7 +195,7 @@ fn game_menu_reloads_rom_and_keeps_binary_directory_separate() {
     harness.get_by_label("File").click_accesskit();
     harness.run_steps(2);
     common::settle_harness(&mut harness);
-    harness.get_by_label("menu-firmware.rom").click_accesskit();
+    harness.get_by_label("menu-firmware.bin").click_accesskit();
     harness.run_steps(2);
     common::settle_harness(&mut harness);
     assert!(harness.state().file_error.is_some());
@@ -233,36 +206,41 @@ fn game_menu_reloads_rom_and_keeps_binary_directory_separate() {
         .unwrap()
         .contains("Removed from recent ROMs"));
     assert!(harness.state().file_history.roms.is_empty());
-    assert_eq!(harness.state().file_history.binaries[0].path, binary);
+    assert_eq!(
+        harness.state().file_history.disk_picker_directory(),
+        Some(disk_directory.path())
+    );
     assert_eq!(common::snapshot(harness.state_mut()), before);
-    std::fs::remove_file(binary).unwrap();
 }
 
 #[test]
-fn picker_uses_nearest_existing_parent_without_changing_the_other_category() {
-    let path = fixture("picker-directory/removed/nested/program.bin", &[0x4e, 0x71]);
+fn rom_picker_uses_nearest_existing_parent_without_changing_the_disk_directory() {
+    let path = fixture(
+        "picker-directory/removed/nested/firmware.rom",
+        &[0x4e, 0x71],
+    );
     let directory = path.parent().unwrap();
     let parent = directory.parent().unwrap();
     let existing = parent.parent().unwrap();
     let mut history = FileHistory {
-        binary_directory: Some(directory.to_owned()),
-        rom_directory: Some(existing.to_owned()),
+        rom_directory: Some(directory.to_owned()),
+        disk_directory: Some(existing.to_owned()),
         ..FileHistory::default()
     };
-    assert_eq!(history.picker_directory(true), Some(directory));
+    assert_eq!(history.rom_picker_directory(), Some(directory));
     std::fs::remove_file(&path).unwrap();
     std::fs::remove_dir(directory).unwrap();
-    assert_eq!(history.picker_directory(true), Some(parent));
+    assert_eq!(history.rom_picker_directory(), Some(parent));
     std::fs::remove_dir(parent).unwrap();
-    assert_eq!(history.picker_directory(true), Some(existing));
-    assert_eq!(history.picker_directory(false), Some(existing));
+    assert_eq!(history.rom_picker_directory(), Some(existing));
+    assert_eq!(history.disk_picker_directory(), Some(existing));
     // An ancestor replaced by a file must also be skipped.
     std::fs::write(parent, []).unwrap();
-    assert_eq!(history.picker_directory(true), Some(existing));
+    assert_eq!(history.rom_picker_directory(), Some(existing));
     std::fs::remove_file(parent).unwrap();
-    history.binary_directory = None;
-    assert_eq!(history.picker_directory(true), None);
-    assert_eq!(history.picker_directory(false), Some(existing));
+    history.rom_directory = None;
+    assert_eq!(history.rom_picker_directory(), None);
+    assert_eq!(history.disk_picker_directory(), Some(existing));
 }
 
 #[test]
@@ -293,7 +271,7 @@ fn confirmed_manual_disk_directory_is_restored_and_falls_back_independently() {
         Some(directory.as_path())
     );
     assert_eq!(
-        reopened.file_history.picker_directory(false),
+        reopened.file_history.rom_picker_directory(),
         Some(rom_directory.as_path())
     );
     std::fs::remove_file(disk).unwrap();
@@ -304,7 +282,7 @@ fn confirmed_manual_disk_directory_is_restored_and_falls_back_independently() {
     );
     assert_eq!(reopened.file_history.disk_directory, Some(directory));
     assert_eq!(
-        reopened.file_history.picker_directory(false),
+        reopened.file_history.rom_picker_directory(),
         Some(rom_directory.as_path())
     );
 }

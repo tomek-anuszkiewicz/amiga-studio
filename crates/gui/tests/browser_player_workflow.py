@@ -184,6 +184,9 @@ def check_workflow(browser, url, rom, disk, output):
         # Wasm for a shared control and the native button's application-specific ID.
         application = wasm.value.body()
         assert b"Debug View" in application
+        for retired in (b"Load Binary from File", b"Load Binary into Memory", b"Recent binaries"):
+            assert retired not in application, f"Retired application control found in Wasm: {retired!r}"
+        assert b"Load ROM from File" in application
         assert b"amiga-game-screenshot-button" not in application, (
             "Native screenshot button ID found in browser Wasm"
         )
@@ -205,6 +208,34 @@ def check_workflow(browser, url, rom, disk, output):
         assert restored["state"]["cck"] == saved["state"]["cck"], "Import booted or advanced the paused restored machine"
         assert restored["state"]["cpu"] == saved["state"]["cpu"]
         page.screenshot(path=str(output / "restored.png"))
+        stage = "retired program inputs"
+        unexpected_pickers = []
+
+        def reject_program_picker(chooser):
+            unexpected_pickers.append("file chooser")
+            chooser.set_files({
+                "name": "retired.bin",
+                "mimeType": "application/octet-stream",
+                "buffer": bytes([0x60, 0xFE]),
+            })
+
+        page.on("filechooser", reject_program_picker)
+        try:
+            page.keyboard.press("Control+o")
+            page.evaluate('''() => {
+                const transfer = new DataTransfer();
+                transfer.items.add(new File([new Uint8Array([0x60, 0xfe])], "retired.bin"));
+                document.querySelector("canvas").dispatchEvent(new DragEvent("drop", {
+                    dataTransfer: transfer, bubbles: true, cancelable: true,
+                }));
+            }''')
+            page.wait_for_timeout(400)
+        finally:
+            page.remove_listener("filechooser", reject_program_picker)
+        assert not unexpected_pickers, "Retired program shortcut opened a picker"
+        assert page.evaluate("observedGeneration") == 3
+        after_retired_inputs = export_state(output / "after-retired-inputs.json")
+        assert after_retired_inputs["state"] == restored["state"], "Retired program inputs changed the machine"
         stage = "configuration Cancel"
         stored_before_edit = page.evaluate("localStorage.getItem('player_configurations')")
         click("Game Setup")  # The existing machine remains paused.
@@ -280,6 +311,7 @@ def check_workflow(browser, url, rom, disk, output):
                 "saved_cck": saved["state"]["cck"], "restored_cck": restored["state"]["cck"],
                 "schema": saved["header"]["version"], "current_ports": current["state"]["game_ports"]["state"]["port2"],
                 "configuration_cancel": True, "stopped_configuration_save": True,
+                "retired_program_inputs_ignored": True,
                 "recorded_keyboard_shortcut": True,
                 "disk_swap_retained_raw_tracks": True, "embedded_disk_reinserted": True,
                 "native_screenshot_action_excluded": True,

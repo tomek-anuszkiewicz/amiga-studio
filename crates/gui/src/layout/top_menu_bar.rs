@@ -26,14 +26,6 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ui: &mut egui::Ui) {
 
                 // --- 1. File Menu ---
                 ui.menu_button("File", |ui| {
-                    if app.shortcut_tooltip(
-                        ui.button("📁 Load Binary..."), KeyCommand::LoadBinary,
-                        "Choose a raw program to load into Amiga memory.",
-                    ).clicked() {
-                        app.open_load_binary_dialog();
-                        ui.close_kind(egui::UiKind::Menu);
-                    }
-
                     if ui.button("Load ROM from File...")
                         .on_hover_text("Install a 256 KiB Kickstart ROM and reset the machine to its boot vectors. Press Run after loading.")
                         .clicked() {

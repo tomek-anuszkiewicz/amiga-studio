@@ -1,8 +1,9 @@
 # Mixed Game Scene
 
-The GUI and the native benchmark both run `program.bin`, a standalone 68000
-program that exercises the CPU, Chip RAM, and the display and audio DMA engines
-together. It runs without Kickstart, a disk image, or an operating system.
+`program.bin` exercises the 68000, Chip RAM and the display and audio DMA
+engines together. The application boots that same program from
+[`mixed_scene.adf`](mixed_scene.adf). The native benchmark loads the program
+directly into Chip RAM and runs without firmware.
 
 The 320 x 256 PAL display shows moving columns of colored sprite emblems over
 scrolling bitplanes, with palette changes along the raster. The scene starts at
@@ -15,24 +16,19 @@ compatibility with real games require separate evidence.
 
 ## Run in the GUI
 
-Start the GUI from the repository root.
+Open **Manual Setup**, select a 256 KiB Kickstart 1.3 ROM from your own
+collection and insert `mixed_scene.adf` in **DF0**. Use a PAL configuration
+with at least 512 KiB Chip RAM. Click **Start**. Kickstart reads the disk
+before the guest initializes the display. The moving sprites and scrolling
+background then run continuously. An NTSC session clips the bottom.
 
-```powershell
-cargo run --release -p gui --bin amiga-studio -- --game --load crates/machine_loop/tests/programs/display/mixed_scene/program.bin --addr 1000
-```
+The guest initializes its own stack and interrupt vectors and drives the
+custom chips. In the GUI the scene runs without host input. The benchmark
+adds synthetic connector events and drains digital audio.
 
-Press **Run** and wait approximately eight emulated PAL fields for initialization
-before judging the image. The program then loops indefinitely. In an already
-running GUI, reset first. Load `program.bin` at `$001000`, set the PC through the
-loader, and select Run. The full scene requires PAL. NTSC runs the workload with
-the bottom of the scene clipped because its fields are shorter.
-
-The program initializes its own stack and interrupt vectors and controls all
-custom registers. The scene runs without adding host keyboard and mouse mappings
-or speaker output. The guest runs autonomously in the GUI. The benchmark runs
-the same guest and supplies synthetic connector events.
-
-The following command captures the program offscreen in the GUI after 64 fields.
+To capture the guest image without starting the application or supplying
+firmware, run the headless GUI inspector. It seeds a local session with the
+raw program and captures the image after 64 fields.
 
 ```powershell
 python tools/verification/verify.py runner gui -- --scenario mixed_scene --output .agent/tmp/mixed-scene/gui.png
@@ -102,18 +98,37 @@ observed events or counters, since register enable bits alone are insufficient.
 - Disk DMA remains disabled. Busy engines have internal phases when they work or
   wait, so the scene can exercise them while leaving some bus opportunities free.
 
-## Rebuild and Observe
+## Rebuild the ADF
 
 Use the assembler provisioned by `tools/bootstrap/assembler-manifest.json`.
-The following command uses its pinned Windows release.
+From the repository root, build a temporary ADF and compare it with the
+checked-in image. These commands use the pinned Windows release.
 
 ```powershell
-.\tools\m68k-asm\v2.4.6\x86_64-pc-windows-msvc\m68k-asm.exe crates/machine_loop/tests/programs/display/mixed_scene/program.as --origin 0x1000 -o crates/machine_loop/tests/programs/display/mixed_scene/program.bin
+$scene = 'crates/machine_loop/tests/programs/display/mixed_scene'
+$assembler = 'tools/m68k-asm/v2.4.6/x86_64-pc-windows-msvc/m68k-asm.exe'
+New-Item -ItemType Directory -Force .agent/tmp/mixed-scene | Out-Null
+python "$scene/build_adf.py" --assembler $assembler --output .agent/tmp/mixed-scene/mixed_scene.adf
+Get-FileHash "$scene/mixed_scene.adf", .agent/tmp/mixed-scene/mixed_scene.adf
 ```
 
-Use the native example described above to observe the scene manually and measure
-FPS. The automated execution and assertion tests for this graphical program were
-removed. The scene and its bootstrap remain guest code.
+The packager assembles [`boot.as`](boot.as), writes the checksum across the
+first two sectors and copies the 1,268-byte `program.bin` to disk offset
+`$500`. It fills the rest of the 880 KiB image with zeroes. Kickstart gives
+the boot block a trackdisk request. The boot block reads the next three
+sectors into reserved Chip RAM at `$74000` and returns a continuation. After
+Kickstart closes the device, that continuation enters supervisor mode,
+copies the program to `$1000` and jumps there. The disk contains the boot
+loader and the scene, with no filesystem or firmware.
+[Amiga floppy boot process](https://wiki.amigaos.net/wiki/Amiga_Floppy_Boot_Process_and_Physical_Layout)
+
+To reassemble the original payload for comparison, build it at its existing
+origin and compare its hash with `program.bin`.
+
+```powershell
+& $assembler "$scene/program.as" --origin 0x1000 -o .agent/tmp/mixed-scene/program.bin
+Get-FileHash "$scene/program.bin", .agent/tmp/mixed-scene/program.bin
+```
 
 `host.rs` supports the native example. The scene stores state and counters at
 `$8000`, Copper data at `$10000`, planes at `$20000..$33fff`, sprites at

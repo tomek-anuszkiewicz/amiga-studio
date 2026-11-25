@@ -1,6 +1,6 @@
 // Host file references stay in IndexedDB; file contents are never retained here.
 const RECENT_FILE_LIMIT = 5;
-let history = { binary: [], rom: [] };
+let recentRoms = [];
 let database;
 let restoration;
 let pendingWrite = Promise.resolve();
@@ -21,12 +21,19 @@ function openDatabase() {
 export function restore_history() {
     if (!restoration) {
         restoration = openDatabase().then(db => new Promise((resolve, reject) => {
-            const transaction = db.transaction("history", "readonly");
-            const request = transaction.objectStore("history").get("files");
-            transaction.oncomplete = () => {
-                if (request.result) history = request.result;
-                resolve();
+            const transaction = db.transaction("history", "readwrite");
+            const store = transaction.objectStore("history");
+            const request = store.get("files");
+            request.onsuccess = () => {
+                const saved = request.result;
+                if (saved) {
+                    recentRoms = saved.rom;
+                    if (Object.keys(saved).some(key => key !== "rom")) {
+                        store.put({ rom: recentRoms }, "files");
+                    }
+                }
             };
+            transaction.oncomplete = resolve;
             transaction.onabort = () => reject(transaction.error);
             transaction.onerror = () => reject(transaction.error);
         }));
@@ -34,21 +41,20 @@ export function restore_history() {
     return restoration;
 }
 
-export function recent_names(kind) {
-    return history[kind].map(entry => entry.name);
+export function recent_rom_names() {
+    return recentRoms.map(entry => entry.name);
 }
 
-export function remember_file(kind, name, handle) {
+export function remember_rom(name, handle) {
     return update_history(async () => {
-        const entries = history[kind];
         const retained = [];
-        for (const entry of entries) {
+        for (const entry of recentRoms) {
             const same = handle && entry.handle
                 ? await handle.isSameEntry(entry.handle)
                 : !handle && !entry.handle && entry.name === name;
             if (!same) retained.push(entry);
         }
-        history[kind] = [{ name, handle }, ...retained].slice(0, RECENT_FILE_LIMIT);
+        recentRoms = [{ name, handle }, ...retained].slice(0, RECENT_FILE_LIMIT);
     });
 }
 
@@ -59,7 +65,7 @@ function update_history(update) {
         const db = await openDatabase();
         await new Promise((resolve, reject) => {
             const transaction = db.transaction("history", "readwrite");
-            transaction.objectStore("history").put(history, "files");
+            transaction.objectStore("history").put({ rom: recentRoms }, "files");
             transaction.oncomplete = resolve;
             transaction.onabort = () => reject(transaction.error);
             transaction.onerror = () => reject(transaction.error);
@@ -77,7 +83,7 @@ export function pick_file(kind, title, extensions, recentIndex, multiple = false
             multiple,
             types: [{ description: title, accept: { "application/octet-stream": extensions } }],
         };
-        const entry = history[kind]?.[recentIndex];
+        const entry = kind === "rom" ? recentRoms[recentIndex] : undefined;
         if (entry?.handle) options.startIn = entry.handle;
         // Check independently: a picker may silently ignore a deleted starting folder.
         // Denied access does not prove that a file has been deleted.
@@ -99,10 +105,9 @@ export function pick_file(kind, title, extensions, recentIndex, multiple = false
         ]).then(async ([outcome, unavailable]) => {
             if (unavailable || missingStart) {
                 await update_history(() => {
-                    history[kind] = history[kind].filter(candidate => candidate !== entry);
+                    recentRoms = recentRoms.filter(candidate => candidate !== entry);
                 });
-                const category = kind === "binary" ? "binaries" : "ROMs";
-                window.alert(`"${entry.name}" or its folder no longer exists. Removed from recent ${category}. If the folder is unavailable, the file picker uses the browser's default location.`);
+                window.alert(`"${entry.name}" or its folder no longer exists. Removed from recent ROMs. If the folder is unavailable, the file picker uses the browser's default location.`);
             }
             if (outcome.error) {
                 if (outcome.error.name === "AbortError") return null;

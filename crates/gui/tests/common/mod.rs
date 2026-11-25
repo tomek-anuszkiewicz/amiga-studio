@@ -101,6 +101,12 @@ impl TestRenderer for TextureUploads {
     }
 }
 
+pub fn app_with_program(code: &[u8]) -> EmulatorApp {
+    let mut session = Box::new(gui::DebuggerSession::new());
+    session.load_binary(0x1000, code, true).unwrap();
+    EmulatorApp::with_session(session)
+}
+
 pub fn dropped_file(path: impl Into<PathBuf>) -> egui::DroppedFileHandle {
     #[derive(Debug)]
     struct DroppedPath(PathBuf);

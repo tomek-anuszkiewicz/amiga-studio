@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "debugger"
 status: "active"
 created: 2026-09-05
-updated: 2026-11-15
+updated: 2026-11-25
 related: ["[General Architecture.md](../General%20Architecture.md)", "[Machine Loop.md](../Machine%20Loop.md)", "[GUI.md](GUI.md)", "[CPU Motorola M68000.md](../CPU%20Motorola%20M68000.md)"]
 tracked_paths:
   - "crates/debugger"
@@ -20,7 +20,9 @@ and its execution controls and can run without a window. Inspection reads the
 machine's state without advancing emulation. [machine](../Machine%20Loop.md)
 
 The GUI presents the session's registers, memory, disassembly, breakpoints,
-and history. [Developer Studio GUI](GUI.md)
+and history. Standalone program injection is available to headless diagnostic
+sessions and test fixtures. The application boots media with Kickstart.
+[Developer Studio GUI](GUI.md)
 
 ## Controlling execution
 

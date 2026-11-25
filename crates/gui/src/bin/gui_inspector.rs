@@ -31,7 +31,7 @@ fn print_usage() {
     eprintln!(
         "Usage: gui-inspector [OPTIONS]\n\
          Options:\n\
-           --scenario <NAME>       Scenario: baseline, clean_startup, live_display, live_display_studio, mixed_scene, hover_splitter, hover_scrollbar, hover_register, hover_ccr, hover_memory, game_mode, drive_activity, library, library_editor, manual_setup, replace_session, configurations, configuration_dirty, workbench_theme, edit_register, edit_disasm, small_window (default: baseline)\n\
+           --scenario <NAME>       Scenario: baseline, clean_startup, mixed_scene, hover_splitter, hover_scrollbar, hover_register, hover_ccr, hover_memory, game_mode, drive_activity, library, library_editor, manual_setup, replace_session, configurations, configuration_dirty, workbench_theme, edit_register, edit_disasm, small_window (default: baseline)\n\
            --width <PIXELS>        Viewport width in points/pixels (default: 1280)\n\
            --height <PIXELS>       Viewport height in points/pixels (default: 720)\n\
            --output <PATH>         Target PNG output file path (default: target/gui_captures/baseline.png)\n\
@@ -145,19 +145,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut app = EmulatorApp::with_session(session);
         app.view_mode = gui::ViewMode::ScreenOnly;
         app
-    } else if matches!(scenario.as_str(), "live_display" | "live_display_studio") {
-        let mut session = Box::new(gui::DebuggerSession::new());
-        session.load_binary(
-            debugger::DEFAULT_TARGET_ADDRESS,
-            include_bytes!("../../../machine_loop/tests/programs/display/live_stripes/program.bin"),
-            true,
-        )?;
-        let mut app = EmulatorApp::with_session(session);
-        if scenario == "live_display" {
-            app.view_mode = gui::ViewMode::ScreenOnly;
-        }
-        app.host.queue(gui::host_commands::HostCommand::Run);
-        app
     } else if scenario == "drive_activity" {
         const IDLE_GUEST_CODE: [u8; 4] = [0x4e, 0x71, 0x60, 0xfc];
         const RELEASED_CONTROLS: u8 = u8::MAX;
@@ -221,30 +208,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     .then(tempfile::tempdir)
     .transpose()?;
     match scenario.as_str() {
-        "live_display" | "live_display_studio" => {
-            let deadline = std::time::Instant::now() + OWNER_REPLY_TIMEOUT;
-            while harness.state().host.status.field_number < 2 {
-                if std::time::Instant::now() >= deadline {
-                    return Err("Display program did not produce two completed fields".into());
-                }
-                harness.step();
-                std::thread::sleep(OWNER_POLL_INTERVAL);
-            }
-            harness
-                .state_mut()
-                .host
-                .queue(gui::host_commands::HostCommand::Pause);
-            loop {
-                harness.step();
-                if !harness.state().host.status.running && harness.state().host.is_idle() {
-                    break;
-                }
-                if std::time::Instant::now() >= deadline {
-                    return Err("Display program did not pause".into());
-                }
-                std::thread::sleep(OWNER_POLL_INTERVAL);
-            }
-        }
         "library"
         | "library_editor"
         | "manual_setup"

@@ -996,7 +996,7 @@ fn reset_reply_and_video_handoff_cannot_publish_an_obsolete_or_lose_a_new_image(
 }
 
 #[test]
-fn binary_load_during_an_unfinished_running_field_keeps_the_previous_image() {
+fn a_rejected_memory_edit_keeps_the_previous_image_during_an_unfinished_field() {
     use gui::host_commands::HostRequest;
     let mut session = session();
     // MOVE.W #0,$DFF02C; BRA.S $1000 continuously restarts the beam position.
@@ -1022,24 +1022,24 @@ fn binary_load_during_an_unfinished_running_field_keeps_the_previous_image() {
     owner.advance(0.0, || 0.0);
     assert!(owner.status().cck > 0);
     assert_eq!(owner.status().field_number, 0);
-    let loaded = owner.execute(HostRequest {
+    let edited = owner.execute(HostRequest {
         id: 2,
         generation: 1,
-        command: HostCommand::LoadBinary {
+        command: HostCommand::WriteMemory {
             address: 0x2000,
             bytes: vec![0x4e, 0x71],
-            prime: false,
+            restart_instruction: false,
         },
     });
-    assert!(loaded.value.is_ok());
-    assert!(loaded.status.running);
-    assert_eq!(loaded.status.generation, 2);
+    assert!(edited.value.unwrap_err().contains("Pause execution"));
+    assert!(edited.status.running);
+    assert_eq!(edited.status.generation, 1);
     assert!(
         !owner.publish(&exchange).unwrap(),
-        "Running load published an unfinished field"
+        "Running machine published an unfinished field"
     );
     assert_eq!(
-        exchange.try_consume(2, |_, _| ()).unwrap(),
+        exchange.try_consume(1, |_, _| ()).unwrap(),
         VideoRead::Pending
     );
 }

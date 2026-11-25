@@ -86,7 +86,9 @@ fn game_toolbar_supports_files_manual_states_speed_fps_and_return_to_debug() {
     harness.get_by_label("File").click_accesskit();
     common::settle_harness(&mut harness);
     harness.get_by_label("Load ROM from File...");
-    harness.get_by_label("📁 Load Binary...");
+    harness.get_by_label("Recent ROMs");
+    assert!(harness.query_by_label("📁 Load Binary...").is_none());
+    assert!(harness.query_by_label("Recent binaries").is_none());
     harness.get_by_label("File").click_accesskit();
     common::settle_harness(&mut harness);
     harness.get_by_label("FPS").click_accesskit();
@@ -154,41 +156,6 @@ fn game_toolbar_supports_files_manual_states_speed_fps_and_return_to_debug() {
     common::settle_harness(&mut harness);
     assert_eq!(harness.state().view_mode, ViewMode::Developer);
     harness.get_by_label("Step Frame");
-}
-
-#[test]
-fn browser_style_binary_bytes_can_be_loaded_without_a_host_path() {
-    let mut app = EmulatorApp::default();
-    app.set_view_mode(ViewMode::ScreenOnly);
-    app.pending_binary = Some(gui::BinarySource::Bytes {
-        name: "loop.bin".into(),
-        data: vec![0x60, 0xfe],
-    });
-    app.load_binary_modal_open = true;
-    let mut harness = Harness::builder()
-        .with_size(egui::vec2(1024.0, 600.0))
-        .build_ui_state(
-            |ui, app: &mut EmulatorApp| {
-                common::keyboard::inject_taps(ui.ctx(), app.host.status.generation);
-                app.update_ui(ui)
-            },
-            app,
-        );
-    common::settle_harness(&mut harness);
-    harness.get_by_label("File: loop.bin");
-    harness.get_by_label("Load into Memory").click_accesskit();
-    common::settle_harness(&mut harness);
-    assert!(!harness.state().load_binary_modal_open);
-    assert_eq!(
-        common::inspect(harness.state_mut())
-            .memory
-            .read_word_debug(0x1000),
-        0x60fe
-    );
-    assert_eq!(
-        common::inspect(harness.state_mut()).cpu.instruction_pc(),
-        0x1000
-    );
 }
 
 #[test]

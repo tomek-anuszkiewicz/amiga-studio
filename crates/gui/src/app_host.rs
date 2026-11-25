@@ -399,8 +399,7 @@ impl crate::EmulatorApp {
                 && self.player.library_editor.is_some()
                 && self.player.pending_launch.is_none()
                 && !self.editing_start_state_name()
-                && self.file_error.is_none()
-                && !self.load_binary_modal_open;
+                && self.file_error.is_none();
             if !paste.active {
                 paste.pending = None;
             }

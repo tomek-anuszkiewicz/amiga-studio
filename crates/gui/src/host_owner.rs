@@ -401,16 +401,6 @@ impl MachineOwner {
                     .map_err(|error| error.to_string())?;
                 self.new_generation();
             }
-            HostCommand::LoadBinary {
-                address,
-                bytes,
-                prime,
-            } => {
-                self.session
-                    .load_binary(address, &bytes, prime)
-                    .map_err(|error| error.to_string())?;
-                self.new_generation();
-            }
             paused => {
                 if self.session.is_running {
                     return Err("Pause execution before inspecting or editing the machine".into());

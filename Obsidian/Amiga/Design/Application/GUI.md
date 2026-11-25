@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "gui"
 status: "active"
 created: 2026-09-05
-updated: 2026-11-24
+updated: 2026-11-25
 related: ["[egui Guidelines.md](../egui%20Guidelines.md)", "[Debugger.md](Debugger.md)", "[General Architecture.md](../General%20Architecture.md)", "[Keyboard.md](../Keyboard.md)", "[Mouse.md](../Mouse.md)", "[Audio.md](../Audio.md)", "[Denise.md](../Denise.md)", "[RTC.md](../RTC.md)"]
 tracked_paths:
   - "crates/gui"
@@ -303,7 +303,7 @@ This preserves the image's own width-to-height ratio without forcing 4:3.
 
 | Area | Available information and controls |
 | --- | --- |
-| Top bar | Load a binary into memory or reset the machine; save and load state through files or quick slots; run, pause at a video field boundary, step one field, instruction or Color Clock, and step backward through recorded history. Measured video FPS, speed controls and CCK/instruction counters sit beside theme, zoom, and game-view controls. |
+| Top bar | Load a Kickstart ROM or reset the machine; save and load state through files or quick slots; run, pause at a video field boundary, step one field, instruction or Color Clock, and step backward through recorded history. Measured video FPS, speed controls and CCK/instruction counters sit beside theme, zoom, and game-view controls. |
 | Left dock | CPU data and address registers, program counter, status register and condition flags, followed by engine status such as bus availability and counters. An optional microcode inspector shows the current execution phase and intermediate CPU state; F8 toggles it. |
 | Central workspace | The framed Amiga screen, a history bar for recording and browsing CPU snapshots by step, frame, slider, or CCK position, and a disassembly listing. The listing can follow the current PC or jump to an address, set breakpoints, change the PC, and edit an instruction in place. On wide windows, the trace below the screen lists recent execution; the split between code and screen and the split above the trace are draggable. |
 | Right dock | A hex and ASCII memory viewer with address navigation and byte editing. Below it are memory search and controls for PC breakpoints, register conditions, and read/write watchpoint ranges. On narrower windows, the execution trace is also here. |
@@ -317,10 +317,10 @@ their current state. Stops triggered by watchpoints remain incomplete.
 The debugger specification describes these behavior limits, and the guide
 lists the shortcuts. [Debugger](Debugger.md), [Debugger Guide](../../../../docs/debugger.md)
 
-Loading a binary into the Kickstart address window requires a 256 KiB image.
-If the load is rejected, the machine stays as it was and the dialog stays open
-for correction. File and snapshot load errors remain visible until dismissed.
-For an invalid ROM image, the error shows the expected and actual byte counts.
+The application starts guest programs from bootable media or restores a saved
+session. Its desktop and browser controls do not inject standalone programs
+into guest memory. File and snapshot errors remain visible until dismissed.
+An invalid ROM error shows the expected and actual byte counts.
 
 File offers **Load ROM from File** on native desktop and WASM. With a valid
 256 KiB image, the emulator installs it as Kickstart and performs a cold reset
@@ -332,18 +332,15 @@ the user explicitly selects files without any required scan of local
 directories. Selection and download are host operations outside synchronous
 machine execution.
 
-File remembers the last folder used for each of binaries and ROMs and shows
-up to five recent files per category, newest first. On desktop, clicking a
-recent entry reads the original file again. A binary entry reuses its last
-successful target address and PC setting. A successful load adds or reorders
-the entry. If the selected file has disappeared, the GUI removes its entry
-and explains why. Other load failures and canceled selections keep the entry.
-If a remembered folder is missing, the desktop picker opens in the nearest
-existing parent folder. Paths and load options persist with the GUI
-preferences, outside machine snapshots.
+File remembers the last ROM folder and shows up to five recent ROMs, newest
+first. On desktop, clicking a recent entry reads the original file again. A
+successful load adds or reorders the entry. If the file has disappeared, the
+GUI removes the entry and explains why. Other load failures and canceled
+selections keep the entry. If the ROM folder is missing, the desktop picker
+opens in the nearest existing parent. ROM history lives in GUI preferences.
 
-In browsers with the File System Access API, each file category has its own
-picker directory. Clicking a recent entry opens the picker in that file's
+In browsers with the File System Access API, the ROM picker remembers its
+directory. Clicking a recent entry opens the picker in that file's
 folder and requires the user to select a file explicitly. If the file or folder
 is missing, the frontend removes the entry from IndexedDB and shows a browser
 message after the picker closes, even if selection is canceled. If a starting
@@ -516,8 +513,8 @@ timing, texture allocation and upload.
 The emulation core generates audio samples. The GUI is intended to deliver
 those samples to the host playback device. [audio subsystem](../Audio.md)
 
-The shared `live_stripes` guest program is available for manual observation
-without firmware. Host pacing, FPS and graphical guest output are evaluated
+The mixed-scene ADF boots from DF0 with a supported Kickstart ROM. Host
+pacing, FPS and graphical guest output are evaluated
 manually after removal of their dedicated automated execution and presentation
 campaigns. Independent correctness tests can still use guest programs as
 fixtures. Input correctness and host command/lifecycle checks remain automated.
@@ -592,11 +589,9 @@ During continuous Run, the inspectors keep showing the prepared data. Game
 does not request inspector snapshots.
 
 Register edits, memory patches, breakpoints, history, load/save and quick slots
-execute as owner commands. A binary load during Run retains the prepared
-inspectors until execution stops. If the current field is unfinished, the
-load waits for a completed field before publishing. File selection, host file
-I/O and downloads remain host UI operations. Filenames and recent-file records
-change only after successful owner replies.
+execute as owner commands. File selection, host file I/O and downloads
+remain host UI operations. ROM filenames and recent-file records change only
+after successful owner replies.
 
 The browser explicitly initializes one main Wasm instance. One worker instance
 shares its memory. The launcher rebuilds the Rust standard library with

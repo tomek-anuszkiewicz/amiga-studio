@@ -4,38 +4,18 @@
 use gui::{EmulatorApp, ViewMode};
 
 #[cfg(not(target_arch = "wasm32"))]
-fn main() -> eframe::Result<()> {
-    let args: Vec<String> = std::env::args().collect();
-    let mut force_mode: Option<ViewMode> = None;
-    let mut load_file: Option<String> = None;
-    let mut load_addr: u32 = debugger::DEFAULT_TARGET_ADDRESS;
-
-    let mut i = 1;
-    while i < args.len() {
-        match args[i].as_str() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut force_mode = None;
+    for argument in std::env::args().skip(1) {
+        match argument.as_str() {
             "--game" | "--screen-only" => force_mode = Some(ViewMode::ScreenOnly),
             "--dev" | "--debugger" => force_mode = Some(ViewMode::Developer),
-            "--load" => {
-                if i + 1 < args.len() {
-                    load_file = Some(args[i + 1].clone());
-                    i += 1;
-                }
+            "--help" | "-h" => {
+                println!("Usage: amiga-studio [--game | --dev]\n  --screen-only is an alias for --game.\n  --debugger is an alias for --dev.");
+                return Ok(());
             }
-            "--addr" => {
-                if i + 1 < args.len() {
-                    let clean = args[i + 1]
-                        .trim()
-                        .trim_start_matches('$')
-                        .trim_start_matches("0x");
-                    if let Ok(addr) = u32::from_str_radix(clean, 16) {
-                        load_addr = addr;
-                    }
-                    i += 1;
-                }
-            }
-            _ => {}
+            _ => return Err(format!("Unknown option {argument:?}. Use --help for usage.").into()),
         }
-        i += 1;
     }
 
     let native_options = eframe::NativeOptions {
@@ -63,12 +43,10 @@ fn main() -> eframe::Result<()> {
             if let Some(mode) = force_mode {
                 app.view_mode = mode;
             }
-            if let Some(path_str) = load_file {
-                app.load_binary_file(std::path::Path::new(&path_str), load_addr, true);
-            }
             Ok(Box::new(app))
         }),
-    )
+    )?;
+    Ok(())
 }
 
 #[cfg(target_arch = "wasm32")]

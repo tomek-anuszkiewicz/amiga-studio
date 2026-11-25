@@ -76,10 +76,11 @@ independent build under `.agent/tmp/web-dist`. [Web launcher](tools/web.ps1)
 
 ## Developer Studio & M68000 Debugger
 
-To run a standalone processor program on desktop or in the browser, choose
-**Debug**, then select **File → Load Binary** and open one of the example
-`.bin` files. These programs are designed to load at address `$001000`.
-[`examples/m68k/`](examples/m68k)
+Start a session with a supported Kickstart and a bootable disk in DF0. For a
+display and audio demonstration, use the [mixed-scene disk](crates/machine_loop/tests/programs/display/mixed_scene/README.md).
+Press **F12** in the session to open Developer Studio. The
+[M68000 sample programs](examples/m68k/) are fixtures for the headless debugger
+tests.
 
 The debugger guide covers all controls and gives step-by-step instructions
 for shortcuts and debugging workflows.

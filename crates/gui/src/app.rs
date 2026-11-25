@@ -142,11 +142,7 @@ pub struct EmulatorApp {
     pub temporal_capacity_selection: usize,
     pub breakpoint_form: BreakpointFormState,
 
-    // File loading modal state
-    pub load_binary_modal_open: bool,
-    pub pending_binary: Option<crate::file_actions::BinarySource>,
-    pub load_target_addr_str: String,
-    pub load_auto_prime: bool,
+    // File feedback
     pub file_error: Option<String>,
     pub toast_message: Option<(String, usize)>,
     #[cfg(not(target_arch = "wasm32"))]
@@ -204,10 +200,6 @@ impl Default for EmulatorApp {
             target_cck_input: String::new(),
             temporal_capacity_selection: DEFAULT_TEMPORAL_CAPACITY,
             breakpoint_form: BreakpointFormState::default(),
-            load_binary_modal_open: false,
-            pending_binary: None,
-            load_target_addr_str: "001000".to_string(),
-            load_auto_prime: true,
             file_error: None,
             toast_message: None,
             #[cfg(not(target_arch = "wasm32"))]
