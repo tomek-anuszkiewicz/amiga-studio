@@ -4,6 +4,7 @@ use super::{
     ControlConfiguration, FrontendBindings, GamepadShortcut, HostInputSettings,
     LaunchConfiguration, NamedConfiguration, PortBinding,
 };
+use crate::host_keys::HostKey;
 use config::{A500Preset, VideoStandard};
 use serde::{Deserialize, Serialize};
 
@@ -17,7 +18,7 @@ pub(super) struct StoredConfiguration {
     drives: [bool; config::FLOPPY_DRIVE_COUNT],
     ports: [PortBinding; 2],
     mouse_sensitivity: f32,
-    keyboard: Vec<(u8, u8)>,
+    keyboard: Vec<(HostKey, u8)>,
     frontend: FrontendBindings,
     gamepad_shortcuts: Vec<GamepadShortcut>,
 }

@@ -614,7 +614,7 @@ fn existing_flat_user_configuration_remains_readable_without_migration() {
     assert_eq!(configuration.id, "standard");
     assert_eq!(configuration.name, "My existing configuration");
     assert_eq!(configuration.launch.rom, "kick.rom");
-    assert_eq!(configuration.controls.host.keyboard, vec![(32, 33)]);
+    assert_eq!(configuration.controls.host.keyboard, vec![(32.into(), 33)]);
     assert_eq!(configuration.controls.host.mouse_sensitivity, 1.5);
     eframe::set_value(&mut storage, "configuration", &configuration);
     assert!(storage

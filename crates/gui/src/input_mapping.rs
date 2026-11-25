@@ -1,6 +1,7 @@
 //! One host action policy shared by native and browser event adapters.
 
 use crate::host_input::HostInputEvent;
+use crate::host_keys::HostKey;
 use crate::player_config::{
     ControlConfiguration, InputSource, JoystickMapping, MAX_CONTROLLER_AXIS, PAD_BUTTON_COUNT,
 };
@@ -106,12 +107,18 @@ impl GamepadRecorder {
 #[derive(Debug, Default)]
 pub struct InputMapping {
     configuration: Option<(ControlConfiguration, Vec<JoystickMapping>)>,
-    held: HashSet<u8>,
+    held: HashMap<HostKey, MappedKey>,
     pads: HashMap<String, [bool; 6]>,
     blocked_pads: HashSet<String>,
     pub available: Vec<GamepadInfo>,
     action_buttons: HashMap<(String, usize), bool>,
     pub actions: Vec<crate::player_config::FrontendAction>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum MappedKey {
+    Joystick(u8),
+    Guest(u8),
 }
 
 impl InputMapping {
@@ -164,61 +171,81 @@ impl InputMapping {
         }
     }
 
-    pub fn keyboard(&mut self, code: u8, pressed: bool) -> Vec<HostInputEvent> {
-        let changed = if pressed {
-            self.held.insert(code)
+    pub fn keyboard(&mut self, source: HostKey, pressed: bool) -> Vec<HostInputEvent> {
+        let mapped = if pressed {
+            if self.held.contains_key(&source) {
+                return Vec::new();
+            }
+            let Some(mapped) = self.map_key(&source) else {
+                return Vec::new();
+            };
+            self.held.insert(source, mapped);
+            mapped
         } else {
-            self.held.remove(&code)
+            let Some(mapped) = self.held.remove(&source) else {
+                return Vec::new();
+            };
+            mapped
         };
-        if !changed {
+        // Multiple physical sources can hold the same guest key or joystick contact.
+        if self.held.values().filter(|&&key| key == mapped).count() > usize::from(pressed) {
             return Vec::new();
         }
-        let Some((configuration, catalog)) = &self.configuration else {
-            return vec![HostInputEvent::Key { code, pressed }];
-        };
-        let mut events = Vec::new();
-        let keyboard_mappings = || {
-            configuration
-                .ports
-                .iter()
-                .enumerate()
-                .filter_map(|(port, binding)| {
-                    let InputSource::Keyboard(id) = &binding.source else {
-                        return None;
-                    };
-                    Some((port, catalog.iter().find(|mapping| &mapping.id == id)?))
+        match mapped {
+            MappedKey::Guest(code) => vec![HostInputEvent::Key { code, pressed }],
+            MappedKey::Joystick(code) => self
+                .keyboard_mappings()
+                .filter(|(_, mapping)| mapping.keys.contains(&code))
+                .map(|(port, mapping)| {
+                    let contacts = mapping.keys.map(|key| {
+                        self.held
+                            .values()
+                            .any(|&held| held == MappedKey::Joystick(key))
+                    });
+                    joystick(port, contacts)
                 })
-        };
-        for (port, mapping) in keyboard_mappings() {
-            if mapping.keys.contains(&code) {
-                let contacts = mapping.keys.map(|key| self.held.contains(&key));
-                events.push(joystick(port, contacts));
+                .collect(),
+        }
+    }
+
+    fn map_key(&self, source: &HostKey) -> Option<MappedKey> {
+        let default = source.default_code();
+        if let Some(code) = default {
+            if self
+                .keyboard_mappings()
+                .any(|(_, mapping)| mapping.keys.contains(&code))
+            {
+                return Some(MappedKey::Joystick(code));
             }
         }
-        if !events.is_empty() {
-            return events;
-        }
-        let translated = |code| {
-            configuration
-                .host
-                .keyboard
-                .iter()
-                .find(|(host, _)| *host == code)
-                .map_or(code, |(_, guest)| *guest)
-        };
-        let guest = translated(code);
-        let other_source_held = self.held.iter().any(|&key| {
-            key != code
-                && translated(key) == guest
-                && !keyboard_mappings().any(|(_, mapping)| mapping.keys.contains(&key))
-        });
-        if !other_source_held {
-            events.push(HostInputEvent::Key {
-                code: guest,
-                pressed,
-            });
-        }
-        events
+        self.configuration
+            .as_ref()
+            .and_then(|(configuration, _)| {
+                configuration
+                    .host
+                    .keyboard
+                    .iter()
+                    .find_map(|(host, guest)| host.matches_source(source).then_some(*guest))
+            })
+            .or(default)
+            .map(MappedKey::Guest)
+    }
+
+    fn keyboard_mappings(&self) -> impl Iterator<Item = (usize, &JoystickMapping)> {
+        self.configuration
+            .iter()
+            .flat_map(|(configuration, catalog)| {
+                configuration
+                    .ports
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(port, binding)| {
+                        let InputSource::Keyboard(id) = &binding.source else {
+                            return None;
+                        };
+                        Some((port, catalog.iter().find(|mapping| &mapping.id == id)?))
+                    })
+            })
     }
     pub fn pointer(&self, event: HostInputEvent) -> Vec<HostInputEvent> {
         let Some((configuration, _)) = &self.configuration else {

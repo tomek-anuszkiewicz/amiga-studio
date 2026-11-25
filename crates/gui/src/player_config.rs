@@ -2,7 +2,7 @@
 
 use crate::host_keys::{
     amiga_key_code, amiga_key_name, frontend_binding_name, frontend_key_position,
-    host_name_for_code,
+    host_name_for_code, HostKey,
 };
 use config::{A500Preset, VideoStandard};
 use serde::{Deserialize, Serialize};
@@ -263,7 +263,7 @@ impl ControlConfiguration {
 pub struct HostInputSettings {
     pub mouse_sensitivity: f32,
     /// Host physical key position to guest raw keycode overrides.
-    pub keyboard: Vec<(u8, u8)>,
+    pub keyboard: Vec<(HostKey, u8)>,
     pub frontend: FrontendBindings,
     pub gamepad_shortcuts: Vec<GamepadShortcut>,
 }
@@ -558,29 +558,41 @@ impl ControlConfiguration {
             }
             frontend_buttons.push((key, shortcut.action.label()));
         }
-        let mut overridden = Vec::new();
-        for &(host, guest) in &configuration.host.keyboard {
-            if host > crate::host_keys::MAX_AMIGA_KEYCODE
-                || guest > crate::host_keys::MAX_AMIGA_KEYCODE
+        let overrides = &configuration.host.keyboard;
+        for (index, (host, guest)) in overrides.iter().enumerate() {
+            if host
+                .default_code()
+                .is_some_and(|code| code > crate::host_keys::MAX_AMIGA_KEYCODE)
+                || *guest > crate::host_keys::MAX_AMIGA_KEYCODE
             {
                 return Err(
                     "Keyboard overrides require unique physical positions and 7-bit guest codes"
                         .into(),
                 );
             }
-            if let Some((_, previous)) = overridden.iter().find(|(used, _)| *used == host) {
+            if matches!(host, HostKey::Position(position)
+                if !HostKey::valid_position(position)
+                    || position == crate::keyboard_input::VIEW_SWITCH_KEY)
+            {
+                return Err("Choose an available physical key other than F12.".into());
+            }
+            if let Some((_, previous)) = overrides[..index]
+                .iter()
+                .find(|(used, _)| used.matches_source(host))
+            {
                 return Err(format!(
                     "Keyboard overrides require unique physical positions. Change {} assigned to {}.",
-                    host_name_for_code(host), amiga_key_name(*previous)
+                    host.name(), amiga_key_name(*previous)
                 ));
             }
-            if let Some((_, assignment)) = used_keys.iter().find(|(used, _)| *used == host) {
+            let default = host.default_code();
+            if let Some((_, assignment)) = used_keys.iter().find(|(used, _)| Some(*used) == default)
+            {
                 return Err(format!(
                     "{} is a joystick key. Change {assignment} first or choose another key.",
-                    host_name_for_code(host)
+                    host.name()
                 ));
             }
-            overridden.push((host, guest));
         }
         let mut assigned = Vec::new();
         for action in FrontendAction::EDITABLE_KEYS {
@@ -606,13 +618,19 @@ impl ControlConfiguration {
                 ));
             }
             assigned.push((position, action.label()));
-            if let Some(code) = amiga_key_code(position) {
-                if let Some((_, guest)) = overridden.iter().find(|(used, _)| *used == code) {
+            let source = HostKey::Position(position.into());
+            if action != FrontendAction::Release || position != "Escape" {
+                if let Some((_, guest)) = overrides
+                    .iter()
+                    .find(|(used, _)| used.matches_source(&source))
+                {
                     return Err(format!(
                         "{name} is assigned to {} by a keyboard override. Change that override or the {} shortcut.",
                         amiga_key_name(*guest), action.label()
                     ));
                 }
+            }
+            if let Some(code) = amiga_key_code(position) {
                 if let Some((_, assignment)) = used_keys.iter().find(|(used, _)| *used == code) {
                     return Err(format!(
                         "{name} is used by a joystick mapping. Change {assignment} or the {} shortcut.",

@@ -96,7 +96,7 @@ fn returning_from_configuration_applies_new_host_bindings_without_replacing_hard
         identity: "new".into(),
         mapping: "arrows".into(),
     };
-    edited.controls.host.keyboard = vec![(0x20, 0x21)];
+    edited.controls.host.keyboard = vec![(0x20.into(), 0x21)];
     edited.controls.host.frontend.release = "F3".into();
     edited.controls.host.mouse_sensitivity = 1.5;
     edited.launch.preset = config::A500Preset::ExpandedPowerUser;
@@ -126,7 +126,7 @@ fn returning_from_configuration_applies_new_host_bindings_without_replacing_hard
     assert!(
         matches!(&active.controls.ports[1].source,InputSource::Gamepad{identity,..} if identity=="new")
     );
-    assert_eq!(active.controls.host.keyboard, vec![(0x20, 0x21)]);
+    assert_eq!(active.controls.host.keyboard, vec![(0x20.into(), 0x21)]);
     assert_eq!(active.controls.host.frontend.release, "F3");
     assert_eq!(active.controls.host.mouse_sensitivity, 1.5);
     assert_eq!(active.launch.preset, config::A500Preset::Standard1Mb);
@@ -146,7 +146,7 @@ fn imported_save_uses_active_identity_and_current_controls_in_developer_studio()
     common::settle(&mut app, &egui::Context::default());
     let draft = &mut app.player.editor.as_mut().unwrap().catalog;
     draft.configurations[0].controls.ports.swap(0, 1);
-    draft.configurations[0].controls.host.keyboard = vec![(0x20, 0x21)];
+    draft.configurations[0].controls.host.keyboard = vec![(0x20.into(), 0x21)];
     draft
         .configurations
         .push(gui::player_config::NamedConfiguration {

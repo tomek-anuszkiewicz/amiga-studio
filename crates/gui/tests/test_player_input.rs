@@ -98,7 +98,7 @@ fn keyboard_and_selected_gamepad_reach_independent_ports_and_release_both() {
         .gamepad("wrong-pad", &[1.0, 0.0], &[true])
         .is_empty());
     mapping.gamepad("player-two", &[0.0, 0.0], &[false; 16]);
-    let mut events = mapping.keyboard(0x31, true); // Z is keyboard Fire 1.
+    let mut events = mapping.keyboard(0x31.into(), true); // Z is keyboard Fire 1.
     assert!(events
         .iter()
         .all(|e| !matches!(e, HostInputEvent::Key { .. })));
@@ -153,7 +153,7 @@ fn two_keyboard_mappings_consume_only_their_keys_and_detect_conflicts() {
     let mut mapping = InputMapping::default();
     mapping.configure(&config.controls, &catalog.mappings);
     assert!(matches!(
-        mapping.keyboard(0x4c, true).as_slice(),
+        mapping.keyboard(0x4c.into(), true).as_slice(),
         [HostInputEvent::Joystick {
             port: 0,
             up: true,
@@ -161,7 +161,7 @@ fn two_keyboard_mappings_consume_only_their_keys_and_detect_conflicts() {
         }]
     ));
     assert!(matches!(
-        mapping.keyboard(0x11, true).as_slice(),
+        mapping.keyboard(0x11.into(), true).as_slice(),
         [HostInputEvent::Joystick {
             port: 1,
             up: true,
@@ -169,7 +169,7 @@ fn two_keyboard_mappings_consume_only_their_keys_and_detect_conflicts() {
         }]
     ));
     assert_eq!(
-        mapping.keyboard(0x10, true),
+        mapping.keyboard(0x10.into(), true),
         vec![HostInputEvent::Key {
             code: 0x10,
             pressed: true
@@ -340,31 +340,31 @@ fn system_mouse_targets_second_port_with_scaling_and_unassigned_input_is_dropped
 fn keyboard_aliases_release_the_guest_key_only_after_both_physical_keys_release() {
     let catalog = ConfigurationCatalog::default();
     let mut configuration = catalog.configurations[0].clone();
-    configuration.controls.host.keyboard = vec![(0x20, 0x63), (0x21, 0x63)];
+    configuration.controls.host.keyboard = vec![(0x20.into(), 0x63), (0x21.into(), 0x63)];
     let mut mapping = InputMapping::default();
     mapping.configure(&configuration.controls, &catalog.mappings);
     for (first, second) in [(0x20, 0x21), (0x21, 0x20)] {
         assert_eq!(
-            mapping.keyboard(0x20, true),
+            mapping.keyboard(0x20.into(), true),
             vec![HostInputEvent::Key {
                 code: 0x63,
                 pressed: true
             }]
         );
         assert!(
-            mapping.keyboard(0x20, true).is_empty(),
+            mapping.keyboard(0x20.into(), true).is_empty(),
             "Repeat replayed the press"
         );
         assert!(
-            mapping.keyboard(0x21, true).is_empty(),
+            mapping.keyboard(0x21.into(), true).is_empty(),
             "Alias replayed the press"
         );
         assert!(
-            mapping.keyboard(first, false).is_empty(),
+            mapping.keyboard(first.into(), false).is_empty(),
             "Alias released the guest key early"
         );
         assert_eq!(
-            mapping.keyboard(second, false),
+            mapping.keyboard(second.into(), false),
             vec![HostInputEvent::Key {
                 code: 0x63,
                 pressed: false
@@ -451,15 +451,15 @@ fn configuration_rejects_ambiguous_devices_keys_and_frontend_actions() {
         "conflicting frontend/joystick",
     );
     rejected(
-        |_, c| c.controls.host.keyboard = vec![(0x20, 0x80)],
+        |_, c| c.controls.host.keyboard = vec![(0x20.into(), 0x80)],
         "7-bit",
     );
     rejected(
-        |_, c| c.controls.host.keyboard = vec![(0x20, 0x21), (0x20, 0x22)],
+        |_, c| c.controls.host.keyboard = vec![(0x20.into(), 0x21), (0x20.into(), 0x22)],
         "unique physical",
     );
     rejected(
-        |_, c| c.controls.host.keyboard = vec![(0x4c, 0x20)],
+        |_, c| c.controls.host.keyboard = vec![(0x4c.into(), 0x20)],
         "joystick key",
     );
     rejected(
@@ -477,7 +477,7 @@ fn configuration_rejects_ambiguous_devices_keys_and_frontend_actions() {
     rejected(
         |_, c| {
             c.controls.host.frontend.pause = "A".into();
-            c.controls.host.keyboard = vec![(0x20, 0x21)];
+            c.controls.host.keyboard = vec![(0x20.into(), 0x21)];
         },
         "keyboard override",
     );
@@ -508,14 +508,14 @@ fn optional_release_defaults_to_guest_escape_and_f2_and_reserves_f12() {
     mapping.configure(&configuration.controls, &catalog.mappings);
     for code in [0x45, 0x51] {
         assert_eq!(
-            mapping.keyboard(code, true),
+            mapping.keyboard(code.into(), true),
             vec![HostInputEvent::Key {
                 code,
                 pressed: true
             }]
         );
         assert_eq!(
-            mapping.keyboard(code, false),
+            mapping.keyboard(code.into(), false),
             vec![HostInputEvent::Key {
                 code,
                 pressed: false
@@ -559,12 +559,12 @@ fn both_default_keyboard_presets_send_diagonals_and_independent_fire_contacts() 
         let [up, _, _, right, fire1, fire2] = keys;
         for key in [up, right, fire1] {
             assert!(matches!(
-                input.keyboard(key, true).as_slice(),
+                input.keyboard(key.into(), true).as_slice(),
                 [HostInputEvent::Joystick { port: 1, .. }]
             ));
         }
         assert_eq!(
-            input.keyboard(fire2, true),
+            input.keyboard(fire2.into(), true),
             vec![HostInputEvent::Joystick {
                 port: 1,
                 up: true,
@@ -576,7 +576,7 @@ fn both_default_keyboard_presets_send_diagonals_and_independent_fire_contacts() 
             }]
         );
         assert_eq!(
-            input.keyboard(fire1, false),
+            input.keyboard(fire1.into(), false),
             vec![HostInputEvent::Joystick {
                 port: 1,
                 up: true,
@@ -588,10 +588,10 @@ fn both_default_keyboard_presets_send_diagonals_and_independent_fire_contacts() 
             }]
         );
         input.release();
-        assert!(input.keyboard(fire2, false).is_empty());
+        assert!(input.keyboard(fire2.into(), false).is_empty());
         for key in [0x0f, 0x3c] {
             assert_eq!(
-                input.keyboard(key, true),
+                input.keyboard(key.into(), true),
                 vec![HostInputEvent::Key {
                     code: key,
                     pressed: true
@@ -605,20 +605,62 @@ fn both_default_keyboard_presets_send_diagonals_and_independent_fire_contacts() 
 fn joystick_position_is_not_a_held_alias_of_its_guest_destination() {
     let catalog = ConfigurationCatalog::default();
     let mut controls = catalog.selected().unwrap().controls.clone();
-    controls.host.keyboard.push((0x34, 0x4c));
+    controls.host.keyboard.push((0x34.into(), 0x4c));
     let mut input = InputMapping::default();
     input.configure(&controls, &catalog.mappings);
     assert!(matches!(
-        input.keyboard(0x4c, true).as_slice(),
+        input.keyboard(0x4c.into(), true).as_slice(),
         [HostInputEvent::Joystick { up: true, .. }]
     ));
     for pressed in [true, false] {
         assert_eq!(
-            input.keyboard(0x34, pressed),
+            input.keyboard(0x34.into(), pressed),
             vec![HostInputEvent::Key {
                 code: 0x4c,
                 pressed
             }]
         );
     }
+}
+
+#[test]
+fn changing_the_joystick_mapping_frees_every_physical_arrow_for_the_guest() {
+    let catalog = ConfigurationCatalog::default();
+    let mut controls = catalog.selected().unwrap().controls.clone();
+    let mut input = InputMapping::default();
+    for preset in ["arrows", "wasd"] {
+        controls.ports[1].source = InputSource::Keyboard(preset.into());
+        assert!(input.configure(&controls, &catalog.mappings));
+        for (index, (position, code)) in [
+            ("ArrowUp", 0x4c),
+            ("ArrowDown", 0x4d),
+            ("ArrowLeft", 0x4f),
+            ("ArrowRight", 0x4e),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            for pressed in [true, false] {
+                let events = input.keyboard(position.to_owned().into(), pressed);
+                let expected = if preset == "arrows" {
+                    HostInputEvent::Joystick {
+                        port: 1,
+                        up: pressed && index == 0,
+                        down: pressed && index == 1,
+                        left: pressed && index == 2,
+                        right: pressed && index == 3,
+                        fire1: false,
+                        fire2: false,
+                    }
+                } else {
+                    HostInputEvent::Key { code, pressed }
+                };
+                assert_eq!(events, [expected], "{preset} {position}");
+            }
+        }
+    }
+    assert_eq!(
+        catalog.mapping("arrows").unwrap().keys,
+        [0x4c, 0x4d, 0x4f, 0x4e, 0x31, 0x32]
+    );
 }

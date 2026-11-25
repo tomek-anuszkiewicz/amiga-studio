@@ -10,6 +10,9 @@ use winit::{
     window::WindowId,
 };
 
+#[cfg(windows)]
+mod windows_key_guard;
+
 pub fn run_native(
     name: &str,
     options: eframe::NativeOptions,
@@ -18,11 +21,24 @@ pub fn run_native(
     let event_loop = EventLoop::<eframe::UserEvent>::with_user_event().build()?;
     let context = OnceLock::new();
     let created_context = &context;
+    #[cfg(windows)]
+    let window = OnceLock::new();
+    #[cfg(windows)]
+    let created_window = &window;
     let app = eframe::create_native(
         name,
         options,
         Box::new(move |cc| {
             let _ = created_context.set(cc.egui_ctx.clone());
+            #[cfg(windows)]
+            {
+                use winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};
+                if let Ok(handle) = cc.window_handle() {
+                    if let RawWindowHandle::Win32(handle) = handle.as_raw() {
+                        let _ = created_window.set(handle.hwnd);
+                    }
+                }
+            }
             creator(cc)
         }),
         &event_loop,
@@ -33,6 +49,10 @@ pub fn run_native(
         primary_window: None,
         cursor_position: None,
         modifiers: ModifiersState::empty(),
+        #[cfg(windows)]
+        window: &window,
+        #[cfg(windows)]
+        windows_keys: windows_key_guard::WindowsKeyGuard::default(),
     })?;
     Ok(())
 }
@@ -43,12 +63,34 @@ struct KeyboardApplication<'a> {
     primary_window: Option<WindowId>,
     cursor_position: Option<winit::dpi::PhysicalPosition<f64>>,
     modifiers: ModifiersState,
+    #[cfg(windows)]
+    window: &'a OnceLock<std::num::NonZeroIsize>,
+    #[cfg(windows)]
+    windows_keys: windows_key_guard::WindowsKeyGuard,
+}
+
+#[cfg(windows)]
+impl KeyboardApplication<'_> {
+    fn update_windows_keys(&mut self) {
+        let active = self.context.get().is_some_and(|ctx| {
+            crate::keyboard_input::with_inbox(ctx, |inbox| inbox.native_capture_active())
+        });
+        self.windows_keys.update(self.window.get().copied(), active);
+    }
 }
 
 impl ApplicationHandler<eframe::UserEvent> for KeyboardApplication<'_> {
     fn window_event(&mut self, event_loop: &ActiveEventLoop, id: WindowId, event: WindowEvent) {
         // Eframe creates the application's primary window first.
-        if *self.primary_window.get_or_insert(id) == id {
+        let primary = *self.primary_window.get_or_insert(id) == id;
+        #[cfg(windows)]
+        let closing =
+            primary && matches!(&event, WindowEvent::CloseRequested | WindowEvent::Destroyed);
+        if primary {
+            #[cfg(windows)]
+            if closing {
+                self.windows_keys.release();
+            }
             if let Some(ctx) = self.context.get() {
                 match &event {
                     WindowEvent::ModifiersChanged(modifiers) => self.modifiers = modifiers.state(),
@@ -74,6 +116,8 @@ impl ApplicationHandler<eframe::UserEvent> for KeyboardApplication<'_> {
                 }
                 if collect_window_key(ctx, &event) {
                     ctx.request_repaint();
+                    #[cfg(windows)]
+                    self.update_windows_keys();
                     return;
                 }
                 if artwork_paste_pressed(&event, self.modifiers) {
@@ -82,6 +126,10 @@ impl ApplicationHandler<eframe::UserEvent> for KeyboardApplication<'_> {
             }
         }
         self.app.window_event(event_loop, id, event);
+        #[cfg(windows)]
+        if primary && !closing {
+            self.update_windows_keys();
+        }
     }
 
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
@@ -105,10 +153,14 @@ impl ApplicationHandler<eframe::UserEvent> for KeyboardApplication<'_> {
     }
 
     fn suspended(&mut self, event_loop: &ActiveEventLoop) {
+        #[cfg(windows)]
+        self.windows_keys.release();
         self.app.suspended(event_loop);
     }
 
     fn exiting(&mut self, event_loop: &ActiveEventLoop) {
+        #[cfg(windows)]
+        self.windows_keys.release();
         self.app.exiting(event_loop);
     }
 

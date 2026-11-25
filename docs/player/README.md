@@ -44,9 +44,13 @@ folder. Cover uses the image as the game's library cover.
 ## Use the keyboard, mouse and controller
 
 Click the Amiga display to capture the mouse. Middle mouse frees the mouse
-while the keyboard and controller keep working. You can configure a mouse
-release key. Choose a key other than Escape, which the browser can use to
-release the pointer.
+while the keyboard and controller keep working. You can assign another
+mouse release key in Configurations. During captured desktop gameplay, Escape
+follows its Amiga mapping even if an older configuration lists it as a release
+shortcut. On Windows, the app requests logo-key suppression while the running
+session has focus and mouse capture so the Windows keys can act as Amiga
+modifiers. The browser can release pointer lock on Escape independently of its
+Amiga mapping. If Windows or the browser handles a key first, assign a spare key.
 
 Open Configurations to see and edit the actual bindings. Choose a keyboard
 joystick preset or record a mapping for a connected controller. You can also
@@ -56,6 +60,11 @@ the assigned controller when prompted. Cancel recording keeps the current
 binding. To map a host key to an Amiga key, select the Amiga key, choose Add
 key override and press an unused host key. Remove the override to restore
 the original mapping. Save applies the edits. Cancel discards the draft.
+
+If a keyboard joystick uses the arrow keys, change its bindings or choose a
+different port source to free the arrows for the Amiga keyboard. Choose
+**Keypad (** or **Keypad )** to map a spare host key to either keypad
+parenthesis. You can record the host **Menu** key when the app receives it.
 
 From the setup screens, choose Return to session to open the same machine.
 In the session, press F12 to switch between Game view and Developer Studio.

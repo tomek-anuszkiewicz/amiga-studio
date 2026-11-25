@@ -1,4 +1,5 @@
-use gui::host_input::HostInputEvent;
+use gui::host_input::{HostInputEvent, KeyboardEvent};
+use gui::input_mapping::InputMapping;
 use gui::keyboard_input::{KeyRoute, KeyboardPolicy, KeyboardRouter, PhysicalKey};
 
 pub fn policy() -> KeyboardPolicy {
@@ -11,7 +12,9 @@ pub fn policy() -> KeyboardPolicy {
         pause_pending: false,
         developer: false,
         can_edit: true,
+        native_mouse_captured: false,
         bindings: Default::default(),
+        additional_guest_positions: Vec::new(),
     }
 }
 pub fn key(physical: &str, pressed: bool) -> PhysicalKey {
@@ -25,6 +28,7 @@ pub fn key(physical: &str, pressed: bool) -> PhysicalKey {
 }
 pub fn translate(
     router: &mut KeyboardRouter,
+    mapping: &mut InputMapping,
     physical: &str,
     pressed: bool,
     enabled: bool,
@@ -32,7 +36,10 @@ pub fn translate(
     let mut policy = policy();
     policy.running = enabled;
     match router.route(&key(physical, pressed), &policy) {
-        KeyRoute::Amiga { code, pressed } => Some(HostInputEvent::Key { code, pressed }),
+        KeyRoute::Gameplay(KeyboardEvent::Key { position, pressed }) => mapping
+            .keyboard(position.into(), pressed)
+            .into_iter()
+            .next(),
         _ => None,
     }
 }

@@ -280,7 +280,8 @@ Switching from a running Developer Studio session to Game keeps the machine
 running in the same input generation.
 The middle mouse button releases the mouse without pausing. The guest never
 receives that button. The optional binding for mouse release starts unassigned,
-and Escape and F2 otherwise remain guest keys.
+and F2 ordinarily remains a guest key. During native captured gameplay,
+physical Escape follows its guest mapping and leaves the mouse captured.
 Pause/resume and quick save/load are configurable and start at F5, F6 and F9.
 Reset has no keyboard shortcut. Debugger stepping shortcuts are fixed and work
 only in Developer Studio.
@@ -363,8 +364,9 @@ try another. **Save** validates and publishes the configuration draft.
 **Emulator shortcuts** lists F12 for switching views and middle mouse for
 releasing the mouse. A new configuration has no additional mouse release
 key. F12 is reserved. The editor rejects Escape as a new mouse release key
-and explains this choice when a saved configuration still names it. The
-stored binding remains until the player reassigns or unassigns it.
+and marks a saved Escape mouse release binding as inactive during native
+captured gameplay. The stored binding remains until the player reassigns or
+unassigns it.
 **Controller shortcuts** shows controller, button and action names. Without
 an available controller, the section explains why editing is disabled and
 retains the saved assignments. When a controller is available, the player
@@ -373,10 +375,15 @@ Quick load use slot 1 for both controller and keyboard shortcuts.
 
 **Amiga keyboard remapping** sends an alternate host key to a named Amiga key
 in one direction. For example, select Amiga Escape and record a spare key.
-A source already assigned to a joystick or emulator shortcut must be freed
-first. Multiple host keys can send the same guest key. The guest receives one
-press and a release when the last source is released. Unused host positions
-follow the ordinary translation.
+The destination list includes the four arrows and both keypad parentheses.
+A named physical source can be recorded even when it has no default guest
+key, as with the Menu key. The saved override uses the source's physical
+position for both press and release. A source already assigned to a joystick
+or emulator shortcut must be freed first. When a keyboard joystick uses the
+arrows, change its bindings or choose a different port source to free them.
+Multiple host keys can send the same guest key. The guest receives one press
+and a release when the last source is released. Unused host positions follow
+the ordinary translation.
 
 **Reusable joystick mappings** offers the WASD preset with J/K for Fire 1/2
 and the Arrow keys preset with Z/X for Fire 1/2. The editor names the six
@@ -415,7 +422,16 @@ machine is running in an active window. On the web, the document must have
 focus and be visible. Clicking the Amiga image captures relative mouse
 movement and buttons. The keyboard works before capture and after mouse
 release. The session shows the mouse capture state and how to release it.
-The browser can also release pointer lock with Escape.
+The browser can release pointer lock with Escape independently of guest
+dispatch. Only keys the host supplies can reach the guest. Choose an
+alternate physical source if Windows or the browser handles a key first.
+
+On Windows, the native frontend requests foreground logo-key suppression
+for the emulator window while the session is focused, running and using
+mouse capture. The left and right Windows keys act as guest modifiers in
+this state. Ctrl still invokes application combinations, and F12 still
+switches views. The Menu key follows its explicit guest assignment when
+the application window receives it.
 
 Switching views releases held Amiga keys, mouse buttons, keyboard joystick
 contacts and selected gamepad contacts. Keys held through the switch must be

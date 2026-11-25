@@ -40,6 +40,19 @@ Use **Manual setup** in the toolbar to reach **Configurations** or start another
 machine. **Return to session** opens the current machine. Press F12 to switch
 between Game and Developer Studio.
 
+If the keyboard joystick uses the arrows, choose a different port source or
+change its arrow bindings. This frees the arrows for the Amiga keyboard. In
+**Amiga keyboard remapping**, you can assign keypad **(** and **)** to spare
+keys. You can also assign **Menu**, if your host delivers it. Select **Save**
+to keep these assignments.
+
+Escape follows its Amiga mapping while the desktop app has the mouse
+captured, even if an older profile lists Escape as its release shortcut.
+Use middle mouse or assign another release key. The Windows app requests
+logo-key suppression while the running session has focus and mouse capture.
+The browser can release pointer lock on Escape and can only pass on keys it
+receives. Use a spare key if Windows or your browser handles a key first.
+
 ## Add or edit a desktop game
 
 Choose a library directory and click **Add game**. Enter the name that the app

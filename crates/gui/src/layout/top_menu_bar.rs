@@ -65,7 +65,12 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ui: &mut egui::Ui) {
                 });
                 if let Some(configuration) = &app.player.active_configuration {
                     let release = &configuration.controls.host.frontend.release;
-                    if !release.is_empty() {
+                    if cfg!(not(target_arch = "wasm32"))
+                        && app.player.captured
+                        && crate::host_keys::frontend_key_position(release) == Some("Escape")
+                    {
+                        ui.small("Saved Escape release shortcut is inactive while captured.");
+                    } else if !release.is_empty() {
                         ui.small(format!("Mouse release key: {}", crate::host_keys::frontend_binding_name(release)));
                     }
                 }

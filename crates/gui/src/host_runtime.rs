@@ -91,7 +91,7 @@ impl Mailboxes {
 
     fn resolve_input(&mut self, event: HostInputEvent) {
         let events = match event {
-            HostInputEvent::Key { code, pressed } => self.mapping.keyboard(code, pressed),
+            HostInputEvent::Key { code, pressed } => self.mapping.keyboard(code.into(), pressed),
             HostInputEvent::MouseMotion { .. } | HostInputEvent::MouseButtons { .. } => {
                 self.mapping.pointer(event)
             }

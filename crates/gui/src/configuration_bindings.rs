@@ -1,7 +1,7 @@
 //! Draft input recording and application for the configuration editor.
 
 use crate::configuration_edit::ConfigurationEdit;
-use crate::host_keys::{amiga_key_code, host_key_name, record_frontend_key};
+use crate::host_keys::{amiga_key_code, host_key_name, record_frontend_key, HostKey};
 use crate::input_mapping::{GamepadCapture, GamepadInput, GamepadRecording};
 use crate::keyboard_input::{with_inbox, KeyRecording, VIEW_SWITCH_KEY};
 use crate::player_config::{
@@ -113,7 +113,10 @@ impl BindingRecording {
                         row,
                         destination,
                     } => {
-                        let host = physical_key()?;
+                        if !HostKey::valid_position(&key) {
+                            return Err("Press a supported physical key.".into());
+                        }
+                        let host = HostKey::Position(key);
                         let overrides =
                             &mut proposed.configurations[*profile].controls.host.keyboard;
                         if let Some(row) = row {

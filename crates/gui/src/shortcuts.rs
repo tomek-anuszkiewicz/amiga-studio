@@ -1,8 +1,10 @@
 //! One keyboard pipeline: platform ingress, GUI command policy, then guest input.
 
 use crate::host_commands::{HistoryCommand, HostCommand};
-use crate::host_input::{HostInputEvent, INPUT_QUEUE_CAPACITY};
-use crate::host_keys::{frontend_binding_name, frontend_key_position, host_key_name};
+use crate::host_input::{KeyboardEvent, INPUT_QUEUE_CAPACITY};
+use crate::host_keys::{
+    amiga_key_code, frontend_binding_name, frontend_key_position, host_key_name, HostKey,
+};
 use crate::keyboard_input::{with_inbox, KeyCommand, KeyRoute, KeyboardPolicy};
 use crate::player_config::FrontendAction;
 use crate::{EmulatorApp, ViewMode};
@@ -160,26 +162,26 @@ impl EmulatorApp {
                         self.apply_key_command(action, ctx);
                     }
                 }
-                KeyRoute::Amiga { code, pressed } if !self.player.show_saves => {
+                KeyRoute::Gameplay(event @ KeyboardEvent::Key { .. })
+                    if !self.player.show_saves =>
+                {
                     if self.host.keyboard_pending.len() == INPUT_QUEUE_CAPACITY {
                         self.host.keyboard_pending.clear();
                         self.host
                             .keyboard_pending
-                            .push_back((HostInputEvent::ReleaseAll, generation));
+                            .push_back((KeyboardEvent::ReleaseAll, generation));
                     } else {
-                        self.host
-                            .keyboard_pending
-                            .push_back((HostInputEvent::Key { code, pressed }, generation));
+                        self.host.keyboard_pending.push_back((event, generation));
                     }
                 }
-                KeyRoute::ReleaseAll => {
+                KeyRoute::Gameplay(KeyboardEvent::ReleaseAll) => {
                     self.player.captured = false;
                     self.host.keyboard_pending.clear();
                     self.host
                         .keyboard_pending
-                        .push_back((HostInputEvent::ReleaseAll, generation));
+                        .push_back((KeyboardEvent::ReleaseAll, generation));
                 }
-                KeyRoute::Amiga { .. } | KeyRoute::Consumed | KeyRoute::Rejected(_) => {}
+                KeyRoute::Gameplay(_) | KeyRoute::Consumed | KeyRoute::Rejected(_) => {}
             }
         }
     }
@@ -202,6 +204,18 @@ impl EmulatorApp {
         let focused = ctx.input(|input| input.focused);
         #[cfg(target_arch = "wasm32")]
         let focused = crate::host_runtime::host_window_active();
+        let additional_guest_positions = self
+            .player
+            .active_configuration
+            .iter()
+            .flat_map(|configuration| &configuration.controls.host.keyboard)
+            .filter_map(|(source, _)| match source {
+                HostKey::Position(position) if amiga_key_code(position).is_none() => {
+                    Some(position.clone())
+                }
+                _ => None,
+            })
+            .collect();
         KeyboardPolicy {
             focused,
             gui_owns_input: focused_text || dialog,
@@ -222,7 +236,9 @@ impl EmulatorApp {
             pause_pending: self.host.pause_requested(),
             developer: self.view_mode == ViewMode::Developer,
             can_edit: self.host.can_edit(),
+            native_mouse_captured: cfg!(not(target_arch = "wasm32")) && self.player.captured,
             bindings: self.active_frontend_bindings(),
+            additional_guest_positions,
         }
     }
 
