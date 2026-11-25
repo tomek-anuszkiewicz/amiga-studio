@@ -32,17 +32,16 @@ for the assessment independently required by the delivered change.
 2. For the initial round, have `TA-test-runner` run the applicable tests and
    gates directly on master, even when implementation tests passed. Use
    [TA-WF-Step-verify-commit](../TA-WF-Step-verify-commit/SKILL.md) and its
-   existing `commit` profile unless the engineer selected a narrower scope.
-   The profile names checks and has no Git effect. Inspect its actual
-   selection against the delivered work and applicable pending files. Run
-   `python tools/verification/verify.py test python directory <path>` for each
-   affected Python or bootstrap suite omitted by automatic selection after
-   integration. Preserve other required gates and their failure handling.
+   `commit` profile unless the engineer selected a narrower scope. The profile
+   runs the full inventory on the current checkout, including every registered
+   Python suite. Use those results for the initial review. Use the delivered
+   changes and applicable pending files to scope the review, narrower checks
+   selected by the engineer, and tests for separately required behavior.
    Run the full milestone vectors here only when expressly selected.
    [Verifier profiles](../../../tools/verification/README.md#completion-verification)
    · [Working-tree decision RD-002](../../references/review-decisions.md#rd-002-uncommitted-changes-during-final-verification)
 3. Collect coverage in the same run as ordinary Rust tests. The `commit`
-   profile already instruments its selected packages. For planned whole-package
+   profile already instruments the ordinary workspace. For planned whole-package
    or workspace tests outside that profile, use `test coverage crate <name>`
    or `test coverage workspace` through the verifier. Use the normal command
    for selected harness, Python and expressly filtered tests and report

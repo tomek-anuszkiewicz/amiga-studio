@@ -2,8 +2,7 @@
 import os
 import sys
 from pathlib import Path
-from repository import REPO_ROOT
-from impact import RustScope, select_rust_scope, workspace_packages
+from repository import REPO_ROOT, workspace_packages
 
 
 CAPTURE_CONTRACTS = "Workflow capture contracts"
@@ -19,42 +18,20 @@ def singlestep_command(profile="verification", case=None, exact=False):
     return command
 
 
-# Full SingleStep verification runs automatically only at milestones.
-# SingleStep uses TestMemoryBus, not production MemoryBus/PhysicalMemory.
-def select_tests(root, mode, verify_singlestep=False, changes=(), rust_scope=None):
-    completion = mode == "commit"
-    singlestep = mode == "milestone" or verify_singlestep
-    commands = []
-    if completion and (rust_scope is None or rust_scope.harness):
-        commands.extend(standard_harness(root))
-    if singlestep:
-        commands.append(("Full SingleStepTests", singlestep_command(),
-                         {"SINGLESTEP_FULL": "1", "SINGLESTEP_LIMIT": "all"}))
-    if completion:
-        commands.extend(python_commands(
-            include_bootstrap=any(path.startswith("tools/bootstrap/") for path in changes)))
-        if not any(verification_contract_input(path) for path in changes):
-            commands = [item for item in commands if item[0] != "Verification CLI contracts"]
-        for group in (CAPTURE_CONTRACTS,):
-            if not any(python_contract_input(group, path) for path in changes):
-                commands = [item for item in commands if item[0] != group]
-    return commands
+def full_singlestep():
+    return ("Full SingleStepTests", singlestep_command(),
+            {"SINGLESTEP_FULL": "1", "SINGLESTEP_LIMIT": "all"})
 
 
-def select_coverage_commands(mode, rust_scope=None):
-    """Only ordinary workspace tests contribute to the commit coverage report."""
-    import sys
-
-    if mode not in ("commit", "coverage") or rust_scope is not None and rust_scope.ordinary == ():
-        return []
-    packages = rust_scope.ordinary if rust_scope is not None else None
-    package_args = [part for name in packages for part in ("-p", name)] if packages is not None else []
-    test_args = package_args if packages is not None else ["--workspace", "--exclude", "test_runner"]
-    report_scope = [part for name in packages for part in ("--package", name)] if packages is not None else []
+def select_coverage_commands(package=None):
+    """Measure ordinary workspace tests or all ordinary tests of one package."""
+    package_args = ["-p", package] if package is not None else []
+    test_args = package_args or ["--workspace", "--exclude", "test_runner"]
+    report_scope = ["--package", package] if package is not None else []
     return [
         ("Prepare coverage report", [sys.executable, "tools/verification/coverage_report.py", "--prepare"], {}),
         ("Reset coverage counters", ["cargo", "llvm-cov", "clean", "--profraw-only"], {}),
-        ("Ordinary crate tests" if packages is not None else "All ordinary crate tests",
+        ("Ordinary crate tests" if package is not None else "All ordinary crate tests",
          ["cargo", "llvm-cov", "nextest", "--no-report", "--no-fail-fast", *test_args,
           "--config-file", ".config/nextest.toml", "--profile", "default",
           "--retries", "0", "--no-tests", "fail"], {}),
@@ -67,25 +44,22 @@ def select_coverage_commands(mode, rust_scope=None):
     ]
 
 
-def select_quality_commands(mode):
+def select_quality_commands():
     """Declare external quality commands; the verifier only runs them."""
-    import sys
 
     def script(name, *args):
         return [sys.executable, f"tools/verification/checks/{name}.py", *args]
 
-    if mode == "commit":
-        return [
-            ("Obsidian Frontmatter", script("check_obsidian_frontmatter"), {}),
-            ("Formatting", ["cargo", "fmt", "--all", "--", "--check"], {}),
-            ("Clippy Invariants", script("check_clippy_policy"), {}),
-            ("WebAssembly build", ["powershell" if os.name == "nt" else "pwsh",
-                                  "-NoProfile", "-File", "tools/web.ps1", "build"], {}),
-            ("Architecture Rules", script("check_architecture"), {}),
-            ("Hardware Quality", script("audit_hardware_quality"), {}),
-            ("Code Quality", script("audit_code_quality"), {}),
-        ]
-    return []
+    return [
+        ("Obsidian Frontmatter", script("check_obsidian_frontmatter"), {}),
+        ("Formatting", ["cargo", "fmt", "--all", "--", "--check"], {}),
+        ("Clippy Invariants", script("check_clippy_policy"), {}),
+        ("WebAssembly build", ["powershell" if os.name == "nt" else "pwsh",
+                              "-NoProfile", "-File", "tools/web.ps1", "build"], {}),
+        ("Architecture Rules", script("check_architecture"), {}),
+        ("Hardware Quality", script("audit_hardware_quality"), {}),
+        ("Code Quality", script("audit_code_quality"), {}),
+    ]
 
 
 TIER1_UNIT_CRATES = [
@@ -171,18 +145,17 @@ def python_contract_input(name, path):
 
 def verification_contract_input(path):
     """Inputs consumed by contracts of verification and its shared launchers."""
-    from impact import language_data_input
+    target = Path(path)
+    vocabulary = (target.parent.as_posix() == "tools/verification/checks/english_words"
+                  and target.suffix == ".txt")
     return (not path.endswith(".md")
-            and (path == "tools/verification/checks/check_english.json" or not language_data_input(path))
+            and not vocabulary
             and python_contract_input("Verification CLI contracts", path))
 
 
-def python_commands(directory=None, pattern=None, case=None, changes=None, include_bootstrap=True):
+def python_commands(directory=None, pattern=None, case=None, changes=None):
     registered_directories = {REPO_ROOT / suite for _, suite in PYTHON_SUITES}
     selections = PYTHON_SUITES if directory is None else [("Python contracts", directory)]
-    if directory is None and not include_bootstrap:
-        selections = [(name, target) for name, target in selections
-                      if not target.startswith("tools/bootstrap/")]
     if directory is None and changes is not None:
         selections = [(name, target) for name, target in selections
                       if any(python_contract_input(name, path) for path in changes)]
@@ -194,7 +167,9 @@ def python_commands(directory=None, pattern=None, case=None, changes=None, inclu
         if not path.is_absolute():
             path = REPO_ROOT / path
         if not path.is_dir():
-            raise ValueError(f"Python test directory does not exist: {target}")
+            if directory is not None:
+                raise ValueError(f"Python test directory does not exist: {target}")
+            raise ValueError(f"{name}: Python test directory does not exist: {target}")
         resolved = path.resolve()
         if resolved == REPO_ROOT / "tools/bootstrap/book-to-markdown/tests":
             command = [sys.executable, "tools/bootstrap/book-to-markdown/run_tests.py"]
@@ -211,7 +186,7 @@ def python_commands(directory=None, pattern=None, case=None, changes=None, inclu
 
 
 def standard_harness(root):
-    suites = {p.stem for p in (root / "crates/test_runner/tests").glob("test_*.rs")}
+    suites = {p.stem for p in (root / "crates/test_runner/tests").glob("test_*.rs") if p.is_file()}
     standard = suites - {"test_singlestep"}
     if not standard:
         return []
@@ -252,7 +227,7 @@ def harness_commands(words, exact=False):
     if scope == "standard" and len(words) <= 1:
         return standard_harness(REPO_ROOT)
     if scope == "silicon" and len(words) == 1:
-        return select_tests(REPO_ROOT, "standalone", verify_singlestep=True)
+        return [full_singlestep()]
     if scope != "singlestep":
         raise ValueError("Runner tests select standard, silicon or singlestep")
     selectors = list(words[1:])
@@ -298,7 +273,7 @@ def check_commands(name, words, results_dir=None):
               "architecture": "Architecture Rules", "hardware": "Hardware Quality", "code": "Code Quality",
               "web": "WebAssembly build"}
     if name == "all" and not words:
-        return [*check_commands("english", []), *select_quality_commands("commit")]
+        return [*check_commands("english", []), *select_quality_commands()]
     if name == "unused":
         return unused_commands(words, results_dir)
     if name == "english":
@@ -316,7 +291,7 @@ def check_commands(name, words, results_dir=None):
         values = keyword_values(words, ("crate",))
         target = ["-p", values["crate"]] if values else ["--workspace"]
         return [("Rust compilation", ["cargo", "check", *target], {})]
-    selected = [item for item in select_quality_commands("commit") if item[0] == labels.get(name)]
+    selected = [item for item in select_quality_commands() if item[0] == labels.get(name)]
     if words:
         if name == "architecture":
             values = keyword_values(words, ("case",))
@@ -370,41 +345,30 @@ def runner_commands(action, words):
     raise ValueError(f"Unsupported runner action: {action}")
 
 
-def select_phases(args, changes, explanations=None, *, results_dir=None):
+def select_phases(args, changes=(), *, results_dir=None):
     from cli import keyword_values
     if args.command in ("commit", "milestone"):
         if args.exact:
             raise ValueError("--exact requires a focused Rust or SingleStep case")
         if len(set(args.sets)) != len(args.sets) or set(args.sets) - {"singlestep"}:
             raise ValueError("Completion profiles accept singlestep at most once")
-        rust_scope = None
-        if args.command == "commit":
-            # Workflow suite ownership is for Python selection. Keep the existing Rust fallback.
-            rust_python_inputs = {path for name, inputs in PYTHON_INPUTS.items()
-                                  if name not in (CAPTURE_CONTRACTS) for path in inputs}
-            rust_scope = select_rust_scope(REPO_ROOT, changes, rust_python_inputs)
-            if explanations is not None:
-                explanations.extend(rust_scope.explain())
-        coverage = select_coverage_commands(args.command, rust_scope)
-        quality = select_quality_commands(args.command)
-        build_checks = {"Clippy Invariants", "WebAssembly build"}
-        early = [item for item in quality if item[0] not in build_checks]
-        builds = [item for item in quality if item[0] in build_checks]
         if args.command == "milestone":
             sweep = [sys.executable, "tools/verification/unused_public_workspace.py"]
             if results_dir is not None:
                 sweep += ["--results-dir", str(results_dir)]
-            early.append(("Workspace unused public Rust functions", sweep, {}))
-        commands = select_tests(
-            REPO_ROOT, args.command, verify_singlestep="singlestep" in args.sets,
-            changes=changes, rust_scope=rust_scope)
-        phases = [("Preflight", early)]
-        if builds:
-            phases.append(("Build checks", builds))
-        if coverage:
-            phases.append(("Coverage", coverage))
-        phases.append(("Verification", commands))
-        return phases
+            return [("Preflight", [("Workspace unused public Rust functions", sweep, {})]),
+                    ("Verification", [full_singlestep()])]
+        harness = standard_harness(REPO_ROOT)
+        if not harness:
+            raise ValueError("No standard harness test targets in crates/test_runner/tests")
+        quality = select_quality_commands()
+        build_checks = {"Clippy Invariants", "WebAssembly build"}
+        return [
+            ("Preflight", [item for item in quality if item[0] not in build_checks]),
+            ("Build checks", [item for item in quality if item[0] in build_checks]),
+            ("Coverage", select_coverage_commands()),
+            ("Verification", [*harness, *python_commands()]),
+        ]
     if args.command == "check":
         if args.exact:
             raise ValueError("--exact requires a focused Rust or SingleStep case")
@@ -416,7 +380,7 @@ def select_phases(args, changes, explanations=None, *, results_dir=None):
     elif args.kind == "coverage":
         if args.exact:
             raise ValueError("Coverage measures all ordinary tests of the selected packages; --exact is unsupported")
-        scope = None
+        package = None
         if args.words != ["workspace"]:
             values = keyword_values(args.words, ("crate",))
             if "crate" not in values:
@@ -424,8 +388,8 @@ def select_phases(args, changes, explanations=None, *, results_dir=None):
             _, roots = workspace_packages(REPO_ROOT)
             if values["crate"] not in set(roots.values()) - {"test_runner"}:
                 raise ValueError("Coverage requires an ordinary workspace package, excluding test_runner")
-            scope = RustScope((values["crate"],), "Explicit coverage selection.")
-        return [("Coverage", select_coverage_commands("coverage", scope))]
+            package = values["crate"]
+        return [("Coverage", select_coverage_commands(package))]
     elif args.kind == "rust":
         if args.exact and not all(word in args.words for word in ("crate", "suite", "case")):
             raise ValueError("--exact requires test rust crate NAME suite NAME case NAME")

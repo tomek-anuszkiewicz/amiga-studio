@@ -27,21 +27,23 @@ tracked_paths:
 ## Completion entry point
 
 The engineer can run focused checks or select the `commit` or `milestone` profile.
-The commit profile selects quality checks, the browser build, ordinary tests
-and coverage. The milestone profile runs full SingleStep. The engineer can
-also request the full vectors for diagnosis or run benchmarks as explicit
+Every commit invocation uses the same profile on the current checkout. It runs
+preflight quality checks, Clippy and the production browser build, ordinary
+workspace tests with coverage, the standard harness and every registered Python
+suite in that order. `commit --plan` shows the same commands without running them.
+A missing suite directory or an empty standard harness selection fails selection.
+The milestone profile runs the workspace public function scan and full SingleStep.
+The engineer can also request the full vectors for diagnosis or run benchmarks as explicit
 measurements. Commit, publication and plan closure are separate operations.
 The whole-machine capture comparator is unavailable to either profile.
 Select language scans separately through
 `python tools/verification/verify.py check english`.
 
 The verification reference defines the commands, profile contents, environment
-requirements and failure handling. Its input selection rules determine which
-packages and consumers to check, when to check the entire workspace and how
-to select Python tool checks. The verifier considers the complete candidate.
-That includes staged changes, unstaged changes, new nonignored files and both
-paths of a rename. The other inputs stay in scope when the engineer stages a
-change.
+requirements and failure handling. The engineer can select focused diagnostics
+explicitly. A bare `test python` selects suites from staged changes, unstaged
+changes, new nonignored files and both paths of a rename. The commit profile
+uses the same command selection in each of those Git states and in a clean checkout.
 [Verification reference](../../../../tools/verification/README.md#completion-verification),
 [input-selection contract](../../../../tools/verification/README.md#selection-from-changed-inputs)
 

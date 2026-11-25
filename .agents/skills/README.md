@@ -129,9 +129,9 @@ Use [Correct English](TA-WF-Step-correct-english/SKILL.md),
 profile, [Review Code](TA-WF-Step-review-code/SKILL.md),
 [Challenge Findings](TA-WF-Step-challenge-findings/SKILL.md) and
 [Commit Changes](TA-WF-Main-commit-changes/SKILL.md) for scoped commits on master.
-The master skill explains how to include affected Python or bootstrap suites
-that the default profile omits after integration. Select full milestone vectors
-here only when requested.
+The default profile runs the ordinary workspace tests with coverage, the
+standard harness and every registered Python suite. Select full milestone
+vectors here only when requested.
 
 ### Close task
 

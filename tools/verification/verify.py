@@ -67,31 +67,23 @@ def run_verification(parser, args, started, archive=None):
     """Execute the requested checks without freezing inputs or reusing verdicts."""
     if archive:
         archive.phase("work selection")
-    completion = args.command in ("commit", "milestone")
     automatic_python = args.command == "test" and args.kind == "python" and not args.words
     try:
         if args.results_dir is not None and not args.results_dir.strip():
             raise ValueError("--results-dir requires a nonempty path")
         results_dir = (REPO_ROOT / args.results_dir).resolve() if args.results_dir else None
-        changes = collect_changes(REPO_ROOT) if automatic_python or completion else set()
-        explanations = []
-        if completion:
-            explanations.append("Selected paths: " + ", ".join(sorted(changes)))
-        phases = select_phases(args, changes, explanations, results_dir=results_dir)
+        changes = collect_changes(REPO_ROOT) if automatic_python else ()
+        phases = select_phases(args, changes, results_dir=results_dir)
     except (RuntimeError, OSError, ValueError) as error:
         if archive:
             archive.event("selection_error", detail=str(error), started=0)
         parser.error(str(error))
-    for explanation in explanations:
-        print(f"[INFO] {explanation}")
     if results_dir is not None:
         phases = [(phase, [(name, command,
                             {**overrides, "SINGLESTEP_RESULTS_DIR": str(results_dir / "singlestep")}
                             if "tools/verification/run_singlestep.py" in command else overrides)
                            for name, command, overrides in commands])
                   for phase, commands in phases]
-    if args.command == "commit" and not any(path.startswith("tools/bootstrap/") for path in changes):
-        print("[INFO] Bootstrap contract suites skipped: no tools/bootstrap/ changes.")
     if args.plan:
         print("[PLAN] Preview only; no checks or tests will run.")
         if results_dir is not None:

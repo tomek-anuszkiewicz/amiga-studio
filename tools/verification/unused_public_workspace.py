@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 import tempfile
 
-from impact import workspace_packages
+from repository import workspace_packages
 from unused_public import probe_package
 from unused_public_cargo import effective_build
 

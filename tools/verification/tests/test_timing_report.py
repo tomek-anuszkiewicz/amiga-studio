@@ -13,9 +13,7 @@ from git_fixtures import restore_repository
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import commands
-import impact
 import timing_report
-from cli import parse_args
 from repository import git
 
 
@@ -31,17 +29,6 @@ class TimingReportTests(unittest.TestCase):
             self.assertNotIn("private source", timing_report.command_scope(
                 root, [sys.executable, "-c", "private source"]))
 
-    def test_retired_report_path_selects_full_rust_and_normal_quality_gates(self):
-        _, args = parse_args(["commit"])
-        phases = commands.select_phases(args, {"tests/test-runtime-report.md"})
-        selected = {name for _, items in phases for name, _, _ in items}
-        self.assertIn("All ordinary crate tests", selected)
-        self.assertIn("All standard harness tests", selected)
-        self.assertNotIn("Verification CLI contracts", selected)
-        self.assertNotIn("Strict English Policy", selected)
-        self.assertTrue({"Architecture Rules", "WebAssembly build",
-                         "RAG MCP contracts", "Artifact report contracts"} <= selected)
-
     def test_selection_tests_tool_code_but_skips_vocabulary_docs_and_generated_data(self):
         routes = {
             "tools/verification/verify.py": True,
@@ -50,27 +37,16 @@ class TimingReportTests(unittest.TestCase):
             "tools/verification/checks/english_words/software.txt": False,
             "crates/cpu/src/cpu.rs": False,
             "tools/verification/README.md": False,
+            "tests/test-runtime-report.md": False,
             ".agent/tmp/verification/diagnostics/attempt/test-runtime-report.md": False,
-        }
-        predicate_only = {
             "tools/worktree.ps1": True,
             "tools/graphify_query.py": True,
             ".agents/skills/TA-WF-Step-review-docs/scripts/audit_vault.py": True,
         }
-        for path, expected in (routes | predicate_only).items():
+        for path, expected in routes.items():
             with self.subTest(path=path):
-                self.assertEqual(commands.verification_contract_input(path), expected)
-
-        root = commands.REPO_ROOT
-        graph = ({root / "crates/cpu": "cpu"}, {"cpu": set()})
-        _, args = parse_args(["commit"])
-        with patch.object(impact, "workspace_graph", return_value=graph):
-            for path, expected in routes.items():
-                with self.subTest(route=path):
-                    names = {name for name, _, _ in commands.python_commands(changes={path})}
-                    self.assertEqual("Verification CLI contracts" in names, expected)
-                    selected = {name for _, items in commands.select_phases(args, {path}) for name, _, _ in items}
-                    self.assertEqual("Verification CLI contracts" in selected, expected)
+                names = {name for name, _, _ in commands.python_commands(changes={path})}
+                self.assertEqual("Verification CLI contracts" in names, expected)
 
     def test_ignored_report_is_outside_scan_and_both_authored_paths_are_checked(self):
         checks = Path(__file__).resolve().parents[1] / "checks"

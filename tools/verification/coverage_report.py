@@ -4,7 +4,7 @@ import argparse
 import json
 from pathlib import Path
 import sys
-from impact import workspace_packages
+from repository import workspace_packages
 
 
 def scope_report(document, roots):

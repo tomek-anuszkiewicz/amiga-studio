@@ -23,9 +23,10 @@ Git already provides the configuration at that revision.
 
 ## RD-002 Uncommitted changes during final verification
 
-Ignore findings that final verification selects tests from uncommitted changes
-instead of changes already recorded in commits. Pending edits are normal input
-and new commits undergo verification. In a full English scan, also ignore
+Pending edits are normal input to final verification. Ignore findings that
+reject otherwise valid results solely because the working tree contains pending
+edits. The full commit profile uses the same command selection in any Git state.
+In a full English scan, also ignore
 findings that demand an incomplete result solely because an ordinary directory
 occupies the working-tree path of a regular file still in the Git index. Scan
 the eligible files in the replacement directory and validate vocabulary removals
@@ -43,12 +44,13 @@ the service configuration is optional.
 
 ## RD-004 Effects of changing workflow tools
 
-Ignore gaps in automatic test selection caused by changes to workflow programs,
-their shared functions or the `.graphifyignore` filter. This includes omitted
-tests of tools using the changed code and tests of later use of a generated
-report. Also ignore obsolete columns, descriptions and links left in report
-templates after changes to these programs. This exclusion includes effects
-that appear during a later invocation.
+In changed-input diagnostics, ignore gaps in automatic test selection caused
+by changes to workflow programs, their shared functions or the `.graphifyignore`
+filter. This includes omitted tests of tools using the changed code and tests
+of later use of a generated report. The full commit profile requires every
+registered suite. Also ignore obsolete columns, descriptions and links left in
+report templates after changes to these programs. This exclusion includes
+effects that appear during a later invocation.
 
 ## RD-005 Filesystem links and path redirection
 

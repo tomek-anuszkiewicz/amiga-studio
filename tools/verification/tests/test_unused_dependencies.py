@@ -50,7 +50,7 @@ def findings(output):
 
 class RecordedDiagnosticsTests(unittest.TestCase):
     def test_coverage_keeps_both_manifest_findings_at_every_display_level(self):
-        command = commands.select_coverage_commands("coverage")[2][1]
+        command = commands.select_coverage_commands()[2][1]
         self.assertEqual(command[:3], ["cargo", "llvm-cov", "nextest"])
         self.assertEqual(command[command.index("--workspace") + 1:][:2], ["--exclude", "test_runner"])
         expected = ["`bitflags` at crates/cpu/Cargo.toml:15",
@@ -108,7 +108,7 @@ class OfflineCargoTests(unittest.TestCase):
                         CARGO_TARGET_DIR=str(self.root / "target"), PYTHONIOENCODING="utf-8")
         tools = self.root / "tools/verification"
         tools.mkdir(parents=True)
-        for name in ("case_report", "cli", "commands", "coverage_report", "execution", "impact",
+        for name in ("case_report", "cli", "commands", "coverage_report", "execution",
                      "repository", "run_rust_tests", "timing_report", "unused_dependencies", "verify"):
             shutil.copyfile(TOOLS / f"{name}.py", tools / f"{name}.py")
         self.write(".config/nextest.toml", '[profile.default]\nsuccess-output = "immediate"\n')

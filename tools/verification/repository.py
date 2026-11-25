@@ -1,4 +1,5 @@
-"""Repository root and currently changed paths for check selection."""
+"""Repository root, changed paths and Cargo workspace membership."""
+import json
 import subprocess
 from pathlib import Path
 
@@ -21,3 +22,23 @@ def collect_changes(root):
                  ("ls-files", "--others", "--exclude-standard", "-z")):
         changes.update(git(root, *args).decode("utf-8").split("\0"))
     return changes - {""}
+
+
+def workspace_packages(root):
+    """Read current workspace membership without building or changing the lockfile."""
+    result = subprocess.run(
+        ["cargo", "metadata", "--format-version", "1", "--no-deps", "--offline", "--locked"],
+        cwd=root, capture_output=True, text=True, encoding="utf-8")
+    if result.returncode:
+        raise ValueError("Cargo metadata failed: " + result.stderr.strip())
+    data = json.loads(result.stdout)
+    members = set(data["workspace_members"])
+    packages = [package for package in data["packages"] if package["id"] in members]
+    if not members or {package["id"] for package in packages} != members:
+        raise ValueError("Cargo metadata has incomplete workspace membership")
+    roots = {Path(package["manifest_path"]).resolve().parent: package["name"] for package in packages}
+    if len(roots) != len(packages) or len(set(roots.values())) != len(packages):
+        raise ValueError("Cargo metadata has ambiguous package ownership")
+    for directory in roots:
+        directory.relative_to(root.resolve())
+    return packages, roots

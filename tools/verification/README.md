@@ -446,10 +446,21 @@ python tools/verification/verify.py commit
 python tools/verification/verify.py milestone
 ```
 
-These commands run bundles of checks. They leave commits and task closure to
-their respective operations. The commit profile includes quality checks, the
-browser build, ordinary tests and coverage, and selected Python tool suites. The
-milestone profile first scans for candidate unused public functions in every
+The commit profile uses the same commands on clean checkouts and checkouts with
+staged, unstaged or new files. Run `commit --plan` to see the commands before
+execution. The profile runs these phases in order.
+
+1. Check Obsidian frontmatter, formatting, architecture, hardware quality and
+   code quality.
+2. Check the Clippy invariants and build the production WebAssembly application.
+3. Clear previous coverage reports and raw counters, run ordinary workspace
+   tests once with instrumentation, export coverage and write the workspace
+   summary and gap report.
+4. Run the standard harness with its explicit integration targets, followed by
+   every registered Python tool suite in registration order. A missing suite
+   directory or a harness with no standard targets fails command selection.
+
+The milestone profile first scans for candidate unused public functions in every
 Cargo workspace package. It starts full SingleStepTests only after every probe
 succeeds and produces a fresh, valid report with an empty candidate list. The
 scan uses all workspace members, even on a clean tree or when the changes affect
@@ -503,10 +514,12 @@ Book Review uses its dedicated runner and shared browser lifecycle. Explicitly
 selected directories outside the registered groups use standard unittest
 discovery. Rust test runners keep their native scheduling.
 
-A failed preliminary or build check defers subsequent expensive phases. A failed
-coverage step stops its bundle. Give independent coverage exports separate
-writable counters. Separate verifier invocations share no batch lock or
-saved-evidence protocol.
+A failed preflight or build check lets the remaining commands in its phase run
+and defers every later phase. A failed coverage step stops the remaining coverage
+commands and lets the independent Verification phase run. A failed harness or
+Python group leaves a failed verdict and lets the later groups run. The timing
+report records commands deferred by a failure as missing. Give independent
+coverage exports separate writable counters.
 
 ### Coverage-guided testing
 
@@ -561,18 +574,11 @@ Assertions, complete hardware scenarios and performance need their own evidence.
 
 ### Selection from changed inputs
 
-The verifier uses staged, unstaged and nonignored new paths to choose checks.
-That choice saves no snapshot and gives no evidence that the source stayed
-stable. The commit profile uses `impact.py` to identify affected Rust packages
-and packages that depend on them directly or indirectly. Unknown inputs or
-changes to build or verification files keep the profile at its full scope.
-Quality gates follow their existing selection rules. Full SingleStep runs in
-milestone verification, outside the commit profile.
-
-Python tool ownership lives in `commands.py`. Without directory selectors,
-`test python` selects affected tool suites. An explicit directory runs that suite
-even when Git has no relevant changes. Telemetry/archive contracts remain a
-separate suite; the retired workflow coordinator has no test suite.
+Without a directory selector, `test python` uses Python tool ownership in
+`commands.py` to select suites affected by staged changes, unstaged changes,
+new nonignored files and both paths of a rename. A clean checkout selects no
+suites. An explicit directory runs that suite regardless of pending changes.
+Use `file PATTERN` and `case FILTER` to narrow the directory's tests.
 
 Scoped documentation review and metadata/link, semantic, language and diary work
 are selected separately. A successful profile does not assert that those operations

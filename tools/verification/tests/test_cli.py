@@ -16,18 +16,71 @@ from git_fixtures import restore_repository
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from cli import parse_args
 from commands import select_phases
-import impact
+import coverage_report
 import verify
 import commands as selection
 import execution
+from repository import git
 from timing_report import REPORT_NAME
 import timing_report
-from impact import RustScope
+from test_case_report import ignore_archive
+
+
+PYTHON_GROUPS = (
+    ('Bootstrap contracts', 'tools/bootstrap/tests'),
+    ('Graphify contracts', 'tools/graphify/tests'),
+    ('Conversion contracts', 'tools/bootstrap/conversion/tests'),
+    ('HTML conversion contracts', 'tools/bootstrap/html-to-markdown/tests'),
+    ('PDF conversion contracts', 'tools/bootstrap/pdf-to-markdown/tests'),
+    ('Book review contracts', 'tools/bootstrap/book-to-markdown/tests'),
+    ('RAG MCP contracts', 'tools/amiga-rag-mcp-server/tests'),
+    ('Artifact report contracts', 'tools/artifacts/tests'),
+    ('Verification CLI contracts', 'tools/verification/tests'),
+    ('Workflow capture contracts', 'tools/workflow/capture/tests'),
+)
+STANDARD_TARGETS = ('test_benchmark_workloads', 'test_singlestep_mutations',
+                    'test_singlestep_overrides', 'test_transactions')
+
+
+def commit_inventory():
+    python = sys.executable
+    checks = 'tools/verification/checks'
+    coverage = 'tools/verification/coverage_report.py'
+    shell = 'powershell' if os.name == 'nt' else 'pwsh'
+    groups = [
+        ('Preflight', 'Obsidian Frontmatter', [python, f'{checks}/check_obsidian_frontmatter.py']),
+        ('Preflight', 'Formatting', ['cargo', 'fmt', '--all', '--', '--check']),
+        ('Preflight', 'Architecture Rules', [python, f'{checks}/check_architecture.py']),
+        ('Preflight', 'Hardware Quality', [python, f'{checks}/audit_hardware_quality.py']),
+        ('Preflight', 'Code Quality', [python, f'{checks}/audit_code_quality.py']),
+        ('Build checks', 'Clippy Invariants', [python, f'{checks}/check_clippy_policy.py']),
+        ('Build checks', 'WebAssembly build', [shell, '-NoProfile', '-File', 'tools/web.ps1', 'build']),
+        ('Coverage', 'Prepare coverage report', [python, coverage, '--prepare']),
+        ('Coverage', 'Reset coverage counters', ['cargo', 'llvm-cov', 'clean', '--profraw-only']),
+        ('Coverage', 'All ordinary crate tests',
+         ['cargo', 'llvm-cov', 'nextest', '--no-report', '--no-fail-fast',
+          '--workspace', '--exclude', 'test_runner', '--config-file', '.config/nextest.toml',
+          '--profile', 'default', '--retries', '0', '--no-tests', 'fail']),
+        ('Coverage', 'Export ordinary crate coverage',
+         ['cargo', 'llvm-cov', 'report', '--json', '--ignore-filename-regex', r'[/\\]test_runner[/\\]',
+          '--output-path', '.agent/tmp/coverage/coverage.json']),
+        ('Coverage', 'Ordinary crate coverage summary', [python, coverage]),
+        ('Verification', 'All standard harness tests',
+         ['cargo', 'test', '--no-fail-fast', '-p', 'test_runner',
+          '--test', 'test_benchmark_workloads', '--test', 'test_singlestep_mutations',
+          '--test', 'test_singlestep_overrides', '--test', 'test_transactions', '--', '--quiet']),
+    ]
+    for name, directory in PYTHON_GROUPS:
+        command = [python, 'tools/verification/run_tests.py', '-s', directory, '-q']
+        if directory == 'tools/bootstrap/book-to-markdown/tests':
+            command = [python, 'tools/bootstrap/book-to-markdown/run_tests.py']
+        groups.append(('Verification', name, command))
+    return groups
+
 
 def selected(sentence, changes=()):
     _, args = parse_args(sentence.split() if isinstance(sentence, str) else sentence)
     return [item for _, commands in select_phases(args, set(changes)) for item in commands]
-from test_case_report import ignore_archive
 
 class SelectionTests(unittest.TestCase):
 
@@ -71,18 +124,7 @@ class SelectionTests(unittest.TestCase):
         self.assertEqual(commands[0][1], ['cargo', 'test', '--release', '--no-run', '-p', 'test_runner', '--tests', '--benches'])
 
     def test_python_selection_preserves_directory_file_and_case(self):
-        suites = (
-            ('Bootstrap contracts', 'tools/bootstrap/tests'),
-            ('Graphify contracts', 'tools/graphify/tests'),
-            ('Conversion contracts', 'tools/bootstrap/conversion/tests'),
-            ('HTML conversion contracts', 'tools/bootstrap/html-to-markdown/tests'),
-            ('PDF conversion contracts', 'tools/bootstrap/pdf-to-markdown/tests'),
-            ('Book review contracts', 'tools/bootstrap/book-to-markdown/tests'),
-            ('RAG MCP contracts', 'tools/amiga-rag-mcp-server/tests'),
-            ('Artifact report contracts', 'tools/artifacts/tests'),
-            ('Verification CLI contracts', 'tools/verification/tests'),
-            ('Workflow capture contracts', 'tools/workflow/capture/tests'),
-        )
+        suites = PYTHON_GROUPS
         repo = Path(__file__).resolve().parents[3]
         owning_changes = [f'{directory}/test_trial.py' for _, directory in suites]
         batch = selected('test python', reversed(owning_changes))
@@ -106,8 +148,7 @@ class SelectionTests(unittest.TestCase):
         capture = 'Workflow capture contracts'
         runner = [sys.executable, 'tools/verification/run_tests.py', '-s', 'tools/workflow/capture/tests', '-q']
         self.assertEqual(defaults[capture], runner)
-        commit = {name: command for name, command, _ in selected('commit', ['tools/workflow/capture/tests/test_trial.py'])}
-        self.assertEqual(commit[capture], runner)
+
 
     def test_focused_python_keeps_unregistered_directories_on_standard_discovery(self):
         with tempfile.TemporaryDirectory(prefix='unregistered python suite ') as directory:
@@ -127,22 +168,10 @@ class SelectionTests(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertEqual({item[0] for item in selected('test python', [path])}, expected)
 
-    def test_capture_contracts_follow_owning_changes_and_keep_full_rust_fallback(self):
-        group = 'Workflow capture contracts'
-        for path in ('tools/workflow/capture/records.py', 'tools/workflow/capture/tests/test_records.py'):
-            with self.subTest(path=path):
-                names = {item[0] for item in selected('commit', [path])}
-                self.assertTrue({group, 'All ordinary crate tests', 'All standard harness tests', 'RAG MCP contracts', 'Artifact report contracts'} <= names)
-        for changes in ([], ['DIARY.md'], ['tools/workflow/result.py'], ['crates/cpu/src/cpu.rs']):
-            with self.subTest(changes=changes):
-                self.assertNotIn(group, {item[0] for item in selected('commit', changes)})
-
-    def test_root_ignore_rules_select_both_consumers_and_keep_full_rust_scope(self):
+    def test_default_python_selects_both_consumers_of_root_ignore_rules(self):
         changes = ['.gitignore']
         consumers = {'Verification CLI contracts', 'Workflow capture contracts'}
         self.assertEqual({name for name, _, _ in selected('test python', changes)}, consumers)
-        commit = {name for name, _, _ in selected('commit', changes)}
-        self.assertTrue(consumers | {'All ordinary crate tests', 'All standard harness tests'} <= commit)
 
     def test_full_and_sampled_silicon_runs_override_inherited_selection(self):
         commands = selected('test runner singlestep case test_add_b sample 500')
@@ -171,16 +200,17 @@ class SelectionTests(unittest.TestCase):
                 self.assertEqual([item for item in commands if item[0] == 'WebAssembly build'], web)
         self.assertIn(web[0], selected('check all'))
 
-    def test_empty_standard_harness_never_selects_all_cargo_targets(self):
-        with patch.object(Path, 'glob', return_value=[Path('test_singlestep.rs')]):
-            commands = selected('commit')
-            self.assertFalse(any((item[1][:2] == ['cargo', 'test'] for item in commands)))
-            self.assertEqual(selected('test runner standard'), [])
-
     def test_standard_harness_keeps_explicit_ordinary_targets(self):
-        with patch.object(Path, 'glob', return_value=[Path('test_singlestep.rs'), Path('test_reports.rs')]):
-            commands = selection.harness_commands(['standard'])
-            self.assertEqual(commands[0][1], ['cargo', 'test', '--no-fail-fast', '-p', 'test_runner', '--test', 'test_reports', '--', '--quiet'])
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            tests = root / 'crates/test_runner/tests'
+            tests.mkdir(parents=True)
+            for target in ('test_singlestep', 'test_reports'):
+                (tests / f'{target}.rs').touch()
+            with patch.object(selection, 'REPO_ROOT', root):
+                commands = selection.harness_commands(['standard'])
+            self.assertEqual(commands[0][1], ['cargo', 'test', '--no-fail-fast', '-p', 'test_runner',
+                                              '--test', 'test_reports', '--', '--quiet'])
 
     def test_explicit_singlestep_runs_once_alongside_automatic_selection(self):
         commands = selected('milestone singlestep', ['crates/cpu/src/cpu.rs'])
@@ -193,11 +223,7 @@ class SelectionTests(unittest.TestCase):
         self.assertEqual(unit[0], 'Tier 1 ordinary crate tests')
         self.assertEqual(unit[1][:2], ['cargo', 'test'])
         self.assertEqual(unit[1][unit[1].index('cpu') - 1], '-p')
-        commands = {name: command for name, command, _ in selected('commit', changes)}
-        ordinary = commands['Ordinary crate tests']
-        self.assertEqual([value for option, value in zip(ordinary, ordinary[1:]) if option == '-p'], ['cpu', 'debugger', 'gui', 'machine_loop', 'save_state'])
-        self.assertNotIn('--workspace', ordinary)
-        self.assertIn('All standard harness tests', commands)
+
 
     def test_milestone_retains_separate_scope(self):
         for changes in ([], ['crates/cpu/src/cpu.rs'], ['docs/testing.md']):
@@ -211,101 +237,25 @@ class SelectionTests(unittest.TestCase):
                          {'SINGLESTEP_FULL': '1', 'SINGLESTEP_LIMIT': 'all'}),
                     ])
 
-    def test_commit_skips_rust_but_keeps_quality_and_python_suites_for_bootstrap_changes(self):
-        commands = selected('commit', ['tools/bootstrap/book-to-markdown/review/service.py'])
-        self.assertFalse(any(('llvm-cov' in item[1] or item[1][:2] == ['cargo', 'test'] for item in commands)))
-        self.assertTrue(any((any((part.endswith('checks/check_architecture.py') for part in item[1])) for item in commands)))
-        suites = (
-            ('Bootstrap contracts', 'tools/bootstrap/tests'),
-            ('Graphify contracts', 'tools/graphify/tests'),
-            ('Conversion contracts', 'tools/bootstrap/conversion/tests'),
-            ('HTML conversion contracts', 'tools/bootstrap/html-to-markdown/tests'),
-            ('PDF conversion contracts', 'tools/bootstrap/pdf-to-markdown/tests'),
-            ('RAG MCP contracts', 'tools/amiga-rag-mcp-server/tests'),
-            ('Artifact report contracts', 'tools/artifacts/tests'),
-        )
-        runner = 'tools/verification/run_tests.py'
-        self.assertEqual(
-            [item for item in commands if runner in item[1] or 'discover' in item[1]],
-            [(name, [sys.executable, runner, '-s', directory, '-q'], {}) for name, directory in suites],
-        )
-        self.assertTrue(any(('tools/bootstrap/book-to-markdown/run_tests.py' in item[1] for item in commands)))
-
-    def test_language_data_keeps_commit_gates_without_expanding_rust(self):
-        self.enterContext(patch.object(impact, 'workspace_graph', return_value=self.gui_graph()))
-        gui_path = 'crates/gui/src/lib.rs'
-        docs = selected('commit', ['docs/testing.md'])
-        gui = selected('commit', [gui_path])
-        names = {name for name, _, _ in docs}
-        self.assertTrue({'Architecture Rules', 'Clippy Invariants'} <= names)
-        self.assertNotIn('Strict English Policy', names)
-        self.assertFalse(any(('llvm-cov' in command or command[:2] == ['cargo', 'test'] for _, command, _ in docs)))
-        self.assertNotIn('Verification CLI contracts', names)
-        for path, expected in (('tools/verification/checks/english_words/programming.txt', []), ('tools/verification/checks/check_english.json', ['Verification CLI contracts'])):
-            with self.subTest(path=path):
-                for changes, baseline in (([path], docs), ([gui_path, path], gui)):
-                    commands = selected('commit', changes)
-                    self.assertEqual(commands[:len(baseline)], baseline)
-                    self.assertEqual([name for name, _, _ in commands[len(baseline):]], expected)
-
-    def gui_graph(self):
-        return ({selection.REPO_ROOT / 'crates/gui': 'gui'}, {'gui': set()})
-
-    def test_partial_coverage_runs_once_and_exports_the_same_packages(self):
-        with patch.object(selection, 'select_rust_scope', return_value=RustScope(('cpu', 'gui', 'test_runner'), 'fixture')):
-            commands = selected('commit', ['crates/cpu/src/cpu.rs'])
-        run = next((command for _, command, _ in commands if '--no-report' in command))
-        self.assertEqual(run[:3], ['cargo', 'llvm-cov', 'nextest'])
-        self.assertIn('--no-fail-fast', run)
-        for option, value in (('--profile', 'default'), ('--retries', '0'), ('--no-tests', 'fail'), ('--config-file', '.config/nextest.toml')):
-            self.assertEqual(run[run.index(option) + 1], value)
-        export = next((command for _, command, _ in commands if '--json' in command))
-        self.assertNotIn('--summary-only', export)
-        self.assertEqual(export[-2:], ['--output-path', '.agent/tmp/coverage/coverage.json'])
-        summary = next((command for _, command, _ in commands if 'tools/verification/coverage_report.py' in command and '--prepare' not in command))
-        for command in (run, export):
-            self.assertEqual([command[i + 1] for i, word in enumerate(command) if word == '-p'], ['cpu', 'gui'])
-            self.assertNotIn('--workspace', command)
-        self.assertEqual(summary[-4:], ['--package', 'cpu', '--package', 'gui'])
-        plain = [command for _, command, _ in commands if command[:2] == ['cargo', 'test']]
-        self.assertEqual(len(plain), 1)
-        self.assertIn('test_runner', plain[0])
-        self.assertNotIn('test_singlestep', plain[0])
-
-    def test_orchestration_keeps_all_quality_gates_and_python_contracts(self):
-        self.enterContext(patch.object(impact, 'workspace_graph', return_value=self.gui_graph()))
-        gates = {'Obsidian Frontmatter', 'Formatting', 'Clippy Invariants', 'Architecture Rules', 'Hardware Quality', 'Code Quality', 'WebAssembly build', 'Graphify contracts', 'RAG MCP contracts', 'Artifact report contracts'}
-        self.assertEqual({name for name, _, _ in selected('commit', ['docs/testing.md'])}, gates)
-        gates.add('Verification CLI contracts')
-        coverage = {'Prepare coverage report', 'Reset coverage counters', 'Ordinary crate tests', 'Export ordinary crate coverage', 'Ordinary crate coverage summary'}
-        for path in ('tools/verification/verify.py', 'tools/verification/execution.py', 'tools/verification/evidence.py', 'tools/verification/batch_lock.py', 'tools/verification/tests/test_evidence.py'):
-            with self.subTest(path=path):
-                self.assertEqual({name for name, _, _ in selected('commit', [path])}, gates)
-                gui = {name: command for name, command, _ in selected('commit', ['crates/gui/src/lib.rs', path])}
-                self.assertEqual(set(gui), gates | coverage)
-                run = gui['Ordinary crate tests']
-                self.assertEqual([value for option, value in zip(run, run[1:]) if option == '-p'], ['gui'])
-                self.assertNotIn('--workspace', run)
-        for path in ('tools/verification/commands.py', 'tools/verification/impact.py', 'tools/verification/repository.py', 'tools/verification/new_module.py'):
-            with self.subTest(path=path):
-                commands = selected('commit', ['tools/verification/evidence.py', path])
-                run = next((command for _, command, _ in commands if '--no-report' in command))
-                self.assertIn('--workspace', run)
-                self.assertIn('All standard harness tests', {name for name, _, _ in commands})
-
     def test_development_coverage_reuses_pipeline_without_completion_gates(self):
         for sentence, package in (('test coverage crate cpu', 'cpu'), ('test coverage workspace', None)):
             with self.subTest(sentence=sentence):
                 commands = selected(sentence)
                 self.assertEqual(len(commands), 5)
-                run = next((command for _, command, _ in commands if '--no-report' in command))
+                run, export, summary = (command for _, command, _ in commands[2:])
+                self.assertIn('--no-report', run)
+                self.assertIn('--json', export)
                 self.assertNotIn('cargo test', ' '.join(run))
                 if package:
                     self.assertEqual(run[run.index('-p') + 1], package)
                     self.assertNotIn('--workspace', run)
+                    self.assertEqual(export[export.index('-p') + 1], package)
+                    self.assertEqual(summary[2:], ['--package', package])
                 else:
                     self.assertIn('--workspace', run)
                     self.assertEqual(run[run.index('--exclude') + 1], 'test_runner')
+                    self.assertNotIn('-p', export)
+                    self.assertEqual(summary[2:], [])
                 self.assertFalse(any(('check_' in ' '.join(command) for _, command, _ in commands)))
                 self.assertFalse(any(('run_singlestep.py' in ' '.join(command) for _, command, _ in commands)))
 
@@ -313,28 +263,6 @@ class SelectionTests(unittest.TestCase):
         for sentence in ('test coverage crate unknown_package', 'test coverage crate test_runner', 'test coverage crate cpu suite test_add', 'test coverage workspace --exact'):
             with self.subTest(sentence=sentence), self.assertRaises(ValueError):
                 selected(sentence)
-
-    def test_unaffected_runner_is_skipped_and_harness_only_change_has_no_coverage(self):
-        for packages, harness, coverage in ((('gui',), False, True), (('test_runner',), True, False), ((), False, False)):
-            with self.subTest(packages=packages), patch.object(selection, 'select_rust_scope', return_value=RustScope(packages, 'fixture')):
-                commands = selected('commit', ['docs/testing.md'])
-            self.assertEqual(any((command[:2] == ['cargo', 'test'] for _, command, _ in commands)), harness)
-            self.assertEqual(any(('llvm-cov' in command for _, command, _ in commands)), coverage)
-            self.assertIn([sys.executable, 'tools/verification/checks/check_clippy_policy.py'], [command for _, command, _ in commands])
-
-    def test_commit_skips_bootstrap_contracts_without_bootstrap_changes(self):
-        bootstrap = {'Bootstrap contracts', 'Conversion contracts', 'HTML conversion contracts', 'PDF conversion contracts', 'Book review contracts'}
-        for changes in ([], ['crates/cpu/src/cpu.rs'], ['tools/verification/commands.py']):
-            with self.subTest(changes=changes):
-                names = {name for name, _, _ in selected('commit', changes)}
-                self.assertFalse(names & bootstrap)
-                self.assertIn('RAG MCP contracts', names)
-                self.assertIn('Artifact report contracts', names)
-                self.assertEqual('Verification CLI contracts' in names, any((selection.verification_contract_input(path) for path in changes)))
-        for path in ('tools/bootstrap/conversion/client.py', 'tools/bootstrap/books/new/source.json'):
-            with self.subTest(path=path):
-                names = {name for name, _, _ in selected('commit', [path])}
-                self.assertEqual(names & bootstrap, bootstrap)
 
     def test_focused_architecture_filter_does_not_select_other_checks(self):
         commands = selected('check architecture case test_file_size_limits')
@@ -583,23 +511,16 @@ class ExecutionTests(unittest.TestCase):
         config.write_text('{', encoding='utf-8')
         read_report(run('files', source.name), 2, ['scan_error'], complete=False)
 
-    def test_cold_profiles_launch_the_remaining_commands_and_keep_gate_failures(self):
-        note = self.root / 'docs/testing.md'
-        note.parent.mkdir()
-        note.write_text('The notes changed.\n', encoding='utf-8')
-        quality = ['tools/verification/checks/check_obsidian_frontmatter.py', 'fmt', 'tools/verification/checks/check_architecture.py', 'tools/verification/checks/audit_hardware_quality.py', 'tools/verification/checks/audit_code_quality.py', 'tools/verification/checks/check_clippy_policy.py', '-NoProfile']
+    def test_milestone_launches_the_public_scan_before_full_singlestep(self):
         milestone = ['tools/verification/unused_public_workspace.py', 'tools/verification/run_singlestep.py']
-        expected = [(['commit'], quality, None), (['milestone'], milestone, None),
-                    (['milestone', 'singlestep'], milestone, None),
-                    (['commit'], quality[:5], 'tools/verification/checks/check_architecture.py')]
         native = verify.execute_command
-        for index, (arguments, launched, failed) in enumerate(expected):
-            with self.subTest(arguments=arguments, fail=failed):
+        for index, arguments in enumerate((['milestone'], ['milestone', 'singlestep'])):
+            with self.subTest(arguments=arguments):
                 observed = []
 
                 def substitute(command, overrides, **options):
                     observed.append((command, overrides))
-                    child = f'raise SystemExit({int(command[1] == failed)})'
+                    child = 'raise SystemExit(0)'
                     if 'SINGLESTEP_RESULTS_DIR' in overrides:
                         child = "import os; from pathlib import Path; out = Path(os.environ['SINGLESTEP_RESULTS_DIR']); out.mkdir(parents=True); [(out / name).write_text('{}') for name in ('run.json', 'timing.json', 'summary.json', 'execution.log')]"
                     return native([sys.executable, '-c', child], overrides, **options)
@@ -611,40 +532,31 @@ class ExecutionTests(unittest.TestCase):
                     release_probe.return_value.__enter__.return_value.read.return_value = (
                         b'[pkg.rust]\nversion = "1.100.0"\n')
                     code = verify.main([*arguments, '--results-dir', f'.agent/tmp/profile-test/{index}'])
-                self.assertEqual(code, int(failed is not None), output.getvalue())
+                self.assertEqual(code, 0, output.getvalue())
                 release_probe.assert_not_called()
                 compiler_probe.assert_not_called()
                 self.assertNotIn('Stable update', output.getvalue())
-                observed_gates = [(command, overrides) for command, overrides in observed
-                                  if command[1] in quality or command[1] in milestone]
-                self.assertCountEqual([command[1] for command, _ in observed_gates], launched)
-                self.assertFalse(any((part.endswith('/check_english.py') for command, _ in observed for part in command)))
-                if arguments[0] == 'milestone':
-                    (sweep, _), (command, overrides) = observed
-                    self.assertEqual([sweep[1], command[1]], milestone)
-                    self.assertEqual(sweep[2:], ['--results-dir', str(self.root / f'.agent/tmp/profile-test/{index}')])
-                    self.assertEqual(command[-2:], ['--profile', 'verification'])
-                    self.assertEqual([overrides[name] for name in ('SINGLESTEP_FULL', 'SINGLESTEP_LIMIT')], ['1', 'all'])
+                (sweep, _), (command, overrides) = observed
+                self.assertEqual([sweep[1], command[1]], milestone)
+                self.assertEqual(sweep[2:], ['--results-dir', str(self.root / f'.agent/tmp/profile-test/{index}')])
+                self.assertEqual(command[-2:], ['--profile', 'verification'])
+                self.assertEqual([overrides[name] for name in ('SINGLESTEP_FULL', 'SINGLESTEP_LIMIT')], ['1', 'all'])
 
-    def test_milestone_and_commit_previews_leave_the_sweep_and_singlestep_unexecuted(self):
+    def test_milestone_preview_leaves_the_sweep_and_singlestep_unexecuted(self):
         results = self.root / 'reported'
         sweep = 'Preflight: Workspace unused public Rust functions'
         singlestep = 'Verification: Full SingleStepTests'
-        for arguments in (['milestone'], ['milestone', 'singlestep'], ['commit']):
+        for arguments in (['milestone'], ['milestone', 'singlestep']):
             with self.subTest(arguments=arguments), patch.object(verify, 'execute_command') as execute, \
                  contextlib.redirect_stdout(io.StringIO()) as output:
                 self.assertEqual(verify.main([*arguments, '--results-dir', str(results), '--plan']), 0)
                 execute.assert_not_called()
                 self.assertFalse(results.exists())
                 plan = output.getvalue()
-                if arguments == ['commit']:
-                    self.assertNotIn(sweep, plan)
-                    self.assertNotIn(singlestep, plan)
-                else:
-                    self.assertLess(plan.index(sweep), plan.index(singlestep))
-                    self.assertIn(subprocess.list2cmdline([
-                        sys.executable, 'tools/verification/unused_public_workspace.py', '--results-dir', str(results),
-                    ]), plan)
+                self.assertLess(plan.index(sweep), plan.index(singlestep))
+                self.assertIn(subprocess.list2cmdline([
+                    sys.executable, 'tools/verification/unused_public_workspace.py', '--results-dir', str(results),
+                ]), plan)
 
     def test_plan_shows_isolated_logs_and_singlestep_reports_without_writing(self):
         with patch.object(verify, 'execute_command') as execute, contextlib.redirect_stdout(io.StringIO()) as output:
@@ -690,6 +602,172 @@ class ExecutionTests(unittest.TestCase):
         content = report.read_bytes()
         self.assertIn(f'[TIMING] Report SHA-256: {sha256(content).hexdigest()}', output)
         return content.decode('utf-8')
+
+    def prepare_commit_checkout(self):
+        for _, directory in PYTHON_GROUPS:
+            (self.root / directory).mkdir(parents=True, exist_ok=True)
+        harness = self.root / 'crates/test_runner/tests'
+        harness.mkdir(parents=True)
+        for target in (*STANDARD_TARGETS, 'test_singlestep'):
+            (harness / f'{target}.rs').touch()
+        self.enterContext(patch.object(selection, 'REPO_ROOT', self.root))
+        return harness
+
+    def assert_commit_report(self, output, *, failed=(), missing=()):
+        report = self.read_diagnostic_report(output)
+        rows = [line.split(' | ')[:4] for line in report.splitlines()
+                if line.startswith(('| Preflight |', '| Build checks |', '| Coverage |', '| Verification |'))]
+        self.assertEqual([(phase[2:], name, status) for phase, name, _, status in rows], [
+            (phase, name, 'failed' if name in failed else 'missing' if name in missing else 'executed')
+            for phase, name, _ in commit_inventory()
+        ])
+        return report
+
+    def test_commit_preview_has_fixed_inventory_in_every_git_state(self):
+        self.prepare_commit_checkout()
+        documentation = 'docs/testing.md'
+        rust = 'crates/cpu/src/lib.rs'
+        tool = 'tools/bootstrap/conversion/client.py'
+        vocabulary = 'tools/verification/checks/english_words/software.txt'
+        for relative in (documentation, rust, vocabulary):
+            path = self.root / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text('baseline\n', encoding='utf-8')
+        git(self.root, 'add', '.')
+        git(self.root, 'commit', '--quiet', '-m', 'Add integrated fixture changes')
+        states = (
+            ('clean after integration', {}, b''),
+            ('unstaged documentation', {documentation: 'edited'}, f' M {documentation}\n'.encode()),
+            ('staged Rust', {rust: 'edited'}, f'M  {rust}\n'.encode()),
+            ('untracked tool input', {tool: 'new'}, f'?? {tool}\n'.encode()),
+            ('pending vocabulary and documentation', {documentation: 'edited', vocabulary: 'edited'},
+             f' M {documentation}\n M {vocabulary}\n'.encode()),
+        )
+        expected = ['[PLAN] Preview only; no checks or tests will run.']
+        for phase, name, command in commit_inventory():
+            expected.extend((f'  {phase}: {name}', '    ' + subprocess.list2cmdline(command)))
+        for state, edits, status in states:
+            with self.subTest(state=state):
+                for relative, contents in edits.items():
+                    (self.root / relative).write_text(contents + '\n', encoding='utf-8')
+                if state == 'staged Rust':
+                    git(self.root, 'add', '--', rust)
+                observed = git(self.root, 'status', '--porcelain', '--untracked-files=all')
+                self.assertEqual(observed.replace(b'\r\n', b'\n'), status)
+                with patch.object(verify, 'collect_changes', side_effect=AssertionError('Commit read changed paths')), \
+                     patch.object(verify, 'execute_command') as execute, \
+                     contextlib.redirect_stdout(io.StringIO()) as output:
+                    self.assertEqual(verify.main(['commit', '--plan']), 0)
+                execute.assert_not_called()
+                self.assertEqual(output.getvalue().splitlines(), expected)
+                self.assertFalse((self.root / '.agent').exists())
+                if tool in edits:
+                    (self.root / tool).unlink()
+                git(self.root, 'restore', '--source=HEAD', '--staged', '--worktree', '--',
+                    documentation, rust, vocabulary)
+
+    def test_commit_executes_each_advertised_group_once(self):
+        self.prepare_commit_checkout()
+        with patch.object(verify, 'collect_changes', side_effect=AssertionError('Commit read changed paths')), \
+             patch.object(verify, 'execute_command', return_value=(0, 'ok', 0.25)) as execute, \
+             contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(verify.main(['commit']), 0, output.getvalue())
+        self.assertEqual([call.args[0] for call in execute.call_args_list],
+                         [command for _, _, command in commit_inventory()])
+        self.assertIn('[TIMING] 23 executed', output.getvalue())
+        self.assert_commit_report(output.getvalue())
+
+    def test_commit_rejects_missing_registered_suite_and_empty_standard_harness(self):
+        harness = self.prepare_commit_checkout()
+        suite = 'tools/bootstrap/pdf-to-markdown/tests'
+        (self.root / suite).rmdir()
+        for missing in ('Python suite', 'standard harness'):
+            with self.subTest(missing=missing):
+                if missing == 'standard harness':
+                    (self.root / suite).mkdir()
+                    for target in STANDARD_TARGETS:
+                        (harness / f'{target}.rs').unlink()
+                    self.assertEqual(selected('test runner standard'), [])
+                for flags in ([], ['--plan']):
+                    with patch.object(verify, 'execute_command') as execute, \
+                         contextlib.redirect_stderr(io.StringIO()) as diagnostics, \
+                         self.assertRaises(SystemExit) as status:
+                        verify.main(['commit', *flags])
+                    self.assertEqual(status.exception.code, 2)
+                    execute.assert_not_called()
+                    if missing == 'Python suite':
+                        self.assertIn(f'PDF conversion contracts: Python test directory does not exist: {suite}',
+                                      diagnostics.getvalue())
+                    else:
+                        self.assertIn('No standard harness test targets in crates/test_runner/tests',
+                                      diagnostics.getvalue())
+
+    def test_commit_reports_launcher_failure_and_runs_later_verification_groups(self):
+        self.prepare_commit_checkout()
+        native = verify.execute_command
+        name = 'Book review contracts'
+        groups = commit_inventory()
+        missing, = (command for _, group, command in groups if group == name)
+
+        def substitute(command, overrides, **options):
+            if command == missing:
+                return native(command, overrides, **options)
+            return 0, 'ok', 0.25
+
+        with patch.object(execution, 'run_cmd', side_effect=FileNotFoundError('launcher unavailable')) as launch, \
+             patch.object(verify, 'execute_command', side_effect=substitute) as execute, \
+             contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(verify.main(['commit']), 1, output.getvalue())
+        self.assertEqual(launch.call_args.args[0], missing)
+        self.assertEqual([call.args[0] for call in execute.call_args_list],
+                         [command for _, _, command in groups])
+        self.assertIn(f'[FAIL] {name} (0.00s): Cannot launch command: launcher unavailable', output.getvalue())
+        self.assert_commit_report(output.getvalue(), failed=(name,))
+
+    def test_commit_gate_failure_finishes_its_phase_and_reports_later_phases_missing(self):
+        self.prepare_commit_checkout()
+        groups = commit_inventory()
+        for failing in ('Architecture Rules', 'Clippy Invariants', 'WebAssembly build'):
+            with self.subTest(failing=failing):
+                phase, command = next((phase, command) for phase, name, command in groups if name == failing)
+                expected = groups[:5] if phase == 'Preflight' else groups[:7]
+
+                def substitute(actual, overrides, **options):
+                    return int(actual == command), 'child result', 0.25
+
+                with patch.object(verify, 'execute_command', side_effect=substitute) as execute, \
+                     contextlib.redirect_stdout(io.StringIO()) as output:
+                    self.assertEqual(verify.main(['commit']), 1, output.getvalue())
+                self.assertEqual([call.args[0] for call in execute.call_args_list],
+                                 [command for _, _, command in expected])
+                self.assert_commit_report(output.getvalue(), failed=(failing,),
+                                          missing=[name for _, name, _ in groups[len(expected):]])
+
+    def test_commit_coverage_export_failure_discards_old_reports_and_runs_verification(self):
+        self.prepare_commit_checkout()
+        folder = self.root / '.agent/tmp/coverage'
+        folder.mkdir(parents=True)
+        artifacts = [folder / name for name in ('coverage.json', 'summary.json', 'gaps.md')]
+        for artifact in artifacts:
+            artifact.write_text('old coverage', encoding='utf-8')
+
+        def substitute(command, overrides, **options):
+            if command[1:] == ['tools/verification/coverage_report.py', '--prepare']:
+                with patch.object(coverage_report, '__file__',
+                                  self.root / 'tools/verification/coverage_report.py'):
+                    return coverage_report.main(['--prepare']), 'prepared', 0.25
+            if command[:3] == ['cargo', 'llvm-cov', 'report']:
+                return 1, 'export failed', 0.25
+            return 0, 'ok', 0.25
+
+        with patch.object(verify, 'execute_command', side_effect=substitute) as execute, \
+             contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(verify.main(['commit']), 1, output.getvalue())
+        summary = 'Ordinary crate coverage summary'
+        self.assertEqual([call.args[0] for call in execute.call_args_list],
+                         [command for _, name, command in commit_inventory() if name != summary])
+        self.assertFalse(any(artifact.exists() for artifact in artifacts))
+        self.assert_commit_report(output.getvalue(), failed=('Export ordinary crate coverage',), missing=(summary,))
 
     def test_diagnostic_interrupt_retains_completed_and_interrupted_commands(self):
         (self.root / '.gitignore').write_text('.agent/tmp/\n', encoding='utf-8')
@@ -756,22 +834,29 @@ class ExecutionTests(unittest.TestCase):
         self.assertIn('inputs are unchanged', output.getvalue())
         self.assertFalse((self.root / '.agent/tmp/verification/diagnostics').exists())
 
-    def test_default_python_command_collects_working_tree_changes(self):
-        with patch.object(verify, 'collect_changes', return_value={'tools/amiga-rag-mcp-server/server.py'}) as collect:
-            with contextlib.redirect_stdout(io.StringIO()) as output:
-                self.assertEqual(verify.main(['test', 'python', '--plan']), 0)
-        collect.assert_called_once_with(self.root)
-        self.assertIn('RAG MCP contracts', output.getvalue())
-        self.assertNotIn('Bootstrap contracts', output.getvalue())
-
-    def test_commit_plan_collects_working_tree_changes(self):
-        with patch.object(verify, 'collect_changes', return_value={'tools/bootstrap/conversion/client.py'}) as collect:
-            with contextlib.redirect_stdout(io.StringIO()) as output:
-                self.assertEqual(verify.main(['commit', '--plan']), 0)
-        collect.assert_called_once_with(self.root)
-        self.assertIn('Book review contracts', output.getvalue())
-        self.assertIn('Rust test scope: none', output.getvalue())
-        self.assertIn('previous summary is not evidence', output.getvalue())
+    def test_python_diagnostics_follow_capture_edits_or_explicit_filters(self):
+        suite = 'tools/workflow/capture/tests'
+        source = self.root / 'tools/workflow/capture/capture.py'
+        (self.root / suite).mkdir(parents=True)
+        source.write_text('baseline\n', encoding='utf-8')
+        git(self.root, 'add', '--', source.relative_to(self.root).as_posix())
+        git(self.root, 'commit', '--quiet', '-m', 'Add capture fixture')
+        self.assertEqual(git(self.root, 'status', '--porcelain'), b'')
+        with patch.object(selection, 'REPO_ROOT', self.root), \
+             patch.object(verify, 'execute_command', return_value=(0, 'ok', 0)) as execute, \
+             contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(verify.main(['test', 'python']), 0)
+            execute.assert_not_called()
+            self.assertIn('inputs are unchanged', output.getvalue())
+            self.assertEqual(verify.main(['test', 'python', 'directory', suite,
+                                          'file', 'test_capture.py', 'case', 'capture']), 0)
+            runner = [sys.executable, 'tools/verification/run_tests.py', '-s', suite, '-q']
+            self.assertEqual([call.args[0] for call in execute.call_args_list],
+                             [[*runner, '-p', 'test_capture.py', '-k', 'capture']])
+            source.write_text('edited\n', encoding='utf-8')
+            self.assertEqual(verify.main(['test', 'python']), 0)
+            self.assertEqual(execute.call_count, 2)
+            self.assertEqual(execute.call_args.args[0], runner)
 
     def test_plan_never_executes_commands(self):
         with patch.object(verify, 'execute_command') as execute:

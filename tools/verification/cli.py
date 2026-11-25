@@ -65,12 +65,11 @@ EXAMPLES = """Examples (run from the repository root):
   python tools/verification/verify.py runner refresh benchmarks/results/<run-id>
   python tools/verification/verify.py runner bench mnemonic ADD
 
-Focused commands do not run completion gates. Only test coverage measures
-coverage outside the commit profile. Commit selects Rust
-tests and coverage from changed packages and their transitive consumers. Unknown
-inputs and build or verification changes require the full Rust scope. Independent
-documentation and Python tools skip Rust tests. Quality gates and Python contract
-policy retain their full scope. The plan explains the selected test scope.
+Commit runs the quality checks, production WebAssembly build, ordinary workspace
+tests with coverage, standard harness tests and every registered Python suite
+on the current checkout. Commit --plan previews the same commands in any Git state.
+Use the test or check commands to run focused diagnostics. Test coverage measures
+an ordinary package or the ordinary workspace without completion gates.
 Without directory selectors, test python runs only contracts affected by changed
 tool inputs. Explicit directory selection runs that suite even on a clean tree.
 Commit excludes full SingleStep. Milestone runs full SingleStep.

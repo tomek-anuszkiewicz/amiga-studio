@@ -3,7 +3,7 @@
 import re
 from pathlib import Path
 
-from impact import workspace_packages
+from repository import workspace_packages
 
 
 COLOR = re.compile(r"\x1b\[[0-9;]*m")

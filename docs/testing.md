@@ -83,26 +83,24 @@ repository root:
 python tools/verification/verify.py commit
 ```
 
-The verifier keeps the full quality checks and selects Rust tests for changed
-packages and packages that depend on them directly or indirectly. It skips Rust
-tests for independent documentation and known Python tools. Shared build inputs
-and changes with unknown impact require full verification. Use `commit --plan`
-to see the selection. The verifier reads the working tree, including unchanged
-files when a check needs them. It works without staging and leaves commit
-creation to a separate action.
+The profile runs preflight quality checks, Clippy, the production WebAssembly
+build, ordinary workspace tests with coverage, the standard harness and every
+registered Python suite. It uses the same commands on the current checkout
+regardless of Git status. Use `commit --plan` to preview the commands. The
+verifier reads the working files and leaves Git commit creation to a separate action.
 
-Ordinary task completion uses the relevant focused checks. Run full SingleStep
-verification through the selected milestone profile or explicitly for diagnosis.
-Changes alone do not select it in the commit profile. Language scans and Git
-operations are selected separately. Selecting ordinary CPU tests also runs the
-CPU waiting tests. Use `python tools/verification/verify.py --help` to see the
-available profiles. For execution details, see
+Use `test rust crate NAME` for a focused Rust run and `test python directory PATH`
+for a Python suite. A bare `test python` selects suites affected by working-tree
+changes. The milestone profile runs full SingleStep, which you can also request
+for diagnosis. Run language scans separately. Selecting ordinary CPU tests also
+runs the CPU waiting tests. Use `python tools/verification/verify.py --help` to
+see the available profiles. For execution details, see
 [tools/verification/README.md](../tools/verification/README.md#completion-verification).
 
-An ordinary crate test report includes coverage for the selected packages and
-current source files. A report for part of the workspace applies to that part
-only. Coverage shows which code ran. Assessing the assertions, the hardware
-cases represented and execution speed needs other evidence.
+Commit coverage describes the current source files of the ordinary workspace.
+A focused coverage report describes the selected package. Coverage shows which
+code ran. Assessing the assertions, the hardware cases represented and execution
+speed needs other evidence.
 
 For an identified diagnostic need or an explicit request,
 `python tools/verification/verify.py test coverage crate NAME` produces a detailed
