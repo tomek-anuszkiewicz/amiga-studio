@@ -271,10 +271,9 @@ use their existing queues.
 
 The floppy drive model supplies timed ADF transitions through the same
 connector. [Floppy](Floppy.md#autonomous-adf-reads-and-continuation)
-The original cross1 boot test exercises the firmware and guest setup. The
-broader native tests retain image comparisons and selected program-level
-exchanges. Media boot evidence requires more than the deterministic pin
-tests alone. [native tests](../../../ROADMAP.md#native-disk-verification)
+The native verification plan calls for booting original disk programs, observing
+the exchanges they initiate and comparing their output with reference results.
+[Native disk verification](../../../ROADMAP.md#native-disk-verification)
 
 ## Reference Documentation & Upstream Ground Truth
 

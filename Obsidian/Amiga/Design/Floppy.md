@@ -195,13 +195,10 @@ data separation, the FIFO, synchronization and write serialization.
 
 The [autonomous DMA tests](../../../crates/machine_loop/tests/test_floppy_media_dma.rs)
 check exact successive raw words, track wrap, CPU contention, reset and
-continuation from serialized state mid-transfer. The
-[native boot tests](../../../crates/machine_loop/tests/test_native_disk_boot.rs)
-use the original cross1 bootblock and Kickstart startup. The
-[verification reference](../../../tools/verification/README.md#native-disk-boot-checks)
-describes how to invoke the tests and what their results establish.
-Full image comparisons and broader guest coverage remain in
-[native verification](../../../ROADMAP.md#native-disk-verification).
+continuation from serialized state mid-transfer.
+The plan for native verification calls for booting the original disk programs
+through Kickstart and comparing guest output with reference results.
+[Native disk verification](../../../ROADMAP.md#native-disk-verification)
 
 ## References
 
