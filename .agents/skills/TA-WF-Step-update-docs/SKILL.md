@@ -50,12 +50,18 @@ if the document target is missing or ambiguous.
    Consolidate and order pending work without declaring completion or removing
    completed items. Preserve unfinished scope and return any missing completion
    evidence for a separately selected milestone closure.
-4. Apply selected metadata/link repairs using the
-   [vault schema](../../references/vault-metadata.md).
+4. Whenever you edit a document with a metadata header, check every field
+   against the revised content and its schema. For Design notes, apply the
+   [vault schema](../../references/vault-metadata.md). Set `updated` to the
+   date of a substantive content change. When correcting a stale date, use
+   Git to identify the latest substantive change. Check that the title,
+   aliases, tags, category, subsystem, status, related links and tracked paths
+   still describe the note. Correct the fields that need it and preserve the
+   original creation date. A review or mechanical edit alone leaves `updated`
+   unchanged.
    Follow the separate [reference book schema](../../../tools/bootstrap/book-to-markdown/reference-book-metadata.md)
    and its approval requirement before editing source notes. Preserve approved
-   intent, neighboring structure and links to implementation. Update dates and
-   relevant status, tags or dependencies for substantive changes. Keep gaps as
+   intent, neighboring structure and links to implementation. Keep gaps as
    brief factual caveats linked to the owning [roadmap](../../../ROADMAP.md).
    Reuse shared specification owners and update General Architecture dependencies
    when crate relationships change.
