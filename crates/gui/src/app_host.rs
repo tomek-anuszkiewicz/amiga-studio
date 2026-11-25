@@ -313,7 +313,7 @@ impl crate::EmulatorApp {
         #[cfg(not(target_arch = "wasm32"))]
         if ctx.input(|input| input.viewport().close_requested()) && !self.close_ready {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
-            if !self.closing {
+            if !self.closing && self.finish_start_state_deletions(true) {
                 self.closing = true;
                 self.host.queue(HostCommand::Shutdown);
             }
@@ -388,13 +388,17 @@ impl crate::EmulatorApp {
             self.handle_gamepad_actions(ctx);
         }
         #[cfg(not(target_arch = "wasm32"))]
-        self.render_saved_progress(ctx);
+        {
+            self.render_saved_progress(ctx);
+            self.render_start_state_name(ctx);
+        }
         crate::layout::file_dialogs::render(self, ctx);
         #[cfg(not(target_arch = "wasm32"))]
         crate::window_keyboard::with_artwork_paste(ctx, |paste| {
             paste.active = self.player.screen == crate::player::PlayerScreen::Library
                 && self.player.library_editor.is_some()
                 && self.player.pending_launch.is_none()
+                && !self.editing_start_state_name()
                 && self.file_error.is_none()
                 && !self.load_binary_modal_open;
             if !paste.active {

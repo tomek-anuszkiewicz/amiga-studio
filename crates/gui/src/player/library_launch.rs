@@ -232,6 +232,7 @@ impl EmulatorApp {
             game: game.clone(),
             save: save.map(std::path::Path::to_path_buf),
             normal_boot,
+            start_state: None,
             replacement: String::new(),
             error: None,
         });
@@ -278,11 +279,15 @@ impl EmulatorApp {
                     sync.changed_locally();
                 }
                 self.file_error = None;
-                self.request_player_launch(PendingLaunch::Library {
-                    game: repair.game,
-                    save: repair.save,
-                    normal_boot: repair.normal_boot,
-                });
+                if let Some(id) = repair.start_state {
+                    self.start_named_state(repair.game, id);
+                } else {
+                    self.request_player_launch(PendingLaunch::Library {
+                        game: repair.game,
+                        save: repair.save,
+                        normal_boot: repair.normal_boot,
+                    });
+                }
             }
             Err(error) => {
                 repair.error = Some(format!(

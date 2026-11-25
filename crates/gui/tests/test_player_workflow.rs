@@ -51,6 +51,7 @@ fn library() -> (PathBuf, GameLibrary) {
             }],
             mounted: [Some("disk-one".into()), None, None, None],
             initial_state: None,
+            start_states: Vec::new(),
             artwork: Some("missing-cover.png".into()),
             description: None,
         };

@@ -73,6 +73,7 @@ fn write_game(directory: &Path, id: &str, title: &str) -> GameManifest {
         disks: Vec::new(),
         mounted: [None, None, None, None],
         initial_state: None,
+        start_states: Vec::new(),
         artwork: None,
         description: Some("assets/description.md".into()),
     };

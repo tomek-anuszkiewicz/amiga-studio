@@ -195,6 +195,9 @@ impl EmulatorApp {
                 .is_some_and(|(active, original)| active.same_entry(original));
             match draft.save(&sync.root, connected) {
                 Ok(game) => {
+                    if let Some(original) = &draft.original {
+                        self.relocate_start_state_deletions(original, &game);
+                    }
                     self.complete_library_edit(game, edits_active);
                     return;
                 }
@@ -238,7 +241,7 @@ impl EmulatorApp {
         games.retain(|entry| entry.manifest.id != game.manifest.id);
         games.push(game);
         games.sort_by(|a, b| a.manifest.title.cmp(&b.manifest.title));
-        self.player.refresh_selected_saves();
+        self.player.refresh_selected_game_details();
         if let Some(sync) = &mut self.player.library_sync {
             sync.changed_locally();
         }

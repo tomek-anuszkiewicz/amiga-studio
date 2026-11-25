@@ -25,6 +25,12 @@ impl GameDisk {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GameStartState {
+    pub id: String,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GameManifest {
     pub id: String,
     pub title: String,
@@ -33,6 +39,8 @@ pub struct GameManifest {
     pub disks: Vec<GameDisk>,
     pub mounted: [Option<String>; 4],
     pub initial_state: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub start_states: Vec<GameStartState>,
     pub artwork: Option<String>,
     pub description: Option<String>,
 }
@@ -63,6 +71,7 @@ impl GameManifest {
         }
         Ok(())
     }
+
     pub fn validate_association(
         &self,
         association: &debugger::SaveAssociation,
@@ -292,43 +301,81 @@ pub fn persist_cover(
 pub struct PlayerSave {
     pub path: PathBuf,
     pub header: debugger::SaveStateHeader,
+    pub(crate) quicksave: bool,
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[derive(Debug, Default)]
+pub(crate) struct SavedProgress {
+    pub entries: Vec<PlayerSave>,
+    pub unavailable: Vec<String>,
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 pub fn saves(game: &LibraryGame) -> Result<Vec<PlayerSave>, String> {
-    saves_in(&game.directory, &game.manifest)
+    Ok(scan_saves(&game.directory, &game.manifest)?.entries)
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub(crate) fn saves_in(
+pub(crate) const PLAYER_QUICK_SLOT: usize = 1;
+
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) fn slot_filename(game_directory: &Path, slot: usize) -> Option<String> {
+    std::fs::read_to_string(game_directory.join(format!("saves/slot-{slot}.txt")))
+        .ok()
+        .map(|name| name.trim().to_owned())
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) fn read_associated_save(
+    path: &Path,
+    manifest: &GameManifest,
+) -> Result<(Vec<u8>, debugger::SaveStateHeader), String> {
+    let bytes = std::fs::read(path).map_err(|error| error.to_string())?;
+    let saved = debugger::SaveState::from_bytes(&bytes).map_err(|error| error.to_string())?;
+    manifest.validate_association(&saved.header.association)?;
+    Ok((bytes, saved.header))
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) fn scan_saves(
     game_directory: &Path,
     manifest: &GameManifest,
-) -> Result<Vec<PlayerSave>, String> {
+) -> Result<SavedProgress, String> {
     let directory = game_directory.join("saves");
-    if !directory.exists() {
-        return Ok(Vec::new());
-    }
-    let mut result = Vec::new();
-    for entry in std::fs::read_dir(directory).map_err(|e| e.to_string())? {
-        let path = entry.map_err(|e| e.to_string())?.path();
-        if path.extension().and_then(|s| s.to_str()) != Some("json") {
+    let mut result = SavedProgress::default();
+    let entries = match std::fs::read_dir(directory) {
+        Ok(entries) => entries,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(result),
+        Err(error) => return Err(error.to_string()),
+    };
+    let quicksave = slot_filename(game_directory, PLAYER_QUICK_SLOT);
+    for entry in entries {
+        let entry = entry.map_err(|error| error.to_string())?;
+        let path = entry.path();
+        if path.extension().and_then(|extension| extension.to_str()) != Some("json") {
             continue;
         }
-        let json = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
-        let saved = debugger::SaveState::from_json(&json)
-            .map_err(|e| format!("{}: {e}", path.display()))?;
-        manifest.validate_association(&saved.header.association)?;
-        result.push(PlayerSave {
-            path,
-            header: saved.header,
-        });
+        match read_associated_save(&path, manifest) {
+            Ok((_, header)) => result.entries.push(PlayerSave {
+                quicksave: quicksave
+                    .as_deref()
+                    .is_some_and(|name| path.file_name().is_some_and(|file| file == name)),
+                path,
+                header,
+            }),
+            Err(error) => result
+                .unavailable
+                .push(format!("{}: {error}", entry.file_name().to_string_lossy())),
+        }
     }
-    result.sort_by(|a, b| {
+    result.entries.sort_by(|a, b| {
         b.header
             .timestamp
             .cmp(&a.header.timestamp)
             .then_with(|| b.path.cmp(&a.path))
     });
+    result.unavailable.sort();
     Ok(result)
 }
 
@@ -454,17 +501,36 @@ pub(crate) fn write_rgba_png(
 
 #[cfg(not(target_arch = "wasm32"))]
 pub fn write_manifest(directory: &Path, bytes: &[u8]) -> Result<(), String> {
-    use std::io::Write;
+    write_manifest_if_current(directory, bytes, None)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) fn write_manifest_if_current(
+    directory: &Path,
+    bytes: &[u8],
+    expected: Option<&[u8]>,
+) -> Result<(), String> {
+    use std::io::{Error, Write};
     let pending = directory.join("game.json.pending");
     let mut file = std::fs::OpenOptions::new()
         .write(true)
         .create_new(true)
         .open(&pending)
         .map_err(|e| e.to_string())?;
-    let written = file.write_all(bytes).and_then(|_| file.sync_all());
+    let manifest = directory.join("game.json");
+    let written = (|| {
+        if let Some(expected) = expected {
+            if std::fs::read(&manifest)? != expected {
+                return Err(Error::other(
+                    "The game manifest changed on disk. Try again.",
+                ));
+            }
+        }
+        file.write_all(bytes)?;
+        file.sync_all()
+    })();
     drop(file);
-    if let Err(error) = written.and_then(|_| std::fs::rename(&pending, directory.join("game.json")))
-    {
+    if let Err(error) = written.and_then(|_| std::fs::rename(&pending, manifest)) {
         std::fs::remove_file(pending).map_err(|cleanup| {
             format!("{error}. Could not remove the temporary manifest: {cleanup}")
         })?;

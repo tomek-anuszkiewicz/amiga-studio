@@ -135,12 +135,23 @@ contents take precedence. The drive assignment identifies independent copies
 with the same disk ID when placement resolves the match. Loading a slot from an
 earlier manual session starts with that slot's mounted disks.
 
-Initial states are immutable launch assets stored separately from user saves.
-If an initial state is invalid, the frontend offers normal boot as an explicit
-choice. Loading validates the version, game/media association and committed
-input settings before replacing a live session. When the player continues a
-saved game, the frontend restores the saved machine and resumes it directly,
-without booting or applying the current hardware preset.
+Each native library game owns a collection of named start states outside its
+`saves/` directory. Each manifest entry has a stable file identity and a
+player-visible name. To add one, the frontend validates the selected stored
+save or current quicksave and copies its unchanged snapshot bytes into the
+game's collection before publishing the entry. Ordinary saves and quicksave
+replacement leave these copies intact. Rename changes only the display name.
+Delete affects only the chosen entry and its owned file after the Undo period
+or on application close. The game's legacy initial-state reference and asset
+remain independent.
+
+Named start states load only when selected explicitly. They use the same
+restore and play behavior as an ordinary save file, including the mounted
+snapshot media and available source ADFs for a fresh disk session. The
+frontend validates the version, game/media association and committed input
+settings before replacing a live session. A successful restore resumes the
+saved machine with its captured hardware. A game with a legacy initial-state
+reference can still launch it or use explicit normal boot.
 
 After restoration, the frontend releases saved controls through the normal
 keyboard protocol, discards obsolete host events and reconciles the endpoints

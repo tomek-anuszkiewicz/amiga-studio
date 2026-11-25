@@ -7,6 +7,8 @@ use crate::{EmulatorApp, ViewMode};
 
 #[cfg(not(target_arch = "wasm32"))]
 mod library_launch;
+#[cfg(not(target_arch = "wasm32"))]
+mod start_states;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum PlayerScreen {
@@ -83,6 +85,12 @@ pub struct PlayerState {
     #[cfg(not(target_arch = "wasm32"))]
     pub(crate) selected_save_error: Option<String>,
     #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) unavailable_start_states: std::collections::HashMap<String, String>,
+    #[cfg(not(target_arch = "wasm32"))]
+    start_state_name: Option<start_states::NameEdit>,
+    #[cfg(not(target_arch = "wasm32"))]
+    start_state_deletions: Vec<start_states::PendingDeletion>,
+    #[cfg(not(target_arch = "wasm32"))]
     pub active_game: Option<crate::game_library::LibraryGame>,
     #[cfg(not(target_arch = "wasm32"))]
     pub saves: Vec<crate::game_library::PlayerSave>,
@@ -128,6 +136,11 @@ pub(crate) enum PendingLaunch {
         normal_boot: bool,
     },
     #[cfg(not(target_arch = "wasm32"))]
+    LibraryStartState {
+        game: crate::game_library::LibraryGame,
+        id: String,
+    },
+    #[cfg(not(target_arch = "wasm32"))]
     LibraryQuick {
         game: crate::game_library::LibraryGame,
         save: std::path::PathBuf,
@@ -140,6 +153,7 @@ pub(crate) struct MissingConfiguration {
     pub game: crate::game_library::LibraryGame,
     pub save: Option<std::path::PathBuf>,
     pub normal_boot: bool,
+    pub start_state: Option<String>,
     pub replacement: String,
     pub error: Option<String>,
 }
@@ -301,6 +315,10 @@ impl EmulatorApp {
                 return;
             }
         }
+        #[cfg(not(target_arch = "wasm32"))]
+        let pause_for_confirmation = !matches!(&launch, PendingLaunch::LibraryStartState { .. });
+        #[cfg(target_arch = "wasm32")]
+        let pause_for_confirmation = true;
         let valid_rom = !matches!(&launch, PendingLaunch::Rom { bytes, .. } if bytes.len() != physical_memory::KICKSTART_ROM_SIZE);
         if valid_rom
             && (self.player.active_configuration.is_some()
@@ -308,8 +326,10 @@ impl EmulatorApp {
                 || self.host.status.cck != 0
                 || self.host.status.running)
         {
-            self.player.captured = false;
-            self.host.queue(HostCommand::Pause);
+            if pause_for_confirmation {
+                self.player.captured = false;
+                self.host.queue(HostCommand::Pause);
+            }
             self.player.pending_launch = Some(launch);
         } else {
             self.confirm_player_launch(launch);
@@ -328,6 +348,8 @@ impl EmulatorApp {
                 save,
                 normal_boot,
             } => self.start_library_game(game, save, normal_boot),
+            #[cfg(not(target_arch = "wasm32"))]
+            PendingLaunch::LibraryStartState { game, id } => self.start_named_state(game, id),
             #[cfg(not(target_arch = "wasm32"))]
             PendingLaunch::LibraryQuick { game, save } => {
                 self.open_library_game(game, Some(save), false, true);

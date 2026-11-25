@@ -213,7 +213,11 @@ impl EmulatorApp {
 
     #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn render_saved_progress(&mut self, ctx: &egui::Context) {
-        if !self.player.show_saves || self.file_error.is_some() || self.load_binary_modal_open {
+        if !self.player.show_saves
+            || self.editing_start_state_name()
+            || self.file_error.is_some()
+            || self.load_binary_modal_open
+        {
             return;
         }
         let close = egui::Modal::new(egui::Id::unique(SAVED_PROGRESS_DIALOG)).show(ctx, |ui| {
@@ -479,7 +483,7 @@ impl EmulatorApp {
                         self.player.settings_dirty = true;
                     }
                 }
-                self.player.refresh_selected_saves();
+                self.player.refresh_selected_game_details();
             }
         }
         if filter_active && visible == 0 {
@@ -539,7 +543,7 @@ impl EmulatorApp {
                 normal_boot: false,
             });
         }
-        if self.player.initial_error
+        if game.manifest.initial_state.is_some()
             && ui
                 .add_enabled(
                     available && !self.player.busy,
@@ -548,11 +552,12 @@ impl EmulatorApp {
                 .clicked()
         {
             self.request_player_launch(crate::player::PendingLaunch::Library {
-                game,
+                game: game.clone(),
                 save: None,
                 normal_boot: true,
             });
         }
+        self.render_named_start_states(ui, &game, available, writable);
         self.render_save_catalog(ui, false);
     }
 
@@ -569,16 +574,18 @@ impl EmulatorApp {
         if let Some(error) = error {
             ui.colored_label(
                 ui.visuals().error_fg_color,
-                format!("Could not list saved progress: {error}"),
+                format!("Some saved progress is unavailable: {error}"),
             );
         }
         let mut load = None;
+        let mut promote = None;
+        let available = active || self.player.library_available();
         for save in saves {
             ui.horizontal(|ui| {
                 preview(ui, ("save", &save.path), &save.header.screenshot_png, 110.0);
                 if ui
                     .add_enabled(
-                        active || self.player.library_available(),
+                        available,
                         egui::Button::new(format!(
                             "Load state - {}",
                             crate::host_clock::format_utc(save.header.timestamp)
@@ -589,20 +596,40 @@ impl EmulatorApp {
                     load = Some(save.path.clone());
                 }
             });
+            ui.horizontal(|ui| {
+                if ui
+                    .add_enabled(
+                        available && !self.player.busy,
+                        egui::Button::new("Add to start states"),
+                    )
+                    .on_hover_text("Copy this snapshot to the game's named start states.")
+                    .clicked()
+                {
+                    promote = Some((save.path.clone(), save.quicksave));
+                }
+                if save.quicksave {
+                    ui.label("Quicksave");
+                }
+            });
         }
-        if let Some(path) = load {
-            let game = if active {
-                self.player.active_game.clone()
-            } else {
-                self.player.selected_entry().cloned()
-            };
-            if let Some(game) = game {
+        if load.is_none() && promote.is_none() {
+            return;
+        }
+        let game = if active {
+            self.player.active_game.clone()
+        } else {
+            self.player.selected_entry().cloned()
+        };
+        if let Some(game) = game {
+            if let Some(path) = load {
                 self.request_player_launch(crate::player::PendingLaunch::Library {
                     game,
                     save: Some(path),
                     normal_boot: false,
                 });
                 self.player.show_saves = false;
+            } else if let Some((source, quicksave)) = promote {
+                self.begin_start_state_promotion(game, source, quicksave);
             }
         }
     }
