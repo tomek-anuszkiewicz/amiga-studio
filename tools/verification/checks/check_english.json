@@ -77,19 +77,17 @@
     "english_words/names.txt"
   ],
   "file_words": {
+    "crates/gui/tests/browser_test_server.py": ["favicon", "ico"],
     "tools/dependency_updates/browsers.py": ["mz"],
     "tools/dependency_updates/cargo.py": ["vers"],
     "tools/dependency_updates/node_packages.py": ["rcompare", "vnd"],
     "tools/dependency_updates/python_packages.py": ["za"],
     "tools/dependency_updates/setup_tools.py": ["taiki"],
     "tools/dependency_updates/tests/test_check_updates.py": ["aa", "aaaaaaaaaaaa", "aabbcc", "aahelp", "abc", "bbbbbbbbbbbb", "ddeeff", "fwidget", "globalconfig", "npmrc", "tgz", "userconfig", "vers", "vnd", "zzlate"],
-    "crates/gui/src/app/screenshot.rs": ["srgba"],
     "crates/gui/src/configuration_bindings.rs": ["nr"],
     "crates/gui/src/game_library.rs": ["noclobber"],
     "crates/gui/src/library_catalog.rs": ["noclobber"],
-    "crates/gui/tests/test_library_edit.rs": ["tempdir"],
     "crates/gui/tests/test_library_refresh.rs": ["lxyz", "xyz"],
-    "crates/gui/tests/test_player_workflow.rs": ["srgba"],
     ".agents/skills/TA-WF-Step-report-word-usage/tests/test_rank_words.py": [
       "quartzdestination", "secrettitle", "referencekey", "referencetitle",
       "hiddenpath", "hiddentitle", "brontolith",
