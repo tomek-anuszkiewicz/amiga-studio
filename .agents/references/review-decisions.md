@@ -55,3 +55,12 @@ that appear during a later invocation.
 Review ordinary file paths across operating systems. Ignore findings that depend
 on symbolic links, hard links, junctions or equivalent filesystem aliases or
 redirection. Apply any explicit link-handling requirement in the assigned scope.
+
+## RD-007 False positives in the unused public function scan
+
+During review, ignore findings that the unused public function scan lists
+functions with existing uses as candidates for removal. The scan gives the
+implementer a list to investigate. When assigned to remove unused functions,
+the implementer checks callers, re-exports, conditional builds and external
+API obligations before deciding which candidates are unused.
+[Public function scan](../../tools/verification/README.md#unused-rust-dependencies-and-public-functions).
