@@ -98,13 +98,18 @@ the integrated files, including conflict resolutions.
 rounds below. Tests and reviews use the delivered scope directly on master.
 The main session includes applicable pending files and preserves unrelated work.
 
-Before each round, run the full English scan with validated dictionary
-maintenance and commit any authorized language edits and repairs. In round 1,
-run the applicable tests with coverage where supported and the required gates.
-In later rounds, refresh affected results and reuse results whose inputs still
-match. Independently challenge the findings and reported check failures from
-each round. If a required issue needs the engineer's decision or required
-evidence remains missing, report it and leave readiness unverified.
+Run a full English scan with validated dictionary maintenance before each
+review round. When a review follows a corrective pass, run that scan after
+the implementer finishes the repairs. Commit any authorized language edits
+and repairs before running the checks for the review. Run the scan for the
+final full review even if its inputs are unchanged.
+
+For the initial review, run the applicable tests with coverage where supported
+and the required gates. For later reviews, refresh affected results and reuse
+results whose inputs still match. Independently challenge the findings and
+reported check failures from each review round. If a required issue needs the
+engineer's decision or required evidence remains missing, report it and leave
+readiness unverified.
 
 ```mermaid
 flowchart TD
@@ -186,11 +191,6 @@ repairs and commits, and a fresh milestone run must pass both checks before
 the roadmap edit proceeds. The operation ends with the word-usage report.
 
 ## Three review rounds and up to two corrective passes
-
-These rounds belong to [Verify Master](TA-WF-Main-verify-master/SKILL.md).
-Each round checks English before reviewing the evidence. After a correction,
-commit the selected changes directly on master and refresh affected test,
-coverage and gate results.
 
 | Round | Scope | What follows |
 | --- | --- | --- |
