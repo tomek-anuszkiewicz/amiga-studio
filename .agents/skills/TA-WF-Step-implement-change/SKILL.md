@@ -45,6 +45,10 @@ authored text or other verification configuration keep their normal requirements
    approved behavior where needed. Selected review or coverage findings may
    justify filling gaps without approval for each test. Changes to behavior,
    acceptance criteria or write scope still need the applicable decision.
+   If you find work beyond the agreed scope, give the main session the proposed
+   change, its reason and any approved work it blocks. Apply the
+   [scope approval rule](../../../AGENTS.md#approval-for-scope-changes)
+   and continue independent work within the assignment.
    Update documentation needed to keep the selected change accurate in the same
    assignment. Apply shared [document/instruction ownership](../../references/information-hierarchy.md)
    and [Documentation Value](../../references/documentation-criteria.md#documentation-value),

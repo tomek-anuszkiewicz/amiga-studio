@@ -22,8 +22,10 @@ criteria and tests, search the [review decisions register](../../references/revi
 by subject and owning requirement. Check applicable entries against the current
 requirements and plan inputs. Identify the starting state, intended behavior,
 necessary changes, acceptance criteria and unresolved choices. Preserve existing
-decisions and unfinished work when amending a plan. Separate required work from
-optional ideas.
+decisions and unfinished work when amending a plan. List optional ideas as
+separate proposals. Approval of the plan leaves them pending until the user
+explicitly selects them under the
+[scope approval rule](../../../AGENTS.md#approval-for-scope-changes).
 
 On every creation or amendment, apply
 [TA-WF-Step-design-tests](../TA-WF-Step-design-tests/SKILL.md) to the resulting

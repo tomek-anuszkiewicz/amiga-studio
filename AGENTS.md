@@ -4,11 +4,10 @@
 
 Work within the outcome the user requested and make the technical changes it
 requires. Investigate when the user asks for inspection. When they ask for
-implementation, edit within the agreed scope. Propose optional behavior before
-adding it. Preserve unrelated files, staged versions, user data and other work
-in progress. This is a private project before release. Choose the simplest
-implementation that meets current requirements and carry internal migrations
-through to completion.
+implementation, edit within the agreed scope. Preserve unrelated files, staged
+versions, user data and other work in progress. This is a private project before
+release. Choose the simplest implementation that meets current requirements and
+carry internal migrations through to completion.
 
 Read the relevant requirements before designing or editing. Use nearby code for
 examples. Base decisions about behavior on the specifications and hardware
@@ -39,6 +38,16 @@ variables or command-line inputs. Keep private host paths out of hardcoded
 values and disclose them only as needed. Reuse local inputs the user has
 already authorized. Report missing configuration as a missing input and use a
 value only when the user or an authorized source provides it.
+
+### Approval for scope changes
+
+Get the user's explicit approval before expanding the agreed scope, however
+small the proposed change. Choose implementation details needed to deliver
+the approved work within that scope. If you propose additional work, explain
+what would change, why you propose it and whether the approved work can
+continue without it. Wait for approval before making the extra change. The
+main session records the user's decision in the active plan, if one exists,
+before the extra work starts. Continue any independent work already approved.
 
 ### Specification authority
 
