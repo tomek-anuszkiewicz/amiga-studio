@@ -6,7 +6,7 @@
 use config::A500Config;
 use machine_loop::{A500Machine, A500State};
 use physical_memory::PhysicalMemory;
-use save_state::{SaveState, SaveStateError};
+use save_state::{MediaSources, SaveState, SaveStateError, SourceImage};
 
 use crate::loader::inject_binary;
 use crate::stepping::Debugger;
@@ -47,6 +47,8 @@ pub struct DebuggerSession {
 
     /// Quick Save Slots (slots 1..=5)
     pub quick_slots: [Option<Box<A500State>>; QUICK_SLOT_COUNT],
+    pub(crate) file_sources: MediaSources,
+    quick_sources: [MediaSources; QUICK_SLOT_COUNT],
     /// Live CPU state preserved while scrubbing historical frames
     pub live_cpu_state: Option<CpuState>,
 }
@@ -83,6 +85,8 @@ impl DebuggerSession {
             prev_hex_bytes: [0; MEMORY_DIFF_BYTES],
             prev_hex_base: 0,
             quick_slots: [None, None, None, None, None],
+            file_sources: MediaSources::default(),
+            quick_sources: std::array::from_fn(|_| MediaSources::default()),
             live_cpu_state: None,
         }
     }
@@ -466,9 +470,20 @@ impl DebuggerSession {
             data,
             auto_prime,
         );
-        if result.is_ok() && auto_prime {
-            self.instruction_started = false;
-            self.instruction_recorded = false;
+        if result.is_ok() {
+            if auto_prime {
+                self.instruction_started = false;
+                self.instruction_recorded = false;
+            }
+            if target_addr & physical_memory::MASK_PHYSICAL_ADDRESS
+                == config::address_map::KICKSTART_BASE
+                && self.machine.physical_memory.kickstart_rom() == data
+            {
+                self.file_sources.rom = Some(SourceImage {
+                    name: None,
+                    bytes: data.to_vec(),
+                });
+            }
         }
         result
     }
@@ -476,11 +491,42 @@ impl DebuggerSession {
     /// Installs a complete Kickstart image and boots its reset vectors, paused.
     /// Validation precedes every mutation, including reset and execution state.
     pub fn load_rom(&mut self, data: &[u8]) -> Result<(), physical_memory::KickstartSizeError> {
+        physical_memory::validate_kickstart_size(data.len())?;
+        self.load_named_rom(SourceImage {
+            name: None,
+            bytes: data.to_vec(),
+        })
+    }
+
+    pub fn load_named_rom(
+        &mut self,
+        source: SourceImage,
+    ) -> Result<(), physical_memory::KickstartSizeError> {
         self.machine
             .physical_memory
-            .write_bytes_debug(config::address_map::KICKSTART_BASE, data)?;
+            .write_bytes_debug(config::address_map::KICKSTART_BASE, &source.bytes)?;
+        self.file_sources.rom = Some(source);
         self.reset();
         Ok(())
+    }
+
+    pub fn file_sources(&self) -> &MediaSources {
+        &self.file_sources
+    }
+
+    pub fn name_file_sources(
+        &mut self,
+        rom: Option<String>,
+        disks: [Option<String>; config::FLOPPY_DRIVE_COUNT],
+    ) {
+        if let Some(source) = &mut self.file_sources.rom {
+            source.name = rom;
+        }
+        for (source, name) in self.file_sources.disks.iter_mut().zip(disks) {
+            if let Some(source) = source {
+                source.name = name;
+            }
+        }
     }
 
     /// Saves the current machine state into an `A500State` snapshot
@@ -491,6 +537,11 @@ impl DebuggerSession {
     /// Restores machine state from an `A500State` snapshot and synchronizes debugger tracking
     pub fn load_state(&mut self, state: &A500State) {
         self.machine.load_state(state);
+        self.file_sources = MediaSources::default();
+        self.finish_state_load();
+    }
+
+    fn finish_state_load(&mut self) {
         self.pause_at_frame = false;
         self.stepping_frame = false;
         self.enable_debugger_on_pause = false;
@@ -512,14 +563,46 @@ impl DebuggerSession {
 
     /// Serializes machine state to pretty-printed JSON
     pub fn save_state_to_json(&self) -> Result<String, SaveStateError> {
-        SaveState::capture(&self.machine).to_json_pretty()
+        self.save_state_to_json_with_sources(&self.file_sources)
+    }
+
+    /// Exports using explicitly supplied bytes, including a previously patched ROM.
+    pub fn save_state_to_json_with_sources(
+        &self,
+        sources: &MediaSources,
+    ) -> Result<String, SaveStateError> {
+        SaveState::capture(&self.machine, sources)?.to_json_pretty()
     }
 
     /// Deserializes machine state from JSON
     pub fn load_state_from_json(&mut self, json_str: &str) -> Result<(), SaveStateError> {
-        let saved = SaveState::from_json(json_str)?;
-        self.load_state(&saved.state);
+        self.load_state_from_json_with_sources(json_str, self.file_sources.clone())
+    }
+
+    pub fn load_state_from_json_with_sources(
+        &mut self,
+        json: &str,
+        mut sources: MediaSources,
+    ) -> Result<(), SaveStateError> {
+        let saved = SaveState::from_json(json)?;
+        if saved.synthetic_rom() {
+            sources.rom = None;
+        }
+        for (drive, source) in sources.disks.iter_mut().enumerate() {
+            if !saved.disk_inserted(drive) {
+                *source = None;
+            }
+        }
+        let state = saved.restore(&sources)?;
+        self.load_file_state(state, sources);
         Ok(())
+    }
+
+    /// Installs an already resolved file snapshot and keeps its verified media.
+    pub fn load_file_state(&mut self, state: Box<A500State>, sources: MediaSources) {
+        self.machine.load_owned_state(*state);
+        self.file_sources = sources;
+        self.finish_state_load();
     }
 
     /// Saves machine snapshot to an in-memory quick slot (1..=5)
@@ -530,6 +613,7 @@ impl DebuggerSession {
             )));
         }
         self.quick_slots[slot - 1] = Some(Box::new(self.save_state()));
+        self.quick_sources[slot - 1] = self.file_sources.clone();
         Ok(())
     }
 
@@ -545,6 +629,7 @@ impl DebuggerSession {
             .ok_or_else(|| SaveStateError::CorruptedData(format!("Quick slot {slot} is empty")))?)
         .clone();
         self.load_state(&state);
+        self.file_sources = self.quick_sources[slot - 1].clone();
         Ok(())
     }
 

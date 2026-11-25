@@ -65,7 +65,7 @@ fn library() -> (PathBuf, GameLibrary) {
     (root, library)
 }
 #[test]
-fn launch_save_reopen_relocate_and_restore_embedded_media_without_original_assets() {
+fn launch_save_reopen_relocate_and_restore_verified_media() {
     let (root, library) = library();
     let mut app = EmulatorApp::default();
     app.set_view_mode(ViewMode::ScreenOnly);
@@ -95,33 +95,101 @@ fn launch_save_reopen_relocate_and_restore_embedded_media_without_original_asset
     assert!(gui::game_library::saves(&library.games[1])
         .unwrap()
         .is_empty());
-    // A fresh app and a moved game directory retain IDs; saved media are self-contained.
-    let moved = root.join("relocated");
+    // Relocate the library and media and keep the stable game/disk locators.
+    let moved_root = root.join("relocated");
+    std::fs::create_dir(&moved_root).unwrap();
+    let moved = moved_root.join("one");
     std::fs::rename(&library.games[0].directory, &moved).unwrap();
+    std::fs::rename(&library.games[1].directory, moved_root.join("two")).unwrap();
     std::fs::remove_file(moved.join("disks/Disk 1.adf")).unwrap();
     std::fs::remove_file(root.join("kick.rom")).unwrap();
-    let library = GameLibrary::discover(&root).unwrap();
+    let library = GameLibrary::discover(&moved_root).unwrap();
     let mut game = library
         .games
         .iter()
         .find(|g| g.manifest.id == "one")
         .unwrap()
         .clone();
+    game.manifest.disks[0].filename = "Renamed disk.adf".into();
+    // This unmounted disk has no source during restore.
+    game.manifest.disks.push(GameDisk {
+        id: "optional".into(),
+        filename: "Unneeded.adf".into(),
+    });
+    game.manifest.mounted = [None, Some("disk-one".into()), None, None];
+    game.manifest.initial_state = Some("unavailable-initial-state.json".into());
+    std::fs::write(
+        moved.join("game.json"),
+        serde_json::to_vec(&game.manifest).unwrap(),
+    )
+    .unwrap();
     let saves = gui::game_library::saves(&game).unwrap();
+    assert_eq!(saves.len(), 2);
+    assert!(saves
+        .iter()
+        .all(|save| save.header.screenshot_png == state.header.screenshot_png));
+    assert!(saves
+        .windows(2)
+        .all(|pair| (pair[0].header.timestamp, &pair[0].path)
+            >= (pair[1].header.timestamp, &pair[1].path)));
+    for (name, contents, expected) in [
+        ("catalog-old.json", br#"{"state":{"physical_memory":[1,2]},"header":{"version":15}}"#.as_slice(),
+            "found 15, supported 16"),
+        ("catalog-corrupt.json", br#"{"header":{"version":16,"timestamp":0,"association":{"mounted":[null,null,null,null]},"screenshot_png":"%%%"},"state":{}}"#.as_slice(),
+            "serialization failed"),
+    ] {
+        let path = moved.join("saves").join(name);
+        std::fs::write(&path, contents).unwrap();
+        let error = gui::game_library::saves(&game).unwrap_err();
+        assert!(error.contains(name) && error.contains(expected), "{error}");
+        assert_eq!(std::fs::read(&path).unwrap(), contents);
+        std::fs::remove_file(path).unwrap();
+    }
+    let save_path = saves[0].path.clone();
+    let save_bytes = std::fs::read(&save_path).unwrap();
     let mut reopened = EmulatorApp::default();
-    reopened.player.library_root = Some(root.clone());
+    reopened.player.library_root = Some(moved_root.clone());
     reopened.player.catalog = app.player.catalog.clone();
     reopened.player.catalog.configurations[0].name = "Renamed configuration".into();
+    reopened.player.catalog.configurations[0].launch.rom = "Renamed Kickstart.rom".into();
     reopened.player.catalog.configurations[0].launch.preset = config::A500Preset::ExpandedPowerUser;
     reopened.player.catalog.configurations[0]
         .controls
         .ports
         .swap(0, 1);
-    game.manifest.mounted = [None, Some("disk-one".into()), None, None];
-    game.manifest.initial_state = Some("unavailable-initial-state.json".into());
-    reopened.start_library_game(game, Some(saves[0].path.clone()), false);
+
+    let unchanged = common::snapshot(&mut reopened);
+    let status = reopened.host.status;
+    let renamed_rom = moved_root.join("Renamed Kickstart.rom");
+    let renamed_disk = moved.join("disks/Renamed disk.adf");
+    for (rom_bytes, disk_bytes, expected_error) in [
+        (None, None, "Kickstart ROM"),
+        (Some(vec![0x55; 262144]), None, "content does not match"),
+        (Some(rom()), None, "DF0"),
+        (Some(rom()), Some(vec![0x22; ADF_BYTES]), "ADF for DF0"),
+    ] {
+        if let Some(bytes) = rom_bytes {
+            std::fs::write(&renamed_rom, bytes).unwrap();
+        }
+        if let Some(bytes) = disk_bytes {
+            std::fs::write(&renamed_disk, bytes).unwrap();
+        }
+        reopened.start_library_game(game.clone(), Some(save_path.clone()), false);
+        common::settle(&mut reopened, &ctx);
+        let error = reopened.file_error.take().unwrap();
+        assert!(error.contains(expected_error), "{error}");
+        assert_eq!(reopened.host.status.generation, status.generation);
+        assert_eq!(reopened.host.status.running, status.running);
+        assert_eq!(reopened.host.status.drives, status.drives);
+        assert_eq!(common::snapshot(&mut reopened), unchanged);
+        assert_eq!(std::fs::read(&save_path).unwrap(), save_bytes);
+    }
+    let disk = vec![0x11; ADF_BYTES];
+    std::fs::write(&renamed_disk, &disk).unwrap();
+    reopened.start_library_game(game, Some(save_path.clone()), false);
     common::settle(&mut reopened, &ctx);
     assert!(reopened.host.status.running);
+    assert!(reopened.file_error.is_none());
     common::command(&mut reopened, HostCommand::Pause);
     common::wait(&mut reopened, &ctx, |app| !app.host.status.running);
     let restored = common::snapshot(&mut reopened);
@@ -155,7 +223,8 @@ fn launch_save_reopen_relocate_and_restore_embedded_media_without_original_asset
     let generation = reopened.host.status.generation;
     let mut h = session_harness(reopened);
     common::settle_harness(&mut h);
-    assert!(h.state().player.disks[0].bytes.is_none());
+    std::fs::remove_file(&renamed_disk).unwrap();
+    h.state_mut().player.disks[0].bytes = None;
     h.get_by_label("Reset").click_accesskit();
     common::wait_harness(&mut h, |app| app.host.status.generation > generation);
     assert!(h.state().host.status.running);
@@ -194,6 +263,8 @@ fn invalid_launch_and_mount_keep_previous_machine_and_confirmed_labels() {
     assert!(common::command(
         &mut app,
         HostCommand::Launch {
+            rom_name: None,
+            disk_names: [None, None, None, None],
             setup,
             association: debugger::SaveAssociation::default()
         }
@@ -204,6 +275,7 @@ fn invalid_launch_and_mount_keep_previous_machine_and_confirmed_labels() {
     assert!(common::command(
         &mut app,
         HostCommand::MountDisk {
+            name: None,
             drive: 0,
             bytes: Some(vec![0; 10]),
             disk_id: Some("bad".into())
@@ -275,7 +347,7 @@ fn library_continue_restores_selected_games_save_instead_of_active_game() {
     assert_eq!(h.state().player.screen, PlayerScreen::Session);
     common::command(h.state_mut(), HostCommand::Pause);
     let restored = debugger::SaveState::from_json(&common::snapshot_json(h.state_mut())).unwrap();
-    assert_eq!(restored.state.cpu.d_long(7), 0x12345678);
+    assert_eq!(restored.cpu().d_long(7), 0x12345678);
     assert_eq!(restored.header.association.game_id.as_deref(), Some("one"));
     assert_eq!(
         restored.header.association.mounted[0].as_deref(),
@@ -429,9 +501,9 @@ fn assert_player_disk_labels(h: &egui_kittest::Harness<'_, EmulatorApp>, layout:
 fn assert_player_disk_layout(
     h: &mut egui_kittest::Harness<'_, EmulatorApp>,
     layout: DiskLayout<'_>,
-) -> debugger::SaveState {
+) -> common::ObservedSave {
     assert_player_disk_labels(h, layout);
-    let snapshot = debugger::SaveState::from_json(&common::snapshot_json(h.state_mut())).unwrap();
+    let snapshot = common::observe_save(h.state_mut());
     assert_eq!(
         snapshot.header.association.mounted,
         h.state().player.mounted
@@ -788,7 +860,10 @@ fn initial_state_and_normal_boot_use_their_own_disk_layouts() {
     .prepare()
     .unwrap();
     machine.machine.cpu.state.set_d_long(7, INITIAL_D7);
-    let mut saved = debugger::SaveState::capture(&machine.machine);
+    let mut sources = machine.file_sources().clone();
+    // The initial state's DF3 represents a fully rewritten copy of Disk 3.
+    sources.disks[3].as_mut().unwrap().bytes.fill(0x33);
+    let mut saved = debugger::SaveState::capture(&machine.machine, &sources).unwrap();
     saved.header.association.game_id = Some(game.manifest.id.clone());
     saved.header.association.mounted = initial.map(|disk| disk.map(|(id, _, _)| id.to_owned()));
     let initial_path = game.directory.join("initial.json");
@@ -1156,8 +1231,7 @@ fn unavailable_invalid_or_disconnected_startup_disk_rejects_player_reset_without
             h.get_by_label("Close").click_accesskit();
             common::settle_harness(&mut h);
             assert_player_drive_text(&h, "DF0:", "Disk 1.adf");
-            let snapshot =
-                debugger::SaveState::from_json(&common::snapshot_json(h.state_mut())).unwrap();
+            let snapshot = common::observe_save(h.state_mut());
             assert_eq!(snapshot.header.association.mounted, mounted);
             assert_eq!(snapshot.state.floppy.drives, before.floppy.drives);
         }
@@ -1253,7 +1327,7 @@ fn saved_progress_selection_restores_only_after_replacement_is_confirmed() {
     let saved =
         debugger::SaveState::from_json(&std::fs::read_to_string(&saves[0].path).unwrap()).unwrap();
     assert_eq!(saved.header.version, debugger::SAVE_STATE_VERSION);
-    assert_eq!(saved.state.cpu.d_long(7), SAVED_D7);
+    assert_eq!(saved.cpu().d_long(7), SAVED_D7);
 
     common::command(
         h.state_mut(),
@@ -1303,7 +1377,7 @@ fn saved_progress_selection_restores_only_after_replacement_is_confirmed() {
     assert_eq!(h.state().player.screen, PlayerScreen::Session);
     assert!(h.state().file_error.is_none());
     let restored = debugger::SaveState::from_json(&common::snapshot_json(h.state_mut())).unwrap();
-    assert_eq!(restored.state.cpu.d_long(7), SAVED_D7);
+    assert_eq!(restored.cpu().d_long(7), SAVED_D7);
     assert_eq!(
         restored.header.association.game_id.as_deref(),
         Some(game.manifest.id.as_str())

@@ -4,12 +4,19 @@ Build with tools/web.ps1, then provide local ROM/ADF files and an installed
 Chromium executable. The test serves only the built distribution on loopback.
 File selection exercises the ordinary HTML input fallback; physical controls
 and File System Access permission dialogs remain interactive checks.
+
+The media case exports a paused browser state and generated inputs into the
+output's media directory. Supply --native-state with the native re-export from
+that directory to run the return trip in a fresh Chromium context.
 """
 import argparse
+from base64 import b64decode, b64encode
+from functools import partial
 from hashlib import sha256
 from io import BytesIO
 import json
 from pathlib import Path
+from struct import pack
 from urllib.parse import urlparse
 from zipfile import ZIP_DEFLATED, ZipFile
 
@@ -40,30 +47,98 @@ CONTROL_POINTS = {
     "DF0 Eject / Empty": (1180, 144),
     "DF0 first disk": (1180, 167),
     "DF0 second disk": (1180, 190),
-    "DF0 third disk": (1180, 213),
 }
 
-
-def first_raw_block(snapshot):
-    drive = snapshot["state"]["floppy"]["drives"][0]
-    return drive["track_data"][0]["Encoded"][0]
+TRACK_BYTES = 12_500
 
 
-def check_workflow(browser, url, rom, disk, output):
+def disk_reference(snapshot):
+    return snapshot["state"]["floppy"]["drives"][0]["track_data"]
+
+
+def decode_base64(value):
+    assert isinstance(value, str)
+    decoded = b64decode(value, validate=True)
+    assert b64encode(decoded).decode("ascii") == value, "Non-canonical Base64"
+    return decoded
+
+
+def check_standard_encoding(page, snapshot):
+    """Decode the real download independently of the Rust or Wasm codec."""
+    assert snapshot["header"]["version"] == 16
+    assert snapshot["header"]["timestamp"] > 0
+    memory = snapshot["state"]["physical_memory"]
+    assert len(decode_base64(memory["chip_ram"])) == 512 * 1024
+    assert len(decode_base64(memory["slow_ram"])) == 512 * 1024
+    assert memory["fast_ram"] is None
+    frame = snapshot["state"]["denise"]["frame_builder"]["buffer"]
+    assert len(decode_base64(frame)) == 720 * 568 * 4
+    preview = snapshot["header"]["screenshot_png"]
+    assert decode_base64(preview).startswith(b"\x89PNG\r\n\x1a\n")
+    result = page.evaluate("""async ({preview, frame}) => {
+        const decode = data => Uint8Array.from(atob(data), char => char.charCodeAt(0));
+        const bitmap = await createImageBitmap(new Blob([decode(preview)], {type: "image/png"}));
+        const {width, height} = bitmap;
+        if (width !== 720 || height !== 568) return {width, height};
+        const canvas = new OffscreenCanvas(width, height);
+        const context = canvas.getContext("2d");
+        context.drawImage(bitmap, 0, 0);
+        bitmap.close();
+        const rgba = context.getImageData(0, 0, width, height).data;
+        const words = new DataView(decode(frame).buffer);
+        for (let offset = 0; offset < rgba.length; offset += 4) {
+            const word = words.getUint32(offset, true);
+            if (rgba[offset] !== ((word >>> 16) & 255) ||
+                rgba[offset + 1] !== ((word >>> 8) & 255) ||
+                rgba[offset + 2] !== (word & 255) ||
+                rgba[offset + 3] !== 255 || (word >>> 24) !== 255) {
+                return {width, height, firstDifferentPixel: offset / 4};
+            }
+        }
+        return {width, height};
+    }""", {"preview": preview, "frame": frame})
+    assert result == {"width": 720, "height": 568}, result
+
+
+def check_source(snapshot, rom, disk, mounted_id):
+    assert snapshot["header"]["association"] == {
+        "game_id": None, "mounted": [mounted_id, None, None, None],
+    }
+    rom_reference = snapshot["state"]["physical_memory"]["kickstart_rom"]
+    assert rom_reference == {
+        "sha256": sha256(rom.read_bytes()).hexdigest(), "name": rom.name, "synthetic": False,
+    }
+    drives = snapshot["state"]["floppy"]["drives"]
+    assert len(drives) == 4
+    assert drives[0]["connected"] and drives[0]["disk_inserted"]
+    reference = disk_reference(snapshot)
+    assert reference["name"] == disk.name
+    assert reference["sha256"] == sha256(disk.read_bytes()).hexdigest()
+    assert set(reference) == {"name", "sha256", "modified_tracks"}
+    for drive in drives[1:]:
+        assert not drive["connected"] and not drive["disk_inserted"] and drive["track_data"] is None
+
+
+def check_restored_state(actual, expected):
+    assert actual["state"]["cck"] == expected["state"]["cck"], "Load changed the paused CCK"
+    assert actual["state"]["cpu"] == expected["state"]["cpu"], "Load changed the paused CPU"
+    assert actual["state"] == expected["state"], "Load changed the paused machine"
+    assert actual["header"]["screenshot_png"] == expected["header"]["screenshot_png"]
+
+
+def player_context(browser):
     context = browser.new_context(viewport=VIEWPORT, device_scale_factor=1, accept_downloads=True)
-    page = context.new_page()
-    errors = []
-    page.on("pageerror", lambda error: errors.append(str(error)))
 
     def observe_generation(route):
         response = route.fetch()
         source = response.text()
         marker = "export function set_host_input_enabled(mouse, gamepads, interval_ms, generation) {"
         assert source.count(marker) == 1
-        route.fulfill(response=response, body=source.replace(marker, marker + "\n    globalThis.observedGeneration = Number(generation);"))
+        observation = "\n    globalThis.observedGeneration = Number(generation);"
+        route.fulfill(response=response, body=source.replace(marker, marker + observation))
 
     context.route("**/host_bridge.js", observe_generation)
-    page.add_init_script("""
+    context.add_init_script("""
         window.showOpenFilePicker = undefined;
         const OriginalWorker = Worker;
         window.workerReport = {outputs:0, failures:[]};
@@ -76,69 +151,99 @@ def check_workflow(browser, url, rom, disk, output):
                 });
             }
         };
+        Object.defineProperty(navigator.clipboard, "writeText", {
+            value: async text => { globalThis.copiedText = text; }
+        });
     """)
-    def click(control):
-        x, y = CONTROL_POINTS[control]
-        # Let the canvas consume hover and the pressed state on separate frames.
-        page.mouse.move(x, y)
-        page.wait_for_timeout(120)
-        page.mouse.click(x, y, delay=80)
+    return context
+
+
+def click(page, control):
+    x, y = CONTROL_POINTS[control]
+    # Let the canvas consume hover and the pressed state on separate frames.
+    page.mouse.move(x, y)
+    page.wait_for_timeout(120)
+    page.mouse.click(x, y, delay=80)
+    page.wait_for_timeout(100)
+
+
+def select_file(page, control, path):
+    with page.expect_file_chooser() as chooser:
+        click(page, control)
+    chooser.value.set_files(path)
+
+
+def export_state(page, path):
+    with page.expect_download(timeout=30000) as download:
+        click(page, "Game Save")
+    download.value.save_as(path)
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def wait_generation(page, generation):
+    page.wait_for_function("generation => globalThis.observedGeneration === generation",
+                           arg=generation, timeout=30000)
+
+
+def import_state(page, path, generation):
+    select_file(page, "Game Load", path)
+    wait_generation(page, generation)
+    page.wait_for_timeout(300)
+
+
+def drive_label(page):
+    # Sample the DF0 text, leaving out the activity indicator and hover.
+    page.mouse.move(1255, 117)
+    return page.screenshot(clip={"x": 1133, "y": 110, "width": 76, "height": 14})
+
+
+def select_disk(page, option, description):
+    before = drive_label(page)
+    click(page, "DF0 dropdown")
+    click(page, option)
+    for _ in range(20):
+        after = drive_label(page)
+        if after != before:
+            return after
         page.wait_for_timeout(100)
+    raise AssertionError(f"DF0 did not confirm {description}")
 
-    def export_state(path):
-        with page.expect_download(timeout=30000) as download:
-            click("Game Save")
-        download.value.save_as(path)
-        return json.loads(path.read_text(encoding="utf-8"))
 
-    def import_state(path, generation):
-        with page.expect_file_chooser() as chooser:
-            click("Game Load")
-        chooser.value.set_files(path)
-        page.wait_for_function(
-            "generation => globalThis.observedGeneration === generation",
-            arg=generation, timeout=30000,
-        )
-        page.wait_for_timeout(300)
+def check_remount(page, snapshot, output):
+    # Seed a single altered raw track in a disposable file. The last 16 bytes
+    # are in the track gap and cannot be represented by a sector write.
+    reference = disk_reference(snapshot)
+    assert reference["modified_tracks"] == {}
+    altered_track = bytes([0xAA]) * (TRACK_BYTES - 16) + bytes.fromhex("deadbeef") * 4
+    reference["modified_tracks"]["0"] = b64encode(altered_track).decode("ascii")
+    fixture = output / "modified-track-fixture.json"
+    fixture.write_text(json.dumps(snapshot, separators=(",", ":")), encoding="utf-8")
+    import_state(page, fixture, 6)
+    mounted_label = drive_label(page)
+    replacement_label = select_disk(page, "DF0 first disk", "the replacement disk")
+    empty_label = select_disk(page, "DF0 Eject / Empty", "ejection")
+    assert len({mounted_label, replacement_label, empty_label}) == 3
+    assert select_disk(page, "DF0 second disk", "reinsertion") == mounted_label
+    assert page.evaluate("observedGeneration") == 6, "Disk swap replaced the machine"
 
-    def drive_label():
-        # Sample the DF0 text, leaving out the activity indicator and hover.
-        page.mouse.move(1255, 117)
-        return page.screenshot(clip={"x": 1133, "y": 110, "width": 76, "height": 14})
+    # Observe the track after all three disk commands have completed.
+    remounted = export_state(page, output / "modified-track-remounted.json")
+    assert remounted["header"]["association"]["mounted"][0] == "manual-1"
+    assert remounted["state"]["floppy"]["drives"][0]["disk_inserted"]
+    restored = disk_reference(remounted)
+    assert restored["sha256"] == reference["sha256"]
+    assert list(restored["modified_tracks"]) == ["0"]
+    assert decode_base64(restored["modified_tracks"]["0"]) == altered_track
 
-    def select_disk(option, description):
-        before = drive_label()
-        click("DF0 dropdown")
-        click(option)
-        for _ in range(20):
-            after = drive_label()
-            if after != before:
-                return after
-            page.wait_for_timeout(100)
-        raise AssertionError(f"DF0 did not confirm {description}")
 
-    def check_remount(snapshot, disk_id, marker, generation, reinsertion_option):
-        # Seed changed raw tracks in a disposable snapshot before making any swap.
-        assert first_raw_block(snapshot)["Encoded"] != marker
-        first_raw_block(snapshot)["Encoded"] = marker
-        snapshot["header"]["association"]["mounted"][0] = disk_id
-        fixture = output / f"{disk_id}-fixture.json"
-        fixture.write_text(json.dumps(snapshot, separators=(",", ":")), encoding="utf-8")
-        import_state(fixture, generation)
-        mounted_label = drive_label()
-        replacement_label = select_disk("DF0 first disk", "the replacement disk")
-        empty_label = select_disk("DF0 Eject / Empty", "ejection")
-        assert len({mounted_label, replacement_label, empty_label}) == 3
-        assert select_disk(reinsertion_option, "reinsertion") == mounted_label
-        assert page.evaluate("observedGeneration") == generation, "Disk swap replaced the machine"
-
-        # Observe the tracks only after all disk commands have completed.
-        remounted = export_state(output / f"{disk_id}-remounted.json")
-        assert remounted["header"]["association"]["mounted"][0] == disk_id
-        assert remounted["state"]["floppy"]["drives"][0]["disk_inserted"]
-        assert first_raw_block(remounted)["Encoded"] == marker, (
-            f"DF0 lost the raw track marker on {disk_id}"
-        )
+def check_workflow(browser, url, rom, disk, output):
+    context = player_context(browser)
+    page = context.new_page()
+    errors = []
+    page.on("pageerror", lambda error: errors.append(str(error)))
+    press = partial(click, page)
+    save = partial(export_state, page)
+    load = partial(import_state, page)
 
     stage = "startup"
     try:
@@ -155,27 +260,23 @@ def check_workflow(browser, url, rom, disk, output):
         assert len(set(counts)) == 1, f"Paused notifications continued without input: {counts}"
         page.screenshot(path=str(output / "setup.png"))
         stage = "ROM selection"
-        with page.expect_file_chooser() as chooser:
-            click("Select Kickstart")
-        chooser.value.set_files(rom)
+        select_file(page, "Select Kickstart", rom)
         page.wait_for_timeout(400)
         stage = "disk selection"
         disk_digest = sha256(disk.read_bytes()).digest()
         with page.expect_file_chooser() as chooser:
-            click("Select disk")
+            press("Select disk")
         chooser.value.set_files({
             "name": "replacement.adf" if disk.name != "replacement.adf" else "other.adf",
             "mimeType": "application/octet-stream",
             "buffer": bytes([255]) * (880 * 1024),
         })
         page.wait_for_timeout(400)
-        with page.expect_file_chooser() as chooser:
-            click("Select disk")
-        chooser.value.set_files(disk)
+        select_file(page, "Select disk", disk)
         page.wait_for_timeout(400)
         page.screenshot(path=str(output / "ready.png"))
         stage = "manual start"
-        click("Start")
+        press("Start")
         page.wait_for_function("globalThis.observedGeneration === 2", timeout=30000)
         page.wait_for_timeout(600)
         page.screenshot(path=str(output / "game.png"))
@@ -192,75 +293,71 @@ def check_workflow(browser, url, rom, disk, output):
         )
         stage = "save export"
         saved_path = output / "exported.json"
-        saved = export_state(saved_path)
-        assert saved["header"]["version"] == 15
-        assert saved["header"]["timestamp"] > 0
-        assert saved["header"]["screenshot_png"]
-        assert saved["header"]["association"]["mounted"][0] == "manual-1"
-        assert saved["state"]["floppy"]["drives"][0]["disk_inserted"]
+        saved = save(saved_path)
+        check_standard_encoding(page, saved)
+        check_source(saved, rom, disk, "manual-1")
+        assert disk_reference(saved)["modified_tracks"] == {}
         assert saved["state"]["cck"] > 0
         stage = "state import"
-        import_state(saved_path, 3)
-        restored = export_state(output / "restored.json")
-        assert restored["state"]["cck"] == saved["state"]["cck"], "Import booted or advanced the paused restored machine"
-        assert restored["state"]["cpu"] == saved["state"]["cpu"]
+        load(saved_path, 3)
+        restored = save(output / "restored.json")
+        check_restored_state(restored, saved)
+        check_source(restored, rom, disk, "manual-1")
         page.screenshot(path=str(output / "restored.png"))
         stage = "configuration Cancel"
         stored_before_edit = page.evaluate("localStorage.getItem('player_configurations')")
-        click("Game Setup")  # The existing machine remains paused.
+        press("Game Setup")  # The existing machine remains paused.
         page.wait_for_timeout(300)
-        click("Configurations")
+        press("Configurations")
         page.wait_for_timeout(300)
         page.screenshot(path=str(output / "configuration.png"))
-        click("Configuration Name")
+        press("Configuration Name")
         page.keyboard.press("Control+a")
         page.keyboard.type("Cancelled edit")
-        click("Configuration Cancel")
+        press("Configuration Cancel")
         page.wait_for_timeout(400)
         assert page.evaluate("localStorage.getItem('player_configurations')") == stored_before_edit
         assert page.evaluate("observedGeneration") == 3, "Cancel changed the machine generation"
         stage = "record browser keyboard shortcut"
-        click("Configurations")
+        press("Configurations")
         page.wait_for_timeout(300)
         page.screenshot(path=str(output / "shortcut-editor.png"))
-        click("Pause / Resume binding")  # Initially F5.
+        press("Pause / Resume binding")  # Initially F5.
         page.screenshot(path=str(output / "shortcut-recording.png"))
         page.keyboard.press("F7")
         page.wait_for_timeout(300)
         stage = "configuration Save and changed-port return"
-        click("Amiga port 2 device")
+        press("Amiga port 2 device")
         page.wait_for_timeout(200)
         page.screenshot(path=str(output / "port-options.png"))
-        click("Amiga port 2 Disconnected")
-        click("Configuration Save")
+        press("Amiga port 2 Disconnected")
+        press("Configuration Save")
         page.wait_for_function("globalThis.observedGeneration === 4", timeout=30000)
         page.wait_for_timeout(300)
-        click("Return to session")
+        press("Return to session")
         page.wait_for_timeout(300)
-        changed = export_state(output / "changed-ports.json")
+        changed = save(output / "changed-ports.json")
         expected = json.loads(json.dumps(saved["state"]))
         expected["game_ports"]["state"]["port2"] = "None"
         assert changed["state"] == expected, "Stopped controls save changed machine progress or receivers"
         stage = "load older endpoint types with current controls"
-        import_state(saved_path, 5)
-        current = export_state(output / "current-controls-load.json")
+        load(saved_path, 5)
+        current = save(output / "current-controls-load.json")
         assert current["state"] == expected, "Import restored historical attachments or changed progress"
         page.screenshot(path=str(output / "current-controls-load.png"))
         stage = "swap and remount changed disk with a source ADF"
-        check_remount(current, "manual-1", [0xDE, 0xAD, 0xBE, 0xEF] * 4, 6, "DF0 second disk")
-        stage = "swap and remount changed disk with only embedded tracks"
-        check_remount(current, "embedded-disk", [0xCA, 0xFE, 0xBA, 0xBE] * 4, 7, "DF0 third disk")
+        check_remount(page, current, output)
         assert sha256(disk.read_bytes()).digest() == disk_digest, "The original ADF changed"
         stage = "dispatch rebound browser shortcut"
         stored = page.evaluate("localStorage.getItem('player_configurations')")
         assert stored and 'pause:"F7"' in stored, "Recorded key was not published"
-        paused = export_state(output / "before-rebound-shortcut.json")
+        paused = save(output / "before-rebound-shortcut.json")
         updates = page.evaluate("workerReport.outputs")
         page.keyboard.press("F7")
         page.wait_for_function("updates => workerReport.outputs > updates + 3", arg=updates)
         page.keyboard.press("F7")
         page.wait_for_timeout(300)
-        advanced = export_state(output / "after-rebound-shortcut.json")
+        advanced = save(output / "after-rebound-shortcut.json")
         assert advanced["state"]["cck"] > paused["state"]["cck"]
         page.wait_for_timeout(300)
         stopped = page.evaluate("workerReport.outputs")
@@ -281,7 +378,7 @@ def check_workflow(browser, url, rom, disk, output):
                 "schema": saved["header"]["version"], "current_ports": current["state"]["game_ports"]["state"]["port2"],
                 "configuration_cancel": True, "stopped_configuration_save": True,
                 "recorded_keyboard_shortcut": True,
-                "disk_swap_retained_raw_tracks": True, "embedded_disk_reinserted": True,
+                "disk_swap_retained_raw_tracks": True,
                 "native_screenshot_action_excluded": True,
                 "native_cover_action_excluded": True, "errors": errors}
     except Exception:
@@ -293,10 +390,223 @@ def check_workflow(browser, url, rom, disk, output):
         context.close()
 
 
+def create_media_fixtures(directory):
+    rom = bytearray(256 * 1024)
+    rom[:8] = pack(">II", 0x7F000, 0xF80100)
+    # Set D0 to $2A, set COLOR00 to RGB $19E, then loop at the branch.
+    rom[0x100:0x10C] = bytes.fromhex("702a 33fc 019e 00dff180 60fe")
+    files = {"test.rom": rom, "first.adf": bytes([0x31]) * (880 * 1024),
+             "second.adf": bytes([0xA6]) * (880 * 1024)}
+    for name, contents in files.items():
+        path = directory / name
+        if path.exists():
+            assert path.read_bytes() == contents, f"Fixture contents differ at {path}"
+        else:
+            path.write_bytes(contents)
+    return tuple(directory / name for name in files)
+
+
+def start_page(context, url, errors):
+    page = context.new_page()
+    page.on("pageerror", lambda error: errors.append(str(error)))
+    page.goto(url)
+    wait_generation(page, 1)
+    page.wait_for_timeout(500)
+    return page
+
+
+def setup_files(page, rom, disks):
+    select_file(page, "Select Kickstart", rom)
+    page.wait_for_timeout(400)
+    for disk in disks:
+        select_file(page, "Select disk", disk)
+        page.wait_for_timeout(400)
+
+
+def reject_import(page, saved_path, expected_text, screenshot):
+    select_file(page, "Game Load", saved_path)
+    # The error window is rendered into the canvas. Locate its red error label in
+    # the centered window, then read the same selectable text the player sees.
+    clip = {"x": 360, "y": 350, "width": 560, "height": 110}
+    bounds = None
+    for _ in range(40):
+        encoded = b64encode(page.screenshot(clip=clip)).decode("ascii")
+        bounds = page.evaluate("""async encoded => {
+            const bytes = Uint8Array.from(atob(encoded), char => char.charCodeAt(0));
+            const bitmap = await createImageBitmap(new Blob([bytes], {type: "image/png"}));
+            const {width, height} = bitmap;
+            const canvas = new OffscreenCanvas(width, height);
+            const context = canvas.getContext("2d");
+            context.drawImage(bitmap, 0, 0);
+            bitmap.close();
+            const pixels = context.getImageData(0, 0, width, height).data;
+            let left = width, top = height, bottom = 0;
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const i = (y * width + x) * 4;
+                    const [red, green, blue] = pixels.subarray(i, i + 3);
+                    if (red >= 125 && red > 2 * green && red > 2 * blue) {
+                        left = Math.min(left, x);
+                        top = Math.min(top, y);
+                        bottom = Math.max(bottom, y);
+                    }
+                }
+            }
+            return left === width ? null : {left, top, bottom};
+        }""", encoded)
+        if bounds:
+            break
+        page.wait_for_timeout(100)
+    page.screenshot(path=str(screenshot))
+    assert bounds, f"No visible error for {saved_path.name}"
+    x = clip["x"] + bounds["left"]
+    y = clip["y"] + bounds["top"]
+    page.evaluate("globalThis.copiedText = ''")
+    page.mouse.click(x + 12, y + 4, click_count=3)
+    page.wait_for_timeout(120)
+    page.keyboard.press("Control+c")
+    page.wait_for_function("globalThis.copiedText.length > 0", timeout=5000)
+    text = page.evaluate("globalThis.copiedText")
+    assert expected_text in " ".join(text.split()), text
+    # Close sits immediately below the displayed error label.
+    page.mouse.click(x + 18, clip["y"] + bounds["bottom"] + 14, delay=80)
+    page.wait_for_timeout(250)
+    return text
+
+
+def check_rejected_imports(browser, url, rom, disk, saved_path, output):
+    context = player_context(browser)
+    errors = []
+    page = start_page(context, url, errors)
+    try:
+        setup_files(page, rom, ())
+        click(page, "Return to session")
+        before = export_state(page, output / "before-rejected-loads.json")
+        assert before["header"]["association"]["mounted"] == [None] * 4
+        missing = reject_import(page, saved_path, f"DF0 ({disk.name}) source is unavailable",
+                                output / "missing-adf.png")
+        assert page.evaluate("observedGeneration") == 1
+        after = export_state(page, output / "after-missing-adf.json")
+        check_restored_state(after, before)
+        assert after["header"]["association"] == before["header"]["association"]
+
+        click(page, "Game Setup")
+        select_file(page, "Select disk", {
+            "name": disk.name,
+            "mimeType": "application/octet-stream",
+            "buffer": bytes([0xEE]) * (880 * 1024),
+        })
+        page.wait_for_timeout(400)
+        click(page, "Return to session")
+        wrong = reject_import(page, saved_path, f"DF0 ({disk.name}) content does not match",
+                              output / "wrong-adf.png")
+        assert page.evaluate("observedGeneration") == 1
+        after = export_state(page, output / "after-wrong-adf.json")
+        check_restored_state(after, before)
+        assert after["header"]["association"] == before["header"]["association"]
+        assert not errors and not page.evaluate("workerReport.failures"), errors
+        return {"missing_adf": missing, "wrong_adf": wrong, "cck": before["state"]["cck"],
+                "generation": 1}
+    finally:
+        context.close()
+
+
+def check_fresh_restore(browser, url, rom, first, second, saved_path, output):
+    context = player_context(browser)
+    errors = []
+    page = start_page(context, url, errors)
+    try:
+        expected = json.loads(saved_path.read_text(encoding="utf-8"))
+        setup_files(page, rom, (second, first))
+        # First is currently selected in setup. Load must restore second,
+        # using its new page-local manual-0 ID, without choosing Start.
+        click(page, "Return to session")
+        assert page.evaluate("observedGeneration") == 1
+        import_state(page, saved_path, 2)
+        restored = export_state(page, output / "fresh-restored.json")
+        check_standard_encoding(page, restored)
+        check_restored_state(restored, expected)
+        check_source(restored, rom, second, "manual-0")
+
+        restored_label = drive_label(page)
+        swapped_label = select_disk(page, "DF0 second disk", "the first ADF")
+        swapped = export_state(page, output / "fresh-swapped.json")
+        check_source(swapped, rom, first, "manual-1")
+        empty_label = select_disk(page, "DF0 Eject / Empty", "ejection")
+        assert len({restored_label, swapped_label, empty_label}) == 3
+        empty = export_state(page, output / "fresh-ejected.json")
+        assert empty["header"]["association"]["mounted"] == [None] * 4
+        assert not empty["state"]["floppy"]["drives"][0]["disk_inserted"]
+        assert disk_reference(empty) is None
+        assert select_disk(page, "DF0 first disk", "the restored ADF") == restored_label
+        reinserted = export_state(page, output / "fresh-reinserted.json")
+        check_source(reinserted, rom, second, "manual-0")
+        for snapshot in (swapped, empty, reinserted):
+            assert snapshot["state"]["cck"] == restored["state"]["cck"]
+        assert page.evaluate("observedGeneration") == 2
+        assert not errors and not page.evaluate("workerReport.failures"), errors
+        return {"cck": restored["state"]["cck"], "generation": 2,
+                "restored_drive_id": "manual-0", "swapped_drive_id": "manual-1",
+                "ejected": True, "reinserted_drive_id": "manual-0"}
+    except Exception:
+        page.screenshot(path=str(output / "fresh-restore-failure.png"))
+        raise
+    finally:
+        context.close()
+
+
+def check_media_restore(browser, url, output):
+    output.mkdir(parents=True, exist_ok=True)
+    rom, first, second = create_media_fixtures(output)
+    original_digests = {path: sha256(path.read_bytes()).digest() for path in (rom, first, second)}
+    saved_path = output / "browser.json"
+    context = player_context(browser)
+    errors = []
+    page = start_page(context, url, errors)
+    try:
+        setup_files(page, rom, (first, second))
+        updates = page.evaluate("workerReport.outputs")
+        click(page, "Start")
+        wait_generation(page, 2)
+        page.wait_for_function("updates => workerReport.outputs > updates + 3",
+                               arg=updates, timeout=30000)
+        page.keyboard.press("F5")
+        page.wait_for_timeout(400)
+        saved = export_state(page, saved_path)
+        check_standard_encoding(page, saved)
+        check_source(saved, rom, second, "manual-1")
+        assert disk_reference(saved)["modified_tracks"] == {}
+        assert saved["state"]["cck"] > 0
+        assert saved["state"]["cpu"]["d"][0] == 0x2A
+        frame = decode_base64(saved["state"]["denise"]["frame_builder"]["buffer"])
+        assert pack("<I", 0xFF1199EE) in frame
+        check_restored_state(export_state(page, output / "browser-still-paused.json"), saved)
+        assert not errors and not page.evaluate("workerReport.failures"), errors
+    except Exception:
+        page.screenshot(path=str(output / "paused-export-failure.png"))
+        raise
+    finally:
+        context.close()
+
+    result = check_rejected_imports(browser, url, rom, second, saved_path, output)
+    result["fresh_page"] = check_fresh_restore(browser, url, rom, first, second, saved_path, output)
+    for path, digest in original_digests.items():
+        assert sha256(path.read_bytes()).digest() == digest, f"Media changed at {path}"
+    return result
+
+
+def check_native_exchange(browser, url, native_path, output):
+    original = native_path.with_name("browser.json")
+    rom, first, second = (native_path.with_name(name) for name in ("test.rom", "first.adf", "second.adf"))
+    browser_save = json.loads(original.read_text(encoding="utf-8"))
+    native_save = json.loads(native_path.read_text(encoding="utf-8"))
+    check_restored_state(native_save, browser_save)
+    check_source(native_save, rom, second, "manual-1")
+    return check_fresh_restore(browser, url, rom, first, second, native_path, output)
 
 
 def check_archive_imports(browser, url, rom, output):
-    """Boot the same ADF from a plain file, ZIP and 7z and compare every track."""
+    """Boot the same ADF from three formats and verify its original content."""
     expected = bytes([0x33]) * (880 * 1024)
     zipped = BytesIO()
     with ZipFile(zipped, "w", compression=ZIP_DEFLATED) as archive:
@@ -365,8 +675,10 @@ def check_archive_imports(browser, url, rom, output):
             assert snapshot["state"]["cck"] > 0
             drive = snapshot["state"]["floppy"]["drives"][0]
             assert drive["disk_inserted"]
-            track_bytes = json.dumps(drive["track_data"], separators=(",", ":")).encode("utf-8")
-            results[filename] = sha256(track_bytes).hexdigest()
+            reference = drive["track_data"]
+            assert reference["sha256"] == sha256(expected).hexdigest()
+            assert reference["modified_tracks"] == {}
+            results[filename] = reference["sha256"]
             assert not errors, errors
             assert not page.evaluate("archiveWorker.failures")
         except Exception:
@@ -382,18 +694,26 @@ def check_archive_imports(browser, url, rom, output):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--browser-executable", required=True)
-    parser.add_argument("--rom", type=Path, required=True)
-    parser.add_argument("--disk", type=Path, required=True)
+    parser.add_argument("--rom", type=Path)
+    parser.add_argument("--disk", type=Path)
     parser.add_argument("--dist", type=Path, default=Path(".agent/tmp/web-dist"))
     parser.add_argument("--output", type=Path, default=Path(".agent/tmp/browser-player"))
+    parser.add_argument("--native-state", type=Path,
+                        help="Native re-export of media/browser.json and its adjacent fixtures")
     args = parser.parse_args()
+    if not args.native_state and (args.rom is None or args.disk is None):
+        parser.error("--rom and --disk are required unless --native-state is supplied")
     args.output.mkdir(parents=True, exist_ok=True)
     with serve_distribution(args.dist) as url, sync_playwright() as playwright:
         browser = playwright.chromium.launch(executable_path=args.browser_executable, headless=True,
             args=["--enable-webgl", "--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"])
         try:
-            result = check_workflow(browser, url, args.rom, args.disk, args.output)
-            result["archive_track_digests"] = check_archive_imports(browser, url, args.rom, args.output)
+            if args.native_state:
+                result = {"native_exchange": check_native_exchange(browser, url, args.native_state, args.output)}
+            else:
+                result = check_workflow(browser, url, args.rom, args.disk, args.output)
+                result["archive_media_digests"] = check_archive_imports(browser, url, args.rom, args.output)
+                result["media_restore"] = check_media_restore(browser, url, args.output / "media")
             (args.output / "result.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
             print(json.dumps(result, indent=2))
         finally:

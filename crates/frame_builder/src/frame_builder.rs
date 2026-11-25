@@ -29,7 +29,7 @@ const NTSC_FRAME_HEIGHT: usize = 480;
 pub const FRAME_START_CCK: u16 = 49;
 const PAL_FRAME_START_LINE: u16 = 28;
 const NTSC_FRAME_START_LINE: u16 = 21;
-const FRAME_BUFFER_CAPACITY: usize = MAX_FRAME_WIDTH * MAX_FRAME_HEIGHT;
+pub const FRAME_BUFFER_CAPACITY: usize = MAX_FRAME_WIDTH * MAX_FRAME_HEIGHT;
 pub const BIT_HSTOP_EXTENSION: u16 = 0x100;
 
 const fn expand_rgb444(rgb: u16) -> u32 {
@@ -81,15 +81,48 @@ pub fn is_in_display_window(hcoord: u16, vcoord: u16, diwstrt: u16, diwstop: u16
 /// Complete visible image on a fixed high-resolution, interlaced spatial grid.
 /// Spare capacity is reserved once; blanking samples are never stored.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct FrameBuilder {
+pub struct FrameBuilder<Buffer = Vec<u32>> {
     pub width: u32,
     pub height: u32,
     pub frame_ready: bool,
     pub frame_number: u64,
     pub interlaced: bool,
     pub field_odd: bool,
-    buffer: Vec<u32>,
+    buffer: Buffer,
     standard: VideoStandard,
+}
+
+impl<Buffer> FrameBuilder<Buffer> {
+    /// Converts the backing storage while retaining the field and geometry.
+    pub fn map_storage<Output>(self, map: impl FnOnce(Buffer) -> Output) -> FrameBuilder<Output> {
+        FrameBuilder {
+            width: self.width,
+            height: self.height,
+            frame_ready: self.frame_ready,
+            frame_number: self.frame_number,
+            interlaced: self.interlaced,
+            field_odd: self.field_odd,
+            buffer: map(self.buffer),
+            standard: self.standard,
+        }
+    }
+
+    pub fn storage(&self) -> &Buffer {
+        &self.buffer
+    }
+
+    pub fn has_geometry(&self, standard: VideoStandard) -> bool {
+        self.standard == standard
+            && self.width as usize == MAX_FRAME_WIDTH
+            && self.height as usize == self.standard_height()
+    }
+
+    fn standard_height(&self) -> usize {
+        match self.standard {
+            VideoStandard::Pal => MAX_FRAME_HEIGHT,
+            VideoStandard::Ntsc => NTSC_FRAME_HEIGHT,
+        }
+    }
 }
 
 impl Default for FrameBuilder {
@@ -152,13 +185,6 @@ impl FrameBuilder {
         if self.standard != standard {
             self.standard = standard;
             self.reset();
-        }
-    }
-
-    fn standard_height(&self) -> usize {
-        match self.standard {
-            VideoStandard::Pal => MAX_FRAME_HEIGHT,
-            VideoStandard::Ntsc => NTSC_FRAME_HEIGHT,
         }
     }
 

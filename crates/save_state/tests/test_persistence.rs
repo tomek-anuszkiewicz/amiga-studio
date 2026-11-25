@@ -1,8 +1,52 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
+use base64::{engine::general_purpose::STANDARD, Engine};
 use config::{A500Config, A500Preset, VideoStandard};
-use machine_loop::A500Machine;
-use save_state::{SaveState, SaveStateError, SAVE_STATE_VERSION};
+use machine_loop::{A500Machine, A500State};
+use save_state::{MediaSources, SaveAssociation, SaveState, SaveStateError, SourceImage};
+use serde_json::{json, Value};
+
+fn capture_synthetic(machine: &A500Machine) -> SaveState {
+    SaveState::capture(machine, &MediaSources::default()).unwrap()
+}
+
+fn restore_synthetic(saved: SaveState) -> Box<A500State> {
+    saved.restore(&MediaSources::default()).unwrap()
+}
+
+fn roundtrip_synthetic(machine: &A500Machine) -> Box<A500State> {
+    let json = capture_synthetic(machine).to_json().unwrap();
+    restore_synthetic(SaveState::from_json(&json).unwrap())
+}
+
+const ROM_BYTES: usize = 262_144;
+const ADF_BYTES: usize = 901_120;
+
+fn patterned_bytes(size: usize, seed: u8) -> Vec<u8> {
+    (0..size)
+        .map(|index| (index as u8).wrapping_mul(17).wrapping_add(seed))
+        .collect()
+}
+
+fn image(name: &str, bytes: Vec<u8>) -> SourceImage {
+    SourceImage {
+        name: Some(name.into()),
+        bytes,
+    }
+}
+
+fn canonical_bytes(value: &Value, expected: &[u8], field: &str) {
+    let encoded = value
+        .as_str()
+        .unwrap_or_else(|| panic!("{field} must be a string"));
+    let actual = STANDARD.decode(encoded).unwrap();
+    assert_eq!(actual.len(), expected.len(), "{field}");
+    assert!(actual == expected, "{field} contents differ");
+    assert!(
+        STANDARD.encode(actual) == encoded,
+        "{field} is not canonical Base64"
+    );
+}
 
 #[test]
 fn snapshot_after_video_handoff_keeps_the_current_partial_image_and_continuation() {
@@ -19,7 +63,7 @@ fn snapshot_after_video_handoff_keeps_the_current_partial_image_and_continuation
     frame.set_field_mode(true, true);
     frame.write_pixel_pair(0, 1, [0xff00_00ff; 2]);
 
-    let saved = SaveState::capture(&machine);
+    let saved = capture_synthetic(&machine);
     let preview = image::load_from_memory(&saved.header.screenshot_png)
         .unwrap()
         .to_rgba8();
@@ -30,7 +74,7 @@ fn snapshot_after_video_handoff_keeps_the_current_partial_image_and_continuation
 
     let restored = SaveState::from_json(&saved.to_json().unwrap()).unwrap();
     let mut resumed = A500Machine::new(A500Config::default());
-    resumed.load_state(&restored.state);
+    resumed.load_state(&restore_synthetic(restored));
     assert_eq!(machine.denise, resumed.denise);
     for target in [&mut machine, &mut resumed] {
         target
@@ -117,14 +161,34 @@ fn denise_display_controls_roundtrip_with_a_pending_mode_change() {
 }
 
 #[test]
-fn snapshot_rejects_kickstart_buffers_of_other_sizes() {
-    let machine = A500Machine::new(A500Config::default());
-    let mut value = serde_json::to_value(SaveState::capture(&machine)).unwrap();
-    for size in [0, 262143, 524288] {
-        value["state"]["physical_memory"]["kickstart_rom"] = serde_json::json!(vec![0u8; size]);
-        let bytes = serde_json::to_vec(&value).unwrap();
-        let error = SaveState::from_bytes(&bytes).unwrap_err();
-        assert!(matches!(error, SaveStateError::DeserializationFailed(_)));
+fn file_restore_validates_external_media_before_producing_a_machine() {
+    let mut machine = A500Machine::new(A500Config::default());
+    let rom = image("fixture.rom", patterned_bytes(ROM_BYTES, 25));
+    let disk = image("fixture.adf", patterned_bytes(ADF_BYTES, 49));
+    machine
+        .physical_memory
+        .write_bytes_debug(config::address_map::KICKSTART_BASE, &rom.bytes)
+        .unwrap();
+    assert!(machine.floppy.drives[0].insert_disk(&disk.bytes));
+    let mut sources = MediaSources {
+        rom: Some(rom),
+        disks: [Some(disk), None, None, None],
+    };
+    let before = machine.save_state();
+    let bytes = SaveState::capture(&machine, &sources)
+        .unwrap()
+        .to_json()
+        .unwrap();
+    let saved = SaveState::from_bytes(bytes.as_bytes()).unwrap();
+    let correct_rom = sources.rom.take();
+    let error = saved.clone().restore(&sources).unwrap_err();
+    assert!(matches!(error, SaveStateError::MediaUnavailable(_)));
+    assert!(error.to_string().contains("Kickstart ROM"));
+
+    for size in [0, 262_143, 524_288] {
+        sources.rom = Some(image("fixture.rom", vec![0; size]));
+        let error = saved.clone().restore(&sources).unwrap_err();
+        assert!(matches!(error, SaveStateError::MediaUnavailable(_)));
         assert!(error
             .to_string()
             .contains("Kickstart ROM must be exactly 256 KiB (262144 bytes)"));
@@ -132,6 +196,36 @@ fn snapshot_rejects_kickstart_buffers_of_other_sizes() {
             .to_string()
             .contains(&format!("received {size} bytes")));
     }
+    sources.rom = Some(image("fixture.rom", vec![0; ROM_BYTES]));
+    let error = saved.clone().restore(&sources).unwrap_err();
+    assert!(matches!(error, SaveStateError::MediaUnavailable(_)));
+    assert!(error
+        .to_string()
+        .contains("Kickstart ROM (fixture.rom) content does not match"));
+    sources.rom = correct_rom;
+
+    let correct_disk = sources.disks[0].take();
+    let error = saved.clone().restore(&sources).unwrap_err();
+    assert!(matches!(error, SaveStateError::MediaUnavailable(_)));
+    assert!(error
+        .to_string()
+        .contains("ADF for DF0 (fixture.adf) source is unavailable"));
+    sources.disks[0] = Some(image("fixture.adf", vec![0; ADF_BYTES - 1]));
+    let error = saved.clone().restore(&sources).unwrap_err();
+    assert!(matches!(error, SaveStateError::MediaUnavailable(_)));
+    assert!(error
+        .to_string()
+        .contains("ADF for DF0 (fixture.adf) must contain 901120 bytes; received 901119 bytes"));
+    sources.disks[0] = Some(image("fixture.adf", vec![0; ADF_BYTES]));
+    let error = saved.clone().restore(&sources).unwrap_err();
+    assert!(matches!(error, SaveStateError::MediaUnavailable(_)));
+    assert!(error
+        .to_string()
+        .contains("ADF for DF0 (fixture.adf) content does not match"));
+    sources.disks[0] = correct_disk;
+
+    assert!(*saved.restore(&sources).unwrap() == before);
+    assert!(machine.save_state() == before);
 }
 
 #[test]
@@ -140,10 +234,10 @@ fn test_save_state_metadata_and_header() {
         A500Preset::Standard1Mb,
         VideoStandard::Pal,
     ));
-    let saved = SaveState::capture(&machine);
-    let state = &saved.state;
+    let saved = capture_synthetic(&machine);
+    let state = restore_synthetic(saved.clone());
 
-    assert_eq!(saved.header.version, SAVE_STATE_VERSION);
+    assert_eq!(saved.header.version, 16);
     assert!(!saved.header.screenshot_png.is_empty());
     // PNG magic header: \x89PNG\r\n\x1a\n
     assert_eq!(&saved.header.screenshot_png[0..4], b"\x89PNG");
@@ -163,7 +257,7 @@ fn screenshot_preserves_the_complete_fixed_rectangle_for_each_standard() {
         for (y, row) in frame.frame_buffer_mut().chunks_exact_mut(720).enumerate() {
             row.fill(if y % 2 == 0 { 0xffff0000 } else { 0xff0000ff });
         }
-        let saved = SaveState::capture(&machine);
+        let saved = capture_synthetic(&machine);
         let preview = image::load_from_memory(&saved.header.screenshot_png)
             .unwrap()
             .to_rgba8();
@@ -191,23 +285,13 @@ fn test_save_state_json_roundtrip() {
     ));
     machine.step_cycles(200);
 
-    let state = SaveState::capture(&machine);
+    let state = capture_synthetic(&machine);
     let json_str = state.to_json().expect("JSON serialization failed");
     let restored = SaveState::from_json(&json_str).expect("JSON deserialization failed");
 
     assert_eq!(state.header, restored.header);
-    assert_eq!(state.state.cck, restored.state.cck);
-    assert_eq!(state.state.cpu, restored.state.cpu);
-    assert_eq!(state.state.agnus, restored.state.agnus);
-    assert_eq!(state.state.denise, restored.state.denise);
-    assert_eq!(state.state.cia_a, restored.state.cia_a);
-    assert_eq!(state.state.cia_b, restored.state.cia_b);
-    assert_eq!(state.state.game_ports, restored.state.game_ports);
-    assert_eq!(
-        state.state.paula.serial_port,
-        restored.state.paula.serial_port
-    );
     assert_eq!(state, restored);
+    assert!(*restore_synthetic(restored) == machine.save_state());
 }
 #[test]
 fn test_save_state_bytes_roundtrip() {
@@ -217,7 +301,7 @@ fn test_save_state_bytes_roundtrip() {
     ));
     machine.step_cycles(500);
 
-    let state = SaveState::capture(&machine);
+    let state = capture_synthetic(&machine);
     let json_bytes = serde_json::to_vec(&state).expect("Serialization failed");
 
     let restored = SaveState::from_bytes(&json_bytes).expect("Deserialization failed");
@@ -225,49 +309,417 @@ fn test_save_state_bytes_roundtrip() {
 }
 #[test]
 fn test_save_state_file_persistence() {
-    let mut machine = A500Machine::new(A500Config::from_preset(
-        A500Preset::Bare512k,
-        VideoStandard::Pal,
-    ));
+    let config = A500Config::standard_1mb(VideoStandard::Pal);
+    let mut machine = A500Machine::new(config.clone());
+    machine.cpu.state.set_stopped(true);
     machine.step_cycles(150);
+    machine.cpu.state.set_d_long(3, 0x1234_abcd);
+
+    let rom = image("original.rom", patterned_bytes(ROM_BYTES, 25));
+    let first_disk = image("first.adf", patterned_bytes(ADF_BYTES, 49));
+    let second_disk = image("second.adf", patterned_bytes(ADF_BYTES, 157));
+    let memory = &mut machine.physical_memory;
+    memory
+        .write_bytes_debug(config::address_map::KICKSTART_BASE, &rom.bytes)
+        .unwrap();
+    memory.map_chip_ram_to_low_memory();
+    let chip = patterned_bytes(512 * 1024, 0xfc);
+    let slow = patterned_bytes(512 * 1024, 0xad);
+    memory.write_bytes_debug(0, &chip).unwrap();
+    memory.write_bytes_debug(0xc0_0000, &slow).unwrap();
+    let frame = &mut machine.denise.frame_builder;
+    let full_frame: Vec<_> = (0..720 * 568)
+        .map(|index| [0xa1b2_c3d4u32, 0x12e3_709f, 0xff20_4080][index % 3])
+        .collect();
+    frame.frame_buffer_mut().copy_from_slice(&full_frame);
+    let frame_bytes: Vec<_> = full_frame
+        .iter()
+        .flat_map(|pixel| pixel.to_le_bytes())
+        .collect();
+
+    machine
+        .floppy
+        .set_connections([true, true, true, false])
+        .unwrap();
+    assert!(machine.floppy.drives[0].insert_disk(&first_disk.bytes));
+    assert!(machine.floppy.drives[0].insert_disk(&second_disk.bytes));
+    assert!(machine.floppy.drives[1].insert_disk(&first_disk.bytes));
+    let mut sources = MediaSources {
+        rom: Some(rom),
+        disks: [Some(second_disk), Some(first_disk), None, None],
+    };
+    let mut saved = SaveState::capture(&machine, &sources).unwrap();
+    saved.header.timestamp = 1_700_001_234;
+    let association = SaveAssociation {
+        game_id: Some("fixture-game".into()),
+        mounted: [Some("second".into()), None, None, None],
+    };
+    saved.header.association = association.clone();
+    let preview = image::load_from_memory(&saved.header.screenshot_png)
+        .unwrap()
+        .to_rgba8();
+    assert_eq!(preview.dimensions(), (720, 568));
+    assert_eq!(preview.get_pixel(0, 0).0, [0xb2, 0xc3, 0xd4, 0xa1]);
+    assert_eq!(preview.get_pixel(1, 0).0, [0xe3, 0x70, 0x9f, 0x12]);
 
     let temp_dir = std::env::temp_dir();
-    let temp_path = temp_dir.join(format!("test_save_state_amiga_{}.json", std::process::id()));
-
-    let json = SaveState::capture(&machine).to_json_pretty().unwrap();
-    std::fs::write(&temp_path, json).expect("Failed to write save state file");
-
-    let mut restored_machine = A500Machine::new(A500Config::from_preset(
-        A500Preset::Bare512k,
-        VideoStandard::Pal,
+    let stamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap();
+    let temp_path = temp_dir.join(format!(
+        "amiga-save-state-{}-{}.json",
+        std::process::id(),
+        stamp.as_nanos()
     ));
-    let json = std::fs::read_to_string(&temp_path).expect("Failed to read save state file");
-    let saved = SaveState::from_json(&json).expect("Failed to decode save state file");
-    restored_machine.load_state(&saved.state);
+    let pretty = saved.to_json_pretty().unwrap();
+    std::fs::write(&temp_path, &pretty).expect("Failed to write save state file");
+    let file = std::fs::read(&temp_path).expect("Failed to read save state file");
+    std::fs::remove_file(&temp_path).unwrap();
+    assert_eq!(file, pretty.as_bytes());
 
-    assert_eq!(machine.cck, restored_machine.cck);
-    assert_eq!(machine.cpu.state, restored_machine.cpu.state);
+    // The original labels are no longer available when restoring this file.
+    sources.rom.as_mut().unwrap().name = Some("moved.rom".into());
+    sources.disks[0].as_mut().unwrap().name = Some("renamed-second.adf".into());
+    sources.disks[1].as_mut().unwrap().name = Some("renamed-first.adf".into());
+    let original = machine.save_state();
+    for bytes in [
+        saved.to_json().unwrap().into_bytes(),
+        file,
+        serde_json::to_vec(&saved).unwrap(),
+    ] {
+        let text = std::str::from_utf8(&bytes).unwrap();
+        let document: Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(document["header"]["version"], 16);
+        assert_eq!(document["header"]["timestamp"], 1_700_001_234);
+        assert_eq!(
+            document["header"]["association"],
+            json!({
+                "game_id": "fixture-game",
+                "mounted": ["second", null, null, null],
+            })
+        );
+        canonical_bytes(
+            &document["header"]["screenshot_png"],
+            &saved.header.screenshot_png,
+            "PNG",
+        );
+        let state = &document["state"];
+        assert_eq!(state["cck"], 150);
+        assert_eq!(state["config"], serde_json::to_value(&config).unwrap());
+        let memory = &state["physical_memory"];
+        canonical_bytes(&memory["chip_ram"], &chip, "Chip RAM");
+        canonical_bytes(&memory["slow_ram"], &slow, "Slow RAM");
+        assert_eq!(memory.get("fast_ram"), Some(&Value::Null));
+        assert_eq!(
+            memory["kickstart_rom"],
+            json!({
+                "sha256": "1435ae74255cda6413f2ddd79da49c45976b947ea9794c66ebcb2ba1da62fae1",
+                "name": "original.rom",
+                "synthetic": false,
+            })
+        );
+        let frame = &state["denise"]["frame_builder"]["buffer"];
+        canonical_bytes(frame, &frame_bytes, "frame buffer");
+        assert_eq!(
+            &STANDARD.decode(&frame.as_str().unwrap()[..8]).unwrap()[..4],
+            &[0xd4, 0xc3, 0xb2, 0xa1]
+        );
 
-    let _ = std::fs::remove_file(&temp_path);
+        let drives = state["floppy"]["drives"].as_array().unwrap();
+        assert_eq!(drives.len(), 4);
+        for (drive, (connected, inserted)) in
+            drives
+                .iter()
+                .zip([(true, true), (true, true), (true, false), (false, false)])
+        {
+            assert_eq!(drive["connected"], connected);
+            assert_eq!(drive["disk_inserted"], inserted);
+        }
+        assert_eq!(
+            drives[0]["track_data"],
+            json!({
+                "sha256": "708597cb9e6996f58d671f251d90fa3cc74dbe4d0d6a02b37d55b37da5125a8d",
+                "name": "second.adf",
+                "modified_tracks": {},
+            })
+        );
+        assert_eq!(
+            drives[1]["track_data"],
+            json!({
+                "sha256": "f0fdbb654fd226e44e9cc4bc9a5fbbb09fcb01feab1c4a26839d4440534e17d2",
+                "name": "first.adf",
+                "modified_tracks": {},
+            })
+        );
+        assert_eq!(drives[2].get("track_data"), Some(&Value::Null));
+        assert_eq!(drives[3].get("track_data"), Some(&Value::Null));
+
+        for parsed in [
+            SaveState::from_json(text).unwrap(),
+            SaveState::from_bytes(&bytes).unwrap(),
+            serde_json::from_slice::<SaveState>(&bytes).unwrap(),
+        ] {
+            assert_eq!(parsed.header, saved.header);
+            assert_eq!(parsed.cck(), 150);
+            assert!(parsed.disk_inserted(0) && parsed.disk_inserted(1));
+            assert!(!parsed.disk_inserted(2) && !parsed.disk_inserted(3));
+            let restored = parsed.restore(&sources).unwrap();
+            assert_eq!(restored.cpu.d_long(3), 0x1234_abcd);
+            assert!(
+                *restored == original,
+                "restored machine differs from saved machine"
+            );
+            let mut resumed = A500Machine::new(A500Config::default());
+            resumed.load_state(&restored);
+            assert!(
+                resumed.save_state() == original,
+                "loading changed the saved machine"
+            );
+        }
+    }
+}
+
+#[test]
+fn file_keeps_every_configured_bank_and_full_frame_through_restore_and_resave() {
+    for (config, height, slow, fast) in [
+        (A500Config::bare_512k(VideoStandard::Pal), 568, 0, 0),
+        (
+            A500Config::standard_1mb(VideoStandard::Pal),
+            568,
+            512 * 1024,
+            0,
+        ),
+        (
+            A500Config::expanded_power_user(VideoStandard::Ntsc),
+            480,
+            512 * 1024,
+            4 * 1024 * 1024,
+        ),
+    ] {
+        let mut machine = A500Machine::new(config.clone());
+        machine.physical_memory.map_chip_ram_to_low_memory();
+        let banks = [
+            ("chip_ram", 0x00_0000, 512 * 1024),
+            ("slow_ram", 0xc0_0000, slow),
+            ("fast_ram", 0x20_0000, fast),
+        ]
+        .map(|(name, address, size)| {
+            let marker = [0x5e, 0xad, 0xbe, 0xef];
+            let expected = (size != 0).then(|| {
+                let mut bytes = vec![0; size];
+                bytes[..4].copy_from_slice(&marker);
+                bytes[size - 4..].copy_from_slice(&[0xfe, 0xdc, 0xba, 0x98]);
+                machine
+                    .physical_memory
+                    .write_bytes_debug(address, &bytes)
+                    .unwrap();
+                bytes
+            });
+            (name, expected)
+        });
+        let mut pixels = vec![0xff20_4080u32; 720 * 568];
+        pixels[720 * height - 1] = 0xff90_3010;
+        if height == 480 {
+            pixels[720 * height] = 0xff0a_91c2;
+            pixels[720 * 568 - 1] = 0xa1b2_c3d4;
+        }
+        let frame = &mut machine.denise.frame_builder;
+        *frame = frame.clone().map_storage(|_| pixels.clone());
+        let expected_frame: Vec<_> = pixels.iter().flat_map(|word| word.to_le_bytes()).collect();
+        let file = capture_synthetic(&machine).to_json().unwrap();
+        let restored = restore_synthetic(SaveState::from_bytes(file.as_bytes()).unwrap());
+        assert!(*restored == machine.save_state(), "{config:?}");
+        let mut resumed = A500Machine::new(A500Config::default());
+        resumed.load_state(&restored);
+        let resaved = capture_synthetic(&resumed).to_json().unwrap();
+
+        for text in [file, resaved] {
+            let document: Value = serde_json::from_str(&text).unwrap();
+            let memory = &document["state"]["physical_memory"];
+            for (name, expected) in &banks {
+                let value = memory.get(name).unwrap();
+                if let Some(expected) = expected {
+                    canonical_bytes(value, expected, name);
+                } else {
+                    assert_eq!(value, &Value::Null, "{name}");
+                }
+            }
+            canonical_bytes(
+                &document["state"]["denise"]["frame_builder"]["buffer"],
+                &expected_frame,
+                "full frame buffer",
+            );
+            let png = STANDARD
+                .decode(document["header"]["screenshot_png"].as_str().unwrap())
+                .unwrap();
+            let preview = image::load_from_memory(&png).unwrap().to_rgba8();
+            assert_eq!(preview.dimensions(), (720, height as u32));
+            assert_eq!(preview.get_pixel(0, 0).0, [0x20, 0x40, 0x80, 0xff]);
+            assert_eq!(
+                preview.get_pixel(719, height as u32 - 1).0,
+                [0x90, 0x30, 0x10, 0xff]
+            );
+        }
+    }
 }
 
 #[test]
 fn unsupported_file_version_is_rejected_before_restore() {
-    let machine = A500Machine::new(A500Config::default());
-    let mut saved = SaveState::capture(&machine);
-    for version in [SAVE_STATE_VERSION - 1, SAVE_STATE_VERSION + 1] {
-        saved.header.version = version;
-        let json = saved.to_json().unwrap();
-        assert!(matches!(
-            SaveState::from_json(&json),
-            Err(SaveStateError::IncompatibleVersion { .. })
-        ));
-        assert!(matches!(
-            SaveState::from_bytes(json.as_bytes()),
-            Err(SaveStateError::IncompatibleVersion { .. })
-        ));
+    for version in [1, 15, 17] {
+        let header = format!(r#"{{"version":{version},"screenshot_png":[137,80,78,71]}}"#);
+        let state = r#"{"physical_memory":{"chip_ram":[1,2,3],"kickstart_rom":[4,5,6]}}"#;
+        let expected = SaveStateError::IncompatibleVersion {
+            found: version,
+            supported: 16,
+        };
+        for json in [
+            format!(r#"{{"header":{header},"state":{state}}}"#),
+            format!(r#"{{"state":{state},"header":{header}}}"#),
+        ] {
+            assert_eq!(SaveState::from_json(&json).unwrap_err(), expected);
+            assert_eq!(
+                SaveState::from_bytes(json.as_bytes()).unwrap_err(),
+                expected
+            );
+            let direct_decode = serde_json::from_str::<SaveState>(&json)
+                .unwrap_err()
+                .to_string();
+            assert!(direct_decode.contains(&expected.to_string()));
+        }
     }
-    assert_eq!(machine.save_state(), *saved.state);
+
+    let machine = A500Machine::new(A500Config::default());
+    let saved = capture_synthetic(&machine);
+    let document = serde_json::to_value(&saved).unwrap();
+    let reordered = format!(
+        r#"{{"state":{},"header":{}}}"#,
+        document["state"], document["header"]
+    );
+    assert_eq!(SaveState::from_json(&reordered).unwrap(), saved);
+    assert_eq!(SaveState::from_bytes(reordered.as_bytes()).unwrap(), saved);
+    assert_eq!(
+        serde_json::from_str::<SaveState>(&reordered).unwrap(),
+        saved
+    );
+    assert!(*restore_synthetic(saved) == machine.save_state());
+}
+
+#[test]
+fn invalid_current_fields_fail_both_file_readers() {
+    const PREVIEW: &str = "/header/screenshot_png";
+    const CHIP: &str = "/state/physical_memory/chip_ram";
+    const SLOW: &str = "/state/physical_memory/slow_ram";
+    const FAST: &str = "/state/physical_memory/fast_ram";
+    const FRAME: &str = "/state/denise/frame_builder/buffer";
+    const ROM_DIGEST: &str = "/state/physical_memory/kickstart_rom/sha256";
+    const DRIVE_DATA: &str = "/state/floppy/drives/0/track_data";
+    let machine = A500Machine::new(A500Config::standard_1mb(VideoStandard::Pal));
+    let captured = capture_synthetic(&machine);
+    let original = serde_json::to_value(&captured).unwrap();
+    let preview = original.pointer(PREVIEW).unwrap().as_str().unwrap();
+    let frame = original.pointer(FRAME).unwrap().as_str().unwrap();
+    let chip = original.pointer(CHIP).unwrap().as_str().unwrap();
+    let cases = [
+        ("bad alphabet", PREVIEW, Some(json!("_w=="))),
+        ("missing padding", PREVIEW, Some(json!("/w"))),
+        ("superfluous padding", PREVIEW, Some(json!("QUJD="))),
+        ("nonzero trailing bits", PREVIEW, Some(json!("/x=="))),
+        ("embedded whitespace", PREVIEW, Some(json!("/w\n=="))),
+        ("numeric array", PREVIEW, Some(json!([137, 80, 78, 71]))),
+        (
+            "fragment array",
+            PREVIEW,
+            Some(json!([&preview[..4], &preview[4..]])),
+        ),
+        ("missing preview", PREVIEW, None),
+        ("null preview", PREVIEW, Some(Value::Null)),
+        (
+            "truncated Chip RAM",
+            CHIP,
+            Some(json!(&chip[..chip.len() - 4])),
+        ),
+        ("missing Chip RAM", CHIP, None),
+        ("null Chip RAM", CHIP, Some(Value::Null)),
+        ("absent configured Slow RAM", SLOW, Some(Value::Null)),
+        ("short Slow RAM", SLOW, Some(json!("AAAA"))),
+        ("missing absent Fast RAM field", FAST, None),
+        ("populated unconfigured Fast RAM", FAST, Some(json!(chip))),
+        ("missing frame", FRAME, None),
+        ("null frame", FRAME, Some(Value::Null)),
+        ("misaligned frame", FRAME, Some(json!("AAAA"))),
+        (
+            "wrong-sized whole frame",
+            FRAME,
+            Some(json!(format!("{frame}AAAAAA=="))),
+        ),
+        (
+            "wrong frame geometry",
+            "/state/denise/frame_builder/height",
+            Some(json!(480)),
+        ),
+        ("short ROM digest", ROM_DIGEST, Some(json!("00"))),
+        (
+            "uppercase ROM digest",
+            ROM_DIGEST,
+            Some(json!("A".repeat(64))),
+        ),
+        ("missing drive reference field", DRIVE_DATA, None),
+        (
+            "malformed drive reference",
+            DRIVE_DATA,
+            Some(json!([1, 2, 3])),
+        ),
+        (
+            "inserted disk without reference",
+            "/state/floppy/drives/0/disk_inserted",
+            Some(json!(true)),
+        ),
+        (
+            "empty drive with reference",
+            DRIVE_DATA,
+            Some(json!({"sha256": "0".repeat(64), "name": null, "modified_tracks": {}})),
+        ),
+        (
+            "empty drive with library disk ID",
+            "/header/association/mounted/0",
+            Some(json!("disk")),
+        ),
+    ];
+    for (case, pointer, replacement) in cases {
+        let mut malformed = original.clone();
+        if let Some(value) = replacement {
+            *malformed.pointer_mut(pointer).unwrap() = value;
+        } else {
+            let (parent, key) = pointer.rsplit_once('/').unwrap();
+            assert!(malformed
+                .pointer_mut(parent)
+                .unwrap()
+                .as_object_mut()
+                .unwrap()
+                .remove(key)
+                .is_some());
+        }
+        let text = malformed.to_string();
+        for result in [
+            SaveState::from_json(&text),
+            SaveState::from_bytes(text.as_bytes()),
+        ] {
+            let error = result.expect_err(case);
+            assert!(
+                matches!(
+                    error,
+                    SaveStateError::DeserializationFailed(_) | SaveStateError::CorruptedData(_)
+                ),
+                "{case}: {error}"
+            );
+        }
+    }
+
+    let mut empty_preview = original;
+    *empty_preview.pointer_mut(PREVIEW).unwrap() = json!("");
+    let decoded = SaveState::from_json(&empty_preview.to_string()).unwrap();
+    assert!(decoded.header.screenshot_png.is_empty());
+    assert!(*restore_synthetic(decoded) == machine.save_state());
 }
 
 #[test]
@@ -283,9 +735,9 @@ fn dma_registers_roundtrip_in_their_single_owner() {
     }
     assert_eq!(machine.agnus.read_dmaconr() & 0x07ff, 0x0300);
     assert_eq!(machine.agnus.dma.planecount(), 2);
-    let saved = SaveState::capture(&machine);
+    let saved = capture_synthetic(&machine);
     let json = serde_json::to_value(&saved).unwrap();
-    assert_eq!(json["header"]["version"], 15);
+    assert_eq!(json["header"]["version"], 16);
     for (name, value) in [
         ("dmacon", 0x0300),
         ("bplcon0", 0x2004),
@@ -297,7 +749,7 @@ fn dma_registers_roundtrip_in_their_single_owner() {
     }
     let restored = SaveState::from_json(&json.to_string()).unwrap();
     let mut resumed = A500Machine::new(A500Config::default());
-    resumed.load_state(&restored.state);
+    resumed.load_state(&restore_synthetic(restored));
     for _ in 0..128 {
         machine.step_cck();
         resumed.step_cck();
@@ -315,9 +767,8 @@ fn file_roundtrip_resumes_an_undelivered_rga_event() {
         machine.denise.pins.incoming.as_ref().unwrap().rga_strobe,
         Some(config::custom_reg::denise::REGISTER_STRHOR)
     );
-    let saved = SaveState::from_json(&SaveState::capture(&machine).to_json().unwrap()).unwrap();
     let mut restored = A500Machine::new(A500Config::default());
-    restored.load_state(&saved.state);
+    restored.load_state(&roundtrip_synthetic(&machine));
     assert_eq!(machine.save_state(), restored.save_state());
     assert!(!restored.denise.sync.synchronized);
     for _ in 0..8 {
@@ -340,9 +791,8 @@ fn file_roundtrip_rebuilds_sprite_comparisons_with_an_active_vertical_latch() {
     machine.step_cck();
     assert!(machine.agnus.sprite_dma.state().sprite_dma_active[0]);
 
-    let saved = SaveState::from_json(&SaveState::capture(&machine).to_json().unwrap()).unwrap();
     let mut restored = A500Machine::new(A500Config::bare_512k(VideoStandard::Pal));
-    restored.load_state(&saved.state);
+    restored.load_state(&roundtrip_synthetic(&machine));
     assert_eq!(machine.save_state(), restored.save_state());
     for _ in 0..500 {
         machine.step_cck();
@@ -380,9 +830,8 @@ fn file_roundtrip_resumes_a_partial_copper_instruction_after_a_denied_fetch() {
         machine.agnus.dma.set_bplcon0(0xC000);
         machine.step_cck();
         assert_eq!(machine.agnus.copper.cop_pc, 2);
-        let saved = SaveState::from_json(&SaveState::capture(&machine).to_json().unwrap()).unwrap();
         let mut restored = A500Machine::new(A500Config::default());
-        restored.load_state(&saved.state);
+        restored.load_state(&roundtrip_synthetic(&machine));
         machine.agnus.dma.write_dmacon(0x0100);
         restored.agnus.dma.write_dmacon(0x0100);
         for _ in 0..12 {
@@ -419,9 +868,8 @@ fn file_roundtrip_resumes_blitter_source_carry_and_pending_destination() {
         assert_eq!(machine.agnus.blitter.bltapt, 4);
         assert_eq!(machine.agnus.blitter.bltdpt, 16);
         assert!(machine.agnus.blitter.is_busy);
-        let saved = SaveState::from_json(&SaveState::capture(&machine).to_json().unwrap()).unwrap();
         let mut restored = A500Machine::new(A500Config::default());
-        restored.load_state(&saved.state);
+        restored.load_state(&roundtrip_synthetic(&machine));
         for _ in 0..8 {
             machine.step_cck();
             restored.step_cck();
@@ -473,9 +921,9 @@ fn file_roundtrip_preserves_drawn_pixels_and_resumes_active_display() {
         .pipeline_pixels_valid
         .iter()
         .all(|valid| *valid));
-    let saved = SaveState::from_json(&SaveState::capture(&machine).to_json().unwrap()).unwrap();
     let mut restored = A500Machine::new(A500Config::default());
-    restored.load_state(&saved.state);
+    restored.load_state(&roundtrip_synthetic(&machine));
+    assert!(restored.save_state() == machine.save_state());
     assert_eq!(machine.denise.frame_builder, restored.denise.frame_builder);
     for _ in 0..64 {
         machine.step_cck();
@@ -490,6 +938,9 @@ fn file_roundtrip_preserves_drawn_pixels_and_resumes_active_display() {
             .get_pixel(600 - 196, (120 - 28) * 2),
         0xff000000
     );
+    machine.step_frame();
+    restored.step_frame();
+    assert!(restored.save_state() == machine.save_state());
 }
 
 #[test]
@@ -504,9 +955,8 @@ fn file_roundtrip_resumes_uart_transmit_and_partial_receive_shifters() {
             serial.step_cck(high, false);
         }
     }
-    let saved = SaveState::from_json(&SaveState::capture(&machine).to_json().unwrap()).unwrap();
     let mut restored = A500Machine::new(A500Config::default());
-    restored.load_state(&saved.state);
+    restored.load_state(&roundtrip_synthetic(&machine));
     let mut received = 0;
     for high in [false, false, true, false, true, true] {
         for _ in 0..4 {
@@ -552,9 +1002,8 @@ fn file_roundtrip_resumes_cia_serial_bits_timer_outputs_and_pc_pulses() {
         machine.cia_b.step_cck();
     }
     machine.cia_b.prb();
-    let saved = SaveState::from_json(&SaveState::capture(&machine).to_json().unwrap()).unwrap();
     let mut restored = A500Machine::new(A500Config::default());
-    restored.load_state(&saved.state);
+    restored.load_state(&roundtrip_synthetic(&machine));
     for high in [false, false, true, true, false] {
         for cnt in [false, true] {
             for chip in [&mut machine.cia_b, &mut restored.cia_b] {
@@ -597,9 +1046,8 @@ fn file_roundtrip_resumes_disk_write_fifo_and_partial_bit_cell() {
     }
     assert_eq!(paula.disk.buffered_words(), 2);
     assert!(paula.pins.disk_write_enable);
-    let saved = SaveState::from_json(&SaveState::capture(&machine).to_json().unwrap()).unwrap();
     let mut restored = A500Machine::new(A500Config::default());
-    restored.load_state(&saved.state);
+    restored.load_state(&roundtrip_synthetic(&machine));
     let mut transitions = 0;
     for _ in 0..350 {
         machine.paula.step_cck();
@@ -618,11 +1066,131 @@ fn file_roundtrip_resumes_disk_write_fifo_and_partial_bit_cell() {
 }
 
 #[test]
+fn file_roundtrip_preserves_an_off_boundary_pulse_in_the_track_gap() {
+    let standard = VideoStandard::Pal;
+    let mut machine = A500Machine::new(A500Config::standard_1mb(standard));
+    let adf = patterned_bytes(ADF_BYTES, 49);
+    let sources = MediaSources {
+        rom: None,
+        disks: [Some(image("gap.adf", adf.clone())), None, None, None],
+    };
+    let floppy = &mut machine.floppy;
+    assert!(floppy.drives[0].insert_disk(&adf));
+    assert!(floppy.drives[0].disk_change_flip_flop);
+    let packed = floppy.drives[0].tracks().as_ref().unwrap()[0].snapshot_bytes();
+    // Select DF0 with the motor on. An outward step clears the latch at track zero.
+    for control in [0x7f, 0x76, 0x77] {
+        floppy.pins.control_input = control;
+        floppy.step_cck();
+    }
+    assert!(!floppy.drives[0].disk_change_flip_flop);
+    assert_eq!(floppy.drives[0].side, 0);
+    assert_eq!(floppy.drives[0].cylinder, 0);
+    let clock_hz = u64::from(standard.color_clock_hz());
+    for _ in 0..clock_hz.div_ceil(2) {
+        floppy.step_cck();
+    }
+    assert!(floppy.drives[0].is_ready());
+    let mut found_index = false;
+    for _ in 0..clock_hz.div_ceil(5) {
+        let previous = floppy.pins.index_high;
+        floppy.step_cck();
+        if previous && !floppy.pins.index_high {
+            found_index = true;
+            break;
+        }
+    }
+    assert!(found_index, "index pulse must recur after one revolution");
+
+    // Each of the 11 sectors occupies 1088 raw bytes. This cell is in the gap.
+    const GAP_CELL: usize = 12_200 * 8 + 1;
+    assert_eq!(packed[GAP_CELL / 8], 0xaa);
+    for _ in 0..(GAP_CELL as u64 * clock_hz).div_ceil(500_000) + 2 {
+        floppy.step_cck();
+    }
+    floppy.pins.write_enable_high = false;
+    floppy.pins.write_data_high = false;
+    floppy.step_cck();
+
+    let original = machine.save_state();
+    let text = SaveState::capture(&machine, &sources)
+        .unwrap()
+        .to_json()
+        .unwrap();
+    let document: Value = serde_json::from_str(&text).unwrap();
+    let drive = &document["state"]["floppy"]["drives"][0];
+    assert_eq!(drive["rotation_bit"], GAP_CELL);
+    assert_eq!(drive["disk_change_flip_flop"], false);
+    let phase = drive["cell_phase"].as_u64().unwrap() / 500_000;
+    assert!((3..=4).contains(&phase), "pulse must be inside the cell");
+    let tracks = drive["track_data"]["modified_tracks"].as_object().unwrap();
+    assert_eq!(tracks.len(), 1);
+    let changed = &tracks["0"];
+
+    // A bitmap identifies the recorded block. One mask per cell then preserves its pulse phase.
+    const FLAG_BYTES: usize = 98;
+    let mut expected = vec![0; FLAG_BYTES];
+    let block = GAP_CELL / (16 * 8);
+    expected[block / 8] = 1 << (block % 8);
+    expected.extend(
+        packed
+            .iter()
+            .flat_map(|byte| (0..8).rev().map(move |bit| (byte >> bit) & 1)),
+    );
+    assert_eq!(expected[FLAG_BYTES + GAP_CELL], 0);
+    expected[FLAG_BYTES + GAP_CELL] = 1 << phase;
+    canonical_bytes(changed, &expected, "recorded gap track");
+
+    let restored = SaveState::from_bytes(text.as_bytes())
+        .unwrap()
+        .restore(&sources)
+        .unwrap();
+    assert!(*restored == original);
+    let mut resumed = A500Machine::new(A500Config::default());
+    resumed.load_state(&restored);
+    assert!(resumed.save_state() == original);
+    for tick in 0..128 {
+        for target in [&mut machine.floppy, &mut resumed.floppy] {
+            target.pins.write_data_high = tick % 7 != 0;
+            target.pins.write_enable_high = tick >= 28;
+            target.step_cck();
+        }
+        assert_eq!(resumed.floppy.pins, machine.floppy.pins);
+    }
+    assert!(resumed.save_state() == machine.save_state());
+    assert_eq!(sources.disks[0].as_ref().unwrap().bytes, adf);
+
+    let mut invalid_flags = expected;
+    invalid_flags[FLAG_BYTES - 1] |= 0x80;
+    for (key, value) in [
+        ("160", changed.clone()),
+        ("00", changed.clone()),
+        ("0", json!("AA==")),
+        ("0", json!(STANDARD.encode(invalid_flags))),
+    ] {
+        let mut invalid = document.clone();
+        invalid["state"]["floppy"]["drives"][0]["track_data"]["modified_tracks"] =
+            json!({(key): value});
+        assert!(matches!(
+            SaveState::from_json(&invalid.to_string()),
+            Err(SaveStateError::DeserializationFailed(_))
+        ));
+    }
+    let entry = format!(r#""0":{changed}"#);
+    let duplicate = text.replace(&entry, &format!("{entry},{entry}"));
+    assert_ne!(duplicate, text);
+    assert!(matches!(
+        SaveState::from_bytes(duplicate.as_bytes()),
+        Err(SaveStateError::DeserializationFailed(_))
+    ));
+}
+
+#[test]
 fn malformed_admission_state_is_a_load_error_without_defaulting_or_runtime_overflow() {
     let mut machine = A500Machine::new(A500Config::default());
     assert!(machine.paula.set_audper(0, 0x1234));
     let before = machine.save_state();
-    let original = serde_json::to_value(SaveState::capture(&machine)).unwrap();
+    let original = serde_json::to_value(capture_synthetic(&machine)).unwrap();
     for missing_cpu_timing in [false, true] {
         let mut malformed = original.clone();
         if missing_cpu_timing {

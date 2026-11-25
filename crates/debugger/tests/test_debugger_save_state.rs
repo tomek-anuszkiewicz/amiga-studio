@@ -3,7 +3,7 @@
 //! Unit tests for DebuggerSession save state and quick-slot features
 
 use config::{A500Config, A500Preset, VideoStandard};
-use debugger::DebuggerSession;
+use debugger::{DebuggerSession, MediaSources, SaveStateError, SourceImage};
 
 #[test]
 fn test_debugger_session_save_and_load() {
@@ -165,4 +165,63 @@ fn test_debugger_session_save_state_preserves_kickstart_rom() {
         new_session.machine.physical_memory.kickstart_rom(),
         dummy_rom
     );
+}
+
+#[test]
+fn file_export_requires_the_current_rom_source_and_in_memory_slots_keep_patches() {
+    let mut session = DebuggerSession::new();
+    let mut rom = vec![0x4e; physical_memory::KICKSTART_ROM_SIZE];
+    rom[..4].copy_from_slice(&0x70000u32.to_be_bytes());
+    rom[4..8].copy_from_slice(&0xfc0100u32.to_be_bytes());
+    rom[0x100..0x102].copy_from_slice(&[0x60, 0xfe]);
+    session.load_rom(&rom).unwrap();
+    session.machine.step_cycles(300);
+    let original = session.machine.save_state();
+    let json = session.save_state_to_json().unwrap();
+    let mut reopened = DebuggerSession::new();
+    let before = reopened.machine.save_state();
+    let error = reopened.load_state_from_json(&json).unwrap_err();
+    assert!(matches!(error, SaveStateError::MediaUnavailable(_)));
+    assert_eq!(reopened.machine.save_state(), before);
+    reopened
+        .load_state_from_json_with_sources(&json, session.file_sources().clone())
+        .unwrap();
+    assert_eq!(reopened.machine.save_state(), original);
+
+    session
+        .machine
+        .physical_memory
+        .write_byte_debug(config::address_map::KICKSTART_BASE + 0x200, 0x63);
+    rom[0x200] = 0x63;
+    let patched = session.machine.save_state();
+    session.save_quick_slot(1).unwrap();
+    let error = session.save_state_to_json().unwrap_err();
+    assert!(error
+        .to_string()
+        .contains("Kickstart ROM source is unavailable"));
+    assert_eq!(session.machine.save_state(), patched);
+
+    let sources = MediaSources {
+        rom: Some(SourceImage {
+            name: Some("Patched Kickstart".into()),
+            bytes: rom,
+        }),
+        ..MediaSources::default()
+    };
+    let json = session.save_state_to_json_with_sources(&sources).unwrap();
+    let previous = reopened.machine.save_state();
+    let error = reopened.load_state_from_json(&json).unwrap_err();
+    assert!(error.to_string().contains("content does not match"));
+    assert_eq!(reopened.machine.save_state(), previous);
+    reopened
+        .load_state_from_json_with_sources(&json, sources)
+        .unwrap();
+    assert_eq!(reopened.machine.save_state(), patched);
+    session.machine.step_cycles(13);
+    session
+        .machine
+        .physical_memory
+        .write_byte_debug(config::address_map::KICKSTART_BASE + 0x200, 0xaa);
+    session.load_quick_slot(1).unwrap();
+    assert_eq!(session.machine.save_state(), patched);
 }

@@ -26,6 +26,8 @@ const MASK_HORIZONTAL_CURSOR: u16 = 0xff;
 pub mod decode;
 pub use decode::{decode_dual_playfield, decode_ehb, decode_ham6};
 
+const COLOR_PALETTE_SIZE: usize = 32;
+const MUTATION_CAPACITY: usize = 64;
 const PIPELINE_PIXELS: usize = 2;
 const MASK_SCROLL_AMOUNT: u16 = 0x000f;
 const BIT_EVEN_SCROLL_SHIFT: u16 = 4;
@@ -35,7 +37,7 @@ const BIT_PF2_PRIORITY: u16 = 0x0040;
 
 /// Denise video display processor state
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Denise {
+pub struct Denise<Frame = frame_builder::FrameBuilder> {
     /// Motherboard-facing signal state.
     pub pins: DenisePins,
     /// Receiver-owned synchronization and rendering cursor.
@@ -47,7 +49,7 @@ pub struct Denise {
     /// Denise 8 hardware sprite engines
     pub sprites: sprites::Sprites,
     /// Storage and field assembly for the pixels produced by Denise.
-    pub frame_builder: frame_builder::FrameBuilder,
+    pub frame_builder: Frame,
 
     // --- Active Latched Registers (Read is NOW) ---
     /// Bitplane Control 0 (plane count BPU, HIRES, HAM, DBLPF, COLOR)
@@ -70,7 +72,7 @@ pub struct Denise {
     /// Bitplane Modulo 2 ($10A, even bitplanes 2, 4, 6)
     pub bpl2mod: i16,
     /// 32 palette color registers (12-bit RGB444: 4 bits R, 4 bits G, 4 bits B)
-    pub color: [u16; Denise::COLOR_PALETTE_SIZE],
+    pub color: [u16; COLOR_PALETTE_SIZE],
     /// Collision Data Register (cleared upon read)
     pub clxdat: u16,
     /// Collision Control Register
@@ -100,15 +102,54 @@ pub struct Denise {
     pub pipeline_pixels_valid: [bool; PIPELINE_PIXELS],
 
     /// Fixed inline in-flight mutation buffer (Zero-allocation)
-    pub mutations: MutationQueue<{ Denise::MUTATION_CAPACITY }>,
+    pub mutations: MutationQueue<{ MUTATION_CAPACITY }>,
+}
+
+impl<Frame> Denise<Frame> {
+    /// Converts the frame storage representation, preserving the display receiver state.
+    pub fn map_frame<Output>(self, map: impl FnOnce(Frame) -> Output) -> Denise<Output> {
+        Denise {
+            pins: self.pins,
+            sync: self.sync,
+            frame_cursor: self.frame_cursor,
+            model: self.model,
+            sprites: self.sprites,
+            frame_builder: map(self.frame_builder),
+            bplcon0: self.bplcon0,
+            bplcon1: self.bplcon1,
+            bplcon2: self.bplcon2,
+            diwstrt: self.diwstrt,
+            diwstop: self.diwstop,
+            hflop: self.hflop,
+            ddfstrt: self.ddfstrt,
+            ddfstop: self.ddfstop,
+            bpl1mod: self.bpl1mod,
+            bpl2mod: self.bpl2mod,
+            color: self.color,
+            clxdat: self.clxdat,
+            clxcon: self.clxcon,
+            potgo: self.potgo,
+            joy0dat: self.joy0dat,
+            joy1dat: self.joy1dat,
+            bpldat: self.bpldat,
+            bpldat_pipe: self.bpldat_pipe,
+            shifters: self.shifters,
+            scroll_history: self.scroll_history,
+            bpl_armed: self.bpl_armed,
+            last_ham_rgb: self.last_ham_rgb,
+            pipeline_pixels: self.pipeline_pixels,
+            pipeline_pixels_valid: self.pipeline_pixels_valid,
+            mutations: self.mutations,
+        }
+    }
 }
 
 impl Denise {
     /// Total number of hardware color palette registers
-    pub const COLOR_PALETTE_SIZE: usize = 32;
+    pub const COLOR_PALETTE_SIZE: usize = COLOR_PALETTE_SIZE;
 
     /// Fixed-capacity in-flight register mutation buffer for Denise (covers 32 colors + controls)
-    pub const MUTATION_CAPACITY: usize = 64;
+    pub const MUTATION_CAPACITY: usize = MUTATION_CAPACITY;
 
     /// Creates a new Denise instance with the specified hardware model
     pub fn new(model: DeniseModel) -> Self {

@@ -371,7 +371,10 @@ pub(crate) fn quick_load_slot(app: &mut EmulatorApp, slot: usize) {
             slot,
             ports: app.current_control_ports(),
         },
-        HostEffect::File(FileCompletion::State(format!("Restored from Slot #{slot}"))),
+        HostEffect::File(FileCompletion::State {
+            message: format!("Restored from Slot #{slot}"),
+            verified_rom: false,
+        }),
     );
 }
 

@@ -139,6 +139,7 @@ fn imported_save_uses_active_identity_and_current_controls_in_developer_studio()
     let root = root();
     let mut app = started(&root);
     let saved = common::snapshot_json(&mut app);
+    let original = common::snapshot(&mut app);
     let path = root.join("progress.json");
     std::fs::write(&path, &saved).unwrap();
     app.navigate_player(PlayerScreen::Configuration);
@@ -183,11 +184,10 @@ fn imported_save_uses_active_identity_and_current_controls_in_developer_studio()
         ]
     );
     let restored = common::snapshot(&mut app);
-    let original = debugger::SaveState::from_json(&saved).unwrap();
-    assert_eq!(restored.cpu, original.state.cpu);
-    assert_eq!(restored.cck, original.state.cck);
-    assert_eq!(restored.physical_memory, original.state.physical_memory);
-    assert_eq!(restored.floppy, original.state.floppy);
+    assert_eq!(restored.cpu, original.cpu);
+    assert_eq!(restored.cck, original.cck);
+    assert_eq!(restored.physical_memory, original.physical_memory);
+    assert_eq!(restored.floppy, original.floppy);
 }
 
 #[test]
@@ -301,9 +301,9 @@ fn gamepad_save_preserves_capture_generation_and_held_contacts() {
     );
     let json = std::fs::read_to_string(save_path).unwrap();
     let saved = debugger::SaveState::from_json(&json).unwrap();
-    assert!(saved.state.game_ports.fire1_port1());
-    assert!(saved.state.game_ports.fire1_port2());
-    assert_ne!(saved.state.game_ports.pins.direction_pins[1], 0xf);
+    assert!(saved.game_ports().fire1_port1());
+    assert!(saved.game_ports().fire1_port2());
+    assert_ne!(saved.game_ports().pins.direction_pins[1], 0xf);
     held[9] = false;
     sample(generation, held.clone(), 1.0);
     held[8] = true;

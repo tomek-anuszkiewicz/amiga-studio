@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::panic)]
 
 use debugger::launch::DeviceKind;
-use debugger::{DebuggerSession, SaveState};
+use debugger::{DebuggerSession, MediaSources, SaveState};
 use gui::host_commands::{HostCommand, HostRequest, HostValue};
 use gui::host_owner::MachineOwner;
 use gui::host_video::VideoExchange;
@@ -16,11 +16,18 @@ fn execute(owner: &mut MachineOwner, command: HostCommand) -> HostValue {
         .value
         .unwrap()
 }
-fn capture(owner: &mut MachineOwner) -> SaveState {
+struct Captured {
+    file: SaveState,
+    state: Box<debugger::A500State>,
+}
+
+fn capture(owner: &mut MachineOwner, sources: &MediaSources) -> Captured {
     let HostValue::Snapshot(json) = execute(owner, HostCommand::SaveSnapshot) else {
         panic!("snapshot");
     };
-    SaveState::from_json(&json).unwrap()
+    let file = SaveState::from_json(&json).unwrap();
+    let state = file.clone().restore(sources).unwrap();
+    Captured { file, state }
 }
 
 fn acknowledge(session: &mut DebuggerSession) {
@@ -85,6 +92,7 @@ fn advance_until_received(guest: &mut DebuggerSession, address: u32, expected: u
 
 #[test]
 fn held_snapshot_load_delivers_keyup_to_a_guest_during_transfer_and_with_full_queue() {
+    let sources = MediaSources::default();
     for full in [false, true] {
         let mut session = keyboard_guest();
         session.machine.keyboard.key_down(0x35);
@@ -103,7 +111,7 @@ fn held_snapshot_load_delivers_keyup_to_a_guest_during_transfer_and_with_full_qu
         let exact = session.machine.save_state();
         let mut owner = MachineOwner::new(session);
         let generation = owner.status().generation;
-        let held = capture(&mut owner);
+        let held = capture(&mut owner, &sources);
         assert_eq!(
             *held.state, exact,
             "capture released controls or advanced state"
@@ -112,7 +120,8 @@ fn held_snapshot_load_delivers_keyup_to_a_guest_during_transfer_and_with_full_qu
         execute(
             &mut owner,
             HostCommand::RestorePlayer {
-                json: held.to_json().unwrap(),
+                media: gui::host_commands::RestoreMedia::default(),
+                json: held.file.to_json().unwrap(),
                 game_id: None,
                 ports: [
                     debugger::launch::DeviceKind::Mouse,
@@ -121,7 +130,7 @@ fn held_snapshot_load_delivers_keyup_to_a_guest_during_transfer_and_with_full_qu
                 resume: false,
             },
         );
-        let loaded = capture(&mut owner);
+        let loaded = capture(&mut owner, &sources);
         assert!(!loaded.state.game_ports.fire1_port1());
         assert!(!loaded.state.game_ports.fire1_port2());
         assert!(!loaded.state.game_ports.state.port2.is_fire2_pressed());
@@ -172,7 +181,8 @@ fn stopped_reattachment_preserves_phases_registers_media_and_rejects_old_events(
         .game_ports
         .set_mouse_buttons(0, true, true, false);
     session.machine.game_ports.set_joystick(1, [true; 6]);
-    assert!(session.machine.floppy.drives[0].insert_disk(&vec![0x33; 901120]));
+    debugger::launch::mount(&mut session, 0, Some(&vec![0x33; 901120])).unwrap();
+    let sources = session.file_sources().clone();
     let mut expected = session.machine.save_state();
     expected.keyboard.release_keys();
     expected.game_ports.release_controls();
@@ -183,12 +193,12 @@ fn stopped_reattachment_preserves_phases_registers_media_and_rejects_old_events(
         &mut owner,
         HostCommand::ReconfigurePorts([DeviceKind::Mouse, DeviceKind::Joystick]),
     );
-    assert_eq!(*capture(&mut owner).state, expected);
+    assert_eq!(*capture(&mut owner, &sources).state, expected);
     execute(
         &mut owner,
         HostCommand::ReconfigurePorts([DeviceKind::Mouse, DeviceKind::Disconnected]),
     );
-    let changed = capture(&mut owner);
+    let changed = capture(&mut owner, &sources);
     expected.game_ports.state.port2 = changed.state.game_ports.state.port2;
     assert_eq!(*changed.state, expected);
     let stale = owner.execute(HostRequest {
@@ -208,11 +218,11 @@ fn stopped_reattachment_preserves_phases_registers_media_and_rejects_old_events(
         owner.status().ports,
         [DeviceKind::Mouse, DeviceKind::Disconnected]
     );
-    assert_eq!(*capture(&mut owner).state, expected);
+    assert_eq!(*capture(&mut owner, &sources).state, expected);
     let video = VideoExchange::new(vec![0; owner.video_storage_len()]);
     execute(&mut owner, HostCommand::Run);
     owner.publish(&video).unwrap();
-    let before = capture(&mut owner);
+    let before = capture(&mut owner, &sources);
     assert!(owner
         .execute(HostRequest {
             id: 4,
@@ -221,23 +231,25 @@ fn stopped_reattachment_preserves_phases_registers_media_and_rejects_old_events(
         })
         .value
         .is_err());
-    assert_eq!(*capture(&mut owner).state, *before.state);
+    assert_eq!(*capture(&mut owner, &sources).state, *before.state);
 }
 
 #[test]
 fn a_foreign_game_quick_slot_cannot_replace_current_progress_or_association() {
-    let session = DebuggerSession::new();
-    let mut saved_a = SaveState::capture(&session.machine);
+    let mut session = DebuggerSession::new();
+    let sources = MediaSources::default();
+    let mut saved_a = SaveState::capture(&session.machine, &sources).unwrap();
     saved_a.header.association.game_id = Some("game-a".into());
-    let mut saved_b = saved_a.clone();
+    session.machine.cpu.state.set_d_long(7, 0x12345678);
+    let mut saved_b = SaveState::capture(&session.machine, &sources).unwrap();
     saved_b.header.association.game_id = Some("game-b".into());
-    saved_b.state.cpu.set_d_long(7, 0x12345678);
     let ports = [DeviceKind::Mouse, DeviceKind::Joystick];
     let mut owner = MachineOwner::new(Box::new(session));
     for (saved, game) in [(&saved_a, "game-a"), (&saved_b, "game-b")] {
         execute(
             &mut owner,
             HostCommand::RestorePlayer {
+                media: gui::host_commands::RestoreMedia::default(),
                 json: saved.to_json().unwrap(),
                 game_id: Some(game.into()),
                 ports,
@@ -249,7 +261,7 @@ fn a_foreign_game_quick_slot_cannot_replace_current_progress_or_association() {
         }
     }
     assert!(owner.status().quick_slots[0]);
-    let before = capture(&mut owner);
+    let before = capture(&mut owner, &sources);
     let generation = owner.status().generation;
     let rejected = owner.execute(HostRequest {
         id: 3,
@@ -259,8 +271,14 @@ fn a_foreign_game_quick_slot_cannot_replace_current_progress_or_association() {
     assert!(rejected.value.unwrap_err().contains("different game"));
     assert_eq!(owner.status().generation, generation);
     assert!(!owner.status().running);
-    let after = capture(&mut owner);
+    let after = capture(&mut owner, &sources);
     assert_eq!(after.state, before.state);
-    assert_eq!(after.header.association, before.header.association);
-    assert_eq!(after.header.association.game_id.as_deref(), Some("game-b"));
+    assert_eq!(
+        after.file.header.association,
+        before.file.header.association
+    );
+    assert_eq!(
+        after.file.header.association.game_id.as_deref(),
+        Some("game-b")
+    );
 }

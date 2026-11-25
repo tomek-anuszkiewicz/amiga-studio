@@ -384,7 +384,7 @@ fn write_slow_ram_word(bus: &mut PhysicalMemory, addr: u32, val: u16) -> BusResu
 fn read_kickstart_rom_internal(bus: &PhysicalMemory, addr: u32) -> u8 {
     let mask = super::MASK_KICKSTART_ADDRESS;
     let idx = (addr as usize) & mask;
-    bus.kickstart_rom[idx]
+    bus.kickstart_rom.0[idx]
 }
 
 #[inline]
@@ -396,7 +396,10 @@ fn read_kickstart_rom_debug(bus: &PhysicalMemory, addr: u32) -> u8 {
 fn read_kickstart_rom_word_internal(bus: &PhysicalMemory, addr: u32) -> u16 {
     let mask = super::MASK_KICKSTART_ADDRESS;
     let idx = (addr as usize) & mask;
-    u16::from_be_bytes([bus.kickstart_rom[idx], bus.kickstart_rom[(idx + 1) & mask]])
+    u16::from_be_bytes([
+        bus.kickstart_rom.0[idx],
+        bus.kickstart_rom.0[(idx + 1) & mask],
+    ])
 }
 
 #[inline]
@@ -409,7 +412,7 @@ fn write_kickstart_rom_internal(bus: &mut PhysicalMemory, addr: u32, val: u8) {
     if addr >= config::address_map::KICKSTART_BASE {
         let mask = super::MASK_KICKSTART_ADDRESS;
         let idx = (addr as usize) & mask;
-        bus.kickstart_rom[idx] = val;
+        bus.kickstart_rom.0[idx] = val;
     }
 }
 
@@ -424,9 +427,9 @@ fn write_kickstart_rom_word_internal(bus: &mut PhysicalMemory, addr: u32, val: u
         let mask = super::MASK_KICKSTART_ADDRESS;
         let idx = (addr as usize) & mask;
         let bytes = val.to_be_bytes();
-        bus.kickstart_rom[idx] = bytes[0];
+        bus.kickstart_rom.0[idx] = bytes[0];
         let next_idx = (idx + 1) & mask;
-        bus.kickstart_rom[next_idx] = bytes[1];
+        bus.kickstart_rom.0[next_idx] = bytes[1];
     }
 }
 

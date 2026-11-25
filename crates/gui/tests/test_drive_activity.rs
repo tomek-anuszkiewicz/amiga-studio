@@ -78,6 +78,7 @@ fn head_step_lights_fixed_indicator_for_120_ms_and_restore_clears_it() {
     common::command(
         &mut app,
         HostCommand::RestorePlayer {
+            media: gui::host_commands::RestoreMedia::default(),
             json: json.clone(),
             game_id: None,
             ports: [
@@ -102,6 +103,7 @@ fn head_step_lights_fixed_indicator_for_120_ms_and_restore_clears_it() {
     common::command(
         &mut app,
         HostCommand::RestorePlayer {
+            media: gui::host_commands::RestoreMedia::default(),
             json: json.clone(),
             game_id: None,
             ports: [
@@ -120,6 +122,7 @@ fn head_step_lights_fixed_indicator_for_120_ms_and_restore_clears_it() {
     common::command(
         &mut app,
         HostCommand::RestorePlayer {
+            media: gui::host_commands::RestoreMedia::default(),
             json: json,
             game_id: None,
             ports: [
@@ -241,6 +244,7 @@ fn restored_running_selection_is_sustained_and_deselection_starts_the_hold() {
     common::command(
         &mut app,
         HostCommand::RestorePlayer {
+            media: gui::host_commands::RestoreMedia::default(),
             json,
             game_id: None,
             ports: [

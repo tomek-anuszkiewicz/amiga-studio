@@ -2,7 +2,7 @@
 
 use crate::host_commands::{
     HistoryCommand, HostCommand, HostObservation, HostReply, HostRequest, HostStatus, HostValue,
-    InputObservation, MAX_INSPECTION_BYTES,
+    InputObservation, RestoreMedia, MAX_INSPECTION_BYTES,
 };
 use crate::host_video::{FrameInfo, VideoExchange, VideoExchangeError};
 use crate::layout::left_dock::registers::EditRegister;
@@ -125,6 +125,10 @@ impl MachineOwner {
     fn observe(&self, observation: HostObservation) -> Result<HostValue, String> {
         let machine = &self.session.machine;
         match observation {
+            #[cfg(not(target_arch = "wasm32"))]
+            HostObservation::MachineState => {
+                Ok(HostValue::MachineState(Box::new(machine.save_state())))
+            }
             HostObservation::Input { key } => {
                 let ports = &machine.game_ports;
                 Ok(HostValue::Input(InputObservation {
@@ -226,26 +230,29 @@ impl MachineOwner {
     fn restore_player(
         &mut self,
         json: &str,
+        media: RestoreMedia,
         game_id: Option<&str>,
         ports: [debugger::launch::DeviceKind; 2],
         resume: bool,
         quick_load: bool,
     ) -> Result<HostValue, String> {
         let saved = debugger::SaveState::from_json(json).map_err(|e| e.to_string())?;
-        let association = saved.header.association;
+        let mut association = saved.header.association.clone();
         if association.game_id.as_deref() != game_id
             || (quick_load && self.association.game_id.as_deref() != game_id)
         {
             return Err("This save belongs to a different game".into());
         }
+        let sources = self.resolve_file_media(&saved, &media, &mut association);
+        let state = saved.restore(&sources).map_err(|error| error.to_string())?;
         if quick_load {
             self.detached_disks.retain_before_quick_load(
                 &mut self.session,
                 &self.association.mounted,
-                Self::restored_disk_ids(&saved.state, &association),
+                Self::restored_disk_ids(&state, &association),
             );
         }
-        self.session.load_state(&saved.state);
+        self.session.load_file_state(state, sources);
         self.association = association;
         self.finish_user_load(ports);
         if !quick_load {
@@ -255,6 +262,75 @@ impl MachineOwner {
             self.session.toggle_run();
         }
         Ok(HostValue::PlayerRestored(self.association.clone()))
+    }
+
+    fn resolve_file_media(
+        &self,
+        saved: &debugger::SaveState,
+        candidates: &RestoreMedia,
+        association: &mut debugger::SaveAssociation,
+    ) -> debugger::MediaSources {
+        let current = self.session.file_sources();
+        let roms = candidates.roms.iter().chain(&current.rom);
+        let rom = if saved.synthetic_rom() {
+            None
+        } else {
+            roms.clone()
+                .find(|image| saved.rom_matches(&image.bytes))
+                .or_else(|| roms.clone().next())
+                .cloned()
+        };
+        let supplied = candidates
+            .disks
+            .iter()
+            .map(|(id, image)| (Some(id.as_str()), image));
+        let mounted = self
+            .association
+            .mounted
+            .iter()
+            .zip(&current.disks)
+            .filter_map(|(id, image)| image.as_ref().map(|image| (id.as_deref(), image)));
+        let detached = self
+            .detached_disks
+            .file_sources()
+            .map(|(id, image)| (Some(id), image));
+        let available: Vec<_> = supplied.chain(mounted).chain(detached).collect();
+        let disks = std::array::from_fn(|drive| {
+            if !saved.disk_inserted(drive) {
+                return None;
+            }
+            let saved_id = association.mounted[drive].as_deref();
+            let selected = available
+                .iter()
+                .copied()
+                .filter(|(id, _)| id.is_some() && *id == saved_id)
+                .find(|(_, image)| saved.disk_matches(drive, &image.bytes))
+                .or_else(|| {
+                    available
+                        .iter()
+                        .copied()
+                        .find(|(_, image)| saved.disk_matches(drive, &image.bytes))
+                });
+            if let Some((id, image)) = selected {
+                if candidates.remap_manual_ids && association.game_id.is_none() {
+                    association.mounted[drive] = id.map(str::to_owned);
+                }
+                return Some(image.clone());
+            }
+            // Let the codec describe an incorrect authorized candidate precisely.
+            available
+                .iter()
+                .copied()
+                .find(|(id, image)| {
+                    (id.is_some() && *id == saved_id)
+                        || image
+                            .name
+                            .as_deref()
+                            .is_some_and(|name| saved.disk_name(drive) == Some(name))
+                })
+                .map(|(_, image)| image.clone())
+        });
+        debugger::MediaSources { rom, disks }
     }
 
     fn apply(&mut self, command: HostCommand) -> Result<HostValue, String> {
@@ -305,7 +381,11 @@ impl MachineOwner {
                 self.shutdown = true;
             }
             HostCommand::SaveSnapshot => {
-                let mut saved = debugger::SaveState::capture(&self.session.machine);
+                let mut saved = debugger::SaveState::capture(
+                    &self.session.machine,
+                    self.session.file_sources(),
+                )
+                .map_err(|error| error.to_string())?;
                 saved.header.timestamp = crate::host_clock::utc_now().max(0) as u64;
                 saved.header.association = self.association.clone();
                 return saved
@@ -315,16 +395,20 @@ impl MachineOwner {
             }
             HostCommand::RestorePlayer {
                 json,
+                media,
                 game_id,
                 ports,
                 resume,
-            } => return self.restore_player(&json, game_id.as_deref(), ports, resume, false),
+            } => {
+                return self.restore_player(&json, media, game_id.as_deref(), ports, resume, false)
+            }
             HostCommand::LoadPlayerQuick {
                 json,
+                media,
                 game_id,
                 ports,
             } => {
-                return self.restore_player(&json, Some(&game_id), ports, true, true);
+                return self.restore_player(&json, media, Some(&game_id), ports, true, true);
             }
             HostCommand::SaveQuickSlot(slot) => {
                 self.session
@@ -359,8 +443,21 @@ impl MachineOwner {
                 }
                 return Ok(HostValue::PlayerRestored(self.association.clone()));
             }
-            HostCommand::Launch { setup, association } => {
+            HostCommand::Launch {
+                setup,
+                association,
+                rom_name,
+                disk_names,
+            } => {
+                for (drive, id) in association.mounted.iter().enumerate() {
+                    if let Some(id) = id {
+                        if setup.disks[drive].is_none() {
+                            return Err(format!("ADF for DF{drive} ({id}) is unavailable"));
+                        }
+                    }
+                }
                 let mut replacement = setup.prepare()?;
+                replacement.name_file_sources(rom_name, disk_names);
                 replacement
                     .machine
                     .rtc
@@ -380,6 +477,7 @@ impl MachineOwner {
                 drive,
                 bytes,
                 disk_id,
+                name,
             } => {
                 let mounted_id = self
                     .association
@@ -392,12 +490,13 @@ impl MachineOwner {
                     mounted_id,
                     disk_id.as_deref(),
                     bytes.as_deref(),
+                    name.as_deref(),
                 )?;
                 self.association.mounted[drive] = disk_id;
             }
-            HostCommand::LoadRom(bytes) => {
+            HostCommand::LoadRom(source) => {
                 self.session
-                    .load_rom(&bytes)
+                    .load_named_rom(source)
                     .map_err(|error| error.to_string())?;
                 self.new_generation();
             }

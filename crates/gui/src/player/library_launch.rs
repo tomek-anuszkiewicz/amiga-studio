@@ -82,6 +82,17 @@ impl EmulatorApp {
                         .map(|p| game.directory.join(p))
                 }
             });
+            let save_document = state_path
+                .map(|path| {
+                    let json = std::fs::read_to_string(&path)
+                        .map_err(|error| format!("{}: {error}", path.display()))?;
+                    let saved = debugger::SaveState::from_json(&json)
+                        .map_err(|error| format!("{}: {error}", path.display()))?;
+                    game.manifest
+                        .validate_association(&saved.header.association)?;
+                    Ok::<_, String>(json)
+                })
+                .transpose()?;
             let disks = game
                 .manifest
                 .disks
@@ -100,21 +111,42 @@ impl EmulatorApp {
                 mounted: game.manifest.mounted.clone(),
             };
 
-            let command = if let Some(path) = state_path {
-                let json = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
-                let saved = debugger::SaveState::from_json(&json).map_err(|e| e.to_string())?;
-                game.manifest
-                    .validate_association(&saved.header.association)?;
+            let command = if let Some(json) = save_document {
+                let mut media = self
+                    .player
+                    .restore_media(disks.iter().chain(&self.player.setup_disks), false);
+                if let Some(root) = library_root.as_deref() {
+                    // The active profile supplies committed controls. The current
+                    // library profile can supply a relocated ROM for that session.
+                    let current = self
+                        .player
+                        .library_root
+                        .as_deref()
+                        .filter(|path| *path == root)
+                        .and_then(|_| {
+                            self.player
+                                .catalog
+                                .configurations
+                                .iter()
+                                .find(|entry| entry.id == game.manifest.configuration)
+                        });
+                    if let Some(source) = self.read_save_rom(root, current.unwrap_or(configuration))
+                    {
+                        media.roms.push(source);
+                    }
+                }
                 let ports = configuration.controls.ports.each_ref().map(|p| p.device);
                 if quick_load {
                     HostCommand::LoadPlayerQuick {
                         json,
+                        media,
                         game_id: game.manifest.id.clone(),
                         ports,
                     }
                 } else {
                     HostCommand::RestorePlayer {
                         json,
+                        media,
                         game_id: Some(game.manifest.id.clone()),
                         ports,
                         resume: true,
@@ -146,10 +178,15 @@ impl EmulatorApp {
                         media[drive] = Some(bytes.clone());
                     }
                 }
-                let rom =
-                    std::fs::read(self.player.native_rom_path(configuration)?).map_err(|e| {
-                        format!("Select a readable Kickstart ROM in configuration: {e}")
-                    })?;
+                let path = self.player.native_rom_path(configuration)?;
+                let rom = std::fs::read(&path).map_err(|e| {
+                    format!("Select a readable Kickstart ROM in configuration: {e}")
+                })?;
+                let disk_names = association.mounted.each_ref().map(|id| {
+                    id.as_ref()
+                        .and_then(|id| disks.iter().find(|disk| &disk.id == id))
+                        .map(|disk| disk.label.clone())
+                });
                 HostCommand::Launch {
                     setup: debugger::launch::MachineSetup {
                         config: config::A500Config::from_preset(
@@ -162,6 +199,10 @@ impl EmulatorApp {
                         disks: media,
                     },
                     association: association.clone(),
+                    rom_name: path
+                        .file_name()
+                        .map(|name| name.to_string_lossy().into_owned()),
+                    disk_names,
                 }
             };
             Ok((
@@ -193,6 +234,20 @@ impl EmulatorApp {
                 self.player.initial_error = true;
             }
         }
+    }
+
+    pub(crate) fn read_save_rom(
+        &self,
+        root: &std::path::Path,
+        configuration: &crate::player_config::NamedConfiguration,
+    ) -> Option<debugger::SourceImage> {
+        let path = crate::library_catalog::rom_path(root, &configuration.launch.rom).ok()?;
+        Some(debugger::SourceImage {
+            name: path
+                .file_name()
+                .map(|name| name.to_string_lossy().into_owned()),
+            bytes: std::fs::read(&path).ok()?,
+        })
     }
 
     fn continuing_game(

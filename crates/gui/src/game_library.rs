@@ -344,10 +344,12 @@ pub(crate) fn saves_in(
         if path.extension().and_then(|s| s.to_str()) != Some("json") {
             continue;
         }
-        let json = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
-        let saved = debugger::SaveState::from_json(&json)
-            .map_err(|e| format!("{}: {e}", path.display()))?;
-        manifest.validate_association(&saved.header.association)?;
+        let bytes = std::fs::read(&path).map_err(|error| format!("{}: {error}", path.display()))?;
+        let saved = debugger::SaveState::from_bytes(&bytes)
+            .map_err(|error| format!("{}: {error}", path.display()))?;
+        manifest
+            .validate_association(&saved.header.association)
+            .map_err(|error| format!("{}: {error}", path.display()))?;
         result.push(PlayerSave {
             path,
             header: saved.header,

@@ -577,13 +577,15 @@ fn observed_fire(app: &mut EmulatorApp) -> bool {
     common::observe_input(app, None).ciaa_port_a_inputs & 0x80 == 0
 }
 fn owner_snapshot(app: &mut EmulatorApp) -> Box<debugger::A500State> {
-    let reply = common::idle_command(app, HostCommand::SaveSnapshot);
-    let Ok(HostValue::Snapshot(json)) = reply.value else {
+    let reply = common::idle_command(
+        app,
+        HostCommand::Observe(gui::host_commands::HostObservation::MachineState),
+    );
+    let Ok(HostValue::MachineState(state)) = reply.value else {
         panic!("Missing machine snapshot");
     };
-    let saved = debugger::SaveState::from_json(&json).unwrap();
     app.host.status = reply.status;
-    saved.state
+    state
 }
 
 fn click_view_toolbar(app: &mut EmulatorApp, ctx: &egui::Context) {

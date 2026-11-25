@@ -84,7 +84,6 @@ impl EmulatorApp {
             // as keys queued by the window. Dispatch the keys after that click.
             self.handle_keyboard_input(ctx);
         }
-        self.render_player_confirmation(ctx);
         self.render_drive_disk_choice(ctx);
         #[cfg(not(target_arch = "wasm32"))]
         self.render_missing_configuration(ctx);
