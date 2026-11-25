@@ -43,7 +43,7 @@ validation rules still apply after the removal of direct file helpers.
 [frontend](GUI.md#input-and-output)
 
 The JSON envelope has a `header` and a `state` object. The loader checks
-schema version 16 before interpreting the state layout, regardless of member
+schema version 17 before interpreting the state layout, regardless of member
 order. Earlier files remain intact and report an unsupported version. Frontends
 and the debugger use the same file codec. An in-memory quicksave contains a
 complete machine snapshot with the prepared drives and actual ROM bytes.
@@ -129,10 +129,12 @@ existing save referenced by legacy slot 1. An empty recorded designation keeps
 it cleared across restarts. Manual sessions retain one in-memory quicksave
 alongside file import and export on desktop and in the browser.
 
-A file records the disks inserted at capture, including guest changes. To
-open it, the frontend needs the exact source Kickstart and each inserted ADF.
-The files can move or have new names. Desktop can resolve the stable IDs in
-the opened game library and the Kickstart paths in authorized configurations.
+A save file identifies the source Kickstart and each ADF inserted at capture.
+Guest recordings that exist only on the emulated disks survive in the current
+session and in full in-memory slots. A file load restores the disk contents
+from the verified source ADFs. The files can move or have new names. Desktop
+can resolve the stable IDs in the opened game library and the Kickstart paths
+in authorized configurations.
 The frontend also accepts matching images already supplied in the session or
 selected by the user. On a fresh browser page, select the images in **Manual
 setup**, choose **Return to session**, then choose **Import state** before **Start**.
@@ -157,9 +159,9 @@ or on application close. The game's legacy initial-state reference and asset
 remain independent.
 
 Named start states load only when selected explicitly. They use the same
-restore and play behavior as an ordinary save file, including the mounted
-snapshot media and available source ADFs for a fresh disk session. The
-frontend validates the version, game/media association and committed input
+restore and play behavior as an ordinary save file. The frontend prepares the
+disks in their saved drives from matching source ADFs. It validates the
+version, game/media association and committed input
 settings before replacing a live session. A successful restore resumes the
 saved machine with its captured hardware. A game with a legacy initial-state
 reference can still launch it or use explicit normal boot.
@@ -198,13 +200,17 @@ the image size. A Kickstart image has 262,144 bytes. A standard ADF has
 deterministic boot vectors and verified against its saved digest. Exporting
 a patched ROM requires a supplied source matching its current bytes.
 
-A disk reference holds only tracks changed since ADF encoding, keyed by their
-track indices. Each replacement is one Base64 string. Tracks with only
-boundary pulses contain 12,500 packed bytes. Tracks with recorded pulse
-phases contain a bitmap of recorded blocks and the phase masks for the whole
-track. The drive rebuilds all its tracks from the ADF before applying the
-replacements. An attached empty drive and a disconnected drive both carry
-a null disk reference and retain their attachment state. [Floppy](../Floppy.md)
+A media reference is a JSON object with the digest (`sha256`) and display
+name (`name`, or null). The ROM reference adds a `synthetic` flag. The reader
+requires these properties and rejects extra properties. Each inserted drive
+stores its reference in `track_data`. An attached empty
+drive and a disconnected drive both carry a null disk reference and retain
+their attachment state. Capture checks ADF size and hashes the source bytes
+without processing the mounted tracks. After verifying the source ADF on load,
+the drive prepares all its circular tracks from those bytes. The saved drive
+mechanics and in-flight controller state take effect against those tracks.
+Data already transferred into guest memory remains part of the saved state.
+[Floppy](../Floppy.md)
 
 The frontend validates the file, required images and committed controls before
 it replaces the live machine and publishes the updated input generation.

@@ -3,7 +3,7 @@
 mod encoding;
 mod media;
 
-use encoding::{Bytes, Optional, Pixels};
+use encoding::{Bytes, Optional, Pixels, Required};
 use machine_loop::config::{A500Config, FastRamSize, SlowRamSize, FLOPPY_DRIVE_COUNT};
 use machine_loop::denise::{
     frame_builder::{FrameBuilder, FRAME_BUFFER_CAPACITY},
@@ -21,7 +21,7 @@ use serde_json::value::RawValue;
 use std::fmt;
 
 /// Active schema format version for A500 save states
-pub const SAVE_STATE_VERSION: u32 = 16;
+pub const SAVE_STATE_VERSION: u32 = 17;
 
 /// Metadata header identifying state compatibility, creation time, and display preview
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -49,7 +49,7 @@ type FileMemory = PhysicalMemory<
     Bytes<CHIP_RAM_SIZE_512K>,
     Optional<Bytes<SLOW_RAM_SIZE>>,
     Optional<Bytes<MAX_FAST_RAM_SIZE>>,
-    RomReference,
+    Required<RomReference>,
 >;
 type FileDisplay = Denise<FrameBuilder<Pixels>>;
 type FileDisk = FloppyController<FloppyDrive<Optional<DiskReference>>>;
@@ -148,7 +148,7 @@ impl SaveState {
             if let Some(tracks) = drive.tracks() {
                 disks[index] = Optional(Some(DiskReference::capture(
                     index,
-                    tracks,
+                    tracks.len(),
                     source.as_ref(),
                 )?));
             }
@@ -157,7 +157,7 @@ impl SaveState {
             Bytes,
             |bank| Optional(bank.map(Bytes)),
             |bank| Optional(bank.map(Bytes)),
-            |_| rom,
+            |_| Required(rom),
         );
         let display = machine
             .denise
@@ -193,10 +193,10 @@ impl SaveState {
         &self.state.game_ports
     }
 
-    /// Rebuilds media and applies saved modifications without generating insertion edges.
+    /// Rebuilds media from verified sources without generating insertion edges.
     pub fn restore(self, sources: &MediaSources) -> Result<Box<A500State>, SaveStateError> {
         self.validate()?;
-        let (_, _, _, rom) = self.state.physical_memory.storage();
+        let (_, _, _, Required(rom)) = self.state.physical_memory.storage();
         let rom = rom.restore(sources.rom.as_ref())?;
         let mut disks: [_; FLOPPY_DRIVE_COUNT] = std::array::from_fn(|_| None);
         for (index, (drive, source)) in self
@@ -230,11 +230,13 @@ impl SaveState {
     }
 
     pub fn synthetic_rom(&self) -> bool {
-        self.state.physical_memory.storage().3.is_synthetic()
+        let (_, _, _, Required(rom)) = self.state.physical_memory.storage();
+        rom.is_synthetic()
     }
 
     pub fn rom_matches(&self, bytes: &[u8]) -> bool {
-        self.state.physical_memory.storage().3.matches(bytes)
+        let (_, _, _, Required(rom)) = self.state.physical_memory.storage();
+        rom.matches(bytes)
     }
 
     pub fn disk_matches(&self, drive: usize, bytes: &[u8]) -> bool {

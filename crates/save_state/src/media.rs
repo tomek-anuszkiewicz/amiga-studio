@@ -1,15 +1,12 @@
-//! File references to verified source images and the guest's modified tracks.
+//! File references to verified source images.
 
-use crate::encoding::{decode, encode, read_string};
+use crate::encoding::Optional;
 use crate::SaveStateError;
 use machine_loop::config::FLOPPY_DRIVE_COUNT;
-use machine_loop::floppy::{
-    FloppyDisk, Track, FORMATTED_DISK_BYTES, RECORDED_TRACK_BYTES, TRACKS_PER_DISK, TRACK_BYTES,
-};
+use machine_loop::floppy::{FloppyDisk, Track, FORMATTED_DISK_BYTES, TRACKS_PER_DISK};
 use machine_loop::physical_memory::{validate_kickstart_size, KickstartBytes, KICKSTART_ROM_SIZE};
-use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::{collections::BTreeMap, fmt};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SourceImage {
@@ -66,7 +63,7 @@ impl From<Sha256Hex> for String {
 #[serde(deny_unknown_fields)]
 pub(super) struct RomReference {
     sha256: Sha256Hex,
-    name: Option<String>,
+    name: Optional<String>,
     synthetic: bool,
 }
 
@@ -78,14 +75,14 @@ impl RomReference {
         if let Some(source) = source.filter(|source| source.bytes == rom) {
             return Ok(Self {
                 sha256: Sha256Hex::of(rom),
-                name: source.name.clone(),
+                name: Optional(source.name.clone()),
                 synthetic: false,
             });
         }
         if rom == KickstartBytes::synthetic().as_slice() {
             return Ok(Self {
                 sha256: Sha256Hex::of(rom),
-                name: None,
+                name: Optional(None),
                 synthetic: true,
             });
         }
@@ -115,7 +112,7 @@ impl RomReference {
             }
             return Ok(rom);
         }
-        let asset = describe("Kickstart ROM", self.name.as_deref());
+        let asset = describe("Kickstart ROM", self.name.0.as_deref());
         let source = source.ok_or_else(|| unavailable(&asset))?;
         validate_kickstart_size(source.bytes.len())
             .map_err(|error| SaveStateError::MediaUnavailable(error.to_string()))?;
@@ -131,39 +128,32 @@ impl RomReference {
 #[serde(deny_unknown_fields)]
 pub(super) struct DiskReference {
     sha256: Sha256Hex,
-    name: Option<String>,
-    modified_tracks: Replacements,
+    name: Optional<String>,
 }
 
 impl DiskReference {
     pub(super) fn name(&self) -> Option<&str> {
-        self.name.as_deref()
+        self.name.0.as_deref()
     }
 
     pub(super) fn capture(
         drive: usize,
-        actual: &[Track],
+        track_count: usize,
         source: Option<&SourceImage>,
     ) -> Result<Self, SaveStateError> {
         let asset = format!("ADF for DF{drive}");
-        if actual.len() != TRACKS_PER_DISK {
+        if track_count != TRACKS_PER_DISK {
             return Err(SaveStateError::CorruptedData(format!(
                 "Incorrect track count for DF{drive}"
             )));
         }
         let source = source.ok_or_else(|| unavailable(&asset))?;
-        let original = prepare(&asset, source)?;
-        let modified_tracks = actual
-            .iter()
-            .zip(&original)
-            .enumerate()
-            .filter(|(_, (actual, original))| actual != original)
-            .map(|(index, (actual, _))| (index, actual.clone()))
-            .collect();
+        if source.bytes.len() != FORMATTED_DISK_BYTES {
+            return Err(invalid_adf_size(&asset, source.bytes.len()));
+        }
         Ok(Self {
             sha256: Sha256Hex::of(&source.bytes),
-            name: source.name.clone(),
-            modified_tracks: Replacements(modified_tracks),
+            name: Optional(source.name.clone()),
         })
     }
 
@@ -176,28 +166,21 @@ impl DiskReference {
         drive: usize,
         source: Option<&SourceImage>,
     ) -> Result<Vec<Track>, SaveStateError> {
-        let asset = describe(&format!("ADF for DF{drive}"), self.name.as_deref());
+        let asset = describe(&format!("ADF for DF{drive}"), self.name());
         let source = source.ok_or_else(|| unavailable(&asset))?;
         if source.bytes.len() == FORMATTED_DISK_BYTES && !self.matches(&source.bytes) {
             return Err(mismatch(&asset));
         }
-        let mut tracks = prepare(&asset, source)?;
-        for (&index, track) in &self.modified_tracks.0 {
-            tracks[index] = track.clone();
-        }
-        Ok(tracks)
+        FloppyDisk::from_adf(&source.bytes)
+            .map(FloppyDisk::into_tracks)
+            .ok_or_else(|| invalid_adf_size(&asset, source.bytes.len()))
     }
 }
 
-fn prepare(asset: &str, source: &SourceImage) -> Result<Vec<Track>, SaveStateError> {
-    FloppyDisk::from_adf(&source.bytes)
-        .map(FloppyDisk::into_tracks)
-        .ok_or_else(|| {
-            SaveStateError::MediaUnavailable(format!(
-                "{asset} must contain {FORMATTED_DISK_BYTES} bytes; received {} bytes",
-                source.bytes.len(),
-            ))
-        })
+fn invalid_adf_size(asset: &str, actual: usize) -> SaveStateError {
+    SaveStateError::MediaUnavailable(format!(
+        "{asset} must contain {FORMATTED_DISK_BYTES} bytes; received {actual} bytes"
+    ))
 }
 
 fn describe(kind: &str, name: Option<&str>) -> String {
@@ -210,70 +193,4 @@ fn unavailable(asset: &str) -> SaveStateError {
 
 fn mismatch(asset: &str) -> SaveStateError {
     SaveStateError::MediaUnavailable(format!("{asset} content does not match the save"))
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct Replacements(BTreeMap<usize, Track>);
-
-impl Serialize for Replacements {
-    fn serialize<S: Serializer>(&self, encoder: S) -> Result<S::Ok, S::Error> {
-        use serde::ser::SerializeMap;
-        let mut map = encoder.serialize_map(Some(self.0.len()))?;
-        for (index, track) in &self.0 {
-            map.serialize_entry(index, &TrackString(track))?;
-        }
-        map.end()
-    }
-}
-
-impl<'de> Deserialize<'de> for Replacements {
-    fn deserialize<D: Deserializer<'de>>(decoder: D) -> Result<Self, D::Error> {
-        struct Tracks;
-        impl<'de> de::Visitor<'de> for Tracks {
-            type Value = Replacements;
-
-            fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                f.write_str("modified tracks keyed by track index")
-            }
-
-            fn visit_map<A: de::MapAccess<'de>>(self, mut map: A) -> Result<Self::Value, A::Error> {
-                let mut tracks = BTreeMap::new();
-                while let Some(key) = map.next_key::<String>()? {
-                    let index = key
-                        .parse::<usize>()
-                        .ok()
-                        .filter(|&index| index < TRACKS_PER_DISK && index.to_string() == key)
-                        .ok_or_else(|| de::Error::custom("Invalid modified track index"))?;
-                    if tracks.contains_key(&index) {
-                        return Err(de::Error::custom("Duplicate modified track index"));
-                    }
-                    tracks.insert(index, map.next_value::<SavedTrack>()?.0);
-                }
-                Ok(Replacements(tracks))
-            }
-        }
-
-        decoder.deserialize_map(Tracks)
-    }
-}
-
-struct TrackString<'a>(&'a Track);
-
-impl Serialize for TrackString<'_> {
-    fn serialize<S: Serializer>(&self, encoder: S) -> Result<S::Ok, S::Error> {
-        encode(&self.0.snapshot_bytes(), encoder)
-    }
-}
-
-struct SavedTrack(Track);
-
-impl<'de> Deserialize<'de> for SavedTrack {
-    fn deserialize<D: Deserializer<'de>>(decoder: D) -> Result<Self, D::Error> {
-        read_string(decoder, |text| {
-            let bytes = decode(text, &[TRACK_BYTES, RECORDED_TRACK_BYTES])?;
-            Track::from_snapshot_bytes(&bytes)
-                .map(Self)
-                .ok_or_else(|| de::Error::custom("Invalid modified track representation"))
-        })
-    }
 }
