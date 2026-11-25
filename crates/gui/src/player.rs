@@ -10,6 +10,23 @@ mod library_launch;
 #[cfg(not(target_arch = "wasm32"))]
 mod start_states;
 
+fn set_session_title(ctx: &egui::Context, game_title: Option<&str>) {
+    let title = game_title.unwrap_or(crate::app::APPLICATION_TITLE);
+    #[cfg(not(target_arch = "wasm32"))]
+    ctx.send_viewport_cmd_to(
+        egui::ViewportId::ROOT,
+        egui::ViewportCommand::Title(title.to_owned()),
+    );
+    #[cfg(target_arch = "wasm32")]
+    {
+        let _ = ctx;
+        // eframe's browser backend handles some viewport commands but leaves document.title alone.
+        if let Some(document) = web_sys::window().and_then(|window| window.document()) {
+            document.set_title(title);
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum PlayerScreen {
     Library,
@@ -48,6 +65,7 @@ pub struct PlayerState {
     #[cfg(not(target_arch = "wasm32"))]
     pub(crate) active_library_root: Option<std::path::PathBuf>,
     pub captured: bool,
+    pub(crate) show_instructions: bool,
     pub show_saves: bool,
     pub(crate) pending_launch: Option<PendingLaunch>,
     pub initial_error: bool,
@@ -126,6 +144,7 @@ pub(crate) enum PlayerEffect {
 #[derive(Debug)]
 pub(crate) enum PendingLaunch {
     Manual,
+    #[cfg(not(target_arch = "wasm32"))]
     Rom {
         bytes: Vec<u8>,
         completion: crate::file_actions::FileCompletion,
@@ -320,10 +339,13 @@ impl EmulatorApp {
         let pause_for_confirmation = !matches!(&launch, PendingLaunch::LibraryStartState { .. });
         #[cfg(target_arch = "wasm32")]
         let pause_for_confirmation = true;
+        #[cfg(not(target_arch = "wasm32"))]
         let valid_rom = !matches!(&launch, PendingLaunch::Rom { bytes, .. } if bytes.len() != physical_memory::KICKSTART_ROM_SIZE);
+        #[cfg(target_arch = "wasm32")]
+        let valid_rom = true;
         if valid_rom
             && (self.player.active_configuration.is_some()
-                || self.loaded_rom_name.is_some()
+                || self.file_loaded_machine
                 || self.host.status.cck != 0
                 || self.host.status.running)
         {
@@ -340,6 +362,7 @@ impl EmulatorApp {
     pub(crate) fn confirm_player_launch(&mut self, launch: PendingLaunch) {
         match launch {
             PendingLaunch::Manual => self.start_manual(),
+            #[cfg(not(target_arch = "wasm32"))]
             PendingLaunch::Rom { bytes, completion } => self
                 .host
                 .queue_effect(HostCommand::LoadRom(bytes), HostEffect::File(completion)),
@@ -362,6 +385,7 @@ impl EmulatorApp {
         &mut self,
         effect: PlayerEffect,
         value: Result<HostValue, String>,
+        ctx: &egui::Context,
     ) {
         self.player.busy = false;
         let release_capture = match &effect {
@@ -406,8 +430,9 @@ impl EmulatorApp {
                     self.associate_library_game(game);
                 }
                 self.player.screen = PlayerScreen::Session;
+                self.player.show_instructions = false;
                 self.player.initial_error = false;
-                self.loaded_rom_name = Some("player session".into());
+                self.sync_session_title(ctx);
                 self.set_view_mode(crate::ViewMode::ScreenOnly);
                 self.inspection.ready = false;
                 #[cfg(not(target_arch = "wasm32"))]
@@ -442,6 +467,18 @@ impl EmulatorApp {
                 }
             }
         }
+    }
+
+    pub(crate) fn sync_session_title(&self, ctx: &egui::Context) {
+        #[cfg(not(target_arch = "wasm32"))]
+        let game_title = self
+            .player
+            .active_game
+            .as_ref()
+            .map(|game| game.manifest.title.as_str());
+        #[cfg(target_arch = "wasm32")]
+        let game_title = None;
+        set_session_title(ctx, game_title);
     }
 
     pub(crate) fn host_sources_available(

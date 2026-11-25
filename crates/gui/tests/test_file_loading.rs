@@ -98,13 +98,14 @@ fn firmware_load_boots_reset_vectors_and_preserves_the_active_rom_on_failure() {
     app.set_view_mode(gui::ViewMode::ScreenOnly);
     app.load_rom_file(&path);
     assert!(
-        app.loaded_rom_name.is_none(),
+        app.file_history.roms.is_empty(),
         "ROM changes require confirmation before resetting the current program"
     );
     common::confirm_replacement(&mut app);
     common::settle(&mut app, &egui::Context::default());
     let name = path.file_name().unwrap().to_str().unwrap();
-    assert_eq!(app.loaded_rom_name.as_deref(), Some(name));
+    let history_path = std::path::absolute(&path).unwrap();
+    assert_eq!(app.file_history.roms, [history_path.clone()]);
     assert!(app.file_error.is_none());
     assert!(!app.host.status.running);
     assert_eq!(app.host.status.cck, 0);
@@ -123,7 +124,7 @@ fn firmware_load_boots_reset_vectors_and_preserves_the_active_rom_on_failure() {
     app.load_rom_file(&invalid_path);
     common::settle(&mut app, &egui::Context::default());
     assert!(app.host.status.running);
-    assert_eq!(app.loaded_rom_name.as_deref(), Some(name));
+    assert_eq!(app.file_history.roms, [history_path]);
     assert!(app
         .file_error
         .as_deref()
@@ -144,7 +145,7 @@ fn firmware_load_boots_reset_vectors_and_preserves_the_active_rom_on_failure() {
         .with_size(egui::vec2(1024.0, 600.0))
         .build_ui_state(|ui, app: &mut EmulatorApp| app.update_ui(ui), app);
     common::settle_harness(&mut harness);
-    harness.get_by_label(&format!("ROM: {name}"));
+    assert!(harness.query_by_label(&format!("ROM: {name}")).is_none());
     std::fs::remove_file(invalid_path).unwrap();
     std::fs::remove_file(path).unwrap();
 }

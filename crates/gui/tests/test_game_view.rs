@@ -48,57 +48,40 @@ fn game_execution_does_not_collect_debugger_data() {
 }
 
 #[test]
-fn game_toolbar_supports_files_manual_states_speed_fps_and_return_to_debug() {
+fn game_toolbar_and_player_controls_follow_the_machine_owner() {
     let mut session = Box::new(gui::DebuggerSession::new());
     session.load_binary(0x1000, &[0x60, 0xfe], true).unwrap();
     let mut app = EmulatorApp::with_session(session);
     app.set_view_mode(ViewMode::ScreenOnly);
     let mut harness = Harness::builder()
-        .with_size(egui::vec2(1024.0, 600.0))
-        .build_ui_state(
-            |ui, app: &mut EmulatorApp| {
-                common::keyboard::inject_taps(ui.ctx(), app.host.status.generation);
-                app.update_ui(ui)
-            },
-            app,
-        );
+        .with_size(egui::vec2(1280.0, 720.0))
+        .build_ui_state(common::show_full_viewport, app);
     common::settle_harness(&mut harness);
+
     for label in [
         "File",
-        "State",
         "▶ Run",
+        "⏹ Stop",
+        "Debug View",
+        "Debug",
+        "Setup",
         "Slower",
         "Faster",
         "1x",
         "FPS",
-        "Debug View",
+        "Step Frame",
+        "⏭ Step Inst",
+        "▶ Step CCK",
+        "⏮ Rewind",
     ] {
-        let bounds = harness
-            .get_by_label(label)
-            .accesskit_node()
-            .bounding_box()
-            .unwrap();
-        assert!(bounds.x0 >= 0.0 && bounds.x1 <= 1024.0);
+        assert!(harness.query_by_label(label).is_none(), "{label}");
     }
-    for label in ["Step Frame", "⏭ Step Inst", "▶ Step CCK", "⏮ Rewind"] {
-        assert!(harness.query_by_label(label).is_none());
-    }
-    harness.get_by_label("File").click_accesskit();
-    common::settle_harness(&mut harness);
-    harness.get_by_label("Load ROM from File...");
-    harness.get_by_label("📁 Load Binary...");
-    harness.get_by_label("File").click_accesskit();
-    common::settle_harness(&mut harness);
-    harness.get_by_label("FPS").click_accesskit();
-    common::settle_harness(&mut harness);
-    assert!(!harness.state().show_fps);
-    assert!(harness.query_by_label("FPS: 0.0").is_none());
-    harness.get_by_label("Faster").click_accesskit();
-    common::settle_harness(&mut harness);
-    assert_eq!(harness.state().host.status.speed, 2.0);
-    harness.get_by_label("Slower").click_accesskit();
-    common::settle_harness(&mut harness);
-    assert_eq!(harness.state().host.status.speed, 1.0);
+    assert!(harness.query_by_label_contains("ROM:").is_none());
+    assert!(harness.query_by_label_contains("F12").is_none());
+    assert_eq!(harness.get_all_by_label_contains("FPS: ").count(), 1);
+    harness.get_by_label("FPS: 0.0");
+
+    // State and its quick slots remain available while their own layout is pending.
     harness.get_by_label("State").click_accesskit();
     common::settle_harness(&mut harness);
     harness.get_by_label("💾 Save State to File...");
@@ -120,18 +103,35 @@ fn game_toolbar_supports_files_manual_states_speed_fps_and_return_to_debug() {
     harness.get_by_label("Quick Load Slot 1").click_accesskit();
     common::settle_harness(&mut harness);
     assert_eq!(common::inspect(harness.state_mut()).cpu.d_long(0), 0);
-    assert_eq!(
-        harness.state().loaded_rom_name.as_deref(),
-        Some("from saved state")
-    );
-    harness.get_by_label("▶ Run").click_accesskit();
-    harness.run_steps(2);
-    common::settle_harness(&mut harness);
-    assert!(harness.state().host.status.running);
-    harness.get_by_label("⏹ Stop").click_accesskit();
-    harness.run_steps(2);
-    common::settle_harness(&mut harness);
-    assert!(!harness.state().host.status.running);
+    assert!(harness
+        .state()
+        .toast_message
+        .as_ref()
+        .unwrap()
+        .0
+        .contains("Restored from Slot #1"));
+
+    let generation = harness.state().host.status.generation;
+    harness.get_by_label("Resume").click_accesskit();
+    common::wait_harness(&mut harness, |app| {
+        app.host.status.running && app.host.status.fps > 0.0
+    });
+    assert!(harness.state().host.status.field_number > 0);
+    let measured = harness.state().host.status.fps;
+    assert_eq!(harness.get_all_by_label_contains("FPS: ").count(), 1);
+    harness.get_by_label(&format!("FPS: {measured:.1}"));
+    assert!(harness.query_by_label("Resume").is_none());
+
+    harness.get_by_label("Pause").click_accesskit();
+    common::wait_harness(&mut harness, |app| {
+        !app.host.status.running && !app.host.status.pause_pending
+    });
+    assert_eq!(harness.state().host.status.generation, generation);
+    assert_eq!(harness.state().host.status.fps, 0.0);
+    harness.get_by_label("FPS: 0.0");
+    harness.get_by_label("Resume");
+    assert!(harness.query_by_label("Pause").is_none());
+
     harness
         .query_all(by().role(egui::accesskit::Role::ComboBox))
         .next()
@@ -150,10 +150,92 @@ fn game_toolbar_supports_files_manual_states_speed_fps_and_return_to_debug() {
     harness.get_by_label("125%").click_accesskit();
     common::settle_harness(&mut harness);
     assert_eq!(harness.ctx.zoom_factor(), 1.25);
-    harness.get_by_label("Debug View").click_accesskit();
-    common::settle_harness(&mut harness);
+    tap_physical(&mut harness, "F12");
     assert_eq!(harness.state().view_mode, ViewMode::Developer);
+    assert!(harness.query_by_label("File").is_none());
+    assert!(harness.query_by_label_contains("ROM:").is_none());
     harness.get_by_label("Step Frame");
+}
+
+#[test]
+fn setup_navigation_returns_to_the_same_paused_session() {
+    use gui::player::PlayerScreen;
+
+    let mut app = EmulatorApp::default();
+    app.set_view_mode(ViewMode::ScreenOnly);
+    let mut h = Harness::builder()
+        .with_size(egui::vec2(1280.0, 780.0))
+        .build_ui_state(common::show_full_viewport, app);
+    common::settle_harness(&mut h);
+    let generation = h.state().host.status.generation;
+    let before = common::snapshot(h.state_mut());
+
+    for width in [1280.0, 340.0] {
+        h.set_size(egui::vec2(width, 780.0));
+        common::settle_harness(&mut h);
+        h.get_by_label("Manual setup").click_accesskit();
+        common::settle_harness(&mut h);
+        assert_eq!(h.state().player.screen, PlayerScreen::Setup);
+        for label in [
+            "Library",
+            "Manual setup",
+            "Configurations",
+            "Return to session",
+        ] {
+            assert!(
+                h.ctx
+                    .content_rect()
+                    .contains_rect(h.get_by_label(label).rect()),
+                "{label}"
+            );
+        }
+        assert!(h.query_by_label("Debug").is_none());
+        h.get_by_label("Return to session").click_accesskit();
+        common::settle_harness(&mut h);
+        assert_eq!(h.state().player.screen, PlayerScreen::Session);
+        assert_eq!(h.state().host.status.generation, generation);
+        assert_eq!(common::snapshot(h.state_mut()), before);
+    }
+}
+
+#[test]
+fn bundled_instructions_open_and_close_without_replacing_or_pausing_the_session() {
+    let mut session = Box::new(gui::DebuggerSession::new());
+    session.load_binary(0x1000, &[0x60, 0xfe], true).unwrap();
+    let mut app = EmulatorApp::with_session(session);
+    app.set_view_mode(ViewMode::ScreenOnly);
+    let mut h = Harness::builder()
+        .with_size(egui::vec2(1280.0, 900.0))
+        .build_ui_state(common::show_full_viewport, app);
+    common::settle_harness(&mut h);
+    let before = common::snapshot(h.state_mut());
+    let generation = h.state().host.status.generation;
+    h.get_by_label("Instructions").click_accesskit();
+    common::settle_harness(&mut h);
+    h.get_by_label("Amiga 500 player guide");
+    h.get_by_label("Open Configurations");
+    h.get_by_label_contains("press F12 to switch between Game view and Developer Studio");
+    assert_eq!(h.state().host.status.generation, generation);
+    assert_eq!(common::snapshot(h.state_mut()), before);
+    h.get_by_label("Controls").click_accesskit();
+    common::settle_harness(&mut h);
+
+    h.set_size(egui::vec2(600.0, 720.0));
+    common::settle_harness(&mut h);
+    h.get_by_label("Game controls").click_accesskit();
+    common::settle_harness(&mut h);
+    h.get_by_label("Resume").click_accesskit();
+    common::wait_harness(&mut h, |app| app.host.status.running);
+    let field = h.state().host.status.field_number;
+    h.get_by_label("Instructions").click_accesskit();
+    common::wait_harness(&mut h, |app| app.host.status.field_number > field);
+    let title = h.get_by_label("Amiga 500 player guide");
+    assert!(h.ctx.content_rect().contains_rect(title.rect()));
+    h.get_by_label("Controls").click_accesskit();
+    common::settle_harness(&mut h);
+    h.get_by_label("Pause");
+    assert!(h.state().host.status.running);
+    assert_eq!(h.state().host.status.generation, generation);
 }
 
 #[test]
@@ -252,15 +334,56 @@ fn capture_guidance_remains_visible_in_both_views_and_compact_windows() {
             );
         common::settle_harness(&mut harness);
         let bounds = harness
-            .get_by_label(
-                "Mouse free. Click the Amiga display to capture it. F12 switches Game/Debug.",
-            )
+            .get_by_label("Mouse free. Click the Amiga display to capture it.")
             .accesskit_node()
             .bounding_box()
             .unwrap();
         assert!(bounds.y0 >= 0.0 && bounds.y1 < 150.0);
         assert!(bounds.x0 >= 0.0 && bounds.x1 <= 720.0);
     }
+}
+
+#[test]
+fn game_toolbar_uses_one_row_when_wide_and_wraps_at_larger_zoom() {
+    let mut app = EmulatorApp::default();
+    app.set_view_mode(ViewMode::ScreenOnly);
+    let mut h = Harness::builder()
+        .with_size(egui::vec2(1280.0, 740.0))
+        .build_ui_state(common::show_full_viewport, app);
+    common::settle_harness(&mut h);
+    let positions = |h: &Harness<'_, EmulatorApp>| {
+        [
+            "State",
+            "Manual setup",
+            "PAUSED",
+            "−",
+            "Speed 1.00x",
+            "+",
+            "FPS: 0.0",
+            "Image scale",
+            "Mouse free. Click the Amiga display to capture it.",
+        ]
+        .map(|label| {
+            let rect = h.get_by_label(label).rect();
+            assert!(
+                h.ctx.content_rect().contains_rect(rect),
+                "Clipped {label}: {rect:?}"
+            );
+            rect.center().y
+        })
+    };
+    let wide_rows = positions(&h);
+    assert!(wide_rows.iter().all(|y| (*y - wide_rows[0]).abs() < 5.0));
+
+    h.set_size(egui::vec2(640.0, 740.0));
+    h.step();
+    h.ctx.set_zoom_factor(1.5);
+    common::settle_harness(&mut h);
+    assert_eq!(h.ctx.zoom_factor(), 1.5);
+    assert!((h.ctx.content_rect().width() - 640.0 / 1.5).abs() < 1.0);
+    let narrow_rows = positions(&h);
+    assert!(narrow_rows[8] > narrow_rows[0] + 8.0);
+    assert!((narrow_rows[3] - narrow_rows[5]).abs() < 5.0);
 }
 
 #[test]
@@ -317,10 +440,10 @@ fn shortcut_hover_shows_active_bindings_and_only_applicable_equivalents() {
     h.get_by_label_contains("Reset and run the current machine");
     assert!(h.query_by_label_contains("Keyboard:").is_none());
 
-    hover_control(&mut h, "Debug View");
-    h.get_by_label("Keyboard: F12");
     tap_physical(&mut h, "F12");
     assert_eq!(h.state().view_mode, ViewMode::Developer);
+    hover_control(&mut h, "🎮 Game View");
+    h.get_by_label("Keyboard: F12");
     hover_control(&mut h, "Step Frame");
     h.get_by_label("Keyboard: Shift+F11");
     let frame = h.state().host.status.field_number;

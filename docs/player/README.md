@@ -1,34 +1,59 @@
-# Amiga 500 player controls
+# Amiga 500 player guide
 
-Open **Configurations** and choose the configuration you want to edit. Click
-the current binding and press a key or use the selected controller when
-prompted. **Cancel recording** keeps the old binding. Choose **Save** to apply
-your changes or **Cancel** to discard the draft.
+Run Amiga disks and programs on an emulated Amiga 500. The desktop opens the
+game library. The browser opens Manual setup.
 
-- **Reusable joystick mappings** drive a joystick attached to an Amiga port.
-  Choose **WASD** for W/S/A/D and J/K for Fire 1/2, or **Arrow keys** for
-  the arrows and Z/X for Fire 1/2. A connected controller can use its buttons
-  and stick axes. To delete a mapping, first reassign the listed configurations
-  and active session.
-- **Amiga keyboard remapping** sends a host key to a different Amiga key.
-  For example, select **Escape**, click **Add key override**, then press an
-  unused host key such as V. The Amiga receives Escape when you press V.
-  To use V as usual again, remove the override and save. A key already used
-  for a joystick or emulator shortcut must be freed before you can assign it.
-- **Emulator shortcuts** control the app. Pause / Resume starts at F5, Quick
-  save at F6, and Quick load at F9. Quick actions use slot 1. Hover a
-  session control to see its current keyboard equivalent. F12 switches
-  between Game and Developer Studio.
-- **Controller shortcuts** give a connected controller access to emulator
-  actions. The app keeps assignments when no controller is detected.
-  Select an available controller if the saved connection is unavailable.
+## Start a game
+
+On desktop, open Configurations. Under Application settings, choose your
+library directory and select Save. Cancel keeps the previous directory.
+The library picks up file and cover changes automatically. Filter games
+matches part of the displayed name.
+
+Use Configurations to choose the hardware, drives and controls for a named
+profile. Keep desktop Kickstart files in the library and enter their paths
+relative to the library directory. Use Add game or Edit game to choose a
+configuration, import ADF disks from files or ZIP and 7z archives, and set
+which disks are inserted at startup. You can add a description and cover.
+Select a game and choose Start game.
+
+In Manual setup, choose a configuration, select a 256 KiB Kickstart and add
+any optional disk images. Choose Start. You can leave drives empty. In the
+browser, select the Kickstart file again after reopening the app.
+
+## Play and save
+
+Use the DF0 through DF3 selectors to insert or eject disks. Reset boots a
+library game with its startup disks and resumes execution. In a manual
+session, Reset boots with the disks already inserted.
+
+Pause stops at the end of the current video field. Resume continues from
+there. Use Save and Load in the player controls to keep or restore progress.
+For a desktop library game, Load opens its saves. In a manual session, Save
+exports a snapshot file and Load imports one. The State menu also provides
+quick saves and loads. The configured quick shortcuts use slot 1.
+
+For a desktop library game, choose Add to start states next to a save or
+quicksave to keep a named copy. Select it under the game's Start states to
+resume from that point. Screenshot saves the displayed image to the game
+folder. Cover uses the image as the game's library cover.
+
+## Use the keyboard, mouse and controller
 
 Click the Amiga display to capture the mouse. Middle mouse frees the mouse
-while the keyboard and controller keep working. You can also assign a mouse
-release key. Use a key other than Escape. The browser can release pointer
-lock on Escape.
+while the keyboard and controller keep working. You can configure a mouse
+release key. Choose a key other than Escape, which the browser can use to
+release the pointer.
 
-Use **Add to start states** beside a desktop game save or its current
-quicksave to keep a named copy. Choose the saved name in the game's **Start
-states** to resume at that point. **Reset** boots with the game's startup
-disks. [Game library and manual setup](../game-library.md#keep-named-start-states)
+Open Configurations to see and edit the actual bindings. Choose a keyboard
+joystick preset or record a mapping for a connected controller. You can also
+remap Amiga keyboard keys and change emulator shortcuts, including Pause /
+Resume and the quick actions. Select a binding and press the new key or use
+the assigned controller when prompted. Cancel recording keeps the current
+binding. To map a host key to an Amiga key, select the Amiga key, choose Add
+key override and press an unused host key. Remove the override to restore
+the original mapping. Save applies the edits. Cancel discards the draft.
+
+From the setup screens, choose Return to session to open the same machine.
+In the session, press F12 to switch between Game view and Developer Studio.
+Entering Developer Studio pauses the machine for inspection.

@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "gui"
 status: "active"
 created: 2026-09-05
-updated: 2026-11-24
+updated: 2026-11-25
 related: ["[egui Guidelines.md](../egui%20Guidelines.md)", "[Debugger.md](Debugger.md)", "[General Architecture.md](../General%20Architecture.md)", "[Keyboard.md](../Keyboard.md)", "[Mouse.md](../Mouse.md)", "[Audio.md](../Audio.md)", "[Denise.md](../Denise.md)", "[RTC.md](../RTC.md)"]
 tracked_paths:
   - "crates/gui"
@@ -21,10 +21,11 @@ or browser.
 The native desktop application and the browser build use the same frontend.
 Both offer two views of the same emulated machine.
 
-- **Game view** uses the available space for the framed Amiga screen beside a
-  compact player panel. It offers the File and State menus, Run/Stop, optional
-  FPS display, speed ratio and Slower/Faster controls, theme, zoom and the Debug
-  View switch. Inspection panels and debugger shortcuts are inactive.
+- **Game view** presents the framed Amiga screen and player controls. The
+  toolbar offers Manual setup, the State menu, machine status, speed, measured
+  FPS, theme, interface zoom, image scale and mouse capture help. The controls
+  share one row when space permits and wrap as needed. Inspection panels and
+  debugger shortcuts are inactive.
 - **Developer Studio** places the screen in a debugging workspace with execution controls and state inspection. The [debugger specification](Debugger.md) defines the behavior behind those controls.
 
 The desktop opens the game library at startup. In Configurations, the player
@@ -162,11 +163,28 @@ files and follow the browser's rules for local directory access. Archive
 decoding stays on the host and supplies validated ADF bytes to the machine.
 Launch validates every asset before replacing the active machine. Returning to
 setup or the library pauses the machine and releases capture. A hardware/ROM
-replacement requires confirmation. The player panel provides four disk
-dropdowns with eject, connection/activity status, pause/resume, reset,
-save/load, Library/Setup and Debug access. Narrow windows collapse the same
-controls. The panel is present once, in the player view. Screen scaling
-preserves the aspect ratio of the complete framebuffer.
+replacement requires confirmation. Library, Manual setup and Configurations
+form the setup navigation group. The separate **Return to session** action
+opens the existing machine.
+
+The player panel aligns the DF0 through DF3 labels, drive status and disk
+selectors. Connected drives share the available selector width. Hover over a
+selector to read its full filename. Disconnected drives show their status in
+the same column. The panel offers the session's **Pause** or **Resume** action,
+Reset, save/load, Instructions and desktop Library access. The execution
+action waits for pending owner operations. Drag the vertical divider to resize
+the side panel. The frontend remembers its width in host UI storage and bounds
+it to the available space. Narrow windows put the same controls in a collapsible
+panel below the display. The image keeps the aspect ratio of the complete
+framebuffer. The Instructions tab displays the bundled player guide offline.
+Opening it and returning to the controls preserves the current machine.
+
+After the machine owner confirms a library launch or restore, the main caption
+shows the full title recorded in the game's manifest. Saving a rename of that
+entry updates the caption. Browsing, edits to other entries, and canceled,
+failed or pending launches preserve the active title. Startup and manual
+sessions use **Amiga 500 Developer Studio**. In a browser, the caption is the
+document title and Manual setup supplies the application title.
 
 **Reset** in the player panel cold-resets the current machine and starts
 execution, including when the player paused before clicking it. For a library
@@ -256,7 +274,8 @@ shows that the controller produced output. Establishing whether the disk
 image changed or was saved requires separate evidence.
 [Floppy](../Floppy.md#autonomous-adf-reads-and-continuation)
 
-The views share one machine. Use F12 or the toolbar to switch views.
+The views share one machine. Press F12 or use the configured developer-view
+shortcut to switch views. Developer Studio also offers **Game View**.
 Switching from a running Developer Studio session to Game keeps the machine
 running in the same input generation.
 The middle mouse button releases the mouse without pausing. The guest never
@@ -303,7 +322,7 @@ This preserves the image's own width-to-height ratio without forcing 4:3.
 
 | Area | Available information and controls |
 | --- | --- |
-| Top bar | Load a binary into memory or reset the machine; save and load state through files or quick slots; run, pause at a video field boundary, step one field, instruction or Color Clock, and step backward through recorded history. Measured video FPS, speed controls and CCK/instruction counters sit beside theme, zoom, and game-view controls. |
+| Top bar | Save and load state through files or quick slots. Run, pause at a video field boundary, step one field, instruction or Color Clock, and step backward through recorded history. Measured video FPS, speed controls and CCK/instruction counters sit beside theme, zoom, image scale and Game View. |
 | Left dock | CPU data and address registers, program counter, status register and condition flags, followed by engine status such as bus availability and counters. An optional microcode inspector shows the current execution phase and intermediate CPU state; F8 toggles it. |
 | Central workspace | The framed Amiga screen, a history bar for recording and browsing CPU snapshots by step, frame, slider, or CCK position, and a disassembly listing. The listing can follow the current PC or jump to an address, set breakpoints, change the PC, and edit an instruction in place. On wide windows, the trace below the screen lists recent execution; the split between code and screen and the split above the trace are draggable. |
 | Right dock | A hex and ASCII memory viewer with address navigation and byte editing. Below it are memory search and controls for PC breakpoints, register conditions, and read/write watchpoint ranges. On narrower windows, the execution trace is also here. |
@@ -322,39 +341,14 @@ If the load is rejected, the machine stays as it was and the dialog stays open
 for correction. File and snapshot load errors remain visible until dismissed.
 For an invalid ROM image, the error shows the expected and actual byte counts.
 
-File offers **Load ROM from File** on native desktop and WASM. With a valid
-256 KiB image, the emulator installs it as Kickstart and performs a cold reset
-with the ROM overlay and reset vectors active. Execution stays paused until
-Run. The toolbar displays the loaded filename. A rejected image preserves the
-machine state and previous filename. Loading a state replaces this label with
-the snapshot source because the snapshot includes its own ROM. In the browser,
-the user explicitly selects files without any required scan of local
-directories. Selection and download are host operations outside synchronous
-machine execution.
-
-File remembers the last folder used for each of binaries and ROMs and shows
-up to five recent files per category, newest first. On desktop, clicking a
-recent entry reads the original file again. A binary entry reuses its last
-successful target address and PC setting. A successful load adds or reorders
-the entry. If the selected file has disappeared, the GUI removes its entry
-and explains why. Other load failures and canceled selections keep the entry.
-If a remembered folder is missing, the desktop picker opens in the nearest
-existing parent folder. Paths and load options persist with the GUI
-preferences, outside machine snapshots.
-
-In browsers with the File System Access API, each file category has its own
-picker directory. Clicking a recent entry opens the picker in that file's
-folder and requires the user to select a file explicitly. If the file or folder
-is missing, the frontend removes the entry from IndexedDB and shows a browser
-message after the picker closes, even if selection is canceled. If a starting
-folder is unavailable, the picker uses the browser's default location.
-IndexedDB retains names and file handles only, without caching file contents.
-
-Other browsers still offer file selection and retain recent names. They
-cannot check whether those files still exist or direct the picker to a specific
-local folder. The browser controls directory availability and persistence.
-Access denial alone leaves the file's existence unknown. These file actions
-take place outside emulation. [Host file actions](../../../../crates/gui/src/file_actions.rs)
+Choose Kickstart in Manual setup or set the ROM path in a named desktop
+configuration. A manual start installs the 256 KiB firmware and boots the
+configured machine. A snapshot includes its own ROM. Raw binary loading remains
+available through its keyboard shortcut, drag and drop and the desktop
+command line. The desktop remembers applicable picker directories and binary
+load options outside machine snapshots. In the browser, the player explicitly
+selects files. Selection and download are host operations outside synchronous
+machine execution. [Host file actions](../../../../crates/gui/src/file_actions.rs)
 
 ## Edit input bindings
 
@@ -487,9 +481,9 @@ Linux/macOS remain unverified. The interactive checks belong to [8.2](../../../.
 Denise builds the rendered frame in the frame buffer. [Denise](../Denise.md), [frame buffer](../Frame%20Buffer.md)
 
 At 1x, Run follows the configured PAL or NTSC color clock using elapsed host
-time. Time spent emulating and rendering counts toward each deadline. Slower
-and Faster select 0.25x, 0.5x, 1x, 2x or 4x, and the 1x control restores normal
-speed. At normal or slower speed, each publication selects one completed field.
+time. Time spent emulating and rendering counts toward each deadline. The
+minus and plus buttons beside **Speed** select 0.25x, 0.5x, 1x, 2x or 4x.
+At normal or slower speed, each publication selects one completed field.
 If a bounded slice ends before the field completes, the viewport keeps the
 previous image.
 
@@ -502,10 +496,10 @@ deadlines accumulate and preserve fractional overruns. The frontend skips
 expired presentation slots to avoid an unbounded backlog. Host capacity can
 limit both achieved emulation speed and presentation rate.
 
-FPS counts completed emulated video fields per host second, including fields
-that were never presented. Texture uploads and GUI repaints do not enter that
-measurement. Step Frame and FPS both count individual fields, including each
-field of an interlaced image.
+The toolbar always displays one FPS value. It counts completed emulated video
+fields per host second, including fields that were never presented. It shows
+zero while paused. Step Frame and FPS both count individual fields, including
+each field of an interlaced image.
 
 An ordinary pause finishes the current field. Step Frame advances to the next
 completed field, including while the CPU is stopped. Instruction/CCK stepping,

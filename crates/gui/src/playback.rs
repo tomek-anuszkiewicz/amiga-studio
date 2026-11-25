@@ -72,10 +72,6 @@ impl Playback {
         self.set_speed_index((self.speed_index + 1).min(SPEEDS.len() - 1));
     }
 
-    pub fn normal_speed(&mut self) {
-        self.set_speed_index(NORMAL_SPEED_INDEX);
-    }
-
     fn set_speed_index(&mut self, index: usize) {
         if index != self.speed_index {
             self.speed_index = index;

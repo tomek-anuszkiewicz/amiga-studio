@@ -1,9 +1,8 @@
 //! Main Viewport: complete Amiga framebuffer display.
 //!
-//! Renders the centered video display with uniform scaling and a retro CRT bezel
-//! and optional floating debugger toggle button for Clean Screen mode.
+//! Renders the centered video display with uniform scaling and a retro CRT bezel.
 
-use egui::{load::SizedTexture, pos2, vec2, Color32, Rect, RichText, Stroke};
+use egui::{load::SizedTexture, pos2, Color32, Rect, Stroke};
 use serde::{Deserialize, Serialize};
 
 pub(crate) const SCREEN_INPUT_ID: &str = "amiga-screen-input";
@@ -137,11 +136,10 @@ pub(crate) fn render_amiga_screen(
     ui: &mut egui::Ui,
     texture: Option<SizedTexture>,
     scale: ScreenScale,
-    show_floating_debug_btn: bool,
-) -> bool {
+) {
     let available = ui.available_size();
     if available.x < 50.0 || available.y < 50.0 {
-        return false;
+        return;
     }
 
     let pixels_per_point = ui.ctx().pixels_per_point();
@@ -199,28 +197,4 @@ pub(crate) fn render_amiga_screen(
             Color32::WHITE,
         );
     }
-
-    let mut debug_clicked = false;
-    if show_floating_debug_btn {
-        let btn_rect = Rect::from_min_size(
-            pos2(screen_rect.max.x - 145.0, screen_rect.min.y + 12.0),
-            vec2(135.0, 26.0),
-        );
-        let resp = ui.put(
-            btn_rect,
-            egui::Button::new(
-                RichText::new("🛠 Debugger (F12)")
-                    .monospace()
-                    .size(11.0)
-                    .color(Color32::from_rgb(0, 240, 255)),
-            )
-            .fill(Color32::from_rgba_unmultiplied(20, 24, 32, 210))
-            .stroke(Stroke::new(1.0_f32, Color32::from_rgb(0, 180, 220))),
-        );
-        if resp.clicked() {
-            debug_clicked = true;
-        }
-    }
-
-    debug_clicked
 }

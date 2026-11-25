@@ -217,7 +217,12 @@ fn gamepad_save_preserves_capture_generation_and_held_contacts() {
     };
     sample(app.host.status.generation, vec![false; 16], 0.0);
     app.navigate_player(PlayerScreen::Configuration);
-    common::settle(&mut app, &ctx);
+    common::wait(&mut app, &ctx, |app| {
+        app.player
+            .gamepads
+            .iter()
+            .any(|pad| pad.identity == "save-pad")
+    });
     let controls = &mut app.player.editor.as_mut().unwrap().catalog.configurations[0].controls;
     controls.ports[1].source = InputSource::Gamepad {
         identity: "save-pad".into(),

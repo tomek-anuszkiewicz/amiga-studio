@@ -5,7 +5,7 @@ The desktop app opens to the game library. In **Configurations**, use
 **Save**. **Cancel** keeps the previous directory.
 The library updates automatically when files change. Type part of a game's name
 in **Filter games** to find it, and clear the field to show all games again.
-To start standalone disks, use manual setup. The browser opens to manual setup.
+To start standalone disks, choose **Manual setup**. The browser opens there.
 Choose a named configuration, select a supported 256 KiB Kickstart and any
 standard 880 KiB DD ADF images, then choose Start. You can leave drives empty.
 
@@ -33,8 +33,12 @@ Click the Amiga display to capture the mouse. The middle mouse button frees
 the mouse while play continues. Configuration screens, text editors and
 dialogs take priority over guest input. The player panel shows drive activity
 and has four disk dropdowns and controls to eject disks, pause, resume, reset,
-save and load. Small windows move these controls below the display. Developer
-Studio uses the same machine.
+save and load. Drag the divider to resize the panel. Small windows put the
+same controls under **Game controls** below the display. Open **Instructions**
+there to read the [player guide](player/README.md) without leaving the session.
+Use **Manual setup** in the toolbar to reach **Configurations** or start another
+machine. **Return to session** opens the current machine. Press F12 to switch
+between Game and Developer Studio.
 
 ## Add or edit a desktop game
 

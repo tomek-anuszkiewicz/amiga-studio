@@ -47,7 +47,6 @@ impl BinarySource {
 #[derive(Clone, Copy, Debug)]
 pub(crate) enum FileAction {
     Binary,
-    Rom,
     State,
     SetupRom,
     SetupDisk(usize),
@@ -64,7 +63,6 @@ impl FileAction {
     fn title(self) -> &'static str {
         match self {
             Self::Binary => "Load Binary from File",
-            Self::Rom => "Load ROM from File",
             Self::State => "Load State from File",
             Self::SetupRom => "Select Kickstart for Setup",
             Self::SetupDisk(_) => "Select disk for Setup",
@@ -74,7 +72,6 @@ impl FileAction {
     fn extensions(self) -> &'static [&'static str] {
         match self {
             Self::Binary => &["bin", "exe", "dat", "rom"],
-            Self::Rom => &["rom", "bin"],
             Self::State => &["json"],
             Self::SetupRom => &["rom", "bin"],
             Self::SetupDisk(_) => DISK_EXTENSIONS,
@@ -92,13 +89,8 @@ fn file_name(path: &std::path::Path) -> String {
 
 #[derive(Debug)]
 pub(crate) enum FileCompletion {
-    Rom {
-        name: String,
-        #[cfg(not(target_arch = "wasm32"))]
-        path: std::path::PathBuf,
-        #[cfg(target_arch = "wasm32")]
-        handle: wasm_bindgen::JsValue,
-    },
+    #[cfg(not(target_arch = "wasm32"))]
+    Rom(std::path::PathBuf),
     Binary {
         source: BinarySource,
         target: u32,
@@ -224,10 +216,6 @@ impl EmulatorApp {
         self.open_file_dialog(FileAction::Binary);
     }
 
-    pub(crate) fn open_load_rom_dialog(&mut self) {
-        self.open_file_dialog(FileAction::Rom);
-    }
-
     pub(crate) fn open_load_state_dialog(&mut self) {
         #[cfg(not(target_arch = "wasm32"))]
         if self.player.active_game.is_some() {
@@ -303,6 +291,7 @@ impl EmulatorApp {
         &mut self,
         action: FileCompletion,
         value: Result<HostValue, String>,
+        ctx: &egui::Context,
     ) {
         if let Err(error) = value {
             self.file_error = Some(format!("Could not complete file action: {error}"));
@@ -328,19 +317,10 @@ impl EmulatorApp {
         }
         self.file_error = None;
         match action {
-            FileCompletion::Rom {
-                name,
-                #[cfg(not(target_arch = "wasm32"))]
-                path,
-                #[cfg(target_arch = "wasm32")]
-                handle,
-            } => {
-                #[cfg(not(target_arch = "wasm32"))]
+            #[cfg(not(target_arch = "wasm32"))]
+            FileCompletion::Rom(path) => {
                 self.file_history.remember_rom(&path);
-                #[cfg(target_arch = "wasm32")]
-                self.browser_history
-                    .remember(FileAction::Rom, &name, &handle);
-                self.loaded_rom_name = Some(name);
+                self.file_loaded_machine = true;
                 self.inspection.ready = false;
                 self.disassembly_view_addr = None;
                 self.toast_message = Some((
@@ -372,7 +352,7 @@ impl EmulatorApp {
                 if (address as usize).saturating_add(size)
                     > config::address_map::KICKSTART_BASE as usize
                 {
-                    self.loaded_rom_name = Some(source.name());
+                    self.file_loaded_machine = true;
                 }
                 self.hex_base_addr =
                     target & crate::layout::right_dock::memory_hex::MASK_ROW_ADDRESS;
@@ -383,6 +363,7 @@ impl EmulatorApp {
                     self.player.activate_selected_configuration();
                 }
                 self.state_loaded(message);
+                self.sync_session_title(ctx);
             }
             FileCompletion::QuickSave(slot) => {
                 self.toast_message = Some((
@@ -435,10 +416,6 @@ impl EmulatorApp {
             FileAction::SetupRom => self.select_setup_rom(name, data),
             FileAction::SetupDisk(_) => {}
             FileAction::Binary => self.select_binary(BinarySource::Bytes { name, data, handle }),
-            FileAction::Rom => self.request_player_launch(crate::player::PendingLaunch::Rom {
-                bytes: data,
-                completion: FileCompletion::Rom { name, handle },
-            }),
             FileAction::State => match String::from_utf8(data) {
                 Ok(json) => {
                     let command = match self.prepare_state_import(json) {
@@ -462,7 +439,7 @@ impl EmulatorApp {
 
     pub(crate) fn state_loaded(&mut self, message: String) {
         self.inspection.ready = false;
-        self.loaded_rom_name = Some("from saved state".into());
+        self.file_loaded_machine = true;
         self.file_error = None;
         self.disassembly_view_addr = None;
         self.toast_message = Some((message, TOAST_DURATION_FRAMES));
@@ -497,7 +474,6 @@ impl EmulatorApp {
         };
         let directory = match action {
             FileAction::Binary => self.file_history.picker_directory(true),
-            FileAction::Rom => self.file_history.picker_directory(false),
             FileAction::State | FileAction::SetupRom | FileAction::SetupDisk(_) => None,
         };
         if let Some(directory) = directory {
@@ -505,18 +481,7 @@ impl EmulatorApp {
         }
         if let Some(path) = dialog.pick_file() {
             match action {
-                FileAction::Binary => {
-                    self.file_history.binary_directory =
-                        path.parent().map(std::path::Path::to_owned)
-                }
-                FileAction::Rom => {
-                    self.file_history.rom_directory = path.parent().map(std::path::Path::to_owned)
-                }
-                FileAction::State | FileAction::SetupRom | FileAction::SetupDisk(_) => {}
-            }
-            match action {
                 FileAction::Binary => self.select_binary(BinarySource::File(path)),
-                FileAction::Rom => self.load_rom_file(&path),
                 FileAction::State => self.load_state_file(&path),
                 FileAction::SetupRom => match std::fs::read(&path) {
                     Ok(bytes) => self.select_setup_rom(file_name(&path), bytes),
@@ -552,10 +517,7 @@ impl EmulatorApp {
         match std::fs::read(path) {
             Ok(data) => self.request_player_launch(crate::player::PendingLaunch::Rom {
                 bytes: data,
-                completion: FileCompletion::Rom {
-                    name: file_name(path),
-                    path: path.to_owned(),
-                },
+                completion: FileCompletion::Rom(path.to_owned()),
             }),
             Err(error) => {
                 self.file_error = Some(format!("Could not read {}: {error}", path.display()));

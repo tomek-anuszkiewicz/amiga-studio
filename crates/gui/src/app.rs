@@ -21,6 +21,7 @@ mod frame;
 mod screenshot;
 
 pub(crate) const RTC_BATTERY_STORAGE_KEY: &str = "rtc_battery";
+pub const APPLICATION_TITLE: &str = "Amiga 500 Developer Studio";
 
 const WIDE_LAYOUT_MIN_WIDTH: f32 = 1680.0;
 const DESKTOP_LAYOUT_MIN_WIDTH: f32 = 1200.0;
@@ -103,9 +104,8 @@ pub struct EmulatorApp {
     pub host: Box<AppHost>,
     screen_texture: ScreenTexture,
     pub(crate) inspection: Box<crate::inspection::Inspection>,
-    pub show_fps: bool,
     pub player: Box<crate::player::PlayerState>,
-    pub loaded_rom_name: Option<String>,
+    pub(crate) file_loaded_machine: bool,
     #[cfg(not(target_arch = "wasm32"))]
     pub file_history: crate::file_actions::FileHistory,
     #[cfg(target_arch = "wasm32")]
@@ -176,9 +176,8 @@ impl Default for EmulatorApp {
             host: Box::new(AppHost::new(session)),
             screen_texture: ScreenTexture::default(),
             inspection: Box::default(),
-            show_fps: true,
             player: Default::default(),
-            loaded_rom_name: None,
+            file_loaded_machine: false,
             #[cfg(not(target_arch = "wasm32"))]
             file_history: crate::file_actions::FileHistory::default(),
             #[cfg(target_arch = "wasm32")]
@@ -281,6 +280,7 @@ impl EmulatorApp {
             app.reload_library_catalog();
         }
         app.theme.apply(&cc.egui_ctx);
+        app.sync_session_title(&cc.egui_ctx);
         app
     }
 

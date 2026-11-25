@@ -587,10 +587,8 @@ fn owner_snapshot(app: &mut EmulatorApp) -> Box<debugger::A500State> {
 }
 
 fn click_view_toolbar(app: &mut EmulatorApp, ctx: &egui::Context) {
-    let label = match app.view_mode {
-        ViewMode::Developer => "🎮 Game View",
-        ViewMode::ScreenOnly => "Debug View",
-    };
+    assert_eq!(app.view_mode, ViewMode::Developer);
+    let label = "🎮 Game View";
     ctx.enable_accesskit();
     let tree = ui_frame(app, ctx, vec![])
         .into_platform_output()
@@ -760,9 +758,8 @@ fn view_change_releases_gameplay(start: ViewMode, via_toolbar: bool) {
 }
 
 #[test]
-fn toolbar_view_switches_release_gameplay_until_fresh_input() {
+fn game_view_button_releases_gameplay_until_fresh_input() {
     view_change_releases_gameplay(ViewMode::Developer, true);
-    view_change_releases_gameplay(ViewMode::ScreenOnly, true);
 }
 
 #[test]

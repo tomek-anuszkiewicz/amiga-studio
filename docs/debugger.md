@@ -8,11 +8,11 @@ with links to implementation details.
 
 ## 1. Launching the Developer Studio
 
-- **Default Launch.** Run the GUI without flags to open it with Developer Studio docked.
+- **Default Launch.** Run the GUI, choose **Return to session** from the library, and press **F12** to open Developer Studio.
   ```powershell
   cargo run -p gui
   ```
-- **From Game Mode.** In clean game mode (`cargo run -p gui -- --game`), press **`F12`** at any time to pause emulation and open Developer Studio.
+- **From Game Mode.** In a session, press **F12** to pause emulation and open Developer Studio.
 - **Direct Binary Loading.** Run this command to load compiled machine code into RAM.
   ```powershell
   cargo run -p gui -- --load path/to/game.bin --addr 001000
@@ -32,9 +32,10 @@ with links to implementation details.
 | **`Shift + F11`** | **Step Frame** | Advances to the next completed PAL/NTSC video field and pauses. Breakpoints and CPU halts take precedence. |
 | **`Alt + T`** | **Toggle Recording** | Activates or pauses temporal execution history recording. |
 | **`Ctrl + O`** | **Load Binary** | Opens file dialog to load compiled machine code at an arbitrary RAM address. |
-| **Drag & Drop** | **Binary Loading** | Opens the binary injection dialog for the dropped bytes. Use File > Load ROM from File to boot firmware. |
+| **Drag & Drop** | **Binary Loading** | Opens the binary injection dialog for the dropped bytes. To boot firmware, open Manual setup in Game view. |
 
-Use **Slower** and **Faster** to select 0.25x, 0.5x, 1x, 2x or 4x. **1x** is
+Use the minus and plus buttons beside **Speed** to select 0.25x, 0.5x, 1x,
+2x or 4x. **1x** is
 normal PAL/NTSC speed. At normal or slower speed, Run presents each completed
 video field before waiting for the next field deadline. Above 1x, Run executes
 every field and presents only the latest completed image from each batch. The
@@ -50,15 +51,13 @@ timers. During continuous Run, the inspectors retain the last values prepared
 for display, including CPU status and CCK labels. The Pause control, FPS and
 Amiga screen stay live. A CPU halt ends Run and refreshes the inspectors.
 
-Choose **File > Load ROM from File** to install a 256 KiB Kickstart image. The
-emulator resets the machine to the ROM vectors and leaves it paused. The toolbar
-shows the filename. Press **Run** to start execution. If the emulator rejects the
-image, it keeps the current machine and ROM name. The file picker works on desktop
-and WASM. In the browser, you must explicitly choose a file. When you load a
-snapshot, the emulator uses the ROM stored in it and displays **ROM: from saved state**.
+To boot a 256 KiB Kickstart image, choose **Game View**, **Manual setup**,
+then **Select Kickstart...**. Choose **Start** to boot and F12 to return to
+inspection. Loading a snapshot restores the ROM stored in it.
 
-Game View keeps the File, State, Run/Stop, speed, FPS visibility, theme and zoom
-controls. Choose **Debug View** or press the fixed F12 key to return to inspection.
+Game view shows the State menu, speed, measured FPS, theme, zoom and image
+scale. **Pause** and **Resume** are in the player controls. Press F12 or the
+configured shortcut to return to inspection.
 The keyboard works while the running session is active. Click the display to
 capture the mouse. The middle mouse button frees the mouse while play
 continues. You can assign a mouse release key in Configurations, where it

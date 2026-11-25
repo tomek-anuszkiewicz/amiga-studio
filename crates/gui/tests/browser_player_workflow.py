@@ -21,13 +21,16 @@ from browser_test_server import serve_distribution
 # eframe renders these controls into one canvas without individual browser
 # accessibility nodes. Use control centers in the fixed viewport at 100% zoom.
 VIEWPORT = {"width": 1280, "height": 800}
+APPLICATION_TITLE = "Amiga 500 Developer Studio"
 CONTROL_POINTS = {
     "Select Kickstart": (65, 108),
     "Select disk": (204, 131),
     "Start": (30, 223),
-    "Game Save": (1090, 264),
-    "Game Load": (1142, 264),
-    "Game Setup": (1094, 296),
+    "Game Save": (1090, 218),
+    "Game Load": (1142, 218),
+    "Game Manual setup": (98, 17),
+    "Game Controls": (1096, 42),
+    "Game Instructions": (1168, 42),
     "Configurations": (161, 12),
     "Configuration Name": (148, 149),
     "Configuration Cancel": (86, 788),
@@ -36,11 +39,11 @@ CONTROL_POINTS = {
     "Amiga port 2 Disconnected": (62, 489),
     "Configuration Save": (29, 788),
     "Return to session": (278, 12),
-    "DF0 dropdown": (1181, 117),
-    "DF0 Eject / Empty": (1180, 144),
-    "DF0 first disk": (1180, 167),
-    "DF0 second disk": (1180, 190),
-    "DF0 third disk": (1180, 213),
+    "DF0 dropdown": (1198, 71),
+    "DF0 Eject / Empty": (1198, 98),
+    "DF0 first disk": (1198, 121),
+    "DF0 second disk": (1198, 144),
+    "DF0 third disk": (1198, 167),
 }
 
 
@@ -103,8 +106,9 @@ def check_workflow(browser, url, rom, disk, output):
 
     def drive_label():
         # Sample the DF0 text, leaving out the activity indicator and hover.
-        page.mouse.move(1255, 117)
-        return page.screenshot(clip={"x": 1133, "y": 110, "width": 76, "height": 14})
+        _, y = CONTROL_POINTS["DF0 dropdown"]
+        page.mouse.move(1040, y)
+        return page.screenshot(clip={"x": 1128, "y": y - 7, "width": 108, "height": 14})
 
     def select_disk(option, description):
         before = drive_label()
@@ -147,6 +151,7 @@ def check_workflow(browser, url, rom, disk, output):
         ) as wasm:
             page.goto(url)
         page.wait_for_function("globalThis.observedGeneration === 1", timeout=30000)
+        assert page.title() == APPLICATION_TITLE
         page.wait_for_timeout(800)
         counts = []
         for _ in range(3):
@@ -175,15 +180,19 @@ def check_workflow(browser, url, rom, disk, output):
         page.wait_for_timeout(400)
         page.screenshot(path=str(output / "ready.png"))
         stage = "manual start"
+        page.evaluate("document.title = 'Before manual start'")
         click("Start")
         page.wait_for_function("globalThis.observedGeneration === 2", timeout=30000)
         page.wait_for_timeout(600)
+        assert page.title() == APPLICATION_TITLE
         page.screenshot(path=str(output / "game.png"))
         stage = "browser toolbar eligibility"
         # The canvas toolbar exposes no DOM or AccessKit nodes. Check the loaded
         # Wasm for a shared control and the native button's application-specific ID.
         application = wasm.value.body()
-        assert b"Debug View" in application
+        assert b"Step Frame" in application
+        assert b"Debug View" not in application
+        assert b"Amiga 500 player guide" in application
         assert b"amiga-game-screenshot-button" not in application, (
             "Native screenshot button ID found in browser Wasm"
         )
@@ -200,14 +209,33 @@ def check_workflow(browser, url, rom, disk, output):
         assert saved["state"]["floppy"]["drives"][0]["disk_inserted"]
         assert saved["state"]["cck"] > 0
         stage = "state import"
+        page.evaluate("document.title = 'Before state restore'")
         import_state(saved_path, 3)
+        assert page.title() == APPLICATION_TITLE
         restored = export_state(output / "restored.json")
         assert restored["state"]["cck"] == saved["state"]["cck"], "Import booted or advanced the paused restored machine"
         assert restored["state"]["cpu"] == saved["state"]["cpu"]
         page.screenshot(path=str(output / "restored.png"))
+        stage = "offline instructions"
+        panel = {"x": VIEWPORT["width"] - 219, "y": 56, "width": 219, "height": 325}
+        controls = page.screenshot(clip=panel)
+        context.set_offline(True)
+        try:
+            click("Game Instructions")
+            page.wait_for_timeout(300)
+            assert page.screenshot(clip=panel) != controls, "Instructions did not change the player panel"
+            page.screenshot(path=str(output / "instructions-offline.png"))
+            assert page.evaluate("observedGeneration") == 3
+            click("Game Controls")
+            page.wait_for_timeout(300)
+            assert page.evaluate("observedGeneration") == 3
+        finally:
+            context.set_offline(False)
+        after_instructions = export_state(output / "after-instructions.json")
+        assert after_instructions["state"] == restored["state"], "Opening Instructions changed the paused machine"
         stage = "configuration Cancel"
         stored_before_edit = page.evaluate("localStorage.getItem('player_configurations')")
-        click("Game Setup")  # The existing machine remains paused.
+        click("Game Manual setup")  # The existing machine remains paused.
         page.wait_for_timeout(300)
         click("Configurations")
         page.wait_for_timeout(300)
@@ -282,6 +310,7 @@ def check_workflow(browser, url, rom, disk, output):
                 "configuration_cancel": True, "stopped_configuration_save": True,
                 "recorded_keyboard_shortcut": True,
                 "disk_swap_retained_raw_tracks": True, "embedded_disk_reinserted": True,
+                "manual_setup_and_restore_title": APPLICATION_TITLE, "offline_instructions": True,
                 "native_screenshot_action_excluded": True,
                 "native_cover_action_excluded": True, "errors": errors}
     except Exception:

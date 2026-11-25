@@ -1,7 +1,7 @@
 //! Native Desktop Entrypoint for Amiga 500 Developer Studio
 
 #[cfg(not(target_arch = "wasm32"))]
-use gui::{EmulatorApp, ViewMode};
+use gui::{app::APPLICATION_TITLE, EmulatorApp, ViewMode};
 
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> eframe::Result<()> {
@@ -48,7 +48,7 @@ fn main() -> eframe::Result<()> {
             ..Default::default()
         },
         viewport: egui::ViewportBuilder::default()
-            .with_title("Amiga 500 Developer Studio")
+            .with_title(APPLICATION_TITLE)
             .with_app_id("amiga-studio")
             .with_inner_size([1600.0, 840.0])
             .with_min_inner_size([1024.0, 600.0]),
@@ -56,7 +56,7 @@ fn main() -> eframe::Result<()> {
     };
 
     gui::window_keyboard::run_native(
-        "Amiga 500 Developer Studio",
+        APPLICATION_TITLE,
         native_options,
         Box::new(move |cc| {
             let mut app = EmulatorApp::new(cc);

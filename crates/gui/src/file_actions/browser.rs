@@ -18,7 +18,6 @@ use web_sys::{Document, HtmlAnchorElement};
 #[wasm_bindgen(module = "/src/file_actions/browser_files.js")]
 extern "C" {
     fn restore_history() -> Promise;
-    fn recent_names(kind: &str) -> Array;
     fn remember_file(kind: &str, name: &str, handle: &JsValue) -> Promise;
     #[wasm_bindgen(catch)]
     fn pick_file(
@@ -81,18 +80,6 @@ impl BrowserHistory {
             .push(JsFuture::from(remember_file(action.key(), name, handle)));
     }
 
-    pub fn names(&self, binary: bool) -> Vec<String> {
-        let action = if binary {
-            FileAction::Binary
-        } else {
-            FileAction::Rom
-        };
-        recent_names(action.key())
-            .iter()
-            .filter_map(|value| value.as_string())
-            .collect()
-    }
-
     fn poll(&mut self, ctx: &egui::Context) -> Option<String> {
         let mut error = None;
         self.pending.retain_mut(|future| {
@@ -118,7 +105,6 @@ impl FileAction {
     fn key(self) -> &'static str {
         match self {
             Self::Binary => "binary",
-            Self::Rom => "rom",
             Self::State => "state",
             Self::SetupRom => "setup-rom",
             Self::SetupDisk(_) => "setup-disk",
@@ -133,7 +119,7 @@ fn document() -> Result<Document, JsValue> {
 }
 
 impl BrowserFileTask {
-    fn new(action: FileAction, recent_index: i32) -> Result<Self, JsValue> {
+    fn new(action: FileAction) -> Result<Self, JsValue> {
         let extensions = action
             .extensions()
             .iter()
@@ -144,7 +130,7 @@ impl BrowserFileTask {
             action.key(),
             action.title(),
             &extensions,
-            recent_index,
+            NO_RECENT_FILE_INDEX,
             multiple,
         )?;
         let future = Box::pin(async move {
@@ -248,20 +234,7 @@ impl EmulatorApp {
     }
 
     pub(super) fn open_file_dialog(&mut self, action: FileAction) {
-        self.open_browser_file_dialog(action, NO_RECENT_FILE_INDEX);
-    }
-
-    pub(crate) fn open_recent_browser_file(&mut self, binary: bool, index: usize) {
-        let action = if binary {
-            FileAction::Binary
-        } else {
-            FileAction::Rom
-        };
-        self.open_browser_file_dialog(action, index as i32);
-    }
-
-    fn open_browser_file_dialog(&mut self, action: FileAction, recent_index: i32) {
-        match BrowserFileTask::new(action, recent_index) {
+        match BrowserFileTask::new(action) {
             Ok(task) => self.browser_file_task = Some(task),
             Err(error) => self.file_error = Some(format!("Could not open file picker: {error:?}")),
         }
