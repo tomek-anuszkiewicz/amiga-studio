@@ -126,6 +126,8 @@ pub enum HostObservation {
         drive: usize,
         expected_adf: Option<Vec<u8>>,
     },
+    #[cfg(feature = "game-fps-benchmark")]
+    MixedSceneBoot,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -177,6 +179,13 @@ pub enum HostValue {
     Drive {
         inserted: bool,
         tracks_match: Option<bool>,
+    },
+    #[cfg(feature = "game-fps-benchmark")]
+    MixedSceneBoot {
+        signature_matches: bool,
+        fields: u32,
+        work_loops: u32,
+        fault: u32,
     },
     Cpu(Box<CpuState>),
     Memory {

@@ -2,13 +2,18 @@
 //! This host fixture never writes custom registers or chip internals for the guest.
 
 use config::{A500Config, VideoStandard};
-use machine_loop::{agnus::dma::DmaChannel, game_ports::PortDevice, A500Machine};
+#[cfg(not(target_arch = "wasm32"))]
+use machine_loop::agnus::dma::DmaChannel;
+use machine_loop::{game_ports::PortDevice, A500Machine};
 use serde::Serialize;
+use serde_json::{json, Value};
 
 pub const PROGRAM: &[u8] = include_bytes!("program.bin");
 pub const ENTRY: u32 = 0x1000;
 pub const STATS: u32 = 0x8000;
 pub const WARMUP_FIELDS: u64 = 32;
+pub const BENCH_FIELDS: u64 = 120;
+pub const BENCH_SERIES: u64 = 3;
 
 pub fn machine(standard: VideoStandard) -> A500Machine {
     let mut machine = A500Machine::new(A500Config::standard_1mb(standard));
@@ -70,6 +75,7 @@ pub fn run_field(machine: &mut A500Machine, field: u64) {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 #[derive(Debug, Default, Serialize)]
 pub struct Activity {
     pub ccks: u64,
@@ -91,6 +97,7 @@ pub struct Activity {
 }
 
 /// Detailed observation is intentionally separate from the performance loop.
+#[cfg(not(target_arch = "wasm32"))]
 pub fn audit_field(machine: &mut A500Machine, field: u64, activity: &mut Activity) {
     loop {
         input(machine, field);
@@ -159,4 +166,75 @@ pub fn progress(machine: &A500Machine) -> GuestProgress {
         joystick: word(28),
         fault: long(36),
     }
+}
+
+pub fn validate_progress(
+    before: &GuestProgress,
+    after: &GuestProgress,
+) -> Result<(), &'static str> {
+    if before.fault != 0
+        || after.fault != 0
+        || after.work_loops <= before.work_loops
+        || after.fields <= before.fields
+    {
+        return Err("Guest made no progress or entered its exception handler");
+    }
+    Ok(())
+}
+
+/// Run repeatable, uncapped series. Each call to `run_field` completes one raster wrap.
+pub fn benchmark(
+    machine: &mut A500Machine,
+    standard: VideoStandard,
+    warmup: u64,
+    fields: u64,
+    series: u64,
+    now_seconds: impl Fn() -> f64,
+) -> Result<Value, &'static str> {
+    let end = warmup.checked_add(fields).ok_or("Field range overflow")?;
+    for field in 0..warmup {
+        run_field(machine, field);
+    }
+    let before = progress(machine);
+    let initial = machine.save_state();
+    let mut timings = Vec::new();
+    let mut previous_result = None;
+    for _ in 0..series {
+        machine.load_state(&initial);
+        let start = now_seconds();
+        for field in warmup..end {
+            run_field(machine, field);
+        }
+        let seconds = now_seconds() - start;
+        if !seconds.is_finite() || seconds <= 0.0 {
+            return Err("Invalid benchmark duration");
+        }
+        timings.push(seconds);
+        let result = machine.save_state();
+        if previous_result
+            .as_ref()
+            .is_some_and(|previous| previous != &result)
+        {
+            return Err("Repeated series ended in different machine states");
+        }
+        previous_result = Some(result);
+    }
+    let after = progress(machine);
+    validate_progress(&before, &after)?;
+    Ok(json!({
+        "mode": "bench",
+        "standard": format!("{standard:?}"),
+        "warmup_fields": warmup,
+        "fields_per_series": fields,
+        "series_seconds": timings,
+        "emulated_ccks_per_series": machine.cck - initial.cck,
+        "guest_before": before,
+        "guest_after": after,
+        "activity": null,
+        "width": machine.denise.frame_builder.width,
+        "height": machine.denise.frame_builder.height,
+        "pc": machine.cpu.state.instruction_pc(),
+        "halted": machine.cpu.state.is_halted(),
+        "stopped": machine.cpu.state.is_stopped(),
+    }))
 }

@@ -77,7 +77,7 @@ independent build under `.agent/tmp/web-dist`. [Web launcher](tools/web.ps1)
 ## Developer Studio & M68000 Debugger
 
 Start a session with a supported Kickstart and a bootable disk in DF0. For a
-display and audio demonstration, use the [mixed-scene disk](crates/machine_loop/tests/programs/display/mixed_scene/README.md).
+display and audio demonstration, use the [mixed-scene disk](tests/mixed_scene/README.md).
 Press **F12** in the session to open Developer Studio. The
 [M68000 sample programs](examples/m68k/) are fixtures for the headless debugger
 tests.

@@ -13,18 +13,18 @@ from case_report import run_reported
 from repository import REPO_ROOT
 
 
-def find_executable(output):
+def find_executable(output, name="mixed_scene", kind="example"):
     executable = None
     for line in output.splitlines():
         row = json.loads(line)
         if row.get("reason") == "compiler-message" and row["message"].get("rendered"):
             print(row["message"]["rendered"], end="", file=sys.stderr)
         target = row.get("target", {})
-        if target.get("name") == "mixed_scene" and "example" in target.get("kind", []):
+        if target.get("name") == name and kind in target.get("kind", []):
             if row.get("reason") == "compiler-artifact":
                 executable = row["executable"]
     if executable is None:
-        raise ValueError("Cargo did not report the mixed_scene executable")
+        raise ValueError(f"Cargo did not report the {name} executable")
     return executable
 
 
@@ -41,7 +41,7 @@ def read_metrics(output):
 
 def run(arguments, archive):
     archive.phase("build", arguments=arguments)
-    command = ["cargo", "build", "--release", "-p", "machine_loop", "--example", "mixed_scene",
+    command = ["cargo", "build", "--locked", "--release", "-p", "machine_loop", "--example", "mixed_scene",
                "--message-format=json-render-diagnostics"]
     build = subprocess.run(command, cwd=REPO_ROOT, capture_output=True, text=True, encoding="utf-8",
                            errors="replace")

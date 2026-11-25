@@ -554,11 +554,15 @@ timing, texture allocation and upload.
 The emulation core generates audio samples. The GUI is intended to deliver
 those samples to the host playback device. [audio subsystem](../Audio.md)
 
-The mixed-scene ADF boots from DF0 with a supported Kickstart ROM. Host
-pacing, FPS and graphical guest output are evaluated
-manually after removal of their dedicated automated execution and presentation
-campaigns. Independent correctness tests can still use guest programs as
-fixtures. Input correctness and host command/lifecycle checks remain automated.
+The on-demand Mixed Scene benchmark boots its ADF from DF0 with an external
+Kickstart 1.3 ROM through Manual Setup. Each Game sample confirms that the guest
+is running before warmup. In the foreground desktop window and browser canvas,
+the benchmark counts distinct completed fields submitted for drawing during
+normal playback. The toolbar continues to count completed emulated fields.
+Other host pacing and graphical guest output are assessed manually. Independent
+correctness tests can still use guest programs as fixtures. Input correctness
+and host command and lifecycle checks remain automated.
+[Mixed Scene benchmark](../../../../tests/mixed_scene/README.md#run-the-fps-regression-cases)
 Broader display comparisons remain part of native disk verification and its
 later subsystem suites. [native disk verification](../../../../ROADMAP.md#native-disk-verification)
 

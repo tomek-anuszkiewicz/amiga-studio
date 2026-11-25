@@ -101,11 +101,16 @@ stages, and diary and roadmap closure are separate duties. Required gaps still
 block readiness even if the caller did not select repairs.
 [Independent review](../../../../.agents/references/review-common.md)
 
-Engineers evaluate host pacing, FPS and the guest's graphical presentation
-manually. The dedicated automated graphical execution and image campaigns are
-retired. Independent CPU, chip, bus, input, host-lifecycle, display-state and
-continuation tests remain available. Audio captures still have spectral and
-attachment acceptance limits.
+Engineers run four on-demand Mixed Scene FPS cases to compare release builds
+with approved references. Two measure uncapped emulated fields per second in
+the native machine loop and the browser worker. The desktop and browser Game
+cases boot the same workload from DF0 using a private Kickstart 1.3 ROM.
+They confirm guest execution before measuring field images submitted for
+drawing in the foreground at normal playback speed. Engineers continue to
+assess graphical output and other pacing behavior manually. Independent CPU,
+chip, bus, input, host-lifecycle, display-state and continuation tests remain
+available. Audio captures still have spectral and attachment acceptance limits.
+[Mixed Scene benchmark](../../../../tests/mixed_scene/README.md#run-the-fps-regression-cases)
 
 ### Roadmap and milestone completion
 

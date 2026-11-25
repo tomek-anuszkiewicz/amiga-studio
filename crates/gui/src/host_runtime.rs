@@ -653,6 +653,8 @@ fn run_native(
 
 #[cfg(target_arch = "wasm32")]
 mod browser;
+#[cfg(all(target_arch = "wasm32", feature = "game-fps-benchmark"))]
+pub(crate) use browser::host_now;
 #[cfg(target_arch = "wasm32")]
 pub(crate) use browser::{host_release_pending, host_window_active, take_pointer_capture_loss};
 #[cfg(target_arch = "wasm32")]

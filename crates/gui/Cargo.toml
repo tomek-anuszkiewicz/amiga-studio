@@ -10,6 +10,9 @@ default-run = "amiga-studio"
 path = "src/gui.rs"
 crate-type = ["cdylib", "rlib"]
 
+[features]
+game-fps-benchmark = []
+
 [[bin]]
 name = "amiga-studio"
 path = "src/main.rs"

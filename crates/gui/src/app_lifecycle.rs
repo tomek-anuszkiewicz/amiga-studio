@@ -5,6 +5,8 @@ use crate::app::{EmulatorApp, RTC_BATTERY_STORAGE_KEY};
 impl eframe::App for EmulatorApp {
     fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
         self.update_ui(ui);
+        #[cfg(feature = "game-fps-benchmark")]
+        crate::game_fps::update(self, ui.ctx());
         if self.player.settings_dirty {
             if let Some(storage) = frame.storage_mut() {
                 self.persist_player_settings(storage);

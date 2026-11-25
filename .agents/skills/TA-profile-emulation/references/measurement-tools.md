@@ -65,10 +65,12 @@ only through the existing reference-approval procedure.
 ## Whole-Machine and Presentation Measurements
 
 For combined CPU/chipset activity, use the maintained
-[mixed game scene](../../../../crates/machine_loop/tests/programs/display/mixed_scene/README.md).
-Its guest binary also loads in the GUI. Its native example separates an activity
-audit from repeatable timed series, including synthetic input and audio draining.
-Use the owning README for commands, counting boundaries and coverage limits.
+[mixed game scene](../../../../tests/mixed_scene/README.md).
+The GUI boots its ADF with an external Kickstart 1.3 ROM. The native example
+separates an activity audit from repeatable timed series, including synthetic
+input and audio draining. The on-demand suite measures both uncapped machine
+loops and Game playback on desktop and in the browser.
+[Commands and counting boundaries](../../../../tests/mixed_scene/README.md#run-the-fps-regression-cases)
 
 Inspect the current public machine stepping API and existing harness before
 building a diagnostic. Historical `machine_bench.rs` experiments called the

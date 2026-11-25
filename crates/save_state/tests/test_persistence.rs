@@ -890,8 +890,7 @@ fn file_roundtrip_resumes_blitter_source_carry_and_pending_destination() {
 
 #[test]
 fn file_roundtrip_preserves_drawn_pixels_and_resumes_active_display() {
-    let program =
-        include_bytes!("../../machine_loop/tests/programs/display/mixed_scene/program.bin");
+    let program = include_bytes!("../../../tests/mixed_scene/program.bin");
     let mut machine = A500Machine::new(A500Config::bare_512k(VideoStandard::Pal));
     machine.physical_memory.map_chip_ram_to_low_memory();
     for (offset, byte) in program.iter().copied().enumerate() {

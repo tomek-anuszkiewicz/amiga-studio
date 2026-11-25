@@ -135,7 +135,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut session = Box::new(gui::DebuggerSession::new());
         session.load_binary(
             debugger::DEFAULT_TARGET_ADDRESS,
-            include_bytes!("../../../machine_loop/tests/programs/display/mixed_scene/program.bin"),
+            include_bytes!("../../../../tests/mixed_scene/program.bin"),
             true,
         )?;
         // Advance the real guest past initialization before capturing its image.

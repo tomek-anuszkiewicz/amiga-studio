@@ -30,7 +30,7 @@ extern "C" {
         interval_ms: f64,
         generation: u64,
     );
-    fn host_now() -> f64;
+    pub(crate) fn host_now() -> f64;
     fn notify_gui();
     fn report_machine_failure(message: &str);
 }

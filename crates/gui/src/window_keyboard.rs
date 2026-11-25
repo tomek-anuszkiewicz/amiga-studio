@@ -92,6 +92,10 @@ impl ApplicationHandler<eframe::UserEvent> for KeyboardApplication<'_> {
                 self.windows_keys.release();
             }
             if let Some(ctx) = self.context.get() {
+                #[cfg(feature = "game-fps-benchmark")]
+                if matches!(event, WindowEvent::Focused(false)) {
+                    crate::game_fps::record_focus_loss(ctx);
+                }
                 match &event {
                     WindowEvent::ModifiersChanged(modifiers) => self.modifiers = modifiers.state(),
                     WindowEvent::Focused(false) => self.modifiers = ModifiersState::empty(),

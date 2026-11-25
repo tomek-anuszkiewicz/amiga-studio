@@ -196,5 +196,9 @@ pub(crate) fn render_amiga_screen(
             Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
             Color32::WHITE,
         );
+        #[cfg(feature = "game-fps-benchmark")]
+        if ui.is_visible() && screen_rect.intersects(painter.clip_rect()) {
+            crate::game_fps::record_draw(ui.ctx());
+        }
     }
 }

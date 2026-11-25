@@ -105,6 +105,8 @@ pub struct EmulatorApp {
     screen_texture: ScreenTexture,
     pub(crate) inspection: Box<crate::inspection::Inspection>,
     pub player: Box<crate::player::PlayerState>,
+    #[cfg(feature = "game-fps-benchmark")]
+    pub(crate) game_fps: Option<Box<crate::game_fps::GameFps>>,
     pub(crate) file_loaded_machine: bool,
     #[cfg(not(target_arch = "wasm32"))]
     pub file_history: crate::file_actions::FileHistory,
@@ -171,6 +173,8 @@ impl Default for EmulatorApp {
             screen_texture: ScreenTexture::default(),
             inspection: Box::default(),
             player: Default::default(),
+            #[cfg(feature = "game-fps-benchmark")]
+            game_fps: None,
             file_loaded_machine: false,
             #[cfg(not(target_arch = "wasm32"))]
             file_history: crate::file_actions::FileHistory::default(),
