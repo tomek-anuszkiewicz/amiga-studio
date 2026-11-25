@@ -64,7 +64,10 @@ use wasm_bindgen::prelude::*;
 pub async fn start() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
 
-    let web_options = eframe::WebOptions::default();
+    let web_options = eframe::WebOptions {
+        renderer: eframe::Renderer::Glow,
+        ..Default::default()
+    };
     let runner = eframe::WebRunner::new();
 
     let window = web_sys::window().ok_or_else(|| JsValue::from_str("No global `window` exists"))?;

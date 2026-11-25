@@ -19,7 +19,7 @@ name = "gui-inspector"
 path = "src/bin/gui_inspector.rs"
 
 [dependencies]
-eframe = { version = "0.37", default-features = false, features = ["accesskit", "clipboard", "default_fonts", "glow", "links", "persistence", "wayland", "web_screen_reader", "x11"] }
+eframe = { version = "0.37", default-features = false, features = ["accesskit", "clipboard", "default_fonts", "links", "persistence", "wayland", "web_screen_reader", "x11"] }
 egui = { version = "0.37", features = ["monochrome_emoji_fonts"] }
 config = { path = "../config" }
 rtc = { path = "../rtc" }
@@ -31,6 +31,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+eframe = { version = "0.37", default-features = false, features = ["wgpu"] }
 arboard = { version = "3.6", default-features = false, features = ["image-data"] }
 async-channel = "2.5"
 blocking = "1.7"
@@ -43,6 +44,7 @@ image = { workspace = true, features = ["jpeg"] }
 tempfile = "3.27"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
+eframe = { version = "0.37", default-features = false, features = ["glow"] }
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
 js-sys = "0.3"

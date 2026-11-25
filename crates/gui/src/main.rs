@@ -39,9 +39,12 @@ fn main() -> eframe::Result<()> {
     }
 
     let native_options = eframe::NativeOptions {
-        glow_options: eframe::egui_glow::GlowConfiguration {
-            // Playback schedules complete fields; display refresh must not cap fast modes.
-            vsync: false,
+        renderer: eframe::Renderer::Wgpu,
+        wgpu_options: eframe::WgpuConfiguration {
+            surface: eframe::SurfaceConfig {
+                present_mode: eframe::wgpu::PresentMode::Fifo,
+                desired_maximum_frame_latency: Some(2),
+            },
             ..Default::default()
         },
         viewport: egui::ViewportBuilder::default()
