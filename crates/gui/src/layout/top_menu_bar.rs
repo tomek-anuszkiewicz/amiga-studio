@@ -1,8 +1,6 @@
 //! Machine controls and presentation preferences shared by the session views.
 
 use crate::app::EmulatorApp;
-use crate::app_host::HostEffect;
-use crate::file_actions::FileCompletion;
 use crate::host_commands::HostCommand;
 use crate::keyboard_input::KeyCommand;
 use crate::player::PlayerScreen;
@@ -31,8 +29,8 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ui: &mut egui::Ui) {
         .show(ui, |ui| {
             ui.horizontal_wrapped(|ui| {
                 ui.visuals_mut().button_frame = true;
-                render_state_menu(app, ui);
                 if developer {
+                    render_snapshot_files(app, ui);
                     render_debugger_execution(app, ui);
                     if app.shortcut_tooltip(
                         ui.button("🎮 Game View"),
@@ -81,86 +79,30 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ui: &mut egui::Ui) {
     }
 }
 
-fn render_state_menu(app: &mut EmulatorApp, ui: &mut egui::Ui) {
-    ui.menu_button("State", |ui| {
+fn render_snapshot_files(app: &mut EmulatorApp, ui: &mut egui::Ui) {
+    for (label, action, help) in [
+        (
+            "Export state file…",
+            KeyCommand::SaveState,
+            "Export a snapshot of the current machine.",
+        ),
+        (
+            "Import state file…",
+            KeyCommand::LoadState,
+            "Restore a machine from a snapshot file.",
+        ),
+    ] {
         if app
             .shortcut_tooltip(
-                ui.button("💾 Save State to File..."),
-                KeyCommand::SaveState,
-                "Export a snapshot of the current machine.",
+                ui.add_enabled(!app.player.busy, egui::Button::new(label)),
+                action,
+                help,
             )
             .clicked()
         {
-            app.open_save_state_dialog();
-            ui.close_kind(egui::UiKind::Menu);
+            app.apply_key_command(action, ui.ctx());
         }
-
-        if app
-            .shortcut_tooltip(
-                ui.button("📂 Load State from File..."),
-                KeyCommand::LoadState,
-                "Choose saved progress or import a machine snapshot.",
-            )
-            .clicked()
-        {
-            app.open_load_state_dialog();
-            ui.close_kind(egui::UiKind::Menu);
-        }
-
-        ui.separator();
-
-        if app
-            .shortcut_tooltip(
-                ui.button("⚡ Quick Save Slot 1"),
-                KeyCommand::QuickSave,
-                "Save current progress to quick slot 1.",
-            )
-            .clicked()
-        {
-            quick_save_slot(app, 1);
-            ui.close_kind(egui::UiKind::Menu);
-        }
-
-        let slot1_available = quick_slot_available(app, 1);
-        let slot1_label = if slot1_available {
-            "Quick Load Slot 1"
-        } else {
-            "Quick Load Slot 1 (Empty)"
-        };
-        if app
-            .shortcut_tooltip(
-                ui.add_enabled(slot1_available, egui::Button::new(slot1_label)),
-                KeyCommand::QuickLoad,
-                "Restore the state stored in quick slot 1.",
-            )
-            .on_disabled_hover_text("Quick slot 1 is empty.")
-            .clicked()
-        {
-            quick_load_slot(app, 1);
-            ui.close_kind(egui::UiKind::Menu);
-        }
-
-        ui.separator();
-
-        ui.menu_button("Slots 2–5", |ui| {
-            for slot in 2..=debugger::session::QUICK_SLOT_COUNT {
-                ui.horizontal(|ui| {
-                    if ui.button(format!("Save #{slot}")).clicked() {
-                        quick_save_slot(app, slot);
-                    }
-                    let loaded = quick_slot_available(app, slot);
-                    let btn = egui::Button::new(if loaded {
-                        format!("Load #{slot}")
-                    } else {
-                        format!("#{slot} (Empty)")
-                    });
-                    if ui.add_enabled(loaded, btn).clicked() {
-                        quick_load_slot(app, slot);
-                    }
-                });
-            }
-        });
-    });
+    }
 }
 
 fn render_debugger_execution(app: &mut EmulatorApp, ui: &mut egui::Ui) {
@@ -334,45 +276,4 @@ fn render_presentation_preferences(app: &mut EmulatorApp, ui: &mut egui::Ui, ctx
         })
         .response
         .on_hover_text("Fit smoothly fills the available area while preserving proportions. Fixed scales (0.5x, 1x, 2x, 4x) use sharp pixels, independently of interface zoom and monitor DPI. Oversized images stay centered and are clipped.");
-}
-
-/// Saves snapshot to an in-memory quick-save slot (1..=5)
-pub(crate) fn quick_save_slot(app: &mut EmulatorApp, slot: usize) {
-    #[cfg(not(target_arch = "wasm32"))]
-    if app.player.active_game.is_some() {
-        app.save_player(Some(slot));
-        return;
-    }
-    app.host.queue_effect(
-        HostCommand::SaveQuickSlot(slot),
-        HostEffect::File(FileCompletion::QuickSave(slot)),
-    );
-}
-
-/// Restores snapshot from an in-memory quick-save slot (1..=5)
-pub(crate) fn quick_load_slot(app: &mut EmulatorApp, slot: usize) {
-    if let Err(error) = app.validate_current_input() {
-        app.file_error = Some(error);
-        return;
-    }
-    #[cfg(not(target_arch = "wasm32"))]
-    if app.player.active_game.is_some() {
-        app.load_player_quick(slot);
-        return;
-    }
-    app.host.queue_effect(
-        HostCommand::LoadQuickSlot {
-            slot,
-            ports: app.current_control_ports(),
-        },
-        HostEffect::File(FileCompletion::State(format!("Restored from Slot #{slot}"))),
-    );
-}
-
-fn quick_slot_available(app: &EmulatorApp, slot: usize) -> bool {
-    #[cfg(not(target_arch = "wasm32"))]
-    if app.player.active_game.is_some() {
-        return app.player.game_slots[slot - 1];
-    }
-    app.host.status.quick_slots[slot - 1]
 }

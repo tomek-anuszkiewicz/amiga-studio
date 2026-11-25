@@ -212,6 +212,10 @@ fn load_guest_program(owner: &mut MachineOwner, program: Vec<u8>) {
 
 fn run_field(owner: &mut MachineOwner, exchange: &VideoExchange, tick: &mut u32) {
     execute(owner, HostCommand::StepField);
+    run_until_paused(owner, exchange, tick);
+}
+
+fn run_until_paused(owner: &mut MachineOwner, exchange: &VideoExchange, tick: &mut u32) {
     loop {
         owner.publish(exchange).unwrap();
         exchange
@@ -326,7 +330,7 @@ fn game_reset(disks: [Option<(&str, Option<u8>)>; 4]) -> HostCommand {
 }
 
 #[test]
-fn startup_reset_preserves_written_copies_and_uses_slot_contents_when_moving_disks() {
+fn startup_reset_preserves_written_copies_and_uses_saved_contents_when_moving_disks() {
     let mut owner = owner_with_latched_motors();
     let mut initial = saved_machine(&mut owner);
     initial.document.header.association.game_id = Some("game".into());
@@ -353,7 +357,7 @@ fn startup_reset_preserves_written_copies_and_uses_slot_contents_when_moving_dis
         guest_write(&mut owner, drive, marker);
         assert_eq!(guest_read_marker(&mut owner, drive), marker[2..]);
     }
-    execute(&mut owner, HostCommand::SaveQuickSlot(1));
+    execute(&mut owner, HostCommand::QuickSave);
     let written = saved_machine(&mut owner);
     assert_ne!(raw_tracks(&written.state, 1), raw_tracks(&written.state, 2));
     let written_sources = debugger::MediaSources {
@@ -482,7 +486,7 @@ fn startup_reset_preserves_written_copies_and_uses_slot_contents_when_moving_dis
     assert!(!moved.state.floppy.drives[0].disk_inserted);
     assert_eq!(raw_tracks(&moved.state, 2), raw_tracks(&written.state, 0));
 
-    execute(&mut owner, HostCommand::LoadQuickSlot { slot: 1, ports });
+    execute(&mut owner, HostCommand::QuickLoad { ports });
     let loaded = saved_machine(&mut owner);
     assert_eq!(loaded.state.floppy.drives, written.state.floppy.drives);
     assert_eq!(loaded.header.association, written.header.association);
@@ -495,9 +499,9 @@ fn startup_reset_preserves_written_copies_and_uses_slot_contents_when_moving_dis
             None,
         ]),
     );
-    let reset_from_slot = saved_machine(&mut owner);
+    let reset_from_quicksave = saved_machine(&mut owner);
     assert_eq!(
-        reset_from_slot.header.association.mounted,
+        reset_from_quicksave.header.association.mounted,
         [
             Some("shared".into()),
             Some("shared".into()),
@@ -507,11 +511,11 @@ fn startup_reset_preserves_written_copies_and_uses_slot_contents_when_moving_dis
     );
     for (drive, original) in [(0, 2), (1, 1), (2, 0)] {
         assert_eq!(
-            raw_tracks(&reset_from_slot.state, drive),
+            raw_tracks(&reset_from_quicksave.state, drive),
             raw_tracks(&written.state, original)
         );
     }
-    assert!(!reset_from_slot.state.floppy.drives[3].connected);
+    assert!(!reset_from_quicksave.state.floppy.drives[3].connected);
 }
 
 #[test]
@@ -616,8 +620,16 @@ fn independently_written_copies_with_one_id_can_return_to_their_original_drives(
 #[test]
 fn quick_load_restores_mounted_contents_and_keeps_other_disks_from_the_session() {
     let mut owner = owner_with_latched_motors();
+    let ports = owner.status().ports;
+    let before = owner.status();
+    let rejected = request(&mut owner, HostCommand::QuickLoad { ports });
+    assert!(rejected.value.unwrap_err().contains("No quicksave"));
+    assert_eq!(rejected.status.cck, before.cck);
+    assert_eq!(rejected.status.generation, before.generation);
+    assert_eq!(rejected.status.running, before.running);
     mount(&mut owner, 0, Some("disk-b"), Some(0x11));
-    execute(&mut owner, HostCommand::SaveQuickSlot(1));
+    execute(&mut owner, HostCommand::QuickSave);
+    let saved_cck = owner.status().cck;
     mount(&mut owner, 0, None, None);
     mount(&mut owner, 1, Some("disk-b"), None);
     guest_write(&mut owner, 1, WRITE_WORDS);
@@ -628,18 +640,18 @@ fn quick_load_restores_mounted_contents_and_keeps_other_disks_from_the_session()
     mount(&mut owner, 0, None, None);
     mount(&mut owner, 0, Some("disk-c"), Some(0x22));
     let ports = owner.status().ports;
-    assert!(
-        request(&mut owner, HostCommand::LoadQuickSlot { slot: 5, ports })
-            .value
-            .is_err()
-    );
 
     let HostValue::PlayerRestored(association) =
-        execute(&mut owner, HostCommand::LoadQuickSlot { slot: 1, ports })
+        execute(&mut owner, HostCommand::QuickLoad { ports })
     else {
         panic!("Missing restored disk association");
     };
+    assert_eq!(owner.status().cck, saved_cck);
+    assert!(owner.status().running);
     assert_eq!(association.mounted[0].as_deref(), Some("disk-b"));
+    execute(&mut owner, HostCommand::Pause);
+    let exchange = VideoExchange::new(vec![0; owner.video_storage_len()]);
+    run_until_paused(&mut owner, &exchange, &mut 0);
     assert_eq!(guest_read_adf_payload(&mut owner, 0), 0x11111111);
     assert_eq!(guest_read_marker(&mut owner, 0), [0; 6]);
     assert!(
@@ -654,7 +666,7 @@ fn quick_load_restores_mounted_contents_and_keeps_other_disks_from_the_session()
         )
         .value
         .is_err(),
-        "later copy of B must not shadow the slot copy"
+        "later copy of B must not shadow the quicksave copy"
     );
 
     mount(&mut owner, 1, Some("disk-a"), None);
@@ -664,11 +676,10 @@ fn quick_load_restores_mounted_contents_and_keeps_other_disks_from_the_session()
 }
 
 #[test]
-fn quick_slot_from_before_a_file_restore_reopens_its_own_disk_session() {
+fn quicksave_from_before_a_file_restore_reopens_its_own_disk_session() {
     let mut owner = owner_with_latched_motors();
     mount(&mut owner, 0, Some("older"), Some(0x11));
-    execute(&mut owner, HostCommand::SaveQuickSlot(1));
-    execute(&mut owner, HostCommand::SaveQuickSlot(2));
+    execute(&mut owner, HostCommand::QuickSave);
 
     let mut replacement = DebuggerSession::new();
     replacement
@@ -698,9 +709,9 @@ fn quick_slot_from_before_a_file_restore_reopens_its_own_disk_session() {
         },
     );
     mount(&mut owner, 0, None, None);
-    assert!(owner.status().quick_slots[0]);
+    assert!(owner.status().has_quicksave);
     let HostValue::PlayerRestored(association) =
-        execute(&mut owner, HostCommand::LoadQuickSlot { slot: 1, ports })
+        execute(&mut owner, HostCommand::QuickLoad { ports })
     else {
         panic!("Missing prior session's association");
     };
@@ -723,7 +734,7 @@ fn quick_slot_from_before_a_file_restore_reopens_its_own_disk_session() {
 
     mount(&mut owner, 1, Some("new-in-reopened-session"), Some(0x33));
     mount(&mut owner, 1, None, None);
-    execute(&mut owner, HostCommand::LoadQuickSlot { slot: 2, ports });
+    execute(&mut owner, HostCommand::QuickLoad { ports });
     mount(&mut owner, 1, Some("new-in-reopened-session"), None);
     assert!(owner.status().drives[1].inserted);
 }
@@ -1024,7 +1035,7 @@ mod named_start_state {
     use super::*;
     use egui::accesskit::Role;
     use egui_kittest::{kittest::Queryable, Harness};
-    use gui::game_library::{persist_save, GameLibrary};
+    use gui::game_library::{persist_quicksave, GameLibrary};
     use gui::player::PlayerScreen;
     use gui::{EmulatorApp, ViewMode};
     use std::fs;
@@ -1064,7 +1075,7 @@ mod named_start_state {
         let mut saved = saved_machine(&mut owner);
         saved.document.header.association.game_id = Some("game".into());
         let json = saved.document.to_json().unwrap();
-        persist_save(&game, &json, Some(1)).unwrap();
+        persist_quicksave(&game, &json).unwrap();
 
         let mut app = player_app(root);
         app.start_library_game(game, None, false);

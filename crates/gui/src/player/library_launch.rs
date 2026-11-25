@@ -31,22 +31,6 @@ impl EmulatorApp {
         self.open_library_game(game, save, normal_boot, false);
     }
 
-    pub(crate) fn load_player_quick(&mut self, slot: usize) {
-        if let Some(game) = self.player.active_game.clone() {
-            let slot_path = game.directory.join(format!("saves/slot-{slot}.txt"));
-            match std::fs::read_to_string(slot_path)
-                .map_err(|e| e.to_string())
-                .and_then(|name| {
-                    crate::game_library::relative_asset(&game.directory.join("saves"), name.trim())
-                }) {
-                Ok(path) => {
-                    self.request_player_launch(PendingLaunch::LibraryQuick { game, save: path })
-                }
-                Err(error) => self.file_error = Some(format!("Quick slot unavailable: {error}")),
-            }
-        }
-    }
-
     pub(super) fn open_library_game(
         &mut self,
         game: crate::game_library::LibraryGame,
@@ -54,6 +38,8 @@ impl EmulatorApp {
         normal_boot: bool,
         quick_load: bool,
     ) {
+        let explicit_save = save.is_some();
+        let initial_state = !explicit_save && !normal_boot && game.manifest.initial_state.is_some();
         if self.prompt_for_missing_configuration(&game, save.as_deref(), normal_boot) {
             return;
         }
@@ -100,13 +86,10 @@ impl EmulatorApp {
             });
             let save_document = state_path
                 .map(|path| {
-                    let json = std::fs::read_to_string(&path)
-                        .map_err(|error| format!("{}: {error}", path.display()))?;
-                    let saved = debugger::SaveState::from_json(&json)
-                        .map_err(|error| format!("{}: {error}", path.display()))?;
-                    game.manifest
-                        .validate_association(&saved.header.association)?;
-                    Ok::<_, String>(json)
+                    let (bytes, _) =
+                        crate::game_library::read_associated_save(&path, &game.manifest)
+                            .map_err(|error| format!("{}: {error}", path.display()))?;
+                    String::from_utf8(bytes).map_err(|error| format!("{}: {error}", path.display()))
                 })
                 .transpose()?;
             let current_session_disks = self.player.disks.iter().filter(|_| continuing);
@@ -247,14 +230,19 @@ impl EmulatorApp {
                         mappings,
                         disks,
                         association,
+                        initial_state,
                         game: Some(game),
                         library_root,
                     }),
                 );
             }
             Err(error) => {
-                self.file_error = Some(error);
-                self.player.initial_error = true;
+                self.file_error = Some(if explicit_save {
+                    format!("Could not load save: {error}")
+                } else {
+                    error
+                });
+                self.player.initial_error = initial_state;
             }
         }
     }

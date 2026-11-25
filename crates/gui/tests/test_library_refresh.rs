@@ -156,7 +156,7 @@ fn native_library_refreshes_while_paused_and_preserves_filter_selection_and_draf
     common::wait(&mut app, &ctx, |app| !app.host.status.running);
     let save_json = common::snapshot_json(&mut app);
     let mut h = harness(app);
-    h.get_by_label("Save").click_accesskit();
+    h.get_by_label("Quick save").click_accesskit();
     common::wait_harness(&mut h, |app| app.player.saves.len() == 1);
     assert!(h.state().file_error.is_none());
 

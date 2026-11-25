@@ -163,15 +163,13 @@ def check_rust_failure(browser, url, snapshot, screenshot):
     page.goto(url)
     page.wait_for_function("globalThis.observedGeneration === 1", timeout=30000)
     page.wait_for_timeout(400)
-    # Canvas UI: the ordinary State menu and its Load State action.
-    page.mouse.click(60, 15)
-    page.wait_for_timeout(150)
-    page.mouse.click(125, 64)
+    # Use the application shortcut for explicit state-file import.
+    page.keyboard.press("Control+l")
     page.wait_for_timeout(1500)
     if screenshot:
         page.screenshot(path=str(screenshot))
     page.wait_for_function("globalThis.observedGeneration === 2", timeout=30000)
-    page.mouse.click(130, 15)
+    page.keyboard.press("F5")
     page.wait_for_function("rustFailure.terminations === 1", timeout=30000)
     page.wait_for_timeout(300)
     report = page.evaluate("rustFailure")
@@ -184,7 +182,7 @@ def check_rust_failure(browser, url, snapshot, screenshot):
     assert not any(item["type"] in ("stopped", "unexpected_cleanup") for item in report["messages"]), report
     count = len(report["messages"])
     # A failed owner must not restart or publish more work after another Run.
-    page.mouse.click(130, 15)
+    page.keyboard.press("F5")
     page.wait_for_timeout(300)
     assert page.evaluate("rustFailure.messages.length") == count
     assert page.evaluate("rustFailure.terminations") == 1

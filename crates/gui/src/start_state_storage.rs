@@ -1,8 +1,8 @@
 //! Game-owned start-state files and manifest updates.
 
 use crate::game_library::{
-    read_associated_save, slot_filename, write_manifest_if_current, GameManifest, GameStartState,
-    LibraryGame, PLAYER_QUICK_SLOT,
+    current_quicksave, read_associated_save, same_save, write_manifest_if_current, GameManifest,
+    GameStartState, LibraryGame,
 };
 use std::collections::HashMap;
 use std::io::{ErrorKind, Write};
@@ -85,9 +85,9 @@ pub(crate) fn promote(
         return Err("Choose a save from this game".into());
     }
     if quicksave
-        && !slot_filename(directory, PLAYER_QUICK_SLOT)
+        && !current_quicksave(directory)?
             .as_deref()
-            .is_some_and(|name| source.file_name().is_some_and(|file| file == name))
+            .is_some_and(|selected| same_save(selected, source))
     {
         return Err("The current quicksave changed. Select it again.".into());
     }

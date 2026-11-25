@@ -9,7 +9,9 @@ use egui_kittest::{
     kittest::{NodeT, Queryable},
     Harness,
 };
-use gui::game_library::{persist_save, GameLibrary, GameManifest, GameStartState, LibraryGame};
+use gui::game_library::{
+    persist_quicksave, persist_save, GameLibrary, GameManifest, GameStartState, LibraryGame,
+};
 use gui::host_commands::HostCommand;
 use gui::player::PlayerScreen;
 use gui::{EmulatorApp, ViewMode};
@@ -188,17 +190,17 @@ fn promotion_copies_ordinary_progress_and_current_quicksave_then_loads_the_named
     let mut app = paused_game(root.path(), game);
     let ordinary = snapshot_with_time(&mut app, 10, 0x1111_1111);
     let ordinary_json = ordinary.to_json().unwrap();
-    let ordinary_file = persist_save(game, &ordinary_json, None).unwrap();
+    let ordinary_file = persist_save(game, &ordinary_json).unwrap();
     let quick = snapshot_with_time(&mut app, 20, 0x2222_2222);
     let quick_json = quick.to_json_pretty().unwrap();
-    let quick_file = persist_save(game, &quick_json, Some(1)).unwrap();
-    let pointer = quick_file.with_file_name("slot-1.txt");
+    let quick_file = persist_quicksave(game, &quick_json).unwrap();
+    let pointer = quick_file.with_file_name("quicksave.txt");
     let original_pointer = fs::read(&pointer).unwrap();
     set_d7(&mut app, 0x3333_3333);
     let live = common::snapshot(&mut app);
     let mut h = harness(app);
 
-    click(&mut h, "Load");
+    common::wait_harness(&mut h, |app| app.player.saves.len() == 2);
     h.get_by_label("Quicksave");
     h.get_all_by_label("Add to start states")
         .next()
@@ -235,7 +237,7 @@ fn promotion_copies_ordinary_progress_and_current_quicksave_then_loads_the_named
         .click_accesskit();
     common::settle_harness(&mut h);
     name_entry(&mut h, "Stale quicksave");
-    let replacement = persist_save(game, &ordinary_json, Some(1)).unwrap();
+    let replacement = persist_quicksave(game, &ordinary_json).unwrap();
     click(&mut h, "Add start state");
     assert_eq!(read_manifest(game).start_states, entries);
     assert!(h
@@ -245,7 +247,6 @@ fn promotion_copies_ordinary_progress_and_current_quicksave_then_loads_the_named
         .next()
         .is_some());
     click(&mut h, "Cancel");
-    click(&mut h, "Close");
     click(&mut h, "Library");
     library_game(&mut h, "First game");
     click(&mut h, "Rename Intro");
@@ -323,7 +324,7 @@ fn promotion_failures_and_unavailable_start_states_preserve_the_live_game_and_he
     let game = &mut games[0];
     let saved = snapshot_with_time(&mut app, 10, 0x1234);
     let json = saved.to_json().unwrap();
-    let source = persist_save(game, &json, None).unwrap();
+    let source = persist_save(game, &json).unwrap();
     fs::write(source.with_file_name("broken.json"), b"corrupt save").unwrap();
     let mut foreign = saved;
     foreign.header.association.game_id = Some("Other game".into());
@@ -417,8 +418,8 @@ fn named_deletion_can_be_undone_after_navigation_and_finishes_after_the_deadline
     let game = &mut first[0];
     let other = &mut others[0];
     let saved = snapshot_with_time(&mut app, 20, 42).to_json().unwrap();
-    let source = persist_save(game, &saved, Some(1)).unwrap();
-    let pointer = fs::read(source.with_file_name("slot-1.txt")).unwrap();
+    let source = persist_quicksave(game, &saved).unwrap();
+    let pointer = fs::read(source.with_file_name("quicksave.txt")).unwrap();
     let live = common::snapshot(&mut app);
     let mut h = harness(app);
     click(&mut h, "Library");
@@ -507,7 +508,7 @@ fn named_deletion_can_be_undone_after_navigation_and_finishes_after_the_deadline
     );
     assert_eq!(fs::read(&source).unwrap(), saved.as_bytes());
     assert_eq!(
-        fs::read(source.with_file_name("slot-1.txt")).unwrap(),
+        fs::read(source.with_file_name("quicksave.txt")).unwrap(),
         pointer
     );
     assert!(reopened.games[1].manifest.start_states.is_empty());

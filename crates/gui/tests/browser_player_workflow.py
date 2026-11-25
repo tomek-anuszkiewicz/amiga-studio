@@ -33,9 +33,11 @@ CONTROL_POINTS = {
     "Select Kickstart": (65, 108),
     "Select disk": (204, 131),
     "Start": (30, 223),
-    "Game Save": (1090, 218),
-    "Game Load": (1142, 218),
-    "Game Manual setup": (98, 17),
+    "Quick save": (1102, 218),
+    "Quick load": (1189, 218),
+    "Export state": (1114, 241),
+    "Import state": (1114, 264),
+    "Game Manual setup": (47, 17),
     "Game Controls": (1096, 42),
     "Game Instructions": (1168, 42),
     "Configurations": (161, 12),
@@ -178,7 +180,7 @@ def select_file(page, control, path):
 
 def export_state(page, path):
     with page.expect_download(timeout=30000) as download:
-        click(page, "Game Save")
+        click(page, "Export state")
     download.value.save_as(path)
     return json.loads(path.read_text(encoding="utf-8"))
 
@@ -189,7 +191,7 @@ def wait_generation(page, generation):
 
 
 def import_state(page, path, generation):
-    select_file(page, "Game Load", path)
+    select_file(page, "Import state", path)
     wait_generation(page, generation)
     page.wait_for_timeout(300)
 
@@ -211,7 +213,6 @@ def select_disk(page, option, description):
             return after
         page.wait_for_timeout(100)
     raise AssertionError(f"DF0 did not confirm {description}")
-
 
 def check_remount(page, snapshot, output):
     # Seed a single altered raw track in a disposable file. The last 16 bytes
@@ -426,6 +427,36 @@ def check_workflow(browser, url, rom, disk, output):
         page.wait_for_timeout(500)
         assert page.evaluate("workerReport.outputs") == stopped, "F7 did not pause"
 
+        stage = "quick actions share the browser session save and retain disk contents"
+        expected_disk = disk_reference(advanced)
+        assert decode_base64(expected_disk["modified_tracks"]["0"])[-16:] == bytes.fromhex("deadbeef") * 4
+        press("Quick save")
+        select_disk(page, "DF0 first disk", "replacement before quick load")
+        generation = page.evaluate("observedGeneration")
+        updates = page.evaluate("workerReport.outputs")
+        page.keyboard.press("F9")
+        wait_generation(page, generation + 1)
+        page.wait_for_function("updates => workerReport.outputs > updates + 3", arg=updates)
+        page.keyboard.press("F7")
+        page.wait_for_timeout(300)
+        restored_quick = save(output / "quick-button-save.json")
+        assert restored_quick["header"]["association"]["mounted"][0] == "manual-1"
+        assert disk_reference(restored_quick) == expected_disk
+        assert restored_quick["state"]["cck"] > advanced["state"]["cck"]
+
+        page.keyboard.press("F6")
+        select_disk(page, "DF0 first disk", "replacement before quick load button")
+        generation = page.evaluate("observedGeneration")
+        updates = page.evaluate("workerReport.outputs")
+        press("Quick load")
+        wait_generation(page, generation + 1)
+        page.wait_for_function("updates => workerReport.outputs > updates + 3", arg=updates)
+        page.keyboard.press("F7")
+        page.wait_for_timeout(300)
+        restored_quick = save(output / "quick-shortcut-save.json")
+        assert restored_quick["header"]["association"]["mounted"][0] == "manual-1"
+        assert disk_reference(restored_quick) == expected_disk
+
         stage = "configuration persistence"
         assert rom.name in stored, "Selected configuration was not persisted before reopening"
         page.reload()
@@ -441,6 +472,7 @@ def check_workflow(browser, url, rom, disk, output):
                 "configuration_cancel": True, "stopped_configuration_save": True,
                 "retired_program_inputs_ignored": True,
                 "recorded_keyboard_shortcut": True,
+                "shared_quicksave_buttons_and_shortcuts": True,
                 "disk_swap_retained_raw_tracks": True,
                 "manual_setup_and_restore_title": APPLICATION_TITLE, "offline_instructions": True,
                 "native_screenshot_action_excluded": True,
@@ -488,7 +520,7 @@ def setup_files(page, rom, disks):
 
 
 def reject_import(page, saved_path, expected_text, screenshot):
-    select_file(page, "Game Load", saved_path)
+    select_file(page, "Import state", saved_path)
     # The error window is rendered into the canvas. Locate its red error label in
     # the centered window, then read the same selectable text the player sees.
     clip = {"x": 360, "y": 350, "width": 560, "height": 110}
@@ -731,7 +763,7 @@ def check_archive_imports(browser, url, rom, output):
             click("Start")
             page.wait_for_function("updates => archiveWorker.outputs > updates + 3", arg=updates, timeout=30000)
             with page.expect_download(timeout=30000) as download:
-                click("Game Save")
+                click("Export state")
             path = output / (filename + ".json")
             download.value.save_as(path)
             snapshot = json.loads(path.read_text(encoding="utf-8"))

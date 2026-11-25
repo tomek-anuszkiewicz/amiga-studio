@@ -93,15 +93,19 @@ fn launch_save_reopen_relocate_and_restore_verified_media() {
     assert!(state.header.timestamp > 0);
     assert!(!state.header.screenshot_png.is_empty());
     assert_eq!(state.header.association.game_id.as_deref(), Some("one"));
-    let first = gui::game_library::persist_save(&library.games[0], &json, Some(1)).unwrap();
-    let second = gui::game_library::persist_save(&library.games[0], &json, None).unwrap();
+    let first = gui::game_library::persist_quicksave(&library.games[0], &json).unwrap();
+    let second = gui::game_library::persist_save(&library.games[0], &json).unwrap();
     assert_ne!(first, second);
     assert_eq!(
-        gui::game_library::saves(&library.games[0]).unwrap().len(),
+        gui::game_library::saves(&library.games[0])
+            .unwrap()
+            .entries
+            .len(),
         2
     );
     assert!(gui::game_library::saves(&library.games[1])
         .unwrap()
+        .entries
         .is_empty());
     // Relocate the library and media and keep the stable game/disk locators.
     let moved_root = root.join("relocated");
@@ -131,15 +135,24 @@ fn launch_save_reopen_relocate_and_restore_verified_media() {
         serde_json::to_vec(&game.manifest).unwrap(),
     )
     .unwrap();
-    let saves = gui::game_library::saves(&game).unwrap();
+    let saves = gui::game_library::saves(&game).unwrap().entries;
     assert_eq!(saves.len(), 2);
-    assert!(saves
-        .iter()
-        .all(|save| save.header.screenshot_png == state.header.screenshot_png));
-    assert!(saves
-        .windows(2)
-        .all(|pair| (pair[0].header.timestamp, &pair[0].path)
-            >= (pair[1].header.timestamp, &pair[1].path)));
+    assert_eq!(
+        saves[0].path,
+        moved.join("saves").join(first.file_name().unwrap())
+    );
+    assert_eq!(
+        saves[1].path,
+        moved.join("saves").join(second.file_name().unwrap())
+    );
+    assert!(saves[0].quicksave);
+    assert!(!saves[1].quicksave);
+    for save in &saves {
+        assert_eq!(
+            save.header.as_ref().unwrap().screenshot_png,
+            state.header.screenshot_png
+        );
+    }
     let unavailable = [
         ("catalog-old.json", br#"{"state":{"physical_memory":[1,2]},"header":{"version":15}}"#.as_slice(),
             "found 15, supported 16"),
@@ -160,7 +173,7 @@ fn launch_save_reopen_relocate_and_restore_verified_media() {
         common::settle_harness(&mut catalog);
         catalog.get_by_label("one").click_accesskit();
         common::wait_harness(&mut catalog, |app| {
-            app.player.selected_saves.len() == saves.len()
+            app.player.selected_saves.len() == saves.len() + unavailable.len()
         });
         for (actual, expected) in catalog.state().player.selected_saves.iter().zip(&saves) {
             assert_eq!(actual.path, expected.path);
@@ -168,17 +181,25 @@ fn launch_save_reopen_relocate_and_restore_verified_media() {
         }
         for (name, contents, expected) in unavailable {
             let path = moved.join("saves").join(name);
-            let path_text = path.display().to_string();
-            catalog.get_by(|node| {
-                node.role() == egui::accesskit::Role::Label
-                    && !node.is_hidden()
-                    && node.value().is_some_and(|text| {
-                        text.lines()
-                            .any(|line| line.contains(&path_text) && line.contains(expected))
-                    })
-            });
+            let entry = catalog
+                .state()
+                .player
+                .selected_saves
+                .iter()
+                .find(|entry| entry.path == path)
+                .unwrap();
+            assert!(entry.header.is_none());
+            assert!(entry.problem.as_deref().unwrap().contains(expected));
+            catalog.get_by_label(name);
+            catalog.get_by_label_contains(expected);
             assert_eq!(std::fs::read(&path).unwrap(), contents);
         }
+        assert_eq!(catalog.get_all_by_label("Load state").count(), saves.len());
+        assert_eq!(
+            catalog.get_all_by_label("Edit description").count(),
+            saves.len()
+        );
+        assert!(catalog.state().file_error.is_none());
     }
     for (save, bytes) in saves.iter().zip(original_files) {
         assert_eq!(std::fs::read(&save.path).unwrap(), bytes);
@@ -340,7 +361,7 @@ fn manual_setup_navigation_keeps_the_running_sessions_disk_assignments() {
 }
 
 #[test]
-fn library_continue_restores_selected_games_save_instead_of_active_game() {
+fn library_load_state_restores_selected_games_save_instead_of_active_game() {
     use egui_kittest::{kittest::Queryable, Harness};
     let (root, library) = library();
     let mut app = EmulatorApp::default();
@@ -357,7 +378,7 @@ fn library_continue_restores_selected_games_save_instead_of_active_game() {
         },
     );
     let saved = common::snapshot_json(&mut app);
-    gui::game_library::persist_save(&library.games[0], &saved, None).unwrap();
+    gui::game_library::persist_save(&library.games[0], &saved).unwrap();
     app.start_library_game(library.games[1].clone(), None, false);
     common::command(&mut app, HostCommand::Pause);
     let before = common::snapshot(&mut app);
@@ -371,15 +392,13 @@ fn library_continue_restores_selected_games_save_instead_of_active_game() {
     h.get_by_label("one").click_accesskit();
     common::settle_harness(&mut h);
     assert_eq!(h.state().player.selected_saves.len(), 1);
-    h.get_by_label_contains("Load state - ").click_accesskit();
-    common::settle_harness(&mut h);
-    h.get_by_label("Keep current session").click_accesskit();
-    common::settle_harness(&mut h);
     assert_eq!(common::snapshot(h.state_mut()), before);
-    h.get_by_label_contains("Load state - ").click_accesskit();
-    common::settle_harness(&mut h);
-    h.get_by_label("Replace session").click_accesskit();
-    common::settle_harness(&mut h);
+    let generation = h.state().host.status.generation;
+    h.get_by_label("Load state").click_accesskit();
+    common::wait_harness(&mut h, |app| {
+        app.host.status.running && app.host.status.generation > generation
+    });
+    assert!(h.query_by_label("Replace session").is_none());
     assert_eq!(
         h.state().player.active_game.as_ref().unwrap().manifest.id,
         "one"
@@ -396,7 +415,7 @@ fn library_continue_restores_selected_games_save_instead_of_active_game() {
 }
 
 #[test]
-fn library_continue_uses_the_selected_configuration_when_two_roots_reuse_a_game_id() {
+fn library_load_state_uses_the_selected_configuration_when_two_roots_reuse_a_game_id() {
     use debugger::launch::DeviceKind;
     use egui_kittest::kittest::Queryable;
     use gui::library_edit::GameDraft;
@@ -430,7 +449,7 @@ fn library_continue_uses_the_selected_configuration_when_two_roots_reuse_a_game_
     other_app.start_library_game(second.clone(), None, false);
     common::command(&mut other_app, HostCommand::Pause);
     let json = common::snapshot_json(&mut other_app);
-    gui::game_library::persist_save(&second, &json, None).unwrap();
+    gui::game_library::persist_save(&second, &json).unwrap();
 
     let mut app = game_app(&first_root);
     app.start_library_game(first.clone(), None, false);
@@ -446,10 +465,12 @@ fn library_continue_uses_the_selected_configuration_when_two_roots_reuse_a_game_
     common::wait_harness(&mut h, |app| app.player.library.games.len() == 2);
     h.get_by_label("one").click_accesskit();
     common::settle_harness(&mut h);
-    h.get_by_label_contains("Load state - ").click_accesskit();
-    common::settle_harness(&mut h);
-    h.get_by_label("Replace session").click_accesskit();
-    common::settle_harness(&mut h);
+    let generation = h.state().host.status.generation;
+    h.get_by_label("Load state").click_accesskit();
+    common::wait_harness(&mut h, |app| {
+        app.host.status.running && app.host.status.generation > generation
+    });
+    assert!(h.query_by_label("Replace session").is_none());
 
     let app = h.state();
     assert!(app.file_error.is_none());
@@ -652,7 +673,7 @@ fn player_disk_selection_and_ejection_publish_only_acknowledged_mounts() {
     app.player.catalog.configurations[0].launch.rom = "kick.rom".into();
     app.start_library_game(game.clone(), None, false);
     common::command(&mut app, HostCommand::Pause);
-    gui::game_library::persist_save(game, &common::snapshot_json(&mut app), Some(1)).unwrap();
+    gui::game_library::persist_quicksave(game, &common::snapshot_json(&mut app)).unwrap();
     app.navigate_player(PlayerScreen::Session);
     let mut h = Harness::builder()
         .with_size(egui::vec2(1280.0, 900.0))
@@ -690,15 +711,12 @@ fn player_disk_selection_and_ejection_publish_only_acknowledged_mounts() {
     let source = game.directory.join("disks/Disk 2.adf");
     assert_eq!(std::fs::read(&source).unwrap(), second_adf);
     std::fs::remove_file(&source).unwrap();
-    h.state_mut().set_view_mode(ViewMode::Developer);
-    common::settle_harness(&mut h);
-    h.get_by_label("State").click_accesskit();
-    common::settle_harness(&mut h);
-    h.get_by_label_contains("Quick Load Slot 1")
-        .click_accesskit();
-    common::settle_harness(&mut h);
-    h.get_by_label("Replace session").click_accesskit();
-    common::settle_harness(&mut h);
+    let generation = h.state().host.status.generation;
+    h.get_by_label("Quick load").click_accesskit();
+    common::wait_harness(&mut h, |app| {
+        app.host.status.generation > generation && app.host.status.running
+    });
+    assert!(h.query_by_label("Replace session").is_none());
     assert_eq!(h.state().player.mounted[0].as_deref(), Some("disk-one"));
     assert!(h.state().player.disks[1].bytes.is_none());
     open_player_drive(&mut h, "DF0:");
@@ -997,7 +1015,7 @@ fn caption_identifies_the_acknowledged_session_across_browse_rename_and_replacem
     assert_eq!(h.state().host.status.generation, first_generation);
     assert!(!h.state().host.status.running);
     assert_eq!(common::snapshot(h.state_mut()), first_snapshot);
-    h.get_by_label("Save").click_accesskit();
+    h.get_by_label("Quick save").click_accesskit();
     settle_caption(&mut h, &[]);
     assert_eq!(h.state().player.saves.len(), 1);
     let save_path = &h.state().player.saves[0].path;
@@ -1071,10 +1089,9 @@ fn caption_identifies_the_acknowledged_session_across_browse_rename_and_replacem
     h.get_by_label("Library").click_accesskit();
     settle_caption(&mut h, &[]);
     choose_game(&mut h, RENAMED);
-    h.get_by_label_contains("Load state - ").click_accesskit();
-    settle_caption(&mut h, &[]);
-    h.get_by_label("Replace session").click_accesskit();
+    h.get_by_label("Load state").click_accesskit();
     settle_caption(&mut h, &[RENAMED]);
+    assert!(h.query_by_label("Replace session").is_none());
     assert_eq!(
         h.state().player.active_game.as_ref().unwrap().manifest.id,
         "one"
@@ -1088,6 +1105,17 @@ fn caption_identifies_the_acknowledged_session_across_browse_rename_and_replacem
     settle_caption(&mut h, &["Amiga 500 Developer Studio"]);
     assert!(h.state().player.active_game.is_none());
     assert_eq!(h.state().player.screen, PlayerScreen::Session);
+}
+
+fn press_frontend_shortcut(h: &egui_kittest::Harness<'_, EmulatorApp>, key: &str) {
+    let generation = h.state().host.status.generation;
+    for pressed in [true, false] {
+        assert!(gui::keyboard_input::receive_key(
+            &h.ctx,
+            common::keyboard::key(key, pressed),
+            Some(generation),
+        ));
+    }
 }
 
 fn add_library_disk(game: &mut LibraryGame, id: &str, label: &str, fill: u8) -> PathBuf {
@@ -1373,7 +1401,7 @@ fn player_reset_runs_after_running_paused_and_loaded_sessions() {
             if loaded {
                 let generation = h.state().host.status.generation;
                 if library_game {
-                    let save = gui::game_library::persist_save(game, &progress, Some(1)).unwrap();
+                    let save = gui::game_library::persist_quicksave(game, &progress).unwrap();
                     h.state_mut()
                         .start_library_game(game.clone(), Some(save), false);
                 } else {
@@ -1508,7 +1536,7 @@ fn unavailable_invalid_or_disconnected_startup_disk_rejects_player_reset_without
     app.player.catalog.configurations[0].launch.drives = [true, true, true, false];
     app.start_library_game(game.clone(), None, true);
     let progress = common::snapshot_json(&mut app);
-    let save = gui::game_library::persist_save(&game, &progress, None).unwrap();
+    let save = gui::game_library::persist_save(&game, &progress).unwrap();
     drop(app);
     std::fs::remove_file(&source).unwrap();
 
@@ -1638,7 +1666,7 @@ fn normal_boot_with_a_missing_or_invalid_required_adf_keeps_the_current_machine(
 }
 
 #[test]
-fn saved_progress_selection_restores_only_after_replacement_is_confirmed() {
+fn catalog_load_and_quick_load_resume_from_running_and_paused_sessions() {
     use egui_kittest::kittest::Queryable;
 
     const SAVED_D7: u32 = 0x1234_5678;
@@ -1652,75 +1680,92 @@ fn saved_progress_selection_restores_only_after_replacement_is_confirmed() {
     common::settle_harness(&mut h);
     h.get_by_label("Pause").click();
     common::wait_harness(&mut h, |app| !app.host.status.running);
-    common::command(
-        h.state_mut(),
-        HostCommand::SetRegister {
-            register: gui::EditRegister::D(7),
-            value: SAVED_D7,
-        },
-    );
-    h.get_by_label("Save").click();
-    common::settle_harness(&mut h);
-    let saves = gui::game_library::saves(game).unwrap();
-    assert_eq!(saves.len(), 1);
-    let saved =
-        debugger::SaveState::from_json(&std::fs::read_to_string(&saves[0].path).unwrap()).unwrap();
-    assert_eq!(saved.header.version, debugger::SAVE_STATE_VERSION);
-    assert_eq!(saved.cpu().d_long(7), SAVED_D7);
-
-    common::command(
-        h.state_mut(),
-        HostCommand::SetRegister {
-            register: gui::EditRegister::D(7),
-            value: LIVE_D7,
-        },
-    );
-    let live = common::snapshot(h.state_mut());
-    assert_eq!(live.cpu.d_long(7), LIVE_D7);
-    let generation = h.state().host.status.generation;
-
-    let choose_save = |h: &mut egui_kittest::Harness<'_, EmulatorApp>| {
-        h.get_by_label("Load").click();
-        common::settle_harness(h);
-        assert!(h.query_by_label("Saved progress").is_some());
-        assert!(h.query_by_label("Replace session").is_none());
-
-        h.get_by_label("Resume").click();
-        common::settle_harness(h);
-        assert!(!h.state().host.status.running);
-        h.get_by_label_contains("Load state - ").click();
-        common::settle_harness(h);
-        assert!(h.query_by_label("Saved progress").is_none());
-        assert!(h.query_by_label("Replace session").is_some());
-
-        h.get_by_label("Resume").click();
-        common::settle_harness(h);
-        assert!(h.query_by_label("Keep current session").is_some());
-        assert!(!h.state().host.status.running);
-        assert_eq!(h.state().host.status.generation, generation);
-        assert_eq!(common::snapshot(h.state_mut()), live);
+    let set_marker = |app: &mut EmulatorApp, value| {
+        common::command(
+            app,
+            HostCommand::SetRegister {
+                register: gui::EditRegister::D(7),
+                value,
+            },
+        );
     };
+    set_marker(h.state_mut(), SAVED_D7);
+    h.get_by_label("Quick save").click_accesskit();
+    common::wait_harness(&mut h, |app| app.player.saves.len() == 1);
+    let saved_path = h.state().player.saves[0].path.clone();
+    let saved = debugger::SaveState::from_bytes(&std::fs::read(&saved_path).unwrap()).unwrap();
+    assert_eq!(saved.cpu().d_long(7), SAVED_D7);
+    assert_eq!(saved.header.version, debugger::SAVE_STATE_VERSION);
+    assert!(h.state().player.saves[0].quicksave);
+    assert!(h.query_by_label("State").is_none());
+    assert!(h.query_by_label("Save").is_none());
+    assert!(h.query_by_label("Load").is_none());
+    assert!(h.query_by_label("Continue").is_none());
 
-    choose_save(&mut h);
-    h.get_by_label("Keep current session").click();
-    common::settle_harness(&mut h);
-    assert!(h.query_by_label("Replace session").is_none());
-    assert_eq!(h.state().host.status.generation, generation);
-    assert_eq!(common::snapshot(h.state_mut()), live);
+    for (running, action) in [
+        (false, Some("Load state")),
+        (true, Some("Load state")),
+        (false, Some("Quick load")),
+        (true, Some("Quick load")),
+        (false, None),
+        (true, None),
+    ] {
+        set_marker(h.state_mut(), LIVE_D7);
+        assert_eq!(common::inspect(h.state_mut()).cpu.d_long(7), LIVE_D7);
+        if running {
+            h.get_by_label("Resume").click_accesskit();
+            common::wait_harness(&mut h, |app| app.host.status.running);
+        }
+        let generation = h.state().host.status.generation;
+        if let Some(action) = action {
+            h.get_by_label(action).click_accesskit();
+        } else {
+            press_frontend_shortcut(&h, "F9");
+        }
+        common::wait_harness(&mut h, |app| {
+            app.host.status.running
+                && app.host.status.generation > generation
+                && app.host.status.cck > saved.cck()
+        });
+        assert!(h.query_by_label("Replace session").is_none());
+        assert!(h.query_by_label("Keep current session").is_none());
+        assert_eq!(h.state().player.screen, PlayerScreen::Session);
+        assert!(h.state().file_error.is_none());
+        assert_eq!(h.state().player.saves[0].path, saved_path);
+        h.get_by_label("Pause").click_accesskit();
+        common::wait_harness(&mut h, |app| !app.host.status.running);
+        assert_eq!(common::inspect(h.state_mut()).cpu.d_long(7), SAVED_D7);
+        assert_eq!(h.state().player.mounted[0].as_deref(), Some("disk-one"));
+        let restored =
+            debugger::SaveState::from_json(&common::snapshot_json(h.state_mut())).unwrap();
+        assert_eq!(restored.cpu().d_long(7), SAVED_D7);
+        assert_eq!(restored.header.association, saved.header.association);
+    }
 
-    choose_save(&mut h);
-    h.get_by_label("Replace session").click();
-    common::settle_harness(&mut h);
-    assert!(h.query_by_label("Replace session").is_none());
+    // A file can change after being shown as loadable. The action revalidates it.
+    set_marker(h.state_mut(), LIVE_D7);
+    let generation = h.state().host.status.generation;
+    h.get_by_label("Resume").click_accesskit();
+    common::wait_harness(&mut h, |app| app.host.status.running);
+    let cck = h.state().host.status.cck;
+    std::fs::write(&saved_path, br#"{"header":{"version":15},"state":{}}"#).unwrap();
+    h.get_by_label("Load state").click_accesskit();
+    common::wait_harness(&mut h, |app| app.file_error.is_some());
+    assert!(h
+        .state()
+        .file_error
+        .as_deref()
+        .unwrap()
+        .contains("Could not load save"));
     assert!(h.state().host.status.running);
-    assert_eq!(h.state().player.screen, PlayerScreen::Session);
-    assert!(h.state().file_error.is_none());
-    let restored = debugger::SaveState::from_json(&common::snapshot_json(h.state_mut())).unwrap();
-    assert_eq!(restored.cpu().d_long(7), SAVED_D7);
-    assert_eq!(
-        restored.header.association.game_id.as_deref(),
-        Some(game.manifest.id.as_str())
-    );
+    assert_eq!(h.state().host.status.generation, generation);
+    assert_eq!(h.state().player.mounted[0].as_deref(), Some("disk-one"));
+    common::wait_harness(&mut h, |app| app.host.status.cck > cck);
+    h.get_by_label("Close").click_accesskit();
+    common::settle_harness(&mut h);
+    h.get_by_label("Pause").click_accesskit();
+    common::wait_harness(&mut h, |app| !app.host.status.running);
+    assert_eq!(common::inspect(h.state_mut()).cpu.d_long(7), LIVE_D7);
 }
 
 fn screenshot_directory(game: &LibraryGame) -> PathBuf {
@@ -1739,6 +1784,7 @@ fn directory_files(directory: &Path) -> Vec<PathBuf> {
 fn saved_progress_and_artwork(game: &LibraryGame) -> (Vec<(PathBuf, Vec<u8>)>, Vec<u8>) {
     let saves = gui::game_library::saves(game)
         .unwrap()
+        .entries
         .into_iter()
         .map(|save| {
             let bytes = std::fs::read(&save.path).unwrap();
@@ -1777,10 +1823,10 @@ fn screenshot_clicks_keep_the_active_game_destination_and_existing_files() {
     h.get_by_label("Pause").click_accesskit();
     common::wait_harness(&mut h, |app| !app.host.status.running);
     let save = common::snapshot_json(h.state_mut());
-    gui::game_library::persist_save(one, &save, Some(1)).unwrap();
+    gui::game_library::persist_quicksave(one, &save).unwrap();
     let mut other_save = debugger::SaveState::from_json(&save).unwrap();
     other_save.header.association.game_id = Some(two.manifest.id.clone());
-    gui::game_library::persist_save(two, &other_save.to_json().unwrap(), None).unwrap();
+    gui::game_library::persist_save(two, &other_save.to_json().unwrap()).unwrap();
     let before = [one, two].map(saved_progress_and_artwork);
 
     h.get_by_label("Library").click_accesskit();
@@ -1801,10 +1847,9 @@ fn screenshot_clicks_keep_the_active_game_destination_and_existing_files() {
     let bounds = screenshot.rect();
     assert!(bounds.is_positive());
     assert!(h.ctx.content_rect().contains_rect(bounds));
-    for label in ["Save", "Load"] {
+    for label in ["Quick save", "Quick load"] {
         let control = h.get_by_label(label).rect();
-        assert!(bounds.top() < control.bottom() && bounds.bottom() > control.top());
-        assert!(bounds.left() >= control.right());
+        assert!(bounds.top() >= control.bottom());
     }
     screenshot.click();
     h.step();
@@ -2195,6 +2240,7 @@ fn capture_buttons_are_adjacent_in_regular_and_compact_library_game_views_only()
         let cover = h.get_by_label("Cover");
         assert!(!screenshot.accesskit_node().is_disabled());
         assert!(!cover.accesskit_node().is_disabled());
+        assert!(h.ctx.content_rect().contains_rect(screenshot.rect()));
         assert!(h.ctx.content_rect().contains_rect(cover.rect()));
         assert!(cover.rect().left() >= screenshot.rect().right());
         assert!(cover.rect().top() < screenshot.rect().bottom());
@@ -2604,4 +2650,611 @@ fn screenshot_publishes_a_png_beyond_the_legacy_windows_path_limit() {
     let files = directory_files(&directory);
     assert_eq!(files, [path]);
     assert_eq!(image::open(&files[0]).unwrap().to_rgb8(), expected);
+}
+#[test]
+fn mixed_catalog_keeps_healthy_progress_and_imports_only_the_existing_legacy_designation() {
+    use egui_kittest::kittest::Queryable;
+
+    let (root, library) = library();
+    let game = &library.games[0];
+    let directory = game.directory.join("saves");
+    std::fs::create_dir(&directory).unwrap();
+    let mut session = gui::DebuggerSession::new();
+    session.machine.cpu.state.set_d_long(7, 0x11223344);
+    let mut saved = debugger::SaveState::capture(&session.machine, session.file_sources()).unwrap();
+    saved.header.association.game_id = Some(game.manifest.id.clone());
+    saved.header.timestamp = 1_700_000_000;
+    saved.header.description = Some("Earlier part".into());
+    let healthy = saved.to_json().unwrap();
+    let schema_invalid = healthy.replacen("\"keyboard_reset_asserted\":", "\"unknown\":", 1);
+    let old = br#"{"header":{"version":15,"timestamp":999999999,"description":"Ignore this"},"state":{}}"#;
+    let corrupt = b"{\"header\":";
+    let fixtures: [(&str, &[u8]); 5] = [
+        ("z-corrupt.json", corrupt),
+        ("a-old.json", old),
+        ("d-equal-time.json", healthy.as_bytes()),
+        ("c-schema-invalid.json", schema_invalid.as_bytes()),
+        ("b-equal-time.json", healthy.as_bytes()),
+    ];
+    for (name, bytes) in fixtures {
+        std::fs::write(directory.join(name), bytes).unwrap();
+    }
+    std::fs::write(directory.join("slot-1.txt"), "a-old.json").unwrap();
+    std::fs::write(directory.join("slot-2.txt"), "b-equal-time.json").unwrap();
+    let listing = gui::game_library::saves(game).unwrap().entries;
+    let names: Vec<_> = listing
+        .iter()
+        .map(|entry| entry.path.file_name().unwrap())
+        .collect();
+    assert_eq!(
+        names,
+        [
+            "a-old.json",
+            "d-equal-time.json",
+            "b-equal-time.json",
+            "z-corrupt.json",
+            "c-schema-invalid.json"
+        ]
+    );
+    assert!(listing[0].quicksave);
+    assert!(listing[0].header.is_none());
+    assert!(listing[0]
+        .problem
+        .as_deref()
+        .unwrap()
+        .contains("found 15, supported 16"));
+    assert!(listing[3]
+        .problem
+        .as_deref()
+        .unwrap()
+        .contains("Corrupt save"));
+    assert!(listing[4]
+        .problem
+        .as_deref()
+        .unwrap()
+        .contains("found 16, supported 16"));
+    assert!(
+        !directory.join("quicksave.txt").exists(),
+        "Discovery wrote a designation"
+    );
+
+    let mut app = game_app(&root);
+    app.start_library_game(game.clone(), None, false);
+    let mut h = session_harness(app);
+    common::wait_harness(&mut h, |app| {
+        app.host.status.running && app.player.saves.len() == 5
+    });
+    assert!(h.get_by_label("Quick load").accesskit_node().is_disabled());
+    assert!(h.state().file_error.is_none());
+    assert_eq!(
+        std::fs::read(directory.join("quicksave.txt")).unwrap(),
+        b"a-old.json"
+    );
+
+    h.get_by_label("Instructions").click_accesskit();
+    common::settle_harness(&mut h);
+    h.get_by_label("Open Configurations").click_accesskit();
+    common::wait_harness(&mut h, |app| !app.host.status.running);
+    let before = common::snapshot(h.state_mut());
+    let generation = h.state().host.status.generation;
+    h.get_by_label("Return to session").click_accesskit();
+    common::settle_harness(&mut h);
+    assert_eq!(h.state().host.status.generation, generation);
+    assert_eq!(common::snapshot(h.state_mut()), before);
+    assert!(h.state().file_error.is_none());
+    h.get_by_label("Controls").click_accesskit();
+    common::settle_harness(&mut h);
+
+    press_frontend_shortcut(&h, "F6");
+    common::wait_harness(&mut h, |app| app.player.saves.len() == 6);
+    assert!(h.state().file_error.is_none());
+    assert!(h
+        .state()
+        .toast_message
+        .as_ref()
+        .unwrap()
+        .0
+        .contains("Progress saved"));
+    assert!(h.state().player.saves[0].quicksave);
+    assert_eq!(
+        h.state()
+            .player
+            .saves
+            .iter()
+            .filter(|entry| entry.header.is_some())
+            .count(),
+        3
+    );
+    assert_eq!(
+        std::fs::read_to_string(directory.join("quicksave.txt")).unwrap(),
+        h.state().player.saves[0]
+            .path
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap()
+    );
+    for (name, bytes) in fixtures {
+        assert_eq!(std::fs::read(directory.join(name)).unwrap(), bytes);
+    }
+    assert_eq!(
+        std::fs::read(directory.join("slot-2.txt")).unwrap(),
+        b"b-equal-time.json"
+    );
+}
+
+#[test]
+fn edit_description_and_pending_deletion_preserve_save_identity_and_newer_quicksave() {
+    use egui_kittest::kittest::{by, Queryable};
+
+    let (root, library) = library();
+    let game = &library.games[0];
+    let directory = game.directory.join("saves");
+    let mut app = game_app(&root);
+    app.start_library_game(game.clone(), None, false);
+    let mut h = session_harness(app);
+    common::settle_harness(&mut h);
+    h.get_by_label("Pause").click_accesskit();
+    common::wait_harness(&mut h, |app| !app.host.status.running);
+    h.get_by_label("Quick save").click_accesskit();
+    common::wait_harness(&mut h, |app| app.player.saves.len() == 1);
+    let original = h.state().player.saves[0].path.clone();
+    let before_bytes = std::fs::read(&original).unwrap();
+    let before = debugger::SaveState::from_bytes(&before_bytes).unwrap();
+    let pointer = directory.join("quicksave.txt");
+    let initial = game.directory.join("initial.json");
+    std::fs::write(&initial, &before_bytes).unwrap();
+    let pointer_before = std::fs::read(&pointer).unwrap();
+    let adf = game.directory.join("disks/Disk 1.adf");
+    let original_adf = std::fs::read(&adf).unwrap();
+    std::fs::remove_file(&adf).unwrap();
+
+    h.get_by_label("Edit description").click_accesskit();
+    common::settle_harness(&mut h);
+    h.get_by_label("Edit save description");
+    let editor = h
+        .query_all(by().role(egui::accesskit::Role::TextInput))
+        .next()
+        .unwrap();
+    editor.focus();
+    editor.type_text("After the introduction");
+    h.step();
+    h.get_by_label("Save description").click_accesskit();
+    common::settle_harness(&mut h);
+    let edited_bytes = std::fs::read(&original).unwrap();
+    let mut edited = debugger::SaveState::from_bytes(&edited_bytes).unwrap();
+    assert_eq!(
+        edited.header.description.take().as_deref(),
+        Some("After the introduction")
+    );
+    assert_eq!(edited, before);
+    let raw = |bytes: &[u8]| {
+        let value: std::collections::BTreeMap<String, Box<serde_json::value::RawValue>> =
+            serde_json::from_slice(bytes).unwrap();
+        value["state"].get().to_owned()
+    };
+    assert_eq!(raw(&edited_bytes), raw(&before_bytes));
+    assert_eq!(std::fs::read(&pointer).unwrap(), pointer_before);
+    assert!(h.state().file_error.is_none());
+    std::fs::write(&adf, original_adf).unwrap();
+
+    let start = h.ctx.input(|input| input.time) + 1.0;
+    h.input_mut().time = Some(start);
+    h.get_by_label("Delete save").click_accesskit();
+    common::settle_harness(&mut h);
+    assert!(h.get_by_label("Quick load").accesskit_node().is_disabled());
+    assert!(h.query_by_label("Load state").is_none());
+    assert_eq!(std::fs::read(&original).unwrap(), edited_bytes);
+    h.input_mut().time = Some(start + 9.0);
+    h.step();
+    h.get_by_label("Undo").click_accesskit();
+    common::settle_harness(&mut h);
+    assert_eq!(std::fs::read(&original).unwrap(), edited_bytes);
+    assert_eq!(std::fs::read(&pointer).unwrap(), pointer_before);
+    assert!(!h.get_by_label("Quick load").accesskit_node().is_disabled());
+
+    let start = h.ctx.input(|input| input.time) + 1.0;
+    h.input_mut().time = Some(start);
+    h.get_by_label("Delete save").click_accesskit();
+    h.step();
+    h.get_by_label("Quick save").click_accesskit();
+    common::wait_harness(&mut h, |app| app.player.saves.len() == 2);
+    let replacement = h.state().player.saves[0].path.clone();
+    assert_ne!(replacement, original);
+    assert_eq!(std::fs::read(&original).unwrap(), edited_bytes);
+    let replacement_pointer = std::fs::read(&pointer).unwrap();
+    assert_ne!(replacement_pointer, pointer_before);
+    let generation = h.state().host.status.generation;
+    common::command(h.state_mut(), HostCommand::Faster)
+        .value
+        .unwrap();
+    common::settle_harness(&mut h);
+    assert_eq!(h.state().host.status.speed, 2.0);
+    h.get_by_label("Library").click_accesskit();
+    common::settle_harness(&mut h);
+    h.get_by_label("two").click_accesskit();
+    common::settle_harness(&mut h);
+    h.input_mut().time = Some(start + 9.9);
+    h.step();
+    assert!(original.exists());
+    h.input_mut().time = Some(start + 10.1);
+    h.step();
+    assert!(!original.exists());
+    assert!(replacement.exists());
+    assert_eq!(std::fs::read(&pointer).unwrap(), replacement_pointer);
+    assert_eq!(std::fs::read(&initial).unwrap(), before_bytes);
+    assert_eq!(h.state().host.status.generation, generation);
+    assert!(!h.state().host.status.running);
+    assert!(h.state().file_error.is_none());
+}
+
+#[test]
+fn closing_cancels_unexpired_deletion_and_cleared_quicksave_stays_cleared_after_reopening() {
+    use egui_kittest::kittest::{by, Queryable};
+    let (root, library) = library();
+    let game = &library.games[0];
+    let directory = game.directory.join("saves");
+    std::fs::create_dir(&directory).unwrap();
+    for name in ["legacy.json", "corrupt.json"] {
+        std::fs::write(directory.join(name), b"{").unwrap();
+    }
+    std::fs::write(directory.join("slot-1.txt"), "legacy.json").unwrap();
+    let open = || {
+        let mut app = game_app(&root);
+        app.start_library_game(game.clone(), None, false);
+        let mut h = session_harness(app);
+        common::wait_harness(&mut h, |app| {
+            app.host.status.running && app.player.saves.len() == 2
+        });
+        h
+    };
+    let mut h = open();
+    assert_eq!(
+        std::fs::read(directory.join("quicksave.txt")).unwrap(),
+        b"legacy.json"
+    );
+    h.query_all(by().label("Delete save"))
+        .next()
+        .unwrap()
+        .click_accesskit();
+    common::settle_harness(&mut h);
+    h.get_by_label("Undo");
+    let now = h.ctx.input(|input| input.time);
+    h.input_mut().time = Some(now + 2.0);
+    h.input_mut()
+        .viewports
+        .get_mut(&egui::ViewportId::ROOT)
+        .unwrap()
+        .events
+        .push(egui::ViewportEvent::Close);
+    h.step();
+    assert!(directory.join("legacy.json").exists());
+    drop(h);
+
+    let mut h = open();
+    assert!(h.query_by_label("Undo").is_none());
+    let start = h.ctx.input(|input| input.time) + 1.0;
+    h.input_mut().time = Some(start);
+    h.query_all(by().label("Delete save"))
+        .next()
+        .unwrap()
+        .click_accesskit();
+    h.step();
+    h.input_mut().time = Some(start + 10.1);
+    h.step();
+    assert!(!directory.join("legacy.json").exists());
+    assert!(directory.join("corrupt.json").exists());
+    assert_eq!(
+        std::fs::read(directory.join("slot-1.txt")).unwrap(),
+        b"legacy.json"
+    );
+    assert!(std::fs::read(directory.join("quicksave.txt"))
+        .unwrap()
+        .is_empty());
+    h.input_mut().time = Some(start + 12.0);
+    h.get_by_label("Delete save").click_accesskit();
+    common::settle_harness(&mut h);
+    h.get_by_label("Undo").click_accesskit();
+    h.step();
+    assert_eq!(std::fs::read(directory.join("corrupt.json")).unwrap(), b"{");
+    drop(h);
+
+    std::fs::write(directory.join("legacy.json"), b"{").unwrap();
+    let h = open();
+    assert!(h.state().player.saves.iter().all(|row| !row.quicksave));
+    assert!(h.get_by_label("Quick load").accesskit_node().is_disabled());
+}
+
+#[test]
+fn catalog_discovery_write_and_designation_failures_report_the_actual_result() {
+    use egui_kittest::kittest::Queryable;
+    let (root, library) = library();
+    let game = &library.games[0];
+    let directory = game.directory.join("saves");
+    std::fs::write(&directory, b"Not a directory").unwrap();
+    let mut app = game_app(&root);
+    app.start_library_game(game.clone(), None, false);
+    let mut h = session_harness(app);
+    common::wait_harness(&mut h, |app| app.host.status.running);
+    assert!(h.state().file_error.is_none());
+    assert!(h
+        .query_by_label_contains("Could not list saved progress")
+        .is_some());
+    h.get_by_label("Quick save").click_accesskit();
+    common::wait_harness(&mut h, |app| app.file_error.is_some());
+    assert!(h
+        .state()
+        .file_error
+        .as_deref()
+        .unwrap()
+        .contains("Could not write quicksave"));
+    assert_eq!(std::fs::read(&directory).unwrap(), b"Not a directory");
+
+    h.state_mut().file_error = None;
+    std::fs::remove_file(&directory).unwrap();
+    common::settle_harness(&mut h);
+    h.get_by_label("Quick save").click_accesskit();
+    common::wait_harness(&mut h, |app| app.player.saves.len() == 1);
+    let first = h.state().player.saves[0].path.clone();
+    let initial = std::fs::read(&first).unwrap();
+    let pointer = directory.join("quicksave.txt");
+    let selected = std::fs::read(&pointer).unwrap();
+    let lock = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(directory.join(".quicksave.lock"))
+        .unwrap();
+    lock.try_lock().unwrap();
+    h.get_by_label("Quick save").click_accesskit();
+    common::wait_harness(&mut h, |app| app.file_error.is_some());
+    let error = h.state().file_error.as_deref().unwrap();
+    assert!(
+        error.contains("but could not update the quicksave designation"),
+        "{error}"
+    );
+    assert_eq!(h.state().player.saves.len(), 2);
+    assert_eq!(h.state().player.saves[0].path, first);
+    assert!(h.state().player.saves[0].quicksave);
+    assert_eq!(std::fs::read(&pointer).unwrap(), selected);
+    assert_eq!(std::fs::read(&first).unwrap(), initial);
+}
+fn save_preview_pattern() -> image::RgbaImage {
+    // The outer colored strips mark every edge. The fields inside contain
+    // one-pixel vertical and horizontal periods, plus thin isolated lines.
+    const LETTERS: [[u8; 7]; 4] = [
+        [14, 17, 17, 31, 17, 17, 17],
+        [17, 27, 21, 21, 17, 17, 17],
+        [31, 4, 4, 4, 4, 4, 31],
+        [14, 17, 16, 23, 17, 17, 15],
+    ];
+    image::RgbaImage::from_fn(720, 568, |x, y| {
+        let color = if x < 8 || x >= 712 {
+            [248, 24, 24]
+        } else if y < 8 || y >= 560 {
+            [20, 248, 20]
+        } else if y < 166 {
+            [if x % 2 == 0 { 235 } else { 35 }; 3]
+        } else if y < 328 {
+            [if y % 2 == 0 { 235 } else { 35 }; 3]
+        } else if y < 440 {
+            if x % 13 == 0 || y % 13 == 0 {
+                [248; 3]
+            } else {
+                [12; 3]
+            }
+        } else {
+            let row = (y % 10) as usize;
+            let column = x % 6;
+            let letter = ((x / 6) % 4) as usize;
+            if row < 7 && column < 5 && LETTERS[letter][row] & (16 >> column) != 0 {
+                [250; 3]
+            } else {
+                [10; 3]
+            }
+        };
+        image::Rgba([color[0], color[1], color[2], 255])
+    })
+}
+
+#[test]
+fn saved_preview_preserves_the_frame_and_integrates_source_pixels_at_display_scale() {
+    use egui_kittest::kittest::Queryable;
+    let (root, library) = library();
+    let game = &library.games[0];
+    let image = save_preview_pattern();
+    let mut png = std::io::Cursor::new(Vec::new());
+    image.write_to(&mut png, image::ImageFormat::Png).unwrap();
+    let session = gui::DebuggerSession::new();
+    let mut save = debugger::SaveState::capture(&session.machine, session.file_sources()).unwrap();
+    save.header.association.game_id = Some(game.manifest.id.clone());
+    save.header.timestamp = 1_710_054_000;
+    save.header.screenshot_png = png.into_inner();
+    save.header.description = Some("Saved preview test".into());
+    let path = gui::game_library::persist_quicksave(game, &save.to_json().unwrap()).unwrap();
+    let bytes = std::fs::read(&path).unwrap();
+
+    let scene = || {
+        let mut app = game_app(&root);
+        app.player.saves = gui::game_library::saves(game).unwrap().entries;
+        app.player.active_game = Some(game.clone());
+        app
+    };
+    let captures = std::env::var_os("AMIGA_SAVE_PREVIEW_CAPTURE").map(PathBuf::from);
+    if let Some(directory) = &captures {
+        std::fs::create_dir_all(directory).unwrap();
+        image.save(directory.join("original.png")).unwrap();
+    }
+    let mut observed = Vec::new();
+    for (name, panel_width, dpi, zoom) in [
+        ("narrow", 192.0, 1.0, 1.0),
+        ("default", 220.0, 1.0, 1.0),
+        ("wide", 321.0, 1.5, 1.15),
+    ] {
+        let viewport_size = egui::vec2(1280.0, 1160.0);
+        let builder = || {
+            egui_kittest::Harness::builder()
+                .with_size(viewport_size)
+                .with_pixels_per_point(dpi)
+        };
+        let prepare = |h: &mut egui_kittest::Harness<'_, EmulatorApp>| {
+            h.ctx.set_zoom_factor(zoom);
+            common::settle_harness(h);
+            let viewport_width = h.ctx.content_rect().width();
+            if name != "default" {
+                h.get_by_label("Resize panel")
+                    .set_value_accesskit(f64::from(panel_width / viewport_width));
+                common::settle_harness(h);
+            }
+            let divider = h.get_by_label("Resize panel").rect().center().x;
+            let measured = h.ctx.content_rect().right() - divider;
+            assert!((measured - panel_width).abs() <= 1.0, "{name}: {measured}");
+        };
+        if let Some(directory) = &captures {
+            let mut rendered = builder()
+                .wgpu()
+                .build_ui_state(common::show_full_viewport, scene());
+            prepare(&mut rendered);
+            rendered
+                .render()
+                .unwrap()
+                .save(directory.join(format!("{name}-catalog.png")))
+                .unwrap();
+            let mut baseline = egui_kittest::Harness::<()>::builder()
+                .with_size(viewport_size)
+                .with_pixels_per_point(dpi)
+                .wgpu()
+                .build_ui(|ui| {
+                    let id = ui.make_persistent_id("baseline-preview");
+                    let texture = ui.data_mut(|data| data.get_temp::<egui::TextureHandle>(id));
+                    let texture = texture.unwrap_or_else(|| {
+                        let color =
+                            egui::ColorImage::from_rgba_unmultiplied([720, 568], image.as_raw());
+                        let texture = ui.ctx().load_texture(
+                            "Original PNG",
+                            color,
+                            egui::TextureOptions::LINEAR,
+                        );
+                        ui.data_mut(|data| data.insert_temp(id, texture.clone()));
+                        texture
+                    });
+                    ui.add(egui::Image::new(&texture).max_size(egui::vec2(110.0, 110.0)));
+                });
+            baseline.ctx.set_zoom_factor(zoom);
+            baseline.run_steps(2);
+            baseline
+                .render()
+                .unwrap()
+                .save(directory.join(format!("{name}-baseline.png")))
+                .unwrap();
+        }
+        let mut h = builder()
+            .renderer(SavePreviewTexture::default())
+            .build_ui_state(common::show_full_viewport, scene());
+        prepare(&mut h);
+        h.get_by_label("Quicksave");
+        h.get_by_label("Saved preview test");
+        let preview = h.render().unwrap();
+        let (width, height) = (preview.width() as usize, preview.height() as usize);
+        observed.push(width);
+        let pixel = |x, y| preview.get_pixel(x as u32, y as u32).0;
+        for (px, py) in [(0, height / 2), (width - 1, height / 2)] {
+            let color = pixel(px, py);
+            assert!(color[0] > 180 && color[1] < 80, "{name}: {color:?}");
+        }
+        for (px, py) in [(width / 2, 0), (width / 2, height - 1)] {
+            let color = pixel(px, py);
+            assert!(color[1] > 180 && color[0] < 80, "{name}: {color:?}");
+        }
+        for y in [height / 7, height * 2 / 5] {
+            for x in width / 4..width * 3 / 4 {
+                let intensity = pixel(x, y)[0];
+                assert!(
+                    (100..=170).contains(&intensity),
+                    "{name}: {x},{y} = {intensity}"
+                );
+            }
+        }
+        let line_values: Vec<_> = (width / 4..width * 3 / 4)
+            .map(|x| pixel(x, height * 7 / 10)[0])
+            .collect();
+        let minimum = line_values.iter().min().unwrap();
+        let maximum = line_values.iter().max().unwrap();
+        assert!(
+            maximum - minimum >= 20 && (40..230).contains(maximum),
+            "{name}: {minimum} to {maximum}"
+        );
+    }
+    assert!(
+        observed[0] < observed[1] && observed[1] < observed[2],
+        "{observed:?}"
+    );
+    assert_eq!(std::fs::read(&path).unwrap(), bytes);
+    let original = debugger::SaveState::from_bytes(&bytes)
+        .unwrap()
+        .header
+        .screenshot_png;
+    assert_eq!(
+        image::load_from_memory(&original).unwrap().into_rgba8(),
+        image
+    );
+}
+
+#[derive(Default)]
+struct SavePreviewTexture {
+    observed: Option<(egui::TextureId, egui::ColorImage)>,
+}
+
+impl egui_kittest::TestRenderer for SavePreviewTexture {
+    fn handle_delta(&mut self, delta: &mut egui::TexturesDelta) {
+        for (id, upload) in common::texture_updates(delta) {
+            let egui::ImageData::Color(image) = &upload.image;
+            let [width, height] = image.size;
+            if (140..720).contains(&width)
+                && (height as f32 / width as f32 - 568.0 / 720.0).abs() < 0.008
+            {
+                self.observed = Some((*id, image.as_ref().clone()));
+            }
+        }
+        delta.clear();
+    }
+
+    fn render(
+        &mut self,
+        ctx: &egui::Context,
+        output: &egui::FullOutput,
+    ) -> Result<image::RgbaImage, String> {
+        let (id, image) = self
+            .observed
+            .as_ref()
+            .ok_or("Missing reduced save thumbnail")?;
+        let bounds = output
+            .shapes
+            .iter()
+            .find_map(|shape| {
+                if let egui::Shape::Mesh(mesh) = &shape.shape {
+                    if mesh.texture_id == *id {
+                        let bounds = mesh.calc_bounds();
+                        assert!(
+                            bounds.left() >= shape.clip_rect.left() - 0.5
+                                && bounds.right() <= shape.clip_rect.right() + 0.5,
+                            "Thumbnail bounds {bounds:?} exceed the horizontal clip {:?}",
+                            shape.clip_rect
+                        );
+                        return Some(bounds);
+                    }
+                }
+                None
+            })
+            .ok_or("Missing painted save thumbnail")?;
+        let [width, height] = image.size;
+        assert!((bounds.width() * ctx.pixels_per_point() - width as f32).abs() <= 1.0);
+        assert!((bounds.height() * ctx.pixels_per_point() - height as f32).abs() <= 1.0);
+        let bytes = image
+            .pixels
+            .iter()
+            .flat_map(|pixel| pixel.to_srgba_unmultiplied())
+            .collect();
+        image::RgbaImage::from_raw(width as u32, height as u32, bytes)
+            .ok_or("Invalid thumbnail image".into())
+    }
 }

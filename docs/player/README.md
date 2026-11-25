@@ -28,13 +28,13 @@ library game with its startup disks and resumes execution. In a manual
 session, Reset boots with the disks already inserted.
 
 Pause stops at the end of the current video field. Resume continues from
-there. Use Save and Load in the player controls to keep or restore progress.
-For a desktop library game, Load opens its saves. In a manual session, Save
-exports a snapshot file and Load imports one. Keep the source Kickstart and
-disk images for your saves. After reopening a manual session, select the
-matching files in Manual setup, choose Return to session, and choose Load.
-The State menu also provides quick saves and loads. The configured quick
-shortcuts use slot 1.
+there. **Quick save** captures progress and **Quick load** resumes from it.
+The buttons use the same actions as the configured shortcuts, which start
+at F6 and F9. On desktop, select **Load state** on a saved progress row to
+resume from that file. In a manual session, use **Export state** and **Import
+state** for files. Keep the source Kickstart and disk images for your saves.
+After reopening a manual session, select the matching files in **Manual
+setup**, choose **Return to session**, and choose **Import state**.
 
 For a desktop library game, choose Add to start states next to a save or
 quicksave to keep a named copy. Select it under the game's Start states to

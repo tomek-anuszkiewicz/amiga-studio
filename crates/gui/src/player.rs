@@ -7,6 +7,9 @@ use crate::{EmulatorApp, ViewMode};
 
 #[cfg(not(target_arch = "wasm32"))]
 mod library_launch;
+mod manual_setup;
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) mod save_catalog;
 #[cfg(not(target_arch = "wasm32"))]
 mod start_states;
 
@@ -66,7 +69,6 @@ pub struct PlayerState {
     pub(crate) active_library_root: Option<std::path::PathBuf>,
     pub captured: bool,
     pub(crate) show_instructions: bool,
-    pub show_saves: bool,
     pub(crate) pending_launch: Option<PendingLaunch>,
     pub initial_error: bool,
     pub busy: bool,
@@ -90,7 +92,7 @@ pub struct PlayerState {
     #[cfg(not(target_arch = "wasm32"))]
     pub library_editor: Option<crate::library_edit::GameDraft>,
     #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) game_slots: [bool; debugger::session::QUICK_SLOT_COUNT],
+    pub(crate) save_catalog: save_catalog::SaveCatalogActions,
     #[cfg(not(target_arch = "wasm32"))]
     pub(crate) dialog: Option<crate::file_actions::NativeDialog>,
     #[cfg(not(target_arch = "wasm32"))]
@@ -124,6 +126,7 @@ pub(crate) enum PlayerEffect {
         mappings: Vec<JoystickMapping>,
         disks: Vec<SessionDisk>,
         association: debugger::SaveAssociation,
+        initial_state: bool,
         #[cfg(not(target_arch = "wasm32"))]
         game: Option<crate::game_library::LibraryGame>,
         #[cfg(not(target_arch = "wasm32"))]
@@ -135,9 +138,8 @@ pub(crate) enum PlayerEffect {
     },
     Reset,
     #[cfg(not(target_arch = "wasm32"))]
-    Save {
+    QuickSave {
         game: crate::game_library::LibraryGame,
-        slot: Option<usize>,
     },
 }
 
@@ -159,11 +161,6 @@ pub(crate) enum PendingLaunch {
     LibraryStartState {
         game: crate::game_library::LibraryGame,
         id: String,
-    },
-    #[cfg(not(target_arch = "wasm32"))]
-    LibraryQuick {
-        game: crate::game_library::LibraryGame,
-        save: std::path::PathBuf,
     },
 }
 
@@ -363,7 +360,11 @@ impl EmulatorApp {
             normal_boot,
         } = &launch
         {
-            if self.prompt_for_missing_configuration(game, save.as_deref(), *normal_boot) {
+            if let Some(path) = save {
+                self.load_catalog_save(game.clone(), path.clone(), false);
+                return;
+            }
+            if self.prompt_for_missing_configuration(game, None, *normal_boot) {
                 return;
             }
         }
@@ -374,7 +375,7 @@ impl EmulatorApp {
                 save,
                 normal_boot,
             } => save.is_none() && (*normal_boot || game.manifest.initial_state.is_none()),
-            PendingLaunch::LibraryStartState { .. } | PendingLaunch::LibraryQuick { .. } => false,
+            PendingLaunch::LibraryStartState { .. } => false,
             _ => true,
         };
         #[cfg(target_arch = "wasm32")]
@@ -421,10 +422,6 @@ impl EmulatorApp {
             } => self.start_library_game(game, save, normal_boot),
             #[cfg(not(target_arch = "wasm32"))]
             PendingLaunch::LibraryStartState { game, id } => self.start_named_state(game, id),
-            #[cfg(not(target_arch = "wasm32"))]
-            PendingLaunch::LibraryQuick { game, save } => {
-                self.open_library_game(game, Some(save), false, true);
-            }
         }
     }
 
@@ -435,23 +432,28 @@ impl EmulatorApp {
         ctx: &egui::Context,
     ) {
         self.player.busy = false;
-        let release_capture = match &effect {
-            PlayerEffect::Reset => value.is_ok(),
-            #[cfg(not(target_arch = "wasm32"))]
-            PlayerEffect::Save { .. } => false,
-            _ => value.is_ok(),
-        };
-        self.player.captured &= !release_capture;
         let value = match value {
             Ok(value) => value,
             Err(error) => {
-                self.file_error = Some(error);
-                if !matches!(&effect, PlayerEffect::Reset) {
-                    self.player.initial_error = true;
-                }
+                self.file_error = Some(match effect {
+                    #[cfg(not(target_arch = "wasm32"))]
+                    PlayerEffect::QuickSave { .. } => {
+                        format!("Could not capture quicksave: {error}")
+                    }
+                    PlayerEffect::Launch { initial_state, .. } => {
+                        self.player.initial_error = initial_state;
+                        error
+                    }
+                    _ => error,
+                });
                 return;
             }
         };
+        #[cfg(not(target_arch = "wasm32"))]
+        let keep_capture = matches!(effect, PlayerEffect::QuickSave { .. });
+        #[cfg(target_arch = "wasm32")]
+        let keep_capture = false;
+        self.player.captured &= keep_capture;
         self.file_error = None;
         match effect {
             PlayerEffect::Launch {
@@ -459,6 +461,7 @@ impl EmulatorApp {
                 mappings,
                 disks,
                 mut association,
+                initial_state: _,
                 #[cfg(not(target_arch = "wasm32"))]
                 game,
                 #[cfg(not(target_arch = "wasm32"))]
@@ -483,7 +486,17 @@ impl EmulatorApp {
                 self.set_view_mode(crate::ViewMode::ScreenOnly);
                 self.inspection.ready = false;
                 #[cfg(not(target_arch = "wasm32"))]
-                self.refresh_player_saves();
+                {
+                    let migration = self
+                        .player
+                        .active_game
+                        .as_ref()
+                        .and_then(|game| crate::game_library::initialize_quicksave(game).err());
+                    self.refresh_player_saves();
+                    if let Some(error) = migration {
+                        self.player.session_save_error = Some(error);
+                    }
+                }
             }
             PlayerEffect::Mount { drive, id } => self.player.mounted[drive] = id,
             PlayerEffect::Reset => {
@@ -492,25 +505,18 @@ impl EmulatorApp {
                 }
             }
             #[cfg(not(target_arch = "wasm32"))]
-            PlayerEffect::Save { game, slot } => {
+            PlayerEffect::QuickSave { game } => {
                 if let HostValue::Snapshot(json) = value {
-                    match crate::game_library::persist_save(&game, &json, slot) {
+                    match crate::game_library::persist_quicksave(&game, &json) {
                         Ok(_) => {
                             self.toast_message = Some((
                                 "Progress saved".into(),
                                 crate::layout::top_menu_bar::TOAST_DURATION_FRAMES,
-                            ));
-                            self.refresh_player_saves();
-                            if let Some(sync) = &mut self.player.library_sync {
-                                if sync.owns_game(&game) {
-                                    sync.changed_locally();
-                                }
-                            }
+                            ))
                         }
-                        Err(error) => {
-                            self.file_error = Some(format!("Could not persist progress: {error}"))
-                        }
+                        Err(error) => self.file_error = Some(error),
                     }
+                    self.refresh_game_saves(&game.directory, &game.manifest.id);
                 }
             }
         }
@@ -547,196 +553,6 @@ impl EmulatorApp {
             }
         }
         Ok(())
-    }
-
-    pub(crate) fn manual_ready(&self) -> bool {
-        #[cfg(not(target_arch = "wasm32"))]
-        if self.player.library_root.is_some() && !self.player.library_available() {
-            return false;
-        }
-        let Some(configuration) = self.player.catalog.selected() else {
-            return false;
-        };
-        if self.player.catalog.validate(configuration).is_err()
-            || self
-                .host_sources_available(&configuration.controls)
-                .is_err()
-        {
-            return false;
-        }
-        let rom_selected = self
-            .player
-            .selected_rom(configuration)
-            .is_some_and(|bytes| bytes.len() == physical_memory::KICKSTART_ROM_SIZE);
-        #[cfg(not(target_arch = "wasm32"))]
-        let rom_selected = rom_selected
-            || self
-                .player
-                .native_rom_path(configuration)
-                .is_ok_and(|path| {
-                    path.metadata().is_ok_and(|metadata| {
-                        metadata.is_file()
-                            && metadata.len() == physical_memory::KICKSTART_ROM_SIZE as u64
-                    })
-                });
-        rom_selected
-            && self
-                .player
-                .setup_mounted
-                .iter()
-                .enumerate()
-                .all(|(drive, id)| {
-                    id.as_ref().is_none_or(|id| {
-                        configuration.launch.drives[drive]
-                            && self.player.setup_disks.iter().any(|disk| {
-                                &disk.id == id
-                                    && disk.bytes.as_ref().is_some_and(|bytes| {
-                                        debugger::launch::disk_image_is_supported(bytes)
-                                    })
-                            })
-                    })
-                })
-    }
-
-    pub fn start_manual(&mut self) {
-        #[cfg(not(target_arch = "wasm32"))]
-        if self.player.library_root.is_some() && !self.player.library_available() {
-            self.file_error =
-                Some("Check the library directory and profiles in Configurations".into());
-            return;
-        }
-        let Some(configuration) = self.player.catalog.selected().cloned() else {
-            self.file_error = Some("Select a configuration".into());
-            return;
-        };
-        if let Err(error) = self
-            .player
-            .catalog
-            .validate(&configuration)
-            .and_then(|_| self.host_sources_available(&configuration.controls))
-        {
-            self.file_error = Some(error);
-            return;
-        }
-        let rom = match self.player.selected_rom(&configuration) {
-            Some(bytes) => bytes.to_vec(),
-            None => {
-                #[cfg(not(target_arch = "wasm32"))]
-                {
-                    match self
-                        .player
-                        .native_rom_path(&configuration)
-                        .and_then(|path| std::fs::read(path).map_err(|error| error.to_string()))
-                    {
-                        Ok(bytes) => bytes,
-                        Err(error) => {
-                            self.file_error =
-                                Some(format!("Select a readable Kickstart ROM: {error}"));
-                            return;
-                        }
-                    }
-                }
-                #[cfg(target_arch = "wasm32")]
-                {
-                    self.file_error = Some(
-                        "Select Kickstart again; stored names do not grant file access".into(),
-                    );
-                    return;
-                }
-            }
-        };
-        let disks = self.player.setup_disks.clone();
-        let mounted = self.player.setup_mounted.clone();
-        let selected_disks = mounted.each_ref().map(|id| {
-            id.as_ref()
-                .and_then(|id| disks.iter().find(|disk| &disk.id == id))
-        });
-        let media = selected_disks.map(|selected| selected.and_then(|disk| disk.bytes.clone()));
-        let disk_names = selected_disks.map(|disk| disk.map(|disk| disk.label.clone()));
-        let rom_name = self
-            .player
-            .selected_file_rom()
-            .and_then(|image| image.name)
-            .or_else(|| Some(configuration.launch.rom.clone()));
-        let association = debugger::SaveAssociation {
-            game_id: None,
-            mounted,
-        };
-        let setup = debugger::launch::MachineSetup {
-            config: config::A500Config::from_preset(
-                configuration.launch.preset,
-                configuration.launch.video,
-            ),
-            ports: configuration.controls.ports.each_ref().map(|p| p.device),
-            drives: configuration.launch.drives,
-            rom,
-            disks: media,
-        };
-        self.player.busy = true;
-        self.host.queue_effect(
-            HostCommand::Launch {
-                setup,
-                association: association.clone(),
-                rom_name,
-                disk_names,
-            },
-            HostEffect::Player(PlayerEffect::Launch {
-                configuration,
-                mappings: self.player.catalog.mappings.clone(),
-                disks,
-                association,
-                #[cfg(not(target_arch = "wasm32"))]
-                game: None,
-                #[cfg(not(target_arch = "wasm32"))]
-                library_root: self.player.library_root.clone(),
-            }),
-        );
-    }
-
-    pub(crate) fn select_setup_disk(&mut self, drive: usize, image: crate::disk_import::DiskImage) {
-        let Some(mounted) = self.player.setup_mounted.get_mut(drive) else {
-            self.file_error = Some("Invalid drive number".into());
-            return;
-        };
-        let id = format!("manual-{}", self.player.setup_disks.len());
-        self.player.setup_disks.push(SessionDisk {
-            id: id.clone(),
-            label: image.filename,
-            bytes: Some(image.bytes),
-        });
-        *mounted = Some(id);
-    }
-
-    pub(crate) fn select_setup_rom(&mut self, name: String, bytes: Vec<u8>) {
-        if bytes.len() != physical_memory::KICKSTART_ROM_SIZE {
-            self.file_error = Some(format!(
-                "Unsupported Kickstart ({} bytes). Select a 256 KiB image.",
-                bytes.len()
-            ));
-            return;
-        }
-        let Some(configuration) = self
-            .player
-            .catalog
-            .configurations
-            .iter_mut()
-            .find(|c| c.id == self.player.catalog.selected)
-        else {
-            self.file_error = Some("Select a configuration".into());
-            return;
-        };
-        #[cfg(target_arch = "wasm32")]
-        {
-            configuration.launch.rom = name;
-            self.player.settings_dirty = true;
-        }
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            self.player.rom_name = Some(name);
-        }
-        self.player.rom_reference = Some(configuration.launch.rom.clone());
-        self.player.rom = Some(bytes);
-        self.player.rom_configuration_id = Some(self.player.catalog.selected.clone());
     }
 
     pub(crate) fn mount_player_disk(&mut self, drive: usize, id: Option<String>) {
@@ -794,31 +610,77 @@ impl EmulatorApp {
         );
     }
 
-    pub(crate) fn save_player(&mut self, slot: Option<usize>) {
+    pub(crate) fn quick_save(&mut self) {
+        if self.player.busy {
+            return;
+        }
         #[cfg(not(target_arch = "wasm32"))]
         if let Some(game) = self.player.active_game.clone() {
             self.player.busy = true;
             self.host.queue_effect(
                 HostCommand::SaveSnapshot,
-                HostEffect::Player(PlayerEffect::Save { game, slot }),
+                HostEffect::Player(PlayerEffect::QuickSave { game }),
             );
             return;
         }
-        if let Some(slot) = slot {
-            crate::layout::top_menu_bar::quick_save_slot(self, slot);
-        } else {
-            self.open_save_state_dialog();
-        }
+        self.host.queue_effect(
+            HostCommand::QuickSave,
+            HostEffect::File(crate::file_actions::FileCompletion::QuickSave),
+        );
     }
 
-    pub(crate) fn load_player(&mut self) {
-        self.player.captured = false;
-        #[cfg(not(target_arch = "wasm32"))]
-        if self.player.active_game.is_some() {
-            self.refresh_player_saves();
-            self.player.show_saves = true;
+    pub(crate) fn quick_load(&mut self) {
+        if !self.quick_load_available() {
             return;
         }
-        self.open_load_state_dialog();
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Some(game) = self.player.active_game.clone() {
+            if let Some(save) = self.player.saves.iter().find(|save| save.quicksave) {
+                self.load_catalog_save(game, save.path.clone(), true);
+            }
+            return;
+        }
+        if let Err(error) = self.validate_current_input() {
+            self.file_error = Some(error);
+            return;
+        }
+        self.host.queue_effect(
+            HostCommand::QuickLoad {
+                ports: self.current_control_ports(),
+            },
+            HostEffect::File(crate::file_actions::FileCompletion::State(
+                "Quicksave restored".into(),
+            )),
+        );
+    }
+
+    pub(crate) fn quick_load_available(&self) -> bool {
+        if self.player.busy {
+            return false;
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Some(game) = &self.player.active_game {
+            return self.player.saves.iter().any(|save| {
+                save.quicksave
+                    && save.header.is_some()
+                    && self
+                        .player
+                        .save_catalog
+                        .deadline(game, &save.path)
+                        .is_none()
+            });
+        }
+        self.host.status.has_quicksave
+    }
+
+    pub(crate) fn editing_save_description(&self) -> bool {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.player.save_catalog.description.is_some()
+        }
+        #[cfg(target_arch = "wasm32")]
+        {
+            false
+        }
     }
 }

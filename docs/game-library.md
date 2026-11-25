@@ -32,8 +32,8 @@ Keyboard and controller input work as soon as the running session is active.
 Click the Amiga display to capture the mouse. The middle mouse button frees
 the mouse while play continues. Configuration screens, text editors and
 dialogs take priority over guest input. The player panel shows drive activity
-and has four disk dropdowns and controls to eject disks, pause, resume, reset,
-save and load. Drag the divider to resize the panel. Small windows put the
+and has four disk dropdowns, Pause, Resume, Reset, Quick save and Quick load.
+Drag the divider to resize the panel. Small windows put the
 same controls under **Game controls** below the display. Open **Instructions**
 there to read the [player guide](player/README.md) without leaving the session.
 Use **Manual setup** in the toolbar to reach **Configurations** or start another
@@ -156,17 +156,27 @@ precedence. A missing or unreadable cover shows a blank outlined square above
 the game's selectable name. You can still start the game. The library picks up
 cover changes automatically.
 
-Save creates a new file in the game's `saves/` directory with a preview and a UTC
-creation time. **Load state** verifies the matching Kickstart and ADF sources,
-restores the captured hardware and mounted disks, and resumes the session.
-It bypasses boot and the current hardware preset. Host input still needs a
-compatible configuration. Slot saves also persist per game.
+**Quick save** creates a file in the game's `saves/` directory. The new
+quicksave appears at the top of the saved progress list. Earlier quicksaves
+stay in the list as ordinary saves. Each save shows its original local date
+and time and a preview when available. Use **Edit description** to change its
+label while keeping the same file and creation time. You can use the preview
+and edit the description while the original images are offline.
+
+**Quick load** restores the designated quicksave. To open any compatible save,
+choose **Load state** on its row. Both actions verify the matching Kickstart
+and ADF sources before restoring the captured machine and resuming play with
+the current committed controls. An incompatible or damaged save
+shows its filename and the reason it cannot load. Use **Delete save** to remove
+a save. **Undo** keeps it if chosen within ten seconds. Closing the app during
+that window also keeps it. Choose **Import state** or **Export state** in the
+game controls to work with a snapshot file directly.
 
 When an Amiga program writes to disk A, you can switch to disk B and reinsert
 A later in the same session. A still contains the program's changes, and the
 original ADF file stays unchanged. A save file records each inserted disk's
 source and modified raw tracks. To keep changes to a disk in a save, insert
-it before saving. A quick load during the session restores the slot's mounted
+it before saving. A quick load during the session restores the quicksave's mounted
 disks and keeps the other disks you have used in that session. On game Reset,
 the app uses matching copies from the session when available. If no matching
 copy is available for a startup disk, it prepares one from the source ADF
@@ -194,13 +204,12 @@ archives. When a selection contains several usable images, choose the one to
 insert. Standard ZIP compression and 7z LZMA or LZMA2 are supported. Choose an
 unencrypted archive.
 
-The browser build supports manual setup, file save/import/export and session
-quick slots. Browser storage retains named settings. Select ROM and disk
+The browser build supports manual setup, file import and export, and one
+in-memory quicksave per open app. Browser storage retains named settings. Select ROM and disk
 files again after reopening because the browser build keeps their bytes only for
 the session. To open an exported save after reopening, choose the matching
 Kickstart and disk files in Manual setup, then choose **Return to session**
-and **Load**. This iteration has no browser library, bundle loader or
+and **Import state**. This iteration has no browser library, bundle loader or
 persistent browser save catalog.
 
-Saves use schema 16. The app keeps older files and reports their schema as
-unsupported when you try to load them.
+Saves use schema 16. The catalog keeps older files visible as incompatible.

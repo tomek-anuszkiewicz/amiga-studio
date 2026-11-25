@@ -188,7 +188,7 @@ fn stopped_reattachment_preserves_phases_registers_media_and_rejects_old_events(
     expected.game_ports.release_controls();
     let mut owner = MachineOwner::new(session);
     let generation = owner.status().generation;
-    execute(&mut owner, HostCommand::SaveQuickSlot(1));
+    execute(&mut owner, HostCommand::QuickSave);
     execute(
         &mut owner,
         HostCommand::ReconfigurePorts([DeviceKind::Mouse, DeviceKind::Joystick]),
@@ -209,8 +209,7 @@ fn stopped_reattachment_preserves_phases_registers_media_and_rejects_old_events(
     assert!(stale.value.unwrap_err().contains("obsolete"));
     execute(
         &mut owner,
-        HostCommand::LoadQuickSlot {
-            slot: 1,
+        HostCommand::QuickLoad {
             ports: [DeviceKind::Mouse, DeviceKind::Disconnected],
         },
     );
@@ -220,7 +219,7 @@ fn stopped_reattachment_preserves_phases_registers_media_and_rejects_old_events(
     );
     assert_eq!(*capture(&mut owner, &sources).state, expected);
     let video = VideoExchange::new(vec![0; owner.video_storage_len()]);
-    execute(&mut owner, HostCommand::Run);
+    assert!(owner.status().running);
     owner.publish(&video).unwrap();
     let before = capture(&mut owner, &sources);
     assert!(owner
@@ -235,7 +234,7 @@ fn stopped_reattachment_preserves_phases_registers_media_and_rejects_old_events(
 }
 
 #[test]
-fn a_foreign_game_quick_slot_cannot_replace_current_progress_or_association() {
+fn a_foreign_game_quicksave_cannot_replace_current_progress_or_association() {
     let mut session = DebuggerSession::new();
     let sources = MediaSources::default();
     let mut saved_a = SaveState::capture(&session.machine, &sources).unwrap();
@@ -257,16 +256,16 @@ fn a_foreign_game_quick_slot_cannot_replace_current_progress_or_association() {
             },
         );
         if game == "game-a" {
-            execute(&mut owner, HostCommand::SaveQuickSlot(1));
+            execute(&mut owner, HostCommand::QuickSave);
         }
     }
-    assert!(owner.status().quick_slots[0]);
+    assert!(owner.status().has_quicksave);
     let before = capture(&mut owner, &sources);
     let generation = owner.status().generation;
     let rejected = owner.execute(HostRequest {
         id: 3,
         generation,
-        command: HostCommand::LoadQuickSlot { slot: 1, ports },
+        command: HostCommand::QuickLoad { ports },
     });
     assert!(rejected.value.unwrap_err().contains("different game"));
     assert_eq!(owner.status().generation, generation);

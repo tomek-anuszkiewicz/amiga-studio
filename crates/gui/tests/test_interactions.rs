@@ -2241,8 +2241,14 @@ fn test_right_dock_bottom_docking_and_fill() {
 #[test]
 fn test_simulated_quick_save_and_load_shortcuts() {
     let ctx = egui::Context::default();
-    let mut app = EmulatorApp::default();
-    common::settle(&mut app, &egui::Context::default());
+    let mut rom = vec![0; 262144];
+    rom[..4].copy_from_slice(&0x70000u32.to_be_bytes());
+    rom[4..8].copy_from_slice(&0xfc0100u32.to_be_bytes());
+    rom[0x100..0x102].copy_from_slice(&[0x60, 0xfe]); // BRA.S to itself.
+    let mut session = Box::new(gui::DebuggerSession::new());
+    session.load_rom(&rom).unwrap();
+    let mut app = EmulatorApp::with_session(session);
+    common::settle(&mut app, &ctx);
 
     let saved_cck = 2;
     let later_cck = 5;
@@ -2251,10 +2257,12 @@ fn test_simulated_quick_save_and_load_shortcuts() {
     }
     assert_eq!(common::inspect(&mut app).debugger.current_cck, saved_cck);
     assert_eq!(app.host.status.cck, saved_cck);
-    assert!(!app.host.status.quick_slots[0]);
+    assert!(!app.host.status.has_quicksave);
     common::settle(&mut app, &ctx);
 
-    // 1. Simulate F6 (Quick Save Slot 1)
+    let address = 0xc00100;
+    let before = common::read_memory(&mut app, address, 2);
+    // Simulate F6.
     let input_f6 = RawInput {
         events: vec![Event::Key {
             key: Key::F6,
@@ -2273,14 +2281,14 @@ fn test_simulated_quick_save_and_load_shortcuts() {
     });
     common::settle(&mut app, &ctx);
 
-    assert!(app.host.status.quick_slots[0]);
+    assert!(app.host.status.has_quicksave);
     assert!(app.toast_message.is_some());
     assert!(app
         .toast_message
         .as_ref()
         .unwrap()
         .0
-        .contains("Quick-saved"));
+        .contains("Progress saved"));
 
     for _ in saved_cck..later_cck {
         app.host.queue(HostCommand::StepCck);
@@ -2288,7 +2296,17 @@ fn test_simulated_quick_save_and_load_shortcuts() {
     assert_eq!(common::inspect(&mut app).debugger.current_cck, later_cck);
     assert_eq!(app.host.status.cck, later_cck);
 
-    // 2. Simulate F9 (Quick Load Slot 1)
+    common::command(
+        &mut app,
+        HostCommand::WriteMemory {
+            address,
+            bytes: vec![0xca, 0xfe],
+            restart_instruction: false,
+        },
+    );
+    assert_eq!(common::read_memory(&mut app, address, 2), [0xca, 0xfe]);
+    let generation = app.host.status.generation;
+    // Simulate F9.
     let input_f9 = RawInput {
         events: vec![Event::Key {
             key: Key::F9,
@@ -2307,9 +2325,15 @@ fn test_simulated_quick_save_and_load_shortcuts() {
     });
     common::settle(&mut app, &ctx);
 
-    assert_eq!(common::inspect(&mut app).debugger.current_cck, saved_cck);
-    assert_eq!(app.host.status.cck, saved_cck);
-    assert!(app.toast_message.as_ref().unwrap().0.contains("Restored"));
+    common::wait(&mut app, &ctx, |app| {
+        app.host.status.running
+            && app.host.status.generation > generation
+            && app.host.status.cck > saved_cck
+    });
+    common::command(&mut app, HostCommand::Pause);
+    common::wait(&mut app, &ctx, |app| !app.host.status.running);
+    assert_eq!(common::read_memory(&mut app, address, 2), before);
+    assert!(app.toast_message.as_ref().unwrap().0.contains("restored"));
 }
 
 #[test]

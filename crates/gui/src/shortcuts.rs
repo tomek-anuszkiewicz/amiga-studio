@@ -158,12 +158,12 @@ impl EmulatorApp {
             let generation = decision.generation;
             match decision.route {
                 KeyRoute::Command { action, pressed } => {
-                    if pressed && !self.player.show_saves {
+                    if pressed && !self.editing_save_description() {
                         self.apply_key_command(action, ctx);
                     }
                 }
                 KeyRoute::Gameplay(event @ KeyboardEvent::Key { .. })
-                    if !self.player.show_saves =>
+                    if !self.editing_save_description() =>
                 {
                     if self.host.keyboard_pending.len() == INPUT_QUEUE_CAPACITY {
                         self.host.keyboard_pending.clear();
@@ -190,16 +190,10 @@ impl EmulatorApp {
         let focused_text = ctx
             .memory(|memory| memory.focused())
             .is_some_and(|id| egui::TextEdit::load_state(ctx, id).is_some());
-        let dialog = self.player.show_saves
+        let dialog = self.editing_save_description()
             || self.file_error.is_some()
             || self.file_picker_open()
-            || ctx.memory(|memory| {
-                // egui reports the previous pass's layer. The chooser's state
-                // determines ingress ownership on the opening and closing passes.
-                memory.top_modal_layer().is_some_and(|layer| {
-                    layer.id != egui::Id::unique(crate::player_view::SAVED_PROGRESS_DIALOG)
-                })
-            });
+            || ctx.memory(|memory| memory.top_modal_layer().is_some());
         #[cfg(not(target_arch = "wasm32"))]
         let focused = ctx.input(|input| input.focused);
         #[cfg(target_arch = "wasm32")]
@@ -262,7 +256,7 @@ impl EmulatorApp {
 
     pub(crate) fn apply_key_command(&mut self, action: KeyCommand, ctx: &egui::Context) {
         use KeyCommand::*;
-        if matches!(action, Pause | QuickLoad | LoadState) {
+        if matches!(action, Pause | LoadState) {
             self.host.keyboard_pending.clear();
         }
         match action {
@@ -276,11 +270,8 @@ impl EmulatorApp {
                 self.player.captured = false;
                 self.toggle_run();
             }
-            QuickSave => self.save_player(Some(1)),
-            QuickLoad => {
-                self.player.captured = false;
-                crate::layout::top_menu_bar::quick_load_slot(self, 1);
-            }
+            QuickSave => self.quick_save(),
+            QuickLoad => self.quick_load(),
             StepInstruction => {
                 self.disassembly_view_addr = None;
                 self.host.queue(HostCommand::StepInstruction);

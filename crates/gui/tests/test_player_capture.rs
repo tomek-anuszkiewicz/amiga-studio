@@ -195,6 +195,50 @@ fn active_running_sessions_deliver_keys_and_keyboard_joystick_with_the_mouse_fre
 }
 
 #[test]
+fn quick_load_without_a_save_preserves_guest_key_release() {
+    let (mut app, ctx) = running_with(ViewMode::ScreenOnly, false, Default::default());
+    let generation = app.host.status.generation;
+    assert!(!app.host.status.has_quicksave);
+    window_keys(&mut app, &ctx, &[("KeyA", true, generation)]);
+    wait_guest_key(&mut app, &ctx, 0x20, true);
+
+    window_keys(
+        &mut app,
+        &ctx,
+        &[("F9", true, generation), ("F9", false, generation)],
+    );
+    assert!(app.host.status.running);
+    assert_eq!(app.host.status.generation, generation);
+    assert!(guest_key_held(&mut app, 0x20));
+    window_keys(&mut app, &ctx, &[("KeyA", false, generation)]);
+    wait_guest_key(&mut app, &ctx, 0x20, false);
+
+    window_keys(
+        &mut app,
+        &ctx,
+        &[("F6", true, generation), ("F6", false, generation)],
+    );
+    common::wait(&mut app, &ctx, |app| app.host.status.has_quicksave);
+    window_keys(&mut app, &ctx, &[("KeyA", true, generation)]);
+    wait_guest_key(&mut app, &ctx, 0x20, true);
+    window_keys(
+        &mut app,
+        &ctx,
+        &[("F9", true, generation), ("F9", false, generation)],
+    );
+    common::wait(&mut app, &ctx, |app| {
+        app.host.status.generation != generation
+    });
+    assert!(app.host.status.running);
+    assert!(!guest_key_held(&mut app, 0x20));
+    assert!(!gui::keyboard_input::receive_key(
+        &ctx,
+        common::keyboard::key("KeyB", true),
+        Some(generation),
+    ));
+}
+
+#[test]
 fn window_ingress_rejects_stale_generations_and_delivers_physical_hold_and_release() {
     let (mut app, ctx) = running();
     let generation = app.host.status.generation;
@@ -252,7 +296,7 @@ fn window_ingress_focus_loss_and_inbox_overflow_release_held_guest_input() {
     assert!(!app.player.captured);
     assert!(app.host.status.running);
     assert!(!guest_key_held(&mut app, 0x20));
-    assert!(!app.host.status.quick_slots[0]);
+    assert!(!app.host.status.has_quicksave);
     assert!(
         !guest_key_held(&mut app, 0x35),
         "B escaped focus-loss ordering"
@@ -283,7 +327,7 @@ fn quick_save_shortcut_keeps_capture_and_generation_while_running() {
     draw(&mut app, &ctx, Some(egui::Key::F6));
     common::settle(&mut app, &ctx);
     assert!(app.player.captured);
-    assert!(app.host.status.quick_slots[0]);
+    assert!(app.host.status.has_quicksave);
     assert!(app.host.status.running);
     assert_eq!(app.host.status.generation, generation);
 }
@@ -326,7 +370,7 @@ fn configured_letter_shortcuts_take_priority_over_guest_keys_and_joystick() {
         common::settle(app, &ctx);
     };
     shortcut(&mut app, "KeyA", generation);
-    assert!(app.host.status.quick_slots[0]);
+    assert!(app.host.status.has_quicksave);
     assert!(app.host.status.running);
     assert_eq!(app.host.status.generation, generation);
     delivered(&mut app, &ctx);
@@ -388,7 +432,7 @@ fn long_disk_names_keep_the_wide_player_panel_compact() {
         );
     common::settle_harness(&mut harness);
     let save = harness
-        .get_by_label("Save")
+        .get_by_label("Quick save")
         .accesskit_node()
         .bounding_box()
         .unwrap();
@@ -1154,7 +1198,7 @@ fn a_consumed_quick_save_press_cannot_type_when_an_editor_gains_focus() {
         Some(generation),
     ));
     ui_frame(&mut app, &ctx, vec![]);
-    common::wait(&mut app, &ctx, |app| app.host.status.quick_slots[0]);
+    common::wait(&mut app, &ctx, |app| app.host.status.has_quicksave);
     assert!(app.host.status.running);
     assert!(!guest_key_held(&mut app, 0x20));
     let first_save_cck = app.host.status.cck;
@@ -1205,8 +1249,7 @@ fn a_consumed_quick_save_press_cannot_type_when_an_editor_gains_focus() {
 
     let reply = common::command(
         &mut app,
-        HostCommand::LoadQuickSlot {
-            slot: 1,
+        HostCommand::QuickLoad {
             ports: [
                 debugger::launch::DeviceKind::Mouse,
                 debugger::launch::DeviceKind::Joystick,
@@ -1246,7 +1289,7 @@ fn a_text_field_receives_the_first_character_in_the_same_batch_as_its_click() {
     ui_frame(&mut app, &ctx, events);
     assert_eq!(app.memory_search_state.query, "a");
     common::settle(&mut app, &ctx);
-    assert!(!app.host.status.quick_slots[0]);
+    assert!(!app.host.status.has_quicksave);
 }
 
 #[test]
@@ -1271,7 +1314,7 @@ fn a_file_error_without_text_focus_suspends_gameplay_and_shortcuts() {
     );
     wait_guest_key(&mut app, &ctx, 0x20, false);
     assert_eq!(app.view_mode, ViewMode::ScreenOnly);
-    assert!(!app.host.status.quick_slots[0]);
+    assert!(!app.host.status.has_quicksave);
     assert!(!guest_key_held(&mut app, 0x35));
     app.file_error = None;
     draw(&mut app, &ctx, None);
@@ -1293,14 +1336,14 @@ fn a_file_error_without_text_focus_suspends_gameplay_and_shortcuts() {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn saved_progress_harness(
+fn save_description_harness(
     configuration: gui::player_config::NamedConfiguration,
     library: &std::path::Path,
 ) -> egui_kittest::Harness<'static, EmulatorApp> {
     use gui::game_library::{GameLibrary, GameManifest};
 
     let (mut app, _) = running_with(ViewMode::ScreenOnly, true, configuration);
-    // Associate the running fixture with a native game that has no saves.
+    // Give the running fixture a native save so the description editor can open.
     let directory = library.join("chooser");
     std::fs::create_dir(&directory).unwrap();
     let manifest = GameManifest {
@@ -1319,7 +1362,14 @@ fn saved_progress_harness(
         serde_json::to_vec(&manifest).unwrap(),
     )
     .unwrap();
-    app.player.active_game = Some(GameLibrary::discover(library).unwrap().games.remove(0));
+    let game = GameLibrary::discover(library).unwrap().games.remove(0);
+    let session = gui::DebuggerSession::new();
+    let mut saved = debugger::SaveState::capture(&session.machine, session.file_sources()).unwrap();
+    saved.header.association.game_id = Some(game.manifest.id.clone());
+    saved.header.screenshot_png.clear();
+    gui::game_library::persist_save(&game, &saved.to_json().unwrap()).unwrap();
+    app.player.saves = gui::game_library::saves(&game).unwrap().entries;
+    app.player.active_game = Some(game);
     egui_kittest::Harness::builder()
         .with_size(egui::vec2(1280.0, 900.0))
         .build_ui_state(common::show_full_viewport, app)
@@ -1327,7 +1377,7 @@ fn saved_progress_harness(
 
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
-fn saved_progress_chooser_blocks_session_input_until_fresh_input_after_close() {
+fn save_description_editor_blocks_session_input_until_fresh_input_after_close() {
     use egui_kittest::kittest::Queryable;
     use gui::host_input::HostInputEvent;
     use gui::player_config::{InputSource, NamedConfiguration};
@@ -1338,7 +1388,7 @@ fn saved_progress_chooser_blocks_session_input_until_fresh_input_after_close() {
         mapping: "arrows".into(),
     };
     let library = tempfile::tempdir().unwrap();
-    let mut h = saved_progress_harness(configuration, library.path());
+    let mut h = save_description_harness(configuration, library.path());
     let ctx = h.ctx.clone();
     let generation = h.state().host.status.generation;
     let sender = h.state().host.runtime.as_ref().unwrap().input_sender();
@@ -1368,24 +1418,26 @@ fn saved_progress_chooser_blocks_session_input_until_fresh_input_after_close() {
     assert!(h.state().player.captured);
 
     common::settle_harness(&mut h);
-    let load = h.get_by_label("Load").rect().center();
+    let edit = h.get_by_label("Edit description").rect().center();
+    assert!(ctx.content_rect().contains(edit));
     let mouse_button = |pressed| egui::Event::PointerButton {
-        pos: load,
+        pos: edit,
         button: egui::PointerButton::Primary,
         pressed,
         modifiers: egui::Modifiers::NONE,
     };
     h.input_mut()
         .events
-        .extend([egui::Event::PointerMoved(load), mouse_button(true)]);
+        .extend([egui::Event::PointerMoved(edit), mouse_button(true)]);
     h.step();
     h.input_mut().events.push(mouse_button(false));
     // Native ingress queues shortcuts before egui handles the click.
     queue_window_keys(&ctx, &[("F12", true, generation)]);
     h.step();
-    assert!(h.state().player.show_saves);
     assert!(!h.state().player.captured);
     assert_eq!(h.state().view_mode, ViewMode::ScreenOnly);
+    common::settle_harness(&mut h);
+    h.get_by_label("Edit save description");
     queue_window_keys(&ctx, &[("F12", false, generation)]);
     for physical in ["KeyB", "F12"] {
         assert!(
@@ -1394,11 +1446,12 @@ fn saved_progress_chooser_blocks_session_input_until_fresh_input_after_close() {
                 common::keyboard::key(physical, true),
                 Some(generation)
             ),
-            "{physical} still belongs to the session while Saved progress is open"
+            "{physical} still belongs to the session while the save description editor is open"
         );
     }
     h.get_by_label("Pause").click();
-    h.step();
+    common::settle_harness(&mut h);
+    h.get_by_label("Edit save description");
     delivered(h.state_mut(), &ctx);
     let suspended = owner_snapshot(h.state_mut());
     assert!(!saved_key_held(&suspended, 0x20));
@@ -1409,11 +1462,12 @@ fn saved_progress_chooser_blocks_session_input_until_fresh_input_after_close() {
     );
     assert_eq!(h.state().view_mode, ViewMode::ScreenOnly);
     assert!(h.state().host.status.running);
-    assert!(h.state().player.show_saves);
+    h.get_by_label("Edit save description");
 
-    h.get_by_label("Close").click();
-    h.step();
-    assert!(!h.state().player.show_saves);
+    h.get_by_label("Cancel").click();
+    common::settle_harness(&mut h);
+    assert!(h.query_by_label("Edit save description").is_none());
+    assert!(!h.state().player.captured);
     let mut repeat = common::keyboard::key("KeyB", true);
     repeat.repeat = true;
     gui::keyboard_input::receive_key(&ctx, repeat, Some(generation));
@@ -1441,7 +1495,8 @@ fn saved_progress_chooser_blocks_session_input_until_fresh_input_after_close() {
 
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
-fn gamepad_quick_slots_use_press_edges_and_discard_same_sample_pause_on_load() {
+fn gamepad_quick_actions_use_press_edges_and_discard_same_sample_pause_on_load() {
+    use egui_kittest::kittest::Queryable;
     use gui::player_config::{FrontendAction, GamepadShortcut, InputSource, NamedConfiguration};
 
     const QUICK_SAVE: usize = 4;
@@ -1474,26 +1529,26 @@ fn gamepad_quick_slots_use_press_edges_and_discard_same_sample_pause_on_load() {
 
     pad_buttons(&sender, generation, &[]);
     pad_buttons(&sender, generation, &[QUICK_SAVE]);
-    common::wait_harness(&mut h, |app| app.host.status.quick_slots[0]);
+    common::wait_harness(&mut h, |app| app.host.status.has_quicksave);
     assert!(h.state().host.status.running);
-    assert!(!h.state().player.show_saves);
+    assert!(h.query_by_label("Edit save description").is_none());
     assert!(h.state().file_error.is_none());
 
     pad_buttons(&sender, generation, &[]);
     pad_buttons(&sender, generation, &[QUICK_LOAD, PAUSE]);
     common::wait_harness(&mut h, |app| app.host.status.generation > generation);
     let restored = h.state().host.status.generation;
-    assert!(!h.state().host.status.running);
-    assert!(!h.state().player.show_saves);
+    assert!(h.state().host.status.running);
+    assert!(h.query_by_label("Edit save description").is_none());
     assert!(h.state().file_error.is_none());
 
     pad_buttons(&sender, restored, &[QUICK_LOAD, PAUSE]);
     common::settle_harness(&mut h);
     assert_eq!(h.state().host.status.generation, restored);
-    assert!(!h.state().host.status.running);
+    assert!(h.state().host.status.running);
     pad_buttons(&sender, restored, &[]);
     pad_buttons(&sender, restored, &[PAUSE]);
-    common::wait_harness(&mut h, |app| app.host.status.running);
+    common::wait_harness(&mut h, |app| !app.host.status.running);
 }
 
 #[test]

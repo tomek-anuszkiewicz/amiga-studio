@@ -44,7 +44,7 @@ fn game_execution_does_not_collect_debugger_data() {
     assert!(data.temporal.is_empty());
     assert!(data.previous_cpu.is_none());
     assert_eq!(data.instructions_executed, 0);
-    assert!(owner.status().quick_slots.iter().all(|occupied| !occupied));
+    assert!(!owner.status().has_quicksave);
 }
 
 #[test]
@@ -80,17 +80,12 @@ fn game_toolbar_and_player_controls_follow_the_machine_owner() {
     assert!(harness.query_by_label_contains("F12").is_none());
     assert_eq!(harness.get_all_by_label_contains("FPS: ").count(), 1);
     harness.get_by_label("FPS: 0.0");
-
-    // State and its quick slots remain available while their own layout is pending.
-    harness.get_by_label("State").click_accesskit();
+    assert!(harness.query_by_label("State").is_none());
+    harness.get_by_label("Export state…");
+    harness.get_by_label("Import state…");
+    harness.get_by_label("Quick save").click_accesskit();
     common::settle_harness(&mut harness);
-    harness.get_by_label("💾 Save State to File...");
-    harness.get_by_label("📂 Load State from File...");
-    harness
-        .get_by_label("⚡ Quick Save Slot 1")
-        .click_accesskit();
-    common::settle_harness(&mut harness);
-    assert!(harness.state().host.status.quick_slots[0]);
+    assert!(harness.state().host.status.has_quicksave);
     common::command(
         harness.state_mut(),
         HostCommand::SetRegister {
@@ -98,10 +93,10 @@ fn game_toolbar_and_player_controls_follow_the_machine_owner() {
             value: 123,
         },
     );
-    harness.get_by_label("State").click_accesskit();
-    common::settle_harness(&mut harness);
-    harness.get_by_label("Quick Load Slot 1").click_accesskit();
-    common::settle_harness(&mut harness);
+    harness.get_by_label("Quick load").click_accesskit();
+    common::wait_harness(&mut harness, |app| app.host.status.running);
+    harness.get_by_label("Pause").click_accesskit();
+    common::wait_harness(&mut harness, |app| !app.host.status.running);
     assert_eq!(common::inspect(harness.state_mut()).cpu.d_long(0), 0);
     assert!(harness
         .state()
@@ -109,7 +104,7 @@ fn game_toolbar_and_player_controls_follow_the_machine_owner() {
         .as_ref()
         .unwrap()
         .0
-        .contains("Restored from Slot #1"));
+        .contains("Quicksave restored"));
 
     let generation = harness.state().host.status.generation;
     harness.get_by_label("Resume").click_accesskit();
@@ -152,9 +147,14 @@ fn game_toolbar_and_player_controls_follow_the_machine_owner() {
     assert_eq!(harness.ctx.zoom_factor(), 1.25);
     tap_physical(&mut harness, "F12");
     assert_eq!(harness.state().view_mode, ViewMode::Developer);
-    assert!(harness.query_by_label("File").is_none());
+    for label in ["File", "State", "Snapshot files"] {
+        assert!(harness.query_by_label(label).is_none(), "{label}");
+    }
     assert!(harness.query_by_label_contains("ROM:").is_none());
     harness.get_by_label("Step Frame");
+    for label in ["Export state file…", "Import state file…"] {
+        harness.get_by_role_and_label(egui::accesskit::Role::Button, label);
+    }
 }
 
 #[test]
@@ -318,7 +318,6 @@ fn game_toolbar_uses_one_row_when_wide_and_wraps_at_larger_zoom() {
     common::settle_harness(&mut h);
     let positions = |h: &Harness<'_, EmulatorApp>| {
         [
-            "State",
             "Manual setup",
             "PAUSED",
             "−",
@@ -347,8 +346,8 @@ fn game_toolbar_uses_one_row_when_wide_and_wraps_at_larger_zoom() {
     assert_eq!(h.ctx.zoom_factor(), 1.5);
     assert!((h.ctx.content_rect().width() - 640.0 / 1.5).abs() < 1.0);
     let narrow_rows = positions(&h);
-    assert!(narrow_rows[8] > narrow_rows[0] + 8.0);
-    assert!((narrow_rows[3] - narrow_rows[5]).abs() < 5.0);
+    assert!(narrow_rows[7] > narrow_rows[0] + 8.0);
+    assert!((narrow_rows[2] - narrow_rows[4]).abs() < 5.0);
 }
 
 #[test]

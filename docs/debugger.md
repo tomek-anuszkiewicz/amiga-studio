@@ -47,9 +47,9 @@ Amiga screen stay live. A CPU halt ends Run and refreshes the inspectors.
 
 To boot a 256 KiB Kickstart image, choose **Game View**, **Manual setup**,
 then **Select Kickstart...**. Choose **Start** to boot and F12 to return to
-inspection. Loading a snapshot restores the ROM stored in it.
+inspection. Loading a snapshot verifies its matching source ROM before restore.
 
-Game view shows the State menu, speed, measured FPS, theme, zoom and image
+Game view shows Manual setup, speed, measured FPS, theme, zoom and image
 scale. **Pause** and **Resume** are in the player controls. Press F12 or the
 configured shortcut to return to inspection.
 The keyboard works while the running session is active. Click the display to
@@ -59,8 +59,8 @@ starts unassigned. Reset
 has no keyboard shortcut. Game View disconnects debugger panels and shortcuts,
 breakpoints, disassembly, trace collection, CPU history and memory diff capture.
 The CPU's STOP instruction still allows the chips to run and deliver interrupts.
-The emulator saves state only when you request a save from the State menu or one
-of its shortcuts.
+Choose **Export state file** on the toolbar or use the configured
+shortcut to write a snapshot.
 
 ---
 

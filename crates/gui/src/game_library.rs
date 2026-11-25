@@ -327,139 +327,14 @@ pub fn persist_cover(
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-#[derive(Debug, Clone)]
-pub struct PlayerSave {
-    pub path: PathBuf,
-    pub header: debugger::SaveStateHeader,
-    pub(crate) quicksave: bool,
-}
-
+mod saves;
 #[cfg(not(target_arch = "wasm32"))]
-#[derive(Debug, Default)]
-pub(crate) struct SavedProgress {
-    pub entries: Vec<PlayerSave>,
-    pub unavailable: Vec<String>,
-}
-
+pub(crate) use saves::{
+    current_quicksave, delete_save, edit_save_description, initialize_quicksave,
+    read_associated_save, same_save, saves_in,
+};
 #[cfg(not(target_arch = "wasm32"))]
-pub fn saves(game: &LibraryGame) -> Result<Vec<PlayerSave>, String> {
-    Ok(scan_saves(&game.directory, &game.manifest)?.entries)
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-pub(crate) const PLAYER_QUICK_SLOT: usize = 1;
-
-#[cfg(not(target_arch = "wasm32"))]
-pub(crate) fn slot_filename(game_directory: &Path, slot: usize) -> Option<String> {
-    std::fs::read_to_string(game_directory.join(format!("saves/slot-{slot}.txt")))
-        .ok()
-        .map(|name| name.trim().to_owned())
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-pub(crate) fn read_associated_save(
-    path: &Path,
-    manifest: &GameManifest,
-) -> Result<(Vec<u8>, debugger::SaveStateHeader), String> {
-    let bytes = std::fs::read(path).map_err(|error| error.to_string())?;
-    let saved = debugger::SaveState::from_bytes(&bytes).map_err(|error| error.to_string())?;
-    manifest.validate_association(&saved.header.association)?;
-    Ok((bytes, saved.header))
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-pub(crate) fn scan_saves(
-    game_directory: &Path,
-    manifest: &GameManifest,
-) -> Result<SavedProgress, String> {
-    let directory = game_directory.join("saves");
-    let mut result = SavedProgress::default();
-    let entries = match std::fs::read_dir(directory) {
-        Ok(entries) => entries,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(result),
-        Err(error) => return Err(error.to_string()),
-    };
-    let quicksave = slot_filename(game_directory, PLAYER_QUICK_SLOT);
-    for entry in entries {
-        let entry = entry.map_err(|error| error.to_string())?;
-        let path = entry.path();
-        if path.extension().and_then(|extension| extension.to_str()) != Some("json") {
-            continue;
-        }
-        match read_associated_save(&path, manifest) {
-            Ok((_, header)) => result.entries.push(PlayerSave {
-                quicksave: quicksave
-                    .as_deref()
-                    .is_some_and(|name| path.file_name().is_some_and(|file| file == name)),
-                path,
-                header,
-            }),
-            Err(error) => result
-                .unavailable
-                .push(format!("{}: {error}", path.display())),
-        }
-    }
-    result.entries.sort_by(|a, b| {
-        b.header
-            .timestamp
-            .cmp(&a.header.timestamp)
-            .then_with(|| b.path.cmp(&a.path))
-    });
-    result.unavailable.sort();
-    Ok(result)
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-pub fn persist_save(
-    game: &LibraryGame,
-    json: &str,
-    quick_slot: Option<usize>,
-) -> Result<PathBuf, String> {
-    use std::io::Write;
-    let saved = debugger::SaveState::from_json(json).map_err(|e| e.to_string())?;
-    game.manifest
-        .validate_association(&saved.header.association)?;
-    let directory = game.directory.join("saves");
-    std::fs::create_dir_all(&directory).map_err(|e| e.to_string())?;
-    for serial in 0..u32::MAX {
-        let name = format!("{}-{serial}.json", saved.header.timestamp);
-        let path = directory.join(name);
-        let pending = path.with_extension("pending");
-        if path.exists() {
-            continue;
-        }
-        let mut file = match std::fs::OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(&pending)
-        {
-            Ok(file) => file,
-            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
-            Err(error) => return Err(error.to_string()),
-        };
-        file.write_all(json.as_bytes())
-            .and_then(|_| file.sync_all())
-            .map_err(|e| e.to_string())?;
-        drop(file);
-        std::fs::rename(&pending, &path).map_err(|e| e.to_string())?;
-        if let Some(slot) = quick_slot {
-            if !(1..=debugger::session::QUICK_SLOT_COUNT).contains(&slot) {
-                return Err("Invalid quick slot".into());
-            }
-            // A tiny pointer selects a durable immutable save; it never overwrites the initial state.
-            std::fs::write(
-                directory.join(format!("slot-{slot}.txt")),
-                path.file_name()
-                    .unwrap_or_default()
-                    .to_string_lossy()
-                    .as_bytes(),
-            )
-            .map_err(|e| e.to_string())?;
-        }
-        return Ok(path);
-    }
-    Err("No available save filename".into())
-}
+pub use saves::{persist_quicksave, persist_save, saves, PlayerSave, SaveCatalog};
 
 /// Writes a new screenshot to the game directory and publishes it after the write succeeds.
 #[cfg(not(target_arch = "wasm32"))]

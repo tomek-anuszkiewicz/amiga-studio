@@ -22,7 +22,7 @@ The native desktop application and the browser build use the same frontend.
 Both offer two views of the same emulated machine.
 
 - **Game view** presents the framed Amiga screen and player controls. The
-  toolbar offers Manual setup, the State menu, machine status, speed, measured
+  toolbar offers Manual setup, machine status, speed, measured
   FPS, theme, interface zoom, image scale and mouse capture help. The controls
   share one row when space permits and wrap as needed. Inspection panels and
   debugger shortcuts are inactive.
@@ -102,7 +102,7 @@ When port devices change, the machine installs neutral devices only at the
 changed endpoints. Unchanged mice keep their quadrature phase. Before execution
 resumes, old input is released and invalidated while chip-side JOY/POT and CIA
 state are preserved. Every user load uses the same policy for releasing controls
-and attaching devices, including Developer Studio file loads and quick slots.
+and attaching devices, including Developer Studio file loads and quick loads.
 Capturing a save observes the machine without releasing controls or changing the
 input generation.
 
@@ -227,8 +227,8 @@ prepares the disk from the source ADF bytes already loaded for the session.
 The [save state specification](SaveState.md#player-progress)
 defines what a quick load or saved file restores.
 
-In a native library session, click **Screenshot** beside **Save** and **Load**
-in the player panel to save the Amiga image displayed at the time of the click.
+In a native library session, click **Screenshot** in the player panel to save
+the Amiga image displayed at the time of the click.
 The player saves the whole image at its source dimensions and colors, including
 edges clipped by the viewport. Each click creates a new PNG in `Screenshots/`
 under the active game's directory, even after browsing another game. The player
@@ -323,7 +323,7 @@ This preserves the image's own width-to-height ratio without forcing 4:3.
 
 | Area | Available information and controls |
 | --- | --- |
-| Top bar | Save and load state through files or quick slots. Run, pause at a video field boundary, step one field, instruction or Color Clock, and step backward through recorded history. Measured video FPS, speed controls and CCK/instruction counters sit beside theme, zoom, image scale and Game View. |
+| Top bar | Import and export state files. Run, pause at a video field boundary, step one field, instruction or Color Clock, and step backward through recorded history. Measured video FPS, speed controls and CCK/instruction counters sit beside theme, zoom, image scale and Game View. |
 | Left dock | CPU data and address registers, program counter, status register and condition flags, followed by engine status such as bus availability and counters. An optional microcode inspector shows the current execution phase and intermediate CPU state; F8 toggles it. |
 | Central workspace | The framed Amiga screen, a history bar for recording and browsing CPU snapshots by step, frame, slider, or CCK position, and a disassembly listing. The listing can follow the current PC or jump to an address, set breakpoints, change the PC, and edit an instruction in place. On wide windows, the trace below the screen lists recent execution; the split between code and screen and the split above the trace are draggable. |
 | Right dock | A hex and ASCII memory viewer with address navigation and byte editing. Below it are memory search and controls for PC breakpoints, register conditions, and read/write watchpoint ranges. On narrower windows, the execution trace is also here. |
@@ -371,7 +371,7 @@ unassigns it.
 an available controller, the section explains why editing is disabled and
 retains the saved assignments. When a controller is available, the player
 can select it in place of an unavailable saved connection. Quick save and
-Quick load use slot 1 for both controller and keyboard shortcuts.
+Quick load use the designated quicksave for both controller and keyboard shortcuts.
 
 **Amiga keyboard remapping** sends an alternate host key to a named Amiga key
 in one direction. For example, select Amiga Escape and record a spare key.
@@ -463,10 +463,40 @@ dialogs suspend gameplay. Releasing the mouse clears its queued movement and
 buttons while preserving quadrature phase, held keys, keyboard joystick
 contacts and selected gamepad contacts.
 
-On native hosts, Load opens the Saved progress dialog for the active library
-game. Opening it releases mouse capture and gives the dialog control of input
-while the machine keeps its current run or pause state. Close returns to the
-session. Choosing a save opens the replacement confirmation.
+The desktop library and active session show saved progress for the relevant
+game. The session list scrolls independently of game and drive controls. The
+designated quicksave appears first, followed by ordinary saves in descending
+creation time. Entries without a trusted creation time follow dated entries.
+A filename breaks ties. Each compatible save shows its description and local
+creation time separately from **Load state**. The session shows the most
+recent trusted creation time under **Latest save**. Both labels use the host's
+regional date and time settings for that instant.
+
+**Edit description** opens a dialog for the selected save. Use **Save description**
+to apply the edit. **Cancel** or Escape closes the dialog and discards the draft.
+Clicking outside the dialog leaves it open.
+
+Each preview scales the whole saved frame to the displayed pixel dimensions
+with antialiasing. The app derives the thumbnail from the original PNG whenever
+the display size changes. Missing or unreadable previews show a placeholder.
+An incompatible or corrupt file shows its filename and the reason it cannot
+load. Other rows remain available. Directory discovery errors appear in the
+affected list. Failure to perform a requested file operation is reported
+separately.
+
+**Quick save** and **Quick load** use the same actions as their configured
+shortcuts. **Quick load** requires a usable designated save. **Load state**
+and **Quick load** validate the selected machine, media and committed controls
+before replacing the machine and resuming execution. They keep the current
+execution state if validation fails. Starting a new machine still asks for
+confirmation when a session is active.
+The Game controls offer **Import state** and **Export state** for snapshot files.
+
+**Delete save** disables that row and offers **Undo** for ten seconds of host
+time. The deadline follows the selected game and save through navigation,
+refresh, pause and speed changes. When it expires, the app removes that file
+and clears the quicksave designation only if it still points to that file.
+Closing the app before the deadline cancels the deletion.
 
 Ordered, bounded queues publish input immediately. The owner admits it at
 three evenly spaced times per emulated field, determined by the current
@@ -599,7 +629,7 @@ Before Run, the owner captures an inspection snapshot of the stopped machine.
 During continuous Run, the inspectors keep showing the prepared data. Game
 does not request inspector snapshots.
 
-Register edits, memory patches, breakpoints, history, load/save and quick slots
+Register edits, memory patches, breakpoints, history, file restoration and quick actions
 execute as owner commands. File selection, host file I/O and downloads
 remain host UI operations. ROM filenames and recent-file records change only
 after successful owner replies.

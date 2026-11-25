@@ -11,6 +11,12 @@ use debugger::{launch::DetachedDisks, DebuggerSession};
 use std::time::Duration;
 
 #[derive(Debug)]
+struct QuickSaveOrigin {
+    association: debugger::SaveAssociation,
+    disk_session: u64,
+}
+
+#[derive(Debug)]
 pub struct MachineOwner {
     session: Box<DebuggerSession>,
     playback: Playback,
@@ -20,9 +26,8 @@ pub struct MachineOwner {
     shutdown: bool,
     revision: u64,
     association: debugger::SaveAssociation,
-    quick_associations: [debugger::SaveAssociation; debugger::session::QUICK_SLOT_COUNT],
+    quicksave_origin: Option<QuickSaveOrigin>,
     disk_session: u64,
-    quick_disk_sessions: [u64; debugger::session::QUICK_SLOT_COUNT],
     detached_disks: DetachedDisks,
 }
 
@@ -42,9 +47,8 @@ impl MachineOwner {
             shutdown: false,
             revision: 0,
             association: debugger::SaveAssociation::default(),
-            quick_associations: std::array::from_fn(|_| debugger::SaveAssociation::default()),
+            quicksave_origin: None,
             disk_session: generation,
-            quick_disk_sessions: [generation; debugger::session::QUICK_SLOT_COUNT],
             detached_disks: DetachedDisks::default(),
         }
     }
@@ -88,7 +92,7 @@ impl MachineOwner {
                     sustained_activity: drive.connected && drive.selected && drive.motor_on,
                 }
             }),
-            quick_slots: std::array::from_fn(|index| self.session.has_quick_slot(index + 1)),
+            has_quicksave: self.quicksave_origin.is_some(),
         }
     }
 
@@ -409,37 +413,41 @@ impl MachineOwner {
             } => {
                 return self.restore_player(&json, media, Some(&game_id), ports, true, true);
             }
-            HostCommand::SaveQuickSlot(slot) => {
-                self.session
-                    .save_quick_slot(slot)
-                    .map_err(|e| e.to_string())?;
-                self.quick_associations[slot - 1] = self.association.clone();
-                self.quick_disk_sessions[slot - 1] = self.disk_session;
+            HostCommand::QuickSave => {
+                self.session.quick_save();
+                self.quicksave_origin = Some(QuickSaveOrigin {
+                    association: self.association.clone(),
+                    disk_session: self.disk_session,
+                });
             }
-            HostCommand::LoadQuickSlot { slot, ports } => {
-                let index = slot.wrapping_sub(1);
-                if let Some(association) = self.quick_associations.get(index) {
-                    self.validate_game(association)?;
-                    if self.quick_disk_sessions[index] == self.disk_session {
-                        if let Some(state) = &self.session.quick_slots[index] {
-                            let restored = Self::restored_disk_ids(state, association);
-                            self.detached_disks.retain_before_quick_load(
-                                &mut self.session,
-                                &self.association.mounted,
-                                restored,
-                            );
-                        }
-                    }
+            HostCommand::QuickLoad { ports } => {
+                let origin = self
+                    .quicksave_origin
+                    .as_ref()
+                    .ok_or("No quicksave is available")?;
+                let state = self
+                    .session
+                    .quicksave()
+                    .ok_or("No quicksave is available")?;
+                self.validate_game(&origin.association)?;
+                if origin.disk_session == self.disk_session {
+                    let restored = Self::restored_disk_ids(state, &origin.association);
+                    self.detached_disks.retain_before_quick_load(
+                        &mut self.session,
+                        &self.association.mounted,
+                        restored,
+                    );
                 }
+                let disk_session = origin.disk_session;
                 self.session
-                    .load_quick_slot(slot)
-                    .map_err(|e| e.to_string())?;
-                self.association = self.quick_associations[index].clone();
+                    .quick_load()
+                    .map_err(|error| error.to_string())?;
+                self.association = origin.association.clone();
                 self.finish_user_load(ports);
-                let disk_session = self.quick_disk_sessions[index];
                 if disk_session != self.disk_session {
                     self.start_disk_session(disk_session);
                 }
+                self.session.toggle_run();
                 return Ok(HostValue::PlayerRestored(self.association.clone()));
             }
             HostCommand::Launch {
@@ -469,6 +477,7 @@ impl MachineOwner {
                 replacement.toggle_run();
                 self.session = replacement;
                 self.association = association;
+                self.quicksave_origin = None;
                 self.new_generation();
                 self.start_disk_session(self.generation);
             }

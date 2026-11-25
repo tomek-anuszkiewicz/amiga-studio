@@ -34,6 +34,8 @@ pub struct SaveStateHeader {
     #[serde(with = "encoding::preview")]
     pub screenshot_png: Vec<u8>,
     pub association: SaveAssociation,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
 }
 
 /// Portable player association with the game and mounted library entries.
@@ -170,6 +172,7 @@ impl SaveState {
                 version: SAVE_STATE_VERSION,
                 timestamp: 0,
                 association: SaveAssociation::default(),
+                description: None,
                 screenshot_png,
             },
             state: Box::new(state),

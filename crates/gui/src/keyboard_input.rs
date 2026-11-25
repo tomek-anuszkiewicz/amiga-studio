@@ -322,7 +322,7 @@ impl KeyboardInbox {
                         self.router.suspend();
                         policy.developer = !policy.developer;
                     }
-                    Pause | QuickLoad => {
+                    Pause => {
                         policy.pause_pending = true;
                         self.router.suspend();
                     }

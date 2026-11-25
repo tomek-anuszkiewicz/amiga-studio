@@ -45,8 +45,8 @@ validation rules still apply after the removal of direct file helpers.
 The JSON envelope has a `header` and a `state` object. The loader checks
 schema version 16 before interpreting the state layout, regardless of member
 order. Earlier files remain intact and report an unsupported version. Frontends
-and the debugger use the same file codec. In-memory slots contain a complete
-machine snapshot and carry the prepared drives and actual ROM bytes with them.
+and the debugger use the same file codec. An in-memory quicksave contains a
+complete machine snapshot with the prepared drives and actual ROM bytes.
 [Internal migration contract](../../../../.agents/references/internal-migrations.md)
 
 The state uses access timestamps in place of CPU admission countdowns
@@ -116,11 +116,18 @@ controls. [RTC](../RTC.md)
 
 ## Player progress
 
-Player save files carry the host creation time and a PNG preview, with an
-optional game ID and four optional mounted disk IDs. Catalogs check the complete
-document and show its preview while the source media are offline.
-Desktop games have durable save catalogs and per-game quick slots. Manual
-browser mode supports file import and export alongside in-memory slots.
+Player save files carry the host creation time in UTC, a full-resolution PNG
+preview, an optional description, and game and mounted-disk IDs when available.
+The catalog checks the complete document and supports previews and description
+edits while source media are offline. Editing a description preserves the
+creation time, preview, associations and machine snapshot.
+
+A desktop library game designates one save as its quicksave. Each Quick save
+writes a new file before replacing the designation. The previous file remains
+ordinary progress. On first opening legacy data, the app can designate the
+existing save referenced by legacy slot 1. An empty recorded designation keeps
+it cleared across restarts. Manual sessions retain one in-memory quicksave
+alongside file import and export on desktop and in the browser.
 
 A file records the disks inserted at capture, including guest changes. To
 open it, the frontend needs the exact source Kickstart and each inserted ADF.
@@ -128,15 +135,16 @@ The files can move or have new names. Desktop can resolve the stable IDs in
 the opened game library and the Kickstart paths in authorized configurations.
 The frontend also accepts matching images already supplied in the session or
 selected by the user. On a fresh browser page, select the images in **Manual
-setup**, choose **Return to session**, then choose **Load** before **Start**.
+setup**, choose **Return to session**, then choose **Import state** before **Start**.
 The frontend uses content matches to bind mounted drives to the current page's
 selections.
 
 On a quick load within a session the player keeps available disks absent from
-the slot, including disks displaced from a drive by the load. When an existing
-copy uniquely matches a restored copy, the slot's contents take precedence.
-The drive assignment identifies independent copies with the same disk ID when
-placement resolves the match.
+the quicksave, including disks displaced from a drive by the load. When an
+existing copy uniquely matches a restored copy, the quicksave's contents take
+precedence. The drive assignment identifies independent copies with the same disk ID when
+placement resolves the match. A quicksave from an earlier manual session opens
+with its own mounted disks.
 
 Each native library game owns a collection of named start states outside its
 `saves/` directory. Each manifest entry has a stable file identity and a
@@ -163,7 +171,7 @@ discriminator identifies the device in the emulated state. The frontend uses
 the current host bindings and allows a different current attachment. Unchanged
 endpoints retain their emulated phase, and changed endpoints start neutral.
 The receivers retain their chip state and sampling phases. Initial states,
-library saves, imported files and quick slots share this policy.
+library saves, imported files and quicksaves share this policy.
 
 ## 3. Differential Save States (`A500DiffState`)
 

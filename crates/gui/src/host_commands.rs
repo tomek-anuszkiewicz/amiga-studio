@@ -94,9 +94,8 @@ pub enum HostCommand {
         game_id: String,
         ports: [debugger::launch::DeviceKind; 2],
     },
-    SaveQuickSlot(usize),
-    LoadQuickSlot {
-        slot: usize,
+    QuickSave,
+    QuickLoad {
         ports: [debugger::launch::DeviceKind; 2],
     },
     SupplyUtc(i64),
@@ -162,7 +161,7 @@ pub struct HostStatus {
     pub drive_reset_sequence: u64,
     pub drives: [DriveStatus; config::FLOPPY_DRIVE_COUNT],
     pub ports: [debugger::launch::DeviceKind; 2],
-    pub quick_slots: [bool; debugger::session::QUICK_SLOT_COUNT],
+    pub has_quicksave: bool,
 }
 
 #[derive(Debug)]

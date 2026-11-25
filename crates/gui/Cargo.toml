@@ -28,7 +28,7 @@ cpu = { path = "../cpu" }
 debugger = { workspace = true }
 keyboard = { path = "../keyboard" }
 serde = { workspace = true }
-serde_json = { workspace = true }
+serde_json = { workspace = true, features = ["raw_value"] }
 zip = { version = "9.8.2", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 sevenz-rust2 = { version = "0.25.0", default-features = false }
 
