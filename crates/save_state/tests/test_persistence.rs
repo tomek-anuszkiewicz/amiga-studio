@@ -205,12 +205,23 @@ fn file_restore_validates_external_media_before_producing_a_machine() {
     sources.rom = correct_rom;
 
     let correct_disk = sources.disks[0].take();
+    let error = SaveState::capture(&machine, &sources).unwrap_err();
+    assert!(matches!(error, SaveStateError::MediaUnavailable(_)));
+    assert_eq!(error.to_string(), "ADF for DF0 source is unavailable");
+
     let error = saved.clone().restore(&sources).unwrap_err();
     assert!(matches!(error, SaveStateError::MediaUnavailable(_)));
     assert!(error
         .to_string()
         .contains("ADF for DF0 (fixture.adf) source is unavailable"));
     sources.disks[0] = Some(image("fixture.adf", vec![0; ADF_BYTES - 1]));
+    let error = SaveState::capture(&machine, &sources).unwrap_err();
+    assert!(matches!(error, SaveStateError::MediaUnavailable(_)));
+    assert_eq!(
+        error.to_string(),
+        "ADF for DF0 must contain 901120 bytes; received 901119 bytes"
+    );
+
     let error = saved.clone().restore(&sources).unwrap_err();
     assert!(matches!(error, SaveStateError::MediaUnavailable(_)));
     assert!(error
@@ -237,7 +248,7 @@ fn test_save_state_metadata_and_header() {
     let saved = capture_synthetic(&machine);
     let state = restore_synthetic(saved.clone());
 
-    assert_eq!(saved.header.version, 16);
+    assert_eq!(saved.header.version, 17);
     assert!(!saved.header.screenshot_png.is_empty());
     // PNG magic header: \x89PNG\r\n\x1a\n
     assert_eq!(&saved.header.screenshot_png[0..4], b"\x89PNG");
@@ -389,7 +400,7 @@ fn test_save_state_file_persistence() {
     ] {
         let text = std::str::from_utf8(&bytes).unwrap();
         let document: Value = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(document["header"]["version"], 16);
+        assert_eq!(document["header"]["version"], 17);
         assert_eq!(document["header"]["timestamp"], 1_700_001_234);
         assert_eq!(
             document["header"]["association"],
@@ -440,7 +451,6 @@ fn test_save_state_file_persistence() {
             json!({
                 "sha256": "708597cb9e6996f58d671f251d90fa3cc74dbe4d0d6a02b37d55b37da5125a8d",
                 "name": "second.adf",
-                "modified_tracks": {},
             })
         );
         assert_eq!(
@@ -448,7 +458,6 @@ fn test_save_state_file_persistence() {
             json!({
                 "sha256": "f0fdbb654fd226e44e9cc4bc9a5fbbb09fcb01feab1c4a26839d4440534e17d2",
                 "name": "first.adf",
-                "modified_tracks": {},
             })
         );
         assert_eq!(drives[2].get("track_data"), Some(&Value::Null));
@@ -565,12 +574,22 @@ fn file_keeps_every_configured_bank_and_full_frame_through_restore_and_resave() 
 
 #[test]
 fn unsupported_file_version_is_rejected_before_restore() {
-    for version in [1, 15, 17] {
+    let version_16_state = json!({
+        "floppy": {"drives": [{"track_data": {
+            "sha256": "0".repeat(64), "name": "old.adf", "modified_tracks": {"0": "AA=="}
+        }}]}
+    })
+    .to_string();
+    for version in [1, 15, 16, 18] {
         let header = format!(r#"{{"version":{version},"screenshot_png":[137,80,78,71]}}"#);
-        let state = r#"{"physical_memory":{"chip_ram":[1,2,3],"kickstart_rom":[4,5,6]}}"#;
+        let state = if version == 16 {
+            &version_16_state
+        } else {
+            r#"{"physical_memory":{"chip_ram":[1,2,3],"kickstart_rom":[4,5,6]}}"#
+        };
         let expected = SaveStateError::IncompatibleVersion {
             found: version,
-            supported: 16,
+            supported: 17,
         };
         for json in [
             format!(r#"{{"header":{header},"state":{state}}}"#),
@@ -611,11 +630,35 @@ fn invalid_current_fields_fail_both_file_readers() {
     const SLOW: &str = "/state/physical_memory/slow_ram";
     const FAST: &str = "/state/physical_memory/fast_ram";
     const FRAME: &str = "/state/denise/frame_builder/buffer";
+    const ROM: &str = "/state/physical_memory/kickstart_rom";
     const ROM_DIGEST: &str = "/state/physical_memory/kickstart_rom/sha256";
-    const DRIVE_DATA: &str = "/state/floppy/drives/0/track_data";
-    let machine = A500Machine::new(A500Config::standard_1mb(VideoStandard::Pal));
-    let captured = capture_synthetic(&machine);
-    let original = serde_json::to_value(&captured).unwrap();
+    const EMPTY_DRIVE: &str = "/state/floppy/drives/0/track_data";
+    const INSERTED_DISK: &str = "/state/floppy/drives/1/track_data";
+    let mut machine = A500Machine::new(A500Config::standard_1mb(VideoStandard::Pal));
+    machine
+        .floppy
+        .set_connections([true, true, false, false])
+        .unwrap();
+    let disk = SourceImage {
+        name: None,
+        bytes: patterned_bytes(ADF_BYTES, 49),
+    };
+    assert!(machine.floppy.drives[1].insert_disk(&disk.bytes));
+    let sources = MediaSources {
+        disks: [None, Some(disk), None, None],
+        ..MediaSources::default()
+    };
+    let original = serde_json::to_value(SaveState::capture(&machine, &sources).unwrap()).unwrap();
+    let reference = original.pointer(INSERTED_DISK).unwrap();
+    assert_eq!(reference.get("name"), Some(&Value::Null));
+    let mut rom_with_bytes = original.pointer(ROM).unwrap().clone();
+    rom_with_bytes["bytes"] = json!("AA==");
+    let mut disk_with_bytes = reference.clone();
+    disk_with_bytes["bytes"] = json!("AA==");
+    let mut disk_with_empty_map = reference.clone();
+    disk_with_empty_map["modified_tracks"] = json!({});
+    let mut disk_with_track = reference.clone();
+    disk_with_track["modified_tracks"] = json!({"0": STANDARD.encode([0xaa; 12_500])});
     let preview = original.pointer(PREVIEW).unwrap().as_str().unwrap();
     let frame = original.pointer(FRAME).unwrap().as_str().unwrap();
     let chip = original.pointer(CHIP).unwrap().as_str().unwrap();
@@ -663,11 +706,48 @@ fn invalid_current_fields_fail_both_file_readers() {
             ROM_DIGEST,
             Some(json!("A".repeat(64))),
         ),
-        ("missing drive reference field", DRIVE_DATA, None),
+        (
+            "missing ROM display name",
+            "/state/physical_memory/kickstart_rom/name",
+            None,
+        ),
+        (
+            "positional ROM reference",
+            ROM,
+            Some(json!([original.pointer(ROM_DIGEST).unwrap(), null, true])),
+        ),
+        ("null ROM reference", ROM, Some(Value::Null)),
+        ("ROM reference with source bytes", ROM, Some(rom_with_bytes)),
+        ("missing empty drive reference field", EMPTY_DRIVE, None),
+        (
+            "missing disk display name",
+            "/state/floppy/drives/1/track_data/name",
+            None,
+        ),
+        (
+            "short disk digest",
+            "/state/floppy/drives/1/track_data/sha256",
+            Some(json!("00")),
+        ),
         (
             "malformed drive reference",
-            DRIVE_DATA,
+            INSERTED_DISK,
             Some(json!([1, 2, 3])),
+        ),
+        (
+            "obsolete empty track map",
+            INSERTED_DISK,
+            Some(disk_with_empty_map),
+        ),
+        (
+            "obsolete populated track map",
+            INSERTED_DISK,
+            Some(disk_with_track),
+        ),
+        (
+            "disk reference with source bytes",
+            INSERTED_DISK,
+            Some(disk_with_bytes),
         ),
         (
             "inserted disk without reference",
@@ -676,8 +756,8 @@ fn invalid_current_fields_fail_both_file_readers() {
         ),
         (
             "empty drive with reference",
-            DRIVE_DATA,
-            Some(json!({"sha256": "0".repeat(64), "name": null, "modified_tracks": {}})),
+            EMPTY_DRIVE,
+            Some(reference.clone()),
         ),
         (
             "empty drive with library disk ID",
@@ -704,7 +784,9 @@ fn invalid_current_fields_fail_both_file_readers() {
             SaveState::from_json(&text),
             SaveState::from_bytes(text.as_bytes()),
         ] {
-            let error = result.expect_err(case);
+            let Err(error) = result else {
+                panic!("{case}: malformed file was accepted");
+            };
             assert!(
                 matches!(
                     error,
@@ -713,13 +795,15 @@ fn invalid_current_fields_fail_both_file_readers() {
                 "{case}: {error}"
             );
         }
+        assert!(serde_json::from_str::<SaveState>(&text).is_err(), "{case}");
     }
 
     let mut empty_preview = original;
     *empty_preview.pointer_mut(PREVIEW).unwrap() = json!("");
     let decoded = SaveState::from_json(&empty_preview.to_string()).unwrap();
     assert!(decoded.header.screenshot_png.is_empty());
-    assert!(*restore_synthetic(decoded) == machine.save_state());
+    assert_eq!(decoded.disk_name(1), None);
+    assert!(*decoded.restore(&sources).unwrap() == machine.save_state());
 }
 
 #[test]
@@ -737,7 +821,7 @@ fn dma_registers_roundtrip_in_their_single_owner() {
     assert_eq!(machine.agnus.dma.planecount(), 2);
     let saved = capture_synthetic(&machine);
     let json = serde_json::to_value(&saved).unwrap();
-    assert_eq!(json["header"]["version"], 16);
+    assert_eq!(json["header"]["version"], 17);
     for (name, value) in [
         ("dmacon", 0x0300),
         ("bplcon0", 0x2004),
@@ -1078,18 +1162,27 @@ fn file_roundtrip_resumes_disk_write_fifo_and_partial_bit_cell() {
 }
 
 #[test]
-fn file_roundtrip_preserves_an_off_boundary_pulse_in_the_track_gap() {
+fn only_full_memory_restores_a_guest_pulse_in_the_track_gap() {
+    const CELL_HZ: u64 = 500_000;
+    const TRACK_CELLS: u64 = 100_000;
+    // Each of the 11 sectors occupies 1088 raw bytes. This cell is in the gap.
+    const GAP_CELL: u64 = 12_200 * 8 + 1;
+
     let standard = VideoStandard::Pal;
+    let clock_hz = u64::from(standard.color_clock_hz());
     let mut machine = A500Machine::new(A500Config::standard_1mb(standard));
+    machine.cpu.state.set_stopped(true);
+    machine.step_cycles(150);
     let adf = patterned_bytes(ADF_BYTES, 49);
     let sources = MediaSources {
         rom: None,
         disks: [Some(image("gap.adf", adf.clone())), None, None, None],
     };
+
     let floppy = &mut machine.floppy;
     assert!(floppy.drives[0].insert_disk(&adf));
     assert!(floppy.drives[0].disk_change_flip_flop);
-    let packed = floppy.drives[0].tracks().as_ref().unwrap()[0].snapshot_bytes();
+    let clean_tracks = floppy.drives[0].tracks().clone();
     // Select DF0 with the motor on. An outward step clears the latch at track zero.
     for control in [0x7f, 0x76, 0x77] {
         floppy.pins.control_input = control;
@@ -1098,7 +1191,6 @@ fn file_roundtrip_preserves_an_off_boundary_pulse_in_the_track_gap() {
     assert!(!floppy.drives[0].disk_change_flip_flop);
     assert_eq!(floppy.drives[0].side, 0);
     assert_eq!(floppy.drives[0].cylinder, 0);
-    let clock_hz = u64::from(standard.color_clock_hz());
     for _ in 0..clock_hz.div_ceil(2) {
         floppy.step_cck();
     }
@@ -1113,88 +1205,104 @@ fn file_roundtrip_preserves_an_off_boundary_pulse_in_the_track_gap() {
         }
     }
     assert!(found_index, "index pulse must recur after one revolution");
-
-    // Each of the 11 sectors occupies 1088 raw bytes. This cell is in the gap.
-    const GAP_CELL: usize = 12_200 * 8 + 1;
-    assert_eq!(packed[GAP_CELL / 8], 0xaa);
-    for _ in 0..(GAP_CELL as u64 * clock_hz).div_ceil(500_000) + 2 {
+    for _ in 0..(GAP_CELL * clock_hz).div_ceil(CELL_HZ) + 2 {
         floppy.step_cck();
     }
-    floppy.pins.write_enable_high = false;
-    floppy.pins.write_data_high = false;
-    floppy.step_cck();
 
-    let original = machine.save_state();
+    let expected_reference = json!({
+        "sha256": "f0fdbb654fd226e44e9cc4bc9a5fbbb09fcb01feab1c4a26839d4440534e17d2",
+        "name": "gap.adf",
+    });
+    let clean_document =
+        serde_json::to_value(SaveState::capture(&machine, &sources).unwrap()).unwrap();
+    assert_eq!(
+        clean_document["state"]["floppy"]["drives"][0]["track_data"],
+        expected_reference
+    );
+
+    machine.floppy.pins.write_enable_high = false;
+    machine.floppy.pins.write_data_high = false;
+    machine.floppy.step_cck();
+    assert!(machine.floppy.drives[0].tracks() != &clean_tracks);
+
+    let written = machine.save_state();
+    assert_eq!(written.cck, 150);
     let text = SaveState::capture(&machine, &sources)
         .unwrap()
         .to_json()
         .unwrap();
     let document: Value = serde_json::from_str(&text).unwrap();
     let drive = &document["state"]["floppy"]["drives"][0];
+    assert_eq!(document["state"]["cck"], 150);
     assert_eq!(drive["rotation_bit"], GAP_CELL);
     assert_eq!(drive["disk_change_flip_flop"], false);
-    let phase = drive["cell_phase"].as_u64().unwrap() / 500_000;
-    assert!((3..=4).contains(&phase), "pulse must be inside the cell");
-    let tracks = drive["track_data"]["modified_tracks"].as_object().unwrap();
-    assert_eq!(tracks.len(), 1);
-    let changed = &tracks["0"];
-
-    // A bitmap identifies the recorded block. One mask per cell then preserves its pulse phase.
-    const FLAG_BYTES: usize = 98;
-    let mut expected = vec![0; FLAG_BYTES];
-    let block = GAP_CELL / (16 * 8);
-    expected[block / 8] = 1 << (block % 8);
-    expected.extend(
-        packed
-            .iter()
-            .flat_map(|byte| (0..8).rev().map(move |bit| (byte >> bit) & 1)),
+    let phase = drive["cell_phase"].as_u64().unwrap();
+    assert!(
+        (3..=4).contains(&(phase / CELL_HZ)),
+        "pulse must be inside the cell"
     );
-    assert_eq!(expected[FLAG_BYTES + GAP_CELL], 0);
-    expected[FLAG_BYTES + GAP_CELL] = 1 << phase;
-    canonical_bytes(changed, &expected, "recorded gap track");
+    assert_eq!(drive["track_data"], expected_reference);
 
     let restored = SaveState::from_bytes(text.as_bytes())
         .unwrap()
         .restore(&sources)
         .unwrap();
-    assert!(*restored == original);
+    let mut expected = written.clone();
+    expected.floppy.drives[0] = expected.floppy.drives[0].with_tracks(clean_tracks);
+    assert!(
+        *restored == expected,
+        "file restore must only replace the tracks"
+    );
+
     let mut resumed = A500Machine::new(A500Config::default());
-    resumed.load_state(&restored);
-    assert!(resumed.save_state() == original);
+    resumed.load_state(&written);
+    assert!(resumed.save_state() == written);
+
+    // Continue the in-flight recording from the pure snapshot and compare the drive outputs.
+    let mut live_write = machine.floppy.clone();
+    let mut resumed_write = resumed.floppy.clone();
     for tick in 0..128 {
-        for target in [&mut machine.floppy, &mut resumed.floppy] {
+        for target in [&mut live_write, &mut resumed_write] {
             target.pins.write_data_high = tick % 7 != 0;
             target.pins.write_enable_high = tick >= 28;
             target.step_cck();
         }
-        assert_eq!(resumed.floppy.pins, machine.floppy.pins);
+        assert_eq!(resumed_write.pins, live_write.pins);
     }
-    assert!(resumed.save_state() == machine.save_state());
-    assert_eq!(sources.disks[0].as_ref().unwrap().bytes, adf);
+    assert!(resumed_write == live_write);
 
-    let mut invalid_flags = expected;
-    invalid_flags[FLAG_BYTES - 1] |= 0x80;
-    for (key, value) in [
-        ("160", changed.clone()),
-        ("00", changed.clone()),
-        ("0", json!("AA==")),
-        ("0", json!(STANDARD.encode(invalid_flags))),
-    ] {
-        let mut invalid = document.clone();
-        invalid["state"]["floppy"]["drives"][0]["track_data"]["modified_tracks"] =
-            json!({(key): value});
-        assert!(matches!(
-            SaveState::from_json(&invalid.to_string()),
-            Err(SaveStateError::DeserializationFailed(_))
-        ));
+    // Release recording, then read the first sector and the gap on the next revolution.
+    let mut file_floppy = restored.floppy;
+    let mut sector = [0u8; 1088];
+    let revolution_ticks = TRACK_CELLS * clock_hz / CELL_HZ;
+    for tick in 1..=revolution_ticks {
+        for target in [&mut machine.floppy, &mut resumed.floppy, &mut file_floppy] {
+            target.pins.write_enable_high = true;
+            target.pins.write_data_high = true;
+            target.step_cck();
+        }
+        assert_eq!(resumed.floppy.pins, machine.floppy.pins);
+
+        if tick == revolution_ticks {
+            assert!(!resumed.floppy.pins.read_data_high);
+            assert!(file_floppy.pins.read_data_high);
+        } else {
+            assert_eq!(file_floppy.pins, machine.floppy.pins);
+        }
+
+        let angle = phase + tick * CELL_HZ;
+        if angle % clock_hz < CELL_HZ {
+            let cell = ((GAP_CELL + angle / clock_hz - 1) % TRACK_CELLS) as usize;
+            if cell < sector.len() * 8 && !file_floppy.pins.read_data_high {
+                sector[cell / 8] |= 0x80 >> (cell % 8);
+            }
+        }
     }
-    let entry = format!(r#""0":{changed}"#);
-    let duplicate = text.replace(&entry, &format!("{entry},{entry}"));
-    assert_ne!(duplicate, text);
-    assert!(matches!(
-        SaveState::from_bytes(duplicate.as_bytes()),
-        Err(SaveStateError::DeserializationFailed(_))
-    ));
+    let (track, sector_number, payload) =
+        machine_loop::floppy::mfm::decode_amiga_sector(&sector).unwrap();
+    assert_eq!((track, sector_number), (0, 0));
+    assert_eq!(payload.as_slice(), &adf[..512]);
+    assert_eq!(sources.disks[0].as_ref().unwrap().bytes, adf);
 }
 
 #[test]

@@ -11,6 +11,7 @@ that directory to run the return trip in a fresh Chromium context.
 """
 import argparse
 from base64 import b64decode, b64encode
+from copy import deepcopy
 from functools import partial
 from hashlib import sha256
 from io import BytesIO
@@ -52,8 +53,6 @@ CONTROL_POINTS = {
     "DF0 second disk": (1198, 144),
 }
 
-TRACK_BYTES = 12_500
-
 
 def disk_reference(snapshot):
     return snapshot["state"]["floppy"]["drives"][0]["track_data"]
@@ -68,7 +67,7 @@ def decode_base64(value):
 
 def check_standard_encoding(page, snapshot):
     """Decode the real download independently of the Rust or Wasm codec."""
-    assert snapshot["header"]["version"] == 16
+    assert snapshot["header"]["version"] == 17
     assert snapshot["header"]["timestamp"] > 0
     memory = snapshot["state"]["physical_memory"]
     assert len(decode_base64(memory["chip_ram"])) == 512 * 1024
@@ -114,15 +113,13 @@ def check_source(snapshot, rom, disk, mounted_id):
     drives = snapshot["state"]["floppy"]["drives"]
     assert len(drives) == 4
     assert drives[0]["connected"] and drives[0]["disk_inserted"]
-    reference = disk_reference(snapshot)
-    assert reference["name"] == disk.name
-    assert reference["sha256"] == sha256(disk.read_bytes()).hexdigest()
-    assert set(reference) == {"name", "sha256", "modified_tracks"}
+    assert disk_reference(snapshot) == {"name": disk.name, "sha256": sha256(disk.read_bytes()).hexdigest()}
     for drive in drives[1:]:
         assert not drive["connected"] and not drive["disk_inserted"] and drive["track_data"] is None
 
 
 def check_restored_state(actual, expected):
+    assert actual["header"]["version"] == expected["header"]["version"]
     assert actual["state"]["cck"] == expected["state"]["cck"], "Load changed the paused CCK"
     assert actual["state"]["cpu"] == expected["state"]["cpu"], "Load changed the paused CPU"
     assert actual["state"] == expected["state"], "Load changed the paused machine"
@@ -213,31 +210,37 @@ def select_disk(page, option, description):
     raise AssertionError(f"DF0 did not confirm {description}")
 
 
-def check_remount(page, snapshot, output):
-    # Seed a single altered raw track in a disposable file. The last 16 bytes
-    # are in the track gap and cannot be represented by a sector write.
-    reference = disk_reference(snapshot)
-    assert reference["modified_tracks"] == {}
-    altered_track = bytes([0xAA]) * (TRACK_BYTES - 16) + bytes.fromhex("deadbeef") * 4
-    reference["modified_tracks"]["0"] = b64encode(altered_track).decode("ascii")
-    fixture = output / "modified-track-fixture.json"
-    fixture.write_text(json.dumps(snapshot, separators=(",", ":")), encoding="utf-8")
-    import_state(page, fixture, 6)
+def check_remount(page, snapshot, rom, disk, generation, output):
     mounted_label = drive_label(page)
     replacement_label = select_disk(page, "DF0 first disk", "the replacement disk")
+    before = export_state(page, output / "before-modified-track-rejection.json")
+    assert before["header"]["association"]["mounted"] == ["manual-0", None, None, None]
+    assert disk_reference(before)["sha256"] != disk_reference(snapshot)["sha256"]
+    assert page.evaluate("observedGeneration") == generation
+
+    # The previous save targets the other disk. Add an obsolete field while
+    # keeping its version and every other field valid for the current codec.
+    malformed = deepcopy(snapshot)
+    altered_track = bytes([0xAA]) * 12_484 + bytes.fromhex("deadbeef") * 4
+    disk_reference(malformed)["modified_tracks"] = {"0": b64encode(altered_track).decode("ascii")}
+    fixture = output / "modified-track-fixture.json"
+    fixture.write_text(json.dumps(malformed, separators=(",", ":")), encoding="utf-8")
+    error = reject_import(page, fixture, "unknown field `modified_tracks`", output / "modified-track-rejected.png")
+    assert page.evaluate("observedGeneration") == generation
+    assert drive_label(page) == replacement_label
+    after = export_state(page, output / "after-modified-track-rejection.json")
+    check_restored_state(after, before)
+    assert after["header"]["association"] == before["header"]["association"]
+
     empty_label = select_disk(page, "DF0 Eject / Empty", "ejection")
     assert len({mounted_label, replacement_label, empty_label}) == 3
     assert select_disk(page, "DF0 second disk", "reinsertion") == mounted_label
-    assert page.evaluate("observedGeneration") == 6, "Disk swap replaced the machine"
-
-    # Observe the track after all three disk commands have completed.
-    remounted = export_state(page, output / "modified-track-remounted.json")
-    assert remounted["header"]["association"]["mounted"][0] == "manual-1"
-    assert remounted["state"]["floppy"]["drives"][0]["disk_inserted"]
-    restored = disk_reference(remounted)
-    assert restored["sha256"] == reference["sha256"]
-    assert list(restored["modified_tracks"]) == ["0"]
-    assert decode_base64(restored["modified_tracks"]["0"]) == altered_track
+    assert page.evaluate("observedGeneration") == generation, "Disk swap replaced the machine"
+    remounted = export_state(page, output / "remounted.json")
+    check_source(remounted, rom, disk, "manual-1")
+    assert remounted["state"]["cck"] == snapshot["state"]["cck"]
+    return {"rejected_track_map": error, "cck": before["state"]["cck"], "generation": generation,
+            "replacement_drive_id": "manual-0", "remounted_drive_id": "manual-1"}
 
 
 def check_workflow(browser, url, rom, disk, output):
@@ -268,13 +271,14 @@ def check_workflow(browser, url, rom, disk, output):
         select_file(page, "Select Kickstart", rom)
         page.wait_for_timeout(400)
         stage = "disk selection"
-        disk_digest = sha256(disk.read_bytes()).digest()
+        original_disk = disk.read_bytes()
+        disk_digest = sha256(original_disk).digest()
         with page.expect_file_chooser() as chooser:
             press("Select disk")
         chooser.value.set_files({
             "name": "replacement.adf" if disk.name != "replacement.adf" else "other.adf",
             "mimeType": "application/octet-stream",
-            "buffer": bytes([255]) * (880 * 1024),
+            "buffer": bytes([original_disk[0] ^ 0xFF]) * (880 * 1024),
         })
         page.wait_for_timeout(400)
         select_file(page, "Select disk", disk)
@@ -311,7 +315,6 @@ def check_workflow(browser, url, rom, disk, output):
         saved = save(saved_path)
         check_standard_encoding(page, saved)
         check_source(saved, rom, disk, "manual-1")
-        assert disk_reference(saved)["modified_tracks"] == {}
         assert saved["state"]["cck"] > 0
         stage = "state import"
         page.evaluate("document.title = 'Before state restore'")
@@ -407,8 +410,8 @@ def check_workflow(browser, url, rom, disk, output):
         current = save(output / "current-controls-load.json")
         assert current["state"] == expected, "Import restored historical attachments or changed progress"
         page.screenshot(path=str(output / "current-controls-load.png"))
-        stage = "swap and remount changed disk with a source ADF"
-        check_remount(page, current, output)
+        stage = "reject obsolete track data and remount the saved ADF"
+        remount = check_remount(page, current, rom, disk, 5, output)
         assert sha256(disk.read_bytes()).digest() == disk_digest, "The original ADF changed"
         stage = "dispatch rebound browser shortcut"
         stored = page.evaluate("localStorage.getItem('player_configurations')")
@@ -441,7 +444,7 @@ def check_workflow(browser, url, rom, disk, output):
                 "configuration_cancel": True, "stopped_configuration_save": True,
                 "retired_program_inputs_ignored": True,
                 "recorded_keyboard_shortcut": True,
-                "disk_swap_retained_raw_tracks": True,
+                "disk_remount": remount,
                 "manual_setup_and_restore_title": APPLICATION_TITLE, "offline_instructions": True,
                 "native_screenshot_action_excluded": True,
                 "native_cover_action_excluded": True, "errors": errors}
@@ -639,7 +642,6 @@ def check_media_restore(browser, url, output):
         saved = export_state(page, saved_path)
         check_standard_encoding(page, saved)
         check_source(saved, rom, second, "manual-1")
-        assert disk_reference(saved)["modified_tracks"] == {}
         assert saved["state"]["cck"] > 0
         assert saved["state"]["cpu"]["d"][0] == 0x2A
         frame = decode_base64(saved["state"]["denise"]["frame_builder"]["buffer"])
@@ -664,6 +666,7 @@ def check_native_exchange(browser, url, native_path, output):
     rom, first, second = (native_path.with_name(name) for name in ("test.rom", "first.adf", "second.adf"))
     browser_save = json.loads(original.read_text(encoding="utf-8"))
     native_save = json.loads(native_path.read_text(encoding="utf-8"))
+    assert native_save["header"]["version"] == 17
     check_restored_state(native_save, browser_save)
     check_source(native_save, rom, second, "manual-1")
     return check_fresh_restore(browser, url, rom, first, second, native_path, output)
@@ -740,8 +743,7 @@ def check_archive_imports(browser, url, rom, output):
             drive = snapshot["state"]["floppy"]["drives"][0]
             assert drive["disk_inserted"]
             reference = drive["track_data"]
-            assert reference["sha256"] == sha256(expected).hexdigest()
-            assert reference["modified_tracks"] == {}
+            assert reference == {"name": "Archive Fill.adf", "sha256": sha256(expected).hexdigest()}
             results[filename] = reference["sha256"]
             assert not errors, errors
             assert not page.evaluate("archiveWorker.failures")

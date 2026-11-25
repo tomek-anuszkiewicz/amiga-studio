@@ -142,8 +142,10 @@ fn launch_save_reopen_relocate_and_restore_verified_media() {
             >= (pair[1].header.timestamp, &pair[1].path)));
     let unavailable = [
         ("catalog-old.json", br#"{"state":{"physical_memory":[1,2]},"header":{"version":15}}"#.as_slice(),
-            "found 15, supported 16"),
-        ("catalog-corrupt.json", br#"{"header":{"version":16,"timestamp":0,"association":{"mounted":[null,null,null,null]},"screenshot_png":"%%%"},"state":{}}"#.as_slice(),
+            "found 15, supported 17"),
+        ("catalog-v16.json", br#"{"state":{"floppy":{"drives":[{"track_data":{"modified_tracks":{}}}]}},"header":{"version":16}}"#.as_slice(),
+            "found 16, supported 17"),
+        ("catalog-corrupt.json", br#"{"header":{"version":17,"timestamp":0,"association":{"mounted":[null,null,null,null]},"screenshot_png":"%%%"},"state":{}}"#.as_slice(),
             "serialization failed"),
     ];
     let original_files: Vec<_> = saves
@@ -247,6 +249,8 @@ fn launch_save_reopen_relocate_and_restore_verified_media() {
         ]
     );
     assert_eq!(reopened.player.mounted[0].as_deref(), Some("disk-one"));
+    assert_eq!(std::fs::read(&save_path).unwrap(), save_bytes);
+    assert_eq!(std::fs::read(&renamed_disk).unwrap(), disk);
     // A save from the other game fails before replacing the healthy paused machine.
     let other = library
         .games
@@ -1178,10 +1182,8 @@ fn initial_state_and_normal_boot_use_their_own_disk_layouts() {
         None,
         Some(("disk-two", "Disk 2.adf", 0x22)),
         None,
-        Some(("disk-three", "Disk 3.adf", 0x43)),
+        Some(("disk-three", "Disk 3.adf", 0x33)),
     ];
-    let mut reset_layout = startup;
-    reset_layout[2] = initial[3];
     game.manifest.mounted = startup.map(|disk| disk.map(|(id, _, _)| id.to_owned()));
     game.manifest.initial_state = Some("initial.json".into());
     std::fs::write(
@@ -1189,24 +1191,32 @@ fn initial_state_and_normal_boot_use_their_own_disk_layouts() {
         serde_json::to_vec(&game.manifest).unwrap(),
     )
     .unwrap();
+    let mut captured_disks = initial.map(|disk| disk.map(|(_, _, fill)| vec![fill; ADF_BYTES]));
+    // DF3 at capture has different tracks from the library's ADF.
+    captured_disks[3].as_mut().unwrap().fill(0x43);
     let mut machine = MachineSetup {
         config: config::A500Config::default(),
         ports: [DeviceKind::Mouse, DeviceKind::Joystick],
         drives: [true; 4],
         rom: rom(),
-        disks: initial.map(|disk| disk.map(|(_, _, fill)| vec![fill; ADF_BYTES])),
+        disks: captured_disks,
     }
     .prepare()
     .unwrap();
     machine.machine.cpu.state.set_d_long(7, INITIAL_D7);
     let mut sources = machine.file_sources().clone();
-    // The initial state's DF3 represents a fully rewritten copy of Disk 3.
-    sources.disks[3].as_mut().unwrap().bytes.fill(0x33);
+    let source = &mut sources.disks[3].as_mut().unwrap().bytes;
+    *source = std::fs::read(game.directory.join("disks/Disk 3.adf")).unwrap();
+    assert_eq!(
+        machine.machine.floppy.drives[3].tracks_match_adf(source),
+        Some(false)
+    );
     let mut saved = debugger::SaveState::capture(&machine.machine, &sources).unwrap();
     saved.header.association.game_id = Some(game.manifest.id.clone());
     saved.header.association.mounted = initial.map(|disk| disk.map(|(id, _, _)| id.to_owned()));
     let initial_path = game.directory.join("initial.json");
-    std::fs::write(&initial_path, saved.to_json().unwrap()).unwrap();
+    let initial_json = saved.to_json().unwrap();
+    std::fs::write(&initial_path, &initial_json).unwrap();
 
     let mut app = game_app(&root);
     app.player.catalog.configurations[0].launch.drives = [true; 4];
@@ -1252,11 +1262,15 @@ fn initial_state_and_normal_boot_use_their_own_disk_layouts() {
     assert!(!h.state().player.busy);
     h.get_by_label("Pause");
     assert_eq!(
-        assert_player_disk_layout(&mut h, reset_layout)
+        assert_player_disk_layout(&mut h, startup)
             .state
             .cpu
             .d_long(7),
         0
+    );
+    assert_eq!(
+        std::fs::read(&initial_path).unwrap(),
+        initial_json.as_bytes()
     );
 
     std::fs::write(initial_path, b"invalid initial state").unwrap();

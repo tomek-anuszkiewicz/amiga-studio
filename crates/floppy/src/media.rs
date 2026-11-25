@@ -5,22 +5,19 @@ use serde::{Deserialize, Serialize};
 
 /// 500,000 raw MFM cells/s at 300 RPM: 100,000 cells per revolution.
 const RAW_CELL_HZ: u32 = 500_000;
-pub const TRACK_BYTES: usize = 12_500;
+const TRACK_BYTES: usize = 12_500;
 const TRACK_BITS: u32 = (TRACK_BYTES * u8::BITS as usize) as u32;
 const SECTOR_TRACK_BYTES: usize = SECTORS_PER_TRACK * SECTOR_DATA_BYTES;
 const BIT_BYTE_MSB: u8 = 0x80;
 const INDEX_CELLS: u32 = 2_000;
 const BLOCK_BYTES: usize = 16;
-const TRACK_BLOCKS: usize = TRACK_BYTES.div_ceil(BLOCK_BYTES);
-const RECORDING_FLAGS: usize = TRACK_BLOCKS.div_ceil(8);
-pub const RECORDED_TRACK_BYTES: usize = RECORDING_FLAGS + TRACK_BYTES * 8;
 const SPIN_UP_MS: u32 = 500;
 const COAST_DOWN_MS: u32 = 80;
 const WRITE_READ_RECOVERY_US: u32 = 1_200;
 // Twice the color-clock frequency makes both linear speed changes integral per CCK.
 const SPINDLE_SPEED_SCALE: u32 = 2;
 
-/// Untouched blocks keep the packed MFM representation on disk and in snapshots.
+/// Untouched blocks store packed MFM cells.
 /// A recorded block can locate a pulse at any of the 7 or 8 nominal CCK in a cell.
 /// Both representations fit inline so opening the write gate never allocates.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -81,79 +78,6 @@ enum TrackEncoding {
 }
 
 impl Track {
-    /// Packed boundary pulses, or a recorded-block bitmap followed by eight
-    /// phase masks per raw byte. Padding beyond the track boundary is implicit.
-    pub fn snapshot_bytes(&self) -> Vec<u8> {
-        match &self.0 {
-            TrackEncoding::Encoded(blocks) => {
-                let mut bytes = Vec::with_capacity(TRACK_BYTES);
-                for block in blocks {
-                    if let TrackBlock::Encoded(block) = block {
-                        bytes.extend_from_slice(block);
-                    }
-                }
-                bytes.truncate(TRACK_BYTES);
-                bytes
-            }
-            TrackEncoding::Recorded(blocks) => {
-                let mut bytes = vec![0; RECORDING_FLAGS];
-                bytes.reserve(TRACK_BYTES * 8);
-                for (index, block) in blocks.iter().enumerate() {
-                    match block {
-                        TrackBlock::Encoded(block) => {
-                            bytes.extend(block.iter().flat_map(|&byte| boundary_samples(byte)));
-                        }
-                        TrackBlock::Recorded(samples) => {
-                            bytes[index / 8] |= 1 << (index % 8);
-                            bytes.extend(samples.iter().flatten());
-                        }
-                    }
-                }
-                bytes.truncate(RECORDED_TRACK_BYTES);
-                bytes
-            }
-        }
-    }
-
-    /// Reconstructs exactly the saved block representation and all pulse phases.
-    pub fn from_snapshot_bytes(bytes: &[u8]) -> Option<Self> {
-        match bytes.len() {
-            TRACK_BYTES => Some(Self(TrackEncoding::Encoded(encoded_blocks(bytes)))),
-            RECORDED_TRACK_BYTES => {
-                let (flags, phases) = bytes.split_at(RECORDING_FLAGS);
-                let mut blocks = Vec::with_capacity(TRACK_BLOCKS);
-                let mut recorded = false;
-                for (index, chunk) in phases.chunks(BLOCK_BYTES * 8).enumerate() {
-                    let mut samples = [[0; 8]; BLOCK_BYTES];
-                    for (byte, phases) in samples.iter_mut().zip(chunk.chunks_exact(8)) {
-                        byte.copy_from_slice(phases);
-                    }
-                    if flags[index / 8] & (1 << (index % 8)) != 0 {
-                        recorded = true;
-                        blocks.push(TrackBlock::Recorded(samples));
-                    } else {
-                        let mut packed = [0; BLOCK_BYTES];
-                        for (byte, phases) in packed.iter_mut().zip(samples) {
-                            for (bit, phase) in phases.into_iter().enumerate() {
-                                if phase > 1 {
-                                    return None;
-                                }
-                                *byte |= phase << (7 - bit);
-                            }
-                        }
-                        blocks.push(TrackBlock::Encoded(packed));
-                    }
-                }
-                let valid_last_flags = 0xff >> (RECORDING_FLAGS * 8 - TRACK_BLOCKS);
-                if !recorded || flags[RECORDING_FLAGS - 1] & !valid_last_flags != 0 {
-                    return None;
-                }
-                Some(Self(TrackEncoding::Recorded(blocks)))
-            }
-            _ => None,
-        }
-    }
-
     fn transition(&self, rotation_bit: u32, cell_phase: u32) -> bool {
         let blocks = match &self.0 {
             TrackEncoding::Encoded(_) if cell_phase >= RAW_CELL_HZ => return false,

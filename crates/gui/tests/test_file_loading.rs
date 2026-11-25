@@ -227,7 +227,7 @@ fn exchange_browser_save_through_native_player() {
     let original = std::fs::read(&source_path).unwrap();
     let saved = debugger::SaveState::from_bytes(&original).unwrap();
     let expected_header = saved.header.clone();
-    assert_eq!(expected_header.version, 16);
+    assert_eq!(expected_header.version, 17);
     assert_eq!(
         expected_header.association.mounted[0].as_deref(),
         Some("manual-1")

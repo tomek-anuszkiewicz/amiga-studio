@@ -271,13 +271,15 @@ fn guest_read_marker(owner: &mut MachineOwner, drive: usize) -> Vec<u16> {
     guest_read(owner, drive, WRITTEN_SYNC, 6)
 }
 
-fn guest_read_adf_payload(owner: &mut MachineOwner, drive: usize) -> u32 {
-    let words = guest_read(owner, drive, 0x4489, 540);
+fn guest_read_adf_payload(owner: &mut MachineOwner, drive: usize) -> [u32; 128] {
+    let words = guest_read(owner, drive, 0x4489, 541);
     // A transfer may start after the first or second sync word of a sector.
     let odd = if words[0] == 0x4489 { 29 } else { 28 };
     let even = odd + 256;
     let long = |index| (u32::from(words[index]) << 16) | u32::from(words[index + 1]);
-    ((long(odd) & 0x55555555) << 1) | (long(even) & 0x55555555)
+    std::array::from_fn(|index| {
+        ((long(odd + index * 2) & 0x55555555) << 1) | (long(even + index * 2) & 0x55555555)
+    })
 }
 
 struct Captured {
@@ -296,11 +298,15 @@ fn captured_state(owner: &mut MachineOwner) -> Box<debugger::A500State> {
     state
 }
 
-fn saved_machine(owner: &mut MachineOwner) -> Captured {
+fn snapshot_json(owner: &mut MachineOwner) -> String {
     let HostValue::Snapshot(json) = execute(owner, HostCommand::SaveSnapshot) else {
         panic!("Missing machine snapshot");
     };
-    let document = debugger::SaveState::from_json(&json).unwrap();
+    json
+}
+
+fn saved_machine(owner: &mut MachineOwner) -> Captured {
+    let document = debugger::SaveState::from_json(&snapshot_json(owner)).unwrap();
     Captured {
         header: document.header.clone(),
         state: captured_state(owner),
@@ -342,20 +348,49 @@ fn startup_reset_preserves_written_copies_and_uses_slot_contents_when_moving_dis
         },
     );
 
-    for (drive, id, last_word) in [
+    let disks = [
         (0, "a", 0x9252),
         (1, "shared", 0x9492),
         (2, "shared", 0x9294),
-    ] {
+    ];
+    for (drive, id, _) in disks {
         mount(&mut owner, drive, Some(id), Some(0));
+    }
+    let clean = captured_state(&mut owner);
+    let clean_document: serde_json::Value =
+        serde_json::from_str(&snapshot_json(&mut owner)).unwrap();
+    for (drive, _, last_word) in disks {
         let mut marker = WRITE_WORDS;
         marker[7] = last_word;
         guest_write(&mut owner, drive, marker);
         assert_eq!(guest_read_marker(&mut owner, drive), marker[2..]);
     }
     execute(&mut owner, HostCommand::SaveQuickSlot(1));
-    let written = saved_machine(&mut owner);
-    assert_ne!(raw_tracks(&written.state, 1), raw_tracks(&written.state, 2));
+    let written = captured_state(&mut owner);
+    let json = snapshot_json(&mut owner);
+    let written_file = debugger::SaveState::from_json(&json).unwrap();
+    let written_document: serde_json::Value = serde_json::from_str(&json).unwrap();
+    assert_ne!(
+        written.floppy.drives[1].tracks(),
+        written.floppy.drives[2].tracks()
+    );
+    let reference = serde_json::json!({
+        "sha256": "df62f37da18a38aea318c9312b32b445901c0f16934f25259f758a50277bf7f0",
+        "name": null,
+    });
+    let mut expected_from_file = written.clone();
+    for (drive, _, _) in disks {
+        let original_tracks = clean.floppy.drives[drive].tracks();
+        assert_ne!(written.floppy.drives[drive].tracks(), original_tracks);
+        for document in [&clean_document, &written_document] {
+            assert_eq!(
+                document["state"]["floppy"]["drives"][drive]["track_data"],
+                reference
+            );
+        }
+        expected_from_file.floppy.drives[drive] =
+            written.floppy.drives[drive].with_tracks(original_tracks.clone());
+    }
     let written_sources = debugger::MediaSources {
         rom: Some(debugger::SourceImage {
             name: None,
@@ -368,18 +403,10 @@ fn startup_reset_preserves_written_copies_and_uses_slot_contents_when_moving_dis
             })
         }),
     };
-    let document = serde_json::to_value(&written.document).unwrap();
-    assert!(
-        document["state"]["floppy"]["drives"][0]["track_data"]["modified_tracks"]
-            .as_object()
-            .unwrap()
-            .values()
-            .any(|track| track.as_str().is_some_and(|base64| base64.len() > 20_000)),
-        "Guest writing should exercise recorded pulse phases"
-    );
+    let written_association = written_file.header.association.clone();
     assert_eq!(
-        *written.document.clone().restore(&written_sources).unwrap(),
-        *written.state
+        written_file.restore(&written_sources).unwrap(),
+        expected_from_file
     );
     mount(&mut owner, 1, None, None);
     mount(&mut owner, 2, None, None);
@@ -468,10 +495,7 @@ fn startup_reset_preserves_written_copies_and_uses_slot_contents_when_moving_dis
         raw_tracks(&source.machine.save_state(), 0)
     );
     for drive in [1, 2] {
-        assert_eq!(
-            raw_tracks(&reset.state, drive),
-            raw_tracks(&written.state, drive)
-        );
+        assert_eq!(raw_tracks(&reset.state, drive), raw_tracks(&written, drive));
     }
 
     execute(
@@ -480,12 +504,16 @@ fn startup_reset_preserves_written_copies_and_uses_slot_contents_when_moving_dis
     );
     let moved = saved_machine(&mut owner);
     assert!(!moved.state.floppy.drives[0].disk_inserted);
-    assert_eq!(raw_tracks(&moved.state, 2), raw_tracks(&written.state, 0));
+    assert_eq!(raw_tracks(&moved.state, 2), raw_tracks(&written, 0));
 
     execute(&mut owner, HostCommand::LoadQuickSlot { slot: 1, ports });
     let loaded = saved_machine(&mut owner);
-    assert_eq!(loaded.state.floppy.drives, written.state.floppy.drives);
-    assert_eq!(loaded.header.association, written.header.association);
+    assert_eq!(loaded.state.cck, written.cck);
+    assert_eq!(loaded.state.floppy.drives, written.floppy.drives);
+    assert_eq!(loaded.header.association, written_association);
+    let mut marker = WRITE_WORDS;
+    marker[7] = disks[0].2;
+    assert_eq!(guest_read_marker(&mut owner, 0), marker[2..]);
     execute(
         &mut owner,
         game_reset([
@@ -508,7 +536,7 @@ fn startup_reset_preserves_written_copies_and_uses_slot_contents_when_moving_dis
     for (drive, original) in [(0, 2), (1, 1), (2, 0)] {
         assert_eq!(
             raw_tracks(&reset_from_slot.state, drive),
-            raw_tracks(&written.state, original)
+            raw_tracks(&written, original)
         );
     }
     assert!(!reset_from_slot.state.floppy.drives[3].connected);
@@ -562,7 +590,7 @@ fn guest_reads_written_disk_after_replacing_it_and_reinserting_it_without_a_snap
         assert!(reply.value.unwrap_err().contains(expected));
         assert!(reply.status.drives[0].inserted);
     }
-    assert_eq!(guest_read_adf_payload(&mut owner, 0), 0x11111111);
+    assert_eq!(guest_read_adf_payload(&mut owner, 0), [0x11111111; 128]);
     mount(&mut owner, 0, Some("disk-a"), Some(0));
     assert_eq!(
         guest_read_marker(&mut owner, 0),
@@ -605,7 +633,7 @@ fn independently_written_copies_with_one_id_can_return_to_their_original_drives(
         .value
         .unwrap_err()
         .contains("Several ejected copies"));
-    assert_eq!(guest_read_adf_payload(&mut owner, 2), 0x11111111);
+    assert_eq!(guest_read_adf_payload(&mut owner, 2), [0x11111111; 128]);
 
     for (drive, words) in [(0, WRITE_WORDS), (1, other_words)] {
         mount(&mut owner, drive, Some("shared"), None);
@@ -640,7 +668,7 @@ fn quick_load_restores_mounted_contents_and_keeps_other_disks_from_the_session()
         panic!("Missing restored disk association");
     };
     assert_eq!(association.mounted[0].as_deref(), Some("disk-b"));
-    assert_eq!(guest_read_adf_payload(&mut owner, 0), 0x11111111);
+    assert_eq!(guest_read_adf_payload(&mut owner, 0), [0x11111111; 128]);
     assert_eq!(guest_read_marker(&mut owner, 0), [0; 6]);
     assert!(
         request(
@@ -660,7 +688,7 @@ fn quick_load_restores_mounted_contents_and_keeps_other_disks_from_the_session()
     mount(&mut owner, 1, Some("disk-a"), None);
     mount(&mut owner, 2, Some("disk-c"), None);
     assert_eq!(guest_read_marker(&mut owner, 1), WRITE_WORDS[2..]);
-    assert_eq!(guest_read_adf_payload(&mut owner, 2), 0x22222222);
+    assert_eq!(guest_read_adf_payload(&mut owner, 2), [0x22222222; 128]);
 }
 
 #[test]
@@ -1032,7 +1060,7 @@ mod named_start_state {
     use std::time::{Duration, Instant};
 
     #[test]
-    fn promoted_quicksave_loads_guest_written_media_from_the_sessions_adf_buffer() {
+    fn promoted_quicksave_rebuilds_media_from_the_sessions_adf_buffer() {
         let root = tempfile::tempdir().unwrap();
         let root = root.path();
         let directory = root.join("game");
@@ -1059,12 +1087,34 @@ mod named_start_state {
         let game = GameLibrary::discover(root).unwrap().games.remove(0);
 
         let mut owner = owner_with_latched_motors();
-        mount(&mut owner, 0, Some("written"), Some(0x11));
+        execute(
+            &mut owner,
+            HostCommand::MountDisk {
+                name: Some("written.adf".into()),
+                drive: 0,
+                disk_id: Some("written".into()),
+                bytes: Some(fs::read(&original).unwrap()),
+            },
+        );
         guest_write(&mut owner, 0, WRITE_WORDS);
+        assert_eq!(guest_read_marker(&mut owner, 0), WRITE_WORDS[2..]);
         let mut saved = saved_machine(&mut owner);
+        assert_eq!(
+            saved.state.floppy.drives[0].tracks_match_adf(&original_adf),
+            Some(false)
+        );
         saved.document.header.association.game_id = Some("game".into());
         let json = saved.document.to_json().unwrap();
-        persist_save(&game, &json, Some(1)).unwrap();
+        let quicksave = persist_save(&game, &json, Some(1)).unwrap();
+        let document: serde_json::Value =
+            serde_json::from_slice(&fs::read(&quicksave).unwrap()).unwrap();
+        assert_eq!(
+            document["state"]["floppy"]["drives"][0]["track_data"],
+            serde_json::json!({
+                "sha256": "5ed097040f15cc5080fed98282eb6348a95792ccf590a0578aaca7f8fa3fa2ff",
+                "name": "written.adf",
+            })
+        );
 
         let mut app = player_app(root);
         app.start_library_game(game, None, false);
@@ -1088,8 +1138,18 @@ mod named_start_state {
             .set_text_value_accesskit("Written media");
         crate::common::settle_harness(&mut h);
         click(&mut h, "Add start state");
+        let named_game = GameLibrary::discover(root).unwrap().games.remove(0);
+        let [entry] = named_game.manifest.start_states.as_slice() else {
+            panic!("Expected one promoted start state");
+        };
+        assert_eq!(entry.name, "Written media");
+        let promoted = directory
+            .join("initial_states")
+            .join(&entry.id)
+            .with_extension("json");
+        assert_eq!(fs::read(&promoted).unwrap(), json.as_bytes());
         assert_eq!(fs::read(&original).unwrap(), original_adf);
-        fs::remove_file(original).unwrap();
+        fs::remove_file(&original).unwrap();
 
         let generation = h.state().host.status.generation;
         click(&mut h, "Load Written media");
@@ -1097,16 +1157,24 @@ mod named_start_state {
         crate::common::wait_harness(&mut h, |app| {
             app.host.status.generation > generation && app.host.status.cck > saved.state.cck
         });
+        assert!(h.state().file_error.is_none());
         assert!(h.state().host.status.running);
         assert_eq!(h.state().player.mounted[0].as_deref(), Some("written"));
         click(&mut h, "Pause");
         crate::common::wait_harness(&mut h, |app| !app.host.status.running);
         let restored = crate::common::snapshot(h.state_mut());
-        assert_eq!(raw_tracks(&restored, 0), raw_tracks(&saved.state, 0));
+        assert_eq!(
+            restored.floppy.drives[0].tracks_match_adf(&original_adf),
+            Some(true)
+        );
         let mut probe = Box::new(DebuggerSession::new());
         probe.load_state(&restored);
         let mut probe = MachineOwner::new(probe);
-        assert_eq!(guest_read_marker(&mut probe, 0), WRITE_WORDS[2..]);
+        assert_eq!(guest_read_adf_payload(&mut probe, 0), [0x11111111; 128]);
+        assert_eq!(guest_read_marker(&mut probe, 0), [0; 6]);
+        assert_eq!(fs::read(&quicksave).unwrap(), json.as_bytes());
+        assert_eq!(fs::read(&promoted).unwrap(), json.as_bytes());
+        assert!(!original.exists());
 
         let generation = h.state().host.status.generation;
         click(&mut h, "Reset");

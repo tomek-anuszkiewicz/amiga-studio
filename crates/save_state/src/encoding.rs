@@ -140,3 +140,17 @@ impl<'de, T: Deserialize<'de>> Deserialize<'de> for Optional<T> {
         decoder.deserialize_any(Value(PhantomData))
     }
 }
+
+/// Reads a required field using the same value types as an optional field.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(transparent)]
+pub(super) struct Required<T>(pub T);
+
+impl<'de, T: Deserialize<'de>> Deserialize<'de> for Required<T> {
+    fn deserialize<D: Deserializer<'de>>(decoder: D) -> Result<Self, D::Error> {
+        Optional::deserialize(decoder)?
+            .0
+            .map(Self)
+            .ok_or_else(|| de::Error::custom("Expected a non-null value"))
+    }
+}

@@ -7,7 +7,7 @@
 pub mod mfm;
 pub use mfm::*;
 mod media;
-pub use media::{Track, RECORDED_TRACK_BYTES, TRACK_BYTES};
+pub use media::Track;
 
 use config::FLOPPY_DRIVE_COUNT;
 use serde::{Deserialize, Serialize};
@@ -81,7 +81,7 @@ pub struct FloppyDrive<Tracks = Option<Vec<Track>>> {
     /// Disk change hardware flip-flop: set when disk is removed/changed;
     /// cleared only when a disk is present AND a step pulse is received!
     pub disk_change_flip_flop: bool,
-    /// Prepared circular raw tracks, including usable media in serialized state.
+    /// Media storage for the live drives or a snapshot format.
     track_data: Tracks,
     clock_hz: u32,
     spindle_speed: u32,

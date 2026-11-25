@@ -188,12 +188,13 @@ recorded interval may cross INDEX or end within a byte. All other positions
 retain their previous transitions. Writes change the in-memory raw track.
 The host ADF remains untouched.
 
-A full in-memory snapshot holds the resulting raw tracks, fractional spindle
-angle, speed, head travel, read recovery and connector levels. A save file
-identifies the source ADF and carries complete replacements for tracks with
-guest changes, including pulse phases and gaps. Restoration rebuilds the
-original tracks from a verified ADF and installs the replacements without
-tripping the disk-change latch. [Save state](Application/SaveState.md#4-file-loading-and-restoration)
+A full in-memory snapshot holds the resulting raw tracks, including recorded
+pulse phases and gaps. Both full in-memory snapshots and save files preserve
+fractional spindle angle, speed, head travel, read recovery and connector
+levels. A save file identifies the source ADF. On file load, the drive
+rebuilds all tracks from the verified ADF and restores the saved mechanics
+without tripping the disk-change latch.
+[Save state](Application/SaveState.md#4-file-loading-and-restoration)
 
 [Paula](Paula.md#reconstructed-disk-engine-contract) owns data separation,
 the FIFO, synchronization and write serialization.

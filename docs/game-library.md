@@ -164,13 +164,14 @@ compatible configuration. Slot saves also persist per game.
 
 When an Amiga program writes to disk A, you can switch to disk B and reinsert
 A later in the same session. A still contains the program's changes, and the
-original ADF file stays unchanged. A save file records each inserted disk's
-source and modified raw tracks. To keep changes to a disk in a save, insert
-it before saving. A quick load during the session restores the slot's mounted
-disks and keeps the other disks you have used in that session. On game Reset,
-the app uses matching copies from the session when available. If no matching
-copy is available for a startup disk, it prepares one from the source ADF
-bytes already loaded for the session.
+original ADF file stays unchanged. Opening a save file, including a durable
+quicksave or named start state, restores each mounted disk from its matching
+ADF. To keep guest changes when saving and loading within the session, use a
+full in-memory quick slot where available. A quick load during the session
+keeps the other disks you have used in that session. On game Reset, the app
+uses matching copies from the session when available. If no matching copy
+is available for a startup disk, it prepares one from the source ADF bytes
+already loaded for the session.
 
 ## Keep named start states
 
@@ -202,5 +203,5 @@ Kickstart and disk files in Manual setup, then choose **Return to session**
 and **Load**. This iteration has no browser library, bundle loader or
 persistent browser save catalog.
 
-Saves use schema 16. The app keeps older files and reports their schema as
+Saves use schema 17. The app keeps older files and reports their schema as
 unsupported when you try to load them.
