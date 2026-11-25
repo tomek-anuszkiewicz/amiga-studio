@@ -97,6 +97,10 @@ impl EmulatorApp {
         // --- RENDER BASED ON ACTIVE VIEW MODE ---
         if self.view_mode == ViewMode::ScreenOnly {
             // Game view never invokes inspection panels or their data queries.
+            #[cfg(feature = "game-fps-benchmark")]
+            if self.game_fps.as_ref().is_some_and(|run| run.sampling()) {
+                crate::game_fps::prepare_draw(ctx, self.host.presented);
+            }
             egui::CentralPanel::default().show(ui, |ui| {
                 render_amiga_screen(ui, screen_texture, self.screen_scale);
             });

@@ -35,6 +35,31 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ..Default::default()
     };
 
+    #[cfg(feature = "game-fps-benchmark")]
+    let game_fps = match (
+        std::env::var_os("AMIGA_GAME_FPS_ROM"),
+        std::env::var_os("AMIGA_GAME_FPS_ADF"),
+        std::env::var_os("AMIGA_GAME_FPS_RESULT"),
+    ) {
+        (None, None, None) => None,
+        (Some(rom), Some(adf), Some(result)) => Some((
+            std::path::PathBuf::from(rom),
+            std::path::PathBuf::from(adf),
+            std::path::PathBuf::from(result),
+        )),
+        _ => return Err("Game FPS requires ROM, ADF and result paths".into()),
+    };
+    #[cfg(feature = "game-fps-benchmark")]
+    let native_options = if let Some((_, _, result)) = &game_fps {
+        eframe::NativeOptions {
+            persist_window: false,
+            persistence_path: Some(result.with_extension("ron")),
+            ..native_options
+        }
+    } else {
+        native_options
+    };
+
     gui::window_keyboard::run_native(
         APPLICATION_TITLE,
         native_options,
@@ -42,6 +67,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let mut app = EmulatorApp::new(cc);
             if let Some(mode) = force_mode {
                 app.view_mode = mode;
+            }
+            #[cfg(feature = "game-fps-benchmark")]
+            if let Some((rom, adf, result)) = game_fps {
+                gui::game_fps::attach_native(&mut app, cc, &rom, &adf, result);
             }
             Ok(Box::new(app))
         }),

@@ -1,6 +1,6 @@
 //! Run the same standalone guest as the GUI, with deterministic host input.
 
-#[path = "../tests/programs/display/mixed_scene/host.rs"]
+#[path = "../../../tests/mixed_scene/host.rs"]
 mod host;
 
 use std::io::{BufWriter, Write};
@@ -42,9 +42,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "bench" => false,
         _ => return Err("Expected audit or bench; use --help".into()),
     };
-    let mut fields = if audit { 32u64 } else { 120 };
+    let mut fields = if audit { 32 } else { host::BENCH_FIELDS };
     let mut warmup = host::WARMUP_FIELDS;
-    let mut series = if audit { 1u64 } else { 3 };
+    let mut series = if audit { 1 } else { host::BENCH_SERIES };
     let mut standard = VideoStandard::Pal;
     let mut output = None;
     let mut index = 2;
@@ -69,59 +69,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err("Fields and series must be positive; audit uses one series".into());
     }
     let mut machine = host::machine(standard);
-    for field in 0..warmup {
-        host::run_field(&mut machine, field);
-    }
-    let before = host::progress(&machine);
-    let initial = machine.save_state();
-    let mut timings = Vec::new();
-    let mut activity = host::Activity::default();
-    let mut previous_result = None;
-    for run in 0..series {
-        // Every series executes the same guest work and external event schedule.
-        machine.load_state(&initial);
-        if audit {
-            for field in warmup..warmup + fields {
-                host::audit_field(&mut machine, field, &mut activity);
+    let report = if audit {
+        audit_scene(&mut machine, standard, warmup, fields)?
+    } else {
+        let origin = Instant::now();
+        let report = host::benchmark(&mut machine, standard, warmup, fields, series, || {
+            origin.elapsed().as_secs_f64()
+        })?;
+        if let Some(timings) = report["series_seconds"].as_array() {
+            for (run, seconds) in timings
+                .iter()
+                .filter_map(serde_json::Value::as_f64)
+                .enumerate()
+            {
+                println!(
+                    "series={} fields={} seconds={seconds:.6} ms_per_field={:.6} fields_per_second={:.3}",
+                    run + 1, fields, seconds * 1000.0 / fields as f64, fields as f64 / seconds
+                );
             }
-        } else {
-            let start = Instant::now();
-            for field in warmup..warmup + fields {
-                host::run_field(&mut machine, field);
-            }
-            let seconds = start.elapsed().as_secs_f64();
-            println!(
-                "series={} fields={} seconds={seconds:.6} ms_per_field={:.6} fields_per_second={:.3}",
-                run + 1, fields, seconds * 1000.0 / fields as f64, fields as f64 / seconds
-            );
-            timings.push(seconds);
         }
-        let result = machine.save_state();
-        if previous_result
-            .as_ref()
-            .is_some_and(|previous| previous != &result)
-        {
-            return Err("Repeated series ended in different machine states".into());
-        }
-        previous_result = Some(result);
-    }
-    let after = host::progress(&machine);
-    let report = json!({
-        "mode": if audit { "audit" } else { "bench" },
-        "standard": format!("{standard:?}"),
-        "warmup_fields": warmup,
-        "fields_per_series": fields,
-        "series_seconds": timings,
-        "emulated_ccks_per_series": machine.cck - initial.cck,
-        "guest_before": before,
-        "guest_after": after,
-        "activity": if audit { Some(&activity) } else { None },
-        "width": machine.denise.frame_builder.width,
-        "height": machine.denise.frame_builder.height,
-        "pc": machine.cpu.state.instruction_pc(),
-        "halted": machine.cpu.state.is_halted(),
-        "stopped": machine.cpu.state.is_stopped(),
-    });
+        report
+    };
     println!("{}", serde_json::to_string_pretty(&report)?);
     if let Some(directory) = output {
         std::fs::create_dir_all(&directory)?;
@@ -131,8 +99,42 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )?;
         image(&machine, &directory.join("frame.ppm"))?;
     }
-    if after.fault != 0 || after.work_loops <= before.work_loops || after.fields <= before.fields {
-        return Err("Guest made no progress or entered its exception handler".into());
-    }
     Ok(())
+}
+
+fn audit_scene(
+    machine: &mut A500Machine,
+    standard: VideoStandard,
+    warmup: u64,
+    fields: u64,
+) -> Result<serde_json::Value, &'static str> {
+    let end = warmup.checked_add(fields).ok_or("Field range overflow")?;
+    for field in 0..warmup {
+        host::run_field(machine, field);
+    }
+    let before = host::progress(machine);
+    let initial = machine.save_state();
+    let mut activity = host::Activity::default();
+    machine.load_state(&initial);
+    for field in warmup..end {
+        host::audit_field(machine, field, &mut activity);
+    }
+    let after = host::progress(machine);
+    host::validate_progress(&before, &after)?;
+    Ok(json!({
+        "mode": "audit",
+        "standard": format!("{standard:?}"),
+        "warmup_fields": warmup,
+        "fields_per_series": fields,
+        "series_seconds": [],
+        "emulated_ccks_per_series": machine.cck - initial.cck,
+        "guest_before": before,
+        "guest_after": after,
+        "activity": activity,
+        "width": machine.denise.frame_builder.width,
+        "height": machine.denise.frame_builder.height,
+        "pc": machine.cpu.state.instruction_pc(),
+        "halted": machine.cpu.state.is_halted(),
+        "stopped": machine.cpu.state.is_stopped(),
+    }))
 }

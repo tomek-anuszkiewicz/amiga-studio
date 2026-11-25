@@ -14,6 +14,8 @@ pub mod configuration_edit;
 mod configuration_view;
 mod disk_import;
 pub mod file_actions;
+#[cfg(feature = "game-fps-benchmark")]
+pub mod game_fps;
 pub mod game_library;
 mod host_clock;
 pub mod host_commands;
@@ -66,6 +68,8 @@ use wasm_bindgen::prelude::*;
 pub async fn start() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
 
+    #[cfg(feature = "game-fps-benchmark")]
+    let benchmark_media = game_fps::browser::media().await?;
     let web_options = eframe::WebOptions {
         renderer: eframe::Renderer::Glow,
         ..Default::default()
@@ -87,7 +91,12 @@ pub async fn start() -> Result<(), JsValue> {
         .start(
             canvas,
             web_options,
-            Box::new(|cc| Ok(Box::new(EmulatorApp::new(cc)))),
+            Box::new(move |cc| {
+                let app = EmulatorApp::new(cc);
+                #[cfg(feature = "game-fps-benchmark")]
+                let app = game_fps::browser::attach(app, cc, benchmark_media)?;
+                Ok(Box::new(app))
+            }),
         )
         .await
         .map_err(|e| JsValue::from_str(&format!("Failed to start eframe: {:?}", e)))

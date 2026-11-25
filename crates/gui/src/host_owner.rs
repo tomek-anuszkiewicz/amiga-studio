@@ -177,6 +177,10 @@ impl MachineOwner {
                     tracks_match,
                 })
             }
+            #[cfg(feature = "game-fps-benchmark")]
+            HostObservation::MixedSceneBoot => {
+                Ok(crate::game_fps::observe_boot(&machine.physical_memory))
+            }
         }
     }
 
