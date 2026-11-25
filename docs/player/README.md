@@ -28,5 +28,7 @@ while the keyboard and controller keep working. You can also assign a mouse
 release key. Use a key other than Escape. The browser can release pointer
 lock on Escape.
 
-For disk selection, startup, reset and saved progress, see
-[Game library and manual setup](../game-library.md).
+Use **Add to start states** beside a desktop game save or its current
+quicksave to keep a named copy. Choose the saved name in the game's **Start
+states** to resume at that point. **Reset** boots with the game's startup
+disks. [Game library and manual setup](../game-library.md#keep-named-start-states)

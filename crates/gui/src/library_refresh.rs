@@ -1,6 +1,6 @@
 //! Native library notifications and background discovery, owned by the frontend.
 
-use crate::game_library::{self, GameLibrary, GameManifest, LibraryGame, PlayerSave};
+use crate::game_library::{self, GameLibrary, GameManifest, LibraryGame, SavedProgress};
 use crate::library_catalog::{self, CatalogRead};
 use async_channel::{Receiver, Sender};
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
@@ -231,8 +231,8 @@ impl SaveReadTarget {
 
 #[derive(Debug)]
 pub(crate) struct SessionSaves {
-    pub entries: Vec<PlayerSave>,
-    pub slots: [bool; SLOT_COUNT],
+    progress: SavedProgress,
+    slots: [bool; SLOT_COUNT],
 }
 
 pub(crate) fn read_session_saves(game: &LibraryGame) -> Result<SessionSaves, String> {
@@ -240,23 +240,35 @@ pub(crate) fn read_session_saves(game: &LibraryGame) -> Result<SessionSaves, Str
 }
 
 fn read_active_saves(target: &SaveReadTarget) -> Result<SessionSaves, String> {
-    let entries = game_library::saves_in(&target.directory, &target.manifest)?;
+    let progress = game_library::scan_saves(&target.directory, &target.manifest)?;
     let slots = std::array::from_fn(|index| {
-        std::fs::read_to_string(
-            target
-                .directory
-                .join(format!("saves/slot-{}.txt", index + 1)),
-        )
-        .ok()
-        .is_some_and(|name| {
-            entries.iter().any(|save| {
+        if index + 1 == game_library::PLAYER_QUICK_SLOT {
+            return progress.entries.iter().any(|save| save.quicksave);
+        }
+        game_library::slot_filename(&target.directory, index + 1).is_some_and(|name| {
+            progress.entries.iter().any(|save| {
                 save.path
                     .file_name()
-                    .is_some_and(|file| file == name.trim())
+                    .is_some_and(|file| file == name.as_str())
             })
         })
     });
-    Ok(SessionSaves { entries, slots })
+    Ok(SessionSaves { progress, slots })
+}
+
+#[derive(Debug)]
+struct SelectedGameDetails {
+    saves: Result<SavedProgress, String>,
+    unavailable_start_states: std::collections::HashMap<String, String>,
+}
+
+impl SelectedGameDetails {
+    fn read(game: &LibraryGame) -> Self {
+        Self {
+            saves: game_library::scan_saves(&game.directory, &game.manifest),
+            unavailable_start_states: crate::start_state_storage::unavailable(game),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -264,7 +276,7 @@ struct Discovery {
     library: GameLibrary,
     catalog: CatalogRead,
     canonical_root: Option<PathBuf>,
-    selected: Option<(String, Result<Vec<PlayerSave>, String>)>,
+    selected: Option<(String, SelectedGameDetails)>,
     active: Option<(SaveReadTarget, Result<SessionSaves, String>)>,
 }
 
@@ -280,7 +292,7 @@ impl Discovery {
                 .games
                 .iter()
                 .find(|game| game.manifest.id == id)
-                .map(|game| (id, game_library::saves(game)))
+                .map(|game| (id, SelectedGameDetails::read(game)))
         });
         let active = active.map(|game| {
             let saves = read_active_saves(&game);
@@ -461,7 +473,7 @@ impl crate::player::PlayerState {
     pub(crate) fn clear_library_listing(&mut self) {
         self.library = GameLibrary::default();
         self.selected_game = None;
-        self.set_selected_saves(Ok(Vec::new()));
+        self.set_selected_details(None);
         self.library_editor = None;
         self.missing_configuration = None;
     }
@@ -474,14 +486,18 @@ impl crate::player::PlayerState {
             .find(|game| &game.manifest.id == id)
     }
 
-    pub(crate) fn set_selected_saves(
-        &mut self,
-        result: Result<Vec<crate::game_library::PlayerSave>, String>,
-    ) {
-        match result {
+    fn set_selected_details(&mut self, details: Option<SelectedGameDetails>) {
+        let Some(details) = details else {
+            self.selected_saves.clear();
+            self.selected_save_error = None;
+            self.unavailable_start_states.clear();
+            return;
+        };
+        self.unavailable_start_states = details.unavailable_start_states;
+        match details.saves {
             Ok(saves) => {
-                self.selected_saves = saves;
-                self.selected_save_error = None;
+                self.selected_saves = saves.entries;
+                self.selected_save_error = unavailable_saves(saves.unavailable);
             }
             Err(error) => {
                 self.selected_saves.clear();
@@ -496,23 +512,26 @@ impl crate::player::PlayerState {
     ) {
         match result {
             Ok(saves) => {
-                self.saves = saves.entries;
+                self.saves = saves.progress.entries;
                 self.game_slots = saves.slots;
-                self.session_save_error = None;
+                self.session_save_error = unavailable_saves(saves.progress.unavailable);
             }
             Err(error) => {
                 self.saves.clear();
+                self.game_slots.fill(false);
                 self.session_save_error = Some(error);
             }
         }
     }
 
-    pub(crate) fn refresh_selected_saves(&mut self) {
-        let saves = self
-            .selected_entry()
-            .map_or_else(|| Ok(Vec::new()), crate::game_library::saves);
-        self.set_selected_saves(saves);
+    pub(crate) fn refresh_selected_game_details(&mut self) {
+        let details = self.selected_entry().map(SelectedGameDetails::read);
+        self.set_selected_details(details);
     }
+}
+
+fn unavailable_saves(unavailable: Vec<String>) -> Option<String> {
+    (!unavailable.is_empty()).then(|| unavailable.join("\n"))
 }
 
 impl crate::EmulatorApp {
@@ -561,8 +580,8 @@ impl crate::EmulatorApp {
                 self.player.library = discovered.library;
                 self.reconcile_library_catalog(discovered.catalog, ctx);
                 match discovered.selected {
-                    Some((id, saves)) if self.player.selected_game.as_ref() == Some(&id) => {
-                        self.player.set_selected_saves(saves);
+                    Some((id, details)) if self.player.selected_game.as_ref() == Some(&id) => {
+                        self.player.set_selected_details(Some(details));
                     }
                     _ if self.player.selected_entry().is_some() => {
                         // The player picked another entry while discovery was in flight.
@@ -572,10 +591,7 @@ impl crate::EmulatorApp {
                             }
                         }
                     }
-                    _ => {
-                        self.player.selected_saves.clear();
-                        self.player.selected_save_error = None;
-                    }
+                    _ => self.player.set_selected_details(None),
                 }
                 if let Some((target, saves)) = discovered.active {
                     if self
@@ -591,8 +607,7 @@ impl crate::EmulatorApp {
             Some(Err(error)) => {
                 sync.read_error = Some(error);
                 self.player.library = GameLibrary::default();
-                self.player.selected_saves.clear();
-                self.player.selected_save_error = None;
+                self.player.set_selected_details(None);
             }
             None => {}
         }

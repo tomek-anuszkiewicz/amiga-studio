@@ -59,15 +59,14 @@ files and archives after saving.
 
 Select an existing entry and click **Edit game** to change its name, description
 or configuration, append more disks or change its startup assignments.
-Renaming moves the whole folder, including saved progress and any initial state,
+Renaming moves the whole folder, including saved progress and start states,
 and preserves disk IDs. Cancel discards the draft without writing files. Use
 the player panel to switch or eject disks during play.
 
-Click **Start game** in the library. The app loads the game's initial state if
-one is configured. Otherwise it boots normally with your saved startup disks.
-If the initial state fails to load, choose **Boot normally without initial
-state** to start with those disks. Loading an initial state or saved progress
-restores the inserted disks and empty drives recorded in that save.
+Click **Start game** in the library to boot with your saved startup disks.
+If an older game manifest points to a legacy initial state, **Start game**
+opens that snapshot. Choose **Boot normally without initial state** to use
+the startup disks, including when the legacy snapshot is unavailable.
 
 If the game shows **Configuration missing**, select a profile from the current
 library and click **Save reference and continue**. The app writes that choice
@@ -156,9 +155,20 @@ the app uses matching copies from the session when available. If no matching
 copy is available for a startup disk, it prepares one from the source ADF
 bytes already loaded for the session.
 
-To prepare an initial state, start its game and save progress. Copy that save
-outside `saves/` and set `initial_state` to the relative filename. Ordinary saves
-leave the initial state intact.
+## Keep named start states
+
+Choose **Add to start states** beside a save or the marked **Quicksave** in
+the library or in **Saved progress**. Enter a name such as Intro or Level 1
+and click **Add start state**. The game keeps its own copy in
+`initial_states/`. You can remove the source save or replace your quicksave
+and open the copy later.
+
+Select the game in the library and choose **Load** beside a name to restore
+that entry's machine and mounted disks. Unavailable entries show the cause
+and leave the other entries available. **Rename** changes only the label.
+**Delete** gives you ten seconds to **Undo**, even if you leave the game
+listing. Closing the app finalizes pending deletions. Named start states only
+load from their own rows. **Reset** uses the game's startup disks.
 
 ## Browser storage
 

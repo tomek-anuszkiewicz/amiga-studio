@@ -27,7 +27,10 @@ impl EmulatorApp {
         #[cfg(not(target_arch = "wasm32"))]
         if first_pass {
             self.poll_library(ctx);
+            self.finish_start_state_deletions(false);
         }
+        #[cfg(not(target_arch = "wasm32"))]
+        self.render_start_state_undo(ui);
 
         // Check for drag-and-dropped files onto the emulator window
         let dropped_files = ctx.input(|i| i.raw.dropped_files.clone());

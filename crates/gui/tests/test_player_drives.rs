@@ -1,4 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::panic)]
+#[cfg(not(target_arch = "wasm32"))]
+mod common;
+
 use debugger::{
     launch::{DeviceKind, MachineSetup, StartupDisk},
     DebuggerSession,
@@ -885,4 +888,119 @@ fn mounting_and_ejecting_while_selected_refreshes_only_transfer_eligibility() {
     );
     assert!(session.machine.floppy.drives[0].selected);
     assert!(session.machine.floppy.drives[0].motor_on);
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+mod named_start_state {
+    use super::*;
+    use egui::accesskit::Role;
+    use egui_kittest::{kittest::Queryable, Harness};
+    use gui::game_library::{persist_save, GameLibrary};
+    use gui::player::PlayerScreen;
+    use gui::{EmulatorApp, ViewMode};
+    use std::fs;
+    use std::path::Path;
+    use std::time::{Duration, Instant};
+
+    #[test]
+    fn promoted_quicksave_loads_guest_written_media_without_its_original_adf() {
+        let root = tempfile::tempdir().unwrap();
+        let root = root.path();
+        let directory = root.join("game");
+        let disks = directory.join("disks");
+        fs::create_dir_all(&disks).unwrap();
+        fs::write(root.join("kick.rom"), rom()).unwrap();
+        let original = disks.join("written.adf");
+        let original_adf = vec![0x11; ADF_BYTES];
+        fs::write(&original, &original_adf).unwrap();
+        fs::write(disks.join("startup.adf"), vec![0x22; ADF_BYTES]).unwrap();
+        fs::write(
+            directory.join("game.json"),
+            serde_json::to_vec(&serde_json::json!({
+                "id": "game", "title": "Disk game", "configuration": "standard",
+                "disks": [
+                    {"id": "startup", "filename": "startup.adf"},
+                    {"id": "written", "filename": "written.adf"}
+                ],
+                "mounted": ["startup", null, null, null]
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+        let game = GameLibrary::discover(root).unwrap().games.remove(0);
+
+        let mut owner = owner_with_latched_motors();
+        mount(&mut owner, 0, Some("written"), Some(0x11));
+        guest_write(&mut owner, 0, WRITE_WORDS);
+        let mut saved = saved_machine(&mut owner);
+        saved.header.association.game_id = Some("game".into());
+        let json = saved.to_json().unwrap();
+        persist_save(&game, &json, Some(1)).unwrap();
+
+        let mut app = player_app(root);
+        app.start_library_game(game, None, false);
+        crate::common::command(&mut app, HostCommand::Pause);
+        assert_eq!(app.player.mounted[0].as_deref(), Some("startup"));
+        let mut h = Harness::builder()
+            .with_size(egui::vec2(1280.0, 1000.0))
+            .build_ui_state(|ui, app: &mut EmulatorApp| app.update_ui(ui), app);
+        crate::common::settle_harness(&mut h);
+        click(&mut h, "Library");
+        click(&mut h, "Disk game");
+        click(&mut h, "Add to start states");
+        h.get_by_role_and_label(Role::TextInput, "Start state name")
+            .set_text_value_accesskit("Written media");
+        crate::common::settle_harness(&mut h);
+        click(&mut h, "Add start state");
+        assert_eq!(fs::read(&original).unwrap(), original_adf);
+        fs::remove_file(original).unwrap();
+
+        let generation = h.state().host.status.generation;
+        click(&mut h, "Load Written media");
+        click(&mut h, "Replace session");
+        crate::common::wait_harness(&mut h, |app| {
+            app.host.status.generation > generation && app.host.status.cck > saved.state.cck
+        });
+        assert!(h.state().host.status.running);
+        assert_eq!(h.state().player.mounted[0].as_deref(), Some("written"));
+        click(&mut h, "Pause");
+        crate::common::wait_harness(&mut h, |app| !app.host.status.running);
+        let restored = crate::common::snapshot(h.state_mut());
+        assert_eq!(raw_tracks(&restored, 0), raw_tracks(&saved.state, 0));
+        let mut probe = Box::new(DebuggerSession::new());
+        probe.load_state(&restored);
+        let mut probe = MachineOwner::new(probe);
+        assert_eq!(guest_read_marker(&mut probe, 0), WRITE_WORDS[2..]);
+
+        let generation = h.state().host.status.generation;
+        click(&mut h, "Reset");
+        crate::common::wait_harness(&mut h, |app| app.host.status.generation > generation);
+        assert_eq!(h.state().player.mounted[0].as_deref(), Some("startup"));
+        assert!(h.state().host.status.running);
+    }
+
+    fn player_app(root: &Path) -> EmulatorApp {
+        let mut app = EmulatorApp::default();
+        app.set_view_mode(ViewMode::ScreenOnly);
+        app.player.catalog.configurations[0].launch.rom = "kick.rom".into();
+        app.player.catalog.configurations[0].launch.drives = [true, true, true, false];
+        let mut contents = serde_json::to_value(&app.player.catalog).unwrap();
+        contents.as_object_mut().unwrap().remove("selected");
+        fs::write(root.join("configurations.json"), contents.to_string()).unwrap();
+        app.player.library_root = Some(root.to_path_buf());
+        app.player.library = GameLibrary::discover(root).unwrap();
+        app.player.screen = PlayerScreen::Library;
+        app
+    }
+
+    fn click(h: &mut Harness<'_, EmulatorApp>, label: &str) {
+        let deadline = Instant::now() + Duration::from_secs(10);
+        while h.query_by_label(label).is_none() {
+            assert!(Instant::now() < deadline, "Missing control {label}");
+            h.step();
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        h.get_by_label(label).click_accesskit();
+        crate::common::settle_harness(h);
+    }
 }

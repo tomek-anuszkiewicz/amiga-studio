@@ -44,6 +44,8 @@ pub mod player_config;
 mod player_drive;
 mod player_view;
 mod shortcuts;
+#[cfg(not(target_arch = "wasm32"))]
+mod start_state_storage;
 pub mod theme;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod window_keyboard;

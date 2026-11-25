@@ -176,15 +176,24 @@ current hardware configuration stays in effect and each assigned drive must
 already be connected. A failure preserves the current media and execution
 state and reports the cause. A manual session keeps its inserted media.
 
-In the library, **Start game** loads a configured initial state and boots
-normally when no initial state is configured. If loading the initial state
-fails, the library reports the error and offers **Boot normally without initial
-state**. Normal boot uses the game's saved startup assignments. If all four
-assignments are empty, normal boot and player Reset leave all drives empty.
-Loading an initial state or progress restores the inserted disks and empty
-drives recorded in that snapshot. Player Reset boots from the current ROM with
-the prepared media. Debugger cold and warm resets, guest RESET and keyboard
-reset retain their existing hardware behavior.
+In the library, **Start game** boots with the game's saved startup assignments.
+A game with a legacy initial-state reference launches that snapshot from
+**Start game**. If it fails to load, the library reports the reason. **Boot
+normally without initial state** remains available. If all four startup assignments
+are empty, normal boot and player Reset leave all drives empty. Player Reset
+boots from the current ROM with the prepared media. Debugger cold and warm
+resets, guest RESET and keyboard reset retain their existing hardware behavior.
+
+The native library shows each game's named **Start states**. Choose **Add to
+start states** on an available save or current quicksave, enter a name and
+confirm. Cancel leaves the collection as it was. Choose **Load** on a named
+row to restore the recorded machine and mounted disks using the library's
+configuration recovery and restore controls. Unavailable entries show the
+reason and the other rows remain usable. **Rename** changes the label.
+**Delete** starts a ten-second host-time countdown with **Undo**, which remains
+available as the player navigates. The app removes the selected entry and its
+owned file at the deadline or when closing. Normal boot and Reset continue to
+use startup assignments. [Save state ownership and restore](SaveState.md#player-progress)
 
 When a guest writes to a player disk, the new contents follow that disk through
 ejection and reinsertion during the session. The original ADF stays unchanged.

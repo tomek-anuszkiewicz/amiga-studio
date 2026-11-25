@@ -256,6 +256,7 @@ impl GameDraft {
                 disks: Vec::new(),
                 mounted: [None, None, None, None],
                 initial_state: None,
+                start_states: Vec::new(),
                 artwork: None,
                 description: None,
             }
