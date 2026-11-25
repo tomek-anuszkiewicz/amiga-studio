@@ -3,8 +3,9 @@
 The catalog measures the host time spent running selected M68000 instruction
 forms, addressing modes, and execution paths. Each case contains `program.s`
 and `case.json` and uses the shared counts and timing settings in
-[`config.json`](config.json). The [runner](runner.rs) assembles each program,
-initializes the CPU and memory, and runs the program to its end marker.
+[`config.json`](config.json). The
+[runner](../../crates/test_runner/benches/bench_instructions/runner.rs) assembles
+each program, initializes the CPU and memory, and runs the program to its end marker.
 
 ## Run
 
@@ -51,4 +52,5 @@ consists of [`m68k_benchmark_baseline.json`](../m68k_benchmark_baseline.json) an
 
 See the [benchmark specification](../../Obsidian/Amiga/Design/Performance/CPU%20Instruction%20Benchmarking.md)
 for measurement policy, comparisons, and baseline approval. For case format and
-execution details, consult the [runner](runner.rs) and existing cases.
+execution details, consult the existing cases and the
+[runner](../../crates/test_runner/benches/bench_instructions/runner.rs).

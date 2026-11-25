@@ -91,10 +91,13 @@ verifier reads the working files and leaves Git commit creation to a separate ac
 
 Use `test rust crate NAME` for a focused Rust run and `test python directory PATH`
 for a Python suite. A bare `test python` selects suites affected by working-tree
-changes. The milestone profile runs full SingleStep, which you can also request
-for diagnosis. Run language scans separately. Selecting ordinary CPU tests also
-runs the CPU waiting tests. Use `python tools/verification/verify.py --help` to
-see the available profiles. For execution details, see
+changes. The milestone profile first scans the workspace for potentially unused
+public Rust functions. It starts the full SingleStep CPU tests only if that scan
+completes successfully and reports no candidates. Use `test runner silicon` to
+run the full CPU tests on their own. Run language scans separately. Selecting
+ordinary CPU tests also runs the CPU waiting tests. Use
+`python tools/verification/verify.py --help` to see the available profiles.
+For execution details, see
 [tools/verification/README.md](../tools/verification/README.md#completion-verification).
 
 Commit coverage describes the current source files of the ordinary workspace.
