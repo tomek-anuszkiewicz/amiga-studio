@@ -40,11 +40,22 @@ Studio uses the same machine.
 
 Choose a library directory and click **Add game**. Enter the name that the app
 will use for both the game and its folder, then select a named configuration.
-You can add a description. Click **Add disk...** once per ADF. Under
-**Startup disks**, choose a disk or **Empty** for each drive. All four drives
-start set to **Empty**. After adding a disk, select it for a connected drive
-if you want it inserted at startup. **Save game** copies the imported ADFs into
-the game's `disks/` folder and keeps the original files intact.
+You can add a description. Click **Add disks...** to select one or more ADF,
+ZIP or 7z files. The app lists supported ADFs from those files and archives
+in the draft. You can open the picker again to add more. The app remembers
+the last confirmed disk directory across desktop restarts.
+
+**Disk already added** means the same image is already pending or stored for
+the game, even if you selected it under another name. A filename collision
+means different images would need the same destination name. The app keeps
+the earlier disk and imports other valid selections. Remove a conflicting
+pending import or choose a differently named source if you need the other image.
+
+Under **Startup disks**, choose a disk or **Empty** for each drive. All four
+drives start set to **Empty**. Select a disk for a connected drive if you want
+it inserted at startup. **Save game** copies the ADFs into the game's
+`disks/` folder using their original filenames. You can move the source
+files and archives after saving.
 
 Select an existing entry and click **Edit game** to change its name, description
 or configuration, append more disks or change its startup assignments.
@@ -103,8 +114,8 @@ Create one subdirectory per game and place a `game.json` inside it.
   "title": "Example Game",
   "configuration": "standard",
   "disks": [
-    {"id": "disk-1", "label": "Disk 1", "path": "disks/disk-1.adf"},
-    {"id": "disk-2", "label": "Disk 2", "path": "disks/disk-2.adf"}
+    {"id": "disk-1", "filename": "Example Game (Disk 1 of 2).adf"},
+    {"id": "disk-2", "filename": "Example Game (Disk 2 of 2).adf"}
   ],
   "mounted": ["disk-1", null, null, null],
   "initial_state": null,
@@ -113,8 +124,9 @@ Create one subdirectory per game and place a `game.json` inside it.
 }
 ```
 
-Give each disk a unique ID within its game. Asset paths are relative to the game
-directory. The four `mounted` positions specify the startup disk IDs for DF0
+Give each disk a unique ID within its game. Each disk has exactly `id` and
+`filename`. Place the file in `disks/` and use its basename, including the
+ADF extension, in `filename`. The four `mounted` positions specify the startup disk IDs for DF0
 through DF3. Use `null` for an empty drive. You can launch without artwork or a
 description, even if the optional files are missing. Use Edit game to select a
 configuration and Save game to write that association. You can rename
@@ -150,8 +162,13 @@ leave the initial state intact.
 
 ## Browser storage
 
-The current browser build supports manual setup, file save/import/export and
-session quick slots. Browser storage retains named settings. Select ROM and disk
+Both desktop and browser manual setup accept ADF files and ADFs in ZIP or 7z
+archives. When a selection contains several usable images, choose the one to
+insert. Standard ZIP compression and 7z LZMA or LZMA2 are supported. Choose an
+unencrypted archive.
+
+The browser build supports manual setup, file save/import/export and session
+quick slots. Browser storage retains named settings. Select ROM and disk
 files again after reopening because the browser build keeps their bytes only for
 the session. This iteration has no browser library, bundle loader or persistent
 browser save catalog.

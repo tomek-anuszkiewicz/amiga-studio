@@ -42,15 +42,14 @@ fn write_catalog(root: &Path, catalog: &ConfigurationCatalog) {
 
 fn game(root: &Path, title: &str, configuration: Option<&str>, startup: Option<usize>) -> PathBuf {
     let directory = root.join(title);
-    fs::create_dir(&directory).unwrap();
+    fs::create_dir_all(directory.join("disks")).unwrap();
     let mut manifest = GameManifest {
         id: title.into(),
         title: title.into(),
         configuration: configuration.unwrap_or_default().into(),
         disks: vec![GameDisk {
             id: "disk-1".into(),
-            label: "Disk".into(),
-            path: "disk.adf".into(),
+            filename: "disk.adf".into(),
         }],
         mounted: [None, None, None, None],
         initial_state: None,
@@ -60,7 +59,7 @@ fn game(root: &Path, title: &str, configuration: Option<&str>, startup: Option<u
     if let Some(drive) = startup {
         manifest.mounted[drive] = Some("disk-1".into());
     }
-    fs::write(directory.join("disk.adf"), vec![0x17; 901120]).unwrap();
+    fs::write(directory.join("disks/disk.adf"), vec![0x17; 901120]).unwrap();
     let mut document = serde_json::to_value(manifest).unwrap();
     if configuration.is_none() {
         document.as_object_mut().unwrap().remove("configuration");
@@ -494,7 +493,7 @@ fn reassignment_validates_all_games_and_reports_partial_writes_before_retry() {
     assert_eq!(fs::read(&c).unwrap(), unrelated);
     assert_eq!(fs::read(&save).unwrap(), b"saved progress");
     assert_eq!(
-        fs::read(a.parent().unwrap().join("disk.adf")).unwrap(),
+        fs::read(a.parent().unwrap().join("disks/disk.adf")).unwrap(),
         vec![0x17; 901120]
     );
     let contents = read_json(&catalog_path(root.path()));

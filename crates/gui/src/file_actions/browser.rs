@@ -1,6 +1,9 @@
 //! Browser file selection, recent directory references and snapshot downloads.
 
 use super::{EmulatorApp, FileAction};
+use crate::disk_import::{
+    check_disk_source_size, decode_disk_source, DiskSelection, MAX_DISK_CHOICES,
+};
 use js_sys::{Array, Promise, Uint8Array};
 use std::{
     future::Future,
@@ -23,6 +26,7 @@ extern "C" {
         title: &str,
         extensions: &Array,
         recent_index: i32,
+        multiple: bool,
     ) -> Result<Promise, JsValue>;
 }
 
@@ -32,7 +36,12 @@ struct SelectedFile {
     handle: JsValue,
 }
 
-type ReadResult = Result<Option<SelectedFile>, JsValue>;
+enum SelectedAssets {
+    Single(SelectedFile),
+    Disks(DiskSelection),
+}
+
+type ReadResult = Result<Option<SelectedAssets>, JsValue>;
 const FILE_POLL_INTERVAL: Duration = Duration::from_millis(50);
 const NO_RECENT_FILE_INDEX: i32 = -1;
 
@@ -130,20 +139,32 @@ impl BrowserFileTask {
             .iter()
             .map(|extension| JsValue::from_str(&format!(".{extension}")))
             .collect();
-        let selection = pick_file(action.key(), action.title(), &extensions, recent_index)?;
+        let multiple = matches!(action, FileAction::SetupDisk(_));
+        let selection = pick_file(
+            action.key(),
+            action.title(),
+            &extensions,
+            recent_index,
+            multiple,
+        )?;
         let future = Box::pin(async move {
             let selected = JsFuture::from(selection).await?;
             if selected.is_null() {
                 return Ok(None);
             }
             let selected = Array::from(&selected);
+            if multiple {
+                return Ok(Some(SelectedAssets::Disks(
+                    decode_selected_disks(selected).await,
+                )));
+            }
             let file: web_sys::File = selected.get(0).dyn_into()?;
             let buffer = JsFuture::from(file.array_buffer()).await?;
-            Ok(Some(SelectedFile {
+            Ok(Some(SelectedAssets::Single(SelectedFile {
                 name: file.name(),
                 data: Uint8Array::new(&buffer).to_vec(),
                 handle: selected.get(1),
-            }))
+            })))
         });
         Ok(Self { action, future })
     }
@@ -155,17 +176,70 @@ impl BrowserFileTask {
                 .bytes_async()
                 .await
                 .map_err(|error| JsValue::from_str(&error))?;
-            Ok(Some(SelectedFile {
+            Ok(Some(SelectedAssets::Single(SelectedFile {
                 name,
                 data,
                 handle: JsValue::NULL,
-            }))
+            })))
         });
         Self {
             action: FileAction::Binary,
             future,
         }
     }
+}
+
+async fn decode_selected_disks(sources: Array) -> DiskSelection {
+    let mut selection = DiskSelection::default();
+    for source in sources.iter() {
+        if selection.images.len() >= MAX_DISK_CHOICES {
+            selection.issues.push(format!(
+                "Disk selection exceeds the {MAX_DISK_CHOICES}-image limit"
+            ));
+            break;
+        }
+        let file = match browser_disk_file(source).await {
+            Ok(file) => file,
+            Err(error) => {
+                selection
+                    .issues
+                    .push(format!("Could not read selected disk: {error:?}"));
+                continue;
+            }
+        };
+        let name = file.name();
+        if let Err(error) = check_disk_source_size(&name, file.size() as u64) {
+            selection.issues.push(format!("{name}: {error}"));
+            continue;
+        }
+        match JsFuture::from(file.array_buffer()).await {
+            Ok(buffer) => {
+                let decoded = decode_disk_source(&name, &name, Uint8Array::new(&buffer).to_vec());
+                selection.issues.extend(decoded.issues);
+                let remaining = MAX_DISK_CHOICES - selection.images.len();
+                if decoded.images.len() > remaining {
+                    selection.issues.push(format!(
+                        "{name}: Disk selection exceeds the {MAX_DISK_CHOICES}-image limit"
+                    ));
+                }
+                selection
+                    .images
+                    .extend(decoded.images.into_iter().take(remaining));
+            }
+            Err(error) => selection
+                .issues
+                .push(format!("{name}: Could not read selected file: {error:?}")),
+        }
+    }
+    selection
+}
+
+async fn browser_disk_file(source: JsValue) -> Result<web_sys::File, JsValue> {
+    if source.is_instance_of::<web_sys::File>() {
+        return source.dyn_into();
+    }
+    let handle: web_sys::FileSystemFileHandle = source.dyn_into()?;
+    JsFuture::from(handle.get_file()).await?.dyn_into()
 }
 
 impl EmulatorApp {
@@ -217,8 +291,13 @@ impl EmulatorApp {
                 let action = task.action;
                 self.browser_file_task = None;
                 match result {
-                    Ok(Some(file)) => {
+                    Ok(Some(SelectedAssets::Single(file))) => {
                         self.accept_file_data(action, file.name, file.data, file.handle)
+                    }
+                    Ok(Some(SelectedAssets::Disks(selection))) => {
+                        if let FileAction::SetupDisk(drive) = action {
+                            self.accept_disk_selection(drive, selection);
+                        }
                     }
                     Ok(None) => {}
                     Err(error) => {

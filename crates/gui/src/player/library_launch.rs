@@ -87,10 +87,10 @@ impl EmulatorApp {
                 .disks
                 .iter()
                 .map(|disk| {
-                    let path = crate::game_library::relative_asset(&game.directory, &disk.path)?;
+                    let path = disk.asset_path(&game.directory)?;
                     Ok(SessionDisk {
                         id: disk.id.clone(),
-                        label: disk.display_name().into(),
+                        label: disk.filename.clone(),
                         bytes: std::fs::read(path).ok(),
                     })
                 })

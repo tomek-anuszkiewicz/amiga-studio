@@ -1,7 +1,7 @@
 //! Reassign a library's games before removing one named configuration.
 
 use crate::game_library::{
-    discover_manifests, load_manifest, relative_asset, replace_configuration, ManifestEntry,
+    discover_manifests, load_manifest, replace_configuration, ManifestEntry,
 };
 use crate::library_catalog::CatalogWrite;
 use crate::EmulatorApp;
@@ -238,13 +238,12 @@ fn validate_media(
         }
     }
     for disk in &game.manifest.disks {
-        let path = relative_asset(&game.directory, &disk.path)?;
-        let bytes =
-            std::fs::read(path).map_err(|error| format!("{}: {error}", disk.display_name()))?;
+        let path = disk.asset_path(&game.directory)?;
+        let bytes = std::fs::read(path).map_err(|error| format!("{}: {error}", disk.filename))?;
         if !debugger::launch::disk_image_is_supported(&bytes) {
             return Err(format!(
                 "{} is an unsupported ADF ({} bytes)",
-                disk.display_name(),
+                disk.filename,
                 bytes.len()
             ));
         }

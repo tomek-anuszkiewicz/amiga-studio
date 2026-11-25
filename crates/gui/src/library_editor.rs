@@ -86,13 +86,14 @@ impl EmulatorApp {
         ui.strong("Disks");
         if let Some(game) = &draft.original {
             for (index, disk) in game.manifest.disks.iter().enumerate() {
-                ui.label(format!("{}. {}", index + 1, disk.display_name()));
+                ui.label(format!("{}. {}", index + 1, disk.filename.as_str()));
             }
         }
         let mut remove = None;
         for disk in draft.imports() {
             ui.horizontal(|ui| {
-                ui.label(format!("To copy: {}", disk.name));
+                ui.label(format!("To copy: {}", disk.filename()))
+                    .on_hover_text(disk.source());
                 if ui
                     .button("Remove from draft")
                     .on_hover_text(
@@ -107,9 +108,13 @@ impl EmulatorApp {
         if let Some(key) = remove {
             draft.remove_import(key);
         }
-        if ui.button("Add disk...").on_hover_text("Select one standard 880 KiB ADF. Repeat for more disks; files are copied when you save the game.").clicked() {
-            if let Some(path) = rfd::FileDialog::new().add_filter("Amiga disk images", &["adf"]).pick_file() {
-                if let Err(error) = draft.add_disk(&path) { self.file_error = Some(error); }
+        if ui.button("Add disks...").on_hover_text("Select ADF, ZIP or 7z files. The app copies the chosen ADFs when you save the game.").clicked() {
+            if let Some(paths) = self.disk_file_dialog("Add disks").pick_files() {
+                if let Some(path) = paths.first() {
+                    self.remember_disk_selection(path);
+                }
+                let issues = draft.add_disks(&paths);
+                self.file_error = (!issues.is_empty()).then(|| issues.join("\n"));
             }
         }
         let connected = self
@@ -194,8 +199,10 @@ impl EmulatorApp {
                 .zip(draft.original.as_ref())
                 .is_some_and(|(active, original)| active.same_entry(original));
             match draft.save(&sync.root, connected) {
-                Ok(game) => {
-                    self.complete_library_edit(game, edits_active);
+                Ok(saved) => {
+                    self.complete_library_edit(saved.game, edits_active);
+                    self.file_error =
+                        (!saved.import_issues.is_empty()).then(|| saved.import_issues.join("\n"));
                     return;
                 }
                 Err(error) => self.file_error = Some(error),
@@ -221,8 +228,11 @@ impl EmulatorApp {
                 {
                     self.player.disks.push(crate::player::SessionDisk {
                         id: disk.id.clone(),
-                        label: disk.display_name().into(),
-                        bytes: std::fs::read(game.directory.join(&disk.path)).ok(),
+                        label: disk.filename.clone(),
+                        bytes: disk
+                            .asset_path(&game.directory)
+                            .ok()
+                            .and_then(|path| std::fs::read(path).ok()),
                     });
                 }
             }

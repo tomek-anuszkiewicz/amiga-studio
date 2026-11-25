@@ -38,6 +38,7 @@ pub struct PlayerState {
     pub rom_reference: Option<String>,
     pub disks: Vec<SessionDisk>,
     pub setup_disks: Vec<SessionDisk>,
+    pub(crate) drive_disk_choice: Option<crate::file_actions::DriveDiskChoice>,
     pub setup_mounted: [Option<String>; 4],
     pub mounted: [Option<String>; 4],
     pub active_configuration: Option<NamedConfiguration>,
@@ -579,58 +580,50 @@ impl EmulatorApp {
         );
     }
 
-    pub(crate) fn select_setup_asset(
-        &mut self,
-        drive: Option<usize>,
-        name: String,
-        bytes: Vec<u8>,
-    ) {
-        if let Some(drive) = drive {
-            if !debugger::launch::disk_image_is_supported(&bytes) {
-                self.file_error = Some(format!(
-                    "Unsupported ADF ({} bytes). Select a standard 880 KiB DD image.",
-                    bytes.len()
-                ));
-                return;
-            }
-            let id = format!("manual-{}", self.player.setup_disks.len());
-            self.player.setup_disks.push(SessionDisk {
-                id: id.clone(),
-                label: name,
-                bytes: Some(bytes),
-            });
-            self.player.setup_mounted[drive] = Some(id);
-        } else {
-            if bytes.len() != physical_memory::KICKSTART_ROM_SIZE {
-                self.file_error = Some(format!(
-                    "Unsupported Kickstart ({} bytes). Select a 256 KiB image.",
-                    bytes.len()
-                ));
-                return;
-            }
-            let Some(configuration) = self
-                .player
-                .catalog
-                .configurations
-                .iter_mut()
-                .find(|c| c.id == self.player.catalog.selected)
-            else {
-                self.file_error = Some("Select a configuration".into());
-                return;
-            };
-            #[cfg(target_arch = "wasm32")]
-            {
-                configuration.launch.rom = name;
-                self.player.settings_dirty = true;
-            }
-            #[cfg(not(target_arch = "wasm32"))]
-            {
-                self.player.rom_name = Some(name);
-            }
-            self.player.rom_reference = Some(configuration.launch.rom.clone());
-            self.player.rom = Some(bytes);
-            self.player.rom_configuration_id = Some(self.player.catalog.selected.clone());
+    pub(crate) fn select_setup_disk(&mut self, drive: usize, image: crate::disk_import::DiskImage) {
+        let Some(mounted) = self.player.setup_mounted.get_mut(drive) else {
+            self.file_error = Some("Invalid drive number".into());
+            return;
+        };
+        let id = format!("manual-{}", self.player.setup_disks.len());
+        self.player.setup_disks.push(SessionDisk {
+            id: id.clone(),
+            label: image.filename,
+            bytes: Some(image.bytes),
+        });
+        *mounted = Some(id);
+    }
+
+    pub(crate) fn select_setup_rom(&mut self, name: String, bytes: Vec<u8>) {
+        if bytes.len() != physical_memory::KICKSTART_ROM_SIZE {
+            self.file_error = Some(format!(
+                "Unsupported Kickstart ({} bytes). Select a 256 KiB image.",
+                bytes.len()
+            ));
+            return;
         }
+        let Some(configuration) = self
+            .player
+            .catalog
+            .configurations
+            .iter_mut()
+            .find(|c| c.id == self.player.catalog.selected)
+        else {
+            self.file_error = Some("Select a configuration".into());
+            return;
+        };
+        #[cfg(target_arch = "wasm32")]
+        {
+            configuration.launch.rom = name;
+            self.player.settings_dirty = true;
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.player.rom_name = Some(name);
+        }
+        self.player.rom_reference = Some(configuration.launch.rom.clone());
+        self.player.rom = Some(bytes);
+        self.player.rom_configuration_id = Some(self.player.catalog.selected.clone());
     }
 
     pub(crate) fn mount_player_disk(&mut self, drive: usize, id: Option<String>) {

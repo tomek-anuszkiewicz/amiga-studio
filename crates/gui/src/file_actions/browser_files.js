@@ -70,11 +70,11 @@ function update_history(update) {
     return write;
 }
 
-export function pick_file(kind, title, extensions, recentIndex) {
+export function pick_file(kind, title, extensions, recentIndex, multiple = false) {
     if (typeof window.showOpenFilePicker === "function") {
         const options = {
             id: `amiga-${kind}`,
-            multiple: false,
+            multiple,
             types: [{ description: title, accept: { "application/octet-stream": extensions } }],
         };
         const entry = history[kind]?.[recentIndex];
@@ -109,6 +109,7 @@ export function pick_file(kind, title, extensions, recentIndex) {
                 throw outcome.error;
             }
             const handles = outcome.handles;
+            if (multiple) return handles;
             const handle = handles[0];
             return [await handle.getFile(), handle];
         });
@@ -121,13 +122,17 @@ export function pick_file(kind, title, extensions, recentIndex) {
         input.title = title;
         input.hidden = true;
         input.accept = extensions.join(",");
+        input.multiple = multiple;
         const finish = result => {
             input.onchange = null;
             input.oncancel = null;
             input.remove();
             resolve(result);
         };
-        input.onchange = () => finish(input.files[0] ? [input.files[0], null] : null);
+        input.onchange = () => {
+            const files = Array.from(input.files);
+            finish(files.length === 0 ? null : multiple ? files : [files[0], null]);
+        };
         input.oncancel = () => finish(null);
         document.body.appendChild(input);
         input.click();

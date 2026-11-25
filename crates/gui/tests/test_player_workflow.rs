@@ -34,9 +34,9 @@ fn library() -> (PathBuf, GameLibrary) {
     std::fs::write(root.join("kick.rom"), rom()).unwrap();
     for id in ["one", "two"] {
         let directory = root.join(id);
-        std::fs::create_dir(&directory).unwrap();
+        std::fs::create_dir_all(directory.join("disks")).unwrap();
         std::fs::write(
-            directory.join("disk.adf"),
+            directory.join("disks/Disk 1.adf"),
             vec![if id == "one" { 0x11 } else { 0x22 }; 901120],
         )
         .unwrap();
@@ -46,8 +46,7 @@ fn library() -> (PathBuf, GameLibrary) {
             configuration: "standard".into(),
             disks: vec![GameDisk {
                 id: "disk-one".into(),
-                label: "Disk 1".into(),
-                path: "disk.adf".into(),
+                filename: "Disk 1.adf".into(),
             }],
             mounted: [Some("disk-one".into()), None, None, None],
             initial_state: None,
@@ -99,7 +98,7 @@ fn launch_save_reopen_relocate_and_restore_embedded_media_without_original_asset
     // A fresh app and a moved game directory retain IDs; saved media are self-contained.
     let moved = root.join("relocated");
     std::fs::rename(&library.games[0].directory, &moved).unwrap();
-    std::fs::remove_file(moved.join("disk.adf")).unwrap();
+    std::fs::remove_file(moved.join("disks/Disk 1.adf")).unwrap();
     std::fs::remove_file(root.join("kick.rom")).unwrap();
     let library = GameLibrary::discover(&root).unwrap();
     let mut game = library
@@ -295,7 +294,7 @@ fn library_continue_uses_the_selected_configuration_when_two_roots_reuse_a_game_
     let first = &first_library.games[0];
     let mut draft = GameDraft::edit(second_library.games[0].clone());
     draft.configuration = "swapped".into();
-    let second = draft.save(&second_root, [true; 4]).unwrap();
+    let second = draft.save(&second_root, [true; 4]).unwrap().game;
     assert_eq!(first.manifest.id, second.manifest.id);
 
     let mut other_app = game_app(&second_root);
@@ -464,13 +463,13 @@ fn unassigned_imports_stay_empty_on_boot_and_reset_and_remain_available() {
     for (name, fill) in imports {
         let source = root.join(name);
         std::fs::write(&source, vec![fill; ADF_BYTES]).unwrap();
-        draft.add_disk(&source).unwrap();
+        assert!(draft.add_disks(&[source]).is_empty());
     }
     assert_eq!(
         std::array::from_fn(|drive| draft.startup_disk(drive)),
         [const { None }; 4]
     );
-    let game = draft.save(&root, [true; 4]).unwrap();
+    let game = draft.save(&root, [true; 4]).unwrap().game;
     assert_eq!(game.manifest.mounted, [const { None }; 4]);
 
     for (name, _) in imports {
@@ -484,9 +483,8 @@ fn unassigned_imports_stay_empty_on_boot_and_reset_and_remain_available() {
     );
     assert_eq!(reopened.manifest.disks.len(), imports.len());
     for (disk, (name, fill)) in reopened.manifest.disks.iter().zip(imports) {
-        let relative = Path::new(&disk.path);
-        assert!(relative.is_relative() && relative.starts_with("disks"));
-        assert_eq!(disk.label, name);
+        assert_eq!(disk.filename, name);
+        let relative = Path::new("disks").join(name);
         assert_eq!(
             std::fs::read(reopened.directory.join(relative)).unwrap(),
             vec![fill; ADF_BYTES]
@@ -513,7 +511,13 @@ fn unassigned_imports_stay_empty_on_boot_and_reset_and_remain_available() {
     common::wait_harness(&mut h, |app| app.host.status.generation > generation);
     assert_player_disk_layout(&mut h, [None; 4]);
     assert_eq!(
-        std::fs::read(reopened.directory.join(&reopened.manifest.disks[1].path)).unwrap(),
+        std::fs::read(
+            reopened
+                .directory
+                .join("disks")
+                .join(&reopened.manifest.disks[1].filename)
+        )
+        .unwrap(),
         vec![0x34; ADF_BYTES]
     );
 }
@@ -525,11 +529,10 @@ fn player_disk_selection_and_ejection_publish_only_acknowledged_mounts() {
     let (root, mut library) = library();
     let game = &mut library.games[0];
     let second_adf = vec![0x33; ADF_BYTES];
-    std::fs::write(game.directory.join("second.adf"), &second_adf).unwrap();
+    std::fs::write(game.directory.join("disks/Disk 2.adf"), &second_adf).unwrap();
     game.manifest.disks.push(GameDisk {
         id: "disk-two".into(),
-        label: "Disk 2".into(),
-        path: "second.adf".into(),
+        filename: "Disk 2.adf".into(),
     });
     let mut app = EmulatorApp::default();
     app.set_view_mode(ViewMode::ScreenOnly);
@@ -544,7 +547,7 @@ fn player_disk_selection_and_ejection_publish_only_acknowledged_mounts() {
         .build_ui_state(|ui, app: &mut EmulatorApp| app.update_ui(ui), app);
     common::settle_harness(&mut h);
     open_player_drive(&mut h, "DF0:");
-    h.get_by_label("2 - Disk 2").click();
+    h.get_by_label("2 - Disk 2.adf").click();
     h.step();
     assert_eq!(h.state().player.mounted[0].as_deref(), Some("disk-one"));
     common::settle_harness(&mut h);
@@ -572,7 +575,7 @@ fn player_disk_selection_and_ejection_publish_only_acknowledged_mounts() {
     assert!(!h.state().host.status.drives[0].inserted);
     assert_eq!(observe_drive(h.state_mut(), 0, None), (false, None));
 
-    let source = game.directory.join("second.adf");
+    let source = game.directory.join("disks/Disk 2.adf");
     assert_eq!(std::fs::read(&source).unwrap(), second_adf);
     std::fs::remove_file(&source).unwrap();
     h.state_mut().set_view_mode(ViewMode::Developer);
@@ -587,7 +590,7 @@ fn player_disk_selection_and_ejection_publish_only_acknowledged_mounts() {
     assert_eq!(h.state().player.mounted[0].as_deref(), Some("disk-one"));
     assert!(h.state().player.disks[1].bytes.is_none());
     open_player_drive(&mut h, "DF0:");
-    h.get_by_label("2 - Disk 2").click();
+    h.get_by_label("2 - Disk 2.adf").click();
     common::settle_harness(&mut h);
     assert_eq!(h.state().player.mounted[0].as_deref(), Some("disk-two"));
     assert_eq!(
@@ -604,7 +607,7 @@ fn player_disk_selection_and_ejection_publish_only_acknowledged_mounts() {
     h.state_mut().start_library_game(game.clone(), None, false);
     common::settle_harness(&mut h);
     open_player_drive(&mut h, "DF0:");
-    h.get_by_label("2 - Disk 2").click();
+    h.get_by_label("2 - Disk 2.adf").click();
     common::settle_harness(&mut h);
     assert_eq!(h.state().player.mounted[0].as_deref(), Some("disk-two"));
     assert_eq!(
@@ -733,13 +736,11 @@ fn session_harness(app: EmulatorApp) -> egui_kittest::Harness<'static, EmulatorA
 }
 
 fn add_library_disk(game: &mut LibraryGame, id: &str, label: &str, fill: u8) -> PathBuf {
-    let path = format!("{id}.adf");
-    let source = game.directory.join(&path);
+    let source = game.directory.join("disks").join(label);
     std::fs::write(&source, vec![fill; ADF_BYTES]).unwrap();
     game.manifest.disks.push(GameDisk {
         id: id.into(),
-        label: label.into(),
-        path,
+        filename: label.into(),
     });
     source
 }
@@ -754,19 +755,19 @@ fn initial_state_and_normal_boot_use_their_own_disk_layouts() {
 
     let (root, library) = library();
     let mut game = library.games[0].clone();
-    add_library_disk(&mut game, "disk-two", "Disk 2", 0x22);
-    add_library_disk(&mut game, "disk-three", "Disk 3", 0x33);
+    add_library_disk(&mut game, "disk-two", "Disk 2.adf", 0x22);
+    add_library_disk(&mut game, "disk-three", "Disk 3.adf", 0x33);
     let startup = [
-        Some(("disk-one", "Disk 1", 0x11)),
+        Some(("disk-one", "Disk 1.adf", 0x11)),
         None,
-        Some(("disk-three", "Disk 3", 0x33)),
+        Some(("disk-three", "Disk 3.adf", 0x33)),
         None,
     ];
     let initial = [
         None,
-        Some(("disk-two", "Disk 2", 0x22)),
+        Some(("disk-two", "Disk 2.adf", 0x22)),
         None,
-        Some(("disk-three", "Disk 3", 0x43)),
+        Some(("disk-three", "Disk 3.adf", 0x43)),
     ];
     let mut reset_layout = startup;
     reset_layout[2] = initial[3];
@@ -912,9 +913,9 @@ fn player_reset_runs_after_running_paused_and_loaded_sessions() {
     let mut observations = Vec::new();
     let manual_disks = [
         None,
-        Some(("disk-two", "Disk 2", 0x22)),
+        Some(("disk-two", "Disk 2.adf", 0x22)),
         None,
-        Some(("disk-three", "Disk 3", 0x33)),
+        Some(("disk-three", "Disk 3.adf", 0x33)),
     ];
     let assert_manual_media = |h: &mut egui_kittest::Harness<'_, EmulatorApp>| {
         assert_player_disk_labels(h, manual_disks);
@@ -938,9 +939,9 @@ fn player_reset_runs_after_running_paused_and_loaded_sessions() {
         } else {
             app.player.catalog.configurations[0].launch.drives = [true; 4];
             for (drive, id, label, fill) in [
-                (0, "disk-one", "Disk 1", 0x11),
-                (1, "disk-two", "Disk 2", 0x22),
-                (3, "disk-three", "Disk 3", 0x33),
+                (0, "disk-one", "Disk 1.adf", 0x11),
+                (1, "disk-two", "Disk 2.adf", 0x22),
+                (3, "disk-three", "Disk 3.adf", 0x33),
             ] {
                 app.player.setup_disks.push(gui::player::SessionDisk {
                     id: id.into(),
@@ -1082,14 +1083,13 @@ fn unavailable_invalid_or_disconnected_startup_disk_rejects_player_reset_without
     use egui_kittest::kittest::{by, Queryable};
     let (root, library) = library();
     let mut game = library.games[0].clone();
-    let source = game.directory.join("second.adf");
+    let source = game.directory.join("disks/Disk 2.adf");
     std::fs::write(&source, vec![0x22; 901120]).unwrap();
     game.manifest.disks.push(GameDisk {
         id: "disk-two".into(),
-        label: "Disk 2".into(),
-        path: "second.adf".into(),
+        filename: "Disk 2.adf".into(),
     });
-    add_library_disk(&mut game, "disk-three", "Disk 3", 0x44);
+    add_library_disk(&mut game, "disk-three", "Disk 3.adf", 0x44);
     let mut app = game_app(&root);
     app.player.catalog.configurations[0].launch.drives = [true, true, true, false];
     app.start_library_game(game.clone(), None, true);
@@ -1130,7 +1130,7 @@ fn unavailable_invalid_or_disconnected_startup_disk_rejects_player_reset_without
             }
             let prior = h.state().host.status;
             assert_eq!(prior.running, running);
-            assert_player_drive_text(&h, "DF0:", "Disk 1");
+            assert_player_drive_text(&h, "DF0:", "Disk 1.adf");
             h.get_by_label("Reset").click_accesskit();
             common::wait_harness(&mut h, |app| app.file_error.is_some());
             let error = h.state().file_error.as_deref().unwrap();
@@ -1155,7 +1155,7 @@ fn unavailable_invalid_or_disconnected_startup_disk_rejects_player_reset_without
             }
             h.get_by_label("Close").click_accesskit();
             common::settle_harness(&mut h);
-            assert_player_drive_text(&h, "DF0:", "Disk 1");
+            assert_player_drive_text(&h, "DF0:", "Disk 1.adf");
             let snapshot =
                 debugger::SaveState::from_json(&common::snapshot_json(h.state_mut())).unwrap();
             assert_eq!(snapshot.header.association.mounted, mounted);
@@ -1170,7 +1170,7 @@ fn normal_boot_with_a_missing_or_invalid_required_adf_keeps_the_current_machine(
 
     let (root, library) = library();
     let mut next = library.games[1].clone();
-    let required = add_library_disk(&mut next, "required", "Required disk", 0x33);
+    let required = add_library_disk(&mut next, "required", "Required disk.adf", 0x33);
     next.manifest.mounted[2] = Some("required".into());
     std::fs::remove_file(&required).unwrap();
 
@@ -1181,7 +1181,7 @@ fn normal_boot_with_a_missing_or_invalid_required_adf_keeps_the_current_machine(
     common::wait_harness(&mut h, |app| app.host.status.running);
     h.get_by_label("Pause").click_accesskit();
     common::wait_harness(&mut h, |app| !app.host.status.running);
-    let layout = [Some(("disk-one", "Disk 1", 0x11)), None, None, None];
+    let layout = [Some(("disk-one", "Disk 1.adf", 0x11)), None, None, None];
     let before = assert_player_disk_layout(&mut h, layout);
     let prior = h.state().host.status;
 
@@ -1198,7 +1198,7 @@ fn normal_boot_with_a_missing_or_invalid_required_adf_keeps_the_current_machine(
         h.state_mut().start_library_game(next.clone(), None, true);
         common::wait_harness(&mut h, |app| app.file_error.is_some());
         let error = h.state().file_error.as_deref().unwrap();
-        assert!(error.contains("Required disk for DF2"), "{error}");
+        assert!(error.contains("Required disk.adf for DF2"), "{error}");
         assert!(error.contains(expected_error), "{error}");
         h.get(
             by().role(egui::accesskit::Role::Label)

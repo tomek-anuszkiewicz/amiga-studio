@@ -1,6 +1,7 @@
 //! Host file selection and buffer handoff to the headless session.
 
 use crate::app_host::HostEffect;
+use crate::disk_import::{DiskSelection, DISK_EXTENSIONS};
 use crate::host_commands::{HostCommand, HostValue};
 use crate::layout::top_menu_bar::TOAST_DURATION_FRAMES;
 use crate::EmulatorApp;
@@ -66,7 +67,7 @@ impl FileAction {
             Self::Rom => "Load ROM from File",
             Self::State => "Load State from File",
             Self::SetupRom => "Select Kickstart for Setup",
-            Self::SetupDisk(_) => "Select ADF for Setup",
+            Self::SetupDisk(_) => "Select disk for Setup",
         }
     }
 
@@ -76,7 +77,7 @@ impl FileAction {
             Self::Rom => &["rom", "bin"],
             Self::State => &["json"],
             Self::SetupRom => &["rom", "bin"],
-            Self::SetupDisk(_) => &["adf"],
+            Self::SetupDisk(_) => DISK_EXTENSIONS,
         }
     }
 }
@@ -112,7 +113,65 @@ pub(crate) enum FileCompletion {
     QuickSave(usize),
 }
 
+#[derive(Debug)]
+pub(crate) struct DriveDiskChoice {
+    drive: usize,
+    selection: DiskSelection,
+}
+
 impl EmulatorApp {
+    pub(crate) fn accept_disk_selection(&mut self, drive: usize, mut selection: DiskSelection) {
+        self.player.drive_disk_choice = None;
+        self.file_error = None;
+        match selection.images.len() {
+            0 => {}
+            1 => {
+                if let Some(image) = selection.images.pop() {
+                    self.select_setup_disk(drive, image);
+                }
+            }
+            _ => {
+                self.player.drive_disk_choice = Some(DriveDiskChoice { drive, selection });
+                return;
+            }
+        }
+        if !selection.issues.is_empty() {
+            self.file_error = Some(selection.issues.join("\n"));
+        }
+    }
+
+    pub(crate) fn render_drive_disk_choice(&mut self, ctx: &egui::Context) {
+        let Some(choice) = &mut self.player.drive_disk_choice else {
+            return;
+        };
+        let mut selected = None;
+        let dialog = egui::Modal::new(egui::Id::unique("choose-drive-disk")).show(ctx, |ui| {
+            ui.set_max_width((ctx.viewport_rect().width() - 40.0).min(520.0));
+            ui.heading(format!("Choose a disk for DF{}", choice.drive));
+            egui::ScrollArea::vertical()
+                .max_height(280.0)
+                .show(ui, |ui| {
+                    for (index, image) in choice.selection.images.iter().enumerate() {
+                        if ui.button(image.description().as_ref()).clicked() {
+                            selected = Some(index);
+                        }
+                    }
+                    for issue in &choice.selection.issues {
+                        ui.colored_label(ui.visuals().error_fg_color, issue);
+                    }
+                });
+            ui.button("Cancel").clicked()
+        });
+        if let Some(index) = selected {
+            let image = choice.selection.images.swap_remove(index);
+            let drive = choice.drive;
+            self.player.drive_disk_choice = None;
+            self.select_setup_disk(drive, image);
+        } else if dialog.inner || dialog.should_close() {
+            self.player.drive_disk_choice = None;
+        }
+    }
+
     fn prepare_state_import(&self, json: String) -> Result<HostCommand, String> {
         let saved = debugger::SaveState::from_json(&json).map_err(|e| e.to_string())?;
         #[cfg(not(target_arch = "wasm32"))]
@@ -157,6 +216,7 @@ impl EmulatorApp {
 
     pub(crate) fn open_setup_asset(&mut self, drive: Option<usize>) {
         self.player.captured = false;
+        self.player.drive_disk_choice = None;
         self.open_file_dialog(drive.map_or(FileAction::SetupRom, FileAction::SetupDisk));
     }
 
@@ -372,8 +432,8 @@ impl EmulatorApp {
         handle: wasm_bindgen::JsValue,
     ) {
         match action {
-            FileAction::SetupRom => self.select_setup_asset(None, name, data),
-            FileAction::SetupDisk(drive) => self.select_setup_asset(Some(drive), name, data),
+            FileAction::SetupRom => self.select_setup_rom(name, data),
+            FileAction::SetupDisk(_) => {}
             FileAction::Binary => self.select_binary(BinarySource::Bytes { name, data, handle }),
             FileAction::Rom => self.request_player_launch(crate::player::PendingLaunch::Rom {
                 bytes: data,
@@ -428,9 +488,13 @@ impl EmulatorApp {
             self.player.dialog = Some(NativeDialog::Open(action));
             return;
         }
-        let mut dialog = rfd::FileDialog::new()
-            .set_title(action.title())
-            .add_filter("Supported files", action.extensions());
+        let mut dialog = if matches!(action, FileAction::SetupDisk(_)) {
+            self.disk_file_dialog(action.title())
+        } else {
+            rfd::FileDialog::new()
+                .set_title(action.title())
+                .add_filter("Supported files", action.extensions())
+        };
         let directory = match action {
             FileAction::Binary => self.file_history.picker_directory(true),
             FileAction::Rom => self.file_history.picker_directory(false),
@@ -454,18 +518,34 @@ impl EmulatorApp {
                 FileAction::Binary => self.select_binary(BinarySource::File(path)),
                 FileAction::Rom => self.load_rom_file(&path),
                 FileAction::State => self.load_state_file(&path),
-                FileAction::SetupRom | FileAction::SetupDisk(_) => match std::fs::read(&path) {
-                    Ok(bytes) => {
-                        let drive = match action {
-                            FileAction::SetupDisk(drive) => Some(drive),
-                            _ => None,
-                        };
-                        self.select_setup_asset(drive, file_name(&path), bytes);
-                    }
+                FileAction::SetupRom => match std::fs::read(&path) {
+                    Ok(bytes) => self.select_setup_rom(file_name(&path), bytes),
                     Err(error) => self.file_error = Some(format!("Could not read asset: {error}")),
                 },
+                FileAction::SetupDisk(drive) => self.load_setup_disk(drive, &path),
             }
         }
+    }
+
+    pub(crate) fn disk_file_dialog(&self, title: &str) -> rfd::FileDialog {
+        let mut dialog = rfd::FileDialog::new()
+            .set_title(title)
+            .add_filter("ADF or archive", DISK_EXTENSIONS);
+        if let Some(directory) = self.file_history.disk_picker_directory() {
+            dialog = dialog.set_directory(directory);
+        }
+        dialog
+    }
+
+    pub(crate) fn remember_disk_selection(&mut self, path: &std::path::Path) {
+        self.file_history.remember_disk(path);
+        self.player.settings_dirty = true;
+    }
+
+    /// Loads a confirmed desktop disk source through the manual setup path.
+    pub fn load_setup_disk(&mut self, drive: usize, path: &std::path::Path) {
+        self.remember_disk_selection(path);
+        self.accept_disk_selection(drive, crate::disk_import::read_disk_path(path));
     }
 
     pub fn load_rom_file(&mut self, path: &std::path::Path) {

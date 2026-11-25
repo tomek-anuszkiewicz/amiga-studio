@@ -1,22 +1,37 @@
 //! Desktop library drafts and explicit import/rename operations.
 
+use crate::disk_import::{read_disk_path, DiskImage};
 use crate::game_library::{
-    load_game, persist_numbered_png, relative_asset, write_manifest, write_rgba_png, GameDisk,
-    GameManifest, LibraryGame,
+    load_game, persist_numbered_png, relative_asset, validate_disk_filename, write_manifest,
+    write_rgba_png, GameDisk, GameManifest, LibraryGame,
 };
-use std::path::Path;
+use std::io::{ErrorKind, Read, Write};
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone)]
 pub struct ImportedDisk {
     key: u64,
-    pub name: String,
-    bytes: Vec<u8>,
+    image: DiskImage,
 }
 
 impl ImportedDisk {
     pub fn key(&self) -> u64 {
         self.key
     }
+
+    pub(crate) fn filename(&self) -> &str {
+        &self.image.filename
+    }
+
+    pub(crate) fn source(&self) -> std::borrow::Cow<'_, str> {
+        self.image.description()
+    }
+}
+
+#[derive(Debug)]
+pub struct SavedGame {
+    pub game: LibraryGame,
+    pub import_issues: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -97,25 +112,51 @@ impl GameDraft {
         Ok(())
     }
 
-    /// Read and validate before the draft can affect library files.
-    pub fn add_disk(&mut self, path: &Path) -> Result<(), String> {
-        let bytes = std::fs::read(path).map_err(|e| e.to_string())?;
-        if !debugger::launch::disk_image_is_supported(&bytes) {
-            return Err(format!(
-                "Unsupported ADF length: {} bytes. Select a standard 880 KiB ADF.",
-                bytes.len()
-            ));
+    /// Inspect all selections and keep usable images even when other inputs fail.
+    pub fn add_disks(&mut self, paths: &[PathBuf]) -> Vec<String> {
+        let mut issues = Vec::new();
+        for path in paths {
+            let selection = read_disk_path(path);
+            issues.extend(selection.issues);
+            for image in selection.images {
+                if let Err(issue) = self.check_import(&image) {
+                    issues.push(format!("{}: {issue}", image.description()));
+                    continue;
+                }
+                self.imports.push(ImportedDisk {
+                    key: self.next_import,
+                    image,
+                });
+                self.next_import += 1;
+            }
         }
-        self.imports.push(ImportedDisk {
-            key: self.next_import,
-            name: path
-                .file_name()
-                .ok_or("Select a disk file")?
-                .to_string_lossy()
-                .into_owned(),
-            bytes,
-        });
-        self.next_import += 1;
+        issues
+    }
+
+    fn check_import(&self, image: &DiskImage) -> Result<(), String> {
+        validate_disk_filename(&image.filename)?;
+        if self
+            .imports
+            .iter()
+            .any(|disk| disk.image.bytes == image.bytes)
+        {
+            return Err("Disk already added".into());
+        }
+        if let Some(game) = &self.original {
+            if duplicate_id(&game.directory, &game.manifest, &image.bytes)?.is_some() {
+                return Err("Disk already added".into());
+            }
+            if filename_is_occupied(&game.directory, &game.manifest, &image.filename)? {
+                return Err(filename_collision(&image.filename));
+            }
+        }
+        if self
+            .imports
+            .iter()
+            .any(|disk| disk.filename() == image.filename)
+        {
+            return Err(filename_collision(&image.filename));
+        }
         Ok(())
     }
 
@@ -132,11 +173,16 @@ impl GameDraft {
         self.original
             .iter()
             .flat_map(|game| &game.manifest.disks)
-            .map(|disk| (StartupDisk::Existing(disk.id.clone()), disk.display_name()))
+            .map(|disk| {
+                (
+                    StartupDisk::Existing(disk.id.clone()),
+                    disk.filename.as_str(),
+                )
+            })
             .chain(
                 self.imports
                     .iter()
-                    .map(|disk| (StartupDisk::Pending(disk.key), disk.name.as_str())),
+                    .map(|disk| (StartupDisk::Pending(disk.key), disk.filename())),
             )
     }
 
@@ -152,7 +198,7 @@ impl GameDraft {
         &self,
         root: &Path,
         connected: [bool; config::FLOPPY_DRIVE_COUNT],
-    ) -> Result<LibraryGame, String> {
+    ) -> Result<SavedGame, String> {
         validate_game_name(&self.name)?;
         if self.configuration.trim().is_empty() {
             return Err("Select a named configuration".into());
@@ -216,11 +262,12 @@ impl GameDraft {
         };
         manifest.title.clone_from(&self.name);
         manifest.configuration.clone_from(&self.configuration);
-        if let Some(directory) = original_directory {
-            self.write_assets(&directory, &mut manifest)?;
+        let import_issues = if let Some(directory) = original_directory {
+            let issues = self.write_assets(&directory, &mut manifest)?;
             if directory != destination {
                 std::fs::rename(&directory, &destination).map_err(|e| format!("Changes saved, but the folder could not be renamed: {e}. The library will pick up the saved changes."))?;
             }
+            issues
         } else {
             // The library only discovers direct children. Publish the complete game by renaming it out of the temporary container.
             let temporary = tempfile::Builder::new()
@@ -231,56 +278,82 @@ impl GameDraft {
             std::fs::create_dir(&staging).map_err(|e| e.to_string())?;
             let result = self
                 .write_assets(&staging, &mut manifest)
-                .and_then(|()| std::fs::rename(&staging, &destination).map_err(|e| e.to_string()));
-            if let Err(error) = result {
-                if let Err(cleanup) = temporary.close() {
-                    return Err(format!(
-                        "{error}; temporary game folder could not be removed: {cleanup}"
-                    ));
+                .and_then(|issues| {
+                    std::fs::rename(&staging, &destination).map_err(|e| e.to_string())?;
+                    Ok(issues)
+                });
+            match result {
+                Ok(issues) => issues,
+                Err(error) => {
+                    if let Err(cleanup) = temporary.close() {
+                        return Err(format!(
+                            "{error}; temporary game folder could not be removed: {cleanup}"
+                        ));
+                    }
+                    return Err(error);
                 }
-                return Err(error);
             }
-        }
-        load_game(&destination)
+        };
+        Ok(SavedGame {
+            game: load_game(&destination)?,
+            import_issues,
+        })
     }
 
-    fn write_assets(&self, directory: &Path, manifest: &mut GameManifest) -> Result<(), String> {
-        use std::io::Write;
+    fn write_assets(
+        &self,
+        directory: &Path,
+        manifest: &mut GameManifest,
+    ) -> Result<Vec<String>, String> {
+        let mut new_files = Vec::new();
+        let result = self.write_game(directory, manifest, &mut new_files);
+        if let Err(mut error) = result {
+            for path in new_files {
+                if let Err(cleanup) = std::fs::remove_file(&path) {
+                    error.push_str(&format!(". Could not remove {}: {cleanup}", path.display()));
+                }
+            }
+            return Err(error);
+        }
+        result
+    }
+
+    fn write_game(
+        &self,
+        directory: &Path,
+        manifest: &mut GameManifest,
+        new_files: &mut Vec<PathBuf>,
+    ) -> Result<Vec<String>, String> {
         manifest.mounted = self.startup.each_ref().map(|disk| match disk {
             Some(StartupDisk::Existing(id)) => Some(id.clone()),
             _ => None,
         });
-        if !self.imports.is_empty() {
-            std::fs::create_dir_all(directory.join("disks")).map_err(|e| e.to_string())?;
-        }
+        let mut issues = Vec::new();
         for disk in &self.imports {
-            let mut serial = 1u64;
-            let (id, path) = loop {
-                let id = format!("disk-{serial}");
-                let path = format!("disks/{id}.adf");
-                if !manifest.disks.iter().any(|disk| disk.id == id)
-                    && !directory.join(&path).exists()
-                {
-                    break (id, path);
+            let id = if let Some(id) = duplicate_id(directory, manifest, &disk.image.bytes)? {
+                issues.push(format!("{}: Disk already added", disk.source()));
+                id.to_owned()
+            } else {
+                match publish_disk(directory, manifest, disk, new_files)? {
+                    Some(id) => id,
+                    None => {
+                        let issue =
+                            format!("{}: {}", disk.source(), filename_collision(disk.filename()));
+                        if self.startup.contains(&Some(StartupDisk::Pending(disk.key))) {
+                            return Err(format!(
+                                "{issue}. Remove the conflicting startup selection before saving."
+                            ));
+                        }
+                        issues.push(issue);
+                        continue;
+                    }
                 }
-                serial += 1;
             };
-            let mut output = std::fs::OpenOptions::new()
-                .write(true)
-                .create_new(true)
-                .open(directory.join(&path))
-                .map_err(|e| e.to_string())?;
-            output.write_all(&disk.bytes).map_err(|e| e.to_string())?;
             for (drive, selection) in self.startup.iter().enumerate() {
                 if *selection == Some(StartupDisk::Pending(disk.key)) {
                     manifest.mounted[drive] = Some(id.clone());
                 }
             }
-            manifest.disks.push(GameDisk {
-                id,
-                label: disk.name.clone(),
-                path,
-            });
         }
         let changed_description = self
             .original
@@ -327,7 +400,91 @@ impl GameDraft {
             }
             return Err(error);
         }
-        Ok(())
+        Ok(issues)
+    }
+}
+
+fn duplicate_id<'a>(
+    directory: &Path,
+    manifest: &'a GameManifest,
+    bytes: &[u8],
+) -> Result<Option<&'a str>, String> {
+    let mut buffer = vec![0; bytes.len()];
+    for disk in &manifest.disks {
+        let path = disk.asset_path(directory)?;
+        let mut compare = || -> std::io::Result<bool> {
+            let mut file = std::fs::File::open(&path)?;
+            let metadata = file.metadata()?;
+            if !metadata.is_file() || metadata.len() != bytes.len() as u64 {
+                return Ok(false);
+            }
+            file.read_exact(&mut buffer)?;
+            let mut trailing = [0];
+            Ok(buffer == bytes && file.read(&mut trailing)? == 0)
+        };
+        match compare() {
+            Ok(true) => return Ok(Some(&disk.id)),
+            Ok(false) => {}
+            Err(error) if error.kind() == ErrorKind::NotFound => {}
+            Err(error) => return Err(format!("Could not compare {}: {error}", path.display())),
+        }
+    }
+    Ok(None)
+}
+
+fn filename_collision(filename: &str) -> String {
+    format!("Disk filename collision: {filename}")
+}
+
+fn filename_is_occupied(
+    directory: &Path,
+    manifest: &GameManifest,
+    filename: &str,
+) -> Result<bool, String> {
+    if manifest.disks.iter().any(|disk| disk.filename == filename) {
+        return Ok(true);
+    }
+    directory
+        .join("disks")
+        .join(filename)
+        .try_exists()
+        .map_err(|error| format!("Could not check destination for {filename}: {error}"))
+}
+
+fn publish_disk(
+    directory: &Path,
+    manifest: &mut GameManifest,
+    disk: &ImportedDisk,
+    new_files: &mut Vec<PathBuf>,
+) -> Result<Option<String>, String> {
+    if filename_is_occupied(directory, manifest, disk.filename())? {
+        return Ok(None);
+    }
+    let id = (1u64..)
+        .map(|serial| format!("disk-{serial}"))
+        .find(|candidate| manifest.disks.iter().all(|disk| &disk.id != candidate))
+        .ok_or("Could not allocate a disk ID")?;
+    let asset = GameDisk {
+        id: id.clone(),
+        filename: disk.filename().into(),
+    };
+    let path = asset.asset_path(directory)?;
+    let folder = directory.join("disks");
+    std::fs::create_dir_all(&folder).map_err(|error| error.to_string())?;
+    let pending = tempfile::NamedTempFile::new_in(&folder)
+        .and_then(|mut pending| {
+            pending.write_all(&disk.image.bytes)?;
+            Ok(pending)
+        })
+        .map_err(|error| format!("Could not write {}: {error}", path.display()))?;
+    match pending.persist_noclobber(&path) {
+        Ok(_) => {
+            new_files.push(path);
+            manifest.disks.push(asset);
+            Ok(Some(id))
+        }
+        Err(error) if error.error.kind() == ErrorKind::AlreadyExists => Ok(None),
+        Err(error) => Err(format!("Could not store {}: {error}", path.display())),
     }
 }
 

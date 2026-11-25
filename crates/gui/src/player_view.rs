@@ -99,7 +99,7 @@ impl EmulatorApp {
                         &mut self.player.setup_mounted[drive],
                         &self.player.setup_disks,
                     );
-                    if ui.button("Select ADF...").clicked() {
+                    if ui.button("Select disk...").clicked() {
                         self.open_setup_asset(Some(drive));
                     }
                 } else {

@@ -4,24 +4,50 @@ use serde::{Deserialize, Serialize};
 use std::path::{Component, Path, PathBuf};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct GameDisk {
     pub id: String,
-    pub label: String,
-    pub path: String,
+    pub filename: String,
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 impl GameDisk {
-    pub(crate) fn display_name(&self) -> &str {
-        if self.label.trim().is_empty() {
-            Path::new(&self.path)
-                .file_name()
-                .and_then(|name| name.to_str())
-                .unwrap_or(&self.id)
-        } else {
-            &self.label
-        }
+    pub(crate) fn asset_path(&self, directory: &Path) -> Result<PathBuf, String> {
+        validate_disk_filename(&self.filename)?;
+        Ok(directory.join("disks").join(&self.filename))
     }
+}
+
+pub(crate) fn validate_disk_filename(filename: &str) -> Result<(), String> {
+    // Use portable basenames so a game can move between supported desktop filesystems.
+    let stem = filename
+        .split('.')
+        .next()
+        .unwrap_or_default()
+        .trim_end_matches(' ')
+        .to_ascii_uppercase();
+    let reserved = matches!(stem.as_str(), "CON" | "PRN" | "AUX" | "NUL")
+        || ["COM", "LPT"].iter().any(|prefix| {
+            stem.strip_prefix(prefix).is_some_and(|suffix| {
+                matches!(
+                    suffix,
+                    "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "¹" | "²" | "³"
+                )
+            })
+        });
+    if !crate::disk_import::is_adf(filename)
+        || filename.ends_with(['.', ' '])
+        || filename
+            .chars()
+            .any(|c| c.is_control() || "<>:\"/\\|?*".contains(c))
+        || filename.len() > 255
+        || reserved
+    {
+        return Err(format!(
+            "Invalid ADF filename: {filename:?}. Use a single portable ADF basename."
+        ));
+    }
+    Ok(())
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -43,12 +69,16 @@ impl GameManifest {
             return Err("Game ID and title are required".into());
         }
         let mut ids = Vec::new();
+        let mut filenames = std::collections::HashSet::new();
         for disk in &self.disks {
             if disk.id.is_empty() || ids.contains(&disk.id) {
                 return Err("Disk IDs must be nonempty and unique".into());
             }
             ids.push(disk.id.clone());
-            relative_asset(Path::new("."), &disk.path)?;
+            validate_disk_filename(&disk.filename)?;
+            if !filenames.insert(&disk.filename) {
+                return Err(format!("Disk filename collision: {}", disk.filename));
+            }
         }
         for id in self.mounted.iter().flatten() {
             if !ids.contains(id) {

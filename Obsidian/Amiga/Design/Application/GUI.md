@@ -106,12 +106,27 @@ Capturing a save observes the machine without releasing controls or changing the
 input generation.
 
 The desktop library provides Add game and Edit game forms. The user enters a
-name, an optional description and a named configuration, and selects ADF files
-to import individually. **Startup disks** lets the user choose a game disk,
-pending import or Empty for each drive from DF0 through DF3. All four choices
-start empty for a new game. Importing disks leaves those choices as set by the
-user. Saving copies the imported disks into the game directory, stores paths
-relative to that directory and records the chosen disk IDs.
+name, an optional description and a named configuration. The disk picker
+accepts several ADF, ZIP and 7z files in one selection. Additional selections
+append to the draft. The desktop remembers the last confirmed disk picker
+directory across restarts, independently of the library and ROM locations.
+Cancel keeps that directory. If it is unavailable, the picker uses an existing
+parent or the system default.
+
+The host reads regular ADF members of archives and preserves their basenames.
+It validates each decoded image against the standard 880 KiB format. It reports
+unusable inputs while keeping valid disks in the draft. Identical image bytes
+are already added when a pending or stored disk in the same game has them.
+Different images with a conflicting destination filename require the player
+to choose which file to keep. Save copies each accepted ADF to
+`<game>/disks/<filename>`. Each entry in the ordered `disks` array contains
+exactly `id` and `filename`. The filename is a single ADF basename and supplies
+the displayed name. Startup and save associations use stable IDs.
+
+**Startup disks** lets the user choose a game disk, pending import or Empty for
+each drive from DF0 through DF3. All four choices start empty for a new game.
+Importing disks leaves those choices as set by the user. Save resolves pending
+assignments to the new disk IDs.
 Assignments require drives connected in the chosen configuration. The game's
 name is also its folder name. Renaming preserves game and disk IDs, saves,
 initial states and other files. The library rejects invalid names and existing
@@ -140,6 +155,11 @@ image with the draft. The saved image remains available after the source file
 or clipboard contents change.
 
 In manual setup, the user can select a supported ROM and zero to four disks.
+The desktop and browser accept an ADF directly or read ADF members from a ZIP
+or 7z file. When the selection yields several supported images, the player
+chooses one for the requested drive. Browser file pickers allow multiple source
+files and follow the browser's rules for local directory access. Archive
+decoding stays on the host and supplies validated ADF bytes to the machine.
 Launch validates every asset before replacing the active machine. Returning to
 setup or the library pauses the machine and releases capture. A hardware/ROM
 replacement requires confirmation. The player panel provides four disk

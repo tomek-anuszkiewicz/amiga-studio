@@ -264,3 +264,47 @@ fn picker_uses_nearest_existing_parent_without_changing_the_other_category() {
     assert_eq!(history.picker_directory(true), None);
     assert_eq!(history.picker_directory(false), Some(existing));
 }
+
+#[test]
+fn confirmed_manual_disk_directory_is_restored_and_falls_back_independently() {
+    let root = tempfile::tempdir().unwrap();
+    let directory = root.path().join("import").join("selected");
+    let rom_directory = root.path().join("ROM");
+    std::fs::create_dir_all(&directory).unwrap();
+    std::fs::create_dir(&rom_directory).unwrap();
+    let disk = directory.join("Manual.adf");
+    std::fs::write(&disk, vec![0x33; 880 * 1024]).unwrap();
+    let mut app = EmulatorApp::default();
+    app.file_history.rom_directory = Some(rom_directory.clone());
+    app.load_setup_disk(0, &disk);
+    assert_eq!(
+        app.file_history.disk_picker_directory(),
+        Some(directory.as_path())
+    );
+    assert!(app.player.library_root.is_none());
+
+    let mut storage = MemoryStorage::default();
+    app.save(&mut storage);
+    let mut context = eframe::CreationContext::_new_kittest(egui::Context::default());
+    context.storage = Some(&storage);
+    let reopened = EmulatorApp::new(&context);
+    assert_eq!(
+        reopened.file_history.disk_picker_directory(),
+        Some(directory.as_path())
+    );
+    assert_eq!(
+        reopened.file_history.picker_directory(false),
+        Some(rom_directory.as_path())
+    );
+    std::fs::remove_file(disk).unwrap();
+    std::fs::remove_dir(&directory).unwrap();
+    assert_eq!(
+        reopened.file_history.disk_picker_directory(),
+        directory.parent()
+    );
+    assert_eq!(reopened.file_history.disk_directory, Some(directory));
+    assert_eq!(
+        reopened.file_history.picker_directory(false),
+        Some(rom_directory.as_path())
+    );
+}

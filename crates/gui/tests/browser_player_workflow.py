@@ -7,9 +7,11 @@ and File System Access permission dialogs remain interactive checks.
 """
 import argparse
 from hashlib import sha256
+from io import BytesIO
 import json
 from pathlib import Path
 from urllib.parse import urlparse
+from zipfile import ZIP_DEFLATED, ZipFile
 
 from playwright.sync_api import sync_playwright
 
@@ -21,7 +23,7 @@ from browser_test_server import serve_distribution
 VIEWPORT = {"width": 1280, "height": 800}
 CONTROL_POINTS = {
     "Select Kickstart": (65, 108),
-    "Select ADF": (204, 131),
+    "Select disk": (204, 131),
     "Start": (30, 223),
     "Game Save": (1090, 264),
     "Game Load": (1142, 264),
@@ -160,7 +162,7 @@ def check_workflow(browser, url, rom, disk, output):
         stage = "disk selection"
         disk_digest = sha256(disk.read_bytes()).digest()
         with page.expect_file_chooser() as chooser:
-            click("Select ADF")
+            click("Select disk")
         chooser.value.set_files({
             "name": "replacement.adf" if disk.name != "replacement.adf" else "other.adf",
             "mimeType": "application/octet-stream",
@@ -168,7 +170,7 @@ def check_workflow(browser, url, rom, disk, output):
         })
         page.wait_for_timeout(400)
         with page.expect_file_chooser() as chooser:
-            click("Select ADF")
+            click("Select disk")
         chooser.value.set_files(disk)
         page.wait_for_timeout(400)
         page.screenshot(path=str(output / "ready.png"))
@@ -291,6 +293,92 @@ def check_workflow(browser, url, rom, disk, output):
         context.close()
 
 
+
+
+def check_archive_imports(browser, url, rom, output):
+    """Boot the same ADF from a plain file, ZIP and 7z and compare every track."""
+    expected = bytes([0x33]) * (880 * 1024)
+    zipped = BytesIO()
+    with ZipFile(zipped, "w", compression=ZIP_DEFLATED) as archive:
+        archive.writestr("disks/Archive Fill.adf", expected)
+        archive.writestr("readme.txt", "Ignore this member")
+    seven_z = Path(__file__).parent / "fixtures/disk-import/single-disk.7z"
+    results = {}
+    for filename, contents in (
+        ("Archive Fill.adf", expected),
+        ("Browser ZIP.zip", zipped.getvalue()),
+        ("Browser 7z.7z", seven_z.read_bytes()),
+    ):
+        context = browser.new_context(viewport=VIEWPORT, device_scale_factor=1, accept_downloads=True)
+        page = context.new_page()
+        errors = []
+        page.on("pageerror", lambda error: errors.append(str(error)))
+        page.add_init_script("""
+            window.showOpenFilePicker = undefined;
+            const OriginalWorker = Worker;
+            globalThis.archiveWorker = {outputs: 0, failures: []};
+            window.Worker = class extends OriginalWorker {
+                constructor(url, options) {
+                    super(url, options);
+                    this.addEventListener("message", event => {
+                        if (event.data.type === "output") archiveWorker.outputs++;
+                        if (event.data.type === "failed") archiveWorker.failures.push(event.data.message);
+                    });
+                }
+            };
+        """)
+        try:
+            page.goto(url)
+            page.wait_for_function("globalThis.archiveWorker.outputs > 0", timeout=30000)
+            page.wait_for_timeout(500)
+
+            def click(control):
+                x, y = CONTROL_POINTS[control]
+                page.mouse.move(x, y)
+                page.wait_for_timeout(120)
+                page.mouse.click(x, y, delay=80)
+                page.wait_for_timeout(100)
+
+            with page.expect_file_chooser() as chooser:
+                click("Select Kickstart")
+            chooser.value.set_files(rom)
+            page.wait_for_timeout(400)
+            with page.expect_file_chooser() as chooser:
+                click("Select disk")
+            assert chooser.value.is_multiple()
+            assert chooser.value.element.get_attribute("accept") == ".adf,.zip,.7z"
+            chooser.value.set_files({
+                "name": filename,
+                "mimeType": "application/octet-stream",
+                "buffer": contents,
+            })
+            page.wait_for_timeout(400)
+            updates = page.evaluate("archiveWorker.outputs")
+            click("Start")
+            page.wait_for_function("updates => archiveWorker.outputs > updates + 3", arg=updates, timeout=30000)
+            with page.expect_download(timeout=30000) as download:
+                click("Game Save")
+            path = output / (filename + ".json")
+            download.value.save_as(path)
+            snapshot = json.loads(path.read_text(encoding="utf-8"))
+            assert snapshot["header"]["association"]["mounted"] == ["manual-0", None, None, None]
+            assert snapshot["state"]["cck"] > 0
+            drive = snapshot["state"]["floppy"]["drives"][0]
+            assert drive["disk_inserted"]
+            track_bytes = json.dumps(drive["track_data"], separators=(",", ":")).encode("utf-8")
+            results[filename] = sha256(track_bytes).hexdigest()
+            assert not errors, errors
+            assert not page.evaluate("archiveWorker.failures")
+        except Exception:
+            page.screenshot(path=str(output / (filename + "-failure.png")))
+            raise
+        finally:
+            context.close()
+    assert len(set(results.values())) == 1, results
+    return results
+
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--browser-executable", required=True)
@@ -305,6 +393,7 @@ def main():
             args=["--enable-webgl", "--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"])
         try:
             result = check_workflow(browser, url, args.rom, args.disk, args.output)
+            result["archive_track_digests"] = check_archive_imports(browser, url, args.rom, args.output)
             (args.output / "result.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
             print(json.dumps(result, indent=2))
         finally:

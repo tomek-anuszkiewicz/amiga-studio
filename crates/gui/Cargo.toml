@@ -29,6 +29,8 @@ debugger = { workspace = true }
 keyboard = { path = "../keyboard" }
 serde = { workspace = true }
 serde_json = { workspace = true }
+zip = { version = "9.8.2", default-features = false, features = ["deflate-flate2-zlib-rs"] }
+sevenz-rust2 = { version = "0.25.0", default-features = false }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 eframe = { version = "0.37", default-features = false, features = ["wgpu"] }
@@ -49,7 +51,7 @@ wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
 js-sys = "0.3"
 console_error_panic_hook = "0.1"
-web-sys = { version = "0.3", features = ["Document", "Element", "HtmlCanvasElement", "Window", "HtmlInputElement", "HtmlAnchorElement", "File", "FileList", "Blob", "Url", "Event", "Worker"] }
+web-sys = { version = "0.3", features = ["Document", "Element", "HtmlCanvasElement", "Window", "HtmlInputElement", "HtmlAnchorElement", "File", "FileSystemFileHandle", "FileList", "Blob", "Url", "Event", "Worker"] }
 
 [lints]
 workspace = true

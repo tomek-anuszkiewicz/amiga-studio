@@ -42,7 +42,7 @@ fn started(root: &Path) -> EmulatorApp {
             .games
             .remove(0)
     } else {
-        draft.save(root, [true; 4]).unwrap()
+        draft.save(root, [true; 4]).unwrap().game
     };
     let mut app = EmulatorApp::default();
     app.player.library_root = Some(root.to_path_buf());

@@ -30,7 +30,7 @@ fn root() -> PathBuf {
 fn add_disk(draft: &mut GameDraft, directory: &Path, value: u8) -> PathBuf {
     let source = directory.join(format!("source-{value}.adf"));
     std::fs::write(&source, vec![value; 901120]).unwrap();
-    draft.add_disk(&source).unwrap();
+    assert!(draft.add_disks(std::slice::from_ref(&source)).is_empty());
     source
 }
 
@@ -60,7 +60,7 @@ fn startup_choices_follow_pending_disk_ids_across_removal_save_and_normal_boot()
         .contains("DF3 is disconnected"));
     assert!(!root.join(&draft.name).exists());
 
-    let game = draft.save(&root, [true; 4]).unwrap();
+    let game = draft.save(&root, [true; 4]).unwrap().game;
     let expected_ids = [None, None, Some("disk-2".into()), Some("disk-1".into())];
     assert_eq!(game.manifest.mounted, expected_ids);
     let reopened = GameDraft::edit(GameLibrary::discover(&root).unwrap().games.remove(0));
@@ -127,7 +127,7 @@ fn create_import_and_rename_preserve_media_ids_saved_progress_and_other_files() 
         !root.join(&draft.name).exists(),
         "Picking files must not publish a game"
     );
-    let mut game = draft.save(&root, [true; 4]).unwrap();
+    let mut game = draft.save(&root, [true; 4]).unwrap().game;
     assert_eq!(game.directory.file_name().unwrap(), "A new game");
     assert_eq!(game.description, draft.description);
     assert_eq!(
@@ -135,11 +135,21 @@ fn create_import_and_rename_preserve_media_ids_saved_progress_and_other_files() 
         [Some("disk-1".into()), None, None, None]
     );
     assert_eq!(
-        std::fs::read(game.directory.join(&game.manifest.disks[0].path)).unwrap(),
+        std::fs::read(
+            game.directory
+                .join("disks")
+                .join(&game.manifest.disks[0].filename)
+        )
+        .unwrap(),
         std::fs::read(first).unwrap()
     );
     assert_eq!(
-        std::fs::read(game.directory.join(&game.manifest.disks[1].path)).unwrap(),
+        std::fs::read(
+            game.directory
+                .join("disks")
+                .join(&game.manifest.disks[1].filename)
+        )
+        .unwrap(),
         std::fs::read(second).unwrap()
     );
     std::fs::create_dir(game.directory.join("saves")).unwrap();
@@ -158,7 +168,7 @@ fn create_import_and_rename_preserve_media_ids_saved_progress_and_other_files() 
     edit.name = "Renamed game".into();
     edit.description = "Edited description".into();
     let third = add_disk(&mut edit, &root, 0x33);
-    let updated = edit.save(&root, [true; 4]).unwrap();
+    let updated = edit.save(&root, [true; 4]).unwrap().game;
     assert!(!game.directory.exists());
     assert_eq!(updated.manifest.id, id);
     assert_eq!(&updated.manifest.disks[..2], before_disks);
@@ -176,7 +186,13 @@ fn create_import_and_rename_preserve_media_ids_saved_progress_and_other_files() 
         );
     }
     assert_eq!(
-        std::fs::read(updated.directory.join(&updated.manifest.disks[2].path)).unwrap(),
+        std::fs::read(
+            updated
+                .directory
+                .join("disks")
+                .join(&updated.manifest.disks[2].filename)
+        )
+        .unwrap(),
         std::fs::read(third).unwrap()
     );
     let rediscovered = GameLibrary::discover(&root).unwrap();
@@ -189,7 +205,7 @@ fn invalid_names_images_and_destination_collisions_leave_existing_game_untouched
     let root = root();
     let mut draft = GameDraft::new("standard".into());
     draft.name = "Original".into();
-    let game = draft.save(&root, [true; 4]).unwrap();
+    let game = draft.save(&root, [true; 4]).unwrap().game;
     let original = std::fs::read(game.directory.join("game.json")).unwrap();
     for invalid in [
         "",
@@ -214,7 +230,7 @@ fn invalid_names_images_and_destination_collisions_leave_existing_game_untouched
     }
     let bad = root.join("bad.adf");
     std::fs::write(&bad, b"unsupported disk").unwrap();
-    assert!(draft.add_disk(&bad).is_err());
+    assert!(!draft.add_disks(&[bad]).is_empty());
     assert!(draft.imports().is_empty());
     std::fs::create_dir(root.join("Other")).unwrap();
     std::fs::write(root.join("Other/preserve.txt"), b"unrelated").unwrap();
@@ -238,7 +254,7 @@ fn jpeg_and_png_covers_are_discovered_and_refresh_reads_replacements() {
     let root = root();
     let mut draft = GameDraft::new("standard".into());
     draft.name = "Covered game".into();
-    let game = draft.save(&root, [true; 4]).unwrap();
+    let game = draft.save(&root, [true; 4]).unwrap().game;
     let cover = game.directory.join("cover.jpg");
     let image = image::RgbImage::from_pixel(2, 2, image::Rgb([240, 20, 10]));
     image.save(&cover).unwrap();
@@ -433,7 +449,7 @@ fn saved_paste_and_file_covers_are_drawn_on_the_first_return_to_library() {
     chosen.save(&source).unwrap();
     let mut draft = GameDraft::new("standard".into());
     draft.name = COVER_TEST_GAME.into();
-    let game = draft.save(&root, [true; 4]).unwrap();
+    let game = draft.save(&root, [true; 4]).unwrap().game;
     original.save(game.directory.join("cover.png")).unwrap();
 
     let mut h = artwork_harness_with(
@@ -637,7 +653,7 @@ fn artwork_paste_routes_only_to_the_active_editor_and_keeps_text_paste_and_cance
 fn cover_tiles_fixture(root: &Path) -> GameManifest {
     let mut draft = GameDraft::new("standard".into());
     draft.name = "Artwork".into();
-    let game = draft.save(root, [true; 4]).unwrap();
+    let game = draft.save(root, [true; 4]).unwrap().game;
     image::RgbImage::from_fn(180, 90, |x, y| {
         if (x / 18 + y / 18).is_multiple_of(2) {
             image::Rgb([42, 120, 171])
@@ -652,7 +668,7 @@ fn cover_tiles_fixture(root: &Path) -> GameManifest {
     draft.save(root, [true; 4]).unwrap();
     let mut draft = GameDraft::new("standard".into());
     draft.name = "Corrupt cover".into();
-    let game = draft.save(root, [true; 4]).unwrap();
+    let game = draft.save(root, [true; 4]).unwrap().game;
     let mut manifest = game.manifest;
     manifest.artwork = Some("cover.jpg".into());
     std::fs::write(
@@ -847,7 +863,7 @@ fn startup_editor_clears_removed_import_and_rejects_disconnected_drive() {
         );
     }
     let connected = [true, true, false, false];
-    let game = draft.save(&root, connected).unwrap();
+    let game = draft.save(&root, connected).unwrap().game;
     let manifest = game.directory.join("game.json");
     let before = std::fs::read(&manifest).unwrap();
     let first_disk_id = &game.manifest.disks[0].id;
@@ -924,7 +940,7 @@ fn editor_cancel_does_not_write_and_save_updates_the_active_games_path_without_r
     draft.name = "Before".into();
     add_disk(&mut draft, &root, 0x44);
     draft.select_startup_disk(0, Some(StartupDisk::Pending(draft.imports()[0].key())));
-    let game = draft.save(&root, [true; 4]).unwrap();
+    let game = draft.save(&root, [true; 4]).unwrap().game;
     let rom_path = root.join("kick.rom");
     let mut rom = vec![0; 262144];
     rom[..4].copy_from_slice(&0x70000u32.to_be_bytes());
@@ -1024,7 +1040,7 @@ fn editor_cancel_does_not_write_and_save_updates_the_active_games_path_without_r
     other.name = "Another game".into();
     add_disk(&mut other, other_root.path(), 0x66);
     other.select_startup_disk(0, Some(StartupDisk::Pending(other.imports()[0].key())));
-    let other = other.save(other_root.path(), [true; 4]).unwrap();
+    let other = other.save(other_root.path(), [true; 4]).unwrap().game;
     assert_eq!(other.manifest.id, game.manifest.id);
     common::select_library(&mut harness, other_root.path());
     common::wait_harness(&mut harness, |app| {
@@ -1059,7 +1075,7 @@ fn invalid_manifests_and_duplicate_ids_are_reported_without_hiding_valid_games()
     let mut draft = GameDraft::new("standard".into());
     draft.name = "Valid".into();
     add_disk(&mut draft, &root, 0x11);
-    let game = draft.save(&root, [true; 4]).unwrap();
+    let game = draft.save(&root, [true; 4]).unwrap().game;
     let valid = game.manifest.clone();
     for (manifest, expected) in [
         (
@@ -1089,10 +1105,10 @@ fn invalid_manifests_and_duplicate_ids_are_reported_without_hiding_valid_games()
         (
             {
                 let mut m = valid.clone();
-                m.disks[0].path = "../escape.adf".into();
+                m.disks[0].filename = "../escape.adf".into();
                 m
             },
-            "relative path",
+            "Invalid ADF filename",
         ),
         (
             {
@@ -1152,7 +1168,7 @@ fn stale_edit_rejects_external_manifest_and_description_changes_without_writes()
     let mut draft = GameDraft::new("standard".into());
     draft.name = "Original".into();
     draft.description = "Original description".into();
-    let game = draft.save(&root, [true; 4]).unwrap();
+    let game = draft.save(&root, [true; 4]).unwrap().game;
     for manifest_change in [false, true] {
         let mut edit = GameDraft::edit(game.clone());
         edit.name = "Rename must fail".into();

@@ -12,6 +12,7 @@ mod configuration_bindings;
 mod configuration_delete;
 pub mod configuration_edit;
 mod configuration_view;
+mod disk_import;
 pub mod file_actions;
 pub mod game_library;
 mod host_clock;

@@ -17,6 +17,8 @@ pub struct RecentBinary {
 pub struct FileHistory {
     pub binary_directory: Option<PathBuf>,
     pub rom_directory: Option<PathBuf>,
+    #[serde(default)]
+    pub disk_directory: Option<PathBuf>,
     pub binaries: Vec<RecentBinary>,
     pub roms: Vec<PathBuf>,
 }
@@ -29,7 +31,15 @@ impl FileHistory {
         } else {
             &self.rom_directory
         };
-        directory.as_deref()?.ancestors().find(|path| path.is_dir())
+        existing_directory(directory.as_deref()?)
+    }
+
+    pub fn disk_picker_directory(&self) -> Option<&Path> {
+        existing_directory(self.disk_directory.as_deref()?)
+    }
+
+    pub fn remember_disk(&mut self, path: &Path) {
+        self.disk_directory = absolute_path(path).parent().map(Path::to_owned);
     }
 
     pub(super) fn remember_binary(&mut self, path: &Path, target: u32, auto_prime: bool) {
@@ -54,6 +64,10 @@ impl FileHistory {
         self.roms.insert(0, path);
         self.roms.truncate(RECENT_FILE_LIMIT);
     }
+}
+
+fn existing_directory(directory: &Path) -> Option<&Path> {
+    directory.ancestors().find(|path| path.is_dir())
 }
 
 fn absolute_path(path: &Path) -> PathBuf {

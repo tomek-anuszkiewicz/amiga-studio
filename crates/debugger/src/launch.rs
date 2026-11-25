@@ -53,9 +53,12 @@ pub fn reconcile_ports(session: &mut DebuggerSession, kinds: [DeviceKind; 2]) {
     }
 }
 
+/// Byte length of the standard double-density ADF accepted by the machine.
+pub const ADF_BYTES: usize = machine_loop::floppy::FORMATTED_DISK_BYTES;
+
 /// Reject unsupported image layouts before preparing or replacing a drive.
 pub fn disk_image_is_supported(bytes: &[u8]) -> bool {
-    bytes.len() == machine_loop::floppy::FORMATTED_DISK_BYTES
+    bytes.len() == ADF_BYTES
 }
 
 pub fn mount(

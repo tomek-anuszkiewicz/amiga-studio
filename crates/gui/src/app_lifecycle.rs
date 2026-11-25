@@ -17,12 +17,6 @@ impl eframe::App for EmulatorApp {
         self.persist_player_settings(storage);
         eframe::set_value(storage, RTC_BATTERY_STORAGE_KEY, &self.host.status.battery);
         eframe::set_value(storage, eframe::APP_KEY, &self.preferences());
-        #[cfg(not(target_arch = "wasm32"))]
-        eframe::set_value(
-            storage,
-            crate::file_actions::HISTORY_STORAGE_KEY,
-            &self.file_history,
-        );
     }
 
     fn persist_egui_memory(&self) -> bool {
@@ -39,17 +33,24 @@ impl EmulatorApp {
             &self.player.catalog,
         );
         #[cfg(not(target_arch = "wasm32"))]
-        if self.player.library_root.is_some() || self.player.migration_error.is_none() {
-            use crate::library_catalog::{NativePlayerSettings, SETTINGS_KEY};
+        {
             eframe::set_value(
                 storage,
-                SETTINGS_KEY,
-                &NativePlayerSettings {
-                    root: self.player.library_root.clone(),
-                    selected: self.player.catalog.selected.clone(),
-                    migrated_legacy: self.player.migrated_legacy,
-                },
+                crate::file_actions::HISTORY_STORAGE_KEY,
+                &self.file_history,
             );
+            if self.player.library_root.is_some() || self.player.migration_error.is_none() {
+                use crate::library_catalog::{NativePlayerSettings, SETTINGS_KEY};
+                eframe::set_value(
+                    storage,
+                    SETTINGS_KEY,
+                    &NativePlayerSettings {
+                        root: self.player.library_root.clone(),
+                        selected: self.player.catalog.selected.clone(),
+                        migrated_legacy: self.player.migrated_legacy,
+                    },
+                );
+            }
         }
         self.player.settings_dirty = false;
     }
