@@ -39,6 +39,7 @@
   - [7.9: Turbo Floppy Mode](#task-7-9)
   - [7.10: Automatic Disk Swapping (Deferred Exploration)](#task-7-10)
   - [7.11: Backward Compatibility for Save States](#task-7-11)
+  - [7.12: Linux and macOS Compatibility Check](#task-7-12)
 - [Step 8: Real-World Amiga Workloads & Pipeline Optimization (Post-Boot)](#step-8)
   - [8.1: Deferred Full-OS & MFM Floppy vAmigaTS Test Suites Verification Gate](#task-8-1)
   - [8.2: End-to-End Bootable ADF Integration Testing](#task-8-2)
@@ -424,6 +425,11 @@ expansion-connector INT2/INT6 sources (12.3) retain their deferred scope.
 - **7.11: Backward Compatibility for Save States**
   - Every new emulator version must load valid save states created by any earlier version and resume the saved machine state, even when the file format or internal state representation changes. Users can open their original save files directly in the current version.
   - **Gate:** Keep representative saves from every historical file layout, including distinct layouts that used the same version number. Verify that the current emulator loads each file and correctly resumes execution.
+
+<a id="task-7-12"></a>
+
+- **7.12: Linux and macOS Compatibility Check**
+  - Check whether the native emulator builds, launches, and runs a representative Amiga session on Linux and macOS. Record the tested configurations and any platform-specific issues.
 
 ---
 
