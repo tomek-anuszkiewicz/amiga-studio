@@ -56,7 +56,7 @@ impl DriveActivity {
             ui.allocate_exact_size(egui::vec2(height, height), egui::Sense::hover());
         response.widget_info(|| {
             egui::WidgetInfo::labeled(
-                egui::WidgetType::Image,
+                egui::Role::Image,
                 true,
                 if active {
                     ACTIVE_LABELS[drive]

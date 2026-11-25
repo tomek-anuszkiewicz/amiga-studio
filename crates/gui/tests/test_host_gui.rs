@@ -2,6 +2,7 @@
 #![allow(clippy::unwrap_used, clippy::panic)]
 
 mod common;
+use common::TestContext as _;
 use egui::{Context, RawInput, ViewportCommand, ViewportEvent, ViewportId};
 use gui::EmulatorApp;
 use std::collections::HashMap;
@@ -29,7 +30,7 @@ fn fatal_diagnostic_cancels_gui_commands_and_allows_closing_without_owner_reply(
         app.host.queue(gui::host_commands::HostCommand::StepField);
         let deadline = Instant::now() + Duration::from_secs(10);
         loop {
-            let _ = context.run(RawInput::default(), |context| app.update_ui(context));
+            let _ = context.run_test_ui(RawInput::default(), |ui| app.update_ui(ui));
             if app.file_error.as_deref() == Some("Injected internal invariant for GUI shutdown") {
                 break;
             }
@@ -47,7 +48,7 @@ fn fatal_diagnostic_cancels_gui_commands_and_allows_closing_without_owner_reply(
             gui::host_commands::HostCommand::Reset,
         ] {
             app.host.queue(command);
-            let _ = context.run(RawInput::default(), |context| app.update_ui(context));
+            let _ = context.run_test_ui(RawInput::default(), |ui| app.update_ui(ui));
             assert!(app.host.is_idle());
             assert_eq!(app.host.status.cck, cck);
         }
@@ -58,7 +59,7 @@ fn fatal_diagnostic_cancels_gui_commands_and_allows_closing_without_owner_reply(
             .unwrap()
             .events
             .push(ViewportEvent::Close);
-        let output = context.run(input, |context| app.update_ui(context));
+        let output = context.run_test_ui(input, |ui| app.update_ui(ui));
         assert!(output.viewport_output[&ViewportId::ROOT]
             .commands
             .contains(&ViewportCommand::Close));
@@ -75,6 +76,10 @@ impl eframe::Storage for Storage {
     fn set_string(&mut self, key: &str, value: String) {
         self.0.insert(key.to_owned(), value);
     }
+    fn remove_string(&mut self, key: &str) {
+        self.0.remove(key);
+    }
+
     fn flush(&mut self) {}
 }
 
@@ -94,13 +99,13 @@ fn closing_waits_for_owner_shutdown_and_persists_its_final_battery() {
         .unwrap()
         .events
         .push(ViewportEvent::Close);
-    let requested = context.run(input, |context| app.update_ui(context));
+    let requested = context.run_test_ui(input, |ui| app.update_ui(ui));
     assert!(requested.viewport_output[&ViewportId::ROOT]
         .commands
         .contains(&ViewportCommand::CancelClose));
     let deadline = Instant::now() + Duration::from_secs(10);
     loop {
-        let output = context.run(RawInput::default(), |context| app.update_ui(context));
+        let output = context.run_test_ui(RawInput::default(), |ui| app.update_ui(ui));
         if output.viewport_output[&ViewportId::ROOT]
             .commands
             .contains(&ViewportCommand::Close)
@@ -134,7 +139,7 @@ fn worker_notifications_deliver_initial_video_and_inspection_without_gui_polling
         let deadline = Instant::now() + Duration::from_secs(10);
         loop {
             if WAKE.swap(false, Ordering::AcqRel) {
-                let _ = context.run(RawInput::default(), |context| app.update_ui(context));
+                let _ = context.run_test_ui(RawInput::default(), |ui| app.update_ui(ui));
             }
             if app.host.is_idle() && app.host.presented.is_some() && app.host.data.is_some() {
                 break;

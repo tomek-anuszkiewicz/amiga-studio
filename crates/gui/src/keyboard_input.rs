@@ -110,7 +110,7 @@ const KEYBOARD_INBOX_ID: &str = "keyboard_routing_inbox";
 
 pub(crate) fn with_inbox<T>(ctx: &egui::Context, f: impl FnOnce(&mut KeyboardInbox) -> T) -> T {
     ctx.data_mut(|data| {
-        f(data.get_temp_mut_or_default::<KeyboardInbox>(egui::Id::new(KEYBOARD_INBOX_ID)))
+        f(data.get_temp_mut_or_default::<KeyboardInbox>(egui::Id::unique(KEYBOARD_INBOX_ID)))
     })
 }
 
@@ -132,11 +132,12 @@ pub fn receive_focus(ctx: &egui::Context, focused: bool, generation: Option<u64>
 const TEXT_EDITORS_ID: &str = "session_text_editors";
 
 pub(crate) fn begin_editor_collection(ctx: &egui::Context) {
-    ctx.data_mut(|data| data.remove_temp::<Vec<EditorRegion>>(egui::Id::new(TEXT_EDITORS_ID)));
+    ctx.data_mut(|data| data.remove_temp::<Vec<EditorRegion>>(egui::Id::unique(TEXT_EDITORS_ID)));
 }
 
 #[derive(Clone)]
 struct EditorRegion {
+    id: egui::Id,
     rect: egui::Rect,
     layer: egui::LayerId,
 }
@@ -145,8 +146,9 @@ pub(crate) fn text_edit(ui: &mut egui::Ui, edit: egui::TextEdit<'_>) -> egui::Re
     let response = ui.add(edit);
     if response.enabled() && response.interact_rect.is_positive() {
         ui.ctx().data_mut(|data| {
-            data.get_temp_mut_or_default::<Vec<EditorRegion>>(egui::Id::new(TEXT_EDITORS_ID))
+            data.get_temp_mut_or_default::<Vec<EditorRegion>>(egui::Id::unique(TEXT_EDITORS_ID))
                 .push(EditorRegion {
+                    id: response.id,
                     rect: response.interact_rect,
                     layer: response.layer_id,
                 });
@@ -158,15 +160,18 @@ pub(crate) fn text_edit(ui: &mut egui::Ui, edit: egui::TextEdit<'_>) -> egui::Re
 /// Give a visible editor the first key even when the click and key precede the next frame.
 pub fn receive_pointer_press(ctx: &egui::Context, position: egui::Pos2) {
     let layer = ctx.layer_id_at(position);
-    let editor = ctx.data(|data| {
-        data.get_temp::<Vec<EditorRegion>>(egui::Id::new(TEXT_EDITORS_ID))
-            .is_some_and(|editors| {
+    let editor_id = ctx.data(|data| {
+        data.get_temp::<Vec<EditorRegion>>(egui::Id::unique(TEXT_EDITORS_ID))
+            .and_then(|editors| {
                 editors
                     .iter()
-                    .any(|editor| Some(editor.layer) == layer && editor.rect.contains(position))
+                    .find(|editor| Some(editor.layer) == layer && editor.rect.contains(position))
+                    .map(|editor| editor.id)
             })
     });
-    if editor {
+    if let Some(id) = editor_id {
+        // TextEdit processes text before applying focus from a click in the same frame.
+        ctx.memory_mut(|memory| memory.request_focus(id));
         with_inbox(ctx, |inbox| {
             if let Some(policy) = &mut inbox.policy {
                 policy.gui_owns_input = true;

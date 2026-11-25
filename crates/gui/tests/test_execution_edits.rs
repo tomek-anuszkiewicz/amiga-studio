@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 mod common;
+use common::TestContext as _;
 use egui::{Event, Key, Modifiers, RawInput};
 use gui::host_commands::HostCommand;
 use gui::{DisasmEditState, EditRegister, EmulatorApp, ViewMode};
@@ -20,7 +21,7 @@ fn hex_editor_commits_ram_and_rom_bytes_through_the_owner() {
         common::settle(&mut app, &ctx);
         app.hex_edit_buffer = (address, format!("{:02X}", 0xaa));
         common::settle(&mut app, &ctx);
-        let _ = ctx.run(
+        let _ = ctx.run_test_ui(
             RawInput {
                 events: vec![Event::Key {
                     key: Key::Enter,
@@ -31,7 +32,7 @@ fn hex_editor_commits_ram_and_rom_bytes_through_the_owner() {
                 }],
                 ..Default::default()
             },
-            |ctx| app.update_ui(ctx),
+            |ui| app.update_ui(ui),
         );
         common::settle(&mut app, &ctx);
         assert_eq!(
@@ -55,7 +56,7 @@ fn breakpoint_form_reaches_the_owner_and_stops_before_execution() {
     app.breakpoint_form.new_pc_str = "001000".into();
     let mut harness = Harness::builder()
         .with_size(egui::vec2(1280.0, 1000.0))
-        .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
+        .build_ui_state(|ui, app: &mut EmulatorApp| app.update_ui(ui), app);
     common::settle_harness(&mut harness);
     harness
         .get_by_label("➕ Add New PC Breakpoint")
@@ -96,7 +97,7 @@ fn instruction_editor_patches_rom_without_requiring_a_complete_firmware_image() 
         text: "NOP".into(),
         error: None,
     });
-    let _ = ctx.run(
+    let _ = ctx.run_test_ui(
         RawInput {
             events: vec![Event::Key {
                 key: Key::Enter,
@@ -107,7 +108,7 @@ fn instruction_editor_patches_rom_without_requiring_a_complete_firmware_image() 
             }],
             ..Default::default()
         },
-        |ctx| app.update_ui(ctx),
+        |ui| app.update_ui(ui),
     );
     common::settle(&mut app, &ctx);
     assert!(app.active_disasm_edit.is_none());
@@ -141,7 +142,7 @@ fn replacing_a_partial_instruction_checks_its_breakpoint_before_execution() {
         } else {
             app.active_reg_edit = Some((EditRegister::PC, "002000".into()));
         }
-        let _ = ctx.run(
+        let _ = ctx.run_test_ui(
             RawInput {
                 events: vec![Event::Key {
                     key: Key::Enter,
@@ -152,7 +153,7 @@ fn replacing_a_partial_instruction_checks_its_breakpoint_before_execution() {
                 }],
                 ..Default::default()
             },
-            |ctx| app.update_ui(ctx),
+            |ui| app.update_ui(ui),
         );
         common::settle(&mut app, &ctx);
         assert!(app.active_reg_edit.is_none());

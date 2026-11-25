@@ -17,7 +17,9 @@ use crate::layout::top_menu_bar::render_top_menu_bar;
 
 impl EmulatorApp {
     /// Renders one complete UI frame using owner replies, image notifications, and docked panels
-    pub fn update_ui(&mut self, ctx: &egui::Context) {
+    pub fn update_ui(&mut self, ui: &mut egui::Ui) {
+        let context = ui.ctx().clone();
+        let ctx = &context;
         let first_pass = ctx.output(|output| output.num_completed_passes == 0);
         crate::keyboard_input::begin_editor_collection(ctx);
         self.poll_host(ctx, first_pass);
@@ -71,10 +73,10 @@ impl EmulatorApp {
         crate::layout::file_dialogs::limit_dialog_focus(self, ctx);
         let in_session = self.player.screen == crate::player::PlayerScreen::Session;
         if in_session {
-            render_top_menu_bar(self, ctx);
+            render_top_menu_bar(self, ui);
             if self.view_mode == ViewMode::ScreenOnly {
                 // Capture the displayed frame before installing the pending image.
-                self.render_player_controls(ctx);
+                self.render_player_controls(ui);
             }
         }
         if first_pass {
@@ -90,7 +92,7 @@ impl EmulatorApp {
             self.screen_texture.update(ctx, image);
         }
         if !in_session {
-            self.render_player_screen(ctx);
+            self.render_player_screen(ui);
             self.finish_ui_pass(ctx, first_pass);
             return;
         }
@@ -102,13 +104,13 @@ impl EmulatorApp {
         // --- RENDER BASED ON ACTIVE VIEW MODE ---
         if self.view_mode == ViewMode::ScreenOnly {
             // Game view never invokes inspection panels or their data queries.
-            egui::CentralPanel::default().show(ctx, |ui| {
+            egui::CentralPanel::default().show(ui, |ui| {
                 render_amiga_screen(ui, screen_texture, self.screen_scale, false);
             });
         } else {
             // Mode B: Full Developer Studio GUI (Responsive Multi-Tier Architecture)
             let Some(mut data) = self.host.data.take() else {
-                egui::CentralPanel::default().show(ctx, |ui| {
+                egui::CentralPanel::default().show(ui, |ui| {
                     ui.label("Preparing debugger inspection...");
                 });
                 self.finish_ui_pass(ctx, first_pass);
@@ -126,7 +128,7 @@ impl EmulatorApp {
             }
             let tokens = self.theme.tokens();
 
-            let screen_rect = ctx.screen_rect();
+            let screen_rect = ctx.viewport_rect();
             let total_w = screen_rect.width();
             let layout_tier = LayoutTier::from_width(total_w);
 
@@ -152,19 +154,19 @@ impl EmulatorApp {
             };
 
             // Column 1: Left Dock (Execution, CPU Registers, Engine Status & Microcode)
-            egui::SidePanel::left("left_dock")
+            egui::Panel::left("left_dock")
                 .resizable(true)
-                .default_width(left_default)
-                .width_range(left_min..=480.0)
+                .default_size(left_default)
+                .size_range(left_min..=480.0)
                 .frame(
-                    egui::Frame::side_top_panel(&ctx.style()).inner_margin(egui::Margin {
+                    egui::Frame::side_top_panel(ui.style()).inner_margin(egui::Margin {
                         left: 8,
                         right: 4,
                         top: 6,
                         bottom: 6,
                     }),
                 )
-                .show(ctx, |ui| {
+                .show(ui, |ui| {
                     egui::ScrollArea::vertical()
                         .id_salt("left_dock_scroll")
                         .auto_shrink([false, false])
@@ -196,19 +198,19 @@ impl EmulatorApp {
                 });
 
             // Column 3: Right Dock (Memory Hex + Tools)
-            egui::SidePanel::right("right_dock")
+            egui::Panel::right("right_dock")
                 .resizable(true)
-                .default_width(right_default)
-                .width_range(right_min..=680.0)
+                .default_size(right_default)
+                .size_range(right_min..=680.0)
                 .frame(
-                    egui::Frame::side_top_panel(&ctx.style()).inner_margin(egui::Margin {
+                    egui::Frame::side_top_panel(ui.style()).inner_margin(egui::Margin {
                         left: 4,
                         right: 8,
                         top: 6,
                         bottom: 6,
                     }),
                 )
-                .show(ctx, |ui| {
+                .show(ui, |ui| {
                     if self.host.status.running {
                         ui.disable();
                     }
@@ -250,7 +252,7 @@ impl EmulatorApp {
                                         if measured_h > 30.0 {
                                             self.right_dock_bottom_height = measured_h + 8.0;
                                             let tools_h_id =
-                                                egui::Id::new("right_dock_tools_measured_h");
+                                                egui::Id::unique("right_dock_tools_measured_h");
                                             ui.data_mut(|d| {
                                                 d.insert_temp(
                                                     tools_h_id,
@@ -296,14 +298,14 @@ impl EmulatorApp {
             // Column 2: Central Viewport
             egui::CentralPanel::default()
                 .frame(
-                    egui::Frame::central_panel(&ctx.style()).inner_margin(egui::Margin {
+                    egui::Frame::central_panel(ui.style()).inner_margin(egui::Margin {
                         left: 4,
                         right: 4,
                         top: 6,
                         bottom: 6,
                     }),
                 )
-                .show(ctx, |ui| {
+                .show(ui, |ui| {
                     match layout_tier {
                         LayoutTier::FullHdWide => {
                             // 4-Pane Studio Workbench Layout (Split Central Area)

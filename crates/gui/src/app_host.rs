@@ -430,7 +430,7 @@ impl crate::EmulatorApp {
     pub(crate) fn update_host_input(&mut self, ctx: &egui::Context) {
         let mut policy = self.keyboard_policy(ctx);
         let capture_requested = ctx
-            .data_mut(|data| data.remove_temp::<bool>(egui::Id::new("capture_requested")))
+            .data_mut(|data| data.remove_temp::<bool>(egui::Id::unique("capture_requested")))
             .unwrap_or(false);
         self.player.captured = policy.gameplay_active()
             && self.host.view_release_generation.is_none()

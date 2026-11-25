@@ -13,11 +13,14 @@ const ZOOM_SELECTION_TOLERANCE: f32 = 0.01;
 
 pub(crate) const TOAST_DURATION_FRAMES: usize = 180;
 
-pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
+pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ui: &mut egui::Ui) {
+    let context = ui.ctx().clone();
+    let ctx = &context;
+    let theme = app.theme;
     let developer = app.view_mode == crate::ViewMode::Developer;
-    egui::TopBottomPanel::top("top_menu_bar")
-        .frame(egui::Frame::menu(&ctx.style()))
-        .show(ctx, |ui| {
+    egui::Panel::top("top_menu_bar")
+        .frame(egui::Frame::menu(ui.style()))
+        .show(ui, |ui| {
             ui.horizontal_wrapped(|ui| {
                 ui.visuals_mut().button_frame = true;
 
@@ -146,7 +149,7 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
                     let can_step = !app.host.status.running && app.host.can_edit();
                     for (label, action, description) in [
                         ("⏭ Step Inst", KeyCommand::StepInstruction, "Execute the current CPU instruction, even at a breakpoint. The image may be partway through a field."),
-                        ("⏯ Step CCK", KeyCommand::StepCck, "Advance the entire machine by one Color Clock. The image may be partway through a field."),
+                        ("▶ Step CCK", KeyCommand::StepCck, "Advance the entire machine by one Color Clock. The image may be partway through a field."),
                         ("Step Frame", KeyCommand::StepField, "Advance to the next completed PAL/NTSC video field and pause, including while the CPU is stopped. Breakpoints and CPU halts take precedence."),
                         ("⏮ Rewind", KeyCommand::HistoryBack, "Go back one instruction in the recorded history."),
                     ] {
@@ -199,7 +202,7 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
                     ("PAUSED", egui::Color32::from_rgb(160, 130, 30))
                 };
 
-                ui.colored_label(bg_color, format!(" ● [{}] ", status_text))
+                ui.colored_label(bg_color, format!(" • [{}] ", status_text))
                     .on_hover_text("STOPPED means the CPU is waiting for an interrupt. During Run, chip clocks and video continue; Pause suspends the machine. HALTED ends Run.");
 
                 if let Some((ref msg, ref mut frames)) = app.toast_message {
@@ -334,6 +337,9 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ctx: &egui::Context) {
         }
             });
         });
+    if app.theme != theme {
+        ui.set_style(ctx.global_style());
+    }
 }
 
 /// Saves snapshot to an in-memory quick-save slot (1..=5)

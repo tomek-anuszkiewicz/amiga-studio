@@ -187,11 +187,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Prepare harness with wgpu offscreen renderer
     let mut harness = Harness::builder()
         .with_size(vec2(width, height))
+        .with_context_setup(|ctx| {
+            ctx.global_style_mut(|style| style.interaction.tooltip_delay = 0.0);
+        })
         .wgpu()
-        .build_state(
-            |ctx, app: &mut EmulatorApp| {
-                ctx.style_mut(|s| s.interaction.tooltip_delay = 0.0);
-                app.update_ui(ctx);
+        .build_ui_state(
+            |ui, app: &mut EmulatorApp| {
+                // Eframe gives the app the full viewport. Kittest adds an outer margin.
+                let mut root = ui.new_child(egui::UiBuilder::new().max_rect(ui.viewport_rect()));
+                app.update_ui(&mut root);
             },
             app,
         );
@@ -337,7 +341,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             harness.step();
             if width < 850.0 {
                 // Capture the expanded controls without an intermediate animation frame.
-                harness.ctx.style_mut(|style| style.animation_time = 0.0);
+                harness
+                    .ctx
+                    .global_style_mut(|style| style.animation_time = 0.0);
                 harness.get_by_label("Game controls").click_accesskit();
                 harness.step();
                 harness.step();

@@ -77,7 +77,7 @@ pub fn seeds() -> Vec<Seed> {
                 index,
                 path: path.into(),
                 raw: raw[index].clone(),
-                sha256: format!("{:x}", Sha256::digest(&bytes)),
+                sha256: hex::encode(Sha256::digest(&bytes)),
             }
         })
         .collect()

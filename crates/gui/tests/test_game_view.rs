@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 mod common;
+use common::TestContext as _;
 use egui_kittest::kittest::NodeT;
 use egui_kittest::{
     kittest::{by, Queryable},
@@ -54,10 +55,10 @@ fn game_toolbar_supports_files_manual_states_speed_fps_and_return_to_debug() {
     app.set_view_mode(ViewMode::ScreenOnly);
     let mut harness = Harness::builder()
         .with_size(egui::vec2(1024.0, 600.0))
-        .build_state(
-            |ctx, app: &mut EmulatorApp| {
-                common::keyboard::inject_taps(ctx, app.host.status.generation);
-                app.update_ui(ctx)
+        .build_ui_state(
+            |ui, app: &mut EmulatorApp| {
+                common::keyboard::inject_taps(ui.ctx(), app.host.status.generation);
+                app.update_ui(ui)
             },
             app,
         );
@@ -79,7 +80,7 @@ fn game_toolbar_supports_files_manual_states_speed_fps_and_return_to_debug() {
             .unwrap();
         assert!(bounds.x0 >= 0.0 && bounds.x1 <= 1024.0);
     }
-    for label in ["Step Frame", "⏭ Step Inst", "⏯ Step CCK", "⏮ Rewind"] {
+    for label in ["Step Frame", "⏭ Step Inst", "▶ Step CCK", "⏮ Rewind"] {
         assert!(harness.query_by_label(label).is_none());
     }
     harness.get_by_label("File").click_accesskit();
@@ -166,10 +167,10 @@ fn browser_style_binary_bytes_can_be_loaded_without_a_host_path() {
     app.load_binary_modal_open = true;
     let mut harness = Harness::builder()
         .with_size(egui::vec2(1024.0, 600.0))
-        .build_state(
-            |ctx, app: &mut EmulatorApp| {
-                common::keyboard::inject_taps(ctx, app.host.status.generation);
-                app.update_ui(ctx)
+        .build_ui_state(
+            |ui, app: &mut EmulatorApp| {
+                common::keyboard::inject_taps(ui.ctx(), app.host.status.generation);
+                app.update_ui(ui)
             },
             app,
         );
@@ -205,21 +206,23 @@ fn game_shortcuts_cannot_start_debugger_work() {
         (egui::Key::F8, egui::Modifiers::NONE),
         (egui::Key::T, egui::Modifiers::ALT),
     ] {
-        let _ = ctx.run(
+        let _ = ctx.run_test_ui(
             egui::RawInput {
-                modifiers,
-                events: vec![egui::Event::Key {
-                    key,
-                    physical_key: None,
-                    pressed: true,
-                    repeat: false,
-                    modifiers,
-                }],
+                events: vec![
+                    egui::Event::ModifiersChanged(modifiers),
+                    egui::Event::Key {
+                        key,
+                        physical_key: None,
+                        pressed: true,
+                        repeat: false,
+                        modifiers,
+                    },
+                ],
                 ..Default::default()
             },
-            |ctx| {
-                common::keyboard::inject_taps(ctx, app.host.status.generation);
-                app.update_ui(ctx)
+            |ui| {
+                common::keyboard::inject_taps(ui.ctx(), app.host.status.generation);
+                app.update_ui(ui)
             },
         );
     }
@@ -240,10 +243,10 @@ fn capture_guidance_remains_visible_in_both_views_and_compact_windows() {
         app.set_view_mode(view);
         let mut harness = Harness::builder()
             .with_size(egui::vec2(720.0, 600.0))
-            .build_state(
-                |ctx, app: &mut EmulatorApp| {
-                    common::keyboard::inject_taps(ctx, app.host.status.generation);
-                    app.update_ui(ctx)
+            .build_ui_state(
+                |ui, app: &mut EmulatorApp| {
+                    common::keyboard::inject_taps(ui.ctx(), app.host.status.generation);
+                    app.update_ui(ui)
                 },
                 app,
             );
@@ -277,13 +280,18 @@ fn shortcut_hover_shows_active_bindings_and_only_applicable_equivalents() {
     app.player.activate_selected_configuration();
     let mut h = Harness::builder()
         .with_size(egui::vec2(1280.0, 900.0))
-        .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
+        .build_ui_state(common::show_full_viewport, app);
     h.ctx
-        .style_mut(|style| style.interaction.tooltip_delay = 0.0);
+        .global_style_mut(|style| style.interaction.tooltip_delay = 0.0);
     common::settle_harness(&mut h);
 
-    h.get_by_label("Resume").hover();
-    common::settle_harness(&mut h);
+    let hover_control = |h: &mut Harness<'_, EmulatorApp>, label| {
+        h.remove_cursor();
+        common::settle_harness(h);
+        h.get_by_label(label).hover();
+        common::settle_harness(h);
+    };
+    hover_control(&mut h, "Resume");
     h.get_by_label("Keyboard: F5");
     h.get_by_label_contains("Resume the same machine");
 
@@ -294,31 +302,26 @@ fn shortcut_hover_shows_active_bindings_and_only_applicable_equivalents() {
     tap_physical(&mut h, "F7");
     h.get_by_label("Save").click_accesskit();
     common::settle_harness(&mut h);
-    h.get_by_label("Resume").hover();
-    common::settle_harness(&mut h);
+    hover_control(&mut h, "Resume");
     h.get_by_label("Keyboard: F7");
     assert!(h.query_by_label("Keyboard: F5").is_none());
     tap_physical(&mut h, "F7");
     common::wait_harness(&mut h, |app| app.host.status.running);
-    h.get_by_label("Pause").hover();
-    common::settle_harness(&mut h);
+    hover_control(&mut h, "Pause");
     h.get_by_label("Keyboard: F7");
     h.get_by_label("Pause after the current video field completes.");
 
     tap_physical(&mut h, "F7");
     common::wait_harness(&mut h, |app| !app.host.status.running);
-    h.get_by_label("Reset").hover();
-    common::settle_harness(&mut h);
+    hover_control(&mut h, "Reset");
     h.get_by_label_contains("Reset and run the current machine");
     assert!(h.query_by_label_contains("Keyboard:").is_none());
 
-    h.get_by_label("Debug View").hover();
-    common::settle_harness(&mut h);
+    hover_control(&mut h, "Debug View");
     h.get_by_label("Keyboard: F12");
     tap_physical(&mut h, "F12");
     assert_eq!(h.state().view_mode, ViewMode::Developer);
-    h.get_by_label("Step Frame").hover();
-    common::settle_harness(&mut h);
+    hover_control(&mut h, "Step Frame");
     h.get_by_label("Keyboard: Shift+F11");
     let frame = h.state().host.status.field_number;
     let generation = h.state().host.status.generation;

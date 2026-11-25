@@ -197,7 +197,7 @@ impl EmulatorApp {
                 // egui reports the previous pass's layer. The chooser's state
                 // determines ingress ownership on the opening and closing passes.
                 memory.top_modal_layer().is_some_and(|layer| {
-                    layer.id != egui::Id::new(crate::player_view::SAVED_PROGRESS_DIALOG)
+                    layer.id != egui::Id::unique(crate::player_view::SAVED_PROGRESS_DIALOG)
                 })
             });
         #[cfg(not(target_arch = "wasm32"))]

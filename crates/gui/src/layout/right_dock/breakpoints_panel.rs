@@ -149,7 +149,7 @@ pub(crate) fn render_breakpoints_panel(
                                 |ui| {
                                     if ui
                                         .button(
-                                            RichText::new("✕")
+                                            RichText::new("×")
                                                 .color(Color32::from_rgb(220, 80, 80)),
                                         )
                                         .clicked()
@@ -306,7 +306,7 @@ pub(crate) fn render_breakpoints_panel(
                                 |ui| {
                                     if ui
                                         .button(
-                                            RichText::new("✕")
+                                            RichText::new("×")
                                                 .color(Color32::from_rgb(220, 80, 80)),
                                         )
                                         .clicked()

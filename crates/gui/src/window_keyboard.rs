@@ -148,7 +148,7 @@ pub(crate) fn with_artwork_paste<T>(
     operation: impl FnOnce(&mut ArtworkPaste) -> T,
 ) -> T {
     ctx.data_mut(|data| {
-        operation(data.get_temp_mut_or_default(egui::Id::new("library_artwork_paste")))
+        operation(data.get_temp_mut_or_default(egui::Id::unique("library_artwork_paste")))
     })
 }
 

@@ -19,8 +19,8 @@ name = "gui-inspector"
 path = "src/bin/gui_inspector.rs"
 
 [dependencies]
-eframe = { version = "0.32", default-features = true, features = ["persistence"] }
-egui = { version = "0.32", default-features = true }
+eframe = { version = "0.37", default-features = false, features = ["accesskit", "clipboard", "default_fonts", "glow", "links", "persistence", "wayland", "web_screen_reader", "x11"] }
+egui = { version = "0.37", features = ["monochrome_emoji_fonts"] }
 config = { path = "../config" }
 rtc = { path = "../rtc" }
 physical_memory = { path = "../physical_memory" }
@@ -37,8 +37,8 @@ blocking = "1.7"
 notify = "9.0"
 winit = "0.30"
 gilrs = "0.11.2"
-rfd = "0.15"
-egui_kittest = { version = "0.32", features = ["wgpu", "snapshot"] }
+rfd = "0.18"
+egui_kittest = { version = "0.37", features = ["wgpu", "snapshot"] }
 image = { workspace = true, features = ["jpeg"] }
 tempfile = "3.27"
 

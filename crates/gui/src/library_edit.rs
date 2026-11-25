@@ -28,7 +28,7 @@ pub enum StartupDisk {
 #[derive(Debug, Clone)]
 pub(crate) struct DraftArtwork {
     pub(crate) image: image::RgbaImage,
-    pub(crate) revision: egui::Id,
+    pub(crate) revision: u64,
 }
 
 #[derive(Debug, Clone)]
@@ -92,7 +92,7 @@ impl GameDraft {
         if width == 0 || height == 0 {
             return Err("The image has no pixels".into());
         }
-        let revision = egui::Id::new((width, height, image.as_raw()));
+        let revision = egui::util::hash((width, height, image.as_raw()));
         self.artwork = Some(DraftArtwork { image, revision });
         Ok(())
     }

@@ -58,14 +58,14 @@ impl EmulatorApp {
         let mut confirm = false;
         let mut cancel = false;
         let dialog =
-            egui::Modal::new(egui::Id::new("delete-library-configuration")).show(ctx, |ui| {
-                ui.set_max_width((ctx.screen_rect().width() - 40.0).min(470.0));
+            egui::Modal::new(egui::Id::unique("delete-library-configuration")).show(ctx, |ui| {
+                ui.set_max_width((ctx.viewport_rect().width() - 40.0).min(470.0));
                 ui.heading(format!("Delete {}?", target.name));
                 let has_references = !deletion.affected.is_empty();
                 if has_references {
                     ui.label("Choose the configuration these games will use for future launches.");
                     egui::ScrollArea::vertical()
-                        .max_height(ctx.screen_rect().height() * 0.35)
+                        .max_height(ctx.viewport_rect().height() * 0.35)
                         .show(ui, |ui| {
                             for game in &deletion.affected {
                                 ui.label(&game.manifest.title);

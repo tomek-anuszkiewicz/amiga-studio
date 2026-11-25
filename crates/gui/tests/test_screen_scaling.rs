@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 mod common;
+use common::TestContext as _;
 use gui::host_video;
 #[path = "../src/layout/main_viewport/amiga_screen.rs"]
 #[allow(dead_code)]
@@ -45,7 +46,7 @@ fn conversion_respects_visible_rows_and_argb_alpha() {
     );
 }
 
-fn render(app: &mut EmulatorApp, ctx: &Context, width: f32, dpi: f32) -> egui::FullOutput {
+fn render(app: &mut EmulatorApp, ctx: &Context, width: f32, dpi: f32) -> common::FrameOutput {
     let mut input = RawInput {
         screen_rect: Some(Rect::from_min_size(pos2(0.0, 0.0), vec2(width, 900.0))),
         time: Some(0.0),
@@ -57,9 +58,9 @@ fn render(app: &mut EmulatorApp, ctx: &Context, width: f32, dpi: f32) -> egui::F
         .unwrap()
         .native_pixels_per_point = Some(dpi);
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
-    let mut combined = egui::FullOutput::default();
+    let mut combined = common::FrameOutput::default();
     loop {
-        combined.append(ctx.run(input.clone(), |ctx| app.update_ui(ctx)));
+        combined.append(ctx.run_test_ui(input.clone(), |ui| app.update_ui(ui)));
         if app.host.is_idle() && app.host.presented.is_some() {
             return combined;
         }
@@ -165,7 +166,7 @@ fn selector_changes_image_scale_without_changing_machine_or_interface_zoom() {
         app.view_mode = view;
         let mut harness = Harness::builder()
             .with_size(vec2(1280.0, 900.0))
-            .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
+            .build_ui_state(|ui, app: &mut EmulatorApp| app.update_ui(ui), app);
         common::settle_harness(&mut harness);
         for (label, expected) in [
             ("0.5x", ScreenScale::Half),
@@ -215,15 +216,12 @@ fn switching_filters_keeps_the_published_image_until_the_next_field() {
         info,
         frame.frame_buffer(),
     ));
-    let published = ctx.run(RawInput::default(), |ctx| {
+    let published = ctx.run_test_ui(RawInput::default(), |ui| {
         if let Some(image) = image.take() {
-            texture.update(ctx, image);
+            texture.update(ui.ctx(), image);
         }
     });
-    let (id, delta) = published
-        .textures_delta
-        .set
-        .iter()
+    let (id, delta) = common::texture_updates(&published.textures_delta)
         .find(|(_, delta)| delta.image.width() == 720)
         .unwrap();
     let ImageData::Color(image) = &delta.image;
@@ -239,12 +237,9 @@ fn switching_filters_keeps_the_published_image_until_the_next_field() {
         (amiga_screen::ScreenScale::Two, TextureOptions::NEAREST),
         (amiga_screen::ScreenScale::Fit, TextureOptions::LINEAR),
     ] {
-        let output = ctx.run(RawInput::default(), |_| texture.set_scale(scale));
-        let updates: Vec<_> = output
-            .textures_delta
-            .set
-            .iter()
-            .filter(|(texture, _)| texture == id)
+        let output = ctx.run_test_ui(RawInput::default(), |_| texture.set_scale(scale));
+        let updates: Vec<_> = common::texture_updates(&output.textures_delta)
+            .filter(|(texture, _)| *texture == id)
             .collect();
         assert_eq!(updates.len(), 1);
         let delta = &updates[0].1;

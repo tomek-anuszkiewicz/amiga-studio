@@ -24,7 +24,7 @@ fn invalid_rom_keeps_the_dialog_open_and_can_be_retried() {
     let before = common::snapshot(&mut app);
     let mut harness = Harness::builder()
         .with_size(egui::vec2(1024.0, 600.0))
-        .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
+        .build_ui_state(|ui, app: &mut EmulatorApp| app.update_ui(ui), app);
     common::settle_harness(&mut harness);
     harness.get_by_label("Load into Memory").click_accesskit();
     common::settle_harness(&mut harness);
@@ -70,7 +70,7 @@ fn invalid_snapshot_rom_displays_a_dismissible_error_without_restoring() {
     assert!(error.contains("received 524288 bytes"));
     let mut harness = Harness::builder()
         .with_size(egui::vec2(1024.0, 600.0))
-        .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
+        .build_ui_state(|ui, app: &mut EmulatorApp| app.update_ui(ui), app);
     common::settle_harness(&mut harness);
     harness.get_by_label(&error);
     harness.get_by_label("Close").click_accesskit();
@@ -142,7 +142,7 @@ fn firmware_load_boots_reset_vectors_and_preserves_the_active_rom_on_failure() {
     app.file_error = None;
     let mut harness = Harness::builder()
         .with_size(egui::vec2(1024.0, 600.0))
-        .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
+        .build_ui_state(|ui, app: &mut EmulatorApp| app.update_ui(ui), app);
     common::settle_harness(&mut harness);
     harness.get_by_label(&format!("ROM: {name}"));
     std::fs::remove_file(invalid_path).unwrap();

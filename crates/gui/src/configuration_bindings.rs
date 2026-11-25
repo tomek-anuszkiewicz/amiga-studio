@@ -266,8 +266,8 @@ impl EmulatorApp {
             }
         };
         let mut cancel = false;
-        egui::Modal::new(egui::Id::new("input-binding-recording")).show(ctx, |ui| {
-            ui.set_max_width((ctx.screen_rect().width() - 32.0).min(420.0));
+        egui::Modal::new(egui::Id::unique("input-binding-recording")).show(ctx, |ui| {
+            ui.set_max_width((ctx.viewport_rect().width() - 32.0).min(420.0));
             ui.heading(if recording.controller.is_some() {
                 "Press a controller input"
             } else {

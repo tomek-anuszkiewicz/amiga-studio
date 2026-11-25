@@ -48,13 +48,13 @@ impl ConfigurationEdit {
 }
 
 impl EmulatorApp {
-    pub(crate) fn render_configuration_actions(&mut self, ctx: &egui::Context) {
+    pub(crate) fn render_configuration_actions(&mut self, ui: &mut egui::Ui) {
         let saving = self
             .player
             .editor
             .as_ref()
             .is_some_and(|editor| editor.saving);
-        egui::TopBottomPanel::bottom("configuration_actions").show(ctx, |ui| {
+        egui::Panel::bottom("configuration_actions").show(ui, |ui| {
             ui.horizontal_wrapped(|ui| {
                 if ui
                     .add_enabled(
@@ -90,6 +90,7 @@ impl EmulatorApp {
                 ui.colored_label(ui.visuals().error_fg_color, error);
             }
         });
+        let ctx = ui.ctx();
         if self
             .player
             .editor
@@ -103,8 +104,8 @@ impl EmulatorApp {
         let mut save = false;
         let mut discard = false;
         let mut keep = false;
-        egui::Modal::new(egui::Id::new("unsaved-configuration")).show(ctx, |ui| {
-            ui.set_max_width((ctx.screen_rect().width() - 40.0).min(420.0));
+        egui::Modal::new(egui::Id::unique("unsaved-configuration")).show(ctx, |ui| {
+            ui.set_max_width((ctx.viewport_rect().width() - 40.0).min(420.0));
             ui.heading("Unsaved configuration changes");
             ui.label("Save all edits before leaving, discard them, or keep editing.");
             ui.horizontal_wrapped(|ui| {

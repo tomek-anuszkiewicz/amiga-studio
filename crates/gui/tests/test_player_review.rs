@@ -1,6 +1,7 @@
 #![cfg(not(target_arch = "wasm32"))]
 #![allow(clippy::unwrap_used, clippy::panic)]
 mod common;
+use common::TestContext as _;
 use egui_kittest::{kittest::Queryable, Harness};
 use gui::host_commands::HostCommand;
 use gui::player::PlayerScreen;
@@ -57,12 +58,12 @@ fn started(root: &Path) -> EmulatorApp {
 fn harness(app: EmulatorApp) -> Harness<'static, EmulatorApp> {
     let mut harness = Harness::builder()
         .with_size(egui::vec2(1280.0, 800.0))
-        .build_state(
-            |ctx, app: &mut EmulatorApp| {
-                common::keyboard::inject_taps(ctx, app.host.status.generation);
-                app.update_ui(ctx);
-                if ctx.output(|out| out.num_completed_passes) == 0 {
-                    ctx.request_discard("repeat confirmation layout");
+        .build_ui_state(
+            |ui, app: &mut EmulatorApp| {
+                common::keyboard::inject_taps(ui.ctx(), app.host.status.generation);
+                app.update_ui(ui);
+                if ui.ctx().output(|out| out.num_completed_passes) == 0 {
+                    ui.ctx().request_discard("repeat confirmation layout");
                 }
             },
             app,
@@ -237,7 +238,7 @@ fn gamepad_save_preserves_capture_generation_and_held_contacts() {
     assert!(app.player.editor.is_none());
     common::command(&mut app, HostCommand::Run);
     common::wait(&mut app, &ctx, |app| app.host.status.running);
-    ctx.memory_mut(|memory| memory.request_focus(egui::Id::new("amiga-screen-input")));
+    ctx.memory_mut(|memory| memory.request_focus(egui::Id::unique("amiga-screen-input")));
     app.player.captured = true;
     common::settle(&mut app, &ctx);
     let generation = app.host.status.generation;
@@ -419,14 +420,14 @@ fn focused_host_text_prevents_frontend_shortcuts() {
         egui::Key::F2,
         egui::Key::F12,
     ] {
-        let _ = ctx.run(egui::RawInput::default(), |ctx| {
-            egui::Window::new("Host editor").show(ctx, |ui| {
-                ui.add(egui::TextEdit::singleline(&mut text).id(egui::Id::new("host-editor")))
+        let _ = ctx.run_test_ui(egui::RawInput::default(), |ui| {
+            egui::Window::new("Host editor").show(ui.ctx(), |ui| {
+                ui.add(egui::TextEdit::singleline(&mut text).id(egui::Id::unique("host-editor")))
                     .request_focus();
             });
-            app.update_ui(ctx);
+            app.update_ui(ui);
         });
-        let _ = ctx.run(
+        let _ = ctx.run_test_ui(
             egui::RawInput {
                 events: vec![egui::Event::Key {
                     key,
@@ -437,13 +438,15 @@ fn focused_host_text_prevents_frontend_shortcuts() {
                 }],
                 ..Default::default()
             },
-            |ctx| {
-                egui::Window::new("Host editor").show(ctx, |ui| {
-                    ui.add(egui::TextEdit::singleline(&mut text).id(egui::Id::new("host-editor")))
-                        .request_focus();
+            |ui| {
+                egui::Window::new("Host editor").show(ui.ctx(), |ui| {
+                    ui.add(
+                        egui::TextEdit::singleline(&mut text).id(egui::Id::unique("host-editor")),
+                    )
+                    .request_focus();
                 });
-                common::keyboard::inject_taps(ctx, app.host.status.generation);
-                app.update_ui(ctx);
+                common::keyboard::inject_taps(ui.ctx(), app.host.status.generation);
+                app.update_ui(ui);
             },
         );
         common::settle(&mut app, &ctx);

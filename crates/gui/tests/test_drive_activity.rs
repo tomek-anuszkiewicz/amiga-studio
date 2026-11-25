@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::panic)]
 
 mod common;
+use common::TestContext as _;
 use egui::{Color32, Context, RawInput};
 use gui::{host_commands::HostCommand, AppTheme, EmulatorApp, ViewMode};
 
@@ -41,8 +42,8 @@ fn pending_step_session() -> gui::DebuggerSession {
     session
 }
 
-fn frame(app: &mut EmulatorApp, ctx: &Context, time: f64) -> egui::FullOutput {
-    ctx.run(
+fn frame(app: &mut EmulatorApp, ctx: &Context, time: f64) -> common::FrameOutput {
+    ctx.run_test_ui(
         RawInput {
             time: Some(time),
             screen_rect: Some(egui::Rect::from_min_size(
@@ -51,7 +52,7 @@ fn frame(app: &mut EmulatorApp, ctx: &Context, time: f64) -> egui::FullOutput {
             )),
             ..Default::default()
         },
-        |ctx| app.update_ui(ctx),
+        |ui| app.update_ui(ui),
     )
 }
 

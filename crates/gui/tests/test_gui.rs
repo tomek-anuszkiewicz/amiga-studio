@@ -2,6 +2,8 @@
 
 //! Headless Integration & Unit Tests for Amiga 500 Developer Studio (gui)
 
+mod common;
+use common::TestContext as _;
 use cpu::Cpu;
 use debugger::inject_binary;
 use debugger::temporal::TemporalHistory;
@@ -169,7 +171,7 @@ fn test_left_dock_registers_and_microcode_rendering() {
     app.show_microcode = true;
 
     // Run frame in Developer mode
-    let output = ctx.run(egui::RawInput::default(), |ctx| app.update_ui(ctx));
+    let output = ctx.run_test_ui(egui::RawInput::default(), |ui| app.update_ui(ui));
     assert!(
         !output.shapes.is_empty(),
         "Left dock with registers and microcode must render valid shapes"
@@ -193,6 +195,6 @@ fn test_emulator_app_debug_derive() {
 fn test_temporal_bar_rendering() {
     let ctx = egui::Context::default();
     let mut app = gui::EmulatorApp::default();
-    let output = ctx.run(egui::RawInput::default(), |ctx| app.update_ui(ctx));
+    let output = ctx.run_test_ui(egui::RawInput::default(), |ui| app.update_ui(ui));
     assert!(!output.shapes.is_empty());
 }

@@ -7,6 +7,7 @@
 //! Trace, Execution count) remains strictly clean and transient.
 
 mod common;
+use common::TestContext as _;
 use eframe::Storage;
 use egui_kittest::kittest::NodeT;
 use gui::host_commands::HostCommand;
@@ -35,6 +36,10 @@ impl Storage for MemoryStorage {
         self.data.insert(key.to_string(), value);
     }
 
+    fn remove_string(&mut self, key: &str) {
+        self.data.remove(key);
+    }
+
     fn flush(&mut self) {}
 }
 
@@ -55,7 +60,7 @@ fn library_directory_cancel_discards_the_draft_and_save_reopens_the_committed_ro
     app.navigate_player(PlayerScreen::Library);
     let mut h = Harness::builder()
         .with_size(egui::vec2(1024.0, 760.0))
-        .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
+        .build_ui_state(|ui, app: &mut EmulatorApp| app.update_ui(ui), app);
     common::settle_harness(&mut h);
     h.get_by_label("Configurations").click_accesskit();
     common::settle_harness(&mut h);
@@ -277,7 +282,7 @@ fn battery_offset_persists_separately_and_ui_refreshes_host_utc() {
         .as_secs() as i64;
     let _ = context
         .egui_ctx
-        .run(egui::RawInput::default(), |ctx| restarted.update_ui(ctx));
+        .run_test_ui(egui::RawInput::default(), |ui| restarted.update_ui(ui));
     common::command(&mut restarted, HostCommand::ReadCpu);
     let upper = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -336,8 +341,8 @@ fn native_catalog_and_host_preferences_survive_separately_after_relocating_the_l
     std::fs::rename(&root, &moved).unwrap();
     let mut different_user = EmulatorApp::default();
     different_user.navigate_player(PlayerScreen::Configuration);
-    let mut h = egui_kittest::Harness::builder().build_state(
-        |ctx, app: &mut EmulatorApp| app.update_ui(ctx),
+    let mut h = egui_kittest::Harness::builder().build_ui_state(
+        |ui, app: &mut EmulatorApp| app.update_ui(ui),
         different_user,
     );
     common::settle_harness(&mut h);
@@ -477,7 +482,7 @@ fn failed_migration_preserves_the_exact_legacy_data_and_occupied_library() {
     assert_eq!(std::fs::read(&installed).unwrap(), existing);
     assert_eq!(storage.get_string(CONFIG_STORAGE_KEY).unwrap(), original);
     let mut h = egui_kittest::Harness::builder()
-        .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
+        .build_ui_state(|ui, app: &mut EmulatorApp| app.update_ui(ui), app);
     use egui_kittest::kittest::Queryable;
     common::settle_harness(&mut h);
     assert!(h
@@ -538,7 +543,7 @@ fn configuration_creation_mapping_and_hardware_edits_persist_through_real_contro
     app.navigate_player(gui::player::PlayerScreen::Configuration);
     let mut h = Harness::builder()
         .with_size(egui::vec2(1280.0, 1800.0))
-        .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
+        .build_ui_state(|ui, app: &mut EmulatorApp| app.update_ui(ui), app);
     common::settle_harness(&mut h);
     h.get_by_label("Create configuration").click_accesskit();
     common::settle_harness(&mut h);
@@ -728,7 +733,7 @@ fn editor_mapping_deletion_and_id_allocation_survive_storage_and_reopen() {
     app.navigate_player(PlayerScreen::Configuration);
     let mut h = Harness::builder()
         .with_size(egui::vec2(1000.0, 900.0))
-        .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
+        .build_ui_state(|ui, app: &mut EmulatorApp| app.update_ui(ui), app);
     common::settle_harness(&mut h);
     h.get_by_label("WASD").click_accesskit();
     common::settle_harness(&mut h);
@@ -757,7 +762,7 @@ fn editor_mapping_deletion_and_id_allocation_survive_storage_and_reopen() {
     reopened.navigate_player(PlayerScreen::Configuration);
     let mut h = Harness::builder()
         .with_size(egui::vec2(1000.0, 900.0))
-        .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), reopened);
+        .build_ui_state(|ui, app: &mut EmulatorApp| app.update_ui(ui), reopened);
     common::settle_harness(&mut h);
     h.get_by_label("Create mapping").click_accesskit();
     common::settle_harness(&mut h);

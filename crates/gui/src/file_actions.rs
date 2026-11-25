@@ -408,20 +408,9 @@ impl EmulatorApp {
         self.toast_message = Some((message, TOAST_DURATION_FRAMES));
     }
 
-    pub(crate) fn accept_dropped_file(&mut self, file: egui::DroppedFile) {
-        #[cfg(not(target_arch = "wasm32"))]
-        if let Some(path) = file.path {
-            self.select_binary(BinarySource::File(path));
-            return;
-        }
-        if let Some(data) = file.bytes {
-            self.select_binary(BinarySource::Bytes {
-                name: file.name,
-                data: data.to_vec(),
-                #[cfg(target_arch = "wasm32")]
-                handle: wasm_bindgen::JsValue::NULL,
-            });
-        }
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) fn accept_dropped_file(&mut self, file: egui::DroppedFileHandle) {
+        self.select_binary(BinarySource::File(file.path().to_owned()));
     }
 }
 

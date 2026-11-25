@@ -257,12 +257,9 @@ fn jpeg_and_png_covers_are_discovered_and_refresh_reads_replacements() {
     app.player.library_root = Some(root.clone());
     app.navigate_player(gui::player::PlayerScreen::Library);
     let ctx = egui::Context::default();
-    let uploaded_color = |output: egui::FullOutput| {
-        output
-            .textures_delta
-            .set
-            .into_iter()
-            .find_map(|(_, delta)| match delta.image {
+    let uploaded_color = |output: common::FrameOutput| {
+        common::texture_updates(&output.textures_delta)
+            .find_map(|(_, delta)| match &delta.image {
                 egui::ImageData::Color(image) if image.size == [2, 2] => Some(image.pixels[0]),
                 _ => None,
             })
@@ -295,7 +292,11 @@ fn jpeg_and_png_covers_are_discovered_and_refresh_reads_replacements() {
 }
 
 fn artwork_harness(root: &Path, width: f32) -> Harness<'static, gui::EmulatorApp> {
-    artwork_harness_with(root, width, Harness::builder())
+    artwork_harness_with(
+        root,
+        width,
+        Harness::builder().renderer(common::TextureUploads),
+    )
 }
 
 fn artwork_harness_with(
@@ -308,7 +309,7 @@ fn artwork_harness_with(
     app.navigate_player(gui::player::PlayerScreen::Library);
     let mut harness = builder
         .with_size(egui::vec2(width, 900.0))
-        .build_state(|ctx, app| app.update_ui(ctx), app);
+        .build_ui_state(common::show_full_viewport, app);
     let timeout = std::time::Duration::from_secs(10);
     let start = std::time::Instant::now();
     loop {
@@ -326,9 +327,8 @@ fn artwork_harness_with(
 
 fn assert_uploaded_artwork_preview(output: &egui::FullOutput, expected: &image::RgbaImage) {
     let size = [expected.width() as usize, expected.height() as usize];
-    let (id, uploaded) = output
-        .textures_delta
-        .set
+    let updates = common::TextureUploads::take();
+    let (id, uploaded) = updates
         .iter()
         .find_map(|(id, delta)| {
             let egui::ImageData::Color(image) = &delta.image;
@@ -369,8 +369,9 @@ struct DrawnCover {
 }
 
 impl egui_kittest::TestRenderer for DrawnCover {
-    fn handle_delta(&mut self, delta: &egui::TexturesDelta) {
-        for (id, update) in &delta.set {
+    fn handle_delta(&mut self, delta: &mut egui::TexturesDelta) {
+        common::TextureUploads::capture(delta);
+        for (id, update) in common::texture_updates(delta) {
             let egui::ImageData::Color(image) = &update.image;
             if update.pos.is_none() && image.size == COVER_TEST_SIZE {
                 self.textures.insert(*id, image.as_ref().clone());
@@ -379,6 +380,7 @@ impl egui_kittest::TestRenderer for DrawnCover {
         for id in &delta.free {
             self.textures.remove(id);
         }
+        delta.clear();
     }
 
     fn render(
@@ -725,8 +727,14 @@ fn missing_and_unreadable_covers_reserve_a_blank_frame_and_allow_launch() {
     let root = root();
     let manifest = cover_tiles_fixture(&root);
     let mut h = artwork_harness(&root, 1024.0);
-    let spacing = h.ctx.style().spacing.item_spacing.y;
-    let stroke = h.ctx.style().visuals.widgets.noninteractive.bg_stroke;
+    let spacing = h.ctx.global_style().spacing.item_spacing.y;
+    let stroke = h
+        .ctx
+        .global_style()
+        .visuals
+        .widgets
+        .noninteractive
+        .bg_stroke;
     for width in [1024.0, 250.0, 104.0] {
         h.set_size(egui::vec2(width, 900.0));
         common::settle_harness(&mut h);
@@ -753,7 +761,7 @@ fn missing_and_unreadable_covers_reserve_a_blank_frame_and_allow_launch() {
         );
         assert!(artwork_slot.expand(1.0).contains_rect(artwork));
         for rect in [corrupt, missing, artwork_slot] {
-            assert!(h.ctx.screen_rect().contains_rect(rect));
+            assert!(h.ctx.content_rect().contains_rect(rect));
         }
         if width == 1024.0 {
             assert_eq!(side, 110.0);
@@ -852,7 +860,7 @@ fn startup_editor_clears_removed_import_and_rejects_disconnected_drive() {
     app.navigate_player(gui::player::PlayerScreen::Library);
     let mut h = Harness::builder()
         .with_size(egui::vec2(1024.0, 800.0))
-        .build_state(|ctx, app: &mut gui::EmulatorApp| app.update_ui(ctx), app);
+        .build_ui_state(|ui, app: &mut gui::EmulatorApp| app.update_ui(ui), app);
     common::wait_harness(&mut h, |app| app.player.library.games.len() == 1);
     h.get_by_label("Edit game").click_accesskit();
     common::settle_harness(&mut h);
@@ -933,7 +941,7 @@ fn editor_cancel_does_not_write_and_save_updates_the_active_games_path_without_r
     app.navigate_player(gui::player::PlayerScreen::Library);
     let mut harness = Harness::builder()
         .with_size(egui::vec2(1024.0, 800.0))
-        .build_state(|ctx, app: &mut gui::EmulatorApp| app.update_ui(ctx), app);
+        .build_ui_state(|ui, app: &mut gui::EmulatorApp| app.update_ui(ui), app);
     common::wait_harness(&mut harness, |app| app.player.library.games.len() == 1);
     harness.get_by_label("Add game").click_accesskit();
     common::settle_harness(&mut harness);

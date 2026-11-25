@@ -79,12 +79,12 @@ impl AppTheme {
         }
 
         // Global Scrollbar Styling (comfortable 12px width & high dormant visibility)
-        let mut style = (*ctx.style()).clone();
+        let mut style = (*ctx.global_style()).clone();
         style.spacing.scroll.bar_width = 12.0;
         style.spacing.scroll.dormant_background_opacity = 0.35;
         style.spacing.scroll.dormant_handle_opacity = 0.65;
         style.spacing.scroll.active_background_opacity = 0.60;
         style.spacing.scroll.active_handle_opacity = 1.0;
-        ctx.set_style(style);
+        ctx.set_global_style(style);
     }
 }

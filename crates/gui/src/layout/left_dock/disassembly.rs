@@ -64,7 +64,7 @@ pub(crate) fn render_disassembly(
     ui.scope(|ui| {
     if !interactive { ui.disable(); }
     let start_pos = ui.cursor().min;
-    let disasm_rect_id = egui::Id::new("disasm_view_rect");
+    let disasm_rect_id = egui::Id::unique("disasm_view_rect");
     let prev_rect: Option<egui::Rect> = ui.data(|d| d.get_temp(disasm_rect_id));
     let is_hovered = prev_rect.map_or(false, |r| ui.rect_contains_pointer(r));
 
@@ -182,10 +182,7 @@ pub(crate) fn render_disassembly(
         }
 
         if scrolled {
-            ui.input_mut(|i| {
-                i.smooth_scroll_delta = egui::Vec2::ZERO;
-                i.raw_scroll_delta = egui::Vec2::ZERO;
-            });
+            ui.input_mut(|i| i.smooth_scroll_delta = egui::Vec2::ZERO);
         }
 
         // Keyboard navigation across instruction rows
@@ -476,7 +473,7 @@ pub(crate) fn render_disassembly(
                                     *selected_addr = Some(cur_addr);
                                     ui.close_kind(egui::UiKind::Menu);
                                 }
-                                let bp_label = if is_bp { "● Remove Breakpoint" } else { "● Set Breakpoint" };
+                                let bp_label = if is_bp { "• Remove Breakpoint" } else { "• Set Breakpoint" };
                                 if ui.button(bp_label).clicked() {
                                     if is_bp {
                                         debugger.breakpoints.remove_pc_breakpoint(cur_addr);

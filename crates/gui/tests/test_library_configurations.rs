@@ -85,7 +85,7 @@ fn browser() -> Harness<'static, EmulatorApp> {
     app.navigate_player(PlayerScreen::Library);
     let mut h = Harness::builder()
         .with_size(egui::vec2(1024.0, 900.0))
-        .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
+        .build_ui_state(|ui, app: &mut EmulatorApp| app.update_ui(ui), app);
     common::settle_harness(&mut h);
     h
 }

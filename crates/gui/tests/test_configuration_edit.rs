@@ -26,11 +26,11 @@ fn editor_with_session(session: Box<debugger::DebuggerSession>) -> Harness<'stat
     app.navigate_player(PlayerScreen::Configuration);
     let mut h = Harness::builder()
         .with_size(egui::vec2(480.0, 640.0))
-        .build_state(
-            move |ctx, app: &mut EmulatorApp| {
+        .build_ui_state(
+            move |ui, app: &mut EmulatorApp| {
                 let _library = &library;
-                common::keyboard::inject_taps(ctx, app.host.status.generation);
-                app.update_ui(ctx)
+                common::keyboard::inject_taps(ui.ctx(), app.host.status.generation);
+                app.update_ui(ui)
             },
             app,
         );
@@ -667,10 +667,10 @@ fn input_contention_defers_draft_publication_until_sender_recovers() {
     common::settle(&mut app, &owner_context);
     let mut h = Harness::builder()
         .with_size(egui::vec2(480.0, 640.0))
-        .build_state(
-            |ctx, app: &mut EmulatorApp| {
-                common::keyboard::inject_taps(ctx, app.host.status.generation);
-                app.update_ui(ctx)
+        .build_ui_state(
+            |ui, app: &mut EmulatorApp| {
+                common::keyboard::inject_taps(ui.ctx(), app.host.status.generation);
+                app.update_ui(ui)
             },
             app,
         );
@@ -718,7 +718,9 @@ fn input_contention_defers_draft_publication_until_sender_recovers() {
         std::thread::yield_now();
     }
     for _ in 0..2 {
-        let _ = owner_context.run(egui::RawInput::default(), |_| {});
+        owner_context
+            .run_pass(egui::RawInput::default(), |_| {})
+            .drop_without_applying_deltas();
     }
     let (entered_tx, entered_rx) = mpsc::channel();
     static RELEASE: AtomicBool = AtomicBool::new(false);

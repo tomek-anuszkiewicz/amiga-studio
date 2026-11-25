@@ -1,21 +1,134 @@
 #![allow(dead_code, clippy::unwrap_used, clippy::panic)]
 
-use egui::{Context, RawInput};
-use egui_kittest::Harness;
+use egui::{Context, RawInput, Ui};
+use egui_kittest::{Harness, TestRenderer};
 use gui::host_commands::{HostCommand, HostObservation, HostReply, HostValue, InputObservation};
 use gui::{EmulatorApp, ViewMode};
+use std::cell::Cell;
+use std::ops::Deref;
+use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
-pub fn settle(app: &mut EmulatorApp, context: &Context) -> egui::FullOutput {
+/// Holds draw data for headless assertions without submitting it to a renderer.
+#[derive(Default)]
+pub struct FrameOutput(egui::FullOutput);
+
+impl FrameOutput {
+    pub fn append(&mut self, mut newer: Self) {
+        self.0.append(std::mem::take(&mut newer.0));
+    }
+
+    pub fn into_platform_output(mut self) -> egui::PlatformOutput {
+        std::mem::take(&mut self.0.platform_output)
+    }
+}
+
+impl Deref for FrameOutput {
+    type Target = egui::FullOutput;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl Drop for FrameOutput {
+    fn drop(&mut self) {
+        self.0.textures_delta.clear();
+    }
+}
+
+pub trait TestContext {
+    fn run_test_ui(&self, input: RawInput, draw: impl FnMut(&mut Ui)) -> FrameOutput;
+}
+
+impl TestContext for Context {
+    fn run_test_ui(&self, input: RawInput, draw: impl FnMut(&mut Ui)) -> FrameOutput {
+        FrameOutput(self.run_ui(input, draw))
+    }
+}
+
+/// Gives the application the same full viewport as eframe, without the harness frame's margins.
+pub fn show_full_viewport(ui: &mut Ui, app: &mut EmulatorApp) {
+    let rect = ui.ctx().content_rect();
+    let mut root = ui.new_child(egui::UiBuilder::new().max_rect(rect));
+    app.update_ui(&mut root);
+}
+
+pub fn texture_updates(
+    delta: &egui::TexturesDelta,
+) -> impl Iterator<Item = (&egui::TextureId, &egui::epaint::ImageDelta)> {
+    delta
+        .set
+        .iter()
+        .flat_map(|(id, updates)| updates.iter().map(move |update| (id, update)))
+}
+
+type TextureUpload = (egui::TextureId, egui::epaint::ImageDelta);
+
+thread_local! {
+    // The harness draws and the test checks its uploads on the same test thread.
+    static LAST_TEXTURE_UPLOADS: Cell<Vec<TextureUpload>> = const { Cell::new(Vec::new()) };
+}
+
+pub struct TextureUploads;
+
+impl TextureUploads {
+    pub fn capture(delta: &egui::TexturesDelta) {
+        LAST_TEXTURE_UPLOADS.set(
+            texture_updates(delta)
+                .map(|(id, update)| (*id, update.clone()))
+                .collect(),
+        );
+    }
+
+    pub fn take() -> Vec<TextureUpload> {
+        LAST_TEXTURE_UPLOADS.take()
+    }
+}
+
+impl TestRenderer for TextureUploads {
+    fn handle_delta(&mut self, delta: &mut egui::TexturesDelta) {
+        Self::capture(delta);
+        delta.clear();
+    }
+
+    fn render(
+        &mut self,
+        _ctx: &Context,
+        _output: &egui::FullOutput,
+    ) -> Result<image::RgbaImage, String> {
+        Err("Texture upload observer does not render images".into())
+    }
+}
+
+pub fn dropped_file(path: impl Into<PathBuf>) -> egui::DroppedFileHandle {
+    #[derive(Debug)]
+    struct DroppedPath(PathBuf);
+
+    impl egui::DroppedFile for DroppedPath {
+        fn path(&self) -> &Path {
+            &self.0
+        }
+
+        fn bytes(&self) -> Result<Vec<u8>, String> {
+            std::fs::read(&self.0).map_err(|error| error.to_string())
+        }
+    }
+
+    let file: Box<dyn egui::DroppedFile + Send + Sync> = Box::new(DroppedPath(path.into()));
+    file.into()
+}
+
+pub fn settle(app: &mut EmulatorApp, context: &Context) -> FrameOutput {
     let deadline = Instant::now() + Duration::from_secs(10);
-    let mut combined = egui::FullOutput::default();
+    let mut combined = FrameOutput::default();
     loop {
-        let output = context.run(
+        let output = context.run_test_ui(
             RawInput {
                 time: Some(context.input(|input| input.time)),
                 ..RawInput::default()
             },
-            |context| app.update_ui(context),
+            |ui| app.update_ui(ui),
         );
         combined.append(output);
         if app.host.is_idle() && (app.view_mode == ViewMode::ScreenOnly || app.host.data.is_some())
@@ -83,8 +196,8 @@ pub fn confirm_replacement(app: &mut EmulatorApp) {
     use egui_kittest::kittest::Queryable;
     let mut harness = Harness::builder()
         .with_size(egui::vec2(1024.0, 600.0))
-        .build_state(
-            |ctx, app: &mut EmulatorApp| app.update_ui(ctx),
+        .build_ui_state(
+            |ui, app: &mut EmulatorApp| app.update_ui(ui),
             std::mem::take(app),
         );
     settle_harness(&mut harness);
@@ -205,9 +318,9 @@ pub fn wait(
     app: &mut EmulatorApp,
     context: &Context,
     ready: impl Fn(&EmulatorApp) -> bool,
-) -> egui::FullOutput {
+) -> FrameOutput {
     let deadline = Instant::now() + Duration::from_secs(10);
-    let mut combined = egui::FullOutput::default();
+    let mut combined = FrameOutput::default();
     loop {
         combined.append(settle(app, context));
         if ready(app) {
@@ -244,7 +357,7 @@ impl ScreenCapture {
     }
 
     pub fn apply_delta(&mut self, textures: &egui::TexturesDelta) {
-        for (id, delta) in &textures.set {
+        for (id, delta) in texture_updates(textures) {
             if delta.pos.is_none() && delta.image.size() == self.size {
                 self.id = Some(*id);
             }

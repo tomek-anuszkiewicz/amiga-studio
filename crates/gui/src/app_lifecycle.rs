@@ -3,8 +3,8 @@
 use crate::app::{EmulatorApp, RTC_BATTERY_STORAGE_KEY};
 
 impl eframe::App for EmulatorApp {
-    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        self.update_ui(ctx);
+    fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
+        self.update_ui(ui);
         if self.player.settings_dirty {
             if let Some(storage) = frame.storage_mut() {
                 self.persist_player_settings(storage);

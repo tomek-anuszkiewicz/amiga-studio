@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 mod common;
+use common::TestContext as _;
 use egui::{Event, Key, Modifiers};
 use egui_kittest::{kittest::Queryable, Harness};
 use gui::host_commands::{HostCommand, HostObservation, HostValue};
@@ -31,7 +32,7 @@ fn texts(output: &egui::FullOutput) -> Vec<String> {
             egui::Shape::Text(text) => {
                 let label = text.galley.text();
                 if !matches!(label, "▶ Run" | "⏸ Pause" | "⏹ Stop")
-                    && !label.contains(" ● [")
+                    && !label.contains(" • [")
                     && !label.starts_with("FPS:")
                 {
                     texts.push(label.to_owned());
@@ -73,10 +74,10 @@ fn assert_same_text(actual: Vec<String>, expected: Vec<String>) {
 fn run_retains_inspector_text_and_rows_until_stop_then_steps_refresh() {
     let mut harness = Harness::builder()
         .with_size(egui::vec2(1920.0, 1080.0))
-        .build_state(
-            |ctx, app: &mut EmulatorApp| {
-                common::keyboard::inject_taps(ctx, app.host.status.generation);
-                app.update_ui(ctx)
+        .build_ui_state(
+            |ui, app: &mut EmulatorApp| {
+                common::keyboard::inject_taps(ui.ctx(), app.host.status.generation);
+                app.update_ui(ui)
             },
             inspection_app(),
         );
@@ -220,7 +221,7 @@ fn breakpoint_refreshes_the_first_stopped_frame_and_reset_load_invalidate_data()
     common::command(&mut app, HostCommand::SetBreakpoints(breakpoints));
     let ctx = egui::Context::default();
     let render = |app: &mut EmulatorApp, events| {
-        ctx.run(
+        ctx.run_test_ui(
             egui::RawInput {
                 screen_rect: Some(egui::Rect::from_min_size(
                     egui::Pos2::ZERO,
@@ -229,9 +230,9 @@ fn breakpoint_refreshes_the_first_stopped_frame_and_reset_load_invalidate_data()
                 events,
                 ..Default::default()
             },
-            |ctx| {
-                common::keyboard::inject_taps(ctx, app.host.status.generation);
-                app.update_ui(ctx)
+            |ui| {
+                common::keyboard::inject_taps(ui.ctx(), app.host.status.generation);
+                app.update_ui(ui)
             },
         )
     };
@@ -318,21 +319,21 @@ fn extra_layout_pass_and_game_only_startup_do_not_inspect_live_values() {
         ..Default::default()
     };
     for _ in 0..3 {
-        let _ = ctx.run(input.clone(), |ctx| {
-            common::keyboard::inject_taps(ctx, app.host.status.generation);
-            app.update_ui(ctx)
+        let _ = ctx.run_test_ui(input.clone(), |ui| {
+            common::keyboard::inject_taps(ui.ctx(), app.host.status.generation);
+            app.update_ui(ui)
         });
     }
     common::settle(&mut app, &ctx);
-    let before = ctx.run(input.clone(), |ctx| {
-        common::keyboard::inject_taps(ctx, app.host.status.generation);
-        app.update_ui(ctx)
+    let before = ctx.run_test_ui(input.clone(), |ui| {
+        common::keyboard::inject_taps(ui.ctx(), app.host.status.generation);
+        app.update_ui(ui)
     });
     app.host.queue(HostCommand::Run);
-    let output = ctx.run(input.clone(), |ctx| {
-        app.update_ui(ctx);
-        if ctx.output(|out| out.num_completed_passes) == 0 {
-            ctx.request_discard("repeat frozen layout");
+    let output = ctx.run_test_ui(input.clone(), |ui| {
+        app.update_ui(ui);
+        if ui.ctx().output(|out| out.num_completed_passes) == 0 {
+            ui.ctx().request_discard("repeat frozen layout");
         }
     });
     assert_eq!(output.platform_output.num_completed_passes, 2);
@@ -344,7 +345,7 @@ fn extra_layout_pass_and_game_only_startup_do_not_inspect_live_values() {
     game.set_view_mode(ViewMode::ScreenOnly);
     game.host.queue(HostCommand::Run);
     let ctx = egui::Context::default();
-    let output = ctx.run(input, |ctx| game.update_ui(ctx));
+    let output = ctx.run_test_ui(input, |ui| game.update_ui(ui));
     let labels = texts(&output);
     assert!(!labels
         .iter()
@@ -360,7 +361,7 @@ fn extra_layout_pass_and_game_only_startup_do_not_inspect_live_values() {
     assert!(game_data.previous_cpu.is_none());
     game.host.queue(HostCommand::Run);
     game.set_view_mode(ViewMode::Developer);
-    let mut output = ctx.run(egui::RawInput::default(), |ctx| game.update_ui(ctx));
+    let mut output = ctx.run_test_ui(egui::RawInput::default(), |ui| game.update_ui(ui));
     output.append(common::wait(&mut game, &ctx, |app| {
         !app.host.status.running
     }));
@@ -383,10 +384,10 @@ fn run_keeps_an_open_editor_inactive_across_keyboard_input_and_resize() {
     app.active_reg_edit = Some((gui::EditRegister::D(7), "DEADBEEF".to_string()));
     let mut harness = Harness::builder()
         .with_size(egui::vec2(1920.0, 1080.0))
-        .build_state(
-            |ctx, app: &mut EmulatorApp| {
-                common::keyboard::inject_taps(ctx, app.host.status.generation);
-                app.update_ui(ctx)
+        .build_ui_state(
+            |ui, app: &mut EmulatorApp| {
+                common::keyboard::inject_taps(ui.ctx(), app.host.status.generation);
+                app.update_ui(ui)
             },
             app,
         );
@@ -428,10 +429,10 @@ fn run_keeps_an_open_editor_inactive_across_keyboard_input_and_resize() {
 fn binary_load_during_run_retains_inspectors_until_the_owner_stops() {
     let mut harness = Harness::builder()
         .with_size(egui::vec2(1920.0, 1080.0))
-        .build_state(
-            |ctx, app: &mut EmulatorApp| {
-                common::keyboard::inject_taps(ctx, app.host.status.generation);
-                app.update_ui(ctx)
+        .build_ui_state(
+            |ui, app: &mut EmulatorApp| {
+                common::keyboard::inject_taps(ui.ctx(), app.host.status.generation);
+                app.update_ui(ui)
             },
             inspection_app(),
         );

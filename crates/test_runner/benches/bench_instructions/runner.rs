@@ -308,7 +308,7 @@ fn assembler(root: &Path) -> Result<Assembler, String> {
 }
 
 fn sha256(bytes: &[u8]) -> String {
-    format!("{:x}", Sha256::digest(bytes))
+    hex::encode(Sha256::digest(bytes))
 }
 
 fn symbol_address(symbols: &str, name: &str) -> Result<Option<u32>, String> {

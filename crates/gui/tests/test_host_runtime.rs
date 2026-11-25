@@ -2,6 +2,7 @@
 #![allow(clippy::unwrap_used, clippy::panic)]
 
 mod common;
+use common::TestContext as _;
 
 use gui::host_commands::{HistoryCommand, HostCommand, HostObservation, HostReply, HostValue};
 use gui::host_owner::MachineOwner;
@@ -83,7 +84,9 @@ fn fatal_owner_failure_wakes_gui_rejects_commands_and_requires_no_shutdown_reply
         // Consume outstanding egui repaint requests before checking the failure
         // wakeup. egui coalesces requests until its next frame.
         for _ in 0..2 {
-            let _ = context.run(egui::RawInput::default(), |_| {});
+            context
+                .run_pass(egui::RawInput::default(), |_| {})
+                .drop_without_applying_deltas();
         }
         REPAINTS.store(0, Ordering::SeqCst);
         host.submit(command).unwrap();
@@ -1053,7 +1056,7 @@ fn developer_image_click_admits_input_and_window_focus_loss_releases_it() {
     assert_eq!(app.view_mode, gui::ViewMode::Developer);
     assert!(common::command(&mut app, HostCommand::Run).value.is_ok());
     let draw = |app: &mut gui::EmulatorApp, focused, events| {
-        let _ = context.run(
+        let _ = context.run_test_ui(
             egui::RawInput {
                 screen_rect: Some(egui::Rect::from_min_size(
                     egui::Pos2::ZERO,
@@ -1063,7 +1066,7 @@ fn developer_image_click_admits_input_and_window_focus_loss_releases_it() {
                 events,
                 ..Default::default()
             },
-            |context| app.update_ui(context),
+            |ui| app.update_ui(ui),
         );
     };
     draw(&mut app, true, vec![]);
@@ -1105,7 +1108,7 @@ fn developer_image_click_admits_input_and_window_focus_loss_releases_it() {
     // Developer view keeps the mouse free until the image is clicked.
     press();
     assert_eq!(sample(&mut app, true), (0x40, 0x0500));
-    let image_id = egui::Id::new("amiga-screen-input");
+    let image_id = egui::Id::unique("amiga-screen-input");
     let center = context.read_response(image_id).unwrap().rect.center();
     for pressed in [true, false] {
         draw(

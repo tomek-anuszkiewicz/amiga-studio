@@ -96,7 +96,7 @@ pub(crate) fn limit_dialog_focus(app: &EmulatorApp, ctx: &egui::Context) {
     } else {
         return;
     };
-    let layer = egui::LayerId::new(egui::Order::Foreground, egui::Id::new(id));
+    let layer = egui::LayerId::new(egui::Order::Foreground, egui::Id::unique(id));
     let focused = ctx.memory(|memory| memory.focused());
     let outside = focused.filter(|id| {
         ctx.read_response(*id)
@@ -113,7 +113,7 @@ pub(crate) fn limit_dialog_focus(app: &EmulatorApp, ctx: &egui::Context) {
 pub fn render(app: &mut EmulatorApp, ctx: &egui::Context) {
     if app.load_binary_modal_open {
         egui::Window::new("Load Binary into Memory")
-            .id(egui::Id::new(BINARY_DIALOG))
+            .id(egui::Id::unique(BINARY_DIALOG))
             .order(egui::Order::Foreground)
             .collapsible(false)
             .resizable(false)
@@ -163,7 +163,7 @@ pub fn render(app: &mut EmulatorApp, ctx: &egui::Context) {
             "File operation failed"
         };
         egui::Window::new(title)
-            .id(egui::Id::new(ERROR_DIALOG))
+            .id(egui::Id::unique(ERROR_DIALOG))
             .order(egui::Order::Foreground)
             .collapsible(false)
             .resizable(false)

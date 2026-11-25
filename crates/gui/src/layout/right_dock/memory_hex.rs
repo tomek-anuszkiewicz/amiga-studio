@@ -167,7 +167,7 @@ pub(crate) fn render_memory_hex(
 ) {
     let row_height = ROW_HEIGHT;
     let start_pos = ui.cursor().min;
-    let mem_hex_rect_id = egui::Id::new("mem_hex_rect");
+    let mem_hex_rect_id = egui::Id::unique("mem_hex_rect");
     let prev_rect: Option<egui::Rect> = ui.data(|d| d.get_temp(mem_hex_rect_id));
     let is_hovered = prev_rect.map_or(false, |r| ui.rect_contains_pointer(r));
 
@@ -186,6 +186,7 @@ pub(crate) fn render_memory_hex(
                 unit,
                 delta,
                 modifiers,
+                ..
             } = event
             {
                 let multiplier: u32 = if modifiers.ctrl && modifiers.shift {
@@ -216,7 +217,7 @@ pub(crate) fn render_memory_hex(
                         }
                     }
                     egui::MouseWheelUnit::Point | egui::MouseWheelUnit::Page => {
-                        let accum_id = ui.id().with("hex_scroll_accum");
+                        let accum_id = ui.scope_id().with("hex_scroll_accum");
                         let mut accum: f32 = ui.data(|d| d.get_temp(accum_id)).unwrap_or(0.0);
                         accum += delta.y;
                         const POINTS_PER_ROW: f32 = ROW_HEIGHT;
@@ -242,10 +243,7 @@ pub(crate) fn render_memory_hex(
         }
 
         if scrolled {
-            ui.input_mut(|i| {
-                i.smooth_scroll_delta = egui::Vec2::ZERO;
-                i.raw_scroll_delta = egui::Vec2::ZERO;
-            });
+            ui.input_mut(|i| i.smooth_scroll_delta = egui::Vec2::ZERO);
         }
 
         // Keyboard navigation when hovered and not actively typing in a cell
@@ -312,7 +310,7 @@ pub(crate) fn render_memory_hex(
                     let val = bus.read_byte_debug(sel);
                     edit_buffer.0 = sel;
                     edit_buffer.1 = format!("{:02X}", val);
-                    let just_started_id = egui::Id::new("hex_just_started_edit");
+                    let just_started_id = egui::Id::unique("hex_just_started_edit");
                     ui.data_mut(|d| d.insert_temp(just_started_id, true));
                 } else if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
                     *selected_addr = None;
@@ -449,7 +447,7 @@ pub(crate) fn render_memory_hex(
                                             if interactive { edit_res.request_focus(); }
 
                                             let just_started_id =
-                                                egui::Id::new("hex_just_started_edit");
+                                                egui::Id::unique("hex_just_started_edit");
                                             let just_started: bool = ui
                                                 .data(|d| d.get_temp(just_started_id))
                                                 .unwrap_or(false);
@@ -563,7 +561,7 @@ pub(crate) fn render_memory_hex(
                                         );
                                         ui.separator();
                                         if ui
-                                            .button("🛑 Toggle Watchpoint Write (1 Byte)")
+                                            .button("Toggle Watchpoint Write (1 Byte)")
                                             .clicked()
                                         {
                                             breakpoints.toggle_byte_watchpoint(

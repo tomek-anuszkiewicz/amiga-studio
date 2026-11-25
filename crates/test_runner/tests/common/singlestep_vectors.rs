@@ -97,7 +97,7 @@ fn apply_correction(
     }
     // Value objects use sorted keys; whitespace and source property order do not affect identity.
     let original = serde_json::to_vec(&serde_json::to_value(&*test)?)?;
-    let actual_sha256 = format!("{:x}", Sha256::digest(original));
+    let actual_sha256 = hex::encode(Sha256::digest(original));
     if actual_sha256 != correction.original_sha256 {
         return Err(invalid_correction(format!(
             "Override source changed for {}: expected SHA-256 {}, found {}",

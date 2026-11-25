@@ -17,6 +17,10 @@ impl Storage for MemoryStorage {
     fn set_string(&mut self, key: &str, value: String) {
         self.0.insert(key.into(), value);
     }
+    fn remove_string(&mut self, key: &str) {
+        self.0.remove(key);
+    }
+
     fn flush(&mut self) {}
 }
 
@@ -128,7 +132,7 @@ fn recent_menu_reloads_current_bytes_with_saved_options_and_reports_missing_file
     std::fs::write(&path, [0x70, 0x2a]).unwrap();
     let mut harness = Harness::builder()
         .with_size(egui::vec2(1024.0, 600.0))
-        .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
+        .build_ui_state(|ui, app: &mut EmulatorApp| app.update_ui(ui), app);
     harness.run_steps(2);
     common::settle_harness(&mut harness);
     harness.get_by_label("File").click_accesskit();
@@ -191,7 +195,7 @@ fn game_menu_reloads_rom_and_keeps_binary_directory_separate() {
     assert_eq!(step.status.cck, 1);
     let mut harness = Harness::builder()
         .with_size(egui::vec2(1024.0, 600.0))
-        .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
+        .build_ui_state(|ui, app: &mut EmulatorApp| app.update_ui(ui), app);
     harness.run_steps(2);
     common::settle_harness(&mut harness);
     harness.get_by_label("File").click_accesskit();

@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::panic)]
 mod common;
+use common::TestContext as _;
 use egui_kittest::kittest::NodeT;
 use gui::host_commands::{HostCommand, HostValue};
 use gui::{EmulatorApp, ViewMode};
@@ -45,15 +46,15 @@ fn draw(app: &mut EmulatorApp, ctx: &egui::Context, key: Option<egui::Key>) {
         })
         .into_iter()
         .collect();
-    let _ = ctx.run(
+    let _ = ctx.run_test_ui(
         egui::RawInput {
             focused: true,
             events,
             ..Default::default()
         },
-        |ctx| {
-            common::keyboard::inject_taps(ctx, app.host.status.generation);
-            app.update_ui(ctx)
+        |ui| {
+            common::keyboard::inject_taps(ui.ctx(), app.host.status.generation);
+            app.update_ui(ui)
         },
     );
 }
@@ -65,19 +66,19 @@ fn free_mouse_guest_navigation_keys_leave_a_focused_button_alone() {
     // keyboard joystick has independent coverage in the next test.
     app.player.active_mappings[0].keys[0] = 0x17;
     let mut clicked = false;
-    let render = |ctx: &egui::Context, app: &mut EmulatorApp, clicked: &mut bool| {
-        egui::Window::new("Session controls").show(ctx, |ui| {
+    let render = |ui: &mut egui::Ui, app: &mut EmulatorApp, clicked: &mut bool| {
+        egui::Window::new("Session controls").show(ui.ctx(), |ui| {
             let response = ui.button("Ordinary session button");
-            if ctx.memory(|memory| memory.focused().is_none()) {
+            if ui.ctx().memory(|memory| memory.focused().is_none()) {
                 response.request_focus();
             }
             *clicked |= response.clicked();
             let _ = ui.button("Another button");
         });
-        app.update_ui(ctx);
+        app.update_ui(ui);
     };
-    let _ = ctx.run(egui::RawInput::default(), |ctx| {
-        render(ctx, &mut app, &mut clicked)
+    let _ = ctx.run_test_ui(egui::RawInput::default(), |ui| {
+        render(ui, &mut app, &mut clicked)
     });
     let focus = ctx.memory(|memory| memory.focused()).unwrap();
     let generation = app.host.status.generation;
@@ -106,14 +107,14 @@ fn free_mouse_guest_navigation_keys_leave_a_focused_button_alone() {
                     .collect(),
                 ..Default::default()
             };
-            let _ = ctx.run(raw, |ctx| render(ctx, &mut app, &mut clicked));
+            let _ = ctx.run_test_ui(raw, |ui| render(ui, &mut app, &mut clicked));
             assert!(routed);
             assert_eq!(ctx.memory(|memory| memory.focused()), Some(focus));
             assert!(!clicked);
             assert!(!app.player.captured);
             wait_guest_key(&mut app, &ctx, code, pressed);
-            let _ = ctx.run(egui::RawInput::default(), |ctx| {
-                render(ctx, &mut app, &mut clicked)
+            let _ = ctx.run_test_ui(egui::RawInput::default(), |ui| {
+                render(ui, &mut app, &mut clicked)
             });
         }
     }
@@ -378,10 +379,10 @@ fn long_disk_names_keep_the_wide_player_panel_compact() {
     app.player.mounted[0] = Some("long".into());
     let mut harness = Harness::builder()
         .with_size(egui::vec2(1280.0, 800.0))
-        .build_state(
-            |ctx, app: &mut EmulatorApp| {
-                common::keyboard::inject_taps(ctx, app.host.status.generation);
-                app.update_ui(ctx)
+        .build_ui_state(
+            |ui, app: &mut EmulatorApp| {
+                common::keyboard::inject_taps(ui.ctx(), app.host.status.generation);
+                app.update_ui(ui)
             },
             app,
         );
@@ -470,8 +471,8 @@ fn middle_mouse_cancels_motion_and_buttons_but_preserves_keyboard_and_joystick()
     assert_eq!(before.game_ports.pins.direction_pins[1] & 1, 0);
     let mouse = serde_json::to_value(before.game_ports.state.port1).unwrap();
     assert!(mouse["Mouse"]["pending_x"].as_i64().unwrap() > 0);
-    ctx.data_mut(|data| data.insert_temp(egui::Id::new("capture_requested"), true));
-    let _ = ctx.run(
+    ctx.data_mut(|data| data.insert_temp(egui::Id::unique("capture_requested"), true));
+    let _ = ctx.run_test_ui(
         egui::RawInput {
             events: vec![egui::Event::PointerButton {
                 pos: egui::pos2(400.0, 250.0),
@@ -481,9 +482,9 @@ fn middle_mouse_cancels_motion_and_buttons_but_preserves_keyboard_and_joystick()
             }],
             ..Default::default()
         },
-        |ctx| {
-            common::keyboard::inject_taps(ctx, app.host.status.generation);
-            app.update_ui(ctx)
+        |ui| {
+            common::keyboard::inject_taps(ui.ctx(), app.host.status.generation);
+            app.update_ui(ui)
         },
     );
     assert!(!app.player.captured);
@@ -592,7 +593,7 @@ fn click_view_toolbar(app: &mut EmulatorApp, ctx: &egui::Context) {
     };
     ctx.enable_accesskit();
     let tree = ui_frame(app, ctx, vec![])
-        .platform_output
+        .into_platform_output()
         .accesskit_update
         .unwrap();
     let target = tree
@@ -609,7 +610,8 @@ fn click_view_toolbar(app: &mut EmulatorApp, ctx: &egui::Context) {
         vec![egui::Event::AccessKitActionRequest(
             egui::accesskit::ActionRequest {
                 action: egui::accesskit::Action::Click,
-                target,
+                target_tree: egui::accesskit::TreeId::ROOT,
+                target_node: target,
                 data: None,
             },
         )],
@@ -871,13 +873,13 @@ fn gamepad_plays_without_capture_survives_mouse_release_and_stops_outside_sessio
     delivered_after_input_read(&mut app, &ctx);
     assert!(observed_fire(&mut app));
     assert!(!app.player.captured);
-    let _ = ctx.run(egui::RawInput::default(), |ctx| {
-        egui::Window::new("Session control").show(ctx, |ui| {
+    let _ = ctx.run_test_ui(egui::RawInput::default(), |ui| {
+        egui::Window::new("Session control").show(ui.ctx(), |ui| {
             ui.button("Ordinary button").request_focus();
         });
         {
-            common::keyboard::inject_taps(ctx, app.host.status.generation);
-            app.update_ui(ctx)
+            common::keyboard::inject_taps(ui.ctx(), app.host.status.generation);
+            app.update_ui(ui)
         };
     });
     delivered_after_input_read(&mut app, &ctx);
@@ -931,15 +933,15 @@ fn gamepad_plays_without_capture_survives_mouse_release_and_stops_outside_sessio
         "Browser capture-loss ingress must retain the held controller after capture is disabled"
     );
     let mut text = String::new();
-    let text_id = egui::Id::new("session-text");
-    let _ = ctx.run(egui::RawInput::default(), |ctx| {
-        egui::Window::new("Session editor").show(ctx, |ui| {
+    let text_id = egui::Id::unique("session-text");
+    let _ = ctx.run_test_ui(egui::RawInput::default(), |ui| {
+        egui::Window::new("Session editor").show(ui.ctx(), |ui| {
             ui.add(egui::TextEdit::singleline(&mut text).id(text_id))
                 .request_focus();
         });
         {
-            common::keyboard::inject_taps(ctx, app.host.status.generation);
-            app.update_ui(ctx)
+            common::keyboard::inject_taps(ui.ctx(), app.host.status.generation);
+            app.update_ui(ui)
         };
     });
     pad(&sender, generation, true);
@@ -974,14 +976,14 @@ fn gamepad_plays_without_capture_survives_mouse_release_and_stops_outside_sessio
     assert!(observed_fire(&mut app));
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
     loop {
-        let _ = ctx.run(
+        let _ = ctx.run_test_ui(
             egui::RawInput {
                 focused: false,
                 ..Default::default()
             },
-            |ctx| {
-                common::keyboard::inject_taps(ctx, app.host.status.generation);
-                app.update_ui(ctx)
+            |ui| {
+                common::keyboard::inject_taps(ui.ctx(), app.host.status.generation);
+                app.update_ui(ui)
             },
         );
         pad(&sender, generation, true);
@@ -1055,8 +1057,8 @@ fn ui_frame(
     app: &mut EmulatorApp,
     ctx: &egui::Context,
     events: Vec<egui::Event>,
-) -> egui::FullOutput {
-    ctx.run(
+) -> common::FrameOutput {
+    ctx.run_test_ui(
         egui::RawInput {
             screen_rect: Some(egui::Rect::from_min_size(
                 egui::Pos2::ZERO,
@@ -1065,7 +1067,7 @@ fn ui_frame(
             events,
             ..Default::default()
         },
-        |ctx| app.update_ui(ctx),
+        |ui| app.update_ui(ui),
     )
 }
 
@@ -1073,7 +1075,7 @@ fn memory_search_position(app: &mut EmulatorApp, ctx: &egui::Context) -> egui::P
     ctx.enable_accesskit();
     ui_frame(app, ctx, vec![]);
     let tree = ui_frame(app, ctx, vec![])
-        .platform_output
+        .into_platform_output()
         .accesskit_update
         .unwrap();
     let field = tree
@@ -1128,21 +1130,20 @@ fn a_consumed_quick_save_press_cannot_type_when_an_editor_gains_focus() {
     common::wait(&mut app, &ctx, |app| app.host.status.cck > first_save_cck);
 
     app.load_target_addr_str.clear();
+    let directory = tempfile::tempdir().unwrap();
+    let binary_path = directory.path().join("fixture.bin");
+    std::fs::write(&binary_path, [0x60, 0xfe]).unwrap();
     ctx.enable_accesskit();
-    let _ = ctx.run(
+    let _ = ctx.run_test_ui(
         egui::RawInput {
-            dropped_files: vec![egui::DroppedFile {
-                name: "fixture.bin".into(),
-                bytes: Some([0x60, 0xfe].into()),
-                ..Default::default()
-            }],
+            dropped_files: vec![common::dropped_file(binary_path)],
             ..Default::default()
         },
-        |ctx| app.update_ui(ctx),
+        |ui| app.update_ui(ui),
     );
     assert!(app.load_binary_modal_open);
     let tree = ui_frame(&mut app, &ctx, vec![])
-        .platform_output
+        .into_platform_output()
         .accesskit_update
         .unwrap();
     let field = tree
@@ -1308,7 +1309,7 @@ fn saved_progress_harness(
     });
     egui_kittest::Harness::builder()
         .with_size(egui::vec2(1280.0, 900.0))
-        .build_state(|ctx, app| app.update_ui(ctx), app)
+        .build_ui_state(common::show_full_viewport, app)
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -1352,6 +1353,7 @@ fn saved_progress_chooser_blocks_session_input_until_fresh_input_after_close() {
     assert_eq!(before.game_ports.sample_ciaa_port_a_inputs() & 0xc0, 0);
     assert!(h.state().player.captured);
 
+    common::settle_harness(&mut h);
     let load = h.get_by_label("Load").rect().center();
     let mouse_button = |pressed| egui::Event::PointerButton {
         pos: load,
@@ -1451,7 +1453,7 @@ fn gamepad_quick_slots_use_press_edges_and_discard_same_sample_pause_on_load() {
     let (app, _) = running_with(ViewMode::ScreenOnly, false, configuration);
     let mut h = egui_kittest::Harness::builder()
         .with_size(egui::vec2(1280.0, 900.0))
-        .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
+        .build_ui_state(|ui, app: &mut EmulatorApp| app.update_ui(ui), app);
     common::settle_harness(&mut h);
     let generation = h.state().host.status.generation;
     let sender = h.state().host.runtime.as_ref().unwrap().input_sender();

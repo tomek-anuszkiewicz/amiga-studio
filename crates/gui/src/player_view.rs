@@ -7,8 +7,8 @@ use crate::{EmulatorApp, ViewMode};
 pub const SAVED_PROGRESS_DIALOG: &str = "saved-progress";
 
 impl EmulatorApp {
-    pub(crate) fn render_player_screen(&mut self, ctx: &egui::Context) {
-        egui::TopBottomPanel::top("player_navigation").show(ctx, |ui| {
+    pub(crate) fn render_player_screen(&mut self, ui: &mut egui::Ui) {
+        egui::Panel::top("player_navigation").show(ui, |ui| {
             ui.horizontal_wrapped(|ui| {
                 #[cfg(not(target_arch = "wasm32"))]
                 if ui.button("Library").clicked() {
@@ -29,9 +29,9 @@ impl EmulatorApp {
             });
         });
         if self.player.screen == PlayerScreen::Configuration {
-            self.render_configuration_actions(ctx);
+            self.render_configuration_actions(ui);
         }
-        egui::CentralPanel::default().show(ctx, |ui| {
+        egui::CentralPanel::default().show(ui, |ui| {
             egui::ScrollArea::vertical().show(ui, |ui| match self.player.screen {
                 PlayerScreen::Configuration => {
                     let saving = self
@@ -49,7 +49,7 @@ impl EmulatorApp {
                 PlayerScreen::Session => {}
             });
         });
-        self.render_binding_recording(ctx);
+        self.render_binding_recording(ui.ctx());
     }
 
     pub(crate) fn configuration_selector(&mut self, ui: &mut egui::Ui) {
@@ -127,7 +127,7 @@ impl EmulatorApp {
         }
         let mut replace = false;
         let mut keep = false;
-        egui::Modal::new(egui::Id::new("replace-player-session")).show(ctx, |ui| {
+        egui::Modal::new(egui::Id::unique("replace-player-session")).show(ctx, |ui| {
             ui.heading("Replace current session?");
             ui.label("This action resets or replaces the current machine. Save progress first if needed.");
             ui.horizontal(|ui| {
@@ -153,8 +153,8 @@ impl EmulatorApp {
         let mut cancel = false;
         let mut configure = false;
         let dialog =
-            egui::Modal::new(egui::Id::new("missing-game-configuration")).show(ctx, |ui| {
-                ui.set_max_width((ctx.screen_rect().width() - 40.0).min(430.0));
+            egui::Modal::new(egui::Id::unique("missing-game-configuration")).show(ctx, |ui| {
+                ui.set_max_width((ctx.viewport_rect().width() - 40.0).min(430.0));
                 ui.heading("Configuration missing");
                 ui.label(format!(
                     "{} needs an existing configuration from this library.",
@@ -194,17 +194,17 @@ impl EmulatorApp {
         }
     }
 
-    pub(crate) fn render_player_controls(&mut self, ctx: &egui::Context) {
-        let wide = ctx.screen_rect().width() >= 850.0;
+    pub(crate) fn render_player_controls(&mut self, ui: &mut egui::Ui) {
+        let wide = ui.viewport_rect().width() >= 850.0;
         if wide {
-            egui::SidePanel::right("game_controls")
-                .exact_width(220.0)
+            egui::Panel::right("game_controls")
+                .exact_size(220.0)
                 .resizable(false)
-                .show(ctx, |ui| {
+                .show(ui, |ui| {
                     self.player_controls(ui);
                 });
         } else {
-            egui::TopBottomPanel::bottom("compact_game_controls").show(ctx, |ui| {
+            egui::Panel::bottom("compact_game_controls").show(ui, |ui| {
                 egui::CollapsingHeader::new("Game controls")
                     .show(ui, |ui| self.player_controls(ui));
             });
@@ -216,10 +216,10 @@ impl EmulatorApp {
         if !self.player.show_saves || self.file_error.is_some() || self.load_binary_modal_open {
             return;
         }
-        let close = egui::Modal::new(egui::Id::new(SAVED_PROGRESS_DIALOG)).show(ctx, |ui| {
+        let close = egui::Modal::new(egui::Id::unique(SAVED_PROGRESS_DIALOG)).show(ctx, |ui| {
             ui.heading("Saved progress");
             egui::ScrollArea::vertical()
-                .max_height(ctx.screen_rect().height() * 0.7)
+                .max_height(ctx.viewport_rect().height() * 0.7)
                 .show(ui, |ui| self.render_save_catalog(ui, true));
             ui.button("Close").clicked()
         });
@@ -618,7 +618,7 @@ impl EmulatorApp {
 
 fn disk_dropdown(
     ui: &mut egui::Ui,
-    id: impl std::hash::Hash,
+    id: impl egui::AsIdSalt,
     mounted: &mut Option<String>,
     disks: &[SessionDisk],
 ) {
@@ -677,8 +677,8 @@ fn library_cover(ui: &mut egui::Ui, game: &crate::game_library::LibraryGame, sid
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub fn preview(ui: &mut egui::Ui, id: impl std::hash::Hash, bytes: &[u8], width: f32) -> bool {
-    draw_image_preview(ui, id, egui::Id::new(bytes), width, || {
+pub fn preview(ui: &mut egui::Ui, id: impl egui::AsIdSalt, bytes: &[u8], width: f32) -> bool {
+    draw_image_preview(ui, id, egui::util::hash(bytes), width, || {
         crate::library_edit::decode_artwork(bytes)
             .ok()
             .map(std::borrow::Cow::Owned)
@@ -688,13 +688,13 @@ pub fn preview(ui: &mut egui::Ui, id: impl std::hash::Hash, bytes: &[u8], width:
 #[cfg(not(target_arch = "wasm32"))]
 pub fn draw_image_preview<'a>(
     ui: &mut egui::Ui,
-    id: impl std::hash::Hash,
-    revision: egui::Id,
+    id: impl egui::AsIdSalt,
+    revision: u64,
     width: f32,
     image: impl FnOnce() -> Option<std::borrow::Cow<'a, image::RgbaImage>>,
 ) -> bool {
-    type Preview = (egui::Id, Option<egui::TextureHandle>);
-    let id = ui.id().with(id);
+    type Preview = (u64, Option<egui::TextureHandle>);
+    let id = ui.scope_id().with(id);
     let cached = ui.data(|data| data.get_temp::<Preview>(id));
     let texture = if let Some((_, texture)) = cached.filter(|(current, _)| *current == revision) {
         texture

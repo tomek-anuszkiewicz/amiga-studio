@@ -147,9 +147,32 @@ impl BrowserFileTask {
         });
         Ok(Self { action, future })
     }
+
+    fn from_drop(file: egui::DroppedFileHandle) -> Self {
+        let future = Box::pin(async move {
+            let name = file.path().to_string_lossy().into_owned();
+            let data = file
+                .bytes_async()
+                .await
+                .map_err(|error| JsValue::from_str(&error))?;
+            Ok(Some(SelectedFile {
+                name,
+                data,
+                handle: JsValue::NULL,
+            }))
+        });
+        Self {
+            action: FileAction::Binary,
+            future,
+        }
+    }
 }
 
 impl EmulatorApp {
+    pub(crate) fn accept_dropped_file(&mut self, file: egui::DroppedFileHandle) {
+        self.browser_file_task = Some(BrowserFileTask::from_drop(file));
+    }
+
     pub(super) fn open_file_dialog(&mut self, action: FileAction) {
         self.open_browser_file_dialog(action, NO_RECENT_FILE_INDEX);
     }

@@ -19,6 +19,7 @@ cia = { workspace = true }
 rtc = { workspace = true }
 flate2 = { workspace = true }
 sha2 = { workspace = true }
+hex = "0.4"
 
 [[bench]]
 name = "bench_instructions"

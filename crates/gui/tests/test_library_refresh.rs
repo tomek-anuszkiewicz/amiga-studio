@@ -87,7 +87,7 @@ fn write_game(directory: &Path, id: &str, title: &str) -> GameManifest {
 fn harness(app: EmulatorApp) -> Harness<'static, EmulatorApp> {
     Harness::builder()
         .with_size(egui::vec2(1024.0, 760.0))
-        .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app)
+        .build_ui_state(|ui, app: &mut EmulatorApp| app.update_ui(ui), app)
 }
 
 fn browse(root: &Path) -> EmulatorApp {
@@ -167,7 +167,7 @@ fn native_library_refreshes_while_paused_and_preserves_filter_selection_and_draf
     assert!(h.query_by_label("BETA Patrol").is_some());
     h.set_size(egui::vec2(350.0, 650.0));
     h.step();
-    assert!(h.ctx.screen_rect().contains_rect(filter(&h).rect()));
+    assert!(h.ctx.content_rect().contains_rect(filter(&h).rect()));
     assert!(filter(&h).is_focused());
     filter(&h).type_text("xyz");
     h.step();

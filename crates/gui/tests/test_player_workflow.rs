@@ -255,7 +255,7 @@ fn library_continue_restores_selected_games_save_instead_of_active_game() {
     app.player.selected_game = None;
     let mut h = Harness::builder()
         .with_size(egui::vec2(1280.0, 900.0))
-        .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
+        .build_ui_state(|ui, app: &mut EmulatorApp| app.update_ui(ui), app);
     common::settle_harness(&mut h);
     h.get_by_label("one").click_accesskit();
     common::settle_harness(&mut h);
@@ -541,7 +541,7 @@ fn player_disk_selection_and_ejection_publish_only_acknowledged_mounts() {
     app.navigate_player(PlayerScreen::Session);
     let mut h = Harness::builder()
         .with_size(egui::vec2(1280.0, 900.0))
-        .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
+        .build_ui_state(|ui, app: &mut EmulatorApp| app.update_ui(ui), app);
     common::settle_harness(&mut h);
     open_player_drive(&mut h, "DF0:");
     h.get_by_label("2 - Disk 2").click();
@@ -650,7 +650,7 @@ fn manual_start_requires_valid_rom_media_attachment_and_available_sources() {
     app.player.catalog.configurations[0].launch.rom = "kick.rom".into();
     let mut h = Harness::builder()
         .with_size(egui::vec2(1280.0, 900.0))
-        .build_state(|ctx, app: &mut EmulatorApp| app.update_ui(ctx), app);
+        .build_ui_state(|ui, app: &mut EmulatorApp| app.update_ui(ui), app);
     common::settle_harness(&mut h);
     assert!(h.get_by_label("Start").accesskit_node().is_disabled());
     std::fs::write(&rom_path, b"invalid ROM").unwrap();
@@ -729,7 +729,7 @@ fn session_harness_builder() -> egui_kittest::HarnessBuilder<EmulatorApp> {
 }
 
 fn session_harness(app: EmulatorApp) -> egui_kittest::Harness<'static, EmulatorApp> {
-    session_harness_builder().build_state(|ctx, app| app.update_ui(ctx), app)
+    session_harness_builder().build_ui_state(|ui, app| app.update_ui(ui), app)
 }
 
 fn add_library_disk(game: &mut LibraryGame, id: &str, label: &str, fill: u8) -> PathBuf {
@@ -796,11 +796,12 @@ fn initial_state_and_normal_boot_use_their_own_disk_layouts() {
     let mut app = game_app(&root);
     app.player.catalog.configurations[0].launch.drives = [true; 4];
     app.navigate_player(PlayerScreen::Library);
-    let mut h = session_harness_builder().build_state(
-        |ctx, app| {
+    let mut h = session_harness_builder().build_ui_state(
+        |ui, app| {
             // The click frame can send a command, and its next poll is in the next frame.
-            ctx.options_mut(|options| options.max_passes = std::num::NonZeroUsize::MIN);
-            app.update_ui(ctx);
+            ui.ctx()
+                .options_mut(|options| options.max_passes = std::num::NonZeroUsize::MIN);
+            app.update_ui(ui);
         },
         app,
     );
@@ -1386,7 +1387,7 @@ fn screenshot_clicks_keep_the_active_game_destination_and_existing_files() {
     let screenshot = h.get_by_label("Screenshot");
     let bounds = screenshot.rect();
     assert!(bounds.is_positive());
-    assert!(h.ctx.screen_rect().contains_rect(bounds));
+    assert!(h.ctx.content_rect().contains_rect(bounds));
     for label in ["Save", "Load"] {
         let control = h.get_by_label(label).rect();
         assert!(bounds.top() < control.bottom() && bounds.bottom() > control.top());
@@ -1463,8 +1464,9 @@ struct ScreenTextureObserver {
 }
 
 impl egui_kittest::TestRenderer for ScreenTextureObserver {
-    fn handle_delta(&mut self, delta: &egui::TexturesDelta) {
+    fn handle_delta(&mut self, delta: &mut egui::TexturesDelta) {
         self.capture.apply_delta(delta);
+        delta.clear();
     }
 
     fn render(
@@ -1542,7 +1544,7 @@ fn screenshot_uses_every_displayed_pixel_at_a_clipped_scale_during_run_and_reset
                 size: [width, height],
                 capture: common::ScreenCapture::new([width, height]),
             })
-            .build_state(|ctx, app| app.update_ui(ctx), app);
+            .build_ui_state(|ui, app| app.update_ui(ui), app);
         h.ctx.set_zoom_factor(1.25);
         let deadline = Instant::now() + Duration::from_secs(10);
         loop {
@@ -1692,6 +1694,7 @@ fn screenshot_rejects_the_previous_game_image_when_the_new_library_reuses_its_id
     let directory = screenshot_directory(second);
     assert!(!directory.exists());
 
+    common::settle_harness(&mut h);
     h.get_by_label("Close").click_accesskit();
     common::wait_harness(&mut h, |app| {
         app.file_error.is_none() && app.host.presented.is_some()
@@ -1779,7 +1782,7 @@ fn capture_buttons_are_adjacent_in_regular_and_compact_library_game_views_only()
         let cover = h.get_by_label("Cover");
         assert!(!screenshot.accesskit_node().is_disabled());
         assert!(!cover.accesskit_node().is_disabled());
-        assert!(h.ctx.screen_rect().contains_rect(cover.rect()));
+        assert!(h.ctx.content_rect().contains_rect(cover.rect()));
         assert!(cover.rect().left() >= screenshot.rect().right());
         assert!(cover.rect().top() < screenshot.rect().bottom());
         assert!(cover.rect().bottom() > screenshot.rect().top());
@@ -1803,8 +1806,8 @@ struct CoverTextureObserver {
 }
 
 impl egui_kittest::TestRenderer for CoverTextureObserver {
-    fn handle_delta(&mut self, delta: &egui::TexturesDelta) {
-        for (id, update) in &delta.set {
+    fn handle_delta(&mut self, delta: &mut egui::TexturesDelta) {
+        for (id, update) in common::texture_updates(delta) {
             let egui::ImageData::Color(image) = &update.image;
             if image.size == [720, 568] && update.pos.is_none() {
                 self.covers.insert(*id, image.as_ref().clone());
@@ -1813,6 +1816,7 @@ impl egui_kittest::TestRenderer for CoverTextureObserver {
         for id in &delta.free {
             self.covers.remove(id);
         }
+        delta.clear();
     }
 
     fn render(
@@ -1899,7 +1903,7 @@ fn cover_replaces_one_png_and_updates_the_drawn_thumbnail_at_each_precedence() {
         app.screen_scale = gui::ScreenScale::Four;
         let mut h = session_harness_builder()
             .renderer(CoverTextureObserver::default())
-            .build_state(|ctx, app| app.update_ui(ctx), app);
+            .build_ui_state(|ui, app| app.update_ui(ui), app);
         common::wait_harness(&mut h, |app| app.host.presented.is_some());
         h.get_by_label("Library").click_accesskit();
         common::settle_harness(&mut h);
@@ -1951,7 +1955,7 @@ fn cover_replaces_one_png_and_updates_the_drawn_thumbnail_at_each_precedence() {
         reopened.navigate_player(PlayerScreen::Library);
         let mut reopened = session_harness_builder()
             .renderer(CoverTextureObserver::default())
-            .build_state(|ctx, app| app.update_ui(ctx), reopened);
+            .build_ui_state(|ui, app| app.update_ui(ui), reopened);
         common::settle_harness(&mut reopened);
         assert_eq!(reopened.render().unwrap(), second);
     }
@@ -1997,9 +2001,10 @@ fn cover_write_failure_keeps_previous_png_and_manifest_and_manifest_failure_allo
     common::wait_harness(&mut h, |app| !app.host.status.running);
     h.get_by_label("Cover").click_accesskit();
     h.step();
-    let error = h.state().file_error.as_deref().unwrap();
+    let error = h.state().file_error.clone().unwrap();
     assert!(error.contains("Saved cover.png but could not select it in game.json"));
-    assert!(h.get_all_by_value(error).next().is_some());
+    common::settle_harness(&mut h);
+    assert!(h.get_all_by_value(&error).next().is_some());
     assert_eq!(std::fs::read(&manifest).unwrap(), before);
     assert_eq!(
         image::open(&cover).unwrap().to_rgba8().dimensions(),
@@ -2083,6 +2088,7 @@ fn cover_before_the_new_game_displays_a_frame_preserves_that_games_existing_artw
     assert_eq!(std::fs::read(&cover).unwrap(), png);
     assert_eq!(std::fs::read(&manifest_path).unwrap(), manifest);
 
+    common::settle_harness(&mut h);
     h.get_by_label("Close").click_accesskit();
     common::wait_harness(&mut h, |app| {
         app.file_error.is_none() && app.host.presented.is_some()
