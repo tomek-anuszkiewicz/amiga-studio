@@ -326,8 +326,12 @@ File offers **Load ROM from File** on native desktop and WASM. With a valid
 256 KiB image, the emulator installs it as Kickstart and performs a cold reset
 with the ROM overlay and reset vectors active. Execution stays paused until
 Run. The toolbar displays the loaded filename. A rejected image preserves the
-machine state and previous filename. Loading a state replaces this label with
-the snapshot source because the snapshot includes its own ROM. In the browser,
+machine state and previous filename. Opening a save file labels the ROM as
+verified for the saved state after matching the source bytes to the file's
+digest. Loading an in-memory quick slot restores the ROM the slot holds and
+labels it as coming from the saved state. [Save state](SaveState.md#4-file-loading-and-restoration)
+
+In the browser,
 the user explicitly selects files without any required scan of local
 directories. Selection and download are host operations outside synchronous
 machine execution.

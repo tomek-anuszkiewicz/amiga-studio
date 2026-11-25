@@ -189,6 +189,38 @@ impl PlayerState {
         })
     }
 
+    pub(crate) fn selected_file_rom(&self) -> Option<debugger::SourceImage> {
+        let bytes = self.rom.clone()?;
+        #[cfg(not(target_arch = "wasm32"))]
+        let name = self.rom_name.clone();
+        #[cfg(target_arch = "wasm32")]
+        let name = self.rom_reference.clone();
+        Some(debugger::SourceImage { name, bytes })
+    }
+
+    pub(crate) fn restore_media<'a>(
+        &self,
+        disks: impl IntoIterator<Item = &'a SessionDisk>,
+        remap_manual_ids: bool,
+    ) -> crate::host_commands::RestoreMedia {
+        crate::host_commands::RestoreMedia {
+            roms: self.selected_file_rom().into_iter().collect(),
+            disks: disks
+                .into_iter()
+                .filter_map(|disk| {
+                    Some((
+                        disk.id.clone(),
+                        debugger::SourceImage {
+                            name: Some(disk.label.clone()),
+                            bytes: disk.bytes.clone()?,
+                        },
+                    ))
+                })
+                .collect(),
+            remap_manual_ids,
+        }
+    }
+
     pub(crate) fn current_mappings(&self) -> &[JoystickMapping] {
         if self.active_configuration.is_some() {
             &self.active_mappings
@@ -317,7 +349,15 @@ impl EmulatorApp {
             }
         }
         #[cfg(not(target_arch = "wasm32"))]
-        let pause_for_confirmation = !matches!(&launch, PendingLaunch::LibraryStartState { .. });
+        let pause_for_confirmation = match &launch {
+            PendingLaunch::Library {
+                game,
+                save,
+                normal_boot,
+            } => save.is_none() && (*normal_boot || game.manifest.initial_state.is_none()),
+            PendingLaunch::LibraryStartState { .. } | PendingLaunch::LibraryQuick { .. } => false,
+            _ => true,
+        };
         #[cfg(target_arch = "wasm32")]
         let pause_for_confirmation = true;
         let valid_rom = !matches!(&launch, PendingLaunch::Rom { bytes, .. } if bytes.len() != physical_memory::KICKSTART_ROM_SIZE);
@@ -340,9 +380,16 @@ impl EmulatorApp {
     pub(crate) fn confirm_player_launch(&mut self, launch: PendingLaunch) {
         match launch {
             PendingLaunch::Manual => self.start_manual(),
-            PendingLaunch::Rom { bytes, completion } => self
-                .host
-                .queue_effect(HostCommand::LoadRom(bytes), HostEffect::File(completion)),
+            PendingLaunch::Rom { bytes, completion } => {
+                let name = match &completion {
+                    crate::file_actions::FileCompletion::Rom { name, .. } => Some(name.clone()),
+                    _ => None,
+                };
+                self.host.queue_effect(
+                    HostCommand::LoadRom(debugger::SourceImage { name, bytes }),
+                    HostEffect::File(completion),
+                );
+            }
             #[cfg(not(target_arch = "wasm32"))]
             PendingLaunch::Library {
                 game,
@@ -368,7 +415,7 @@ impl EmulatorApp {
             PlayerEffect::Reset => value.is_ok(),
             #[cfg(not(target_arch = "wasm32"))]
             PlayerEffect::Save { .. } => false,
-            _ => true,
+            _ => value.is_ok(),
         };
         self.player.captured &= !release_capture;
         let value = match value {
@@ -563,12 +610,17 @@ impl EmulatorApp {
         };
         let disks = self.player.setup_disks.clone();
         let mounted = self.player.setup_mounted.clone();
-        let media = std::array::from_fn(|drive| {
-            mounted[drive]
-                .as_ref()
+        let selected_disks = mounted.each_ref().map(|id| {
+            id.as_ref()
                 .and_then(|id| disks.iter().find(|disk| &disk.id == id))
-                .and_then(|disk| disk.bytes.clone())
         });
+        let media = selected_disks.map(|selected| selected.and_then(|disk| disk.bytes.clone()));
+        let disk_names = selected_disks.map(|disk| disk.map(|disk| disk.label.clone()));
+        let rom_name = self
+            .player
+            .selected_file_rom()
+            .and_then(|image| image.name)
+            .or_else(|| Some(configuration.launch.rom.clone()));
         let association = debugger::SaveAssociation {
             game_id: None,
             mounted,
@@ -588,6 +640,8 @@ impl EmulatorApp {
             HostCommand::Launch {
                 setup,
                 association: association.clone(),
+                rom_name,
+                disk_names,
             },
             HostEffect::Player(PlayerEffect::Launch {
                 configuration,
@@ -649,14 +703,14 @@ impl EmulatorApp {
     }
 
     pub(crate) fn mount_player_disk(&mut self, drive: usize, id: Option<String>) {
-        let bytes = if let Some(id) = &id {
+        let (bytes, name) = if let Some(id) = &id {
             let Some(disk) = self.player.disks.iter().find(|disk| &disk.id == id) else {
                 self.file_error = Some("Disk is unavailable; return to setup".into());
                 return;
             };
-            disk.bytes.clone()
+            (disk.bytes.clone(), Some(disk.label.clone()))
         } else {
-            None
+            (None, None)
         };
         self.player.captured = false;
         self.player.busy = true;
@@ -665,6 +719,7 @@ impl EmulatorApp {
                 drive,
                 bytes,
                 disk_id: id.clone(),
+                name,
             },
             HostEffect::Player(PlayerEffect::Mount { drive, id }),
         );
@@ -680,14 +735,13 @@ impl EmulatorApp {
             Some(crate::host_commands::GameStartup {
                 game_id: game.manifest.id.clone(),
                 disks: game.manifest.mounted.each_ref().map(|id| {
-                    id.as_ref().map(|id| debugger::launch::StartupDisk {
-                        id: id.clone(),
-                        bytes: self
-                            .player
-                            .disks
-                            .iter()
-                            .find(|disk| &disk.id == id)
-                            .and_then(|disk| disk.bytes.clone()),
+                    id.as_ref().map(|id| {
+                        let disk = self.player.disks.iter().find(|disk| &disk.id == id);
+                        debugger::launch::StartupDisk {
+                            id: id.clone(),
+                            bytes: disk.and_then(|disk| disk.bytes.clone()),
+                            name: disk.map(|disk| disk.label.clone()),
+                        }
                     })
                 }),
             })
@@ -717,23 +771,6 @@ impl EmulatorApp {
             crate::layout::top_menu_bar::quick_save_slot(self, slot);
         } else {
             self.open_save_state_dialog();
-        }
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) fn load_player_quick(&mut self, slot: usize) {
-        if let Some(game) = self.player.active_game.clone() {
-            let slot_path = game.directory.join(format!("saves/slot-{slot}.txt"));
-            match std::fs::read_to_string(slot_path)
-                .map_err(|e| e.to_string())
-                .and_then(|name| {
-                    crate::game_library::relative_asset(&game.directory.join("saves"), name.trim())
-                }) {
-                Ok(path) => {
-                    self.request_player_launch(PendingLaunch::LibraryQuick { game, save: path })
-                }
-                Err(error) => self.file_error = Some(format!("Quick slot unavailable: {error}")),
-            }
         }
     }
 

@@ -35,9 +35,9 @@ pub const KICKSTART_ROM_SIZE: usize = 256 * 1024;
 const MASK_KICKSTART_ADDRESS: usize = KICKSTART_ROM_SIZE - 1;
 
 /// Maximum size of physical memory regions
-const CHIP_RAM_SIZE_512K: usize = 512 * 1024;
+pub const CHIP_RAM_SIZE_512K: usize = 512 * 1024;
 pub const DEFAULT_BOOT_SSP: u32 = CHIP_RAM_SIZE_512K as u32;
-const SLOW_RAM_SIZE: usize = 512 * 1024;
+pub const SLOW_RAM_SIZE: usize = 512 * 1024;
 pub const MAX_FAST_RAM_SIZE: usize = 4 * 1024 * 1024; // 4MB Fast RAM (Auto-Config expansion at $200000..$5FFFFF)
 
 /// A ROM image or saved ROM buffer has an unsupported length.
@@ -58,11 +58,35 @@ impl core::fmt::Display for KickstartSizeError {
 
 impl std::error::Error for KickstartSizeError {}
 
-fn validate_kickstart_size(actual: usize) -> Result<(), KickstartSizeError> {
+pub fn validate_kickstart_size(actual: usize) -> Result<(), KickstartSizeError> {
     if actual != KICKSTART_ROM_SIZE {
         return Err(KickstartSizeError { actual });
     }
     Ok(())
+}
+
+/// Fixed-size Kickstart bytes in a pure machine snapshot.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct KickstartBytes(#[serde(deserialize_with = "deserialize_kickstart_rom")] Vec<u8>);
+
+impl KickstartBytes {
+    pub fn from_image(bytes: Vec<u8>) -> Result<Self, KickstartSizeError> {
+        validate_kickstart_size(bytes.len())?;
+        Ok(Self(bytes))
+    }
+
+    pub fn as_slice(&self) -> &[u8] {
+        &self.0
+    }
+
+    /// Deterministic boot vectors for headless execution without a supplied ROM.
+    pub fn synthetic() -> Self {
+        let mut bytes = vec![0xFF; KICKSTART_ROM_SIZE];
+        bytes[..4].copy_from_slice(&DEFAULT_BOOT_SSP.to_be_bytes());
+        bytes[4..8].copy_from_slice(&0u32.to_be_bytes());
+        Self(bytes)
+    }
 }
 
 fn deserialize_kickstart_rom<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
@@ -76,7 +100,12 @@ where
 
 /// Cycle-exact Amiga 500 PhysicalMemory
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct PhysicalMemory {
+pub struct PhysicalMemory<
+    Chip = Vec<u8>,
+    Slow = Option<Vec<u8>>,
+    Fast = Option<Vec<u8>>,
+    Rom = KickstartBytes,
+> {
     /// Active hardware configuration
     pub config: A500Config,
 
@@ -85,25 +114,56 @@ pub struct PhysicalMemory {
     pub bank_map: [BankHandler; config::address_map::MEMORY_BANK_COUNT],
 
     /// Physical Chip RAM buffer (512 KB)
-    chip_ram: Vec<u8>,
+    chip_ram: Chip,
 
     chip_budget: config::chip_ram::ChipRamBudget,
 
     /// Slow / Pseudo-fast RAM at $C00000 (512 KB, trapdoor expansion)
-    pub slow_ram: Option<Vec<u8>>,
+    pub slow_ram: Slow,
 
     /// Fast RAM at $200000 (4 MB)
-    pub fast_ram: Option<Vec<u8>>,
+    pub fast_ram: Fast,
 
     /// Physical Kickstart ROM buffer (256 KB)
-    #[serde(deserialize_with = "deserialize_kickstart_rom")]
-    kickstart_rom: Vec<u8>,
+    kickstart_rom: Rom,
 
     /// Flag indicating whether Agnus/DMA currently blocks the Chip RAM bus
     pub chip_ram_blocked: bool,
 
     /// Low-memory boot overlay (_OVL) active flag
     pub low_memory_overlay: bool,
+}
+
+impl<Chip, Slow, Fast, Rom> PhysicalMemory<Chip, Slow, Fast, Rom> {
+    /// Converts snapshot storage representations without altering bank routing or timing.
+    pub fn map_storage<C, S, F, R>(
+        self,
+        chip: impl FnOnce(Chip) -> C,
+        slow: impl FnOnce(Slow) -> S,
+        fast: impl FnOnce(Fast) -> F,
+        rom: impl FnOnce(Rom) -> R,
+    ) -> PhysicalMemory<C, S, F, R> {
+        PhysicalMemory {
+            config: self.config,
+            bank_map: self.bank_map,
+            chip_ram: chip(self.chip_ram),
+            chip_budget: self.chip_budget,
+            slow_ram: slow(self.slow_ram),
+            fast_ram: fast(self.fast_ram),
+            kickstart_rom: rom(self.kickstart_rom),
+            chip_ram_blocked: self.chip_ram_blocked,
+            low_memory_overlay: self.low_memory_overlay,
+        }
+    }
+
+    pub fn storage(&self) -> (&Chip, &Slow, &Fast, &Rom) {
+        (
+            &self.chip_ram,
+            &self.slow_ram,
+            &self.fast_ram,
+            &self.kickstart_rom,
+        )
+    }
 }
 
 impl Default for PhysicalMemory {
@@ -133,13 +193,6 @@ impl PhysicalMemory {
         };
         let bank_map = presets::build_bank_map(&config);
 
-        let mut kickstart_rom = vec![0xFF; KICKSTART_ROM_SIZE];
-        // Synthetic default boot vectors for unpopulated Kickstart ROM mode (headless testing / developer startup):
-        // Vector 0 ($000000): Default SSP = $00080000 (top of standard 512KB Chip RAM)
-        kickstart_rom[0..4].copy_from_slice(&DEFAULT_BOOT_SSP.to_be_bytes());
-        // Vector 1 ($000004): Default PC = $00000000 (base of Chip RAM / synthetic test code)
-        kickstart_rom[4..8].copy_from_slice(&0x00000000u32.to_be_bytes());
-
         let mut bus = Self {
             config,
             bank_map,
@@ -147,7 +200,7 @@ impl PhysicalMemory {
             chip_budget: config::chip_ram::ChipRamBudget::default(),
             slow_ram,
             fast_ram,
-            kickstart_rom,
+            kickstart_rom: KickstartBytes::synthetic(),
             chip_ram_blocked: false,
             low_memory_overlay: true,
         };
@@ -226,7 +279,7 @@ impl PhysicalMemory {
 
     /// Read-only view of the fixed-size Kickstart image.
     pub fn kickstart_rom(&self) -> &[u8] {
-        &self.kickstart_rom
+        &self.kickstart_rom.0
     }
 
     /// Side-effect-free byte read for debugger inspection and test result assertions

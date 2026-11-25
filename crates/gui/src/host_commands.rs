@@ -25,6 +25,13 @@ pub struct GameStartup {
     pub disks: [Option<debugger::launch::StartupDisk>; config::FLOPPY_DRIVE_COUNT],
 }
 
+#[derive(Debug, Default)]
+pub struct RestoreMedia {
+    pub roms: Vec<debugger::SourceImage>,
+    pub disks: Vec<(String, debugger::SourceImage)>,
+    pub remap_manual_ids: bool,
+}
+
 #[derive(Debug)]
 pub enum HostCommand {
     Run,
@@ -63,23 +70,28 @@ pub enum HostCommand {
     Launch {
         setup: debugger::launch::MachineSetup,
         association: debugger::SaveAssociation,
+        rom_name: Option<String>,
+        disk_names: [Option<String>; config::FLOPPY_DRIVE_COUNT],
     },
     MountDisk {
         drive: usize,
         bytes: Option<Vec<u8>>,
         disk_id: Option<String>,
+        name: Option<String>,
     },
-    LoadRom(Vec<u8>),
+    LoadRom(debugger::SourceImage),
     ReconfigurePorts([debugger::launch::DeviceKind; 2]),
     SaveSnapshot,
     RestorePlayer {
         json: String,
+        media: RestoreMedia,
         game_id: Option<String>,
         ports: [debugger::launch::DeviceKind; 2],
         resume: bool,
     },
     LoadPlayerQuick {
         json: String,
+        media: RestoreMedia,
         game_id: String,
         ports: [debugger::launch::DeviceKind; 2],
     },
@@ -103,6 +115,8 @@ pub struct HostRequest {
 /// Targeted owner reads that can also run during playback.
 #[derive(Debug)]
 pub enum HostObservation {
+    #[cfg(not(target_arch = "wasm32"))]
+    MachineState,
     Input {
         key: Option<u8>,
     },
@@ -154,6 +168,8 @@ pub struct HostStatus {
 
 #[derive(Debug)]
 pub enum HostValue {
+    #[cfg(not(target_arch = "wasm32"))]
+    MachineState(Box<debugger::A500State>),
     Done,
     Input(InputObservation),
     Execution {

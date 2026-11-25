@@ -370,19 +370,34 @@ impl A500Machine {
 
     /// Captures a pure machine snapshot without host I/O or preview encoding
     pub fn save_state(&self) -> A500State {
+        self.capture_with_storage(
+            self.physical_memory.clone(),
+            self.denise.clone(),
+            self.floppy.clone(),
+        )
+    }
+
+    /// Captures the motherboard and unaffected components alongside the
+    /// supplied storage representations.
+    pub fn capture_with_storage<M, V, F>(
+        &self,
+        physical_memory: M,
+        denise: V,
+        floppy: F,
+    ) -> A500State<M, V, F> {
         A500State {
             keyboard_reset_asserted: self.keyboard_reset_asserted,
             disk_activity_generation: self.disk_activity_generation,
             cck: self.cck,
             config: self.config.clone(),
             cpu: self.cpu.state.clone(),
-            physical_memory: self.physical_memory.clone(),
+            physical_memory,
             agnus: self.agnus.clone(),
-            denise: self.denise.clone(),
+            denise,
             paula: self.paula.clone(),
             cia_a: self.cia_a.clone(),
             cia_b: self.cia_b.clone(),
-            floppy: self.floppy.clone(),
+            floppy,
             keyboard: self.keyboard.clone(),
             game_ports: self.game_ports.clone(),
         }
@@ -390,29 +405,25 @@ impl A500Machine {
 
     /// Restores a complete machine state snapshot, adopting configuration and memory
     pub fn load_state(&mut self, state: &A500State) {
-        // 2. Restore Machine Configuration from Save State
-        self.config = state.config.clone();
+        self.load_owned_state(state.clone());
+    }
 
-        // 3. Restore Physical Memory (unconditionally restoring RAM and Kickstart ROM)
-        self.physical_memory = state.physical_memory.clone();
-
-        // 4. Restore Master Monotonic Color Clock counter
+    /// Installs an owned full snapshot without copying prepared media.
+    pub fn load_owned_state(&mut self, state: A500State) {
+        self.config = state.config;
+        self.physical_memory = state.physical_memory;
         self.cck = state.cck;
-
-        // 5. Restore CPU state and re-hydrate static micro-step pointers
-        self.cpu.restore_state(state.cpu.clone());
-
-        // 6. Restore Custom Chips & Peripherals
+        self.cpu.restore_state(state.cpu);
         // Battery time and register latches remain independent of snapshots.
         self.rtc.model = self.config.rtc();
-        self.agnus = state.agnus.clone();
-        self.denise = state.denise.clone();
-        self.paula = state.paula.clone();
-        self.cia_a = state.cia_a.clone();
-        self.cia_b = state.cia_b.clone();
-        self.floppy = state.floppy.clone();
-        self.keyboard = state.keyboard.clone();
-        self.game_ports = state.game_ports.clone();
+        self.agnus = state.agnus;
+        self.denise = state.denise;
+        self.paula = state.paula;
+        self.cia_a = state.cia_a;
+        self.cia_b = state.cia_b;
+        self.floppy = state.floppy;
+        self.keyboard = state.keyboard;
+        self.game_ports = state.game_ports;
         self.keyboard_reset_asserted = state.keyboard_reset_asserted;
         self.disk_activity_generation = state.disk_activity_generation;
 

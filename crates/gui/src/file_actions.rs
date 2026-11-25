@@ -65,7 +65,10 @@ pub(crate) enum FileCompletion {
         #[cfg(target_arch = "wasm32")]
         handle: wasm_bindgen::JsValue,
     },
-    State(String),
+    State {
+        message: String,
+        verified_rom: bool,
+    },
     #[cfg(not(target_arch = "wasm32"))]
     Save(std::path::PathBuf),
     #[cfg(target_arch = "wasm32")]
@@ -140,12 +143,72 @@ impl EmulatorApp {
                 .validate_association(&saved.header.association)?;
         }
         self.validate_current_input()?;
+        let media = self.file_import_media(&saved)?;
         Ok(HostCommand::RestorePlayer {
             json,
+            media,
             game_id: saved.header.association.game_id,
             ports: self.current_control_ports(),
             resume: false,
         })
+    }
+
+    fn file_import_media(
+        &self,
+        saved: &debugger::SaveState,
+    ) -> Result<crate::host_commands::RestoreMedia, String> {
+        let manual = saved.header.association.game_id.is_none();
+        let media = self.player.restore_media(
+            self.player.setup_disks.iter().chain(&self.player.disks),
+            manual,
+        );
+        #[cfg(not(target_arch = "wasm32"))]
+        let media = {
+            let mut media = media;
+            let game = self.player.active_game.as_ref().or_else(|| {
+                self.player.library.games.iter().find(|game| {
+                    Some(game.manifest.id.as_str()) == saved.header.association.game_id.as_deref()
+                })
+            });
+            if let Some(game) = game {
+                game.manifest
+                    .validate_association(&saved.header.association)?;
+                for disk in &game.manifest.disks {
+                    let path = disk.asset_path(&game.directory)?;
+                    if let Ok(bytes) = std::fs::read(path) {
+                        media.disks.push((
+                            disk.id.clone(),
+                            debugger::SourceImage {
+                                name: Some(disk.filename.clone()),
+                                bytes,
+                            },
+                        ));
+                    }
+                }
+            }
+            let root = if self.player.active_game.is_some() {
+                self.player.active_library_root.as_deref()
+            } else {
+                self.player.library_root.as_deref()
+            };
+            let configuration = game
+                .and_then(|game| {
+                    self.player
+                        .catalog
+                        .configurations
+                        .iter()
+                        .find(|configuration| configuration.id == game.manifest.configuration)
+                })
+                .or_else(|| self.current_input_configuration());
+            if let Some(rom) = root
+                .zip(configuration)
+                .and_then(|(root, config)| self.read_save_rom(root, config))
+            {
+                media.roms.push(rom);
+            }
+            media
+        };
+        Ok(media)
     }
 
     pub(crate) fn validate_current_input(&self) -> Result<(), String> {
@@ -205,11 +268,14 @@ impl EmulatorApp {
         if let Ok(HostValue::PlayerRestored(association)) = &value {
             for id in association.mounted.iter().flatten() {
                 if !self.player.disks.iter().any(|disk| &disk.id == id) {
-                    self.player.disks.push(crate::player::SessionDisk {
-                        id: id.clone(),
-                        label: id.clone(),
-                        bytes: None,
-                    });
+                    let selected = self.player.setup_disks.iter().find(|disk| &disk.id == id);
+                    self.player.disks.push(selected.cloned().unwrap_or_else(|| {
+                        crate::player::SessionDisk {
+                            id: id.clone(),
+                            label: id.clone(),
+                            bytes: None,
+                        }
+                    }));
                 }
             }
             self.player.mounted = association.mounted.clone();
@@ -236,11 +302,19 @@ impl EmulatorApp {
                     TOAST_DURATION_FRAMES,
                 ));
             }
-            FileCompletion::State(message) => {
+            FileCompletion::State {
+                message,
+                verified_rom,
+            } => {
+                for disk in &self.player.setup_disks {
+                    if !self.player.disks.iter().any(|entry| entry.id == disk.id) {
+                        self.player.disks.push(disk.clone());
+                    }
+                }
                 if self.player.active_configuration.is_none() {
                     self.player.activate_selected_configuration();
                 }
-                self.state_loaded(message);
+                self.state_loaded(message, verified_rom);
             }
             FileCompletion::QuickSave(slot) => {
                 self.toast_message = Some((
@@ -307,9 +381,10 @@ impl EmulatorApp {
                     };
                     self.host.queue_effect(
                         command,
-                        HostEffect::File(FileCompletion::State(format!(
-                            "State loaded from {name}"
-                        ))),
+                        HostEffect::File(FileCompletion::State {
+                            message: format!("State loaded from {name}"),
+                            verified_rom: true,
+                        }),
                     )
                 }
                 Err(error) => self.file_error = Some(format!("Could not load {name}: {error}")),
@@ -317,9 +392,14 @@ impl EmulatorApp {
         }
     }
 
-    pub(crate) fn state_loaded(&mut self, message: String) {
+    fn state_loaded(&mut self, message: String, verified_rom: bool) {
         self.inspection.ready = false;
-        self.loaded_rom_name = Some("from saved state".into());
+        let rom_label = if verified_rom {
+            "verified for saved state"
+        } else {
+            "from saved state"
+        };
+        self.loaded_rom_name = Some(rom_label.into());
         self.file_error = None;
         self.disassembly_view_addr = None;
         self.toast_message = Some((message, TOAST_DURATION_FRAMES));
@@ -427,10 +507,10 @@ impl EmulatorApp {
                 };
                 self.host.queue_effect(
                     command,
-                    HostEffect::File(FileCompletion::State(format!(
-                        "State loaded from {}",
-                        path.display()
-                    ))),
+                    HostEffect::File(FileCompletion::State {
+                        message: format!("State loaded from {}", path.display()),
+                        verified_rom: true,
+                    }),
                 )
             }
             Err(error) => {

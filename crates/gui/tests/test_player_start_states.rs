@@ -308,7 +308,7 @@ fn promotion_copies_ordinary_progress_and_current_quicksave_then_loads_the_named
     click(&mut h, "Load Level 1");
     confirm_session_replacement(&mut h);
     common::wait_harness(&mut h, |app| {
-        app.host.status.generation > generation && app.host.status.cck > quick.state.cck
+        app.host.status.generation > generation && app.host.status.cck > quick.cck()
     });
     assert!(h.state().host.status.running);
     click(&mut h, "Pause");

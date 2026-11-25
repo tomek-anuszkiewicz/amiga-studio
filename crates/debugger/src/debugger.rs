@@ -25,7 +25,8 @@ pub use disassembler::{
 pub use loader::{inject_binary, DEFAULT_TARGET_ADDRESS};
 pub use machine_loop::A500State;
 pub use save_state::{
-    SaveAssociation, SaveState, SaveStateError, SaveStateHeader, SAVE_STATE_VERSION,
+    MediaSources, SaveAssociation, SaveState, SaveStateError, SaveStateHeader, SourceImage,
+    SAVE_STATE_VERSION,
 };
 pub use session::DebuggerSession;
 pub use stepping::{Debugger, StepMode};

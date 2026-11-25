@@ -261,6 +261,7 @@ fn battery_offset_persists_separately_and_ui_refreshes_host_utc() {
     assert!(common::command(
         &mut restarted,
         HostCommand::RestorePlayer {
+            media: gui::host_commands::RestoreMedia::default(),
             json: snapshot,
             game_id: None,
             ports: [

@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "general"
 status: "active"
 created: 2026-08-31
-updated: 2026-11-23
+updated: 2026-11-25
 related: ["[General Architecture.md](../General%20Architecture.md)", "[MemoryBus.md](../MemoryBus.md)", "[CPU Motorola M68000.md](../CPU%20Motorola%20M68000.md)", "[Machine Loop.md](../Machine%20Loop.md)", "[Agnus.md](../Agnus.md)", "[RTC.md](../RTC.md)"]
 tracked_paths:
   - "crates/machine_loop/src/state.rs"
@@ -42,13 +42,12 @@ the GUI reads and writes those documents. The file content and version
 validation rules still apply after the removal of direct file helpers.
 [frontend](GUI.md#input-and-output)
 
-The loader checks that the file uses schema version 15 before restoring it.
-The envelope contains `header` and a boxed `state` value, which keeps large
-serialized payloads off the call stack. The JSON holds an ordinary state
-object. Earlier layouts have no compatibility parser. Frontends and the
-debugger use the save_state crate for persistence. In-memory quick slots
-keep only the machine value. The schema changes and user-data preservation
-rules are defined in the [internal migration contract](../../../../.agents/references/internal-migrations.md).
+The JSON envelope has a `header` and a `state` object. The loader checks
+schema version 16 before interpreting the state layout, regardless of member
+order. Earlier files remain intact and report an unsupported version. Frontends
+and the debugger use the same file codec. In-memory slots contain a complete
+machine snapshot and carry the prepared drives and actual ROM bytes with them.
+[Internal migration contract](../../../../.agents/references/internal-migrations.md)
 
 The state uses access timestamps in place of CPU admission countdowns
 and shared Chip RAM transfer descriptions. It retains the active CPU sequence
@@ -58,10 +57,7 @@ another transfer opportunity. Pending keyboard releases survive a full
 type-ahead queue, preserving release delivery through another capture and exact
 restoration.
 
-The snapshot records which drives are attached and the player association.
-It embeds the current contents of mounted disks, including guest writes. The
-frontend can restore those disks without the original ADF files.
-The chipset activity observations preserve drive attribution across the
+The snapshot records which drives are attached. The chipset activity observations preserve drive attribution across the
 captured control boundary, so they still identify which drives a transfer
 belonged to. When the frontend restores the machine, it starts drive-activity
 feedback from a new baseline. The snapshot omits the wall-clock hold times
@@ -120,20 +116,27 @@ controls. [RTC](../RTC.md)
 
 ## Player progress
 
-Save files carry the actual host creation time and a PNG preview, with optional
-game ID and four stable mounted-disk IDs. ROM and media bytes stay embedded in
-the machine. Host handles and library paths stay outside machine state.
+Player save files carry the host creation time and a PNG preview, with an
+optional game ID and four optional mounted disk IDs. Catalogs check the complete
+document and show its preview while the source media are offline.
 Desktop games have durable save catalogs and per-game quick slots. Manual
-browser mode retains file import/export and session slots.
+browser mode supports file import and export alongside in-memory slots.
 
-A save file contains the disks mounted when the player saves. Opening it as a
-new session starts with those disks and any available source ADFs. During a
-session, a quick load restores the mounted disks from its slot. The player
-keeps disks absent from the slot, including disks displaced from a drive by
-the load. When an existing copy uniquely matches a restored copy, the slot's
-contents take precedence. The drive assignment identifies independent copies
-with the same disk ID when placement resolves the match. Loading a slot from an
-earlier manual session starts with that slot's mounted disks.
+A file records the disks inserted at capture, including guest changes. To
+open it, the frontend needs the exact source Kickstart and each inserted ADF.
+The files can move or have new names. Desktop can resolve the stable IDs in
+the opened game library and the Kickstart paths in authorized configurations.
+The frontend also accepts matching images already supplied in the session or
+selected by the user. On a fresh browser page, select the images in **Manual
+setup**, choose **Return to session**, then choose **Load** before **Start**.
+The frontend uses content matches to bind mounted drives to the current page's
+selections.
+
+On a quick load within a session the player keeps available disks absent from
+the slot, including disks displaced from a drive by the load. When an existing
+copy uniquely matches a restored copy, the slot's contents take precedence.
+The drive assignment identifies independent copies with the same disk ID when
+placement resolves the match.
 
 Each native library game owns a collection of named start states outside its
 `saves/` directory. Each manifest entry has a stable file identity and a
@@ -171,21 +174,36 @@ format and remaining work are listed under [debugger work](../../../../ROADMAP.m
 
 ## 4. File loading and restoration
 
-The save_state crate decodes the envelope and rejects an unsupported version.
-When decoding physical memory, it also rejects a Kickstart buffer of any
-length other than exactly 256 KiB (262144 bytes). Both checks must pass before
-the machine is restored.
+The file codec stores the preview PNG, each populated RAM bank and the full
+Denise frame storage as individual strings in standard padded Base64. Optional
+RAM banks use explicit nulls. The frame stores ARGB pixels as little-endian
+32-bit words in row order, including the backing rows outside the visible
+NTSC image. The reader checks bank lengths and presence against the saved
+hardware and verifies the frame geometry. The preview remains an opaque PNG
+payload for the frontend.
 
-The frontend then passes the pure `state` value to `A500Machine::load_state`.
-The machine adopts the saved configuration, RAM/ROM, CPU micro-execution
-state, chip values, receiver-owned incoming inputs and board reset state.
-There is no routing during loading. The core restores input and device state
-exactly. The frontend applies its release and attachment policy before guest
-execution resumes. Capturing a state leaves the running machine's inputs as
-they are. Current files embed physical memory, including ROM. Alternate ROM
-reference modes and differential rewind remain proposals.
+The ROM and each inserted disk store a SHA-256 digest of the exact source
+bytes in lowercase hexadecimal. They can carry a display name. The frontend
+uses its own authorized media sources and compares the digest after checking
+the image size. A Kickstart image has 262,144 bytes. A standard ADF has
+901,120 bytes. The built-in debugger ROM can be regenerated from its
+deterministic boot vectors and verified against its saved digest. Exporting
+a patched ROM requires a supplied source matching its current bytes.
 
----
+A disk reference holds only tracks changed since ADF encoding, keyed by their
+track indices. Each replacement is one Base64 string. Tracks with only
+boundary pulses contain 12,500 packed bytes. Tracks with recorded pulse
+phases contain a bitmap of recorded blocks and the phase masks for the whole
+track. The drive rebuilds all its tracks from the ADF before applying the
+replacements. An attached empty drive and a disconnected drive both carry
+a null disk reference and retain their attachment state. [Floppy](../Floppy.md)
+
+The frontend validates the file, required images and committed controls before
+it replaces the live machine and publishes the updated input generation.
+Restoration adopts the saved configuration, RAM, ROM, CPU micro-execution
+state, chip values, pending deliveries and drive mechanics. It resumes from
+the saved CCK without a boot or an insertion pulse. If a source is missing
+or its contents differ, the current machine and its running state stay intact.
 
 ## 5. Reference Documentation & Upstream Ground Truth
 

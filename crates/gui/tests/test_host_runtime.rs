@@ -609,7 +609,13 @@ fn targeted_owner_reads_preserve_machine_state_and_reject_obsolete_generations()
     let Ok(HostValue::Snapshot(json)) = saved.value else {
         panic!("Missing unchanged machine state");
     };
-    assert_eq!(*debugger::SaveState::from_json(&json).unwrap().state, exact);
+    assert_eq!(
+        *debugger::SaveState::from_json(&json)
+            .unwrap()
+            .restore(&debugger::MediaSources::default())
+            .unwrap(),
+        exact
+    );
 
     let reset = owner.execute(request(6, generation, HostCommand::Reset));
     assert!(reset.value.is_ok());
@@ -651,7 +657,9 @@ fn targeted_owner_reads_preserve_machine_state_and_reject_obsolete_generations()
         10,
         reset.status.generation,
         HostCommand::RestorePlayer {
-            json: debugger::SaveState::capture(&checkpoint.machine)
+            media: gui::host_commands::RestoreMedia::default(),
+            json: debugger::SaveState::capture(&checkpoint.machine, checkpoint.file_sources())
+                .unwrap()
                 .to_json()
                 .unwrap(),
             game_id: None,
@@ -743,9 +751,15 @@ fn paused_step_and_invalid_load_preserve_owner_state() {
     assert_eq!(cpu.instruction_pc(), 0x1002);
     assert_eq!(*cpu, reference.machine.cpu.state);
     let before = host.status();
-    assert!(wait_reply(&mut host, HostCommand::LoadRom(vec![0; 1]))
-        .value
-        .is_err());
+    assert!(wait_reply(
+        &mut host,
+        HostCommand::LoadRom(debugger::SourceImage {
+            name: None,
+            bytes: vec![0; 1]
+        })
+    )
+    .value
+    .is_err());
     assert_eq!(host.status().generation, before.generation);
     assert_eq!(host.status().cck, before.cck);
 }
@@ -929,7 +943,10 @@ fn invalid_rom_does_not_mutate_any_running_machine_state_at_the_command_boundary
     let invalid = owner.execute(HostRequest {
         id: 3,
         generation: 1,
-        command: HostCommand::LoadRom(vec![0; 1024]),
+        command: HostCommand::LoadRom(debugger::SourceImage {
+            name: None,
+            bytes: vec![0; 1024],
+        }),
     });
     assert!(invalid.value.is_err());
     assert!(invalid.status.running);
@@ -1202,7 +1219,7 @@ fn runtime_input_capture_pause_reset_and_load_release_obsolete_controls() {
     let held = snapshot(&mut host);
     // Capturing while held is observational; loading must release this actual
     // saved contact state rather than rely on a neutral fixture.
-    assert_eq!(held.state.game_ports.sample_ciaa_port_a_inputs() & 0x40, 0);
+    assert_eq!(held.game_ports().sample_ciaa_port_a_inputs() & 0x40, 0);
     assert_eq!(input_contacts(&mut host).ciaa_port_a_inputs & 0x40, 0);
     capture(false);
     let before = host.status().input_deliveries;
@@ -1220,6 +1237,7 @@ fn runtime_input_capture_pause_reset_and_load_release_obsolete_controls() {
     for command in [
         HostCommand::ResetWarm,
         HostCommand::RestorePlayer {
+            media: gui::host_commands::RestoreMedia::default(),
             json: held.to_json().unwrap(),
             game_id: None,
             ports: [
@@ -1338,10 +1356,11 @@ fn running_restore_and_keyboard_reset_invalidate_cached_controller_contacts() {
             wait_status(&mut host, |status| status.generation != generation);
         } else {
             let neutral = neutral.unwrap();
-            let ports = debugger::launch::state_port_kinds(&neutral.state.game_ports);
+            let ports = debugger::launch::state_port_kinds(neutral.game_ports());
             assert!(wait_reply(
                 &mut host,
                 HostCommand::RestorePlayer {
+                    media: gui::host_commands::RestoreMedia::default(),
                     json: neutral.to_json().unwrap(),
                     game_id: None,
                     ports,

@@ -396,7 +396,7 @@ pub(crate) fn scan_saves(
             }),
             Err(error) => result
                 .unavailable
-                .push(format!("{}: {error}", entry.file_name().to_string_lossy())),
+                .push(format!("{}: {error}", path.display())),
         }
     }
     result.entries.sort_by(|a, b| {

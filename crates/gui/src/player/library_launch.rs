@@ -31,6 +31,22 @@ impl EmulatorApp {
         self.open_library_game(game, save, normal_boot, false);
     }
 
+    pub(crate) fn load_player_quick(&mut self, slot: usize) {
+        if let Some(game) = self.player.active_game.clone() {
+            let slot_path = game.directory.join(format!("saves/slot-{slot}.txt"));
+            match std::fs::read_to_string(slot_path)
+                .map_err(|e| e.to_string())
+                .and_then(|name| {
+                    crate::game_library::relative_asset(&game.directory.join("saves"), name.trim())
+                }) {
+                Ok(path) => {
+                    self.request_player_launch(PendingLaunch::LibraryQuick { game, save: path })
+                }
+                Err(error) => self.file_error = Some(format!("Quick slot unavailable: {error}")),
+            }
+        }
+    }
+
     pub(super) fn open_library_game(
         &mut self,
         game: crate::game_library::LibraryGame,
@@ -43,33 +59,33 @@ impl EmulatorApp {
         }
         let prepared = (|| {
             game.manifest.validate()?;
-            let (configuration, mappings, library_root) =
-                if self.continuing_game(&game, save.is_some(), normal_boot) {
-                    (
-                        self.player
-                            .active_configuration
-                            .as_ref()
-                            .ok_or("The active game has no committed controls")?,
-                        &self.player.active_mappings,
-                        &self.player.active_library_root,
-                    )
-                } else {
-                    if !self.player.library_available() || !self.player.library_contains(&game) {
-                        return Err(
-                            "Open this game's library in Configurations before starting it".into(),
-                        );
-                    }
-                    (
-                        self.player
-                            .catalog
-                            .configurations
-                            .iter()
-                            .find(|configuration| configuration.id == game.manifest.configuration)
-                            .ok_or("Configuration missing")?,
-                        &self.player.catalog.mappings,
-                        &self.player.library_root,
-                    )
-                };
+            let continuing = self.continuing_game(&game, save.is_some(), normal_boot);
+            let (configuration, mappings, library_root) = if continuing {
+                (
+                    self.player
+                        .active_configuration
+                        .as_ref()
+                        .ok_or("The active game has no committed controls")?,
+                    &self.player.active_mappings,
+                    &self.player.active_library_root,
+                )
+            } else {
+                if !self.player.library_available() || !self.player.library_contains(&game) {
+                    return Err(
+                        "Open this game's library in Configurations before starting it".into(),
+                    );
+                }
+                (
+                    self.player
+                        .catalog
+                        .configurations
+                        .iter()
+                        .find(|configuration| configuration.id == game.manifest.configuration)
+                        .ok_or("Configuration missing")?,
+                    &self.player.catalog.mappings,
+                    &self.player.library_root,
+                )
+            };
             configuration.validate(mappings)?;
             self.host_sources_available(&configuration.controls)?;
             let state_path = save.or_else(|| {
@@ -82,6 +98,18 @@ impl EmulatorApp {
                         .map(|p| game.directory.join(p))
                 }
             });
+            let save_document = state_path
+                .map(|path| {
+                    let json = std::fs::read_to_string(&path)
+                        .map_err(|error| format!("{}: {error}", path.display()))?;
+                    let saved = debugger::SaveState::from_json(&json)
+                        .map_err(|error| format!("{}: {error}", path.display()))?;
+                    game.manifest
+                        .validate_association(&saved.header.association)?;
+                    Ok::<_, String>(json)
+                })
+                .transpose()?;
+            let current_session_disks = self.player.disks.iter().filter(|_| continuing);
             let disks = game
                 .manifest
                 .disks
@@ -100,21 +128,48 @@ impl EmulatorApp {
                 mounted: game.manifest.mounted.clone(),
             };
 
-            let command = if let Some(path) = state_path {
-                let json = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
-                let saved = debugger::SaveState::from_json(&json).map_err(|e| e.to_string())?;
-                game.manifest
-                    .validate_association(&saved.header.association)?;
+            let command = if let Some(json) = save_document {
+                // Old session buffers can satisfy a reference while the disk
+                // list shows the current availability of its source files.
+                let mut media = self.player.restore_media(
+                    disks
+                        .iter()
+                        .chain(current_session_disks)
+                        .chain(&self.player.setup_disks),
+                    false,
+                );
+                if let Some(root) = library_root.as_deref() {
+                    // The active profile supplies committed controls. The current
+                    // library profile can supply a relocated ROM for that session.
+                    let current = self
+                        .player
+                        .library_root
+                        .as_deref()
+                        .filter(|path| *path == root)
+                        .and_then(|_| {
+                            self.player
+                                .catalog
+                                .configurations
+                                .iter()
+                                .find(|entry| entry.id == game.manifest.configuration)
+                        });
+                    if let Some(source) = self.read_save_rom(root, current.unwrap_or(configuration))
+                    {
+                        media.roms.push(source);
+                    }
+                }
                 let ports = configuration.controls.ports.each_ref().map(|p| p.device);
                 if quick_load {
                     HostCommand::LoadPlayerQuick {
                         json,
+                        media,
                         game_id: game.manifest.id.clone(),
                         ports,
                     }
                 } else {
                     HostCommand::RestorePlayer {
                         json,
+                        media,
                         game_id: Some(game.manifest.id.clone()),
                         ports,
                         resume: true,
@@ -146,10 +201,15 @@ impl EmulatorApp {
                         media[drive] = Some(bytes.clone());
                     }
                 }
-                let rom =
-                    std::fs::read(self.player.native_rom_path(configuration)?).map_err(|e| {
-                        format!("Select a readable Kickstart ROM in configuration: {e}")
-                    })?;
+                let path = self.player.native_rom_path(configuration)?;
+                let rom = std::fs::read(&path).map_err(|e| {
+                    format!("Select a readable Kickstart ROM in configuration: {e}")
+                })?;
+                let disk_names = association.mounted.each_ref().map(|id| {
+                    id.as_ref()
+                        .and_then(|id| disks.iter().find(|disk| &disk.id == id))
+                        .map(|disk| disk.label.clone())
+                });
                 HostCommand::Launch {
                     setup: debugger::launch::MachineSetup {
                         config: config::A500Config::from_preset(
@@ -162,6 +222,10 @@ impl EmulatorApp {
                         disks: media,
                     },
                     association: association.clone(),
+                    rom_name: path
+                        .file_name()
+                        .map(|name| name.to_string_lossy().into_owned()),
+                    disk_names,
                 }
             };
             Ok((
@@ -193,6 +257,20 @@ impl EmulatorApp {
                 self.player.initial_error = true;
             }
         }
+    }
+
+    pub(crate) fn read_save_rom(
+        &self,
+        root: &std::path::Path,
+        configuration: &crate::player_config::NamedConfiguration,
+    ) -> Option<debugger::SourceImage> {
+        let path = crate::library_catalog::rom_path(root, &configuration.launch.rom).ok()?;
+        Some(debugger::SourceImage {
+            name: path
+                .file_name()
+                .map(|name| name.to_string_lossy().into_owned()),
+            bytes: std::fs::read(&path).ok()?,
+        })
     }
 
     fn continuing_game(

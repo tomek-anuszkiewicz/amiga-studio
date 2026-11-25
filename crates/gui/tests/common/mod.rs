@@ -300,9 +300,27 @@ pub fn snapshot_json(app: &mut EmulatorApp) -> String {
 }
 
 pub fn snapshot(app: &mut EmulatorApp) -> debugger::A500State {
-    *debugger::SaveState::from_json(&snapshot_json(app))
-        .unwrap()
-        .state
+    let reply = command(
+        app,
+        HostCommand::Observe(gui::host_commands::HostObservation::MachineState),
+    );
+    let Ok(HostValue::MachineState(state)) = reply.value else {
+        panic!("Missing machine snapshot");
+    };
+    *state
+}
+
+pub struct ObservedSave {
+    pub header: debugger::SaveStateHeader,
+    pub state: Box<debugger::A500State>,
+}
+
+pub fn observe_save(app: &mut EmulatorApp) -> ObservedSave {
+    let saved = debugger::SaveState::from_json(&snapshot_json(app)).unwrap();
+    ObservedSave {
+        header: saved.header,
+        state: Box::new(snapshot(app)),
+    }
 }
 
 pub fn wait_harness(harness: &mut Harness<'_, EmulatorApp>, ready: impl Fn(&EmulatorApp) -> bool) {

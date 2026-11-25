@@ -269,6 +269,7 @@ fn breakpoint_refreshes_the_first_stopped_frame_and_reset_load_invalidate_data()
     common::command(
         &mut app,
         HostCommand::RestorePlayer {
+            media: gui::host_commands::RestoreMedia::default(),
             json: saved,
             game_id: None,
             ports: [

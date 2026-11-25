@@ -392,6 +392,9 @@ impl crate::EmulatorApp {
             self.render_saved_progress(ctx);
             self.render_start_state_name(ctx);
         }
+        self.render_player_confirmation(ctx);
+        #[cfg(not(target_arch = "wasm32"))]
+        self.render_missing_configuration(ctx);
         crate::layout::file_dialogs::render(self, ctx);
         #[cfg(not(target_arch = "wasm32"))]
         crate::window_keyboard::with_artwork_paste(ctx, |paste| {

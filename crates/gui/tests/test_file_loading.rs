@@ -48,22 +48,44 @@ fn invalid_rom_displays_a_dismissible_error_and_can_be_retried() {
 }
 
 #[test]
-fn invalid_snapshot_rom_displays_a_dismissible_error_without_restoring() {
+fn invalid_snapshot_sources_display_a_dismissible_error_without_restoring() {
     let path = fixture_path("state.json");
     let mut app = EmulatorApp::default();
-    let mut json = common::snapshot_json(&mut app);
-    let before = *debugger::SaveState::from_json(&json).unwrap().state;
-    let key = json.find("\"kickstart_rom\"").unwrap();
-    let start = key + json[key..].find('[').unwrap() + 1;
-    let end = start + json[start..].find(']').unwrap();
-    let doubled = format!("{},{}", &json[start..end], &json[start..end]);
-    json.replace_range(start..end, &doubled);
-    std::fs::write(&path, json).unwrap();
+    let before = common::snapshot(&mut app);
+    let mut source = gui::DebuggerSession::new();
+    let rom = vec![0x55; physical_memory::KICKSTART_ROM_SIZE];
+    source.load_rom(&rom).unwrap();
+    source.machine.cpu.state.set_d_long(7, 0xcafe_beef);
+    let json = source.save_state_to_json().unwrap();
+    std::fs::write(&path, &json).unwrap();
+    let ctx = egui::Context::default();
+    let generation = app.host.status.generation;
+    for size in [0, 262143, 524288, 262144] {
+        app.player.rom = Some(vec![0x11; size]);
+        app.load_state_file(&path);
+        common::settle(&mut app, &ctx);
+        assert_eq!(common::snapshot(&mut app), before);
+        assert_eq!(app.host.status.generation, generation);
+        let error = app.file_error.take().unwrap();
+        assert!(error.contains("Kickstart ROM"), "{error}");
+        if size == 262144 {
+            assert!(error.contains("content does not match"), "{error}");
+        } else {
+            assert!(error.contains("262144 bytes"), "{error}");
+            assert!(error.contains(&format!("received {size} bytes")), "{error}");
+        }
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), json);
+    }
+
+    app.player.rom = Some(rom);
+    let mut broken: serde_json::Value = serde_json::from_str(&json).unwrap();
+    broken["state"]["physical_memory"]["kickstart_rom"]["sha256"] = "bad digest".into();
+    std::fs::write(&path, broken.to_string()).unwrap();
     app.load_state_file(&path);
-    common::settle(&mut app, &egui::Context::default());
+    common::settle(&mut app, &ctx);
     assert_eq!(common::snapshot(&mut app), before);
     let error = app.file_error.clone().unwrap();
-    assert!(error.contains("received 524288 bytes"));
+    assert!(error.contains("SHA-256 digest"));
     let mut harness = Harness::builder()
         .with_size(egui::vec2(1024.0, 600.0))
         .build_ui_state(|ui, app: &mut EmulatorApp| app.update_ui(ui), app);
@@ -73,6 +95,19 @@ fn invalid_snapshot_rom_displays_a_dismissible_error_without_restoring() {
     common::settle_harness(&mut harness);
     assert!(harness.state().file_error.is_none());
     assert_eq!(common::snapshot(harness.state_mut()), before);
+
+    std::fs::write(&path, &json).unwrap();
+    harness.state_mut().load_state_file(&path);
+    common::settle_harness(&mut harness);
+    assert!(harness.state().file_error.is_none());
+    assert_eq!(
+        harness.state().loaded_rom_name.as_deref(),
+        Some("verified for saved state")
+    );
+    assert_eq!(
+        common::snapshot(harness.state_mut()),
+        source.machine.save_state()
+    );
     std::fs::remove_file(path).unwrap();
 }
 
@@ -143,4 +178,107 @@ fn firmware_load_boots_reset_vectors_and_preserves_the_active_rom_on_failure() {
     harness.get_by_label(&format!("ROM: {name}"));
     std::fs::remove_file(invalid_path).unwrap();
     std::fs::remove_file(path).unwrap();
+}
+
+#[test]
+fn export_with_an_unavailable_patched_rom_leaves_destination_files_intact() {
+    let existing = fixture_path("existing-snapshot.json");
+    let absent = fixture_path("new-snapshot.json");
+    std::fs::write(&existing, b"previous file").unwrap();
+    assert!(!absent.exists());
+    let mut app = EmulatorApp::default();
+    common::command(
+        &mut app,
+        HostCommand::WriteMemory {
+            address: config::address_map::KICKSTART_BASE + 512,
+            bytes: vec![0x25],
+            restart_instruction: false,
+        },
+    )
+    .value
+    .unwrap();
+    let before = common::snapshot(&mut app);
+    let generation = app.host.status.generation;
+    let ctx = egui::Context::default();
+    for path in [&existing, &absent] {
+        app.save_state_file(path);
+        common::settle(&mut app, &ctx);
+        let message = app.file_error.take().unwrap();
+        assert!(
+            message.contains("Kickstart ROM source is unavailable"),
+            "{message}"
+        );
+        assert_eq!(app.host.status.generation, generation);
+        assert_eq!(common::snapshot(&mut app), before);
+    }
+    assert_eq!(std::fs::read(&existing).unwrap(), b"previous file");
+    assert!(!absent.exists());
+    std::fs::remove_file(existing).unwrap();
+}
+
+#[test]
+#[ignore = "requires the generated files from the Chromium save exchange run"]
+fn exchange_browser_save_through_native_player() {
+    let directory = PathBuf::from(std::env::var_os("AMIGA_SAVE_STATE_EXCHANGE").unwrap());
+    let rom_path = directory.join("test.rom");
+    let first_path = directory.join("first.adf");
+    let second_path = directory.join("second.adf");
+    let source_path = directory.join("browser.json");
+    let output = directory.join("native.json");
+    let original = std::fs::read(&source_path).unwrap();
+    let saved = debugger::SaveState::from_bytes(&original).unwrap();
+    let expected_header = saved.header.clone();
+    assert_eq!(expected_header.version, 16);
+    assert_eq!(
+        expected_header.association.mounted[0].as_deref(),
+        Some("manual-1")
+    );
+    let sources = debugger::MediaSources {
+        rom: Some(debugger::SourceImage {
+            name: Some("test.rom".into()),
+            bytes: std::fs::read(&rom_path).unwrap(),
+        }),
+        disks: [
+            Some(debugger::SourceImage {
+                name: Some("second.adf".into()),
+                bytes: std::fs::read(&second_path).unwrap(),
+            }),
+            None,
+            None,
+            None,
+        ],
+    };
+    let mut expected = saved.restore(&sources).unwrap();
+    expected.keyboard.release_keys();
+    expected.game_ports.release_controls();
+
+    let mut app = EmulatorApp::default();
+    let ctx = egui::Context::default();
+    app.load_rom_file(&rom_path);
+    common::settle(&mut app, &ctx);
+    assert!(app.file_error.is_none(), "{:?}", app.file_error);
+    app.load_setup_disk(0, &first_path);
+    app.load_setup_disk(0, &second_path);
+    common::settle(&mut app, &ctx);
+    let generation = app.host.status.generation;
+    app.load_state_file(&source_path);
+    common::settle(&mut app, &ctx);
+    assert!(app.file_error.is_none(), "{:?}", app.file_error);
+    assert_eq!(app.host.status.generation, generation + 1);
+    assert_eq!(app.host.status.cck, expected.cck);
+    assert!(!app.host.status.running);
+    assert_eq!(app.player.mounted, expected_header.association.mounted);
+    assert_eq!(common::snapshot(&mut app), *expected);
+
+    app.save_state_file(&output);
+    common::settle(&mut app, &ctx);
+    assert!(app.file_error.is_none(), "{:?}", app.file_error);
+    let reopened = debugger::SaveState::from_bytes(&std::fs::read(&output).unwrap()).unwrap();
+    assert_eq!(reopened.header.association, expected_header.association);
+    assert_eq!(
+        reopened.header.screenshot_png,
+        expected_header.screenshot_png
+    );
+    assert_eq!(*reopened.restore(&sources).unwrap(), *expected);
+    assert_eq!(std::fs::read(source_path).unwrap(), original);
 }

@@ -4,6 +4,7 @@ use crate::DebuggerSession;
 use config::{A500Config, FLOPPY_DRIVE_COUNT};
 use machine_loop::floppy::{FloppyDisk, FloppyDrive};
 use machine_loop::game_ports::{Joystick, Mouse, PortDevice};
+use save_state::SourceImage;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -66,7 +67,16 @@ pub fn mount(
     drive: usize,
     bytes: Option<&[u8]>,
 ) -> Result<(), String> {
-    if let Some(drive) = drive_for_mount(session, drive, bytes.is_some())? {
+    mount_with_name(session, drive, bytes, None)
+}
+
+fn mount_with_name(
+    session: &mut DebuggerSession,
+    index: usize,
+    bytes: Option<&[u8]>,
+    name: Option<&str>,
+) -> Result<(), String> {
+    if let Some(drive) = drive_for_mount(session, index, bytes.is_some())? {
         if let Some(bytes) = bytes {
             if !drive.insert_disk(bytes) {
                 return Err(unsupported_image(bytes));
@@ -74,6 +84,10 @@ pub fn mount(
         } else {
             drive.eject_disk();
         }
+        session.file_sources.disks[index] = bytes.map(|bytes| SourceImage {
+            name: name.map(str::to_owned),
+            bytes: bytes.to_vec(),
+        });
         session.machine.refresh_disk_activity_context();
     }
     Ok(())
@@ -96,10 +110,41 @@ fn drive_for_mount(
     Ok(drive.connected.then_some(drive))
 }
 
-fn prepare_disk(bytes: Option<&[u8]>) -> Result<Option<FloppyDisk>, String> {
+#[derive(Debug)]
+struct SessionDisk {
+    disk: FloppyDisk,
+    source: Option<SourceImage>,
+}
+
+fn prepare_disk(bytes: Option<&[u8]>, name: Option<&str>) -> Result<Option<SessionDisk>, String> {
     bytes
-        .map(|bytes| FloppyDisk::from_adf(bytes).ok_or_else(|| unsupported_image(bytes)))
+        .map(|bytes| {
+            let disk = FloppyDisk::from_adf(bytes).ok_or_else(|| unsupported_image(bytes))?;
+            let source = SourceImage {
+                name: name.map(str::to_owned),
+                bytes: bytes.to_vec(),
+            };
+            Ok(SessionDisk {
+                disk,
+                source: Some(source),
+            })
+        })
         .transpose()
+}
+
+fn replace_disk(
+    session: &mut DebuggerSession,
+    index: usize,
+    disk: Option<SessionDisk>,
+) -> Option<SessionDisk> {
+    let (disk, source) = disk.map_or((None, None), |disk| (Some(disk.disk), disk.source));
+    let previous_source = std::mem::replace(&mut session.file_sources.disks[index], source);
+    session.machine.floppy.drives[index]
+        .replace_disk(disk)
+        .map(|disk| SessionDisk {
+            disk,
+            source: previous_source,
+        })
 }
 
 fn unsupported_image(bytes: &[u8]) -> String {
@@ -108,12 +153,13 @@ fn unsupported_image(bytes: &[u8]) -> String {
 
 /// Player disks kept outside the machine while ejected, indexed by last drive and ID.
 #[derive(Debug, Default)]
-pub struct DetachedDisks([HashMap<String, FloppyDisk>; FLOPPY_DRIVE_COUNT]);
+pub struct DetachedDisks([HashMap<String, SessionDisk>; FLOPPY_DRIVE_COUNT]);
 
 #[derive(Debug)]
 pub struct StartupDisk {
     pub id: String,
     pub bytes: Option<Vec<u8>>,
+    pub name: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -123,6 +169,13 @@ enum DiskLocation {
 }
 
 impl DetachedDisks {
+    pub fn file_sources(&self) -> impl Iterator<Item = (&str, &SourceImage)> {
+        self.0
+            .iter()
+            .flat_map(|disks| disks.iter())
+            .filter_map(|(id, disk)| disk.source.as_ref().map(|source| (id.as_str(), source)))
+    }
+
     fn available_drives<'a>(&'a self, id: &'a str) -> impl Iterator<Item = usize> + 'a {
         self.0
             .iter()
@@ -148,17 +201,16 @@ impl DetachedDisks {
         mounted_id: Option<&str>,
         requested_id: Option<&str>,
         bytes: Option<&[u8]>,
+        name: Option<&str>,
     ) -> Result<(), String> {
         if mounted_id.is_none() && requested_id.is_none() {
-            return mount(session, index, bytes);
+            return mount_with_name(session, index, bytes, name);
         }
-        let Some(drive) =
-            drive_for_mount(session, index, requested_id.is_some() || bytes.is_some())?
-        else {
+        if drive_for_mount(session, index, requested_id.is_some() || bytes.is_some())?.is_none() {
             return Ok(());
-        };
+        }
         let next = if let Some(id) = requested_id {
-            if mounted_id == Some(id) && drive.disk_inserted {
+            if mounted_id == Some(id) && session.machine.floppy.drives[index].disk_inserted {
                 return Ok(());
             }
             let previous_drive = if self.0[index].contains_key(id) {
@@ -168,13 +220,16 @@ impl DetachedDisks {
             };
             match previous_drive {
                 Some(previous_drive) => self.0[previous_drive].remove(id),
-                None => prepare_disk(Some(bytes.ok_or("Disk is unavailable; return to setup")?))?,
+                None => prepare_disk(
+                    Some(bytes.ok_or("Disk is unavailable; return to setup")?),
+                    name,
+                )?,
             }
         } else {
-            prepare_disk(bytes)?
+            prepare_disk(bytes, name)?
         };
 
-        if let (Some(id), Some(ejected)) = (mounted_id, drive.replace_disk(next)) {
+        if let (Some(id), Some(ejected)) = (mounted_id, replace_disk(session, index, next)) {
             self.0[index].insert(id.to_owned(), ejected);
         }
         session.machine.refresh_disk_activity_context();
@@ -188,7 +243,7 @@ impl DetachedDisks {
         mounted: &[Option<String>; FLOPPY_DRIVE_COUNT],
         startup: &[Option<StartupDisk>; FLOPPY_DRIVE_COUNT],
     ) -> Result<(), String> {
-        let drives = &mut session.machine.floppy.drives;
+        let drives = &session.machine.floppy.drives;
         let mut locations = [None; FLOPPY_DRIVE_COUNT];
         for (index, disk) in startup.iter().enumerate() {
             if let Some(disk) = disk {
@@ -244,16 +299,17 @@ impl DetachedDisks {
                 let bytes = disk.bytes.as_deref().ok_or_else(|| {
                     format!("Startup disk {} for DF{index} is unavailable", disk.id)
                 })?;
-                prepared[index] = prepare_disk(Some(bytes))
+                prepared[index] = prepare_disk(Some(bytes), disk.name.as_deref())
                     .map_err(|error| format!("Startup disk {} for DF{index}: {error}", disk.id))?;
             }
         }
 
         // Take all displaced media first so startup assignments can swap drives.
         let mut displaced = std::array::from_fn::<_, FLOPPY_DRIVE_COUNT, _>(|index| {
-            if drives[index].disk_inserted && locations[index] != Some(DiskLocation::Mounted(index))
+            if session.machine.floppy.drives[index].disk_inserted
+                && locations[index] != Some(DiskLocation::Mounted(index))
             {
-                drives[index].replace_disk(None)
+                replace_disk(session, index, None)
             } else {
                 None
             }
@@ -266,7 +322,7 @@ impl DetachedDisks {
                 Some(DiskLocation::Detached(source)) => self.0[source].remove(&disk.id),
                 None => prepared[index].take(),
             };
-            drives[index].replace_disk(media);
+            replace_disk(session, index, media);
         }
         for (index, media) in displaced.into_iter().enumerate() {
             if let (Some(id), Some(media)) = (&mounted[index], media) {
@@ -284,13 +340,9 @@ impl DetachedDisks {
         mounted: &[Option<String>; FLOPPY_DRIVE_COUNT],
         restored: [Option<&str>; FLOPPY_DRIVE_COUNT],
     ) {
-        for (index, (id, drive)) in mounted
-            .iter()
-            .zip(&mut session.machine.floppy.drives)
-            .enumerate()
-        {
+        for (index, id) in mounted.iter().enumerate() {
             if let Some(id) = id {
-                if let Some(disk) = drive.replace_disk(None) {
+                if let Some(disk) = replace_disk(session, index, None) {
                     self.0[index].insert(id.clone(), disk);
                 }
             }

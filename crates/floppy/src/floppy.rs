@@ -7,6 +7,7 @@
 pub mod mfm;
 pub use mfm::*;
 mod media;
+pub use media::{Track, RECORDED_TRACK_BYTES, TRACK_BYTES};
 
 use config::FLOPPY_DRIVE_COUNT;
 use serde::{Deserialize, Serialize};
@@ -35,7 +36,7 @@ const SIDE_READ_RECOVERY_US: u32 = 100;
 /// Standard Double Density disk geometry constants
 const CYLINDERS_PER_DISK: u8 = 80;
 const HEADS_PER_DISK: u8 = 2;
-const TRACKS_PER_DISK: usize = (CYLINDERS_PER_DISK as usize) * (HEADS_PER_DISK as usize);
+pub const TRACKS_PER_DISK: usize = (CYLINDERS_PER_DISK as usize) * (HEADS_PER_DISK as usize);
 pub const SECTORS_PER_TRACK: usize = 11;
 pub const SECTOR_DATA_BYTES: usize = 512;
 pub const FORMATTED_DISK_BYTES: usize = TRACKS_PER_DISK * SECTORS_PER_TRACK * SECTOR_DATA_BYTES; // 901,120 bytes (880 KB)
@@ -48,6 +49,10 @@ pub struct FloppyDisk {
 }
 
 impl FloppyDisk {
+    pub fn into_tracks(self) -> Vec<Track> {
+        self.tracks
+    }
+
     pub fn from_adf(data: &[u8]) -> Option<Self> {
         (data.len() == FORMATTED_DISK_BYTES).then(|| Self {
             tracks: media::encode_disk(data),
@@ -58,7 +63,7 @@ impl FloppyDisk {
 
 /// Individual 3.5-inch floppy disk drive (DF0: to DF3:)
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct FloppyDrive {
+pub struct FloppyDrive<Tracks = Option<Vec<Track>>> {
     /// Physical attachment, independent of whether media is inserted.
     pub connected: bool,
     /// Active cylinder head position (0..79)
@@ -77,7 +82,7 @@ pub struct FloppyDrive {
     /// cleared only when a disk is present AND a step pulse is received!
     pub disk_change_flip_flop: bool,
     /// Prepared circular raw tracks, including usable media in serialized state.
-    track_data: Option<Vec<media::Track>>,
+    track_data: Tracks,
     clock_hz: u32,
     spindle_speed: u32,
     spindle_fraction: u32,
@@ -89,6 +94,37 @@ pub struct FloppyDrive {
     settle_cck: u32,
     read_recovery_cck: u32,
     writing: bool,
+}
+
+impl<Tracks> FloppyDrive<Tracks> {
+    pub fn tracks(&self) -> &Tracks {
+        &self.track_data
+    }
+
+    /// Converts the stored media without latching an insertion or changing the spindle.
+    pub fn with_tracks<Output>(&self, tracks: Output) -> FloppyDrive<Output> {
+        FloppyDrive {
+            connected: self.connected,
+            cylinder: self.cylinder,
+            side: self.side,
+            motor_on: self.motor_on,
+            selected: self.selected,
+            disk_inserted: self.disk_inserted,
+            write_protected: self.write_protected,
+            disk_change_flip_flop: self.disk_change_flip_flop,
+            track_data: tracks,
+            clock_hz: self.clock_hz,
+            spindle_speed: self.spindle_speed,
+            spindle_fraction: self.spindle_fraction,
+            rotation_bit: self.rotation_bit,
+            cell_phase: self.cell_phase,
+            index_window: self.index_window,
+            head_travel: self.head_travel,
+            settle_cck: self.settle_cck,
+            read_recovery_cck: self.read_recovery_cck,
+            writing: self.writing,
+        }
+    }
 }
 
 impl Default for FloppyDrive {
@@ -264,12 +300,27 @@ pub struct DriveControl {
 
 /// Four drives and the captured connector boundary; disk registers live in Paula.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct FloppyController {
+pub struct FloppyController<Drive = FloppyDrive> {
     pub pins: FloppyPins,
-    pub drives: [FloppyDrive; FLOPPY_DRIVE_COUNT],
+    pub drives: [Drive; FLOPPY_DRIVE_COUNT],
     /// Last applied controls, for motor-selection and step edge detection.
     pub prev_ciab_prb: u8,
     media_output_active: bool,
+}
+
+impl<Drive> FloppyController<Drive> {
+    /// Converts drive storage independently of the saved connector delivery.
+    pub fn with_drives<Output>(
+        &self,
+        drives: [Output; FLOPPY_DRIVE_COUNT],
+    ) -> FloppyController<Output> {
+        FloppyController {
+            pins: self.pins,
+            drives,
+            prev_ciab_prb: self.prev_ciab_prb,
+            media_output_active: self.media_output_active,
+        }
+    }
 }
 
 impl Default for FloppyController {
