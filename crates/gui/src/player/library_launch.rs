@@ -251,30 +251,35 @@ impl EmulatorApp {
                 .iter()
                 .any(|configuration| configuration.id == repair.replacement)
         {
-            crate::game_library::replace_configuration(&repair.game, &repair.replacement)
+            crate::game_library::replace_configuration(
+                &repair.game.directory,
+                &repair.game.manifest,
+                &repair.replacement,
+            )
         } else {
             Err("Choose an existing configuration from this game's library".into())
         };
         match result {
-            Ok(game) => {
+            Ok(manifest) => {
+                repair.game.manifest.configuration = manifest.configuration;
                 if let Some(entry) = self
                     .player
                     .library
                     .games
                     .iter_mut()
-                    .find(|entry| entry.same_entry(&game))
+                    .find(|entry| entry.same_entry(&repair.game))
                 {
                     entry
                         .manifest
                         .configuration
-                        .clone_from(&game.manifest.configuration);
+                        .clone_from(&repair.game.manifest.configuration);
                 }
                 if let Some(sync) = &mut self.player.library_sync {
                     sync.changed_locally();
                 }
                 self.file_error = None;
                 self.request_player_launch(PendingLaunch::Library {
-                    game,
+                    game: repair.game,
                     save: repair.save,
                     normal_boot: repair.normal_boot,
                 });

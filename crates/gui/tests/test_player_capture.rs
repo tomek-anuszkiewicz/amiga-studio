@@ -1285,28 +1285,30 @@ fn an_open_binary_dialog_without_text_focus_suspends_gameplay_and_shortcuts() {
 #[cfg(not(target_arch = "wasm32"))]
 fn saved_progress_harness(
     configuration: gui::player_config::NamedConfiguration,
+    library: &std::path::Path,
 ) -> egui_kittest::Harness<'static, EmulatorApp> {
-    use gui::game_library::{GameManifest, LibraryGame};
+    use gui::game_library::{GameLibrary, GameManifest};
 
     let (mut app, _) = running_with(ViewMode::ScreenOnly, true, configuration);
     // Associate the running fixture with a native game that has no saves.
-    app.player.active_game = Some(LibraryGame {
-        directory: std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../.agent/tmp")
-            .join(format!("saved-progress-chooser-{}", std::process::id())),
-        manifest: GameManifest {
-            id: "chooser".into(),
-            title: "Chooser test".into(),
-            configuration: "standard".into(),
-            disks: Vec::new(),
-            mounted: [None, None, None, None],
-            initial_state: None,
-            artwork: None,
-            description: None,
-        },
-        description: String::new(),
+    let directory = library.join("chooser");
+    std::fs::create_dir(&directory).unwrap();
+    let manifest = GameManifest {
+        id: "chooser".into(),
+        title: "Chooser test".into(),
+        configuration: "standard".into(),
+        disks: Vec::new(),
+        mounted: [None, None, None, None],
+        initial_state: None,
         artwork: None,
-    });
+        description: None,
+    };
+    std::fs::write(
+        directory.join("game.json"),
+        serde_json::to_vec(&manifest).unwrap(),
+    )
+    .unwrap();
+    app.player.active_game = Some(GameLibrary::discover(library).unwrap().games.remove(0));
     egui_kittest::Harness::builder()
         .with_size(egui::vec2(1280.0, 900.0))
         .build_ui_state(common::show_full_viewport, app)
@@ -1324,7 +1326,8 @@ fn saved_progress_chooser_blocks_session_input_until_fresh_input_after_close() {
         identity: "pad".into(),
         mapping: "arrows".into(),
     };
-    let mut h = saved_progress_harness(configuration);
+    let library = tempfile::tempdir().unwrap();
+    let mut h = saved_progress_harness(configuration, library.path());
     let ctx = h.ctx.clone();
     let generation = h.state().host.status.generation;
     let sender = h.state().host.runtime.as_ref().unwrap().input_sender();

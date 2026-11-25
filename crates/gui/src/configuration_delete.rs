@@ -1,7 +1,7 @@
 //! Reassign a library's games before removing one named configuration.
 
 use crate::game_library::{
-    load_game, relative_asset, replace_configuration, GameLibrary, LibraryGame,
+    discover_manifests, load_manifest, relative_asset, replace_configuration, ManifestEntry,
 };
 use crate::library_catalog::CatalogWrite;
 use crate::EmulatorApp;
@@ -10,7 +10,7 @@ use std::path::Path;
 #[derive(Debug)]
 pub struct ConfigurationDeletion {
     target: String,
-    affected: Vec<LibraryGame>,
+    affected: Vec<ManifestEntry>,
     replacement: String,
 }
 
@@ -196,10 +196,11 @@ impl EmulatorApp {
         );
         let write = CatalogWrite::prepare(root, self.player.catalog_source.as_deref(), &next)?;
         for game in &affected {
-            let saved = replace_configuration(game, &deletion.replacement)
-                .map_err(|error| format!("{}: {error}", game.manifest.title))?;
+            let saved =
+                replace_configuration(&game.directory, &game.manifest, &deletion.replacement)
+                    .map_err(|error| format!("{}: {error}", game.manifest.title))?;
             changed.push(game.manifest.title.clone());
-            if load_game(&game.directory)?.manifest != saved.manifest {
+            if load_manifest(&game.directory)? != saved {
                 return Err(format!(
                     "Could not verify the new reference for {}",
                     game.manifest.title
@@ -214,20 +215,19 @@ impl EmulatorApp {
     }
 }
 
-fn affected_games(root: &Path, configuration: &str) -> Result<Vec<LibraryGame>, String> {
-    let library = GameLibrary::discover(root)?;
-    if !library.errors.is_empty() {
-        return Err(library.errors.join("\n"));
+fn affected_games(root: &Path, configuration: &str) -> Result<Vec<ManifestEntry>, String> {
+    let (games, errors) = discover_manifests(root)?;
+    if !errors.is_empty() {
+        return Err(errors.join("\n"));
     }
-    Ok(library
-        .games
+    Ok(games
         .into_iter()
         .filter(|game| game.manifest.configuration == configuration)
         .collect())
 }
 
 fn validate_media(
-    game: &LibraryGame,
+    game: &ManifestEntry,
     connected: [bool; config::FLOPPY_DRIVE_COUNT],
 ) -> Result<(), String> {
     for (drive, id) in game.manifest.mounted.iter().enumerate() {

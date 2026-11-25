@@ -369,6 +369,48 @@ fn absent_reference_is_listed_and_cancel_or_failed_write_preserves_the_live_sess
 }
 
 #[test]
+fn deletion_rejects_duplicate_ids_and_a_game_changed_after_confirmation_opens() {
+    let root = tempfile::tempdir().unwrap();
+    let mut catalog = fixture_catalog();
+    let mut replacement = catalog.configurations[0].clone();
+    replacement.id = "replacement".into();
+    replacement.name = "Replacement A500".into();
+    catalog.configurations.push(replacement);
+    library(root.path(), &catalog, 0);
+    let affected = game(root.path(), "Affected game", Some("standard"), Some(0));
+    let unrelated = game(root.path(), "Unrelated game", Some("replacement"), None);
+    let mut duplicate = read_json(&unrelated);
+    duplicate["id"] = json!("Affected game");
+    fs::write(&unrelated, duplicate.to_string()).unwrap();
+    let original = fs::read(catalog_path(root.path())).unwrap();
+    let mut h = browser();
+    common::select_library(&mut h, root.path());
+    click(&mut h, "Configurations");
+    click(&mut h, "Delete configuration");
+    shown(&h, "Duplicate game ID: Affected game");
+    assert!(h.query_by_label("Confirm deletion").is_none());
+    assert_eq!(fs::read(catalog_path(root.path())).unwrap(), original);
+
+    fs::remove_file(unrelated).unwrap();
+    open_dialog(&mut h, "Delete configuration", "Confirm deletion");
+    shown(&h, "Affected game");
+    h.get_by_role_and_label(Role::ComboBox, "Replacement configuration")
+        .click_accesskit();
+    common::settle_harness(&mut h);
+    h.get_by_role_and_label(Role::Button, "Replacement A500")
+        .click_accesskit();
+    common::settle_harness(&mut h);
+    let mut revised = read_json(&affected);
+    revised["title"] = json!("New title on disk");
+    fs::write(&affected, revised.to_string()).unwrap();
+    click(&mut h, "Confirm deletion");
+    shown(&h, "Affected games changed since confirmation");
+    shown(&h, "No game references were written.");
+    assert_eq!(read_json(&affected), revised);
+    assert_eq!(fs::read(catalog_path(root.path())).unwrap(), original);
+}
+
+#[test]
 fn reassignment_validates_all_games_and_reports_partial_writes_before_retry() {
     let root = tempfile::tempdir().unwrap();
     let mut catalog = fixture_catalog();

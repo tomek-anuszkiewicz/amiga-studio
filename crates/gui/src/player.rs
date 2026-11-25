@@ -75,7 +75,9 @@ pub struct PlayerState {
     #[cfg(not(target_arch = "wasm32"))]
     pub selected_game: Option<String>,
     #[cfg(not(target_arch = "wasm32"))]
-    pub library_filter: String,
+    library_filter: String,
+    #[cfg(not(target_arch = "wasm32"))]
+    normalized_library_filter: String,
     #[cfg(not(target_arch = "wasm32"))]
     pub selected_saves: Vec<crate::game_library::PlayerSave>,
     #[cfg(not(target_arch = "wasm32"))]
@@ -143,6 +145,28 @@ pub(crate) struct MissingConfiguration {
 }
 
 impl PlayerState {
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) fn render_library_filter(&mut self, ui: &mut egui::Ui) {
+        let label = ui.label("Filter games");
+        let response = crate::keyboard_input::text_edit(
+            ui,
+            egui::TextEdit::singleline(&mut self.library_filter)
+                .id_salt("library-filter")
+                .desired_width(200.0)
+                .hint_text("Game name"),
+        )
+        .labelled_by(label.id)
+        .on_hover_text("Keep game names containing this text, ignoring letter case.");
+        if response.changed() {
+            self.normalized_library_filter = self.library_filter.to_lowercase();
+        }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) fn normalized_library_filter(&self) -> &str {
+        &self.normalized_library_filter
+    }
+
     pub(crate) fn selected_rom(&self, configuration: &NamedConfiguration) -> Option<&[u8]> {
         self.rom.as_deref().filter(|_| {
             self.rom_configuration_id.as_deref() == Some(&configuration.id)

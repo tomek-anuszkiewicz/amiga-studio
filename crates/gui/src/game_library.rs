@@ -98,12 +98,40 @@ pub fn relative_asset(directory: &Path, relative: &str) -> Result<PathBuf, Strin
 pub struct LibraryGame {
     pub directory: PathBuf,
     pub manifest: GameManifest,
+    // Title edits replace the whole entry through the loader.
+    normalized_title: String,
     pub description: String,
     pub artwork: Option<Vec<u8>>,
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 impl LibraryGame {
+    fn with_assets(entry: ManifestEntry) -> Self {
+        let ManifestEntry {
+            directory,
+            manifest,
+        } = entry;
+        let normalized_title = manifest.title.to_lowercase();
+        let description = manifest
+            .description
+            .as_ref()
+            .and_then(|path| relative_asset(&directory, path).ok())
+            .and_then(|path| std::fs::read_to_string(path).ok())
+            .unwrap_or_default();
+        let artwork = artwork_path(&directory, &manifest).and_then(|path| std::fs::read(path).ok());
+        Self {
+            directory,
+            manifest,
+            normalized_title,
+            description,
+            artwork,
+        }
+    }
+
+    pub(crate) fn title_matches(&self, normalized_query: &str) -> bool {
+        self.normalized_title.contains(normalized_query)
+    }
+
     pub(crate) fn same_entry(&self, other: &Self) -> bool {
         self.manifest.id == other.manifest.id
             && (self.directory == other.directory
@@ -126,71 +154,80 @@ pub struct GameLibrary {
 #[cfg(not(target_arch = "wasm32"))]
 impl GameLibrary {
     pub fn discover(root: &Path) -> Result<Self, String> {
-        let mut library = Self::default();
-        let entries = std::fs::read_dir(root).map_err(|e| e.to_string())?;
-        for entry in entries {
-            let entry = entry.map_err(|e| e.to_string())?;
-            let directory = entry.path();
-            if !entry
-                .file_type()
-                .map_err(|error| error.to_string())?
-                .is_dir()
-            {
-                continue;
-            }
-            let manifest_path = directory.join("game.json");
-            match manifest_path.try_exists() {
-                Ok(false) => continue,
-                Ok(true) => {}
-                Err(error) => {
-                    library
-                        .errors
-                        .push(format!("{}: {error}", manifest_path.display()));
-                    continue;
-                }
-            }
-            let loaded = load_game(&directory).and_then(|game| {
-                if library
-                    .games
-                    .iter()
-                    .any(|existing| existing.manifest.id == game.manifest.id)
-                {
-                    return Err(format!("Duplicate game ID: {}", game.manifest.id));
-                }
-                Ok(game)
-            });
-            match loaded {
-                Ok(game) => library.games.push(game),
-                Err(error) => library
-                    .errors
-                    .push(format!("{}: {error}", manifest_path.display())),
-            }
-        }
-        library
-            .games
-            .sort_by(|a, b| a.manifest.title.cmp(&b.manifest.title));
-        Ok(library)
+        let (entries, errors) = discover_manifests(root)?;
+        Ok(Self {
+            games: entries.into_iter().map(LibraryGame::with_assets).collect(),
+            errors,
+        })
     }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub(crate) fn load_game(directory: &Path) -> Result<LibraryGame, String> {
+#[derive(Debug)]
+pub(crate) struct ManifestEntry {
+    pub directory: PathBuf,
+    pub manifest: GameManifest,
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) fn discover_manifests(root: &Path) -> Result<(Vec<ManifestEntry>, Vec<String>), String> {
+    let mut games: Vec<ManifestEntry> = Vec::new();
+    let mut errors = Vec::new();
+    let entries = std::fs::read_dir(root).map_err(|e| e.to_string())?;
+    for entry in entries {
+        let entry = entry.map_err(|e| e.to_string())?;
+        if !entry
+            .file_type()
+            .map_err(|error| error.to_string())?
+            .is_dir()
+        {
+            continue;
+        }
+        let directory = entry.path();
+        let manifest_path = directory.join("game.json");
+        match manifest_path.try_exists() {
+            Ok(false) => continue,
+            Ok(true) => {}
+            Err(error) => {
+                errors.push(format!("{}: {error}", manifest_path.display()));
+                continue;
+            }
+        }
+        let loaded = load_manifest(&directory).and_then(|manifest| {
+            if games
+                .iter()
+                .any(|existing| existing.manifest.id == manifest.id)
+            {
+                return Err(format!("Duplicate game ID: {}", manifest.id));
+            }
+            Ok(manifest)
+        });
+        match loaded {
+            Ok(manifest) => games.push(ManifestEntry {
+                directory,
+                manifest,
+            }),
+            Err(error) => errors.push(format!("{}: {error}", manifest_path.display())),
+        }
+    }
+    games.sort_by(|a, b| a.manifest.title.cmp(&b.manifest.title));
+    Ok((games, errors))
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) fn load_manifest(directory: &Path) -> Result<GameManifest, String> {
     let bytes = std::fs::read(directory.join("game.json")).map_err(|e| e.to_string())?;
     let manifest: GameManifest = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
     manifest.validate()?;
-    let description = manifest
-        .description
-        .as_ref()
-        .and_then(|path| relative_asset(directory, path).ok())
-        .and_then(|path| std::fs::read_to_string(path).ok())
-        .unwrap_or_default();
-    let artwork = artwork_path(directory, &manifest).and_then(|path| std::fs::read(path).ok());
-    Ok(LibraryGame {
+    Ok(manifest)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) fn load_game(directory: &Path) -> Result<LibraryGame, String> {
+    Ok(LibraryGame::with_assets(ManifestEntry {
         directory: directory.to_path_buf(),
-        manifest,
-        description,
-        artwork,
-    })
+        manifest: load_manifest(directory)?,
+    }))
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -438,14 +475,15 @@ pub fn write_manifest(directory: &Path, bytes: &[u8]) -> Result<(), String> {
 
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) fn replace_configuration(
-    game: &LibraryGame,
+    directory: &Path,
+    expected: &GameManifest,
     replacement: &str,
-) -> Result<LibraryGame, String> {
-    let path = game.directory.join("game.json");
+) -> Result<GameManifest, String> {
+    let path = directory.join("game.json");
     let before = std::fs::read(&path).map_err(|error| error.to_string())?;
-    let manifest: GameManifest =
+    let mut manifest: GameManifest =
         serde_json::from_slice(&before).map_err(|error| error.to_string())?;
-    if manifest != game.manifest {
+    if manifest != *expected {
         return Err(
             "The game manifest changed on disk. Select the updated game and try again.".into(),
         );
@@ -454,8 +492,7 @@ pub(crate) fn replace_configuration(
         serde_json::from_slice(&before).map_err(|error| error.to_string())?;
     document["configuration"] = replacement.into();
     let updated = serde_json::to_vec_pretty(&document).map_err(|error| error.to_string())?;
-    write_manifest(&game.directory, &updated)?;
-    let mut game = game.clone();
-    game.manifest.configuration = replacement.into();
-    Ok(game)
+    write_manifest(directory, &updated)?;
+    manifest.configuration = replacement.into();
+    Ok(manifest)
 }

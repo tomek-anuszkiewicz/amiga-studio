@@ -422,16 +422,7 @@ impl EmulatorApp {
             {
                 self.open_library_editor(None);
             }
-            let label = ui.label("Filter games");
-            crate::keyboard_input::text_edit(
-                ui,
-                egui::TextEdit::singleline(&mut self.player.library_filter)
-                    .id_salt("library-filter")
-                    .desired_width(200.0)
-                    .hint_text("Game name"),
-            )
-            .labelled_by(label.id)
-            .on_hover_text("Keep game names containing this text, ignoring letter case.");
+            self.player.render_library_filter(ui);
         });
         if available && self.player.catalog.configurations.is_empty() {
             ui.label("Create a profile in Configurations before adding games.");
@@ -439,7 +430,8 @@ impl EmulatorApp {
         for error in &self.player.library.errors {
             ui.colored_label(ui.visuals().error_fg_color, error);
         }
-        let filter = self.player.library_filter.to_lowercase();
+        let filter = self.player.normalized_library_filter();
+        let filter_active = !filter.is_empty();
         let mut selected = None;
         let mut visible = 0;
         let mut selected_visible = false;
@@ -448,7 +440,7 @@ impl EmulatorApp {
             egui::Layout::left_to_right(egui::Align::Min).with_main_wrap(true),
             |ui| {
                 for game in &self.player.library.games {
-                    if !filter.is_empty() && !game.manifest.title.to_lowercase().contains(&filter) {
+                    if filter_active && !game.title_matches(filter) {
                         continue;
                     }
                     visible += 1;
@@ -490,7 +482,7 @@ impl EmulatorApp {
                 self.player.refresh_selected_saves();
             }
         }
-        if !filter.is_empty() && visible == 0 {
+        if filter_active && visible == 0 {
             ui.label("No games match the filter.");
             return;
         }

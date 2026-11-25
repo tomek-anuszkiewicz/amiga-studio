@@ -102,6 +102,31 @@ fn filter<'a>(h: &'a Harness<'_, EmulatorApp>) -> egui_kittest::Node<'a> {
 }
 
 #[test]
+fn unicode_filter_matches_a_title_changed_on_disk_without_retyping() {
+    let temporary = tempfile::tempdir().unwrap();
+    let root = temporary.path();
+    let directory = root.join("game");
+    write_game(&directory, "game", "Old title");
+    let mut h = harness(browse(root));
+    common::wait_harness(&mut h, |app| app.player.library.games.len() == 1);
+    assert!(h.query_by_label("Old title").is_some());
+
+    filter(&h).focus();
+    filter(&h).type_text("\u{00e9}GaMe");
+    h.step();
+    assert!(h.query_by_label("Old title").is_none());
+
+    let new_title = "The \u{00c9}GAME";
+    write_game(&directory, "game", new_title);
+    common::wait_harness(&mut h, |app| {
+        app.player.library.games[0].manifest.title == new_title
+    });
+    assert!(h.query_by_label(new_title).is_some());
+    h.step();
+    assert!(h.query_by_label(new_title).is_some());
+}
+
+#[test]
 fn native_library_refreshes_while_paused_and_preserves_filter_selection_and_drafts() {
     let temporary = tempfile::tempdir().unwrap();
     let root = temporary.path();
@@ -160,7 +185,10 @@ fn native_library_refreshes_while_paused_and_preserves_filter_selection_and_draf
     filter(&h).focus();
     filter(&h).type_text("pAtRoL");
     h.step();
-    assert_eq!(h.state().player.library_filter, "pAtRoL");
+    assert_eq!(
+        filter(&h).accesskit_node().value().as_deref(),
+        Some("pAtRoL")
+    );
     assert_eq!(h.state().player.selected_game.as_deref(), Some("alpha"));
     assert!(h.query_by_label("Alpha Mission").is_none());
     assert!(h.query_by_label("Start game").is_none());
@@ -187,12 +215,15 @@ fn native_library_refreshes_while_paused_and_preserves_filter_selection_and_draf
     assert_eq!(h.state().player.library.games.len(), 2);
     fs::rename(&unpublished, root.join("gamma")).unwrap();
     common::wait_harness(&mut h, |app| app.player.library.games.len() == 3);
-    assert_eq!(h.state().player.library_filter, "pAtRoLxyz");
+    assert_eq!(
+        filter(&h).accesskit_node().value().as_deref(),
+        Some("pAtRoLxyz")
+    );
     assert_eq!(h.state().player.selected_game.as_deref(), Some("alpha"));
     h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::A);
     h.key_press(egui::Key::Backspace);
     h.step();
-    assert!(h.state().player.library_filter.is_empty());
+    assert_eq!(filter(&h).accesskit_node().value().as_deref(), Some(""));
     assert_eq!(
         h.state()
             .player
