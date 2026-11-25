@@ -16,13 +16,39 @@ from playwright.sync_api import sync_playwright
 from browser_test_server import serve_distribution
 
 
+# eframe renders these controls into one canvas without individual browser
+# accessibility nodes. Use control centers in the fixed viewport at 100% zoom.
+VIEWPORT = {"width": 1280, "height": 800}
+CONTROL_POINTS = {
+    "Select Kickstart": (65, 108),
+    "Select ADF": (204, 131),
+    "Start": (30, 223),
+    "Game Save": (1090, 264),
+    "Game Load": (1142, 264),
+    "Game Setup": (1094, 296),
+    "Configurations": (161, 12),
+    "Configuration Name": (148, 149),
+    "Configuration Cancel": (86, 788),
+    "Pause / Resume binding": (122, 600),
+    "Amiga port 2 device": (58, 462),
+    "Amiga port 2 Disconnected": (62, 489),
+    "Configuration Save": (29, 788),
+    "Return to session": (278, 12),
+    "DF0 dropdown": (1181, 117),
+    "DF0 Eject / Empty": (1180, 144),
+    "DF0 first disk": (1180, 167),
+    "DF0 second disk": (1180, 190),
+    "DF0 third disk": (1180, 213),
+}
+
+
 def first_raw_block(snapshot):
     drive = snapshot["state"]["floppy"]["drives"][0]
     return drive["track_data"][0]["Encoded"][0]
 
 
 def check_workflow(browser, url, rom, disk, output):
-    context = browser.new_context(viewport={"width": 1280, "height": 800}, accept_downloads=True)
+    context = browser.new_context(viewport=VIEWPORT, device_scale_factor=1, accept_downloads=True)
     page = context.new_page()
     errors = []
     page.on("pageerror", lambda error: errors.append(str(error)))
@@ -49,7 +75,8 @@ def check_workflow(browser, url, rom, disk, output):
             }
         };
     """)
-    def click(x, y):
+    def click(control):
+        x, y = CONTROL_POINTS[control]
         # Let the canvas consume hover and the pressed state on separate frames.
         page.mouse.move(x, y)
         page.wait_for_timeout(120)
@@ -58,13 +85,13 @@ def check_workflow(browser, url, rom, disk, output):
 
     def export_state(path):
         with page.expect_download(timeout=30000) as download:
-            click(1084, 244)
+            click("Game Save")
         download.value.save_as(path)
         return json.loads(path.read_text(encoding="utf-8"))
 
     def import_state(path, generation):
         with page.expect_file_chooser() as chooser:
-            click(1124, 244)
+            click("Game Load")
         chooser.value.set_files(path)
         page.wait_for_function(
             "generation => globalThis.observedGeneration === generation",
@@ -74,13 +101,13 @@ def check_workflow(browser, url, rom, disk, output):
 
     def drive_label():
         # Sample the DF0 text, leaving out the activity indicator and hover.
-        page.mouse.move(1255, 108)
-        return page.screenshot(clip={"x": 1126, "y": 101, "width": 76, "height": 14})
+        page.mouse.move(1255, 117)
+        return page.screenshot(clip={"x": 1133, "y": 110, "width": 76, "height": 14})
 
-    def select_disk(row, description):
+    def select_disk(option, description):
         before = drive_label()
-        click(1222, 108)
-        click(1150, row)
+        click("DF0 dropdown")
+        click(option)
         for _ in range(20):
             after = drive_label()
             if after != before:
@@ -88,7 +115,7 @@ def check_workflow(browser, url, rom, disk, output):
             page.wait_for_timeout(100)
         raise AssertionError(f"DF0 did not confirm {description}")
 
-    def check_remount(snapshot, disk_id, marker, generation, row):
+    def check_remount(snapshot, disk_id, marker, generation, reinsertion_option):
         # Seed changed raw tracks in a disposable snapshot before making any swap.
         assert first_raw_block(snapshot)["Encoded"] != marker
         first_raw_block(snapshot)["Encoded"] = marker
@@ -97,10 +124,10 @@ def check_workflow(browser, url, rom, disk, output):
         fixture.write_text(json.dumps(snapshot, separators=(",", ":")), encoding="utf-8")
         import_state(fixture, generation)
         mounted_label = drive_label()
-        replacement_label = select_disk(150, "the replacement disk")
-        empty_label = select_disk(130, "ejection")
+        replacement_label = select_disk("DF0 first disk", "the replacement disk")
+        empty_label = select_disk("DF0 Eject / Empty", "ejection")
         assert len({mounted_label, replacement_label, empty_label}) == 3
-        assert select_disk(row, "reinsertion") == mounted_label
+        assert select_disk(reinsertion_option, "reinsertion") == mounted_label
         assert page.evaluate("observedGeneration") == generation, "Disk swap replaced the machine"
 
         # Observe the tracks only after all disk commands have completed.
@@ -127,13 +154,13 @@ def check_workflow(browser, url, rom, disk, output):
         page.screenshot(path=str(output / "setup.png"))
         stage = "ROM selection"
         with page.expect_file_chooser() as chooser:
-            click(55, 100)
+            click("Select Kickstart")
         chooser.value.set_files(rom)
         page.wait_for_timeout(400)
         stage = "disk selection"
         disk_digest = sha256(disk.read_bytes()).digest()
         with page.expect_file_chooser() as chooser:
-            click(211, 121)
+            click("Select ADF")
         chooser.value.set_files({
             "name": "replacement.adf" if disk.name != "replacement.adf" else "other.adf",
             "mimeType": "application/octet-stream",
@@ -141,12 +168,12 @@ def check_workflow(browser, url, rom, disk, output):
         })
         page.wait_for_timeout(400)
         with page.expect_file_chooser() as chooser:
-            click(211, 121)
+            click("Select ADF")
         chooser.value.set_files(disk)
         page.wait_for_timeout(400)
         page.screenshot(path=str(output / "ready.png"))
         stage = "manual start"
-        click(24, 202)
+        click("Start")
         page.wait_for_function("globalThis.observedGeneration === 2", timeout=30000)
         page.wait_for_timeout(600)
         page.screenshot(path=str(output / "game.png"))
@@ -178,35 +205,35 @@ def check_workflow(browser, url, rom, disk, output):
         page.screenshot(path=str(output / "restored.png"))
         stage = "configuration Cancel"
         stored_before_edit = page.evaluate("localStorage.getItem('player_configurations')")
-        click(1088, 274)  # Setup; the existing machine remains paused.
+        click("Game Setup")  # The existing machine remains paused.
         page.wait_for_timeout(300)
-        click(145, 10)  # Configurations in the browser navigation bar.
+        click("Configurations")
         page.wait_for_timeout(300)
         page.screenshot(path=str(output / "configuration.png"))
-        click(140, 138)  # Draft name.
+        click("Configuration Name")
         page.keyboard.press("Control+a")
         page.keyboard.type("Cancelled edit")
-        click(70, 789)  # Cancel.
+        click("Configuration Cancel")
         page.wait_for_timeout(400)
         assert page.evaluate("localStorage.getItem('player_configurations')") == stored_before_edit
         assert page.evaluate("observedGeneration") == 3, "Cancel changed the machine generation"
         stage = "record browser keyboard shortcut"
-        click(145, 10)
+        click("Configurations")
         page.wait_for_timeout(300)
         page.screenshot(path=str(output / "shortcut-editor.png"))
-        click(113, 562)  # Pause / Resume binding, initially F5.
+        click("Pause / Resume binding")  # Initially F5.
         page.screenshot(path=str(output / "shortcut-recording.png"))
         page.keyboard.press("F7")
         page.wait_for_timeout(300)
         stage = "configuration Save and changed-port return"
-        click(55, 432)  # Port 2 device dropdown.
+        click("Amiga port 2 device")
         page.wait_for_timeout(200)
         page.screenshot(path=str(output / "port-options.png"))
-        click(55, 456)  # Disconnected, the first row in the popup.
-        click(23, 789)  # Save, including stopped owner application.
+        click("Amiga port 2 Disconnected")
+        click("Configuration Save")
         page.wait_for_function("globalThis.observedGeneration === 4", timeout=30000)
         page.wait_for_timeout(300)
-        click(250, 10)  # Return to session.
+        click("Return to session")
         page.wait_for_timeout(300)
         changed = export_state(output / "changed-ports.json")
         expected = json.loads(json.dumps(saved["state"]))
@@ -218,9 +245,9 @@ def check_workflow(browser, url, rom, disk, output):
         assert current["state"] == expected, "Import restored historical attachments or changed progress"
         page.screenshot(path=str(output / "current-controls-load.png"))
         stage = "swap and remount changed disk with a source ADF"
-        check_remount(current, "manual-1", [0xDE, 0xAD, 0xBE, 0xEF] * 4, 6, 170)
+        check_remount(current, "manual-1", [0xDE, 0xAD, 0xBE, 0xEF] * 4, 6, "DF0 second disk")
         stage = "swap and remount changed disk with only embedded tracks"
-        check_remount(current, "embedded-disk", [0xCA, 0xFE, 0xBA, 0xBE] * 4, 7, 190)
+        check_remount(current, "embedded-disk", [0xCA, 0xFE, 0xBA, 0xBE] * 4, 7, "DF0 third disk")
         assert sha256(disk.read_bytes()).digest() == disk_digest, "The original ADF changed"
         stage = "dispatch rebound browser shortcut"
         stored = page.evaluate("localStorage.getItem('player_configurations')")

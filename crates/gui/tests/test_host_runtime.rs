@@ -9,6 +9,7 @@ use gui::host_owner::MachineOwner;
 use gui::host_runtime::HostRuntime;
 use gui::host_video::VideoRead;
 use gui::{DebuggerSession, EditRegister};
+use std::cell::Cell;
 use std::time::{Duration, Instant};
 
 fn wait_reply(host: &mut HostRuntime, command: HostCommand) -> HostReply {
@@ -47,6 +48,10 @@ fn start_host() -> HostRuntime {
     HostRuntime::start(MachineOwner::new(session()), egui::Context::default()).unwrap()
 }
 
+thread_local! {
+    static INVARIANT_READ_STARTED: Cell<bool> = const { Cell::new(false) };
+}
+
 // Inject through the existing bank dispatch rather than adding a production
 // crash command or corrupting machine state. This is a forced host-boundary
 // failure, not evidence of a naturally occurring memory invariant violation.
@@ -55,6 +60,7 @@ fn invariant_read(
     address: u32,
 ) -> physical_memory::BusResult<u16> {
     use config::chip_ram::ChipRamAccess;
+    INVARIANT_READ_STARTED.set(true);
     memory.read_chip_word(address);
     physical_memory::BusResult::Ready(memory.read_chip_word(address))
 }
@@ -62,8 +68,9 @@ fn invariant_read(
 #[test]
 fn fatal_owner_failure_wakes_gui_rejects_commands_and_requires_no_shutdown_reply() {
     use gui::host_runtime::HostRuntimeError;
-    use std::sync::atomic::{AtomicUsize, Ordering};
-    static REPAINTS: AtomicUsize = AtomicUsize::new(0);
+    use std::sync::atomic::{AtomicBool, Ordering};
+    static STARTUP_REPAINT: AtomicBool = AtomicBool::new(false);
+    static FATAL_REPAINT: AtomicBool = AtomicBool::new(false);
 
     for command in [
         HostCommand::Run,
@@ -75,21 +82,46 @@ fn fatal_owner_failure_wakes_gui_rejects_commands_and_requires_no_shutdown_reply
         let mut session = session();
         session.machine.physical_memory.bank_map[0].read_word = invariant_read;
         let context = egui::Context::default();
-        context.set_request_repaint_callback(|_| {
-            REPAINTS.fetch_add(1, Ordering::SeqCst);
+        let gui_thread = std::thread::current().id();
+        STARTUP_REPAINT.store(false, Ordering::Release);
+        FATAL_REPAINT.store(false, Ordering::Release);
+        context.set_request_repaint_callback(move |info| {
+            if info.delay.is_zero() && std::thread::current().id() != gui_thread {
+                // The callback runs on the requesting thread. The failing
+                // owner signals after reaching the injected memory access.
+                if INVARIANT_READ_STARTED.get() {
+                    FATAL_REPAINT.store(true, Ordering::Release);
+                } else {
+                    STARTUP_REPAINT.store(true, Ordering::Release);
+                }
+            }
         });
         let mut host = HostRuntime::start(MachineOwner::new(session), context.clone()).unwrap();
-        wait_reply(&mut host, HostCommand::ReadCpu);
-        host.try_consume(|_, _, _| ()).unwrap();
-        // Consume outstanding egui repaint requests before checking the failure
-        // wakeup. egui coalesces requests until its next frame.
-        for _ in 0..2 {
-            context
-                .run_pass(egui::RawInput::default(), |_| {})
-                .drop_without_applying_deltas();
+        let startup_deadline = Instant::now() + Duration::from_secs(10);
+        while !STARTUP_REPAINT.load(Ordering::Acquire) {
+            assert!(
+                Instant::now() < startup_deadline,
+                "Startup did not wake the GUI"
+            );
+            std::thread::sleep(Duration::from_millis(1));
         }
-        REPAINTS.store(0, Ordering::SeqCst);
-        host.submit(command).unwrap();
+        assert_eq!(
+            host.try_consume(|_, _, _| ()).unwrap(),
+            VideoRead::Frame(())
+        );
+        // Clear pending repaints without drawing, since the first draw can
+        // request another repaint to synchronize the native window theme.
+        for _ in 0..2 {
+            let _ = context.run_logic(&egui::RawInput::default(), |_| {});
+        }
+        assert!(!context.has_requested_repaint());
+        let deadline = Instant::now() + Duration::from_secs(10);
+        let mut pending = command;
+        while let Err(busy) = host.submit(pending) {
+            pending = busy.0;
+            assert!(Instant::now() < deadline, "Command could not be submitted");
+            std::thread::sleep(Duration::from_millis(1));
+        }
         // Fill the command path before the worker runs. Even a single-CCK
         // command must eventually reach the injected normal CPU read.
         if single_cck {
@@ -97,24 +129,18 @@ fn fatal_owner_failure_wakes_gui_rejects_commands_and_requires_no_shutdown_reply
                 let _ = host.submit(HostCommand::StepCck);
             }
         }
-        let deadline = Instant::now() + Duration::from_secs(10);
-        let message = loop {
-            match host.poll() {
-                Err(HostRuntimeError::Fatal(message)) => break message,
-                Err(error) => panic!("Lost fatal diagnostic: {error:?}"),
-                Ok(_) => {}
-            }
-            assert!(Instant::now() < deadline, "Fatal owner did not stop");
+        while !FATAL_REPAINT.load(Ordering::Acquire) {
+            assert!(Instant::now() < deadline, "Failure did not wake the GUI");
             std::thread::sleep(Duration::from_millis(1));
+        }
+        let error = host.poll().unwrap_err();
+        let HostRuntimeError::Fatal(message) = error else {
+            panic!("Lost fatal diagnostic: {error:?}");
         };
         assert!(
             message.starts_with("Chip RAM access invariant:"),
             "{message}"
         );
-        while REPAINTS.load(Ordering::SeqCst) == 0 {
-            assert!(Instant::now() < deadline, "Failure did not wake the GUI");
-            std::thread::sleep(Duration::from_millis(1));
-        }
         let failure = HostRuntimeError::Fatal(message);
         assert!(!host.status().running);
         let cck = host.status().cck;

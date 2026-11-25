@@ -17,6 +17,7 @@ use serde_json::{json, Value};
 use std::{
     fs,
     path::{Path, PathBuf},
+    time::{Duration, Instant},
 };
 
 fn catalog_path(root: &Path) -> PathBuf {
@@ -95,6 +96,22 @@ fn click(h: &mut Harness<'_, EmulatorApp>, label: &str) {
     common::settle_harness(h);
 }
 
+fn open_dialog(h: &mut Harness<'_, EmulatorApp>, trigger: &str, dialog_button: &str) {
+    click(h, trigger);
+    // A newly opened dialog can still be in egui's invisible sizing pass after the host is idle.
+    let deadline = Instant::now() + Duration::from_secs(10);
+    while h
+        .query_by_role_and_label(Role::Button, dialog_button)
+        .is_none_or(|button| button.accesskit_node().is_hidden())
+    {
+        assert!(
+            Instant::now() < deadline,
+            "Dialog button {dialog_button:?} did not appear after clicking {trigger:?}"
+        );
+        h.step();
+    }
+}
+
 fn choose(h: &mut Harness<'_, EmulatorApp>, field: &str, choice: &str) {
     h.get_by_role_and_label(Role::ComboBox, field).click();
     common::settle_harness(h);
@@ -112,8 +129,6 @@ fn shown(h: &Harness<'_, EmulatorApp>, text: &str) {
 }
 
 fn wait_for_profile_editor(h: &mut Harness<'_, EmulatorApp>, visible: bool) {
-    use std::time::{Duration, Instant};
-
     let deadline = Instant::now() + Duration::from_secs(10);
     while h.query_by_label("Create configuration").is_some() != visible {
         assert!(Instant::now() < deadline, "Profile editor did not update");
@@ -309,8 +324,11 @@ fn absent_reference_is_listed_and_cancel_or_failed_write_preserves_the_live_sess
     let before = common::snapshot(h.state_mut());
     let generation = h.state().host.status.generation;
     click(&mut h, "Repair game");
-    click(&mut h, "Start game");
-    shown(&h, "Configuration missing");
+    open_dialog(&mut h, "Start game", "Save reference and continue");
+    assert!(h
+        .query_all_by_value("Configuration missing")
+        .next()
+        .is_some());
     assert!(h
         .get_by_label("Save reference and continue")
         .accesskit_node()
@@ -319,7 +337,7 @@ fn absent_reference_is_listed_and_cancel_or_failed_write_preserves_the_live_sess
     assert_eq!(common::snapshot(h.state_mut()), before);
     assert_eq!(fs::read(&manifest).unwrap(), before_manifest);
 
-    click(&mut h, "Start game");
+    open_dialog(&mut h, "Start game", "Save reference and continue");
     choose(&mut h, "Game configuration", "Standard A500");
     let block = manifest.with_extension("json.pending");
     fs::write(&block, b"occupied").unwrap();
@@ -376,7 +394,7 @@ fn reassignment_validates_all_games_and_reports_partial_writes_before_retry() {
     let mut h = browser();
     common::select_library(&mut h, root.path());
     click(&mut h, "Configurations");
-    click(&mut h, "Delete configuration");
+    open_dialog(&mut h, "Delete configuration", "Confirm deletion");
     shown(&h, "Delete Standard A500?");
     shown(&h, "First game");
     shown(&h, "Second game");
@@ -386,7 +404,7 @@ fn reassignment_validates_all_games_and_reports_partial_writes_before_retry() {
         .is_disabled());
     click(&mut h, "Cancel deletion");
     assert_eq!(fs::read(catalog_path(root.path())).unwrap(), original);
-    click(&mut h, "Delete configuration");
+    open_dialog(&mut h, "Delete configuration", "Confirm deletion");
     choose(&mut h, "Replacement configuration", "Replacement A500");
     click(&mut h, "Confirm deletion");
     shown(&h, "DF1 is disconnected");
@@ -407,7 +425,7 @@ fn reassignment_validates_all_games_and_reports_partial_writes_before_retry() {
     let mut expected_b = read_json(&b);
     let block = b.with_extension("json.pending");
     fs::write(&block, b"occupied").unwrap();
-    click(&mut h, "Delete configuration");
+    open_dialog(&mut h, "Delete configuration", "Confirm deletion");
     choose(&mut h, "Replacement configuration", "Replacement A500");
     click(&mut h, "Confirm deletion");
     shown(&h, "Game references written before the failure: First game");
@@ -423,7 +441,7 @@ fn reassignment_validates_all_games_and_reports_partial_writes_before_retry() {
     });
 
     fs::remove_file(block).unwrap();
-    click(&mut h, "Delete configuration");
+    open_dialog(&mut h, "Delete configuration", "Confirm deletion");
     shown(&h, "Second game");
     assert!(h.query_by_value("First game").is_none());
     choose(&mut h, "Replacement configuration", "Replacement A500");
@@ -469,7 +487,7 @@ fn final_catalog_write_failure_keeps_old_profile_and_reports_all_reassigned_game
     let mut h = browser();
     common::select_library(&mut h, root.path());
     click(&mut h, "Configurations");
-    click(&mut h, "Delete configuration");
+    open_dialog(&mut h, "Delete configuration", "Confirm deletion");
     h.get_by_role_and_label(Role::ComboBox, "Replacement configuration")
         .click_accesskit();
     common::settle_harness(&mut h);
@@ -509,7 +527,7 @@ fn final_catalog_write_failure_keeps_old_profile_and_reports_all_reassigned_game
         .all(|game| game.manifest.configuration == "replacement"));
 
     drop(held_catalog);
-    click(&mut h, "Delete configuration");
+    open_dialog(&mut h, "Delete configuration", "Confirm deletion");
     shown(&h, "No games in this library use this configuration.");
     click(&mut h, "Confirm deletion");
     assert_eq!(
@@ -529,7 +547,7 @@ fn last_unreferenced_profile_can_be_deleted_and_repair_guides_the_player_to_crea
     common::select_library(&mut h, root.path());
     common::wait_harness(&mut h, |app| app.player.library.games.len() == 1);
     click(&mut h, "Configurations");
-    click(&mut h, "Delete configuration");
+    open_dialog(&mut h, "Delete configuration", "Confirm deletion");
     shown(&h, "No games in this library use this configuration.");
     click(&mut h, "Confirm deletion");
     assert!(h.state().player.catalog.configurations.is_empty());
@@ -539,7 +557,7 @@ fn last_unreferenced_profile_can_be_deleted_and_repair_guides_the_player_to_crea
     );
     click(&mut h, "Cancel");
     click(&mut h, "Unavailable profile");
-    click(&mut h, "Start game");
+    open_dialog(&mut h, "Start game", "Open Configurations");
     shown(&h, "Create a configuration for this library");
     click(&mut h, "Open Configurations");
     assert_eq!(h.state().player.screen, PlayerScreen::Configuration);
