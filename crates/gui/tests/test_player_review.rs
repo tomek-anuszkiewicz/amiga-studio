@@ -323,8 +323,9 @@ fn editing_native_rom_reference_does_not_boot_cached_previous_rom() {
     let mut app = EmulatorApp::default();
     let path = root.join("new.rom");
     std::fs::write(&path, rom(0x22)).unwrap();
-    app.player.rom = Some(rom(0x11));
-    app.player.rom_configuration_id = Some("standard".into());
+    let prior = root.join("prior.rom");
+    std::fs::write(&prior, rom(0x11)).unwrap();
+    app.supply_restore_kickstart(&prior).unwrap();
     app.player.library_root = Some(root);
     app.player.catalog.configurations[0].launch.rom = "new.rom".into();
     app.start_manual();

@@ -32,6 +32,8 @@ debugger = { workspace = true }
 keyboard = { path = "../keyboard" }
 serde = { workspace = true }
 serde_json = { workspace = true, features = ["raw_value"] }
+sha1 = "0.11"
+sha2 = { workspace = true }
 zip = { version = "9.8.2", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 sevenz-rust2 = { version = "0.25.0", default-features = false }
 

@@ -10,16 +10,21 @@ library directory and select Save. Cancel keeps the previous directory.
 The library picks up file and cover changes automatically. Filter games
 matches part of the displayed name.
 
-Use Configurations to choose the hardware, drives and controls for a named
-profile. Keep desktop Kickstart files in the library and enter their paths
-relative to the library directory. Use Add game or Edit game to choose a
+In **Configurations**, choose **Add Kickstart** and select a 256 KiB image.
+Choose firmware for a named profile and select **Save**. Use Add game or Edit game to choose a
 configuration, import ADF disks from files or ZIP and 7z archives, and set
 which disks are inserted at startup. You can add a description and cover.
-Select a game and choose Start game.
+**Start game** uses this profile's Kickstart on a new boot.
 
-In Manual setup, choose a configuration, select a 256 KiB Kickstart and add
-any optional disk images. Choose Start. You can leave drives empty. In the
-browser, select the Kickstart file again after reopening the app.
+In **Manual setup**, choose a configuration and a Kickstart from the list,
+then add any optional disks and choose **Start**. Both screens show which
+releases the app recognizes and which boots it has verified. You can also
+choose a custom 256 KiB image.
+
+In **Configurations**, open **Manage Kickstarts** to delete a library copy
+or a browser-supplied entry. First change any saved profiles that use it.
+Deletion leaves the original file and the current machine intact. A save can
+still require those same ROM bytes.
 
 ## Play and save
 
@@ -32,9 +37,11 @@ there. **Quick save** captures progress and **Quick load** resumes from it.
 The buttons use the same actions as the configured shortcuts, which start
 at F6 and F9. On desktop, select **Load state** on a saved progress row to
 resume from that file. In a manual session, use **Export state** and **Import
-state** for files. Keep the source Kickstart and disk images for your saves.
-After reopening a manual session, select the matching files in **Manual
-setup**, choose **Return to session**, and choose **Import state**.
+state** for files. A file restore needs its original Kickstart and disk bytes.
+On desktop, keep the ROM in the library or use **Supply Kickstart for restore**
+in **Configurations**. On a fresh browser page, add the matching Kickstart in
+**Configurations** and select the required disks in **Manual setup**. Choose
+**Return to session**, then **Import state** without starting a new machine.
 
 For a desktop library game, choose Add to start states next to a save or
 quicksave to keep a named copy. Select it under the game's Start states to

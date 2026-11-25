@@ -329,6 +329,8 @@ impl crate::EmulatorApp {
             |root| open(root, &self.player.catalog.selected),
         );
         self.install_library_catalog(loaded);
+        self.adopt_shared_kickstart();
+        self.refresh_kickstarts();
     }
 
     pub(crate) fn reconcile_library_catalog(&mut self, loaded: CatalogRead, ctx: &egui::Context) {
@@ -339,6 +341,7 @@ impl crate::EmulatorApp {
             Ok((catalog, source)) => {
                 if self.player.library_error.is_some() || self.player.catalog_source != source {
                     self.install_library_catalog(Ok((catalog, source)));
+                    self.refresh_kickstarts();
                     self.refresh_clean_configuration_draft(ctx);
                 }
             }
@@ -387,10 +390,35 @@ impl crate::EmulatorApp {
         self.player.catalog_source = source;
         self.player.library_error = None;
         self.player.migration_error = None;
-        self.player.rom = None;
-        self.player.rom_name = None;
-        self.player.rom_configuration_id = None;
-        self.player.rom_reference = None;
+        self.player.manual_kickstart = None;
+        self.player.manage_kickstarts = false;
+        self.player.delete_kickstart = None;
+        self.adopt_shared_kickstart();
+        self.refresh_kickstarts();
         self.player.settings_dirty = true;
+    }
+
+    pub(crate) fn adopt_shared_kickstart(&mut self) {
+        self.player.kickstart_adoption_error = None;
+        if !self.player.library_available() || self.player.catalog_source.is_none() {
+            return;
+        }
+        let Some(root) = self.player.library_root.as_deref() else {
+            return;
+        };
+        match crate::kickstarts::native::adopt_shared(
+            root,
+            &mut self.player.catalog,
+            self.player.catalog_source.as_deref(),
+        ) {
+            Ok(Some(bytes)) => {
+                self.player.catalog_source = Some(bytes);
+                if let Some(sync) = &mut self.player.library_sync {
+                    sync.changed_locally();
+                }
+            }
+            Ok(None) => {}
+            Err(error) => self.player.kickstart_adoption_error = Some(error),
+        }
     }
 }

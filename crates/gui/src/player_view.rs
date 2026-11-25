@@ -42,7 +42,7 @@ impl EmulatorApp {
                         self.player.screen == PlayerScreen::Configuration,
                         "Configurations",
                     )
-                    .on_hover_text("Edit hardware and input settings.")
+                    .on_hover_text("Manage Kickstarts and edit hardware and input settings.")
                     .clicked()
                 {
                     self.navigate_player(PlayerScreen::Configuration);
@@ -58,6 +58,7 @@ impl EmulatorApp {
                 {
                     self.navigate_player(PlayerScreen::Session);
                 }
+                self.render_kickstart_actions(ui);
             });
         });
         if self.player.screen == PlayerScreen::Configuration {
@@ -82,6 +83,7 @@ impl EmulatorApp {
             });
         });
         self.render_binding_recording(ui.ctx());
+        self.render_kickstart_dialogs(ui.ctx());
     }
 
     pub(crate) fn configuration_selector(&mut self, ui: &mut egui::Ui) {
@@ -96,31 +98,22 @@ impl EmulatorApp {
         let previous = self.player.catalog.selected.clone();
         self.configuration_selector(ui);
         if previous != self.player.catalog.selected {
-            self.player.rom = None;
+            self.player.manual_kickstart = None;
         }
         let Some(configuration) = self.player.catalog.selected().cloned() else {
             #[cfg(not(target_arch = "wasm32"))]
             ui.label("Choose a library or create a configuration in Configurations.");
             return;
         };
-        ui.horizontal_wrapped(|ui| {
-            if ui.button("Select Kickstart...").clicked() {
-                self.open_setup_asset(None);
-            }
-            let stored_rom =
-                (!configuration.launch.rom.is_empty()).then_some(configuration.launch.rom.as_str());
+        let mut reference = self.player.manual_kickstart(&configuration).to_owned();
+        crate::kickstarts::view::selector(
+            ui,
+            &mut reference,
+            &self.player.kickstarts,
             #[cfg(not(target_arch = "wasm32"))]
-            let stored_rom = self
-                .player
-                .selected_rom(&configuration)
-                .and(self.player.rom_name.as_deref())
-                .or(stored_rom);
-            ui.label(stored_rom.unwrap_or("Kickstart not selected"));
-            #[cfg(target_arch = "wasm32")]
-            if self.player.selected_rom(&configuration).is_none() {
-                ui.label("Select the ROM again for this session");
-            }
-        });
+            &self.player.legacy_kickstarts,
+        );
+        self.player.manual_kickstart = (reference != configuration.launch.rom).then_some(reference);
         for drive in 0..4 {
             ui.horizontal_wrapped(|ui| {
                 ui.label(format!("DF{drive}:"));
@@ -134,7 +127,7 @@ impl EmulatorApp {
                         "Empty",
                     );
                     if ui.button("Select disk...").clicked() {
-                        self.open_setup_asset(Some(drive));
+                        self.open_setup_disk(drive);
                     }
                 } else {
                     ui.label("Disconnected");

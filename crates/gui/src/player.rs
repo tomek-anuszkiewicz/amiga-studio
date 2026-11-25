@@ -53,11 +53,18 @@ pub struct PlayerState {
     pub catalog: ConfigurationCatalog,
     pub editor: Option<crate::configuration_edit::ConfigurationEdit>,
     pub(crate) settings_dirty: bool,
-    pub rom: Option<Vec<u8>>,
     #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) rom_name: Option<String>,
-    pub rom_configuration_id: Option<String>,
-    pub rom_reference: Option<String>,
+    pub restore_kickstart: Option<debugger::SourceImage>,
+    pub(crate) kickstarts: Vec<crate::kickstarts::Entry>,
+    pub(crate) manual_kickstart: Option<String>,
+    pub(crate) manage_kickstarts: bool,
+    pub(crate) delete_kickstart: Option<String>,
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) legacy_kickstarts: Vec<crate::kickstarts::Entry>,
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) kickstart_error: Option<String>,
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) kickstart_adoption_error: Option<String>,
     pub disks: Vec<SessionDisk>,
     pub setup_disks: Vec<SessionDisk>,
     pub(crate) drive_disk_choice: Option<crate::file_actions::DriveDiskChoice>,
@@ -198,20 +205,10 @@ impl PlayerState {
         &self.normalized_library_filter
     }
 
-    pub(crate) fn selected_rom(&self, configuration: &NamedConfiguration) -> Option<&[u8]> {
-        self.rom.as_deref().filter(|_| {
-            self.rom_configuration_id.as_deref() == Some(&configuration.id)
-                && self.rom_reference.as_deref() == Some(&configuration.launch.rom)
-        })
-    }
-
-    pub(crate) fn selected_file_rom(&self) -> Option<debugger::SourceImage> {
-        let bytes = self.rom.clone()?;
-        #[cfg(not(target_arch = "wasm32"))]
-        let name = self.rom_name.clone();
-        #[cfg(target_arch = "wasm32")]
-        let name = self.rom_reference.clone();
-        Some(debugger::SourceImage { name, bytes })
+    pub(crate) fn manual_kickstart<'a>(&'a self, configuration: &'a NamedConfiguration) -> &'a str {
+        self.manual_kickstart
+            .as_deref()
+            .unwrap_or(&configuration.launch.rom)
     }
 
     pub(crate) fn restore_media<'a>(
@@ -219,8 +216,16 @@ impl PlayerState {
         disks: impl IntoIterator<Item = &'a SessionDisk>,
         remap_manual_ids: bool,
     ) -> crate::host_commands::RestoreMedia {
+        #[cfg(not(target_arch = "wasm32"))]
+        let roms = self.restore_kickstart.iter().cloned().collect();
+        #[cfg(target_arch = "wasm32")]
+        let roms = self
+            .kickstarts
+            .iter()
+            .map(crate::kickstarts::Entry::source_image)
+            .collect();
         crate::host_commands::RestoreMedia {
-            roms: self.selected_file_rom().into_iter().collect(),
+            roms,
             disks: disks
                 .into_iter()
                 .filter_map(|disk| {
@@ -277,15 +282,12 @@ impl PlayerState {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    fn native_rom_path(
-        &self,
-        configuration: &NamedConfiguration,
-    ) -> Result<std::path::PathBuf, String> {
+    fn native_rom_path(&self, reference: &str) -> Result<std::path::PathBuf, String> {
         let root = self
             .library_root
             .as_deref()
-            .ok_or("Choose a Kickstart in Manual setup or select a library in Configurations")?;
-        crate::library_catalog::rom_path(root, &configuration.launch.rom)
+            .ok_or("Choose a library in Configurations and add a Kickstart")?;
+        crate::library_catalog::rom_path(root, reference)
     }
 }
 
@@ -339,10 +341,18 @@ impl EmulatorApp {
             }
         }
         if screen == PlayerScreen::Configuration && self.player.editor.is_none() {
+            #[cfg(not(target_arch = "wasm32"))]
+            self.adopt_shared_kickstart();
             self.begin_configuration_edit();
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        if matches!(screen, PlayerScreen::Setup | PlayerScreen::Configuration) {
+            self.refresh_kickstarts();
         }
         if screen != PlayerScreen::Configuration {
             self.player.editor = None;
+            self.player.manage_kickstarts = false;
+            self.player.delete_kickstart = None;
         }
         self.player.screen = screen;
         #[cfg(not(target_arch = "wasm32"))]

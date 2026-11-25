@@ -6,7 +6,7 @@ category: "Design"
 subsystem: "config"
 status: "active"
 created: 2026-09-05
-updated: 2026-11-24
+updated: 2026-11-25
 related: ["[General Architecture.md](General%20Architecture.md)", "[Physical Memory.md](Physical%20Memory.md)", "[MemoryBus.md](MemoryBus.md)", "[RTC.md](RTC.md)", "[Machine Loop.md](Machine%20Loop.md)"]
 tracked_paths:
   - "crates/config"
@@ -80,8 +80,10 @@ keyboard and controller mappings. Renaming the configuration preserves its game
 associations. The scope excludes per-game inheritance and hardware overrides.
 
 On desktop, each library's root contains its catalog of named configurations
-and mappings. A library configuration refers to a Kickstart file by its path
-relative to that root. A library copy carries those profiles and managed assets
+and mappings. A library configuration keeps the path of its selected Kickstart
+relative to that root. The desktop copies firmware added in Configurations into
+`kickstarts/`. Distinct entries have distinct paths and labels even when the
+selected source files share a name. A library copy carries those profiles and assets
 with it. The current user's application storage holds the selected root,
 active editor selection and other host preferences. An accessible library
 without a catalog starts with the built-in profile and keyboard joystick
@@ -91,8 +93,30 @@ native catalog into its previously selected library, preserving all IDs. It
 keeps an exact backup of the old settings and reports any conflict or
 unavailable Kickstart that prevents the transfer.
 
-The browser frontend saves named settings in browser storage. When the user
-reopens the browser, they must select any unavailable ROM or disk bytes again.
+When opening the library, the desktop adopts the existing
+`_shared/kickstart-1.3.rom` if saved profiles reference it. It leaves the source
+in place, verifies the managed copy byte for byte and updates all matching
+references in one catalog write. Profile IDs and game assignments are retained.
+If a copy already exists after an interrupted transfer, identical bytes allow
+the profile update to proceed. An unavailable or invalid source, different
+destination bytes or a failed catalog write leaves the old references intact
+and produces a diagnostic. Other existing ROM references retain their paths.
+
+The host accepts only complete 262144-byte Kickstart files. Recognition uses the
+full image's size and SHA-1 digest. The recognized record is **Kickstart 1.3 rev
+34.5 (A500/A1000/A2000)**, part `315093-02`, SHA-1
+`891e9a547772fe0c6c19b610baf8bc4ea7fcb785` and reference CRC32 `c4f0f55f`.
+Recognition identifies an official release. Support requires project evidence
+of the claimed operation with the exact image. Other images of the required
+size remain selectable as custom firmware. The exact image with SHA-256
+`ee05862d8102a08436ac4056da7d549db31625c7d47b24dfb7b3c9a5c113ca53` has
+recorded PAL A500 OCS boots with the original cross1 ADF. The support label
+applies to that boot operation. [WinUAE ROM database](https://github.com/tonioni/WinUAE/blob/ee784914c8d61bb503d137e358b22fcc4758a294/rommgr.cpp#L151) · [Recorded boots](../../../DIARY.md#16-native-kickstart-and-disk-program-execution)
+
+The browser saves named settings in browser storage. Configurations holds
+firmware bytes for the life of the current page. A fresh page requires the player
+to supply the Kickstart again in Configurations and any required disks in Manual
+setup.
 
 The user edits configurations in the [GUI](Application/GUI.md), which also
 validates their launch choices. The saved machine hardware, ROM and drive

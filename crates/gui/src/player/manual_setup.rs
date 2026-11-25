@@ -21,21 +21,19 @@ impl EmulatorApp {
         {
             return false;
         }
+        let reference = self.player.manual_kickstart(configuration);
+        #[cfg(target_arch = "wasm32")]
         let rom_selected = self
             .player
-            .selected_rom(configuration)
-            .is_some_and(|bytes| bytes.len() == physical_memory::KICKSTART_ROM_SIZE);
+            .kickstarts
+            .iter()
+            .any(|entry| entry.reference == reference);
         #[cfg(not(target_arch = "wasm32"))]
-        let rom_selected = rom_selected
-            || self
-                .player
-                .native_rom_path(configuration)
-                .is_ok_and(|path| {
-                    path.metadata().is_ok_and(|metadata| {
-                        metadata.is_file()
-                            && metadata.len() == physical_memory::KICKSTART_ROM_SIZE as u64
-                    })
-                });
+        let rom_selected = self.player.native_rom_path(reference).is_ok_and(|path| {
+            path.metadata().is_ok_and(|metadata| {
+                metadata.is_file() && metadata.len() == physical_memory::KICKSTART_ROM_SIZE as u64
+            })
+        });
         rom_selected
             && self
                 .player
@@ -75,33 +73,40 @@ impl EmulatorApp {
             self.file_error = Some(error);
             return;
         }
-        let rom = match self.player.selected_rom(&configuration) {
-            Some(bytes) => bytes.to_vec(),
-            None => {
-                #[cfg(not(target_arch = "wasm32"))]
-                {
-                    match self
-                        .player
-                        .native_rom_path(&configuration)
-                        .and_then(|path| std::fs::read(path).map_err(|error| error.to_string()))
-                    {
-                        Ok(bytes) => bytes,
-                        Err(error) => {
-                            self.file_error =
-                                Some(format!("Select a readable Kickstart ROM: {error}"));
-                            return;
-                        }
-                    }
-                }
-                #[cfg(target_arch = "wasm32")]
-                {
-                    self.file_error = Some(
-                        "Select Kickstart again; stored names do not grant file access".into(),
-                    );
-                    return;
-                }
-            }
-        };
+        let reference = self.player.manual_kickstart(&configuration);
+        #[cfg(not(target_arch = "wasm32"))]
+        let source = self
+            .player
+            .native_rom_path(reference)
+            .and_then(|path| crate::kickstarts::native::read_image(&path));
+        #[cfg(target_arch = "wasm32")]
+        let source = self
+            .player
+            .kickstarts
+            .iter()
+            .find(|entry| entry.reference == reference)
+            .map(crate::kickstarts::Entry::source_image)
+            .ok_or_else(|| {
+                "Add the Kickstart in Configurations and choose it in Manual setup".to_owned()
+            });
+        match source {
+            Ok(source) => self.launch_manual_with_rom(configuration, source),
+            Err(error) => self.file_error = Some(error),
+        }
+    }
+
+    pub(crate) fn launch_manual_with_rom(
+        &mut self,
+        configuration: crate::player_config::NamedConfiguration,
+        source: debugger::SourceImage,
+    ) {
+        if let Err(error) = crate::kickstarts::validate_size(
+            source.name.as_deref().unwrap_or("ROM"),
+            source.bytes.len() as u64,
+        ) {
+            self.file_error = Some(error);
+            return;
+        }
         let disks = self.player.setup_disks.clone();
         let mounted = self.player.setup_mounted.clone();
         let selected_disks = mounted.each_ref().map(|id| {
@@ -110,11 +115,6 @@ impl EmulatorApp {
         });
         let media = selected_disks.map(|selected| selected.and_then(|disk| disk.bytes.clone()));
         let disk_names = selected_disks.map(|disk| disk.map(|disk| disk.label.clone()));
-        let rom_name = self
-            .player
-            .selected_file_rom()
-            .and_then(|image| image.name)
-            .or_else(|| Some(configuration.launch.rom.clone()));
         let association = debugger::SaveAssociation {
             game_id: None,
             mounted,
@@ -126,7 +126,7 @@ impl EmulatorApp {
             ),
             ports: configuration.controls.ports.each_ref().map(|p| p.device),
             drives: configuration.launch.drives,
-            rom,
+            rom: source.bytes,
             disks: media,
         };
         self.player.busy = true;
@@ -134,7 +134,7 @@ impl EmulatorApp {
             HostCommand::Launch {
                 setup,
                 association: association.clone(),
-                rom_name,
+                rom_name: source.name,
                 disk_names,
             },
             HostEffect::Player(PlayerEffect::Launch {
@@ -163,37 +163,5 @@ impl EmulatorApp {
             bytes: Some(image.bytes),
         });
         *mounted = Some(id);
-    }
-
-    pub(crate) fn select_setup_rom(&mut self, name: String, bytes: Vec<u8>) {
-        if bytes.len() != physical_memory::KICKSTART_ROM_SIZE {
-            self.file_error = Some(format!(
-                "Unsupported Kickstart ({} bytes). Select a 256 KiB image.",
-                bytes.len()
-            ));
-            return;
-        }
-        let Some(configuration) = self
-            .player
-            .catalog
-            .configurations
-            .iter_mut()
-            .find(|c| c.id == self.player.catalog.selected)
-        else {
-            self.file_error = Some("Select a configuration".into());
-            return;
-        };
-        #[cfg(target_arch = "wasm32")]
-        {
-            configuration.launch.rom = name;
-            self.player.settings_dirty = true;
-        }
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            self.player.rom_name = Some(name);
-        }
-        self.player.rom_reference = Some(configuration.launch.rom.clone());
-        self.player.rom = Some(bytes);
-        self.player.rom_configuration_id = Some(self.player.catalog.selected.clone());
     }
 }

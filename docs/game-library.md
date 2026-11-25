@@ -6,8 +6,9 @@ The desktop app opens to the game library. In **Configurations**, use
 The library updates automatically when files change. Type part of a game's name
 in **Filter games** to find it, and clear the field to show all games again.
 To start standalone disks, choose **Manual setup**. The browser opens there.
-Choose a named configuration, select a supported 256 KiB Kickstart and any
-standard 880 KiB DD ADF images, then choose Start. You can leave drives empty.
+Add a 256 KiB image with **Add Kickstart** in **Configurations**. In Manual
+setup, choose a named configuration and an available Kickstart. Select any
+standard 880 KiB DD ADF images, then choose **Start**. You can leave drives empty.
 
 Each configuration combines one of the three supported memory presets with a
 PAL/NTSC setting, ROM, attached drives and input mappings. DF0 is always attached.
@@ -19,10 +20,18 @@ controller. After reconnecting or returning focus to the app, release any
 held controller inputs before using them again.
 
 On desktop, each library keeps its profiles and reusable mappings in
-`configurations.json`. Keep the Kickstart files inside the library and enter
-their paths relative to the library directory. Copy the entire library to bring
-these profiles, games and assets to another installation. Your library directory
-choice and interface preferences belong to your user account.
+`configurations.json`. **Add Kickstart** copies the file into `kickstarts/`.
+Save a firmware choice for each profile. An ordinary game boot uses that
+profile's choice. **Return to session**, **Resume** and **Reset** keep the
+current machine's ROM. Copy the entire library to bring the profiles, games
+and assets to another installation. The library directory and recent picker
+directories belong to your user account.
+
+**Manage Kickstarts** lists the library's ROM copies. Change any saved profile
+listed when you try to delete an entry, then confirm **Delete Kickstart**.
+The original file and the current machine remain available. Keep the exact ROM
+bytes for existing saves. Use **Supply Kickstart for restore** in
+**Configurations** to offer an external ROM for a file load.
 
 Switching libraries changes the profiles available for future launches. You can
 return to the live session and continue using its controls and saves in its
@@ -205,12 +214,13 @@ insert. Standard ZIP compression and 7z LZMA or LZMA2 are supported. Choose an
 unencrypted archive.
 
 The browser build supports manual setup, file import and export, and one
-in-memory quicksave per open app. Browser storage retains named settings. Select ROM and disk
-files again after reopening because the browser build keeps their bytes only for
-the session. To open an exported save after reopening, choose the matching
-Kickstart and disk files in Manual setup, then choose **Return to session**
-and **Import state**. This iteration has no browser library, bundle loader or
-persistent browser save catalog.
+in-memory quicksave per open app. Browser storage retains named settings.
+On a fresh page, add the matching Kickstart in **Configurations** and select
+the disk files in **Manual setup**. Choose **Return to session**, then **Import
+state** to restore a file. Use **Manage Kickstarts** to remove a supplied ROM
+from the current page after changing any saved profiles that use it. This
+iteration has no browser library, bundle loader or persistent browser save
+catalog.
 
 Saves use schema 17. The desktop catalog keeps older files visible as
 incompatible. Opening an older file reports its unsupported version.

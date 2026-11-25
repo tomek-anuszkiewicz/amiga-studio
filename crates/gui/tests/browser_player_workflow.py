@@ -31,7 +31,16 @@ from browser_test_server import serve_distribution
 VIEWPORT = {"width": 1280, "height": 800}
 APPLICATION_TITLE = "Amiga 500 Developer Studio"
 CONTROL_POINTS = {
-    "Select Kickstart": (65, 108),
+    "Setup Kickstart": (106, 108),
+    "Setup first Kickstart": (106, 158),
+    "Configuration Kickstart": (106, 316),
+    "Configuration first Kickstart": (106, 366),
+    "Add Kickstart": (399, 12),
+    "Manage Kickstarts": (506, 12),
+    "Delete Kickstart": (540, 417),
+    "Confirm deletion": (480, 430),
+    "Manage Kickstarts Done": (513, 412),
+    "Setup tab": (48, 12),
     "Select disk": (204, 131),
     "Start": (30, 223),
     "Quick save": (1102, 218),
@@ -175,6 +184,15 @@ def select_file(page, control, path):
     chooser.value.set_files(path)
 
 
+def supply_kickstart(page, path):
+    click(page, "Configurations")
+    select_file(page, "Add Kickstart", path)
+    page.wait_for_timeout(400)
+    click(page, "Setup tab")
+    click(page, "Setup Kickstart")
+    click(page, "Setup first Kickstart")
+
+
 def export_state(page, path):
     with page.expect_download(timeout=30000) as download:
         click(page, "Export state")
@@ -269,9 +287,20 @@ def check_workflow(browser, url, rom, disk, output):
             counts.append(page.evaluate("workerReport.outputs"))
         assert len(set(counts)) == 1, f"Paused notifications continued without input: {counts}"
         page.screenshot(path=str(output / "setup.png"))
+        stage = "reject wrong-sized Kickstarts"
+        press("Configurations")
+        for size in (262143, 262145, 524288):
+            select_file(page, "Add Kickstart", {
+                "name": "invalid.rom",
+                "mimeType": "application/octet-stream",
+                "buffer": bytes(size),
+            })
+            read_file_error(page, f"expected 262144 bytes (256 KiB), got {size} bytes",
+                            output / f"unsupported-kickstart-{size}.png")
+            assert page.evaluate("observedGeneration") == 1
+        press("Setup tab")
         stage = "ROM selection"
-        select_file(page, "Select Kickstart", rom)
-        page.wait_for_timeout(400)
+        supply_kickstart(page, rom)
         stage = "disk selection"
         original_disk = disk.read_bytes()
         disk_digest = sha256(original_disk).digest()
@@ -305,7 +334,7 @@ def check_workflow(browser, url, rom, disk, output):
             b"Recent binaries", b"Load ROM from File",
         ):
             assert retired not in application, f"Retired application control found in Wasm: {retired!r}"
-        assert b"Select Kickstart for Setup" in application
+        assert b"Add Kickstart" in application
         assert b"amiga-game-screenshot-button" not in application, (
             "Native screenshot button ID found in browser Wasm"
         )
@@ -398,6 +427,8 @@ def check_workflow(browser, url, rom, disk, output):
         page.wait_for_timeout(200)
         page.screenshot(path=str(output / "port-options.png"))
         press("Amiga port 2 Disconnected")
+        press("Configuration Kickstart")
+        press("Configuration first Kickstart")
         press("Configuration Save")
         page.wait_for_function("globalThis.observedGeneration === 4", timeout=30000)
         page.wait_for_timeout(300)
@@ -465,6 +496,8 @@ def check_workflow(browser, url, rom, disk, output):
         page.wait_for_timeout(500)
         page.screenshot(path=str(output / "reopened.png"))
         assert page.evaluate("localStorage.getItem('player_configurations')") == stored
+        press("Start")
+        assert page.evaluate("observedGeneration") == 1, "Stored Kickstart selection started without file bytes"
         assert not errors, errors
         assert not page.evaluate("workerReport.failures")
         return {"browser": browser.version, "paused_notifications": counts,
@@ -477,7 +510,8 @@ def check_workflow(browser, url, rom, disk, output):
                 "disk_remount": remount,
                 "manual_setup_and_restore_title": APPLICATION_TITLE, "offline_instructions": True,
                 "native_screenshot_action_excluded": True,
-                "native_cover_action_excluded": True, "errors": errors}
+                "native_cover_action_excluded": True,
+                "stored_kickstart_required_resupply": True, "errors": errors}
     except Exception:
         page.screenshot(path=str(output / "failure.png"))
         print(f"Failed browser workflow stage: {stage}")
@@ -513,8 +547,7 @@ def start_page(context, url, errors):
 
 
 def setup_files(page, rom, disks):
-    select_file(page, "Select Kickstart", rom)
-    page.wait_for_timeout(400)
+    supply_kickstart(page, rom)
     for disk in disks:
         select_file(page, "Select disk", disk)
         page.wait_for_timeout(400)
@@ -522,6 +555,10 @@ def setup_files(page, rom, disks):
 
 def reject_import(page, saved_path, expected_text, screenshot):
     select_file(page, "Import state", saved_path)
+    return read_file_error(page, expected_text, screenshot)
+
+
+def read_file_error(page, expected_text, screenshot):
     # The error window is rendered into the canvas. Locate its red error label in
     # the centered window, then read the same selectable text the player sees.
     clip = {"x": 360, "y": 350, "width": 560, "height": 110}
@@ -641,10 +678,28 @@ def check_fresh_restore(browser, url, rom, first, second, saved_path, output):
         for snapshot in (swapped, empty, reinserted):
             assert snapshot["state"]["cck"] == restored["state"]["cck"]
         assert page.evaluate("observedGeneration") == 2
+        click(page, "Game Manual setup")
+        click(page, "Configurations")
+        click(page, "Manage Kickstarts")
+        page.screenshot(path=str(output / "browser-kickstart-catalog.png"))
+        click(page, "Delete Kickstart")
+        page.screenshot(path=str(output / "browser-kickstart-delete.png"))
+        click(page, "Confirm deletion")
+        click(page, "Manage Kickstarts Done")
+        click(page, "Setup tab")
+        click(page, "Start")
+        assert page.evaluate("observedGeneration") == 2, "Removal changed the current machine"
+        # With no supplied image the player cannot even open a replacement prompt.
+        click(page, "Return to session")
+        after_removal = export_state(page, output / "fresh-kickstart-removed.json")
+        check_restored_state(after_removal, reinserted)
+        assert after_removal["header"]["association"] == reinserted["header"]["association"]
+        assert sha256(rom.read_bytes()).hexdigest() == restored["state"]["physical_memory"]["kickstart_rom"]["sha256"]
         assert not errors and not page.evaluate("workerReport.failures"), errors
         return {"cck": restored["state"]["cck"], "generation": 2,
                 "restored_drive_id": "manual-0", "swapped_drive_id": "manual-1",
-                "ejected": True, "reinserted_drive_id": "manual-0"}
+                "ejected": True, "reinserted_drive_id": "manual-0",
+                "page_kickstart_removed": True}
     except Exception:
         page.screenshot(path=str(output / "fresh-restore-failure.png"))
         raise
@@ -746,10 +801,7 @@ def check_archive_imports(browser, url, rom, output):
                 page.mouse.click(x, y, delay=80)
                 page.wait_for_timeout(100)
 
-            with page.expect_file_chooser() as chooser:
-                click("Select Kickstart")
-            chooser.value.set_files(rom)
-            page.wait_for_timeout(400)
+            supply_kickstart(page, rom)
             with page.expect_file_chooser() as chooser:
                 click("Select disk")
             assert chooser.value.is_multiple()

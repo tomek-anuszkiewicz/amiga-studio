@@ -16,7 +16,9 @@ pub(crate) use history::STORAGE_KEY as HISTORY_STORAGE_KEY;
 #[derive(Clone, Copy, Debug)]
 pub(crate) enum FileAction {
     State,
-    SetupRom,
+    AddKickstart,
+    #[cfg(not(target_arch = "wasm32"))]
+    RestoreKickstart,
     SetupDisk(usize),
 }
 
@@ -31,7 +33,9 @@ impl FileAction {
     fn title(self) -> &'static str {
         match self {
             Self::State => "Load State from File",
-            Self::SetupRom => "Select Kickstart for Setup",
+            Self::AddKickstart => "Add Kickstart",
+            #[cfg(not(target_arch = "wasm32"))]
+            Self::RestoreKickstart => "Supply Kickstart for restore",
             Self::SetupDisk(_) => "Select disk for Setup",
         }
     }
@@ -39,7 +43,9 @@ impl FileAction {
     fn extensions(self) -> &'static [&'static str] {
         match self {
             Self::State => &["json"],
-            Self::SetupRom => &["rom", "bin"],
+            Self::AddKickstart => &["rom", "bin"],
+            #[cfg(not(target_arch = "wasm32"))]
+            Self::RestoreKickstart => &["rom", "bin"],
             Self::SetupDisk(_) => DISK_EXTENSIONS,
         }
     }
@@ -192,11 +198,21 @@ impl EmulatorApp {
                         .find(|configuration| configuration.id == game.manifest.configuration)
                 })
                 .or_else(|| self.current_input_configuration());
-            if let Some(rom) = root
-                .zip(configuration)
-                .and_then(|(root, config)| self.read_save_rom(root, config))
+            if let Some(root) = root {
+                if let Some(rom) =
+                    configuration.and_then(|config| self.read_legacy_save_rom(root, config))
+                {
+                    media.roms.push(rom);
+                }
+                crate::kickstarts::native::extend_restore_roms(root, &mut media.roms);
+            }
+            if let Some(opened) = self
+                .player
+                .library_root
+                .as_deref()
+                .filter(|opened| Some(*opened) != root)
             {
-                media.roms.push(rom);
+                crate::kickstarts::native::extend_restore_roms(opened, &mut media.roms);
             }
             media
         };
@@ -229,10 +245,10 @@ impl EmulatorApp {
             })
     }
 
-    pub(crate) fn open_setup_asset(&mut self, drive: Option<usize>) {
+    pub(crate) fn open_setup_disk(&mut self, drive: usize) {
         self.player.captured = false;
         self.player.drive_disk_choice = None;
-        self.open_file_dialog(drive.map_or(FileAction::SetupRom, FileAction::SetupDisk));
+        self.open_file_dialog(FileAction::SetupDisk(drive));
     }
 
     pub(crate) fn open_load_state_dialog(&mut self) {
@@ -329,7 +345,18 @@ impl EmulatorApp {
     #[cfg(target_arch = "wasm32")]
     fn accept_file_data(&mut self, action: FileAction, name: String, data: Vec<u8>) {
         match action {
-            FileAction::SetupRom => self.select_setup_rom(name, data),
+            FileAction::AddKickstart => match self.supply_browser_kickstart(name, data) {
+                Ok(()) => {
+                    self.file_error = None;
+                    if let Some(editor) = &mut self.player.editor {
+                        editor.error = None;
+                    }
+                }
+                Err(error) => {
+                    self.configuration_error(error.clone());
+                    self.file_error = Some(error);
+                }
+            },
             FileAction::SetupDisk(_) => {}
             FileAction::State => match String::from_utf8(data) {
                 Ok(json) => {
@@ -363,7 +390,7 @@ impl EmulatorApp {
 
 #[cfg(not(target_arch = "wasm32"))]
 impl EmulatorApp {
-    fn open_file_dialog(&mut self, action: FileAction) {
+    pub(crate) fn open_file_dialog(&mut self, action: FileAction) {
         self.player.captured = false;
         self.host.keyboard_pending.clear();
         if self
@@ -375,20 +402,36 @@ impl EmulatorApp {
             self.player.dialog = Some(NativeDialog::Open(action));
             return;
         }
-        let dialog = if matches!(action, FileAction::SetupDisk(_)) {
-            self.disk_file_dialog(action.title())
-        } else {
-            rfd::FileDialog::new()
+        let dialog = match action {
+            FileAction::SetupDisk(_) => self.disk_file_dialog(action.title()),
+            FileAction::AddKickstart | FileAction::RestoreKickstart => {
+                let mut dialog = rfd::FileDialog::new()
+                    .set_title(action.title())
+                    .add_filter("Kickstart", action.extensions());
+                if let Some(directory) = self.file_history.rom_picker_directory() {
+                    dialog = dialog.set_directory(directory);
+                }
+                dialog
+            }
+            FileAction::State => rfd::FileDialog::new()
                 .set_title(action.title())
-                .add_filter("Supported files", action.extensions())
+                .add_filter("Supported files", action.extensions()),
         };
         if let Some(path) = dialog.pick_file() {
             match action {
                 FileAction::State => self.load_state_file(&path),
-                FileAction::SetupRom => match std::fs::read(&path) {
-                    Ok(bytes) => self.select_setup_rom(file_name(&path), bytes),
-                    Err(error) => self.file_error = Some(format!("Could not read asset: {error}")),
-                },
+                FileAction::AddKickstart | FileAction::RestoreKickstart => {
+                    let result = if matches!(action, FileAction::AddKickstart) {
+                        self.import_kickstart(&path)
+                    } else {
+                        self.supply_restore_kickstart(&path)
+                    };
+                    let message = result.err();
+                    if let Some(editor) = &mut self.player.editor {
+                        editor.error.clone_from(&message);
+                    }
+                    self.file_error = message;
+                }
                 FileAction::SetupDisk(drive) => self.load_setup_disk(drive, &path),
             }
         }
@@ -407,6 +450,17 @@ impl EmulatorApp {
     pub(crate) fn remember_disk_selection(&mut self, path: &std::path::Path) {
         self.file_history.remember_disk(path);
         self.player.settings_dirty = true;
+    }
+
+    pub(crate) fn remember_kickstart_import(&mut self, path: &std::path::Path) {
+        self.file_history.remember_rom(path);
+        self.player.settings_dirty = true;
+    }
+
+    /// Supplies explicit external ROM bytes for file restoration without changing the machine.
+    pub fn supply_restore_kickstart(&mut self, path: &std::path::Path) -> Result<(), String> {
+        self.player.restore_kickstart = Some(crate::kickstarts::native::read_image(path)?);
+        Ok(())
     }
 
     /// Loads a confirmed desktop disk source through the manual setup path.

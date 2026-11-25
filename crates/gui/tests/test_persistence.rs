@@ -405,7 +405,8 @@ fn native_catalog_and_host_preferences_survive_separately_after_relocating_the_l
     draft.configurations[0].name = "Renamed preset".into();
     draft.configurations[0].launch.rom = "kick.rom".into();
     draft.mappings[0].threshold = 0.7;
-    app.player.rom = Some(vec![1; 262144]);
+    app.supply_restore_kickstart(&root.join("kick.rom"))
+        .unwrap();
     app.save_configuration_edit();
     common::settle(&mut app, &ctx);
     assert!(app.player.editor.is_none());
@@ -428,7 +429,7 @@ fn native_catalog_and_host_preferences_survive_separately_after_relocating_the_l
     assert_eq!(reopened.theme, AppTheme::Light);
     assert_eq!(reopened.player.catalog, app.player.catalog);
     assert_eq!(reopened.player.catalog.configurations[0].id, "standard");
-    assert!(reopened.player.rom.is_none());
+    assert!(reopened.player.restore_kickstart.is_none());
     assert!(reopened.player.setup_disks.is_empty());
 
     let destination = tempfile::tempdir().unwrap();

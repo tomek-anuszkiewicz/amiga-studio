@@ -224,12 +224,13 @@ impl GameFps {
         if app.player.screen != PlayerScreen::Setup {
             app.navigate_player(PlayerScreen::Setup);
         }
-        let launch = &app
+        let configuration = app
             .player
             .catalog
             .selected()
             .ok_or("Select the standard A500 configuration")?
-            .launch;
+            .clone();
+        let launch = &configuration.launch;
         if app.player.screen != PlayerScreen::Setup
             || launch.preset != config::A500Preset::Standard1Mb
             || launch.video != config::VideoStandard::Pal
@@ -237,15 +238,17 @@ impl GameFps {
         {
             return Err("Game FPS requires Manual Setup with a standard PAL 1 MB A500 and only DF0 connected".into());
         }
-        app.select_setup_rom("Kickstart.rom".into(), media.rom);
         app.select_setup_disk(0, media.disk);
         if let Some(error) = &app.file_error {
             return Err(error.clone());
         }
-        if !app.manual_ready() {
-            return Err("Select valid ROM and DF0 media in Manual Setup".into());
-        }
-        app.start_manual();
+        app.launch_manual_with_rom(
+            configuration,
+            debugger::SourceImage {
+                name: Some("Kickstart.rom".into()),
+                bytes: media.rom,
+            },
+        );
         Ok(())
     }
 
