@@ -1141,6 +1141,9 @@ class RegistrationControlTests(ServiceFixture, unittest.TestCase):
 
             clock.now.return_value = datetime(2026, 11, 18, 10, 0, 0, 5, UTC)
             receipt = self.cli("start")
+        self.assertFalse((self.registration().parent / "otel").exists())
+        self.assertEqual(receipt.get("status"), "registered")
+        self.assertEqual(receipt["registration_path"], str(self.registration()))
         self.assertEqual(receipt["deadline_ns"], now + 180 * 1_000_000_000)
         self.assertEqual(read_json(self.registration())["startup"]["deadline_ns"], receipt["deadline_ns"])
         with patch("time.time_ns", return_value=now + 1000):
@@ -1152,6 +1155,68 @@ class RegistrationControlTests(ServiceFixture, unittest.TestCase):
         with patch("time.time_ns", return_value=receipt["deadline_ns"]):
             with self.assertRaisesRegex(CaptureError, "deadline expired"):
                 self.cli("confirm", wait_seconds=0)
+
+    def test_start_rejects_receipts_without_a_matching_primary_archive(self):
+        self.receiver()
+        path = self.registration()
+        relative = path.relative_to(self.primary).as_posix()
+        claim = {"action": "start", "task_id": "fixture", "execution_id": "a", "thread_id": ROOT_THREAD,
+                 "boundary_utc": START, "registration": relative}
+        self.assertTrue(self.registration("other").is_file())
+        with patch("register.send_registration", return_value=claim):
+            with self.assertRaisesRegex(CaptureError, "Cannot verify registration"):
+                self.cli("start")
+        self.assertFalse(path.exists())
+
+        receipt = self.cli("start", at=START)
+        wrong_path = self.registration("other").relative_to(self.primary).as_posix()
+        with patch("register.send_registration", return_value={**receipt, "registration": wrong_path}):
+            with self.assertRaisesRegex(CaptureError, "receipt does not match registration"):
+                self.cli("start", at=START)
+
+    def test_verify_checks_the_saved_registration_without_services_or_telemetry(self):
+        path = self.registration()
+        original = read_json(path)
+        with patch.object(ComposeService, "__init__", side_effect=AssertionError("verify uses Compose")), \
+                patch("register.send_registration", side_effect=AssertionError("verify sends a request")), \
+                patch("register.confirm", side_effect=AssertionError("verify scans telemetry")), \
+                patch("time.sleep", side_effect=AssertionError("verify waits")), \
+                patch("time.time_ns", return_value=AT + 200 * 1_000_000_000):
+            self.assertFalse((path.parent / "otel").exists())
+            argv = ["register.py", "verify", "--project", str(self.primary), "--task", "fixture", "--execution", "a"]
+            output = io.StringIO()
+            with patch.object(sys, "argv", argv), patch("register.Path.cwd", return_value=self.primary), \
+                    patch.dict(os.environ, CODEX_THREAD_ID=ROOT_THREAD), redirect_stdout(output):
+                self.assertEqual(main(), 0)
+            receipt = json.loads(output.getvalue())
+            self.assertEqual(receipt["status"], "registered")
+            self.assertEqual(receipt["registration_path"], str(path))
+            self.assertEqual((receipt["task_id"], receipt["execution_id"], receipt["thread_id"],
+                              receipt["boundary_utc"]), ("fixture", "a", ROOT_THREAD, START))
+            self.assertEqual(read_json(path), original)
+            with self.assertRaisesRegex(CaptureError, "requested task, execution and initiating thread"):
+                self.cli("verify", thread=OTHER_THREAD)
+
+            invalid = (
+                ({"schema_version": 2}, "Invalid registration schema"),
+                ({"task_id": "other"}, "requested task, execution and initiating thread"),
+                ({"execution_id": "other"}, "requested task, execution and initiating thread"),
+                ({"git_common_dir": str(self.root / ".git")}, "different Git repository"),
+                ({"end_utc": START}, "open OTLP registration"),
+                ({"otel": False}, "open OTLP registration"),
+                ({"pending_after_turn_id": CONTINUATION}, "open OTLP registration"),
+                ({"start_utc": "invalid"}, "ISO 8601"),
+                ({"start_utc": "0001-01-01T00:00:00+00:01"}, "Cannot verify registration"),
+                ({"threads": []}, "no matching open range"),
+            )
+            for change, diagnosis in invalid:
+                with self.subTest(change=change):
+                    write_json(path, {**original, **change})
+                    with self.assertRaisesRegex(CaptureError, diagnosis):
+                        self.cli("verify")
+            path.write_text("{", encoding="utf-8")
+            with self.assertRaisesRegex(CaptureError, "Cannot verify registration"):
+                self.cli("verify")
 
 
 class UpgradeEngine:

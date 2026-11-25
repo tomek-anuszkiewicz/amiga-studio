@@ -87,7 +87,7 @@ history and a surviving authorized branch. For either retention route, record
 governing workflow, starting code, final code and reviewed candidate identities
 separately. For Git retention also record the original blob locators.
 
-## Confirm telemetry for implementation
+## Register an execution for implementation
 
 Use the primary checkout for storage even when invoking the procedure from a
 linked worktree. Run the commands under the host account that can access Docker,
@@ -205,7 +205,7 @@ previous services. When the selected revision is already installed, the command
 returns `already_current` after it confirms readiness and finishes any pending
 retention of the old layout.
 
-After a successful upgrade, [confirm a fresh event](#register-and-read-the-fresh-event)
+After a successful upgrade, [confirm a fresh event](#confirm-telemetry-for-maintenance-or-diagnostics)
 from the actual Codex client using a new proof execution. Close its registration
 after confirmation. Retain the upgrade, status and proof results with the maintenance record.
 
@@ -219,9 +219,9 @@ the two known revisions of this deployment.
 python tools/workflow/capture/upgrade.py --project . --rollback
 ```
 
-Record the rollback outcome. Confirm a fresh event from the restored revision
-and close the proof interval. For a restored pre-REST revision, use its matching
-saved controller during the agreed window.
+Record the rollback outcome. [Confirm a fresh event](#confirm-telemetry-for-maintenance-or-diagnostics)
+from the restored revision and close the proof interval. For a restored
+pre-REST revision, use its matching saved controller during the agreed window.
 
 A terminated controller can leave an empty `receiver/control-mutation`
 directory in the private service root. Capture control and upgrades report
@@ -303,58 +303,73 @@ metrics_exporter = "none"
 log_user_prompt = false
 ```
 
-Reload the client if needed. Confirm actual recording below in the desktop or
-IDE client that will do the work and after any client restart during the
-initial acceptance. A process-local CLI override supplies evidence for that
-CLI process only. Logs can include private tool arguments and outputs even
-when prompt logging is disabled.
+Reload the client if needed. For client setup and diagnostics, use the
+[telemetry check](#confirm-telemetry-for-maintenance-or-diagnostics) in the
+desktop or IDE client that will do the work. A process-local CLI override
+supplies evidence for that CLI process only. Logs can include private tool
+arguments and outputs even when prompt logging is disabled.
 
-### Register and read the fresh event
+### Register or resume an execution
 
 Run the start command from the actual initiating thread. Establish its
 `CODEX_THREAD_ID` independently of the archive and provide the stable task and
 execution IDs. The command checks Docker, restores missing or stopped services
 from the installed revision, then checks both services and looks for new errors.
-The receiver validates the actual thread's rollout before registering it over
-HTTP. Save the registration receipt and UTC time. Perform a short, ordinary
-activity in the active client to emit telemetry.
+The Receiver validates the actual thread's rollout before registering it over
+HTTP. Docker recovery, readiness and registration share a 180-second budget.
 
 ```text
 python tools/workflow/capture/register.py start --otel --project <primary> --task <task> --execution <execution>
+```
+
+Before reporting success, the host opens `.agent/task-archives/<task>/<execution>/registration.json`
+in the primary checkout. It verifies an open OTLP registration for the selected
+repository, task, execution and initiating thread. It also checks that the
+Receiver receipt describes that registration. Exit 0 with `status = registered`
+and the absolute `registration_path` is the result required for Implement Task.
+Keep the receipt and proceed to checkout preparation or implementation immediately.
+
+To resume in the same initiating thread and open execution, run `verify` with
+the recorded IDs. It reads the same archive file and returns `status = registered`
+with its path. Its result depends on the saved registration and the current
+thread. Collector delivery and the time since registration have no effect.
+
+```text
+python tools/workflow/capture/register.py verify --project <primary> --task <task> --execution <execution>
+```
+
+If the file is missing, invalid, closed or belongs to another task, execution,
+repository or initiating thread, report the problem before proceeding. If a new
+execution is needed, retain the task ID and choose a new execution ID. For an
+interrupted start, inspect the saved registration with `verify` before retrying.
+
+### Confirm telemetry for maintenance or diagnostics
+
+After an upgrade or rollback, or when diagnosing Collector delivery, register
+a dedicated execution in the actual client with `start --otel` and let the
+client produce ordinary activity. Run `confirm` from the same thread to check
+for a complete archived Collector record with an event time after registration.
+
+```text
 python tools/workflow/capture/register.py confirm --project <primary> --task <task> --execution <execution>
 ```
 
-A live start begins a single 180-second deadline before the first Docker check.
-While waiting, `confirm` polls the selected host archive every 250 ms. A call
-normally waits up to five seconds. If the call finishes without confirmation and
-time remains before the original deadline, it returns exit 3 with `status = pending`.
-If the client flushes telemetry at turn end, finish a short verification turn and
-run the same confirmation command again in that thread. The registration and
-original deadline still apply. Exit 1 reports a failed prerequisite, an archive
-error or an expired deadline. Resolve the reported cause and choose a fresh execution
-ID for a new attempt. Close any earlier open registration using the normal stop command.
-
-Require exit 0 and `status = confirmed` before the first checkout preparation
-or implementation assignment in Implement Task. Planning can finish before
-registration. Confirmation identifies the task, execution and initiating thread
-and a complete new Collector record with an event time strictly after
-registration. Select only records that ordinary activity in the active client
-produced. Keep the proof's archive path, byte range, record indexes, digest,
-event time and observation time with the registration receipt.
-
-For a resume in the same initiating thread and open execution, reuse its
-successful proof. An open registration awaiting confirmation keeps its
-original deadline. Proof from another thread cannot confirm capture for the
-current initiating thread. Obtain applicable live confirmation before dependent
-work. On expiry, retain the failed attempt. A retry keeps the task ID and
-uses a fresh execution ID.
+`confirm` polls every 250 ms and normally waits up to five seconds per call.
+Exit 3 with `status = pending` allows another call before the original
+180-second deadline. When the client flushes telemetry at turn end, finish
+the activity and run `confirm` again. Exit 1 reports a failed prerequisite,
+archive error or expired deadline. For an expired diagnostic attempt, close
+the open registration and use a fresh execution ID if another attempt is needed.
+Exit 0 with `status = confirmed` reports the archive path, byte range, record
+indexes, digest, event time and observation time. Retain that proof with the
+receipt and close the diagnostic registration.
 
 An earlier file, native rollout, HTTP success or manually submitted sample
 provides diagnostic information. Mark manual OTLP requests with
 `X-Capture-Diagnostic: 1` and omit the private application header. The receiver
 also marks uncredentialed requests as diagnostics. Diagnostic events are
-available for testing admission and archive delivery. Startup confirmation
-requires the active-client record described above.
+available for testing admission and archive delivery. `confirm` requires an
+active-client record.
 
 ### Continue and close an interval
 
@@ -389,8 +404,7 @@ python tools/workflow/capture/register.py start --project <primary> --task <task
 ```
 
 These historical and native-only selections remain valid for evidence
-collection. Implementation startup requires the fresh active-client proof
-above. Use the same OTLP/HTTP JSON endpoint in any dedicated CLI probe and
+collection. Use the same OTLP/HTTP JSON endpoint in any dedicated CLI probe and
 preserve its `--json` output as bytes. The earlier dedicated pilot found
 identifiable spans and no identifiable metric points. Preserve the chosen
 Collector image identity, configuration, source IDs and any transformation

@@ -22,5 +22,5 @@ checkout, branch, plan path, commands you ran and any partial failures.
 No source fingerprints, completion receipts or delivery declarations are required.
 
 A standalone provisioning request ends with the checkout, branch and plan
-result. When Implement Task calls this skill, the main session supplies
-confirmed execution context and uses the prepared checkout for the assignment.
+result. When Implement Task calls this skill, the main session supplies the
+verified archive registration path and uses the prepared checkout for the assignment.

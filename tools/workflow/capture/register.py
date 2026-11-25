@@ -1,4 +1,4 @@
-"""Register a Codex thread, confirm its Collector record and close its range."""
+"""Register a Codex thread, verify its registration and close its range."""
 
 import argparse
 from datetime import UTC, datetime
@@ -35,6 +35,36 @@ def verify_mounted_rollout(project, codex_home, thread, resolve_common):
         raise CaptureError("Session inputs: the receiver needs exactly one rollout for the selected thread.")
     with safe_file(candidates.pop()).open("rb") as stream:
         rollout_header(stream, thread, project.common, resolve_common=resolve_common)
+
+
+def verify_registration(project, path, task, execution, thread):
+    try:
+        project.require_ignored(path)
+        data = read_json(path)
+        if not isinstance(data, dict) or type(data.get("schema_version")) is not int or data["schema_version"] != 1:
+            raise CaptureError("Invalid registration schema.")
+        if (data["task_id"], data["execution_id"], data["root_thread_id"]) != (task, execution, thread):
+            raise CaptureError("The registration does not match the requested task, execution and initiating thread.")
+        common = data["git_common_dir"]
+        if not isinstance(common, str) or not project.matches_common(common):
+            raise CaptureError("The registration belongs to a different Git repository.")
+        if data["end_utc"] is not None or data["otel"] is not True or "pending_after_turn_id" in data:
+            raise CaptureError("An active, open OTLP registration is required.")
+        start = data["start_utc"]
+        timestamp(start)
+        threads = data["threads"]
+        if not isinstance(threads, list) or any(not isinstance(entry, dict) for entry in threads):
+            raise CaptureError("Invalid registration thread list.")
+        selected = [entry for entry in threads if entry["id"] == thread]
+        if len(selected) != 1 or selected[0]["start_utc"] != start or selected[0]["end_utc"] is not None:
+            raise CaptureError("The registration has no matching open range for the initiating thread.")
+    except (OSError, KeyError, OverflowError, ValueError) as error:
+        raise CaptureError(f"Cannot verify registration {path}: {error}") from error
+    return {
+        "status": "registered", "task_id": task, "execution_id": execution, "thread_id": thread,
+        "boundary_utc": start, "registration": path.relative_to(project.primary).as_posix(),
+        "registration_path": str(path),
+    }
 
 
 def register(project, args, thread, *, deadline=None, startup=None, registrations=None):
@@ -134,7 +164,7 @@ def wait_seconds(value):
 def arguments():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="action", required=True)
-    for action in ("provision", "start", "confirm", "include", "stop", "status"):
+    for action in ("provision", "start", "verify", "confirm", "include", "stop", "status"):
         command = commands.add_parser(action)
         command.add_argument("--project", required=True, type=Path, help="Primary checkout root.")
         if action not in ("provision", "status"):
@@ -198,6 +228,10 @@ def host_request(args):
     if action == "status":
         installed = ComposeService(project, args, deadline, revision="saved")
         return installation_status(installed, args)
+    if action == "verify":
+        thread = thread_id(os.environ.get("CODEX_THREAD_ID"))
+        path = project.registration_path(args.task, args.execution)
+        return verify_registration(project, path, args.task, args.execution, thread)
     project.prepare()
     if action == "provision":
         with project.launcher_lock(timeout=min(30, deadline.remaining("Compose preparation"))):
@@ -250,6 +284,10 @@ def host_request(args):
         "deadline_ns": deadline.expires_ns,
     }, deadline)
     if use_otel:
+        verified = verify_registration(project, path, args.task, args.execution, thread)
+        if any(report.get(field) != verified[field] for field in ("registration", "thread_id", "boundary_utc")):
+            raise CaptureError(f"The Receiver receipt does not match registration {path}.")
+        report.update(verified)
         report["receiver"] = health
         report["endpoint"] = f"http://127.0.0.1:{service.port}"
     return report

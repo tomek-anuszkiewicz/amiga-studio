@@ -127,12 +127,14 @@ CONTROL_ROLLOUTS = {
     "receiver_rejects_retired": (OTHER_THREAD, CONTINUATION),
     "receiver_respects_a_saved": (),
     "receiver_restart_restores": (ROOT_THREAD, CONTINUATION),
+    "start_rejects_receipts": (ROOT_THREAD,),
     "start_restores_missing": (ROOT_THREAD, OTHER_THREAD),
     "startup_index_routes": (ROOT_THREAD,),
     "status_combines": (ROOT_THREAD,),
     "status_rejects_a_receiver": (),
     "status_reports_stopped": (ROOT_THREAD,),
     "status_reports_unavailable": (),
+    "verify_checks_the_saved": (),
 }
 PUBLISHED_CASES = ("changed_source_closes", "direct_control_cannot", "start_restores_missing", "status_combines")
 
@@ -198,7 +200,7 @@ def service(case, tree, contents):
 
 def control(case, tree, contents):
     service_project(tree)
-    if case != "live_start_and_confirmation":
+    if case not in ("live_start_and_confirmation", "verify_checks_the_saved"):
         install(tree, contents)
     if case in PUBLISHED_CASES:
         source(tree, "published", contents, b"\n# published revision\n")
@@ -212,6 +214,10 @@ def control(case, tree, contents):
     setup, work = str(UUID(int=40)), str(UUID(int=41))
     if case == "startup_index_routes":
         range_registration(tree, "a", end=cutoff)
+    if case == "start_rejects_receipts":
+        range_registration(tree, "other", start="2026-11-17T10:00:00Z", end="2026-11-17T10:00:01Z")
+    if case == "verify_checks_the_saved":
+        range_registration(tree, "a", startup={"deadline_ns": AT + 20_000, "baseline": {"chunks": []}})
     if case in ("status_combines", "status_reports_stopped"):
         for name in ("launcher.lock", "registry.lock"):
             tree.file(f"{SERVICE}/receiver/{name}", b"")

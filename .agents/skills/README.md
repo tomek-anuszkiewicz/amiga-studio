@@ -53,16 +53,16 @@ with that result.
 ### Implement task
 
 [TA-WF-Main-implement-task](TA-WF-Main-implement-task/SKILL.md) resolves the
-approved plan and destination and confirms capture against the primary
+approved plan and destination and verifies the registration file in the primary
 checkout. It assigns the change to the implementer. Once the implementer
 returns the change and diff inspection, the runner executes the applicable tests.
 
 ```mermaid
 flowchart TD
     Inputs["Resolve the approved plan, scenarios and destination"]
-    Inputs --> Register["TA-WF-Step-register-execution<br/>Confirm live capture against the primary checkout"]
-    Register -->|Confirmed| Checkout{"Does the selected checkout need provisioning?"}
-    Register -->|Proof unavailable| Report["Report the obstacle and completed work"]
+    Inputs --> Register["TA-WF-Step-register-execution<br/>Verify the registration file in the primary checkout"]
+    Register -->|Registration verified| Checkout{"Does the selected checkout need provisioning?"}
+    Register -->|Registration could not be verified| Report["Report the obstacle and completed work"]
     Checkout -->|Yes| Provision["TA-WF-Step-start-plan<br/>Create worktree and place required inputs"]
     Checkout -->|No| Existing["Use the governing plan in the authorized existing checkout"]
     Provision --> Assign["Check plan inputs and assign TA-WF-Step-implement-change"]
@@ -237,7 +237,7 @@ These capabilities support an assigned task or run as selected standalone work:
 
 | Need | Entry point |
 | --- | --- |
-| Confirm live capture for a selected thread | [TA-WF-Step-register-execution](TA-WF-Step-register-execution/SKILL.md) |
+| Register a selected thread and verify the archive file | [TA-WF-Step-register-execution](TA-WF-Step-register-execution/SKILL.md) |
 | Provision a selected task worktree | [TA-WF-Step-start-plan](TA-WF-Step-start-plan/SKILL.md) |
 | Design tests for agreed requirements | [TA-WF-Step-design-tests](TA-WF-Step-design-tests/SKILL.md) |
 | Assess, author or restructure documentation | [TA-WF-Step-update-docs](TA-WF-Step-update-docs/SKILL.md) |

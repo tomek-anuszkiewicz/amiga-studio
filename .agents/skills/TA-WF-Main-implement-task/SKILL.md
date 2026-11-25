@@ -1,6 +1,6 @@
 ---
 name: TA-WF-Main-implement-task
-description: Execute an approved plan, confirm live telemetry and run applicable tests with up to two test-driven repairs.
+description: Execute an approved plan, verify its archive registration and run applicable tests with up to two test-driven repairs.
 ---
 
 # Execute the selected plan
@@ -22,14 +22,12 @@ for each assignment. Apply the [result contract](../../references/workflow-contr
    the work that depends on them.
 2. Use [TA-WF-Step-register-execution](../TA-WF-Step-register-execution/SKILL.md)
    against the primary checkout, including when implementation will run
-   elsewhere. Keep the plan's task ID, identify the actual initiating VS Code
-   thread and retain the execution's receipt and live confirmation. An execution
-   ID identifies one recording attempt. Require applicable proof before
-   checkout preparation or implementation. Follow the
-   [capture guide](../../../tools/workflow/capture/README.md#register-and-read-the-fresh-event)
-   for reuse in the same open execution and thread, pending confirmation,
-   expiry and retry. Report failed or missing confirmation with the task and
-   attempt preserved.
+   elsewhere. Keep the plan's task ID and identify the actual initiating VS Code
+   thread. Use the [capture guide](../../../tools/workflow/capture/README.md#register-or-resume-an-execution)
+   to start an execution or verify the saved registration for the same open
+   execution and thread. Retain the receipt with the verified archive path.
+   Proceed to checkout preparation or implementation as soon as the registration
+   is verified. Report a registration failure with the task and execution IDs.
 3. For an isolated checkout that needs to be created, use
    [TA-WF-Step-start-plan](../TA-WF-Step-start-plan/SKILL.md) with the selected
    branch and base. The provisioning script copies the local assets. Place
@@ -83,8 +81,8 @@ for each assignment. Apply the [result contract](../../references/workflow-contr
    failure persists after the second repair and rerun, falls outside scope or
    needs an unavailable prerequisite.
 
-Return the changed paths, governing plan, checkout and branch, registration and
-proof locations, test outcomes, repairs and remaining work.
+Return the changed paths, governing plan, checkout and branch, verified
+registration path, test outcomes, repairs and remaining work.
 Leave the changes unstaged. Implementation results describe the checks
 on the working files. Delivery and final verification require their own
 authorization.
