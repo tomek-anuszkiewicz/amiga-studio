@@ -18,7 +18,7 @@ pub(crate) enum HostEffect {
     Player(crate::player::PlayerEffect),
     Configuration,
     #[cfg(feature = "game-fps-benchmark")]
-    GameFpsProgress,
+    GameFpsReply,
 }
 
 #[derive(Debug)]
@@ -331,14 +331,18 @@ impl crate::EmulatorApp {
             self.inspection.ready = false;
         }
         for (effect, reply) in completed {
+            #[cfg(feature = "game-fps-benchmark")]
+            if let Some(run) = &mut self.game_fps {
+                run.observe_owner_reply(reply.status);
+            }
             match effect {
                 HostEffect::File(action) => self.complete_file_action(action, reply.value, ctx),
                 HostEffect::Player(action) => self.complete_player(action, reply.value, ctx),
                 HostEffect::Configuration => self.complete_configuration_save(reply.value),
                 #[cfg(feature = "game-fps-benchmark")]
-                HostEffect::GameFpsProgress => {
+                HostEffect::GameFpsReply => {
                     if let Some(run) = &mut self.game_fps {
-                        run.accept_progress(reply);
+                        run.accept_reply(reply);
                     }
                 }
                 HostEffect::Command | HostEffect::Run | HostEffect::Pause => {

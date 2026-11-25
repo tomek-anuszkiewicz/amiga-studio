@@ -29,8 +29,8 @@ tracked_paths:
 The engineer can run focused checks or select the `commit` or `milestone` profile.
 Every commit invocation uses the same profile on the current checkout. It runs
 preflight quality checks, Clippy and the production browser build, ordinary
-workspace tests with coverage, the standard harness and every registered Python
-suite in that order. `commit --plan` shows the same commands without running them.
+workspace tests with coverage, the standard harness, every registered Python
+suite and the Mixed Scene FPS group in that order. `commit --plan` shows the same commands without running them.
 A missing suite directory or an empty standard harness selection fails selection.
 The milestone profile runs the workspace public function scan and full SingleStep.
 The engineer can also request the full vectors for diagnosis or run benchmarks as explicit
@@ -101,15 +101,27 @@ stages, and diary and roadmap closure are separate duties. Required gaps still
 block readiness even if the caller did not select repairs.
 [Independent review](../../../../.agents/references/review-common.md)
 
-Engineers run four on-demand Mixed Scene FPS cases to compare release builds
-with approved references. Two measure uncapped emulated fields per second in
-the native machine loop and the browser worker. The desktop and browser Game
-cases boot the same workload from DF0 using a private Kickstart 1.3 ROM.
-They confirm guest execution before measuring field images submitted for
-drawing in the foreground at normal playback speed. Engineers continue to
-assess graphical output and other pacing behavior manually. Independent CPU,
-chip, bus, input, host-lifecycle, display-state and continuation tests remain
-available. Audio captures still have spectral and attachment acceptance limits.
+The final phase of the commit profile runs four Mixed Scene FPS cases to compare
+release builds with approved references. Engineers can run the same group alone
+with `test fps`. Before measuring any case, the group requires a readable
+262144-byte Kickstart 1.3 ROM at `tests/kickstarts/kickstart-1.3.rom` in the
+checkout. The operator supplies the ROM in this Git-ignored directory. A missing,
+unreadable or wrong-size file fails the group before any benchmark starts.
+All four cases count completed emulated fields per host second. The native
+machine loop and browser worker run uncapped. The desktop and browser Game
+cases boot the same workload from DF0 with the local ROM, confirm guest progress
+and measure foreground playback at 4x. The report records three samples per
+case and compares each median with its compatible reference. The measurements
+require a matching host, release
+toolchain and runtime, and matching display settings for the Game cases.
+Keep the desktop window and browser tab in the foreground when each measures.
+A difference of up to 5% in either direction
+passes, including both endpoints. Any valid Game sample of at least 190 FPS
+fails its case before reference comparison because it approaches the 4x PAL
+playback limit. Engineers continue to assess graphical output and other
+pacing behavior manually. Independent CPU, chip, bus, input, host-lifecycle,
+display-state and continuation tests remain available. Audio captures still
+have spectral and attachment acceptance limits.
 [Mixed Scene benchmark](../../../../tests/mixed_scene/README.md#run-the-fps-regression-cases)
 
 ### Roadmap and milestone completion
@@ -354,7 +366,7 @@ and failure modes.
 
 | Tool / Script | Purpose | Enforcement Layer |
 | :--- | :--- | :--- |
-| [`tools/verification/verify.py`](../../../../tools/verification/verify.py) | Canonical commit/milestone quality gate and diagnostic frontend (`test rust`, `test python`, `test runner`, `check`, `runner`). | Explicit agent/developer command & CI |
+| [`tools/verification/verify.py`](../../../../tools/verification/verify.py) | Canonical commit/milestone quality gate and diagnostic frontend (`test rust`, `test python`, `test fps`, `test runner`, `check`, `runner`). | Explicit agent/developer command & CI |
 | [`tools/verification/checks/check_architecture.py`](../../../../tools/verification/checks/check_architecture.py) | Python checks validating source constraints, test naming and retained required suite files; passing them does not prove behavioral coverage. | `verify.py check architecture` & commit verification gate |
 | [`tools/verification/checks/audit_code_quality.py`](../../../../tools/verification/checks/audit_code_quality.py) | Checks dead code, test-only code and accessor conventions. Observed-caller visibility suggestions are advisory because external public API use is outside the repository scan. | `verify.py check code` & commit verification gate |
 

@@ -7,6 +7,7 @@ from repository import REPO_ROOT, workspace_packages
 
 CAPTURE_CONTRACTS = "Workflow capture contracts"
 PUBLIC_PROBE = "tools/verification/unused_public.py"
+FPS_WORKER = "--_mixed-scene-fps"
 
 
 def singlestep_command(profile="verification", case=None, exact=False):
@@ -345,6 +346,13 @@ def runner_commands(action, words):
     raise ValueError(f"Unsupported runner action: {action}")
 
 
+def fps_group(results_dir):
+    command = [sys.executable, "tools/verification/verify.py", FPS_WORKER]
+    if results_dir is not None:
+        command.append(str(results_dir))
+    return ("Performance", [("Mixed Scene FPS", command, {})])
+
+
 def select_phases(args, changes=(), *, results_dir=None):
     from cli import keyword_values
     if args.command in ("commit", "milestone"):
@@ -368,6 +376,7 @@ def select_phases(args, changes=(), *, results_dir=None):
             ("Build checks", [item for item in quality if item[0] in build_checks]),
             ("Coverage", select_coverage_commands()),
             ("Verification", [*harness, *python_commands()]),
+            fps_group(results_dir),
         ]
     if args.command == "check":
         if args.exact:
@@ -377,6 +386,10 @@ def select_phases(args, changes=(), *, results_dir=None):
         if args.exact:
             raise ValueError("--exact requires a focused Rust or SingleStep case")
         selected = runner_commands(args.action, args.words)
+    elif args.kind == "fps":
+        if args.exact:
+            raise ValueError("--exact requires a focused Rust or SingleStep case")
+        return [fps_group(results_dir)]
     elif args.kind == "coverage":
         if args.exact:
             raise ValueError("Coverage measures all ordinary tests of the selected packages; --exact is unsupported")

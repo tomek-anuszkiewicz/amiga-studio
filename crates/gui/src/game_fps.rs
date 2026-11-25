@@ -1,26 +1,27 @@
-//! Opt-in production Game launch and drawing measurement for Mixed Scene.
+//! Opt-in Game launch and emulated field measurement for Mixed Scene.
 
 #[cfg(target_arch = "wasm32")]
 pub(crate) mod browser;
-mod drawing;
+mod focus;
+mod measurement;
 mod progress;
-mod submissions;
 
 #[cfg(not(target_arch = "wasm32"))]
-pub(crate) use drawing::record_focus_loss;
-pub(crate) use drawing::{prepare_draw, record_draw};
+pub(crate) use focus::record_focus_loss;
 
 use crate::app_host::HostEffect;
 use crate::disk_import::{DiskImage, DiskSelection};
-use crate::host_commands::{HostCommand, HostObservation, HostReply, HostValue};
+use crate::host_commands::{HostCommand, HostObservation, HostReply, HostStatus, HostValue};
 use crate::player::PlayerScreen;
-use crate::{EmulatorApp, ScreenScale, ViewMode};
+use crate::{EmulatorApp, ViewMode};
+use measurement::{Sample, Sampler};
 #[cfg(not(target_arch = "wasm32"))]
 use progress::StartupFocus;
-use progress::{validate_session, Boot, Progress};
-use serde::Serialize;
+use progress::{
+    validate_running, validate_session, validate_speed, Boot, Display, Progress, SpeedChange,
+    BOOT_SPEED, DOUBLE_SPEED, MEASUREMENT_SPEED,
+};
 use std::time::Duration;
-use submissions::Sample;
 
 const PAYLOAD: &[u8] = include_bytes!("../../../tests/mixed_scene/program.bin");
 const ENTRY_ADDRESS: u32 = 0x1000;
@@ -87,28 +88,11 @@ enum Stage {
     WaitingForFocus,
     Launching(u64),
     Boot(Boot),
-    Sampling,
+    SettingSpeed(SpeedChange),
+    Sampling(Sampler),
     Pausing,
     ReadingAfter,
     Finished,
-}
-
-#[derive(Debug, PartialEq, Serialize)]
-struct Display {
-    viewport_points: [f32; 2],
-    pixels_per_point: f32,
-    screen_scale: ScreenScale,
-}
-
-impl Display {
-    fn current(app: &EmulatorApp, ctx: &egui::Context) -> Self {
-        let rect = ctx.viewport_rect();
-        Self {
-            viewport_points: [rect.width(), rect.height()],
-            pixels_per_point: ctx.pixels_per_point(),
-            screen_scale: app.screen_scale,
-        }
-    }
 }
 
 #[derive(Debug)]
@@ -119,11 +103,13 @@ pub(crate) struct GameFps {
     _browser_focus: browser::Focus,
     #[cfg(not(target_arch = "wasm32"))]
     startup_focus: StartupFocus,
+    #[cfg(not(target_arch = "wasm32"))]
+    clock: std::time::Instant,
     renderer: String,
     stage: Stage,
     media: Option<Media>,
     generation: Option<u64>,
-    progress_pending: bool,
+    reply_pending: bool,
     boot: Option<(Progress, Progress)>,
     after: Option<Progress>,
     sample: Option<Sample>,
@@ -149,11 +135,13 @@ impl GameFps {
             _browser_focus: browser_focus,
             #[cfg(not(target_arch = "wasm32"))]
             startup_focus: StartupFocus::default(),
+            #[cfg(not(target_arch = "wasm32"))]
+            clock: std::time::Instant::now(),
             renderer,
             stage: Stage::WaitingForFocus,
             media,
             generation: None,
-            progress_pending: false,
+            reply_pending: false,
             boot: None,
             after: None,
             sample: None,
@@ -162,30 +150,48 @@ impl GameFps {
         }
     }
 
-    fn attach(self, app: &mut EmulatorApp, ctx: &egui::Context) {
-        drawing::install(ctx);
+    fn attach(
+        self,
+        app: &mut EmulatorApp,
+        #[cfg(not(target_arch = "wasm32"))] ctx: &egui::Context,
+    ) {
         #[cfg(not(target_arch = "wasm32"))]
-        drawing::watch_focus(ctx);
+        focus::watch_focus(ctx);
         app.game_fps = Some(Box::new(self));
     }
 
-    pub(crate) fn sampling(&self) -> bool {
-        matches!(self.stage, Stage::Sampling)
+    fn seconds(&self) -> f64 {
+        #[cfg(not(target_arch = "wasm32"))]
+        return self.clock.elapsed().as_secs_f64();
+        #[cfg(target_arch = "wasm32")]
+        return crate::host_runtime::host_now();
     }
 
-    pub(crate) fn accept_progress(&mut self, reply: HostReply) {
-        if let Err(error) = self.record_progress(reply) {
-            self.error = Some(error);
+    pub(crate) fn observe_owner_reply(&mut self, status: HostStatus) {
+        if matches!(self.stage, Stage::Sampling(_)) {
+            // A command can change speed or pause before the latest status is read.
+            let result = validate_session(self.generation, status.generation, true)
+                .and_then(|()| validate_running(status))
+                .and_then(|()| validate_speed(status.speed, MEASUREMENT_SPEED));
+            if let Err(error) = result {
+                self.error.get_or_insert(error);
+            }
         }
     }
 
-    fn record_progress(&mut self, reply: HostReply) -> Result<(), String> {
+    pub(crate) fn accept_reply(&mut self, reply: HostReply) {
+        if let Err(error) = self.record_reply(reply) {
+            self.error.get_or_insert(error);
+        }
+    }
+
+    fn record_reply(&mut self, reply: HostReply) -> Result<(), String> {
         let status = reply.status;
         validate_session(self.generation, status.generation, true)?;
-        if !self.progress_pending {
-            return Err("Unexpected guest observation reply".into());
+        if !self.reply_pending {
+            return Err("Unexpected Game FPS command reply".into());
         }
-        self.progress_pending = false;
+        self.reply_pending = false;
         let progress = |fields, work_loops, fault| Progress {
             fields,
             work_loops,
@@ -202,9 +208,12 @@ impl GameFps {
                     work_loops,
                     fault,
                 },
-            ) if status.running && status.continuous_run && status.speed == 1.0 => {
+            ) => {
+                validate_running(status)?;
+                validate_speed(status.speed, BOOT_SPEED)?;
                 self.boot = boot.observe(signature_matches, progress(fields, work_loops, fault))?;
             }
+            (Stage::SettingSpeed(change), HostValue::Done) => change.acknowledge(status)?,
             (
                 Stage::ReadingAfter,
                 HostValue::Memory {
@@ -215,7 +224,7 @@ impl GameFps {
                 let read = |offset| u32::from_be_bytes(std::array::from_fn(|i| bytes[offset + i]));
                 self.after = Some(progress(read(0), read(WORK_OFFSET), read(FAULT_OFFSET)));
             }
-            _ => return Err("Unexpected guest observation reply".into()),
+            _ => return Err("Unexpected Game FPS command reply".into()),
         }
         Ok(())
     }
@@ -257,16 +266,17 @@ impl GameFps {
             return Err(error);
         }
         let status = app.host.status;
+        let now = self.seconds();
         if app.host.error.is_some() || status.shutdown || status.halted {
             return Err("Machine owner stopped unexpectedly".into());
         }
-        let focused = drawing::focused(ctx);
+        let focused = focus::focused(ctx);
         let ready_to_launch = if matches!(self.stage, Stage::WaitingForFocus) {
             #[cfg(not(target_arch = "wasm32"))]
             {
                 if !focused {
                     // Clear the loss reported by this pass so focus can settle again.
-                    drawing::watch_focus(ctx);
+                    focus::watch_focus(ctx);
                 }
                 self.startup_focus
                     .observe(focused, std::time::Instant::now())
@@ -280,13 +290,13 @@ impl GameFps {
             false
         };
 
-        match &self.stage {
+        match &mut self.stage {
             Stage::WaitingForFocus if ready_to_launch => {
                 #[cfg(not(target_arch = "wasm32"))]
                 eprintln!("The Game window gained focus. Starting the benchmark session.");
                 #[cfg(target_arch = "wasm32")]
                 {
-                    drawing::watch_focus(ctx);
+                    focus::watch_focus(ctx);
                     browser::publish("amigaGameFpsArmed", wasm_bindgen::JsValue::TRUE);
                 }
                 let media = self.media.take().ok_or("Missing Game FPS media")?;
@@ -302,35 +312,52 @@ impl GameFps {
                     return Err("Manual Setup did not launch a new Game session with the selected disk in DF0".into());
                 }
                 check_running_game(app)?;
+                validate_speed(status.speed, BOOT_SPEED)?;
                 self.generation = Some(status.generation);
                 self.stage = Stage::Boot(Boot::default());
             }
             Stage::Boot(_) => {
                 check_running_game(app)?;
-                if let Some((_, before)) = self.boot {
-                    self.display = Some(Display::current(app, ctx));
-                    drawing::arm(ctx, status.generation, before.field_number);
-                    self.stage = Stage::Sampling;
-                } else if !self.progress_pending {
-                    self.request_progress(
-                        app,
-                        HostCommand::Observe(HostObservation::MixedSceneBoot),
-                    );
+                validate_speed(status.speed, BOOT_SPEED)?;
+                if self.boot.is_some() {
+                    self.request_speed(app, BOOT_SPEED, DOUBLE_SPEED);
+                } else if !self.reply_pending {
+                    self.request_reply(app, HostCommand::Observe(HostObservation::MixedSceneBoot));
                 }
             }
-            Stage::Sampling => {
+            Stage::SettingSpeed(change) => {
                 check_running_game(app)?;
-                if self.display.as_ref() != Some(&Display::current(app, ctx)) {
-                    return Err("Game viewport or scale changed during sampling".into());
+                if change.confirmed(status.speed)? {
+                    if change.target_speed == DOUBLE_SPEED {
+                        self.request_speed(app, DOUBLE_SPEED, MEASUREMENT_SPEED);
+                    } else {
+                        let (_, before) = self.boot.ok_or("Missing confirmed boot progress")?;
+                        if status.field_number < before.field_number {
+                            return Err("The owner's completed-field counter went backwards".into());
+                        }
+                        self.display = Some(Display::current(ctx, app.screen_scale));
+                        self.stage = Stage::Sampling(Sampler::new(status.field_number));
+                    }
                 }
-                if let Some(sample) = drawing::sample(ctx) {
+            }
+            Stage::Sampling(sampler) => {
+                check_running_game(app)?;
+                validate_speed(status.speed, MEASUREMENT_SPEED)?;
+                self.display
+                    .as_ref()
+                    .ok_or("Missing Game display settings at warmup")?
+                    .validate(&Display::current(ctx, app.screen_scale))?;
+                if let Some(wake) = sampler.observe(status.field_number, now)? {
+                    ctx.request_repaint_after(wake);
+                }
+                if let Some(sample) = sampler.sample {
                     self.sample = Some(sample);
                     app.host.queue(HostCommand::Pause);
                     self.stage = Stage::Pausing;
                 }
             }
             Stage::Pausing if !status.running && app.host.can_edit() => {
-                self.request_progress(
+                self.request_reply(
                     app,
                     HostCommand::ReadMemory {
                         address: STATS_ADDRESS,
@@ -349,21 +376,26 @@ impl GameFps {
             }
             _ => {}
         }
-        if !matches!(self.stage, Stage::Sampling | Stage::Finished) {
+        if !matches!(self.stage, Stage::Sampling(_) | Stage::Finished) {
             // Setup and final observation can wait for focus or queued commands.
             ctx.request_repaint_after(Duration::from_millis(20));
         }
         Ok(())
     }
 
-    fn request_progress(&mut self, app: &mut EmulatorApp, command: HostCommand) {
-        app.host.queue_effect(command, HostEffect::GameFpsProgress);
-        self.progress_pending = true;
+    fn request_speed(&mut self, app: &mut EmulatorApp, previous: f64, target: f64) {
+        self.stage = Stage::SettingSpeed(SpeedChange::new(previous, target));
+        self.request_reply(app, HostCommand::Faster);
+    }
+
+    fn request_reply(&mut self, app: &mut EmulatorApp, command: HostCommand) {
+        app.host.queue_effect(command, HostEffect::GameFpsReply);
+        self.reply_pending = true;
     }
 
     fn finish(&mut self, ctx: &egui::Context, error: Option<String>) {
         self.stage = Stage::Finished;
-        drawing::disarm(ctx);
+        focus::stop_watching_focus(ctx);
         let report = serde_json::json!({
             "error": error,
             "generation": self.generation.unwrap_or_default(),
@@ -390,18 +422,11 @@ impl GameFps {
 }
 
 fn check_running_game(app: &EmulatorApp) -> Result<(), String> {
-    let status = app.host.status;
-    if app.player.screen == PlayerScreen::Session
-        && app.view_mode == ViewMode::ScreenOnly
-        && status.running
-        && status.continuous_run
-        && !status.pause_pending
-        && status.speed == 1.0
-    {
-        Ok(())
-    } else {
-        Err("Expected the loaded Game session to keep running at 1×".into())
-    }
+    progress::validate_game_view(
+        app.player.screen == PlayerScreen::Session && app.view_mode == ViewMode::ScreenOnly,
+        app.host.pause_requested(),
+    )?;
+    validate_running(app.host.status)
 }
 
 pub(crate) fn update(app: &mut EmulatorApp, ctx: &egui::Context) {

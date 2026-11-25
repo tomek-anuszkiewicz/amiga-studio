@@ -20,6 +20,7 @@ import coverage_report
 import verify
 import commands as selection
 import execution
+import mixed_scene_fps as fps
 from repository import git
 from timing_report import REPORT_NAME
 import timing_report
@@ -38,6 +39,8 @@ PYTHON_GROUPS = (
     ('Verification CLI contracts', 'tools/verification/tests'),
     ('Workflow capture contracts', 'tools/workflow/capture/tests'),
 )
+FPS_GROUP = 'Mixed Scene FPS'
+FPS_COMMAND = [sys.executable, 'tools/verification/verify.py', '--_mixed-scene-fps']
 STANDARD_TARGETS = ('test_benchmark_workloads', 'test_singlestep_mutations',
                     'test_singlestep_overrides', 'test_transactions')
 
@@ -75,6 +78,7 @@ def commit_inventory():
         if directory == 'tools/bootstrap/book-to-markdown/tests':
             command = [python, 'tools/bootstrap/book-to-markdown/run_tests.py']
         groups.append(('Verification', name, command))
+    groups.append(('Performance', FPS_GROUP, FPS_COMMAND))
     return groups
 
 
@@ -95,7 +99,7 @@ class SelectionTests(unittest.TestCase):
                     _, args = parse_args(argv)
                     self.assertIsNone(args)
             help_text = output.getvalue()
-            for command in ('milestone [singlestep]', 'crate NAME [suite NAME] [case FILTER]', 'python [directory PATH [file PATTERN] [case FILTER]]', 'singlestep [case FILTER] [full|sample N]', 'architecture [case FILTER]', 'english [files PATH... | removals PATH]', 'analyze RUN_DIRECTORY',
+            for command in ('milestone [singlestep]', 'verify.py test fps', 'crate NAME [suite NAME] [case FILTER]', 'python [directory PATH [file PATTERN] [case FILTER]]', 'singlestep [case FILTER] [full|sample N]', 'architecture [case FILTER]', 'english [files PATH... | removals PATH]', 'analyze RUN_DIRECTORY',
                             'check unused dependencies\n', 'check unused dependencies crate cpu\n',
                             'check unused public crate cpu\n'):
                 self.assertIn(command, help_text)
@@ -224,6 +228,13 @@ class SelectionTests(unittest.TestCase):
         self.assertEqual(unit[1][:2], ['cargo', 'test'])
         self.assertEqual(unit[1][unit[1].index('cpu') - 1], '-p')
 
+
+    def test_fps_selects_only_the_commit_measurement_group(self):
+        self.assertEqual(selected('test fps'), [(FPS_GROUP, FPS_COMMAND, {})])
+        with self.assertRaisesRegex(ValueError, '--exact requires a focused Rust or SingleStep case'):
+            selected('test fps --exact')
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            parse_args(['test', 'fps', 'case', 'FPS-03'])
 
     def test_milestone_retains_separate_scope(self):
         for changes in ([], ['crates/cpu/src/cpu.rs'], ['docs/testing.md']):
@@ -616,7 +627,8 @@ class ExecutionTests(unittest.TestCase):
     def assert_commit_report(self, output, *, failed=(), missing=()):
         report = self.read_diagnostic_report(output)
         rows = [line.split(' | ')[:4] for line in report.splitlines()
-                if line.startswith(('| Preflight |', '| Build checks |', '| Coverage |', '| Verification |'))]
+                if line.startswith(('| Preflight |', '| Build checks |', '| Coverage |',
+                                    '| Verification |', '| Performance |'))]
         self.assertEqual([(phase[2:], name, status) for phase, name, _, status in rows], [
             (phase, name, 'failed' if name in failed else 'missing' if name in missing else 'executed')
             for phase, name, _ in commit_inventory()
@@ -674,8 +686,89 @@ class ExecutionTests(unittest.TestCase):
             self.assertEqual(verify.main(['commit']), 0, output.getvalue())
         self.assertEqual([call.args[0] for call in execute.call_args_list],
                          [command for _, _, command in commit_inventory()])
-        self.assertIn('[TIMING] 23 executed', output.getvalue())
+        self.assertIn(f'[TIMING] {len(commit_inventory())} executed', output.getvalue())
         self.assert_commit_report(output.getvalue())
+
+    def test_fps_preview_keeps_private_settings_inherited_and_runs_nothing(self):
+        results = self.root / 'fps-check'
+        private = {'AMIGA_FPS_BROWSER_EXECUTABLE': 'private browser path',
+                   'AMIGA_FPS_NATIVE_REFRESH_HZ': '123.45'}
+        with patch.dict(os.environ, private), patch.object(verify, 'execute_command') as execute, \
+             contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(verify.main(['test', 'fps', '--results-dir', str(results), '--plan']), 0)
+        execute.assert_not_called()
+        self.assertEqual(output.getvalue().splitlines(), [
+            '[PLAN] Preview only; no checks or tests will run.',
+            f"[PLAN] Verifier logs: {results / 'verify'}",
+            '  Performance: Mixed Scene FPS',
+            '    ' + subprocess.list2cmdline([*FPS_COMMAND, str(results)]),
+        ])
+        self.assertFalse(results.exists())
+
+    def test_commit_uses_the_current_fps_process_failure(self):
+        self.prepare_commit_checkout()
+
+        def substitute(command, overrides, **options):
+            return int(command == FPS_COMMAND), 'child result', 0.25
+
+        with patch.object(verify, 'execute_command', side_effect=substitute) as execute, \
+             contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(verify.main(['commit']), 1, output.getvalue())
+        self.assertEqual([call.args[0] for call in execute.call_args_list],
+                         [command for _, _, command in commit_inventory()])
+        self.assert_commit_report(output.getvalue(), failed=(FPS_GROUP,))
+
+    def test_commit_checks_fixed_rom_when_the_final_group_runs(self):
+        self.prepare_commit_checkout()
+        self.assertNotEqual(Path.cwd(), self.root)
+        rom = self.root / 'tests/kickstarts/kickstart-1.3.rom'
+        rom.parent.mkdir(parents=True)
+        decoy = self.root / 'decoy.rom'
+        decoy.write_bytes(bytes(262144))
+
+        def substitute(command, overrides, **options):
+            if command != FPS_COMMAND:
+                return 0, 'ok', 0.25
+            self.assertEqual(overrides, {})
+            with contextlib.redirect_stdout(io.StringIO()) as child:
+                code = verify.main(command[2:])
+            return code, child.getvalue().strip(), 0.25
+
+        for contents, issue in (
+            (None, 'The file is missing or unreadable'),
+            (bytes(262143), 'Found 262143 bytes'),
+            (bytes(262145), 'Found 262145 bytes'),
+            (b'a' * 262144, None),
+            (b'b' * 262144, None),
+        ):
+            with (
+                self.subTest(issue=issue, input_start=contents[:1] if contents else None),
+                patch.dict(os.environ, {'AMIGA_FPS_KICKSTART_ROM': str(decoy),
+                                        'AMIGA_FPS_BROWSER_EXECUTABLE': '',
+                                        'AMIGA_FPS_NATIVE_REFRESH_HZ': '60'}),
+                patch.object(fps, 'REPO_ROOT', self.root),
+                patch.object(fps, 'run_measurement', return_value=0) as benchmark,
+                patch.object(verify, 'execute_command', side_effect=substitute) as execute,
+                contextlib.redirect_stdout(io.StringIO()) as output,
+            ):
+                if contents is not None:
+                    rom.write_bytes(contents)
+                self.assertEqual(verify.main(['commit']), int(issue is not None), output.getvalue())
+                self.assertEqual([call.args[0] for call in execute.call_args_list],
+                                 [command for _, _, command in commit_inventory()])
+                if issue is None:
+                    benchmark.assert_called_once()
+                    self.assertEqual(benchmark.call_args.args[1].kickstart_rom, rom.resolve())
+                    self.assert_commit_report(output.getvalue())
+                else:
+                    benchmark.assert_not_called()
+                    console = output.getvalue()
+                    self.assertIn('tests/kickstarts/kickstart-1.3.rom', console)
+                    self.assertIn('262144-byte Kickstart 1.3 ROM', console)
+                    self.assertIn(issue, console)
+                    self.assertNotIn(str(rom), console)
+                    self.assertNotIn(str(decoy), console)
+                    self.assert_commit_report(console, failed=(FPS_GROUP,))
 
     def test_commit_rejects_missing_registered_suite_and_empty_standard_harness(self):
         harness = self.prepare_commit_checkout()

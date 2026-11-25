@@ -49,8 +49,9 @@ Usage: .\tools\worktree.ps1 <add|test|remove|list> [Name] [-Base COMMIT] [-Path 
 
 Creation copies local fixtures, ignored reference files, .env and existing
 graph directories from the primary checkout. The reference graph travels inside
-ref_src/. Copying excludes files tracked in either checkout and preserves existing
-destination files.
+ref_src/. Git must ignore each file under tests/kickstarts/ in both checkouts
+for it to be copied. Copying excludes files tracked in either checkout and
+preserves existing destination files.
 Each checkout has an independent Cargo cache.
 Starting a saved plan selects its own task worktree.
 Detached tests keep implementation in that selected checkout.
@@ -120,7 +121,8 @@ function Copy-LocalAssetFile {
         [string]$SourceRoot,
         [string]$TargetRoot,
         [string]$RelativePath,
-        [System.Collections.Generic.HashSet[string]]$TrackedPaths
+        [System.Collections.Generic.HashSet[string]]$TrackedPaths,
+        [switch]$RequireTargetIgnore
     )
 
     # A tracked ancestor can also own the destination, for example a submodule.
@@ -134,10 +136,16 @@ function Copy-LocalAssetFile {
 
     $srcPath = Join-Path $SourceRoot ($RelativePath -replace '/', '\')
     $dstPath = Join-Path $TargetRoot ($RelativePath -replace '/', '\')
-    if (-not (Test-Path -LiteralPath $dstPath)) {
-        [void][System.IO.Directory]::CreateDirectory([System.IO.Path]::GetDirectoryName($dstPath))
-        [System.IO.File]::Copy($srcPath, $dstPath)
+    if (Test-Path -LiteralPath $dstPath) { return }
+
+    if ($RequireTargetIgnore) {
+        & git -C $TargetRoot check-ignore --quiet -- $RelativePath
+        if ($LASTEXITCODE -eq 1) { return }
+        if ($LASTEXITCODE -ne 0) { throw "Git check-ignore failed with exit code $LASTEXITCODE." }
     }
+
+    [void][System.IO.Directory]::CreateDirectory([System.IO.Path]::GetDirectoryName($dstPath))
+    [System.IO.File]::Copy($srcPath, $dstPath)
 }
 
 function Copy-WorktreeAssets {
@@ -149,8 +157,9 @@ function Copy-WorktreeAssets {
     Write-Host ">> Copying ignored assets and test fixtures (independent physical copies, zero junctions)..." -ForegroundColor Cyan
 
     $referenceDir = 'Obsidian/Amiga/Reference'
+    $kickstartDir = 'tests/kickstarts'
     $envFile = '.env'
-    $assetDirs = @('ref_src', $referenceDir, 'tools/AmigaTestKit', 'graphify-out')
+    $assetDirs = @('ref_src', $referenceDir, 'tools/AmigaTestKit', 'graphify-out', $kickstartDir)
     $assetPaths = $assetDirs + $envFile
     $trackedPaths = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
     foreach ($root in @($SourceRoot, $TargetRoot)) {
@@ -173,11 +182,12 @@ function Copy-WorktreeAssets {
         }
 
         Write-Host "  [COPYING] $rel ..." -ForegroundColor Cyan
-        if ($rel -eq $referenceDir) {
-            # Git selects ignored files without importing ordinary untracked notes.
+        if ($rel -in @($referenceDir, $kickstartDir)) {
+            # Git selects ignored files without importing ordinary untracked files.
             $ignored = Get-GitAssetPaths -Root $SourceRoot -Selection @('--others', '--ignored', '--exclude-standard') -AssetPaths $rel
             foreach ($path in $ignored) {
-                Copy-LocalAssetFile -SourceRoot $SourceRoot -TargetRoot $TargetRoot -RelativePath $path -TrackedPaths $trackedPaths
+                Copy-LocalAssetFile -SourceRoot $SourceRoot -TargetRoot $TargetRoot -RelativePath $path `
+                    -TrackedPaths $trackedPaths -RequireTargetIgnore:($rel -eq $kickstartDir)
             }
         } else {
             # Keep bulk copying for prepared asset trees, excluding all existing files.

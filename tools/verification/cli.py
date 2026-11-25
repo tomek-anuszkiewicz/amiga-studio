@@ -12,6 +12,7 @@ COMMAND_TREE = """Command tree (run from the repository root):
   │  │  └─ crate NAME [suite NAME] [case FILTER]
   │  ├─ coverage crate NAME|workspace
   │  ├─ python [directory PATH [file PATTERN] [case FILTER]]
+  │  ├─ fps
   │  └─ runner
   │     ├─ [standard|silicon]
   │     └─ singlestep [case FILTER] [full|sample N]
@@ -52,6 +53,7 @@ EXAMPLES = """Examples (run from the repository root):
   python tools/verification/verify.py test rust crate test_runner suite test_singlestep case test_sub
   python tools/verification/verify.py test python directory tools/bootstrap/tests
   python tools/verification/verify.py test python
+  python tools/verification/verify.py test fps
   python tools/verification/verify.py test runner singlestep case test_add_b sample 500
   python tools/verification/verify.py test runner singlestep case test_add_b --exact sample 5 --results-dir .agent/tmp/experiments/add
   python tools/verification/verify.py check architecture case test_file_size_limits
@@ -66,8 +68,10 @@ EXAMPLES = """Examples (run from the repository root):
   python tools/verification/verify.py runner bench mnemonic ADD
 
 Commit runs the quality checks, production WebAssembly build, ordinary workspace
-tests with coverage, standard harness tests and every registered Python suite
-on the current checkout. Commit --plan previews the same commands in any Git state.
+tests with coverage, standard harness tests, every registered Python suite and
+the four release Mixed Scene FPS cases on the current checkout. Commit --plan
+previews the same commands in any Git state. Test fps runs only the FPS group.
+Both require a compatible benchmark host and foreground access for the Game cases.
 Use the test or check commands to run focused diagnostics. Test coverage measures
 an ordinary package or the ordinary workspace without completion gates.
 Without directory selectors, test python runs only contracts affected by changed
@@ -103,7 +107,7 @@ def parser():
     root.add_argument("--log-level", choices=("full", "warn", "error"), default="warn",
                       help="Child output detail; every run saves full logs")
     root.add_argument("--results-dir", metavar="PATH",
-                      help="Store verifier logs, SingleStep and public probe reports under PATH")
+                      help="Store verifier logs and SingleStep, Mixed Scene FPS and public probe reports under PATH")
     root.add_argument("--exact", action="store_true",
                       help="Match one Rust suite test or SingleStep group exactly")
     commands = root.add_subparsers(dest="command", required=True)
@@ -113,7 +117,7 @@ def parser():
             leaf.add_argument("sets", nargs="*", metavar="singlestep")
         else:
             leaf.set_defaults(sets=[])
-    tests = commands.add_parser("test", help="Run focused Rust, Python or harness tests")
+    tests = commands.add_parser("test", help="Run focused Rust, Python, harness or Mixed Scene FPS tests")
     kinds = tests.add_subparsers(dest="kind", required=True)
     rust = kinds.add_parser("rust", help="[unit|integration|all|workspace] or crate NAME [suite NAME] [case FILTER]")
     rust.add_argument("words", nargs="*", metavar="SELECTOR")
@@ -121,6 +125,7 @@ def parser():
     coverage.add_argument("words", nargs="+", metavar="SELECTOR")
     python = kinds.add_parser("python", help="Changed tool contracts or directory PATH [file PATTERN] [case FILTER]")
     python.add_argument("words", nargs="*", metavar="SELECTOR")
+    kinds.add_parser("fps", help="Measure and compare the four release Mixed Scene FPS cases")
     runner = kinds.add_parser("runner", help="[standard|silicon|singlestep] [case FILTER] [sample N|full]")
     runner.add_argument("words", nargs="*", metavar="SELECTOR")
     checks = commands.add_parser("check", help="Run an individual quality or compilation check")

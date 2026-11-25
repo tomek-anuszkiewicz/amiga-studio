@@ -9,7 +9,7 @@ from uuid import uuid4
 
 from case_report import CaseReport, run_reported
 from cli import parse_args
-from commands import select_phases
+from commands import FPS_WORKER, select_phases
 from execution import COMMAND_LOG, execute_command, print_info, result_label
 from repository import REPO_ROOT, collect_changes
 from timing_report import measurement, publish
@@ -21,6 +21,13 @@ if hasattr(sys.stdout, "reconfigure"):
 def main(argv=None):
     started = time.perf_counter()
     argv = list(sys.argv[1:] if argv is None else argv)
+    if argv[:1] == [FPS_WORKER]:
+        from mixed_scene_fps import run
+
+        if len(argv) > 2:
+            print("[ERROR] Mixed Scene FPS worker accepts at most one results directory.")
+            return 2
+        return run(argv[1] if len(argv) == 2 else None)
     preview = not argv or any(value in argv for value in ("--plan", "--help", "-h"))
     if preview:
         return select_and_run(argv, started)
