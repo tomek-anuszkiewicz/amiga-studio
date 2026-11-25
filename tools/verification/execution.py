@@ -16,6 +16,7 @@ from unused_dependencies import UnusedDependencies
 
 
 COMMAND_LOG = "AMIGA_TEST_COMMAND_LOG"
+VERIFIER_LOG_PATH = "AMIGA_VERIFIER_LOG_PATH"
 ENGLISH_SCANNER = "tools/verification/checks/check_english.py"
 ENGLISH_REPORT_MARKER = "[INFO] English scan report: "
 
@@ -186,7 +187,8 @@ def run_cmd(cmd, cwd=None, env=None, log_level="warn", log_dir=None, native=None
         english_locators = []
         coverage = cmd[:3] == ["cargo", "llvm-cov", "nextest"]
         unused = UnusedDependencies(coverage) if check_unused or coverage else None
-        with subprocess.Popen(native or cmd, cwd=cwd, env=env, stdout=subprocess.PIPE,
+        child_env = {**(os.environ if env is None else env), VERIFIER_LOG_PATH: str(log_path)}
+        with subprocess.Popen(native or cmd, cwd=cwd, env=child_env, stdout=subprocess.PIPE,
                               stderr=subprocess.STDOUT, text=True, encoding="utf-8",
                               errors="replace") as process:
             for line in process.stdout:

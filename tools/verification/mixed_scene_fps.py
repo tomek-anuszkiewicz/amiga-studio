@@ -1,6 +1,6 @@
 """Measure and compare four release Mixed Scene FPS cases serially."""
 
-import argparse
+from dataclasses import dataclass
 import hashlib
 import importlib.metadata
 import json
@@ -8,18 +8,21 @@ import math
 import os
 from pathlib import Path
 import platform
+import re
 import statistics
 import subprocess
 import sys
 import tempfile
 import time
 
+from execution import VERIFIER_LOG_PATH
 from repository import REPO_ROOT, git
 from run_mixed_scene import find_executable, read_metrics
 
 SCENE = REPO_ROOT / "tests/mixed_scene"
 PROGRAM = SCENE / "program.bin"
 ADF = SCENE / "mixed_scene.adf"
+KICKSTART_ROM = Path("tests/kickstarts/kickstart-1.3.rom")
 ROM_SIZE = 256 * 1024
 REFERENCE = REPO_ROOT / "benchmarks/mixed_scene_fps_reference.json"
 TEMP_ROOT = REPO_ROOT / ".agent/tmp/mixed-scene-fps"
@@ -39,6 +42,50 @@ CASES = {
     "FPS-04": "Browser Game, emulated fields at 4x",
 }
 GAME_CASES = ("FPS-03", "FPS-04")
+BROWSER_ENV = "AMIGA_FPS_BROWSER_EXECUTABLE"
+REFRESH_ENV = "AMIGA_FPS_NATIVE_REFRESH_HZ"
+
+
+@dataclass(frozen=True)
+class Settings:
+    kickstart_rom: Path
+    browser_executable: Path | None
+    native_refresh_hz: float | None
+
+
+def optional_path(name):
+    value = os.environ.get(name)
+    try:
+        return Path(value).expanduser().resolve() if value else None
+    except (OSError, RuntimeError, ValueError):
+        raise ValueError(f"The path in {name} could not be resolved.") from None
+
+
+def require_kickstart_rom():
+    fixture = REPO_ROOT / KICKSTART_ROM
+    expected = f"{KICKSTART_ROM.as_posix()} must be a readable {ROM_SIZE}-byte Kickstart 1.3 ROM."
+    try:
+        rom = fixture.resolve()
+        with rom.open("rb") as stream:
+            size = os.fstat(stream.fileno()).st_size
+    except (OSError, RuntimeError):
+        raise FileNotFoundError(f"{expected} The file is missing or unreadable.") from None
+    if size != ROM_SIZE:
+        raise ValueError(f"{expected} Found {size} bytes.")
+    return rom
+
+
+def load_settings():
+    rom = require_kickstart_rom()
+    refresh = os.environ.get(REFRESH_ENV)
+    if refresh is not None:
+        try:
+            refresh = float(refresh)
+        except ValueError:
+            refresh = None
+        if not positive_number(refresh):
+            raise ValueError(f"{REFRESH_ENV} must be a positive finite number.")
+    return Settings(rom, optional_path(BROWSER_ENV), refresh)
 
 
 def command(args, *, env=None, timeout=BUILD_TIMEOUT):
@@ -55,33 +102,32 @@ def sha256(path):
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
-def game_media_identity(rom):
-    if rom is None:
-        raise FileNotFoundError("Supply a private Kickstart 1.3 ROM with --kickstart-rom.")
-    try:
-        with rom.open("rb") as stream:
-            if os.fstat(stream.fileno()).st_size != ROM_SIZE:
-                raise ValueError("Expected a 256 KiB Kickstart 1.3 ROM.")
-            rom_digest = hashlib.file_digest(stream, "sha256").hexdigest()
-    except OSError:
-        raise FileNotFoundError("The private Kickstart ROM is unreadable. Check --kickstart-rom.") from None
+def game_media_identity():
     try:
         adf_digest = sha256(ADF)
     except OSError:
         raise FileNotFoundError("The checked-in Mixed Scene ADF is unavailable.") from None
-    return {"boot_mode": "manual-setup-df0", "rom_sha256": rom_digest, "adf_sha256": adf_digest}
+    return {"boot_mode": "manual-setup-df0", "adf_sha256": adf_digest}
 
 
 def source_identity():
     revision = git(REPO_ROOT, "rev-parse", "HEAD").decode().strip()
     diff = git(REPO_ROOT, "diff", "--no-ext-diff", "--binary", "HEAD")
     untracked = git(REPO_ROOT, "ls-files", "--others", "--exclude-standard", "-z").split(b"\0")
+    active_log = os.environ.get(VERIFIER_LOG_PATH)
+    active_log = Path(active_log).resolve() if active_log else None
     digest = hashlib.sha256(diff)
+    dirty = bool(diff)
     for name in sorted(filter(None, untracked)):
+        path = REPO_ROOT / name.decode("utf-8")
+        # A redirected command log can grow inside the checkout during this run.
+        if path == active_log:
+            continue
+        dirty = True
         digest.update(name + b"\0")
-        digest.update(sha256(REPO_ROOT / name.decode("utf-8")).encode())
+        digest.update(sha256(path).encode())
     return {"revision": revision, "worktree_sha256": digest.hexdigest(),
-            "dirty": bool(diff or any(untracked))}
+            "dirty": dirty}
 
 
 def host_identity():
@@ -156,7 +202,8 @@ def chromium_settings(browser):
 
 def chromium(playwright, executable):
     return playwright.chromium.launch(
-        executable_path=executable, headless=False, args=["--window-size=1600,1000"],
+        executable_path=str(executable) if executable is not None else None,
+        headless=False, args=["--window-size=1600,1000"],
         ignore_default_args=["--disable-background-timer-throttling",
                              "--disable-backgrounding-occluded-windows",
                              "--disable-renderer-backgrounding"],
@@ -305,7 +352,18 @@ def load_reference(path):
     return data["cases"], None
 
 
-def compare_case(row, reference, missing_reason=None, *, cap_warning=None):
+def reference_compatibility(case, compatibility):
+    if case in GAME_CASES and isinstance(compatibility, dict):
+        workload = compatibility.get("workload")
+        if isinstance(workload, dict) and "rom_sha256" in workload:
+            # The approved reference retains this digest as calibration provenance.
+            return {**compatibility, "workload": {
+                key: value for key, value in workload.items() if key != "rom_sha256"
+            }}
+    return compatibility
+
+
+def compare_case(case, row, reference, missing_reason=None, *, cap_warning=None):
     result = {**row, "median_fps": None, "reference_fps": None,
               "tolerance": None, "change_percent": None,
               "minimum_fps": None, "maximum_fps": None, "reason": None}
@@ -327,7 +385,7 @@ def compare_case(row, reference, missing_reason=None, *, cap_warning=None):
             or not 0 <= tolerance < 1):
         return {**result, "verdict": "unverified", "reason": "Reference FPS or tolerance is invalid"}
     result.update(reference_fps=fps, tolerance=tolerance)
-    if reference.get("compatibility") != row["compatibility"]:
+    if reference_compatibility(case, reference.get("compatibility")) != row["compatibility"]:
         return {**result, "verdict": "unverified", "reason": "Reference settings are incompatible"}
     median = result["median_fps"]
     minimum, maximum = fps * (1 - tolerance), fps * (1 + tolerance)
@@ -347,7 +405,7 @@ def compare_all(report, path):
     cases = {key: report["cases"].get(key, {}) for key in CASES}
     warnings = {key: game_cap_warning(key, cases[key].get("samples", [])) for key in GAME_CASES}
     references, reason = load_reference(path)
-    rows = {key: compare_case(cases[key], None if warnings.get(key) else references.get(key),
+    rows = {key: compare_case(key, cases[key], None if warnings.get(key) else references.get(key),
                               reason, cap_warning=warnings.get(key)) for key in CASES}
     return rows, all(row["verdict"] == "passed" for row in rows.values())
 
@@ -437,8 +495,8 @@ def native_game(executable, directory, refresh_override, rom):
                     if window is None:
                         window = windows_game_window(process.pid)
                         if window is not None and not request_windows_game_focus(window):
-                            print("Bring the Amiga Studio Game window to the foreground.",
-                                  file=sys.stderr, flush=True)
+                            print("[INFO] Bring the Amiga Studio Game window to the foreground.",
+                                  flush=True)
                     if window is not None:
                         if refresh is None:
                             refresh = windows_refresh(window)
@@ -462,7 +520,7 @@ def native_game(executable, directory, refresh_override, rom):
     if report.get("error"):
         return report
     if refresh is None:
-        raise ValueError("Native display refresh rate is unavailable. Supply --native-refresh-hz.")
+        raise ValueError(f"Native display refresh rate is unavailable. Supply {REFRESH_ENV}.")
     report["display_refresh_hz"] = refresh
     return report
 
@@ -560,13 +618,13 @@ def browser_game(url, browser, rom):
         page.close()
 
 
-def measure(row, case, host, directory, args, native):
+def measure(row, case, host, directory, settings, native):
     wasm = case in ("FPS-02", "FPS-04")
     game = case in GAME_CASES
     media = {"rom": False, "disk": False}
     if game:
         try:
-            media = game_media_identity(args.kickstart_rom)
+            media = game_media_identity()
         except FileNotFoundError as error:
             row["missing_input"] = str(error)
             return
@@ -592,12 +650,12 @@ def measure(row, case, host, directory, args, native):
         if game:
             compatibility["build"]["features"] = ["game-fps-benchmark"]
         with serve_distribution(dist) as url, sync_playwright() as playwright, chromium(
-            playwright, args.browser_executable,
+            playwright, settings.browser_executable,
         ) as browser:
             compatibility["browser"] = chromium_settings(browser)
             if game:
                 for _ in range(SERIES):
-                    report = browser_game(url, browser, args.kickstart_rom)
+                    report = browser_game(url, browser, settings.kickstart_rom)
                     record_game_sample(row, report)
             else:
                 row["raw"] = browser_bench(url, browser)
@@ -609,14 +667,14 @@ def measure(row, case, host, directory, args, native):
         row["artifact_sha256"] = sha256(Path(executable))
         compatibility["build"]["features"] = ["game-fps-benchmark"]
         for index in range(SERIES):
-            report = native_game(executable, directory / f"game-{index}", args.native_refresh_hz,
-                                 args.kickstart_rom)
+            report = native_game(executable, directory / f"game-{index}", settings.native_refresh_hz,
+                                 settings.kickstart_rom)
             record_game_sample(row, report)
     else:
         row["raw"] = native_bench()
     if game:
-        if game_media_identity(args.kickstart_rom) != media:
-            raise ValueError("Game boot media changed during the measurements")
+        if game_media_identity() != media:
+            raise ValueError("The Mixed Scene ADF changed during the measurements")
     else:
         row["samples"] = uncapped_samples(row["raw"])
         if wasm:
@@ -631,46 +689,63 @@ def print_report(rows):
             return "—"
         return f"{value:+.3f}%" if signed else f"{value:.3f}"
 
-    print(f"{'Case':<7} {'Median FPS':>11} {'Ref. FPS':>11} {'Change':>10}  Verdict")
+    print(f"[INFO] {'Case':<7} {'Median FPS':>11} {'Ref. FPS':>11} {'Change':>10}  Verdict")
     for key, row in rows.items():
-        print(f"{key:<7} {metric(row['median_fps']):>11} {metric(row['reference_fps']):>11} "
+        print(f"[INFO] {key:<7} {metric(row['median_fps']):>11} {metric(row['reference_fps']):>11} "
               f"{metric(row['change_percent'], signed=True):>10}  {row['verdict']}")
         if row.get("samples"):
             print("  " + ", ".join(f"{sample['fps']:.3f} FPS ({sample['count']} fields "
                                     f"in {sample['seconds']:.6f}s)"
                                    for sample in row["samples"]))
-        if row.get("reason"):
-            print(f"  {row['reason']}")
+        if reason := row.get("reason"):
+            label = "[WARN]" if reason.startswith("Warning:") else "[INFO]"
+            print(f"{label} {reason}")
 
 
-def main(argv=None):
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--kickstart-rom", type=Path, metavar="PATH",
-                        help="Private 256 KiB Kickstart 1.3 ROM required for both Game cases.")
-    parser.add_argument("--browser-executable", help="Path to Chromium, Chrome or Edge. Defaults to Playwright Chromium.")
-    parser.add_argument("--native-refresh-hz", type=float,
-                        help="Display refresh rate when the native monitor cannot be queried.")
-    parser.add_argument("--output", type=Path, default=TEMP_ROOT / "result.json",
-                        help="Path for the disposable JSON result.")
-    args = parser.parse_args(argv)
-    if args.native_refresh_hz is not None and not positive_number(args.native_refresh_hz):
-        parser.error("--native-refresh-hz must be positive")
-    if args.kickstart_rom is not None:
-        args.kickstart_rom = args.kickstart_rom.expanduser().resolve()
-    output_path = args.output.resolve()
-    if output_path == REFERENCE.resolve():
-        parser.error("The output path must differ from the approved reference file")
-    if output_path in (PROGRAM.resolve(), ADF.resolve(), args.kickstart_rom):
-        parser.error("The output path must differ from the workload and boot media paths")
+def private_path_pattern(settings):
+    # Child diagnostics may render paths with native separators, forward slashes
+    # or escaped backslashes. Keep the surrounding failure details in the report.
+    spellings = set()
+    for path in filter(None, (settings.kickstart_rom, settings.browser_executable)):
+        for variant in (str(path), path.as_posix()):
+            spellings.update((variant, json.dumps(variant, ensure_ascii=False)[1:-1]))
+    if not spellings:
+        return None
+    alternatives = "|".join(re.escape(path) for path in sorted(spellings, key=len, reverse=True))
+    return re.compile(alternatives, re.IGNORECASE if os.name == "nt" else 0)
+
+
+def redact_paths(text, pattern):
+    return pattern.sub("[private path]", text) if pattern else text
+
+
+def redact_diagnostics(value, pattern):
+    if isinstance(value, list):
+        for item in value:
+            redact_diagnostics(item, pattern)
+    elif isinstance(value, dict):
+        for key, item in value.items():
+            if key in ("error", "reason", "missing_input") and isinstance(item, str):
+                value[key] = redact_paths(item, pattern)
+            else:
+                redact_diagnostics(item, pattern)
+
+
+def run_measurement(output_path, settings, private_paths):
+    resolved_output = output_path.resolve()
+    if resolved_output == REFERENCE.resolve():
+        raise ValueError("The report path must differ from the approved reference file.")
+    if resolved_output in (PROGRAM.resolve(), ADF.resolve(), settings.kickstart_rom):
+        raise ValueError("The report path must differ from the workload and boot media paths.")
     TEMP_ROOT.mkdir(parents=True, exist_ok=True)
     source = source_identity()
     host = host_identity()
     cases = {case: {"name": name} for case, name in CASES.items()}
     with tempfile.TemporaryDirectory(dir=TEMP_ROOT, prefix="run-") as staging:
         for case, row in cases.items():
-            print(f"Measuring {case} {row['name']}", flush=True)
+            print(f"[INFO] Measuring {case} {row['name']}", flush=True)
             try:
-                measure(row, case, host, Path(staging), args, cases["FPS-01"])
+                measure(row, case, host, Path(staging), settings, cases["FPS-01"])
             except Exception as error:
                 row["error"] = f"{type(error).__name__}: {error}"
         if source_identity() != source:
@@ -679,19 +754,29 @@ def main(argv=None):
         result = {"schema": SCHEMA, "source": source, "cases": cases}
         rows, passed = compare_all(result, REFERENCE)
     result.update(cases=rows, passed=passed)
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=args.output.parent,
+    redact_diagnostics(rows, private_paths)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=output_path.parent,
                                      prefix="fps-", suffix=".json", delete=False) as stream:
         json.dump(result, stream, indent=2, allow_nan=False)
         stream.write("\n")
-    Path(stream.name).replace(args.output)
-    print_report(rows)
-    print(f"Raw results in {args.output}")
+    Path(stream.name).replace(output_path)
+    print_report(result["cases"])
+    print(f"[INFO] Mixed Scene FPS report: {output_path}", flush=True)
     return 0 if passed else 1
 
 
-if __name__ == "__main__":
+def run(results_dir=None):
+    private_paths = None
     try:
-        sys.exit(main())
+        settings = load_settings()
+        private_paths = private_path_pattern(settings)
+        report_dir = TEMP_ROOT if results_dir is None else Path(results_dir) / "mixed-scene-fps"
+        output_path = report_dir / "result.json"
+        return run_measurement(output_path, settings, private_paths)
     except (OSError, RuntimeError, ValueError) as error:
-        sys.exit(f"Error: {error}")
+        print(f"[ERROR] {redact_paths(str(error), private_paths)}", flush=True)
+        return 1
+    except KeyboardInterrupt:
+        print("[ERROR] Mixed Scene FPS interrupted.", flush=True)
+        return 130

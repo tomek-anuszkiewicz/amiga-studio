@@ -22,8 +22,9 @@ for associating a report with a task execution.
 
 | Sentence | Scope |
 | --- | --- |
-| `commit` | Selected check profile; excludes full SingleStep |
+| `commit` | Completion profile including the four release FPS cases |
 | `milestone [singlestep]` | Workspace public function scan, then full SingleStep |
+| `test fps` | Four release Mixed Scene FPS cases and reference comparison |
 | `test rust [unit|integration|all|workspace]` | Diagnostic tiers; default is unit plus integration; workspace excludes test_runner |
 | `test rust crate NAME [suite NAME] [case FILTER]` | One Cargo package, optionally one integration target and filter |
 | `test coverage crate NAME` | All ordinary tests of one package with detailed coverage; excludes test_runner |
@@ -50,11 +51,12 @@ for associating a report with a task execution.
 `--plan` previews the exact child commands and their environment. `--log-level
 full|warn|error` controls output. Both options may appear among the command's
 selectors. `--results-dir PATH` puts verifier logs in `PATH/verify/`, SingleStep
-reports and history in `PATH/singlestep/`, and public probe reports and build
-logs under `PATH`. The verifier resolves relative paths
+reports and history in `PATH/singlestep/`, the Mixed Scene FPS report at
+`PATH/mixed-scene-fps/result.json`, and public probe reports and build logs
+under `PATH`. The verifier resolves relative paths
 from the repository root. Give each experiment a new directory to keep its
-SingleStep history separate. Other tools, including coverage and benchmarks,
-keep their own output paths.
+SingleStep history separate. Ordinary crate coverage and CPU performance
+benchmarks keep their own output paths.
 `--exact` is accepted only with `test rust crate NAME suite NAME case NAME` or
 `test runner singlestep case NAME`; it does not change the selected build profile
 or vector comparisons. The focused Rust command fails if the named suite runs
@@ -459,6 +461,18 @@ execution. The profile runs these phases in order.
 4. Run the standard harness with its explicit integration targets, followed by
    every registered Python tool suite in registration order. A missing suite
    directory or a harness with no standard targets fails command selection.
+5. Run the four Mixed Scene FPS cases serially in release mode and compare
+   each result with the approved reference.
+
+The FPS group requires a compatible host, release toolchain and browser runtime.
+Place your own 256 KiB (262144-byte) Kickstart 1.3 ROM at
+`tests/kickstarts/kickstart-1.3.rom` in the checkout. Git ignores
+`/tests/kickstarts/`. A missing, unreadable or wrong-size file fails the group
+before it starts a benchmark. The desktop and browser Game cases require
+foreground access and compatible display settings. Run `test fps` to measure
+just this group. The verifier shows each measured case verdict and the report
+path. The group passes when all four comparisons pass in the current invocation.
+[Optional browser and refresh settings](../../tests/mixed_scene/README.md#run-the-fps-regression-cases)
 
 The milestone profile first scans for candidate unused public functions in every
 Cargo workspace package. It starts full SingleStepTests only after every probe
@@ -488,7 +502,7 @@ language-audit and cleanup authority to their respective operations.
 Each ordinary verifier invocation writes a separate `test-runtime-report.md`
 under `.agent/tmp/verification/diagnostics/`. The console prints the report's path
 and content digest for archive lookup. `--results-dir` controls where the
-verifier writes command logs, public probe reports and SingleStep outputs.
+verifier writes command logs and public probe, SingleStep and Mixed Scene FPS outputs.
 Each invocation still needs its own verdict.
 
 The report records actual command wall times, failures and unrun work. Cargo

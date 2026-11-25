@@ -107,16 +107,27 @@ class WorktreeToolTests(unittest.TestCase):
         self.assertTrue(neighbor.exists())
 
     def test_creation_copies_only_selected_local_assets(self):
-        commit = self.restore("assets")
+        old_base = self.restore("assets")
         excluded_directories = (".agent/tmp/singlestep", ".agent/tmp/benchmarks")
         config = "ref_src/.graphifyignore"
         reference = "Obsidian/Amiga/Reference"
+        kickstarts = "tests/kickstarts"
+        kickstart = f"{kickstarts}/kickstart-1.3.rom"
+        ignore_file = self.root / ".gitignore"
+        old_ignore = ignore_file.read_bytes()
+        ignore_file.write_bytes(old_ignore + b"\n/tests/kickstarts/\n")
+        self.git("add", ".gitignore")
+        self.git("commit", "--quiet", "--message", "Ignore local Kickstarts")
+        commit = self.git("rev-parse", "HEAD")
+
         (self.root / config).write_text("source-only/\n")
         (self.root / reference / "tracked.txt").write_bytes(b"source copy of the tracked note\n")
         self.git("rm", "--cached", f"{reference}/tracked.txt")
         (self.root / reference / "source-only.md").write_bytes(b"source branch note\n")
         self.git("add", f"{reference}/source-only.md")
         self.git("commit", "--quiet", "--message", "Change source reference paths")
+        # Leave a draft unignored only in the source checkout.
+        ignore_file.write_bytes(old_ignore + b"\n/tests/kickstarts/**/*.rom\n")
 
         for directory in excluded_directories:
             source = self.root / directory
@@ -127,6 +138,8 @@ class WorktreeToolTests(unittest.TestCase):
             "ref_src/graphify-out/graph.json": b"reference seed",
             "ref_src/graphify-out/cache/manifest.json": b"reference sidecar",
             "tools/AmigaTestKit/fixture.bin": b"test kit fixture",
+            kickstart: b"\x00synthetic Kickstart\xff",
+            f"{kickstarts}/local [copies]/alternate.rom": b"\x00alternate synthetic Kickstart\xff",
             f"{reference}/ignored-manual/Chapter [1] \u0142.md": b"local manual chapter",
             "graphify-out/graph.json": b"project seed",
             "graphify-out/cache/manifest.json": b"project sidecar",
@@ -140,9 +153,13 @@ class WorktreeToolTests(unittest.TestCase):
         draft = f"{reference}/Research draft [local].md"
         draft_content = b"unfinished research"
         (self.root / draft).write_bytes(draft_content)
+        kickstart_draft = f"{kickstarts}/local-draft.txt"
+        (self.root / kickstart_draft).write_text("untracked draft\n")
         manual = f"{reference}/ignored-manual/Chapter [1] \u0142.md"
         self.assertEqual(self.git("-c", "core.quotePath=false", "check-ignore", "--", manual), manual)
         self.assertEqual(self.git("ls-files", "--others", "--exclude-standard", "--", draft), draft)
+        self.assertEqual(self.git("check-ignore", "--", kickstart), kickstart)
+        self.assertEqual(self.git("ls-files", "--others", "--exclude-standard", "--", kickstart_draft), kickstart_draft)
 
         for action in ("add", "test"):
             with self.subTest(action=action):
@@ -156,6 +173,7 @@ class WorktreeToolTests(unittest.TestCase):
                 for asset, data in assets.items():
                     self.assertEqual((target / asset).read_bytes(), data, asset)
                 self.assertFalse((target / draft).exists())
+                self.assertFalse((target / kickstart_draft).exists())
                 self.assertEqual((self.root / draft).read_bytes(), draft_content)
                 for directory in excluded_directories:
                     checkout = target / directory
@@ -165,6 +183,14 @@ class WorktreeToolTests(unittest.TestCase):
                 ref_graph = "ref_src/graphify-out/graph.json"
                 (target / ref_graph).write_bytes(b"updated target graph")
                 self.assertEqual((self.root / ref_graph).read_bytes(), assets[ref_graph])
+                (target / kickstart).write_bytes(b"updated target Kickstart")
+                self.assertEqual((self.root / kickstart).read_bytes(), assets[kickstart])
+
+        result = self.run_tool("test", "before-kickstart-ignore", "-Base", old_base)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        old_target = self.parent / "primary-before-kickstart-ignore"
+        self.assertFalse((old_target / kickstart).exists())
+        self.assertEqual(self.git("-C", str(old_target), "status", "--porcelain", "--", kickstarts), "")
         # Remove the detached checkout using its exact path.
         target = self.parent / "primary-test-assets [local] \u0142"
         removed = self.run_tool("remove", str(target))
@@ -173,7 +199,11 @@ class WorktreeToolTests(unittest.TestCase):
 
     def test_creation_preserves_index_ownership_across_asset_roots(self):
         self.restore("assets")
-        roots = ("ref_src", "tools/AmigaTestKit", "graphify-out", "Obsidian/Amiga/Reference/ignored-manual")
+        ignore_file = self.root / ".gitignore"
+        ignore_file.write_bytes(ignore_file.read_bytes() + b"\n/tests/kickstarts/\n")
+        self.git("add", ".gitignore")
+        roots = ("ref_src", "tools/AmigaTestKit", "graphify-out", "Obsidian/Amiga/Reference/ignored-manual",
+                 "tests/kickstarts")
         target_owned = {f"{root}/release [\u0142].txt": b"target branch content" for root in roots}
         for name, data in target_owned.items():
             path = self.root / name

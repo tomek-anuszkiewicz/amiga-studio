@@ -74,21 +74,38 @@ observed events or counters, since register enable bits alone are insufficient.
 
 ### Run the FPS regression cases
 
-From the repository root, supply your private 256 KiB Kickstart 1.3 ROM.
+Place your own 256 KiB (262144-byte) Kickstart 1.3 ROM at
+`tests/kickstarts/kickstart-1.3.rom` in the checkout. Git ignores
+`/tests/kickstarts/`. When creating a task or test worktree, `tools/worktree.ps1`
+copies the ROM from the primary checkout if Git ignores the file in both
+checkouts. The group reports the required path and size and fails before any
+benchmark starts if the file is missing, unreadable or has the wrong size.
+From the repository root, run the group by itself with `test fps`. The `commit`
+profile runs the same group after its other phases.
 
 ```powershell
-python tools/verification/run_mixed_scene_fps.py --kickstart-rom "<path to Kickstart 1.3 ROM>"
+python tools/verification/verify.py test fps
 ```
 
-The command builds release targets and runs the cases serially. It uses Python
+The verifier builds release targets and runs the cases serially. It uses Python
 with Playwright and the PowerShell, Trunk and nightly toolchain required by
-[the browser build](../../tools/web.ps1). Use `--browser-executable PATH` to
-select a local Chromium, Chrome or Edge executable. The default uses
-Playwright's Chromium. Keep the desktop Game window or browser tab in the
-foreground through warmup and timing. If the desktop Game window opens
-in the background, bring it to the foreground before the launch times out.
-Supply `--native-refresh-hz` with the actual monitor refresh rate if the
-runner cannot query it.
+[the browser build](../../tools/web.ps1). Playwright's Chromium is the default.
+To select a local Chromium, Chrome or Edge, set `AMIGA_FPS_BROWSER_EXECUTABLE`.
+To override monitor detection, set `AMIGA_FPS_NATIVE_REFRESH_HZ` to the monitor's
+measured refresh rate in hertz.
+
+```powershell
+$env:AMIGA_FPS_BROWSER_EXECUTABLE = '<path to a Chromium, Chrome or Edge executable>'
+$env:AMIGA_FPS_NATIVE_REFRESH_HZ = '<measured refresh rate in Hz>'
+```
+
+Keep the desktop Game window or browser tab in the foreground through warmup
+and timing. If the desktop Game window opens in the background, bring it to
+the foreground before the launch times out. Use a host and software
+configuration compatible with the approved reference. For Game, the renderer,
+refresh rate, viewport and scale must also match. The
+[`run_mixed_scene.py` diagnostic](../../tools/verification/run_mixed_scene.py) still
+measures the native machine loop by itself.
 
 | Case | What the command counts |
 | --- | --- |
@@ -100,7 +117,8 @@ runner cannot query it.
 The uncapped cases embed `program.bin`, replay deterministic connector input
 and drain digital audio after each line. They must produce matching guest
 progress and emulated clock counts. Each Game case runs three fresh sessions
-using Manual Setup with the external ROM and `mixed_scene.adf` in DF0.
+using Manual Setup with the checkout-local ROM and `mixed_scene.adf` in DF0.
+The browser receives the ROM through a private page route at runtime.
 Each session confirms guest progress and uses the ordinary Faster command
 to reach 4×. Once the owner confirms 4×, the benchmark lets at least 32
 more fields complete. It divides the change in the owner's completed-field
@@ -118,19 +136,20 @@ The command reports the sample counts, elapsed times and rates, the median
 FPS, reference FPS, signed percentage change and verdict. It saves the
 schema-2 report to `.agent/tmp/mixed-scene-fps/result.json` by default.
 The report also records the Game field counts at warmup start and both
-timing boundaries. Use `--output PATH` for a separate disposable result.
-The command reads
+timing boundaries. With `--results-dir DIR`, the report goes to
+`DIR/mixed-scene-fps/result.json` and the verifier writes command logs in
+`DIR/verify/`. The command reads
 `benchmarks/mixed_scene_fps_reference.json` and succeeds when all four cases
-pass. Missing ROM input leaves the Game rows unverified. A missing or
-incompatible reference leaves a measured row unverified.
+pass. A missing or incompatible reference leaves a measured row unverified.
 
 The reference is a JSON object with `schema` set to `2` and `cases` keyed
 by `FPS-01` through `FPS-04`. Each case records its approved
 `reference_fps`, fractional `tolerance` (0.05 for 5%) and `compatibility`
 settings from the result. Game compatibility includes the completed-field
-metric and 4× speed, plus the boot mode and ROM and ADF SHA-256 digests.
-The runner supplies the ROM at runtime and puts only its digest in the
-result. The unrounded median passes from `reference_fps × (1 − tolerance)`
+metric and 4× speed, the boot mode and the ADF SHA-256 digest. The original
+Game ROM digest remains in the approved reference as a record of calibration.
+Comparison ignores that historical member. The unrounded median passes from
+`reference_fps × (1 − tolerance)`
 through `reference_fps × (1 + tolerance)`, including both endpoints.
 
 ## Workload

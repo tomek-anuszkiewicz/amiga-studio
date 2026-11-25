@@ -30,6 +30,8 @@ __pycache__/
 .agent/tools/
 # Bootstrap-provisioned M68000 assembler binaries and license.
 /tools/m68k-asm/
+# Private Kickstart test fixtures supplied by the operator.
+/tests/kickstarts/
 # Legacy generated SingleStep reports; current runs use .agent/tmp/singlestep.
 /tests/singlestep/
 # Legacy generated benchmark reports; tracked baselines and traces remain visible.

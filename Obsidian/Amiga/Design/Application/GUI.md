@@ -554,9 +554,13 @@ timing, texture allocation and upload.
 The emulation core generates audio samples. The GUI is intended to deliver
 those samples to the host playback device. [audio subsystem](../Audio.md)
 
-The on-demand Mixed Scene benchmark boots its ADF from DF0 with an external
-Kickstart 1.3 ROM through Manual Setup. In the foreground desktop window and
-visible browser tab, each Game sample confirms guest progress and uses the
+The Mixed Scene FPS group in `commit` and `test fps` boots its ADF from DF0
+through Manual Setup using a fixed checkout-local fixture. The operator supplies
+a 256 KiB (262144-byte) Kickstart 1.3 ROM at
+`tests/kickstarts/kickstart-1.3.rom` in the Git-ignored directory. The FPS group
+checks availability and size before any measurement. For ordinary Manual Setup,
+the user selects the ROM in the application. In the foreground desktop window
+and visible browser tab, each Game sample confirms guest progress and uses the
 ordinary Faster command to reach 4x. Once the running owner confirms 4x,
 the benchmark observes at least 32 more completed fields before timing.
 It reads the machine owner's cumulative completed-field count at the start
