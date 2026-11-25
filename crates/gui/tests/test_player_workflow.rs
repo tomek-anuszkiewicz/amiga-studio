@@ -870,7 +870,7 @@ fn settle_caption(h: &mut egui_kittest::Harness<'_, EmulatorApp>, expected: &[&s
 #[track_caller]
 fn collect_caption_commands(
     h: &mut egui_kittest::Harness<'_, EmulatorApp>,
-    ready: impl Fn(&EmulatorApp) -> bool,
+    ready: impl Fn(&egui_kittest::Harness<'_, EmulatorApp>) -> bool,
 ) -> Vec<String> {
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
     let mut commands = Vec::new();
@@ -879,7 +879,7 @@ fn collect_caption_commands(
         h.step();
         commands.extend(caption_commands(h.output()).map(str::to_owned));
         let app = h.state();
-        let idle = app.host.is_idle() && !app.player.busy && ready(app);
+        let idle = app.host.is_idle() && !app.player.busy && ready(h);
         if idle && settled {
             break;
         }
@@ -930,7 +930,14 @@ fn caption_identifies_the_acknowledged_session_across_browse_rename_and_replacem
     common::settle_harness(&mut h);
     select_library_with_current_profiles(&mut h, &root);
     h.get_by_label("Library").click_accesskit();
-    common::settle_harness(&mut h);
+    let commands = collect_caption_commands(&mut h, |h| {
+        h.query_by_role_and_label(egui::accesskit::Role::Button, FIRST)
+            .is_some()
+    });
+    assert!(
+        commands.is_empty(),
+        "Unexpected caption commands while opening the library: {commands:?}"
+    );
 
     let choose_game = |h: &mut egui_kittest::Harness<'_, EmulatorApp>, name| {
         h.get_by_role_and_label(egui::accesskit::Role::Button, name)
@@ -957,7 +964,8 @@ fn caption_identifies_the_acknowledged_session_across_browse_rename_and_replacem
             std::thread::sleep(std::time::Duration::from_millis(1));
         }
         h.get_by_label("Save game").click_accesskit();
-        let commands = collect_caption_commands(h, |app| {
+        let commands = collect_caption_commands(h, |h| {
+            let app = h.state();
             app.player.library_editor.is_none() || app.file_error.is_some()
         });
         assert!(
