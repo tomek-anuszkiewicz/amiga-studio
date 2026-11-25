@@ -440,6 +440,18 @@ impl EmulatorApp {
                 .clone_from(&editor.catalog.mappings);
         }
         self.player.settings_dirty |= editor.catalog != self.player.catalog;
+        let current_boot_choice = self
+            .player
+            .catalog
+            .selected()
+            .map(|profile| (&profile.id, &profile.launch.rom));
+        let saved_boot_choice = editor
+            .catalog
+            .selected()
+            .map(|profile| (&profile.id, &profile.launch.rom));
+        if current_boot_choice != saved_boot_choice {
+            self.player.manual_kickstart = None;
+        }
         self.player.catalog = editor.catalog.clone();
         self.file_error = None;
         self.finish_configuration_navigation(editor);

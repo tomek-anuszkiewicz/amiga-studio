@@ -132,11 +132,13 @@ alongside file import and export on desktop and in the browser.
 A file records the disks inserted at capture, including guest changes. To
 open it, the frontend needs the exact source Kickstart and each inserted ADF.
 The files can move or have new names. Desktop can resolve the stable IDs in
-the opened game library and the Kickstart paths in authorized configurations.
-The frontend also accepts matching images already supplied in the session or
-selected by the user. On a fresh browser page, select the images in **Manual
-setup**, choose **Return to session**, then choose **Import state** before **Start**.
-The frontend uses content matches to bind mounted drives to the current page's
+the opened game library and find exact ROM bytes among managed Kickstarts or
+authorized configuration paths. The frontend also accepts matching images
+already supplied in the session or selected by the user. The recorded SHA-256
+governs the match independently of the next boot selection. On a fresh browser
+page, add the matching Kickstart in **Configurations** and select disks in
+**Manual setup**. Choose **Return to session**, then **Import state**. The
+frontend uses content matches to bind mounted drives to the current page's
 selections.
 
 On a quick load within a session the player keeps available disks absent from

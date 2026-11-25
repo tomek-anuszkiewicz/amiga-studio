@@ -203,7 +203,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Apply scenario-specific interactions
     let preview_library = matches!(
         scenario.as_str(),
-        "configurations" | "configuration_dirty" | "library_editor"
+        "configurations" | "configuration_dirty" | "library_editor" | "replace_session"
     )
     .then(tempfile::tempdir)
     .transpose()?;
@@ -240,10 +240,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             if scenario == "replace_session" {
                 let app = harness.state_mut();
                 app.player.activate_selected_configuration();
+                let Some(library) = &preview_library else {
+                    return Err("The replacement preview needs a library".into());
+                };
+                let path = library.path().join("preview.rom");
+                std::fs::write(path, vec![0; physical_memory::KICKSTART_ROM_SIZE])?;
                 app.player.catalog.configurations[0].launch.rom = "preview.rom".into();
-                app.player.rom = Some(vec![0; physical_memory::KICKSTART_ROM_SIZE]);
-                app.player.rom_configuration_id = Some("standard".into());
-                app.player.rom_reference = Some("preview.rom".into());
                 harness.step();
                 harness.step();
                 harness.get_by_label("Start").click_accesskit();

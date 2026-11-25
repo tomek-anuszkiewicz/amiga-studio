@@ -136,10 +136,20 @@ impl EmulatorApp {
                                 .iter()
                                 .find(|entry| entry.id == game.manifest.configuration)
                         });
-                    if let Some(source) = self.read_save_rom(root, current.unwrap_or(configuration))
+                    if let Some(source) =
+                        self.read_legacy_save_rom(root, current.unwrap_or(configuration))
                     {
                         media.roms.push(source);
                     }
+                    crate::kickstarts::native::extend_restore_roms(root, &mut media.roms);
+                }
+                if let Some(opened) = self
+                    .player
+                    .library_root
+                    .as_deref()
+                    .filter(|opened| Some(*opened) != library_root.as_deref())
+                {
+                    crate::kickstarts::native::extend_restore_roms(opened, &mut media.roms);
                 }
                 let ports = configuration.controls.ports.each_ref().map(|p| p.device);
                 if quick_load {
@@ -184,10 +194,8 @@ impl EmulatorApp {
                         media[drive] = Some(bytes.clone());
                     }
                 }
-                let path = self.player.native_rom_path(configuration)?;
-                let rom = std::fs::read(&path).map_err(|e| {
-                    format!("Select a readable Kickstart ROM in configuration: {e}")
-                })?;
+                let path = self.player.native_rom_path(&configuration.launch.rom)?;
+                let rom = crate::kickstarts::native::read_image(&path)?;
                 let disk_names = association.mounted.each_ref().map(|id| {
                     id.as_ref()
                         .and_then(|id| disks.iter().find(|disk| &disk.id == id))
@@ -201,13 +209,11 @@ impl EmulatorApp {
                         ),
                         ports: configuration.controls.ports.each_ref().map(|p| p.device),
                         drives: configuration.launch.drives,
-                        rom,
+                        rom: rom.bytes,
                         disks: media,
                     },
                     association: association.clone(),
-                    rom_name: path
-                        .file_name()
-                        .map(|name| name.to_string_lossy().into_owned()),
+                    rom_name: rom.name,
                     disk_names,
                 }
             };
@@ -247,11 +253,14 @@ impl EmulatorApp {
         }
     }
 
-    pub(crate) fn read_save_rom(
+    pub(crate) fn read_legacy_save_rom(
         &self,
         root: &std::path::Path,
         configuration: &crate::player_config::NamedConfiguration,
     ) -> Option<debugger::SourceImage> {
+        if crate::kickstarts::native::managed_path(root, &configuration.launch.rom).is_ok() {
+            return None;
+        }
         let path = crate::library_catalog::rom_path(root, &configuration.launch.rom).ok()?;
         Some(debugger::SourceImage {
             name: path

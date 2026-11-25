@@ -58,7 +58,7 @@ impl FileAction {
     fn key(self) -> &'static str {
         match self {
             Self::State => "state",
-            Self::SetupRom => "setup-rom",
+            Self::AddKickstart => "add-kickstart",
             Self::SetupDisk(_) => "setup-disk",
         }
     }
@@ -161,7 +161,7 @@ async fn browser_disk_file(source: JsValue) -> Result<web_sys::File, JsValue> {
 }
 
 impl EmulatorApp {
-    pub(super) fn open_file_dialog(&mut self, action: FileAction) {
+    pub(crate) fn open_file_dialog(&mut self, action: FileAction) {
         match BrowserFileTask::new(action) {
             Ok(task) => self.browser_file_task = Some(task),
             Err(error) => self.file_error = Some(format!("Could not open file picker: {error:?}")),

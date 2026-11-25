@@ -61,7 +61,10 @@ fn invalid_snapshot_sources_display_a_dismissible_error_without_restoring() {
     let ctx = egui::Context::default();
     let generation = app.host.status.generation;
     for size in [0, 262143, 524288, 262144] {
-        app.player.rom = Some(vec![0x11; size]);
+        app.player.restore_kickstart = Some(debugger::SourceImage {
+            name: None,
+            bytes: vec![0x11; size],
+        });
         app.load_state_file(&path);
         common::settle(&mut app, &ctx);
         assert_eq!(common::snapshot(&mut app), before);
@@ -77,7 +80,10 @@ fn invalid_snapshot_sources_display_a_dismissible_error_without_restoring() {
         assert_eq!(std::fs::read_to_string(&path).unwrap(), json);
     }
 
-    app.player.rom = Some(rom);
+    app.player.restore_kickstart = Some(debugger::SourceImage {
+        name: None,
+        bytes: rom,
+    });
     let mut broken: serde_json::Value = serde_json::from_str(&json).unwrap();
     broken["state"]["physical_memory"]["kickstart_rom"]["sha256"] = "bad digest".into();
     std::fs::write(&path, broken.to_string()).unwrap();

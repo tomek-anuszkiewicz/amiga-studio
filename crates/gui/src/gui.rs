@@ -31,6 +31,7 @@ pub mod host_video;
 pub mod input_mapping;
 mod inspection;
 pub mod keyboard_input;
+mod kickstarts;
 pub mod layout;
 #[cfg(not(target_arch = "wasm32"))]
 mod library_catalog;

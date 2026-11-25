@@ -342,11 +342,31 @@ session. Its desktop and browser controls do not inject standalone programs
 into guest memory. File and snapshot errors remain visible until dismissed.
 An invalid ROM error shows the expected and actual byte counts.
 
-Choose Kickstart in Manual setup or set the ROM path in a named desktop
-configuration. Manual startup installs the 256 KiB firmware and boots the
-configured machine. A saved session verifies its recorded ROM and disk sources
-when loading. The desktop remembers the disk picker directory outside machine
-snapshots. Browser selection and download occur outside machine execution.
+Open **Configurations** and choose **Add Kickstart** to supply a 256 KiB ROM.
+Both Configurations and Manual setup show the name, recognition and support
+status of available images. Save a choice in a named configuration for games
+assigned to it. Manual setup chooses firmware for its own next **Start**.
+**Start game** on an ordinary boot and **Boot normally without initial state**
+use the game's saved configuration. A replacement takes effect after the
+machine owner confirms success. **Return to session**, **Pause**, **Resume**
+and **Reset** use the current machine's ROM. Reset still prepares the game's
+startup disks where applicable. Adding firmware or changing a configuration's
+ROM choice leaves the current machine and progress intact.
+
+In Configurations, **Delete Kickstart** names any saved profiles using the
+entry. Once they use another choice, the player can confirm removal. The
+confirmation explains that saved state files may still need the exact bytes.
+Deletion affects the selected managed file on desktop or the selected supplied
+image on the browser page. The original source and the active machine are
+retained. Desktop keeps the last successful Kickstart import directory
+independently of its disk picker directory and the library root. Cancel keeps
+the history. If the remembered folder is absent, the picker uses an existing
+parent or its default.
+
+A file restore uses its recorded ROM and disk references. Browser selection
+and download occur outside machine execution.
+[Firmware catalog](../Configuration.md#named-frontend-configurations) ·
+[File restoration](SaveState.md#4-file-loading-and-restoration) ·
 [Host file actions](../../../../crates/gui/src/file_actions.rs)
 
 ## Edit input bindings
@@ -555,7 +575,7 @@ The emulation core generates audio samples. The GUI is intended to deliver
 those samples to the host playback device. [audio subsystem](../Audio.md)
 
 The on-demand Mixed Scene benchmark boots its ADF from DF0 with an external
-Kickstart 1.3 ROM through Manual Setup. Each Game sample confirms that the guest
+Kickstart 1.3 ROM in Configurations and choose it in Manual setup. Each Game sample confirms that the guest
 is running before warmup. In the foreground desktop window and browser canvas,
 the benchmark counts distinct completed fields submitted for drawing during
 normal playback. The toolbar continues to count completed emulated fields.
@@ -635,8 +655,9 @@ does not request inspector snapshots.
 
 Register edits, memory patches, breakpoints, history, file restoration and quick actions
 execute as owner commands. File selection, host file I/O and downloads
-remain host UI operations. ROM filenames and recent-file records change only
-after successful owner replies.
+remain host UI operations. The active machine's ROM filename and debugger ROM
+load history change after successful owner replies. The Kickstart import picker
+directory changes after a successful catalog import.
 
 The browser explicitly initializes one main Wasm instance. One worker instance
 shares its memory. The launcher rebuilds the Rust standard library with

@@ -33,6 +33,15 @@ impl EmulatorApp {
                 ui.label("Choose an accessible library directory to create or edit profiles.");
                 return;
             }
+            for error in [
+                &self.player.kickstart_adoption_error,
+                &self.player.kickstart_error,
+            ]
+            .into_iter()
+            .flatten()
+            {
+                ui.colored_label(ui.visuals().error_fg_color, error);
+            }
             let can_delete = self.configuration_deletion_allowed();
             if ui.add_enabled(can_delete, egui::Button::new("Delete configuration"))
                 .on_hover_text_at_pointer("Review which games use the selected profile and choose a replacement if needed. Save any profile edits first.")
@@ -106,13 +115,13 @@ impl EmulatorApp {
         ui.text_edit_singleline(&mut configuration.name);
         hardware_settings(ui, &mut configuration.launch);
         ui.label("Kickstart (256 KiB)");
-        #[cfg(not(target_arch = "wasm32"))]
-        let rom_help = "Use the path to a 256 KiB ROM inside the library, with / between folders.";
-        #[cfg(target_arch = "wasm32")]
-        let rom_help =
-            "The browser stores the display name. Select the ROM file again in Manual setup.";
-        ui.text_edit_singleline(&mut configuration.launch.rom)
-            .on_hover_text(rom_help);
+        crate::kickstarts::view::selector(
+            ui,
+            &mut configuration.launch.rom,
+            &self.player.kickstarts,
+            #[cfg(not(target_arch = "wasm32"))]
+            &self.player.legacy_kickstarts,
+        );
         ui.horizontal_wrapped(|ui| {
             for drive in 0..4 {
                 ui.add_enabled(
