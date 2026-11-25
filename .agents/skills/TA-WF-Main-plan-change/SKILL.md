@@ -14,8 +14,14 @@ in the same context, without delegating the operation again. See the
 Apply the [result contract](../../references/workflow-contract.md), shared
 [information hierarchy](../../references/information-hierarchy.md),
 [specification compliance](../../references/spec-compliance.md) and genre-appropriate
-[prose criteria](../../references/narrative-criteria.md). Internal API/schema changes
-also use the [migration contract](../../references/internal-migrations.md).
+[prose criteria](../../references/narrative-criteria.md).
+
+When planning changes to internal APIs, schemas, configuration or generated
+formats, apply the [migration contract](../../references/internal-migrations.md)
+before defining scope. Plan for the new version. Include backward compatibility,
+migration of existing data or upgrade instructions only when the user explicitly
+requests that work or a documented external contract requires it. Record the
+effect on existing user data and preserve approved decisions about handling it.
 
 Read the selected requirements and relevant architecture. Before defining acceptance
 criteria and tests, search the [review decisions register](../../references/review-decisions.md)

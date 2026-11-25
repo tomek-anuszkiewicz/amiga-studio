@@ -22,9 +22,7 @@ On desktop, each library keeps its profiles and reusable mappings in
 `configurations.json`. Keep the Kickstart files inside the library and enter
 their paths relative to the library directory. Copy the entire library to bring
 these profiles, games and assets to another installation. Your library directory
-choice and interface preferences belong to your user account. The first upgrade
-moves previous profiles and mappings into the previously selected library and
-keeps the original data in your user settings for recovery.
+choice and interface preferences belong to your user account.
 
 Switching libraries changes the profiles available for future launches. You can
 return to the live session and continue using its controls and saves in its
