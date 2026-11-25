@@ -100,7 +100,10 @@ test('document keyboard focus and mouse release leave gamepad polling independen
         assert.ok(timerDelay <= 6, 'Gamepads without capture retain active polling cadence');
         document.activeElement = document.body = {};
         bothEdges('KeyA');
-        bothEdges('ArrowUp');
+        for (const code of [
+            'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
+            'ContextMenu', 'MetaLeft', 'MetaRight', 'NumpadParenLeft', 'NumpadParenRight',
+        ]) bothEdges(code);
         keyOwner = false;
         bothEdges('KeyB', false);
         keyOwner = true;

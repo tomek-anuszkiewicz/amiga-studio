@@ -15,6 +15,10 @@ your changes or **Cancel** to discard the draft.
   unused host key such as V. The Amiga receives Escape when you press V.
   To use V as usual again, remove the override and save. A key already used
   for a joystick or emulator shortcut must be freed before you can assign it.
+  If a joystick uses the arrows, change its bindings or choose a different
+  port source to use all four as Amiga arrow keys. Select **Keypad (** or
+  **Keypad )** to assign a spare host key to either keypad parenthesis.
+  You can record the host **Menu** key when the app receives it.
 - **Emulator shortcuts** control the app. Pause / Resume starts at F5, Quick
   save at F6, and Quick load at F9. Quick actions use slot 1. Hover a
   session control to see its current keyboard equivalent. F12 switches
@@ -25,8 +29,12 @@ your changes or **Cancel** to discard the draft.
 
 Click the Amiga display to capture the mouse. Middle mouse frees the mouse
 while the keyboard and controller keep working. You can also assign a mouse
-release key. Use a key other than Escape. The browser can release pointer
-lock on Escape.
+release key. During captured desktop gameplay, Escape follows its Amiga
+mapping even if an older configuration lists it as a release shortcut.
+The Windows app requests logo-key suppression while focused, running and
+captured so the Windows keys can act as Amiga modifiers. In a browser,
+Escape can release pointer lock independently of its Amiga mapping. If your
+host handles a key first, assign a spare key to the Amiga key you need.
 
 For disk selection, startup, reset and saved progress, see
 [Game library and manual setup](../game-library.md).

@@ -1,6 +1,7 @@
 //! GUI-side input activation, configuration and browser ingress.
 
 use super::{HostInputEvent, HostInputSender};
+use crate::host_input::KeyboardEvent;
 use crate::input_mapping::{GamepadCapture, GamepadRecorder, GamepadRecording};
 
 impl HostInputSender {
@@ -100,15 +101,6 @@ impl HostInputSender {
     }
 
     pub fn try_host_event(&self, event: HostInputEvent, generation: u64) -> bool {
-        self.try_input(event, generation, false)
-    }
-
-    /// GUI-routed keys wait for owner activation instead of being discarded on stale telemetry.
-    pub(crate) fn try_keyboard_event(&self, event: HostInputEvent, generation: u64) -> bool {
-        self.try_input(event, generation, true)
-    }
-
-    fn try_input(&self, event: HostInputEvent, generation: u64, retry_inactive: bool) -> bool {
         let Ok(mut mailboxes) = self.shared.mailboxes.try_lock() else {
             return false;
         };
@@ -126,7 +118,32 @@ impl HostInputSender {
         if active {
             mailboxes.resolve_input(event);
         }
-        active || !retry_inactive
+        true
+    }
+
+    /// GUI-routed keys wait for owner activation instead of being discarded on stale telemetry.
+    pub(crate) fn try_keyboard_event(&self, event: &KeyboardEvent, generation: u64) -> bool {
+        let Ok(mut mailboxes) = self.shared.mailboxes.try_lock() else {
+            return false;
+        };
+        if generation != mailboxes.status.generation {
+            return true;
+        }
+        match event {
+            KeyboardEvent::Key { position, pressed } => {
+                if !mailboxes.keyboard_enabled || !mailboxes.gameplay_active() {
+                    return false;
+                }
+                let events = mailboxes
+                    .mapping
+                    .keyboard(position.clone().into(), *pressed);
+                for event in events {
+                    mailboxes.push_input(event);
+                }
+            }
+            KeyboardEvent::ReleaseAll => mailboxes.resolve_input(HostInputEvent::ReleaseAll),
+        }
+        true
     }
 
     pub fn set_enabled(&self, keyboard: bool, mouse: bool, gamepads: bool) -> bool {

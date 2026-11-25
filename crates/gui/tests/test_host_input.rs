@@ -301,25 +301,29 @@ fn guest_beam_restarts_do_not_starve_host_input_and_keyboard_reset_changes_gener
 fn window_physical_modifiers_repeats_and_mouse_edges_preserve_their_meaning() {
     use common::keyboard::{button, translate};
     let mut events = gui::keyboard_input::KeyboardRouter::default();
+    let mut mapping = gui::input_mapping::InputMapping::default();
     let key = |code, pressed| Some(HostInputEvent::Key { code, pressed });
     assert_eq!(
-        translate(&mut events, "ShiftRight", true, true),
+        translate(&mut events, &mut mapping, "ShiftRight", true, true),
         key(0x61, true)
     );
-    assert_eq!(translate(&mut events, "ShiftRight", true, true), None);
     assert_eq!(
-        translate(&mut events, "ShiftRight", false, true),
+        translate(&mut events, &mut mapping, "ShiftRight", true, true),
+        None
+    );
+    assert_eq!(
+        translate(&mut events, &mut mapping, "ShiftRight", false, true),
         key(0x61, false)
     );
-    for (physical, pressed, guest_pressed) in [
-        ("ControlLeft", true, true),
-        ("ControlRight", true, true),
-        ("ControlLeft", false, true),
-        ("ControlRight", false, false),
+    for (physical, pressed, expected) in [
+        ("ControlLeft", true, key(0x63, true)),
+        ("ControlRight", true, None),
+        ("ControlLeft", false, None),
+        ("ControlRight", false, key(0x63, false)),
     ] {
         assert_eq!(
-            translate(&mut events, physical, pressed, true),
-            key(0x63, guest_pressed)
+            translate(&mut events, &mut mapping, physical, pressed, true),
+            expected
         );
     }
     let mut pointer = gui::window_pointer::WindowPointer::default();
@@ -444,21 +448,22 @@ fn a_field_boundary_preserves_the_remaining_ordered_input_for_the_next_slice() {
 fn window_shortcuts_key_groups_and_uncaptured_pointer_keep_their_contracts() {
     use common::keyboard::{button, translate};
     let mut events = gui::keyboard_input::KeyboardRouter::default();
+    let mut mapping = gui::input_mapping::InputMapping::default();
     let mut pointer = gui::window_pointer::WindowPointer::default();
     assert_eq!(
         pointer.translate(&button(egui::PointerButton::Primary, true), false),
         None
     );
-    translate(&mut events, "ControlLeft", true, true);
+    translate(&mut events, &mut mapping, "ControlLeft", true, true);
     assert_eq!(
-        translate(&mut events, "KeyR", true, true),
+        translate(&mut events, &mut mapping, "KeyR", true, true),
         Some(HostInputEvent::Key {
             code: 0x13,
             pressed: true
         })
     );
-    translate(&mut events, "KeyR", false, true);
-    translate(&mut events, "ControlLeft", false, true);
+    translate(&mut events, &mut mapping, "KeyR", false, true);
+    translate(&mut events, &mut mapping, "ControlLeft", false, true);
     for (physical, code) in [
         ("KeyA", 0x20),
         ("KeyQ", 0x10),
@@ -472,7 +477,7 @@ fn window_shortcuts_key_groups_and_uncaptured_pointer_keep_their_contracts() {
     ] {
         for pressed in [true, false] {
             assert_eq!(
-                translate(&mut events, physical, pressed, true),
+                translate(&mut events, &mut mapping, physical, pressed, true),
                 Some(HostInputEvent::Key { code, pressed })
             );
         }

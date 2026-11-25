@@ -6,6 +6,13 @@ use std::collections::VecDeque;
 pub const INPUT_QUEUE_CAPACITY: usize = 1024;
 pub const DELIVERIES_PER_FIELD: u32 = 3;
 
+/// Input from the window or browser before host controls are resolved.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum KeyboardEvent {
+    Key { position: String, pressed: bool },
+    ReleaseAll,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HostInputEvent {
     Key {

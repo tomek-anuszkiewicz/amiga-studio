@@ -331,8 +331,14 @@ pub(crate) fn render_top_menu_bar(app: &mut EmulatorApp, ui: &mut egui::Ui) {
             "Mouse free. Click the Amiga display to capture it. F12 switches Game/Debug."
         });
         if let Some(configuration) = &app.player.active_configuration {
-            if !configuration.controls.host.frontend.release.is_empty() {
-                ui.small(format!("Mouse release key: {}", crate::host_keys::frontend_binding_name(&configuration.controls.host.frontend.release)));
+            let release = &configuration.controls.host.frontend.release;
+            if cfg!(not(target_arch = "wasm32"))
+                && app.player.captured
+                && crate::host_keys::frontend_key_position(release) == Some("Escape")
+            {
+                ui.small("Saved Escape release shortcut is inactive while captured.");
+            } else if !release.is_empty() {
+                ui.small(format!("Mouse release key: {}", crate::host_keys::frontend_binding_name(release)));
             }
         }
             });

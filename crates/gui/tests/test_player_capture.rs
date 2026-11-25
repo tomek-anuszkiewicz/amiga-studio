@@ -433,6 +433,38 @@ fn escape_and_f2_remain_guest_keys_and_optional_release_frees_only_the_mouse() {
 }
 
 #[test]
+fn saved_escape_release_binding_stays_ineffective_in_native_capture() {
+    for (release, remap, code) in [
+        ("", false, 0x45),
+        ("F4", false, 0x45),
+        ("Escape", false, 0x45),
+        ("Escape", true, 0x20),
+    ] {
+        let mut configuration = gui::player_config::NamedConfiguration::default();
+        configuration.controls.host.frontend.release = release.into();
+        if remap {
+            configuration
+                .controls
+                .host
+                .keyboard
+                .push(("Escape".to_owned().into(), code));
+        }
+        let catalog = gui::player_config::ConfigurationCatalog::default();
+        assert!(catalog.validate(&configuration).is_ok());
+        let (mut app, ctx) = running_with(ViewMode::ScreenOnly, true, configuration);
+        let generation = app.host.status.generation;
+        for pressed in [true, false] {
+            window_keys(&mut app, &ctx, &[("Escape", pressed, generation)]);
+            assert!(app.player.captured, "Escape changed mouse capture");
+            wait_guest_key(&mut app, &ctx, code, pressed);
+            if remap {
+                assert!(!guest_key_held(&mut app, 0x45));
+            }
+        }
+    }
+}
+
+#[test]
 fn middle_mouse_cancels_motion_and_buttons_but_preserves_keyboard_and_joystick() {
     let (mut app, ctx) = running();
     use gui::host_input::HostInputEvent;

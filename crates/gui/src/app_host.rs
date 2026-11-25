@@ -23,7 +23,7 @@ pub(crate) enum HostEffect {
 pub struct AppHost {
     #[cfg(not(target_arch = "wasm32"))]
     pub(crate) native_gamepads: bool,
-    pub(crate) keyboard_pending: VecDeque<(crate::host_input::HostInputEvent, u64)>,
+    pub(crate) keyboard_pending: VecDeque<(crate::host_input::KeyboardEvent, u64)>,
     view_release_generation: Option<u64>,
     #[cfg(not(target_arch = "wasm32"))]
     pub(crate) pointer: crate::window_pointer::WindowPointer,
@@ -459,11 +459,12 @@ impl crate::EmulatorApp {
             }
         }
         let mouse = self.player.captured;
+        policy.native_mouse_captured = cfg!(not(target_arch = "wasm32")) && mouse;
         let gameplay = policy.gameplay_active();
         if !gameplay {
             self.host
                 .keyboard_pending
-                .retain(|(event, _)| *event == crate::host_input::HostInputEvent::ReleaseAll);
+                .retain(|(event, _)| *event == crate::host_input::KeyboardEvent::ReleaseAll);
         }
         let frontend = policy.frontend_active();
         crate::keyboard_input::with_inbox(ctx, |inbox| {
@@ -510,13 +511,13 @@ impl crate::EmulatorApp {
                 ctx.request_repaint_after(HOST_RETRY_DELAY);
             } else {
                 self.host.view_release_generation = None;
-                while let Some(&(event, generation)) = self.host.keyboard_pending.front() {
+                while let Some((event, generation)) = self.host.keyboard_pending.front() {
                     #[cfg(target_arch = "wasm32")]
                     if crate::host_runtime::host_release_pending() {
                         ctx.request_repaint_after(HOST_RETRY_DELAY);
                         break;
                     }
-                    if !sender.try_keyboard_event(event, generation) {
+                    if !sender.try_keyboard_event(event, *generation) {
                         ctx.request_repaint_after(HOST_RETRY_DELAY);
                         break;
                     }

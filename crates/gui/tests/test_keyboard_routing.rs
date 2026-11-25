@@ -1,13 +1,15 @@
 #![allow(clippy::unwrap_used, clippy::panic)]
 mod common;
 
-use common::keyboard::{key, policy};
+use common::keyboard::{key, policy, translate};
+use gui::host_input::{HostInputEvent, KeyboardEvent};
+use gui::input_mapping::InputMapping;
 use gui::keyboard_input::{KeyCommand, KeyRoute, KeyboardRouter};
 
 #[test]
 fn physical_sides_keypad_and_command_edges_remain_distinct() {
-    let policy = policy();
     let mut router = KeyboardRouter::default();
+    let mut mapping = InputMapping::default();
     for (physical, code) in [
         ("ShiftLeft", 0x60),
         ("ShiftRight", 0x61),
@@ -15,14 +17,17 @@ fn physical_sides_keypad_and_command_edges_remain_distinct() {
         ("Numpad0", 0x0f),
         ("Enter", 0x44),
         ("NumpadEnter", 0x43),
+        ("MetaLeft", 0x66),
+        ("MetaRight", 0x67),
     ] {
         for pressed in [true, false] {
             assert_eq!(
-                router.route(&key(physical, pressed), &policy),
-                KeyRoute::Amiga { code, pressed }
+                translate(&mut router, &mut mapping, physical, pressed, true),
+                Some(HostInputEvent::Key { code, pressed })
             );
         }
     }
+    let policy = policy();
     for pressed in [true, false] {
         assert_eq!(
             router.route(&key("F12", pressed), &policy),
@@ -121,10 +126,10 @@ fn gui_ownership_pause_and_reacquisition_gate_guest_input() {
         policy = common::keyboard::policy();
         assert_eq!(
             router.route(&key("KeyB", true), &policy),
-            KeyRoute::Amiga {
-                code: 0x35,
+            KeyRoute::Gameplay(KeyboardEvent::Key {
+                position: "KeyB".into(),
                 pressed: true
-            }
+            })
         );
     }
     let mut router = KeyboardRouter::default();
@@ -204,4 +209,67 @@ fn recognized_command_repeats_are_consumed_without_a_second_press() {
             pressed: false
         },
     );
+}
+
+#[cfg(windows)]
+#[test]
+fn windows_logo_is_a_guest_modifier_only_during_native_capture() {
+    let mut captured = policy();
+    captured.native_mouse_captured = true;
+    let mut router = KeyboardRouter::default();
+    for position in ["MetaLeft", "MetaRight"] {
+        assert_eq!(
+            router.route(&key(position, true), &captured),
+            KeyRoute::Gameplay(KeyboardEvent::Key {
+                position: position.into(),
+                pressed: true
+            })
+        );
+    }
+    for pressed in [true, false] {
+        assert_eq!(
+            router.route(&key("KeyS", pressed), &captured),
+            KeyRoute::Gameplay(KeyboardEvent::Key {
+                position: "KeyS".into(),
+                pressed
+            })
+        );
+    }
+    assert!(matches!(
+        router.route(&key("ControlRight", true), &captured),
+        KeyRoute::Gameplay(_)
+    ));
+    assert_eq!(
+        router.route(&key("KeyS", true), &captured),
+        KeyRoute::Command {
+            action: KeyCommand::SaveState,
+            pressed: true
+        }
+    );
+    assert_eq!(
+        router.route(&key("F12", true), &captured),
+        KeyRoute::Command {
+            action: KeyCommand::ToggleView,
+            pressed: true
+        }
+    );
+    let free = policy();
+    for position in ["MetaLeft", "MetaRight"] {
+        assert_eq!(
+            router.route(&key(position, false), &free),
+            KeyRoute::Gameplay(KeyboardEvent::Key {
+                position: position.into(),
+                pressed: false
+            })
+        );
+        let mut router = KeyboardRouter::default();
+        router.route(&key(position, true), &free);
+        assert_eq!(
+            router.route(&key("KeyS", true), &free),
+            KeyRoute::Command {
+                action: KeyCommand::SaveState,
+                pressed: true
+            }
+        );
+    }
 }

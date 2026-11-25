@@ -83,6 +83,8 @@ const SCANCODE_F7: u8 = 0x56;
 const SCANCODE_F8: u8 = 0x57;
 const SCANCODE_F9: u8 = 0x58;
 const SCANCODE_F10: u8 = 0x59;
+const SCANCODE_NUMPAD_PAREN_LEFT: u8 = 0x5a;
+const SCANCODE_NUMPAD_PAREN_RIGHT: u8 = 0x5b;
 const SCANCODE_NUMPAD_DIVIDE: u8 = 0x5c;
 const SCANCODE_NUMPAD_MULTIPLY: u8 = 0x5d;
 const SCANCODE_NUMPAD_ADD: u8 = 0x5e;
@@ -93,6 +95,56 @@ const SCANCODE_ALT_LEFT: u8 = 0x64;
 const SCANCODE_ALT_RIGHT: u8 = 0x65;
 
 pub(crate) const MAX_AMIGA_KEYCODE: u8 = 0x7f;
+
+/// New overrides retain a host position. Numeric sources from saved profiles
+/// retain the default translation they matched when originally assigned.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[serde(untagged)]
+pub enum HostKey {
+    Position(String),
+    DefaultCode(u8),
+}
+
+impl HostKey {
+    pub(crate) fn valid_position(position: &str) -> bool {
+        !position.is_empty()
+            && position != "Unidentified"
+            && position.bytes().all(|byte| byte.is_ascii_alphanumeric())
+    }
+
+    pub(crate) fn default_code(&self) -> Option<u8> {
+        match self {
+            Self::Position(position) => amiga_key_code(position),
+            Self::DefaultCode(code) => Some(*code),
+        }
+    }
+
+    pub(crate) fn matches_source(&self, source: &Self) -> bool {
+        match (self, source) {
+            (Self::Position(first), Self::Position(second)) => first == second,
+            _ => self.default_code() == source.default_code(),
+        }
+    }
+
+    pub(crate) fn name(&self) -> String {
+        match self {
+            Self::Position(position) => host_key_name(position),
+            Self::DefaultCode(code) => host_name_for_code(*code),
+        }
+    }
+}
+
+impl From<u8> for HostKey {
+    fn from(code: u8) -> Self {
+        Self::DefaultCode(code)
+    }
+}
+
+impl From<String> for HostKey {
+    fn from(position: String) -> Self {
+        Self::Position(position)
+    }
+}
 
 const AMIGA_KEY_POSITIONS: &[(&str, u8)] = &[
     ("Backquote", SCANCODE_BACKQUOTE),
@@ -219,6 +271,8 @@ pub(crate) fn host_key_name(position: &str) -> String {
                 "Multiply" => "*",
                 "Divide" => "/",
                 "Decimal" => ".",
+                "ParenLeft" => "(",
+                "ParenRight" => ")",
                 _ => key,
             }
         );
@@ -247,6 +301,7 @@ pub(crate) fn host_key_name(position: &str) -> String {
         "AltRight" => "Right Alt",
         "MetaLeft" => "Left Windows / Command",
         "MetaRight" => "Right Windows / Command",
+        "ContextMenu" => "Menu",
         "CapsLock" => "Caps Lock",
         "PageUp" => "Page Up",
         "PageDown" => "Page Down",
@@ -269,14 +324,19 @@ pub(crate) fn amiga_key_name(code: u8) -> String {
     match code {
         SCANCODE_L_AMIGA => "Left Amiga".into(),
         SCANCODE_R_AMIGA => "Right Amiga".into(),
+        SCANCODE_NUMPAD_PAREN_LEFT => "Keypad (".into(),
+        SCANCODE_NUMPAD_PAREN_RIGHT => "Keypad )".into(),
         _ => host_name_for_code(code),
     }
 }
 
 pub(crate) fn amiga_destinations() -> impl Iterator<Item = u8> {
-    AMIGA_KEY_POSITIONS.iter().filter_map(|&(position, code)| {
-        (amiga_key_position(code) == Some(position)).then_some(code)
-    })
+    AMIGA_KEY_POSITIONS
+        .iter()
+        .filter_map(|&(position, code)| {
+            (amiga_key_position(code) == Some(position)).then_some(code)
+        })
+        .chain([SCANCODE_NUMPAD_PAREN_LEFT, SCANCODE_NUMPAD_PAREN_RIGHT])
 }
 
 /// Frontend bindings name physical key positions, excluding derived text commands.

@@ -387,7 +387,7 @@ fn render_emulator_shortcuts(ui: &mut egui::Ui, editor: &mut ConfigurationEdit, 
         });
     }
     if frontend_key_position(&bindings.release) == Some("Escape") {
-        ui.label("Escape is reserved for the guest or browser. Use middle mouse or assign another mouse release key.");
+        ui.label("Saved Escape release shortcut is inactive while the mouse is captured in the desktop app. Use middle mouse or assign another release key.");
     }
 }
 
@@ -519,12 +519,13 @@ fn render_key_overrides(ui: &mut egui::Ui, editor: &mut ConfigurationEdit, profi
         .host
         .keyboard;
     ui.collapsing("Amiga keyboard remapping", |ui| {
+        ui.label("If a keyboard joystick uses the arrows, change its arrow bindings or choose a different source for that port to use the arrows as Amiga keys.");
         let mut remove = None;
         for (row, (host, destination)) in overrides.iter_mut().enumerate() {
             ui.push_id(row, |ui| {
                 ui.horizontal_wrapped(|ui| {
                     guest_key_selector(ui, destination);
-                    if ui.button(host_name_for_code(*host)).clicked() {
+                    if ui.button(host.name()).clicked() {
                         editor.recording = Some(BindingRecording::keyboard(
                             ui.ctx(),
                             BindingTarget::Override {

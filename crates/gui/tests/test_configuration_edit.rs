@@ -75,7 +75,7 @@ fn save_changes_active_identity_controls_without_applying_future_launch_choices(
             source: InputSource::SystemMouse,
         },
     ];
-    catalog.configurations[0].controls.host.keyboard = vec![(0x20, 0x21)];
+    catalog.configurations[0].controls.host.keyboard = vec![(0x20.into(), 0x21)];
     catalog.configurations[0].launch.preset = config::A500Preset::ExpandedPowerUser;
     catalog.configurations[0].launch.rom = "future.rom".into();
     catalog.configurations[0].launch.drives[1] = true;
@@ -778,9 +778,9 @@ fn combo_box_showing<'a>(
     h: &'a Harness<'_, EmulatorApp>,
     selected: &str,
 ) -> egui_kittest::Node<'a> {
-    // egui paints the selected text without exposing it on the combo box node.
+    // Check that the selected text is painted inside both the widget and the clip rectangle.
     h.get_all_by_role(egui::accesskit::Role::ComboBox)
-        .find(|node| {
+        .filter(|node| {
             let bounds = node.rect();
             h.output().shapes.iter().any(|shape| {
                 matches!(
@@ -793,7 +793,23 @@ fn combo_box_showing<'a>(
                 )
             })
         })
+        .last()
         .unwrap_or_else(|| panic!("No visible combo box showing {selected:?}"))
+}
+
+fn new_key_override_showing<'a>(
+    h: &'a Harness<'_, EmulatorApp>,
+    selected: &str,
+) -> egui_kittest::Node<'a> {
+    use egui::accesskit::Role;
+
+    let row = h
+        .get_by_role_and_label(Role::Button, "Add key override")
+        .parent()
+        .unwrap();
+    let combo = row.get_by_role(Role::ComboBox);
+    assert_eq!(combo.value().as_deref(), Some(selected));
+    combo
 }
 
 fn physical_edge(
@@ -878,7 +894,7 @@ fn keyboard_binding_buttons_record_fresh_edges_and_keep_draft_isolated() {
     h.set_size(egui::vec2(1280.0, 900.0));
     common::settle_harness(&mut h);
     click_binding_control(&mut h, "Amiga keyboard remapping");
-    combo_box_showing(&h, "Escape");
+    new_key_override_showing(&h, "Escape");
     click_binding_control(&mut h, "Add key override");
     h.get_by_label("Host key for Amiga Escape");
     record_key(&mut h, "ArrowUp");
@@ -895,7 +911,7 @@ fn keyboard_binding_buttons_record_fresh_edges_and_keep_draft_isolated() {
             .controls
             .host
             .keyboard,
-        vec![(0x34, 0x45)]
+        vec![("KeyV".to_owned().into(), 0x45)]
     );
 
     click_binding_control(&mut h, "Arrow keys");
@@ -930,7 +946,7 @@ fn keyboard_binding_buttons_record_fresh_edges_and_keep_draft_isolated() {
             .controls
             .host
             .keyboard,
-        vec![(0x34, 0x45)]
+        vec![("KeyV".to_owned().into(), 0x45)]
     );
 
     assert!(physical_edge(&mut h, "F7", true, false));
@@ -965,6 +981,71 @@ fn keyboard_binding_buttons_record_fresh_edges_and_keep_draft_isolated() {
         .host
         .keyboard
         .is_empty());
+}
+
+#[test]
+fn keyboard_override_records_menu_without_a_default_guest_key() {
+    let mut h = editor();
+    h.set_size(egui::vec2(1280.0, 900.0));
+    common::settle_harness(&mut h);
+    click_binding_control(&mut h, "Amiga keyboard remapping");
+    assert_eq!(gui::host_keys::amiga_key_code("ContextMenu"), None);
+    for (previous, destination, source) in [
+        ("Escape", "Keypad (", "ContextMenu"),
+        ("Keypad (", "Keypad )", "BracketRight"),
+    ] {
+        new_key_override_showing(&h, previous).click_accesskit();
+        common::settle_harness(&mut h);
+        h.get_by_role_and_label(egui::accesskit::Role::Button, destination)
+            .click_accesskit();
+        common::settle_harness(&mut h);
+        // AccessKit selection leaves the popup open, so toggle it closed.
+        new_key_override_showing(&h, destination).click_accesskit();
+        common::settle_harness(&mut h);
+        click_binding_control(&mut h, "Add key override");
+        h.get_by_label(&format!("Host key for Amiga {destination}"));
+        record_key(&mut h, source);
+        assert!(h.query_by_label("Press a key").is_none());
+    }
+    h.get_by_label("Menu");
+    click_binding_control(&mut h, "Save");
+
+    let root = h.state().player.library_root.as_ref().unwrap();
+    let mut reopened_app = EmulatorApp::default();
+    reopened_app.navigate_player(PlayerScreen::Configuration);
+    let mut reopened = Harness::builder()
+        .build_ui_state(|ui, app: &mut EmulatorApp| app.update_ui(ui), reopened_app);
+    common::settle_harness(&mut reopened);
+    common::select_library(&mut reopened, root);
+    assert_eq!(
+        reopened
+            .state()
+            .player
+            .catalog
+            .selected()
+            .unwrap()
+            .controls
+            .host
+            .keyboard,
+        vec![
+            ("ContextMenu".to_owned().into(), 0x5a),
+            ("BracketRight".to_owned().into(), 0x5b)
+        ]
+    );
+    assert!(physical_edge(&mut h, "F5", true, false));
+    assert!(physical_edge(&mut h, "F5", false, false));
+    common::wait_harness(&mut h, |app| app.host.status.running);
+    for (source, guest) in [("ContextMenu", 0x5a), ("BracketRight", 0x5b)] {
+        assert!(physical_edge(&mut h, source, true, false));
+        wait_guest_key(&mut h, guest, true);
+        assert_eq!(
+            common::observe_input(h.state_mut(), Some(0x1b)).key_held,
+            Some(false)
+        );
+        assert!(physical_edge(&mut h, source, true, true));
+        assert!(physical_edge(&mut h, source, false, false));
+        wait_guest_key(&mut h, guest, false);
+    }
 }
 
 #[test]

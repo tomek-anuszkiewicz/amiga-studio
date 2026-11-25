@@ -1,5 +1,6 @@
 //! Shared physical keyboard policy for window and browser events.
 
+use crate::host_input::KeyboardEvent;
 use crate::host_keys::{amiga_key_code, frontend_key_position};
 use crate::player_config::{FrontendAction, FrontendBindings};
 use crate::shortcuts::{ShortcutModifier, FIXED_SHORTCUTS};
@@ -35,12 +36,11 @@ pub enum KeyCommand {
     NormalZoom,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum KeyRoute {
     Command { action: KeyCommand, pressed: bool },
-    Amiga { code: u8, pressed: bool },
+    Gameplay(KeyboardEvent),
     Consumed,
-    ReleaseAll,
     Rejected(&'static str),
 }
 
@@ -54,7 +54,9 @@ pub struct KeyboardPolicy {
     pub pause_pending: bool,
     pub developer: bool,
     pub can_edit: bool,
+    pub native_mouse_captured: bool,
     pub bindings: FrontendBindings,
+    pub additional_guest_positions: Vec<String>,
 }
 
 impl KeyboardPolicy {
@@ -64,6 +66,10 @@ impl KeyboardPolicy {
 
     pub(crate) fn gameplay_active(&self) -> bool {
         self.frontend_active() && self.running && !self.pause_pending
+    }
+
+    fn native_capture_active(&self) -> bool {
+        self.native_mouse_captured && self.gameplay_active()
     }
 }
 
@@ -176,15 +182,25 @@ pub fn receive_pointer_press(ctx: &egui::Context, position: egui::Pos2) {
             if let Some(policy) = &mut inbox.policy {
                 policy.gui_owns_input = true;
                 inbox.router.suspend();
-                inbox
-                    .pending
-                    .retain(|decision| !matches!(decision.route, KeyRoute::Amiga { .. }));
+                inbox.pending.retain(|decision| {
+                    !matches!(
+                        decision.route,
+                        KeyRoute::Gameplay(KeyboardEvent::Key { .. })
+                    )
+                });
             }
         });
     }
 }
 
 impl KeyboardInbox {
+    #[cfg(windows)]
+    pub(crate) fn native_capture_active(&self) -> bool {
+        self.policy
+            .as_ref()
+            .is_some_and(KeyboardPolicy::native_capture_active)
+    }
+
     pub(crate) fn start_recording(&mut self) {
         self.router.suspend();
         self.recording = KeyRecording::Waiting;
@@ -235,8 +251,12 @@ impl KeyboardInbox {
                 || (previous.gameplay_active() && !policy.gameplay_active())
             {
                 self.router.suspend();
-                self.pending
-                    .retain(|decision| !matches!(decision.route, KeyRoute::Amiga { .. }));
+                self.pending.retain(|decision| {
+                    !matches!(
+                        decision.route,
+                        KeyRoute::Gameplay(KeyboardEvent::Key { .. })
+                    )
+                });
             }
         }
         self.policy = Some(policy);
@@ -255,6 +275,7 @@ impl KeyboardInbox {
             // and synthesized presses cannot establish fresh gameplay input.
             self.router.release();
             if !focused {
+                policy.native_mouse_captured = false;
                 self.cancel_recording();
                 self.release_pending();
             }
@@ -336,7 +357,7 @@ impl KeyboardInbox {
     fn release_pending(&mut self) {
         self.pending.clear();
         self.pending.push(KeyboardDecision {
-            route: KeyRoute::ReleaseAll,
+            route: KeyRoute::Gameplay(KeyboardEvent::ReleaseAll),
             generation: self.generation,
         });
     }
@@ -375,7 +396,6 @@ impl KeyboardRouter {
         if key.synthetic && key.pressed {
             return KeyRoute::Rejected("synthetic_focus_press");
         }
-        let code = amiga_key_code(&key.physical);
         let previous = if key.pressed {
             self.held.get(&key.physical).copied()
         } else {
@@ -408,8 +428,10 @@ impl KeyboardRouter {
                 "gui_owns_input"
             });
         }
+        let is_gameplay_key = amiga_key_code(&key.physical).is_some()
+            || policy.additional_guest_positions.contains(&key.physical);
         if key.repeat || (key.pressed && previous.is_some()) {
-            return if policy.gameplay_active() && code.is_some() {
+            return if policy.gameplay_active() && is_gameplay_key {
                 KeyRoute::Consumed
             } else {
                 KeyRoute::Rejected("duplicate_edge_or_repeat")
@@ -424,7 +446,7 @@ impl KeyboardRouter {
                     pressed: true,
                 };
             }
-            let held = if code.is_some() && policy.gameplay_active() {
+            let held = if is_gameplay_key && policy.gameplay_active() {
                 HeldKey::Guest
             } else {
                 HeldKey::Available
@@ -437,18 +459,16 @@ impl KeyboardRouter {
         if policy.pause_pending {
             return KeyRoute::Rejected("pause_pending");
         }
-        let Some(code) = code else {
+        if !is_gameplay_key {
             return KeyRoute::Rejected("unmapped_physical_key");
-        };
+        }
         if !key.pressed && previous != Some(HeldKey::Guest) {
             return KeyRoute::Consumed;
         }
-        let pressed = key.pressed
-            || matches!(key.physical.as_str(), "ControlLeft" | "ControlRight")
-                && ["ControlLeft", "ControlRight"]
-                    .iter()
-                    .any(|side| self.held.get(*side) == Some(&HeldKey::Guest));
-        KeyRoute::Amiga { code, pressed }
+        KeyRoute::Gameplay(KeyboardEvent::Key {
+            position: key.physical.clone(),
+            pressed: key.pressed,
+        })
     }
 
     fn held(&self, physical: &str) -> bool {
@@ -458,9 +478,14 @@ impl KeyboardRouter {
     }
 
     fn command(&self, physical: &str, policy: &KeyboardPolicy) -> Option<KeyCommand> {
-        let command = ["ControlLeft", "ControlRight", "MetaLeft", "MetaRight"]
+        let control = ["ControlLeft", "ControlRight"]
             .into_iter()
             .any(|key| self.held(key));
+        let command = control
+            || (!(cfg!(windows) && policy.native_capture_active())
+                && ["MetaLeft", "MetaRight"]
+                    .into_iter()
+                    .any(|key| self.held(key)));
         let fixed = FIXED_SHORTCUTS.iter().find(|shortcut| {
             shortcut.position == physical
                 && match shortcut.modifier {
@@ -474,6 +499,9 @@ impl KeyboardRouter {
         }
         if let Some(action) = FrontendAction::EDITABLE_KEYS.into_iter().find(|action| {
             frontend_key_position(policy.bindings.binding(*action)) == Some(physical)
+                && !(*action == FrontendAction::Release
+                    && physical == "Escape"
+                    && policy.native_capture_active())
         }) {
             return Some(action.into());
         }
