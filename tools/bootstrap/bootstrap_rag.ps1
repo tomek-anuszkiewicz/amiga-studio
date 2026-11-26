@@ -15,10 +15,10 @@
     state file. This action updates the shared index and incremental state.
 
 .EXAMPLE
-    .\tools\bootstrap\bootstrap_rag.ps1 -CheckOnly
+    ./tools/bootstrap/bootstrap_rag.ps1 -CheckOnly
 
 .EXAMPLE
-    .\tools\bootstrap\bootstrap_rag.ps1 -Index
+    ./tools/bootstrap/bootstrap_rag.ps1 -Index
 #>
 
 [CmdletBinding()]
@@ -28,7 +28,7 @@ param(
 )
 
 function Show-Usage {
-    Write-Host 'Usage: .\tools\bootstrap\bootstrap_rag.ps1 -CheckOnly | -Index'
+    Write-Host 'Usage: ./tools/bootstrap/bootstrap_rag.ps1 -CheckOnly | -Index'
     Write-Host '  -CheckOnly  Start the shared RAG service and report its status.'
     Write-Host '  -Index      Also update the shared index and state for Amiga documentation.'
     Write-Host 'Both actions require a Compose-mode CLI. Indexing also requires RAG_INDEX_JSON.'

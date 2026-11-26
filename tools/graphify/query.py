@@ -59,7 +59,7 @@ def main() -> int:
     graph_path = root / "graphify-out/graph.json"
     if not graph_path.is_file():
         parser.error(f"{args.graph} graph is missing. Run python tools/graphify/refresh.py "
-                     f"--graph {args.graph}, or bootstrap.ps1 -Graphify explicitly.")
+                     f"--graph {args.graph}, or ./tools/bootstrap/bootstrap.ps1 -Graphify")
 
     graph = json.loads(graph_path.read_text(encoding="utf-8"))
     try:

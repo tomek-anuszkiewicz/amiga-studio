@@ -31,7 +31,7 @@ closure; this skill does not run those tests or reviewers itself.
    checkout. Record the locations of reports already in the selected archive.
    Inspect the destination paths and continue to cleanup after all selected
    copies succeed.
-3. For a task with a selected worktree, run `tools/worktree.ps1 remove <selected-worktree>`
+3. For a task with a selected worktree, run `./tools/worktree.ps1 remove <selected-worktree>`
    from a surviving checkout using the script's accepted name or path. Follow
    the script's checks and preserve leftovers after failure. Confirm the
    directory and Git registration outcomes separately.

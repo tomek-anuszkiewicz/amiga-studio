@@ -717,6 +717,19 @@ exports.registry = {{
         self.assertEqual(area.counts, {"current": 1})
         self.assertEqual(rendered(area), "  No findings.\n")
 
+    def test_windows_edge_version_reads_the_given_path_with_pwsh(self):
+        edge = self.root / "Edge [Stable]/msedge.exe"
+        with (patch.object(sys, "platform", "win32"),
+              patch.object(browsers, "windows_architecture", return_value="x64") as architecture,
+              patch.object(self.probe, "run", return_value="150.0.1.2") as run):
+            self.assertEqual(browsers.edge_installed_version(self.probe, edge), ((150, 0, 1, 2), "windows", "x64"))
+        run.assert_called_once_with(
+            ["pwsh", "-NoProfile", "-NonInteractive", "-Command",
+             "(Get-Item -LiteralPath $env:AMIGA_EDGE_PROBE_PATH).VersionInfo.ProductVersion"],
+            env={"AMIGA_EDGE_PROBE_PATH": str(edge)},
+        )
+        architecture.assert_called_once_with(edge)
+
     def test_edge_uses_the_newest_release_for_the_matching_stable_platform_and_architecture(self):
         edge = self.write("Edge/msedge.exe", "")
         releases = [
@@ -1010,44 +1023,44 @@ exports.registry = {{
     def test_windows_checks_availability_and_compares_separate_pwsh_release(self):
         area = Area("Setup")
         release = {"draft": False, "prerelease": False, "tag_name": "v7.6.0"}
-        with patch.object(sys, "platform", "win32"), patch.object(setup_tools.shutil, "which", return_value="pwsh"), \
-             patch.object(self.probe, "run", side_effect=["5.1.26100.1", "PowerShell 7.5.0"]) as run, \
-             patch.object(self.probe, "http", return_value=release) as http:
+        legacy = self.root / "Windows PowerShell/powershell.exe"
+        with (patch.object(sys, "platform", "win32"),
+              patch.object(setup_tools.shutil, "which", return_value=str(legacy)) as find,
+              patch.object(self.probe, "run", return_value="PowerShell 7.5.0") as run,
+              patch.object(self.probe, "http", return_value=release) as http):
             setup_tools.check_powershell(area, self.probe)
-        self.assertEqual([call.args[0][0] for call in run.call_args_list], ["powershell", "pwsh"])
+        find.assert_called_once_with("powershell")
+        run.assert_called_once_with(["pwsh", "-NoProfile", "-NonInteractive", "--version"])
         http.assert_called_once_with("https://api.github.com/repos/PowerShell/PowerShell/releases/latest")
         self.assertEqual(area.counts, {"current": 1, "update": 1})
         self.assertIn("PowerShell (pwsh) 7.5.0 -> 7.6.0", rendered(area))
         self.assertNotIn("Windows PowerShell", rendered(area))
 
-    def test_windows_powershell_availability_needs_no_release_check(self):
-        inputs = (
-            ("5.1.26100.1", None),
-            (ProbeError("powershell is unavailable"), "powershell is unavailable"),
-            ("", "the executable did not report a version"),
-        )
-        for version, issue in inputs:
-            with (self.subTest(version=version), patch.object(sys, "platform", "win32"),
-                  patch.object(setup_tools.shutil, "which", return_value=None),
-                  patch.object(self.probe, "run", side_effect=[version]) as run,
+    def test_windows_powershell_probe_reports_missing_pwsh_separately(self):
+        legacy = self.root / "Windows PowerShell/powershell.exe"
+        for legacy_path in (str(legacy), None):
+            with (self.subTest(legacy_path=legacy_path), patch.object(sys, "platform", "win32"),
+                  patch.object(setup_tools.shutil, "which", return_value=legacy_path) as find,
+                  patch.object(self.probe, "run", side_effect=ProbeError("pwsh is unavailable")) as run,
                   patch.object(self.probe, "http") as http):
                 area = Area("Other project tools")
                 setup_tools.check_powershell(area, self.probe)
-                run.assert_called_once_with(["powershell", "-NoProfile", "-NonInteractive", "-Command",
-                                             "$PSVersionTable.PSVersion.ToString()"])
+                find.assert_called_once_with("powershell")
+                run.assert_called_once_with(["pwsh", "-NoProfile", "-NonInteractive", "--version"])
                 http.assert_not_called()
                 out = StringIO()
                 report = Report(out)
                 report.write_area(area)
                 report.finish()
                 result = out.getvalue()
-                if issue is None:
-                    self.assertEqual(area.counts, {"current": 1})
-                    self.assertIn("Report complete.", result)
+                self.assertIn("PowerShell (pwsh) (pwsh is unavailable)", result)
+                self.assertIn("Partial report.", result)
+                if legacy_path:
+                    self.assertEqual(area.counts, {"current": 1, "inconclusive": 1})
                     self.assertNotIn("Windows PowerShell", result)
                 else:
-                    self.assertIn(f"Could not check\n    Windows PowerShell ({issue})", result)
-                    self.assertIn("Partial report.", result)
+                    self.assertEqual(area.counts, {"inconclusive": 2})
+                    self.assertIn("Windows PowerShell (powershell is unavailable)", result)
 
     def test_qdrant_compares_the_running_image_separately_from_the_local_tag(self):
         active = "sha256:" + "a" * 64

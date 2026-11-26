@@ -11,7 +11,7 @@
     Downloaded archives and extraction files are disposable under .agent/tmp/.
 
 .EXAMPLE
-    .\tools\bootstrap\bootstrap_assembler.ps1
+    ./tools/bootstrap/bootstrap_assembler.ps1
     Provision the assembler for the current x86-64 host.
 #>
 

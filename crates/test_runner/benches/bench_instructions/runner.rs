@@ -289,14 +289,14 @@ fn assembler(root: &Path) -> Result<Assembler, String> {
         .join(&platform_manifest.executable_name);
     if !path.is_file() {
         return Err(format!(
-            "assembler missing at {}; run tools/bootstrap/bootstrap.ps1 -Assembler",
+            "assembler missing at {}; run ./tools/bootstrap/bootstrap.ps1 -Assembler",
             path.display()
         ));
     }
     let actual_hash = sha256(&fs::read(&path).map_err(|error| error.to_string())?);
     if !actual_hash.eq_ignore_ascii_case(&platform_manifest.executable_sha256) {
         return Err(format!(
-            "assembler SHA-256 mismatch at {}; run tools/bootstrap/bootstrap.ps1 -Assembler",
+            "assembler SHA-256 mismatch at {}; run ./tools/bootstrap/bootstrap.ps1 -Assembler",
             path.display()
         ));
     }

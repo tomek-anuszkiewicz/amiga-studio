@@ -8,9 +8,9 @@
     existing graph directories from the primary checkout as independent files.
 
 .EXAMPLE
-    .\tools\worktree.ps1 add feature-blitter
-    .\tools\worktree.ps1 remove feature-blitter
-    .\tools\worktree.ps1 list
+    ./tools/worktree.ps1 add feature-blitter
+    ./tools/worktree.ps1 remove feature-blitter
+    ./tools/worktree.ps1 list
 #>
 
 [CmdletBinding()]
@@ -36,7 +36,7 @@ $ErrorActionPreference = "Stop"
 
 function Show-Usage {
     Write-Host @'
-Usage: .\tools\worktree.ps1 <add|test|remove|list> [Name] [-Base COMMIT] [-Path PATH] [-ExpectedBranch REF]
+Usage: ./tools/worktree.ps1 <add|test|remove|list> [Name] [-Base COMMIT] [-Path PATH] [-ExpectedBranch REF]
 
   add Name     Create or select a task branch in a new sibling checkout.
   test Name    Create a disposable detached checkout; create no task branch.
@@ -60,10 +60,10 @@ Stop commands using the checkout before removal.
 Run removal from a surviving checkout. Branch deletion is a separate operation.
 
 Examples:
-  .\tools\worktree.ps1 add feature-blitter -Base master
-  .\tools\worktree.ps1 test integration-probe -Base HEAD
-  .\tools\worktree.ps1 remove feature-blitter
-  .\tools\worktree.ps1 list
+  ./tools/worktree.ps1 add feature-blitter -Base master
+  ./tools/worktree.ps1 test integration-probe -Base HEAD
+  ./tools/worktree.ps1 remove feature-blitter
+  ./tools/worktree.ps1 list
 '@
 }
 
@@ -228,7 +228,7 @@ if ($Action -ne 'list') {
 switch ($Action) {
     { $_ -in 'add', 'test' } {
         if (-not $Name) {
-            Write-Error "Branch or worktree name is required for 'add'. Example: .\tools\worktree.ps1 add feature-blitter"
+            Write-Error "Branch or worktree name is required for 'add'. Example: ./tools/worktree.ps1 add feature-blitter"
             exit 1
         }
 
@@ -285,7 +285,7 @@ switch ($Action) {
 
     "remove" {
         if (-not $Name) {
-            Write-Error "Branch name or worktree path is required for 'remove'. Example: .\tools\worktree.ps1 remove feature-blitter"
+            Write-Error "Branch name or worktree path is required for 'remove'. Example: ./tools/worktree.ps1 remove feature-blitter"
             exit 1
         }
 

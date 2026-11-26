@@ -45,9 +45,11 @@ The roadmap tracks the remaining implementation work. [Development roadmap](ROAD
 
 ## Run the Emulator
 
+Run the commands below in PowerShell from the repository root.
+
 ### Native Desktop Application
 
-From the repository root, build and launch the native app in release mode.
+Build and launch the native app in release mode.
 
 ```powershell
 cargo run --release -p gui
@@ -60,7 +62,8 @@ supported Kickstart ROM and ADF disk image, and choose **Start**.
 
 ### Web Browser
 
-Use Trunk to run the WebAssembly build in a browser. [Trunk](https://trunkrs.dev)
+Use Trunk to run the WebAssembly build in a browser.
+[Trunk](https://trunkrs.dev)
 
 ```powershell
 cargo install --locked trunk

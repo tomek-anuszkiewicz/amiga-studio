@@ -1,7 +1,8 @@
 # Development Environment and Reference Setup
 
 Use this reference to build the emulator and provision the development and
-verification assets your work needs. Run commands from the repository root.
+verification assets your work needs. Run commands in PowerShell from the
+repository root.
 For details on a specific command, use the program's current help and README.
 For a map of the project and an overview of what verification covers, see the
 [developer overview](../../docs/developers.md) and [testing overview](../../docs/testing.md).
@@ -110,7 +111,7 @@ Missing evidence in the manuals does not itself start that investigation.
 Web pages stay outside the documentation RAG index.
 
 > [!TIP]
-> Information and automated scripts for downloading, decompressing, and provisioning these reference test sources are provided in **[Chapter 4: Bootstrapping & External Reference Provisioning](#sources-provisioning-sources)** (`.\tools\bootstrap\bootstrap.ps1 -Sources`).
+> Information and automated scripts for downloading, decompressing, and provisioning these reference test sources are provided in **[Chapter 4: Bootstrapping & External Reference Provisioning](#sources-provisioning-sources)** (`./tools/bootstrap/bootstrap.ps1 -Sources`).
 
 ---
 
@@ -176,7 +177,7 @@ converted into structured Markdown.
    - **Scope:** 16-chapter investigation into silicon quirks: Copper hazards, sprite demultiplexing, DMA slot arbitration, UHRES display modes, and video beam timing anomalies.
 
 > [!TIP]
-> Information and automated scripts for downloading, bootstrapping, and converting these external reference materials into Markdown are provided in **[Chapter 4: Archival Reference Documentation Provisioning (`-Documentation`)](#archival-documentation-provisioning-documentation)** (`.\tools\bootstrap\bootstrap.ps1 -Documentation`).
+> Information and automated scripts for downloading, bootstrapping, and converting these external reference materials into Markdown are provided in **[Chapter 4: Archival Reference Documentation Provisioning (`-Documentation`)](#archival-documentation-provisioning-documentation)** (`./tools/bootstrap/bootstrap.ps1 -Documentation`).
 
 ---
 
@@ -202,7 +203,7 @@ provisioning workflows.
 Use `-All` to provision reference assets and development tools in one run. Configure the shared Compose backend in [RAG Setup](#domain-hardware-rag-setup-rag) first. The RAG tier starts the shared service and reports its status. Indexing requires an explicit `-Rag` selection.
 
 ```powershell
-.\tools\bootstrap\bootstrap.ps1 -All
+./tools/bootstrap/bootstrap.ps1 -All
 ```
 
 | Mode | Switch | When Needed | What It Provisions |
@@ -225,14 +226,14 @@ Each provisioning phase can also be executed independently on demand:
 Automates downloading, unpacking, decompressing, and validating external test assets and reference code:
 
 ```powershell
-.\tools\bootstrap\bootstrap.ps1 -Sources
+./tools/bootstrap/bootstrap.ps1 -Sources
 # Or select only the two FPGA repositories:
-.\tools\bootstrap\bootstrap_sources.ps1 -MiniMig -AmigaReplacementProject
+./tools/bootstrap/bootstrap_sources.ps1 -MiniMig -AmigaReplacementProject
 ```
 
 ##### Automation Lifecycle Steps
 
-When you run `.\tools\bootstrap\bootstrap.ps1 -Sources`, the bootstrapper
+When you run `./tools/bootstrap/bootstrap.ps1 -Sources`, the bootstrapper
 prepares and checks the reference sources.
 
 1. **Zip Archive Expansion:** Scans `ref_src/SingleStepTests-680x0/` for `.zip` archives and unpacks them into place.
@@ -243,7 +244,7 @@ prepares and checks the reference sources.
 > [!TIP]
 > **Fine-Grained Execution:** When you need direct execution, testing, or pipeline debugging without invoking the coordinator wrapper, invoke the dedicated sources bootstrapper directly:
 > ```powershell
-> .\tools\bootstrap\bootstrap_sources.ps1 -List
+> ./tools/bootstrap/bootstrap_sources.ps1 -List
 > ```
 
 <a id="bootstrapping-raw-archival-sources-toolsbootstrapbootstrap_documentationps1"></a><a id="archival-documentation-provisioning-documentation"></a><a id="upstream-archival-reference-documents"></a><a id="multi-source-fallback-matrix-error-resilience"></a><a id="multi-source-fallback-matrix--error-resilience"></a>
@@ -274,9 +275,9 @@ publication. The converter derives the book destination from the enclosing
 `<Document_Name>-tmp/` directory.
 
 ```powershell
-.\tools\bootstrap\bootstrap.ps1 -Documentation
+./tools/bootstrap/bootstrap.ps1 -Documentation
 # Convert locally, then optionally publish to an empty book directory:
-.\tools\bootstrap\bootstrap.ps1 -Documentation -Markdown -Publish
+./tools/bootstrap/bootstrap.ps1 -Documentation -Markdown -Publish
 ```
 
 <a id="multi-page-web-crawling-engine"></a>
@@ -317,10 +318,10 @@ Use the CLI from that same checkout. Configure Compose mode, the shared service 
 $RagRepo = "<path-to-shared-qdrant-rag-checkout>"
 $env:PATH = "$RagRepo\rag-qdrant\bin;$env:PATH"
 rag_qdrant service mode
-.\tools\bootstrap\bootstrap_rag.ps1 -CheckOnly
+./tools/bootstrap/bootstrap_rag.ps1 -CheckOnly
 ```
 
-The check starts the shared RAG service if needed and prints its status. For an explicitly authorized indexing job, set `RAG_INDEX_JSON` to the canonical host path configured by the shared backend. After documentation validation, run `.\tools\bootstrap\bootstrap.ps1 -Rag` or `.\tools\bootstrap\bootstrap_rag.ps1 -Index` from the Amiga checkout. See [Chapter 5](#5-domain-hardware-knowledge-local-vector-rag-amiga-rag) for the source scopes and indexing workflow.
+The check starts the shared RAG service if needed and prints its status. For an explicitly authorized indexing job, set `RAG_INDEX_JSON` to the canonical host path configured by the shared backend. After documentation validation, run `./tools/bootstrap/bootstrap.ps1 -Rag` or `./tools/bootstrap/bootstrap_rag.ps1 -Index` from the Amiga checkout. See [Chapter 5](#5-domain-hardware-knowledge-local-vector-rag-amiga-rag) for the source scopes and indexing workflow.
 
 <a id="code-knowledge-graph-setup-graphify"></a>
 #### 4. Code Knowledge Graph Setup (`-Graphify`)
@@ -328,7 +329,7 @@ The check starts the shared RAG service if needed and prints its status. For an 
 Creates or refreshes both independent code graphs:
 
 ```powershell
-.\tools\bootstrap\bootstrap.ps1 -Graphify
+./tools/bootstrap/bootstrap.ps1 -Graphify
 ```
 
 A separate host-agent procedure extracts relationships from project documents.
@@ -374,7 +375,7 @@ work.
 <a id="7-code-structure-relationships-graphify"></a><a id="7-code-structure--relationships-graphify"></a><a id="6-code-structure-relationships-graphify"></a><a id="6-code-structure--relationships-graphify"></a><a id="b-code-structure-relationships-ast-knowledge-graph-graphify"></a>
 ## 6. Code Structure & Relationships: Graphify
 - **Datasets:** `project` stores code and allowed project documents in `graphify-out/graph.json`; it honors Git exclusions and excludes imported sources. `reference` stores supported code throughout `ref_src/` in `ref_src/graphify-out/graph.json`, with Git exclusions disabled and Graphify exclusions retained. JSON vectors, generated data and vAmigaTS assembly are excluded; parser errors can leave partial symbols.
-- **Production:** `.\tools\bootstrap\bootstrap.ps1 -Graphify` and the Graphify stage of `-All` create or refresh both graphs. Task closure refreshes the project graph on final local `master` after successful final tests/review and any corrective commits. The dedicated manual reference operation is `python tools/graphify/refresh.py --graph reference`. Structural refresh preserves valid project semantic content; initial or needed document semantics use the host-agent procedure in the [semantic extraction skill](../skills/TA-Graphify-extract-semantics/SKILL.md). Keep the repository-owned TA graph skills when installing/upgrading Graphify.
+- **Production:** `./tools/bootstrap/bootstrap.ps1 -Graphify` and the Graphify stage of `-All` create or refresh both graphs. Task closure refreshes the project graph on final local `master` after successful final tests/review and any corrective commits. The dedicated manual reference operation is `python tools/graphify/refresh.py --graph reference`. Structural refresh preserves valid project semantic content; initial or needed document semantics use the host-agent procedure in the [semantic extraction skill](../skills/TA-Graphify-extract-semantics/SKILL.md). Keep the repository-owned TA graph skills when installing/upgrading Graphify.
 - **Queries:** Use the read-only repository entry point with an explicit native graph selector, such as `python tools/graphify/read.py query "Cpu BusResult" --graph graphify-out/graph.json` or `python tools/graphify/read.py explain "Paula" --graph ref_src/graphify-out/graph.json`. The same `--graph` selection applies to `path`. Compare graphs separately and verify source definitions; reference paths resolve under `ref_src/`.
 - **Optional filtering:** `python tools/graphify/query.py "Paula" --graph reference --scope minimig` filters nodes and edges before traversal using a disposable view under `.agent/tmp/`. Scopes are directories within the selected root. Missing graphs are reported without substitution or automatic builds. See the [tool README](../../tools/graphify/README.md) for roots, creation, caching and freshness.
 

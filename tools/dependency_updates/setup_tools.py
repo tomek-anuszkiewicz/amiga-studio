@@ -266,17 +266,12 @@ def check_git(area, probe):
 def check_powershell(area, probe):
     setup = "tools/web.ps1 and developer setup"
     if sys.platform == "win32":
-        try:
-            version = probe.run(["powershell", "-NoProfile", "-NonInteractive",
-                                 "-Command", "$PSVersionTable.PSVersion.ToString()"])
-            if not re.fullmatch(r"\d+\.\d+(?:\.\d+){0,2}", version):
-                raise ProbeError("the executable did not report a version")
+        if shutil.which("powershell"):
             area.record("current", "Windows PowerShell availability")
-        except ProbeError as error:
-            area.incomplete("Windows PowerShell", setup, error)
-    if sys.platform != "win32" or shutil.which("pwsh") is not None:
-        check_tool_release(area, probe, "PowerShell (pwsh)", ["pwsh", "-NoProfile", "-NonInteractive", "--version"],
-                           "PowerShell/PowerShell", setup)
+        else:
+            area.incomplete("Windows PowerShell", setup, "powershell is unavailable")
+    check_tool_release(area, probe, "PowerShell (pwsh)", ["pwsh", "-NoProfile", "-NonInteractive", "--version"],
+                       "PowerShell/PowerShell", setup)
 
 
 def graphify_pin(probe):

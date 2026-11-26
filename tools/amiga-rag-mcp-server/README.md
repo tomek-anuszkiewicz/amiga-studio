@@ -83,7 +83,7 @@ RAG_INDEX_JSON=<shared-rag-index-state-file>
 ## Documentation Indexing
 
 Documentation indexing is a heavy batch process. Run it outside the MCP server
-through the `rag_qdrant` CLI or `tools/bootstrap/bootstrap.ps1 -Rag` for the
+through the `rag_qdrant` CLI or `./tools/bootstrap/bootstrap.ps1 -Rag` for the
 following Amiga documentation directories.
 
 - repository `docs`

@@ -8,15 +8,15 @@
 param([switch]$CheckOnly)
 
 Write-Host @'
-Usage: .\tools\bootstrap\bootstrap_graphify.ps1 [-CheckOnly]
+Usage: ./tools/bootstrap/bootstrap_graphify.ps1 [-CheckOnly]
 
 Default: create or refresh both project and reference code graphs.
          Project document semantics use TA-Graphify-extract-semantics separately.
 -CheckOnly: check Graphify availability; change neither graph.
 
 Examples:
-  .\tools\bootstrap\bootstrap_graphify.ps1
-  .\tools\bootstrap\bootstrap_graphify.ps1 -CheckOnly
+  ./tools/bootstrap/bootstrap_graphify.ps1
+  ./tools/bootstrap/bootstrap_graphify.ps1 -CheckOnly
 '@
 
 $RepoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)

@@ -6,7 +6,6 @@ import os
 from pathlib import Path
 import plistlib
 import re
-import shutil
 import struct
 import sys
 
@@ -62,12 +61,9 @@ def windows_architecture(path):
 
 def edge_installed_version(probe, path):
     if sys.platform == "win32":
-        powershell = shutil.which("pwsh") or shutil.which("powershell")
-        if not powershell:
-            raise ProbeError("PowerShell is unavailable to read the Edge version resource")
-        command = ["-NoProfile", "-NonInteractive", "-Command",
+        command = ["pwsh", "-NoProfile", "-NonInteractive", "-Command",
                    "(Get-Item -LiteralPath $env:AMIGA_EDGE_PROBE_PATH).VersionInfo.ProductVersion"]
-        version = probe.run([powershell, *command], env={"AMIGA_EDGE_PROBE_PATH": str(path)})
+        version = probe.run(command, env={"AMIGA_EDGE_PROBE_PATH": str(path)})
         return four_part_version(version), "windows", windows_architecture(path)
     if sys.platform == "darwin":
         with (path.parents[1] / "Info.plist").open("rb") as file:

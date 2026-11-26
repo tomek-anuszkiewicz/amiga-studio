@@ -51,31 +51,31 @@
     The RAG tier starts the shared service and reports status. Add -Rag to index.
 
 .EXAMPLE
-    .\tools\bootstrap\bootstrap.ps1 -Sources
+    ./tools/bootstrap/bootstrap.ps1 -Sources
     Provision generated SingleStep vectors, vAmiga/vAmigaTS, MiniMig, and Amiga Replacement Project.
 
 .EXAMPLE
-    .\tools\bootstrap\bootstrap.ps1 -Graphify
+    ./tools/bootstrap/bootstrap.ps1 -Graphify
     Create or refresh project and reference code graphs.
 
 .EXAMPLE
-    .\tools\bootstrap\bootstrap.ps1 -Rag
+    ./tools/bootstrap/bootstrap.ps1 -Rag
     Index Amiga documentation through the shared RAG service.
 
 .EXAMPLE
-    .\tools\bootstrap\bootstrap.ps1 -Documentation
+    ./tools/bootstrap/bootstrap.ps1 -Documentation
     Download all external reference documentation into Obsidian/Amiga/Reference/.
 
 .EXAMPLE
-    .\tools\bootstrap\bootstrap.ps1 -Documentation -Markdown
+    ./tools/bootstrap/bootstrap.ps1 -Documentation -Markdown
     Download and convert external reference documentation into publication-grade Markdown.
 
 .EXAMPLE
-    .\tools\bootstrap\bootstrap.ps1 -All
+    ./tools/bootstrap/bootstrap.ps1 -All
     Run all bootstrap tiers, including the M68000 assembler.
 
 .EXAMPLE
-    .\tools\bootstrap\bootstrap.ps1 -Assembler
+    ./tools/bootstrap/bootstrap.ps1 -Assembler
     Provision only the pinned M68000 assembler for CPU performance tests.
 #>
 
@@ -102,12 +102,12 @@ function Show-Usage {
     Write-Host "      A bare clone compiles and runs the GUI immediately via 'cargo run -p gui'."
     Write-Host ""
     Write-Host "Usage:" -ForegroundColor White
-    Write-Host "  .\tools\bootstrap\bootstrap.ps1 -Sources         : Provision external sources (reference emulators, test suites & vectors)"
-    Write-Host "  .\tools\bootstrap\bootstrap.ps1 -Graphify        : Create/refresh both independent Graphify code graphs"
-    Write-Host "  .\tools\bootstrap\bootstrap.ps1 -Documentation   : Provision external reference materials (PDFs, HTML crawls)"
-    Write-Host "  .\tools\bootstrap\bootstrap.ps1 -Rag             : Start the shared RAG service and index Amiga documentation"
-    Write-Host "  .\tools\bootstrap\bootstrap.ps1 -Assembler       : Provision the M68000 assembler"
-    Write-Host "  .\tools\bootstrap\bootstrap.ps1 -All             : Provision all 5 tiers in causal order (sources -> graph -> docs -> RAG -> assembler)"
+    Write-Host "  ./tools/bootstrap/bootstrap.ps1 -Sources         : Provision external sources (reference emulators, test suites & vectors)"
+    Write-Host "  ./tools/bootstrap/bootstrap.ps1 -Graphify        : Create/refresh both independent Graphify code graphs"
+    Write-Host "  ./tools/bootstrap/bootstrap.ps1 -Documentation   : Provision external reference materials (PDFs, HTML crawls)"
+    Write-Host "  ./tools/bootstrap/bootstrap.ps1 -Rag             : Start the shared RAG service and index Amiga documentation"
+    Write-Host "  ./tools/bootstrap/bootstrap.ps1 -Assembler       : Provision the M68000 assembler"
+    Write-Host "  ./tools/bootstrap/bootstrap.ps1 -All             : Provision all 5 tiers in causal order (sources -> graph -> docs -> RAG -> assembler)"
     Write-Host ""
     Write-Host "Options:" -ForegroundColor White
     Write-Host "  -Sources                 : Verify & provision external sources (reference emulators, test suites & vectors)"

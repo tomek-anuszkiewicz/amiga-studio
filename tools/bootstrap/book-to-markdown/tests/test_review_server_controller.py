@@ -16,7 +16,6 @@ from urllib.request import urlopen
 
 
 TOOL = Path(__file__).resolve().parents[1]
-POWERSHELL = shutil.which("powershell.exe")
 AUTH_CONTENTS = "private-fixture-credential"
 
 
@@ -106,7 +105,7 @@ class ReviewHandler(BaseHTTPRequestHandler):
         pass
 
 
-@unittest.skipUnless(os.name == "nt" and POWERSHELL, "Windows PowerShell is required")
+@unittest.skipUnless(os.name == "nt", "The review server controller requires Windows")
 class ReviewControllerTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory(prefix="Book Review fixture ")
@@ -150,7 +149,7 @@ class ReviewControllerTests(unittest.TestCase):
 
     def invoke(self, *arguments):
         return subprocess.run(
-            [POWERSHELL, "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File",
+            ["pwsh", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File",
              str(self.script), *arguments], cwd=self.root, env=self.environment, capture_output=True,
             text=True, errors="replace", timeout=45,
         )
@@ -273,7 +272,7 @@ class ReviewControllerTests(unittest.TestCase):
         with subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"]) as child:
             try:
                 started = subprocess.check_output(
-                    [POWERSHELL, "-NoProfile", "-Command", f"(Get-Process -Id {child.pid}).StartTime.ToUniversalTime().Ticks"],
+                    ["pwsh", "-NoProfile", "-Command", f"(Get-Process -Id {child.pid}).StartTime.ToUniversalTime().Ticks"],
                     text=True,
                 ).strip()
                 (old_port / "process.json").write_text(json.dumps({"pid": child.pid, "started": started}), encoding="utf-8")

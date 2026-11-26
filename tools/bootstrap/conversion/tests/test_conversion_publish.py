@@ -143,7 +143,7 @@ class PublicationTests(unittest.TestCase):
         target.mkdir()
         sentinel = target / ".keep"
         sentinel.write_bytes(b"original")
-        result = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
+        result = subprocess.run(["pwsh", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
                                  str(root / "tools/bootstrap/bootstrap_documentation.ps1"),
                                  "-Destination", str(self.root), "-Prefetch", "-Markdown", "-Publish"],
                                 capture_output=True, text=True, check=False)

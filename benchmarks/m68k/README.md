@@ -13,7 +13,7 @@ From the repository root, install the pinned assembler and the monitor dependenc
 once.
 
 ```powershell
-.\tools\bootstrap\bootstrap.ps1 -Assembler
+./tools/bootstrap/bootstrap.ps1 -Assembler
 python -m pip install -r tools/verification/requirements.txt
 ```
 

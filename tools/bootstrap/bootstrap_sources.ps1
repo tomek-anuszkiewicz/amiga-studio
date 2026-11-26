@@ -45,23 +45,23 @@
     Displays usage instructions and parameter descriptions.
 
 .EXAMPLE
-    .\tools\bootstrap\bootstrap_sources.ps1
+    ./tools/bootstrap/bootstrap_sources.ps1
     Displays available source selections without downloading.
 
 .EXAMPLE
-    .\tools\bootstrap\bootstrap_sources.ps1 -MiniMig -AmigaReplacementProject
+    ./tools/bootstrap/bootstrap_sources.ps1 -MiniMig -AmigaReplacementProject
     Provisions both pinned FPGA reference repositories.
 
 .EXAMPLE
-    .\tools\bootstrap\bootstrap_sources.ps1 -List
+    ./tools/bootstrap/bootstrap_sources.ps1 -List
     Displays catalog and current local presence of test sources.
 
 .EXAMPLE
-    .\tools\bootstrap\bootstrap_sources.ps1 -All -Force
+    ./tools/bootstrap/bootstrap_sources.ps1 -All -Force
     Forces clean re-download and re-provisioning of all sources.
 
 .EXAMPLE
-    .\tools\bootstrap\bootstrap_sources.ps1 -Help
+    ./tools/bootstrap/bootstrap_sources.ps1 -Help
     Displays available parameters, flags, and usage examples.
 #>
 
@@ -293,12 +293,12 @@ function Show-Usage {
     Write-Host "=====================================================" -ForegroundColor Cyan
     Write-Host ""
     Write-Host "Usage:" -ForegroundColor White
-    Write-Host "  .\tools\bootstrap\bootstrap_sources.ps1              : Show usage without downloading"
-    Write-Host "  .\tools\bootstrap\bootstrap_sources.ps1 -All         : Download, verify & provision all external sources"
-    Write-Host "  .\tools\bootstrap\bootstrap_sources.ps1 -MiniMig -AmigaReplacementProject : Provision both FPGA references"
-    Write-Host "  .\tools\bootstrap\bootstrap_sources.ps1 -List        : Show catalog and local status of upstream sources"
-    Write-Host "  .\tools\bootstrap\bootstrap_sources.ps1 -All -Force  : Re-download and replace all sources"
-    Write-Host "  .\tools\bootstrap\bootstrap_sources.ps1 -Help        : Display this help message"
+    Write-Host "  ./tools/bootstrap/bootstrap_sources.ps1              : Show usage without downloading"
+    Write-Host "  ./tools/bootstrap/bootstrap_sources.ps1 -All         : Download, verify & provision all external sources"
+    Write-Host "  ./tools/bootstrap/bootstrap_sources.ps1 -MiniMig -AmigaReplacementProject : Provision both FPGA references"
+    Write-Host "  ./tools/bootstrap/bootstrap_sources.ps1 -List        : Show catalog and local status of upstream sources"
+    Write-Host "  ./tools/bootstrap/bootstrap_sources.ps1 -All -Force  : Re-download and replace all sources"
+    Write-Host "  ./tools/bootstrap/bootstrap_sources.ps1 -Help        : Display this help message"
     Write-Host ""
     Write-Host "Available Parameters:" -ForegroundColor White
     Write-Host "  -List                    : Display catalog of upstream sources and local presence"

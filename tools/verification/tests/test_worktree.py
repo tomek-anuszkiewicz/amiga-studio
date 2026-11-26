@@ -16,7 +16,8 @@ class WorktreeToolTests(unittest.TestCase):
         self.parent = Path(self.temporary.name)
         self.root = self.parent / "primary"
         self.tool = Path(__file__).resolve().parents[2] / "worktree.ps1"
-        self.shell = "powershell" if os.name == "nt" else "pwsh"
+        self.shell = shutil.which("pwsh")
+        self.assertIsNotNone(self.shell, "PowerShell 7 (pwsh) is required")
         restore_repository("worktree", self.parent)
 
     def restore(self, state):
@@ -30,9 +31,9 @@ class WorktreeToolTests(unittest.TestCase):
         # Keep these fixture invocations independent of optional host tools.
         environment = os.environ.copy()
         environment["PATH"] = os.pathsep.join({str(Path(shutil.which("git")).parent),
-                                               str(Path(shutil.which(self.shell)).parent),
+                                               str(Path(self.shell).parent),
                                                str(Path(os.environ.get("SystemRoot", "/")) / "System32")})
-        return subprocess.run([shutil.which(self.shell), "-NoProfile", "-File", str(self.tool), *args],
+        return subprocess.run([self.shell, "-NoProfile", "-File", str(self.tool), *args],
                               cwd=root or self.root, env=environment, capture_output=True, text=True,
                               errors="replace", timeout=30)
 
@@ -304,7 +305,7 @@ function uv {
                 log = self.parent / f"{action}-graph.log"
                 environment = dict(os.environ, GRAPHIFY_PROBE_LOG=str(log))
                 result = subprocess.run(
-                    [shutil.which(self.shell), "-NoProfile", "-File", str(wrapper), str(self.tool), action],
+                    [self.shell, "-NoProfile", "-File", str(wrapper), str(self.tool), action],
                     cwd=self.root, env=environment, capture_output=True, text=True, timeout=30,
                 )
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)

@@ -34,7 +34,7 @@ exit $LASTEXITCODE
                     environment = dict(os.environ, GRAPHIFY_PROBE_LOG=str(log),
                                        GRAPHIFY_PROBE_OUTPUT=str(root), GRAPHIFY_PROBE_FAIL=fail)
                     log.unlink(missing_ok=True)
-                    result = subprocess.run(["powershell", "-NoProfile", "-File", str(wrapper), str(tool)],
+                    result = subprocess.run(["pwsh", "-NoProfile", "-File", str(wrapper), str(tool)],
                                             env=environment, capture_output=True, text=True)
                     self.assertEqual(result.returncode, 1 if fail else 0, result.stdout + result.stderr)
                     calls = [json.loads(line) for line in log.read_text(encoding="utf-8-sig").splitlines()]

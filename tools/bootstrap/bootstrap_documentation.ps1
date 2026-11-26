@@ -62,23 +62,23 @@
     Displays usage instructions and parameter descriptions.
 
 .EXAMPLE
-    .\tools\bootstrap_documentation.ps1 -List
+    ./tools/bootstrap/bootstrap_documentation.ps1 -List
     Displays catalog of reference documents and mirror sources.
 
 .EXAMPLE
-    .\tools\bootstrap_documentation.ps1 -All
+    ./tools/bootstrap/bootstrap_documentation.ps1 -All
     Downloads all configured reference materials in failover mode.
 
 .EXAMPLE
-    .\tools\bootstrap_documentation.ps1 -All -Markdown
+    ./tools/bootstrap/bootstrap_documentation.ps1 -All -Markdown
     Downloads and converts all reference materials into publication-grade Markdown.
 
 .EXAMPLE
-    .\tools\bootstrap_documentation.ps1 -Hrm -Markdown
+    ./tools/bootstrap/bootstrap_documentation.ps1 -Hrm -Markdown
     Downloads and converts only the Hardware Reference Manual into Markdown.
 
 .EXAMPLE
-    .\tools\bootstrap_documentation.ps1 -Help
+    ./tools/bootstrap/bootstrap_documentation.ps1 -Help
     Displays available parameters, flags, and usage examples.
 #>
 
@@ -104,8 +104,6 @@ param(
 # Configuration & Security Protocols
 # -----------------------------------------------------------------------------
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12 -bor [System.Net.SecurityProtocolType]::Tls13
-# Allow fallback for archival servers with legacy or self-signed certificates
-[System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
 
 $RepoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 if (-not $Destination) {
@@ -306,11 +304,11 @@ function Show-Usage {
     Write-Host "      Reference files are ignored by Git and do not affect emulator execution."
     Write-Host ""
     Write-Host "Usage:" -ForegroundColor White
-    Write-Host "  .\tools\bootstrap_documentation.ps1 -List                : Show all documents and configured mirrors"
-    Write-Host "  .\tools\bootstrap_documentation.ps1 -All                 : Download all reference materials (failover mode)"
-    Write-Host "  .\tools\bootstrap_documentation.ps1 -All -Markdown       : Download and convert all materials into Markdown"
-    Write-Host "  .\tools\bootstrap_documentation.ps1 -Hrm -Markdown       : Download and convert only Hardware Reference Manual"
-    Write-Host "  .\tools\bootstrap_documentation.ps1 -Help                : Display this usage and parameter list"
+    Write-Host "  ./tools/bootstrap/bootstrap_documentation.ps1 -List                : Show all documents and configured mirrors"
+    Write-Host "  ./tools/bootstrap/bootstrap_documentation.ps1 -All                 : Download all reference materials (failover mode)"
+    Write-Host "  ./tools/bootstrap/bootstrap_documentation.ps1 -All -Markdown       : Download and convert all materials into Markdown"
+    Write-Host "  ./tools/bootstrap/bootstrap_documentation.ps1 -Hrm -Markdown       : Download and convert only Hardware Reference Manual"
+    Write-Host "  ./tools/bootstrap/bootstrap_documentation.ps1 -Help                : Display this usage and parameter list"
     Write-Host ""
     Write-Host "Available Parameters:" -ForegroundColor White
     Write-Host "  -List                    : Display catalog of reference documents and mirrors"
@@ -363,7 +361,7 @@ function Ensure-StagingReadme {
         $Content = @'
 # Temporary External Reference Staging Directory
 
-This book's `-tmp` directory contains raw reference materials downloaded by `tools/bootstrap/bootstrap_documentation.ps1` (or `tools/bootstrap/bootstrap.ps1 -Doc`) and its conversion `workspace/`.
+This book's `-tmp` directory contains raw reference materials downloaded by `tools/bootstrap/bootstrap_documentation.ps1` (or `./tools/bootstrap/bootstrap.ps1 -Doc`) and its conversion `workspace/`.
 
 ## Operational Guidelines
 - **Preservation:** Keep sources and working artifacts until conversion output has been inspected. Removing this directory loses the source downloads and resumable PDF conversion state.

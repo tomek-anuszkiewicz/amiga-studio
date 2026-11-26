@@ -78,7 +78,7 @@ class BootstrapRagContractTests(unittest.TestCase):
     def run_bootstrap(self, script, *arguments, **environment):
         completed = subprocess.run(
             [
-                "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass",
+                "pwsh", "-NoProfile", "-ExecutionPolicy", "Bypass",
                 "-File", str(self.script_root / script), *arguments,
             ],
             cwd=self.repo_root,

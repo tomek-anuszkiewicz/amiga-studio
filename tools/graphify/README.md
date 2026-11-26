@@ -10,7 +10,7 @@ A single installation of Graphify 0.9.74 handles both independent datasets.
 ```powershell
 python tools/graphify/refresh.py --graph project
 python tools/graphify/refresh.py --graph reference
-.\tools\bootstrap\bootstrap.ps1 -Graphify
+./tools/bootstrap/bootstrap.ps1 -Graphify
 ```
 
 These commands create missing graphs and refresh existing ones for their

@@ -1,4 +1,6 @@
 """Independent graph selection and filtering before traversal."""
+from contextlib import redirect_stderr
+from io import StringIO
 import json
 from pathlib import Path
 import sys
@@ -62,10 +64,16 @@ class GraphifyQueryScopeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory, \
              patch.object(query, "REPOSITORY_ROOT", Path(directory)), \
              patch.object(query.subprocess, "run") as run, \
-             patch("sys.argv", ["query.py", "Paula", "--graph", "reference"]):
+             patch("sys.argv", ["query.py", "Paula", "--graph", "reference"]), \
+             redirect_stderr(StringIO()) as stderr:
             with self.assertRaises(SystemExit) as error:
                 query.main()
             self.assertEqual(error.exception.code, 2)
+            self.assertEqual(
+                stderr.getvalue().splitlines()[-1],
+                "query.py: error: reference graph is missing. Run python tools/graphify/refresh.py "
+                "--graph reference, or ./tools/bootstrap/bootstrap.ps1 -Graphify",
+            )
             run.assert_not_called()
             self.assertEqual(list(Path(directory).iterdir()), [])
 
