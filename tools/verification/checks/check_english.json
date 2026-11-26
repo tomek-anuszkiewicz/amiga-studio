@@ -77,6 +77,13 @@
     "english_words/names.txt"
   ],
   "file_words": {
+    "tools/verification/worker_processes.py": ["taskkill"],
+    "tools/verification/tests/test_mixed_scene_fps.py": ["raf", "xff"],
+    "crates/gui/src/disk_import.rs": ["pk", "xaf", "xbc"],
+    "crates/gui/src/kickstarts.rs": ["rommgr"],
+    "crates/gui/src/window_keyboard/windows_key_guard.rs": ["didataformat", "dinput", "discl", "dxguid", "nowinkey", "unacquire", "unacquired"],
+    "crates/save_state/tests/test_persistence.rs": ["aa", "aaaa", "aaaaaa", "qujd"],
+    "tools/verification/mixed_scene_fps.py": ["backgrounding", "fstat", "getactivescheme", "onmessageerror", "powercfg"],
     "crates/gui/tests/browser_test_server.py": ["favicon", "ico"],
     "tools/dependency_updates/browsers.py": ["mz"],
     "tools/dependency_updates/cargo.py": ["vers"],
@@ -85,8 +92,8 @@
     "tools/dependency_updates/setup_tools.py": ["taiki"],
     "tools/dependency_updates/tests/test_check_updates.py": ["aa", "aaaaaaaaaaaa", "aabbcc", "aahelp", "abc", "bbbbbbbbbbbb", "ddeeff", "fwidget", "globalconfig", "npmrc", "tgz", "userconfig", "vers", "vnd", "zzlate"],
     "crates/gui/src/configuration_bindings.rs": ["nr"],
-    "crates/gui/src/game_library.rs": ["noclobber"],
-    "crates/gui/src/library_catalog.rs": ["noclobber"],
+    "crates/gui/src/game_library.rs": [],
+    "crates/gui/src/library_catalog.rs": [],
     "crates/gui/tests/test_library_refresh.rs": ["lxyz", "xyz"],
     ".agents/skills/TA-WF-Step-report-word-usage/tests/test_rank_words.py": [
       "quartzdestination", "secrettitle", "referencekey", "referencetitle",
@@ -111,12 +118,12 @@
     "tools/workflow/review_routing.py": [],
     "tools/workflow/review_inputs.py": [],
     "tools/workflow/capture/tests/capture_fixtures.py": ["getgid", "getuid", "linesep"],
-    "tools/workflow/capture/tests/fixtures/build_record_inputs.py": ["nunparsed", "unignored", "xfe", "xff"],
+    "tools/workflow/capture/tests/fixtures/build_record_inputs.py": ["nunparsed", "xfe", "xff"],
     "tools/workflow/capture/tests/test_startup.py": ["getresponse", "joinpath", "xb"],
-    "tools/workflow/capture/tests/test_preservation.py": ["unignored"],
+    "tools/workflow/capture/tests/test_preservation.py": [],
     "tools/workflow/capture/receiver.py": ["fstat", "nofollow", "nonblock", "nonregular", "xb"],
-    "tools/workflow/capture/control.py": ["fromhex", "getresponse"],
-    "tools/workflow/capture/compose_service.py": ["aq", "cls", "exclusiveaddruse", "fdcwd", "getgid", "getuid", "isabs", "noreplace", "normpath", "ntpath", "posixpath", "renameat", "renamex", "setsockopt", "xb"],
+    "tools/workflow/capture/control.py": ["getresponse"],
+    "tools/workflow/capture/compose_service.py": ["aq", "cls", "exclusiveaddruse", "fdcwd", "getgid", "getuid", "isabs", "noreplace", "ntpath", "posixpath", "renameat", "renamex", "setsockopt", "xb"],
     "tools/workflow/capture/README.md": ["uncredentialed"],
     "tools/verification/tests/test_parallel_runner.py": ["addaudithook", "runpy", "uncatchable"],
     "tools/verification/tests/test_integration_closure.py": [],
@@ -230,8 +237,7 @@
       "madeup"
     ],
     "tools/bootstrap/book-to-markdown/tests/test_book_new_chapter.py": [
-      "eid",
-      "intro"
+      "eid"
     ],
     "tools/bootstrap/book-to-markdown/tests/test_book_codex.py": [
       "da",
@@ -295,12 +301,13 @@
       "fvariant"
     ],
     "tools/verification/tests/test_worktree.py": [
-      "\u0142"
+      "\u0142",
+      "xff"
     ],
     "tools/verification/tests/test_cli.py": ["xb"],
     "tools/verification/tests/test_impact.py": [],
     "tools/verification/tests/test_unused_dependencies.py": ["concat"],
-    "tools/verification/tests/test_unused_public.py": ["codec", "ż"],
+    "tools/verification/tests/test_unused_public.py": ["ż"],
     "tools/verification/timing_report.py": ["xb"],
     "tools/verification/unused_public_cargo.py": ["configs"],
     "tools/verification/unused_public_syntax.py": ["builtin", "rfind"],

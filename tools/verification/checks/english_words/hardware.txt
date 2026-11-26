@@ -99,8 +99,10 @@ colorxx
 copen
 copjmp
 cpu
+cpus
 cra
 crb
+crc
 csync
 cts
 dac
@@ -181,6 +183,8 @@ jsr
 kbclock
 kbdata
 kbreset
+kib
+kickstarts
 lch
 lds
 lof
@@ -194,6 +198,7 @@ lsl
 lsr
 mainboard
 mfm
+mib
 mos
 mov
 movea
@@ -315,6 +320,5 @@ uartbrk
 msbsync
 roms
 keycodes
-vbi
 unclocked
 dskmotor

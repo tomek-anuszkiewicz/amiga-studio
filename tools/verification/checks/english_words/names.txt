@@ -1,4 +1,6 @@
 # Reviewed names vocabulary. One explicit term per line.
+nvidia
+rtx
 swiftshader
 amd
 amigatestkit
