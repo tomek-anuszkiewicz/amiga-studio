@@ -155,12 +155,14 @@ player-visible name. To add one, the frontend validates the selected stored
 save or current quicksave and copies its unchanged snapshot bytes into the
 game's collection before publishing the entry. Ordinary saves and quicksave
 replacement leave these copies intact. Rename changes only the display name.
-Delete affects only the chosen entry and its owned file after the Undo period
-or on application close. The game's legacy initial-state reference and asset
-remain independent.
+Delete affects only the chosen entry and its owned file after the Undo period.
+Closing the app within that period cancels the deletion and keeps the entry
+and its file. The game's legacy initial-state reference and asset remain
+independent.
 
 Named start states load only when selected explicitly. They use the same
-restore and play behavior as an ordinary save file. The frontend prepares the
+restore and play behavior as an ordinary save file. The frontend reports a
+missing matching Kickstart when the player requests a load. It prepares the
 disks in their saved drives from matching source ADFs. It validates the
 version, game/media association and committed input
 settings before replacing a live session. A successful restore resumes the

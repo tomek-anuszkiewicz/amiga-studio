@@ -272,7 +272,6 @@ impl HostRuntime {
                 | HostCommand::LoadPlayerQuick { .. }
                 | HostCommand::ReconfigurePorts(_)
                 | HostCommand::QuickLoad { .. }
-                | HostCommand::LoadRom(_)
         );
         let Ok(mut mailboxes) = self.shared.mailboxes.try_lock() else {
             return Err(HostBusy(command));

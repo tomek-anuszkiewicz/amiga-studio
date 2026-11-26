@@ -12,7 +12,7 @@ const DIRECTORY: &str = "kickstarts";
 const LEGACY_REFERENCE: &str = "_shared/kickstart-1.3.rom";
 const ADOPTED_NAME: &str = "kickstart-1.3.rom";
 
-pub(crate) fn read_image(path: &Path) -> Result<SourceImage, String> {
+pub fn read_image(path: &Path) -> Result<SourceImage, String> {
     let result = || -> io::Result<_> {
         let file = fs::File::open(path)?;
         let metadata = file.metadata()?;
@@ -63,7 +63,7 @@ fn managed_paths(root: &Path) -> Result<Vec<(String, PathBuf)>, String> {
 }
 
 fn managed_name(name: &str) -> bool {
-    !name.contains(['\\', ':']) && !(name.starts_with(".kickstart-") && name.ends_with(".pending"))
+    !(name.contains(['\\', ':']) || (name.starts_with(".kickstart-") && name.ends_with(".pending")))
 }
 
 pub(super) fn entries(root: &Path) -> Result<(Vec<Entry>, Vec<String>), String> {
@@ -87,7 +87,7 @@ pub(super) fn entry(reference: String, path: &Path) -> Result<Entry, String> {
     ))
 }
 
-pub(crate) fn extend_restore_roms(root: &Path, roms: &mut Vec<SourceImage>) {
+pub fn extend_restore_roms(root: &Path, roms: &mut Vec<SourceImage>) {
     if let Ok(paths) = managed_paths(root) {
         roms.extend(
             paths
@@ -134,7 +134,7 @@ pub(super) fn import(root: &Path, source: &Path) -> Result<(), String> {
     Err("No available Kickstart filename".into())
 }
 
-pub(crate) fn adopt_shared(
+pub fn adopt_shared(
     root: &Path,
     catalog: &mut ConfigurationCatalog,
     original: Option<&[u8]>,
@@ -213,7 +213,7 @@ fn publish_copy(path: &Path, bytes: &[u8]) -> io::Result<()> {
     Ok(())
 }
 
-pub(crate) fn managed_path(root: &Path, reference: &str) -> Result<PathBuf, String> {
+pub fn managed_path(root: &Path, reference: &str) -> Result<PathBuf, String> {
     let path = rom_path(root, reference)?;
     if path.parent() == Some(root.join(DIRECTORY).as_path()) {
         Ok(path)

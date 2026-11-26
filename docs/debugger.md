@@ -59,8 +59,10 @@ starts unassigned. Reset
 has no keyboard shortcut. Game View disconnects debugger panels and shortcuts,
 breakpoints, disassembly, trace collection, CPU history and memory diff capture.
 The CPU's STOP instruction still allows the chips to run and deliver interrupts.
-Choose **Export state file** on the toolbar or use the configured
-shortcut to write a snapshot.
+In **Developer Studio**, choose **Export state file** on the toolbar or press
+**Ctrl+S** (**Command+S** on macOS) to write a snapshot to a separate file.
+The export shortcut is fixed. **Quick save** saves progress and uses the
+shortcut assigned to it in **Configurations**.
 
 ---
 

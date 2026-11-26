@@ -4,6 +4,7 @@
 mod common;
 use eframe::{App, Storage};
 use egui_kittest::{kittest::Queryable, Harness};
+use gui::player::PlayerScreen;
 use gui::{file_actions::FileHistory, EmulatorApp, ViewMode};
 use std::{collections::HashMap, path::PathBuf};
 
@@ -43,24 +44,16 @@ fn rom() -> Vec<u8> {
     data
 }
 
-fn select_rom(app: &mut EmulatorApp, path: &std::path::Path) {
-    let confirmation =
-        !app.file_history.roms.is_empty() || app.host.status.cck != 0 || app.host.status.running;
-    app.load_rom_file(path);
-    if confirmation {
-        common::confirm_replacement(app);
-    } else {
-        common::settle(app, &egui::Context::default());
-    }
-}
-
 #[test]
 fn rom_history_keeps_five_successful_files_and_persists_them() {
+    let library = tempfile::tempdir().unwrap();
     let mut app = EmulatorApp::default();
+    app.player.library_root = Some(library.path().to_owned());
+    app.navigate_player(PlayerScreen::Configuration);
     let mut roms = Vec::new();
     for index in 0..6 {
         let firmware = fixture(&format!("firmware-{index}.rom"), &rom());
-        select_rom(&mut app, &firmware);
+        app.import_kickstart(&firmware).unwrap();
         roms.push(firmware);
     }
     assert_eq!(
@@ -68,19 +61,23 @@ fn rom_history_keeps_five_successful_files_and_persists_them() {
         roms[1..].iter().rev().cloned().collect::<Vec<_>>()
     );
 
-    select_rom(&mut app, &roms[3]);
+    app.import_kickstart(&roms[3]).unwrap();
     assert_eq!(app.file_history.roms.len(), 5);
     assert_eq!(app.file_history.roms[0], roms[3]);
 
     let before = app.file_history.clone();
     let wrong_size = fixture("wrong-size.bin", &[0x4e, 0x71]);
-    app.load_rom_file(&wrong_size);
-    common::settle(&mut app, &egui::Context::default());
-    app.load_rom_file(&wrong_size.with_extension("missing"));
-    common::settle(&mut app, &egui::Context::default());
+    assert!(app
+        .import_kickstart(&wrong_size)
+        .unwrap_err()
+        .contains("got 2 bytes"));
+    assert!(app
+        .import_kickstart(&wrong_size.with_extension("missing"))
+        .unwrap_err()
+        .contains("Could not read"));
     assert_eq!(
         app.file_history, before,
-        "Failed ROM loads must not change recent files"
+        "Failed imports must not change the picker history"
     );
 
     let mut storage = MemoryStorage::default();
@@ -150,62 +147,57 @@ fn reopening_and_saving_history_discards_old_program_paths() {
 }
 
 #[test]
-fn recorded_rom_can_reload_and_keep_disk_directory_separate() {
+fn managed_rom_boots_after_source_removal_and_keeps_picker_directories_separate() {
     let path = fixture("menu-firmware.bin", &rom());
     let disk_directory = tempfile::tempdir().unwrap();
+    let library = tempfile::tempdir().unwrap();
     let mut app = EmulatorApp::default();
+    app.player.library_root = Some(library.path().to_owned());
     app.set_view_mode(ViewMode::ScreenOnly);
+    app.navigate_player(PlayerScreen::Configuration);
     app.file_history.disk_directory = Some(disk_directory.path().to_owned());
-    app.load_rom_file(&path);
+    app.import_kickstart(&path).unwrap();
     common::settle(&mut app, &egui::Context::default());
     assert_eq!(
         app.file_history.disk_picker_directory(),
         Some(disk_directory.path())
     );
     assert_eq!(app.file_history.rom_directory.as_deref(), path.parent());
+    let history = app.file_history.clone();
+    std::fs::remove_file(&path).unwrap();
     let step = common::command(&mut app, gui::host_commands::HostCommand::StepCck);
     assert!(step.value.is_ok());
     assert_eq!(step.status.cck, 1);
     let mut harness = Harness::builder()
         .with_size(egui::vec2(1024.0, 600.0))
         .build_ui_state(|ui, app: &mut EmulatorApp| app.update_ui(ui), app);
-    harness.run_steps(2);
     common::settle_harness(&mut harness);
     assert!(harness.query_by_label("File").is_none());
-    let recent = harness.state().file_history.roms[0].clone();
-    harness.state_mut().load_rom_file(&recent);
-    harness.run_steps(2);
+    common::choose_manual_kickstart(&mut harness, "menu-firmware.bin");
+    let generation = harness.state().host.status.generation;
+    harness.get_by_label("Start").click_accesskit();
     common::settle_harness(&mut harness);
-    assert!(
-        harness.state().host.status.cck > 0,
-        "ROM replacement needs confirmation"
-    );
+    assert_eq!(harness.state().host.status.generation, generation);
+    assert_eq!(harness.state().host.status.cck, 1);
     harness.get_by_label("Replace session").click_accesskit();
-    common::settle_harness(&mut harness);
-    assert_eq!(harness.state().host.status.cck, 0);
+    common::wait_harness(&mut harness, |app| app.host.status.running);
+    assert_eq!(harness.state().host.status.generation, generation + 1);
+    harness.get_by_label("Pause").click_accesskit();
+    common::wait_harness(&mut harness, |app| !app.host.status.running);
     assert_eq!(
         common::inspect(harness.state_mut()).cpu.instruction_pc(),
         0xfc0008
     );
-    assert!(!harness.state().host.status.running);
-    assert_eq!(harness.state().file_history.roms.len(), 1);
-    std::fs::remove_file(&path).unwrap();
-    let before = common::snapshot(harness.state_mut());
-    harness.state_mut().load_rom_file(&recent);
-    harness.run_steps(2);
-    common::settle_harness(&mut harness);
-    assert!(harness.state().file_error.is_some());
-    assert!(harness
-        .state()
-        .file_error
-        .as_ref()
-        .unwrap()
-        .contains("Removed from recent ROMs"));
-    assert!(harness.state().file_history.roms.is_empty());
     assert_eq!(
-        harness.state().file_history.disk_picker_directory(),
-        Some(disk_directory.path())
+        common::inspect(harness.state_mut()).memory.kickstart_rom(),
+        rom()
     );
+    assert_eq!(harness.state().file_history, history);
+    let before = common::snapshot(harness.state_mut());
+    let error = harness.state_mut().import_kickstart(&path).unwrap_err();
+    assert!(error.contains("Could not read"));
+    assert_eq!(harness.state().file_error.as_deref(), Some(error.as_str()));
+    assert_eq!(harness.state().file_history, history);
     assert_eq!(common::snapshot(harness.state_mut()), before);
 }
 

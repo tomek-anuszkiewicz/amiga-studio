@@ -14,15 +14,19 @@ struct PendingDeletion {
 }
 
 impl PendingDeletion {
-    fn matches(&self, game: &LibraryGame, path: &Path) -> bool {
-        self.game_directory == game.directory
-            && self.game_id == game.manifest.id
-            && self.path == path
+    fn matches_game(&self, game: &LibraryGame) -> bool {
+        game.matches_location(&self.game_directory, &self.game_id)
+    }
+
+    fn matches_save(&self, game: &LibraryGame, path: &Path) -> bool {
+        self.matches_game(game)
+            && (self.path.file_name() == path.file_name()
+                || game_library::same_save(&self.path, path))
     }
 }
 
 #[derive(Debug)]
-pub(crate) struct DescriptionDraft {
+pub struct DescriptionDraft {
     pub game: LibraryGame,
     pub path: PathBuf,
     pub text: String,
@@ -30,24 +34,55 @@ pub(crate) struct DescriptionDraft {
 }
 
 #[derive(Debug, Default)]
-pub(crate) struct SaveCatalogActions {
+pub struct SaveCatalogActions {
     deletions: Vec<PendingDeletion>,
     pub description: Option<DescriptionDraft>,
     pub times: crate::host_clock::SaveTimes,
 }
 
 impl SaveCatalogActions {
+    pub(crate) fn has_pending_deletion(&self, game: &LibraryGame) -> bool {
+        self.deletions
+            .iter()
+            .any(|deletion| deletion.matches_game(game))
+    }
+
     pub fn deadline(&self, game: &LibraryGame, path: &Path) -> Option<f64> {
         self.deletions
             .iter()
-            .find(|deletion| deletion.matches(game, path))
+            .find(|deletion| deletion.matches_save(game, path))
             .map(|deletion| deletion.deadline)
     }
 }
 
 impl EmulatorApp {
+    pub(super) fn quick_load_library_save(&mut self, game: LibraryGame) {
+        if self.player.busy {
+            return;
+        }
+        if let Some(save) = self.player.saves.iter().find(|save| save.quicksave) {
+            if save.header.is_some() {
+                self.load_catalog_save(game, save.path.clone(), true);
+            }
+        } else if let Ok(Some(path)) = game_library::current_quicksave(&game.directory) {
+            self.report_missing_catalog_save(&game, &path);
+        }
+    }
+
+    fn report_missing_catalog_save(&mut self, game: &LibraryGame, path: &Path) -> bool {
+        if !matches!(path.try_exists(), Ok(false)) {
+            return false;
+        }
+        self.file_error = Some("Saved game state not found".into());
+        self.refresh_game_saves(&game.directory, &game.manifest.id);
+        true
+    }
+
     pub(crate) fn load_catalog_save(&mut self, game: LibraryGame, path: PathBuf, quick: bool) {
         if self.player.busy || self.player.save_catalog.deadline(&game, &path).is_some() {
+            return;
+        }
+        if self.report_missing_catalog_save(&game, &path) {
             return;
         }
         if quick {
@@ -98,7 +133,7 @@ impl EmulatorApp {
         self.player
             .save_catalog
             .deletions
-            .retain(|deletion| !deletion.matches(game, path));
+            .retain(|deletion| !deletion.matches_save(game, path));
         self.refresh_game_saves(&game.directory, &game.manifest.id);
     }
 
@@ -125,6 +160,7 @@ impl EmulatorApp {
         if !deletions.is_empty() {
             ctx.request_repaint_after(Duration::from_secs_f64(next_update));
         }
+        let mut errors = Vec::new();
         for deletion in expired {
             if let Err(error) = game_library::delete_save(
                 &deletion.game_directory,
@@ -136,9 +172,12 @@ impl EmulatorApp {
                     .file_name()
                     .unwrap_or_default()
                     .to_string_lossy();
-                self.file_error = Some(format!("Could not complete deletion of {name}: {error}"));
+                errors.push(format!("Could not delete the file {name}.\n{error}"));
             }
             self.refresh_game_saves(&deletion.game_directory, &deletion.game_id);
+        }
+        if !errors.is_empty() {
+            self.file_error = Some(errors.join("\n\n"));
         }
     }
 
@@ -148,8 +187,7 @@ impl EmulatorApp {
                 sync.changed_locally();
             }
         }
-        let is_game =
-            |game: &LibraryGame| game.directory == directory && game.manifest.id == game_id;
+        let is_game = |game: &LibraryGame| game.matches_location(directory, game_id);
         if self.player.active_game.as_ref().is_some_and(is_game) {
             self.refresh_player_saves();
         }

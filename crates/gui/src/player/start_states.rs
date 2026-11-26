@@ -288,7 +288,7 @@ impl EmulatorApp {
         }
         let mut errors = Vec::new();
         for pending in std::mem::take(&mut self.player.start_state_deletions) {
-            if !closing && now < pending.deadline {
+            if now < pending.deadline {
                 self.player.start_state_deletions.push(pending);
                 continue;
             }
@@ -305,6 +305,9 @@ impl EmulatorApp {
             }
         }
         if errors.is_empty() {
+            if closing {
+                self.player.start_state_deletions.clear();
+            }
             true
         } else {
             self.file_error = Some(errors.join("\n"));

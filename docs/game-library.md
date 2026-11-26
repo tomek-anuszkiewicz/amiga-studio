@@ -178,8 +178,12 @@ and ADF sources before restoring the captured machine and resuming play with
 the current committed controls. An incompatible or damaged save
 shows its filename and the reason it cannot load. Use **Delete save** to remove
 a save. **Undo** keeps it if chosen within ten seconds. Closing the app during
-that window also keeps it. Choose **Import state** or **Export state** in the
-game controls to work with a snapshot file directly.
+that window also keeps it. You can rename the game after all its pending save
+deletions end or are undone. If a save is removed but its **Quick load**
+designation cannot be cleared, the error dialog explains what happened. The
+**Quick load** shortcut reports **Saved game state not found** if the
+designation still points to that missing file. Choose **Import state** or
+**Export state** in the game controls to work with a snapshot file directly.
 
 When an Amiga program writes to disk A, you can switch to disk B and reinsert
 A later in the same session. A still contains the program's changes, and the
@@ -200,11 +204,14 @@ and click **Add start state**. The game keeps its own copy in
 and open the copy later.
 
 Select the game in the library and choose **Load** beside a name to restore
-that entry's machine and mounted disks. Unavailable entries show the cause
-and leave the other entries available. **Rename** changes only the label.
+that entry's machine and mounted disks. A missing, damaged or incompatible
+snapshot disables **Load** and shows the cause. If the matching Kickstart is
+missing, you can still choose **Load** and the app reports the missing image.
+**Rename** changes only the label.
 **Delete** gives you ten seconds to **Undo**, even if you leave the game
-listing. Closing the app finalizes pending deletions. Named start states only
-load from their own rows. **Reset** uses the game's startup disks.
+listing. Closing the app within that window keeps the entry and its file.
+Named start states only load from their own rows. **Reset** uses the game's
+startup disks.
 
 ## Browser storage
 

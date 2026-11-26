@@ -198,18 +198,18 @@ pub fn select_library(harness: &mut Harness<'_, EmulatorApp>, root: &std::path::
     assert!(harness.state().player.editor.is_none());
 }
 
-pub fn confirm_replacement(app: &mut EmulatorApp) {
+pub fn choose_manual_kickstart(harness: &mut Harness<'_, EmulatorApp>, name: &str) {
+    use egui::accesskit::Role;
     use egui_kittest::kittest::Queryable;
-    let mut harness = Harness::builder()
-        .with_size(egui::vec2(1024.0, 600.0))
-        .build_ui_state(
-            |ui, app: &mut EmulatorApp| app.update_ui(ui),
-            std::mem::take(app),
-        );
-    settle_harness(&mut harness);
-    harness.get_by_label("Replace session").click_accesskit();
-    settle_harness(&mut harness);
-    *app = std::mem::take(harness.state_mut());
+
+    harness.get_by_label("Manual setup").click_accesskit();
+    settle_harness(harness);
+    harness
+        .get_by_role_and_label(Role::ComboBox, "Kickstart")
+        .click();
+    settle_harness(harness);
+    harness.get_by_role_and_label(Role::Button, name).click();
+    settle_harness(harness);
 }
 
 /// Uses the production command boundary while the GUI has no outstanding replies.

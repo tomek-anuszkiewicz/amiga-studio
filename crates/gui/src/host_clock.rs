@@ -8,7 +8,7 @@ mod linux;
 mod macos;
 #[cfg(windows)]
 #[path = "host_clock/windows.rs"]
-pub(super) mod windows;
+pub mod windows;
 
 pub fn utc_now() -> i64 {
     #[cfg(not(target_arch = "wasm32"))]
@@ -38,7 +38,7 @@ pub fn utc_seconds(timestamp: std::time::SystemTime) -> i64 {
 
 #[cfg(not(target_arch = "wasm32"))]
 #[derive(Debug, Default)]
-pub(crate) struct SaveTimes {
+pub struct SaveTimes {
     labels: std::collections::BTreeMap<u64, Option<String>>,
     job: Option<async_channel::Receiver<Vec<(u64, Option<String>)>>>,
     dirty: bool,
@@ -98,7 +98,7 @@ impl SaveTimes {
 
 /// Use the desktop's regional formatter and time zone rules at each saved instant.
 #[cfg(not(target_arch = "wasm32"))]
-pub(crate) fn local_save_times(timestamps: &[u64]) -> Vec<Option<String>> {
+pub fn local_save_times(timestamps: &[u64]) -> Vec<Option<String>> {
     #[cfg(windows)]
     {
         windows::local_save_times(timestamps)

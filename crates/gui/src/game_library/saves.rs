@@ -66,7 +66,7 @@ fn inspect_save(bytes: &[u8], manifest: &GameManifest) -> Result<SaveStateHeader
     Ok(saved.header)
 }
 
-pub(crate) fn read_associated_save(
+pub fn read_associated_save(
     path: &Path,
     manifest: &GameManifest,
 ) -> Result<(Vec<u8>, SaveStateHeader), String> {
@@ -79,7 +79,7 @@ pub fn saves(game: &LibraryGame) -> Result<SaveCatalog, String> {
     saves_in(&game.directory, &game.manifest)
 }
 
-pub(crate) fn saves_in(directory: &Path, manifest: &GameManifest) -> Result<SaveCatalog, String> {
+pub fn saves_in(directory: &Path, manifest: &GameManifest) -> Result<SaveCatalog, String> {
     let mut catalog = SaveCatalog::default();
     let entries = match fs::read_dir(directory.join("saves")) {
         Ok(entries) => entries,
@@ -148,7 +148,7 @@ fn is_save_path(path: &Path) -> bool {
         .is_some_and(|extension| extension.eq_ignore_ascii_case("json"))
 }
 
-pub(crate) fn same_save(a: &Path, b: &Path) -> bool {
+pub fn same_save(a: &Path, b: &Path) -> bool {
     // Win32 ordinarily opens case variants of a basename in the same directory.
     a == b
         || (cfg!(windows)
@@ -188,7 +188,7 @@ fn read_pointer(path: &Path) -> io::Result<Option<String>> {
     }
 }
 
-pub(crate) fn current_quicksave(game_directory: &Path) -> Result<Option<PathBuf>, String> {
+pub fn current_quicksave(game_directory: &Path) -> Result<Option<PathBuf>, String> {
     let directory = game_directory.join("saves");
     let pointer = directory.join(QUICKSAVE_FILE);
     let read = |path: &Path| {
@@ -218,7 +218,7 @@ fn lock_quicksave(directory: &Path) -> Result<fs::File, String> {
     Ok(lock)
 }
 
-pub(crate) fn initialize_quicksave(game: &LibraryGame) -> Result<(), String> {
+pub fn initialize_quicksave(game: &LibraryGame) -> Result<(), String> {
     let directory = game.directory.join("saves");
     let pointer = directory.join(QUICKSAVE_FILE);
     let legacy = directory.join(LEGACY_QUICKSAVE_FILE);
@@ -318,11 +318,7 @@ fn check_user_save(directory: &Path, game_id: &str, path: &Path) -> Result<(), S
     Ok(())
 }
 
-pub(crate) fn edit_save_description(
-    game: &LibraryGame,
-    path: &Path,
-    text: &str,
-) -> Result<(), String> {
+pub fn edit_save_description(game: &LibraryGame, path: &Path, text: &str) -> Result<(), String> {
     check_user_save(&game.directory, &game.manifest.id, path)?;
     let _lock = lock_quicksave(&game.directory.join("saves"))?;
     let (bytes, _) = read_associated_save(path, &game.manifest)?;
@@ -349,7 +345,7 @@ pub(crate) fn edit_save_description(
     replace_file(path, &updated)
 }
 
-pub(crate) fn delete_save(directory: &Path, game_id: &str, path: &Path) -> Result<(), String> {
+pub fn delete_save(directory: &Path, game_id: &str, path: &Path) -> Result<(), String> {
     check_user_save(directory, game_id, path)?;
     let saves_directory = directory.join("saves");
     let _lock = lock_quicksave(&saves_directory)?;
@@ -372,6 +368,6 @@ pub(crate) fn delete_save(directory: &Path, game_id: &str, path: &Path) -> Resul
         Ok::<(), String>(())
     };
     cleanup().map_err(|error| {
-        format!("The save is gone but its quicksave designation could not be reconciled: {error}")
+        format!("The saved game was deleted. The app could not clear the Quick load designation: {error}")
     })
 }

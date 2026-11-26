@@ -283,20 +283,29 @@ fn breakpoint_refreshes_the_first_stopped_frame_and_reset_load_invalidate_data()
     output.append(common::settle(&mut app, &ctx));
     assert!(texts(&output).contains(&"$00112233".to_string()));
 
-    // Loading through the GUI invalidates retained data even if Run starts before
-    // another paused repaint. The ROM executes a tight loop at its reset vector.
+    // Import a snapshot of a ROM boot, then Run before another paused repaint.
+    // The ROM executes a tight loop at its reset vector.
     let mut rom = vec![0; 256 * 1024];
     rom[..10].copy_from_slice(&[0, 7, 0, 0, 0, 0xfc, 0, 8, 0x60, 0xfe]);
-    let path = std::env::temp_dir().join(format!("amiga-frozen-rom-{}.rom", std::process::id()));
-    std::fs::write(&path, &rom).unwrap();
-    app.load_rom_file(&path);
-    std::fs::remove_file(path).unwrap();
+    let library = tempfile::tempdir().unwrap();
+    let files = tempfile::tempdir().unwrap();
+    let rom_path = files.path().join("inspection.rom");
+    std::fs::write(&rom_path, &rom).unwrap();
+    app.player.library_root = Some(library.path().to_owned());
+    app.import_kickstart(&rom_path).unwrap();
+    let mut replacement = gui::DebuggerSession::new();
+    replacement.load_rom(&rom).unwrap();
+    let path = files.path().join("inspection.json");
+    std::fs::write(&path, replacement.save_state_to_json().unwrap()).unwrap();
+    let generation = app.host.status.generation;
+    app.load_state_file(&path);
     app.host.queue(HostCommand::Run);
     let mut output = render(&mut app, vec![]);
     output.append(common::settle(&mut app, &ctx));
     output.append(common::wait(&mut app, &ctx, |app| {
         app.host.status.running && app.host.status.cck > 0
     }));
+    assert_eq!(app.host.status.generation, generation + 1);
     assert!(app.host.status.running);
     assert!(app.host.status.cck > 0);
     assert!(texts(&output).contains(&"CCK: 0".to_string()));

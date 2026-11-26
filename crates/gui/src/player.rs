@@ -154,11 +154,6 @@ pub(crate) enum PlayerEffect {
 pub(crate) enum PendingLaunch {
     Manual,
     #[cfg(not(target_arch = "wasm32"))]
-    Rom {
-        bytes: Vec<u8>,
-        completion: crate::file_actions::FileCompletion,
-    },
-    #[cfg(not(target_arch = "wasm32"))]
     Library {
         game: crate::game_library::LibraryGame,
         save: Option<std::path::PathBuf>,
@@ -390,15 +385,10 @@ impl EmulatorApp {
         };
         #[cfg(target_arch = "wasm32")]
         let pause_for_confirmation = true;
-        #[cfg(not(target_arch = "wasm32"))]
-        let valid_rom = !matches!(&launch, PendingLaunch::Rom { bytes, .. } if bytes.len() != physical_memory::KICKSTART_ROM_SIZE);
-        #[cfg(target_arch = "wasm32")]
-        let valid_rom = true;
-        if valid_rom
-            && (self.player.active_configuration.is_some()
-                || self.file_loaded_machine
-                || self.host.status.cck != 0
-                || self.host.status.running)
+        if self.player.active_configuration.is_some()
+            || self.file_loaded_machine
+            || self.host.status.cck != 0
+            || self.host.status.running
         {
             if pause_for_confirmation {
                 self.player.captured = false;
@@ -413,17 +403,6 @@ impl EmulatorApp {
     pub(crate) fn confirm_player_launch(&mut self, launch: PendingLaunch) {
         match launch {
             PendingLaunch::Manual => self.start_manual(),
-            #[cfg(not(target_arch = "wasm32"))]
-            PendingLaunch::Rom { bytes, completion } => {
-                let name = match &completion {
-                    crate::file_actions::FileCompletion::Rom { name, .. } => Some(name.clone()),
-                    _ => None,
-                };
-                self.host.queue_effect(
-                    HostCommand::LoadRom(debugger::SourceImage { name, bytes }),
-                    HostEffect::File(completion),
-                );
-            }
             #[cfg(not(target_arch = "wasm32"))]
             PendingLaunch::Library {
                 game,
@@ -640,14 +619,12 @@ impl EmulatorApp {
     }
 
     pub(crate) fn quick_load(&mut self) {
-        if !self.quick_load_available() {
-            return;
-        }
         #[cfg(not(target_arch = "wasm32"))]
         if let Some(game) = self.player.active_game.clone() {
-            if let Some(save) = self.player.saves.iter().find(|save| save.quicksave) {
-                self.load_catalog_save(game, save.path.clone(), true);
-            }
+            self.quick_load_library_save(game);
+            return;
+        }
+        if !self.quick_load_available() {
             return;
         }
         if let Err(error) = self.validate_current_input() {

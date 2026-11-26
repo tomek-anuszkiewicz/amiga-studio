@@ -3,6 +3,7 @@
 //! Unit tests for DebuggerSession save state and quicksave features
 
 use config::{A500Config, A500Preset, VideoStandard};
+use debugger::launch::{mount, ADF_BYTES};
 use debugger::{DebuggerSession, MediaSources, SaveStateError, SourceImage};
 
 #[test]
@@ -118,6 +119,79 @@ fn test_debugger_session_json_and_file() {
     assert_eq!(file_session.debugger.current_cck, 180);
 
     let _ = std::fs::remove_file(&temp_file);
+}
+
+#[test]
+fn debugger_json_restore_returns_swapped_disks_to_their_saved_drives() {
+    let mut session = DebuggerSession::new();
+    session
+        .machine
+        .floppy
+        .set_connections([true, true, false, false])
+        .unwrap();
+    let first = vec![0x31; ADF_BYTES];
+    let second = vec![0x72; ADF_BYTES];
+    mount(&mut session, 0, Some(&first)).unwrap();
+    mount(&mut session, 1, Some(&second)).unwrap();
+    session.machine.step_cycles(120);
+    let saved = session.save_state();
+    assert_ne!(
+        saved.floppy.drives[0].tracks(),
+        saved.floppy.drives[1].tracks()
+    );
+    let json = session.save_state_to_json().unwrap();
+    let saved_sources = session.file_sources().clone();
+
+    mount(&mut session, 0, Some(&second)).unwrap();
+    mount(&mut session, 1, Some(&first)).unwrap();
+    session.machine.step_cycles(40);
+    assert_eq!(session.file_sources().disks[0], saved_sources.disks[1]);
+    assert_eq!(session.file_sources().disks[1], saved_sources.disks[0]);
+
+    let swapped_sources = session.file_sources().clone();
+    session.load_state_from_json(&json).unwrap();
+    assert_eq!(session.save_state(), saved);
+    assert_eq!(session.file_sources(), &saved_sources);
+    assert_eq!(session.debugger.current_cck, 120);
+    assert!(!session.is_running);
+
+    let mut reopened = DebuggerSession::new();
+    reopened
+        .load_state_from_json_with_sources(&json, swapped_sources)
+        .unwrap();
+    assert_eq!(reopened.save_state(), saved);
+    assert_eq!(reopened.file_sources(), &saved_sources);
+}
+
+#[test]
+fn debugger_json_restore_preserves_the_session_when_a_disk_has_no_match() {
+    let mut session = DebuggerSession::new();
+    session
+        .machine
+        .floppy
+        .set_connections([true, true, false, true])
+        .unwrap();
+    let first = vec![0x31; ADF_BYTES];
+    let second = vec![0x72; ADF_BYTES];
+    mount(&mut session, 0, Some(&first)).unwrap();
+    mount(&mut session, 1, Some(&second)).unwrap();
+    let json = session.save_state_to_json().unwrap();
+
+    mount(&mut session, 0, None).unwrap();
+    let wrong_disk = vec![0x19; ADF_BYTES];
+    mount(&mut session, 1, Some(&wrong_disk)).unwrap();
+    mount(&mut session, 3, Some(&first)).unwrap();
+    session.machine.step_cycles(40);
+    session.is_running = true;
+    let previous = session.save_state();
+    let previous_sources = session.file_sources().clone();
+
+    let error = session.load_state_from_json(&json).unwrap_err();
+    assert!(matches!(error, SaveStateError::MediaUnavailable(message)
+        if message.contains("DF1 content does not match")));
+    assert_eq!(session.save_state(), previous);
+    assert_eq!(session.file_sources(), &previous_sources);
+    assert!(session.is_running);
 }
 
 #[test]

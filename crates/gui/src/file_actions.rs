@@ -51,21 +51,8 @@ impl FileAction {
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-fn file_name(path: &std::path::Path) -> String {
-    path.file_name()
-        .unwrap_or_default()
-        .to_string_lossy()
-        .into_owned()
-}
-
 #[derive(Debug)]
 pub(crate) enum FileCompletion {
-    #[cfg(not(target_arch = "wasm32"))]
-    Rom {
-        name: String,
-        path: std::path::PathBuf,
-    },
     State(String),
     #[cfg(not(target_arch = "wasm32"))]
     Save(std::path::PathBuf),
@@ -283,17 +270,6 @@ impl EmulatorApp {
         }
         self.file_error = None;
         match action {
-            #[cfg(not(target_arch = "wasm32"))]
-            FileCompletion::Rom { path, .. } => {
-                self.file_history.remember_rom(&path);
-                self.file_loaded_machine = true;
-                self.inspection.ready = false;
-                self.disassembly_view_addr = None;
-                self.toast_message = Some((
-                    "ROM loaded; press Run to boot.".into(),
-                    TOAST_DURATION_FRAMES,
-                ));
-            }
             FileCompletion::State(message) => {
                 for disk in &self.player.setup_disks {
                     if !self.player.disks.iter().any(|entry| entry.id == disk.id) {
@@ -420,17 +396,12 @@ impl EmulatorApp {
         if let Some(path) = dialog.pick_file() {
             match action {
                 FileAction::State => self.load_state_file(&path),
-                FileAction::AddKickstart | FileAction::RestoreKickstart => {
-                    let result = if matches!(action, FileAction::AddKickstart) {
-                        self.import_kickstart(&path)
-                    } else {
-                        self.supply_restore_kickstart(&path)
-                    };
-                    let message = result.err();
-                    if let Some(editor) = &mut self.player.editor {
-                        editor.error.clone_from(&message);
-                    }
-                    self.file_error = message;
+                FileAction::AddKickstart => {
+                    let _ = self.import_kickstart(&path);
+                }
+                FileAction::RestoreKickstart => {
+                    let result = self.supply_restore_kickstart(&path);
+                    self.show_kickstart_file_result(&result);
                 }
                 FileAction::SetupDisk(drive) => self.load_setup_disk(drive, &path),
             }
@@ -469,27 +440,17 @@ impl EmulatorApp {
         self.accept_disk_selection(drive, crate::disk_import::read_disk_path(path));
     }
 
-    pub fn load_rom_file(&mut self, path: &std::path::Path) {
-        match std::fs::read(path) {
-            Ok(data) => self.request_player_launch(crate::player::PendingLaunch::Rom {
-                bytes: data,
-                completion: FileCompletion::Rom {
-                    name: file_name(path),
-                    path: path.to_owned(),
-                },
-            }),
-            Err(error) => {
-                self.file_error = Some(format!("Could not read {}: {error}", path.display()));
-                if error.kind() == std::io::ErrorKind::NotFound
-                    && self.file_history.roms.iter().any(|entry| entry == path)
-                {
-                    self.file_history.roms.retain(|entry| entry != path);
-                    self.file_error = Some(format!(
-                        "{} no longer exists. Removed from recent ROMs.",
-                        path.display()
-                    ));
-                }
-            }
+    /// Imports a confirmed desktop selection into the currently opened library.
+    pub fn import_kickstart(&mut self, path: &std::path::Path) -> Result<(), String> {
+        let result = self.import_kickstart_file(path);
+        self.show_kickstart_file_result(&result);
+        result
+    }
+
+    fn show_kickstart_file_result(&mut self, result: &Result<(), String>) {
+        self.file_error = result.as_ref().err().cloned();
+        if let Some(editor) = &mut self.player.editor {
+            editor.error.clone_from(&self.file_error);
         }
     }
 

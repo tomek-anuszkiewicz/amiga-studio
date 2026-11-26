@@ -4,6 +4,7 @@
 mod common;
 use egui_kittest::{kittest::Queryable, Harness};
 use gui::host_commands::HostCommand;
+use gui::player::PlayerScreen;
 use gui::EmulatorApp;
 use std::path::PathBuf;
 
@@ -15,36 +16,51 @@ fn fixture_path(name: &str) -> PathBuf {
 
 #[test]
 fn invalid_rom_displays_a_dismissible_error_and_can_be_retried() {
-    let path = fixture_path("load.rom");
+    let library = tempfile::tempdir().unwrap();
+    let source = tempfile::tempdir().unwrap();
+    let path = source.path().join("load.rom");
     std::fs::write(&path, vec![0x55; 524288]).unwrap();
     let mut app = EmulatorApp::default();
+    app.player.library_root = Some(library.path().to_owned());
+    app.navigate_player(PlayerScreen::Configuration);
     let before = common::snapshot(&mut app);
-    app.load_rom_file(&path);
     let mut harness = Harness::builder()
         .with_size(egui::vec2(1024.0, 600.0))
         .build_ui_state(|ui, app: &mut EmulatorApp| app.update_ui(ui), app);
+    let error = harness.state_mut().import_kickstart(&path).unwrap_err();
     common::settle_harness(&mut harness);
     assert_eq!(common::snapshot(harness.state_mut()), before);
-    let error = harness.state().file_error.clone().unwrap();
-    assert!(error.contains("256 KiB (262144 bytes)"));
-    assert!(error.contains("received 524288 bytes"));
-    harness.get_by_label(&error);
+    assert!(error.contains("expected 262144 bytes (256 KiB), got 524288 bytes"));
+    assert!(!library.path().join("kickstarts").exists());
+    harness.get_by_label("File operation failed");
+    assert_eq!(harness.get_all_by_label(&error).count(), 2);
     common::settle_harness(&mut harness);
     assert_eq!(harness.state().file_error.as_ref(), Some(&error));
 
     harness.get_by_label("Close").click_accesskit();
     common::settle_harness(&mut harness);
-    std::fs::write(&path, vec![0x4E; 262144]).unwrap();
-    harness.state_mut().load_rom_file(&path);
+    assert!(harness.state().file_error.is_none());
+    let rom = boot_rom();
+    std::fs::write(&path, &rom).unwrap();
+    harness.state_mut().import_kickstart(&path).unwrap();
     common::settle_harness(&mut harness);
+    assert_eq!(common::snapshot(harness.state_mut()), before);
+    assert_eq!(
+        std::fs::read(library.path().join("kickstarts/load.rom")).unwrap(),
+        rom
+    );
+    common::choose_manual_kickstart(&mut harness, "load.rom");
+    let generation = harness.state().host.status.generation;
+    harness.get_by_label("Start").click_accesskit();
+    common::wait_harness(&mut harness, |app| app.host.status.running);
+    assert_eq!(harness.state().host.status.generation, generation + 1);
+    harness.get_by_label("Pause").click_accesskit();
+    common::wait_harness(&mut harness, |app| !app.host.status.running);
     assert!(harness.state().file_error.is_none());
     assert_eq!(
-        common::inspect(harness.state_mut())
-            .memory
-            .read_word_debug(0xFC0000),
-        0x4E4E
+        common::inspect(harness.state_mut()).memory.kickstart_rom(),
+        rom
     );
-    std::fs::remove_file(path).unwrap();
 }
 
 #[test]
@@ -116,73 +132,67 @@ fn invalid_snapshot_sources_display_a_dismissible_error_without_restoring() {
 }
 
 #[test]
-fn firmware_load_boots_reset_vectors_and_preserves_the_active_rom_on_failure() {
-    let path = fixture_path("boot.rom");
-    let invalid_path = fixture_path("invalid.rom");
+fn firmware_start_boots_reset_vectors_and_preserves_the_active_rom_on_failed_import() {
+    let library = tempfile::tempdir().unwrap();
+    let source = tempfile::tempdir().unwrap();
+    let path = source.path().join("boot.rom");
+    let invalid_path = source.path().join("invalid.rom");
     std::fs::write(&invalid_path, [0; 1024]).unwrap();
-    let mut rom = vec![0xff; 262144];
-    rom[..4].copy_from_slice(&0x0004_0000_u32.to_be_bytes());
-    rom[4..8].copy_from_slice(&0x00fc_0008_u32.to_be_bytes());
-    rom[8..10].copy_from_slice(&[0x60, 0xfe]); // BRA *
+    let rom = boot_rom();
     std::fs::write(&path, &rom).unwrap();
-    let mut session = Box::new(gui::DebuggerSession::new());
-    session.load_binary(0x1000, &[0x60, 0xfe], true).unwrap();
-    session.toggle_run();
-    session.run_frame_slice(25);
-    let mut app = EmulatorApp::with_session(session);
-    app.set_view_mode(gui::ViewMode::ScreenOnly);
-    app.load_rom_file(&path);
-    assert!(
-        app.file_history.roms.is_empty(),
-        "ROM changes require confirmation before resetting the current program"
-    );
-    common::confirm_replacement(&mut app);
-    common::settle(&mut app, &egui::Context::default());
-    let name = path.file_name().unwrap().to_str().unwrap();
-    let history_path = std::path::absolute(&path).unwrap();
-    assert_eq!(app.file_history.roms, [history_path.clone()]);
-    assert!(app.file_error.is_none());
-    assert!(!app.host.status.running);
-    assert_eq!(app.host.status.cck, 0);
-    assert_eq!(common::inspect(&mut app).cpu.instruction_pc(), 0xfc0008);
-    assert_eq!(common::inspect(&mut app).cpu.a_long(7), 0x40000);
-    assert_eq!(common::inspect(&mut app).memory.read_word_debug(0), 0x0004);
-    assert_eq!(common::inspect(&mut app).memory.kickstart_rom(), rom);
-    common::command(&mut app, HostCommand::Run);
-    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
-    while app.host.status.field_number == 0 {
-        common::settle(&mut app, &egui::Context::default());
-        assert!(std::time::Instant::now() < deadline);
-        std::thread::sleep(std::time::Duration::from_millis(1));
-    }
-    assert!(app.host.status.field_number >= 1);
-    app.load_rom_file(&invalid_path);
-    common::settle(&mut app, &egui::Context::default());
-    assert!(app.host.status.running);
-    assert_eq!(app.file_history.roms, [history_path]);
-    assert!(app
-        .file_error
-        .as_deref()
-        .unwrap()
-        .contains("received 1024 bytes"));
-    common::command(&mut app, HostCommand::Pause);
-    while app.host.status.running {
-        common::settle(&mut app, &egui::Context::default());
-        assert!(std::time::Instant::now() < deadline);
-    }
+    let mut app = common::app_with_program(&[0x60, 0xfe]);
+    app.player.library_root = Some(library.path().to_owned());
+    app.navigate_player(PlayerScreen::Configuration);
+    assert!(common::command(&mut app, HostCommand::StepCck)
+        .value
+        .is_ok());
     let before = common::snapshot(&mut app);
-    app.load_rom_file(&invalid_path);
-    common::settle(&mut app, &egui::Context::default());
+    app.import_kickstart(&path).unwrap();
     assert_eq!(common::snapshot(&mut app), before);
-    assert_eq!(common::inspect(&mut app).memory.kickstart_rom(), rom);
-    app.file_error = None;
     let mut harness = Harness::builder()
         .with_size(egui::vec2(1024.0, 600.0))
         .build_ui_state(|ui, app: &mut EmulatorApp| app.update_ui(ui), app);
     common::settle_harness(&mut harness);
-    assert!(harness.query_by_label(&format!("ROM: {name}")).is_none());
-    std::fs::remove_file(invalid_path).unwrap();
-    std::fs::remove_file(path).unwrap();
+    common::choose_manual_kickstart(&mut harness, "boot.rom");
+    let generation = harness.state().host.status.generation;
+    harness.get_by_label("Start").click_accesskit();
+    common::settle_harness(&mut harness);
+    assert_eq!(common::snapshot(harness.state_mut()), before);
+    harness.get_by_label("Replace session").click_accesskit();
+    common::wait_harness(&mut harness, |app| app.host.status.field_number > 0);
+    let app = harness.state_mut();
+    assert!(app.host.status.running);
+    assert_eq!(app.host.status.generation, generation + 1);
+    assert_eq!(app.file_history.roms, [std::path::absolute(&path).unwrap()]);
+    let history = app.file_history.clone();
+    let error = app.import_kickstart(&invalid_path).unwrap_err();
+    assert!(error.contains("got 1024 bytes"));
+    assert!(app.host.status.running);
+    assert_eq!(app.file_history, history);
+    assert_eq!(app.host.status.generation, generation + 1);
+
+    let ctx = egui::Context::default();
+    common::command(app, HostCommand::Pause);
+    common::wait(app, &ctx, |app| !app.host.status.running);
+    let before = common::snapshot(app);
+    assert_eq!(app.import_kickstart(&invalid_path).unwrap_err(), error);
+    assert_eq!(common::snapshot(app), before);
+    let inspection = common::inspect(app);
+    assert_eq!(inspection.cpu.instruction_pc(), 0xfc0008);
+    assert_eq!(inspection.cpu.a_long(7), 0x40000);
+    assert_eq!(inspection.memory.read_word_debug(0), 0x0004);
+    assert_eq!(inspection.memory.kickstart_rom(), rom);
+    app.file_error = None;
+    common::settle_harness(&mut harness);
+    assert!(harness.query_by_label("ROM: boot.rom").is_none());
+}
+
+fn boot_rom() -> Vec<u8> {
+    let mut rom = vec![0xff; 262144];
+    rom[..4].copy_from_slice(&0x0004_0000_u32.to_be_bytes());
+    rom[4..8].copy_from_slice(&0x00fc_0008_u32.to_be_bytes());
+    rom[8..10].copy_from_slice(&[0x60, 0xfe]); // BRA *
+    rom
 }
 
 #[test]
@@ -258,13 +268,26 @@ fn exchange_browser_save_through_native_player() {
     expected.game_ports.release_controls();
 
     let mut app = EmulatorApp::default();
+    let library = tempfile::tempdir().unwrap();
+    app.player.library_root = Some(library.path().to_owned());
+    app.navigate_player(PlayerScreen::Configuration);
+    app.import_kickstart(&rom_path).unwrap();
     let ctx = egui::Context::default();
-    app.load_rom_file(&rom_path);
-    common::settle(&mut app, &ctx);
-    assert!(app.file_error.is_none(), "{:?}", app.file_error);
     app.load_setup_disk(0, &first_path);
     app.load_setup_disk(0, &second_path);
-    common::settle(&mut app, &ctx);
+    // Boot with only the ROM so the saved disk reference must use setup sources.
+    app.player.setup_mounted.fill(None);
+    let mut harness = Harness::builder()
+        .with_size(egui::vec2(1024.0, 600.0))
+        .build_ui_state(|ui, app: &mut EmulatorApp| app.update_ui(ui), app);
+    common::settle_harness(&mut harness);
+    common::choose_manual_kickstart(&mut harness, "test.rom");
+    harness.get_by_label("Start").click_accesskit();
+    common::wait_harness(&mut harness, |app| app.host.status.running);
+    harness.get_by_label("Pause").click_accesskit();
+    common::wait_harness(&mut harness, |app| !app.host.status.running);
+    let mut app = std::mem::take(harness.state_mut());
+    assert!(app.file_error.is_none(), "{:?}", app.file_error);
     let generation = app.host.status.generation;
     app.load_state_file(&source_path);
     common::settle(&mut app, &ctx);

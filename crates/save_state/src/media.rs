@@ -61,7 +61,7 @@ impl From<Sha256Hex> for String {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub(super) struct RomReference {
+pub struct RomReference {
     sha256: Sha256Hex,
     name: Optional<String>,
     synthetic: bool,
@@ -126,7 +126,7 @@ impl RomReference {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub(super) struct DiskReference {
+pub struct DiskReference {
     sha256: Sha256Hex,
     name: Optional<String>,
 }

@@ -207,6 +207,7 @@ fn quick_load_without_a_save_preserves_guest_key_release() {
         &ctx,
         &[("F9", true, generation), ("F9", false, generation)],
     );
+    common::settle(&mut app, &ctx);
     assert!(app.host.status.running);
     assert_eq!(app.host.status.generation, generation);
     assert!(guest_key_held(&mut app, 0x20));
@@ -1299,7 +1300,7 @@ fn a_file_error_without_text_focus_suspends_gameplay_and_shortcuts() {
     window_keys(&mut app, &ctx, &[("KeyA", true, generation)]);
     wait_guest_key(&mut app, &ctx, 0x20, true);
     let directory = tempfile::tempdir().unwrap();
-    app.load_rom_file(&directory.path().join("missing.rom"));
+    app.load_state_file(&directory.path().join("missing.json"));
     assert!(app.file_error.is_some());
     draw(&mut app, &ctx, None);
     assert!(ctx.memory(|memory| memory.focused()).is_none());

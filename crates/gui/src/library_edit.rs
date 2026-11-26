@@ -199,6 +199,15 @@ impl GameDraft {
         root: &Path,
         connected: [bool; config::FLOPPY_DRIVE_COUNT],
     ) -> Result<SavedGame, String> {
+        self.save_with_rename_allowed(root, connected, true)
+    }
+
+    pub(crate) fn save_with_rename_allowed(
+        &self,
+        root: &Path,
+        connected: [bool; config::FLOPPY_DRIVE_COUNT],
+        rename_allowed: bool,
+    ) -> Result<SavedGame, String> {
         validate_game_name(&self.name)?;
         if self.configuration.trim().is_empty() {
             return Err("Select a named configuration".into());
@@ -218,7 +227,6 @@ impl GameDraft {
         let root = root
             .canonicalize()
             .map_err(|e| format!("Choose an existing library directory: {e}"))?;
-        let destination = root.join(&self.name);
         let original_directory = self
             .original
             .as_ref()
@@ -230,6 +238,18 @@ impl GameDraft {
                 return Err("The edited game must belong to this library".into());
             }
         }
+        let destination = match self.original.as_ref().zip(original_directory.as_ref()) {
+            Some((game, directory)) if !rename_allowed => {
+                if self.name != game.manifest.title {
+                    return Err(
+                        "Undo pending save deletions or wait for them before renaming this game"
+                            .into(),
+                    );
+                }
+                directory.clone()
+            }
+            _ => root.join(&self.name),
+        };
         if original_directory.as_ref() != Some(&destination) && destination.exists() {
             return Err("A folder with this game name already exists; choose another name".into());
         }

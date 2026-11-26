@@ -35,7 +35,7 @@ fn describe(ui: &mut egui::Ui, entry: &Entry) {
     ui.label(entry.support());
 }
 
-pub(crate) fn selector(
+pub fn selector(
     ui: &mut egui::Ui,
     reference: &mut String,
     entries: &[Entry],
@@ -324,8 +324,7 @@ impl EmulatorApp {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    /// Imports a confirmed desktop selection into the currently opened library.
-    pub fn import_kickstart(&mut self, path: &std::path::Path) -> Result<(), String> {
+    pub(crate) fn import_kickstart_file(&mut self, path: &std::path::Path) -> Result<(), String> {
         if !self.player.library_available()
             || self
                 .player

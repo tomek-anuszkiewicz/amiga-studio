@@ -5,11 +5,11 @@ use machine_loop::denise::frame_builder::FRAME_BUFFER_CAPACITY;
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::{fmt, marker::PhantomData};
 
-pub(super) fn encode<S: Serializer>(bytes: &[u8], serializer: S) -> Result<S::Ok, S::Error> {
+fn encode<S: Serializer>(bytes: &[u8], serializer: S) -> Result<S::Ok, S::Error> {
     serializer.serialize_str(&STANDARD.encode(bytes))
 }
 
-pub(super) fn decode<E: de::Error>(text: &str, lengths: &[usize]) -> Result<Vec<u8>, E> {
+fn decode<E: de::Error>(text: &str, lengths: &[usize]) -> Result<Vec<u8>, E> {
     if !lengths.is_empty()
         && !lengths
             .iter()
@@ -24,7 +24,7 @@ pub(super) fn decode<E: de::Error>(text: &str, lengths: &[usize]) -> Result<Vec<
     Ok(bytes)
 }
 
-pub(super) fn read_string<'de, D, T>(
+fn read_string<'de, D, T>(
     decoder: D,
     decode: impl FnOnce(&str) -> Result<T, D::Error>,
 ) -> Result<T, D::Error>
@@ -51,20 +51,21 @@ where
     decoder.deserialize_str(Read(decode))?
 }
 
-pub(super) mod preview {
-    use super::*;
+pub mod preview {
+    use super::{decode, encode, read_string};
+    use serde::{Deserializer, Serializer};
 
-    pub(crate) fn serialize<S: Serializer>(bytes: &[u8], encoder: S) -> Result<S::Ok, S::Error> {
+    pub fn serialize<S: Serializer>(bytes: &[u8], encoder: S) -> Result<S::Ok, S::Error> {
         encode(bytes, encoder)
     }
 
-    pub(crate) fn deserialize<'de, D: Deserializer<'de>>(decoder: D) -> Result<Vec<u8>, D::Error> {
+    pub fn deserialize<'de, D: Deserializer<'de>>(decoder: D) -> Result<Vec<u8>, D::Error> {
         read_string(decoder, |text| decode(text, &[]))
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) struct Bytes<const LEN: usize>(pub Vec<u8>);
+pub struct Bytes<const LEN: usize>(pub Vec<u8>);
 
 impl<const LEN: usize> Serialize for Bytes<LEN> {
     fn serialize<S: Serializer>(&self, encoder: S) -> Result<S::Ok, S::Error> {
@@ -79,7 +80,7 @@ impl<'de, const LEN: usize> Deserialize<'de> for Bytes<LEN> {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) struct Pixels(pub Vec<u32>);
+pub struct Pixels(pub Vec<u32>);
 
 impl Serialize for Pixels {
     fn serialize<S: Serializer>(&self, encoder: S) -> Result<S::Ok, S::Error> {
@@ -109,7 +110,7 @@ impl<'de> Deserialize<'de> for Pixels {
 /// accepts a missing map entry.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(transparent)]
-pub(super) struct Optional<T>(pub Option<T>);
+pub struct Optional<T>(pub Option<T>);
 
 impl<'de, T: Deserialize<'de>> Deserialize<'de> for Optional<T> {
     fn deserialize<D: Deserializer<'de>>(decoder: D) -> Result<Self, D::Error> {
@@ -144,7 +145,7 @@ impl<'de, T: Deserialize<'de>> Deserialize<'de> for Optional<T> {
 /// Reads a required field using the same value types as an optional field.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(transparent)]
-pub(super) struct Required<T>(pub T);
+pub struct Required<T>(pub T);
 
 impl<'de, T: Deserialize<'de>> Deserialize<'de> for Required<T> {
     fn deserialize<D: Deserializer<'de>>(decoder: D) -> Result<Self, D::Error> {

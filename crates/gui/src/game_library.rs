@@ -172,13 +172,16 @@ impl LibraryGame {
     }
 
     pub(crate) fn same_entry(&self, other: &Self) -> bool {
-        self.manifest.id == other.manifest.id
-            && (self.directory == other.directory
-                || self.directory.canonicalize().is_ok_and(|directory| {
-                    other
-                        .directory
+        self.matches_location(&other.directory, &other.manifest.id)
+    }
+
+    pub(crate) fn matches_location(&self, directory: &Path, game_id: &str) -> bool {
+        self.manifest.id == game_id
+            && (self.directory == directory
+                || self.directory.canonicalize().is_ok_and(|own_directory| {
+                    directory
                         .canonicalize()
-                        .is_ok_and(|other| directory == other)
+                        .is_ok_and(|other| own_directory == other)
                 }))
     }
 }

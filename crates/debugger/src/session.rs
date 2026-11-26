@@ -571,24 +571,34 @@ impl DebuggerSession {
         SaveState::capture(&self.machine, sources)?.to_json_pretty()
     }
 
-    /// Deserializes machine state from JSON
+    /// Restores a JSON snapshot using matching images mounted in the current session.
     pub fn load_state_from_json(&mut self, json_str: &str) -> Result<(), SaveStateError> {
         self.load_state_from_json_with_sources(json_str, self.file_sources.clone())
     }
 
+    /// Restores a JSON snapshot by matching supplied disk images to saved drives.
     pub fn load_state_from_json_with_sources(
         &mut self,
         json: &str,
         mut sources: MediaSources,
     ) -> Result<(), SaveStateError> {
         let saved = SaveState::from_json(json)?;
+        sources.disks = std::array::from_fn(|drive| {
+            if !saved.disk_inserted(drive) {
+                return None;
+            }
+            let (earlier, from_target) = sources.disks.split_at(drive);
+            from_target
+                .iter()
+                .chain(earlier)
+                .flatten()
+                .find(|image| saved.disk_matches(drive, &image.bytes))
+                // Retain the codec's mismatch error for an incorrect image in this drive.
+                .or(sources.disks[drive].as_ref())
+                .cloned()
+        });
         if saved.synthetic_rom() {
             sources.rom = None;
-        }
-        for (drive, source) in sources.disks.iter_mut().enumerate() {
-            if !saved.disk_inserted(drive) {
-                *source = None;
-            }
         }
         let state = saved.restore(&sources)?;
         self.load_file_state(state, sources);

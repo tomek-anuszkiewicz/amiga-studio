@@ -24,8 +24,14 @@ impl EmulatorApp {
         });
         let name_id = ui.make_persistent_id("game_name");
         let description_id = ui.make_persistent_id("game_description");
+        let locked_game = draft
+            .original
+            .as_ref()
+            .filter(|game| self.player.save_catalog.has_pending_deletion(game));
+        let rename_allowed = locked_game.is_none();
         let label = ui.label("Game name");
-        let response = ui.add(
+        let response = ui.add_enabled(
+            rename_allowed,
             egui::TextEdit::singleline(&mut draft.name)
                 .id(name_id)
                 .hint_text("Game name")
@@ -34,23 +40,29 @@ impl EmulatorApp {
         response
             .labelled_by(label.id)
             .on_hover_text("The game name also determines its directory inside the library");
-        ui.label(format!(
-            "Folder: {}",
-            self.player
-                .library_root
-                .as_deref()
-                .unwrap_or_else(|| std::path::Path::new(""))
-                .join(&draft.name)
-                .display()
-        ));
-        ui.small(
-            "The name is also the folder name. Renaming keeps existing saves and disk assignments.",
+        let folder = locked_game.map_or_else(
+            || {
+                self.player
+                    .library_root
+                    .as_deref()
+                    .unwrap_or_else(|| std::path::Path::new(""))
+                    .join(&draft.name)
+            },
+            |game| game.directory.clone(),
         );
+        ui.label(format!("Folder: {}", folder.display()));
+        if rename_allowed {
+            ui.small("The name is also the folder name. Renaming keeps existing saves and disk assignments.");
+        } else {
+            ui.small("Undo pending save deletions or wait for them before renaming this game.");
+        }
         if !draft.name.is_empty() {
             if let Err(error) = validate_game_name(&draft.name) {
                 ui.colored_label(ui.visuals().error_fg_color, error);
             }
         }
+        let valid_name = validate_game_name(&draft.name).is_ok()
+            && locked_game.is_none_or(|game| draft.name == game.manifest.title);
         ui.add_space(8.0);
         let label = ui.label("Description (optional)");
         let response = ui.add(
@@ -172,7 +184,7 @@ impl EmulatorApp {
         ui.horizontal(|ui| {
             save = ui
                 .add_enabled(
-                    writable && connected.is_some() && validate_game_name(&draft.name).is_ok(),
+                    writable && connected.is_some() && valid_name,
                     egui::Button::new("Save game"),
                 )
                 .on_hover_text(
@@ -198,7 +210,12 @@ impl EmulatorApp {
                 .as_ref()
                 .zip(draft.original.as_ref())
                 .is_some_and(|(active, original)| active.same_entry(original));
-            match draft.save(&sync.root, connected) {
+            let result = if rename_allowed {
+                draft.save(&sync.root, connected)
+            } else {
+                draft.save_with_rename_allowed(&sync.root, connected, false)
+            };
+            match result {
                 Ok(saved) => {
                     if let Some(original) = &draft.original {
                         self.relocate_start_state_deletions(original, &saved.game);

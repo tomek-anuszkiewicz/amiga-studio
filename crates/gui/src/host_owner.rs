@@ -506,12 +506,6 @@ impl MachineOwner {
                 )?;
                 self.association.mounted[drive] = disk_id;
             }
-            HostCommand::LoadRom(source) => {
-                self.session
-                    .load_named_rom(source)
-                    .map_err(|error| error.to_string())?;
-                self.new_generation();
-            }
             paused => {
                 if self.session.is_running {
                     return Err("Pause execution before inspecting or editing the machine".into());

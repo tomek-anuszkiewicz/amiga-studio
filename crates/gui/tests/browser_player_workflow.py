@@ -1,9 +1,11 @@
 """Exercise manual WASM setup, file save/import and disk swaps in Chromium.
 
-Build with tools/web.ps1, then provide local ROM/ADF files and an installed
-Chromium executable. The test serves only the built distribution on loopback.
-File selection exercises the ordinary HTML input fallback; physical controls
-and File System Access permission dialogs remain interactive checks.
+Build with ./tools/web.ps1 build, then provide local ROM/ADF files and an
+installed Chromium executable. The test serves only the built distribution
+on loopback.
+File selection exercises the ordinary HTML input fallback and a simulated
+system picker. Physical controls and permission dialogs remain interactive
+checks.
 
 The media case exports a paused browser state and generated inputs into the
 output's media directory. Supply --native-state with the native re-export from
@@ -181,7 +183,70 @@ def click(page, control):
 def select_file(page, control, path):
     with page.expect_file_chooser() as chooser:
         click(page, control)
+    if control == "Add Kickstart":
+        entry = chooser.value.element
+        assert entry.get_attribute("accept") == ".rom,.bin"
+        assert not chooser.value.is_multiple()
     chooser.value.set_files(path)
+    if control == "Add Kickstart":
+        assert not page.locator('input[type="file"]').count()
+
+
+def check_kickstart_picker(page, output):
+    page.evaluate("""() => {
+        window.showOpenFilePicker = options => {
+            window.kickstartPicker = {
+                options,
+                active: navigator.userActivation.isActive,
+            };
+            return Promise.reject(new DOMException("Canceled", "AbortError"));
+        };
+    }""")
+    click(page, "Add Kickstart")
+    assert page.evaluate("window.kickstartPicker") == {
+        "active": True,
+        "options": {
+            "id": "amiga-add-kickstart",
+            "multiple": False,
+            "types": [{"description": "Add Kickstart",
+                       "accept": {"application/octet-stream": [".rom", ".bin"]}}],
+        },
+    }
+    assert page.evaluate("observedGeneration") == 1
+
+    page.evaluate("""() => {
+        window.showOpenFilePicker = () => {
+            const error = new DOMException("Picker read denied", "NotAllowedError");
+            error.stack = "";
+            return Promise.reject(error);
+        };
+    }""")
+    click(page, "Add Kickstart")
+    read_file_error(page, "Picker read denied", output / "kickstart-picker-error.png")
+
+    page.evaluate("""() => {
+        window.showOpenFilePicker = () => Promise.resolve([{
+            getFile: async () => new File(["ROM"], "picked.rom"),
+        }]);
+    }""")
+    click(page, "Add Kickstart")
+    read_file_error(page, "expected 262144 bytes (256 KiB), got 3 bytes",
+                    output / "kickstart-picker-selection.png")
+    assert page.evaluate("observedGeneration") == 1
+
+    page.evaluate("""() => {
+        window.showOpenFilePicker = undefined;
+        const originalClick = HTMLInputElement.prototype.click;
+        HTMLInputElement.prototype.click = function () {
+            if (this.type !== "file") return originalClick.call(this);
+            HTMLInputElement.prototype.click = originalClick;
+            window.kickstartFallbackCanceled = true;
+            this.dispatchEvent(new Event("cancel"));
+        };
+    }""")
+    click(page, "Add Kickstart")
+    assert page.evaluate("window.kickstartFallbackCanceled")
+    assert not page.locator('input[type="file"]').count()
 
 
 def supply_kickstart(page, path):
@@ -289,6 +354,7 @@ def check_workflow(browser, url, rom, disk, output):
         page.screenshot(path=str(output / "setup.png"))
         stage = "reject wrong-sized Kickstarts"
         press("Configurations")
+        check_kickstart_picker(page, output)
         for size in (262143, 262145, 524288):
             select_file(page, "Add Kickstart", {
                 "name": "invalid.rom",
@@ -592,7 +658,7 @@ def read_file_error(page, expected_text, screenshot):
             break
         page.wait_for_timeout(100)
     page.screenshot(path=str(screenshot))
-    assert bounds, f"No visible error for {saved_path.name}"
+    assert bounds, f"No visible error matching {expected_text!r}"
     x = clip["x"] + bounds["left"]
     y = clip["y"] + bounds["top"]
     page.evaluate("globalThis.copiedText = ''")

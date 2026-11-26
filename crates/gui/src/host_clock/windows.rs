@@ -16,7 +16,7 @@ pub(super) fn local_save_times(timestamps: &[u64]) -> Vec<Option<String>> {
         .collect()
 }
 
-pub(crate) fn format_save_time(
+pub fn format_save_time(
     seconds: u64,
     date: &DateTimeFormatter,
     time: &DateTimeFormatter,

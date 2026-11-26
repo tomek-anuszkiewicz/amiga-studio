@@ -411,7 +411,7 @@ fn promotion_failures_and_unavailable_start_states_preserve_the_live_game_and_he
 }
 
 #[test]
-fn named_deletion_can_be_undone_after_navigation_and_finishes_after_the_deadline_or_close() {
+fn named_deletion_can_be_undone_after_navigation_and_close_cancels_it_before_the_deadline() {
     let (root, mut games) = fixture();
     let mut app = paused_game(root.path(), &games[0]);
     let (first, others) = games.split_at_mut(1);
@@ -495,11 +495,14 @@ fn named_deletion_can_be_undone_after_navigation_and_finishes_after_the_deadline
         });
     }
     assert!(app.host.status.shutdown);
-    assert!(!level.exists());
+    assert_eq!(fs::read(&level).unwrap(), saved.as_bytes());
     let reopened = GameLibrary::discover(root.path()).unwrap();
     assert_eq!(
         reopened.games[0].manifest.start_states,
-        [game.manifest.start_states[0].clone()]
+        [
+            game.manifest.start_states[0].clone(),
+            game.manifest.start_states[2].clone()
+        ]
     );
     assert_eq!(fs::read(&intro).unwrap(), saved.as_bytes());
     assert_eq!(
@@ -512,6 +515,62 @@ fn named_deletion_can_be_undone_after_navigation_and_finishes_after_the_deadline
         pointer
     );
     assert!(reopened.games[1].manifest.start_states.is_empty());
+
+    let mut reopened = harness(new_app(root.path()));
+    click(&mut reopened, "Library");
+    library_game(&mut reopened, "First game");
+    assert!(!reopened
+        .get_by_label("Load Level 1")
+        .accesskit_node()
+        .is_disabled());
+    assert!(reopened.query_by_label("Undo").is_none());
+}
+
+#[test]
+fn named_state_with_missing_kickstart_reports_it_only_when_loaded() {
+    let (root, mut games) = fixture();
+    let game = &mut games[0];
+    let mut app = paused_game(root.path(), game);
+    let saved = snapshot_with_time(&mut app, 20, 42).to_json().unwrap();
+    drop(app);
+    add_state(game, "0000000000000001", "Intro", Some(saved.as_bytes()));
+
+    let original = root.path().join("kick.rom");
+    let replacement = root.path().join("replacement.rom");
+    let mut other_rom = fs::read(&original).unwrap();
+    other_rom[0x202] = 1;
+    fs::write(&replacement, other_rom).unwrap();
+    fs::remove_file(&original).unwrap();
+    let mut app = new_app(root.path());
+    app.player.catalog.configurations[0].launch.rom = "replacement.rom".into();
+    let mut contents = serde_json::to_value(&app.player.catalog).unwrap();
+    contents.as_object_mut().unwrap().remove("selected");
+    fs::write(
+        root.path().join("configurations.json"),
+        contents.to_string(),
+    )
+    .unwrap();
+    let mut h = harness(app);
+    click(&mut h, "Library");
+    library_game(&mut h, "First game");
+
+    let generation = h.state().host.status.generation;
+    assert!(!h.get_by_label("Load Intro").accesskit_node().is_disabled());
+    assert!(h.state().file_error.is_none());
+    click(&mut h, "Load Intro");
+    common::wait_harness(&mut h, |app| app.file_error.is_some());
+    assert_eq!(
+        h.state().file_error.as_deref(),
+        Some("Kickstart ROM (kick.rom) content does not match the save")
+    );
+    h.get_by_label("File operation failed");
+    assert_eq!(h.state().host.status.generation, generation);
+    assert!(!h.state().host.status.running);
+    assert_eq!(read_manifest(game).start_states, game.manifest.start_states);
+    assert_eq!(
+        fs::read(state_file(game, &game.manifest.start_states[0])).unwrap(),
+        saved.as_bytes()
+    );
 }
 
 #[test]

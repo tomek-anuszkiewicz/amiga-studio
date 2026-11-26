@@ -2911,6 +2911,266 @@ fn edit_description_and_pending_deletion_preserve_save_identity_and_newer_quicks
 }
 
 #[test]
+fn game_rename_waits_for_all_pending_save_deletions() {
+    use egui::accesskit::Role;
+    use egui_kittest::kittest::Queryable;
+
+    let (root, library) = library();
+    std::fs::rename(&library.games[0].directory, root.join("Moved original")).unwrap();
+    let library = GameLibrary::discover(&root).unwrap();
+    let game = &library.games[0];
+    let mut app = game_app(&root);
+    let contents = serde_json::json!({
+        "configurations": app.player.catalog.configurations,
+        "mappings": app.player.catalog.mappings,
+    });
+    std::fs::write(root.join("configurations.json"), contents.to_string()).unwrap();
+    app.start_library_game(game.clone(), None, false);
+    let mut h = session_harness(app);
+    common::wait_harness(&mut h, |app| app.host.status.running);
+    let click = |h: &mut egui_kittest::Harness<'_, EmulatorApp>, label| {
+        h.get_by_label(label).click_accesskit();
+        common::settle_harness(h);
+    };
+    click(&mut h, "Pause");
+    for count in [1, 2] {
+        click(&mut h, "Quick save");
+        common::wait_harness(&mut h, |app| app.player.saves.len() == count);
+    }
+    let saves: Vec<_> = h
+        .state()
+        .player
+        .saves
+        .iter()
+        .map(|save| save.path.clone())
+        .collect();
+    click(&mut h, "Library");
+    click(&mut h, "one");
+    common::wait_harness(&mut h, |app| app.player.selected_saves.len() == 2);
+    let start = h.ctx.input(|input| input.time) + 1.0;
+    h.input_mut().time = Some(start);
+    h.get_all_by_label("Delete save")
+        .next()
+        .unwrap()
+        .click_accesskit();
+    common::settle_harness(&mut h);
+    click(&mut h, "Delete save");
+
+    click(&mut h, "two");
+    click(&mut h, "Edit game");
+    assert!(!h
+        .get_by_role_and_label(Role::TextInput, "Game name")
+        .accesskit_node()
+        .is_disabled());
+    click(&mut h, "Cancel");
+    click(&mut h, "one");
+    h.get_all_by_label("Undo").next().unwrap().click_accesskit();
+    common::settle_harness(&mut h);
+    click(&mut h, "Edit game");
+    assert!(h
+        .get_by_role_and_label(Role::TextInput, "Game name")
+        .accesskit_node()
+        .is_disabled());
+    assert!(!h.get_by_label("Save game").accesskit_node().is_disabled());
+    h.state_mut().player.library_editor.as_mut().unwrap().name = "Renamed".into();
+    common::settle_harness(&mut h);
+    assert!(h.get_by_label("Save game").accesskit_node().is_disabled());
+    assert!(saves.iter().all(|path| path.is_file()));
+
+    let draft = h.state_mut().player.library_editor.as_mut().unwrap();
+    draft.name = "one".into();
+    draft.description = "Edited while deletion was pending".into();
+    common::settle_harness(&mut h);
+    click(&mut h, "Save game");
+    assert_eq!(
+        std::fs::read_to_string(game.directory.join("description.md")).unwrap(),
+        "Edited while deletion was pending"
+    );
+    assert!(!root.join("one").exists());
+    assert!(saves.iter().all(|path| path.is_file()));
+    click(&mut h, "Undo");
+    click(&mut h, "Edit game");
+    assert!(!h
+        .get_by_role_and_label(Role::TextInput, "Game name")
+        .accesskit_node()
+        .is_disabled());
+    click(&mut h, "Cancel");
+
+    h.get_all_by_label("Delete save")
+        .nth(1)
+        .unwrap()
+        .click_accesskit();
+    common::settle_harness(&mut h);
+    let last_delete = h.ctx.input(|input| input.time);
+    click(&mut h, "Edit game");
+    assert!(h
+        .get_by_role_and_label(Role::TextInput, "Game name")
+        .accesskit_node()
+        .is_disabled());
+    h.input_mut().time = Some(last_delete + 10.1);
+    common::settle_harness(&mut h);
+    assert!(!h
+        .get_by_role_and_label(Role::TextInput, "Game name")
+        .accesskit_node()
+        .is_disabled());
+    assert!(!saves[1].exists());
+
+    // Let the library finish reading the folders after the deletion before moving one.
+    let other = &library.games[1];
+    let mut updated = other.manifest.clone();
+    updated.title = "Updated other game".into();
+    std::fs::write(
+        other.directory.join("game.json"),
+        serde_json::to_vec(&updated).unwrap(),
+    )
+    .unwrap();
+    common::wait_harness(&mut h, |app| {
+        app.player
+            .library
+            .games
+            .iter()
+            .any(|game| game.manifest == updated)
+    });
+    h.state_mut().player.library_editor.as_mut().unwrap().name = "Renamed".into();
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    loop {
+        h.step();
+        let save = h.get_by_label("Save game");
+        if !save.accesskit_node().is_disabled() && h.ctx.content_rect().contains_rect(save.rect()) {
+            break;
+        }
+        assert!(
+            std::time::Instant::now() < deadline,
+            "Save game did not become usable"
+        );
+        std::thread::sleep(std::time::Duration::from_millis(1));
+    }
+    click(&mut h, "Save game");
+    assert!(
+        !game.directory.exists(),
+        "Rename failed: {:?}",
+        h.state().file_error
+    );
+    assert!(root
+        .join("Renamed/saves")
+        .join(saves[0].file_name().unwrap())
+        .is_file());
+    assert!(root.join("two/game.json").is_file());
+    assert!(h.state().file_error.is_none());
+}
+
+#[cfg(windows)]
+fn delete_quicksave_with_file_held(hold_pointer: bool) {
+    use egui_kittest::kittest::Queryable;
+    use std::fs;
+    use std::os::windows::fs::OpenOptionsExt;
+
+    let (root, library) = library();
+    let game = &library.games[0];
+    let mut app = game_app(&root);
+    app.start_library_game(game.clone(), None, false);
+    let mut h = session_harness(app);
+    common::wait_harness(&mut h, |app| app.host.status.running);
+    h.get_by_label("Pause").click_accesskit();
+    common::wait_harness(&mut h, |app| !app.host.status.running);
+    for count in [1, 2] {
+        h.get_by_label("Quick save").click_accesskit();
+        common::wait_harness(&mut h, |app| app.player.saves.len() == count);
+    }
+    let quicksave = h.state().player.saves[0].path.clone();
+    let other = h.state().player.saves[1].path.clone();
+    let quicksave_bytes = fs::read(&quicksave).unwrap();
+    let other_bytes = fs::read(&other).unwrap();
+    let pointer = quicksave.with_file_name("quicksave.txt");
+    let pointer_bytes = fs::read(&pointer).unwrap();
+    let legacy = quicksave.with_file_name("slot-1.txt");
+    let legacy_name = other.file_name().unwrap().to_str().unwrap().as_bytes();
+    fs::write(&legacy, legacy_name).unwrap();
+    // Permit discovery and reading. Windows denies removal or replacement while this handle is open.
+    const FILE_SHARE_READ: u32 = 1;
+    let held = fs::OpenOptions::new()
+        .read(true)
+        .share_mode(FILE_SHARE_READ)
+        .open(if hold_pointer { &pointer } else { &quicksave })
+        .unwrap();
+    let start = h.ctx.input(|input| input.time) + 1.0;
+    h.input_mut().time = Some(start);
+    h.get_all_by_label("Delete save")
+        .next()
+        .unwrap()
+        .click_accesskit();
+    common::settle_harness(&mut h);
+    assert!(h.get_by_label("Quick load").accesskit_node().is_disabled());
+    h.input_mut().time = Some(start + 10.1);
+    common::settle_harness(&mut h);
+    h.get_by_label("File operation failed");
+    assert!(
+        h.query_by_label_contains("Could not delete the file")
+            .is_some(),
+        "{:?}",
+        h.state().file_error
+    );
+    assert_eq!(fs::read(&pointer).unwrap(), pointer_bytes);
+    assert_eq!(fs::read(&legacy).unwrap(), legacy_name);
+    assert_eq!(fs::read(&other).unwrap(), other_bytes);
+    assert!(h.query_by_label("Undo").is_none());
+    assert_eq!(
+        h.get_by_label("Quick load").accesskit_node().is_disabled(),
+        hold_pointer
+    );
+    drop(held);
+
+    if hold_pointer {
+        assert!(!quicksave.exists());
+        assert!(h
+            .query_by_label_contains(
+                "The saved game was deleted. The app could not clear the Quick load designation",
+            )
+            .is_some());
+        assert_eq!(h.state().player.saves.len(), 1);
+        assert_eq!(h.state().player.saves[0].path, other);
+        assert!(!h.state().player.saves[0].quicksave);
+        assert!(!h.get_by_label("Load state").accesskit_node().is_disabled());
+    } else {
+        assert_eq!(fs::read(&quicksave).unwrap(), quicksave_bytes);
+        assert_eq!(h.state().player.saves.len(), 2);
+        assert!(h.state().player.saves[0].quicksave);
+    }
+
+    h.get_by_label("Close").click_accesskit();
+    common::settle_harness(&mut h);
+    // Refresh keyboard routing after egui drops the previous frame's modal layer.
+    h.step();
+    assert!(h.state().file_error.is_none());
+    let generation = h.state().host.status.generation;
+    if hold_pointer {
+        press_frontend_shortcut(&h, "F9");
+        common::settle_harness(&mut h);
+        h.get_by_label("File operation failed");
+        h.get_by_label("Saved game state not found");
+        assert_eq!(h.state().host.status.generation, generation);
+        assert!(!h.state().host.status.running);
+    } else {
+        h.get_by_label("Quick load").click_accesskit();
+        common::wait_harness(&mut h, |app| app.host.status.generation > generation);
+        assert!(h.state().host.status.running);
+        assert!(h.state().file_error.is_none());
+    }
+}
+
+#[cfg(windows)]
+#[test]
+fn delete_save_refused_by_windows_keeps_the_save_and_quick_load_designation() {
+    delete_quicksave_with_file_held(false);
+}
+
+#[cfg(windows)]
+#[test]
+fn deleted_quicksave_with_failed_designation_cleanup_reports_a_missing_save_on_f9() {
+    delete_quicksave_with_file_held(true);
+}
+
+#[test]
 fn closing_cancels_unexpired_deletion_and_cleared_quicksave_stays_cleared_after_reopening() {
     use egui_kittest::kittest::{by, Queryable};
     let (root, library) = library();
@@ -3277,6 +3537,6 @@ impl egui_kittest::TestRenderer for SavePreviewTexture {
             .flat_map(|pixel| pixel.to_srgba_unmultiplied())
             .collect();
         image::RgbaImage::from_raw(width as u32, height as u32, bytes)
-            .ok_or("Invalid thumbnail image".into())
+            .ok_or_else(|| "Invalid thumbnail image".into())
     }
 }

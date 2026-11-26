@@ -5,8 +5,8 @@ use sha1::Sha1;
 use sha2::{Digest, Sha256};
 
 #[cfg(not(target_arch = "wasm32"))]
-pub(crate) mod native;
-pub(crate) mod view;
+pub mod native;
+pub mod view;
 
 #[derive(Debug)]
 struct OfficialRelease {
@@ -30,7 +30,7 @@ const RELEASE: OfficialRelease = OfficialRelease {
 const VERIFIED_PAL_BOOT: &str = "ee05862d8102a08436ac4056da7d549db31625c7d47b24dfb7b3c9a5c113ca53";
 
 #[derive(Debug)]
-pub(crate) struct Entry {
+pub struct Entry {
     pub(crate) reference: String,
     filename: String,
     release: Option<&'static OfficialRelease>,
@@ -111,7 +111,7 @@ fn lowercase_hex(bytes: &[u8]) -> String {
     hex
 }
 
-pub(crate) fn validate_size(name: &str, actual: u64) -> Result<(), String> {
+pub fn validate_size(name: &str, actual: u64) -> Result<(), String> {
     if actual == KICKSTART_ROM_SIZE as u64 {
         return Ok(());
     }

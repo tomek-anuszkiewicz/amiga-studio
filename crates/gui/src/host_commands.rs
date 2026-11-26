@@ -78,7 +78,6 @@ pub enum HostCommand {
         disk_id: Option<String>,
         name: Option<String>,
     },
-    LoadRom(debugger::SourceImage),
     ReconfigurePorts([debugger::launch::DeviceKind; 2]),
     SaveSnapshot,
     RestorePlayer {

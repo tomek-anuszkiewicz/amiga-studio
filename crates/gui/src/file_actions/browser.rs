@@ -22,7 +22,6 @@ extern "C" {
         kind: &str,
         title: &str,
         extensions: &Array,
-        recent_index: i32,
         multiple: bool,
     ) -> Result<Promise, JsValue>;
 }
@@ -39,7 +38,6 @@ enum SelectedAssets {
 
 type ReadResult = Result<Option<SelectedAssets>, JsValue>;
 const FILE_POLL_INTERVAL: Duration = Duration::from_millis(50);
-const NO_RECENT_FILE_INDEX: i32 = -1;
 
 pub struct BrowserFileTask {
     action: FileAction,
@@ -78,13 +76,7 @@ impl BrowserFileTask {
             .map(|extension| JsValue::from_str(&format!(".{extension}")))
             .collect();
         let multiple = matches!(action, FileAction::SetupDisk(_));
-        let selection = pick_file(
-            action.key(),
-            action.title(),
-            &extensions,
-            NO_RECENT_FILE_INDEX,
-            multiple,
-        )?;
+        let selection = pick_file(action.key(), action.title(), &extensions, multiple)?;
         let future = Box::pin(async move {
             let selected = JsFuture::from(selection).await?;
             if selected.is_null() {

@@ -206,12 +206,16 @@ The native library shows each game's named **Start states**. Choose **Add to
 start states** on an available save or current quicksave, enter a name and
 confirm. Cancel leaves the collection as it was. Choose **Load** on a named
 row to restore the recorded machine and mounted disks using the library's
-configuration recovery and restore controls. Unavailable entries show the
-reason and the other rows remain usable. **Rename** changes the label.
+configuration recovery and restore controls. A missing, unreadable or
+incompatible snapshot disables **Load** and shows the reason. If the
+snapshot is valid and its matching Kickstart is missing, **Load** remains
+available and the app reports the missing Kickstart when the player tries
+to load it. The other rows remain usable. **Rename** changes the label.
 **Delete** starts a ten-second host-time countdown with **Undo**, which remains
 available as the player navigates. The app removes the selected entry and its
-owned file at the deadline or when closing. Normal boot and Reset continue to
-use startup assignments. [Save state ownership and restore](SaveState.md#player-progress)
+owned file once the deadline expires. Closing before the deadline cancels
+the deletion and keeps the entry and its file. Normal boot and Reset continue
+to use startup assignments. [Save state ownership and restore](SaveState.md#player-progress)
 
 When a guest writes to a player disk, the new contents follow that disk through
 ejection and reinsertion during the session. The original ADF stays unchanged.
@@ -505,7 +509,9 @@ affected list. Failure to perform a requested file operation is reported
 separately.
 
 **Quick save** and **Quick load** use the same actions as their configured
-shortcuts. **Quick load** requires a usable designated save. **Load state**
+shortcuts. The **Quick load** button requires a usable designated save. If a
+designation still refers to a removed file, the shortcut reports **Saved
+game state not found**. **Load state**
 and **Quick load** validate the selected machine, media and committed controls
 before replacing the machine and resuming execution. They keep the current
 execution state if validation fails. Starting a new machine still asks for
@@ -514,9 +520,14 @@ The Game controls offer **Import state** and **Export state** for snapshot files
 
 **Delete save** disables that row and offers **Undo** for ten seconds of host
 time. The deadline follows the selected game and save through navigation,
-refresh, pause and speed changes. When it expires, the app removes that file
-and clears the quicksave designation only if it still points to that file.
-Closing the app before the deadline cancels the deletion.
+refresh, pause and speed changes. The game's name is unavailable for editing
+until the player undoes its last pending save deletion or the countdown ends.
+When a deadline expires, the app removes that file and clears the quicksave
+designation only if it still points to that file. Closing the app before the
+deadline cancels the deletion. If the system refuses to remove the file, the
+app leaves the designation in place and shows **Could not delete the file**.
+If the file is removed but clearing the designation fails, the dialog also
+reports which part of the operation succeeded.
 
 Ordered, bounded queues publish input immediately. The owner admits it at
 three evenly spaced times per emulated field, determined by the current
@@ -668,9 +679,9 @@ does not request inspector snapshots.
 
 Register edits, memory patches, breakpoints, history, file restoration and quick actions
 execute as owner commands. File selection, host file I/O and downloads
-remain host UI operations. The active machine's ROM filename and debugger ROM
-load history change after successful owner replies. The Kickstart import picker
-directory changes after a successful catalog import.
+remain host UI operations. The active machine's ROM filename changes after a
+successful owner reply. The Kickstart import picker directory changes after a
+successful catalog import.
 
 The browser explicitly initializes one main Wasm instance. One worker instance
 shares its memory. The launcher rebuilds the Rust standard library with

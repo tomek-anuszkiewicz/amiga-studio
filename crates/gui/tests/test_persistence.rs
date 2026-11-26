@@ -44,7 +44,7 @@ impl Storage for MemoryStorage {
 }
 
 #[test]
-fn game_splitter_width_roundtrips_through_host_memory_and_clamps_on_resize() {
+fn game_splitter_width_round_trips_through_host_memory_and_clamps_on_resize() {
     use egui::accesskit::{Orientation, Role};
     use egui_kittest::{kittest::Queryable, Harness};
 

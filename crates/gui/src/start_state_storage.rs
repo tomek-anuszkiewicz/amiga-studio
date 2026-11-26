@@ -11,7 +11,7 @@ use std::path::{Component, Path, PathBuf};
 const START_STATES_DIRECTORY: &str = "initial_states";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct StartStateTarget {
+pub struct StartStateTarget {
     pub directory: PathBuf,
     pub game_id: String,
     pub id: String,
@@ -73,7 +73,7 @@ impl StartStateTarget {
     }
 }
 
-pub(crate) fn promote(
+pub fn promote(
     directory: &Path,
     game_id: &str,
     source: &Path,
@@ -131,7 +131,7 @@ pub(crate) fn promote(
     Ok(manifest)
 }
 
-pub(crate) fn unavailable(game: &LibraryGame) -> HashMap<String, String> {
+pub fn unavailable(game: &LibraryGame) -> HashMap<String, String> {
     game.manifest
         .start_states
         .iter()

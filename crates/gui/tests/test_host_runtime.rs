@@ -751,15 +751,8 @@ fn paused_step_and_invalid_load_preserve_owner_state() {
     assert_eq!(cpu.instruction_pc(), 0x1002);
     assert_eq!(*cpu, reference.machine.cpu.state);
     let before = host.status();
-    assert!(wait_reply(
-        &mut host,
-        HostCommand::LoadRom(debugger::SourceImage {
-            name: None,
-            bytes: vec![0; 1]
-        })
-    )
-    .value
-    .is_err());
+    let invalid = wait_reply(&mut host, invalid_rom_launch(1));
+    assert!(invalid.value.unwrap_err().contains("received 1 bytes"));
     assert_eq!(host.status().generation, before.generation);
     assert_eq!(host.status().cck, before.cck);
 }
@@ -943,12 +936,9 @@ fn invalid_rom_does_not_mutate_any_running_machine_state_at_the_command_boundary
     let invalid = owner.execute(HostRequest {
         id: 3,
         generation: 1,
-        command: HostCommand::LoadRom(debugger::SourceImage {
-            name: None,
-            bytes: vec![0; 1024],
-        }),
+        command: invalid_rom_launch(1024),
     });
-    assert!(invalid.value.is_err());
+    assert!(invalid.value.unwrap_err().contains("received 1024 bytes"));
     assert!(invalid.status.running);
     assert_eq!(invalid.status.cck, before.status.cck);
     assert_eq!(invalid.status.generation, before.status.generation);
@@ -970,6 +960,21 @@ fn invalid_rom_does_not_mutate_any_running_machine_state_at_the_command_boundary
         before, after,
         "Rejected ROM load modified the running machine"
     );
+}
+
+fn invalid_rom_launch(size: usize) -> HostCommand {
+    HostCommand::Launch {
+        setup: debugger::launch::MachineSetup {
+            config: config::A500Config::default(),
+            ports: [debugger::launch::DeviceKind::Disconnected; 2],
+            drives: [false; 4],
+            rom: vec![0; size],
+            disks: [None, None, None, None],
+        },
+        association: debugger::SaveAssociation::default(),
+        rom_name: None,
+        disk_names: [None, None, None, None],
+    }
 }
 
 #[test]

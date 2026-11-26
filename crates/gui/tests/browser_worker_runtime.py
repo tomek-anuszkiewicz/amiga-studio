@@ -1,6 +1,6 @@
 """Check real shared-memory worker startup and idle notifications in Chromium.
 
-Build the distribution with tools/web.ps1 build. Use --dist to serve it on loopback.
+Build with ./tools/web.ps1 build. Use --dist to serve it on loopback.
 
 python crates/gui/tests/browser_worker_runtime.py --browser-executable <chromium-path> --dist .agent/tmp/web-dist
 

@@ -452,24 +452,34 @@ fn focused_host_text_prevents_frontend_shortcuts() {
 }
 
 #[test]
-fn direct_rom_replacement_requires_confirmation_and_can_be_cancelled() {
+fn manual_kickstart_replacement_requires_confirmation_and_can_be_cancelled() {
     let root = root();
     let mut app = started(&root);
     let path = root.join("replacement.rom");
     std::fs::write(&path, rom(0x22)).unwrap();
-    app.load_rom_file(&path);
+    app.navigate_player(PlayerScreen::Configuration);
+    app.import_kickstart(&path).unwrap();
     let mut h = harness(app);
+    common::choose_manual_kickstart(&mut h, "replacement.rom");
+    let generation = h.state().host.status.generation;
+    h.get_by_label("Start").click_accesskit();
+    common::settle_harness(&mut h);
+    assert_eq!(h.state().host.status.generation, generation);
     assert_eq!(
         common::read_memory(h.state_mut(), 0xfc0200, 1),
         [0x11],
-        "Direct ROM loading replaced the machine before confirmation"
+        "Manual start replaced the machine before confirmation"
     );
     h.get_by_label("Keep current session").click_accesskit();
     common::settle_harness(&mut h);
+    assert_eq!(h.state().host.status.generation, generation);
     assert_eq!(common::read_memory(h.state_mut(), 0xfc0200, 1), [0x11]);
-    h.state_mut().load_rom_file(&path);
+    h.get_by_label("Start").click_accesskit();
     common::settle_harness(&mut h);
     h.get_by_label("Replace session").click_accesskit();
-    common::settle_harness(&mut h);
+    common::wait_harness(&mut h, |app| app.host.status.running);
+    assert_eq!(h.state().host.status.generation, generation + 1);
+    h.get_by_label("Pause").click_accesskit();
+    common::wait_harness(&mut h, |app| !app.host.status.running);
     assert_eq!(common::read_memory(h.state_mut(), 0xfc0200, 1), [0x22]);
 }

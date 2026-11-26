@@ -4,14 +4,14 @@ use debugger::launch::{disk_image_is_supported, ADF_BYTES};
 use std::borrow::Cow;
 use std::io::{Cursor, Read};
 
-pub(crate) const DISK_EXTENSIONS: &[&str] = &["adf", "zip", "7z"];
+pub const DISK_EXTENSIONS: &[&str] = &["adf", "zip", "7z"];
 const MAX_ARCHIVE_BYTES: u64 = 64 * 1024 * 1024;
 const MAX_7Z_DECODED_BYTES: u64 = 128 * 1024 * 1024;
 const MAX_7Z_MEMORY_KIB: usize = 32 * 1024;
-pub(crate) const MAX_DISK_CHOICES: usize = 64;
+pub const MAX_DISK_CHOICES: usize = 64;
 
 #[derive(Debug, Clone)]
-pub(crate) struct DiskImage {
+pub struct DiskImage {
     pub filename: String,
     source: String,
     member: Option<String>,
@@ -28,7 +28,7 @@ impl DiskImage {
 }
 
 #[derive(Debug, Default)]
-pub(crate) struct DiskSelection {
+pub struct DiskSelection {
     pub images: Vec<DiskImage>,
     pub issues: Vec<String>,
 }
@@ -54,7 +54,7 @@ fn extension(filename: &str) -> Option<&str> {
     (!stem.is_empty()).then_some(extension)
 }
 
-pub(crate) fn is_adf(filename: &str) -> bool {
+pub fn is_adf(filename: &str) -> bool {
     extension(filename).is_some_and(|suffix| suffix.eq_ignore_ascii_case("adf"))
 }
 
@@ -62,7 +62,7 @@ fn invalid_adf_length(size: u64) -> String {
     format!("Unsupported ADF length ({size} bytes). Select a standard 880 KiB ADF.")
 }
 
-pub(crate) fn check_disk_source_size(filename: &str, size: u64) -> Result<(), String> {
+pub fn check_disk_source_size(filename: &str, size: u64) -> Result<(), String> {
     let Some(extension) = extension(filename) else {
         return Err("Select an ADF, ZIP or 7z file".into());
     };
@@ -84,7 +84,7 @@ pub(crate) fn check_disk_source_size(filename: &str, size: u64) -> Result<(), St
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub(crate) fn read_disk_path(path: &std::path::Path) -> DiskSelection {
+pub fn read_disk_path(path: &std::path::Path) -> DiskSelection {
     let source = path.display().to_string();
     let read = || -> Result<DiskSelection, String> {
         let filename = path
@@ -113,7 +113,7 @@ pub(crate) fn read_disk_path(path: &std::path::Path) -> DiskSelection {
     }
 }
 
-pub(crate) fn decode_disk_source(source: &str, filename: &str, bytes: Vec<u8>) -> DiskSelection {
+pub fn decode_disk_source(source: &str, filename: &str, bytes: Vec<u8>) -> DiskSelection {
     if let Err(error) = check_disk_source_size(filename, bytes.len() as u64) {
         return DiskSelection::issue(source, &error);
     }
