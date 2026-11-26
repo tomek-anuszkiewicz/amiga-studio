@@ -102,12 +102,12 @@ scrolling bitplanes, Copper raster changes, repeated Blitter operations and audi
 DMA with nonzero samples. Fixed data or a fixed random seed makes comparisons
 repeatable; visual polish is unnecessary.
 
-The existing [live_stripes guest fixture](../../../../crates/machine_loop/tests/programs/display/live_stripes/program.as)
-demonstrates guest-owned setup. Component integration fixtures under
+Boot the [Mixed Scene disk image](../../../../tests/mixed_scene/mixed_scene.adf)
+to see a combined workload that initializes its display and drives concurrent
+DMA from guest code. Component integration fixtures under
 [machine tests](../../../../crates/machine_loop/tests) cover Copper, Blitter,
-audio and sprite behavior. They are reusable starting points, not an existing
-combined benchmark. The historical sprite performance scenes stopped the CPU
-and therefore do not cover sustained CPU work under competing DMA.
+audio and sprite behavior. The historical sprite performance scenes stopped the
+CPU and left sustained CPU work under competing DMA unmeasured.
 
 Have the host load the program and data, set the initial CPU state and step
 the machine normally. Keep ongoing scene updates on guest CPU or Copper paths

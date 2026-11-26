@@ -8,7 +8,7 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[3]
-SHELL = "powershell" if os.name == "nt" else "pwsh"
+SHELL = "pwsh"
 
 
 class WebLauncherContracts(unittest.TestCase):

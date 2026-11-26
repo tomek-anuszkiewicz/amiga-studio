@@ -2,7 +2,7 @@
 
 const FOCUS_LOST_ID: &str = "game-fps-focus-lost";
 
-pub(super) fn focused(ctx: &egui::Context) -> bool {
+pub fn focused(ctx: &egui::Context) -> bool {
     let lost =
         ctx.data(|data| data.get_temp::<bool>(egui::Id::unique(FOCUS_LOST_ID)) == Some(true));
     #[cfg(not(target_arch = "wasm32"))]
@@ -12,11 +12,11 @@ pub(super) fn focused(ctx: &egui::Context) -> bool {
     return !lost && crate::host_runtime::host_window_active();
 }
 
-pub(super) fn watch_focus(ctx: &egui::Context) {
+pub fn watch_focus(ctx: &egui::Context) {
     ctx.data_mut(|data| data.insert_temp(egui::Id::unique(FOCUS_LOST_ID), false));
 }
 
-pub(crate) fn record_focus_loss(ctx: &egui::Context) {
+pub fn record_focus_loss(ctx: &egui::Context) {
     let listening = ctx.data_mut(|data| {
         let id = egui::Id::unique(FOCUS_LOST_ID);
         if data.get_temp::<bool>(id).is_some() {
@@ -31,6 +31,6 @@ pub(crate) fn record_focus_loss(ctx: &egui::Context) {
     }
 }
 
-pub(super) fn stop_watching_focus(ctx: &egui::Context) {
+pub fn stop_watching_focus(ctx: &egui::Context) {
     ctx.data_mut(|data| data.remove::<bool>(egui::Id::unique(FOCUS_LOST_ID)));
 }

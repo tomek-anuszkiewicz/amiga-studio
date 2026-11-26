@@ -112,8 +112,9 @@ machine loop and browser worker run uncapped. The desktop and browser Game
 cases boot the same workload from DF0 with the local ROM, confirm guest progress
 and measure foreground playback at 4x. The report records three samples per
 case and compares each median with its compatible reference. The measurements
-require a matching host, release
-toolchain and runtime, and matching display settings for the Game cases.
+require a matching host, release toolchain and runtime. For the Game cases,
+compare the renderer, viewport and scale. The comparison ignores monitor
+refresh rate.
 Keep the desktop window and browser tab in the foreground when each measures.
 A difference of up to 5% in either direction
 passes, including both endpoints. Any valid Game sample of at least 190 FPS

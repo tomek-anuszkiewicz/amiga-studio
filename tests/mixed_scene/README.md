@@ -16,11 +16,17 @@ compatibility with real games require separate evidence.
 
 ## Run in the GUI
 
-Open **Manual Setup**, select a 256 KiB Kickstart 1.3 ROM from your own
-collection and insert `mixed_scene.adf` in **DF0**. Use a PAL configuration
-with at least 512 KiB Chip RAM. Click **Start**. Kickstart reads the disk
-before the guest initializes the display. The moving sprites and scrolling
-background then run continuously. An NTSC session clips the bottom.
+In the Windows desktop app, if you have not opened a game library yet, open
+**Configurations**. Under **Application settings**, click **Choose library
+directory...**, select a folder for the library and click **Save**.
+
+Open **Configurations**, click **Add Kickstart** and choose a 256 KiB
+Kickstart 1.3 ROM from your own collection. Open **Manual setup** and select
+the added ROM from the **Kickstart** list. Use a PAL configuration with at
+least 512 KiB Chip RAM, insert `mixed_scene.adf` in **DF0** and click
+**Start**. Kickstart reads the disk before the guest initializes the display.
+The moving sprites and scrolling background then run continuously. An NTSC
+session clips the bottom.
 
 The guest initializes its own stack and interrupt vectors and drives the
 custom chips. In the GUI the scene runs without host input. The benchmark
@@ -88,22 +94,20 @@ python tools/verification/verify.py test fps
 ```
 
 The verifier builds release targets and runs the cases serially. It uses Python
-with Playwright and the PowerShell, Trunk and nightly toolchain required by
-[the browser build](../../tools/web.ps1). Playwright's Chromium is the default.
+with Playwright and starts `pwsh` to run the browser build, which needs Trunk and
+the nightly Rust toolchain. Playwright's Chromium is the default.
+[Browser build setup](../../README.md#web-browser)
 To select a local Chromium, Chrome or Edge, set `AMIGA_FPS_BROWSER_EXECUTABLE`.
-To override monitor detection, set `AMIGA_FPS_NATIVE_REFRESH_HZ` to the monitor's
-measured refresh rate in hertz.
 
 ```powershell
 $env:AMIGA_FPS_BROWSER_EXECUTABLE = '<path to a Chromium, Chrome or Edge executable>'
-$env:AMIGA_FPS_NATIVE_REFRESH_HZ = '<measured refresh rate in Hz>'
 ```
 
 Keep the desktop Game window or browser tab in the foreground through warmup
 and timing. If the desktop Game window opens in the background, bring it to
 the foreground before the launch times out. Use a host and software
 configuration compatible with the approved reference. For Game, the renderer,
-refresh rate, viewport and scale must also match. The
+viewport and scale must also match. The
 [`run_mixed_scene.py` diagnostic](../../tools/verification/run_mixed_scene.py) still
 measures the native machine loop by itself.
 
@@ -146,9 +150,10 @@ The reference is a JSON object with `schema` set to `2` and `cases` keyed
 by `FPS-01` through `FPS-04`. Each case records its approved
 `reference_fps`, fractional `tolerance` (0.05 for 5%) and `compatibility`
 settings from the result. Game compatibility includes the completed-field
-metric and 4× speed, the boot mode and the ADF SHA-256 digest. The original
-Game ROM digest remains in the approved reference as a record of calibration.
-Comparison ignores that historical member. The unrounded median passes from
+metric and 4× speed, the boot mode and the ADF SHA-256 digest. Earlier Game
+references recorded the ROM digest and monitor refresh rate. Current reports
+and references omit both values. Comparison ignores those historical fields.
+The unrounded median passes from
 `reference_fps × (1 − tolerance)`
 through `reference_fps × (1 + tolerance)`, including both endpoints.
 

@@ -18,6 +18,7 @@ import time
 from execution import VERIFIER_LOG_PATH
 from repository import REPO_ROOT, git
 from run_mixed_scene import find_executable, read_metrics
+from worker_processes import run_windows_job
 
 SCENE = REPO_ROOT / "tests/mixed_scene"
 PROGRAM = SCENE / "program.bin"
@@ -43,14 +44,12 @@ CASES = {
 }
 GAME_CASES = ("FPS-03", "FPS-04")
 BROWSER_ENV = "AMIGA_FPS_BROWSER_EXECUTABLE"
-REFRESH_ENV = "AMIGA_FPS_NATIVE_REFRESH_HZ"
 
 
 @dataclass(frozen=True)
 class Settings:
     kickstart_rom: Path
     browser_executable: Path | None
-    native_refresh_hz: float | None
 
 
 def optional_path(name):
@@ -76,25 +75,20 @@ def require_kickstart_rom():
 
 
 def load_settings():
-    rom = require_kickstart_rom()
-    refresh = os.environ.get(REFRESH_ENV)
-    if refresh is not None:
-        try:
-            refresh = float(refresh)
-        except ValueError:
-            refresh = None
-        if not positive_number(refresh):
-            raise ValueError(f"{REFRESH_ENV} must be a positive finite number.")
-    return Settings(rom, optional_path(BROWSER_ENV), refresh)
+    return Settings(require_kickstart_rom(), optional_path(BROWSER_ENV))
 
 
-def command(args, *, env=None, timeout=BUILD_TIMEOUT):
-    completed = subprocess.run(args, cwd=REPO_ROOT, env=env, timeout=timeout,
-                               capture_output=True, encoding="utf-8", errors="replace")
+def command(args, *, env=None, timeout=BUILD_TIMEOUT, windows_process_tree=False):
+    if windows_process_tree and os.name == "nt":
+        completed = run_windows_job(args, cwd=REPO_ROOT, env=env, timeout=timeout)
+    else:
+        completed = subprocess.run(args, cwd=REPO_ROOT, env=env, timeout=timeout, capture_output=True)
+    stdout, stderr = (stream.decode("utf-8", errors="replace").replace("\r\n", "\n").replace("\r", "\n")
+                      for stream in (completed.stdout, completed.stderr))
     if completed.returncode:
-        detail = (completed.stderr + "\n" + completed.stdout).strip()
+        detail = (stderr + "\n" + stdout).strip()
         raise RuntimeError(f"{args[0]} exited {completed.returncode}\n{detail}")
-    return completed.stdout
+    return stdout
 
 
 def sha256(path):
@@ -189,7 +183,8 @@ def web_build(dist, *, machine_loop=False):
         env.update(TRUNK_CONFIG=str(config), TRUNK_BUILD_EXAMPLE="mixed_scene_wasm")
     else:
         env["TRUNK_BUILD_FEATURES"] = "game-fps-benchmark"
-    command(["pwsh", "-NoProfile", "-File", str(REPO_ROOT / "tools/web.ps1"), "build"], env=env)
+    command(["pwsh", "-NoProfile", "-File", str(REPO_ROOT / "tools/web.ps1"), "build"],
+            env=env, timeout=BUILD_TIMEOUT, windows_process_tree=True)
     module = dist / ("machine_loop_bg.wasm" if machine_loop else "gui_bg.wasm")
     return sha256(module)
 
@@ -323,8 +318,7 @@ def game_sample(result):
 def record_game_sample(row, report):
     row.setdefault("raw", []).append(report)
     sample = game_sample(report)
-    settings = {"renderer": report["renderer"], **report["display"],
-                "display_refresh_hz": report["display_refresh_hz"]}
+    settings = {"renderer": report["renderer"], **report["display"]}
     row.setdefault("samples", []).append(sample)
     if row["compatibility"].setdefault("display", settings) != settings:
         raise ValueError("Game display settings differed between sessions")
@@ -352,12 +346,20 @@ def load_reference(path):
     return data["cases"], None
 
 
-def reference_compatibility(case, compatibility):
-    if case in GAME_CASES and isinstance(compatibility, dict):
+def case_compatibility(case, compatibility, *, reference=False):
+    if case not in GAME_CASES or not isinstance(compatibility, dict):
+        return compatibility
+    display = compatibility.get("display")
+    if isinstance(display, dict) and "display_refresh_hz" in display:
+        # Earlier Game results and references recorded the monitor refresh rate.
+        compatibility = {**compatibility, "display": {
+            key: value for key, value in display.items() if key != "display_refresh_hz"
+        }}
+    if reference:
         workload = compatibility.get("workload")
         if isinstance(workload, dict) and "rom_sha256" in workload:
-            # The approved reference retains this digest as calibration provenance.
-            return {**compatibility, "workload": {
+            # Earlier Game references included this digest as calibration provenance.
+            compatibility = {**compatibility, "workload": {
                 key: value for key, value in workload.items() if key != "rom_sha256"
             }}
     return compatibility
@@ -385,7 +387,8 @@ def compare_case(case, row, reference, missing_reason=None, *, cap_warning=None)
             or not 0 <= tolerance < 1):
         return {**result, "verdict": "unverified", "reason": "Reference FPS or tolerance is invalid"}
     result.update(reference_fps=fps, tolerance=tolerance)
-    if reference_compatibility(case, reference.get("compatibility")) != row["compatibility"]:
+    if (case_compatibility(case, reference.get("compatibility"), reference=True)
+            != case_compatibility(case, row["compatibility"])):
         return {**result, "verdict": "unverified", "reason": "Reference settings are incompatible"}
     median = result["median_fps"]
     minimum, maximum = fps * (1 - tolerance), fps * (1 + tolerance)
@@ -444,64 +447,26 @@ def request_windows_game_focus(window):
     return user32.GetForegroundWindow() == window or bool(user32.SetForegroundWindow(window))
 
 
-def windows_refresh(window):
-    """Get the refresh rate of the monitor hosting this visible desktop window."""
-    import ctypes
-    from ctypes import wintypes
-
-    class MonitorInfo(ctypes.Structure):
-        _fields_ = [("size", wintypes.DWORD), ("monitor", wintypes.RECT),
-                    ("work", wintypes.RECT), ("flags", wintypes.DWORD),
-                    ("device", wintypes.WCHAR * 32)]
-
-    user32, gdi32 = ctypes.windll.user32, ctypes.windll.gdi32
-    user32.MonitorFromWindow.argtypes = (wintypes.HWND, wintypes.DWORD)
-    user32.MonitorFromWindow.restype = wintypes.HMONITOR
-    user32.GetMonitorInfoW.argtypes = (wintypes.HMONITOR, ctypes.POINTER(MonitorInfo))
-    gdi32.CreateDCW.argtypes = (wintypes.LPCWSTR, wintypes.LPCWSTR, wintypes.LPCWSTR, wintypes.LPVOID)
-    gdi32.CreateDCW.restype = wintypes.HDC
-    gdi32.GetDeviceCaps.argtypes = (wintypes.HDC, ctypes.c_int)
-    gdi32.DeleteDC.argtypes = (wintypes.HDC,)
-    monitor = user32.MonitorFromWindow(window, 2)  # MONITOR_DEFAULTTONEAREST
-    info = MonitorInfo(size=ctypes.sizeof(MonitorInfo))
-    if not monitor or not user32.GetMonitorInfoW(monitor, ctypes.byref(info)):
-        return None
-    dc = gdi32.CreateDCW("DISPLAY", info.device, None, None)
-    if not dc:
-        return None
-    try:
-        rate = gdi32.GetDeviceCaps(dc, 116)  # VREFRESH
-        return rate if rate > 1 else None
-    finally:
-        gdi32.DeleteDC(dc)
-
-
-def native_game(executable, directory, refresh_override, rom):
+def native_game(executable, directory, rom):
     output = directory / "result.json"
     log = directory / "application.log"
     directory.mkdir()
     env = {**os.environ, "AMIGA_GAME_FPS_ROM": str(rom), "AMIGA_GAME_FPS_ADF": str(ADF),
            "AMIGA_GAME_FPS_RESULT": str(output)}
-    refresh = refresh_override
     with log.open("wb") as stream, subprocess.Popen(
         [executable], cwd=REPO_ROOT, env=env, stdout=stream, stderr=subprocess.STDOUT,
     ) as process:
         try:
             deadline = time.monotonic() + SAMPLE_TIMEOUT
             if sys.platform == "win32":
-                window = None
                 startup_deadline = time.monotonic() + 5
                 while process.poll() is None and time.monotonic() < startup_deadline:
-                    if window is None:
-                        window = windows_game_window(process.pid)
-                        if window is not None and not request_windows_game_focus(window):
+                    window = windows_game_window(process.pid)
+                    if window is not None:
+                        if not request_windows_game_focus(window):
                             print("[INFO] Bring the Amiga Studio Game window to the foreground.",
                                   flush=True)
-                    if window is not None:
-                        if refresh is None:
-                            refresh = windows_refresh(window)
-                        if refresh is not None:
-                            break
+                        break
                     time.sleep(0.05)
             code = process.wait(timeout=max(0, deadline - time.monotonic()))
         except subprocess.TimeoutExpired as error:
@@ -516,13 +481,7 @@ def native_game(executable, directory, refresh_override, rom):
     if code or not output.is_file():
         raise RuntimeError(f"Game application exited {code} without a result\n"
                            f"{log.read_text(encoding='utf-8', errors='replace')}")
-    report = json.loads(output.read_text(encoding="utf-8"))
-    if report.get("error"):
-        return report
-    if refresh is None:
-        raise ValueError(f"Native display refresh rate is unavailable. Supply {REFRESH_ENV}.")
-    report["display_refresh_hz"] = refresh
-    return report
+    return json.loads(output.read_text(encoding="utf-8"))
 
 
 def install_browser_media(page, url, rom):
@@ -584,35 +543,14 @@ def browser_game(url, browser, rom):
             return result
         if errors or not any(url.endswith("/machine_worker.js") for url in workers):
             raise RuntimeError(f"Browser Game worker or page failed. Workers {workers}. Errors {errors}.")
-        telemetry = page.evaluate("""async () => {
+        renderer = page.evaluate("""() => {
             const canvas = document.getElementById('amiga_canvas');
             const gl = canvas.getContext('webgl2') ?? canvas.getContext('webgl');
             if (!gl) throw new Error('Game canvas has no WebGL renderer');
             const info = gl.getExtension('WEBGL_debug_renderer_info');
-            const renderer = gl.getParameter(info ? info.UNMASKED_RENDERER_WEBGL : gl.RENDERER);
-            const intervals = [];
-            let previous;
-            const read = timestamp => {
-                if (previous !== undefined) intervals.push(timestamp - previous);
-                previous = timestamp;
-            };
-            await Promise.race([
-                (async () => {
-                    for (let frame = 0; frame <= 24; frame++) {
-                        read(await new Promise(requestAnimationFrame));
-                    }
-                })(),
-                new Promise((_, reject) => setTimeout(() => reject(new Error('Display cadence timed out')), 3000)),
-            ]);
-            intervals.sort((a, b) => a - b);
-            const median = (intervals[11] + intervals[12]) / 2;
-            return {renderer, refresh_hz: Math.round(1000 / median), raf_median_ms: median};
+            return gl.getParameter(info ? info.UNMASKED_RENDERER_WEBGL : gl.RENDERER);
         }""")
-        if not positive_number(telemetry["refresh_hz"]):
-            raise ValueError("Browser display cadence is unavailable")
-        result["renderer"] += f": {telemetry['renderer']}"
-        result["display_refresh_hz"] = telemetry["refresh_hz"]
-        result["raf_median_ms"] = telemetry["raf_median_ms"]
+        result["renderer"] += f": {renderer}"
         return result
     finally:
         page.close()
@@ -667,8 +605,7 @@ def measure(row, case, host, directory, settings, native):
         row["artifact_sha256"] = sha256(Path(executable))
         compatibility["build"]["features"] = ["game-fps-benchmark"]
         for index in range(SERIES):
-            report = native_game(executable, directory / f"game-{index}", settings.native_refresh_hz,
-                                 settings.kickstart_rom)
+            report = native_game(executable, directory / f"game-{index}", settings.kickstart_rom)
             record_game_sample(row, report)
     else:
         row["raw"] = native_bench()

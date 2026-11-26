@@ -49,7 +49,6 @@ def commit_inventory():
     python = sys.executable
     checks = 'tools/verification/checks'
     coverage = 'tools/verification/coverage_report.py'
-    shell = 'powershell' if os.name == 'nt' else 'pwsh'
     groups = [
         ('Preflight', 'Obsidian Frontmatter', [python, f'{checks}/check_obsidian_frontmatter.py']),
         ('Preflight', 'Formatting', ['cargo', 'fmt', '--all', '--', '--check']),
@@ -57,7 +56,7 @@ def commit_inventory():
         ('Preflight', 'Hardware Quality', [python, f'{checks}/audit_hardware_quality.py']),
         ('Preflight', 'Code Quality', [python, f'{checks}/audit_code_quality.py']),
         ('Build checks', 'Clippy Invariants', [python, f'{checks}/check_clippy_policy.py']),
-        ('Build checks', 'WebAssembly build', [shell, '-NoProfile', '-File', 'tools/web.ps1', 'build']),
+        ('Build checks', 'WebAssembly build', ['pwsh', '-NoProfile', '-File', 'tools/web.ps1', 'build']),
         ('Coverage', 'Prepare coverage report', [python, coverage, '--prepare']),
         ('Coverage', 'Reset coverage counters', ['cargo', 'llvm-cov', 'clean', '--profraw-only']),
         ('Coverage', 'All ordinary crate tests',
@@ -197,7 +196,7 @@ class SelectionTests(unittest.TestCase):
         web = selected('check web')
         self.assertEqual(len(web), 1)
         self.assertEqual(web[0][0], 'WebAssembly build')
-        self.assertEqual(web[0][1][-4:], ['-NoProfile', '-File', 'tools/web.ps1', 'build'])
+        self.assertEqual(web[0][1], ['pwsh', '-NoProfile', '-File', 'tools/web.ps1', 'build'])
         for changes in ([], ['docs/testing.md'], ['crates/gui/src/app.rs'], ['Cargo.toml']):
             with self.subTest(changes=changes):
                 commands = selected('commit', changes)
@@ -691,8 +690,7 @@ class ExecutionTests(unittest.TestCase):
 
     def test_fps_preview_keeps_private_settings_inherited_and_runs_nothing(self):
         results = self.root / 'fps-check'
-        private = {'AMIGA_FPS_BROWSER_EXECUTABLE': 'private browser path',
-                   'AMIGA_FPS_NATIVE_REFRESH_HZ': '123.45'}
+        private = {'AMIGA_FPS_BROWSER_EXECUTABLE': 'private browser path'}
         with patch.dict(os.environ, private), patch.object(verify, 'execute_command') as execute, \
              contextlib.redirect_stdout(io.StringIO()) as output:
             self.assertEqual(verify.main(['test', 'fps', '--results-dir', str(results), '--plan']), 0)
@@ -744,8 +742,7 @@ class ExecutionTests(unittest.TestCase):
             with (
                 self.subTest(issue=issue, input_start=contents[:1] if contents else None),
                 patch.dict(os.environ, {'AMIGA_FPS_KICKSTART_ROM': str(decoy),
-                                        'AMIGA_FPS_BROWSER_EXECUTABLE': '',
-                                        'AMIGA_FPS_NATIVE_REFRESH_HZ': '60'}),
+                                        'AMIGA_FPS_BROWSER_EXECUTABLE': ''}),
                 patch.object(fps, 'REPO_ROOT', self.root),
                 patch.object(fps, 'run_measurement', return_value=0) as benchmark,
                 patch.object(verify, 'execute_command', side_effect=substitute) as execute,

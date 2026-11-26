@@ -6,13 +6,13 @@ use serde::Serialize;
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::{Duration, Instant};
 
-pub(super) const BOOT_SPEED: f64 = 1.0;
-pub(super) const DOUBLE_SPEED: f64 = 2.0;
-pub(super) const MEASUREMENT_SPEED: f64 = 4.0;
+pub const BOOT_SPEED: f64 = 1.0;
+pub const DOUBLE_SPEED: f64 = 2.0;
+pub const MEASUREMENT_SPEED: f64 = 4.0;
 
 #[cfg(not(target_arch = "wasm32"))]
 #[derive(Debug, Default)]
-pub(super) struct StartupFocus {
+pub struct StartupFocus {
     focused_since: Option<Instant>,
 }
 
@@ -29,7 +29,7 @@ impl StartupFocus {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
-pub(super) struct Progress {
+pub struct Progress {
     pub(super) fields: u32,
     pub(super) work_loops: u32,
     pub(super) fault: u32,
@@ -49,7 +49,7 @@ impl Progress {
 }
 
 #[derive(Debug, Default)]
-pub(super) struct Boot {
+pub struct Boot {
     first: Option<Progress>,
 }
 
@@ -71,7 +71,7 @@ impl Boot {
     }
 }
 
-pub(super) fn validate_session(
+pub fn validate_session(
     generation: Option<u64>,
     current_generation: u64,
     focused: bool,
@@ -85,7 +85,7 @@ pub(super) fn validate_session(
     Ok(())
 }
 
-pub(super) fn validate_running(status: HostStatus) -> Result<(), String> {
+pub fn validate_running(status: HostStatus) -> Result<(), String> {
     if status.shutdown || status.halted {
         return Err("Machine owner stopped unexpectedly".into());
     }
@@ -95,7 +95,7 @@ pub(super) fn validate_running(status: HostStatus) -> Result<(), String> {
     Ok(())
 }
 
-pub(super) fn validate_game_view(in_game: bool, pause_requested: bool) -> Result<(), String> {
+pub fn validate_game_view(in_game: bool, pause_requested: bool) -> Result<(), String> {
     if !in_game {
         return Err("The session left Game view".into());
     }
@@ -105,7 +105,7 @@ pub(super) fn validate_game_view(in_game: bool, pause_requested: bool) -> Result
     Ok(())
 }
 
-pub(super) fn validate_speed(actual: f64, expected: f64) -> Result<(), String> {
+pub fn validate_speed(actual: f64, expected: f64) -> Result<(), String> {
     if actual != expected {
         return Err(format!(
             "Expected Game speed {expected}×, observed {actual}×"
@@ -115,7 +115,7 @@ pub(super) fn validate_speed(actual: f64, expected: f64) -> Result<(), String> {
 }
 
 #[derive(Debug)]
-pub(super) struct SpeedChange {
+pub struct SpeedChange {
     previous_speed: f64,
     pub(super) target_speed: f64,
     acknowledged: bool,
@@ -147,7 +147,7 @@ impl SpeedChange {
 }
 
 #[derive(Debug, PartialEq, Serialize)]
-pub(super) struct Display {
+pub struct Display {
     viewport_points: [f32; 2],
     pixels_per_point: f32,
     screen_scale: ScreenScale,

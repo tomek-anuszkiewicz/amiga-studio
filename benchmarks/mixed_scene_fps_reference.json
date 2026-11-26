@@ -2,17 +2,16 @@
   "schema": 2,
   "calibration": {
     "source": {
-      "revision": "f23d586814de0530189f32563b98cee717507d31",
-      "worktree_sha256": "ae1efa4a4ffde8f3333b363902645f8f59d0f19ad5d5f22bd04d58d595129117",
+      "revision": "885494c5093f65ca2a9a684535754fea3b2da763",
+      "worktree_sha256": "2722af68f87c2b546465664827309043f29da37c3a084afa9e8a111b2eebadb6",
       "dirty": true
     },
-    "report_sha256": "0f8a9bd796c7ab67712b169f438e0c6f537272e8d17c94d32266c734f4a7c278",
-    "method": "Unrounded median of three release samples per case.",
-    "desktop_repeat": "The initial desktop window lost focus before timing. Only FPS-03 was repeated, with the same source, host settings and executable."
+    "report_sha256": "a3d21c9cecece7d2e406b313aadb54a50c959c60ea0ca3bb47e86a277d4ca067",
+    "method": "Unrounded median of three release samples per case."
   },
   "cases": {
     "FPS-01": {
-      "reference_fps": 103.26408300504677,
+      "reference_fps": 117.56075539838989,
       "tolerance": 0.05,
       "compatibility": {
         "workload": {
@@ -51,24 +50,24 @@
         "samples": [
           {
             "count": 120,
-            "seconds": 1.1620691,
-            "fps": 103.26408300504677
+            "seconds": 1.0207488,
+            "fps": 117.56075539838989
           },
           {
             "count": 120,
-            "seconds": 1.1721463,
-            "fps": 102.37629893128528
+            "seconds": 1.0219926000000001,
+            "fps": 117.41767993232044
           },
           {
             "count": 120,
-            "seconds": 1.0736744000000003,
-            "fps": 111.76572711429087
+            "seconds": 1.0047036,
+            "fps": 119.43821043340543
           }
         ]
       }
     },
     "FPS-02": {
-      "reference_fps": 86.32348286472387,
+      "reference_fps": 90.87398050741837,
       "tolerance": 0.05,
       "compatibility": {
         "workload": {
@@ -121,25 +120,25 @@
         "samples": [
           {
             "count": 120,
-            "seconds": 1.3901200000010432,
-            "fps": 86.32348286472387
+            "seconds": 1.382039999999106,
+            "fps": 86.82816705744959
           },
           {
             "count": 120,
-            "seconds": 1.4102649999987333,
-            "fps": 85.09039081315056
+            "seconds": 1.3205100000016394,
+            "fps": 90.87398050741837
           },
           {
             "count": 120,
-            "seconds": 1.3680700000002979,
-            "fps": 87.71480991467824
+            "seconds": 1.2994350000023847,
+            "fps": 92.34782809434853
           }
         ],
-        "artifact_sha256": "16b05fd9834588db59dc8a0953d5dc2b3cfe03ca3cb1ea27ee0d57397daabf41"
+        "artifact_sha256": "d76c4b07449f69f76c734a1ccd2facc724fa3e466108c9a6cb091288dc1c7eb4"
       }
     },
     "FPS-03": {
-      "reference_fps": 97.49774975193571,
+      "reference_fps": 103.8790725220497,
       "tolerance": 0.05,
       "compatibility": {
         "workload": {
@@ -149,7 +148,6 @@
           "memory_mib": 1,
           "model": "A500",
           "boot_mode": "manual-setup-df0",
-          "rom_sha256": "ee05862d8102a08436ac4056da7d549db31625c7d47b24dfb7b3c9a5c113ca53",
           "adf_sha256": "c1b90bbc7bbf6b63eef2b03013943d55dc6cea611031c8371f2b9e2218bce024"
         },
         "host": {
@@ -186,45 +184,44 @@
           "viewport_points": [
             1600.0,
             840.0
-          ],
-          "display_refresh_hz": 120
+          ]
         }
       },
       "calibration": {
         "samples": [
           {
-            "end_field": 1230,
-            "seconds": 10.008142199999998,
+            "end_field": 1281,
+            "seconds": 10.0041063,
             "speed": 4.0,
-            "start_field": 249,
-            "warmup_start_field": 217,
-            "count": 981,
-            "fps": 98.02019000089749
+            "start_field": 254,
+            "warmup_start_field": 221,
+            "count": 1027,
+            "fps": 102.65784560885763
           },
           {
-            "end_field": 1208,
-            "seconds": 10.0078101,
+            "end_field": 1295,
+            "seconds": 10.0035873,
             "speed": 4.0,
-            "start_field": 249,
-            "warmup_start_field": 217,
-            "count": 959,
-            "fps": 95.82515959210697
+            "start_field": 254,
+            "warmup_start_field": 221,
+            "count": 1041,
+            "fps": 104.06266959853492
           },
           {
-            "end_field": 1224,
-            "seconds": 10.0002308,
+            "end_field": 1292,
+            "seconds": 10.0020146,
             "speed": 4.0,
-            "start_field": 249,
-            "warmup_start_field": 217,
-            "count": 975,
-            "fps": 97.49774975193571
+            "start_field": 253,
+            "warmup_start_field": 221,
+            "count": 1039,
+            "fps": 103.8790725220497
           }
         ],
-        "artifact_sha256": "6bbf097ceadf329e3b6c550d2ca77aafd3adfe9a18e9c55ad591142477a8d24b"
+        "artifact_sha256": "79bf4f449a6f6a721a888bc41cefcc3bf50c058fccff21c5f8ce830269f039bd"
       }
     },
     "FPS-04": {
-      "reference_fps": 76.59923400766279,
+      "reference_fps": 79.76035910153604,
       "tolerance": 0.05,
       "compatibility": {
         "workload": {
@@ -234,7 +231,6 @@
           "memory_mib": 1,
           "model": "A500",
           "boot_mode": "manual-setup-df0",
-          "rom_sha256": "ee05862d8102a08436ac4056da7d549db31625c7d47b24dfb7b3c9a5c113ca53",
           "adf_sha256": "c1b90bbc7bbf6b63eef2b03013943d55dc6cea611031c8371f2b9e2218bce024"
         },
         "host": {
@@ -285,41 +281,40 @@
           "viewport_points": [
             1587.1875,
             907.1875
-          ],
-          "display_refresh_hz": 120
+          ]
         }
       },
       "calibration": {
         "samples": [
           {
-            "end_field": 972,
-            "seconds": 10.007689999999478,
+            "end_field": 1055,
+            "seconds": 10.003804999999701,
             "speed": 4.0,
-            "start_field": 249,
-            "warmup_start_field": 217,
-            "count": 723,
-            "fps": 72.24444402255043
+            "start_field": 253,
+            "warmup_start_field": 220,
+            "count": 802,
+            "fps": 80.169495506962
           },
           {
-            "end_field": 1032,
-            "seconds": 10.006675000000744,
+            "end_field": 1050,
+            "seconds": 10.004969999998808,
             "speed": 4.0,
-            "start_field": 249,
-            "warmup_start_field": 217,
-            "count": 783,
-            "fps": 78.24776961377698
+            "start_field": 252,
+            "warmup_start_field": 220,
+            "count": 798,
+            "fps": 79.76035910153604
           },
           {
-            "end_field": 1015,
-            "seconds": 10.000099999999627,
+            "end_field": 1047,
+            "seconds": 10.004080000001938,
             "speed": 4.0,
-            "start_field": 249,
-            "warmup_start_field": 217,
-            "count": 766,
-            "fps": 76.59923400766279
+            "start_field": 253,
+            "warmup_start_field": 220,
+            "count": 794,
+            "fps": 79.36761801183579
           }
         ],
-        "artifact_sha256": "24cce8ebcc8ed5a539fa7be5d1345b5387193e40d751f74c623809d9c90e5d6c"
+        "artifact_sha256": "04c0471d722906fd070a1d30193695904970d708b42f3ca8c2f0620fed2a6c89"
       }
     }
   }

@@ -3,7 +3,7 @@
 This reference lists the test commands and explains how the verifier selects
 checks and reports their results. For an introduction to the evidence each kind
 of test provides, read the [testing overview](../../docs/testing.md). Run commands
-from the repository root. To list every command, invoke
+in PowerShell from the repository root. To list every command, invoke
 `python tools/verification/verify.py` without arguments or with `--help`. To preview
 the commands for a selection, use `--plan`.
 
@@ -216,19 +216,21 @@ workspace manifests or the browser build pipeline, include
 [Implement Task](../../.agents/skills/TA-WF-Main-implement-task/SKILL.md),
 the runner uses a distribution built on the current inputs for a selected
 browser interaction test. If it needs to build that distribution, the runner
-runs `./tools/web.ps1 build` as part of the test assignment. Implement Task
-defers standalone gates to final verification when selected.
+runs `./tools/web.ps1 build` as part of the test assignment.
+Implement Task defers standalone gates to final verification when selected.
 
 Every `commit` profile selects the same `WebAssembly build` gate after
-preflight and before coverage. The gate invokes `tools/web.ps1 build`, which
-processes assets through Trunk and uses the production shared memory flags.
+preflight and before coverage. The gate invokes
+`pwsh -NoProfile -File tools/web.ps1 build`, which processes assets through Trunk
+and uses the production shared memory flags.
 The launcher sets `CARGO_BUILD_WARNINGS=deny`, so Cargo lint warnings such as
 unused workspace dependencies fail both ordinary web builds and the gate.
 This does not change the centrally reviewed Clippy permissions. Non-lint Cargo
 warnings are outside this Cargo setting's scope.
 
-The build requires Trunk, PowerShell, and nightly Rust with `rust-src` and the
-`wasm32-unknown-unknown` target, as described in the [launch instructions](../../README.md).
+The browser build requires Trunk and nightly Rust with `rust-src` and the
+`wasm32-unknown-unknown` target. The automated gate also needs `pwsh` on the
+executable search path. [Browser build setup](../../README.md#web-browser)
 Missing tools or a failed build fail the selected verification. Every invocation
 executes its selected build/check commands in the current environment.
 
@@ -345,7 +347,8 @@ finalization; the launcher prints build/reuse time separately.
 ## CPU benchmark entry point
 
 The active CPU measurement catalog is [benchmarks/m68k](../../benchmarks/m68k/README.md).
-The command `tools/bootstrap/bootstrap.ps1 -Assembler` installs the pinned assembler.
+The command `./tools/bootstrap/bootstrap.ps1 -Assembler`
+installs the pinned assembler.
 Install the monitor dependency with `python -m pip install -r tools/verification/requirements.txt`.
 The decoder inventory remains available for the separate coverage audit.
 
@@ -469,10 +472,11 @@ Place your own 256 KiB (262144-byte) Kickstart 1.3 ROM at
 `tests/kickstarts/kickstart-1.3.rom` in the checkout. Git ignores
 `/tests/kickstarts/`. A missing, unreadable or wrong-size file fails the group
 before it starts a benchmark. The desktop and browser Game cases require
-foreground access and compatible display settings. Run `test fps` to measure
-just this group. The verifier shows each measured case verdict and the report
-path. The group passes when all four comparisons pass in the current invocation.
-[Optional browser and refresh settings](../../tests/mixed_scene/README.md#run-the-fps-regression-cases)
+foreground access and a renderer, viewport and scale that match the reference.
+Run `test fps` to measure just this group. The verifier shows each measured case
+verdict and the report path. The group passes when all four comparisons pass in
+the current invocation.
+[Mixed Scene requirements and browser selection](../../tests/mixed_scene/README.md#run-the-fps-regression-cases)
 
 The milestone profile first scans for candidate unused public functions in every
 Cargo workspace package. It starts full SingleStepTests only after every probe
@@ -634,14 +638,9 @@ adds no separate CPU assertion. See the callback interface's timing and
 electrical signal limits in the
 [CPU verification specification](../../Obsidian/Amiga/Design/Verification/CPU%20SingleStepTests.md#12-input-scope-and-complete-verification).
 
-- **PowerShell (Windows):**
-  ```powershell
-  python tools/verification/verify.py test runner singlestep full
-  ```
-- **Bash / Linux / macOS:**
-  ```bash
-  python tools/verification/verify.py test runner singlestep full
-  ```
+```powershell
+python tools/verification/verify.py test runner singlestep full
+```
 
 #### C. Custom Sample Limit (`SINGLESTEP_LIMIT`)
 To evaluate an arbitrary sample size (e.g. 200 or 500 test cases per opcode):
@@ -649,8 +648,8 @@ To evaluate an arbitrary sample size (e.g. 200 or 500 test cases per opcode):
 python tools/verification/verify.py test runner singlestep sample 500
 ```
 
-#### D. Automated Archive Decompression (`tools/bootstrap/bootstrap.ps1 -Sources`)
-Running `.\tools\bootstrap\bootstrap.ps1 -Sources` automatically finds compressed
+#### D. Automated Archive Decompression (`./tools/bootstrap/bootstrap.ps1 -Sources`)
+Running `./tools/bootstrap/bootstrap.ps1 -Sources` finds compressed
 archives (`*.json.gz`, `*.gz`, or `.zip`) under `ref_src/SingleStepTests-680x0/`.
 It uses native .NET decompression to produce native `.json` files in `68000/v1/`.
 Repeating the operation leaves the same result, and it has zero external dependencies.
@@ -750,7 +749,7 @@ results do not establish a fresh execution.
 External source provisioning remains available:
 
 ```powershell
-.\tools\bootstrap\bootstrap.ps1 -Sources
+./tools/bootstrap/bootstrap.ps1 -Sources
 ```
 
 Provisioning does not restore execution or certify a capture comparison.

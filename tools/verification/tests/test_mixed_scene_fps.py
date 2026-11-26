@@ -8,14 +8,18 @@ import json
 import math
 import os
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
+from textwrap import dedent
+import time
 import unittest
 from unittest.mock import MagicMock, Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import mixed_scene_fps as fps
 import verify
+from worker_processes import WindowsJob
 from mixed_scene_fps import (
     CASES,
     GAME_CASES,
@@ -44,8 +48,7 @@ def game_run(count=120, seconds=10.5):
         "guest_after": {"cck": 500, "field_number": 1010 + count,
                         "fields": 4, "work_loops": 40, "fault": 0},
         "renderer": "fixture renderer",
-        "display": {"pixels_per_point": 1.0},
-        "display_refresh_hz": 60,
+        "display": {"pixels_per_point": 1.0, "viewport_points": [800, 600]},
     }
 
 
@@ -219,41 +222,67 @@ class MixedSceneFpsTests(unittest.TestCase):
             disk.write_bytes(b"changed disk fixture")
             self.assertNotEqual(game_media_identity()["adf_sha256"], media["adf_sha256"])
 
-    def test_only_the_historical_game_rom_digest_is_ignored(self):
+    def test_historical_game_refresh_and_rom_digest_are_ignored_for_comparison(self):
         approved_bytes = fps.REFERENCE.read_bytes()
         approved = json.loads(approved_bytes)
         self.assertEqual(approved["schema"], 2)
         self.references = approved["cases"]
+        for key in GAME_CASES:
+            compatibility = self.references[key]["compatibility"]
+            compatibility["workload"]["rom_sha256"] = hashlib.sha256(b"historical ROM fixture").hexdigest()
+            compatibility["display"]["display_refresh_hz"] = 120
         for key, reference in self.references.items():
             rate = reference["reference_fps"]
             row = running_case(key, (rate, rate, rate))
             row["compatibility"] = deepcopy(reference["compatibility"])
             if key in GAME_CASES:
                 del row["compatibility"]["workload"]["rom_sha256"]
+                del row["compatibility"]["display"]["display_refresh_hz"]
             self.cases[key] = row
 
-        self.path.write_bytes(approved_bytes)
+        historical_bytes = self.save_reference()
         original_reference = deepcopy(self.references)
         rows, passed = self.compare()
         self.assertTrue(passed)
         self.assertNotIn("rom_sha256", json.dumps(rows))
+        self.assertNotIn("display_refresh_hz", json.dumps(rows))
         with patch.object(fps, "load_reference", return_value=(self.references, None)):
             self.assertEqual(self.compare(), (rows, True))
             self.assertEqual(self.compare(), (rows, True))
         self.assertEqual(self.references, original_reference)
-        self.assertEqual(self.path.read_bytes(), approved_bytes)
+        self.assertEqual(self.path.read_bytes(), historical_bytes)
         self.assertEqual(fps.REFERENCE.read_bytes(), approved_bytes)
 
         for key in GAME_CASES:
             del self.references[key]["compatibility"]["workload"]["rom_sha256"]
+            del self.references[key]["compatibility"]["display"]["display_refresh_hz"]
         self.save_reference()
         self.assertEqual(self.compare(), (rows, True))
+
+        # An earlier report can be compared again even if its refresh rate
+        # differs from the reference or the reference no longer has one.
+        for key in GAME_CASES:
+            self.cases[key]["compatibility"]["display"]["display_refresh_hz"] = 60
+        for references in (self.references, original_reference):
+            self.references = references
+            self.save_reference()
+            compared, passed = self.compare()
+            self.assertTrue(passed)
+            for key in GAME_CASES:
+                self.assertEqual(compared[key]["change_percent"], rows[key]["change_percent"])
+        for key in GAME_CASES:
+            del self.cases[key]["compatibility"]["display"]["display_refresh_hz"]
 
         for key, path, update in (
             ("FPS-03", ("workload", "adf_sha256"), "different ADF"),
             ("FPS-04", ("workload", "boot_mode"), "raw-program"),
             ("FPS-03", ("workload", "sha256"), "different program"),
             ("FPS-04", ("sampling", "speed"), 2),
+            ("FPS-03", ("display", "renderer"), "different renderer"),
+            ("FPS-04", ("display", "viewport_points"), [160, 120]),
+            ("FPS-03", ("display", "pixels_per_point"), 1.75),
+            ("FPS-04", ("display_refresh_hz",), 60),
+            ("FPS-02", ("display",), {"display_refresh_hz": 60}),
             ("FPS-03", ("rom_sha256",), "digest at the wrong level"),
             ("FPS-02", ("workload", "rom_sha256"), "digest in an uncapped case"),
         ):
@@ -270,6 +299,18 @@ class MixedSceneFpsTests(unittest.TestCase):
                 self.assertIsNone(compared[key]["change_percent"])
                 self.assertTrue(all(row["verdict"] == "passed" for case, row in compared.items() if case != key))
                 self.assertEqual(self.path.read_bytes(), content)
+
+    def test_game_sessions_still_require_matching_renderer_viewport_and_scale(self):
+        for field, updated in (("renderer", "another renderer"), ("viewport_points", [1024, 768]),
+                               ("pixels_per_point", 2.0)):
+            with self.subTest(field=field):
+                row = {"compatibility": {}}
+                record_game_sample(row, game_run())
+                changed = game_run()
+                dest = changed if field == "renderer" else changed["display"]
+                dest[field] = updated
+                with self.assertRaisesRegex(ValueError, "Game display settings differed between sessions"):
+                    record_game_sample(row, changed)
 
     def test_missing_adf_keeps_game_rows_unverified_without_building(self):
         disk = self.path.with_name("missing-scene.adf")
@@ -357,6 +398,29 @@ class MixedSceneFpsTests(unittest.TestCase):
         self.assertNotIn(rom.name, script)
         self.assertNotIn("test ROM", script)
 
+    def test_browser_game_records_renderer_and_display_without_sampling_refresh(self):
+        sample = game_run()
+        browser, page = Mock(), Mock()
+        browser.new_page.return_value = page
+        page.evaluate.side_effect = [False, json.dumps(sample), "GPU"]
+
+        def load(url, **_):
+            handlers = dict(call.args for call in page.on.call_args_list)
+            handlers["worker"](Mock(url=url + "machine_worker.js"))
+
+        page.goto.side_effect = load
+        with patch.object(fps, "install_browser_media"):
+            report = fps.browser_game("http://localhost/", browser, self.path)
+        self.assertEqual(report, {**sample, "renderer": f"{sample['renderer']}: GPU"})
+        page.bring_to_front.assert_called_once_with()
+        page.wait_for_function.assert_called_once()
+        self.assertIn("window.amigaGameFpsLostFocus", page.wait_for_function.call_args.args[0])
+        self.assertIn("document.hidden", page.add_init_script.call_args.args[0])
+        renderer_script = page.evaluate.call_args.args[0]
+        self.assertIn("WEBGL_debug_renderer_info", renderer_script)
+        self.assertNotIn("requestAnimationFrame", renderer_script)
+        page.close.assert_called_once_with()
+
     def supply_rom(self, root=None, contents=bytes(ROM_BYTES)):
         path = (root if root is not None else self.path.parent) / ROM_PATH
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -404,12 +468,11 @@ class MixedSceneFpsTests(unittest.TestCase):
         rom = self.supply_rom()
         browser = self.path.with_name("private browser.exe").resolve()
         settings = {"AMIGA_FPS_BROWSER_EXECUTABLE": str(browser),
-                    "AMIGA_FPS_NATIVE_REFRESH_HZ": "59.94"}
+                    "AMIGA_FPS_NATIVE_REFRESH_HZ": "invalid"}
 
         def fixture(row, case, host, directory, runtime, native):
             self.assertEqual(runtime.kickstart_rom, rom)
             self.assertEqual(runtime.browser_executable, browser)
-            self.assertEqual(runtime.native_refresh_hz, 59.94)
             row.update(deepcopy(self.cases[case]))
 
         normal = self.cases["FPS-03"]
@@ -437,6 +500,8 @@ class MixedSceneFpsTests(unittest.TestCase):
                 self.assertIn(f"[INFO] Mixed Scene FPS report: {report}", console)
                 self.assertNotIn(str(rom), console + content)
                 self.assertNotIn(str(browser), console + content)
+                for name in ("display_refresh_hz", "raf_median_ms", "AMIGA_FPS_NATIVE_REFRESH_HZ"):
+                    self.assertNotIn(name, content + console)
                 self.assertTrue(any((results / "verify").glob("*.log")))
                 for key, row in result["cases"].items():
                     self.assertRegex(console, rf"(?m)^\[INFO\] {key} .* {row['verdict']}$")
@@ -510,7 +575,6 @@ class MixedSceneFpsTests(unittest.TestCase):
 
         def fixture(row, case, _host, _directory, runtime, _native):
             row.update(deepcopy(self.cases[case]))
-            self.assertIsNone(runtime.native_refresh_hz)
             if case == "FPS-03":
                 row["raw"][0]["error"] = f"Cannot open {runtime.kickstart_rom}"
             if case == "FPS-04":
@@ -528,14 +592,6 @@ class MixedSceneFpsTests(unittest.TestCase):
             self.assertNotIn(str(path), content + console)
             self.assertNotIn(path.as_posix(), content + console)
 
-        for invalid in ("", "-1", "0", "NaN", "inf", "invalid"):
-            with self.subTest(invalid=invalid), patch.object(fps, "measure") as measured:
-                code, console = self.run_public_fps({**supplied, "AMIGA_FPS_NATIVE_REFRESH_HZ": invalid})
-                measured.assert_not_called()
-                self.assertEqual(code, 1)
-                self.assertIn("AMIGA_FPS_NATIVE_REFRESH_HZ must be a positive finite number", console)
-                self.assertEqual(report.read_text(encoding="utf-8"), content)
-
     def test_browser_defaults_to_playwright_chromium_when_unset(self):
         browser = self.path.with_name("private browser.exe").resolve()
         self.supply_rom()
@@ -550,33 +606,31 @@ class MixedSceneFpsTests(unittest.TestCase):
                 playwright.chromium.launch.assert_called_once()
                 self.assertEqual(playwright.chromium.launch.call_args.kwargs["executable_path"], expected)
 
-    def test_native_defaults_to_monitor_detection_when_refresh_is_unset(self):
+    def test_native_game_requests_foreground_and_returns_the_application_report(self):
         root = self.path.parent
         rom = self.supply_rom()
+        sample = game_run()
 
         def launch(_command, *, env, **_):
-            Path(env["AMIGA_GAME_FPS_RESULT"]).write_text("{}", encoding="utf-8")
+            Path(env["AMIGA_GAME_FPS_RESULT"]).write_text(json.dumps(sample), encoding="utf-8")
             process = MagicMock()
             process.__enter__.return_value = process
             process.poll.return_value = None
             process.wait.return_value = 0
             return process
 
-        for settings, expected in (({}, 60), ({"AMIGA_FPS_NATIVE_REFRESH_HZ": "59.94"}, 59.94)):
-            with (
-                self.subTest(settings=settings),
-                patch.dict(os.environ, settings, clear=True),
-                patch.object(fps, "REPO_ROOT", root),
-                patch.object(fps.sys, "platform", "win32"),
-                patch.object(fps.subprocess, "Popen", side_effect=launch),
-                patch.object(fps, "windows_game_window", return_value=1),
-                patch.object(fps, "request_windows_game_focus", return_value=True),
-                patch.object(fps, "windows_refresh", return_value=60) as detect,
-            ):
-                refresh = fps.load_settings().native_refresh_hz
-                report = fps.native_game("fixture", root / str(expected), refresh, rom)
-                self.assertEqual(report["display_refresh_hz"], expected)
-                self.assertEqual(detect.call_count, int(not settings))
+        with (
+            patch.object(fps, "REPO_ROOT", root),
+            patch.object(fps.sys, "platform", "win32"),
+            patch.object(fps.subprocess, "Popen", side_effect=launch),
+            patch.object(fps, "windows_game_window", return_value=1),
+            patch.object(fps, "request_windows_game_focus", return_value=False) as focus,
+            contextlib.redirect_stdout(io.StringIO()) as console,
+        ):
+            report = fps.native_game("fixture", root / "Game result", rom)
+        self.assertEqual(report, sample)
+        focus.assert_called_once_with(1)
+        self.assertIn("Bring the Amiga Studio Game window to the foreground", console.getvalue())
 
     def test_source_identity_excludes_only_the_current_untracked_command_log(self):
         root = self.path.parent.resolve()
@@ -612,3 +666,131 @@ class MixedSceneFpsTests(unittest.TestCase):
                 fps.run_measurement(rom, settings, fps.private_path_pattern(settings))
         measured.assert_not_called()
         self.assertEqual(rom.read_bytes(), contents)
+
+
+@unittest.skipUnless(os.name == "nt", "Windows job ownership requires Windows")
+class WindowsWebBuildTests(unittest.TestCase):
+    def test_command_preserves_stdout_and_nonzero_diagnostics(self):
+        script = ("import os, sys; os.write(1, b'out\\r\\n'); "
+                  "os.write(2, b'err\\xff\\r\\n'); sys.exit(int(sys.argv[1]))")
+        args = [sys.executable, "-c", script]
+        self.assertEqual(fps.command([*args, "0"], windows_process_tree=True, timeout=10), "out\n")
+        with self.assertRaises(RuntimeError) as failure:
+            fps.command([*args, "23"], windows_process_tree=True, timeout=10)
+        self.assertEqual(str(failure.exception), f"{sys.executable} exited 23\nerr\ufffd\n\nout")
+
+    def test_job_assignment_failure_keeps_the_command_gated(self):
+        with tempfile.TemporaryDirectory() as directory:
+            marker = Path(directory) / "command.started"
+            args = [sys.executable, "-c", "import pathlib, sys; pathlib.Path(sys.argv[1]).touch()",
+                    str(marker)]
+            with (
+                patch.object(WindowsJob, "attach", side_effect=OSError("job assignment failed")),
+                self.assertRaisesRegex(OSError, "job assignment failed"),
+            ):
+                fps.command(args, windows_process_tree=True, timeout=10)
+            self.assertFalse(marker.exists())
+
+    def test_web_build_timeout_ends_powershell_and_descendants_with_shared_output(self):
+        import ctypes
+        from ctypes import wintypes
+        import psutil
+
+        kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+        kernel.OpenProcess.restype = wintypes.HANDLE
+        kernel.WaitForSingleObject.argtypes = [wintypes.HANDLE, wintypes.DWORD]
+        kernel.WaitForSingleObject.restype = wintypes.DWORD
+        kernel.CloseHandle.argtypes = [wintypes.HANDLE]
+
+        def process_still_running(pid):
+            handle = kernel.OpenProcess(0x00100000, False, pid)  # SYNCHRONIZE
+            if not handle:
+                if ctypes.get_last_error() == 87:  # ERROR_INVALID_PARAMETER, the PID is gone.
+                    return False
+                raise ctypes.WinError()
+            try:
+                status = kernel.WaitForSingleObject(handle, 0)
+                if status == 0xFFFFFFFF:  # WAIT_FAILED
+                    raise ctypes.WinError()
+                return status == 258  # WAIT_TIMEOUT
+            finally:
+                kernel.CloseHandle(handle)
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            script = root / "tools/web.ps1"
+            descendant = root / "descendant.py"
+            script.parent.mkdir()
+            script.write_text(dedent("""
+                $PID | Set-Content -LiteralPath (Join-Path $PSScriptRoot 'powershell.pid')
+                Write-Output 'PowerShell started'
+                & $env:AMIGA_FPS_TEST_PYTHON (Join-Path $PSScriptRoot '../descendant.py') child
+                exit $LASTEXITCODE
+            """), encoding="utf-8")
+            descendant.write_text(dedent("""
+                import os
+                from pathlib import Path
+                import subprocess
+                import sys
+                import time
+
+                role = sys.argv[1]
+                Path(__file__).with_name(role + ".pid").write_text(str(os.getpid()), encoding="ascii")
+                if role == "child":
+                    grandchild = subprocess.Popen([sys.executable, __file__, "grandchild"])
+                for _ in range(300):
+                    print(f"{role} stdout", flush=True)
+                    print(f"{role} stderr", file=sys.stderr, flush=True)
+                    time.sleep(0.1)
+                if role == "child":
+                    grandchild.wait()
+            """), encoding="utf-8")
+            markers = (script.with_name("powershell.pid"), root / "child.pid", root / "grandchild.pid")
+
+            def surviving_processes():
+                expected_scripts = {os.path.normcase(path) for path in (script, descendant)}
+                for marker in markers:
+                    if marker.is_file():
+                        pid = int(marker.read_text(encoding="ascii").strip())
+                        if not process_still_running(pid):
+                            continue
+                        try:
+                            process = psutil.Process(pid)
+                            arguments = (os.path.normcase(os.path.normpath(arg)) for arg in process.cmdline())
+                            if expected_scripts.intersection(arguments):
+                                yield process
+                        except psutil.NoSuchProcess:
+                            pass
+
+            unrelated = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"])
+            try:
+                timeout = 5
+                started = time.monotonic()
+                with (
+                    patch.object(fps, "REPO_ROOT", root),
+                    patch.object(fps, "BUILD_TIMEOUT", timeout),
+                    patch.dict(os.environ, {"AMIGA_FPS_TEST_PYTHON": sys.executable}),
+                    self.assertRaises(subprocess.TimeoutExpired) as expired,
+                ):
+                    fps.web_build(root / "dist")
+                elapsed = time.monotonic() - started
+                self.assertLess(elapsed, timeout + 5, f"Build returned after {elapsed:.3f} seconds")
+                self.assertEqual(expired.exception.timeout, timeout)
+                self.assertEqual(expired.exception.cmd[0], "pwsh")
+                self.assertIn(b"PowerShell started", expired.exception.stdout)
+                for role in ("child", "grandchild"):
+                    self.assertIn(f"{role} stdout".encode(), expired.exception.stdout)
+                    self.assertIn(f"{role} stderr".encode(), expired.exception.stderr)
+                self.assertTrue(all(marker.is_file() for marker in markers))
+                deadline = time.monotonic() + 2
+                while survivors := list(surviving_processes()):
+                    self.assertLess(time.monotonic(), deadline, f"Build processes still running: {survivors}")
+                    time.sleep(0.02)
+                self.assertIsNone(unrelated.poll())
+            finally:
+                unrelated.kill()
+                unrelated.wait(timeout=5)
+                for process in surviving_processes():
+                    process.kill()
+                    process.wait(timeout=5)

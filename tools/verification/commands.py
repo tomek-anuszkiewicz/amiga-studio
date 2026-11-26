@@ -1,5 +1,4 @@
 """Authoritative completion profiles and diagnostic command selection."""
-import os
 import sys
 from pathlib import Path
 from repository import REPO_ROOT, workspace_packages
@@ -55,8 +54,7 @@ def select_quality_commands():
         ("Obsidian Frontmatter", script("check_obsidian_frontmatter"), {}),
         ("Formatting", ["cargo", "fmt", "--all", "--", "--check"], {}),
         ("Clippy Invariants", script("check_clippy_policy"), {}),
-        ("WebAssembly build", ["powershell" if os.name == "nt" else "pwsh",
-                              "-NoProfile", "-File", "tools/web.ps1", "build"], {}),
+        ("WebAssembly build", ["pwsh", "-NoProfile", "-File", "tools/web.ps1", "build"], {}),
         ("Architecture Rules", script("check_architecture"), {}),
         ("Hardware Quality", script("audit_hardware_quality"), {}),
         ("Code Quality", script("audit_code_quality"), {}),

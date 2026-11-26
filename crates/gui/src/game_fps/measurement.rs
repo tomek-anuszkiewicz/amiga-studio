@@ -8,7 +8,7 @@ const WARMUP_FIELDS: u64 = 32;
 const SAMPLE_SECONDS: f64 = 10.0;
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize)]
-pub(super) struct Sample {
+pub struct Sample {
     warmup_start_field: u64,
     start_field: u64,
     end_field: u64,
@@ -17,7 +17,7 @@ pub(super) struct Sample {
 }
 
 #[derive(Debug)]
-pub(super) struct Sampler {
+pub struct Sampler {
     warmup_start_field: u64,
     last_field: u64,
     start: Option<(u64, f64)>,

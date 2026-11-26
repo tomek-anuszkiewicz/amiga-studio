@@ -6,6 +6,7 @@ import select
 import signal
 import subprocess
 import sys
+import tempfile
 import time
 
 
@@ -107,8 +108,65 @@ class WindowsJob:
             if not self.accounting.active_processes:
                 return
             if time.monotonic() >= deadline:
-                raise OSError("Test worker processes did not exit after job termination.")
+                raise OSError("Processes did not exit after Windows job termination.")
             time.sleep(CLEANUP_POLL_SECONDS)
+
+
+def stop_windows_process_tree(process):
+    # The packaged PowerShell executable can start outside the Windows job.
+    # Target the launcher's tree while its process handle is still open.
+    taskkill = Path(os.environ["SystemRoot"]) / "System32/taskkill.exe"
+    command = [str(taskkill), "/PID", str(process.pid), "/T", "/F"]
+    tree_cleanup = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                                    stderr=subprocess.DEVNULL)
+    try:
+        code = tree_cleanup.wait(timeout=JOB_CLEANUP_SECONDS)
+    except BaseException:
+        tree_cleanup.kill()
+        tree_cleanup.wait(timeout=JOB_CLEANUP_SECONDS)
+        raise
+    if code:
+        raise subprocess.CalledProcessError(code, command)
+
+
+def run_windows_job(command, *, cwd, env, timeout):
+    launcher = [sys.executable, "-I", "-S", str(Path(__file__).resolve()), *command]
+    # File handles let us read diagnostics without waiting for pipe readers.
+    with tempfile.TemporaryFile() as stdout, tempfile.TemporaryFile() as stderr:
+        job = WindowsJob()
+        try:
+            process = subprocess.Popen(launcher, cwd=cwd, env=env, stdin=subprocess.PIPE,
+                                       stdout=stdout, stderr=stderr)
+            attached = False
+            timed_out = False
+            try:
+                # The launcher cannot spawn the command before joining the job.
+                with process.stdin:
+                    job.attach(process.pid)
+                    attached = True
+                    process.stdin.write(START_WORKER)
+                process.wait(timeout=timeout)
+            except subprocess.TimeoutExpired:
+                timed_out = True
+            finally:
+                if attached:
+                    try:
+                        if process.poll() is None:
+                            stop_windows_process_tree(process)
+                    finally:
+                        job.stop()
+                        job.wait()
+                elif process.poll() is None:
+                    process.kill()
+                process.wait(timeout=JOB_CLEANUP_SECONDS)
+        finally:
+            job.close()
+        stdout.seek(0)
+        stderr.seek(0)
+        output, errors = stdout.read(), stderr.read()
+    if timed_out:
+        raise subprocess.TimeoutExpired(command, timeout, output=output, stderr=errors)
+    return subprocess.CompletedProcess(command, process.returncode, output, errors)
 
 
 class WorkerProcesses:
@@ -244,4 +302,8 @@ def reap_linux_descendants(children):
 
 
 if __name__ == "__main__":
+    if os.name == "nt":
+        if sys.stdin.buffer.read(1) != START_WORKER:
+            raise SystemExit(1)
+        raise SystemExit(subprocess.call(sys.argv[1:], stdin=subprocess.DEVNULL))
     raise SystemExit(supervise_linux_worker(sys.argv[1:]))
