@@ -36,7 +36,7 @@ COMMANDS = (
     ("npm", "ls", "--global", "--depth=0", "--json"),
     ("docker", "--version"), ("docker", "version", "--format", "{{.Client.Version}} / {{.Server.Version}}"),
     ("docker", "compose", "version", "--short"), ("codex", "--version"), ("graphify", "--version"),
-    ("powershell", "-NoProfile", "-Command", "$PSVersionTable.PSVersion.ToString()"),
+    ("pwsh", "-NoProfile", "-Command", "$PSVersionTable.PSVersion.ToString()"),
 )
 VERSION = r"v?\d+(?:\.[a-zA-Z0-9]+)+(?:[-+][a-zA-Z0-9_.+-]+)?"
 NAME = r"[@a-zA-Z0-9_][a-zA-Z0-9_.-]*(?:/[a-zA-Z0-9_.-]+)?"
